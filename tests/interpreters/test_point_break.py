@@ -1,10 +1,16 @@
 """Unit tests for the Point Break interpreter.
 
-Point Break has no output, so behavior is asserted through the
-halt-vs-loop convention.  Both sides are decided deterministically by
-state-cycle detection: the interpreter is step-capable, and a run that
-revisits its complete internal state has looped forever, so neither
-``assert_halts`` nor ``assert_loops`` needs a wall-clock bound at all.
+Point Break has no output command -- the wiki gives it ``?`` for input and
+no way to print -- so behavior is asserted through the halt-vs-loop
+convention.  Both sides are decided deterministically by state-cycle
+detection: the interpreter is step-capable, and a run that revisits its
+complete internal state has looped forever, so neither ``assert_halts``
+nor ``assert_loops`` needs a wall-clock bound at all.
+
+A halting run also dumps its variables, the repo convention for
+interpreter-only languages; ``TestTheVariableDump`` covers that, and the
+halt-vs-loop tests are unaffected by it since a looping run never reaches
+the dump.
 """
 
 import re
@@ -47,6 +53,54 @@ def assert_loops(program: str, stdin: str = "") -> None:
     """Assert ``program`` loops forever, via deterministic cycle detection."""
     machine = _Machine(program, ScriptedIO(stdin))
     assert run_until_halt_or_cycle(machine) is False
+
+
+def run_and_capture(program: str, stdin: str = "") -> str:
+    """Run ``program`` through :func:`run` and return what it wrote.
+
+    Goes through ``run`` rather than stepping a machine, so the end-of-run
+    dump is driven the way ``esolangs.run`` drives it -- including the
+    extra post-halt ``step()`` that writes it.
+    """
+    io = ScriptedIO(stdin)
+    run(program, io)
+    return io.getvalue()
+
+
+class TestTheVariableDump:
+    """The end-of-run dump: what it prints, when, and exactly once.
+
+    The wiki gives Point Break ``?`` for input and no way to print, so the
+    interpreter dumps the variables when the program ends -- the repo
+    convention for interpreter-only languages.  Every mutation of that dump
+    survived the suite until these tests: the flag that keeps it to one
+    write, the separator, and the values themselves were all unasserted,
+    because the only committed program leaves a single variable and prints
+    the same however the join is spelled.
+    """
+
+    def test_the_dump_prints_the_variables_in_name_order(self) -> None:
+        assert run_and_capture("LET b:=2\nLET a:=1") == "1 2"
+
+    def test_the_dump_separates_variables_with_a_space(self) -> None:
+        assert run_and_capture("LET a:=1\nLET b:=2") == "1 2"
+
+    def test_a_program_with_one_variable_dumps_just_it(self) -> None:
+        assert run_and_capture("LET zero:=0") == "0"
+
+    def test_the_dump_fires_once_however_often_a_halted_machine_is_stepped(
+        self,
+    ) -> None:
+        io = ScriptedIO("")
+        machine = _Machine("LET a:=1\nLET b:=2", io)
+        while not machine.halted:
+            machine.step()
+        assert io.getvalue() == ""  # the dump is the next step's
+        machine.step()
+        assert io.getvalue() == "1 2"
+        machine.step()
+        machine.step()
+        assert io.getvalue() == "1 2"  # and not once more
 
 
 class TestWikiExamples:
