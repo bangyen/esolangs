@@ -137,10 +137,13 @@ class TestStepMachine:
         assert machine.tape == (0,)
         machine.step()  # - flips the current bit
         assert machine.tape == (1,)
-        machine.step()  # * prints the tape and halts
-        assert machine.io.getvalue() == "1"
+        machine.step()  # * halts the beam
         assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
+        assert machine.io.getvalue() == ""  # the dump is the next step's
+        machine.step()  # the post-halt step prints the tape
+        assert machine.io.getvalue() == "1"
+        machine.step()  # stepping again is a no-op; the dump fires once
+        assert machine.io.getvalue() == "1"
         assert machine.row == 0
 
     def test_moving_left_from_cell_zero_stays_put(self) -> None:
