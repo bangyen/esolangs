@@ -282,6 +282,46 @@ def _compile(stroke: Stroke, unit: int) -> _Compiled:
     return root
 
 
+def compile_program(stroke: Stroke, unit: int = DEFAULT_UNIT) -> _Compiled:
+    """Compile ``stroke`` once for repeated :func:`run_compiled` calls."""
+    return _compile(stroke, unit)
+
+
+def run_compiled(program: _Compiled, io: IO | None = None) -> dict[int, int]:
+    """Run a program returned by :func:`compile_program`."""
+    if io is None:
+        io = IO()
+    tape: dict[int, int] = defaultdict(int)
+    pointer = 0
+
+    node: _Compiled | None = program
+    while node is not None:
+        for call in node.ops:
+            if call.op == "+":
+                tape[pointer] += call.count
+            elif call.op == "-":
+                tape[pointer] -= call.count
+            elif call.op == ">":
+                pointer += 1
+            elif call.op == "<":
+                pointer -= 1
+            elif call.op == "i":
+                tape[pointer] = io.read()
+            elif call.op == "o":
+                io.write(tape[pointer])
+            else:  # pragma: no cover - defensive, classify_ops emits no others
+                raise ValueError(f"unknown opcode {call.op!r}")
+
+        if node.zero is None and node.nonzero is None:
+            node = node.goto
+            if node is None:
+                return dict(tape)
+            continue
+        node = node.zero if tape[pointer] == 0 else node.nonzero
+
+    return dict(tape)
+
+
 def run(
     stroke: Stroke,
     io: IO | None = None,
@@ -315,42 +355,7 @@ def run(
     condition at all (see module docstring), and no other interpreter in
     this repo's plain ``run(code, io)`` imposes a step limit either.
     """
-    if io is None:
-        io = IO()
-    compiled = _compile(stroke, unit)
-    tape: dict[int, int] = defaultdict(int)
-    pointer = 0
-
-    node: _Compiled | None = compiled
-    while node is not None:
-        for call in node.ops:
-            if call.op == "+":
-                tape[pointer] += call.count
-            elif call.op == "-":
-                tape[pointer] -= call.count
-            elif call.op == ">":
-                pointer += 1
-            elif call.op == "<":
-                pointer -= 1
-            elif call.op == "i":
-                tape[pointer] = io.read()
-            elif call.op == "o":
-                io.write(tape[pointer])
-            else:  # pragma: no cover - defensive, classify_ops emits no others
-                raise ValueError(f"unknown opcode {call.op!r}")
-
-        if node.zero is None and node.nonzero is None:
-            # A loop-back's target already carries only its own *remaining*
-            # ops (see _compile's resume points), so node.ops above is
-            # always exactly right to run here -- no separate flag needed to
-            # skip ops that already ran on an earlier pass.
-            node = node.goto
-            if node is None:
-                return dict(tape)
-            continue
-        node = node.zero if tape[pointer] == 0 else node.nonzero
-
-    return dict(tape)
+    return run_compiled(compile_program(stroke, unit), io)
 
 
 if __name__ == "__main__":

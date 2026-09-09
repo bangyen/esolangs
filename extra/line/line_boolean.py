@@ -61,7 +61,7 @@ the caller to raise ``Image.MAX_IMAGE_PIXELS`` (as the measurement above
 did), but ``png.py`` replaced Pillow here and imposes no such ceiling.
 
 Nothing here is enforced, and n=11 upward is simply untested rather than
-known-bad.  n=10's all-combination simulation takes roughly 43 minutes, so
+known-bad.  n=10's all-combination simulation takes roughly 29 seconds, so
 the practical limit is now whatever canvas, extraction, and simulation time a
 caller will tolerate.
 """
