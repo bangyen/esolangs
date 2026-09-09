@@ -12,9 +12,12 @@ The wiki defines no I/O, so following the repo convention for
 interpreter-only languages (Minsky Swap prints its registers), :func:`run`
 steps the program, one whole pass at a time, until its state repeats at the
 start of a pass -- proof that every pass from there on renders the same
-picture -- and then prints the bounding box of the cells the ant has
-visited: a rectangle of ``#`` (white) and ``.`` (black) cells, one row per
-line, with the ant's own cell drawn as ``@`` on white or ``o`` on black.
+picture -- and then calls :meth:`_Machine.interrupt`, whose next ``step``
+prints the bounding box of the cells the ant has visited: a rectangle of
+``#`` (white) and ``.`` (black) cells, one row per line, with the ant's own
+cell drawn as ``@`` on white or ``o`` on black.  The dump sits in ``step``
+behind a guard, as every other interpreter-only language here spells it;
+``interrupt`` stands in for the halt this language does not have.
 White space is ignored, any other instruction is a malformed program
 (:class:`ValueError`, exit 2), and the origin cell counts as visited.
 
@@ -179,14 +182,20 @@ class _Machine:
     def __init__(
         self,
         code: str,
-        io: IO | None = None,  # noqa: ARG002 - see ``run``
+        io: IO | None = None,
     ) -> None:
         """Validate ``code`` and reset the machine to the origin.
 
-        ``io`` is accepted and ignored: the language writes only the final
-        render, which :func:`run` prints, and taking the parameter anyway
-        lets every caller build a machine the same way.
+        ``io`` defaults to a fresh :class:`IO` so a caller that only wants
+        to step the grid -- the cycle detector does -- can still build a
+        machine without one, as this signature has always allowed.  The
+        render is written on the step after :meth:`interrupt`.
         """
+        self.io = io if io is not None else IO()
+        # Out of ``snapshot``: the dump is the shell's bookkeeping, and the
+        # detector compares states of a running machine.
+        self._interrupted = False
+        self._dumped = False
         self.prog = "".join(c for c in code if not c.isspace())
         for c in self.prog:
             if c not in _INSTRUCTIONS:
@@ -250,12 +259,41 @@ class _Machine:
         # position the transition returned covers every move.
         self.visited.add((self.x, self.y))
 
+    def interrupt(self) -> None:
+        """Mark the run finished, so the next :meth:`step` renders.
+
+        **Only sound at a pass boundary** (``ip == 0``).  The render shows
+        where the ant *rests*, and the boolean generator reads that resting
+        cell, so interrupting mid-pass would draw the ant mid-dance.
+        :func:`run` proves its repeat at a boundary and calls this there;
+        any other caller owes the same.
+
+        A Painter Ant is an unconditional infinite loop, so ``halted`` is
+        always ``False`` and there is no halt to hang the dump on.  This is
+        the halt's stand-in, which lets the dump sit in ``step`` behind a
+        guard, exactly as the other interpreter-only languages spell it.
+        """
+        self._interrupted = True
+
     def step(self) -> None:
-        """Execute one instruction, advancing the pointer cyclically.
+        """Execute one instruction, or render once the run is interrupted.
 
         The cursor advance is here rather than in the transition: it wraps
-        modulo the program's length, which is the shell's to know.
+        modulo the program's length, which is the shell's to know.  So is
+        the render, for the usual reason -- this is the shell, so it is
+        where an effect belongs -- and ``dumped`` keeps it to exactly one
+        render however many times an interrupted machine is stepped.
+
+        The render branch returns *without* advancing.  Stepping first
+        would leave the picture one instruction past the boundary
+        :meth:`interrupt` was called at, which is the mid-pass render that
+        boundary-only detection exists to avoid.
         """
+        if self.halted or self._interrupted:
+            if not self._dumped:
+                self.io.print_str(self.render())
+                self._dumped = True
+            return
         # ``run`` steps in whole passes of ``len(prog)``, so an empty
         # program's pass is zero steps and it is never stepped at all;
         # this keeps a direct caller from indexing it.
@@ -322,7 +360,7 @@ def run(code: str, io: IO) -> None:
     already grown to cover the full eternal picture; the boundary at which
     the repeat is detected renders identically to every boundary after it.
     """
-    machine = _Machine(code)
+    machine = _Machine(code, io)
     span = len(machine.prog)
     tortoise = machine.snapshot()
     power = 1
@@ -337,7 +375,11 @@ def run(code: str, io: IO) -> None:
             tortoise = machine.snapshot()
             power *= 2
             passes = 0
-    io.print_str(machine.render())
+    # The loop breaks at a pass boundary, which is where ``interrupt`` is
+    # sound; the step after it renders, as the halting languages' post-halt
+    # step does.
+    machine.interrupt()
+    machine.step()
 
 
 if __name__ == "__main__":

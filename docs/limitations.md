@@ -33,7 +33,7 @@ at n=1, 2 and 3 are executed over every input row; n≥4 raises `ValueError`.
 
 | Language | Why it cannot emit arbitrary text |
 | --- | --- |
-| A Painter Ant | No I/O, so the interpreter dumps state at halt; that grid raster is limited to its symbols. |
+| A Painter Ant | No I/O, so the interpreter dumps state when it proves the ant's routine repeats; that grid raster is limited to its symbols. |
 | Algebraic Programming Language | Executed lines print numeric results only. |
 | ArrowQueue | No I/O, so the interpreter dumps the queue at halt; those headings are numeric. |
 | Back | No I/O, so the interpreter dumps the tape at halt; that has only `0`, `1`, and spaces. |
