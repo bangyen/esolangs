@@ -5,6 +5,9 @@ routed by ``DownAccLines``, whose off-by-one is the whole construction, so
 reading the source proves nothing about where a branch lands.
 """
 
+import hashlib
+import importlib
+
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
@@ -24,6 +27,18 @@ from esolangs.tools.boolean.interprogck8 import (
 )
 from esolangs.vm import run_until_halt_or_cycle
 from tests.tools.boolean_runners import run_interprogck8
+
+
+def _dense_table(n: int) -> str:
+    """The contract suite's dense pseudo-random table, the worst to fold."""
+    digest = hashlib.sha256(f"dense:{n}".encode()).digest()
+    bits: list[str] = []
+    block = 0
+    while len(bits) < 2**n:
+        digest = hashlib.sha256(digest + bytes([block & 255])).digest()
+        bits.extend(str(byte & 1) for byte in digest)
+        block += 1
+    return "".join(bits[: 2**n])
 
 
 def _tables(n: int) -> list[str]:
@@ -68,7 +83,7 @@ class TestReads:
 class TestRelay:
     """Past n=3 the tree outgrows one hop, so hops chain through rungs."""
 
-    @pytest.mark.parametrize("n", [4, 5])
+    @pytest.mark.parametrize("n", [4, 5, 6])
     def test_a_tree_past_one_hop_still_computes_its_table(self, n: int) -> None:
         """Every row of a table too long to route in single hops.
 
@@ -84,6 +99,31 @@ class TestRelay:
         for row in range(2**n):
             bits = list(bin(row)[2:].zfill(n))
             assert run_interprogck8(program, bits) == table[row], f"n={n} row {row}"
+
+    def test_a_relay_that_stops_gaining_ground_is_refused(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A relay that cannot gain ground is refused, not left to run.
+
+        Rungs spaced too tightly gain less per round than the other chains'
+        insertions push their targets away, which is how an earlier relay
+        went *backwards* -- 22 over-reach jumps to 198 -- instead of
+        failing.  Narrowing the spacing reproduces that shape.  The point is
+        that it terminates in a refusal: a routing that quietly gives up
+        would emit a program jumping into the middle of a subtree.
+        """
+        table = _dense_table(6)
+        # By name: the package re-exports the generator under the module's
+        # own name, so a plain import binds the function, not the module.
+        module = importlib.import_module("esolangs.tools.boolean.interprogck8")
+        with monkeypatch.context() as patch:
+            patch.setattr(module, "_SPACING", 8)
+            # Either backstop is a correct refusal; what must not happen is
+            # a program that routes through the wrong place, or a hang.
+            with pytest.raises(ValueError, match=r"stalled|max 255|did not"):
+                interprogck8(table)
+        # ...and the real spacing still builds the same table.
+        assert interprogck8(table)
 
     def test_every_hop_in_a_relayed_program_is_inside_the_reach(self) -> None:
         """The relay leaves no jump the gadget cannot spell.
