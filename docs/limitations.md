@@ -97,9 +97,10 @@ capability limits; the rest of the gap between five and ten is wall-clock.
 
 - **6-5:** 35 addressable branch labels; a structural language wall.
 - **Interprogck8:** a relay-interference limit, not the 255-line reach.
-  Rungs repairing one chain break others; the spacing is tuned against
-  that, and reusing existing rungs rather than laying new ones is the
-  obvious next lever.
+  Rungs repairing one chain break others, and the spacing is tuned against
+  that.  Reusing an existing rung instead of laying a new one looked like
+  the next lever and is not: at n=8, none of the 68 jumps still over the
+  reach had a reachable rung heading where they were going.
 - **`%^2^-1`:** generic samples build through thirteen inputs; a
   fourteen-input table would need a twelve-input prefix ladder, which is
   open research, not a wall.
