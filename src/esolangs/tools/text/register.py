@@ -7,6 +7,7 @@ from esolangs.tools.text.helpers import (
     _cm_constants,
     _literal_chunks,
     _require_bytes,
+    delta_program,
 )
 
 __all__ = [
@@ -76,13 +77,21 @@ def interprogck8(text: str) -> str:
     if not text:
         return ""
     _require_bytes(text, "Interprogck8")
-    lines: list[str] = []
-    current: int | None = None
-    for char in text:
-        lines.extend(_interprogck8_reach(ord(char), current))
-        lines.append("div")
-        current = ord(char)
-    return "\n".join(lines)
+
+    def step(cur: int, target: int) -> str:
+        return "".join(f"{line}\n" for line in _interprogck8_reach(target, cur))
+
+    # The first character has no predecessor to step from -- the anchors
+    # compete on their own -- so it is hoisted out of the walk rather than
+    # threading a nullable current through it.
+    head = "".join(f"{line}\n" for line in _interprogck8_reach(ord(text[0]), None))
+    return delta_program(
+        text[1:],
+        step,
+        "div\n",
+        start=ord(text[0]),
+        prologue=head + "div\n",
+    ).rstrip("\n")
 
 
 def bio(text: str) -> str:

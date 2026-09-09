@@ -123,23 +123,22 @@ def rotfuck(text: str) -> str:
     """
     _require_bytes(text, "ROTfuck")
     chain = "+-><,.[]"
-    commands: list[str] = []
-    cur = 0
-    for char in text:
-        target = ord(char)
+
+    def step(cur: int, target: int) -> str:
+        # the shorter way around the 8-bit wrap
         delta = (target - cur) % 256
         if delta and delta <= 128:
-            commands.extend("+" * delta)
-        elif delta:
-            commands.extend("-" * (256 - delta))
-        commands.append(".")
-        cur = target
+            return "+" * delta
+        if delta:
+            return "-" * (256 - delta)
+        return ""
 
-    res: list[str] = []
-    for i, command in enumerate(commands):
-        back = i % 8
-        res.append(chain[(chain.index(command) - back) % 8])
-    return "".join(res)
+    # The rotation is a pass *over the finished stream*, not part of building
+    # it, so the walk is the shared one and this maps its result.
+    commands = delta_program(text, step, ".")
+    return "".join(
+        chain[(chain.index(command) - i % 8) % 8] for i, command in enumerate(commands)
+    )
 
 
 _BF_RESIDUE = {">": 1, "<": 2, "+": 3, "-": 4, ".": 5, ",": 6, "[": 7, "]": 8}
