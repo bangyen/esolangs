@@ -1,10 +1,14 @@
 """Unit tests for the ArrowQueue interpreter.
 
-ArrowQueue has no output commands, so the tests assert termination (halting
-on an off-grid move or an empty-queue pop) and that the direction queue and
-turning mechanics run without error.  Because halting is the only observable,
-a program can act as a truth machine: the presence of a command in a chosen
-cell decides whether the IP loops forever or runs out of queue and halts.
+ArrowQueue has no output commands.  Its interpreter dumps the queue when
+the program halts -- the repo convention for interpreter-only languages --
+so a run that halts on an empty pop prints nothing, that being the halt
+condition, and only one that walks off the grid with headings still queued
+has anything to show.  The tests therefore assert termination (halting on
+an off-grid move or an empty-queue pop) alongside that dump.  Because
+halting is what the boolean generator reads, a program can act as a truth
+machine: the presence of a command in a chosen cell decides whether the IP
+loops forever or runs out of queue and halts.
 The truth-machine branch is decided deterministically by state-cycle
 detection — the sustaining ring is a finite cycle — so the tests need no
 wall-clock bound.
@@ -16,7 +20,7 @@ from typing import ClassVar
 
 import esolangs
 from esolangs.interpreters.grid_based.arrowqueue import _Machine, run
-from esolangs.interpreters.io import IO
+from esolangs.interpreters.io import IO, ScriptedIO
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -42,6 +46,48 @@ class TestArrowQueue:
         # off this one-row grid before ``+`` is ever reached -- so the queue
         # still holds that 0 at the halt, and the dump prints it.
         assert esolangs.run("ArrowQueue", "~*+") == "0"
+
+    def test_the_dump_separates_headings_with_a_space(self) -> None:
+        """Two queued headings, so the separator itself is asserted.
+
+        ``~*+`` leaves one heading, which prints the same however the join
+        is spelled: a mutation replacing the separator survived the whole
+        suite because no program here queued two.
+        """
+        assert esolangs.run("ArrowQueue", "~~") == "0 0"
+
+    def test_the_dump_goes_to_the_caller_s_io(self) -> None:
+        """``run`` must write through the ``io`` it is handed.
+
+        ``_Machine`` defaults ``io`` to a fresh :class:`IO` for callers that
+        only step the grid, so a ``run`` that dropped its own argument would
+        still print -- to real stdout, past whatever the caller passed.
+        ``esolangs.run`` captures through a :class:`ScriptedIO`, so that
+        would return the empty string while the text leaked to the console.
+        """
+        io = ScriptedIO("")
+        run(["~~"], io)
+        assert io.getvalue() == "0 0"
+
+    def test_the_dump_fires_once_however_often_a_halted_machine_is_stepped(
+        self,
+    ) -> None:
+        """``dumped`` is load-bearing: the queue prints on one step only.
+
+        Every mutation of that flag -- forcing it true or false at either
+        end -- survived until this test, since nothing stepped a machine
+        past the step that dumps.
+        """
+        io = ScriptedIO("")
+        machine = _Machine(["~~"], io)
+        while not machine.halted:
+            machine.step()
+        assert io.getvalue() == ""  # the dump is the next step's
+        machine.step()
+        assert io.getvalue() == "0 0"
+        machine.step()
+        machine.step()
+        assert io.getvalue() == "0 0"  # and not once more
 
 
 class TestMachineState:
