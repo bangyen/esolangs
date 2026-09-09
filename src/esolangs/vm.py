@@ -21,15 +21,17 @@ first group and returns ``""`` on the second, and neither is discoverable
 from the protocol alone.  A hang detector below is the other way to drive
 the first group, and takes the bound off the caller entirely.
 
-The four hang detectors here -- :func:`run_until_halt_or_cycle`,
+The five hang detectors here -- :func:`run_until_halt_or_cycle`,
 :func:`run_until_halt_or_all_branches_cycle`,
-:func:`run_until_halt_or_ancestor`, and :func:`run_until_halt_or_growth` --
+:func:`run_until_halt_or_ancestor`, :func:`run_until_halt_or_growth`, and
+:func:`run_until_halt_or_value_growth` --
 each take either a :class:`VM` or the interpreter state one wraps, so
 proving a hang needs nothing more than :func:`make_vm`.  What a detector
 needs beyond stepping is a *sub*-protocol that only some languages have: a
-call stack to compare frames across, enumerable random outcomes to fork, or
-a growing tape.  A language lacking one raises :class:`TypeError` rather
-than being handed a verdict about state it does not keep.
+call stack to compare frames across, enumerable random outcomes to fork, a
+growing tape, or unbounded cells on a fixed one.  A language lacking one
+raises :class:`TypeError` rather than being handed a verdict about state it
+does not keep.
 
 :func:`run_until_halt` sits beside them and proves nothing: it steps a
 machine to its halt within a budget and reports whether it got there.
@@ -599,6 +601,203 @@ def _same_relative_tape(
 
 
 @runtime_checkable
+class _AffineMachine(Protocol):
+    """A machine whose cells grow in *value* on a tape that does not grow.
+
+    :func:`run_until_halt_or_growth` proves the other half of the
+    unbounded-growth class: a tape that gets longer.  Suffolk's ``>>!``
+    loops do neither that nor repeat a state.  Their tape stays one to five
+    cells wide and the pointer stays put, while a cell climbs by a constant
+    every lap -- 4501, then 9001, then 13501.  Nothing repeats, so the cycle
+    detector never fires, and nothing grows, so the tape certificate never
+    does either.  Cells here are Python ints, not wrapping bytes, so the
+    climb has no ceiling to bring the state back around.
+
+    What makes that provable is the *shape* of the language rather than the
+    size of the numbers.  ``values`` is the vector that may grow -- the
+    accumulator and the cells -- compared by subtraction.  ``key`` is
+    everything else, compared by equality: the code position, the pointer,
+    the tape's width.  ``clamp_slack`` exposes the one place a value can
+    change the machine's behaviour rather than just its arithmetic.
+
+    Opting in is a claim about the language, checked against its
+    transition, not just matching member names:
+
+    - control flow is independent of ``values``.  Suffolk has no branch at
+      all: ``ind`` advances and wraps unconditionally, and ``>``, ``<`` and
+      ``!`` move the pointer by fixed rules.  So two visits to one ``key``
+      ran the same instructions, whatever the cells held.
+    - every operation is affine over the values.  ``<``'s ``acc +=
+      tape[ptr]`` is a sum, ``!``'s write is ``tape[ptr] + 1 - acc``, and
+      both are linear; ``ptr = acc = 0`` is a reset to a constant.
+    - every departure from that is a ``max(0, ...)`` clamp, and
+      ``clamp_slack`` reports the value being clamped *before* the step
+      that clamps it, or ``None`` when the pending step does not clamp.
+
+    The third bullet is the load-bearing one.  A lap is affine only while
+    each clamp stays on the side it was on, so a certificate that ignored
+    them would be reading two laps and hoping.  A clamp whose slack shrinks
+    by a little each lap agrees with itself for a hundred laps and then
+    flips, and the run it was "proving" infinite may settle into a repeat
+    instead -- a wrong answer, where this file's whole design is to raise
+    :class:`TimeoutError` rather than risk one.
+    """
+
+    def step(self) -> None:
+        """Execute one instruction, advancing the machine."""
+
+    @property
+    def halted(self) -> bool:
+        """Whether the machine has finished executing."""
+
+    @property
+    def key(self) -> Hashable:
+        """The state compared by equality: code position, pointer, width."""
+
+    @property
+    def values(self) -> tuple[int, ...]:
+        """The unbounded values, compared by subtraction, in a fixed order."""
+
+    @property
+    def clamp_slack(self) -> int | None:
+        """The pending step's clamped quantity, or ``None`` if it clamps none."""
+
+    def input_position(self) -> int:
+        """Return the input cursor, so a reading loop is not a repeat."""
+
+
+def run_until_halt_or_value_growth(
+    machine: _AffineMachine | VM, limit: int = 20_000
+) -> bool:
+    """Step ``machine`` until it halts or provably grows in value forever.
+
+    The companion to :func:`run_until_halt_or_growth`, for the class that
+    one hands back: a fixed-width tape whose *cells* grow without bound.
+    Instead of asking whether a later visit is an earlier one shifted
+    right, it asks whether three consecutive visits to one ``key`` advance
+    by the same vector twice.  Writing ``v1``, ``v2``, ``v3`` for their
+    ``values``, a hang is reported when all of:
+
+    - the input cursor did not move across them (a read makes the next lap
+      input-dependent, so it is undecided, not a hang),
+    - ``key`` is equal at all three, so the laps ran the same code with the
+      same pointer on the same width of tape,
+    - ``v2 - v1 == v3 - v2``, and that vector is non-zero and has no
+      negative component, so the values are strictly climbing,
+    - the two laps agree at every clamp: same side of zero, and a slack
+      that did not move toward flipping.
+
+    Together those make the lap an affine map that sends ``v2`` to ``v2 +
+    d``.  Because control flow does not read the values
+    (:class:`_AffineMachine`'s first claim), the only way a later lap could
+    differ is a clamp changing side, and the fourth condition rules that
+    out: a clamp that is unclamped and whose slack is not falling stays
+    unclamped, and one that is clamped and whose slack is not rising stays
+    clamped.  So every later lap repeats the same affine effect, ``d`` is
+    added forever, and no state ever recurs.  Returns ``True`` when the
+    machine halts and ``False`` once such a certificate is found.
+
+    The delta must be seen *twice* rather than once.  A single delta is one
+    observation of an affine map, which is consistent with the next lap
+    doing something else entirely; seeing it repeat is what pins the map
+    down, and the clamp conditions are what carry it forward.
+
+    ``limit`` bounds the walk in steps.  Exhausting it raises
+    :class:`TimeoutError` rather than returning a verdict, so a program
+    this cannot decide is never reported as halting.
+
+    A step is not a unit of time here.  ``values`` is the whole tape, so a
+    program that widens it every step -- ``>`` alone -- costs a step that
+    grows with the walk, and the budget buys quadratically less the further
+    it runs.  The default is the measured turn of that curve: 20_000 steps
+    is about 1.6s on that worst case, while both programs this was written
+    for are decided in under a millisecond.  A caller who wants the deeper
+    walk can pay for it explicitly.
+
+    Takes either a raw interpreter state or a :class:`VM` from
+    :func:`make_vm`; see :func:`_unwrap`.  A language whose values are
+    bounded has nothing to prove this way -- a climbing byte wraps, and its
+    repeat is :func:`run_until_halt_or_cycle`'s -- and raises
+    :class:`TypeError` rather than a verdict.
+    """
+    machine = cast(
+        _AffineMachine, _unwrap(machine, _AffineMachine, "an affine machine")
+    )
+    # One slack per step, in a single log, and per key the last three steps
+    # that visited it.  A lap is then a slice of the log rather than a list
+    # of its own: collecting the slacks per waiting key instead would append
+    # once for every key still unrevisited, which is quadratic on a program
+    # whose key never repeats -- ``>`` alone mints a fresh one every step by
+    # widening the tape, and would spend the whole budget before reaching
+    # it.  The log costs one append a step, and only a key on its third
+    # visit is ever sliced out of it.
+    slacks: list[int | None] = []
+    visits: dict[Hashable, list[tuple[int, tuple[int, ...], int]]] = {}
+    for index in range(limit):
+        if machine.halted:
+            return True
+        slacks.append(machine.clamp_slack)
+        key = machine.key
+        seen = visits.setdefault(key, [])
+        seen.append((index, machine.values, machine.input_position()))
+        del seen[:-3]
+        if len(seen) == 3 and _climbs_forever(seen, slacks):
+            return False
+        machine.step()
+    raise TimeoutError(
+        f"undecided after {limit} steps: neither halted nor climbed by a "
+        "provable affine step"
+    )
+
+
+def _climbs_forever(
+    visits: list[tuple[int, tuple[int, ...], int]],
+    slacks: list[int | None],
+) -> bool:
+    """Whether three visits advance affinely with every clamp holding.
+
+    The certificate itself, split out so the four conditions read as the
+    list in :func:`run_until_halt_or_value_growth`'s docstring rather than
+    as one expression buried in a loop.  The two laps are the stretches of
+    ``slacks`` between the three visits' steps.
+    """
+    (start, first, cursor), (split, second, middle), (end, third, last) = visits
+    if cursor != middle or middle != last:
+        return False
+    if not len(first) == len(second) == len(third):
+        return False
+    step = tuple(b - a for a, b in zip(first, second, strict=True))
+    if step != tuple(c - b for b, c in zip(second, third, strict=True)):
+        return False
+    if not any(step) or any(delta < 0 for delta in step):
+        return False
+    return _clamps_hold(slacks[start:split], slacks[split:end])
+
+
+def _clamps_hold(before: list[int | None], after: list[int | None]) -> bool:
+    """Whether two laps clamped alike, with no slack drifting toward a flip.
+
+    A clamp already at ``max(0, ...)``'s floor may only sink further; one
+    above it may only rise.  Either way the next lap lands on the side this
+    one did, which is what lets the affine step repeat.
+    """
+    if len(before) != len(after):
+        return False
+    for previous, current in zip(before, after, strict=True):
+        if (previous is None) != (current is None):
+            return False
+        if previous is None or current is None:
+            continue
+        if (previous >= 0) != (current >= 0):
+            return False
+        if previous >= 0 and current < previous:
+            return False
+        if previous < 0 and current > previous:
+            return False
+    return True
+
+
+@runtime_checkable
 class _SteppableMachine(Protocol):
     """The bare step-and-ask-if-halted surface a bounded drive needs.
 
@@ -625,7 +824,7 @@ def run_until_halt(
 ) -> bool:
     """Step ``machine`` until it halts, or the budget or ``stop`` ends it.
 
-    The plain bounded drive, as distinct from the four hang detectors
+    The plain bounded drive, as distinct from the five hang detectors
     above: it proves nothing, it just runs a machine and reports whether it
     got to the end.  Returns ``True`` when the machine halted, ``False``
     when it was still going when the run stopped.
