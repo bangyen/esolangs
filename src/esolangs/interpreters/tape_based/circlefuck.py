@@ -40,6 +40,7 @@ import sys
 from collections.abc import Sequence
 
 from esolangs.exceptions import HaltError
+from esolangs.interpreters.brackets import unmatched
 from esolangs.interpreters.io import IO
 
 #: One instant of a run: ``(ind, ptr, cells, done)`` -- the code cursor, the
@@ -114,7 +115,9 @@ def find(code: Sequence[int], ind: int, ptr: int) -> int:
         ind = (ind + mode) % num
         sym = chr(code[ind])
         if ind == start:
-            raise ValueError("unmatched bracket")
+            # The walk wraps the ring and comes back, so the bracket with
+            # no partner is the one it set out from.
+            raise unmatched(char, start)
         if sym == "[":
             match += 1
         elif sym == "]":

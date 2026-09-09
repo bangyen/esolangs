@@ -53,6 +53,7 @@ from __future__ import annotations
 
 import sys
 
+from esolangs.interpreters.brackets import unmatched
 from esolangs.interpreters.io import IO
 
 #: One instant of a run: ``(ind, ptr, grid)`` -- the code cursor, the
@@ -85,7 +86,9 @@ def _matches(code: str) -> tuple[dict[int, int], set[int]]:
             match[i] = j
             match[j] = i
     if stack:
-        raise ValueError(f"unmatched 'l' at position {stack[-1]}")
+        # One glyph both opens and closes here, so the pairing cannot come
+        # from `match_brackets`; the rejection is still the shared one.
+        raise unmatched("l", stack[-1])
     return match, open_l
 
 

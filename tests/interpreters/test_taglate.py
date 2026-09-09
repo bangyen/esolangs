@@ -139,12 +139,17 @@ class TestTaglate:
         word it looks for -- so each is asserted whole here, since the
         message is the only thing that says which marker was the loose
         one.
+
+        The position is the *token* index rather than a character offset,
+        because a Taglate program is a token list; the shared rejection in
+        :mod:`~esolangs.interpreters.brackets` names whatever the language
+        counts in.
         """
 
-        with raises_message(ValueError, "unmatched 'gy'"):
+        with raises_message(ValueError, "unmatched 'gy' at position 0"):
             run_and_capture(["\x001", "gy"])
 
-        with raises_message(ValueError, "unmatched 'gz'"):
+        with raises_message(ValueError, "unmatched 'gz' at position 0"):
             run_and_capture(["1", "gz"])
 
     def test_arithmetic_wraps_at_the_queue_ceiling(self) -> None:
