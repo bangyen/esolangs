@@ -536,7 +536,9 @@ class _Parser:
             if not self.links.reaches(cell[0], cell[1], (-d_row, -side)):
                 continue
             wiring = self._wiring_at(cell)
-            if wiring is not None:
+            # A cell that both links to and back from here is part of a
+            # wiring by construction, so this always takes.
+            if wiring is not None:  # pragma: no branch
                 seen.add(cell)
                 found.append(wiring)
         return found

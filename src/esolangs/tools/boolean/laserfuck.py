@@ -417,7 +417,9 @@ def _laserfuck_build(
         if len(grid) <= row:
             grid.extend([] for _ in range(row + 1 - len(grid)))
         line = grid[row]
-        if len(line) <= col:
+        # The layout fills each row left to right, so a column is never
+        # already in range and this always extends.
+        if len(line) <= col:  # pragma: no branch
             line.extend(" " * (col + 1 - len(line)))
         line[col] = char
 

@@ -699,8 +699,8 @@ class _Machine:
         (pops, pushes), variables, ind, output = _advance(
             self.frames, self.variables, self.ind, self.defs, self.main
         )
-        if pops:
-            del self.frames[len(self.frames) - pops :]
+        # Every transition finishes at least one frame, so `pops` is >= 1.
+        del self.frames[len(self.frames) - pops :]
         self.frames.extend(pushes)
         # Held as returned, not copied: the transition already built a
         # fresh mapping for any step that changed one, so copying it
