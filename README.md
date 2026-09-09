@@ -24,9 +24,9 @@ and newline-sensitive languages retain their own layout.
 <!-- EXAMPLES:START -->
 
 Ready-to-run programs are committed under [`examples/`](examples/):
-`examples/hello-world/` holds a "Hello, World!" for each of the 48
+`examples/hello-world/` holds a "Hello, World!" for each of the 52
 languages with a text generator; `examples/boolean/` holds a truth-table
-program for each of the 65 languages with a boolean generator.  Both
+program for each of the 69 languages with a boolean generator.  Both
 regenerate via `scripts/write_examples.py`.
 
 <!-- EXAMPLES:END -->
@@ -36,7 +36,7 @@ regenerate via `scripts/write_examples.py`.
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 65 languages</summary>
+<summary>Show all 69 languages</summary>
 
 The full capability matrix (generators, cross-check and boolean support, examples) is in [`docs/languages.md`](docs/languages.md).
 
@@ -209,7 +209,7 @@ Boolean generators accept a most-significant-input-first binary truth table.
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  65 of the
+first; its length implies `n`, so it isn't passed separately.  69 of the
 languages have such a generator, some covering only a documented subset of
 tables.
 
