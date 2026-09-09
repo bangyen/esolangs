@@ -85,8 +85,10 @@ parity, ROTfuck 16s and 20MB at n=10 parity. Only the five above are
 capability limits; the rest of the gap between five and ten is wall-clock.
 
 - **6-5:** 35 addressable branch labels; a structural language wall.
-- **Interprogck8:** a jump-sizing convergence bound, not a reach wall; the
-  relay itself has no arity limit.
+- **Interprogck8:** the sizing loop's pass bound, not the 255-line reach.
+  Whether the widths settle at all past n=6 is untested -- a reroute can
+  shrink a width as well as grow one, so termination is no longer the
+  monotone argument it was.
 - **`%^2^-1`:** generic samples build through thirteen inputs; a
   fourteen-input table would need a twelve-input prefix ladder, which is
   open research, not a wall.

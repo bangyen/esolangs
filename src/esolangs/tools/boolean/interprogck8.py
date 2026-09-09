@@ -268,12 +268,15 @@ def _resolve(items: list[_Item]) -> None:
     A jump's own width shifts every label after it, so this is a fixed
     point rather than one pass.  A width can shrink as well as grow -- a
     rerouted jump spells a shorter distance -- so the bound is measured
-    rather than argued: the worst settle is 93 passes (parity at n=5),
-    and the count falls to zero monotonically over the last few.
+    rather than argued: the worst settle is 93 passes (parity at n=5), and
+    the count of moving jumps wobbles on its way down rather than falling
+    monotonically, so a pass that changes more than the last one is not a
+    sign of trouble.
     """
+    moving = 0
     for _ in range(_PASSES):
         starts, labels = _index(items)
-        changed = False
+        moving = 0
         for item, start in zip(items, starts, strict=True):
             if not isinstance(item, _Jump):
                 continue
@@ -287,16 +290,16 @@ def _resolve(items: list[_Item]) -> None:
             need = _hop_width(max(distance, 0))
             if need != item.width:
                 item.width = need
-                changed = True
-        if not changed:
+                moving += 1
+        if not moving:
             return
-    # Reachable, and the de facto ceiling: n=7 dense hits this.  It is a
-    # bound on the sizing loop rather than on the geometry -- the relay has
-    # no arity limit of its own -- so what it refuses is a program whose
-    # widths were still moving, not one that cannot be laid out.
+    # Reachable, and the de facto ceiling: n=7 dense hits this, so n=6 is
+    # as far as this builds.  What it refuses is a program whose widths
+    # were still moving after ``_PASSES`` -- not, as far as is known, one
+    # that cannot be laid out, since a reroute can shrink a width as well
+    # as grow one and the settle was only ever measured, never argued.
     raise ValueError(
-        f"jump widths did not converge in {_PASSES} passes: the table is "
-        "too large for the sizing loop, not for the layout"
+        f"jump widths did not converge in {_PASSES} passes: {moving} jumps still moving"
     )
 
 
