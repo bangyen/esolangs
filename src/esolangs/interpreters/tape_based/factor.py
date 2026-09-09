@@ -47,6 +47,26 @@ type _State = _BFMachine
 _SIEVE_CHUNK = 20000
 
 
+def _parse(digits: str) -> int:
+    """Read the program's integer, lifting CPython's digit limit to fit it.
+
+    ``int(str)`` refuses above ``sys.get_int_max_str_digits()`` (4300 by
+    default) -- a CPython DoS guard against quadratic conversions, not
+    anything Factor says.  A Factor program *is* one integer, so the guard
+    caps the language at programs of 4300 digits: the n=5 parity table
+    encodes to 12565.  The limit is raised to what this program needs and
+    put back, since it is process-global and ours to borrow, not to keep.
+    """
+    limit = sys.get_int_max_str_digits()
+    if len(digits) <= limit:
+        return int(digits)
+    sys.set_int_max_str_digits(len(digits) + 1)
+    try:
+        return int(digits)
+    finally:
+        sys.set_int_max_str_digits(limit)
+
+
 def _factorint(number: int) -> dict[int, int]:
     """Factorize ``number``, dividing small primes out before sympy sees it.
 
@@ -121,7 +141,7 @@ class _Machine:
         """Decode ``code`` and reset the underlying brainfuck machine."""
         self.io = io
         digits = re.sub(r"[^0-9]", "", code)
-        number = int(digits) if digits else 1
+        number = _parse(digits) if digits else 1
         self.state: _State = _BFMachine(decode(number), io)
 
     @property

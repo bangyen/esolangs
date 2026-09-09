@@ -59,25 +59,36 @@ generators cover one and refuse the other at the same arity):
 
 | Generator | dense | parity | what stops it |
 | --- | --- | --- | --- |
-| Interprogck8 | 3 | 3 | `MAX_INPUTS`; the n=4 bit-0 jump crosses a 456-line subtree against a 255 ceiling |
-| Factor | 3 | 3 | the encoded integer passes Python's 4300-digit int-to-str limit |
 | 6-5 | 5 | 5 | 35 branch labels; n=6 needs 37 dense, 63 parity |
 | Polynomial | 5 | 10 | caps at 138 instructions, one per prime; dense n=6 needs 187 |
 | WII2D | 7 | 10 | decode spans 128 points past the `_WII2D_MAX_INDEX_DOMAIN = 64` cost guard |
 | ZTOALC L | 8 | 8 | would need 11.8M lines against a 4.19M limit |
 
-The other 63 generators build both shapes at n=10. Five are slow rather
+Two entries left this table.  Interprogck8 was capped at 3 by the 255-line
+reach of one `DownAccLines` against a 452-line n=4 crossing; long hops now
+relay through rungs parked in the dead line after an unconditional jump,
+and it builds n=6 dense in 0.4s (where it now stops was not swept).  Factor
+was capped at 3 by CPython's 4300-digit `int`/`str` guard -- a DoS defence,
+not a Factor property -- which the generator and the interpreter now both
+raise to fit the program and restore, so n=5 parity (12565 digits) renders
+and runs; its ceiling is program size against `max_digits`, not an arity.
+Both caps were the construction's rather than the language's, which is what
+made them liftable.
+
+The other 65 generators build both shapes at n=10. Five are slow rather
 than capped, and their cost is the reason `tests/tools/test_boolean_contract.py`
 sweeps to five inputs rather than ten: Minifuck 187s at n=8, Circuit Diagram
 73s and 60MB of program text at n=9, Forþ 70s at n=10, `%^2^-1` 32s at n=9
-parity, ROTfuck 16s and 20MB at n=10 parity. Only the six above are
+parity, ROTfuck 16s and 20MB at n=10 parity. Only the four above are
 capability limits; the rest of the gap between five and ten is wall-clock.
 
 - **6-5:** 35 addressable branch labels; a structural language wall.
 - **`%^2^-1`:** generic samples build through thirteen inputs; a
   fourteen-input table would need a twelve-input prefix ladder, which is
   open research, not a wall.
-- **NoComment, Factor:** host/runtime configuration limits.
+- **NoComment:** a host/runtime configuration limit.  Factor used to sit
+  here and no longer does: its limit was CPython's digit guard, which is
+  raised and restored around the conversion rather than reported.
 - **Polynomial, WII2D, ZTOALC L:** program-cost guards, not capability claims.
 - **Route hybrids:** CV(N)(C), Polynomial, Circlefuck, `%^2^-1`, and WII2D
   alternatives were rejected on the grounds that occasional smaller output

@@ -473,7 +473,15 @@ def brainfuck(truth_table: str) -> str:
     return bf_tree(truth_table)
 
 
-def factor(truth_table: str) -> str:
+#: Digits :func:`factor` renders without being asked twice.  Sized from the
+#: measured worst case at the arity the boolean suite requires: n=5 parity
+#: encodes to 12565 digits (n=5 dense to 8117, n=4 parity to 6390), so this
+#: clears the bar with room and still names a ceiling rather than removing
+#: one.  Past it the caller passes ``max_digits`` and says how big is fine.
+_DEFAULT_MAX_DIGITS = 16_000
+
+
+def factor(truth_table: str, *, max_digits: int = _DEFAULT_MAX_DIGITS) -> str:
     """Build a Factor program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -490,28 +498,45 @@ def factor(truth_table: str) -> str:
     otherwise unrenderable tables into runnable ones, since the cap below is
     on the encoded integer's size.
 
-    This is a program-size cap, not an ``n`` cap: sparse tables (e.g. an
-    all-zero or all-one table) stay small at any ``n``, while dense tables
-    grow the underlying brainfuck program (and so the encoded integer)
-    quickly.  CPython refuses to render an integer above
-    ``sys.get_int_max_str_digits()`` decimal digits (a DoS guard, not a
-    Factor property), and the Factor *interpreter* parses its input the same
-    way, so a program past that limit would not merely fail to print here --
-    it would fail to run.  The check estimates the digit count from the
-    integer's bit length (``log10(2) ~= 0.30103``) to avoid paying for the
-    same oversized conversion just to reject it.
+    ``max_digits`` bounds how long the rendered integer may be, defaulting
+    to :data:`_DEFAULT_MAX_DIGITS`.  This is a program-size cap, not an
+    ``n`` cap: sparse tables (e.g. an all-zero or all-one table) stay small
+    at any ``n``, while dense tables grow the underlying brainfuck program
+    (and so the encoded integer) quickly.
+
+    The bound used to be CPython's own ``sys.get_int_max_str_digits()``,
+    which is a DoS guard against quadratic conversions rather than anything
+    Factor says -- and at its 4300-digit default it stopped this generator
+    at n=3, since n=4 parity needs 6390 digits.  A Factor program *is* one
+    integer, so that guard is not a property of the language to be reported
+    but a limit to be lifted: the render raises it to fit and puts it back,
+    and :func:`esolangs.interpreters.tape_based.factor._parse` does the same
+    on the way in, so what is generated here is what the interpreter runs.
+
+    The check estimates the digit count from the integer's bit length
+    (``log10(2) ~= 0.30103``) to avoid paying for the same oversized
+    conversion just to reject it.
     """
     number = _factor_encode(brainfuck(truth_table))
-    limit = sys.get_int_max_str_digits()
-    if limit and number.bit_length() * 0.30103 + 1 > limit:
+    # Estimated from the bit length (``log10(2) ~= 0.30103``) and rounded
+    # up, so it never *under*-counts: the point is to reject an oversized
+    # integer without paying for the conversion that would size it exactly.
+    digits = int(number.bit_length() * 0.30103) + 1
+    if digits > max_digits:
         raise ValueError(
-            "the Factor boolean generator's encoded integer would exceed "
-            f"Python's {limit}-digit limit for integer-to-string conversion "
-            "(sys.get_int_max_str_digits()) -- the Factor interpreter parses "
-            "its program the same way, so this table's encoding could not "
-            "be run even if it were rendered; try a sparser table",
+            f"the Factor boolean generator's encoded integer needs about "
+            f"{digits} digits, over the {max_digits}-digit limit this call "
+            "allows -- pass a larger max_digits, or try a sparser table",
         )
-    return str(number)
+    limit = sys.get_int_max_str_digits()
+    if digits <= limit:
+        return str(number)
+    # Process-global, so it is borrowed for the render and handed back.
+    sys.set_int_max_str_digits(digits + 1)
+    try:
+        return str(number)
+    finally:
+        sys.set_int_max_str_digits(limit)
 
 
 def three_d_brainfuck(truth_table: str) -> str:
