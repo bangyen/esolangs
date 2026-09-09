@@ -20,6 +20,7 @@ from esolangs.interpreters.grid_based.alight import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.boolean.alight import alight as alight_boolean
 from esolangs.tools.text.alight import alight as alight_text
+from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
@@ -652,15 +653,16 @@ class TestEdgeCases:
         ]
         assert _run(program) == "A"
 
-    def test_the_step_cap_stops_a_runaway_walk(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """A ring that never halts raises rather than spinning forever."""
-        from esolangs.interpreters.grid_based import alight as module
+    def test_a_runaway_walk_is_proven_rather_than_capped(self) -> None:
+        """A ring that never halts is *proved* to hang, not stopped by a count.
 
-        monkeypatch.setattr(module, "_STEP_CAP", 50)
-        with pytest.raises(HaltError, match="exceeded"):
-            run(TestCycles.looping_program, ScriptedIO())
+        There was a step cap here, and it decided the same question by
+        guessing a number.  The ring reads no input and sets no variable, so
+        its whole state repeats and the cycle detector settles it -- which is
+        what ``grapheme.py`` gives as the reason for deleting its own step
+        budget.
+        """
+        assert run_until_halt_or_cycle(_machine(TestCycles.looping_program)) is False
 
     def test_a_string_may_contain_a_quote_via_the_escape(self) -> None:
         """``'`` shields the next cell, so a quote can sit inside a command."""
@@ -825,25 +827,20 @@ class TestFunctionDefinitionEdges:
                 ScriptedIO(),
             )
 
-    def test_a_long_function_body_spends_the_caller_s_step_budget(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """The cap is on the whole run, not per frame.
+    def test_a_long_function_body_runs_to_its_end(self) -> None:
+        """A callee's length is its own business now that no budget is shared.
 
-        A callee that never returns would otherwise walk forever inside one
-        of the caller's steps, where the caller's own cap cannot see it, so
-        the callee's steps are charged back to the shared total.
+        This pinned the step cap being charged across the call boundary.
+        With no cap there is no budget to spend, so what is left worth
+        asserting is that a long body still returns its value rather than
+        being cut off part-way.
         """
-        from esolangs.interpreters.grid_based import alight as module
-
         body = "set b a;" * 40
         program = [
-            "begin;var v;set v f{1};end;",
+            "begin;var v;set v f{65};out v;end;",
             f"func f{{a}};var b;{body}end a;",
         ]
-        monkeypatch.setattr(module, "_STEP_CAP", 30)
-        with pytest.raises(HaltError, match="exceeded"):
-            run(program, ScriptedIO())
+        assert _run(program) == "A"
 
     def test_a_call_used_as_a_bare_command_runs_for_its_effect(self) -> None:
         """The reversed cat's shape, in miniature: a call whose value is dropped.
