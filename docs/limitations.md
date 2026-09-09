@@ -33,7 +33,7 @@ at n=1, 2 and 3 are executed over every input row; n≥4 raises `ValueError`.
 
 | Language | Why it cannot emit arbitrary text |
 | --- | --- |
-| A Painter Ant | No I/O; its grid dump is limited to raster symbols. |
+| A Painter Ant | It has no output command; the grid dump its interpreter renders at halt is limited to raster symbols. |
 | Algebraic Programming Language | Executed lines print numeric results only. |
 | ArrowQueue | Has no output. |
 | Back | Its halting tape dump has only `0`, `1`, and spaces. |
@@ -49,7 +49,7 @@ at n=1, 2 and 3 are executed over every input row; n≥4 raises `ValueError`.
 | Lamfunc | Whitespace tokenization and no concatenation prevent arbitrary text. |
 | Minsky Swap | It has no output command; the halting register dump is numeric. |
 | Point Break | Has no output. |
-| RAM0 | Its fixed-format final dump cannot address arbitrary text. |
+| RAM0 | It has no output command; its fixed-format final dump cannot address arbitrary text. |
 
 Current caps are deliberate:
 
