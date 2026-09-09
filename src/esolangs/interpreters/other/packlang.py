@@ -14,10 +14,16 @@ built-in ``IO`` package provides ``charPut(value)`` and ``charGet(var)``.
 Programs are parsed into a flat statement list per function, so
 :class:`_Machine` steps one statement at a time and :func:`_advance` is a
 pure transition over an immutable state.  The variable store is a tuple of
-``(name, value)`` pairs and the call stack a tuple of frames, so
-:meth:`_Machine.snapshot` is hashable as it stands and a repeated state
-proves a loop.  The scope stack grows without bound, so a call returns an
-*effect* for the shell to apply rather than a whole new store.
+``(name, value)`` pairs, so :meth:`_Machine.snapshot` is hashable as it
+stands and a repeated state proves a loop.
+
+Only the *entry* function is stepped.  A called function runs to
+completion inside the expression that calls it (:func:`_call`), so there
+is no suspended frame to keep and one statement of the visible program is
+one ``step()``.  The transition performs no IO itself: it *requests* a
+read by returning a flag, and the shell takes the byte and calls back --
+which is why a ``charGet`` inside a called function is refused rather than
+given a guessed ordering.
 
 **Numeric literals are decimal.**  The wiki's examples disagree, and this
 is the gap the roadmap flags.  ``charPut(72)`` (Hello, World!),
@@ -62,9 +68,18 @@ Further decisions for gaps the wiki leaves open:
   the same construction with a reachable guard.
 * **Invalid runtime operations** raise
   :class:`~esolangs.exceptions.HaltError`: an undefined variable or
-  function, a call to a function the caller's package does not depend on,
-  an array index outside its length, and recursion past
-  :data:`_MAX_DEPTH` frames.
+  function, an array index outside its length, recursion past
+  :data:`_MAX_DEPTH` frames, and two rules of this interpreter's own --
+
+  - **Dependency visibility is enforced** (:func:`_visible`).  A package
+    calls its own functions and those of the packages it depends on, and
+    nothing else.  The wiki says a dependency may itself have
+    dependencies, so the relation is followed transitively.
+  - **IO inside a called function is refused.**  ``charPut``/``charGet``
+    need the shell's ports, but a call is evaluated inside a statement
+    rather than stepped, so there is no point at which the shell could
+    perform them.  Every wiki example does its IO in the entry function.
+    Refusing is honest; inventing an ordering would not be.
 * **Bounds.**  A plain ``Integer`` and a ``Char`` are unbounded below at 0
   and wrap modulo 256 above, matching ``charPut``'s byte output;
   ``Integer(min, max, under, over)`` wraps to the named values instead.
@@ -637,7 +652,9 @@ def _int(value: object) -> int:
     return value
 
 
-def _evaluate(node: _Expr, store: _Store, program: _Program, depth: int) -> int:
+def _evaluate(
+    node: _Expr, store: _Store, program: _Program, depth: int, caller: str
+) -> int:
     """Return the value of an expression, calling functions as needed.
 
     Pure with respect to the store: a call runs on its own frame's store
@@ -661,17 +678,20 @@ def _evaluate(node: _Expr, store: _Store, program: _Program, depth: int) -> int:
             raise HaltError(f"{node[1]!r} is not an array")
         return len(value)
     if kind == "xor":
-        left = _evaluate(_node(node[1]), store, program, depth)
-        right = _evaluate(_node(node[2]), store, program, depth)
+        left = _evaluate(_node(node[1]), store, program, depth, caller)
+        right = _evaluate(_node(node[2]), store, program, depth, caller)
         return left ^ right
     if kind == "not":
-        return 0 if _truth(_evaluate(_node(node[1]), store, program, depth)) else 1
+        value = _evaluate(_node(node[1]), store, program, depth, caller)
+        return 0 if _truth(value) else 1
     if kind == "apply":
-        return _apply(node, store, program, depth)
+        return _apply(node, store, program, depth, caller)
     raise HaltError(f"cannot evaluate {kind!r}")
 
 
-def _apply(node: _Expr, store: _Store, program: _Program, depth: int) -> int:
+def _apply(
+    node: _Expr, store: _Store, program: _Program, depth: int, caller: str
+) -> int:
     """Evaluate an array index or a function call, which look alike."""
     name = str(node[1])
     args = [_node(arg) for arg in _node(node[2])]
@@ -682,15 +702,43 @@ def _apply(node: _Expr, store: _Store, program: _Program, depth: int) -> int:
             raise HaltError(f"{name!r} is not an array")
         if len(args) != 1:
             raise HaltError(f"indexing {name!r} takes exactly one index")
-        index = _evaluate(args[0], store, program, depth)
+        index = _evaluate(args[0], store, program, depth, caller)
         if not 0 <= index < len(value):
             raise HaltError(f"index {index} is outside {name!r}")
         return _int(value[index])
     func = program.functions.get(name)
     if func is None:
         raise HaltError(f"undefined function {name!r}")
-    values = [_evaluate(arg, store, program, depth) for arg in args]
+    if not _visible(func, caller, program):
+        raise HaltError(
+            f"{caller!r} does not depend on {func.package!r}, "
+            f"so {name!r} is not in scope"
+        )
+    values = [_evaluate(arg, store, program, depth, caller) for arg in args]
     return _call(func, values, program, depth + 1)
+
+
+def _visible(func: _Function, caller: str, program: _Program) -> bool:
+    """Whether ``caller``'s package may call ``func``.
+
+    A package reaches its own functions and those of the packages it
+    depends on.  The wiki says dependencies may themselves have
+    dependencies, so the relation is followed transitively rather than one
+    level deep.
+    """
+    if func.package == caller:
+        return True
+    seen: set[str] = set()
+    frontier = [caller]
+    while frontier:
+        package = frontier.pop()
+        if package in seen:
+            continue
+        seen.add(package)
+        if package == func.package:
+            return True
+        frontier.extend(program.dependencies.get(package, frozenset()))
+    return func.package in seen
 
 
 def _call(func: _Function, values: list[int], program: _Program, depth: int) -> int:
@@ -746,17 +794,21 @@ def _advance(
     stmt = frame.func.body[frame.pc]
     op = stmt[0]
     store = frame.store
+    # Name resolution is done from the running function's own package.
+    package = frame.func.package
     pc = frame.pc + 1
     out: str | None = None
     result = frame.result
 
     if op == _PRINT:
-        value = _evaluate(_node(stmt[1]), store, program, 0)
+        value = _evaluate(_node(stmt[1]), store, program, 0, package)
         out = chr(value % 256)
     elif op == _READ:
         if byte is None:
             return frame, None, True
-        store = _write(store, program, str(stmt[1]), stmt[2], lambda _old: byte)
+        store = _write(
+            store, program, str(stmt[1]), stmt[2], lambda _old: byte, package
+        )
     elif op == _INIT:
         kind = _type_of(str(stmt[1]), frame.func, program)
         store = _write(
@@ -765,6 +817,7 @@ def _advance(
             str(stmt[1]),
             stmt[2],
             lambda _o: kind.low,
+            package,
             whole=kind,
         )
     elif op in (_INCR, _DECR):
@@ -776,14 +829,16 @@ def _advance(
             str(stmt[1]),
             stmt[2],
             lambda old: kind.clamp(old + step),
+            package,
         )
     elif op == _JUMP_UNLESS:
-        if not _truth(_evaluate(_node(stmt[1]), store, program, 0)):
+        guard = _evaluate(_node(stmt[1]), store, program, 0, package)
+        if not _truth(guard):
             pc = _int(stmt[2])
     elif op == _JUMP:
         pc = _int(stmt[1])
     elif op == _VALUE:
-        result = _evaluate(_node(stmt[1]), store, program, 0)
+        result = _evaluate(_node(stmt[1]), store, program, 0, package)
 
     new = _Frame(frame.func, store, pc)
     new.result = result
@@ -796,6 +851,7 @@ def _write(
     name: str,
     index: object,
     update: Callable[[int], int],
+    caller: str,
     whole: _Type | None = None,
 ) -> _Store:
     """Apply ``update`` to a variable or one array element.
@@ -809,7 +865,7 @@ def _write(
             if whole is not None:
                 return _set(store, name, whole.zero())
             raise HaltError(f"{name!r} is an array and needs an index")
-        at = _evaluate(_node(index), store, program, 0)
+        at = _evaluate(_node(index), store, program, 0, caller)
         if not 0 <= at < len(value):
             raise HaltError(f"index {at} is outside {name!r}")
         row = list(value)
