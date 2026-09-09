@@ -299,7 +299,7 @@ class TestEveryLanguageHonoursTheProtocol:
 
         Unlike the halting trait this one is checkable against the machine
         itself: driving to the halt writes everything ``run`` writes,
-        except on the four, where the last step is still owed.  So the
+        except on the seven, where the last step is still owed.  So the
         declaration is compared against what the language actually does --
         a machine whose dump moved back into ``run`` would fail here rather
         than keeping a trait nobody rechecked.
