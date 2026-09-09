@@ -61,8 +61,8 @@ generators cover one and refuse the other at the same arity):
 | --- | --- | --- | --- |
 | Interprogck8 | 7 | 7 | n=8 routing is slow to close; rungs laid to fix one over-long jump break others, and the round-on-round gain is small |
 | 6-5 | 5 | 5 | 35 branch labels; n=6 needs 37 dense, 63 parity |
-| Polynomial | 5 | 10 | caps at 138 instructions, one per prime; dense n=6 needs 187 |
-| WII2D | 7 | 10 | decode spans 128 points past the `_WII2D_MAX_INDEX_DOMAIN = 64` cost guard |
+| Polynomial | 5 | 10 | caps at 138 instructions, one per prime; dense n=6 needs 187, and one row of it takes 86s to *run* |
+| WII2D | 7 | 10 | decode spans 128 points past the `_WII2D_MAX_INDEX_DOMAIN = 64` cost guard, which n=8 dense clears in 0.8s if raised |
 | ZTOALC L | 8 | 8 | would need 11.8M lines against a 4.19M limit |
 
 Both entries moved rather than vanished.  Interprogck8 was capped at 3 by
@@ -95,7 +95,12 @@ sweeps to five inputs rather than ten: Minifuck 187s at n=8, Circuit Diagram
 parity, ROTfuck 16s and 20MB at n=10 parity. Only the five above are
 capability limits; the rest of the gap between five and ten is wall-clock.
 
-- **6-5:** 35 addressable branch labels; a structural language wall.
+- **6-5:** 35 addressable branch labels is the language's (operands are
+  `0-9A-Z`), but the *cap* is the construction's.  `8n` jumps to the n-th
+  `4` marker, so markers are positional and two branch sites may target
+  one; the tree spends a marker per internal node instead of sharing the
+  identical subtrees.  Sharing them costs n=6 dense 24 markers rather than
+  37, and n=8 parity 15 rather than 255 -- both inside the budget.
 - **Interprogck8:** a relay-interference limit, not the 255-line reach.
   Rungs repairing one chain break others, and the spacing is tuned against
   that.  Reusing an existing rung instead of laying a new one looked like
@@ -107,7 +112,15 @@ capability limits; the rest of the gap between five and ten is wall-clock.
 - **NoComment:** a host/runtime configuration limit.  Factor used to sit
   here and no longer does: its limit was CPython's digit guard, which is
   raised and restored around the conversion rather than reported.
-- **Polynomial, WII2D, ZTOALC L:** program-cost guards, not capability claims.
+- **Polynomial:** a cost guard on the *interpreter*, not the generator.
+  Dense n=6 renders instantly and then takes 86s to run a single row, since
+  the interpreter factors the encoded polynomial; the guard is load-bearing.
+- **WII2D:** a chosen cost guard.  At 128 rather than 64, n=8 dense builds
+  in 0.8s (18466 characters) and all 256 rows compute their table.
+- **ZTOALC L:** the size is a Collatz trajectory's peak, which grows
+  superexponentially (n=9 peaks at 1.2e7, n=11 at 3.2e14), and the anchors
+  are already the smallest-peak record-holders per length interval, so
+  there is no tuning lever left -- only a different encoding.
 - **Route hybrids:** CV(N)(C), Polynomial, Circlefuck, `%^2^-1`, and WII2D
   alternatives were rejected on the grounds that occasional smaller output
   did not repay slower generation — 1.25x, 1.08x, 29x, 3,100x, and 1.85x on
