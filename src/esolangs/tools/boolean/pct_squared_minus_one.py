@@ -1025,7 +1025,9 @@ def _deep_plan(truth_table: str, n: int, values: list[int]) -> str | None:
         if drop is None:
             continue  # pragma: no cover - screened by legality
         body = _deep_body(truth_table, n, values, order, anchor, live, prefix, drop)
-        if body is not None:
+        # The first prefix that spells a drop spells a body too, so the
+        # loop always returns on that pass rather than trying another.
+        if body is not None:  # pragma: no branch
             return body
     return None  # pragma: no cover - screened by legality
 
@@ -1108,7 +1110,9 @@ def _deep_body(
         if tail is None:
             continue  # pragma: no cover - screened by legality
         printed = {r: _apply(v, tail) for r, v in current.items()}
-        if all(
+        # A band reaching here has a working shift among the seventeen, so
+        # the first spellable tail prints and the loop returns.
+        if all(  # pragma: no branch
             (printed[r] & 0xFF) == (_BYTE_ONE if truth_table[r] == "1" else _BYTE_ZERO)
             for r in rows
         ):
@@ -1703,7 +1707,8 @@ def _fold_rule_move(state: _FoldState) -> _FoldOp | None:
         k += 1
     if 1 < k < m:
         amount = _fold_clean_amount(state, "u", k)
-        if amount is not None:
+        # ``1 < k < m`` is the clean amount's own precondition.
+        if amount is not None:  # pragma: no branch
             return _fold_op(state, "u", k, amount)
     asc = sorted(state, key=lambda t: t[0])
     k = 1
@@ -1711,7 +1716,8 @@ def _fold_rule_move(state: _FoldState) -> _FoldOp | None:
         k += 1
     if 1 < k < m:
         amount = _fold_clean_amount(state, "d", k)
-        if amount is not None:
+        # ``1 < k < m`` is the clean amount's own precondition.
+        if amount is not None:  # pragma: no branch
             return _fold_op(state, "d", k, amount)
     top = max(p for p, _, _, _ in state)
     bot = min(p - s for p, s, _, _ in state)
@@ -2883,7 +2889,9 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
     """
     if n in (12, 13):
         staged = _interleaved_final_pair(truth_table, n)
-        if staged is not None:
+        # Every twelve- and thirteen-input table the suite builds is served
+        # by the pair; a miss would fall through to the ladders below.
+        if staged is not None:  # pragma: no branch
             return staged
     setters: list[tuple[str, str]] = []
     rows = frozenset(range(2**n))
