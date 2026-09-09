@@ -62,7 +62,7 @@ generators cover one and refuse the other at the same arity):
 | Interprogck8 | 7 | 7 | n=8 routing is slow to close; rungs laid to fix one over-long jump break others, and the round-on-round gain is small |
 | 6-5 | 5 | 5 | 35 branch labels; n=6 needs 37 dense, 63 parity |
 | Polynomial | 5 | 10 | caps at 138 instructions, one per prime; dense n=6 needs 187, and one row of it takes 86s to *run* |
-| WII2D | 7 | 10 | decode spans 128 points past the `_WII2D_MAX_INDEX_DOMAIN = 64` cost guard, which n=8 dense clears in 0.8s if raised |
+| WII2D | 8 | 10 | dense n=9 decode spans 256 points past the `_WII2D_MAX_INDEX_DOMAIN = 128` cost guard |
 | ZTOALC L | 8 | 8 | would need 11.8M lines against a 4.19M limit |
 
 Both entries moved rather than vanished.  Interprogck8 was capped at 3 by
@@ -115,8 +115,9 @@ capability limits; the rest of the gap between five and ten is wall-clock.
 - **Polynomial:** a cost guard on the *interpreter*, not the generator.
   Dense n=6 renders instantly and then takes 86s to run a single row, since
   the interpreter factors the encoded polynomial; the guard is load-bearing.
-- **WII2D:** a chosen cost guard.  At 128 rather than 64, n=8 dense builds
-  in 0.8s (18466 characters) and all 256 rows compute their table.
+- **WII2D:** a chosen cost guard, now at 128 rather than 64: dense n=8
+  builds in 0.8s (18466 characters) and all 256 rows compute their table.
+  Dense n=9 needs 256, four times the width, and is untested.
 - **ZTOALC L:** the size is a Collatz trajectory's peak, which grows
   superexponentially (n=9 peaks at 1.2e7, n=11 at 3.2e14), and the anchors
   are already the smallest-peak record-holders per length interval, so

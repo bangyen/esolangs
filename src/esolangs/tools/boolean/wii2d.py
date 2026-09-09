@@ -116,11 +116,17 @@ _WII2D_SHORTLIST = 4
 # without ever looking at it.
 #
 # What the constant buys is bounded *width*, which still grows as the domain
-# doubles; 64 admits dense ``n == 7``, where the price is size rather than
-# time.  Symmetric tables never reach this check: they decode over ``n``
+# doubles.  Symmetric tables never reach this check: they decode over ``n``
 # points via the popcount chain.  ``docs/wii2d_generator.md`` has the measured
 # width and time tables this value was chosen against.
-_WII2D_MAX_INDEX_DOMAIN = 64
+#
+# 128 admits dense ``n == 8``: 18466 characters built in 0.8s, every one of
+# its 256 rows executed against the interpreter.  The price stays size
+# rather than time, which is what the guard is really rationing -- the
+# previous 64 refused that table while admitting dense ``n == 7`` at 2930
+# characters.  The next doubling is the one to think about: ``n == 9`` needs
+# 256, where the width is four times this and untested.
+_WII2D_MAX_INDEX_DOMAIN = 128
 
 # The widest *real* chain domain any table may decode over, whatever the
 # arity-scale guard above allows.
