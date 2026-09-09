@@ -10,15 +10,14 @@ elsewhere. Record rejected candidates in [limitations](limitations.md).
 
 - `src/esolangs/interpreters/`: interpreter modules and `run(code, io)`.
 - `src/esolangs/tools/text/` and `boolean/`: generators.
-- `src/esolangs/compilers/`: RISC-V compilers exposing `comp(code)`.
 - `src/esolangs/registry.py`: the source of truth for public integration.
-- `tests/`: interpreter, generator, and differential coverage.
+- `tests/`: interpreter and generator coverage.
 
 ## Change checklist
 
 1. Start from the appropriate template and document actual input, error, and
    halt behavior.
-2. Register the language and any generator/compiler in `registry.py`.
+2. Register the language and any generator in `registry.py`.
 3. Add end-to-end tests. Execute generated programs; source text alone is not
    evidence.
 4. Run `just test`. Use `just test-full` for release-scale changes.

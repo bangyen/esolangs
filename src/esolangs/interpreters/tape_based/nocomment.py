@@ -8,8 +8,8 @@ jump forward/backward by a peeked stack value when the current cell is
 nonzero (``s`` skips X instructions, ``b`` jumps back X-1), and ``o`` prints
 the current cell as a byte.  The tape is static and the pointer wraps at both
 ends (per the wiki, pointer overflow is legal and moves to the opposite end).
-Its size defaults to 4096, matching the RISC-V cross-check, and ``run`` takes
-a ``tape`` argument for programs that need a longer one.
+Its size defaults to 4096, and ``run`` takes a ``tape`` argument for
+programs that need a longer one.
 
 Per the wiki, any character that is not a command is an error (there are no
 comments), and popping an empty stack is an error.  A malformed program
@@ -49,9 +49,9 @@ from esolangs.interpreters.io import IO
 # not an option -- only which finite size.
 #
 # The wiki leaves the size open, so it is a host choice, and callers may pass
-# their own.  The default stays 4096 (matching the RISC-V cross-check's buffer)
-# because the size is *observable*: cell 0 steps left to ``tape - 1``, so moving
-# the default would change what existing wrapping programs do.
+# their own.  The default stays 4096 because the size is *observable*: cell 0
+# steps left to ``tape - 1``, so moving the default would change what existing
+# wrapping programs do.
 _TAPE = 4096
 
 #: One instant of a run: ``(ind, ptr, tape, stack, acc, dirty)`` -- the code

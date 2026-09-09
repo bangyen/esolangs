@@ -103,9 +103,8 @@ def _skip(commands: list[str], ind: int) -> int:
 # ``(?:\{|;)`` accepted the two mismatched shapes as commands, and both then
 # walked off the end at run time -- ``0ix;`` reached ``_skip`` looking for a
 # ``};`` that brace matching never required, and ``0ox{`` opened a body
-# nothing had pushed, so its ``};`` popped an empty stack.  The RISC-V
-# cross-check rejects both at load (``.tok_want_brace``), which is the
-# reading this matches.
+# nothing had pushed, so its ``};`` popped an empty stack.  Both are
+# rejected at load, which is the reading this matches.
 _COMMAND = re.compile(r"0[iI][xXyYzZ]\{|(?:0[oO]|1[oOiI])[xXyYzZ];|\};")
 
 # Comments run from ``//`` to the end of the line and carry no meaning, so

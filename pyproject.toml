@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "esolangs"
 version = "0.1.0"
-description = "A comprehensive collection of esoteric programming language interpreters and compilers"
+description = "A comprehensive collection of esoteric programming language interpreters"
 authors = [{name = "Bangyen Pham", email = "bangyenp@gmail.com"}]
 license = "GPL-3.0-or-later"
 readme = "README.md"
@@ -19,10 +19,9 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Interpreters",
-    "Topic :: Software Development :: Compilers",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-keywords = ["esoteric", "programming", "languages", "interpreters", "compilers", "brainfuck", "esolangs"]
+keywords = ["esoteric", "programming", "languages", "interpreters", "brainfuck", "esolangs"]
 dependencies = [
     "sympy>=1.12.0",
 ]
@@ -35,7 +34,6 @@ dev = [
     "click>=8.3.3",
     "pygments>=2.20.0",
     "urllib3>=2.7.0",
-    "unicorn>=2.1.4",
     "ruff==0.16.5",
     "mypy==2.3.1",
     "pre-commit>=3.0.0",
@@ -104,7 +102,6 @@ ignore = [
 "scripts/make_coverage_badge.py" = ["E501"]
 # Module filenames match the esolang names and are referenced by the registry.
 "src/esolangs/interpreters/**/*.py" = ["N999"]
-"src/esolangs/compilers/**/*.py" = ["N999"]
 # Test files are exempt from docstring requirements: test method and class
 # names are self-documenting, so the D rules would only add boilerplate.
 "tests/**/*.py" = ["D", "N802"]
@@ -121,18 +118,14 @@ ignore = [
 # holds one CV(N)(C) program in its per-language table.
 "src/esolangs/interpreters/other/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
 "src/esolangs/tools/boolean/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
-"src/esolangs/compilers/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/interpreters/test_cvnc.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
 "tests/samples.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
-# The compiler suite is otherwise language-agnostic; its CV(N)(C) class
-# spells IPA programs for the same reason the files above do.
-"tests/compilers/test_assembly_compilers.py" = ["RUF001", "RUF002", "RUF003"]
 
 [tool.mypy]
 strict = true
 python_version = "3.12"
-# scripts/ is CI infrastructure (the differential, unicorn, and installer
-# checks), so it is type-checked alongside the package itself.
+# scripts/ is CI infrastructure (the verification and installer checks), so
+# it is type-checked alongside the package itself.
 files = ["src", "scripts"]
 exclude = ["\\.venv/", "build/", "dist/"]
 warn_return_any = true
@@ -152,21 +145,6 @@ strict_equality = true
 # sympy ships no inline types.
 module = ["sympy"]
 ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-# unicorn's bindings are untyped and its __init__ re-exports without
-# __all__, so its names look unexported to a strict run.
-module = ["unicorn", "unicorn.*"]
-ignore_missing_imports = true
-implicit_reexport = true
-
-[[tool.mypy.overrides]]
-# disallow_untyped_calls is a property of the *calling* module, so it is
-# relaxed here rather than on unicorn above: every Uc method (mem_map,
-# reg_read, emu_start, ...) is untyped, and this is the only module that
-# drives the emulator.  Everything else stays strict.
-module = ["riscv_elf_runner"]
-disallow_untyped_calls = false
 
 [tool.pytest.ini_options]
 # extra/line is collected alongside tests/ even though it is not a package:
@@ -200,12 +178,6 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "interpreter: marks tests for specific interpreters",
-    # Its own marker rather than "slow": the mutation harness deselects slow
-    # tests, and these are the only ones that can see a compiler emitting
-    # working-but-wrong code, so folding them into "slow" would remove them
-    # from exactly the run that needs them.  test-quick deselects this one
-    # by name instead, keeping the inner loop free of the ~10s round-trip.
-    "unicorn: round-trips compiled output as RISC-V under unicorn",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",

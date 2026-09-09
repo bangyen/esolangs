@@ -2,9 +2,9 @@
 
 The full local stack takes ~97s, and most of that is spent re-proving things
 the current branch cannot have broken: a change to one tape interpreter does
-not need the native cross-checks for the other languages re-run.  This module
-supplies the shared "what changed?" query that ``verify.py`` and
-``verify_differential.py`` scope themselves with.
+not need the checks for the other languages re-run.  This module
+supplies the shared "what changed?" query that ``verify.py`` scopes itself
+with.
 
 The rule is deliberately conservative.  Scoping is only ever an optimisation:
 when the answer is unclear -- no diff available, a detached HEAD, no
@@ -36,7 +36,6 @@ SHARED_INTERPRETER = (
 SHARED_TOOLING = (
     "scripts/verify.py",
     "scripts/_scope.py",
-    "scripts/verify_differential.py",
     "scripts/check_diff_coverage.py",
     "pyproject.toml",
     ".pre-commit-config.yaml",

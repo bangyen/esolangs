@@ -127,12 +127,11 @@ class TestAlarmBudget:
     def test_the_conftest_skips_the_alarm_during_the_stats_pass(self) -> None:
         """The stats pass runs under tracing, which the budget never priced.
 
-        This is the failure that reported ``compilers/jaune`` as 0/711 with
-        a passing baseline.  The compiler suite baselines at 0.73s, so the
-        budget lands at its floor; the traced ``jaune`` compile outruns it,
-        the alarm fails mutmut's *stats* pass rather than a mutant, no stats
-        are written, and every mutant is skipped as "not checked" while a
-        percentage is still printed.
+        This is the failure that reported a 0/711 score with a passing
+        baseline.  A suite baselining under a second lands the budget at its
+        floor; the traced run outruns it, the alarm fails mutmut's *stats*
+        pass rather than a mutant, no stats are written, and every mutant is
+        skipped as "not checked" while a percentage is still printed.
 
         mutmut marks that pass by setting ``MUTANT_UNDER_TEST`` to the
         literal ``stats``, so the conftest tells it apart exactly rather
@@ -290,12 +289,11 @@ class TestParseTarget:
     def test_every_listed_module_is_a_file_in_its_family(self) -> None:
         """A listed target resolves to a real file, in every kind.
 
-        Covers the compilers as well as the two generator families: all
-        three are the same table, so a path built wrong for one kind is
+        Every kind is the same table, so a path built wrong for one is
         caught here rather than by a run that cannot find its target.
         """
         script = load_script()
-        for family in ("boolean", "text", "tools", "compilers"):
+        for family in ("boolean", "text", "tools", "transpilers"):
             kind = script._KINDS[family]  # noqa: SLF001
             for name in script._modules(family):  # noqa: SLF001
                 assert (kind.pkg_dir / f"{name}.py").exists()
@@ -325,7 +323,8 @@ class TestParseTarget:
         for exactly this reason: ``_modules`` skips ``__init__`` as a
         non-target, so code there would be silently exempt from mutation.
         ``_bf_streetcode`` carries the Streetcode geometry pass and is a
-        target on the same reasoning that keeps ``_riscv_common`` one.
+        target on the same reasoning that keeps ``helpers`` one: it is
+        shared machinery, not an entry point.
         """
         script = load_script()
         modules = script._modules("transpilers")  # noqa: SLF001
@@ -333,22 +332,6 @@ class TestParseTarget:
         assert "_bf_streetcode" in modules
         kind = script._KINDS["transpilers"]  # noqa: SLF001
         assert kind.rel_target("transpilers") == "esolangs/transpilers/transpilers.py"
-
-    def test_the_compilers_are_a_target_kind(self) -> None:
-        """The RISC-V backends are reachable, and land in tests/compilers.
-
-        ``_riscv_common`` stays a target on the same reasoning that keeps
-        ``helpers`` one: it is shared machinery the emitted assembly
-        depends on, not an entry point.
-        """
-        script = load_script()
-        kind = script._KINDS["compilers"]  # noqa: SLF001
-        modules = script._modules("compilers")  # noqa: SLF001
-        assert "jaune" in modules
-        assert "_riscv_common" in modules
-        assert kind.tests_rel == "tests/compilers"
-        assert kind.rel_target("jaune") == "esolangs/compilers/jaune.py"
-        assert kind.dotted("jaune") == "esolangs.compilers.jaune"
 
 
 class TestPrepare:

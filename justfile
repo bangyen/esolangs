@@ -12,17 +12,14 @@ help:
     @echo "Available targets:"
     @echo "  lint-python  - Lint Python files with Ruff and MyPy"
     @echo "  lint         - Run all linting targets"
-    @echo "  test         - Local check, scoped to this branch; slow/differential left to CI"
-    @echo "  test-full    - Every check incl. the differential, whole tree"
+    @echo "  test         - Local check, scoped to this branch; slow tests left to CI"
+    @echo "  test-full    - Every check, whole tree"
     @echo "  test-quick   - Fast dev loop: pre-commit + pytest (skip slow) (~6s pytest)"
     @echo "  test-py      - pytest only (~16s, 3325 tests, -n auto; skip slow with -m 'not slow')"
-    @echo "  test-differential - interpreter vs native differential corpora (~51s)"
-    @echo "  test-unicorn - RISC-V assembly under unicorn (~10s)"
     @echo "  test-line    - extra/line suites with pytest only (~3s)"
     @echo "  test-anchor  - ztoalc anchor table check (~3.2s)"
     @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
     @echo "  mutate-gen MOD - mutation-test one generator (e.g. just mutate-gen text/streetcode)"
-    @echo "  mutate-comp MOD - mutation-test one compiler (e.g. just mutate-comp jaune)"
     @echo "  install-dev  - Install development dependencies"
     @echo "  clean        - Clean up generated files"
     @echo ""
@@ -67,13 +64,9 @@ test *args:
 test-full *args:
     {{PYTHON}} scripts/verify.py --full {{args}}
 
-# fast dev loop: pre-commit + pytest (skip slow) (skips 32s differential + 10s unicorn) — quiet by default
-#
-# "not unicorn" as well as "not slow": the compiled-output round-trip is its
-# own marker so the mutation harness can keep it (see pyproject), which
-# means the inner loop has to name it to stay out of the ~12s it costs.
+# fast dev loop: pre-commit + pytest (skip slow) — quiet by default
 test-quick *args:
-    PYTEST_ADDOPTS="-m 'not slow and not unicorn'" {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest {{args}}
+    PYTEST_ADDOPTS="-m 'not slow'" {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest {{args}}
 
 # granular targets — each maps to one STEPS entry in scripts/verify.py (see verify.py --list)
 # add --quiet to any of these for terse output (e.g. just test-py --quiet)
@@ -90,12 +83,6 @@ test-line *args:
 
 test-anchor *args:
     {{PYTHON}} scripts/verify.py --only "ztoalc anchor table is reproducible" {{args}}
-
-test-unicorn *args:
-    {{PYTHON}} scripts/verify.py --only "RISC-V assembly under unicorn (compilers + cross-checks)" {{args}}
-
-test-differential *args:
-    {{PYTHON}} scripts/verify.py --only "interpreter vs native differential corpora" {{args}}
 
 test-lint *args:
     {{PYTHON}} scripts/verify.py --only pre-commit,"docstring check","duplicate-code check (pylint)",bandit {{args}}
@@ -120,22 +107,6 @@ mutate language *args:
 # passed, since a mutation run pays the suite's cost once per mutant.
 mutate-gen module *args:
     {{PYTHON}} scripts/mutate_generator.py {{module}} {{args}}
-
-# the same for one RISC-V compiler backend (e.g. just mutate-comp jaune).
-# Same harness, pointed at src/esolangs/compilers and tests/compilers; the
-# names are unambiguous, so no family prefix is needed.  The unicorn
-# round-trip runs as part of the kill test where the toolchain is present,
-# and the run says so -- without it a score is measured without the only
-# check that sees output which assembles and computes the wrong thing.
-mutate-comp module *args:
-    {{PYTHON}} scripts/mutate_generator.py compilers/{{module}} {{args}}
-
-# regenerate the pinned compiler output after a deliberate codegen change
-# (tests/compilers pins what every backend emits, so such a change fails
-# them by design -- regenerate, then review the diff).  --check reports
-# staleness without writing.
-goldens *args:
-    {{PYTHON}} scripts/make_compiler_goldens.py {{args}}
 
 # clean generated
 clean:

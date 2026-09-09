@@ -18,10 +18,9 @@ Documented decisions for gaps and divergences:
 - reaching the end of the source without ``;`` halts (the pointer has no
   direction to keep moving);
 - ``l`` pairs alternate by their order in the program (the first and second
-  ``l`` form a loop, the third and fourth form another, and so on), matching
-  the RISC-V compiler's ``loop // 2`` numbering rather than BF-style
-  nesting; an unbalanced trailing ``l`` is a malformed program
-  (:class:`ValueError`).
+  ``l`` form a loop, the third and fourth form another, and so on), a
+  ``loop // 2`` numbering rather than BF-style nesting; an unbalanced
+  trailing ``l`` is a malformed program (:class:`ValueError`).
 
 The interpreter runs on a :class:`_Machine` (the fixed 25-cell grid, the
 pointer, and the code cursor), so it is step-capable: ``step()`` executes
