@@ -183,17 +183,6 @@ class TestMachineState:
         assert (machine.width, machine.grid) == (0, ())
 
 
-class TestStepMachine:
-    def test_step_after_halt_is_a_noop(self) -> None:
-        machine = _Machine(["..."])
-        while not machine.halted:
-            machine.step()
-        state = machine.snapshot()
-        machine.step()  # stepping a halted machine must not raise
-        assert machine.halted
-        assert machine.snapshot() == state
-
-
 def _machine(code: object) -> object:
     from esolangs.interpreters.grid_based.arrowqueue import _Machine
 

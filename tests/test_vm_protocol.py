@@ -242,6 +242,13 @@ class TestEveryLanguageHonoursTheProtocol:
         first post-halt step is the dump, so the no-op under test is the
         step after that one -- and that the dump fires exactly once is
         itself part of the contract.
+
+        The *state* is pinned alongside the output, because the two can
+        come apart: a machine that advances a cursor past its halt without
+        writing anything moves its snapshot while leaving the output
+        settled, and only the snapshot comparison sees it.  A dozen
+        per-language files used to assert exactly this, one copy each; the
+        claim is the protocol's, not any language's, so it is swept here.
         """
         if language in NEVER_SELF_HALTS:
             pytest.skip(f"{language} has no self-halt")
@@ -252,9 +259,11 @@ class TestEveryLanguageHonoursTheProtocol:
         if language in DUMPS_ON_THE_POST_HALT_STEP:
             vm.step()
         settled = vm.output
+        state = vm.snapshot()
         vm.step()
         assert vm.halted
         assert vm.output == settled
+        assert vm.snapshot() == state
 
     def test_the_post_halt_step_raises_only_where_recorded(
         self, language: str, program: str, stdin: str
