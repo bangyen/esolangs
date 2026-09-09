@@ -387,6 +387,12 @@ def run_myscript(program: str, inputs: list[str]) -> str:
     return run_program(run, program, _stdin(inputs))
 
 
+def run_function_x_y(program: str, inputs: list[str]) -> str:
+    from esolangs.interpreters.other.function_x_y import run
+
+    return run_program(run, program, _stdin(inputs))
+
+
 def point_break_result(program: str, inputs: list[str]) -> str:
     """Run a Point Break program; return "0" if it halts and "1" if it loops.
 

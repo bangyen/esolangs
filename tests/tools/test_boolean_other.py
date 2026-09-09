@@ -22,6 +22,7 @@ from tests.tools.boolean_runners import (
     run_fargo,
     run_flowchart,
     run_forbin_boolean,
+    run_function_x_y,
     run_inject,
     run_laserfuck,
     run_myscript,
@@ -2427,3 +2428,88 @@ class TestAlgebraicProgrammingLanguageShapes:
 
         assert list(_NAMES) == sorted(_NAMES)
         assert len(set(_NAMES)) == len(_NAMES)
+
+
+class TestFunctionXY:
+    """A nested-ternary decision tree over inputs read up front."""
+
+    @staticmethod
+    def _check(table: str) -> None:
+        """Execute the program on every row and compare with the table."""
+        n = len(table).bit_length() - 1
+        program = boolean.function_x_y(table)
+        for combo in range(2**n):
+            bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+            assert run_function_x_y(program, bits) == table[combo], (
+                f"table {table} inputs {bits}"
+            )
+
+    @pytest.mark.parametrize(
+        "table",
+        [
+            "01",  # identity
+            "10",  # NOT
+            "00",  # constant zero
+            "11",  # constant one
+            "0001",  # AND
+            "0111",  # OR
+            "0110",  # XOR
+            "1110",  # NAND
+            "01101001",  # XOR3
+            "11111110",  # NAND3
+            "1000000000000000",  # AND4
+            "0110100110010110",  # parity4: nothing folds
+        ],
+    )
+    def test_truth_table(self, table: str) -> None:
+        self._check(table)
+
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_every_table_of_small_arity(self, n: int) -> None:
+        """Exhaustive over all ``2**(2**n)`` tables, not a sample."""
+        for value in range(2 ** (2**n)):
+            self._check(bin(value)[2:].zfill(2**n))
+
+    @pytest.mark.parametrize("n", [4, 5])
+    def test_a_sample_of_wider_tables(self, n: int) -> None:
+        """The claimed arities run; 2**16 and 2**32 tables are sampled."""
+        rng = random.Random(n)
+        for _ in range(12):
+            table = "".join(rng.choice("01") for _ in range(2**n))
+            self._check(table)
+
+    def test_a_constant_table_still_reads_every_input(self) -> None:
+        """The reads are the interface, so a constant must not skip them.
+
+        This is the boolean contract's rule; pinned here on the emission
+        because the contract sweep only compares two tables' read counts.
+        """
+        for table in ("0000", "1111"):
+            program = boolean.function_x_y(table)
+            assert program.count("[~]") == 2
+            # and it still answers correctly
+            assert run_function_x_y(program, ["0", "0"]) == table[0]
+
+    def test_a_constant_table_folds_to_a_literal(self) -> None:
+        """Nothing branches when the whole table is one value."""
+        program = boolean.function_x_y("1111")
+        assert "<" not in program.split("\n")[-1].replace('`"1"', "")
+        assert program.endswith('`"1"')
+
+    def test_the_tree_folds_a_constant_subtree(self) -> None:
+        """``0011`` depends only on the second input, so one test suffices."""
+        program = boolean.function_x_y("0011")
+        assert program.count("==") == 1
+
+    def test_reads_stay_in_input_order(self) -> None:
+        """Reordering moves which input a node tests, never the reads."""
+        program = boolean.function_x_y("0110100110010110")
+        reads = [ln for ln in program.split("\n") if ln.startswith("var ")]
+        assert reads == [f"var b{i}: [~]" for i in range(4)]
+
+    def test_a_malformed_table_is_refused(self) -> None:
+        with pytest.raises(ValueError, match="power-of-two"):
+            boolean.function_x_y("011")
+        # a nullary table is a constant, not a boolean function
+        with pytest.raises(ValueError, match="at least one input"):
+            boolean.function_x_y("0")
