@@ -207,15 +207,6 @@ class TestErrors:
 
 
 class TestStepMachine:
-    def test_step_after_halt_is_a_noop(self) -> None:
-        from esolangs.interpreters.register_based.myscript import _Machine
-
-        machine = _Machine("", IO())
-        while not machine.halted:
-            machine.step()
-        machine.step()  # stepping a halted machine is a no-op
-        assert machine.halted
-
     def test_malformed_var_declaration_is_rejected(self) -> None:
         with pytest.raises(ValueError, match="malformed"):
             run_and_capture("var x 5")

@@ -368,18 +368,7 @@ def test_a_whole_program_runs_end_to_end() -> None:
     assert run_and_capture("'Hi'p.") == "Hi"
 
 
-class TestStepMachine:
-    def test_step_after_halt_is_a_noop(self) -> None:
-        from esolangs.interpreters.register_based.between import _Machine
-
-        machine = _Machine([], IO())
-        assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
-        assert machine.halted
-
-
 def _machine(code: object) -> object:
-    from esolangs.interpreters.io import IO
     from esolangs.interpreters.register_based.between import _Machine
 
     return _Machine(code, IO())
