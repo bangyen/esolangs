@@ -80,6 +80,47 @@ _CANON = (
 )
 
 
+_SAFE_STEPS = 100_000
+
+
+def _no_wrap(code: str, matches: dict[int, int]) -> bool:
+    """Whether input-free ``code`` halts within the byte-cell subset."""
+    if "," in code:
+        return False
+    tape: dict[int, int] = {}
+    pc = ptr = steps = 0
+    while pc < len(code):
+        if steps == _SAFE_STEPS:
+            return False
+        steps += 1
+        char = code[pc]
+        value = tape.get(ptr, 0)
+        if char == "+":
+            if value == 255:
+                return False
+            tape[ptr] = value + 1
+        elif char == "-":
+            if value == 0:
+                return False
+            tape[ptr] = value - 1
+        elif char == ">":
+            ptr += 1
+        elif char == "<":
+            ptr = max(ptr - 1, 0)
+        elif (char == "[" and value == 0) or (char == "]" and value != 0):
+            pc = matches[pc]
+        pc += 1
+    return True
+
+
+def _lower_byte_safe(code: str) -> str:
+    """Widen byte-safe Brainfuck without wraparound machinery."""
+    return "".join(
+        ">" * _STRIDE if char == ">" else "<" * _STRIDE if char == "<" else char
+        for char in code
+    )
+
+
 def _lower(program: str) -> str:
     """Rewrite ``program`` as stride-8 brainfuck that never leaves 0-255.
 
@@ -92,6 +133,9 @@ def _lower(program: str) -> str:
     """
     _match_brackets(program)
     code = "".join(c for c in program if c in "+-<>.,[]")
+    matches = _match_brackets(code)
+    if _no_wrap(code, matches):
+        return _lower_byte_safe(code)
     out: list[str] = []
     i, n = 0, len(code)
     while i < n:
