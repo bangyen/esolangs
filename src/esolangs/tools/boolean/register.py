@@ -697,18 +697,29 @@ def qoibl(truth_table: str) -> str:
 
 # Largest instruction count :func:`polynomial` will emit.  Each instruction
 # consumes a fresh prime and contributes a factor, so the polynomial's degree
-# -- and the cost of the sympy factorization the interpreter runs to recover
-# the instructions -- tracks this count and nothing else.  One run measured
-# on the interpreter: 52 instructions in 1.0s, 78 in 4.0s, 116 in 15s, 128 in
-# 20s, 207 in 110s.  The bound sits just past the old gate's worst accepted
-# case (an n == 4 tree, ~138 instructions at ~10s), which keeps every
-# renderable table runnable in about the time this generator always cost.
+# -- and the cost of recovering the instructions from it -- tracks this count
+# and nothing else.
 #
-# It replaces an ``n <= 4`` gate, which measured the wrong thing: the cost is
-# instructions, not inputs, so a table that collapses to few states is cheap
-# at any width -- parity renders through n == 8 at 106 instructions, where
-# the old gate refused it from n == 5.
-_POLYNOMIAL_MAX_INSTRS = 138
+# The bound was 138, sized when recovery was a bare ``sympy.factor_list``:
+# 52 instructions in 1.0s, 116 in 15s, 207 in 110s, so 138 was the most that
+# still ran in about ten seconds.  The interpreter now peels both instruction
+# shapes off itself before factoring -- real roots by Horner evaluation,
+# complex ones by solving for the real part modulo a prime -- and on a
+# generated program that accounts for every factor, so ``factor_list`` is
+# usually never reached.  Re-measured against that, one row of the suite's
+# dense fixture: n=6 (187 instructions) 5.3s, n=7 (328) 21.1s, n=8 (541)
+# 82.4s, every row answering correctly.
+#
+# So the bound is the n=7 count.  n=8 is refused on cost and the distinction
+# is measured, not assumed: it renders in 0.87s and runs, but at 82.4s a row
+# a verified 256-row table is near six hours where n=7 is about forty-five
+# minutes.  That keeps the same policy the 138 encoded -- admit what a suite
+# can afford to check -- against a cost curve that moved by roughly 18x.
+#
+# The count, not the arity, is still what this measures: a table that
+# collapses to few states is cheap at any width, and parity renders through
+# n == 10 well inside the bound.
+_POLYNOMIAL_MAX_INSTRS = 328
 
 # How far above the cheapest candidate the dispatch still renders.  Selection
 # is on characters, so the instruction count only screens -- and a strict
@@ -847,8 +858,8 @@ def polynomial(truth_table: str) -> str:
             "the Polynomial boolean generator emits one instruction per "
             f"prime and caps at {_POLYNOMIAL_MAX_INSTRS}, but this table "
             f"needs {min(cost for cost, _ in builders)} under its cheapest "
-            "construction, which the interpreter cannot factor in "
-            "practical time",
+            "construction, which costs more per row than checking a table "
+            "of this width can afford",
         )
 
     # Selection is on *rendered characters*, because instructions and
