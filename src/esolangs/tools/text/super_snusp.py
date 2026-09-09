@@ -1,6 +1,6 @@
 """Text generator for Super SNUSP."""
 
-from esolangs.tools.text.helpers import _require_bytes
+from esolangs.tools.text.helpers import _require_bytes, delta_program
 from esolangs.tools.wrap import shortest
 
 __all__ = ["super_snusp"]
@@ -16,12 +16,12 @@ def super_snusp(text: str) -> str:
     string a runnable, immediately-halting program.
     """
     _require_bytes(text, "Super SNUSP")
-    program = ['"']
-    current = 0
-    for char in text:
-        value = ord(char)
-        direct = (char if char.isascii() and char.isalpha() else str(value)) + "."
-        delta = ")" * (value - current) if value >= current else "(" * (current - value)
-        program.append(shortest(direct, delta + "."))
-        current = value
-    return "".join(program)
+
+    def step(cur: int, target: int) -> str:
+        char = chr(target)
+        direct = (char if char.isascii() and char.isalpha() else str(target)) + "."
+        delta = ")" * (target - cur) if target >= cur else "(" * (cur - target)
+        return shortest(direct, delta + ".")
+
+    # Each spelling carries its own ``.``, so the print token is empty.
+    return delta_program(text, step, "", prologue='"')
