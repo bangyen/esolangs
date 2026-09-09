@@ -24,9 +24,10 @@ readings.
 - **Scale Line boolean drawings.** The standalone Line generator reaches
   eleven inputs end to end, with all 2048 parity leaves correct. Its
   29920x16800 canvas completes the optimized round trip in under 80 seconds.
-  Twelve and above are unmeasured. Establish the renderer → extractor →
-  simulator frontier, then only pursue subtree sharing or a denser layout if
-  that measurement finds a real resource limit.
+  Measure 12 inputs next: its projected 33600x29920 canvas is about one
+  billion pixels, expected to take 2-5 minutes and 4-8GiB RAM on this 16GiB
+  host. Only pursue subtree sharing or a denser layout if that measurement
+  finds a real resource limit.
 ## Conditional follow-up
 
 - **ArrowQueue reusable drain.** Ship the verified deep-fold drain only if a
