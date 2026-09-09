@@ -6,17 +6,13 @@ conditional ideas stay in [`docs/walls.md`](walls.md) and
 
 ## New interpreters
 
-Candidates are prioritized by a complete specification and an uncapped,
-testable boolean-generator route. The assessed-and-rejected ledger is in
-[`docs/limitations.md`](limitations.md).
-
-- **Interprogck8:** establish whether `DownAccLines` can route a full
-  decision tree through its single current-function slot.
-- ~~**Pinyin**~~ — audited and rejected; see
-  [`docs/limitations.md`](limitations.md). Routing pinned and the two-input
-  program prices at 4 characters, but the triples do not: the page's own
-  selection rule reroutes 8 of 23 Hello, world! characters, and its truth
-  machine on input 1 is unreachable under all 384 readings.
+The candidate list is empty: DINAC, Alight, function x(y), Packlang and
+Interprogck8 are implemented, and Pinyin is rejected. Both outcomes are
+recorded in [`docs/limitations.md`](limitations.md) — Pinyin's routing
+pinned and its two-input program priced at 4 characters, but its triples
+did not: the page's own selection rule reroutes 8 of 23 Hello, world!
+characters, and its truth machine on input 1 is unreachable under all 384
+readings.
 
 ## Research
 

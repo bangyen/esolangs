@@ -16,11 +16,78 @@ __all__ = [
     "decleq",
     "dig",
     "eval",
+    "interprogck8",
     "polynomial",
     "qoibl",
     "sophie",
     "wii2d",
 ]
+
+#: Interprogck8's three constant loaders, as anchors a delta can start from.
+_INTERPROGCK8_ANCHORS = {"NnNn": 0, "nNnN": 65, "Empty_": 32}
+
+
+def _interprogck8_reach(target: int, current: int | None) -> list[str]:
+    """Return the shortest lines taking the accumulator to ``target``.
+
+    Only four steps exist -- +/-1 and +/-10 -- so a byte is reached by
+    stepping from wherever the accumulator already is, or from whichever of
+    the three constant loaders is nearer.  The wiki's own Hello World does
+    exactly this by hand; taking the minimum beats it on every text
+    measured, because it can also count *down* to a target.
+    """
+    best: list[str] | None = None
+    starts = dict(_INTERPROGCK8_ANCHORS)
+    for loader, value in list(starts.items()):
+        candidate = [loader, *_interprogck8_steps(value, target)]
+        if best is None or len(candidate) < len(best):
+            best = candidate
+    if current is not None:
+        candidate = _interprogck8_steps(current, target)
+        if len(candidate) < len(best or []):
+            best = candidate
+    assert best is not None
+    return best
+
+
+def _interprogck8_steps(start: int, target: int) -> list[str]:
+    """Step from ``start`` to ``target``, shortest of four spellings.
+
+    Each direction can either count exactly (tens then units) or overshoot
+    to the next ten and come back, so a delta of 29 costs three ``@id`` and
+    one ``@nt`` rather than two ``@id`` and nine ``@nd``.  Taking the
+    minimum of all four is what beats the wiki's hand-written Hello World.
+    """
+    up = (target - start) % 256
+    down = (start - target) % 256
+    candidates = [
+        ["@id"] * (up // 10) + ["@nd"] * (up % 10),
+        ["@id"] * -(-up // 10) + ["@nt"] * (-(-up // 10) * 10 - up),
+        ["@dd"] * (down // 10) + ["@nt"] * (down % 10),
+        ["@dd"] * -(-down // 10) + ["@nd"] * (-(-down // 10) * 10 - down),
+    ]
+    return min(candidates, key=len)
+
+
+def interprogck8(text: str) -> str:
+    """Build an Interprogck8 program that outputs ``text``.
+
+    One line per command.  ``div`` prints the accumulator as a character,
+    so each byte is reached by the shortest run of ``@id``/``@nd``/``@dd``/
+    ``@nt`` from the previous one, or from ``NnNn``/``nNnN``/``Empty_``
+    where a fresh constant is nearer.  There is no loop: the language's
+    only jump is forward, so a repeated run cannot be rolled up.
+    """
+    if not text:
+        return ""
+    _require_bytes(text, "Interprogck8")
+    lines: list[str] = []
+    current: int | None = None
+    for char in text:
+        lines.extend(_interprogck8_reach(ord(char), current))
+        lines.append("div")
+        current = ord(char)
+    return "\n".join(lines)
 
 
 def bio(text: str) -> str:

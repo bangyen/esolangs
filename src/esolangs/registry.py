@@ -405,6 +405,14 @@ LANGUAGES: dict[str, Language] = {
         id="inject",
         interpreter="other.inject",
     ),
+    "Interprogck8": Language(
+        "Interprogck8",
+        _generate.interprogck8,
+        "register_based.interprogck8",
+        boolean=_boolean.interprogck8,
+        id=canonical_id("Interprogck8"),
+        split=True,
+    ),
     "Jaune": Language(
         "Jaune",
         boolean=_boolean.jaune,

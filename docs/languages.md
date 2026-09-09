@@ -72,6 +72,7 @@ fold reaches generic twelve- and thirteen-input tables.
 | Grapheme |  | yes |  | yes |  |
 | Home Row | yes | yes |  | yes | yes |
 | Inject |  | yes |  | yes |  |
+| Interprogck8 | yes | yes |  | yes |  |
 | Jaune |  | yes |  | yes | yes |
 | Lamfunc |  | yes |  | yes |  |
 | LaserFuck | yes | yes |  | yes |  |
