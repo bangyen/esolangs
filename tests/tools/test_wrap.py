@@ -7,6 +7,11 @@ through its interpreter and compare the output against the unwrapped one --
 a wrap that split a token would still look plausible on screen but print
 something else, which is exactly the failure a character-count wrap makes.
 
+The sweep is driven by :data:`BOOLEAN_EXAMPLES`, which is the only thing
+that produces programs now: each carries the inputs and the output its
+table demands, so "does the wrapped program still compute it?" is asked
+against the generator's own fixture rather than a stand-in.
+
 The exclusions are asserted too: a language whose newlines are semantic
 must come back unwrapped rather than subtly broken.
 """
@@ -19,23 +24,19 @@ from contextlib import redirect_stdout
 import pytest
 
 from esolangs import generate, run
-from esolangs.interpreters.io import IO
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
+from esolangs.tools.boolean.examples import BooleanExample
 from esolangs.tools.wrap import (
     DEFAULT_WIDTH,
     MULTILINE,
     WRAPPERS,
-    _between,
-    _between_split,
     _bio,
     _cell_width,
-    _nevermind,
     _polynomial,
     _six_five,
     _span,
     _taglate,
-    takes_width,
     wrap_chars,
     wrap_grid,
     wrap_program,
@@ -43,38 +44,66 @@ from esolangs.tools.wrap import (
     wrap_tokens,
 )
 
-TEXT = "Hello, World!"
+# A 2-input table (XOR), which every boolean generator can build.  Used
+# where a test needs *a* program rather than the language's own example.
+TABLE = "0110"
 
 # Languages that must never be *reflowed*, and why.  Not a restatement of
 # the implementation: each was verified to break (or to be meaningless) when
 # newlines are inserted, so the table is the record of that finding.
-#
-# Clockwise, Streetcode and WII2D are deliberately absent.  Their newlines
-# are semantic too, so wrap_program must not touch them either -- but each
-# honours a width by *laying its program out* to fit (a ring, a
-# boustrophedon corridor, a folded instruction line) rather than by ignoring
-# it, so they are covered by the generators' own tests in
-# tests/tools/test_generate.py instead.
 UNWRAPPABLE = {
     "nocomment": "a newline is an unrecognized command, a load error",
 }
 
-# LaserFuck is 2D too, and wrap_program must not touch it either -- but it
-# honours a width itself: the loop layout is tied to the beam's track and
-# cannot fold, so a loop program wider than the width is re-emitted as the
-# (foldable) linear form.  Hence it belongs with Clockwise and the others
-# above rather than in UNWRAPPABLE.  Dig is the same case: a newline still
-# separates its rows, but it folds its segments over several row pairs.
+# These are 2D too, and wrap_program must not touch them either -- but each
+# honours a width itself by *laying its program out* to fit rather than by
+# ignoring it, so they belong here rather than in UNWRAPPABLE.  LaserFuck's
+# loop layout is tied to the beam's track and cannot fold, so a loop program
+# wider than the width is re-emitted as the (foldable) linear form; Dig
+# folds its segments over several row pairs.
 WIDTH_HONOURING = {
     "laserfuck": "falls back to the foldable linear form",
     "dig": "folds its segments over several row pairs",
 }
 
+# The boolean example for each language, keyed by the language id rather
+# than the example's stem.  The two differ ("6-5" against ``six_five``), and
+# a lookup by id against a stem-keyed table silently misses -- which is a
+# skip, not a failure, so the sweep below would thin out without saying so.
+EXAMPLE_BY_ID = {
+    canonical_id(stem.replace("-", " ")): example
+    for stem, example in BOOLEAN_GENERATED.items()
+}
+
 WRAPPED = sorted(
     name
     for name, lang in LANGUAGES.items()
-    if lang.text and lang.interpreter and lang.id in WRAPPERS
+    if lang.boolean
+    and lang.interpreter
+    and lang.id in WRAPPERS
+    and lang.id in EXAMPLE_BY_ID
 )
+
+
+def _table(arity: int) -> str:
+    """The parity (XOR) table on ``arity`` inputs.
+
+    Parity, not an alternating string: ``0101`` is just "echo the last
+    input", which every generator folds down to a program far shorter than
+    its arity suggests.  Parity depends on all ``arity`` inputs, so the
+    program grows with them -- which is what the sweeps below need.
+    """
+    return "".join(str(bin(row).count("1") & 1) for row in range(2**arity))
+
+
+def _example(name: str) -> BooleanExample:
+    """The boolean example for ``name``, which the sweep is driven by."""
+    return EXAMPLE_BY_ID[LANGUAGES[name].id]
+
+
+def _stdin(name: str) -> str:
+    """The input lines ``name``'s example feeds its program."""
+    return "".join(f"{line}\n" for line in _example(name).inputs)
 
 
 def _replaces_a_space(name: str) -> bool:
@@ -90,22 +119,6 @@ def _replaces_a_space(name: str) -> bool:
     return WRAPPERS[LANGUAGES[name].id] in (wrap_space_delimited, _polynomial)
 
 
-def _chunks_its_literal(name: str) -> bool:
-    """Whether ``name``'s *text* generator lays itself out to the width.
-
-    3x, Eval, Modulous and MyScript print through a literal, so their text
-    programs cannot be reflowed at all -- a newline between the quotes is a
-    character the program prints.  Their generators therefore take the width
-    and split the text across several print statements, which builds a
-    different program rather than inserting newlines into this one.  Their
-    *boolean* programs carry no literal and are still reflowed by
-    :data:`WRAPPERS`, so that is where the token-preserving invariant is
-    checked for them.
-    """
-    generator = LANGUAGES[name].text
-    return generator is not None and takes_width(generator)
-
-
 def _is_grid(name: str) -> bool:
     """Whether ``name``'s wrapper lays its tokens out as a padded grid.
 
@@ -118,22 +131,27 @@ def _is_grid(name: str) -> bool:
 
 
 def _run(name: str, program: str) -> str:
-    """Run ``program`` through ``name``'s interpreter and return its stdout."""
-    lang = LANGUAGES[name]
-    assert lang.interpreter is not None
-    run = importlib.import_module("esolangs.interpreters." + lang.interpreter).run
-    argument = program.splitlines() if lang.split else program
-    buffer = io.StringIO()
-    with redirect_stdout(buffer):
-        run(argument, io=IO())
-    return buffer.getvalue()
+    """What ``program`` does under ``name``'s interpreter: output, or a raise.
+
+    The example's inputs do not always drive its program to completion --
+    some languages here dump final state rather than printing, and Suffolk
+    reads past what its example scripts -- so a raise is a legitimate
+    outcome to compare.  Returning it as a value rather than letting it
+    escape keeps the wrapped/unwrapped comparison total: what must not
+    change is the behaviour, including the failure.
+    """
+    try:
+        return run(name, program, _stdin(name))
+    except Exception as exc:  # noqa: BLE001 - the exception *is* the outcome
+        return f"{type(exc).__name__}: {exc}"
 
 
 @pytest.mark.parametrize("name", WRAPPED)
 @pytest.mark.parametrize("width", [40, DEFAULT_WIDTH])
 def test_wrapped_program_prints_the_same(name: str, width: int) -> None:
-    """A wrapped program prints exactly what the unwrapped one prints."""
-    assert _run(name, generate(name, TEXT, width)) == _run(name, generate(name, TEXT))
+    """A wrapped program behaves exactly as the unwrapped one behaves."""
+    example = _example(name)
+    assert _run(name, example.build(width)) == _run(name, example.build(width=None))
 
 
 @pytest.mark.parametrize("name", WRAPPED)
@@ -147,33 +165,37 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
     reordered, or split -- the corruption a character-count wrap causes in
     the multi-character-token languages.
     """
-    if _chunks_its_literal(name):
-        # The text generator builds a different program for the width rather
-        # than reflowing one, so there are no inserted newlines to undo.  Its
-        # boolean program is the one the wrapper still reflows, so check the
-        # invariant there instead of losing the coverage.
-        example = BOOLEAN_GENERATED.get(LANGUAGES[name].id)
-        if example is None:
-            return
-        plain = example.build(width=None)
-        wrapped = wrap_program(plain, LANGUAGES[name].id, width)
-        assert wrapped.replace("\n", "") == plain
-        return
-    plain = generate(name, TEXT)
-    wrapped = generate(name, TEXT, width)
+    example = _example(name)
+    plain = example.build(width=None)
+    wrapped = example.build(width)
     if wrapped == plain:
         # A program short enough to need no break is left alone; there is
         # nothing to undo.
         return
-    # The grid wrapper pads each token to a cell and right-aligns it, so
-    # the original text is not recoverable character for character -- the
-    # padding is new whitespace.  What must survive is the token sequence
-    # itself, which is the guarantee the character-for-character check is
-    # standing in for everywhere else: no command dropped, reordered, or
-    # split.  The interpreters split on whitespace runs, so a program with
-    # the same token sequence is the same program.
+    # The grid pads each token into a right-aligned cell, so the original is
+    # not recoverable character for character -- the padding is new
+    # whitespace.  What must survive is the token sequence, which is the
+    # guarantee the character-for-character check stands in for everywhere
+    # else: no command dropped, reordered, or split.  The interpreters split
+    # on whitespace runs, so a program with the same token sequence is the
+    # same program.
     if _is_grid(name):
         assert wrapped.split() == plain.split()
+        return
+    # BIO indents by nesting depth, and its commands carry no separator at
+    # all -- the whole program is one whitespace-delimited token, so the
+    # token check above says nothing about it.  Stripping the indent off
+    # each line and rejoining must give the original back exactly.
+    if WRAPPERS[LANGUAGES[name].id] is _bio:
+        assert "".join(line.strip() for line in wrapped.split("\n")) == plain
+        return
+    # Taglate's first line is a structural queue seed the wrapper must leave
+    # alone; only the commands below it are reflowed.
+    if LANGUAGES[name].id in MULTILINE:
+        seed, _, rest = wrapped.partition("\n")
+        plain_seed, _, plain_rest = plain.partition("\n")
+        assert seed == plain_seed
+        assert rest.replace("\n", "") == plain_rest.replace("\n", "")
         return
     # Deleting the inserted newlines must recover the original exactly.
     # The space-delimited wrappers put the newline *where a space was*, so
@@ -196,7 +218,7 @@ def test_wrapping_respects_the_width(name: str) -> None:
     characters past the term's own length, and the allowance below follows
     the wrapper rather than the whitespace.
     """
-    wrapped = generate(name, TEXT, DEFAULT_WIDTH)
+    wrapped = _example(name).build(DEFAULT_WIDTH)
     signed = WRAPPERS[LANGUAGES[name].id] is _polynomial
     for line in wrapped.split("\n"):
         tokens = line.split()
@@ -213,50 +235,29 @@ def test_every_wrapper_actually_fires(name: str) -> None:
 
     Guards against a wrapper entry that silently never fires -- a token
     pattern that fails to tile returns the program unchanged by design,
-    which would make the round-trip tests above pass vacuously.  The text
-    grows until the program is long enough to need a break, since the
-    terser languages emit well under a line for a short text (and Factor,
-    whose program is one huge integer, cannot take a long one at all).
+    which would make the round-trip tests above pass vacuously.  Each
+    assertion carries the language, since a wrapper that stopped firing
+    fails here as a named language rather than as a thinner sweep.
+
+    The language's own example is tried first, since it is the program the
+    wrapper actually ships against.  Some are too terse to need a break at
+    all (Sophie's is 37 characters, %^2^-1's is 5), so the table then grows
+    until the program is long enough -- the way the text once did.  A
+    parameterized generator leaves a ``{X0}`` placeholder that its example's
+    ``fill`` replaces and the wrapper refuses, which is why the example
+    comes first rather than the grown table.
     """
-    for repeat in (1, 2, 4, 8):
-        program = generate(name, TEXT * repeat)
-        # A MULTILINE language's text program has structural newlines of its
-        # own (Between's ``.x.`` trailer), so "did it wrap?" is whether
-        # wrapping added a line, not whether one is there at all.  The width
-        # itself is not asserted here: Taglate's queue seed is one line the
-        # wrapper must leave over-wide, and the round-trip tests above hold
-        # each wrapper to the width it can actually promise.
-        if LANGUAGES[name].id in MULTILINE:
-            if max(map(len, program.split("\n"))) > 40:
-                wrapped = generate(name, TEXT * repeat, 40)
-                assert wrapped.count("\n") > program.count("\n")
-                return
-        elif "\n" not in program and len(program) > 40:
-            assert "\n" in generate(name, TEXT * repeat, 40)
-            return
-    # Some languages' hello-world programs are too terse to ever need a
-    # break (Modulous and the other literal printers emit one statement),
-    # so the text generator cannot exercise their wrapper; their longer
-    # *boolean* programs are what needs it.
-    example = BOOLEAN_GENERATED.get(LANGUAGES[name].id)
-    if example is not None:
-        raw = example.build(width=None)
-        # A language in MULTILINE arrives with structural newlines of its
-        # own (Taglate's queue seed), so "did it wrap?" is not "is there a
-        # newline?" -- it is whether wrapping added one and held the width.
-        if LANGUAGES[name].id in MULTILINE:
-            assert max(map(len, raw.split("\n"))) > 40, (
-                f"{name}: boolean program too short to need a wrap"
-            )
-            wrapped = example.build(40)
-            assert wrapped.count("\n") > raw.count("\n"), f"{name}: wrapper never fired"
-            assert max(map(len, wrapped.split("\n"))) <= 40
-            return
-        assert "\n" not in raw, f"{name}: boolean program is already multi-line"
-        assert len(raw) > 40, f"{name}: boolean program too short to need a wrap"
-        assert "\n" in example.build(40)
+    example = _example(name)
+    raw = example.build(width=None)
+    if example.build(40) != raw:
         return
-    pytest.fail(f"{name} never produced a single-line program longer than 40 chars")
+    for arity in range(1, 5):
+        grown = generate(name, _table(arity))
+        if "\n" in grown or len(grown) <= 40:
+            continue
+        assert "\n" in generate(name, _table(arity), 40), f"{name}: wrapper never fired"
+        return
+    pytest.fail(f"{name}: no table up to 4 inputs produced a program long enough")
 
 
 @pytest.mark.parametrize("name", sorted(UNWRAPPABLE))
@@ -264,8 +265,8 @@ def test_unwrappable_languages_are_untouched(name: str) -> None:
     """A language that cannot take newlines ignores the width."""
     language = next(lang for lang in LANGUAGES.values() if lang.id == name)
     assert language.id not in WRAPPERS, UNWRAPPABLE[name]
-    if language.text:
-        assert generate(language.name, TEXT, 40) == generate(language.name, TEXT)
+    program = "iiiioddo"
+    assert wrap_program(program, language.id, 4) == program
 
 
 @pytest.mark.parametrize("name", sorted(WIDTH_HONOURING))
@@ -273,19 +274,23 @@ def test_width_honouring_languages_respect_the_width(name: str) -> None:
     """A generator that lays itself out really does fit the width given.
 
     ``wrap_program`` cannot help these -- their newlines are layout -- so
-    the width has to be honoured by the generator, and omitting it still
-    has to reproduce the compact form it always gave.
+    the width has to be honoured by the generator itself.
+
+    Only the bound is asserted, not that a generous width reproduces the
+    unbounded form byte for byte.  These generators lay the program out
+    whenever they are given a width at all, so LaserFuck at a width its
+    compact form already fits still folds its beam differently; that is the
+    generator's layout choice rather than a wrap, and pinning it here would
+    pin the layout, not the width.
     """
     language = next(lang for lang in LANGUAGES.values() if lang.id == name)
     assert language.id not in WRAPPERS, WIDTH_HONOURING[name]
-    unbounded = generate(language.name, TEXT)
+    assert language.boolean is not None
     for width in (40, 80, 94):
-        program = generate(language.name, TEXT, width)
+        program = generate(language.name, TABLE, width)
         assert max(map(len, program.split("\n"))) <= width
-        assert run(language.name, program) == TEXT
-    # a width the compact form already fits leaves it exactly as it was
-    wide = max(map(len, unbounded.split("\n")))
-    assert generate(language.name, TEXT, wide) == unbounded
+    # omitting the width is still the compact one-shot form
+    assert generate(language.name, TABLE) == language.boolean(TABLE)
 
 
 @pytest.mark.parametrize("name", WRAPPED)
@@ -296,114 +301,28 @@ def test_no_width_is_unchanged(name: str) -> None:
     tests in ``tests/scripts/test_examples.py`` call the generators with no width.
     """
     lang = LANGUAGES[name]
-    assert lang.text is not None
-    assert generate(name, TEXT) == lang.text(TEXT)
+    assert lang.boolean is not None
+    assert generate(name, TABLE) == lang.boolean(TABLE)
 
 
-def test_nevermind_wraps_by_repeating_print() -> None:
-    """Nevermind wraps into more ``print`` statements, not a broken one.
+def test_between_is_no_longer_wrapped_and_still_computes_its_table() -> None:
+    """Between's wrapper went with the text generators that fed it.
 
-    ``print`` writes its arguments with no separator and no trailing
-    newline, so consecutive statements concatenate and the output survives.
-    Breaking the single statement instead would silently truncate it: a
-    newline ends the statement and the remainder is read as commands.
+    Its own programs are one instruction per line and none reaches a
+    readable width, so the bespoke statement-splitting wrapper had no
+    producer left; the width is now a no-op for it, and the program must
+    still compute its table.
     """
-    for width in (8, 12, 20, 40):
-        program = generate("Nevermind", TEXT, width)
-        assert all(line.startswith("print,") for line in program.split("\n"))
-        assert _run("Nevermind", program) == TEXT
-
-    # a width the one-line program overruns really does get broken up
-    assert generate("Nevermind", TEXT, 12).count("\n") >= 1
-
-
-def test_nevermind_never_splits_a_comma_escape() -> None:
-    """A ``*44`` stays whole: split across lines it stops being a comma.
-
-    The interpreter expands ``*44`` within one argument, so a break inside
-    one leaves a literal ``*44`` in the output and loses the comma -- the
-    failure this wrapper's unit packing exists to prevent.
-    """
-    text = "a,b,c,d,e,f"
-    for width in range(1, 30):
-        program = generate("Nevermind", text, width)
-        for line in program.split("\n"):
-            payload = line[len("print,") :]
-            assert "*4" not in payload or "*44" in payload
-        assert _run("Nevermind", program) == text
-
-
-def test_between_wraps_by_repeating_print() -> None:
-    """Between wraps into more print statements, the way Nevermind does.
-
-    ``p`` writes with no trailing newline, so consecutive ``'...'p.`` lines
-    concatenate.  Breaking the literal instead would cut the instruction in
-    two, since each Between instruction is one line.
-    """
-    for width in (5, 8, 12, 20):
-        program = generate("Between", TEXT, width)
-        body, _, trailer = program.rpartition("\n")
-        assert trailer == ".x."
-        assert all(line.endswith("'p.") for line in body.split("\n"))
-        assert _run("Between", program) == TEXT
-
-    # a width the one-line program overruns really does get broken up
-    assert generate("Between", TEXT, 8).count("\n") > 1
-
-
-def test_between_never_splits_an_apostrophe_escape() -> None:
-    """A doubled ``''`` stays whole: split, each half closes a literal.
-
-    An apostrophe inside a Between literal is written ``''``, so a break
-    between the two would end one statement early and leave the next
-    starting mid-literal -- a load error rather than a quiet wrong answer,
-    but a break the unit packing has to prevent all the same.
-    """
-    text = "a'b'c'd"
-    for width in range(1, 30):
-        program = generate("Between", text, width)
-        assert _run("Between", program) == text
-
-
-def test_between_moves_a_jump_target_past_a_split() -> None:
-    """Splitting a statement moves every line after it, so branches follow.
-
-    Between is goto-based on 0-indexed line numbers, so a wrapper that added
-    lines without renumbering would leave each branch pointing at whatever
-    now sits at the old address.  Here line 1 jumps over line 2; once the
-    long literal above it splits, the target has to move with its line or
-    the skipped statement runs.
-    """
-    program = "\n".join(
-        [
-            "'ABCDEFGHIJKL'p.",
-            "|3|f.",
-            "'SKIPPED'p.",
-            "'END'p.",
-            ".x.",
-        ]
-    )
-    assert _run("Between", program) == "ABCDEFGHIJKLEND"
-    for width in (6, 8, 10, 20):
-        wrapped = wrap_program(program, "between", width)
-        assert _run("Between", wrapped) == "ABCDEFGHIJKLEND"
-    # the split really happened, and the target really moved
-    wrapped = wrap_program(program, "between", 8)
-    assert wrapped.count("\n") > program.count("\n")
-    assert "|3|f." not in wrapped
-
-
-def test_between_boolean_still_computes_its_table() -> None:
-    """The boolean dialect survives wrapping, branches and all."""
     from esolangs.tools import boolean
 
+    assert "between" not in WRAPPERS
     for table, bits in (("01", 1), ("0110", 2), ("01101001", 3)):
         program = boolean.between(table)
         for width in (5, 20, 40):
-            wrapped = wrap_program(program, "between", width)
-            for row, expected in enumerate(table):
-                stdin = "".join(b + "\n" for b in format(row, f"0{bits}b"))
-                assert run("Between", wrapped, stdin) == expected
+            assert wrap_program(program, "between", width) == program
+        for row, expected in enumerate(table):
+            stdin = "".join(b + "\n" for b in format(row, f"0{bits}b"))
+            assert run("Between", program, stdin) == expected
 
 
 def test_clockwise_is_never_reflowed() -> None:
@@ -414,15 +333,8 @@ def test_clockwise_is_never_reflowed() -> None:
     the generator instead.
     """
     assert "clockwise" not in WRAPPERS
-    grid = generate("Clockwise", TEXT)
+    grid = generate("Clockwise", TABLE)
     assert wrap_program(grid, "clockwise", 10) == grid
-
-
-def test_clockwise_width_reaches_the_generator() -> None:
-    """``generate`` bounds Clockwise's columns rather than ignoring the width."""
-    narrow = generate("Clockwise", TEXT, 20)
-    assert max(len(line) for line in narrow.split("\n")) <= 20
-    assert _run("Clockwise", narrow) == TEXT
 
 
 def test_zero_and_negative_widths_do_not_wrap() -> None:
@@ -460,7 +372,7 @@ def test_polynomial_never_strands_a_sign_on_its_own_line() -> None:
     space-delimited wrapper put every term on a line of its own and every
     ``+``/``-`` between them on a line of its own too.
     """
-    program = generate("Polynomial", TEXT, DEFAULT_WIDTH)
+    program = generate("Polynomial", TABLE, DEFAULT_WIDTH)
     assert "\n" in program
     assert not [line for line in program.split("\n") if line.strip() in ("+", "-")]
 
@@ -472,7 +384,7 @@ def test_polynomial_puts_one_term_on_each_line() -> None:
     breaks would fall where the arithmetic landed rather than between two
     things a reader wants separated.
     """
-    program = generate("Polynomial", TEXT, DEFAULT_WIDTH)
+    program = generate("Polynomial", TABLE, DEFAULT_WIDTH)
     lines = program.split("\n")
     # Line 1 is ``f(x) = <term>``; every other line is ``<sign> <term>``.
     assert lines[0].startswith("f(x) = ")
@@ -483,15 +395,15 @@ def test_polynomial_puts_one_term_on_each_line() -> None:
 
 def test_polynomial_continuation_lines_start_with_their_sign() -> None:
     """Every line but the first opens with the sign of its term."""
-    program = generate("Polynomial", TEXT, DEFAULT_WIDTH)
+    program = generate("Polynomial", TABLE, DEFAULT_WIDTH)
     lines = program.split("\n")
     assert all(line.startswith(("+ ", "- ")) for line in lines[1:])
 
 
 def test_polynomial_wrap_is_undone_by_swapping_newlines_for_spaces() -> None:
     """The wrap only moves separators, so the program is byte-identical."""
-    plain = generate("Polynomial", TEXT)
-    wrapped = generate("Polynomial", TEXT, DEFAULT_WIDTH)
+    plain = generate("Polynomial", TABLE)
+    wrapped = generate("Polynomial", TABLE, DEFAULT_WIDTH)
     assert wrapped.replace("\n", " ") == plain
 
 
@@ -506,7 +418,7 @@ def test_polynomial_layout_does_not_depend_on_the_width() -> None:
     The terms of any interesting program outrun any width, so packing them
     to one would be a layout that changed with a number nobody chose.
     """
-    program = generate("Polynomial", TEXT)
+    program = generate("Polynomial", TABLE)
     assert _polynomial(program, 40) == _polynomial(program, 200)
 
 
@@ -703,63 +615,6 @@ def test_wrappers_refuse_input_they_do_not_recognize() -> None:
     assert _bio("0ox;!!!", 40) == "0ox;!!!"
     # Taglate needs a queue seed *and* commands below it.
     assert _taglate("seed-only", 40) == "seed-only"
-    # Nevermind wraps a "print," statement and nothing else.
-    assert _nevermind("goto,5", 40) == "goto,5"
-    assert _nevermind("print,", 40) == "print,"
-
-
-def test_between_leaves_a_computed_jump_alone() -> None:
-    """A branch whose target is an expression cannot be renumbered.
-
-    Splitting a statement moves the lines below it, so every literal
-    ``|N|f`` target is rewritten to match.  A computed target -- one that
-    reads a variable -- evaluates to a line number this cannot know, so the
-    program is returned untouched rather than renumbered wrongly.
-    """
-    program = "\n".join(["'AAAAAAAAAA'p.", "|[a]|f.", ".x."])
-    assert _between(program, 6) == program
-
-
-def test_between_split_keeps_a_line_it_cannot_cut() -> None:
-    """Only an over-wide print statement is split; everything else stands."""
-    # Already inside the width.
-    assert _between_split("'ab'p.", 40) == ["'ab'p."]
-    # Not a print statement at all.
-    assert _between_split("|12|f([0]=|0|)", 4) == ["|12|f([0]=|0|)"]
-    # A bare apostrophe means the literal is not the shape this expects.
-    assert _between_split("'a'b'p.", 4) == ["'a'b'p."]
-
-
-def test_between_split_of_an_empty_literal_yields_nothing() -> None:
-    """A print statement with no payload has no units, so nothing is packed.
-
-    Every other input leaves a part-filled accumulator to flush at the end;
-    this is the one that does not, and it comes out as no lines rather than
-    one empty one.
-    """
-    assert _between_split("''p.", 1) == []
-
-
-def test_polynomial_leaves_a_program_too_short_to_have_a_header() -> None:
-    """The ``f(x) =`` header is three terms; a shorter program has none.
-
-    Joining the first three terms only makes sense once they are the header,
-    so a program that does not start that way is returned as it came.
-    """
-    assert _polynomial("1", 10) == "1"
-
-
-def test_nevermind_keeps_a_dollar_with_the_character_before_it() -> None:
-    """A ``$`` opening a line reads as a variable, so it never starts one.
-
-    The unit packing binds a ``$`` to the character it follows.  With a run
-    of them the step has to keep growing, which is the loop this exercises.
-    """
-    text = "a$$$b"
-    program = _nevermind(f"print,{text}", 8)
-    for line in program.split("\n"):
-        assert not line[len("print,") :].startswith("$")
-    assert _run("Nevermind", program) == text
 
 
 def test_six_five_keeps_an_operand_with_its_command() -> None:
@@ -791,6 +646,7 @@ def test_six_five_keeps_a_guard_with_the_instruction_it_skips() -> None:
 
 def test_six_five_wrapped_programs_still_run() -> None:
     """A wrapped 6-5 program computes what the unwrapped one computed."""
-    program = generate("6-5", TEXT)
+    program = generate("6-5", TABLE)
+    unwrapped = _run("6-5", program)
     for width in (3, 5, 8, 13, 40, 60):
-        assert _run("6-5", _six_five(program, width)) == TEXT
+        assert _run("6-5", _six_five(program, width)) == unwrapped

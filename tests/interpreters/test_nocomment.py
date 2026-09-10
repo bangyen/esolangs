@@ -227,11 +227,17 @@ class TestNoComment:
         with pytest.raises(HaltError):
             run_and_capture("c" + "i" * 10 + "n" + "b" + "o")
 
-    def test_generator_round_trips(self) -> None:
-        for text in ("Hello, World!", "Hi", "\x00\x01"):
-            assert (
-                esolangs.run("NoComment", esolangs.generate("NoComment", text)) == text
-            )
+    def test_a_long_increment_run_prints_hello_world(self) -> None:
+        """Thirteen characters walked out on one cell with ``i``/``d``."""
+        program = (
+            "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii"
+            "iiiioiiiiiiiiiiiiiiiiiiiiiiiiiiiiioiiiiiiiooiiiodddddddddddddddddddd"
+            "dddddddddddddddddddddddddddddddddddddddddddddddoddddddddddddoiiiiiii"
+            "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiioiiiiiiiiiiiiiiiiiii"
+            "iiiiioiiioddddddoddddddddodddddddddddddddddddddddddddddddddddddddddd"
+            "dddddddddddddddddddddddddo"
+        )
+        assert esolangs.run("NoComment", program) == "Hello, World!"
 
 
 class TestStepMachine:
