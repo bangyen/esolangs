@@ -67,6 +67,11 @@ __all__ = ["wii2d"]
 # candidate is taken at each step and the decode is whatever that chain of
 # choices produces.
 #
+# The fold only *reshapes*; :func:`_wii2d_compress` is what merges, by
+# steering an add-then-halve run's shift onto collisions.  That split is
+# what carries the wide domains: dense ``D == 256`` decodes 18 of 20
+# sampled patterns where the one-level halving it replaced managed 3 of 10.
+#
 # That this suffices is not an assumption: it is exhaustive over every 0/1
 # pattern through ``D == 16``, the widest domain the general path asks for,
 # verified by applying the emitted op string back over the domain.  See
@@ -97,6 +102,14 @@ _WII2D_MAX_CENTRE = 4096
 # early exit justified that way preserves the answer.  This is an admitted
 # approximation: the shortlist is ranked on the uncompressed state, and only
 # its members get the real key.
+#
+# Eight, raised from four when the steered compression landed.  The two
+# are measured together: the compression rewrite at shortlist 4 emits
+# 286669 characters over the 532-table corpus, marginally *worse* than the
+# 285903 the one-level walk emitted, and only widening the shortlist to 8
+# turns it into a win at 261019 (-8.7%).  Steering makes a candidate's
+# compressed magnitude much less predictable from its uncompressed one, so
+# the screen has to keep more of them to find the good ones.
 _WII2D_SHORTLIST = 8
 
 # How many legal shifts a compression run examines per depth.  The legal
