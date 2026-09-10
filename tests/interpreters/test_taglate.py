@@ -72,7 +72,8 @@ class TestTaglate:
 
     def test_a_literal_line_is_printed_by_one_i_per_character(self) -> None:
         """``i`` advances one character of the line above it."""
-        assert esolangs.run("Taglate", "Hello, World!\niiiiiiiiiiiii") == "Hello, World!"
+        program = "Hello, World!\niiiiiiiiiiiii"
+        assert esolangs.run("Taglate", program) == "Hello, World!"
 
     def test_google_translate_url(self) -> None:
         expected = "https://translate.google.com/?sl=en&tl=es&text=Hi&op=translate"

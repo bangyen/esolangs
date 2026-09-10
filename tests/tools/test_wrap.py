@@ -16,10 +16,7 @@ The exclusions are asserted too: a language whose newlines are semantic
 must come back unwrapped rather than subtly broken.
 """
 
-import importlib
-import io
 import re
-from contextlib import redirect_stdout
 
 import pytest
 
@@ -142,7 +139,7 @@ def _run(name: str, program: str) -> str:
     """
     try:
         return run(name, program, _stdin(name))
-    except Exception as exc:  # noqa: BLE001 - the exception *is* the outcome
+    except Exception as exc:
         return f"{type(exc).__name__}: {exc}"
 
 
