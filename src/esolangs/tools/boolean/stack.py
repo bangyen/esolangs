@@ -14,6 +14,57 @@ from esolangs.tools.boolean.helpers import (
     read_at,
 )
 
+#: One sink choice: how far a freshly-read bit drops, and the ops that do it.
+Sinks = tuple[tuple[int, str], ...]
+
+
+def _sink_top(stack: tuple[int, ...], places: int) -> tuple[int, ...]:
+    """Move the top bit down by ``places``, leaving the others in order."""
+    *below, top = stack
+    at = len(below) - places
+    return (*below[:at], top, *below[at:])
+
+
+def stack_programs(n: int, sinks: Sinks, read: str) -> dict[tuple[int, ...], str]:
+    """Read-and-sink program for each reachable stack arrangement.
+
+    Returns the arrangement (bottom to top, by input index) mapped to the
+    program producing it; an absent arrangement is one the ops cannot reach.
+
+    **The reachable set is a product, not a search.**  A read leaves its bit
+    on top, and the only choice that outlasts the next read is how far that
+    bit sinks -- 0, 1 or 2 places, since neither language's ops reach
+    deeper.  Composing one choice per read therefore enumerates every
+    arrangement, ``2 * 3**(n - 2)`` of them, which a test pins.
+
+    Shared by Forþ and Unsquare, whose stacks differ only in how a sink is
+    spelled: ``sinks`` is the ``(places, ops)`` table and ``read`` the code
+    that pushes one normalized bit.  The two callers' docstrings record
+    *different* findings about the same enumeration and stay where they are.
+    """
+    reached: dict[tuple[int, ...], str] = {}
+    for combination in product(sinks, repeat=n):
+        stack: tuple[int, ...] = ()
+        text = ""
+        for read_index, (places, ops) in enumerate(combination):
+            stack = (*stack, read_index)
+            text += read
+            if places >= len(stack):
+                break  # nothing below to sink under
+            stack = _sink_top(stack, places)
+            text += ops
+        else:
+            # Every surviving sink combination lands on a distinct stack
+            # shape -- 162 completions at n == 6, no repeat -- so the
+            # shorter-text tie-break never fires.  It stays because the
+            # table is keyed by shape, and a future sink whose shape
+            # repeated would need it to keep the cheaper spelling.
+            if (  # pragma: no branch - no two combinations share a shape
+                stack not in reached or len(text) < len(reached[stack])
+            ):
+                reached[stack] = text
+    return reached
+
 
 def _grapheme_push0() -> str:
     """Grapheme code pushing the integer 0 (``Z`` is intmode's zero digit)."""
@@ -243,13 +294,6 @@ def forth(truth_table: str) -> str:
 _FORTH_READ = ",68*-"
 
 
-def _forth_sink_top(stack: tuple[int, ...], places: int) -> tuple[int, ...]:
-    """Move the top bit down by ``places``, leaving the others in order."""
-    *below, top = stack
-    at = len(below) - places
-    return (*below[:at], top, *below[at:])
-
-
 # How far a freshly-read bit can sink, and the ops that put it there.  ``v``
 # swaps the top two and ``c`` rotates the third up, so two ``c``s bury the
 # new bit under the two below it.  ``o`` is unusable and absent deliberately:
@@ -287,28 +331,7 @@ def _forth_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     +0.03% at n == 5, which does not pay for a search in a generator meant
     to be read.
     """
-    reached: dict[tuple[int, ...], str] = {}
-    for sinks in product(_FORTH_SINKS, repeat=n):
-        stack: tuple[int, ...] = ()
-        text = ""
-        for read_index, (places, ops) in enumerate(sinks):
-            stack = (*stack, read_index)
-            text += _FORTH_READ
-            if places >= len(stack):
-                break  # nothing below to sink under
-            stack = _forth_sink_top(stack, places)
-            text += ops
-        else:
-            # Every surviving sink combination lands on a distinct stack
-            # shape -- 162 completions at n == 6, no repeat -- so the
-            # shorter-text tie-break never fires.  It stays because the
-            # table is keyed by shape, and a future sink whose shape
-            # repeated would need it to keep the cheaper spelling.
-            if (  # pragma: no branch - no two combinations share a shape
-                stack not in reached or len(text) < len(reached[stack])
-            ):
-                reached[stack] = text
-    return reached
+    return stack_programs(n, _FORTH_SINKS, _FORTH_READ)
 
 
 def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -562,13 +585,6 @@ _UNSQUARE_READ = "iA>-<P"
 _UNSQUARE_SINKS = ((0, ""), (1, "S"), (2, "SASP"))
 
 
-def _unsquare_sink_top(stack: tuple[int, ...], places: int) -> tuple[int, ...]:
-    """Move the top bit down by ``places``, leaving the others in order."""
-    *below, top = stack
-    at = len(below) - places
-    return (*below[:at], top, *below[at:])
-
-
 @cache
 def _unsquare_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     """Read-and-sink program for each reachable stack arrangement.
@@ -593,28 +609,7 @@ def _unsquare_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     do not compose across reads at all, so the enumeration is both the
     simpler code and the optimal one.
     """
-    reached: dict[tuple[int, ...], str] = {}
-    for sinks in product(_UNSQUARE_SINKS, repeat=n):
-        stack: tuple[int, ...] = ()
-        text = ""
-        for read_index, (places, ops) in enumerate(sinks):
-            stack = (*stack, read_index)
-            text += _UNSQUARE_READ
-            if places >= len(stack):
-                break  # nothing below to sink under
-            stack = _unsquare_sink_top(stack, places)
-            text += ops
-        else:
-            # Every surviving sink combination lands on a distinct stack
-            # shape -- 162 completions at n == 6, no repeat -- so the
-            # shorter-text tie-break never fires.  It stays because the
-            # table is keyed by shape, and a future sink whose shape
-            # repeated would need it to keep the cheaper spelling.
-            if (  # pragma: no branch - no two combinations share a shape
-                stack not in reached or len(text) < len(reached[stack])
-            ):
-                reached[stack] = text
-    return reached
+    return stack_programs(n, _UNSQUARE_SINKS, _UNSQUARE_READ)
 
 
 def _unsquare_cost(truth_table: str, n: int, prefix: str) -> int:
