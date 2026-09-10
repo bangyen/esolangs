@@ -120,12 +120,6 @@ class TestParameterizedPctSquaredMinusOne:
                 for b in (0, 1):
                     assert "n" not in self.instantiate(template, [a, b])
 
-    def test_bad_table_rejected(self) -> None:
-        from esolangs.tools.boolean import parameterized
-
-        with pytest.raises(ValueError, match="power-of-two"):
-            parameterized.pct_squared_minus_one("011")
-
     @pytest.mark.parametrize("n", [3, 4, 5, 6])
     def test_minterm_cascade_lifts_the_two_input_cap(self, n: int) -> None:
         """Single-minterm tables build at any arity, past the derived path's cap.

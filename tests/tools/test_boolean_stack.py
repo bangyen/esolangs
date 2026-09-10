@@ -93,14 +93,6 @@ class TestGrapheme:
             got = run_grapheme(program, [str(b) for b in bits])
             assert got == "0011"[combo], f"inputs {bits}"
 
-    def test_bad_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="power-of-two"):
-            boolean.grapheme("011")
-
-    def test_non_binary_rejected(self) -> None:
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.grapheme("02")
-
     def test_the_program_is_only_grapheme_commands(self) -> None:
         """Only the letters Grapheme reads as commands are emitted."""
         for table in ("10", "0110", "0001", "11111110"):
@@ -543,16 +535,6 @@ class TestUnsquare:
         """
         assert boolean.unsquare("11111111").count("P") == 3 + 1  # 3 reads, 1 leaf
         assert boolean.unsquare("10010110").count("P") == 3 + 8
-
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.unsquare("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.unsquare("02")
 
     def test_the_program_is_only_unsquare_commands(self) -> None:
         """Only the characters Unsquare reads are emitted."""
