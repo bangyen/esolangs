@@ -738,7 +738,9 @@ def qoibl(truth_table: str) -> str:
 # 264.5s of that the single factorization, then 0.001s a row -- for a
 # 123609143-character program.  Against n=10 on the same machine (1638,
 # 56s), 1.78x the instructions costs 4.7x the time.  Left at 1934 on that
-# price.
+# price -- and 2910 is only the dense fixture: the formula above at
+# n == 11 gives 3726, so even a cap sized to that price leaves the arity
+# partial.
 _POLYNOMIAL_MAX_INSTRS = 1934
 
 # How far above the cheapest candidate the dispatch still renders.  Selection

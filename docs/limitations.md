@@ -121,6 +121,10 @@ instructions costs 4.7x the time and 3.4x the program. The cap stays at
 plus a 124MB artifact for one table is what that policy declines. What
 moved is that the price is now measured rather than projected.
 
+And 2910 is only the *fixture*, not the arity: the same formula at n=11
+gives 3726, so even a cap sized to that price would leave n=11 partial.
+Admitting the arity is a fresh derivation, not a constant bump.
+
 6-5 leaves the table too.  Its 35 branch labels are the language's
 (operands are `0-9A-Z`), and the tree constructions spend them per subtree:
 sharing duplicates as a DAG bought parity n=14, but a dense table has
