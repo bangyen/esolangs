@@ -44,16 +44,16 @@ readings.
   cleanly at 4x per arity (0.16 / 0.62 / 2.48 / 10.1 / 38.0s for n=8..12),
   so it is predictable and small; `extract` is the stage any future work
   belongs in.
-- **Extend Interprogck8's boolean tree.** *Done, and this entry was stale.*
-  `77025aa7` built exactly the relay rung asked for here and lifted the
-  ceiling from 3 to 7; the 255-line hop is replaced by chains laid whole at
-  200-line spacing, and the pass cap by a progress guard. Verified rather
-  than taken from the message: n=4 through n=7 all build (4921 to 92739
-  characters, 0.00s to 9.0s), and n=4 parity executes 16 of 16 rows.
-  `docs/limitations.md` carries the measured edge — n=8 is refused at 191
-  routing rounds and 2031s by the `_PATIENCE` cost policy, not by reach.
-  Reopen only against that cost, and only with a rule for the rung
-  interference the entry after it describes.
+- **Extend Interprogck8's boolean tree.** *Done twice over.* `77025aa7`
+  built the relay rung asked for here and lifted the ceiling from 3 to 7
+  at a cost that refused n=8 (2031s of rung interference).  The express
+  rewrite then replaced the iterative router: `DownAccLines` keeps the
+  accumulator, so a chain spells its stride once and rides one-line rungs
+  parked in meadows, routed once against frozen coordinates.  Ceiling is
+  now 10 — every row of dense and parity executed at n=8..10, n=10 built
+  in ~10s — and n=7 fell from 3.5s to 0.05s.  `docs/limitations.md`
+  carries the measured edge: n=11 dense exhausts the meadow repair
+  budget.
 - **Close Minifuck's mux sculpt.** The pool-code half is *done*: `5b35c66b`
   replaced the per-round interpreter scan with `_SCULPT_POOL_CODE`, proved
   structurally (the probe clamps to one canonical state, so the fifth code
