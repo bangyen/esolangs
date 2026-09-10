@@ -662,19 +662,23 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 
 # Every boolean generator builds a table at n <= _MAX_ARITY.  Ten inputs
 # rather than five because ten is now a capability line: the whole registry
-# was swept at n=1..10 on both shapes and exactly two generators fall short,
-# both of them recorded below.  Ten used to be out of reach -- five
+# was swept at n=1..10 on both shapes and exactly one generator falls short,
+# on one shape, recorded below.  Ten used to be out of reach -- five
 # generators built only "given time", up to 187s for one table -- and the
 # cap-lifting work is what moved the line.
 #
-# The cost is real but bounded: the full n=1..10 sweep sums to ~136s of CPU
-# across the registry, with minifuck (~38s) and Polynomial (~28s) the two
-# hot spots, and the largest single program is Circuit Diagram's n=10 dense
-# table at 306MB of text and 637MB peak RSS.  That is a slow-suite budget,
-# not a fast-loop one, so the sweep runs in two bands: n <= _QUICK_ARITY in
-# the default gate, the rest marked slow.  Both bands assert the same thing;
-# splitting them keeps the coverage without putting two minutes into the
-# inner loop.
+# The cost is real but bounded: the full n=1..10 sweep sums to ~153s of CPU
+# across the registry, and five generators are nearly all of it -- minifuck
+# 43s, Polynomial 29s, 123 19s, interprogck8 15s, WII2D 8s.  The largest
+# single program is Circuit Diagram's n=10 dense table, 306MB of text at
+# 637MB peak RSS.  That is a slow-suite budget, not a fast-loop one, so the
+# sweep runs in two bands: n <= _QUICK_ARITY in the default gate, the rest
+# marked slow.  Both bands assert the same thing; splitting them keeps the
+# coverage without putting two and a half minutes into the inner loop.
+#
+# minifuck's 43s is concentrated at n=9 (34s of it) and *drops* to 3s at
+# n=10, where the construction names its accumulator instead of staging
+# through it -- so the band's cost does not simply grow with n.
 _MAX_ARITY = 10
 _QUICK_ARITY = 5
 
@@ -688,37 +692,32 @@ _ARITY_BANDS = (
 )
 
 # The generators that do not reach _MAX_ARITY, keyed by ``(name, shape)``
-# because a cap can bind on one table shape and not the other -- see the
-# note on the two shapes below.  Both entries are *policy* limits with a
-# named escape hatch rather than walls in the language:
-#
-#   factor encodes the whole table as one integer and refuses past its
-#   ``max_digits`` default of 16000: n=7 dense needs 37320 digits and n=6
-#   parity needs 25029, so the cap lands a rung lower on parity.  The limit
-#   exists because CPython's own ``sys.set_int_max_str_digits`` guard is a
-#   DoS defence against quadratic conversions; the generator raises it to
-#   fit the program and puts it back, and a caller who wants n=10 passes a
-#   larger ``max_digits``.
+# because a cap can bind on one table shape and not the other -- wii2d is
+# exactly that case, and a per-name cap of 9 would have demanded its parity
+# n=10 refuse, which it does not.
 #
 #   wii2d refuses n=10 dense because the decode spans 512 index points past
 #   the ``_WII2D_MAX_INDEX_DOMAIN = 256`` cost guard.  Parity at the same n
-#   compresses to 350 characters and sails through, which is the whole
-#   reason this dict is keyed by shape.
+#   compresses to 350 characters and sails through.
 #
-# Neither entry is where it was.  interprogck8 was capped at n=3 and is now
-# uncapped, because long hops learned to ride an express through one-line
-# rungs parked in meadows.  factor was capped at n=3 by CPython's default
-# 4300-digit ceiling and now sits at 6, because the generator raises that
-# ceiling instead of dying under it; what remains is its own ``max_digits``
-# policy, which is why the entry moved rather than left.
+# Three generators that used to be capped are not, and every one of the
+# three refusals was the *construction's* limit rather than the language's:
+#
+#   interprogck8 capped at n=3 because one ``DownAccLines`` reaches 255
+#   lines and the n=4 bit-0 crossing spans 452.  Long hops now ride an
+#   express through one-line rungs parked in meadows.
+#
+#   factor capped at n=3 on CPython's 4300-digit ``int``-render guard, then
+#   at n=6 on the 16000-digit budget that replaced it.  Both are size
+#   policies rather than anything Factor says, and the budget was sized to
+#   the arity *this suite* asks for -- so raising the suite to ten inputs
+#   raised the budget with it, for 2.8s and 78MB at the new worst case.
 #
 # An entry needs the measurement that put it there and the phrase its own
 # refusal is built around -- asserting only that something refused would
 # accept a generator that had started failing for an unrelated reason,
 # since an encoding bug reads exactly like a cap from the outside.
 _ARITY_CAPPED: dict[tuple[str, str], tuple[int, str]] = {
-    ("factor", "dense"): (6, "over the 16000-digit limit this call allows"),
-    ("factor", "parity"): (5, "over the 16000-digit limit this call allows"),
     ("wii2d", "dense"): (9, "cost guard; this is a size/time policy"),
 }
 
@@ -780,7 +779,7 @@ def test_every_generator_builds_up_to_ten_inputs(name: str, arities: range) -> N
                     fn(table)
 
 
-@pytest.mark.slow  # ~7s: the two capped generators at both ends of their caps
+@pytest.mark.slow  # ~7s: WII2D's dense n=9 build, at both ends of its cap
 def test_arity_caps_are_still_caps() -> None:
     """A capped generator that grew past its cap must leave ``_ARITY_CAPPED``.
 
