@@ -5,6 +5,7 @@ from typing import Any
 from esolangs.tools.boolean.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
+    _cm_constants,
     _validate_truth_table,
     best_input_order,
     essential_inputs,
@@ -12,7 +13,6 @@ from esolangs.tools.boolean.helpers import (
     read_at,
     stored_inputs,
 )
-from esolangs.tools.text.helpers import _cm_constants
 
 # Dig blocks for one level of the decision tree.
 _DIG_BRANCH = ">2$~;#@"  # read a bit, store it, then turn on it

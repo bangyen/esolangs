@@ -1070,7 +1070,7 @@ class TestFactor:
     def test_is_the_decimal_encoding_of_the_bf_program(self) -> None:
         """factor delegates to the brainfuck generator and encodes its
         output, same as the text generator's factor()."""
-        from esolangs.tools.text.tape import _factor_encode
+        from esolangs.tools.boolean.tape import _factor_encode
 
         table = "0110"
         assert boolean.factor(table) == str(_factor_encode(boolean.brainfuck(table)))

@@ -9,7 +9,6 @@ from esolangs.interpreters.grid_based.super_snusp import _advance, _floor_root, 
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.randomness import FirstDraw
 from esolangs.tools.boolean.super_snusp import super_snusp
-from esolangs.tools.text.super_snusp import super_snusp as super_snusp_text
 from tests.interpreters.runner import run_program
 
 
@@ -48,20 +47,20 @@ def test_decimal_io_and_output() -> None:
     assert run_super('"@#', "-42\n") == "-42"
 
 
-def test_text_generator_round_trips_bytes_and_uses_shortest_load() -> None:
-    text = "Hello, World!\n\x00\xff"
-    program = super_snusp_text(text)
-    assert run_super(program) == text
-    assert "H." in program
-    # A nearby non-letter byte is shorter as a signed delta than its decimal
-    # literal: after a double quote (34), ! is one decrement and output.
-    assert "34.(." in super_snusp_text('"!')
+def test_character_and_decimal_loads_mix_in_one_program() -> None:
+    """Letters load as ``H.``, other bytes as decimal literals, in one run."""
+    program = '"H.e.l..o.44.32.W.o.r.l.d.33.10.0.255.'
+    assert run_super(program) == "Hello, World!\n\x00\xff"
 
 
-def test_text_generator_accepts_empty_text_and_rejects_non_bytes() -> None:
-    assert run_super(super_snusp_text("")) == ""
-    with pytest.raises(ValueError, match="bytes"):
-        super_snusp_text("\u0100")
+def test_a_decrement_is_shorter_than_reloading_a_nearby_byte() -> None:
+    """After a double quote (34), ``!`` is one decrement and output."""
+    assert run_super('"34.(.') == '"!'
+
+
+def test_a_bare_mode_switch_outputs_nothing() -> None:
+    """``"`` alone sets character mode and halts; the empty program raises."""
+    assert run_super('"') == ""
 
 
 @pytest.mark.parametrize("program", ['"+', '"0{1:', '"1_{1['])

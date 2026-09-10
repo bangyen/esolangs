@@ -60,24 +60,16 @@ def _generated_seed(language: str) -> str | None:
     a sweep over all 64 languages executed a median of twelve steps each,
     one step per variant, and Container executed nothing at all.
 
-    Every registered language has a generator, and their output is the
-    corpus this file was missing: text generators emit a median of 97
-    characters.  Seeding from them multiplied executed steps by 3.7x, and
-    4.0x together with the per-seed alphabet below.
+    Generator output is the corpus this file was missing; seeding from it
+    multiplied executed steps by 2.4x, and more together with the per-seed
+    alphabet below.  A boolean generator takes a truth-table string whose
+    length implies the arity.  ``random.seed`` is set by the caller because
+    some generators draw from the global RNG, and the suite runs under
+    xdist.
 
-    Generators are called exactly as ``test_fuzz_generators.py`` calls them
-    -- a text generator takes the text to print, a boolean generator a
-    truth-table string whose length implies the arity -- and the boolean
-    fallback covers the seventeen languages with no text generator (2.4x
-    there).  ``random.seed`` is set by the caller because some generators
-    draw from the global RNG, and the suite runs under xdist.
+    A language with no boolean generator falls back to ``SAMPLES``.
     """
-    language_data = LANGUAGES[language]
-    generator = language_data.text
-    if generator is not None:
-        with suppress(Exception):
-            return generator("a")
-    boolean_generator = language_data.boolean
+    boolean_generator = LANGUAGES[language].boolean
     if boolean_generator is not None:
         with suppress(Exception):
             return boolean_generator("0110")
