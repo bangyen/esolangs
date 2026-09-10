@@ -50,15 +50,14 @@ class TestTestFiles:
     def test_the_suites_that_only_import_the_package_are_included(self) -> None:
         """The specific files import-based selection used to drop.
 
-        ``test_generate`` and ``test_boolean_other`` import ``boolean`` and
-        nothing below it, so a scan for ``esolangs.tools.boolean.<module>``
-        selects neither -- while ``test_boolean_other`` is where every
-        ``laserfuck`` test lives.  Named individually because the general
-        assertion above would still pass if the directory itself lost them.
+        ``test_boolean_other`` imports ``boolean`` and nothing below it, so
+        a scan for ``esolangs.tools.boolean.<module>`` does not select it --
+        and it is where every ``laserfuck`` test lives.  Named individually
+        because the general assertion above would still pass if the
+        directory itself lost it.
         """
         script = load_script()
         selected = script._test_files(script._KINDS["boolean"])  # noqa: SLF001
-        assert "test_generate.py" in selected
         assert "test_boolean_other.py" in selected
         assert "test_boolean_contract.py" in selected
 
@@ -213,10 +212,10 @@ class TestUndecorateClasses:
 
 class TestParseTarget:
     def test_a_qualified_target_resolves_in_each_family(self) -> None:
-        """Both families are reachable, named ``family/module``."""
+        """Both kinds are reachable, named ``family/module``."""
         script = load_script()
         assert script._parse_target("boolean/register") == ("boolean", "register")  # noqa: SLF001
-        assert script._parse_target("text/register") == ("text", "register")  # noqa: SLF001
+        assert script._parse_target("tools/wrap") == ("tools", "wrap")  # noqa: SLF001
 
     def test_an_unambiguous_bare_name_still_resolves(self) -> None:
         """The boolean-only spelling keeps working where it is unambiguous."""
@@ -226,27 +225,30 @@ class TestParseTarget:
     def test_a_name_in_both_families_is_refused(self) -> None:
         """The failure this prevents is silent, which is why it is an error.
 
-        Eight modules -- helpers, laserfuck, other, register, stack,
-        streetcode, super_snusp, tape -- exist in both packages, which the
-        assertion below recomputes rather than trusts.  Defaulting a bare one
-        to boolean would mutate the wrong file for someone asking about
-        text, and still print a plausible percentage: the run succeeds, the
-        score is real, and it describes a module nobody asked about.  So
-        the ambiguity is reported and both spellings offered.
+        No two kinds currently share a module name -- the text family, which
+        shared eight with boolean, is gone -- so the guard has no real input
+        and would rot untested.  The kinds are a table, so a synthetic entry
+        exercises the same path a future overlap would take: defaulting a
+        bare ambiguous name would mutate the wrong file and still print a
+        plausible percentage, which is why it is an error.
         """
         import pytest
 
         script = load_script()
-        shared = sorted(
-            set(script._modules("boolean")) & set(script._modules("text"))  # noqa: SLF001
-        )
-        assert shared, "the families no longer share a module name"
-        for name in shared:
+        assert not set(script._modules("boolean")) & set(script._modules("tools"))  # noqa: SLF001
+        kinds = script._KINDS  # noqa: SLF001
+        kinds["mirror"] = kinds["boolean"]
+        # ``_FAMILIES`` is a snapshot taken at import, so the new kind has to
+        # be added to both or the lookup never sees it.
+        script._FAMILIES = (*script._FAMILIES, "mirror")  # noqa: SLF001
+        try:
             with pytest.raises(SystemExit) as excinfo:
-                script._parse_target(name)  # noqa: SLF001
+                script._parse_target("register")  # noqa: SLF001
             message = str(excinfo.value)
-            assert f"boolean/{name}" in message
-            assert f"text/{name}" in message
+            assert "boolean/register" in message
+            assert "mirror/register" in message
+        finally:
+            del kinds["mirror"]
 
     def test_an_unknown_module_lists_the_choices(self) -> None:
         """The error names what may be run rather than only what may not."""
@@ -269,19 +271,16 @@ class TestParseTarget:
         message = str(excinfo.value)
         assert "nosuchfamily" in message
         assert "boolean" in message
-        assert "text" in message
+        assert "tools" in message
 
     def test_entry_points_are_not_targets(self) -> None:
         """``__init__`` and ``__main__`` hold no generation logic.
 
-        ``text`` ships a ``__main__``; offering it as a target would spend a
-        run mutating an argv check.
+        Offering either as a target would spend a run mutating a re-export
+        surface or an argv check.
         """
         script = load_script()
-        assert (
-            REPO_ROOT / "src" / "esolangs" / "tools" / "text" / "__main__.py"
-        ).exists()
-        for family in ("boolean", "text"):
+        for family in ("boolean", "tools"):
             modules = script._modules(family)  # noqa: SLF001
             assert "__init__" not in modules
             assert "__main__" not in modules
@@ -293,7 +292,7 @@ class TestParseTarget:
         caught here rather than by a run that cannot find its target.
         """
         script = load_script()
-        for family in ("boolean", "text", "tools"):
+        for family in ("boolean", "tools"):
             kind = script._KINDS[family]  # noqa: SLF001
             for name in script._modules(family):  # noqa: SLF001
                 assert (kind.pkg_dir / f"{name}.py").exists()
@@ -302,15 +301,14 @@ class TestParseTarget:
         """``wrap`` is reachable, and the subpackages are not swept in.
 
         The kind globs ``*.py`` directly under ``esolangs/tools``, so it
-        picks up the modules that sit beside the two generator families
-        without listing ``boolean`` and ``text`` a second time -- a
-        directory does not match the glob.
+        picks up the modules that sit beside the generator family without
+        listing ``boolean`` a second time -- a directory does not match the
+        glob.
         """
         script = load_script()
         modules = script._modules("tools")  # noqa: SLF001
         assert "wrap" in modules
         assert "boolean" not in modules
-        assert "text" not in modules
         kind = script._KINDS["tools"]  # noqa: SLF001
         assert kind.rel_target("wrap") == "esolangs/tools/wrap.py"
 
@@ -320,19 +318,18 @@ class TestPrepare:
         """``paths_to_mutate`` must name the family that was asked for.
 
         The bug this pins shipped once: the path was built with a literal
-        ``boolean`` while the score was read from the target's own family,
-        so ``text/streetcode`` mutated *boolean's* streetcode and then found
-        no result file where it looked.  That mismatch is what made it
-        loud.  Had both sides shared the wrong literal it would have been
-        silent -- a run reporting a real, plausible score for a module
-        nobody asked about, which is possible for the eight names the two
-        packages share.
+        ``boolean`` while the score was read from the target's own family, so
+        a target in the other family mutated *boolean's* file and then found
+        no result file where it looked.  That mismatch is what made it loud.
+        Had both sides shared the wrong literal it would have been silent --
+        a run reporting a real, plausible score for a module nobody asked
+        about.
         """
         script = load_script()
-        proj, _ = script._prepare("text", "streetcode", tmp_path, slow=False)  # noqa: SLF001
+        proj, _ = script._prepare("tools", "wrap", tmp_path, slow=False)  # noqa: SLF001
         config = (proj / "pyproject.toml").read_text()
-        assert 'paths_to_mutate = ["esolangs/tools/text/streetcode.py"]' in config
-        assert "boolean/streetcode.py" not in config
+        assert 'paths_to_mutate = ["esolangs/tools/wrap.py"]' in config
+        assert "boolean/wrap.py" not in config
 
     def test_the_mutated_path_and_the_score_path_agree(self, tmp_path: Path) -> None:
         """The file mutmut writes is the file the score is read from.
@@ -342,9 +339,9 @@ class TestPrepare:
         drifting apart.
         """
         script = load_script()
-        proj, _ = script._prepare("text", "tape", tmp_path, slow=False)  # noqa: SLF001
+        proj, _ = script._prepare("boolean", "tape", tmp_path, slow=False)  # noqa: SLF001
         config = (proj / "pyproject.toml").read_text()
         mutated = config.split('paths_to_mutate = ["')[1].split('"]')[0]
         # The same expression ``_score`` uses to find mutmut's result file.
-        scored = proj / "mutants" / "esolangs" / "tools" / "text" / "tape.py.meta"
+        scored = proj / "mutants" / "esolangs" / "tools" / "boolean" / "tape.py.meta"
         assert scored == proj / "mutants" / f"{mutated}.meta"

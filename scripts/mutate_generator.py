@@ -7,10 +7,10 @@ line being wrong.  A generator is a good target for it, because the thing
 it emits is a program -- a test that only checks the program *runs* cannot
 see a change that leaves it running and computing something else.
 
-Several kinds of target share this harness, differing only in where their
-source and tests live (see ``_KINDS``): the ``boolean`` and ``text``
-generator families under ``esolangs.tools``, and the modules directly
-under ``esolangs.tools``.
+Two kinds of target share this harness, differing only in where their
+source and tests live (see ``_KINDS``): the ``boolean`` generator family
+under ``esolangs.tools``, and the modules directly under
+``esolangs.tools``.
 
 Where this differs from ``mutate_one`` is that it does not bundle.
 ``mutate_one`` inlines the interpreter into one dependency-closed file
@@ -21,10 +21,9 @@ import-time trampoline in ``registry``/``lamfunc`` before mutmut has set
 ``paths_to_mutate``, so only it gets trampolines; every other module is
 copied verbatim and imports normally.  The generator modules also import
 cleanly on their own -- ``esolangs.tools.boolean.*`` reaches only
-``helpers``, ``text.helpers`` and ``_polynomial``, and
-``esolangs.tools.text.*`` only ``text.helpers``, ``wrap``, ``_polynomial``,
-``laserfuck_layout`` and ``ztoalc_starts``.  None of them do work at import
-time, which is what lets both families share this layout.
+``helpers``, ``wrap``, ``_polynomial``, ``laserfuck_layout`` and
+``ztoalc_starts``.  None of them do work at import time, which is what lets
+both kinds share this layout.
 
 So the layout is the package itself, copied whole into a work directory
 that shadows the editable install because the runner's cwd leads
@@ -52,7 +51,7 @@ where it is unambiguous; see :func:`_parse_target`.
 
 Usage:
     python scripts/mutate_generator.py boolean/register
-    python scripts/mutate_generator.py text/streetcode
+    python scripts/mutate_generator.py boolean/streetcode
     python scripts/mutate_generator.py dimensional --keep   # leave the work dir
 
 Requires: mutmut==3.7.0, the same pin ``mutate_one`` documents.
@@ -78,15 +77,14 @@ sys.path.insert(0, str(ROOT / "src"))
 # interpreters through, so a generator's output can be executed, and
 # ``tests.raises`` is a helper ``test_generate`` imports at module scope.
 #
-# ``tests.raises`` was missing until the text families were reachable, and
-# the way it surfaced is worth keeping: every suite in ``tests/tools`` is
-# copied, so the *file* was there, but ``tests/raises.py`` sits one level up
-# and was not -- so ``test_generate`` failed to import and the baseline gate
-# stopped the run.  That gate is the reason this cost minutes rather than a
-# wrong number: a missing support module fails collection, and with
-# ``tests_dir`` pointing at ``tests/tools`` a silently uncollected
-# ``test_generate`` would have scored every text generator against the
-# boolean suites alone.
+# ``tests.raises`` was missing once, and the way it surfaced is worth
+# keeping: every suite in ``tests/tools`` is copied, so the *file* was
+# there, but ``tests/raises.py`` sits one level up and was not -- so the
+# suite failed to import and the baseline gate stopped the run.  That gate
+# is the reason this cost minutes rather than a wrong number: a missing
+# support module fails collection, and with ``tests_dir`` pointing at
+# ``tests/tools`` a silently uncollected suite would have scored its
+# generators against the remaining ones alone.
 _TOOLS_SUPPORT = (
     Path("tests/__init__.py"),
     Path("tests/raises.py"),
@@ -101,8 +99,8 @@ class _Kind:
     The kinds differ only in these paths, so they are a table rather
     than separate code paths.  Every one satisfies the two preconditions the
     layout relies on: each module imports cleanly on its own, and nothing it
-    reaches does work at import time.  ``text.*`` reaches only
-    ``text.helpers``, ``wrap``, ``_polynomial``, ``laserfuck_layout`` and
+    reaches does work at import time.  ``boolean.*`` reaches only
+    ``helpers``, ``wrap``, ``_polynomial``, ``laserfuck_layout`` and
     ``ztoalc_starts``, which the copied package resolves like any other
     import.
 
@@ -149,11 +147,9 @@ class _Kind:
 # Keyed by the name the CLI takes.
 _KINDS = {
     "boolean": _Kind("boolean", "tools/boolean", "tests/tools", _TOOLS_SUPPORT),
-    "text": _Kind("text", "tools/text", "tests/tools", _TOOLS_SUPPORT),
     # The modules directly under ``esolangs.tools`` rather than in a family
     # package -- ``wrap`` and the layout helpers.  The glob picks up only
-    # files, so the ``boolean`` and ``text`` subpackages are not swept in
-    # twice.
+    # files, so the ``boolean`` subpackage is not swept in twice.
     "tools": _Kind("tools", "tools", "tests/tools", _TOOLS_SUPPORT),
 }
 
@@ -191,10 +187,9 @@ _MIN_KILL_RATE = 0.1
 
 
 # Modules in a family package that are not generators.  ``__init__`` is the
-# re-export surface and ``__main__`` is the ``python -m`` entry point, which
-# the text package has and the boolean one does not; neither holds
-# generation logic worth a mutant.  ``helpers`` is deliberately *not* here:
-# it is shared machinery both families' output depends on, so it is a real
+# re-export surface and ``__main__`` a ``python -m`` entry point; neither
+# holds generation logic worth a mutant.  ``helpers`` is deliberately *not*
+# here: it is shared machinery the output depends on, so it is a real
 # target.
 _NON_TARGETS = frozenset({"__init__", "__main__"})
 
@@ -211,14 +206,11 @@ def _modules(family: str) -> list[str]:
 def _parse_target(target: str) -> tuple[str, str]:
     """Return the (family, module) a CLI target names, or raise.
 
-    Accepts ``text/streetcode`` and the bare ``streetcode`` the boolean-only
-    version took.  A bare name is resolved against every family, which makes
-    it an error rather than a silent choice when more than one matches:
-    eight modules -- helpers, laserfuck, other, register, stack, streetcode,
-    super_snusp, tape -- exist in both packages, and picking the default for
-    those would quietly mutate boolean's ``tape`` for someone who asked for
-    text's.  Bare names that are unambiguous still work, so
-    ``mutate_generator.py minifuck`` needs no qualifier.
+    Accepts ``boolean/streetcode`` and the bare ``streetcode``.  A bare name
+    is resolved against every kind, which makes it an error rather than a
+    silent choice when more than one matches -- ``helpers`` is in both
+    ``tools`` and ``tools/boolean``.  Bare names that are unambiguous still
+    work, so ``mutate_generator.py minifuck`` needs no qualifier.
     """
     if "/" in target:
         family, _, module = target.partition("/")
@@ -601,7 +593,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
         "module",
-        help="generator module as family/module, e.g. text/streetcode.  A "
+        help="generator module as family/module, e.g. boolean/streetcode.  A "
         "bare name works where only one family defines it",
     )
     parser.add_argument(

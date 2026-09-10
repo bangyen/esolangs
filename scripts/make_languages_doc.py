@@ -95,7 +95,6 @@ def _source_link(name: str) -> str:
 def _capabilities(name: str) -> dict[str, bool]:
     lang = LANGUAGES.get(name)
     return {
-        "generator": lang.text is not None if lang else False,
         "interpreter": lang.interpreter is not None if lang else False,
         "boolean": name in BOOLEAN,
     }
@@ -135,14 +134,13 @@ def render() -> str:
         "",
         "## The matrix",
         "",
-        "| Language | Text generator | Python | Boolean |",
-        "| --- | :---: | :---: | :---: |",
+        "| Language | Python | Boolean |",
+        "| --- | :---: | :---: |",
     ]
     for name in sorted(LANGUAGES):
         c = _capabilities(name)
         lines.append(
-            f"| {name} | {'yes' if c['generator'] else ''} | "
-            f"{'yes' if c['interpreter'] else ''} | "
+            f"| {name} | {'yes' if c['interpreter'] else ''} | "
             f"{'yes' if c['boolean'] else ''} |"
         )
     lines += ["", "The `esolangs` command lists the languages with Python support:"]
@@ -187,22 +185,19 @@ def render_languages_section() -> str:
 def render_examples_section() -> str:
     """Render the README's Examples paragraph between the markers.
 
-    The two counts are the number of registered text and boolean generators,
-    taken from the registry rather than from ``ls examples/`` -- the same rule
-    the rest of this script follows.  A separate sync test already pins that
-    every generator has its committed file, so the registry is the source
-    that cannot drift.
+    The count is the number of registered boolean generators, taken from
+    the registry rather than from ``ls examples/`` -- the same rule the rest
+    of this script follows.  A separate sync test already pins that every
+    generator has its committed file, so the registry is the source that
+    cannot drift.
     """
-    text_generators = sum(1 for lang in LANGUAGES.values() if lang.text is not None)
     return "\n".join(
         [
             "Ready-to-run programs are committed under [`examples/`](examples/):",
-            f'`examples/hello-world/` holds a "Hello, World!" for each of the'
-            f" {text_generators}",
-            "languages with a text generator; `examples/boolean/` holds a truth-table",
-            f"program for each of the {len(BOOLEAN)} languages with a boolean"
-            " generator.  Both",
-            "regenerate via `scripts/write_examples.py`.",
+            f"`examples/boolean/` holds a truth-table program for each of the"
+            f" {len(BOOLEAN)}",
+            "languages with a boolean generator.  It regenerates via",
+            "`scripts/write_examples.py`.",
         ]
     )
 

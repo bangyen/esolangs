@@ -379,7 +379,7 @@ class TestStreetcodeAmbiguousTurns:
         """
         root = Path(__file__).resolve().parents[2]
         for path in (
-            "examples/hello-world/streetcode.txt",
+            "tests/fixtures/streetcode_hello.txt",
             "examples/boolean/streetcode.txt",
         ):
             code = (root / path).read_text().split("\n")
@@ -419,7 +419,7 @@ class TestStreetcodeAmbiguousTurns:
         """
         root = Path(__file__).resolve().parents[2]
         for path, expected in (
-            ("examples/hello-world/streetcode.txt", 384),
+            ("tests/fixtures/streetcode_hello.txt", 384),
             ("examples/boolean/streetcode.txt", 268),
         ):
             code = (root / path).read_text().split("\n")
@@ -1295,7 +1295,7 @@ class TestStreetcodeStreetWidth:
 
     @pytest.mark.parametrize(
         "path",
-        ["examples/hello-world/streetcode.txt", "examples/boolean/streetcode.txt"],
+        ["tests/fixtures/streetcode_hello.txt", "examples/boolean/streetcode.txt"],
     )
     def test_shipped_examples_are_accepted(self, path: str) -> None:
         """The repo's own programs must survive the check."""
@@ -1777,7 +1777,7 @@ class TestStreetcodeDriveStates:
 
     @pytest.mark.parametrize(
         "path",
-        ["examples/hello-world/streetcode.txt", "examples/boolean/streetcode.txt"],
+        ["tests/fixtures/streetcode_hello.txt", "examples/boolean/streetcode.txt"],
     )
     def test_mouth_depth_bound_does_not_change_the_driving(self, path: str) -> None:
         """``_MOUTH_MAX_DEPTH`` is pinned by behaviour, not by its scans.
@@ -1972,7 +1972,7 @@ class TestStreetcodeGraphBackedStepping:
 
     @pytest.mark.parametrize(
         "path",
-        ["examples/hello-world/streetcode.txt", "examples/boolean/streetcode.txt"],
+        ["tests/fixtures/streetcode_hello.txt", "examples/boolean/streetcode.txt"],
     )
     def test_the_shipped_examples_agree(self, path: str) -> None:
         root = Path(__file__).resolve().parents[2]
@@ -2099,7 +2099,7 @@ class TestStreetcodeMutationSurvivors:
         output alone does not.
         """
         root = Path(__file__).resolve().parents[2]
-        code = (root / "examples/hello-world/streetcode.txt").read_text().split("\n")
+        code = (root / "tests/fixtures/streetcode_hello.txt").read_text().split("\n")
         if code and code[-1] == "":
             code = code[:-1]
         scripted = ScriptedIO("")
@@ -2123,7 +2123,7 @@ class TestStreetcodeMutationSurvivors:
         keeps the search itself under test.
         """
         root = Path(__file__).resolve().parents[2]
-        code = (root / "examples/hello-world/streetcode.txt").read_text().split("\n")
+        code = (root / "tests/fixtures/streetcode_hello.txt").read_text().split("\n")
         if code and code[-1] == "":
             code = code[:-1]
         machine = _Machine(code, IO())

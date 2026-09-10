@@ -29,77 +29,77 @@ fold reaches generic twelve- and thirteen-input tables.
 
 ## The matrix
 
-| Language | Text generator | Python | Boolean |
-| --- | :---: | :---: | :---: |
-| %^2^-1 | yes | yes | yes |
-| 123 | yes | yes | yes |
-| 3D Brainfuck | yes | yes | yes |
-| 3x | yes | yes | yes |
-| 6-5 | yes | yes | yes |
-| A Painter Ant |  | yes | yes |
-| AddSubJump | yes | yes | yes |
-| Algebraic Programming Language |  | yes | yes |
-| Alight | yes | yes | yes |
-| ArrowQueue |  | yes | yes |
-| BF-PDA |  | yes | yes |
-| BFStack | yes | yes | yes |
-| BIO | yes | yes | yes |
-| Back |  | yes | yes |
-| Basicfuck | yes | yes | yes |
-| Between | yes | yes | yes |
-| Bitdeque |  | yes | yes |
-| BrainIf | yes | yes | yes |
-| COD |  | yes | yes |
-| CV(N)(C) | yes | yes | yes |
-| Circlefuck | yes | yes | yes |
-| Circuit Diagram |  | yes | yes |
-| Clockwise | yes | yes | yes |
-| Collatz Multiverse | yes | yes | yes |
-| Container | yes | yes | yes |
-| DINAC | yes | yes | yes |
-| Decleq | yes | yes | yes |
-| Dig | yes | yes | yes |
-| Dimensional | yes | yes | yes |
-| Eval | yes | yes | yes |
-| Factor | yes | yes | yes |
-| Fargo |  | yes | yes |
-| Flowchart |  | yes | yes |
-| Forbin | yes | yes | yes |
-| Forþ | yes | yes | yes |
-| Grapheme |  | yes | yes |
-| Home Row | yes | yes | yes |
-| Inject |  | yes | yes |
-| Interprogck8 | yes | yes | yes |
-| Jaune |  | yes | yes |
-| Lamfunc |  | yes | yes |
-| LaserFuck | yes | yes | yes |
-| Minifuck | yes | yes | yes |
-| Minsky Swap |  | yes | yes |
-| Modulous | yes | yes | yes |
-| MyScript | yes | yes | yes |
-| Nevermind | yes | yes | yes |
-| NoComment | yes | yes | yes |
-| Packlang | yes | yes | yes |
-| Painfuck | yes | yes | yes |
-| Point Break |  | yes | yes |
-| Polynomial | yes | yes | yes |
-| Qoibl | yes | yes | yes |
-| RAM0 |  | yes | yes |
-| ROTfuck | yes | yes | yes |
-| S*bleq | yes | yes | yes |
-| SLOW ACV MAMMALIAN | yes | yes | yes |
-| Sophie | yes | yes | yes |
-| Streetcode | yes | yes | yes |
-| Suffolk | yes | yes | yes |
-| Super SNUSP | yes | yes | yes |
-| Suptiftam | yes | yes | yes |
-| Taglate | yes | yes | yes |
-| Unsquare | yes | yes | yes |
-| WII2D | yes | yes | yes |
-| ZTOALC L | yes | yes | yes |
-| bit~ | yes | yes | yes |
-| brainfuck | yes | yes | yes |
-| function x(y) | yes | yes | yes |
+| Language | Python | Boolean |
+| --- | :---: | :---: |
+| %^2^-1 | yes | yes |
+| 123 | yes | yes |
+| 3D Brainfuck | yes | yes |
+| 3x | yes | yes |
+| 6-5 | yes | yes |
+| A Painter Ant | yes | yes |
+| AddSubJump | yes | yes |
+| Algebraic Programming Language | yes | yes |
+| Alight | yes | yes |
+| ArrowQueue | yes | yes |
+| BF-PDA | yes | yes |
+| BFStack | yes | yes |
+| BIO | yes | yes |
+| Back | yes | yes |
+| Basicfuck | yes | yes |
+| Between | yes | yes |
+| Bitdeque | yes | yes |
+| BrainIf | yes | yes |
+| COD | yes | yes |
+| CV(N)(C) | yes | yes |
+| Circlefuck | yes | yes |
+| Circuit Diagram | yes | yes |
+| Clockwise | yes | yes |
+| Collatz Multiverse | yes | yes |
+| Container | yes | yes |
+| DINAC | yes | yes |
+| Decleq | yes | yes |
+| Dig | yes | yes |
+| Dimensional | yes | yes |
+| Eval | yes | yes |
+| Factor | yes | yes |
+| Fargo | yes | yes |
+| Flowchart | yes | yes |
+| Forbin | yes | yes |
+| Forþ | yes | yes |
+| Grapheme | yes | yes |
+| Home Row | yes | yes |
+| Inject | yes | yes |
+| Interprogck8 | yes | yes |
+| Jaune | yes | yes |
+| Lamfunc | yes | yes |
+| LaserFuck | yes | yes |
+| Minifuck | yes | yes |
+| Minsky Swap | yes | yes |
+| Modulous | yes | yes |
+| MyScript | yes | yes |
+| Nevermind | yes | yes |
+| NoComment | yes | yes |
+| Packlang | yes | yes |
+| Painfuck | yes | yes |
+| Point Break | yes | yes |
+| Polynomial | yes | yes |
+| Qoibl | yes | yes |
+| RAM0 | yes | yes |
+| ROTfuck | yes | yes |
+| S*bleq | yes | yes |
+| SLOW ACV MAMMALIAN | yes | yes |
+| Sophie | yes | yes |
+| Streetcode | yes | yes |
+| Suffolk | yes | yes |
+| Super SNUSP | yes | yes |
+| Suptiftam | yes | yes |
+| Taglate | yes | yes |
+| Unsquare | yes | yes |
+| WII2D | yes | yes |
+| ZTOALC L | yes | yes |
+| bit~ | yes | yes |
+| brainfuck | yes | yes |
+| function x(y) | yes | yes |
 
 The `esolangs` command lists the languages with Python support:
 

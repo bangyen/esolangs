@@ -89,8 +89,7 @@ def _parse_registry(source: Source) -> dict[str, str]:
     ``registry.py`` is parsed with ``ast`` (never executed), so the mapping
     works against a raw download where the ``esolangs`` package cannot be
     imported.  The interpreter argument is either the ``interpreter=`` keyword
-    or the third positional ``Language(name, generator, interpreter, ...)``
-    slot.
+    or the second positional ``Language(name, interpreter, ...)`` slot.
     """
     tree = ast.parse(source.get("registry.py"))
     langs: dict[str, str] = {}
@@ -122,11 +121,11 @@ def _parse_registry(source: Source) -> dict[str, str]:
                     interpreter = kw.value.value
             if (
                 interpreter is None
-                and len(entry.args) > 2
-                and isinstance(entry.args[2], ast.Constant)
-                and isinstance(entry.args[2].value, str)
+                and len(entry.args) > 1
+                and isinstance(entry.args[1], ast.Constant)
+                and isinstance(entry.args[1].value, str)
             ):
-                interpreter = entry.args[2].value
+                interpreter = entry.args[1].value
             if interpreter and isinstance(key.value, str):
                 langs[key.value] = interpreter
     return langs
