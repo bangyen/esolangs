@@ -824,12 +824,12 @@ def run_until_halt(
     when it was still going when the run stopped.
 
     Every consumer of :func:`make_vm` was writing this loop out again --
-    ``tests/test_vm_protocol.py``, :meth:`~esolangs.debug.Debugger.run`,
-    and ``scripts/verify_no_exception_leaks.py`` -- with a different budget
-    each time and a different thing done on overrun: an ``AssertionError``,
-    a silent return, a ``False``.  Those differences are real and stay with
-    the callers.  What is shared is the verdict underneath them, and that
-    is all this returns; a caller maps ``False`` to its own policy.
+    ``tests/test_vm_protocol.py`` and :meth:`~esolangs.debug.Debugger.run`
+    among them -- with a different budget each time and a different thing
+    done on overrun: an ``AssertionError``, a silent return, a ``False``.
+    Those differences are real and stay with the callers.  What is shared is the
+    verdict underneath them, and that is all this returns; a caller maps
+    ``False`` to its own policy.
 
     ``limit`` is a bound in steps, and ``None`` means unbounded -- a run
     with no budget is the common case for a machine known to halt, and

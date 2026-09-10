@@ -106,13 +106,12 @@ def _expired_at(deadline: float) -> Callable[[], bool]:
 #:
 #: Factor's program *is* an integer and ``make_vm`` factors it with sympy
 #: before any step runs, so a mutation that turns a 60-digit factorable
-#: number into a 62-digit semiprime costs unbounded, uninterruptible C time
-#: -- ``scripts/verify_no_exception_leaks.py`` documents the same wedge and
-#: bounds it with a subprocess kill.  A fuzz test cannot pay that, and the
-#: fix that file suggests is this one: guard the digit length.  Twelve
-#: digits factor instantly and still exercise every path that a longer
-#: number would, since the interpreter's behaviour does not depend on the
-#: operand's size.
+#: number into a 62-digit semiprime costs unbounded, uninterruptible C time.
+#: Bounding that wedge at all needs a subprocess with a hard kill, which a
+#: fuzz test cannot pay; the cheap half of the remedy is this one, guarding
+#: the digit length instead.  Twelve digits factor instantly and still
+#: exercise every path that a longer number would, since the interpreter's
+#: behaviour does not depend on the operand's size.
 _MAX_OPERAND_DIGITS = 12
 
 
@@ -143,12 +142,11 @@ def _drives_cheaply(language: str, seed: str) -> bool:
     prefix.  It screens by measured cost rather than by a list of slow
     languages, because a list would go stale the moment a generator changed.
 
-    The screen cannot be made airtight, and the repo already knows why:
-    ``scripts/verify_no_exception_leaks.py`` records that a SIGALRM cannot
-    land inside sympy's uninterruptible C, so bounding Factor there needed
-    a subprocess with a hard kill -- far too heavy for a unit test.  The
-    cheap half of its own suggested remedy, "a digit-length guard on
-    Factor's mutants", is what :func:`_affordable_variant` applies below:
+    The screen cannot be made airtight, and the repo already knows why: a
+    SIGALRM cannot land inside sympy's uninterruptible C, so bounding
+    Factor that way needs a subprocess with a hard kill -- far too heavy
+    for a unit test.  The cheap half of the remedy, a digit-length guard on
+    Factor's mutants, is what :func:`_affordable_variant` applies below:
     keep the operand small enough that factoring it is never the cost.
     """
     if not _affordable_variant(seed):
