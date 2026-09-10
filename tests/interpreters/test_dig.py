@@ -13,7 +13,7 @@ import pytest
 
 from esolangs.interpreters.grid_based.dig import run
 from esolangs.interpreters.io import IO, ScriptedIO
-from tests.interpreters.contract import CycleContract
+from tests.interpreters.contract import CycleContract, InputCursorContract
 from tests.interpreters.runner import run_program
 from tests.raises import raises_message
 
@@ -270,17 +270,18 @@ class TestStepMachine:
         machine.step()  # 5 sets the mole and consumes one count
         assert (machine.mole, machine.num) == (5, 4)
 
-    def test_snapshot_includes_the_input_cursor(self) -> None:
+    def test_the_read_lands_in_the_mole(self) -> None:
+        """``=`` puts the line it read where the language says it goes.
+
+        That the read moves the cursor and the snapshot is the shared
+        contract below; what is Dig's own is *where* the byte ends up.
+        """
         from esolangs.interpreters.grid_based.dig import _Machine
 
         machine = _Machine([">$=:", " 2 "], ScriptedIO("A"))
-        for _ in range(2):  # move over, dig
+        for _ in range(3):  # move over, dig, read
             machine.step()
-        before = machine.snapshot()
-        machine.step()  # = reads the input line into the mole
-        assert machine.snapshot() != before
         assert machine.mole == ord("A")
-        assert machine.io.position() == 1
 
 
 def _machine(code: object) -> object:
@@ -290,9 +291,19 @@ def _machine(code: object) -> object:
     return _Machine(code, IO())
 
 
-class TestContract(CycleContract):
+def _reader(code: object, stdin: str) -> object:
+    from esolangs.interpreters.grid_based.dig import _Machine
+
+    return _Machine(code, ScriptedIO(stdin))
+
+
+class TestContract(CycleContract, InputCursorContract):
     """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     halting_program: ClassVar[list[str]] = [">@"]
     looping_program: ClassVar[list[str]] = [">'", "^<"]
+    reader = staticmethod(_reader)
+    reading_program: ClassVar[list[str]] = [">$=:", " 2 "]
+    reading_stdin = "A"
+    steps_before_read = 2  # move over, dig, and only then read

@@ -5,7 +5,11 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.unsquare import run
-from tests.interpreters.contract import CycleContract, StateViewContract
+from tests.interpreters.contract import (
+    CycleContract,
+    InputCursorContract,
+    StateViewContract,
+)
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -139,14 +143,16 @@ class TestUnsquare:
 
 
 class TestStepMachine:
-    def test_snapshot_includes_the_input_cursor(self) -> None:
+    def test_the_read_pushes_the_first_character(self) -> None:
+        """``i`` reads a line and pushes the byte the language says it does.
+
+        The cursor and snapshot moving is the shared contract below; what
+        lands on the stack is Unsquare's own.
+        """
         from esolangs.interpreters.stack_based.unsquare import _Machine
 
         machine = _Machine("i", ScriptedIO("hi"))
-        before = machine.snapshot()
-        machine.step()  # i reads a line, pushing its first character
-        assert machine.snapshot() != before
-        assert machine.io.position() == 1
+        machine.step()
         assert machine.stack == (ord("h"),)
 
     def test_step_after_halt_is_a_noop(self) -> None:
@@ -165,10 +171,20 @@ def _machine(code: object) -> object:
     return _Machine(code, ScriptedIO())
 
 
-class TestContract(CycleContract, StateViewContract):
+def _reader(code: object, stdin: str) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.stack_based.unsquare import _Machine
+
+    return _Machine(code, ScriptedIO(stdin))
+
+
+class TestContract(CycleContract, InputCursorContract, StateViewContract):
     """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
+    reader = staticmethod(_reader)
+    reading_program = "i"
+    reading_stdin = "hi"
     halting_program = "Io"
     looping_program = "IIAx><"
     # `I` pushes and `o` prints, so the cursor and the data stack both move
