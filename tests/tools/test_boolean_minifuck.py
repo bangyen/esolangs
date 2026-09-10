@@ -3103,8 +3103,23 @@ def test_the_rewind_law_matches_the_parsed_runs() -> None:
     assert skipping.key() == clone.key()
 
 
+def _rule_arities() -> list[int]:
+    """The rule's first arity and the top of the sweep.
+
+    Read off ``_MUX_RULE_ARITY`` rather than written down, so that moving
+    the constant moves this test with it.  A hard-coded boundary silently
+    stops testing the boundary the moment the line is redrawn -- which is
+    exactly what happened when the rule was pulled back from eight to nine.
+    """
+    import importlib
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+    first = module._MUX_RULE_ARITY  # noqa: SLF001
+    return sorted({first, 10}) if first <= 10 else [first]
+
+
 @pytest.mark.slow  # the rule build plus the retired sculpt, ~4s at ten
-@pytest.mark.parametrize("n", [8, 10])
+@pytest.mark.parametrize("n", _rule_arities())
 def test_the_rule_spelling_matches_the_real_sculpt(n: int) -> None:
     """From ``_MUX_RULE_ARITY`` the spelled build is the sculpt's bytes.
 
@@ -3113,9 +3128,9 @@ def test_the_rule_spelling_matches_the_real_sculpt(n: int) -> None:
     is run once here as the oracle.  Byte equality is the whole claim --
     the replay acceptance inside ``_mux`` already checked the prints.
 
-    Eight is the boundary the rule now starts at, and it is cheap enough to
-    check next to ten: a spelling that drifted there would be caught only
-    by the fallback, which answers correctly and silently restores the
+    Both the rule's own first arity and the top of the sweep are checked: a
+    spelling that drifted at the boundary would otherwise be caught only by
+    the fallback, which answers correctly and silently restores the
     contest's cost.
     """
     import importlib
