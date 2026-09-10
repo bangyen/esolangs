@@ -262,8 +262,10 @@ def forth(truth_table: str) -> str:
 
     Every rotation costs characters, so an order pays for the folds it wins
     or loses to the natural one; the search measures rather than assumes.
-    Measured over all 256 tables at n == 3 the saving is 13.8% (112
-    improved), with 13.2% and 14.3% over samples at n == 4 and n == 5.
+    Each order is scored in closed form (:func:`_forth_order_length`) and
+    only the winner is built.  Measured over all 256 tables at n == 3 the
+    saving is 13.8% (112 improved), with 13.2% and 14.3% over samples at
+    n == 4 and n == 5.
     """
     n = _validate_truth_table(truth_table)
     # ``;`` pops, so the tree tests the *last* input at the root: the order
@@ -271,23 +273,27 @@ def forth(truth_table: str) -> str:
     # It goes first and ties keep it, so a table no reorder helps emits
     # exactly what it emitted before.
     natural = tuple(reversed(range(n)))
-    best = _forth_ordered(permute_truth_table(truth_table, natural), natural)
-    # Iterate the *reachable* arrangements rather than all ``n!`` orders.
-    # ``_forth_ordered`` returns ``""`` for an order whose arrangement the
-    # ops cannot build, and the arrangements it accepts are exactly the keys
-    # of ``_forth_stack_programs`` -- checked equal at every arity through
-    # ``n == 6`` -- so this drops only the orders that lost on length 0
-    # anyway.  There are ``2 * 3**(n - 2)`` of them against ``n!``: the same
-    # program for 28x fewer builds at ``n == 8``, 10x at ``n == 7``, and a
-    # wash below that.  An arrangement is the input order reversed.
-    for arrangement in _forth_stack_programs(n):
+    # Score the *reachable* arrangements rather than all ``n!`` orders --
+    # the keys of ``_forth_stack_programs``, ``2 * 3**(n - 2)`` of them,
+    # checked equal through ``n == 6`` to the orders ``_forth_ordered``
+    # accepts -- and build only the winner.  The contest that used to build
+    # 13,122 full programs at n == 10 (61-68s) now builds one (0.2s),
+    # byte-identical at every n <= 10, both benchmark shapes.  An
+    # arrangement is the input order reversed.
+    bits = int(truth_table[::-1], 2)  # bit ``r`` mirrors ``truth_table[r]``
+    programs = _forth_stack_programs(n)
+    best_perm = natural
+    best_len = _forth_order_length(
+        _forth_permuted_bits(bits, natural, n), n, len(programs[tuple(range(n))])
+    )
+    for arrangement, reads in programs.items():
         perm = tuple(reversed(arrangement))
         if perm == natural:
             continue
-        candidate = _forth_ordered(permute_truth_table(truth_table, perm), perm)
-        if candidate and (not best or len(candidate) < len(best)):
-            best = candidate
-    return best
+        length = _forth_order_length(_forth_permuted_bits(bits, perm, n), n, len(reads))
+        if length < best_len:
+            best_perm, best_len = perm, length
+    return _forth_ordered(permute_truth_table(truth_table, best_perm), best_perm)
 
 
 # The read that pushes one normalized input bit.
@@ -332,6 +338,144 @@ def _forth_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     to be read.
     """
     return stack_programs(n, _FORTH_SINKS, _FORTH_READ)
+
+
+#: Per internal depth, root children first: (subtree rows, stride mask over
+#: the packed table, the saving shared by the whole level or ``None``, the
+#: per-node savings).  A level's savings share one value whenever no heap
+#: index in it or below it crosses a base-15 digit boundary.
+_ForthLevels = tuple[tuple[int, int, int | None, tuple[int, ...]], ...]
+
+
+def _forth_const_len(value: int) -> int:
+    """``len(_forth_const(value))`` in closed form: 4 per digit, minus 3."""
+    if value == 0:
+        return 1
+    digits = 0
+    while value:
+        digits += 1
+        value //= 15
+    return 4 * digits - 3
+
+
+@cache
+def _forth_metrics(n: int) -> tuple[int, int, _ForthLevels, tuple[int, ...]]:
+    """Constants :func:`_forth_order_length` needs at arity ``n``.
+
+    Returns ``(all_mask, full, levels, axis)``: the packed table's full
+    mask, the no-fold program length short of the reads and root dispatch,
+    the per-depth fold accounting (:data:`_ForthLevels`), and per row-index
+    bit the mask of rows with that bit set (for the delta swaps).
+    """
+    size = 2**n
+    last_internal = size - 2
+    top = 2 ** (n + 1) - 1  # heap indices run 1 .. top - 1
+    length = [_forth_const_len(m) for m in range(2 * top)]
+    # No-fold cost of the subtree at heap index ``m``: a leaf emits
+    # ``m { const }`` (the body is 5 characters for 48 and 49 alike, so no
+    # cost depends on the table), an internal node ``m { 2m+1 +; }`` plus
+    # both children.
+    subtree = [0] * top
+    for m in range(top - 1, 0, -1):
+        if m > last_internal:
+            subtree[m] = length[m] + 7
+        else:
+            subtree[m] = (
+                length[m]
+                + length[2 * m + 1]
+                + 4
+                + subtree[2 * m + 1]
+                + subtree[2 * m + 2]
+            )
+    levels = []
+    for d in range(1, n):
+        rows = 2 ** (n - d)
+        stride = sum(1 << (j * rows) for j in range(2**d))
+        base = 2**d - 1
+        # Folding node ``m`` trades its whole subtree for one answer node.
+        saves = tuple(subtree[base + j] - (length[base + j] + 7) for j in range(2**d))
+        scalar = saves[0] if all(v == saves[0] for v in saves) else None
+        levels.append((rows, stride, scalar, saves))
+    axis = tuple(sum(1 << r for r in range(size) if (r >> p) & 1) for p in range(n))
+    return (1 << size) - 1, subtree[1] + subtree[2], tuple(levels), axis
+
+
+def _forth_permuted_bits(bits: int, perm: tuple[int, ...], n: int) -> int:
+    """:func:`permute_truth_table` on a table packed as bit ``r`` = row ``r``.
+
+    Slot ``s`` of the permuted table varies with input ``perm[s]``, which on
+    row-index bits moves axis ``p`` to ``n - 1 - perm[n - 1 - p]``; each
+    transposition of that permutation's cycles is one delta swap on the
+    packed table.  O(n) big-int ops per order against ``read_at``'s
+    ``O(n * 2**n)`` Python loop, a fifth of the old runtime.
+    """
+    axis = _forth_metrics(n)[3]
+    dest = [n - 1 - perm[n - 1 - p] for p in range(n)]
+    seen = [False] * n
+    for start in range(n):
+        if seen[start] or dest[start] == start:
+            seen[start] = True
+            continue
+        cycle = []
+        p = start
+        while not seen[p]:
+            seen[p] = True
+            cycle.append(p)
+            p = dest[p]
+        for i in range(len(cycle) - 1):
+            a, b = cycle[i], cycle[i + 1]
+            if a > b:
+                a, b = b, a
+            delta = (1 << b) - (1 << a)
+            low = axis[a] & ~axis[b]
+            moved = ((bits >> delta) ^ bits) & low
+            bits ^= moved ^ (moved << delta)
+    return bits
+
+
+def _forth_order_length(bits: int, n: int, reads_len: int) -> int:
+    """Length of ``_forth_ordered`` on the packed permuted table, unbuilt.
+
+    The no-fold total plus the reads and root dispatch, minus what each
+    *maximal* constant subtree saves.  Constancy is monotone -- a constant
+    node's children are constant -- so maximal is exactly "constant with a
+    non-constant parent", and the depth-1 nodes have no parent to check.
+    Checked equal to ``len(_forth_ordered(...))`` for every arrangement
+    over all 256 tables at n == 3 and structured/random tables through
+    n == 6.
+    """
+    all_mask, full, levels, _ = _forth_metrics(n)
+    # All-ones/all-zeros run ladders, doubling the run once per level; a
+    # subtree is constant when either survives.  An empty level ends the
+    # climb: a constant run of ``2 * rows`` needs constant runs of ``rows``.
+    const_at: dict[int, int] = {}
+    ones = bits
+    zeros = bits ^ all_mask
+    for rows, stride, _, _ in reversed(levels):
+        half = rows >> 1
+        ones &= ones >> half
+        zeros &= zeros >> half
+        const = (ones | zeros) & stride
+        const_at[rows] = const
+        if not const:
+            break
+    save = 0
+    for depth, (rows, _stride, scalar, saves) in enumerate(levels, start=1):
+        const = const_at.get(rows, 0)
+        if const and depth > 1:
+            parent = const_at.get(2 * rows, 0)
+            const &= ~(parent | (parent << rows))
+        if not const:
+            continue
+        if scalar is not None:
+            save += scalar * const.bit_count()
+            continue
+        shift = n - depth
+        while const:
+            low = const & -const
+            save += saves[(low.bit_length() - 1) >> shift]
+            const ^= low
+    return full + reads_len + 4 - save
 
 
 def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
