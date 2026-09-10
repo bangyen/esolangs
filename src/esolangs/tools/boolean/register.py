@@ -5,11 +5,10 @@ from typing import Any
 from esolangs.tools.boolean.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
-    _maybe_complement,
     _validate_truth_table,
     best_input_order,
     essential_inputs,
-    minterm_literals,
+    minterm_sum,
     read_at,
     stored_inputs,
 )
@@ -409,30 +408,31 @@ def collatz_multiverse(truth_table: str) -> str:
     # (the reads are the interface); an ignored one is never turned into an
     # indicator.  This is the constant branch above generalized from "no
     # essential inputs" to "the ones that matter".
-    used = essential_inputs(truth_table, n) or [0]
-    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
-    width = len(used)
-    table, invert = _maybe_complement(reduced)
-    for k in range(2**width):
-        if table[k] == "0":
-            continue
-        indicators = []
-        for slot, negated in minterm_literals(k, width):
-            i = used[slot]
-            if negated:
-                indicators.append(flip(f"b{i}"))
-            else:
-                reg = fresh()
-                lines.append(f"{reg} = negativeOne x + b{i}, NOT PRINT.")
-                indicators.append(reg)
-        minterm = indicators[0]
-        for indicator in indicators[1:]:
-            minterm = and_bits(minterm, indicator)
-        complement = flip(minterm)
+
+    # ``literal`` allocates a register and emits for a non-negated input, so
+    # it is called in the same order the hand-written loop called it: every
+    # literal of a row, then its product, then the accumulate.
+    def literal(i: int, negated: bool) -> str:  # noqa: FBT001 - a literal's sign, from minterm_literals
+        if negated:
+            return flip(f"b{i}")
+        reg = fresh()
+        lines.append(f"{reg} = negativeOne x + b{i}, NOT PRINT.")
+        return reg
+
+    def product(factors: list[str]) -> str:
+        minterm = factors[0]
+        for factor in factors[1:]:
+            minterm = and_bits(minterm, factor)
+        return flip(minterm)
+
+    def accumulate(row: str) -> None:
+        nonlocal acc
         nacc = fresh()
         lines.append(f"{nacc} = negativeOne x + {acc}, NOT PRINT.")
-        lines.append(f"{nacc} = {complement} x + zero, NOT PRINT.")
+        lines.append(f"{nacc} = {row} x + zero, NOT PRINT.")
         acc = nacc
+
+    _used, _width, invert = minterm_sum(truth_table, literal, product, accumulate)
 
     # ``acc`` holds prod(1 - minterm), so the answer is its flip -- unless
     # the minterms were the table's zeros, when ``acc`` is already it.
@@ -655,10 +655,6 @@ def qoibl(truth_table: str) -> str:
     # program and the minterm body the other 71%, so most of the arity cost
     # here is reachable -- unlike ``suffolk``, whose per-input setup is 96%
     # of the program.
-    used = essential_inputs(truth_table, n) or [0]
-    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
-    width = len(used)
-    table, use_complement = _maybe_complement(reduced)
     lines = []
     for i in range(n):
         lines.append(f"we {_qoibl_enc(i)} we et ry ey ry {_qoibl_enc(_ASCII_ZERO)} we")
@@ -668,22 +664,26 @@ def qoibl(truth_table: str) -> str:
             f"ry ey ry qe {_qoibl_enc(i)} qe we",
         )
     lines.append(f"we {_qoibl_enc(2 * n)} we {_qoibl_enc(0)} we")
-    for k in range(2**width):
-        if table[k] == "0":
-            continue
-        factors = []
-        for slot, negated in minterm_literals(k, width):
-            i = used[slot]
-            var = n + i if negated else i
-            factors.append(f"qe {_qoibl_enc(var)} qe")
-        product = factors[0]
+
+    def literal(i: int, negated: bool) -> str:  # noqa: FBT001 - a literal's sign, from minterm_literals
+        return f"qe {_qoibl_enc(n + i if negated else i)} qe"
+
+    def product(factors: list[str]) -> str:
+        out = factors[0]
         for factor in factors[1:]:
-            product = f"{product} ry ye ry {factor}"
-        lines.append(f"we {_qoibl_enc(2 * n + 1)} we {product} we")
+            out = f"{out} ry ye ry {factor}"
+        return out
+
+    def accumulate(row: str) -> None:
+        lines.append(f"we {_qoibl_enc(2 * n + 1)} we {row} we")
         lines.append(
             f"we {_qoibl_enc(2 * n)} we qe {_qoibl_enc(2 * n)} "
             f"qe ry ee ry qe {_qoibl_enc(2 * n + 1)} qe we",
         )
+
+    _used, _width, use_complement = minterm_sum(
+        truth_table, literal, product, accumulate
+    )
     if use_complement:
         lines.append(
             f"tt {_qoibl_enc(_ASCII_ONE)} ry ey ry qe {_qoibl_enc(2 * n)} qe tt"
@@ -1248,6 +1248,7 @@ def point_break(truth_table: str) -> str:
     for i in range(n):
         lines.append(f"LET {_pb_name(1 + n + i)}:={_pb_name(0)}-{_pb_name(1 + i)}")
     lines.append(f"LET {_pb_name(1 + 2 * n)}:=0")
+
     # Each selected row costs a ``LET`` per factor plus one to add it in, so
     # a table with more ones than zeros is cheaper summed over its *zero*
     # rows.  Inverting is free: the tail already needs ``1 - f`` for the
@@ -1259,23 +1260,19 @@ def point_break(truth_table: str) -> str:
     # ignored input is never named as a factor.  This is that branch
     # generalized from "no essential inputs" to "the ones that matter", and
     # the docstring's rule -- only the body may shrink -- makes it safe.
-    used = essential_inputs(truth_table, n) or [0]
-    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
-    width = len(used)
-    table, invert = _maybe_complement(reduced)
-    for k in range(2**width):
-        if table[k] == "0":
-            continue
-        factors = [
-            _pb_name(1 + n + used[slot]) if negated else _pb_name(1 + used[slot])
-            for slot, negated in minterm_literals(k, width)
-        ]
+    def literal(i: int, negated: bool) -> str:  # noqa: FBT001 - a literal's sign, from minterm_literals
+        return _pb_name(1 + n + i) if negated else _pb_name(1 + i)
+
+    def product(factors: list[str]) -> str:
         lines.append(f"LET {_pb_name(2 + 2 * n)}:={factors[0]}")
         for factor in factors[1:]:
             lines.append(f"LET {_pb_name(2 + 2 * n)}:={_pb_name(2 + 2 * n)}*{factor}")
-        lines.append(
-            f"LET {_pb_name(1 + 2 * n)}:={_pb_name(1 + 2 * n)}+{_pb_name(2 + 2 * n)}"
-        )
+        return _pb_name(2 + 2 * n)
+
+    def accumulate(row: str) -> None:
+        lines.append(f"LET {_pb_name(1 + 2 * n)}:={_pb_name(1 + 2 * n)}+{row}")
+
+    _used, _width, invert = minterm_sum(truth_table, literal, product, accumulate)
     # ``g`` is the loop guard, which breaks on a nonzero -- so it is the
     # complement of the answer, and a complemented sum already holds it.
     if invert:

@@ -273,6 +273,58 @@ def stored_inputs(truth_table: str, perm: tuple[int, ...]) -> set[int]:
     return {perm[k] for k in branching}
 
 
+def minterm_sum[Factor](
+    truth_table: str,
+    literal: Callable[[int, bool], Factor],
+    product: Callable[[list[Factor]], Factor],
+    accumulate: Callable[[Factor], None],
+) -> tuple[list[int], int, bool]:
+    """Fold each 1-row's literal product into a running sum.
+
+    Returns ``(used, width, inverted)``: the essential inputs, their count,
+    and whether the table was complemented -- everything the caller needs to
+    finish, since the seed and the final flip are per-language.
+
+    The walk is the part every sum-of-minterms generator repeats: reduce to
+    the essential inputs, complement when that makes fewer rows, skip the
+    ``0`` rows, and for each survivor turn its literals into factors, fold
+    them into a product, and add that to the sum.  ``literal(input,
+    negated)`` names one factor *by original input index*, so a caller never
+    sees the reduced frame's slots.
+
+    Contrast :func:`minterm_literals`, which shares only one row's
+    selection; this shares the enumeration around it.
+
+    ``literal`` may emit as a side effect -- Collatz Multiverse allocates a
+    register and writes a line for each non-negated input -- because the
+    callbacks are invoked in exactly the order the hand-written loops used:
+    every literal of a row, then its product, then the accumulate.  A
+    callback that numbers something would drift otherwise.
+
+    **What this deliberately cannot do.**  ROTfuck enumerates *all* rows
+    rather than the 1-rows, in three separate passes over the table
+    (complements, then mismatch counts, then accumulation), so its rows are
+    not visited once each; Grapheme builds both sides and keeps the shorter,
+    which is a choice above this loop rather than inside it; and Circuit
+    Diagram routes a bus pair per literal onto a plane instead of naming a
+    factor.  All three keep their own arithmetic.
+    """
+    n = _validate_truth_table(truth_table)
+    used = essential_inputs(truth_table, n) or [0]
+    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
+    width = len(used)
+    table, inverted = _maybe_complement(reduced)
+    for row in range(2**width):
+        if table[row] == "0":
+            continue
+        factors = [
+            literal(used[slot], negated)
+            for slot, negated in minterm_literals(row, width)
+        ]
+        accumulate(product(factors))
+    return used, width, inverted
+
+
 def best_input_order(
     truth_table: str,
     build: Callable[[str, tuple[int, ...]], str],
