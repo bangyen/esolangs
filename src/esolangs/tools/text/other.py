@@ -769,21 +769,27 @@ def unsquare(text: str) -> str:
             raise AssertionError(f"no run to {v} from its own parity")
         return ("I" if v % 2 else "O") + "A" + run
 
-    res: list[str] = []
-    acc: int | None = None
-    for char in text:
-        value = ord(char)
-        best = seed(value)
-        if acc is not None:
-            chain = build(acc, value)
-            if chain is not None:
-                # The seed goes first: it is the construction that always
-                # exists, so a tie keeps it and the chain has to be strictly
-                # shorter to displace it.
-                best = shortest(best, chain)
-        res.append(best + "Po")
-        acc = value
-    return "".join(res)
+    def step(cur: int, target: int) -> str:
+        best = seed(target)
+        chain = build(cur, target)
+        if chain is not None:
+            # The seed goes first: it is the construction that always
+            # exists, so a tie keeps it and the chain has to be strictly
+            # shorter to displace it.
+            best = shortest(best, chain)
+        return best
+
+    if not text:
+        return ""
+    # The first character has no accumulator to chain from, so it is seeded
+    # and hoisted out rather than threading a nullable one through the walk.
+    return delta_program(
+        text[1:],
+        step,
+        "Po",
+        start=ord(text[0]),
+        prologue=seed(ord(text[0])) + "Po",
+    )
 
 
 def home_row(text: str) -> str:
