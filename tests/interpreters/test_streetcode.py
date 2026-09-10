@@ -1152,7 +1152,8 @@ class TestStreetcodeStreetWidth:
     def test_uncapped_divider_end_is_accepted(self) -> None:
         """Whether a divider must end in a '+' is a spec question the wiki
         does not settle, and the forms deliberately leave it open: the
-        hello-world example draws bare ends and runs correctly."""
+        ring program in tests/fixtures/streetcode_hello.txt draws bare ends
+        and runs correctly."""
         _Machine(
             [
                 "+------+",

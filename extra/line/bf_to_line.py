@@ -1,9 +1,8 @@
 """Compile a brainfuck program into a Line ``Node`` graph.
 
-This is the bridge that lets this repo's existing brainfuck text/boolean
-generators (``esolangs.tools.text.tape.brainfuck``,
-``esolangs.tools.boolean.tape.brainfuck``) target Line: build a brainfuck
-program with either generator, compile it here into a :class:`render.Node`
+This is the bridge that lets this repo's existing brainfuck generator
+(``esolangs.tools.boolean.tape.brainfuck``) target Line: build a brainfuck
+program with it, compile it here into a :class:`render.Node`
 graph, hand that to :func:`render.render` for a real Line drawing, and the
 result round-trips through :func:`extract.extract`/:func:`simulate.run` back
 to the same tape brainfuck would produce.

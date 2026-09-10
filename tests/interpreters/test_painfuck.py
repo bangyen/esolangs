@@ -451,8 +451,9 @@ class TestRepeatCollapsing:
         The cursor has to clear the whole run: leaving it inside made each
         later ``t`` a step of its own that walked back over the ones before
         it, so ``ptt`` ran its ``p`` three *then* nine times -- the
-        geometric sum 1+3+9 rather than 1+9.  The text generator solved for
-        that sum, and so only produced correct programs against it.
+        geometric sum 1+3+9 rather than 1+9.  The generator of the day
+        solved for that sum, and so only produced correct programs against
+        it.
         """
         from esolangs.interpreters.tape_based.painfuck import _advance
 
