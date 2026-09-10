@@ -660,41 +660,34 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
         )
 
 
-# Every boolean generator builds a table at n <= _MAX_ARITY.  Eight inputs
-# rather than five, and eight rather than ten, both for cost -- the
-# *capability* line is ten, not eight.  The whole registry was swept at
-# n=1..10 on both shapes: exactly one generator falls short there (WII2D,
-# dense only, on a cost guard), and every other one of the 69 builds both
-# shapes at n=10.  Nothing below ten is a wall.  Eight is where the sweep
-# stops paying for itself, not where the generators stop.
+# Every boolean generator builds a table at n <= _MAX_ARITY.  Ten inputs:
+# the whole registry was swept at n=1..10 on both shapes, and exactly one
+# generator falls short -- WII2D, dense only, recorded below.  Every other
+# one of the 69 builds both shapes at n=10.
 #
-# The measured cost per arity, summed across the registry, is why:
+# Ten is here because it was made affordable, not because the cost was
+# waved through.  This sweep stopped at five for a long time, then briefly
+# at eight: n<=10 cost 141s of CPU, and n=9 alone was 53s of it.  Five
+# generators were then measured and rewritten:
 #
-#     n=7      1.3s
-#     n=8      7.3s
-#     n=9     52.5s
-#     n=10    64.4s
+#     minifuck        42.8s -> 8.5s     interprogck8    14.7s -> 3.5s
+#     polynomial      28.4s -> 5.5s     wii2d            7.2s -> 1.3s
+#     one_two_three   17.8s -> 1.9s
 #
-# So n<=8 is ~19s, n<=9 ~72s, n<=10 ~153s.  (About 10s of any of those is
-# one-time warmup paid at every ceiling: generators show 0.1s at n=6 and
-# 0.00s at n=7 on a bigger table.)
+# The whole n=1..10 sweep is now 51.5s of CPU -- per arity, n=8 5.9s, n=9
+# 7.5s, n=10 23.9s.  (About 10s of any total is one-time warmup, paid at
+# every ceiling: generators show 0.1s at n=6 and 0.00s at n=7 on a bigger
+# table.)  Only one of those rewrites changed a program -- minifuck's dense
+# n=9, by +6.4% -- so 1370 of the registry's 1380 programs are byte-
+# identical across the whole thing, the other nine differences being factor
+# arities that used to refuse.
 #
-# Those figures were measured before minifuck's named accumulator moved
-# down to eight inputs.  It was 43s of the ten-input total and spent 34s of
-# it at n=9 alone -- the spike that made nine the worst ceiling available
-# and the choice here eight or ten -- and is now 5.2s across n=1..10, with
-# n=9 at 0.65s.  Subtract that from the rows above before reading them; the
-# curve no longer peaks at nine, and the ceiling is the parent sweep's call
-# rather than this generator's.
-#
-# Ten additionally peaks at 637MB RSS on Circuit Diagram's n=10 dense
-# table, 306MB of program text.
-#
-# The sweep runs in two bands regardless: n <= _QUICK_ARITY in the default
-# gate, the rest marked slow.  Both bands assert the same thing; splitting
-# them keeps the fast gate at the 69 items and ~3s it had when this swept
-# to five.
-_MAX_ARITY = 8
+# Ten still peaks at 637MB RSS on Circuit Diagram's n=10 dense table, 306MB
+# of program text.  That memory, not the time, is what keeps the band split:
+# n <= _QUICK_ARITY runs in the default gate and the rest is marked slow.
+# Both bands assert the same thing; splitting them keeps the fast gate at
+# the 69 items and ~3s it had when this swept to five.
+_MAX_ARITY = 10
 _QUICK_ARITY = 5
 
 _ARITY_BANDS = (
@@ -707,14 +700,20 @@ _ARITY_BANDS = (
 )
 
 # The generators that do not reach _MAX_ARITY, keyed by ``(name, shape)``
-# because a cap can bind on one table shape and not the other.
+# because a cap can bind on one table shape and not the other.  WII2D is
+# exactly that: a per-name cap of 9 would demand its parity n=10 refuse,
+# which it does not -- that shape builds in 350 characters.
 #
-# The dict is empty: nothing in the registry refuses at n <= 8.  It is kept
-# rather than deleted because it is where a *newly* capped generator gets
-# recorded, and an empty one states that none is.
+#   wii2d refuses n=10 dense because the decode spans 512 index points past
+#   the ``_WII2D_MAX_INDEX_DOMAIN = 256`` cost guard.  Unlike the two caps
+#   below, raising the constant does *not* buy the table: at domain 512 the
+#   decode ratchets -- live count crawls 512 -> 475 over 19 steps while the
+#   bit length doubles every step, reaching 1.09M bits, the 19th step alone
+#   144s -- and refuses on the magnitude bound instead.  It is a wall of the
+#   exactly-once embed convention; ``docs/walls.md`` carries the curve.
 #
-# Three generators that used to be here are gone, and every one of the
-# three refusals was the *construction's* limit rather than the language's:
+# Two generators that used to be here are gone, and both of those refusals
+# were the *construction's* limit rather than the language's:
 #
 #   interprogck8 capped at n=3 because one ``DownAccLines`` reaches 255
 #   lines and the n=4 bit-0 crossing spans 452.  Long hops now ride an
@@ -722,20 +721,15 @@ _ARITY_BANDS = (
 #
 #   factor capped at n=3 on CPython's 4300-digit ``int``-render guard, then
 #   at n=6 on the 16000-digit budget that replaced it.  Both are size
-#   policies rather than anything Factor says, and the budget is sized to
-#   the arity this suite asks for, so it moved when the suite did.
-#
-#   wii2d refuses n=10 dense -- the decode spans 512 index points past the
-#   ``_WII2D_MAX_INDEX_DOMAIN = 256`` cost guard -- while its parity n=10
-#   compresses to 350 characters and sails through.  That is the one real
-#   wall in the registry and the reason this dict stays keyed by shape, but
-#   it sits above _MAX_ARITY and so is not pinned here today.
+#   policies rather than anything Factor says.
 #
 # An entry needs the measurement that put it there and the phrase its own
 # refusal is built around -- asserting only that something refused would
 # accept a generator that had started failing for an unrelated reason,
 # since an encoding bug reads exactly like a cap from the outside.
-_ARITY_CAPPED: dict[tuple[str, str], tuple[int, str]] = {}
+_ARITY_CAPPED: dict[tuple[str, str], tuple[int, str]] = {
+    ("wii2d", "dense"): (9, "cost guard; below the bound this is a size/time"),
+}
 
 
 # The two table shapes every generator is built against.  A dense
@@ -767,7 +761,7 @@ _SHAPES = (("dense", _dense), ("parity", _parity))
 
 @pytest.mark.parametrize("arities", _ARITY_BANDS)
 @pytest.mark.parametrize("name", sorted(BY_BOOLEAN))
-def test_every_generator_builds_up_to_eight_inputs(name: str, arities: range) -> None:
+def test_every_generator_builds_up_to_ten_inputs(name: str, arities: range) -> None:
     """Every boolean generator builds every arity up to :data:`_MAX_ARITY`.
 
     The sweep that pins the registry's *coverage*: a generator that
