@@ -241,15 +241,15 @@ class TestForth:
         rather than ``3**n``: the enumeration walks every combination and
         drops the ones that would sink a bit past the bottom of the stack.
         """
-        from esolangs.tools.boolean.stack import _forth_sink_top, _forth_stack_programs
+        from esolangs.tools.boolean.stack import _forth_stack_programs, _sink_top
 
         assert len(_forth_stack_programs(1)) == 1  # nothing to rearrange
         assert len(_forth_stack_programs(2)) == 2  # the second bit may swap
 
         # The sink itself keeps everything but the moved bit in order.
-        assert _forth_sink_top((0, 1, 2), 0) == (0, 1, 2)
-        assert _forth_sink_top((0, 1, 2), 1) == (0, 2, 1)
-        assert _forth_sink_top((0, 1, 2), 2) == (2, 0, 1)
+        assert _sink_top((0, 1, 2), 0) == (0, 1, 2)
+        assert _sink_top((0, 1, 2), 1) == (0, 2, 1)
+        assert _sink_top((0, 1, 2), 2) == (2, 0, 1)
 
     def test_an_unreachable_order_returns_empty_rather_than_building(self) -> None:
         """An order the ops cannot stack is declined, not approximated.
