@@ -475,11 +475,18 @@ def brainfuck(truth_table: str) -> str:
 
 
 #: Digits :func:`factor` renders without being asked twice.  Sized from the
-#: measured worst case at the arity the boolean suite requires: n=5 parity
-#: encodes to 12565 digits (n=5 dense to 8117, n=4 parity to 6390), so this
-#: clears the bar with room and still names a ceiling rather than removing
-#: one.  Past it the caller passes ``max_digits`` and says how big is fine.
-_DEFAULT_MAX_DIGITS = 16_000
+#: measured worst case at the arity the boolean suite requires, which is now
+#: ten inputs: n=10 parity encodes to 454832 digits (n=10 dense to 328772,
+#: n=5 parity to 12565), so this clears the bar with room and still names a
+#: ceiling rather than removing one.  Past it the caller passes
+#: ``max_digits`` and says how big is fine.
+#:
+#: The old 16000 was sized the same way against a five-input suite, and it
+#: was the *only* thing stopping this generator at n=6 -- raising it costs
+#: 2.8s and 78MB at the new worst case, and an n=6 program built past the
+#: old ceiling executes correctly on all 64 rows.  A digit budget is a
+#: size policy, so it moves when the size the suite asks for moves.
+_DEFAULT_MAX_DIGITS = 500_000
 
 
 def factor(truth_table: str, *, max_digits: int = _DEFAULT_MAX_DIGITS) -> str:
