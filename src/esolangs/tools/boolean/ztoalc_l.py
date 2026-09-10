@@ -12,7 +12,7 @@ from functools import cache
 from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 from esolangs.tools.ztoalc_starts import ANCHORS
 
-__all__ = ["ztoalc_l_boolean"]
+__all__ = ["ztoalc_l"]
 
 # Commands are placed only on trajectory values at or below this, so it is
 # the emitted line count's ceiling (the same 2**22 the old tree generator
@@ -122,7 +122,7 @@ def _slots(length: int) -> tuple[int, list[int]]:
     )
 
 
-def ztoalc_l_boolean(truth_table: str) -> str:
+def ztoalc_l(truth_table: str) -> str:
     """Build a ZTOALC L program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the

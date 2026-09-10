@@ -564,7 +564,7 @@ def _register() -> None:
             "committed input is the row index rather than a bit per line",
         ),
         "flowchart": _reader(b.flowchart, "grid_based.flowchart", split=True),
-        "forbin": _reader(b.forbin_boolean, "other.forbin"),
+        "forbin": _reader(b.forbin, "other.forbin"),
         "forþ": _reader(b.forth, "stack_based.forth"),
         "function-x(y)": _reader(b.function_x_y, "other.function_x_y"),
         "grapheme": _reader(b.grapheme, "stack_based.grapheme"),
@@ -606,7 +606,7 @@ def _register() -> None:
         "rotfuck": _reader(b.rotfuck, "tape_based.rotfuck"),
         "s*bleq": _reader(b.sbleq, "tape_based.sbleq"),
         "slow-acv-mammalian": _reader(
-            b.slow_acv_mammalian_boolean, "tape_based.slow_acv_mammalian"
+            b.slow_acv_mammalian, "tape_based.slow_acv_mammalian"
         ),
         "sophie": _reader(b.sophie, "register_based.sophie"),
         "streetcode": _reader(b.streetcode, "grid_based.streetcode", split=True),
@@ -615,7 +615,7 @@ def _register() -> None:
         "suptiftam": _reader(b.suptiftam, "other.suptiftam"),
         "taglate": _reader(b.taglate, "queue_based.taglate", split=True),
         "unsquare": _reader(b.unsquare, "stack_based.unsquare"),
-        "ztoalc-l": _reader(b.ztoalc_l_boolean, "other.ztoalc_l", split=True),
+        "ztoalc-l": _reader(b.ztoalc_l, "other.ztoalc_l", split=True),
         "3d-brainfuck": _reader(b.three_d_brainfuck, "tape_based.three_d_brainfuck"),
         "3x": _reader(b.three_x, "stack_based.three_x"),
         "6-5": _reader(b.six_five, "tape_based.six_five"),

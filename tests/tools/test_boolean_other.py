@@ -252,7 +252,7 @@ class TestForbinBoolean:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.forbin_boolean(table)
+        program = boolean.forbin(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_forbin_boolean(program, [str(b) for b in bits])
@@ -260,15 +260,15 @@ class TestForbinBoolean:
 
     def test_uses_the_lsb_of_each_input(self) -> None:
         """Each input is read as 8 bits and only the LSB drives the tree."""
-        program = boolean.forbin_boolean("01")
+        program = boolean.forbin("01")
         # one 8-variable read, then a decision tree that prints '1' for bit 1
         assert "i0_0,i0_1,i0_2,i0_3,i0_4,i0_5,i0_6,i0_7 = (in 0);" in program
 
     def test_constant_subtrees_fold(self) -> None:
         """A constant slice returns its answer instead of branching further."""
-        assert boolean.forbin_boolean("11111111").count("return 0;") == 1
-        assert boolean.forbin_boolean("11110000").count("return 0;") == 2
-        assert boolean.forbin_boolean("10010110").count("return 0;") == 8
+        assert boolean.forbin("11111111").count("return 0;") == 1
+        assert boolean.forbin("11110000").count("return 0;") == 2
+        assert boolean.forbin("10010110").count("return 0;") == 8
 
 
 class TestCvnc:
@@ -904,7 +904,7 @@ class TestZtoalc:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.ztoalc_l_boolean(table)
+        program = boolean.ztoalc_l(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_ztoalc(program, [str(b) for b in bits])
@@ -915,14 +915,14 @@ class TestZtoalc:
         """Every table up to two inputs produces the right result."""
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
-            program = boolean.ztoalc_l_boolean(table)
+            program = boolean.ztoalc_l(table)
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 assert run_ztoalc(program, [str(b) for b in bits]) == table[combo]
 
     def test_structure(self) -> None:
         """The program is a branch-free array lookup on a Collatz trajectory."""
-        program = boolean.ztoalc_l_boolean("0110")
+        program = boolean.ztoalc_l("0110")
         lines = program.splitlines()
         assert lines[0].strip().isdigit()  # line 1 is the starting value
         assert any(line.strip().startswith("t = [") for line in lines)
@@ -944,7 +944,7 @@ class TestZtoalc:
         for table in ("0110", "1010001000011000", "0110100110010110"):
             n = len(table).bit_length() - 1
             cmds = _commands(table, n)
-            program = boolean.ztoalc_l_boolean(table)
+            program = boolean.ztoalc_l(table)
             start, slots = _slots(len(cmds))
             assert len(set(slots)) == len(slots), table
             assert 1 not in slots, table
@@ -986,7 +986,7 @@ class TestZtoalc:
         hundreds of lines.
         """
         table = "0110100110010110"
-        program = boolean.ztoalc_l_boolean(table)
+        program = boolean.ztoalc_l(table)
         assert len(program.splitlines()) < 1000
         for combo in range(16):
             bits = [str((combo >> (3 - i)) & 1) for i in range(4)]
@@ -1000,7 +1000,7 @@ class TestZtoalc:
         lookup construction has no placement problem to fail at.
         """
         table = "1010001000011000"
-        program = boolean.ztoalc_l_boolean(table)
+        program = boolean.ztoalc_l(table)
         for combo in range(16):
             bits = [str((combo >> (3 - i)) & 1) for i in range(4)]
             assert run_ztoalc(program, bits) == table[combo], f"inputs {bits}"
@@ -1009,7 +1009,7 @@ class TestZtoalc:
         """A constant table prints its constant, still draining its inputs."""
         for n, bit in ((2, "0"), (3, "1")):
             table = bit * (2**n)
-            program = boolean.ztoalc_l_boolean(table)
+            program = boolean.ztoalc_l(table)
             assert "t = [" not in program
             for combo in range(2**n):
                 bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
@@ -1019,7 +1019,7 @@ class TestZtoalc:
         """A single-entry table is a constant, not a function of any input."""
         for bit in ("0", "1"):
             with pytest.raises(ValueError, match="at least one input"):
-                boolean.ztoalc_l_boolean(bit)
+                boolean.ztoalc_l(bit)
 
     def test_table_past_the_anchor_capacity_is_refused(self) -> None:
         """A table needing more slots than any committed anchor is refused."""
@@ -1030,7 +1030,7 @@ class TestZtoalc:
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "ANCHORS", [(1, 2), (8, 6)])
             with pytest.raises(ValueError, match="committed anchors offer"):
-                module.ztoalc_l_boolean("0110")
+                module.ztoalc_l("0110")
 
     def test_a_lower_line_ceiling_shrinks_the_capacity(self) -> None:
         """Tightening ``_MAX_LINES`` removes slots, not just lines.
@@ -1047,7 +1047,7 @@ class TestZtoalc:
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_MAX_LINES", 8)
             with pytest.raises(ValueError, match="at or below 8"):
-                module.ztoalc_l_boolean("0110")
+                module.ztoalc_l("0110")
 
     def test_the_anchor_fits_a_length_landing_on_its_capacity(self) -> None:
         """A capacity bound is inclusive: ``capacity == length`` still fits.
@@ -1104,7 +1104,7 @@ class TestZtoalc:
         from esolangs.tools.boolean.ztoalc_l import _commands, _slots
 
         table = "0110"
-        program = boolean.ztoalc_l_boolean(table)
+        program = boolean.ztoalc_l(table)
         lines = program.splitlines()
         _, slots = _slots(len(_commands(table, 2)))
         occupied = {v - 1 for v in slots} | {0}
@@ -1122,7 +1122,7 @@ class TestZtoalc:
         truth-table sweeps.
         """
         for table, n in (("0110", 2), ("00010111", 3), ("1010001000011000", 4)):
-            program = boolean.ztoalc_l_boolean(table)
+            program = boolean.ztoalc_l(table)
             assert f"t = [{2 ** (n - 2)}]" in program, table
             assert "u = [16]" in program, table
 
@@ -1181,7 +1181,7 @@ class TestZtoalc:
         suite's budget.
         """
         table = "".join(str(bin(i).count("1") % 2) for i in range(1024))
-        program = boolean.ztoalc_l_boolean(table)
+        program = boolean.ztoalc_l(table)
         assert len(program.splitlines()) <= 2**22
         for combo in (0, 1, 5, 137, 512, 682, 1000, 1023):
             bits = [str((combo >> (9 - i)) & 1) for i in range(10)]
@@ -1190,12 +1190,12 @@ class TestZtoalc:
     def test_wrong_length_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
         with pytest.raises(ValueError, match="entries"):
-            boolean.ztoalc_l_boolean("011")
+            boolean.ztoalc_l("011")
 
     def test_invalid_chars_rejected(self) -> None:
         """A truth table with non-0/1 characters is malformed."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.ztoalc_l_boolean("02")
+            boolean.ztoalc_l("02")
 
 
 class TestClockwise:

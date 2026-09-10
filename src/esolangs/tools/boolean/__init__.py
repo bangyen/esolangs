@@ -29,7 +29,7 @@ from esolangs.tools.boolean.other import (
     container,
     dinac,
     flowchart,
-    forbin_boolean,
+    forbin,
     function_x_y,
     laserfuck,
     myscript,
@@ -38,7 +38,7 @@ from esolangs.tools.boolean.other import (
     suptiftam,
     taglate,
     three_x,
-    ztoalc_l_boolean,
+    ztoalc_l,
 )
 from esolangs.tools.boolean.packlang import packlang
 from esolangs.tools.boolean.parameterized import (
@@ -89,7 +89,7 @@ from esolangs.tools.boolean.tape import (
     rotfuck,
     sbleq,
     six_five,
-    slow_acv_mammalian_boolean,
+    slow_acv_mammalian,
     suffolk,
     three_d_brainfuck,
 )
@@ -129,7 +129,7 @@ __all__ = [
     "factor",
     "fargo",
     "flowchart",
-    "forbin_boolean",
+    "forbin",
     "forth",
     "function_x_y",
     "grapheme",
@@ -158,7 +158,7 @@ __all__ = [
     "rotfuck",
     "sbleq",
     "six_five",
-    "slow_acv_mammalian_boolean",
+    "slow_acv_mammalian",
     "sophie",
     "streetcode",
     "suffolk",
@@ -169,7 +169,7 @@ __all__ = [
     "three_x",
     "unsquare",
     "wii2d",
-    "ztoalc_l_boolean",
+    "ztoalc_l",
 ]
 
 

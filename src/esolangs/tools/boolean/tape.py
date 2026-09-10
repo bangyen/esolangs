@@ -24,7 +24,7 @@ from esolangs.tools.boolean.helpers import (
 )
 from esolangs.tools.boolean.rotfuck import rotfuck
 from esolangs.tools.boolean.six_five import six_five
-from esolangs.tools.boolean.slow_acv_mammalian import slow_acv_mammalian_boolean
+from esolangs.tools.boolean.slow_acv_mammalian import slow_acv_mammalian
 
 __all__ = [
     "basicfuck",
@@ -42,7 +42,7 @@ __all__ = [
     "rotfuck",
     "sbleq",
     "six_five",
-    "slow_acv_mammalian_boolean",
+    "slow_acv_mammalian",
     "suffolk",
     "three_d_brainfuck",
 ]

@@ -1,4 +1,4 @@
-"""Unit tests for the Alight interpreter and its two generators.
+"""Unit tests for the Alight interpreter and its generator.
 
 The three programs on the wiki are the ground truth here, and they are
 transcribed verbatim from the page's source: one leading space per line is
@@ -18,7 +18,7 @@ import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.grid_based.alight import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.boolean.alight import alight as alight_boolean
+from esolangs.tools.boolean.alight import alight
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,
@@ -465,7 +465,7 @@ class TestGenerators:
         """
         for value in range(2 ** (2**n)):
             table = bin(value)[2:].zfill(2**n)
-            program = alight_boolean(table)
+            program = alight(table)
             for combo in range(2**n):
                 bits = "".join(f"{(combo >> (n - 1 - i)) & 1}\n" for i in range(n))
                 assert _run(program.splitlines(), bits) == table[combo], (
@@ -480,7 +480,7 @@ class TestGenerators:
         rng = random.Random(n)
         for _ in range(3):
             table = "".join(rng.choice("01") for _ in range(2**n))
-            program = alight_boolean(table)
+            program = alight(table)
             for combo in range(2**n):
                 bits = "".join(f"{(combo >> (n - 1 - i)) & 1}\n" for i in range(n))
                 assert _run(program.splitlines(), bits) == table[combo], (
@@ -492,7 +492,7 @@ class TestGenerators:
         counts = set()
         for table in ("00000000", "01101001", "11111111"):
             io = ScriptedIO("0\n" * 8)
-            run(alight_boolean(table).splitlines(), io)
+            run(alight(table).splitlines(), io)
             counts.add(io.position())
         assert counts == {3}
 
@@ -504,12 +504,12 @@ class TestGenerators:
         test's ``_UNSHAPED`` set rather than making it a tree that fails to
         fold.
         """
-        lengths = {len(alight_boolean(bin(v)[2:].zfill(8))) for v in range(256)}
+        lengths = {len(alight(bin(v)[2:].zfill(8))) for v in range(256)}
         assert len(lengths) == 1
 
     def test_boolean_refuses_a_nullary_table(self) -> None:
         with pytest.raises(ValueError, match="at least one input"):
-            alight_boolean("0")
+            alight("0")
 
     def test_numeric_literals_print_characters_that_are_alight_syntax(self) -> None:
         """``out`` on a numeric literal sidesteps Alight's own quoting.
@@ -523,7 +523,7 @@ class TestGenerators:
 
     def test_registered_generator_runs_through_the_public_api(self) -> None:
         """The registry entry wires the generator and the interpreter."""
-        assert esolangs.run("Alight", alight_boolean("01"), "1\n") == "1"
+        assert esolangs.run("Alight", alight("01"), "1\n") == "1"
 
 
 class TestEmptyProgram(EmptyProgramContract):
