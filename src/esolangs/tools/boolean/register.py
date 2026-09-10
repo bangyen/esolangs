@@ -732,6 +732,13 @@ def qoibl(truth_table: str) -> str:
 # The count, not the arity, is still what this measures: a table that
 # collapses to few states is cheap at any width, and parity renders far
 # past n == 10 inside the bound.
+#
+# What the bound declines is measured, not assumed: past it, dense n=11
+# (2910 instructions) builds and runs all 2048 rows correctly in 267s --
+# 264.5s of that the single factorization, then 0.001s a row -- for a
+# 123609143-character program.  Against n=10 on the same machine (1638,
+# 56s), 1.78x the instructions costs 4.7x the time.  Left at 1934 on that
+# price.
 _POLYNOMIAL_MAX_INSTRS = 1934
 
 # How far above the cheapest candidate the dispatch still renders.  Selection

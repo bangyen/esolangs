@@ -29,6 +29,18 @@ also retired the old router's patience knob and its 2031s n=8 price. See
 the table below for the measured edge and the paragraph after it for the
 mechanism.
 
+The ten is now a cost call rather than an open question. `_REPAIRS` is a
+budget on meadow additions, and dense n=11 closes when given more: at 4096
+it builds in 20.9s spending 1445 additions, emits 1203786 characters over
+279181 lines, and **all 2048 rows execute correctly**. The shipped 256
+refuses it in 2.9s after 350 additions — re-measured, against the 30s this
+ledger used to carry, which predates the router's recent perf work. Dense
+n=10 spends 103, inside the 95-126 the entry already recorded. The budget
+is unchanged: 1445 additions and a 1.2MB program for one arity is what the
+cap is declining to spend, not something it cannot reach. Unlike WII2D's
+analogous "raise the 256 guard" question, which measured *false*, this one
+measured true.
+
 ## Text generator blockers
 
 | Language | Why it cannot emit arbitrary text |
@@ -59,10 +71,23 @@ generators cover one and refuse the other at the same arity):
 
 | Generator | dense | parity | what stops it |
 | --- | --- | --- | --- |
-| Interprogck8 | 10 | 10 | n=11 dense exhausts the `_REPAIRS = 256` meadow budget after 30s; whether more budget closes it is unmeasured |
-| Polynomial | 10 | 10 | caps at 1934 instructions, one per prime -- the analytic worst case over n=10 tables, so all of n=10 builds; dense n=11 needs 2910 |
+| Interprogck8 | 10 | 10 | held at 10 on cost, not capability: `_REPAIRS = 256` refuses dense n=11, and a raised budget builds it at 1445 additions -- see the paragraph below |
+| Polynomial | 10 | 10 | caps at 1934 instructions, one per prime -- the analytic worst case over n=10 tables, so all of n=10 builds; dense n=11 needs 2910, now priced at 267s a table and a 124MB program -- see the paragraph below |
 | WII2D | 9 | 10 | dense n=10 needs a 512-point decode, past the fold algebra's measured cliff (live count 512 -> 373 while bit length passes 670000, every candidate enumerated) -- a wall of the exactly-once embed convention, since a per-node re-embed tree does dense n=13, and raising the guard to 512 refuses the table anyway; n=9 is admitted but not total -- 37 of 64 sampled tables build, the rest refuse promptly |
 | ZTOALC L | 10 | 10 | n=11 needs 587 command slots (545 parity) against the anchors' 386 under the 4.19M line ceiling |
+
+Polynomial's guard is priced too, and it guards the *interpreter*: the
+question was never whether the generator can spell 2910 instructions but
+what they cost to run. Raised past the cap, dense n=11 builds in 14.7s and
+emits 123609143 characters; **all 2048 rows execute correctly** in 267s.
+Effectively all of that is one factorization -- 264.5s for the first row,
+then 0.001s a row for the other 2047, which share it. Against the n=10
+anchor re-measured on the same machine (1638 instructions, 36349164
+characters, 56s a table, 55.7s of it the factorization), 1.78x the
+instructions costs 4.7x the time and 3.4x the program. The cap stays at
+1934: the policy is "admit what a suite can afford to check", and 267s
+plus a 124MB artifact for one table is what that policy declines. What
+moved is that the price is now measured rather than projected.
 
 6-5 leaves the table too.  Its 35 branch labels are the language's
 (operands are `0-9A-Z`), and the tree constructions spend them per subtree:
