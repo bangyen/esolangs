@@ -674,13 +674,21 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 #     polynomial      28.4s -> 5.5s     wii2d            7.2s -> 1.3s
 #     one_two_three   17.8s -> 1.9s
 #
-# The whole n=1..10 sweep is now 51.5s of CPU -- per arity, n=8 5.9s, n=9
-# 7.5s, n=10 23.9s.  (About 10s of any total is one-time warmup, paid at
-# every ceiling: generators show 0.1s at n=6 and 0.00s at n=7 on a bigger
-# table.)  Only one of those rewrites changed a program -- minifuck's dense
-# n=9, by +6.4% -- so 1370 of the registry's 1380 programs are byte-
-# identical across the whole thing, the other nine differences being factor
-# arities that used to refuse.
+# The whole n=1..10 sweep is now 51.5s of CPU.  Per arity: n=6 10.2s, n=7
+# 1.1s, n=8 5.9s, n=9 7.5s, n=10 23.9s.  n=6 costing nine times n=7 is not
+# a measurement error and not warmup -- it is ``_ORDER_SEARCH_MAX = 6`` in
+# ``helpers.py``.  At n <= 6 a reordering generator builds all ``n!`` = 720
+# candidate orders and keeps the shortest; at n=7 it switches to the greedy
+# ``O(n**2)`` pick, so a *bigger* table is ~100x faster (laserfuck 2.5s at
+# six against 0.006s at seven, streetcode 1.5s against 0.006s).  Lowering
+# the ceiling below seven therefore does not save what the per-arity rows
+# suggest, and n=6 is the one arity where the sweep pays for program
+# quality rather than for coverage.
+#
+# Only one of those rewrites changed a program -- minifuck's dense n=9, by
+# +6.4% -- so 1370 of the registry's 1380 programs are byte-identical
+# across the whole thing, the other nine differences being factor arities
+# that used to refuse.
 #
 # Ten still peaks at 637MB RSS on Circuit Diagram's n=10 dense table, 306MB
 # of program text.  That memory, not the time, is what keeps the band split:
