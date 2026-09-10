@@ -68,7 +68,11 @@ def _validate_shape(truth_table: str) -> int:
             "truth table must have a power-of-two number of entries "
             f"(2**n), got {len(truth_table)}",
         )
-    if not all(c in "01" for c in truth_table):
+    # Spelled as a set difference rather than ``all(c in "01" ...)``: the
+    # order search revalidates the same table once per candidate, so this
+    # runs ~720 times per call at n=6 and a per-character Python loop over
+    # 2**n shows up (0.86s of the n=6 registry sweep).
+    if set(truth_table) - {"0", "1"}:
         raise ValueError("truth table must contain only '0' and '1'")
     return n
 
@@ -235,15 +239,16 @@ def read_at(truth_table: str, inputs: tuple[int, ...] | list[int], n: int) -> st
     projects tables it has already validated, and revalidating a narrowed
     table here would check the wrong width.
     """
-    k = len(inputs)
-    rows = []
-    for row in range(2**k):
-        original = 0
-        for slot, i in enumerate(inputs):
-            if (row >> (k - 1 - slot)) & 1:
-                original |= 1 << (n - 1 - i)
-        rows.append(truth_table[original])
-    return "".join(rows)
+    # The row indices are built by doubling rather than by re-scattering
+    # each row's bits: slot ``k`` is the next-most-significant bit, so
+    # appending ``o | mask`` after ``o`` extends the list in row order.
+    # That is O(2**k) list work against O(2**k * k) bit tests -- worth the
+    # doubling because the order search calls this once per candidate.
+    originals = [0]
+    for i in inputs:
+        mask = 1 << (n - 1 - i)
+        originals = [x for o in originals for x in (o, o | mask)]
+    return "".join([truth_table[o] for o in originals])
 
 
 def stored_inputs(truth_table: str, perm: tuple[int, ...]) -> set[int]:
@@ -572,8 +577,13 @@ def decision_tree_tokens[Token](
     width = parent_width if callable(parent_width) else lambda _level: parent_width
 
     def walk(level: int, lo: int, hi: int, at: int) -> list[Token]:
-        values = {truth_table[r] for r in range(lo, hi)}
-        if level == n or (collapse and len(values) == 1):
+        # ``count`` over the span rather than a set comprehension over it:
+        # the constant test runs at every node of every one of the n!
+        # candidates, and it is also skipped entirely when ``collapse`` is
+        # off, which the set built unconditionally.
+        if level == n or (
+            collapse and truth_table.count(truth_table[lo], lo, hi) == hi - lo
+        ):
             return leaf(level, lo)
         half = (hi - lo) // 2
         below = at + width(level)
@@ -649,7 +659,10 @@ def _decision_tree_program(
     # read bits b_i at cell 2i, leaving the complements (cells 1, 3, ...) zero
     for i in range(n):
         cells.append(",")
-        cells.extend("-" * _ASCII_ZERO)
+        # ``append`` of the run, not ``extend`` over its characters: the run
+        # is 48 long and the join sees the same text either way, but the
+        # order search pays the per-character list work n! times.
+        cells.append("-" * _ASCII_ZERO)
         if i < n - 1:
             move(pos + 2)
 
@@ -689,7 +702,7 @@ def _decision_tree_program(
     result = 2 * n + 2
 
     def leaf(value: str) -> None:
-        cells.extend("+" * (_ASCII_ZERO + int(value)))
+        cells.append("+" * (_ASCII_ZERO + int(value)))
         cells.append(".")
         cells.append("[-]")  # clear the result so every ] on the way out sees zero
 

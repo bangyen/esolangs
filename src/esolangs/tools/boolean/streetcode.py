@@ -13,6 +13,7 @@ generator so the counter sits above the value rather than below it.
 """
 
 from collections.abc import Callable
+from functools import cache
 from itertools import permutations
 
 from esolangs.tools.boolean.helpers import (
@@ -193,7 +194,38 @@ def _streetcode_leaf(bit: int, skipped: int = 0) -> list[str]:
     ]
 
 
+# Largest subtable whose drawing is worth remembering across candidates.
+#
+# The order search rebuilds the tree once per permutation, and the halves
+# it recurses on repeat: at n=6 the 720 orders make 23040 calls on a
+# two-row subtable but only 4 distinct ones, and 5760 calls on an
+# eight-row one against at most 960 distinct.  Above four inputs the
+# count stops collapsing -- a 2**5 subtable pins the root input, its side
+# and the order of the rest, so all 1440 calls are distinct, and all 720
+# of the full table are -- so caching those buys nothing and would hold
+# 2160 copies of the whole drawing.  Cutting at 2**4 keeps every hit and
+# none of that memory: 276k units of node work drop to 125k, and the n=6
+# registry sweep measures 1.50s -> 0.58s.
+_TREE_CACHE_MAX = 2**4
+
+
 def _streetcode_tree(table: str) -> list[str]:
+    """Build the binary decision tree: one T-junction turn per input bit."""
+    if len(table) > _TREE_CACHE_MAX:
+        return _streetcode_tree_uncached(table)
+    # Copied out: the cache hands back the same object to every caller, and
+    # ``_streetcode_combine`` and ``_streetcode_lift`` both treat their rows
+    # as read-only today, which is not a property to leave load-bearing.
+    return list(_streetcode_tree_memo(table))
+
+
+@cache
+def _streetcode_tree_memo(table: str) -> tuple[str, ...]:
+    """Remember one small subtree's drawing; see :data:`_TREE_CACHE_MAX`."""
+    return tuple(_streetcode_tree_uncached(table))
+
+
+def _streetcode_tree_uncached(table: str) -> list[str]:
     """Build the binary decision tree: one T-junction turn per input bit.
 
     Recurses on halves of ``table``, joining the two subtrees with a hall
