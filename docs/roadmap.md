@@ -32,10 +32,19 @@ readings.
   tree without using the current-function slot, but its 255-line hop and
   nine-line branch window stop n=4: the bit-0 arm must cross 456 lines. Build
   and execute a relay rung inside that subtree to lift both bounds.
-- **Close Minifuck's mux sculpt.** At n=5, the warm build spends 14.5 of
-  17.9 seconds probing pool-code candidates; the chosen code never changes
-  within a sculpt. Derive that selector rather than replaying the interpreter,
-  then compare the emitted, executed programs with the current probe.
+- **Close Minifuck's mux sculpt.** The pool-code half is *done*: `5b35c66b`
+  replaced the per-round interpreter scan with `_SCULPT_POOL_CODE`, proved
+  structurally (the probe clamps to one canonical state, so the fifth code
+  answers every arity, accumulator and round) and checked at 169628 probes
+  with the scan kept as the oracle. The 14.5-of-17.9-seconds figure this
+  entry used to carry is stale: `_pool_reaches` now profiles at 0.0% of a
+  ~0.41s five-input build. What remains is the round loop, and it is not
+  merely unfinished but *measured not to close* -- over 36864 round
+  transitions at exhaustive n=3, no round moved a row above the frontier
+  (the monotonicity that bounds the loop) but 27656 moved one below it, so
+  the post-fix column is not predictable without walking. The live cost is
+  now `_mux_probe` at 69% of the build; reopen only with a rule for that
+  cascade, not a wider search.
 ## Conditional follow-up
 
 - **ArrowQueue reusable drain.** Ship the verified deep-fold drain only if a
