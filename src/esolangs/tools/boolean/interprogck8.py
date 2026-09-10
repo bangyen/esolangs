@@ -337,6 +337,10 @@ _MEADOW_PER_CHAIN = 6
 #: seeds spend 95-126 across a handful of rounds, so this is the worst
 #: measured with room over, and the programs past it are ones this
 #: generator should refuse rather than chase.
+#:
+#: What it declines is measured, not assumed: dense n=11 closes at 4096,
+#: spending 1445 additions for a 1203786-character program, every one of
+#: its 2048 rows correct.  Left at 256 on that cost.
 _REPAIRS = 256
 
 

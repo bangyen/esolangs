@@ -19,23 +19,6 @@ is now implemented, with its own boolean generator.
 
 ## Research
 
-- **Measure Interprogck8's repair budget at n=11.** Dense n=11 exhausts
-  `_REPAIRS = 256` about 30s in, and the refusal names its stranded window;
-  whether more budget closes it is the ledger's one explicit unmeasured
-  claim. n=10 spends 95-126 repairs across four dense seeds, so there is
-  headroom, but nothing bounds the gap. Raise the budget and record
-  build-or-refuse with its cost. Do not assume it builds: WII2D's analogous
-  "raise the 256 guard" question was measured *false*, and that guard's own
-  message asserting otherwise was wrong. Needs a wall-clock alarm — an
-  unbounded run here reads as acceptance.
-- **Price Polynomial's instruction guard at n=11.** The guard is 1934, the
-  analytic worst case over n=10 tables, so every n=10 table builds; dense
-  n=11 needs 2910 and is refused. It guards the *interpreter*, not the
-  generator, so the question is what 2910 instructions cost to run, not
-  whether the generator can spell them. Anchor against dense n=10 (1638
-  instructions, all 1024 rows in 44s) before moving the constant. The cap is
-  an instruction count and not an arity — a table that collapses already
-  renders far past n=10.
 - **Source the empty-input `0`.** `io.input_char` answers `0` on an empty
   line, pinned across the registry by
   `tests/interpreters/test_input_convention.py`. Open: whether any language's
