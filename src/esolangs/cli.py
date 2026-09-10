@@ -2,7 +2,7 @@
 
 Subcommands:
     esolangs list                         list the supported languages
-    esolangs generate <language> <text>   print a program that outputs text
+    esolangs generate <language> <table>  print a program computing a table
                                           (``--width N`` wraps it to N columns)
     esolangs run <language> <file>        run a program through its interpreter
 
@@ -18,15 +18,15 @@ USAGE = """usage: esolangs <command> [...]
 
 commands:
   list                        list the supported languages
-  generate [--width N] <language> <text>
-                              print a program that outputs text
+  generate [--width N] <language> <truth-table>
+                              print a program computing a truth table
                               (--width wraps it for readability)
   run <language> <file>       run a program through its interpreter
 
 examples:
   esolangs list
-  esolangs generate Circlefuck "Hello, World!"
-  esolangs generate --width Polynomial "Hello, World!"
+  esolangs generate Circlefuck 0110
+  esolangs generate --width Brainfuck 10010110
   esolangs run Circlefuck hello.txt
 """
 
@@ -98,7 +98,7 @@ def main() -> None:
     elif cmd == "generate":
         rest, width = _pop_width(rest)
         if len(rest) < 2:
-            _fail("usage: esolangs generate [--width N] <language> <text>")
+            _fail("usage: esolangs generate [--width N] <language> <truth-table>")
         try:
             program = generate(rest[0], rest[1], width)
         except ValueError as exc:

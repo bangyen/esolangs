@@ -20,7 +20,6 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.packlang import _Machine, run
 from esolangs.tools.boolean.packlang import packlang as packlang_boolean
-from esolangs.tools.text.other import packlang as packlang_text
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,
@@ -618,29 +617,20 @@ class TestRegistry:
     def test_registered_interpreter_runs(self) -> None:
         assert esolangs.run("Packlang", HELLO) == "Hello, World!\r\n"
 
-    def test_registered_text_generator_round_trips(self) -> None:
-        program = esolangs.generate("Packlang", "hi")
-        assert esolangs.run("Packlang", program) == "hi"
 
-
-class TestTextGenerator:
-    @pytest.mark.parametrize(
-        "text",
-        [
-            "",
-            "A",
-            "Hello, World!",
-            "line\nbreak",
-            "tab\there",
-            "".join(chr(c) for c in range(32, 127)),
-        ],
-    )
-    def test_generated_program_prints_the_text(self, text: str) -> None:
-        assert _run(packlang_text(text)) == text
-
-    def test_non_ascii_is_refused(self) -> None:
-        with pytest.raises(ValueError, match="ASCII"):
-            packlang_text("é")
+class TestCharPut:
+    def test_successive_charput_calls_print_their_code_points(self) -> None:
+        """A minimal package: two ``charPut`` calls and a 0 return."""
+        program = (
+            "Package : IO {\n"
+            "  Integer main {\n"
+            "    charPut(104);\n"
+            "    charPut(105);\n"
+            "    0;\n"
+            "  }\n"
+            "} printer;\n"
+        )
+        assert _run(program) == "hi"
 
 
 def _boolean_rows(table: str, n: int) -> list[str]:

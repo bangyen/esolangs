@@ -147,11 +147,19 @@ class TestLoop:
             run_program("ak;l")
 
 
-class TestGenerator:
-    def test_generated_program(self) -> None:
-        from esolangs.tools.text.other import home_row
-
-        assert run_program(home_row("Hello, World!")) == "Hello, World!"
+class TestLongProgram:
+    def test_multiply_loops_print_hello_world(self) -> None:
+        """Thirteen multiply-loops end to end, one per character."""
+        program = (
+            "aaaaaaaalfaaaaaaaaaffffslfkffffaaaaaaaaaalfaaaaaaaaaaffffslfakffffaa"
+            "aaaaaaalfaaaaaaaaaaaaffffslfkffffaaaaaaaaalfaaaaaaaaaaaaffffslfkffff"
+            "aaaaaaaaaalfaaaaaaaaaaaffffslfakffffaaaalfaaaaaaaaaaaffffslfkffffaaa"
+            "alfaaaaaaaaffffslfkffffaaaaaaalfaaaaaaaaaaaaffffslfaaakffffaaaaaaaaa"
+            "alfaaaaaaaaaaaffffslfakffffaaaaaaaalfaaaaaaaaaaaaaaffffslfaakffffaaa"
+            "aaaaaalfaaaaaaaaaaaaffffslfkffffaaaaaaaaaalfaaaaaaaaaaffffslfkffffaa"
+            "aalfaaaaaaaaffffslfakffff;"
+        )
+        assert run_program(program) == "Hello, World!"
 
 
 class TestStepMachine:

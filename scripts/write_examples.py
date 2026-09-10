@@ -1,19 +1,12 @@
 """Write the committed examples from their generators.
 
 Every committed example is exactly what its generator produces today: the
-hello-world programs under ``examples/hello-world`` come from the text
-generators, the boolean programs under ``examples/boolean`` from the boolean
-generators.  ``tests/scripts/test_examples.py`` asserts that; run this script to
-refresh the files after a generator changes.
+boolean programs under ``examples/boolean`` come from the boolean generators.
+``tests/scripts/test_examples.py`` asserts that; run this script to refresh
+the files after a generator changes.
 
-The hello-world programs are wrapped to
-:data:`esolangs.tools.wrap.DEFAULT_WIDTH` columns, breaking only between
-whole commands, so a long one-line program stays readable in a diff.
-Languages whose newlines are semantic (the 2D grid ones) or that reject them
-(NoComment) are written unwrapped.
-
-    python scripts/write_examples.py              # both sets
-    python scripts/write_examples.py hello-world  # just one set
+    python scripts/write_examples.py           # every set
+    python scripts/write_examples.py boolean   # just one set
 """
 
 import argparse
@@ -21,29 +14,10 @@ import pathlib
 import sys
 from collections.abc import Iterator
 
-from esolangs import generate
-from esolangs.registry import LANGUAGES
 from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
-from esolangs.tools.wrap import DEFAULT_WIDTH
 
 ROOT = pathlib.Path(__file__).parents[1]
 EXAMPLES = ROOT / "examples"
-
-TEXT = "Hello, World!"
-
-
-def hello_world_programs() -> Iterator[tuple[str, str]]:
-    """Yield ``(stem, program)`` for every hello-world example."""
-    for lang in sorted(LANGUAGES.values(), key=lambda item: item.name):
-        if not (lang.text and lang.interpreter):
-            continue
-        stem = lang.name.lower().replace(" ", "-")
-        # Go through the public generate(), so a generator that lays its own
-        # program out to a width (Clockwise's ring, Streetcode's corridor,
-        # WII2D's folded line) gets the width rather than having it applied
-        # as an after-the-fact reflow, which would leave a 2D program
-        # untouched.
-        yield stem, generate(lang.name, TEXT, DEFAULT_WIDTH)
 
 
 def boolean_programs() -> Iterator[tuple[str, str]]:
@@ -53,7 +27,6 @@ def boolean_programs() -> Iterator[tuple[str, str]]:
 
 
 SETS = {
-    "hello-world": hello_world_programs,
     "boolean": boolean_programs,
 }
 

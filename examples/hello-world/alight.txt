@@ -1,1 +1,0 @@
-begin;var c;set c 72;out c;set c 101;out c;set c 108;out c;set c 108;out c;set c 111;out c;set c 44;out c;set c 32;out c;set c 87;out c;set c 111;out c;set c 114;out c;set c 108;out c;set c 100;out c;set c 33;out c;end;

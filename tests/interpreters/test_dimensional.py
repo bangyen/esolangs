@@ -6,7 +6,6 @@ import pytest
 
 from esolangs.interpreters.io import IO
 from esolangs.tools.boolean.tape import dimensional as bool_gen
-from esolangs.tools.text.other import dimensional as text_gen
 from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.runner import run_program
 from tests.raises import raises_message
@@ -225,9 +224,9 @@ class TestDimensional:
         """
         assert run_and_capture("=41.$3>0.<0.") == "A\x00A"
 
-    def test_text_generator_round_trips(self) -> None:
-        for text in ("Hi", "Hello, World!", "\x00\x7f\xff"):
-            assert run_and_capture(text_gen(text)) == text
+    def test_hex_literals_print_their_bytes(self) -> None:
+        """``=NN.`` loads a hex byte and prints it, once per character."""
+        assert run_and_capture("=48.=69.") == "Hi"
 
     @pytest.mark.parametrize(
         ("table", "n"),

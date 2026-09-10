@@ -7,7 +7,6 @@ import pytest
 
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.tape_based.bit_tilde import run
-from esolangs.tools import text as gen
 from tests.interpreters.contract import (
     CycleContract,
     SnapshotContract,
@@ -139,17 +138,10 @@ class TestBitTilde:
         assert run_scripted(")(", "\x80").encode("latin1") == b"\x80"
         assert run_scripted(")(", "\xe9").encode("latin1") == b"\xe9"
 
-    def test_generated_hi_round_trips(self) -> None:
-        assert run_scripted(gen.bit_tilde("Hi")) == "Hi"
-
-    def test_generated_hello_world_round_trips(self) -> None:
-        text = "Hello, World!"
-        assert run_scripted(gen.bit_tilde(text)) == text
-
-    def test_generated_all_bytes_round_trip(self) -> None:
-        for n in range(256):
-            text = chr(n)
-            assert run_scripted(gen.bit_tilde(text)) == text
+    def test_bit_flips_then_output_print_two_characters(self) -> None:
+        """Set the bits of 'H', print, flip to 'i', print."""
+        program = ">~>>>~>>><<<<<<<(>>~>>>>>~<<<<<<<("
+        assert run_scripted(program) == "Hi"
 
     def test_exhausted_input_raises_eof(self) -> None:
         with pytest.raises(EOFError):

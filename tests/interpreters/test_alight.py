@@ -19,7 +19,6 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.grid_based.alight import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.boolean.alight import alight as alight_boolean
-from esolangs.tools.text.alight import alight as alight_text
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,
@@ -512,30 +511,18 @@ class TestGenerators:
         with pytest.raises(ValueError, match="at least one input"):
             alight_boolean("0")
 
-    @pytest.mark.parametrize(
-        "text",
-        [
-            "",
-            "A",
-            "Hello, World!",
-            "semicolons ; quotes \" apostrophes ' brackets {}[]",
-            "newline\nand\ttab",
-            "\x00\x7f",
-        ],
-    )
-    def test_text_prints_exactly_its_text(self, text: str) -> None:
-        """Including the characters that are syntax in Alight itself.
+    def test_numeric_literals_print_characters_that_are_alight_syntax(self) -> None:
+        """``out`` on a numeric literal sidesteps Alight's own quoting.
 
-        The generator emits numeric literals rather than ``'c`` for exactly
-        this: ``'`` shields the next character and ``"`` opens a string, so
-        a text containing either would otherwise need escaping rules the
-        wiki never gives.
+        ``'`` shields the next character and ``"`` opens a string, so text
+        containing either would need escaping rules the wiki never gives.
+        Setting a var to the code point avoids the question entirely.
         """
-        assert _run(alight_text(text).splitlines()) == text
+        program = "begin;var c;set c 39;out c;set c 34;out c;set c 59;out c;end;"
+        assert _run(program.splitlines()) == "'\";"
 
-    def test_registered_generators_run_through_the_public_api(self) -> None:
-        """The registry entry wires both generators and the interpreter."""
-        assert esolangs.run("Alight", alight_text("hi")) == "hi"
+    def test_registered_generator_runs_through_the_public_api(self) -> None:
+        """The registry entry wires the generator and the interpreter."""
         assert esolangs.run("Alight", alight_boolean("01"), "1\n") == "1"
 
 

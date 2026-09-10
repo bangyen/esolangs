@@ -12,7 +12,6 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.interprogck8 import _Machine, run
-from esolangs.tools import text as gen
 from esolangs.tools.boolean import interprogck8
 from esolangs.tools.boolean.interprogck8 import (
     _REACH,
@@ -192,33 +191,3 @@ class TestLoader:
         assert len(_set_acc(8)) == 4
 
 
-class TestTextGenerator:
-    """The text side, executed: every byte reached by a shortest run."""
-
-    @pytest.mark.parametrize(
-        "text", ["a", "Hello World\n", "\x00\xff\n", "The quick brown fox."]
-    )
-    def test_round_trips(self, text: str) -> None:
-        io = ScriptedIO("")
-        run(gen.interprogck8(text).splitlines(), io)
-        assert io.getvalue() == text
-
-    def test_empty_text_is_an_empty_program(self) -> None:
-        assert gen.interprogck8("") == ""
-
-    def test_rejects_non_bytes(self) -> None:
-        with pytest.raises(ValueError, match="bytes"):
-            gen.interprogck8("\u0100")
-
-    def test_beats_the_wiki_hand_written_hello_world(self) -> None:
-        """53 lines against the wiki's 58, and it prints the same text.
-
-        The gain is the *overshoot* spelling: counting down to a target
-        with ``@nt`` is shorter than counting up wherever the units digit
-        is above five, which the wiki's version never does.
-        """
-        program = gen.interprogck8("Hello World\n")
-        assert len(program.splitlines()) == 53
-        io = ScriptedIO("")
-        run(program.splitlines(), io)
-        assert io.getvalue() == "Hello World\n"
