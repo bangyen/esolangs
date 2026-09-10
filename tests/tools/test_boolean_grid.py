@@ -634,7 +634,7 @@ class TestWII2D:
             got = [_wii2d_apply(ops, x) for x in range(16)]
             assert got == pattern, (pattern, ops, got)
 
-    @pytest.mark.slow  # ~27s at n == 9: a 6.6s build, then 512 interpreted rows
+    @pytest.mark.slow  # ~21s at n == 9: a 1.1s build, then 512 interpreted rows
     def test_a_dense_table_at_the_widest_admitted_domain_runs(self) -> None:
         """The arity the guard now admits is executed, not just rendered.
 
