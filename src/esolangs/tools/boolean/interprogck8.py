@@ -43,19 +43,21 @@ stride has to change.
 
 Those waypoints -- *rungs* -- are parked in *meadows*: blocks of dead
 lines behind an unconditional jump, emitted at safe points between gadgets
-every :data:`_MEADOW_SPACING` lines.  Control walking into a meadow hops
-over it; control landing inside is a rung in flight.  Meadows are placed
-after every width has settled, and laying a rung replaces a one-line
-placeholder with a one-line instruction, so routing never moves a label:
-every chain is planned against final coordinates and cannot interfere with
-another.  The old router's patience knob, its rung-spacing knob and its
-give-up-and-retry loop are all gone -- routing is a single deterministic
-pass, and a span it cannot cover is a refusal, never a wrong answer.
+every :data:`_MEADOW_SPACING` lines and sized to the express chains
+crossing the point.  Control walking into a meadow hops over it; control
+landing inside is a rung in flight.  Meadows are placed after every width
+has settled, and laying a rung replaces a one-line placeholder with a
+one-line instruction, so routing never moves a label: every chain is
+planned against final coordinates and cannot interfere with another,
+which is what replaced the old router's patience knob, rung-spacing knob
+and 2031s n=8 price.
 
-The meadow budget is the one tuned number left: :data:`_MEADOW_SIZE` lines
-per meadow, sized to the chains that actually cross one (at most about two
-per tree level) with room over.  A table that exhausts every reachable
-meadow is refused by name.
+Demand is measured, not derived, so placement can still come up short.  A
+chain the meadows cannot carry is a *shortfall* naming the window that
+held no rung slot; the repair adds one meadow inside each distinct
+window and reroutes from clean placeholders, at most :data:`_REPAIRS`
+additions -- a budget with a certificate per round, not a search -- and a
+table still short after it is refused with the window, never mis-routed.
 """
 
 from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
@@ -106,7 +108,8 @@ _EXPRESS = max(_hop_width(d) for d in range(_REACH + 1))
 
 # The bit-0 jump sits one window behind its relay label, so when it is
 # promoted to an express slot the window must spell _EXPRESS itself.
-assert _hop_width(_EXPRESS) <= _WINDOW, "express slot outgrew the window"
+if _hop_width(_EXPRESS) > _WINDOW:
+    raise AssertionError("express slot outgrew the window")
 
 
 class _Jump:
@@ -382,7 +385,8 @@ def _add(items: list[_Item], meadows: list[list[_Rung]], low: int, high: int) ->
             at = position
     if at is None:
         at = fallback
-    assert at is not None, "a tree always emits safe points"
+    if at is None:
+        raise AssertionError("a tree always emits safe points")
     rungs, block = _meadow(_MEADOW_MOST, len(meadows))
     items[at:at] = block
     meadows.append(rungs)
@@ -403,7 +407,8 @@ def _adjust(current: int, wanted: int) -> list[str]:
         ops += ["@nd" if units > 0 else "@nt"] * abs(units)
         if best is None or len(ops) < len(best):
             best = ops
-    assert best is not None
+    if best is None:
+        raise AssertionError("the tens scan always yields a candidate")
     return min(best, _set_acc(wanted), key=len)
 
 
@@ -601,10 +606,9 @@ def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_StuckError]:
                         acc = hop
                         break
                 for goal in onward(landing, stop):
-                    if goal is terminal:
-                        continue
                     goal_line = goal.line
-                    assert goal_line is not None
+                    if goal is terminal or goal_line is None:
+                        continue
                     hop = _lay(bank, acc, landing, goal_line)
                     if hop is not None:
                         acc, landing, bank = hop, goal_line, goal
