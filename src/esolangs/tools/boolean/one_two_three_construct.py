@@ -37,7 +37,7 @@ The pipeline
    rows re-run the last segment and escape one walk higher).  The mark
    geometry comes from :func:`_geometry`: a tight linear layout with
    fixed even escapes where a per-arity reference run proves it out
-   (every probed arity, and 2-3x smaller templates), else the doubling
+   (every probed arity, and 2.2-64x smaller templates), else the doubling
    base whose halving escapes provably survive all ``n`` levels at any
    arity — the fallback that keeps this stage total by argument.  Pure
    right-walk segments never flip a cell, never enter the ring, never
@@ -544,12 +544,15 @@ def _separate(b: _Builder, marks: list[int], ws: tuple[int, ...] | None = None) 
       what makes that geometry total at *every* arity.  Positions after
       level ``i`` stay below ``2 * marks[i] < marks[i+1]``, so no
       landing ever chains onto a later level's mark.
-    * fixed ``ws[i]`` — the tight linear geometry's even offsets: an
-      escape moves ``ws[i]`` per re-run, and the equal mark spacing
-      means it *can* land on the next level's mark and cascade onward.
-      Nothing here argues that converges at an arbitrary arity; the
-      per-arity reference run in :func:`_geometry` is what admits it,
-      and a walk shorter than the escape rejects the geometry outright.
+    * fixed ``ws[i]`` — the tight linear geometry's even offsets: level
+      ``i`` adds ``ws[i]`` to the bit-i rows and leaves every other
+      relative offset alone, so a row's offset above the current mark is
+      at most the whole budget ``sum ws == 2**(n + 1) - 2``, under the
+      spacing :func:`_geometry` picks — no escapee reaches the next
+      mark, and positions close to ``base + 2*r``.  That argument is not
+      what admits the geometry, though: the per-arity reference run in
+      :func:`_geometry` is, and a walk shorter than the escape rejects
+      it outright.
 
     Pure right-walk segments never flip a cell, never enter the ring and
     never read stdin.  Every fate is still validated by ``test()``.
@@ -581,26 +584,45 @@ def _separate(b: _Builder, marks: list[int], ws: tuple[int, ...] | None = None) 
 def _geometry(n: int) -> tuple[tuple[int, ...], tuple[int, ...] | None]:
     """Pick arity ``n``'s mark geometry: tight when it proves out.
 
-    The tight layout — marks ``(i + 1) * 2**n + 1`` with fixed even
+    The tight layout — marks ``(i + 1) * 2**(n + 1) + 1`` with fixed even
     escape offsets ``2**(n - i)`` — spaces the marks linearly where the
-    proven base doubles them, which measured 2.1x smaller templates at
-    four inputs and 2.8x at five.  Whether it *works* at an arity is
-    decidable cheaply, because separation never consults the table: one
-    reference run per arity fixes where every row lands, and if it
-    leaves each row at a distinct odd position, parked off its own
-    marks, with nothing marked above its own cell, then the planned
-    verdict's closed forms hold for every table at this arity.  Any
-    failure — a raise anywhere, or a violated invariant — falls back to
-    the doubling base with the halving escapes, whose totality is
-    proven outright, so :func:`construct` stays total by argument
-    either way.  The reference run costs about a millisecond even at
-    seven inputs, and the result is cached per process.
+    proven base doubles them, off the same ``2**(n + 1)`` base, which
+    measured 2.2x smaller templates at four inputs and 64x at nine
+    (where the doubling base is 48.2M characters against 752K).
 
-    The tight geometry passes at every probed arity (one through
-    seven); the fallback is totality insurance for the arities nobody
-    has probed, not a path any known arity takes.
+    The spacing is that base and not the escapes' own ``2**n`` because
+    ``2**n`` *is* the level-0 escape: a level-0 escapee landed exactly on
+    mark 1 and cascaded on.  Level ``i`` adds ``2**(n - i)`` to the bit-i
+    rows and preserves every other relative offset, so the escapes are a
+    binary encoding and the largest offset a row can carry above a mark
+    is the whole budget ``sum_i 2**(n - i) == 2**(n + 1) - 2``.  A
+    spacing above that keeps every landing inside one gap, and the least
+    even one is ``2**(n + 1)`` — even, so every position stays odd for
+    the verdict.  With no cascade the law closes to ``pos(r) = base +
+    2*r``: the ``2**n`` rows land on consecutive odd cells, the smallest
+    spread they can have, which is what collapses the shield campaign
+    (the paints cost ``sum(a - pos)``).  Measured floor is ``2**(n + 1)
+    - 4``, two under the derivation and worth <=0.2%; ``2**(n + 1) - 6``
+    is refused at every ``n >= 3``.  Shipping the derived value, not the
+    swept one.
+
+    Whether it *works* at an arity is decidable cheaply, because
+    separation never consults the table: one reference run per arity
+    fixes where every row lands, and if it leaves each row at a distinct
+    odd position, parked off its own marks, with nothing marked above
+    its own cell, then the planned verdict's closed forms hold for every
+    table at this arity.  Any failure — a raise anywhere, or a violated
+    invariant — falls back to the doubling base with the halving
+    escapes, whose totality is proven outright, so :func:`construct`
+    stays total by argument either way.  The reference run costs about a
+    millisecond even at seven inputs, and the result is cached per
+    process.
+
+    The tight geometry passes at every probed arity (one through ten);
+    the fallback is totality insurance for the arities nobody has
+    probed, not a path any known arity takes.
     """
-    marks = tuple((i + 1) * 2**n + 1 for i in range(n))
+    marks = tuple((i + 1) * 2 ** (n + 1) + 1 for i in range(n))
     ws = tuple(2 ** (n - i) for i in range(n))
     _work[0] = _WORK_BUDGET * max(1, 2 ** (n - 4))
     try:
@@ -729,8 +751,9 @@ def _verdict(b: _Builder, table: str) -> None:
     live = b.live()
     positions = [r.pos for r in live]
     if len(set(positions)) != len(positions) or any(p % 2 == 0 for p in positions):
-        # Never observed (positions are distinct and odd for n <= 7,
-        # and the mark base keeps the separation gaps even); raising
+        # Never observed (separation puts row r at ``base + 2*r`` under
+        # the spacing :func:`_geometry` picks, checked to n = 10, and the
+        # mark base keeps the gaps even); raising
         # keeps the no-unproven-template contract if a wider arity
         # ever breaks the parity.
         raise ConstructError("verdict precondition: positions not distinct odd")
