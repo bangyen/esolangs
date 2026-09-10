@@ -66,7 +66,12 @@ readings.
   (the monotonicity that bounds the loop) but 27656 moved one below it, so
   the post-fix column is not predictable without walking. The live cost is
   now `_mux_probe` at 69% of the build; reopen only with a rule for that
-  cascade, not a wider search.
+  cascade, not a wider search.  From ten inputs the loop no longer runs at
+  all: the accumulator is named (`_MUX_RULE_ARITY`), the scout records the
+  winner's rewinds as it prices the two orientations, and the build is
+  spelled from them and accepted on its own laws replay — 203s to 1.5s
+  dense, +1.8% length, every n=10 row of both shapes executed on the
+  interpreter.  `docs/limitations.md` carries the numbers.
 ## Conditional follow-up
 
 - **ArrowQueue reusable drain.** Ship the verified deep-fold drain only if a
