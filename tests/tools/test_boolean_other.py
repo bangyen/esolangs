@@ -234,14 +234,6 @@ class TestSuptiftam:
         assert _suptiftam_bit(49) == "bz"
         assert _suptiftam_bit(50) == "bbb"
 
-    def test_rejects_bad_table(self) -> None:
-        with pytest.raises(ValueError, match="entries"):
-            boolean.suptiftam("011")
-
-    def test_rejects_non_binary(self) -> None:
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.suptiftam("02")
-
 
 class TestForbinBoolean:
     @pytest.mark.parametrize(
@@ -277,14 +269,6 @@ class TestForbinBoolean:
         assert boolean.forbin_boolean("11111111").count("return 0;") == 1
         assert boolean.forbin_boolean("11110000").count("return 0;") == 2
         assert boolean.forbin_boolean("10010110").count("return 0;") == 8
-
-    def test_rejects_bad_table(self) -> None:
-        with pytest.raises(ValueError, match="entries"):
-            boolean.forbin_boolean("011")
-
-    def test_rejects_non_binary(self) -> None:
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.forbin_boolean("02")
 
 
 class TestCvnc:
@@ -627,14 +611,6 @@ class TestFargo:
         assert boolean.fargo("11110000") == "% 0 ^ 1 @ 10\n$\n"
         assert len(boolean.fargo("11110000")) < len(boolean.fargo("01101001"))
 
-    def test_rejects_bad_table(self) -> None:
-        with pytest.raises(ValueError, match="entries"):
-            boolean.fargo("011")
-
-    def test_rejects_non_binary(self) -> None:
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.fargo("02")
-
 
 class TestFlowchart:
     """The Flowchart boolean generator (works for arbitrary n)."""
@@ -909,16 +885,6 @@ class TestContainer:
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_container(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
-
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.container("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.container("02")
 
 
 class TestZtoalc:
@@ -1758,16 +1724,6 @@ class TestLaserFuck:
         # the tree is mirrored, so a one-branch turns on '/' rather than '\\'
         assert "/" in program
 
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.laserfuck("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.laserfuck("02")
-
     @pytest.mark.parametrize(
         ("table", "n", "width"),
         [
@@ -2176,14 +2132,6 @@ class TestMyScript:
         assert boolean.myscript("11111111").count("say") == 1
         assert boolean.myscript("11110000").count("say") == 2
         assert boolean.myscript("10010110").count("say") == 8  # parity: no fold
-
-    def test_rejects_bad_table(self) -> None:
-        with pytest.raises(ValueError, match="entries"):
-            boolean.myscript("011")
-
-    def test_rejects_non_binary(self) -> None:
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.myscript("02")
 
 
 class TestGeneratorEdgePaths:

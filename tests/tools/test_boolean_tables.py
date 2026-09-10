@@ -38,6 +38,7 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
+from tests.raises import raises_message
 
 if TYPE_CHECKING:
     from esolangs.tools.boolean.examples import BooleanExample
@@ -193,6 +194,29 @@ def test_the_generated_program_computes_its_table(name: str) -> None:
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = _answer(example, _combination(name, example, program, bits))
             assert got == table[combo], f"{name} {table} inputs {bits} gave {got!r}"
+
+
+@pytest.mark.parametrize("name", sorted(BOOLEAN_EXAMPLES))
+def test_a_table_of_the_wrong_length_is_refused(name: str) -> None:
+    """A truth table whose length is not a power of two builds nothing.
+
+    Every generator validates through the same helper, so the message is
+    one message; asserting it whole here is what keeps it that way, since
+    a generator that grew its own wording would no longer be checking the
+    shared claim.
+    """
+    with raises_message(
+        ValueError,
+        "truth table must have a power-of-two number of entries (2**n), got 3",
+    ):
+        BOOLEAN_EXAMPLES[name].generator("011")
+
+
+@pytest.mark.parametrize("name", sorted(BOOLEAN_EXAMPLES))
+def test_a_table_of_other_characters_is_refused(name: str) -> None:
+    """A truth table carrying anything but ``0``/``1`` builds nothing."""
+    with raises_message(ValueError, "truth table must contain only '0' and '1'"):
+        BOOLEAN_EXAMPLES[name].generator("02")
 
 
 def test_the_sweep_covers_every_registered_generator() -> None:

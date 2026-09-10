@@ -128,14 +128,6 @@ class TestAddSubJump:
             improved += dispatched < identity
         assert improved == 118  # the rest tie, keeping the identity order
 
-    def test_rejects_bad_table(self) -> None:
-        with pytest.raises(ValueError, match="entries"):
-            boolean.addsubjump("011")
-
-    def test_rejects_non_binary(self) -> None:
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.addsubjump("02")
-
 
 class TestQoibl:
     @pytest.mark.parametrize(
@@ -664,16 +656,6 @@ class TestCollatzMultiverse:
             assert program.count("DO PRINT.") == 1
             assert program.count("input") == 2  # n == 2, read once each
 
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.collatz_multiverse("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.collatz_multiverse("02")
-
 
 class TestDecleq:
     @pytest.mark.parametrize(
@@ -761,16 +743,6 @@ class TestDecleq:
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = run_decleq(program, [str(b) for b in bits])
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
-
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.decleq("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.decleq("02")
 
 
 class TestPointBreak:

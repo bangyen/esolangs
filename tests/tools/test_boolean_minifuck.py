@@ -2417,13 +2417,6 @@ class TestParameterizedMinifuck:
         }
         assert len(lengths) == 1, f"unequal instantiation lengths: {lengths}"
 
-    def test_bad_table_rejected(self) -> None:
-        """A table whose length is not a power of two is rejected."""
-        from esolangs.tools.boolean import parameterized
-
-        with pytest.raises(ValueError, match="power-of-two"):
-            parameterized.minifuck("011")
-
     def test_the_simulator_mirrors_the_interpreter_at_its_edges(self) -> None:
         """The search's model of a row has to match what Minifuck does.
 
