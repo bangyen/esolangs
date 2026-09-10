@@ -162,8 +162,8 @@ class TestInject:
         assert collapsed_by_depth_only == []
         # And the tree itself is unchanged when the depth clause cannot fire.
         state = {"leaves": 0, "blocks": 0}
-        assert _tree("01101001", 0, 3, state) == _tree(
-            "01101001", 0, 3, {"leaves": 0, "blocks": 0}
+        assert _tree("01101001", 0, 3, state, (0, 1, 2)) == _tree(
+            "01101001", 0, 3, {"leaves": 0, "blocks": 0}, (0, 1, 2)
         )
 
 

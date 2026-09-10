@@ -31,7 +31,7 @@ is now implemented, with its own boolean generator.
   a generator moves.
 
   Unwired with real upside: `%^2^-1` 36.3%, Interprogck8 21.1%, Dig
-  19.8%, Flowchart 17.1%, Inject 13.3%, Minifuck 13.1%, 123 13.0%, BF-PDA
+  19.8%, Flowchart 17.1%, Minifuck 13.1%, 123 13.0%, BF-PDA
   12.6%, ArrowQueue 12.4% (own entry below), Sophie 8.1%, WII2D 5.1%,
   BrainIf 4.9%, COD 3.2% (concentrated in 12/256 tables), SLOW ACV
   MAMMALIAN 3.2%; everything else screens under 3%. Two stale figures

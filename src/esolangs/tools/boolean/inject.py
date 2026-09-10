@@ -41,11 +41,13 @@ the read count equal on every path -- the boolean contract requires exactly
 ``n`` reads whatever the inputs are -- and it also lets a node test a bit
 more than once for free.
 
-The tree then walks the table.  At depth ``d`` the node tests bit ``d``
-against the constant block ``zero``:
+The tree then walks the table.  At depth ``d`` the node tests the input
+the chosen order puts there (``perm[d]``; the shortest of the ``n!``
+orders wins, ties keeping the identity) against the constant block
+``zero``:
 
-* ``skipq i{d} zero`` fires when the bit **is** ``0``, so the block it
-  guards is the ``1``-subtree, which is skipped exactly then;
+* ``skipq i{perm[d]} zero`` fires when the bit **is** ``0``, so the block
+  it guards is the ``1``-subtree, which is skipped exactly then;
 * falling through enters that block, which holds the ``1``-subtree.
 
 A leaf sends ``zero`` or ``one`` and then escapes.  Because a constant
@@ -58,7 +60,7 @@ the tail only by a leaf's escape jump, and a line whose first word is not a
 command is a no-op.
 """
 
-from esolangs.tools.boolean.helpers import _validate_truth_table
+from esolangs.tools.boolean.helpers import _validate_truth_table, best_input_order
 
 __all__ = ["inject"]
 
@@ -73,11 +75,15 @@ def _leaf(bit: str, escape: str) -> list[str]:
     return [f"send {'one' if bit == '1' else 'zero'}", "skip", f"{escape};"]
 
 
-def _tree(table: str, depth: int, n: int, state: dict[str, int]) -> list[str]:
-    """Emit the decision tree for ``table``, testing bit ``depth`` first.
+def _tree(
+    table: str, depth: int, n: int, state: dict[str, int], perm: tuple[int, ...]
+) -> list[str]:
+    """Emit the decision tree for ``table``, testing input ``perm[depth]`` first.
 
-    ``state`` carries the running count of escape labels handed out, so
-    each leaf gets a distinct one.
+    ``table`` is in the permuted frame, so its bit ``depth`` is original
+    input ``perm[depth]`` -- ``perm`` is spent only on the block a node
+    names.  ``state`` carries the running count of escape labels handed
+    out, so each leaf gets a distinct one.
     """
     # A constant subtree needs no further tests: whatever the remaining
     # bits are, the answer is the same, so the node collapses to its leaf.
@@ -88,8 +94,8 @@ def _tree(table: str, depth: int, n: int, state: dict[str, int]) -> list[str]:
         return _leaf(table[0], f"e{state['leaves'] - 1}")
 
     half = len(table) // 2
-    zeros = _tree(table[:half], depth + 1, n, state)
-    ones = _tree(table[half:], depth + 1, n, state)
+    zeros = _tree(table[:half], depth + 1, n, state, perm)
+    ones = _tree(table[half:], depth + 1, n, state, perm)
 
     # ``skipq`` fires when the bit equals ``zero``, so the guarded block is
     # the one-subtree: it is skipped exactly when the bit is 0, and entered
@@ -97,7 +103,7 @@ def _tree(table: str, depth: int, n: int, state: dict[str, int]) -> list[str]:
     block = f"b{depth}_{state['blocks']}"
     state["blocks"] += 1
     return [
-        f"skipq i{depth} zero",
+        f"skipq i{perm[depth]} zero",
         f"{block};",
         *ones,
         f"{block};",
@@ -116,12 +122,22 @@ def inject(truth_table: str) -> str:
     The construction is a decision tree of ``skipq`` guards over blocks
     holding the stored input bits; see the module docstring for why the
     reads are hoisted and why each leaf carries its own escape label.
+
+    **The tree splits on its inputs in whichever order emits the shortest
+    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
+    The ``readto`` block stays in input order, so only the block a
+    ``skipq`` names moves.
     """
+    return best_input_order(truth_table, _inject_ordered)
+
+
+def _inject_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order's Inject program; see :func:`inject`."""
     n = _validate_truth_table(truth_table)
 
     state = {"leaves": 0, "blocks": 0}
     body = [f"readto i{d}" for d in range(n)]
-    body += _tree(truth_table, 0, n, state)
+    body += _tree(truth_table, 0, n, state, perm)
 
     # Every escape block has to span all the remaining executable lines, so
     # the closes come after the tree and before the data tail.  They are
