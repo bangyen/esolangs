@@ -15,15 +15,15 @@ from esolangs.interpreters.register_based.interprogck8 import _Machine, run
 from esolangs.tools import text as gen
 from esolangs.tools.boolean import interprogck8
 from esolangs.tools.boolean.interprogck8 import (
-    _PASSES,
     _REACH,
     _check,
     _emit,
     _index,
     _Jump,
-    _relay,
-    _resolve,
+    _place,
+    _route,
     _set_acc,
+    _settle,
 )
 from esolangs.vm import run_until_halt_or_cycle
 from tests.tools.boolean_runners import run_interprogck8
@@ -80,18 +80,19 @@ class TestReads:
         assert io.getvalue() == table[0b011]
 
 
-class TestRelay:
-    """Past n=3 the tree outgrows one hop, so hops chain through rungs."""
+class TestExpress:
+    """Past n=3 the tree outgrows one hop, so hops ride the express."""
 
     @pytest.mark.parametrize("n", [4, 5, 6])
     def test_a_tree_past_one_hop_still_computes_its_table(self, n: int) -> None:
         """Every row of a table too long to route in single hops.
 
         This is what the arity cap used to refuse.  The n=5 parity tree is
-        2688 lines with crossings of over 1000 against a reach of 255, so
-        it only works if the rungs relay -- and a rung that relays to the
-        wrong place is a *wrong answer* rather than a refusal, which is why
-        the assertion is on the output and not on the program building.
+        ~2900 lines with crossings of over 1000 against a reach of 255, so
+        it only works if the express relays -- and a rung that carries a
+        chain to the wrong place is a *wrong answer* rather than a
+        refusal, which is why the assertion is on the output and not on
+        the program building.
         """
         table = "".join(str(bin(row).count("1") & 1) for row in range(2**n))
         program = interprogck8(table)
@@ -100,38 +101,53 @@ class TestRelay:
             bits = list(bin(row)[2:].zfill(n))
             assert run_interprogck8(program, bits) == table[row], f"n={n} row {row}"
 
-    def test_a_relay_that_stops_gaining_ground_is_refused(
+    @pytest.mark.parametrize("n", [8, pytest.param(10, marks=pytest.mark.slow)])
+    def test_a_high_arity_table_is_computed_row_by_row(self, n: int) -> None:
+        """The lifted ceiling, held by execution on hash-picked rows.
+
+        n=10 dense is ~92k lines and a few seconds to build; running all
+        1024 rows again on every suite run buys nothing over a fixed
+        sample once the full sweep has passed, so the rows are drawn
+        deterministically from the table's own digest -- plus the two
+        ends, where an off-by-one in the ladder would land.
+        """
+        table = _dense_table(n)
+        program = interprogck8(table)
+        lines = program.splitlines()
+        digest = hashlib.sha256(f"rows:{n}".encode()).digest()
+        rows = {0, 2**n - 1}
+        rows.update(int.from_bytes(digest[i : i + 2]) % 2**n for i in range(0, 32, 2))
+        for row in sorted(rows):
+            bits = list(bin(row)[2:].zfill(n))
+            assert run_interprogck8("\n".join(lines), bits) == table[row], (
+                f"n={n} row {row}"
+            )
+
+    def test_a_table_the_meadows_cannot_carry_is_refused(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A relay that cannot gain ground is refused, not left to run.
+        """Starved of rung space, routing refuses rather than mis-lands.
 
-        Rungs spaced too tightly gain less per round than the other chains'
-        insertions push their targets away, which is how an earlier relay
-        went *backwards* -- 22 over-reach jumps to 198 -- instead of
-        failing.  Narrowing the spacing reproduces that shape.  The point is
-        that it terminates in a refusal: a routing that quietly gives up
-        would emit a program jumping into the middle of a subtree.
+        Meadows two lines wide hold no usable rung, and a repair budget of
+        zero may not add more -- so the only correct outcome is the
+        refusal that names the stranded window.  What must not happen is
+        a program that routes through the wrong place, or a hang.
         """
         table = _dense_table(6)
         # By name: the package re-exports the generator under the module's
         # own name, so a plain import binds the function, not the module.
         module = importlib.import_module("esolangs.tools.boolean.interprogck8")
         with monkeypatch.context() as patch:
-            patch.setattr(module, "_SPACING", 8)
-            # Patience is pinned small here so the control stays quick: the
-            # shipped value is sized for a table that takes 191 rounds, and
-            # this test is about *which* outcome a losing relay reaches,
-            # not how long the real budget lets it churn first.
-            patch.setattr(module, "_PATIENCE", 8)
-            # Either backstop is a correct refusal; what must not happen is
-            # a program that routes through the wrong place, or a hang.
-            with pytest.raises(ValueError, match=r"stalled|max 255|did not"):
+            patch.setattr(module, "_MEADOW_LEAST", 2)
+            patch.setattr(module, "_MEADOW_MOST", 2)
+            patch.setattr(module, "_REPAIRS", -1)
+            with pytest.raises(ValueError, match="no rung slot"):
                 interprogck8(table)
-        # ...and the real spacing still builds the same table.
+        # ...and the real meadows still build the same table.
         assert interprogck8(table)
 
-    def test_every_hop_in_a_relayed_program_is_inside_the_reach(self) -> None:
-        """The relay leaves no jump the gadget cannot spell.
+    def test_every_hop_in_a_routed_program_is_inside_the_reach(self) -> None:
+        """The routing leaves no jump the gadget cannot spell.
 
         The emission pass would raise on one, so this pins the property the
         raise defends rather than re-testing the raise: after routing, every
@@ -139,14 +155,15 @@ class TestRelay:
         """
         parity = "".join(str(bin(row).count("1") & 1) for row in range(32))
         items = _emit(parity, 5)
-        for _ in range(_PASSES):
-            _resolve(items)
-            if not _relay(items):
-                break
+        _settle(items)
+        meadows = _place(items)
+        _settle(items)
+        assert _route(items, meadows) == [], "parity at n=5 routes unrepaired"
         starts, labels = _index(items)
         for item, start in zip(items, starts, strict=True):
             if isinstance(item, _Jump):
-                distance = labels[item.label] - (start + item.width)
+                goal = item.to_line if item.to_line is not None else labels[item.label]
+                distance = goal - (start + item.width)
                 assert 0 <= distance <= _REACH, f"{item.label} spans {distance}"
 
 

@@ -674,9 +674,10 @@ _MAX_ARITY = 5
 # language's, which is why neither survived being worked on:
 #
 #   interprogck8 capped at n=3 because one ``DownAccLines`` reaches 255
-#   lines and the n=4 bit-0 crossing spans 452.  Long hops now chain
-#   through rungs parked in the dead line after each unconditional jump,
-#   so the crossing is spelled in several hops instead of one.
+#   lines and the n=4 bit-0 crossing spans 452.  Long hops now ride an
+#   express -- ``DownAccLines`` keeps the accumulator, so a chain spells
+#   its stride once and relays through one-line rungs parked in meadows
+#   -- and the ceiling sits at n=10, every row executed.
 #
 #   factor capped at n=3 because CPython refuses to render an integer past
 #   ``sys.get_int_max_str_digits()`` (4300 by default) and n=4 parity
