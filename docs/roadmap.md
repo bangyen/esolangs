@@ -14,8 +14,35 @@ did not: the page's own selection rule reroutes 8 of 23 Hello, world!
 characters, and its truth machine on input 1 is unreachable under all 384
 readings.
 
+The list refills by survey rather than by waiting — APL arrived that way and
+is now implemented, with its own boolean generator.
+
 ## Research
 
+- **Measure Interprogck8's repair budget at n=11.** Dense n=11 exhausts
+  `_REPAIRS = 256` about 30s in, and the refusal names its stranded window;
+  whether more budget closes it is the ledger's one explicit unmeasured
+  claim. n=10 spends 95-126 repairs across four dense seeds, so there is
+  headroom, but nothing bounds the gap. Raise the budget and record
+  build-or-refuse with its cost. Do not assume it builds: WII2D's analogous
+  "raise the 256 guard" question was measured *false*, and that guard's own
+  message asserting otherwise was wrong. Needs a wall-clock alarm — an
+  unbounded run here reads as acceptance.
+- **Price Polynomial's instruction guard at n=11.** The guard is 1934, the
+  analytic worst case over n=10 tables, so every n=10 table builds; dense
+  n=11 needs 2910 and is refused. It guards the *interpreter*, not the
+  generator, so the question is what 2910 instructions cost to run, not
+  whether the generator can spell them. Anchor against dense n=10 (1638
+  instructions, all 1024 rows in 44s) before moving the constant. The cap is
+  an instruction count and not an arity — a table that collapses already
+  renders far past n=10.
+- **Source the empty-input `0`.** `io.input_char` answers `0` on an empty
+  line, pinned across the registry by
+  `tests/interpreters/test_input_convention.py`. Open: whether any language's
+  `0` was ever taken from its own specification rather than chosen — the
+  docstrings citing "the original" are the same author's earlier readings, so
+  they corroborate nothing. Finish condition: every such docstring checked
+  against its wiki page, each `0` ending either sourced or marked chosen.
 - **Settle Streetcode's four-way junction.** `_junction_kind` reports 3 or 4
   roads, and the four-way arm is pinned only to what the implementation does:
   `test_four_way_junction_also_merges` says so in its own docstring — no
@@ -65,6 +92,13 @@ readings.
 
 ## Conditional follow-up
 
+- **WII2D's exactly-once embed convention.** Dense n=10 is a wall of the
+  convention, not the machine: a per-node re-embed does dense n=10 in 14432
+  characters and dense n=13 in 146540, every row executed. Re-examine the
+  convention only if the arity ever matters — it is fenced by the invariant
+  in `tests/tools/test_boolean_parameterized.py`, and Dotlang and 2dFish were
+  removed rather than exempted from it. The audit is in
+  [`docs/walls.md`](walls.md).
 - **Minifuck's mux round loop.** The rest of the sculpt closed (pool code in
   `5b35c66b`, the named accumulator from nine); the round loop did not, and is
   *measured* not to. Over 36864 round transitions at exhaustive n=3 no round

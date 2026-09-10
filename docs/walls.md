@@ -51,9 +51,9 @@ claim is accepted.
   used to answer `10` through one path and `0` through the other, which no
   cross-camp translation could reconcile. Exhausted input is still `EOFError`.
   Pinned by `tests/interpreters/test_input_convention.py`, which enumerates
-  the registry rather than a list. Open: whether any language's `0` was ever
-  sourced from its own specification rather than chosen — the docstrings
-  citing "the original" are the same author's earlier readings.
+  the registry rather than a list. Whether any language's `0` was sourced
+  from its specification or merely chosen is live work; see
+  [the roadmap](roadmap.md).
 
 ## Verification boundaries
 
