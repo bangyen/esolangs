@@ -92,10 +92,9 @@ def _factorint(number: int) -> dict[int, int]:
     divided, and never hands a composite off to ``factorint`` because it
     gave up on it: a chunk that finds nothing widens the sieve instead.
     A genuinely hard number therefore sieves toward its own root rather
-    than wedging in Pollard rho, and that wait is bounded from outside --
-    ``scripts/verify_no_exception_leaks.py`` documents the wedge and kills
-    the subprocess, since the cost is in this constructor and no step cap
-    can reach it.
+    than wedging in Pollard rho.  Such a wait can only be bounded from
+    outside, by killing the subprocess: the cost is in this constructor and
+    no step cap can reach it.
 
     Deciding that must not cost an ``isprime`` per chunk, and this is the
     subtlety that replaced the old one.  ``isprime`` runs BPSW -- a

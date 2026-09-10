@@ -5,6 +5,7 @@ Subcommands:
     esolangs generate <language> <table>  print a program computing a table
                                           (``--width N`` wraps it to N columns)
     esolangs run <language> <file>        run a program through its interpreter
+    esolangs debug <language> <file>      run under the breakpoint/watch VM
 
 For anything else, invoke the module directly with ``python -m``.
 """
@@ -12,6 +13,7 @@ For anything else, invoke the module directly with ``python -m``.
 import sys
 
 from esolangs import generate, list_languages, run
+from esolangs.debug import make_debugger
 from esolangs.tools.wrap import DEFAULT_WIDTH
 
 USAGE = """usage: esolangs <command> [...]
@@ -22,12 +24,16 @@ commands:
                               print a program computing a truth table
                               (--width wraps it for readability)
   run <language> <file>       run a program through its interpreter
+  debug [--steps N] [--watch-cell I] [--break-on-output S] <language> <file>
+                              run under the debugger and report where it
+                              stopped, plus any watched cell's history
 
 examples:
   esolangs list
   esolangs generate Circlefuck 0110
   esolangs generate --width Brainfuck 10010110
   esolangs run Circlefuck hello.txt
+  esolangs debug --steps 20 --watch-cell 0 brainfuck prog.txt
 """
 
 
@@ -84,6 +90,81 @@ def _pop_width(rest: list[str]) -> tuple[list[str], int | None]:
     return args, width
 
 
+def _pop_options(rest: list[str], names: set[str]) -> tuple[list[str], dict[str, str]]:
+    """Split ``--name V`` and ``--name=V`` options out of ``rest``.
+
+    Only the names given are recognized; anything else stays positional, so
+    a program file called ``--x`` is still reachable and an unknown option
+    is reported by the caller rather than swallowed here.  Every option in
+    ``names`` takes a value, which is what lets a missing one be an error
+    instead of silently consuming the next positional.
+    """
+    args: list[str] = []
+    found: dict[str, str] = {}
+    i = 0
+    while i < len(rest):
+        arg = rest[i]
+        name, sep, inline = arg.partition("=")
+        if name not in names:
+            args.append(arg)
+            i += 1
+        elif sep:
+            found[name] = inline
+            i += 1
+        elif i + 1 < len(rest):
+            found[name] = rest[i + 1]
+            i += 2
+        else:
+            _fail(f"{name} needs a value")
+    return args, found
+
+
+def _debug(rest: list[str]) -> None:
+    """Run a program under the debugger and report where it stopped."""
+    rest, options = _pop_options(rest, {"--steps", "--watch-cell", "--break-on-output"})
+    if len(rest) < 2:
+        _fail("usage: esolangs debug [options] <language> <program-file>")
+    language, path = rest[0], rest[1]
+    for name in ("--steps", "--watch-cell"):
+        if name in options and not _is_int(options[name]):
+            _fail(f"{name} must be an integer, got {options[name]!r}")
+    try:
+        with open(path) as f:
+            program = f.read()
+    except OSError as exc:
+        _fail(f"cannot read {path}: {exc}")
+
+    stdin = "" if sys.stdin.isatty() else sys.stdin.read()
+    try:
+        dbg = make_debugger(language, program, stdin)
+    except ValueError as exc:
+        _fail(str(exc))
+    if "--break-on-output" in options:
+        dbg.break_on_output(options["--break-on-output"])
+    history = (
+        dbg.watch_cell(int(options["--watch-cell"]))
+        if "--watch-cell" in options
+        else None
+    )
+    steps = int(options["--steps"]) if "--steps" in options else None
+    # A debugged program is one the caller is already unsure of, so a raise
+    # here is a result to report rather than a crash to propagate: the
+    # state up to the fault is the thing they asked to see.
+    fault = None
+    try:
+        dbg.run(steps)
+    except Exception as exc:
+        fault = f"{type(exc).__name__}: {exc}"
+
+    print(f"halted: {'yes' if dbg.halted else 'no'}")
+    print(f"ip: {dbg.ip}")
+    print(f"output: {dbg.output!r}")
+    if history is not None:
+        print(f"cell {options['--watch-cell']}: {history}")
+    if fault is not None:
+        print(f"raised: {fault}")
+
+
 def main() -> None:
     """Dispatch the ``esolangs`` subcommands."""
     argv = sys.argv[1:]
@@ -104,6 +185,8 @@ def main() -> None:
         except ValueError as exc:
             _fail(str(exc))
         print(program)
+    elif cmd == "debug":
+        _debug(rest)
     elif cmd == "run":
         if len(rest) < 2:
             _fail("usage: esolangs run <language> <program-file>")

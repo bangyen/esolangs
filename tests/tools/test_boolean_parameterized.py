@@ -2811,9 +2811,10 @@ class TestParameterizedOneTwoThree:
     def test_a_dense_four_input_sweep_witness_stays_exact(self) -> None:
         """Pin one mixed table from the exhaustive constructor sweep.
 
-        The full sweep belongs in ``scripts/check_123_four_input.py`` rather
-        than the test suite.  This one-table witness keeps its execution gate
-        local: all sixteen rows must halt or revisit an exact interpreter
+        The exhaustive four-input sweep was a one-shot script rather than
+        a suite entry -- 65536 tables is far past what a run can pay.  This
+        one-table witness keeps its execution gate local: all sixteen rows
+        must halt or revisit an exact interpreter
         state with the table's verdict, never pass through a fuel limit.
         """
         from esolangs.tools.boolean.one_two_three_construct import construct

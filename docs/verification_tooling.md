@@ -10,8 +10,10 @@ verification and `just test-full` before release work.
   mutants and emitted no-op mutants.
 - A mutation score below 76.7% is treated as a broken measurement, not a
   reportable result.
-- Full exception-leak sweeps are bounded by subprocess timeouts where parsing
-  or unbounded growth cannot be safely interrupted by a step cap.
+- Where parsing or unbounded growth cannot be safely interrupted by a step
+  cap, only a subprocess timeout bounds it: a SIGALRM cannot land inside
+  sympy's uninterruptible C, which is why Factor is screened by operand
+  size rather than by a cap.
 
 For mutation triage, trust the harness first: use the worktree's source,
 compare complete snapshots, test exact error messages, and retain positive
