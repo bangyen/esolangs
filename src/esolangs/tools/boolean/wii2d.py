@@ -14,6 +14,7 @@ taking the single best fold at each step.  Nothing keeps alternatives,
 widens a beam, or retries, so the program is a direct function of the table.
 """
 
+import heapq
 import re
 
 from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
@@ -158,18 +159,22 @@ _WII2D_SHIFT_SAMPLES = 40
 # width and time tables this value was chosen against.
 #
 # 256 admits dense ``n == 9`` *usually*: the deterministic witness table
-# (sha256-derived, see the grid tests) builds in 6.6s at 78362 characters
-# with all 512 rows executed against the interpreter; 45 of 50 sampled
-# domain-256 patterns decode in about 3s each, and 6 of 10 sampled dense
-# n=9 tables build (both branch decodes must land, 5-12s, 50-94k chars).
-# Every sampled failure *returns* -- an aborted ratchet or a fold dead-end,
-# 0.7-9.4s -- so a refusal is prompt rather than a hang, which is what made
-# this raise from 128 safe; :data:`_WII2D_MAX_MAGNITUDE` makes that
-# promptness a guarantee instead of a sample.  Dense ``n == 10`` (domain
-# 512) stays refused: with every candidate enumerated the live count crawls
-# 512 -> 373 over 19 steps while the bit length climbs past 670000, so the
-# next doubling is a wall of the fold algebra, not a budget choice -- see
-# ``docs/wii2d_generator.md``.
+# (sha256-derived, see the grid tests) builds in 1.1s at 78362 characters
+# with all 512 rows executed against the interpreter.  Every sampled failure
+# *returns* -- an aborted ratchet or a fold dead-end -- so a refusal is
+# prompt rather than a hang, which is what made this raise from 128 safe;
+# :data:`_WII2D_MAX_MAGNITUDE` makes that promptness a guarantee instead of
+# a sample.  ``docs/wii2d_generator.md`` carries the resampled build and
+# refusal curves.
+#
+# Dense ``n == 10`` (domain 512) stays refused, and *not* because the number
+# is 256.  Raised to 512 the witness table still refuses, in 0.8s per
+# branch: with the magnitude bound lifted its decode ratchets, the live
+# count crawling 512 -> 475 over 19 steps while the bit length doubles every
+# step, 9 -> 1089888 bits, the 19th step alone 144s.  Full enumeration is no
+# better -- 512 -> 373 over 19 steps past 670000 bits.  So the next doubling
+# is a wall of the fold algebra under the exactly-once embed convention, not
+# a budget choice -- see ``docs/wii2d_generator.md``.
 _WII2D_MAX_INDEX_DOMAIN = 256
 
 # The widest *real* chain domain any table may decode over, whatever the
@@ -377,63 +382,77 @@ def _wii2d_folds(
     an approximation rather than a bound -- see the constant -- and it is
     what keeps the per-step cost flat as the domain grows.
     """
-    # Enumerate the legal folds first, *uncompressed*.  Compression is the
-    # expensive half -- a halving loop over the whole domain, each step
-    # rebuilding the live map -- and the caller only ever takes the head, so
-    # compressing every candidate is work thrown away.
-    pending: list[tuple[tuple[int, int, int], str, list[int]]] = []
+    # Enumerate the legal folds first, *uncompressed*, and by pair rather
+    # than by centre.  ``(p - c) ** 2`` collides for exactly the pairs
+    # symmetric about ``c``, so a centre is illegal iff some pair summing to
+    # ``2c`` needs two different bits, and the merged count is the live count
+    # less the number of pairs summing to ``2c`` (at most two points share
+    # one ``abs(p - c)``, so those pairs are disjoint).  Reading the pair sums
+    # off once therefore replaces the per-centre rescan of the whole domain,
+    # dropping the step from ``O(P ** 3)`` to ``O(P ** 2)`` -- 5.6s of the
+    # 6.3s dense ``n == 9`` build was this loop.  The candidate set is
+    # unchanged: a centre whose only even-sum pairs cross the bits is exactly
+    # one the rescan rejected, so legal centres always come from a same-bit
+    # pair.
+    #
+    # Compression stays the expensive half -- a halving loop over the whole
+    # domain, each step rebuilding the live map -- and the caller only ever
+    # takes the head, so only the shortlist is compressed and only its
+    # members' folded values are materialized.
+    pending: list[tuple[tuple[int, int, int], int, int, int]] = []
     for scale in (0, 1):
         scaled = [v * 2 for v in values] if scale else list(values)
         live = _wii2d_points(scaled, bits)
         if live is None:
             continue
         points = sorted(live)
-        centres = {
-            (points[i] + points[j]) // 2
-            for i in range(len(points))
-            for j in range(i + 1, len(points))
-            if (points[i] + points[j]) % 2 == 0
-        }
-        # sorted, not raw set order: ties in the ranking below are broken by
-        # the order candidates were appended, so iterating a set would let
-        # the emitted program depend on set iteration order rather than on
-        # the table alone.
-        for centre in sorted(centres):
+        span_low, span_high = points[0], points[-1]
+        zeros = [p for p in points if live[p] == 0]
+        ones = [p for p in points if live[p] == 1]
+        # ``2c`` for every pair that would fold two different bits together
+        crossing: set[int] = set()
+        for point in zeros:
+            crossing.update([point + other for other in ones])
+        # ``2c -> how many same-bit pairs that centre merges``
+        merging: dict[int, int] = {}
+        for group in (zeros, ones):
+            for index, point in enumerate(group):
+                for double in [point + other for other in group[index + 1 :]]:
+                    merging[double] = merging.get(double, 0) + 1
+        # sorted, not raw dict order: ties in the ranking below are broken by
+        # the order candidates were appended, so iterating unordered would let
+        # the emitted program depend on hash order rather than on the table.
+        for double in sorted(merging):
+            if double % 2 or double in crossing:
+                continue
+            centre = double >> 1
             if abs(centre) > _WII2D_MAX_CENTRE:
                 continue  # correct but too wide to spell out in the grid
-            merged: dict[int, int] = {}
-            for value in points:
-                folded = (value - centre) ** 2
-                if merged.get(folded, live[value]) != live[value]:
-                    break
-                merged[folded] = live[value]
-            else:
-                # Every centre offered here is the exact midpoint of two live
-                # points -- only even sums are collected above -- so that pair
-                # always squares to one value and the fold always merges at
-                # least once.  There is no "merged nothing" case to reject.
-                fragment = ("*" if scale else "") + _wii2d_offset(centre) + "s"
-                folded_values = [(v - centre) ** 2 for v in scaled]
-                # The shortlist key, on the uncompressed state.  It is a
-                # *screen*, not the ranking: compression can lower a
-                # magnitude by an order of magnitude (529 to 17 is real), so
-                # this cannot predict the true order and is not used as it.
-                pending.append(
+            # The shortlist key, on the uncompressed state.  It is a
+            # *screen*, not the ranking: compression can lower a magnitude by
+            # an order of magnitude (529 to 17 is real), so this cannot
+            # predict the true order and is not used as it.  The squares are
+            # monotone in the distance from the centre, so the widest folded
+            # value is always one of the two span ends.
+            pending.append(
+                (
                     (
-                        (
-                            max(abs(v) for v in folded_values),
-                            len(merged),
-                            len(fragment),
-                        ),
-                        fragment,
-                        folded_values,
-                    )
+                        max((span_low - centre) ** 2, (span_high - centre) ** 2),
+                        len(points) - merging[double],
+                        scale + abs(centre) + 1,
+                    ),
+                    len(pending),  # stable-sort tie-break, made explicit
+                    scale,
+                    centre,
                 )
+            )
 
     # Compress only the shortlist, then rank those on their true keys.
-    pending.sort(key=lambda candidate: candidate[0])
     out: list[tuple[int, int, int, str, list[int]]] = []
-    for _screen, fragment, folded_values in pending[:_WII2D_SHORTLIST]:
+    for _screen, _index, scale, centre in heapq.nsmallest(_WII2D_SHORTLIST, pending):
+        scaled = [v * 2 for v in values] if scale else values
+        fragment = ("*" if scale else "") + _wii2d_offset(centre) + "s"
+        folded_values = [(v - centre) ** 2 for v in scaled]
         compressed, grown = _wii2d_compress(folded_values, bits, fragment)
         out.append(
             (
@@ -972,10 +991,13 @@ def wii2d(truth_table: str) -> str:
             raise ValueError(
                 f"the WII2D decode for this n == {n} table spans {charged} "
                 f"points, past the _WII2D_MAX_INDEX_DOMAIN = "
-                f"{_WII2D_MAX_INDEX_DOMAIN} cost guard; this is a size/time "
-                "policy, not an unreachable table -- raising the constant "
-                "does build these (see docs/walls.md for the measured cost "
-                "curve)"
+                f"{_WII2D_MAX_INDEX_DOMAIN} cost guard; below the bound this "
+                "is a size/time policy, but raising the constant does not "
+                "buy the next doubling -- a domain-512 decode ratchets (live "
+                "512 -> 475 over 19 steps, bit length doubling every step) "
+                "and refuses on _WII2D_MAX_MAGNITUDE anyway.  See "
+                "docs/walls.md: dense n == 10 is a wall of the exactly-once "
+                "embed convention"
             )
         real = _wii2d_real_domain(states)
         if real > _WII2D_MAX_REAL_DOMAIN:
