@@ -1,20 +1,16 @@
 # Proofs
 
-Three results were machine-checked in Lean 4 + mathlib. The sources were
+Two results were machine-checked in Lean 4 + mathlib. The sources were
 deleted in `4317b0bb` and stay recoverable at `528fe2c2`; what is kept here
 is prose transcribed from each proof file's docstring, so the statements say
 what the theorems said. Source and tests are the primary evidence.
 
-The axiom note under each says what it rested on: `sorryAx` would mark a gap
-and never appeared, and `Lean.ofReduceBool` marks a `native_decide` step,
-which trusts the Lean compiler rather than the kernel alone.
+A third, MAMMALIAN generator totality, is not kept: it stated that the text
+generator's per-character search never reaches its `ValueError`, and the
+text generators were removed. It was the only one carrying `native_decide`;
+the two below are kernel-only, and `sorryAx` would mark a gap and never
+appeared in any of them.
 
-- **MAMMALIAN generator totality.** The text generator is total over the byte
-  range — the per-character search never reaches its `ValueError`. It rests
-  on `gcd(q + 1, 256) = 1` for even `q`, and on the SPRINT walk reaching an
-  even array within 46 steps from each of the 23 pointers. Carried
-  `native_decide`, a finite exhaustive check over 23 pointers x 256 SEED
-  counts x 256 targets; the only one of the three that used it.
 - **Factor round-trip.** The renderer round-trips its encoded program.
   Kernel-only: `propext`, `Classical.choice`, `Quot.sound`. The prime search
   rests on Dirichlet, not on computation.

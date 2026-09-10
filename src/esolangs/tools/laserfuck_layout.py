@@ -24,8 +24,8 @@ rather than leaving it blank.  Since the runs that make these grids wide
 are precisely the long same-character ones -- 48 ``-`` per reader, one
 ``+`` per unit of text -- that halves the rows the fold spends on them.
 
-The text generator's *frame* is not a straight run: it interleaves tape ops
-with bracket markers, and a marker owns mirror cells on the rows beneath it
+A loop *frame* is not a straight run: it interleaves tape ops with
+bracket markers, and a marker owns mirror cells on the rows beneath it
 whose columns must match its own.  Breaking inside one of those groups
 would separate a mirror from the marker it serves.  :func:`fold_groups`
 folds the frame anyway, by treating each marker and its mirrors as a single

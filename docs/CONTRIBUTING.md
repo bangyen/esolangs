@@ -9,7 +9,7 @@ elsewhere. Record rejected candidates in [limitations](limitations.md).
 ## Layout
 
 - `src/esolangs/interpreters/`: interpreter modules and `run(code, io)`.
-- `src/esolangs/tools/text/` and `boolean/`: generators.
+- `src/esolangs/tools/boolean/`: generators.
 - `src/esolangs/registry.py`: the source of truth for public integration.
 - `tests/`: interpreter and generator coverage.
 

@@ -362,7 +362,7 @@ def collatz_multiverse(truth_table: str) -> str:
     ``t = negativeOne x + one`` complements.  Each selected row of the table
     contributes its minterm (the AND of each bit's equality indicator); the
     OR is ``1 - prod (1 - minterm)``, and ``48 + result`` is printed.  The
-    byte constants come from the text generator's constant table.
+    byte constants come from :func:`_cm_constants`.
 
     A table with more ones than zeros selects its *zero* rows instead, since
     a minterm costs an indicator per input plus an AND chain.  Inverting the
