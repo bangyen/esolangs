@@ -14,7 +14,7 @@ from esolangs.tools.boolean.helpers import (
     best_input_order,
     decision_tree_tokens,
     essential_inputs,
-    minterm_literals,
+    minterm_sum,
     read_at,
 )
 from esolangs.tools.boolean.laserfuck import laserfuck
@@ -328,21 +328,22 @@ def _nevermind_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         lines.append("input,?")
         lines.append(f"make,{chr(ord('a') + i)},$answer")
 
-    def build(k: int, row: int) -> None:
-        indent = "  " * k
-        # ``row`` is accumulated a bit at a time, so at depth ``k`` it is a
-        # partial index: shifting it into place names the first row of the
-        # run its remaining bits span.
-        lo = row << (n - k)
-        if k == n or len(set(truth_table[lo : lo + 2 ** (n - k)])) == 1:
-            lines.append(f"{indent}print,{truth_table[lo]}")
-            return
-        for bit in (0, 1):
-            lines.append(f"{indent}if,${chr(ord('a') + perm[k])},==,{bit}")
-            build(k + 1, row * 2 + bit)
-            lines.append(f"{indent}endif")
+    def leaf(level: int, row: int) -> list[str]:
+        return [f"{'  ' * level}print,{truth_table[row]}"]
 
-    build(0, 0)
+    def node(level: int, zero: list[str], one: list[str], _at: int) -> list[str]:
+        indent = "  " * level
+        var = f"${chr(ord('a') + perm[level])}"
+        return [
+            f"{indent}if,{var},==,0",
+            *zero,
+            f"{indent}endif",
+            f"{indent}if,{var},==,1",
+            *one,
+            f"{indent}endif",
+        ]
+
+    lines += decision_tree_tokens(truth_table, leaf, node, collapse=True)
     return "\n".join(lines)
 
 
@@ -1244,6 +1245,7 @@ def suptiftam(truth_table: str) -> str:
     for name in names:
         lines.append(f"{name}=%-[read]22%")
         lines.append("down(:read:)")
+
     # One minterm per row selected, so a dense table is summed over its
     # zeros and the sum inverted -- ``1 - sum`` is one line however many
     # minterms it saves.
@@ -1252,19 +1254,22 @@ def suptiftam(truth_table: str) -> str:
     # row, dropping an input removes rows and shortens the rows that remain.
     # Every input keeps its read and its normalization (they are the
     # interface); an ignored one is never named as a factor.
-    used = essential_inputs(truth_table, n) or [0]
-    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
-    width = len(used)
-    table, invert = _maybe_complement(reduced)
-    for row in range(2**width):
-        if table[row] != "1":
-            continue
+    def literal(i: int, negated: bool) -> str:  # noqa: FBT001 - a literal's sign
+        return f"%-[1]{names[i]}%" if negated else names[i]
+
+    def product(factors: list[str]) -> str:
+        # ``p=1`` seeds the row, then each factor multiplies into it.  The
+        # seed can sit here rather than before the literals because a
+        # literal only names a factor -- it emits nothing of its own.
         lines.append("p=1")
-        for slot, negated in minterm_literals(row, width):
-            i = used[slot]
-            factor = f"%-[1]{names[i]}%" if negated else names[i]
-            lines += ["prod=0", f"a={factor}", "mulStep(:p:)if(p)", "p=prod"]
-        lines.append("sum=%+[sum]p%")
+        for factor in factors:
+            lines.extend(["prod=0", f"a={factor}", "mulStep(:p:)if(p)", "p=prod"])
+        return "p"
+
+    def accumulate(row: str) -> None:
+        lines.append(f"sum=%+[sum]{row}%")
+
+    _used, _width, invert = minterm_sum(truth_table, literal, product, accumulate)
     lines.append("term=%-[1]sum%" if invert else "term=sum")
     return "\n".join(lines)
 

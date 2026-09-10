@@ -47,6 +47,26 @@ type _State = _BFMachine
 _SIEVE_CHUNK = 20000
 
 
+def _parse(digits: str) -> int:
+    """Read the program's integer, lifting CPython's digit limit to fit it.
+
+    ``int(str)`` refuses above ``sys.get_int_max_str_digits()`` (4300 by
+    default) -- a CPython DoS guard against quadratic conversions, not
+    anything Factor says.  A Factor program *is* one integer, so the guard
+    caps the language at programs of 4300 digits: the n=5 parity table
+    encodes to 12565.  The limit is raised to what this program needs and
+    put back, since it is process-global and ours to borrow, not to keep.
+    """
+    limit = sys.get_int_max_str_digits()
+    if len(digits) <= limit:
+        return int(digits)
+    sys.set_int_max_str_digits(len(digits) + 1)
+    try:
+        return int(digits)
+    finally:
+        sys.set_int_max_str_digits(limit)
+
+
 def _factorint(number: int) -> dict[int, int]:
     """Factorize ``number``, dividing small primes out before sympy sees it.
 
@@ -69,36 +89,78 @@ def _factorint(number: int) -> dict[int, int]:
     them sat above the ceiling, and the sweep that runs it hung.
 
     So the sieve extends in chunks until the residue is prime or fully
-    divided, and sympy is only ever asked about a residue that is prime,
-    or one left when the number is genuinely hard -- never a composite
-    this loop simply gave up on.  ``isprime`` is what makes that cheap to
-    decide.  Measured 1.7x faster than plain ``factorint`` on the
-    committed examples, and no slower on the sweep's tables.
+    divided, and never hands a composite off to ``factorint`` because it
+    gave up on it: a chunk that finds nothing widens the sieve instead.
+    A genuinely hard number therefore sieves toward its own root rather
+    than wedging in Pollard rho, and that wait is bounded from outside --
+    ``scripts/verify_no_exception_leaks.py`` documents the wedge and kills
+    the subprocess, since the cost is in this constructor and no step cap
+    can reach it.
+
+    Deciding that must not cost an ``isprime`` per chunk, and this is the
+    subtlety that replaced the old one.  ``isprime`` runs BPSW -- a
+    Miller-Rabin base-2 test and a Lucas test, each a modular
+    exponentiation priced by the *full* width of its argument -- so asking
+    it about a residue that is still tens of thousands of bits wide costs
+    tens of seconds.  A loop that asks once per chunk pays that toll even
+    though the sieve is what finds every factor: sieving to 58099 measures
+    0.000s and the divisions 0.04s, against 60.02s for three ``isprime``
+    calls on the n=5 parity table (12565 digits, 3000 primes reaching
+    58099).  Dividing the small primes out first does not help either --
+    the bit mass is in *large* primes with large exponents, so the residue
+    after the first chunk is still 27412 of the original 41740 bits.
+
+    So ``isprime`` is gated on a *barren* chunk -- a full chunk that
+    divided nothing out -- and asked at most once per residue value.  That
+    is exactly the signal its answer is worth paying for: every remaining
+    factor is above the sieve, so the residue is either prime or hard.
+    While chunks keep yielding factors the sieve is winning and is left
+    alone, and a number of this shape reaches 1 without a barren chunk
+    ever occurring.  Measured 60.0s -> 0.04s on n=5 parity, and the
+    committed examples stay at 1.4ms.
     """
     factors: dict[int, int] = {}
     start = 2
+    checked = 0
     while number > 1:
-        if sympy.isprime(number):
-            factors[number] = factors.get(number, 0) + 1
-            return factors
         stop = start + _SIEVE_CHUNK
+        divided = False
         for prime in sympy.sieve.primerange(start, stop):
+            if number == 1:
+                # The chunk finished the number off; nothing is left to
+                # test, and the root check below would read 1 as a factor.
+                break
             if prime * prime > number:
                 # Nothing below the root divides it, so the residue is
-                # prime and the test at the top of the loop will take it.
-                break
+                # prime -- the one case worth taking without ``isprime``.
+                factors[number] = factors.get(number, 0) + 1
+                return factors
             while not number % prime:
                 factors[prime] = factors.get(prime, 0) + 1
                 number //= prime
-        else:
-            # The chunk ran out with the residue still composite and still
-            # bigger than the primes tried, so widen and keep going.
+                divided = True
+        if number == 1:
+            break
+        if divided:
+            # The sieve is still finding factors, so widen it rather than
+            # pay ``isprime`` on a residue that is plainly composite.
             start = stop
             continue
-        break
-    if number > 1:
-        for prime, exponent in sympy.factorint(number).items():
-            factors[prime] = factors.get(prime, 0) + exponent
+        # A barren chunk: every remaining factor is above the sieve, so
+        # the residue's primality is finally worth the BPSW test -- but
+        # only once per value, since consecutive barren chunks would
+        # otherwise re-ask the same question at the same full width.
+        if number != checked:
+            checked = number
+            if sympy.isprime(number):
+                factors[number] = factors.get(number, 0) + 1
+                return factors
+        # Composite, with every factor above the sieve.  Widening is the
+        # only sound move: handing it to ``sympy.factorint`` here would
+        # make the barren chunk a ceiling, and a ceiling's leftover is the
+        # large composite that sends ``factorint`` to Pollard rho for
+        # minutes -- the very failure the chunked sieve exists to avoid.
+        start = stop
     return factors
 
 
@@ -121,7 +183,7 @@ class _Machine:
         """Decode ``code`` and reset the underlying brainfuck machine."""
         self.io = io
         digits = re.sub(r"[^0-9]", "", code)
-        number = int(digits) if digits else 1
+        number = _parse(digits) if digits else 1
         self.state: _State = _BFMachine(decode(number), io)
 
     @property

@@ -5,7 +5,9 @@ sweep every registered boolean generator instead of asserting against one.
 """
 
 import contextlib
+import hashlib
 import importlib
+import re
 
 import pytest
 
@@ -491,17 +493,16 @@ _MINTERM_SHAPED = {
 # table's shape.
 #
 # ``ztoalc_l_boolean`` emits no tree either, and for a reason the folding
-# discriminator cannot see.  It builds one branch-free array lookup: the
-# inputs' row index is accumulated arithmetically and the table is one-hot
-# encoded into an array, so there are no subtrees to collapse and the
-# program's size tracks the number of rows it encodes, not the table's
-# shape.  Every table this test measures has ones-count 4, so they all
-# render to *exactly* the same length -- a 0% fold that is a property of the
-# construction rather than a regression in it.  (It is not minterm-shaped
-# either: a minterm sum's cost is one term per selected row, and while the
-# array init is one command per row, the emitted program's length is set by
-# the Collatz trajectory's peak, which is a lookup in a committed anchor
-# table rather than a function of the row count.)
+# discriminator cannot see.  It builds one branch-free chunked lookup: the
+# inputs are folded into a chunk index and a bit index, the table's
+# four-row chunks are stored as codes, and a shared decode array turns the
+# selected code's bit into the answer.  There are no subtrees to collapse,
+# and the program's size tracks the nonzero-chunk and distinct-code counts,
+# not the table's shape.  (It is not minterm-shaped either: a minterm sum's
+# cost is one term per selected row, where a chunk set carries four rows
+# and the emitted length is a Collatz placement -- the L-th smallest value
+# of a committed anchor's trajectory -- rather than a function of the row
+# count.)
 #
 # ``pct_squared_minus_one`` emits no tree at all.  %^2^-1's only branch is
 # ``t``, which jumps to position 0 and nowhere else, so the generator
@@ -545,6 +546,8 @@ _REDUCING = {
 # rule and the table is a string literal read with ``at{table, i+0.5}``, so
 # there are no subtrees to collapse and every table of a given arity renders
 # to exactly the same length.  A 0% fold is the construction working.
+# (ZTOALC L's chunked variant of the same fold keeps it in this list for
+# the same reason: lookup size does not track table shape.)
 _UNSHAPED = {
     "alight",
     "wii2d",
@@ -655,3 +658,105 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
             f"either its folding regressed or it is a minterm sum and belongs "
             f"in _MINTERM_SHAPED"
         )
+
+
+# Every boolean generator builds a table at n <= _MAX_ARITY.  Five inputs
+# rather than ten because ten is not a *capability* line: at n=10 ten
+# generators fall short, and only five of those are caps -- the other five
+# (Circuit Diagram, Forþ, Minifuck, ROTfuck, %^2^-1) build fine given time,
+# at up to 187s and 60MB of program text for one table, which no suite can
+# carry.  Five is where the two classes separate: every generator that can
+# build past its own arity cap does so in under 3s.
+_MAX_ARITY = 5
+
+# Every generator reaches _MAX_ARITY.  There used to be two that did not,
+# and both refusals were the *construction's* limit rather than the
+# language's, which is why neither survived being worked on:
+#
+#   interprogck8 capped at n=3 because one ``DownAccLines`` reaches 255
+#   lines and the n=4 bit-0 crossing spans 452.  Long hops now ride an
+#   express -- ``DownAccLines`` keeps the accumulator, so a chain spells
+#   its stride once and relays through one-line rungs parked in meadows
+#   -- and the ceiling sits at n=10, every row executed.
+#
+#   factor capped at n=3 because CPython refuses to render an integer past
+#   ``sys.get_int_max_str_digits()`` (4300 by default) and n=4 parity
+#   encodes to 6390 digits.  That guard is a DoS defence against quadratic
+#   conversions, not a property of Factor, so the generator and the
+#   interpreter both raise it to fit the program and put it back.
+#
+# The dict is kept rather than deleted: it is where a *newly* capped
+# generator gets recorded, and an empty one states that none is.  An entry
+# needs the measurement that put it there and the phrase its own refusal is
+# built around -- asserting only that something refused would accept a
+# generator that had started failing for an unrelated reason, since an
+# encoding bug reads exactly like a cap from the outside.
+_ARITY_CAPPED: dict[str, tuple[int, str]] = {}
+
+
+# The two table shapes every generator is built against.  A dense
+# pseudo-random table and parity fail *differently*: WII2D reaches n=10 on
+# parity but stops at n=8 dense, and Polynomial's 1934-instruction cap
+# refuses dense n=11 (2910) while parity fits far past it.  A single-shape
+# sweep reports the wrong ceiling for both, so both shapes are built here
+# even though neither generator is capped at n<=5.
+def _dense(n: int) -> str:
+    """A deterministic dense pseudo-random table -- the worst case to fold."""
+    digest = hashlib.sha256(f"dense:{n}".encode()).digest()
+    bits: list[str] = []
+    block = 0
+    while len(bits) < 2**n:
+        digest = hashlib.sha256(digest + bytes([block & 255])).digest()
+        bits.extend(str(byte & 1) for byte in digest)
+        block += 1
+    return "".join(bits[: 2**n])
+
+
+def _parity(n: int) -> str:
+    """Parity -- the table with no constant subtree above a single row."""
+    return "".join(str(bin(row).count("1") & 1) for row in range(2**n))
+
+
+@pytest.mark.parametrize("name", sorted(BY_BOOLEAN))
+def test_every_generator_builds_up_to_five_inputs(name: str) -> None:
+    """Every boolean generator builds every arity up to :data:`_MAX_ARITY`.
+
+    The sweep that pins the registry's *coverage*: a generator that
+    silently stops covering an arity it used to cover is a regression no
+    per-language suite catches, because each of those tests picks the
+    arities it asserts against.
+
+    Both shapes are built at every arity, since a generator can cover one
+    and refuse the other at the same n.  A capped generator must still
+    build everything up to its cap and must refuse past it with the
+    ``ValueError`` its entry pins -- a refusal that raises something else
+    is a bug, and one that returns a program is a wrong answer, which is
+    worse than either.
+    """
+    fn = getattr(boolean, name)
+    cap, pattern = _ARITY_CAPPED.get(name, (_MAX_ARITY, ""))
+    for n in range(1, _MAX_ARITY + 1):
+        for shape, make in (("dense", _dense), ("parity", _parity)):
+            table = make(n)
+            if n <= cap:
+                program = str(fn(table))
+                assert program, f"{name} built an empty program at n={n} ({shape})"
+            else:
+                with pytest.raises(ValueError, match=re.escape(pattern)):
+                    fn(table)
+
+
+def test_arity_caps_are_still_caps() -> None:
+    """A capped generator that grew past its cap must leave ``_ARITY_CAPPED``.
+
+    The table above is a record of measurements, so it goes stale in the
+    direction that matters: a generator whose construction is extended
+    keeps its entry and this suite keeps asserting the *old* refusal, which
+    turns a fixed limitation into a permanently pinned one.  Asserting the
+    cap is still binding is what makes the entry falsifiable.
+    """
+    for name, (cap, pattern) in sorted(_ARITY_CAPPED.items()):
+        fn = getattr(boolean, name)
+        assert str(fn(_dense(cap))), f"{name} no longer builds at its cap n={cap}"
+        with pytest.raises(ValueError, match=re.escape(pattern)):
+            fn(_dense(cap + 1))

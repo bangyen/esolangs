@@ -1,6 +1,9 @@
 """Boolean-function generator for 6:5.
 
-:func:`six_five` routes a decision tree that folds its constant subtrees.
+:func:`six_five` routes a decision tree that folds its constant subtrees,
+shares its duplicates past the label budget, and falls back to a positional
+walk (:func:`_six_five_walk`) when even the distinct subtrees overflow --
+which makes the generator total through n == 35.
 
 There used to be a second construction, ``six_five_arithmetic``, which
 packed the inputs and the table into single cells and decoded the entry
@@ -17,7 +20,6 @@ assembler were retired.
 
 import string
 from itertools import permutations
-from math import factorial
 
 from esolangs.tools.boolean.helpers import (
     _ASCII_ZERO,
@@ -35,8 +37,7 @@ __all__ = ["six_five"]
 # This interpreter would decode past ``Z`` through an unguarded
 # fallthrough, which is undefined behaviour rather than a language feature
 # (see the conformance note in ``docs/limitations.md``), so nothing may
-# emit into that region.  This lived in ``esolangs.tools.transpilers``
-# while a BF-to-6-5 transpiler existed; it is the generator's now.
+# emit into that region.
 _SIX_FIVE_MAX_LABEL = 10 + len(string.ascii_uppercase) - 1
 
 
@@ -96,16 +97,28 @@ def six_five(truth_table: str) -> str:
     folded tree fits in 35 labels uses the tree, at any ``n``.
 
     **The budget is spent per input order**, so a table whose identity tree
-    overflows may fold inside it under some other order, and only a table
-    overflowing under *every* order is refused.  The worst case is therefore
-    the shape no renaming folds -- **parity**, which needs 63 labels under
-    all 720 orders because any permutation of parity is parity.  An
-    alternating table folds nothing in stream order but is only NOT of the
-    last input, so one reorder collapses it to a single label: a table that
-    merely looks scattered is not a refusal witness.  Every table is
-    renderable through n == 5 (the worst case spends 31), so the refusals
-    begin at n == 6, and a table refused under every order raises
-    :class:`ValueError`.
+    overflows may fold inside it under some other order.  An alternating
+    table folds nothing in stream order but is only NOT of the last input,
+    so one reorder collapses it to a single label: a table that merely
+    looks scattered is not a hard one.
+
+    **Past the budget the tree is shared** (:func:`_six_five_shared`), which
+    is what carries this generator past n == 5 and inverts which table is
+    hard.  Parity used to be the witness that fixed the cap -- no renaming
+    folds any of its 63 nodes at n == 6, since any permutation of parity is
+    parity -- and it is now the *cheapest* wide table there is, because
+    those nodes are duplicates of one another: two distinct subtrees per
+    level, 20 markers at n == 10 against 1023 unshared.  What binds a tree
+    is a table with many *different* subtrees, which is the dense one:
+    n == 7 dense needs 47.
+
+    **Past even the distinct subtrees the table goes on the tape**
+    (:func:`_six_five_walk`), which spends one label per *input* rather
+    than per subtree and so is total through n == 35: the reads steer the
+    pointer to the row the inputs index instead of steering the cursor.
+    The trees stay preferred while one fits -- they are what every
+    committed size measurement was taken against, and far shorter when a
+    table folds or shares well.
 
     **The order search is capped at ``_ORDER_SEARCH_MAX`` inputs**, the same
     bound and the same greedy fallback ``best_input_order`` uses.  The cap
@@ -138,14 +151,226 @@ def six_five(truth_table: str) -> str:
         if candidate and (not best or len(candidate) < len(best)):
             best = candidate
     if not best:
-        searched = factorial(n) if n <= _ORDER_SEARCH_MAX else len(orders)
-        raise ValueError(
-            "the 6-5 decision tree has 35 branch labels, but this table needs "
-            f"{_six_five_markers(truth_table)} after folding its constant "
-            f"subtrees under every one of the {searched} input orders tried "
-            f"(n == {n})"
-        )
+        # Every order overflowed the budget even shared, so the table has
+        # too many distinct subtrees for any tree-shaped emission.  The walk
+        # spends labels per *input* rather than per subtree, so it always
+        # fits at these widths.
+        return _six_five_walk(truth_table)
     return best
+
+
+def _six_five_walk(truth_table: str) -> str:
+    """Emit the positional-walk 6-5 program: the whole table on the tape.
+
+    The tree constructions spend a label per subtree, so a table with more
+    than 35 *distinct* subtrees (dense n == 7 has 47) overflows under every
+    input order.  This one spends exactly ``n`` labels however scattered
+    the table is: the branching moves the *pointer* instead of the cursor.
+
+    Layout: table row ``j`` is preloaded at stride ``n + j`` (``1`` moves
+    two cells, so a stride is one ``1`` and row ``j`` sits at cell
+    ``2 * (n + j)``), ones as ``62`` pairs and zeros left as the tape's
+    own 0.  The pointer returns to cell 0 and each input bit is then read
+    where the pointer stands and decoded in place: bit 1 (cell 9 after the
+    ``2``s) skips the ``8n`` and falls into a run of ``2**(n-1-i)`` strides,
+    bit 0 takes the jump to the ``4`` just past the run.  Both paths then
+    share one more stride, so after ``n`` bits the pointer is at stride
+    ``n + x`` -- the row the inputs index -- and the leaf adds 48 to the
+    0/1 there and prints.  The one ``4`` per bit is the whole label bill.
+
+    The shared stride per bit keeps every read strictly behind the final
+    cell (at bit ``i`` the walk still has ``n - i`` strides to go), so the
+    ``B``s only ever clobber rows this run has already passed -- harmless,
+    since one cell is printed and the program halts.
+
+    Dense n == 10 spends 10 labels and 5319 chars, and all 1024 rows run
+    in 12s; size doubles per input, so the label bound ``n <= 35`` is the
+    only other gate.
+    """
+    n = _validate_truth_table(truth_table)
+    if n > _SIX_FIVE_MAX_LABEL:
+        raise ValueError(
+            f"the 6-5 walk spends one branch label per input and there are "
+            f"only 35, so n == {n} does not fit"
+        )
+    ones = [j for j, value in enumerate(truth_table) if value == "1"]
+    out = ""
+    if ones:
+        # Rows past the last 1 stay virgin: the walk's own strides grow the
+        # tape, and a virgin cell already holds the 0 those rows need.
+        out += "1" * n
+        for j in range(ones[-1] + 1):
+            if truth_table[j] == "1":
+                out += "62"
+            if j != ones[-1]:
+                out += "1"
+        out += "3" * (2 * (n + ones[-1]))
+    for i in range(n):
+        out += "B" + "2" * 8 + "79" + "8" + _six_five_label(i + 1)
+        out += "1" * 2 ** (n - 1 - i) + "4" + "1"
+    return out + "6" * 8 + "A0"
+
+
+def _six_five_dag_cost(truth_table: str) -> int:
+    """Markers the shared build spends on ``truth_table``.
+
+    One per distinct internal node, less the root's -- whose block is
+    entered by falling into it rather than by a jump -- plus one per
+    distinct *right* leaf.  See :func:`_six_five_shared` for why the right
+    leaves are shared globally and the left ones are not, and why two equal
+    slices are always the same node.
+    """
+    internal: set[str] = set()
+    right_leaves: set[str] = set()
+
+    def walk(window: str, *, right: bool) -> None:
+        if len(set(window)) == 1:
+            if right:
+                right_leaves.add(window[0])
+            return
+        if window in internal:
+            return
+        internal.add(window)
+        half = len(window) // 2
+        walk(window[:half], right=False)
+        walk(window[half:], right=True)
+
+    walk(truth_table, right=False)
+    return max(len(internal) - 1, 0) + len(right_leaves)
+
+
+def _six_five_shared(
+    truth_table: str,
+    perm: tuple[int, ...],
+    cell_of: dict[int, int],
+    entry: int,
+    n: int,
+) -> str:
+    """Emit the tree as a DAG, each distinct subtree laid down once.
+
+    The tree spends a marker per internal node it leaves standing, and most
+    of those nodes are duplicates: parity at n == 6 has 63 of them and only
+    11 distinct ones.  ``8n`` names the *n-th* ``4`` in the program rather
+    than a scope, so two branches may name the same one -- which makes the
+    duplicates shareable and turns the label budget from a bound on the
+    tree's size into one on the function's distinct subfunctions.
+
+    **Two equal slices are always the same node.**  A slice's length fixes
+    its level, and :func:`_six_five_hoisted` guarantees the pointer's
+    position on entry is a function of the level alone, so every parent of
+    a merged node enters it identically.  Nothing else in a node's code
+    depends on the path: ``held`` reaches only the leaves.
+
+    **Left leaves stay inline; right leaves are shared.**  A leaf's
+    arithmetic counts from the value its parent's test left in the cell --
+    8 falling through, 9 on the jump -- so leaves do not merge across the
+    two.  A left leaf is the fall-through and costs no marker where it
+    sits.  A right leaf needs one, but there are only ever two distinct
+    ones in a whole program (print 0 from 9, print 1 from 9), so they are
+    emitted once at the end and every right branch names one of the two.
+    """
+    # Distinct blocks, in the order their code is laid down: the root's
+    # subtree first, then the rest reachable from it.  A block's label is
+    # its index among the ``4`` markers, so the layout fixes the numbering
+    # and both are decided here before a character is emitted.
+    order: list[str] = []
+    seen: set[str] = set()
+
+    def level_of(window: str) -> int:
+        return n - (len(window).bit_length() - 1)
+
+    def test_cell(window: str) -> tuple[str, int]:
+        """Return the slice this block really tests, and the cell it uses.
+
+        A clobbered input has no cell, so its two halves are the same
+        function -- descend the zero half, as the tree build does.  Every
+        walk over the DAG has to skip in exactly this way, or the blocks
+        that get laid down are not the ones the jumps name.
+        """
+        level = level_of(window)
+        while perm[level] not in cell_of:
+            window = window[: len(window) // 2]
+            level += 1
+        return window, cell_of[perm[level]]
+
+    def children(window: str) -> tuple[str, str]:
+        tested, _ = test_cell(window)
+        half = len(tested) // 2
+        return tested[:half], tested[half:]
+
+    def collect(window: str) -> None:
+        if len(set(window)) == 1 or window in seen:
+            return
+        seen.add(window)
+        order.append(window)
+        for child in children(window):
+            collect(child)
+
+    collect(test_cell(truth_table)[0])
+    right_leaf_values = sorted(
+        {
+            child[0]
+            for parent in order
+            for child in (children(parent)[1],)
+            if len(set(child)) == 1
+        }
+    )
+    # The root falls through rather than being jumped to, so it carries no
+    # marker; every other block is preceded by one, and the shared right
+    # leaves follow them.
+    label_of = {window: i for i, window in enumerate(order[1:], start=1)}
+    leaf_label = {value: len(order) + i for i, value in enumerate(right_leaf_values)}
+
+    def leaf_code(value: str, held: int) -> str:
+        delta = _ASCII_ZERO + int(value) - held
+        q, r = divmod(delta, 6)
+        # one +5 beats five "62" pairs, as _six_five_const already does
+        tail = "5" if r == 5 else "62" * r
+        return "6" * q + tail + "A0"
+
+    def right_branch(window: str) -> str:
+        """Return the jump taken when the test succeeds.
+
+        Always a jump, never inline code: the ``7`` skips exactly one
+        token, so the taken branch has one token to spend.  That is why a
+        right leaf needs a marker where a left one does not.
+        """
+        if len(set(window)) == 1:
+            return "8" + _six_five_label(leaf_label[window[0]])
+        return "8" + _six_five_label(label_of[window])
+
+    def block(window: str, arrive: int) -> str:
+        """One node's code: test, jump right, then fall into the left arm.
+
+        ``arrive`` is the cell the pointer is on when this block is entered.
+        Every parent of a shared block tests the same cell -- they are all
+        at its level, since a slice's length fixes that -- so the walk to
+        this block's own cell is the same whichever parent jumped.
+        """
+        _, cell = test_cell(window)
+        left, right = children(window)
+        code = _six_five_move(arrive, cell) + "78" + right_branch(right)
+        if len(set(left)) == 1:
+            return code + leaf_code(left[0], 8)
+        # The left arm is a node of its own, reached by falling through the
+        # test and then jumping -- unconditionally, since ``7`` owns the
+        # condition and has already skipped the branch above.
+        return code + "8" + _six_five_label(label_of[left])
+
+    # Where the pointer sits on entry: the root is entered from the reads,
+    # every other block from its parent's test cell.
+    arrive_at = {order[0]: entry}
+    for window in order:
+        _, cell = test_cell(window)
+        for child in children(window):
+            if len(set(child)) != 1:
+                arrive_at.setdefault(child, cell)
+    out = block(order[0], arrive_at[order[0]])
+    for window in order[1:]:
+        out += "4" + block(window, arrive_at[window])
+    for value in right_leaf_values:
+        out += "4" + leaf_code(value, 9)
+    return out
 
 
 def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -180,9 +405,14 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
     parent's cell.
     """
     n = _validate_truth_table(truth_table)
-    if _six_five_markers(truth_table) > 35:
+    # The tree is preferred while it fits: it is what every committed size
+    # measurement was taken against, and sharing only pays once there are
+    # duplicates worth merging.  Past the budget the DAG is tried before
+    # the order is given up on.
+    shared = _six_five_markers(truth_table) > 35
+    if shared and _six_five_dag_cost(truth_table) > 35:
         return ""
-    if perm == tuple(range(n)):
+    if perm == tuple(range(n)) and not shared:
         return _six_five_stream_ordered(truth_table)
     stored = stored_inputs(truth_table, perm)
     # Reads run in input order; only a stored input claims a cell, so the
@@ -215,7 +445,9 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
             return _six_five_move(entry, scratch) + _six_five_const(digit) + "A0"
         delta = _ASCII_ZERO + int(value) - held
         q, r = divmod(delta, 6)
-        return "6" * q + "62" * r + "A0"
+        # one +5 beats five "62" pairs, as _six_five_const already does
+        tail = "5" if r == 5 else "62" * r
+        return "6" * q + tail + "A0"
 
     def node(level: int, lo: int, hi: int, entry: int, held: int | None) -> str:
         nonlocal marker
@@ -239,6 +471,8 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
         sub1 = node(level + 1, mid, hi, cell, 9)
         return nav + "78" + "8" + _six_five_label(label) + sub0 + "4" + sub1
 
+    if shared:
+        return reads + _six_five_shared(truth_table, perm, cell_of, pos, n)
     return reads + node(0, 0, 2**n, pos, None)
 
 
@@ -296,7 +530,8 @@ def _six_five_stream_ordered(truth_table: str) -> str:
         if len(rows) == 1:
             delta = _ASCII_ZERO + int(truth_table[rows[0]]) - base
             q, r = divmod(delta, 6)
-            return "6" * q + "62" * r + "A0"
+            tail = "5" if r == 5 else "62" * r
+            return "6" * q + tail + "A0"
         values = {truth_table[r] for r in rows}
         if len(values) == 1:
             # A constant subtree emits its value directly instead of the

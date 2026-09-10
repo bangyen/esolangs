@@ -190,8 +190,8 @@ class TestErrors:
         assert run_and_capture(code) == "0"
 
     def test_while_loop_inside_a_function_body(self) -> None:
-        # a while loop nested in a function body runs through _run_statement's
-        # own while handling, not the top-level frame stack's
+        # a while loop nested in a function body is stepped on the frame
+        # stack like any other, not run to completion inside one step()
         code = (
             "var f is func\n"
             "  var i is 2\n"
@@ -207,15 +207,6 @@ class TestErrors:
 
 
 class TestStepMachine:
-    def test_step_after_halt_is_a_noop(self) -> None:
-        from esolangs.interpreters.register_based.myscript import _Machine
-
-        machine = _Machine("", IO())
-        while not machine.halted:
-            machine.step()
-        machine.step()  # stepping a halted machine is a no-op
-        assert machine.halted
-
     def test_malformed_var_declaration_is_rejected(self) -> None:
         with pytest.raises(ValueError, match="malformed"):
             run_and_capture("var x 5")
@@ -266,6 +257,77 @@ class TestStepMachine:
 
     def test_top_level_assignment(self) -> None:
         assert run_and_capture("var a is 1\na is 2\nsay a") == "2"
+
+
+class TestFrameStack:
+    """The guarantees a call being a frame -- rather than Python recursion -- buys."""
+
+    def test_deep_recursion_is_not_capped(self) -> None:
+        """A terminating recursion past Python's default 1000-frame limit runs.
+
+        A call pushes a frame rather than recursing natively, so depth is
+        heap rather than Python stack and no ``RecursionError`` is possible.
+        """
+        depth = 2000
+        lines = ["var countdown is func n"]
+        lines.append("  check n,")
+        lines.append("    if 0,")
+        lines.append('      return "done"')
+        lines.append("    else,")
+        lines.append("      return countdown subtract n 1")
+        lines.append(f"say countdown {depth}")
+        assert run_and_capture("\n".join(lines)) == "done"
+
+    def test_a_loop_inside_a_function_body_is_provably_cyclic(self) -> None:
+        """A hang inside a call is visible to the state-cycle detector.
+
+        Running a called function to completion inside one ``step()`` hid
+        this: the loop never returned, so no intermediate state ever
+        reached ``snapshot()`` and the detector could not see it.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.register_based.myscript import _Machine
+        from esolangs.vm import run_until_halt_or_cycle
+
+        code = "var f is func\n  while yes,\n    var q is 1\nsay f"
+        machine = _Machine(code, ScriptedIO())
+        assert run_until_halt_or_cycle(machine) is False
+
+    def test_a_call_in_a_while_condition_is_stepped(self) -> None:
+        """A condition may itself call, on the first check and every re-check.
+
+        The re-check runs on the body's own frame, so a call there stacks a
+        frame above the loop and unwinds back into it once per lap.
+        """
+        code = (
+            "var i is 2\n"
+            "var dec is func n\n"
+            "  say n\n"
+            "  return n\n"
+            "while dec i,\n"
+            "  var i is subtract i 1"
+        )
+        # 2 and 1 run the body; 0 is the check that ends the loop.
+        assert run_and_capture(code) == "210"
+
+    def test_a_call_in_a_check_subject_and_case_is_stepped(self) -> None:
+        """A ``check`` evaluates its subject and each case lazily, calls included."""
+        code = 'var idf is func n\n  return n\ncheck idf 5,\n  if idf 5,\n    say "hit"'
+        assert run_and_capture(code) == "hit"
+
+    def test_one_statement_inside_a_call_is_one_step(self) -> None:
+        """A called function's statements are stepped, not run in one step."""
+        from esolangs.interpreters.io import IO
+        from esolangs.interpreters.register_based.myscript import _Machine
+
+        code = "var f is func\n  var a is 1\n  var b is 2\nsay f"
+        machine = _Machine(code, IO())
+        depths = set()
+        while not machine.halted:
+            depths.add(len(machine.frames))
+            machine.step()
+        # The body's own frame is entered, so the run is seen at depth 2.
+        assert max(depths) >= 2
 
 
 class TestGenerator:

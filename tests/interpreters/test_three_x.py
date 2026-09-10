@@ -161,6 +161,19 @@ class TestStepMachine:
         assert _advance((0, (three, zero), (), ()), "!") == (1, (three,), (), ())
         assert _advance((0, (three, zero), (), ()), "#") == (1, (zero, three), (), ())
 
+    def test_an_open_paren_on_zero_skips_only_when_it_has_a_target(self) -> None:
+        """``(`` on a zero jumps past the loop, or advances with no target.
+
+        The shell supplies the matching ``)`` as ``target``; a caller that
+        does not know one leaves it ``None``, and then the cursor simply
+        moves on rather than jumping nowhere.
+        """
+        from esolangs.interpreters.stack_based.three_x import _advance
+
+        zero = Fraction(0)
+        assert _advance((0, (zero,), (), ()), "(") == (1, (zero,), (), ())
+        assert _advance((0, (zero,), (), ()), "(", None, 9) == (10, (zero,), (), ())
+
     def test_a_close_paren_with_no_open_loop(self) -> None:
         """``)`` on a zero falls out of a loop it was never inside.
 

@@ -20,25 +20,25 @@ numeric output alphabet, or cannot emit arbitrary byte sequences. Boolean
 construction is parameterized for 123 and `%^2^-1`; no program reading its
 own inputs overcomes the latter's two-input wall.
 
-Interprogck8's boolean generator caps at three inputs, and the cap is the
-*construction's*, not the language's. `DownAccLines` routes the whole
-decision tree — the current-function slot is never touched, which answers
-the roadmap question it was posed under — but a branch's nine-line jump
-window spells a hop of at most 70 lines and one `DownAccLines` at most 255,
-while at n=4 the bit-0 arm has to cross a 456-line subtree. A rung parked
-inside the crossed region would lift both bounds. All 4, 16 and 256 tables
-at n=1, 2 and 3 are executed over every input row; n≥4 raises `ValueError`.
+Interprogck8's boolean generator reaches ten inputs. It was capped at
+three by the reach of one `DownAccLines` — 255 lines, against a 456-line
+n=4 crossing — lifted to seven by relay rungs (`77025aa7`), and lifted to
+ten by the express: `DownAccLines` keeps the accumulator, so a chain
+spells its stride once and rides one-line rungs parked in meadows, which
+also retired the old router's patience knob and its 2031s n=8 price. See
+the table below for the measured edge and the paragraph after it for the
+mechanism.
 
 ## Text generator blockers
 
 | Language | Why it cannot emit arbitrary text |
 | --- | --- |
-| A Painter Ant | No I/O; its grid dump is limited to raster symbols. |
+| A Painter Ant | No I/O, so the interpreter dumps state when it proves the ant's routine repeats; that grid raster is limited to its symbols. |
 | Algebraic Programming Language | Executed lines print numeric results only. |
-| ArrowQueue | Has no output. |
-| Back | Its halting tape dump has only `0`, `1`, and spaces. |
+| ArrowQueue | No I/O, so the interpreter dumps the queue at halt; those headings are numeric. |
+| Back | No I/O, so the interpreter dumps the tape at halt; that has only `0`, `1`, and spaces. |
 | BF-PDA | Output is one bit at a time. |
-| Bitdeque | Its interpreter-only deque dump is numeric. |
+| Bitdeque | No I/O, so the interpreter dumps the deque at halt; that dump is numeric. |
 | COD | Its sink prints decimal integers only. |
 | Circuit Diagram | Output is a bit string only. |
 | Fargo | `$` prints the output register as a number. |
@@ -47,18 +47,131 @@ at n=1, 2 and 3 are executed over every input row; n≥4 raises `ValueError`.
 | Inject | `send` appends a newline to every emitted line, so texts without a final newline are unreachable. |
 | Jaune | `^` prints cells as decimal integers only. |
 | Lamfunc | Whitespace tokenization and no concatenation prevent arbitrary text. |
-| Minsky Swap | It has no output command; the halting register dump is numeric. |
-| Point Break | Has no output. |
-| RAM0 | Its fixed-format final dump cannot address arbitrary text. |
+| Minsky Swap | No I/O, so the interpreter dumps the registers at halt; that dump is numeric. |
+| Point Break | No output command, so the interpreter dumps the variables at halt; that dump is numeric. |
+| RAM0 | No I/O, so the interpreter dumps state at halt; that fixed format cannot address arbitrary text. |
 
 Current caps are deliberate:
 
-- **6-5:** 35 addressable branch labels; a structural language wall.
+Measured ceilings, from a sweep of all 69 boolean generators over n=1..10
+against a dense pseudo-random table and parity (both shapes, since several
+generators cover one and refuse the other at the same arity):
+
+| Generator | dense | parity | what stops it |
+| --- | --- | --- | --- |
+| Interprogck8 | 10 | 10 | n=11 dense exhausts the `_REPAIRS = 256` meadow budget after 30s; whether more budget closes it is unmeasured |
+| Polynomial | 10 | 10 | caps at 1934 instructions, one per prime -- the analytic worst case over n=10 tables, so all of n=10 builds; dense n=11 needs 2910 |
+| WII2D | 8 | 10 | dense n=9 decode spans 256 points past the `_WII2D_MAX_INDEX_DOMAIN = 128` cost guard |
+| ZTOALC L | 10 | 10 | n=11 needs 587 command slots (545 parity) against the anchors' 386 under the 4.19M line ceiling |
+
+6-5 leaves the table too.  Its 35 branch labels are the language's
+(operands are `0-9A-Z`), and the tree constructions spend them per subtree:
+sharing duplicates as a DAG bought parity n=14, but a dense table has
+genuinely *different* subtrees -- 47 distinct at n=7 against 35 -- and was
+refused under every input order.  The walk construction spends one label
+per input instead: the table is preloaded onto the tape a row per stride
+(`1` moves two cells), and each read then either falls into a run of
+`2^(n-1-i)` strides or jumps past it, so after n bits the pointer stands on
+the row the inputs index.  Dense n=10 is 10 labels and 5319 chars, all
+1024 rows executed correctly in 12s.  What remains is n<=35 -- a label per
+input -- with program size doubling per input long before that binds.
+
+Both older entries moved rather than vanished.  Interprogck8 was capped at 3 by
+the 255-line reach of one `DownAccLines` against a 452-line n=4 crossing,
+then at 7 by relay interference: every rung respelled its distance (~25
+lines) into shared dead space, and rungs repairing one chain broke
+others, an iterative chase that cost 2031s at n=8.  The express replaced
+that.  `DownAccLines` does not consume the accumulator, so a chain loads
+its stride once at its own jump slot and every waypoint after is a bare
+one-line `DownAccLines` -- plus a few `@nd`/`@id` adjusters where the
+stride changes -- parked in *meadows*, dead-line banks emitted between
+gadgets and sized to the chains crossing them.  Meadows are placed after
+widths settle and a rung replaces a placeholder line in place, so routing
+runs once against frozen coordinates and chains cannot interfere; a
+shortfall names its stranded window, a repair adds one meadow inside it,
+and the route is retried from clean placeholders (`_REPAIRS = 256`
+additions, against 95-126 spent across four n=10 dense seeds).  n=10
+builds in about 10s (91684 lines dense, 116330 parity) and **every row of
+dense and parity executed correctly at n=8, 9 and 10**; n=7 dropped from
+3.5s to 0.05s and 12985 lines to 9499.  n=11 dense is refused when the
+repair budget runs out, 30s in -- a cost policy again, and whether more
+budget would close it is unmeasured.
+
+Factor was capped at 3 by CPython's 4300-digit `int`/`str` guard -- a DoS
+defence, not a Factor property -- which the generator and the interpreter
+now both raise to fit the program and restore, so n=5 parity (12565 digits)
+renders and runs, verified row by row.  Its ceiling is program size against
+`max_digits`, not an arity, so it leaves this table.  Both caps were the
+construction's rather than the language's, which is what made them
+liftable.
+
+What n=5 parity cost to *run* was a second, separate limit, and it is gone
+too.  `_factorint` asked `sympy.isprime` once per sieve chunk, and BPSW is
+two modular exponentiations priced by the full width of the argument: three
+calls were 60.02s of a 60.06s factorization, while the sieve that finds
+every factor measured 0.000s and the divisions 0.04s.  Gating the test on a
+*barren* chunk -- one that divided nothing out, the only point its answer is
+worth paying for -- puts n=5 parity at 0.041s a row.  Numbers of this shape
+reach 1 without a barren chunk ever occurring.  Reach past n=5, generating
+and interpreting one row: n=7 0.56s, n=8 2.2s, n=9 8.8s, n=10 36s (454832
+digits), n=11 151s (952366 digits), each answering correctly.  The cost is
+roughly 4x an input, so n=12 is near ten minutes a row.  **These are single
+rows, not the row-by-row verification the n=5 claim above rests on** -- a
+full n=10 table is 1024 rows, about ten hours -- so the reach is where a row
+is affordable, not where a table is checked.
+
+The other 65 generators build both shapes at n=10, and ZTOALC L and
+Interprogck8 now join them (both caps sit at n=11, so they stay in the
+table). Five are slow rather
+than capped, and their cost is the reason `tests/tools/test_boolean_contract.py`
+sweeps to five inputs rather than ten: Minifuck 187s at n=8, Circuit Diagram
+73s and 60MB of program text at n=9, Forþ 70s at n=10, `%^2^-1` 32s at n=9
+parity, ROTfuck 16s and 20MB at n=10 parity. Only the table's rows are
+capability limits, and only WII2D's dense row binds inside the sweep (the
+other three caps sit at n=11); the rest of the gap between five and ten is
+wall-clock.
+
+- **Interprogck8:** a meadow-budget limit, not the 255-line reach.  The
+  express routes against frozen coordinates, so the old relay
+  interference is gone; what runs out at n=11 is the repair budget that
+  adds meadows at stranded windows, and the refusal names the window.
 - **`%^2^-1`:** generic samples build through thirteen inputs; a
   fourteen-input table would need a twelve-input prefix ladder, which is
   open research, not a wall.
-- **NoComment, Factor:** host/runtime configuration limits.
-- **Polynomial, WII2D, ZTOALC L:** program-cost guards, not capability claims.
+- **NoComment:** a host/runtime configuration limit.  Factor used to sit
+  here and no longer does: its limit was CPython's digit guard, which is
+  raised and restored around the conversion rather than reported.
+- **Polynomial:** a cost guard on the *interpreter*, not the generator,
+  and now at 1934 instructions -- the analytic worst case over n=10
+  tables, so every n=10 table builds.  Two interpreter changes moved it
+  from 328: recovery is cached per program, so the rows of a table share
+  one factorization instead of paying it each (the old six-hour estimate
+  for dense n=8 was per-row arithmetic against an already-amortized
+  cost), and past degree 100 the peels take their candidates from the
+  polynomial's roots over two fixed NTT fields -- found by evaluating it
+  at every field point -- rather than enumerating prime powers and
+  factoring over a 64-bit field.  Acceptance stays exact division, so
+  only the search cost moved.  Measured, every row against its table:
+  dense n=8 (541 instructions) 3.5s for all 256 rows where the old path
+  took 115s for the first alone, dense n=10 (1638) 44s for all 1024.
+  Dense n=11 (2910) is refused.  Still an instruction count and not an
+  arity -- a table that collapses renders far past n=10.
+- **WII2D:** a chosen cost guard, now at 128 rather than 64: dense n=8
+  builds in 0.8s (18466 characters) and all 256 rows compute their table.
+  Dense n=9 needs 256, four times the width, and is untested.
+- **ZTOALC L:** was capped at 8 by the trajectory-prefix peak (n=9 peaked
+  at 1.2e7 lines against the 4.19M ceiling).  Two changes cleared 10/10:
+  commands now sit on the *L smallest* trajectory values under the ceiling
+  (a visited line past the code's end reads as a blank no-op, so the peak
+  stopped mattering), and the table is stored as four-row chunk codes
+  decoded through one shared 16-entry array, cutting dense n=10 from 555
+  commands to at most 329.  All 1024 rows of dense pseudo-random and of
+  parity verified against the interpreter (1.62M / 1.17M lines, ~2s a
+  table).  The wall is now slot capacity: the committed anchors keep at
+  most 386 values under the ceiling (start 511935), a sieve of *every*
+  start to 2**22 finds at most 395, and n=11 needs 587 dense / 545
+  parity -- so the next arity requires a higher line ceiling, not a better
+  anchor or placement.
 - **Route hybrids:** CV(N)(C), Polynomial, Circlefuck, `%^2^-1`, and WII2D
   alternatives were rejected on the grounds that occasional smaller output
   did not repay slower generation — 1.25x, 1.08x, 29x, 3,100x, and 1.85x on
@@ -165,10 +278,7 @@ Current caps are deliberate:
 
 - 6-5's interpreter accepts operands outside the specification; generators
   must stay in `0..35`.
-- RISC-V compilers agree with unbounded Python integers only within their
-  fixed machine-word range.
-- Jaune's dispatch to an undefined marker is unspecified; its interpreter and
-  compiler deliberately choose different outcomes.
+- Jaune's dispatch to an undefined marker is unspecified.
 - Alight's prose contradicts its own examples twice, and the examples decide
   both. It calls all operators postfix, but every example is infix
   (`turn c = eof`, `len{l}-0.5`), so expressions evaluate infix left to right

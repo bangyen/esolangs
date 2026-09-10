@@ -6,6 +6,8 @@ single-language modules that share its tape-machine shape: ``rotfuck``,
 """
 
 import contextlib
+import hashlib
+import sys
 from importlib import import_module
 from itertools import permutations
 
@@ -14,9 +16,11 @@ import pytest
 from esolangs.tools import boolean
 from esolangs.tools.boolean.helpers import permute_truth_table
 from esolangs.tools.boolean.six_five import (
+    _six_five_dag_cost,
     _six_five_hoisted,
     _six_five_markers,
     _six_five_stream_ordered,
+    _six_five_walk,
 )
 from esolangs.tools.wrap import shortest
 from tests.tools.boolean_runners import (
@@ -231,27 +235,24 @@ class TestSixFive:
             table = format(value, "08b")
             assert _markers(boolean.six_five(table)) <= _six_five_markers(table)
 
-    def test_wide_table_is_refused(self) -> None:
-        """A table no input order can fold has no representation.
+    def test_folding_is_still_per_order_even_though_sharing_is_not(self) -> None:
+        """Parity resists folding under every order, and is built anyway.
 
-        The budget is spent per *order*, so overflowing in stream order is
-        not a refusal: the table must overflow under all ``n!`` of them.
-        Parity is the shape that does -- any permutation of parity is parity
-        -- so it needs the full 63 internal nodes however its inputs are
-        renamed.
+        Any permutation of parity is parity, so no renaming folds a single
+        one of its 63 internal nodes -- which is what made it the refusal
+        witness.  Sharing does not care: the nodes are duplicates of each
+        other, so the distinct count is 11 whatever the order.
 
-        The arithmetic kernel that used to catch these was retired: it needs
-        ``T`` (or its complement) small enough to build, which confines the
-        ones to low indices, which leaves the rest of the table constant --
-        the shape that folds well inside the budget.  So it never covered a
-        table the tree could not.
+        The arithmetic kernel that used to be the other candidate was
+        retired: it needs ``T`` (or its complement) small enough to build,
+        which confines the ones to low indices, which leaves the rest of the
+        table constant -- the shape that folds well inside the budget.
         """
         parity = "".join(str(bin(row).count("1") % 2) for row in range(64))
-        assert _six_five_markers(parity) == 63 > 35
         for perm in permutations(range(6)):
             assert _six_five_markers(permute_truth_table(parity, perm)) == 63
-        with pytest.raises(ValueError, match="35 branch labels"):
-            boolean.six_five(parity)
+        assert _six_five_dag_cost(parity) == 12 <= 35
+        assert boolean.six_five(parity)
 
     def test_reordering_widens_what_renders(self) -> None:
         """A table that overflows in stream order can fold under another.
@@ -270,7 +271,8 @@ class TestSixFive:
             )
             assert best == folded <= 35
             program = boolean.six_five(table)
-            assert _markers(program) == folded
+            # At most the folded count: the winning order may also share.
+            assert _markers(program) <= folded
             for combo in range(64):
                 bits = [(combo >> (5 - i)) & 1 for i in range(6)]
                 got = run_six_five(program, [str(b) for b in bits])
@@ -292,7 +294,10 @@ class TestSixFive:
         assert _six_five_markers(alternating) == 2**n - 1 > 35
         with pytest.raises(ValueError, match="35 branch labels"):
             _six_five_stream_ordered(alternating)
-        assert _six_five_hoisted(alternating, tuple(range(n))) == ""
+        # The identity order no longer returns "": its tree overflows, so
+        # the shared build takes it -- this table is NOT of the last input,
+        # whose distinct subtrees are a handful whatever the order.
+        assert _six_five_hoisted(alternating, tuple(range(n)))
 
         program = boolean.six_five(alternating)
         assert _markers(program) == 1  # greedy tests the last input first
@@ -314,22 +319,72 @@ class TestSixFive:
         assert _six_five_markers(alternating) == 2**n - 1 <= 35
         boolean.six_five(alternating)  # renders rather than raising
 
-    def test_refusals_begin_at_six_inputs(self) -> None:
-        """n == 6 is the first width whose worst case overflows the budget.
+    def test_parity_is_the_easy_case_once_subtrees_are_shared(self) -> None:
+        """Sharing inverts which table is the worst case.
 
-        The worst case is the table no renaming folds, which is parity --
-        an alternating table is only the worst case for a tree stuck with
-        stream order, and reordering renders it (see
-        :meth:`test_reordering_widens_what_renders`).
+        An unshared tree spends a marker per internal node, so parity --
+        which folds nothing -- was the witness that fixed the cap at five.
+        Its *distinct* subtrees are two per level, so shared it is the
+        cheapest wide table there is: n == 10 spends 20 markers where the
+        tree would spend 1023.
         """
-        parity5 = "".join(str(bin(row).count("1") % 2) for row in range(32))
-        assert _six_five_markers(parity5) == 31 <= 35
-        boolean.six_five(parity5)  # renders rather than raising
-
         parity6 = "".join(str(bin(row).count("1") % 2) for row in range(64))
         assert _six_five_markers(parity6) == 63 > 35
-        with pytest.raises(ValueError, match="35 branch labels"):
-            boolean.six_five(parity6)
+        assert _six_five_dag_cost(parity6) == 12 <= 35
+        assert boolean.six_five(parity6)
+
+        parity10 = "".join(str(bin(row).count("1") % 2) for row in range(1024))
+        assert _six_five_dag_cost(parity10) == 20 <= 35
+        assert boolean.six_five(parity10)
+
+    @staticmethod
+    def _dense(n: int) -> str:
+        """A hash-derived table with no structure for the trees to exploit."""
+        digest = hashlib.sha256(f"dense:{n}".encode()).digest()
+        bits: list[str] = []
+        block = 0
+        while len(bits) < 2**n:
+            digest = hashlib.sha256(digest + bytes([block & 255])).digest()
+            bits.extend(str(byte & 1) for byte in digest)
+            block += 1
+        return "".join(bits[: 2**n])
+
+    def test_a_table_whose_distinct_subtrees_overflow_takes_the_walk(self) -> None:
+        """A table past the shared budget goes on the tape instead.
+
+        Dense n == 7 has 47 distinct subtrees against 35 labels, so every
+        tree-shaped emission overflows under every order -- this used to be
+        the refusal witness.  The walk spends one label per *input*: the
+        reads steer the pointer to the row the inputs index, so 7 labels
+        carry the whole 128-row table.
+        """
+        dense7 = self._dense(7)
+        assert _six_five_dag_cost(dense7) > 35
+        program = boolean.six_five(dense7)
+        assert program == _six_five_walk(dense7)
+        assert _markers(program) == 7
+        for combo in range(128):
+            bits = [(combo >> (6 - i)) & 1 for i in range(7)]
+            got = run_six_five(program, [str(b) for b in bits])
+            assert got == dense7[combo], f"inputs {bits}"
+
+    def test_dense_ten_inputs_render_and_run(self) -> None:
+        """The generator clears n == 10 on a table with nothing to fold.
+
+        Dense n == 10 renders at 10 labels and 5319 chars (all 1024 rows
+        were run exhaustively once, in 12s; this samples).  The feed check
+        proves the walk reads exactly ``n`` lines -- its ``B``s sit inside
+        the pointer walk, so a desync would misroute as well as misread.
+        """
+        dense10 = self._dense(10)
+        program = boolean.six_five(dense10)
+        assert _markers(program) == 10
+        assert len(program) == 5319
+        for combo in (0, 1, 512, 1023, *range(7, 1024, 128)):
+            bits = [(combo >> (9 - i)) & 1 for i in range(10)]
+            feed = iter([str(b) for b in bits])
+            assert run_six_five_from(program, feed) == dense10[combo], f"row {combo}"
+            assert not list(feed), f"inputs {bits} left input unread"
 
     def test_reordering_only_shrinks(self) -> None:
         """No table comes out longer than its identity-order program."""
@@ -341,7 +396,10 @@ class TestSixFive:
             identity = len(_six_five_stream_ordered(table))
             assert dispatched <= identity, table
             improved += dispatched < identity
-        assert improved == 186  # the rest tie, keeping the old emission
+        # 186 before the leaves gained ``_six_five_const``'s ``r == 5``
+        # shortcut: a shorter leaf changes which orders pay for themselves,
+        # so more tables now beat the identity rather than tying it.
+        assert improved == 208  # the rest tie, keeping the old emission
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -717,16 +775,6 @@ class TestDimensional:
         got = run_dimensional(program, ["1"] * 12)
         assert got == "1"
 
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.dimensional("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.dimensional("02")
-
 
 class TestDimensionalTree:
     @pytest.mark.parametrize(
@@ -921,16 +969,6 @@ class TestBf:
         for table in ("0" * 16, "0" * 15 + "1", xor6):  # constant, AND4, dense
             assert boolean.brainfuck(table) == boolean.bf_tree(table)
 
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.brainfuck("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.brainfuck("02")
-
 
 class TestBfTree:
     @pytest.mark.parametrize(
@@ -979,16 +1017,6 @@ class TestBfTree:
         xor3 = "10010110"
         assert boolean.bf_tree(xor3).count(".") == 8
 
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.bf_tree("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.bf_tree("02")
-
 
 class TestThreeDBf:
     @pytest.mark.parametrize(
@@ -1017,16 +1045,6 @@ class TestThreeDBf:
         assert "<" not in program
         assert "e" in program
         assert "w" in program
-
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.three_d_brainfuck("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.three_d_brainfuck("02")
 
 
 class TestFactor:
@@ -1063,24 +1081,44 @@ class TestFactor:
         assert boolean.factor("0" * 16).isdigit()
         assert boolean.factor("1" * 16).isdigit()
 
-    def test_dense_table_past_the_digit_cap_is_rejected(self) -> None:
-        """A dense n == 4 table (XOR4) encodes a brainfuck program whose
-        Factor integer exceeds CPython's int-to-string digit limit; the
-        generator raises instead of letting that ValueError leak from
-        str() with its raw CPython wording."""
+    def test_a_table_past_cpythons_own_limit_still_renders(self) -> None:
+        """XOR4 encodes to 6390 digits, past CPython's 4300-digit default.
+
+        That default is a DoS guard on quadratic int-to-str conversion, not
+        anything Factor says, so it is raised for the render rather than
+        reported as a property of the language -- which is what used to cap
+        this generator at n=3.
+        """
         xor4 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
-        with pytest.raises(ValueError, match="digit limit"):
-            boolean.factor(xor4)
+        program = boolean.factor(xor4)
+        assert program.isdigit()
+        assert len(program) > sys.get_int_max_str_digits()
 
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.factor("011")
+    def test_the_render_leaves_the_global_limit_alone(self) -> None:
+        """The digit limit is process-global, so it is borrowed, not kept.
 
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.factor("02")
+        A generator that raised it and walked away would silently disarm
+        the guard for everything else in the process.
+        """
+        before = sys.get_int_max_str_digits()
+        boolean.factor(
+            "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
+        )
+        assert sys.get_int_max_str_digits() == before
+
+    def test_max_digits_bounds_one_call(self) -> None:
+        """``max_digits`` is the cap, and it names the size it refused.
+
+        The count is the bit-length estimate rather than the exact 6390, so
+        it is asserted as such: sizing it exactly means doing the very
+        conversion the check exists to avoid.  The limit has to stay
+        restored on the refusing path too.
+        """
+        before = sys.get_int_max_str_digits()
+        xor4 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
+        with pytest.raises(ValueError, match="about 6391 digits"):
+            boolean.factor(xor4, max_digits=1000)
+        assert sys.get_int_max_str_digits() == before
 
 
 class TestSlowAcvMammalian:
@@ -1456,16 +1494,6 @@ class TestSuffolk:
             got = run_suffolk(program, [str(b) for b in bits])
             assert got == table[combo], f"inputs {bits}"
 
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.suffolk("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.suffolk("02")
-
 
 class TestPainfuck:
     @pytest.mark.parametrize(
@@ -1504,16 +1532,6 @@ class TestPainfuck:
         assert translated.count("a") == translated.count("b")
         assert "rl" in translated or "l" in translated  # pointer moves
 
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.painfuck("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.painfuck("02")
-
 
 class TestBitTilde:
     @pytest.mark.parametrize(
@@ -1546,16 +1564,6 @@ class TestBitTilde:
         assert program.count(")") == 2
         assert program.count("(") == 1
         assert program.endswith("(")
-
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.bit_tilde("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.bit_tilde("02")
 
 
 class TestJaune:
@@ -1626,10 +1634,6 @@ class TestJaune:
         assert boolean.jaune("10101010").startswith("vvv")
         # every input matters here, so every read keeps its cell
         assert boolean.jaune("10010110").startswith("v>v>v>")
-
-    def test_bad_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="power-of-two"):
-            boolean.jaune("011")
 
     @pytest.mark.parametrize(
         ("a", "b"),
@@ -1705,16 +1709,6 @@ class TestBasicfuck:
         assert program.count("if !(a1) {") == 1
         assert program.count("if (a2) {") == 2
         assert program.count("if !(a2) {") == 2
-
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.basicfuck("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.basicfuck("02")
 
 
 class TestSbleq:
@@ -2011,13 +2005,3 @@ class TestRotfuck:
         characters against ``01101001``'s 1576.
         """
         assert len(boolean.rotfuck(table)) == length
-
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.rotfuck("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.rotfuck("02")

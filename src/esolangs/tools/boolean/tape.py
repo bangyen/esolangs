@@ -17,6 +17,7 @@ from esolangs.tools.boolean.helpers import (
     _validate_truth_table,
     best_input_order,
     decision_tree_program,
+    decision_tree_tokens,
     essential_inputs,
     read_at,
     stored_inputs,
@@ -473,7 +474,15 @@ def brainfuck(truth_table: str) -> str:
     return bf_tree(truth_table)
 
 
-def factor(truth_table: str) -> str:
+#: Digits :func:`factor` renders without being asked twice.  Sized from the
+#: measured worst case at the arity the boolean suite requires: n=5 parity
+#: encodes to 12565 digits (n=5 dense to 8117, n=4 parity to 6390), so this
+#: clears the bar with room and still names a ceiling rather than removing
+#: one.  Past it the caller passes ``max_digits`` and says how big is fine.
+_DEFAULT_MAX_DIGITS = 16_000
+
+
+def factor(truth_table: str, *, max_digits: int = _DEFAULT_MAX_DIGITS) -> str:
     """Build a Factor program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -490,28 +499,45 @@ def factor(truth_table: str) -> str:
     otherwise unrenderable tables into runnable ones, since the cap below is
     on the encoded integer's size.
 
-    This is a program-size cap, not an ``n`` cap: sparse tables (e.g. an
-    all-zero or all-one table) stay small at any ``n``, while dense tables
-    grow the underlying brainfuck program (and so the encoded integer)
-    quickly.  CPython refuses to render an integer above
-    ``sys.get_int_max_str_digits()`` decimal digits (a DoS guard, not a
-    Factor property), and the Factor *interpreter* parses its input the same
-    way, so a program past that limit would not merely fail to print here --
-    it would fail to run.  The check estimates the digit count from the
-    integer's bit length (``log10(2) ~= 0.30103``) to avoid paying for the
-    same oversized conversion just to reject it.
+    ``max_digits`` bounds how long the rendered integer may be, defaulting
+    to :data:`_DEFAULT_MAX_DIGITS`.  This is a program-size cap, not an
+    ``n`` cap: sparse tables (e.g. an all-zero or all-one table) stay small
+    at any ``n``, while dense tables grow the underlying brainfuck program
+    (and so the encoded integer) quickly.
+
+    The bound used to be CPython's own ``sys.get_int_max_str_digits()``,
+    which is a DoS guard against quadratic conversions rather than anything
+    Factor says -- and at its 4300-digit default it stopped this generator
+    at n=3, since n=4 parity needs 6390 digits.  A Factor program *is* one
+    integer, so that guard is not a property of the language to be reported
+    but a limit to be lifted: the render raises it to fit and puts it back,
+    and :func:`esolangs.interpreters.tape_based.factor._parse` does the same
+    on the way in, so what is generated here is what the interpreter runs.
+
+    The check estimates the digit count from the integer's bit length
+    (``log10(2) ~= 0.30103``) to avoid paying for the same oversized
+    conversion just to reject it.
     """
     number = _factor_encode(brainfuck(truth_table))
-    limit = sys.get_int_max_str_digits()
-    if limit and number.bit_length() * 0.30103 + 1 > limit:
+    # Estimated from the bit length (``log10(2) ~= 0.30103``) and rounded
+    # up, so it never *under*-counts: the point is to reject an oversized
+    # integer without paying for the conversion that would size it exactly.
+    digits = int(number.bit_length() * 0.30103) + 1
+    if digits > max_digits:
         raise ValueError(
-            "the Factor boolean generator's encoded integer would exceed "
-            f"Python's {limit}-digit limit for integer-to-string conversion "
-            "(sys.get_int_max_str_digits()) -- the Factor interpreter parses "
-            "its program the same way, so this table's encoding could not "
-            "be run even if it were rendered; try a sparser table",
+            f"the Factor boolean generator's encoded integer needs about "
+            f"{digits} digits, over the {max_digits}-digit limit this call "
+            "allows -- pass a larger max_digits, or try a sparser table",
         )
-    return str(number)
+    limit = sys.get_int_max_str_digits()
+    if digits <= limit:
+        return str(number)
+    # Process-global, so it is borrowed for the render and handed back.
+    sys.set_int_max_str_digits(digits + 1)
+    try:
+        return str(number)
+    finally:
+        sys.set_int_max_str_digits(limit)
 
 
 def three_d_brainfuck(truth_table: str) -> str:
@@ -633,7 +659,7 @@ def _basicfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one input order's Basicfuck program; see :func:`basicfuck`.
 
     The variables are 1-based (``a1``..``an``) while ``perm`` indexes from
-    zero, so the level's variable is ``a{perm[k - 1] + 1}``.
+    zero, so the level's variable is ``a{perm[level] + 1}``.
     """
     n = _validate_truth_table(truth_table)
 
@@ -643,24 +669,27 @@ def _basicfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         lines.append(f"read -> a{i} ;")
         lines.append(f"a{i} -= 48 ;")
 
-    def build(rows: list[int], k: int, depth: int) -> str:
-        indent = "  " * depth
-        if len({truth_table[row] for row in rows}) == 1:
-            value = int(truth_table[rows[0]])
-            return f"{indent}out += {_ASCII_ZERO + value} ;\n{indent}write <- out ;\n"
-        g0 = [row for row in rows if ((row >> (n - k)) & 1) == 0]
-        g1 = [row for row in rows if ((row >> (n - k)) & 1) == 1]
-        var = f"a{perm[k - 1] + 1}"
-        return (
-            f"{indent}if ({var}) {{\n"
-            + build(g1, k + 1, depth + 1)
-            + f"{indent}}}\n"
-            + f"{indent}if !({var}) {{\n"
-            + build(g0, k + 1, depth + 1)
-            + f"{indent}}}\n"
-        )
+    def leaf(level: int, row: int) -> list[str]:
+        indent = "  " * level
+        value = int(truth_table[row])
+        return [f"{indent}out += {_ASCII_ZERO + value} ;\n{indent}write <- out ;\n"]
 
-    lines.append(build(list(range(2**n)), 1, 0).rstrip("\n"))
+    def node(level: int, zero: list[str], one: list[str], _at: int) -> list[str]:
+        # The one-side is emitted first: a failed ``if`` falls through to its
+        # neighbour, so the two arms are independent and their order is free.
+        indent = "  " * level
+        var = f"a{perm[level] + 1}"
+        return [
+            f"{indent}if ({var}) {{\n",
+            *one,
+            f"{indent}}}\n",
+            f"{indent}if !({var}) {{\n",
+            *zero,
+            f"{indent}}}\n",
+        ]
+
+    tree = decision_tree_tokens(truth_table, leaf, node, collapse=True)
+    lines.append("".join(tree).rstrip("\n"))
     return "\n".join(lines)
 
 
@@ -737,30 +766,41 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
 
     # (a operand, b operand, kind, kind's argument); ``a``/``b`` are data
     # offsets made absolute below, and ``kind`` picks how ``c`` is filled.
-    instructions: list[tuple[int, int, str, int]] = []
-    ones: list[int] = []
+    reads: list[tuple[int, int, str, int]] = [
+        (vbase + i, -2, "nxt", i) for i in range(n)
+    ]
 
-    for i in range(n):
-        instructions.append((vbase + i, -2, "nxt", i))
+    def leaf(_level: int, row: int) -> list[tuple[int, int, str, int]]:
+        return [(-3, 1 + int(truth_table[row]), "out", 0), (0, 0, "halt", 0)]
 
-    def build(level: int, rows: list[int]) -> None:
-        results = {truth_table[r] for r in rows}
-        if len(results) == 1:
-            instructions.append((-3, 1 + int(results.pop()), "out", 0))
-            instructions.append((0, 0, "halt", 0))
-            return
-        slot = len(ones)
-        ones.append(0)
-        instructions.append((vbase + perm[level], neg49, "one", slot))
-        bit = n - 1 - level
-        build(level + 1, [r for r in rows if not ((r >> bit) & 1)])
-        ones[slot] = 3 * len(instructions)
-        build(level + 1, [r for r in rows if (r >> bit) & 1])
+    def node(
+        level: int,
+        zero: list[tuple[int, int, str, int]],
+        one: list[tuple[int, int, str, int]],
+        at: int,
+    ) -> list[tuple[int, int, str, int]]:
+        # A branch spends one instruction before either subtree, so the
+        # one-side starts just past this node and its whole zero subtree.
+        # The walker hands that index down, which is what the old build
+        # reserved a slot and backpatched to get.
+        target = 3 * (at + 1 + len(zero))
+        return [(vbase + perm[level], neg49, "one", target), *zero, *one]
 
-    build(0, list(range(2**n)))
+    instructions = reads + decision_tree_tokens(
+        truth_table,
+        leaf,
+        node,
+        parent_width=1,
+        start=len(reads),
+        collapse=True,
+    )
 
     onebase = nxtbase + n
     data_base = 3 * len(instructions)
+
+    # ``one`` instructions carry their absolute target, and the data block
+    # holds those targets in the order the emit loop meets them.
+    ones: list[int] = []
 
     cells: list[int] = []
     for a, b, kind, arg in instructions:
@@ -771,7 +811,9 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
         elif kind == "nxt":
             cells += [data_base + a, -2, data_base + nxtbase + arg]
         else:
-            cells += [data_base + a, data_base + b, data_base + onebase + arg]
+            slot = len(ones)
+            ones.append(arg)
+            cells += [data_base + a, data_base + b, data_base + onebase + slot]
 
     data = (
         [-_ASCII_ONE, _ASCII_ZERO, _ASCII_ONE, -1]

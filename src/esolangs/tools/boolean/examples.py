@@ -33,7 +33,9 @@ is a contract a committed file can hold, so each has an example.
 Three languages answer with their *termination* instead of their output.
 ArrowQueue, Point Break and 123 have no output instruction at all: each
 halts for a 0 and loops forever for a 1, so the committed program is the
-halting branch and its expected output is empty.  The looping branch is not
+halting branch.  Point Break's expected output is empty; ArrowQueue's is
+its interpreter-only queue dump, which the verdict does not read -- the
+answer is that the program halted at all.  The looping branch is not
 executed, and the convention is the whole answer -- 123's ``1,0`` row halts
 too but prints a stray ``0x80`` on the way out, so the committed row is one
 whose halt is silent.
@@ -591,11 +593,13 @@ def _register() -> None:
         "point-break": _reader(
             b.point_break,
             "register_based.point_break",
-            expected="",
+            expected="1 0 1 1 0 0 0 1",
             note=(
-                "Point Break has no output: the program halts for a 0 result "
-                "and loops forever for a 1, so only the halting branch is "
-                "committed"
+                "Point Break answers by termination -- it halts for a 0 "
+                "result and loops forever for a 1, so only the halting "
+                "branch is committed.  The numbers printed are its "
+                "interpreter-only variable dump, which the verdict does not "
+                "read: the answer is that the program halted at all"
             ),
         ),
         "polynomial": _reader(b.polynomial, "register_based.polynomial"),
@@ -710,11 +714,14 @@ def _register() -> None:
             b.arrowqueue,
             "grid_based.arrowqueue",
             _fill_arrowqueue,
-            expected="",
+            expected="1 0 1 2 3",
             split=True,
             note=(
-                "ArrowQueue has no output: the program halts for a 0 result and "
-                "loops forever for a 1, so only the halting branch is committed"
+                "ArrowQueue answers by termination -- it halts for a 0 result "
+                "and loops forever for a 1, so only the halting branch is "
+                "committed.  The headings printed are its interpreter-only "
+                "queue dump, which the verdict does not read: the answer is "
+                "that the program halted at all"
             ),
         ),
     }

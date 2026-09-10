@@ -264,10 +264,14 @@ def test_every_interpreter_fuzzes_mutated_sources(
     the cap, 44 are provably non-halting rather than merely unfinished.
 
     The remaining 8 are the unbounded-growth class, which no cycle
-    detector can catch (A Painter Ant's paint grows monotonically, so its
-    state never repeats; AddSubJump and Suffolk are the others) and which
-    ``run_until_halt_or_growth`` cannot decide either, since that
-    certificate is tape-shaped.  They keep the
+    detector can catch: A Painter Ant's paint grows monotonically, so its
+    state never repeats, and AddSubJump and Suffolk are the others.
+    ``run_until_halt_or_growth`` cannot decide any of them either, since
+    that certificate is tape-shaped and none of the three grows a tape.
+    Suffolk's 2 are provable a second way --
+    ``run_until_halt_or_value_growth`` certifies both, since their cells
+    climb by a constant a lap on a fixed-width tape -- but the other 6 have
+    no tape at all, so nothing here translates or climbs.  All 8 keep the
     SIGALRM backstop this file already uses, rather than an exemption list
     naming them -- a hardcoded list of exempt languages is how this suite
     silently lost twelve interpreters once before.

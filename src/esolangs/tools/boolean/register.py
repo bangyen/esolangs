@@ -5,11 +5,10 @@ from typing import Any
 from esolangs.tools.boolean.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
-    _maybe_complement,
     _validate_truth_table,
     best_input_order,
     essential_inputs,
-    minterm_literals,
+    minterm_sum,
     read_at,
     stored_inputs,
 )
@@ -409,30 +408,31 @@ def collatz_multiverse(truth_table: str) -> str:
     # (the reads are the interface); an ignored one is never turned into an
     # indicator.  This is the constant branch above generalized from "no
     # essential inputs" to "the ones that matter".
-    used = essential_inputs(truth_table, n) or [0]
-    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
-    width = len(used)
-    table, invert = _maybe_complement(reduced)
-    for k in range(2**width):
-        if table[k] == "0":
-            continue
-        indicators = []
-        for slot, negated in minterm_literals(k, width):
-            i = used[slot]
-            if negated:
-                indicators.append(flip(f"b{i}"))
-            else:
-                reg = fresh()
-                lines.append(f"{reg} = negativeOne x + b{i}, NOT PRINT.")
-                indicators.append(reg)
-        minterm = indicators[0]
-        for indicator in indicators[1:]:
-            minterm = and_bits(minterm, indicator)
-        complement = flip(minterm)
+
+    # ``literal`` allocates a register and emits for a non-negated input, so
+    # it is called in the same order the hand-written loop called it: every
+    # literal of a row, then its product, then the accumulate.
+    def literal(i: int, negated: bool) -> str:  # noqa: FBT001 - a literal's sign, from minterm_literals
+        if negated:
+            return flip(f"b{i}")
+        reg = fresh()
+        lines.append(f"{reg} = negativeOne x + b{i}, NOT PRINT.")
+        return reg
+
+    def product(factors: list[str]) -> str:
+        minterm = factors[0]
+        for factor in factors[1:]:
+            minterm = and_bits(minterm, factor)
+        return flip(minterm)
+
+    def accumulate(row: str) -> None:
+        nonlocal acc
         nacc = fresh()
         lines.append(f"{nacc} = negativeOne x + {acc}, NOT PRINT.")
-        lines.append(f"{nacc} = {complement} x + zero, NOT PRINT.")
+        lines.append(f"{nacc} = {row} x + zero, NOT PRINT.")
         acc = nacc
+
+    _used, _width, invert = minterm_sum(truth_table, literal, product, accumulate)
 
     # ``acc`` holds prod(1 - minterm), so the answer is its flip -- unless
     # the minterms were the table's zeros, when ``acc`` is already it.
@@ -655,10 +655,6 @@ def qoibl(truth_table: str) -> str:
     # program and the minterm body the other 71%, so most of the arity cost
     # here is reachable -- unlike ``suffolk``, whose per-input setup is 96%
     # of the program.
-    used = essential_inputs(truth_table, n) or [0]
-    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
-    width = len(used)
-    table, use_complement = _maybe_complement(reduced)
     lines = []
     for i in range(n):
         lines.append(f"we {_qoibl_enc(i)} we et ry ey ry {_qoibl_enc(_ASCII_ZERO)} we")
@@ -668,22 +664,26 @@ def qoibl(truth_table: str) -> str:
             f"ry ey ry qe {_qoibl_enc(i)} qe we",
         )
     lines.append(f"we {_qoibl_enc(2 * n)} we {_qoibl_enc(0)} we")
-    for k in range(2**width):
-        if table[k] == "0":
-            continue
-        factors = []
-        for slot, negated in minterm_literals(k, width):
-            i = used[slot]
-            var = n + i if negated else i
-            factors.append(f"qe {_qoibl_enc(var)} qe")
-        product = factors[0]
+
+    def literal(i: int, negated: bool) -> str:  # noqa: FBT001 - a literal's sign, from minterm_literals
+        return f"qe {_qoibl_enc(n + i if negated else i)} qe"
+
+    def product(factors: list[str]) -> str:
+        out = factors[0]
         for factor in factors[1:]:
-            product = f"{product} ry ye ry {factor}"
-        lines.append(f"we {_qoibl_enc(2 * n + 1)} we {product} we")
+            out = f"{out} ry ye ry {factor}"
+        return out
+
+    def accumulate(row: str) -> None:
+        lines.append(f"we {_qoibl_enc(2 * n + 1)} we {row} we")
         lines.append(
             f"we {_qoibl_enc(2 * n)} we qe {_qoibl_enc(2 * n)} "
             f"qe ry ee ry qe {_qoibl_enc(2 * n + 1)} qe we",
         )
+
+    _used, _width, use_complement = minterm_sum(
+        truth_table, literal, product, accumulate
+    )
     if use_complement:
         lines.append(
             f"tt {_qoibl_enc(_ASCII_ONE)} ry ey ry qe {_qoibl_enc(2 * n)} qe tt"
@@ -697,18 +697,32 @@ def qoibl(truth_table: str) -> str:
 
 # Largest instruction count :func:`polynomial` will emit.  Each instruction
 # consumes a fresh prime and contributes a factor, so the polynomial's degree
-# -- and the cost of the sympy factorization the interpreter runs to recover
-# the instructions -- tracks this count and nothing else.  One run measured
-# on the interpreter: 52 instructions in 1.0s, 78 in 4.0s, 116 in 15s, 128 in
-# 20s, 207 in 110s.  The bound sits just past the old gate's worst accepted
-# case (an n == 4 tree, ~138 instructions at ~10s), which keeps every
-# renderable table runnable in about the time this generator always cost.
+# -- and the cost of recovering the instructions from it -- tracks this count
+# and nothing else.
 #
-# It replaces an ``n <= 4`` gate, which measured the wrong thing: the cost is
-# instructions, not inputs, so a table that collapses to few states is cheap
-# at any width -- parity renders through n == 8 at 106 instructions, where
-# the old gate refused it from n == 5.
-_POLYNOMIAL_MAX_INSTRS = 138
+# The bound is the analytic worst case over n == 10 tables: level ``k`` of
+# the state machine holds at most ``min(2**k, 2**2**(10 - k))`` states at 7
+# instructions each (5 fixed plus at most 2 transitions), and the leaf level
+# 5 each less the final endif -- ``7*275 + 5*2 - 1 = 1934``, so every n=10
+# table builds.  ``test_polynomial_cap_admits_every_n10_table`` re-derives
+# it.  The dense n=10 fixture needs 1638; dense n=11 needs 2910 and is
+# refused.
+#
+# The policy is still "admit what a suite can afford to check", against a
+# cost curve that moved twice.  At 138 recovery was a bare ``factor_list``
+# (~10s at the bound); the exact peels bought 328 (n=7 dense, 21.1s a row).
+# Two interpreter changes moved it again: recovery is cached per program --
+# rows of one table share a single factorization and parse -- and past
+# ``_NTT_MIN_DEGREE`` peel candidates come from NTT root sets rather than
+# enumeration and GF factoring.  Measured on the dense fixtures, whole
+# table verified against every row: n=8 (541 instructions) 3.5s for all
+# 256 rows where the old path took 115s for the *first*, n=10 (1638) 44s
+# for all 1024 rows, 43.7s of it the one factorization.
+#
+# The count, not the arity, is still what this measures: a table that
+# collapses to few states is cheap at any width, and parity renders far
+# past n == 10 inside the bound.
+_POLYNOMIAL_MAX_INSTRS = 1934
 
 # How far above the cheapest candidate the dispatch still renders.  Selection
 # is on characters, so the instruction count only screens -- and a strict
@@ -782,9 +796,9 @@ def polynomial(truth_table: str) -> str:
     A table needing more than ``_POLYNOMIAL_MAX_INSTRS`` instructions under
     both constructions raises :class:`ValueError`: the interpreter recovers
     instructions by factoring the polynomial, and that is what becomes
-    impractical.  The bound is on instructions rather than on ``n``, so a
-    table that collapses to few states renders at any width -- parity, the
-    old gate's worst case, now renders through n == 8.
+    impractical.  The bound is on instructions rather than on ``n``, but it
+    is sized so every n == 10 table fits; a table that collapses to few
+    states renders at any width beyond that.
     """
     n = _validate_truth_table(truth_table)
 
@@ -836,7 +850,9 @@ def polynomial(truth_table: str) -> str:
         # own drain divides the bit away instead; see
         # :func:`_polynomial_drained_dag`.
         drained = _polynomial_drained_dag_cost(truth_table)
-        if drained is not None:
+        # Only reached inside ``if lead:``, and the cost is None only when
+        # there is no lead to drain, so it always answers here.
+        if drained is not None:  # pragma: no branch
             builders.append((drained, lambda: _polynomial_drained_dag(truth_table)))
 
     fits = [(cost, build) for cost, build in builders if cost <= _POLYNOMIAL_MAX_INSTRS]
@@ -845,8 +861,8 @@ def polynomial(truth_table: str) -> str:
             "the Polynomial boolean generator emits one instruction per "
             f"prime and caps at {_POLYNOMIAL_MAX_INSTRS}, but this table "
             f"needs {min(cost for cost, _ in builders)} under its cheapest "
-            "construction, which the interpreter cannot factor in "
-            "practical time",
+            "construction, which costs more per row than checking a table "
+            "of this width can afford",
         )
 
     # Selection is on *rendered characters*, because instructions and
@@ -1112,7 +1128,9 @@ def _polynomial_drained_dag(truth_table: str) -> list[list[int]] | None:
     if not lead:
         return None
     reduced = read_at(truth_table, list(range(lead, n)), n)
-    if len(reduced) < 2:
+    # Exhausted over every table to four inputs: a nonzero lead leaves an
+    # essential input behind, so the reduction always holds two rows.
+    if len(reduced) < 2:  # pragma: no cover - see above
         return None
     instrs: list[list[int]] = []
     for _ in range(lead):
@@ -1129,7 +1147,9 @@ def _polynomial_drained_dag_cost(truth_table: str) -> int | None:
     if not lead:
         return None
     reduced = read_at(truth_table, list(range(lead, n)), n)
-    if len(reduced) < 2:
+    # Exhausted over every table to four inputs: a nonzero lead leaves an
+    # essential input behind, so the reduction always holds two rows.
+    if len(reduced) < 2:  # pragma: no cover - see above
         return None
     return 2 * lead + _polynomial_dag_cost(reduced)
 
@@ -1231,6 +1251,7 @@ def point_break(truth_table: str) -> str:
     for i in range(n):
         lines.append(f"LET {_pb_name(1 + n + i)}:={_pb_name(0)}-{_pb_name(1 + i)}")
     lines.append(f"LET {_pb_name(1 + 2 * n)}:=0")
+
     # Each selected row costs a ``LET`` per factor plus one to add it in, so
     # a table with more ones than zeros is cheaper summed over its *zero*
     # rows.  Inverting is free: the tail already needs ``1 - f`` for the
@@ -1242,23 +1263,19 @@ def point_break(truth_table: str) -> str:
     # ignored input is never named as a factor.  This is that branch
     # generalized from "no essential inputs" to "the ones that matter", and
     # the docstring's rule -- only the body may shrink -- makes it safe.
-    used = essential_inputs(truth_table, n) or [0]
-    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
-    width = len(used)
-    table, invert = _maybe_complement(reduced)
-    for k in range(2**width):
-        if table[k] == "0":
-            continue
-        factors = [
-            _pb_name(1 + n + used[slot]) if negated else _pb_name(1 + used[slot])
-            for slot, negated in minterm_literals(k, width)
-        ]
+    def literal(i: int, negated: bool) -> str:  # noqa: FBT001 - a literal's sign, from minterm_literals
+        return _pb_name(1 + n + i) if negated else _pb_name(1 + i)
+
+    def product(factors: list[str]) -> str:
         lines.append(f"LET {_pb_name(2 + 2 * n)}:={factors[0]}")
         for factor in factors[1:]:
             lines.append(f"LET {_pb_name(2 + 2 * n)}:={_pb_name(2 + 2 * n)}*{factor}")
-        lines.append(
-            f"LET {_pb_name(1 + 2 * n)}:={_pb_name(1 + 2 * n)}+{_pb_name(2 + 2 * n)}"
-        )
+        return _pb_name(2 + 2 * n)
+
+    def accumulate(row: str) -> None:
+        lines.append(f"LET {_pb_name(1 + 2 * n)}:={_pb_name(1 + 2 * n)}+{row}")
+
+    _used, _width, invert = minterm_sum(truth_table, literal, product, accumulate)
     # ``g`` is the loop guard, which breaks on a nonzero -- so it is the
     # complement of the answer, and a complemented sum already holds it.
     if invert:

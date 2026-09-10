@@ -21,11 +21,52 @@ readings.
   source-machine emulator, not command transliteration. It needs a constructed
   Streetcode-program corpus/fuzzer and resolution of the reference
   interpreter's junction and post-corner gaps.
-- **Scale Line boolean drawings.** The standalone Line generator reaches
-  eight inputs end to end, with all 256 parity leaves correct; its regression
-  suite now carries that case. Nine and above are unmeasured. Establish the
-  renderer → extractor → simulator frontier, then only pursue subtree sharing
-  or a denser layout if that measurement finds a real resource limit.
+- **Scale Line boolean drawings.** Twelve inputs is *measured, and it fits*:
+  a 33760x29920 canvas (1.01Gpx, within a rounding of the 33600x29920
+  projection) completes the round trip in 289s at 2.60GiB peak, all sampled
+  parity rows correct. That is inside the 2-5 minute projection and *below*
+  the 4-8GiB one, so there is no resource wall and **subtree sharing and a
+  denser layout stay unpursued** -- the condition this entry set for them
+  was not met. The n=11 control in the same conditions is 85.5s at 2.68GiB,
+  which reproduces this entry's earlier "under 80 seconds".
+
+  **Measure one arity per process.** The first attempt ran n=11 and n=12 in
+  one process and got 268s and 642s -- 3.1x and 2.2x the true figures, with
+  `compile` inflated 10x at n=11 (105s against 10.1s). Nothing is cached
+  between calls, so this is not warm-up: a repeated `compile_program` on one
+  stroke is flat to the millisecond, and repeated `extract` likewise. It is
+  the billion-pixel canvas still resident while the next arity is measured.
+  A per-arity process is what makes these numbers reproducible.
+
+  The cost is in the reader, and specifically in `extract`: 70.4s of 85.5s
+  at n=11 and 237.6s of 288.8s at n=12, a steady 82% at both arities, while
+  drawing and saving the canvas is 4% and `compile` 12-13%. `compile` scales
+  cleanly at 4x per arity (0.16 / 0.62 / 2.48 / 10.1 / 38.0s for n=8..12),
+  so it is predictable and small; `extract` is the stage any future work
+  belongs in.
+- **Extend Interprogck8's boolean tree.** *Done twice over.* `77025aa7`
+  built the relay rung asked for here and lifted the ceiling from 3 to 7
+  at a cost that refused n=8 (2031s of rung interference).  The express
+  rewrite then replaced the iterative router: `DownAccLines` keeps the
+  accumulator, so a chain spells its stride once and rides one-line rungs
+  parked in meadows, routed once against frozen coordinates.  Ceiling is
+  now 10 — every row of dense and parity executed at n=8..10, n=10 built
+  in ~10s — and n=7 fell from 3.5s to 0.05s.  `docs/limitations.md`
+  carries the measured edge: n=11 dense exhausts the meadow repair
+  budget.
+- **Close Minifuck's mux sculpt.** The pool-code half is *done*: `5b35c66b`
+  replaced the per-round interpreter scan with `_SCULPT_POOL_CODE`, proved
+  structurally (the probe clamps to one canonical state, so the fifth code
+  answers every arity, accumulator and round) and checked at 169628 probes
+  with the scan kept as the oracle. The 14.5-of-17.9-seconds figure this
+  entry used to carry is stale: `_pool_reaches` now profiles at 0.0% of a
+  ~0.41s five-input build. What remains is the round loop, and it is not
+  merely unfinished but *measured not to close* -- over 36864 round
+  transitions at exhaustive n=3, no round moved a row above the frontier
+  (the monotonicity that bounds the loop) but 27656 moved one below it, so
+  the post-fix column is not predictable without walking. The live cost is
+  now `_mux_probe` at 69% of the build; reopen only with a rule for that
+  cascade, not a wider search.
 ## Conditional follow-up
 
 - **ArrowQueue reusable drain.** Ship the verified deep-fold drain only if a

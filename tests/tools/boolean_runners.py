@@ -328,13 +328,7 @@ def run_nevermind(program: str, inputs: list[str]) -> str:
 def run_container(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.other.container import run
 
-    # EXIT halts via sys.exit rather than by returning.
-    return run_program(
-        run,
-        program.splitlines(),
-        _stdin(inputs),
-        suppress_exit=True,
-    )
+    return run_program(run, program.splitlines(), _stdin(inputs))
 
 
 def run_taglate(program: str, inputs: list[str]) -> str:
