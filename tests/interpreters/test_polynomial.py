@@ -335,6 +335,7 @@ class TestPeelPrimePowerRoots:
         x = sp.Symbol("x")
         _, factors = sp.factor_list(sp.Poly.from_list(list(coefficients), x))
         roots: list[complex] = []
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
         for factor, multiplicity in factors:
             degree = factor.degree()
             if degree == 1:
