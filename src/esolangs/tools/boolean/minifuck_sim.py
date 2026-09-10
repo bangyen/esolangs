@@ -371,6 +371,135 @@ class _Sim:
         self.skip = skip_out
         self.length = max(self.length, self.ptr + 2)
 
+    def run_weight(self, units: int) -> bool:
+        """Apply ``("[x<[<" + "<") * (units - 1) + "[x<[<"`` in closed form.
+
+        The weight gadget is ``units`` restoring reads, and each read (with
+        its separating ``<``) composes the laws above into one net effect:
+        it restores the cell it reads at ``ptr + 1``, flips the cell at
+        ``ptr + 2``, and moves the pointer down by the bit it read.  So the
+        whole gadget is a march: the pointer walks down through consecutive
+        1-cells, each step zeroing the cell read two steps earlier (restored
+        to 1, then hit by a later step's flip), until it reads a 0 and
+        stalls there for the remaining units, whose flips land on one cell
+        and cancel in pairs.  With ``m`` the march length that is
+
+        * cells ``ptr+3-m .. ptr+2`` complemented (one XOR mask),
+        * the stall cell ``ptr+2-m`` flipped iff the remaining unit count is
+          odd,
+        * the pointer left at ``ptr - m + 1``,
+
+        an O(1) application where the parsed runs cost ~4 law calls per
+        read.  Flips only ever land on cells already read, so the march
+        length is decided by the *entering* tape alone.
+
+        Returns False without touching the row when the summary does not
+        apply -- a pending skip re-times the first ``[``, and a march
+        reaching the tape floor would clamp -- so the caller can fall back
+        to the parsed runs.  ``test_the_weight_law_matches_the_parsed_runs``
+        pins both outcomes to ``apply(_runs(code))`` from arbitrary states.
+        """
+        if units <= 0:
+            return True
+        if self.dead:
+            return True
+        if self.skip:
+            return False
+        p = self.ptr
+        gaps = ~self.tape & ((1 << (p + 2)) - 1)
+        run = p + 1 - (gaps.bit_length() - 1)
+        marched = min(run, units)
+        if marched > p + 1 or (marched < units and marched > p):
+            return False
+        tape = self.tape
+        if marched:
+            tape ^= ((1 << marched) - 1) << (p + 3 - marched)
+        if (units - marched) & 1:
+            tape ^= 1 << (p + 2 - marched)
+        self.tape = tape
+        self.ptr = p - marched + 1
+        self.length = max(self.length, p + 3)
+        return True
+
+    def run_rewind(self, count: int) -> None:
+        """Apply the sculpting round ``"<" * count + "[x" * count + "x"``.
+
+        The left law then the walk law retrace the same ``count`` cells, so
+        the round is the walk law's prefix-XOR over the window ending at the
+        pointer -- each window bit complemented into the running carry, the
+        carry out flipped into ``ptr + 1`` -- with the pointer back where it
+        started and the trailing ``x`` a no-op (a walk never ends mid-skip).
+        One law call where the parsed runs cost three per row, which is what
+        the round-heavy replay of a spelled build pays for.
+
+        A pending skip re-times the first ``<`` and a pointer inside the
+        window would clamp, so both fall back to the laws themselves; the
+        sculpt's rewind guard keeps every emitted round on the fast path.
+        ``test_the_rewind_law_matches_the_parsed_runs`` pins both paths.
+        """
+        if self.dead or count <= 0:
+            if count <= 0 and not self.dead and self.skip:
+                self.skip = False
+            return
+        if self.skip or self.ptr < count:
+            self.run_left(count)
+            self.run_walk(count)
+            self.run_comment(1)
+            return
+        tape, ptr = self.tape, self.ptr
+        low = ptr - count + 1
+        mask = (1 << count) - 1
+        carries = (tape >> low) & mask
+        span = 1
+        while span < count:
+            carries ^= (carries << span) & mask
+            span <<= 1
+        tape = (tape & ~(mask << low)) | ((carries ^ mask) << low)
+        tape ^= ((carries >> (count - 1)) & 1) << (low + count)
+        self.tape = tape
+        self.length = max(self.length, ptr + 2)
+
+    def run_rewinds(self, widths: list[int]) -> None:
+        """Apply a sequence of sculpting rounds, fused over their window.
+
+        Every round starts and ends at the same pointer, so a sequence only
+        ever touches cells ``ptr - max(widths) + 1 .. ptr + 1`` -- each
+        round rewrites the ``width`` cells below the pointer and flips the
+        carry into ``ptr + 1``.  Extracting that window once turns the
+        whole sequence into arithmetic on integers the width of the deepest
+        rewind rather than of the tape, with one write-back; a row a
+        sculpt's rounds cost ``O(rounds)`` big-tape operations costs one.
+
+        The frame needs a clear skip and the window on the tape, so either
+        falls back to :meth:`run_rewind` round by round; the sculpt's
+        rewind guard keeps every emitted sequence on the fused path.
+        """
+        if self.dead or not widths:
+            return
+        p = self.ptr
+        top = max(widths)
+        if self.skip or p < top:
+            for width in widths:
+                self.run_rewind(width)
+            return
+        shift = p - top + 1
+        span_mask = (1 << (top + 1)) - 1
+        window = (self.tape >> shift) & span_mask
+        for width in widths:
+            low = top - width
+            mask = (1 << width) - 1
+            bits = (window >> low) & mask
+            carries = bits
+            span = 1
+            while span < width:
+                carries ^= (carries << span) & mask
+                span <<= 1
+            window ^= ((bits ^ carries ^ mask) << low) | (
+                ((carries >> (width - 1)) & 1) << top
+            )
+        self.tape = (self.tape & ~(span_mask << shift)) | (window << shift)
+        self.length = max(self.length, p + 2)
+
     def run_dot(self, count: int = 1) -> None:
         """Apply ``.``: the print law.
 
@@ -475,6 +604,24 @@ class _Joint:
         zero = _runs(_set_bit(0))
         for bits, m in zip(self.rows, self.ms, strict=True):
             m.apply(one if bits[i] else zero)
+
+    def emit_weight(self, code: str, units: int) -> None:
+        """Append the weight gadget, advancing rows by its composed law.
+
+        ``code`` must spell exactly ``units`` restoring reads -- the
+        differential test pins the pair -- and the template is appended
+        before any row advances, as in :meth:`emit`.  A row the law refuses
+        falls back to the parsed runs, so the fast path never changes what
+        a row becomes, only what it costs: the gadgets are most of a
+        separation's law calls, ~4 per read per row.
+        """
+        self.parts.append(code)
+        parsed: _Runs | None = None
+        for m in self.ms:
+            if not m.run_weight(units):
+                if parsed is None:
+                    parsed = _runs(code)
+                m.apply(parsed)
 
     def fork(self) -> "_Joint":
         """Return a copy, for trying a continuation without committing."""

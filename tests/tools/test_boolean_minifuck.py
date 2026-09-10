@@ -2959,3 +2959,223 @@ def test_the_probe_frame_refuses_codes_outside_its_key() -> None:
     assert module._probe_frame("[", byte) is None  # noqa: SLF001
     assert module._probe_frame("[x" * 9, byte) is None  # noqa: SLF001
     assert module._probe_frame(module._SCULPT_POOL_CODE, byte) is not None  # noqa: SLF001
+
+
+def test_the_weight_law_matches_the_parsed_runs() -> None:
+    """``run_weight`` is ``apply(_runs(_mux_weight(k)))``, or refuses untouched.
+
+    The gadget law is a composition claim over the pinned laws, so the
+    differential is against them, from arbitrary states -- a fresh setter
+    site is exactly where a wrong march model still looks right.  A refusal
+    must leave the row untouched, and both the skip refusal and the floor
+    refusal must actually fire in the sample.
+    """
+    import importlib
+    import random
+
+    from esolangs.tools.boolean.minifuck_sim import _runs, _Sim
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    rng = random.Random(20260910)
+    applied = refused = 0
+    for _ in range(2500):
+        fast = _Sim(64)
+        fast.tape = rng.getrandbits(rng.choice([16, 48, 200]))
+        fast.ptr = rng.randrange(0, 40)
+        fast.skip = rng.random() < 0.2
+        units = rng.randrange(1, 70)
+        slow = fast.copy()
+        if not fast.run_weight(units):
+            refused += 1
+            assert fast.key() == slow.key(), "a refusal touched the row"
+            continue
+        applied += 1
+        slow.apply(_runs(module._mux_weight(units)))  # noqa: SLF001
+        assert fast.key() == slow.key(), (units, slow.key())
+    assert applied, "the fused arm never fired"
+    assert refused, "the refusal arm never fired"
+
+    floor_refusals = 0
+    for ptr in range(6):
+        for units in range(1, 12):
+            fast = _Sim(64)
+            fast.tape, fast.ptr = (1 << 40) - 1, ptr
+            slow = fast.copy()
+            if fast.run_weight(units):
+                slow.apply(_runs(module._mux_weight(units)))  # noqa: SLF001
+                assert fast.key() == slow.key(), (ptr, units)
+            else:
+                floor_refusals += 1
+    assert floor_refusals, "the floor guard never fired"
+
+    # The edge arms: a dead row and zero units are no-ops that still apply.
+    dead = _Sim(16)
+    dead.dead = True
+    frozen = dead.key()
+    assert dead.run_weight(3)
+    assert dead.key() == frozen
+    fresh = _Sim(16)
+    frozen = fresh.key()
+    assert fresh.run_weight(0)
+    assert fresh.key() == frozen
+
+    # The joint-level fallback: a row the law refuses advances by the
+    # parsed runs and the pair must land on the same state.
+    joint = module._Joint(1)  # noqa: SLF001
+    for m in joint.ms:
+        m.tape, m.ptr = 0b1011 << 5, 8
+    joint.ms[0].skip = True
+    clones = [m.copy() for m in joint.ms]
+    code = module._mux_weight(3)  # noqa: SLF001
+    joint.emit_weight(code, 3)
+    assert joint.parts[-1] == code
+    for m, clone in zip(joint.ms, clones, strict=True):
+        clone.apply(_runs(code))
+        assert m.key() == clone.key()
+
+
+def test_the_rewind_law_matches_the_parsed_runs() -> None:
+    """A sculpting round and a fused round sequence match the parsed runs.
+
+    ``run_rewind`` claims the round ``"<"*k + "[x"*k + "x"`` in one law
+    call and ``run_rewinds`` claims a whole sequence over one extracted
+    window; both fall back to the laws when their frame does not hold, so
+    the differential covers fused and fallback states alike.
+    """
+    import random
+
+    from esolangs.tools.boolean.minifuck_sim import _runs, _Sim
+
+    rng = random.Random(20260911)
+    fused = fell_back = 0
+    for _ in range(2500):
+        fast = _Sim(64)
+        fast.tape = rng.getrandbits(rng.choice([32, 400]))
+        fast.ptr = rng.randrange(0, 60)
+        fast.skip = rng.random() < 0.2
+        count = rng.randrange(0, 40)
+        slow = fast.copy()
+        if fast.skip or fast.ptr < count:
+            fell_back += 1
+        else:
+            fused += 1
+        fast.run_rewind(count)
+        slow.apply(_runs("<" * count + "[x" * count + "x"))
+        assert fast.key() == slow.key(), (count, slow.key())
+    assert fused, "the fused arm never fired"
+    assert fell_back, "the fallback arm never fired"
+
+    for _ in range(800):
+        fast = _Sim(64)
+        fast.tape = rng.getrandbits(rng.choice([64, 400]))
+        fast.ptr = rng.randrange(0, 60)
+        fast.skip = rng.random() < 0.15
+        widths = sorted(
+            (rng.randrange(1, 40) for _ in range(rng.randrange(1, 12))),
+            reverse=True,
+        )
+        if rng.random() < 0.3:
+            rng.shuffle(widths)
+        slow = fast.copy()
+        fast.run_rewinds(widths)
+        for width in widths:
+            slow.apply(_runs("<" * width + "[x" * width + "x"))
+        assert fast.key() == slow.key(), (widths, slow.key())
+
+    # The edge arms: dead rows and empty sequences are no-ops, and a zero
+    # count is the bare ``x``, which consumes a pending skip.
+    dead = _Sim(16)
+    dead.dead = True
+    frozen = dead.key()
+    dead.run_rewind(4)
+    dead.run_rewinds([3, 2])
+    assert dead.key() == frozen
+    still = _Sim(16)
+    frozen = still.key()
+    still.run_rewinds([])
+    assert still.key() == frozen
+    skipping = _Sim(16)
+    skipping.skip = True
+    clone = skipping.copy()
+    skipping.run_rewind(0)
+    clone.apply(_runs("x"))
+    assert skipping.key() == clone.key()
+
+
+@pytest.mark.slow  # a ten-input rule build plus the retired sculpt, ~4s
+def test_the_rule_spelling_matches_the_real_sculpt_at_ten_inputs() -> None:
+    """Above ``_MUX_RULE_ARITY`` the spelled build is the sculpt's bytes.
+
+    The rule names the combination; the spelling must then be exactly what
+    :func:`_mux_sculpt` emits at that combination, so the retired machinery
+    is run once here as the oracle.  Byte equality is the whole claim --
+    the replay acceptance inside ``_mux`` already checked the prints.
+    """
+    import importlib
+    import random
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    rng = random.Random(20260914)
+    table = format(rng.getrandbits(1024), "01024b")
+    built = module._mux(table, 10)  # noqa: SLF001
+    assert built is not None
+
+    base = module._mux_separate(10)  # noqa: SLF001
+    top = min(base.ptrs()) - 2
+    winner, trusted = module._mux_scout(  # noqa: SLF001
+        base.fork(), table, 10, range(top, top + 1)
+    )
+    assert trusted
+    assert winner is not None
+    acc, direct, predicted = winner
+    assert acc == top
+    assert len(built) == predicted
+    sculpted = module._mux_sculpt(  # noqa: SLF001
+        base,
+        table,
+        10,
+        acc,
+        0,
+        direct=direct,
+        hint=module._SCULPT_POOL_CODE,  # noqa: SLF001
+    )
+    assert built == sculpted
+
+
+@pytest.mark.slow  # two ten-input builds plus twelve interpreter rows, ~10s
+def test_ten_input_builds_print_on_the_interpreter() -> None:
+    """Sampled rows of both ten-input shapes answer on the real interpreter.
+
+    The rule path's acceptance is the laws' replay; this is the standard
+    above it -- the shipped interpreter running instantiated rows.  Six
+    rows per shape, the two corner rows always among them; the full
+    1024-row sweep was executed when the path landed, both shapes correct.
+    """
+    import hashlib
+    import random
+
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.minifuck import run
+    from esolangs.tools.boolean import minifuck
+    from esolangs.tools.boolean.examples import _fill_minifuck
+
+    digest = hashlib.sha256(b"dense:10").digest()
+    bits: list[str] = []
+    block = 0
+    while len(bits) < 1024:
+        digest = hashlib.sha256(digest + bytes([block & 255])).digest()
+        bits.extend(str(byte & 1) for byte in digest)
+        block += 1
+    dense = "".join(bits[:1024])
+    parity = "".join(str(bin(row).count("1") & 1) for row in range(1024))
+
+    rng = random.Random(20260915)
+    for table in (dense, parity):
+        template = minifuck(table)
+        for combo in sorted({*rng.sample(range(1024), 4), 0, 1023}):
+            row = [(combo >> (9 - i)) & 1 for i in range(10)]
+            io_ = ScriptedIO("")
+            run(_fill_minifuck(template, row), io_)
+            assert io_.getvalue() == table[combo], f"row {combo}"
