@@ -1575,6 +1575,38 @@ class TestCircuitDiagramLayoutGuards:
     def test_a_free_cell_takes_a_glyph(self) -> None:
         self._layout()._check_free(1, 1)  # noqa: SLF001
 
+    def test_a_run_between_touching_junctions_records_nothing(self) -> None:
+        """The span is exclusive, so neighbours leave no cell to claim.
+
+        Two junctions a cell apart -- or the same one twice -- have an empty
+        interior, and recording an empty interval would make the next run
+        through that cell clash with nothing.
+        """
+        layout = self._layout()
+        layout.run_vertical(3, 4, 4, 1)
+        layout.run_vertical(3, 4, 5, 1)
+        assert layout.render() == ""
+        # A real span through the same cells still records, so the guard
+        # above rejected the empty interval rather than the coordinates.
+        layout.run_vertical(3, 2, 6, 1)
+        assert layout.render() != ""
+
+    def test_the_clash_scan_keeps_looking_after_its_first_hit(self) -> None:
+        """The reported cell is the earliest, not the first one found.
+
+        Runs are stored in the order they were laid, so a later entry can
+        clash further left than an earlier one; the scan has to see every
+        run before it names a coordinate.
+        """
+        from esolangs.tools.boolean.circuit_diagram import _Layout
+
+        late_is_earlier = _Layout._clash(  # noqa: SLF001
+            [(6, 9, 1), (2, 4, 2)], None, 0, 10, 9
+        )
+        assert late_is_earlier == (2, True)
+        early_stays = _Layout._clash([(2, 4, 1), (6, 9, 2)], None, 0, 10, 9)  # noqa: SLF001
+        assert early_stays == (2, True)
+
     @pytest.mark.parametrize(
         ("dx", "dy"),
         [(dx, dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1) if (dx, dy) != (0, 0)],

@@ -1187,10 +1187,11 @@ def _cross_class_diffs(truth_table: str, n: int) -> list[tuple[int, ...]]:
         for other in range(row + 1, size):
             if truth_table[row] == truth_table[other]:
                 continue
-            plus = row & ~other
-            minus = other & ~row
-            if plus < minus:
-                plus, minus = minus, plus
+            # ``other > row``, so the highest bit the two differ on is
+            # always other's: ``other & ~row`` therefore always exceeds
+            # ``row & ~other``, and the canonical order is the swap every
+            # time rather than a comparison.
+            plus, minus = other & ~row, row & ~other
             seen.add((plus << n) | minus)
     diffs = []
     for key in seen:
