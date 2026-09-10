@@ -20,14 +20,14 @@ numeric output alphabet, or cannot emit arbitrary byte sequences. Boolean
 construction is parameterized for 123 and `%^2^-1`; no program reading its
 own inputs overcomes the latter's two-input wall.
 
-Interprogck8's boolean generator reaches seven inputs. It was capped at
+Interprogck8's boolean generator reaches ten inputs. It was capped at
 three by the reach of one `DownAccLines` — 255 lines, against a 456-line
-n=4 crossing — and the relay rungs that lift that bound shipped in
-`77025aa7`; the paragraph describing the old cap survived the change and
-contradicted this file's own capability table, which is corrected here.
-What stops n=8 is now cost rather than reach: 191 routing rounds and
-2031s, refused by the `_PATIENCE` policy. See the table below for the
-measured edge and the paragraph after it for why routing closes at all.
+n=4 crossing — lifted to seven by relay rungs (`77025aa7`), and lifted to
+ten by the express: `DownAccLines` keeps the accumulator, so a chain
+spells its stride once and rides one-line rungs parked in meadows, which
+also retired the old router's patience knob and its 2031s n=8 price. See
+the table below for the measured edge and the paragraph after it for the
+mechanism.
 
 ## Text generator blockers
 
@@ -59,7 +59,7 @@ generators cover one and refuse the other at the same arity):
 
 | Generator | dense | parity | what stops it |
 | --- | --- | --- | --- |
-| Interprogck8 | 7 | 7 | n=8 needs 191 routing rounds and 2031s, refused by the `_PATIENCE` cost policy rather than by the reach |
+| Interprogck8 | 10 | 10 | n=11 dense exhausts the `_REPAIRS = 256` meadow budget after 30s; whether more budget closes it is unmeasured |
 | Polynomial | 10 | 10 | caps at 1934 instructions, one per prime -- the analytic worst case over n=10 tables, so all of n=10 builds; dense n=11 needs 2910 |
 | WII2D | 8 | 10 | dense n=9 decode spans 256 points past the `_WII2D_MAX_INDEX_DOMAIN = 128` cost guard |
 | ZTOALC L | 10 | 10 | n=11 needs 587 command slots (545 parity) against the anchors' 386 under the 4.19M line ceiling |
@@ -77,28 +77,25 @@ the row the inputs index.  Dense n=10 is 10 labels and 5319 chars, all
 input -- with program size doubling per input long before that binds.
 
 Both older entries moved rather than vanished.  Interprogck8 was capped at 3 by
-the 255-line reach of one `DownAccLines` against a 452-line n=4 crossing.
-Long hops now relay through rungs -- jumps onward, parked in the dead line
-just past an unconditional jump -- and a chain is laid whole rather than a
-rung per round, which is what makes the routing close: extending chains one
-rung at a time lost more ground to the other chains' insertions than each
-rung gained, taking n=7 from 22 over-reach jumps to 198.  It builds n=7 in
-3.5s (12985 lines dense, 20032 parity), every row executed.  n=8 is the
-open edge: a rung laid to fix one over-long jump lands inside another
-chain's span and breaks it, so each round both repairs and damages.  The
-spacing is tuned against exactly that (see `_SPACING`) and the breakage now
-falls round on round instead of sitting flat.  Routing that stops gaining
-ground is refused with the count rather than run forever.
-
-n=8 is refused by cost rather than by geometry, and the distinction is
-measured: given `_PATIENCE = 400` instead of the shipped 32 it *does*
-close, in 191 rounds and 2031s, emitting 114319 lines.  That is about ten
-times the slowest generator this suite calls merely slow (Minifuck at
-187s), so the shipped patience keeps it out rather than admitting it --
-but the refusal is a cost policy and not the wall its message suggests.
-**The 114319-line program was never executed**, so it is not known to be
-correct, only to have been laid out.  n=9 is unmeasured; the line count
-grew 8.6x from n=7 to n=8, which would put it near a million.
+the 255-line reach of one `DownAccLines` against a 452-line n=4 crossing,
+then at 7 by relay interference: every rung respelled its distance (~25
+lines) into shared dead space, and rungs repairing one chain broke
+others, an iterative chase that cost 2031s at n=8.  The express replaced
+that.  `DownAccLines` does not consume the accumulator, so a chain loads
+its stride once at its own jump slot and every waypoint after is a bare
+one-line `DownAccLines` -- plus a few `@nd`/`@id` adjusters where the
+stride changes -- parked in *meadows*, dead-line banks emitted between
+gadgets and sized to the chains crossing them.  Meadows are placed after
+widths settle and a rung replaces a placeholder line in place, so routing
+runs once against frozen coordinates and chains cannot interfere; a
+shortfall names its stranded window, a repair adds one meadow inside it,
+and the route is retried from clean placeholders (`_REPAIRS = 256`
+additions, against 95-126 spent across four n=10 dense seeds).  n=10
+builds in about 10s (91684 lines dense, 116330 parity) and **every row of
+dense and parity executed correctly at n=8, 9 and 10**; n=7 dropped from
+3.5s to 0.05s and 12985 lines to 9499.  n=11 dense is refused when the
+repair budget runs out, 30s in -- a cost policy again, and whether more
+budget would close it is unmeasured.
 
 Factor was capped at 3 by CPython's 4300-digit `int`/`str` guard -- a DoS
 defence, not a Factor property -- which the generator and the interpreter
@@ -123,20 +120,21 @@ rows, not the row-by-row verification the n=5 claim above rests on** -- a
 full n=10 table is 1024 rows, about ten hours -- so the reach is where a row
 is affordable, not where a table is checked.
 
-The other 65 generators build both shapes at n=10, and ZTOALC L now joins
-them (its cap sits at n=11, so it stays in the table). Five are slow rather
+The other 65 generators build both shapes at n=10, and ZTOALC L and
+Interprogck8 now join them (both caps sit at n=11, so they stay in the
+table). Five are slow rather
 than capped, and their cost is the reason `tests/tools/test_boolean_contract.py`
 sweeps to five inputs rather than ten: Minifuck 187s at n=8, Circuit Diagram
 73s and 60MB of program text at n=9, Forþ 70s at n=10, `%^2^-1` 32s at n=9
 parity, ROTfuck 16s and 20MB at n=10 parity. Only the table's rows are
-capability limits, and only three bind inside the sweep (ZTOALC L's cap
-sits at n=11); the rest of the gap between five and ten is wall-clock.
+capability limits, and only WII2D's dense row binds inside the sweep (the
+other three caps sit at n=11); the rest of the gap between five and ten is
+wall-clock.
 
-- **Interprogck8:** a relay-interference limit, not the 255-line reach.
-  Rungs repairing one chain break others, and the spacing is tuned against
-  that.  Reusing an existing rung instead of laying a new one looked like
-  the next lever and is not: at n=8, none of the 68 jumps still over the
-  reach had a reachable rung heading where they were going.
+- **Interprogck8:** a meadow-budget limit, not the 255-line reach.  The
+  express routes against frozen coordinates, so the old relay
+  interference is gone; what runs out at n=11 is the repair budget that
+  adds meadows at stranded windows, and the refusal names the window.
 - **`%^2^-1`:** generic samples build through thirteen inputs; a
   fourteen-input table would need a twelve-input prefix ladder, which is
   open research, not a wall.

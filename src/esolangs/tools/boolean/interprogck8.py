@@ -310,10 +310,11 @@ _MEADOW_MOST = 56
 _MEADOW_PER_CHAIN = 6
 
 #: Meadows the repair may add at shortfalls before a table is refused.
-#: A budget on additions, not a convergence argument: n=10 dense spends
-#: about ninety across a handful of rounds, and the programs above it are
-#: ones this generator should refuse rather than chase.
-_REPAIRS = 128
+#: A budget on additions, not a convergence argument: four n=10 dense
+#: seeds spend 95-126 across a handful of rounds, so this is the worst
+#: measured with room over, and the programs past it are ones this
+#: generator should refuse rather than chase.
+_REPAIRS = 256
 
 
 def _spans(items: list[_Item]) -> list[tuple[int, int]]:
@@ -388,7 +389,7 @@ def _add(items: list[_Item], meadows: list[list[_Rung]], low: int, high: int) ->
 
 
 def _adjust(current: int, wanted: int) -> list[str]:
-    """The shortest lines turning accumulator ``current`` into ``wanted``.
+    """Return the shortest lines turning ``current`` into ``wanted``.
 
     Either nudged with ``@id``/``@dd`` tens and ``@nd``/``@nt`` units --
     the usual case, since consecutive strides differ by a meadow pitch or
@@ -437,9 +438,7 @@ class _Bank:
         self.cursor += length
 
 
-def _lay(
-    bank: _Bank, acc: int | None, landing: int, wanted: int
-) -> int | None:
+def _lay(bank: _Bank, acc: int | None, landing: int, wanted: int) -> int | None:
     """Lay one rung in ``bank`` carrying ``acc`` from ``landing`` to ``wanted``.
 
     ``acc`` is ``None`` for a terminal rung, whose incoming accumulator is
@@ -491,8 +490,8 @@ def _fits(free: int, landing: int, target: int, acc: int | None = None) -> bool:
     return False
 
 
-class _Stuck(ValueError):
-    """A routing shortfall, naming the window that held no rung slot.
+class _StuckError(ValueError):
+    """One routing shortfall, naming the window that held no rung slot.
 
     A :class:`ValueError` so an unrepaired shortfall is the generator's
     ordinary refusal; the window is where :func:`_add` repairs.  For a
@@ -509,7 +508,7 @@ class _Stuck(ValueError):
         self.high = high
 
 
-def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_Stuck]:
+def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_StuckError]:
     """Point every express jump at its chain, laying rungs in meadows.
 
     Coordinates are final -- laying a rung rewrites a placeholder line in
@@ -522,8 +521,8 @@ def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_Stuck]:
     position = {id(item): start for item, start in zip(items, starts, strict=True)}
     banks = [_Bank(rungs, [position[id(rung)] for rung in rungs]) for rungs in meadows]
 
-    def refuse(landing: int, until: int, label: str) -> _Stuck:
-        return _Stuck(landing, until, label)
+    def refuse(landing: int, until: int, label: str) -> _StuckError:
+        return _StuckError(landing, until, label)
 
     def onward(landing: int, until: int) -> list[_Bank]:
         """Banks a hop from ``landing`` could land in, furthest first.
@@ -615,11 +614,11 @@ def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_Stuck]:
         if _lay(terminal, acc, stop, target) is None:
             raise refuse(stop, target, item.label)
 
-    stuck: list[_Stuck] = []
+    stuck: list[_StuckError] = []
     for item, launch, target in chains:
         try:
             route(item, launch, target)
-        except _Stuck as shortfall:
+        except _StuckError as shortfall:
             # Collect rather than stop: every stranded chain names its
             # window in one pass, so one repair round serves them all.
             # Rungs a chain laid before stranding stay claimed, which is
