@@ -694,11 +694,11 @@ _ARITY_CAPPED: dict[str, tuple[int, str]] = {}
 
 
 # The two table shapes every generator is built against.  A dense
-# pseudo-random table and parity fail *differently*: Polynomial reaches
-# n=10 on parity but stops at n=7 dense (328 instructions against the 541
-# its dense n=8 needs), and WII2D reaches n=10 on parity but stops at n=7
-# dense.  A single-shape sweep reports the wrong ceiling for both, so both
-# shapes are built here even though neither generator is capped at n<=5.
+# pseudo-random table and parity fail *differently*: WII2D reaches n=10 on
+# parity but stops at n=8 dense, and Polynomial's 1934-instruction cap
+# refuses dense n=11 (2910) while parity fits far past it.  A single-shape
+# sweep reports the wrong ceiling for both, so both shapes are built here
+# even though neither generator is capped at n<=5.
 def _dense(n: int) -> str:
     """A deterministic dense pseudo-random table -- the worst case to fold."""
     digest = hashlib.sha256(f"dense:{n}".encode()).digest()

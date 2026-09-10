@@ -700,26 +700,29 @@ def qoibl(truth_table: str) -> str:
 # -- and the cost of recovering the instructions from it -- tracks this count
 # and nothing else.
 #
-# The bound was 138, sized when recovery was a bare ``sympy.factor_list``:
-# 52 instructions in 1.0s, 116 in 15s, 207 in 110s, so 138 was the most that
-# still ran in about ten seconds.  The interpreter now peels both instruction
-# shapes off itself before factoring -- real roots by Horner evaluation,
-# complex ones by solving for the real part modulo a prime -- and on a
-# generated program that accounts for every factor, so ``factor_list`` is
-# usually never reached.  Re-measured against that, one row of the suite's
-# dense fixture: n=6 (187 instructions) 5.3s, n=7 (328) 21.1s, n=8 (541)
-# 82.4s, every row answering correctly.
+# The bound is the analytic worst case over n == 10 tables: level ``k`` of
+# the state machine holds at most ``min(2**k, 2**2**(10 - k))`` states at 7
+# instructions each (5 fixed plus at most 2 transitions), and the leaf level
+# 5 each less the final endif -- ``7*275 + 5*2 - 1 = 1934``, so every n=10
+# table builds.  ``test_polynomial_cap_admits_every_n10_table`` re-derives
+# it.  The dense n=10 fixture needs 1638; dense n=11 needs 2910 and is
+# refused.
 #
-# So the bound is the n=7 count.  n=8 is refused on cost and the distinction
-# is measured, not assumed: it renders in 0.87s and runs, but at 82.4s a row
-# a verified 256-row table is near six hours where n=7 is about forty-five
-# minutes.  That keeps the same policy the 138 encoded -- admit what a suite
-# can afford to check -- against a cost curve that moved by roughly 18x.
+# The policy is still "admit what a suite can afford to check", against a
+# cost curve that moved twice.  At 138 recovery was a bare ``factor_list``
+# (~10s at the bound); the exact peels bought 328 (n=7 dense, 21.1s a row).
+# Two interpreter changes moved it again: recovery is cached per program --
+# rows of one table share a single factorization and parse -- and past
+# ``_NTT_MIN_DEGREE`` peel candidates come from NTT root sets rather than
+# enumeration and GF factoring.  Measured on the dense fixtures, whole
+# table verified against every row: n=8 (541 instructions) 3.5s for all
+# 256 rows where the old path took 115s for the *first*, n=10 (1638) 44s
+# for all 1024 rows, 43.7s of it the one factorization.
 #
 # The count, not the arity, is still what this measures: a table that
-# collapses to few states is cheap at any width, and parity renders through
-# n == 10 well inside the bound.
-_POLYNOMIAL_MAX_INSTRS = 328
+# collapses to few states is cheap at any width, and parity renders far
+# past n == 10 inside the bound.
+_POLYNOMIAL_MAX_INSTRS = 1934
 
 # How far above the cheapest candidate the dispatch still renders.  Selection
 # is on characters, so the instruction count only screens -- and a strict
@@ -793,9 +796,9 @@ def polynomial(truth_table: str) -> str:
     A table needing more than ``_POLYNOMIAL_MAX_INSTRS`` instructions under
     both constructions raises :class:`ValueError`: the interpreter recovers
     instructions by factoring the polynomial, and that is what becomes
-    impractical.  The bound is on instructions rather than on ``n``, so a
-    table that collapses to few states renders at any width -- parity, the
-    old gate's worst case, now renders through n == 8.
+    impractical.  The bound is on instructions rather than on ``n``, but it
+    is sized so every n == 10 table fits; a table that collapses to few
+    states renders at any width beyond that.
     """
     n = _validate_truth_table(truth_table)
 
