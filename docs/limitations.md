@@ -63,7 +63,7 @@ generators cover one and refuse the other at the same arity):
 | 6-5 | 6 | 10 | 35 branch labels against the table's *distinct* subtrees; dense n=7 needs 47 (parity is unbounded here -- it builds n=14 in 0.2s) |
 | Polynomial | 7 | 10 | caps at 328 instructions, one per prime; dense n=8 needs 541, and one row of it takes 82s to *run* |
 | WII2D | 8 | 10 | dense n=9 decode spans 256 points past the `_WII2D_MAX_INDEX_DOMAIN = 128` cost guard |
-| ZTOALC L | 8 | 8 | would need 11.8M lines against a 4.19M limit |
+| ZTOALC L | 10 | 10 | n=11 needs 587 command slots (545 parity) against the anchors' 386 under the 4.19M line ceiling |
 
 Both entries moved rather than vanished.  Interprogck8 was capped at 3 by
 the 255-line reach of one `DownAccLines` against a 452-line n=4 crossing.
@@ -112,7 +112,8 @@ rows, not the row-by-row verification the n=5 claim above rests on** -- a
 full n=10 table is 1024 rows, about ten hours -- so the reach is where a row
 is affordable, not where a table is checked.
 
-The other 64 generators build both shapes at n=10. Five are slow rather
+The other 64 generators build both shapes at n=10, and ZTOALC L now joins
+them (its cap sits at n=11, so it stays in the table). Five are slow rather
 than capped, and their cost is the reason `tests/tools/test_boolean_contract.py`
 sweeps to five inputs rather than ten: Minifuck 187s at n=8, Circuit Diagram
 73s and 60MB of program text at n=9, Forþ 70s at n=10, `%^2^-1` 32s at n=9
@@ -150,10 +151,19 @@ capability limits; the rest of the gap between five and ten is wall-clock.
 - **WII2D:** a chosen cost guard, now at 128 rather than 64: dense n=8
   builds in 0.8s (18466 characters) and all 256 rows compute their table.
   Dense n=9 needs 256, four times the width, and is untested.
-- **ZTOALC L:** the size is a Collatz trajectory's peak, which grows
-  superexponentially (n=9 peaks at 1.2e7, n=11 at 3.2e14), and the anchors
-  are already the smallest-peak record-holders per length interval, so
-  there is no tuning lever left -- only a different encoding.
+- **ZTOALC L:** was capped at 8 by the trajectory-prefix peak (n=9 peaked
+  at 1.2e7 lines against the 4.19M ceiling).  Two changes cleared 10/10:
+  commands now sit on the *L smallest* trajectory values under the ceiling
+  (a visited line past the code's end reads as a blank no-op, so the peak
+  stopped mattering), and the table is stored as four-row chunk codes
+  decoded through one shared 16-entry array, cutting dense n=10 from 555
+  commands to at most 329.  All 1024 rows of dense pseudo-random and of
+  parity verified against the interpreter (1.62M / 1.17M lines, ~2s a
+  table).  The wall is now slot capacity: the committed anchors keep at
+  most 386 values under the ceiling (start 511935), a sieve of *every*
+  start to 2**22 finds at most 395, and n=11 needs 587 dense / 545
+  parity -- so the next arity requires a higher line ceiling, not a better
+  anchor or placement.
 - **Route hybrids:** CV(N)(C), Polynomial, Circlefuck, `%^2^-1`, and WII2D
   alternatives were rejected on the grounds that occasional smaller output
   did not repay slower generation — 1.25x, 1.08x, 29x, 3,100x, and 1.85x on
