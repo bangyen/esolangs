@@ -1,9 +1,8 @@
 """Run every committed example program and check its output.
 
 ``examples/`` holds only programs sampled from a *parameterized* generator:
-the hello-world programs from ``esolangs.tools.text`` (which takes the text)
-and the boolean programs from ``esolangs.tools.boolean`` (which takes a truth
-table and an input combination).  Each committed file is one point sampled
+the boolean programs from ``esolangs.tools.boolean``, which take a truth
+table and an input combination.  Each committed file is one point sampled
 from that space, so a companion test keeps it in sync with whatever the
 generator produces today -- the check has teeth precisely because the
 generator could produce something else.
@@ -20,12 +19,10 @@ from pathlib import Path
 
 import pytest
 
-from esolangs import generate
 from esolangs.interpreters.io import IO
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.boolean.examples import HAND_WRITTEN
-from esolangs.tools.wrap import DEFAULT_WIDTH
 from esolangs.vm import (
     _FramedMachine,
     _TapeMachine,
@@ -37,20 +34,9 @@ from esolangs.vm import (
 from tests.tools.boolean_runners import one_two_three_result, point_break_result
 
 BASE_DIR = Path(__file__).parents[2]
-EXAMPLES_DIR = BASE_DIR / "examples" / "hello-world"
-
-
 def _file_name(display_name: str) -> str:
     return display_name.lower().replace(" ", "-")
 
-
-# example file stem -> (interpreter module, split lines), derived
-# from the language registry.
-EXAMPLES = {
-    _file_name(lang.name): (lang.interpreter, lang.split)
-    for lang in LANGUAGES.values()
-    if lang.text and lang.interpreter
-}
 
 # The VM registry is keyed by the language's display name, while boolean
 # examples are keyed by their filesystem stem.  The interpreter module is
@@ -85,79 +71,6 @@ HALT_CONVENTION = {"123", "arrowqueue", "point-break"}
 #
 # Empty, and that is the claim: every boolean generator currently has one.
 _NO_EXAMPLE: set[str] = set()
-
-
-def run_example(name: str) -> str:
-    module, splitlines = EXAMPLES[name]
-    run = importlib.import_module("esolangs.interpreters." + module).run
-    program = (EXAMPLES_DIR / f"{name}.txt").read_text(encoding="utf-8").rstrip("\n")
-    argument = program.splitlines() if splitlines else program
-
-    buffer = io.StringIO()
-    try:
-        with redirect_stdout(buffer):
-            run(argument, io=IO())
-    except SystemExit:
-        assert name in EXITS, f"{name} exited unexpectedly"
-    return buffer.getvalue()
-
-
-@pytest.mark.parametrize("name", sorted(EXAMPLES))
-def test_hello_world_example(name: str) -> None:
-    expected = "Hello, World!"
-    assert run_example(name) == expected
-
-
-def test_example_files_match_generator() -> None:
-    """The committed examples are exactly what the generators produce today.
-
-    The files are committed wrapped (see ``scripts/write_examples.py``)
-    and end with a single POSIX
-    newline, so the comparison is against the generator's output plus that
-    newline.
-    """
-    languages = [lang for lang in LANGUAGES.values() if lang.text and lang.interpreter]
-    for lang in languages:
-        assert lang.text is not None
-        path = EXAMPLES_DIR / f"{_file_name(lang.name)}.txt"
-        expected = (
-            generate(lang.name, "Hello, World!", DEFAULT_WIDTH).rstrip("\n") + "\n"
-        )
-        assert path.read_text(encoding="utf-8") == expected
-
-
-def test_no_example_has_trailing_whitespace() -> None:
-    """No committed example ends a line in whitespace.
-
-    Several generators lay their program out on a fixed-width grid and used
-    to emit the filler past the last glyph on a row.  It is inert -- the 2D
-    interpreters pad short rows themselves -- but it is still whitespace no
-    program can use, and ``.pre-commit-config.yaml`` excludes ``examples/``
-    from the ``trailing-whitespace`` hook (the files must match their
-    generator byte for byte, so the hook cannot be the thing that strips
-    them).  The generators rstrip their rows instead, and this test is what
-    holds them to it.
-    """
-    offenders = []
-    for path in sorted((BASE_DIR / "examples").rglob("*.txt")):
-        for number, line in enumerate(
-            path.read_text(encoding="utf-8").split("\n"), start=1
-        ):
-            if line != line.rstrip():
-                offenders.append(f"{path.relative_to(BASE_DIR)}:{number}")
-    assert not offenders, "trailing whitespace in: " + ", ".join(offenders)
-
-
-def test_no_orphan_hello_world_examples() -> None:
-    """Every hello-world file belongs to a language that still has a generator.
-
-    The other tests derive their parameters from the registry, so a file for a
-    language that was removed is never collected and cannot fail.  Scanning the
-    directory is what catches it.
-    """
-    committed = {path.stem for path in EXAMPLES_DIR.glob("*.txt")}
-    assert committed - set(EXAMPLES) == set(), "example files with no generator"
-    assert set(EXAMPLES) - committed == set(), "generators with no example file"
 
 
 @pytest.mark.parametrize("name", sorted(BOOLEAN_GENERATED))
@@ -251,30 +164,6 @@ def test_every_boolean_generator_has_an_example() -> None:
     assert registered - covered == _NO_EXAMPLE, (
         "boolean generators with no committed example: "
         f"{sorted(registered - covered - _NO_EXAMPLE)}"
-    )
-
-
-def test_every_text_generator_has_an_example() -> None:
-    """Every registered text generator has a committed hello-world file.
-
-    :func:`test_no_orphan_hello_world_examples` already asserts this, but it
-    does so against ``EXAMPLES``, which is *derived* from the registry by
-    the same comprehension -- so the two sides move together and the
-    equality holds by construction rather than by the files being there.
-    This compares the registry against the directory directly, which is what
-    a missing file actually violates.
-
-    A language with a text generator but no interpreter is exempt: nothing
-    can run its program, so ``EXAMPLES`` skips it and no file is written.
-    """
-    registered = {
-        _file_name(lang.name)
-        for lang in LANGUAGES.values()
-        if lang.text and lang.interpreter
-    }
-    on_disk = {path.stem for path in EXAMPLES_DIR.glob("*.txt")}
-    assert registered - on_disk == set(), (
-        f"text generators with no committed example: {sorted(registered - on_disk)}"
     )
 
 

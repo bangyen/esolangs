@@ -16,11 +16,18 @@ import esolangs
 from esolangs.cli import main
 
 
-def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
+# A 3-input parity table.  Parity depends on every input, so the program is
+# long enough to have something to wrap -- an echo-one-input table folds
+# down to a few characters and the width options below would be no-ops.
+TABLE3 = "01101001"
+
+
+def run_cli(*args: str, stdin: str = "") -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, "-m", "esolangs.cli", *args],
         capture_output=True,
         text=True,
+        input=stdin,
     )
 
 
@@ -53,16 +60,16 @@ class TestSubprocess:
         assert "Sophie" in result.stdout
 
     def test_generate(self) -> None:
-        result = run_cli("generate", "Sophie", "Hi")
+        result = run_cli("generate", "Sophie", "0110")
         assert result.returncode == 0
-        assert esolangs.run("Sophie", result.stdout) == "Hi"
+        assert esolangs.run("Sophie", result.stdout, "0\n1\n") == "1"
 
     def test_run(self, tmp_path: Path) -> None:
         program = tmp_path / "prog.soph"
-        program.write_text(esolangs.generate("Sophie", "Hi"))
-        result = run_cli("run", "Sophie", str(program))
+        program.write_text(esolangs.generate("Sophie", "0110"))
+        result = run_cli("run", "Sophie", str(program), stdin="0\n1\n")
         assert result.returncode == 0
-        assert result.stdout == "Hi"
+        assert result.stdout == "1"
 
 
 class TestInProcess:
@@ -71,14 +78,14 @@ class TestInProcess:
         assert "Sophie" in out
 
     def test_generate(self, capsys: pytest.CaptureFixture[str]) -> None:
-        out = call_main(["generate", "Sophie", "Hi"], capsys)
-        assert esolangs.run("Sophie", out) == "Hi"
+        out = call_main(["generate", "Sophie", "0110"], capsys)
+        assert esolangs.run("Sophie", out, "0\n1\n") == "1"
 
     def test_generate_unknown_language(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         with pytest.raises(SystemExit) as exc:
-            call_main(["generate", "NoSuchLanguage", "x"], capsys)
+            call_main(["generate", "NoSuchLanguage", "01"], capsys)
         assert exc.value.code == 2
         assert "unknown language" in capsys.readouterr().err
 
@@ -89,9 +96,9 @@ class TestInProcess:
 
     def test_run(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         program = tmp_path / "prog.soph"
-        program.write_text(esolangs.generate("Sophie", "Hi"))
-        out = call_main(["run", "Sophie", str(program)], capsys)
-        assert out == "Hi"
+        program.write_text(esolangs.generate("Sophie", "0110"))
+        out = call_main(["run", "Sophie", str(program)], capsys, stdin="0\n1\n")
+        assert out == "1"
 
     def test_run_feeds_stdin(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -142,10 +149,10 @@ class TestPackageEntryPoint:
     def test_run_as_main(self, capsys: pytest.CaptureFixture[str]) -> None:
         import runpy
 
-        with patch.object(sys, "argv", ["esolangs", "generate", "Sophie", "Hi"]):
+        with patch.object(sys, "argv", ["esolangs", "generate", "Sophie", "0110"]):
             runpy.run_module("esolangs", run_name="__main__")
         out = capsys.readouterr().out
-        assert esolangs.run("Sophie", out) == "Hi"
+        assert esolangs.run("Sophie", out, "0\n1\n") == "1"
 
 
 class TestWidthOption:
@@ -153,15 +160,15 @@ class TestWidthOption:
 
     def test_width_with_a_value(self, capsys: pytest.CaptureFixture[str]) -> None:
         """``--width N`` bounds the generated program's columns."""
-        out = call_main(["generate", "brainfuck", "Hello", "--width", "20"], capsys)
+        out = call_main(["generate", "brainfuck", TABLE3, "--width", "20"], capsys)
         assert max(len(line) for line in out.rstrip("\n").split("\n")) <= 20
-        assert esolangs.run("brainfuck", out) == "Hello"
+        assert esolangs.run("brainfuck", out, "0\n1\n1\n") == "0"
 
     def test_width_with_an_equals_sign(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """``--width=N`` is the same option written the other way."""
-        out = call_main(["generate", "brainfuck", "Hello", "--width=20"], capsys)
+        out = call_main(["generate", "brainfuck", TABLE3, "--width=20"], capsys)
         assert max(len(line) for line in out.rstrip("\n").split("\n")) <= 20
 
     def test_bare_width_takes_the_default(
@@ -175,7 +182,7 @@ class TestWidthOption:
         """
         from esolangs.tools.wrap import DEFAULT_WIDTH
 
-        out = call_main(["generate", "brainfuck", "Hello, World!", "--width"], capsys)
+        out = call_main(["generate", "brainfuck", TABLE3, "--width"], capsys)
         assert max(len(line) for line in out.rstrip("\n").split("\n")) <= DEFAULT_WIDTH
         assert "\n" in out.rstrip("\n")
 
@@ -187,15 +194,15 @@ class TestWidthOption:
         Reading the language name as a width would silently generate the
         wrong thing, so only an integer is taken as the option's value.
         """
-        out = call_main(["generate", "--width", "brainfuck", "Hi"], capsys)
-        assert esolangs.run("brainfuck", out) == "Hi"
+        out = call_main(["generate", "--width", "brainfuck", TABLE3], capsys)
+        assert esolangs.run("brainfuck", out, "0\n1\n1\n") == "0"
 
     def test_width_rejects_a_non_integer_after_equals(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """``--width=x`` has no integer to parse, so it is refused."""
         with pytest.raises(SystemExit) as exc:
-            call_main(["generate", "brainfuck", "Hi", "--width=x"], capsys)
+            call_main(["generate", "brainfuck", TABLE3, "--width=x"], capsys)
         assert exc.value.code == 2
         assert "must be an integer" in capsys.readouterr().err
 
@@ -205,6 +212,6 @@ class TestWidthOption:
     ) -> None:
         """A width of zero or less bounds nothing."""
         with pytest.raises(SystemExit) as exc:
-            call_main(["generate", "brainfuck", "Hi", "--width", value], capsys)
+            call_main(["generate", "brainfuck", TABLE3, "--width", value], capsys)
         assert exc.value.code == 2
         assert "must be positive" in capsys.readouterr().err
