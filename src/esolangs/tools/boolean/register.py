@@ -905,16 +905,20 @@ def _polynomial_assemble(instrs: list[list[int]]) -> str:
     contributes ``x - p**v``, so the roots the interpreter factors back out
     are exactly the instructions.
     """
-    from esolangs.tools._polynomial import format_coeffs, multiply, primes
+    from esolangs.tools._polynomial import primes, render_product
 
-    coeffs = [1]
+    factors: list[list[int]] = []
     for instr, p in zip(instrs, primes(len(instrs)), strict=True):
         if len(instr) == 2:
             a, b = instr
-            coeffs = multiply(coeffs, [1, -2 * a, a * a + p ** (2 * b)])
+            factors.append([1, -2 * a, a * a + p ** (2 * b)])
         else:
-            coeffs = multiply(coeffs, [1, -(p ** instr[0])])
-    return str(format_coeffs(coeffs))
+            factors.append([1, -(p ** instr[0])])
+    # The expansion is the whole cost past n == 7 -- the factor count is the
+    # degree, and multiplying them in one incremental sweep rescans a
+    # polynomial whose coefficients keep growing.  ``render_product`` cuts
+    # the list into groups and merges them packed; see there.
+    return str(render_product(factors))
 
 
 def _polynomial_states(truth_table: str, n: int) -> list[list[str]]:
