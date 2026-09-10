@@ -53,33 +53,6 @@ is now implemented, with its own boolean generator.
   placement and reports a clean 0.00% — ZTOALC L did exactly that, and
   wii2d's budget machinery is the next likely instance. A 0% where the
   screen shows upside is a diagnosis, not a verdict.
-- **Scale Line boolean drawings.** Twelve inputs is *measured, and it fits*:
-  a 33760x29920 canvas (1.01Gpx, within a rounding of the 33600x29920
-  projection) completes the round trip in 289s at 2.60GiB peak, all sampled
-  parity rows correct. That is inside the 2-5 minute projection and *below*
-  the 4-8GiB one, so there is no resource wall and **subtree sharing and a
-  denser layout stay unpursued** -- the condition this entry set for them
-  was not met. The n=11 control in the same conditions is 85.5s at 2.68GiB,
-  which reproduces this entry's earlier "under 80 seconds".
-
-  **Measure one arity per process.** The first attempt ran n=11 and n=12 in
-  one process and got 268s and 642s -- 3.1x and 2.2x the true figures, with
-  `compile` inflated 10x at n=11 (105s against 10.1s). Nothing is cached
-  between calls, so this is not warm-up: a repeated `compile_program` on one
-  stroke is flat to the millisecond, and repeated `extract` likewise. It is
-  the billion-pixel canvas still resident while the next arity is measured.
-  A per-arity process is what makes these numbers reproducible.
-
-  The cost is in the reader, and specifically in `extract`: 70.4s of 85.5s
-  at n=11 and 237.6s of 288.8s at n=12, a steady 82% at both arities, while
-  drawing and saving the canvas is 4% and `compile` 12-13%. `compile` scales
-  cleanly at 4x per arity (0.16 / 0.62 / 2.48 / 10.1 / 38.0s for n=8..12),
-  so it is predictable and small; `extract` is the stage any future work
-  belongs in.
-
-  Line's open work that is not about arity — extraction from anti-aliased
-  input, the lattice probe length, ambiguous arrowheads — lives in
-  `extra/line/WIP.md`, the separate suite's own ledger.
 
 ## Conditional follow-up
 
