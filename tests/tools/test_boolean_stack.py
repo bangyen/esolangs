@@ -297,6 +297,40 @@ class TestForth:
         assert _forth_const(224) == "EF*E+"
         assert _forth_const(225) == "1F*0+F*0+"
 
+    def test_length_formula_matches_the_built_program(self) -> None:
+        """The closed-form score equals the built length for every order.
+
+        ``forth`` picks its input order by ``_forth_order_length`` and
+        builds only the winner, so a drift between formula and builder
+        ships a wrong winner that still runs.  n == 3 is exhaustive over
+        tables and orders; n == 7 is the first arity where a level's heap
+        indices cross a base-15 digit boundary, so the per-node savings
+        fallback fires rather than the shared-scalar path.
+        """
+        import random
+
+        from esolangs.tools.boolean.helpers import permute_truth_table
+        from esolangs.tools.boolean.stack import (
+            _forth_order_length,
+            _forth_ordered,
+            _forth_permuted_bits,
+            _forth_stack_programs,
+        )
+
+        rng = random.Random(7)
+        tables = [format(v, "08b") for v in range(256)]
+        tables += ["".join(rng.choice("01") for _ in range(128)) for _ in range(2)]
+        for table in tables:
+            n = len(table).bit_length() - 1
+            bits = int(table[::-1], 2)
+            for arrangement, reads in _forth_stack_programs(n).items():
+                perm = tuple(reversed(arrangement))
+                got = _forth_order_length(
+                    _forth_permuted_bits(bits, perm, n), n, len(reads)
+                )
+                want = len(_forth_ordered(permute_truth_table(table, perm), perm))
+                assert got == want, (table, perm)
+
     def test_the_program_is_only_forth_commands(self) -> None:
         """Only the characters Forþ reads are emitted."""
         for table in ("10", "0110", "0001", "11111110"):
