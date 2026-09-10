@@ -10,6 +10,21 @@ structural arguments are in [walls](walls.md).
   another sentinel. Malformed programs raise `ValueError`; runtime failure
   raises `HaltError`.
 - Character input is line-delimited: one line supplies one character.
+- A blank line reads as `0`, and that `0` is **chosen** everywhere. Audited
+  against the current page of all eight sites that reach it — the six
+  guards `test_input_convention.py` finds by AST (Alight, DINAC, Jaune,
+  LaserFuck, Streetcode, Suffolk), plus Dig, which zeroes its mole by
+  leaving the read unset, and Packlang, which takes `io.input_char`
+  directly. Two pages specify the opposite and are knowingly overridden:
+  DINAC "Empty input returns \n", Packlang "Empty input returns a
+  newline". Five say nothing about an empty read. Suffolk alone names the
+  value — "At EOF, instead set the internal state integer to 0" — but that
+  is EOF, which still raises here, so it corroborates the number and not
+  the rule. Jaune's two linked implementations were checked as well and
+  neither defines an empty read: the JavaScript one calls
+  `Scanner.nextInt()`, the Common Lisp one bare `read`, and both error
+  rather than yield 0. **No language's `0` comes from its own
+  specification.**
 - Explicit frame stacks make supported recursion uncapped. Forbin calls in
   expression position remain host-recursive and report their documented limit.
 
