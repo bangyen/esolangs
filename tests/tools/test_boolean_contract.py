@@ -493,17 +493,16 @@ _MINTERM_SHAPED = {
 # table's shape.
 #
 # ``ztoalc_l_boolean`` emits no tree either, and for a reason the folding
-# discriminator cannot see.  It builds one branch-free array lookup: the
-# inputs' row index is accumulated arithmetically and the table is one-hot
-# encoded into an array, so there are no subtrees to collapse and the
-# program's size tracks the number of rows it encodes, not the table's
-# shape.  Every table this test measures has ones-count 4, so they all
-# render to *exactly* the same length -- a 0% fold that is a property of the
-# construction rather than a regression in it.  (It is not minterm-shaped
-# either: a minterm sum's cost is one term per selected row, and while the
-# array init is one command per row, the emitted program's length is set by
-# the Collatz trajectory's peak, which is a lookup in a committed anchor
-# table rather than a function of the row count.)
+# discriminator cannot see.  It builds one branch-free chunked lookup: the
+# inputs are folded into a chunk index and a bit index, the table's
+# four-row chunks are stored as codes, and a shared decode array turns the
+# selected code's bit into the answer.  There are no subtrees to collapse,
+# and the program's size tracks the nonzero-chunk and distinct-code counts,
+# not the table's shape.  (It is not minterm-shaped either: a minterm sum's
+# cost is one term per selected row, where a chunk set carries four rows
+# and the emitted length is a Collatz placement -- the L-th smallest value
+# of a committed anchor's trajectory -- rather than a function of the row
+# count.)
 #
 # ``pct_squared_minus_one`` emits no tree at all.  %^2^-1's only branch is
 # ``t``, which jumps to position 0 and nowhere else, so the generator
@@ -547,6 +546,8 @@ _REDUCING = {
 # rule and the table is a string literal read with ``at{table, i+0.5}``, so
 # there are no subtrees to collapse and every table of a given arity renders
 # to exactly the same length.  A 0% fold is the construction working.
+# (ZTOALC L's chunked variant of the same fold keeps it in this list for
+# the same reason: lookup size does not track table shape.)
 _UNSHAPED = {
     "alight",
     "wii2d",
@@ -660,8 +661,8 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 
 
 # Every boolean generator builds a table at n <= _MAX_ARITY.  Five inputs
-# rather than ten because ten is not a *capability* line: at n=10 eleven
-# generators fall short, and only six of those are caps -- the other five
+# rather than ten because ten is not a *capability* line: at n=10 ten
+# generators fall short, and only five of those are caps -- the other five
 # (Circuit Diagram, Forþ, Minifuck, ROTfuck, %^2^-1) build fine given time,
 # at up to 187s and 60MB of program text for one table, which no suite can
 # carry.  Five is where the two classes separate: every generator that can
