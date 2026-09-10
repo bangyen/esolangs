@@ -15,6 +15,7 @@ from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.polynomial import (
     _divide_quadratic,
     _factor_roots,
+    _Root,
     brackets,
     convert,
     prime,
@@ -46,7 +47,7 @@ class TestPolynomialHelperFunctions:
 
         # x^3 - 5x + 2 = (x - 2)(x^2 + 2x - 1); the quadratic has q = -2,
         # so only the linear root survives.
-        assert _factor_roots((1, 0, -5, 2)) == (complex(2, 0),)
+        assert _factor_roots((1, 0, -5, 2)) == (_Root(2, 0),)
 
     def test_factor_skips_a_cubic_factor(self) -> None:
         """Only degree 1 and 2 factors encode instructions; higher ones do not.
@@ -61,7 +62,7 @@ class TestPolynomialHelperFunctions:
 
         # And a cubic alongside a decodable linear factor: (x^3 - 2)(x - 1)
         # keeps the 1 and still skips the cubic.
-        assert _factor_roots((1, -1, 0, -2, 2)) == (complex(1, 0),)
+        assert _factor_roots((1, -1, 0, -2, 2)) == (_Root(1, 0),)
 
     def test_sanitize_simple_polynomial(self) -> None:
         """Test polynomial parsing for simple cases."""
@@ -326,7 +327,7 @@ class TestPeelPrimePowerRoots:
     """
 
     @staticmethod
-    def _reference(coefficients: tuple[int, ...]) -> list[complex]:
+    def _reference(coefficients: tuple[int, ...]) -> list[_Root]:
         """Recover roots the way the interpreter did before the peel."""
         import math
 
@@ -334,13 +335,13 @@ class TestPeelPrimePowerRoots:
 
         x = sp.Symbol("x")
         _, factors = sp.factor_list(sp.Poly.from_list(list(coefficients), x))
-        roots: list[complex] = []
+        roots: list[_Root] = []
         # pylint: disable=duplicate-code  # independent oracle; see class docstring
         for factor, multiplicity in factors:
             degree = factor.degree()
             if degree == 1:
                 a, b = (int(k) for k in factor.all_coeffs())
-                roots.extend([complex(-b // a, 0)] * multiplicity)
+                roots.extend([_Root(-b // a, 0)] * multiplicity)
             elif degree == 2:
                 a, b, c = (int(k) for k in factor.all_coeffs())
                 if a != 1 or b % 2:
@@ -352,7 +353,7 @@ class TestPeelPrimePowerRoots:
                 imag = math.isqrt(q)
                 if imag * imag != q:
                     continue
-                roots.extend([complex(real, imag), complex(real, -imag)] * multiplicity)
+                roots.extend([_Root(real, imag), _Root(real, -imag)] * multiplicity)
         return sorted(roots, key=lambda z: (z.imag, z.real))
 
     @pytest.mark.parametrize(
@@ -459,7 +460,7 @@ class TestFactorRootsRejections:
 
     def test_a_negative_imaginary_part_is_skipped(self) -> None:
         """``x**2 - 4`` factors into real roots, not an instruction pair."""
-        assert _factor_roots((1, 0, -4)) == ((2 + 0j), (-2 + 0j))
+        assert _factor_roots((1, 0, -4)) == (_Root(2, 0), _Root(-2, 0))
 
     def test_an_odd_linear_term_is_skipped(self) -> None:
         """``x**2 + x + 1`` cannot be ``(x - a)**2 + square`` for integer ``a``."""
@@ -467,7 +468,7 @@ class TestFactorRootsRejections:
 
     def test_the_shape_that_does_decode(self) -> None:
         """``x**2 + 4`` is ``(x - 0)**2 + 2**2``, so it yields its pair."""
-        assert _factor_roots((1, 0, 4)) == (2j, -2j)
+        assert _factor_roots((1, 0, 4)) == (_Root(0, 2), _Root(0, -2))
 
     def test_a_pair_the_peels_miss_is_decoded_by_factor_list(self) -> None:
         """A real part past the peel's bound still decodes, one stage later.
@@ -485,8 +486,8 @@ class TestFactorRootsRejections:
         # (x - real)**2 + 4
         coefficients = (1, -2 * real, real * real + 4)
         assert _factor_roots(coefficients) == (
-            complex(real, 2),
-            complex(real, -2),
+            _Root(real, 2),
+            _Root(real, -2),
         )
 
 
@@ -672,6 +673,168 @@ class TestPeelInstructionQuadratics:
         assert _divide_quadratic(coefficients, 3, 9) is None
 
 
+class TestNttRecovery:
+    """The large-degree path: roots from exhaustive field evaluation.
+
+    Past ``_NTT_MIN_DEGREE`` both peels take their candidates from the
+    polynomial's roots over two fixed prime fields rather than enumerating
+    or factoring over ``_PEEL_MODULUS``.  Acceptance is still exact
+    division, so these check the search half: the fields' constants, the
+    root sets, and that the whole path recovers a program exactly while
+    leaving what encodes nothing.
+    """
+
+    @staticmethod
+    def _program(pairs: list[tuple[int, int]], reals: list[int]) -> list[int]:
+        """Integer coefficients of ``prod (x-a)^2+q * prod (x-r)``."""
+        coefficients = [1]
+        for real, square in pairs:
+            b1, b0 = -2 * real, real * real + square
+            nxt = [0] * (len(coefficients) + 2)
+            for i, k in enumerate(coefficients):
+                nxt[i] += k
+                nxt[i + 1] += k * b1
+                nxt[i + 2] += k * b0
+            coefficients = nxt
+        for root in reals:
+            nxt = [0] * (len(coefficients) + 1)
+            for i, k in enumerate(coefficients):
+                nxt[i] += k
+                nxt[i + 1] -= k * root
+            coefficients = nxt
+        return coefficients
+
+    def test_ntt_field_constants(self) -> None:
+        """Each field is ``(c * 2**k + 1, c, k, g)``, prime, ``1 (mod 4)``.
+
+        The ``1 (mod 4)`` requirement is :data:`_PEEL_MODULUS`'s, for the
+        same reason -- ``sqrt(-1)`` is what turns a quadratic's root pair
+        into field elements -- and ``g`` must generate the whole group or
+        :func:`_roots_mod` would evaluate only a subgroup and silently
+        miss roots.
+        """
+        import sympy as sp
+
+        from esolangs.interpreters.register_based.polynomial import _NTT_FIELDS
+
+        seen = set()
+        for modulus, cofactor, log_size, generator in _NTT_FIELDS:
+            assert modulus == cofactor * 2**log_size + 1
+            assert modulus % 4 == 1
+            assert sp.isprime(modulus)
+            assert sp.n_order(generator, modulus) == modulus - 1
+            seen.add(modulus)
+        assert len(seen) == len(_NTT_FIELDS), "the cross-check needs a second field"
+
+    def test_roots_mod_is_the_exact_root_set(self) -> None:
+        """Planted roots come back exactly -- no more, no fewer.
+
+        A repeated root and roots past both moduli ride along: exhaustive
+        evaluation needs no squarefreeness, and a wide root folds to its
+        residue, which is all the candidate screens ask of it.
+        """
+        from esolangs.interpreters.register_based.polynomial import (
+            _NTT_FIELDS,
+            _roots_mod,
+        )
+
+        planted = [3, 3, 65539, 200003]
+        coefficients = self._program([], planted)
+        for field in _NTT_FIELDS:
+            modulus = field[0]
+            assert _roots_mod(coefficients, field) == {r % modulus for r in planted}
+
+    def test_zero_is_reported_when_x_divides(self) -> None:
+        """The one point outside the multiplicative group is still seen."""
+        from esolangs.interpreters.register_based.polynomial import (
+            _NTT_FIELDS,
+            _roots_mod,
+        )
+
+        assert 0 in _roots_mod([1, -7, 0], _NTT_FIELDS[0])  # x(x - 7)
+
+    def test_iter_bits_matches_bit_positions(self) -> None:
+        """The byte-scan extraction is exactly ``bin()``'s set bits."""
+        from esolangs.interpreters.register_based.polynomial import _iter_bits
+
+        mask = (1 << 0) | (1 << 7) | (1 << 8) | (1 << 1000) | (1 << 163839)
+        assert sorted(_iter_bits(mask, 163841)) == [0, 7, 8, 1000, 163839]
+        assert list(_iter_bits(0, 163841)) == []
+
+    def test_a_large_program_is_recovered_exactly(self) -> None:
+        """Past the threshold, every planted factor comes back and nothing
+        else -- the execution-gate witness for the search half.
+
+        The factors mirror a generated program's: quadratics ``(a,
+        p**(2*b))`` on consecutive primes with data-sized ``a`` including
+        the negatives and zeros the DAG emits, plus real prime powers.
+        The degree (259) sits past ``_NTT_MIN_DEGREE`` so this runs the
+        NTT path, which the recovered multiset proves end to end.
+        """
+        import sympy as sp
+
+        from esolangs.interpreters.register_based.polynomial import (
+            _NTT_MIN_DEGREE,
+            _factor_roots,
+            _Root,
+        )
+
+        primes = list(sp.primerange(2, 700))
+        pairs = []
+        reals = []
+        for index, p in enumerate(primes[:100]):
+            if index % 3 == 2:
+                reals.append(p ** (1 + index % 4))
+            else:
+                a = (index * 37) % 800 - 400  # data operands, both signs
+                pairs.append((a, p ** (2 * (1 + index % 3))))
+        coefficients = self._program(pairs, reals)
+        assert len(coefficients) - 1 > _NTT_MIN_DEGREE
+
+        expected = [_Root(r, 0) for r in reals]
+        for a, q in pairs:
+            import math
+
+            root = math.isqrt(q)
+            expected.extend([_Root(a, root), _Root(a, -root)])
+
+        _factor_roots.cache_clear()
+        recovered = _factor_roots(tuple(coefficients))
+        assert sorted(recovered) == sorted(expected)
+
+    def test_what_the_large_path_cannot_take_reaches_factor_list(self) -> None:
+        """The fallback stays wired on the NTT path.
+
+        A real part past the lift window (half the pairing field) pairs to
+        the wrong lift, fails the exact division, and survives to
+        ``factor_list``, which decodes it anyway -- same bargain as the
+        enumerated path's ``_PEEL_MAX_REAL_PART`` case.
+        """
+        import math
+
+        import sympy as sp
+
+        from esolangs.interpreters.register_based.polynomial import (
+            _NTT_FIELDS,
+            _NTT_MIN_DEGREE,
+            _factor_roots,
+            _Root,
+        )
+
+        wide = _NTT_FIELDS[0][0]  # a real part the lift cannot reach
+        pairs = [(3, p * p) for p in sp.primerange(2, 800)]
+        pairs = pairs[: (_NTT_MIN_DEGREE // 2) + 2]
+        coefficients = self._program([*pairs, (wide, 9)], [])
+
+        _factor_roots.cache_clear()
+        recovered = _factor_roots(tuple(coefficients))
+        expected = [_Root(wide, 3), _Root(wide, -3)]
+        for a, q in pairs:
+            root = math.isqrt(q)
+            expected.extend([_Root(a, root), _Root(a, -root)])
+        assert sorted(recovered) == sorted(expected)
+
+
 class TestPolynomialHighPrecisionRoots:
     """Wide codepoint deltas and pathological root spreads are recovered
     exactly by factoring the integer polynomial (no floating point)."""
@@ -708,6 +871,25 @@ class TestPolynomialHighPrecisionRoots:
         with redirect_stdout(buffer):
             run(gen(text), io=IO())
         assert buffer.getvalue() == text
+
+    def test_a_real_root_past_float64_still_decodes(self) -> None:
+        """``251**8`` exceeds 2**53, where ``complex`` would round it.
+
+        Roots used to ride through ``complex``, whose float64 mantissa
+        rounds any integer past 2**53 -- ``convert``'s exact ``==`` against
+        ``p**v`` then misses and the instruction silently vanishes.  Wide
+        real roots are routine at high arity (the dense n=10 table reaches
+        ``p**4`` near 3.7e16), so the pipeline carries exact pairs instead;
+        this pins the decode end to end.
+        """
+        from esolangs.interpreters.register_based.polynomial import (
+            _Root,
+            convert,
+        )
+
+        root = 251**8
+        assert float(root) != root, "the witness must not fit float64"
+        assert convert([_Root(root, 0)]) == [[8]]
 
     def test_non_prime_power_roots_produce_no_instruction(self) -> None:
         """Roots that do not map to an instruction (not a prime power, or a
