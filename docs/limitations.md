@@ -45,6 +45,13 @@ numeric output alphabet, or cannot emit arbitrary byte sequences. Boolean
 construction is parameterized for 123 and `%^2^-1`; no program reading its
 own inputs overcomes the latter's two-input wall.
 
+The n=3 input-reordering screen (`scripts/screen_input_reorder.py`)
+closes eight unwired generators at exactly 0% upside without reading
+their code — A Painter Ant, Alight, Container, Grapheme, Home Row,
+Packlang, Point Break, Suptiftam — most sum-of-minterms, where the
+minterm count does not depend on split order. Suffolk, Circuit Diagram
+and Collatz Multiverse improve a handful of tables each for under 0.05%.
+
 Interprogck8's boolean generator reaches ten inputs. It was capped at
 three by the reach of one `DownAccLines` — 255 lines, against a 456-line
 n=4 crossing — lifted to seven by relay rungs (`77025aa7`), and lifted to

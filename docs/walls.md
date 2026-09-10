@@ -20,6 +20,14 @@ claim is accepted.
   steered into a wipe window, an unbuilt controller -- and fifteen-plus
   generic tables are closed by counting: 16-bit cofactors over 2048 prefix
   points are nearly all distinct, so compaction stops biting.
+- **Polynomial, Modulous:** cannot test inputs out of stream order, so
+  their measured reorder upside (15.9% / 16.4% at n=3,
+  `scripts/screen_input_reorder.py`) is unreachable. Polynomial has one
+  register and nothing else addressable, so a bit must be branched on
+  before the next read overwrites it; Modulous's variables store and
+  print but never load back, and every conditional inspects the stack
+  top alone. Both verified against the interpreter and the wiki; the
+  derivation lives in `best_input_order`'s docstring.
 - **WII2D:** routing plus accumulator decoding is the shipped construction;
   its guards are source-cost policies, and the dense ten-input table is a
   wall of the **exactly-once embed convention**, not of the machine.  Under
