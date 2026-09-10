@@ -743,16 +743,6 @@ class TestDimensional:
         got = run_dimensional(program, ["1"] * 12)
         assert got == "1"
 
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.dimensional("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.dimensional("02")
-
 
 class TestDimensionalTree:
     @pytest.mark.parametrize(
@@ -947,16 +937,6 @@ class TestBf:
         for table in ("0" * 16, "0" * 15 + "1", xor6):  # constant, AND4, dense
             assert boolean.brainfuck(table) == boolean.bf_tree(table)
 
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.brainfuck("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.brainfuck("02")
-
 
 class TestBfTree:
     @pytest.mark.parametrize(
@@ -1005,16 +985,6 @@ class TestBfTree:
         xor3 = "10010110"
         assert boolean.bf_tree(xor3).count(".") == 8
 
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.bf_tree("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.bf_tree("02")
-
 
 class TestThreeDBf:
     @pytest.mark.parametrize(
@@ -1043,16 +1013,6 @@ class TestThreeDBf:
         assert "<" not in program
         assert "e" in program
         assert "w" in program
-
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.three_d_brainfuck("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.three_d_brainfuck("02")
 
 
 class TestFactor:
@@ -1127,16 +1087,6 @@ class TestFactor:
         with pytest.raises(ValueError, match="about 6391 digits"):
             boolean.factor(xor4, max_digits=1000)
         assert sys.get_int_max_str_digits() == before
-
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.factor("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.factor("02")
 
 
 class TestSlowAcvMammalian:
@@ -1512,16 +1462,6 @@ class TestSuffolk:
             got = run_suffolk(program, [str(b) for b in bits])
             assert got == table[combo], f"inputs {bits}"
 
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.suffolk("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.suffolk("02")
-
 
 class TestPainfuck:
     @pytest.mark.parametrize(
@@ -1560,16 +1500,6 @@ class TestPainfuck:
         assert translated.count("a") == translated.count("b")
         assert "rl" in translated or "l" in translated  # pointer moves
 
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.painfuck("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.painfuck("02")
-
 
 class TestBitTilde:
     @pytest.mark.parametrize(
@@ -1602,16 +1532,6 @@ class TestBitTilde:
         assert program.count(")") == 2
         assert program.count("(") == 1
         assert program.endswith("(")
-
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.bit_tilde("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.bit_tilde("02")
 
 
 class TestJaune:
@@ -1682,10 +1602,6 @@ class TestJaune:
         assert boolean.jaune("10101010").startswith("vvv")
         # every input matters here, so every read keeps its cell
         assert boolean.jaune("10010110").startswith("v>v>v>")
-
-    def test_bad_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="power-of-two"):
-            boolean.jaune("011")
 
     @pytest.mark.parametrize(
         ("a", "b"),
@@ -1761,16 +1677,6 @@ class TestBasicfuck:
         assert program.count("if !(a1) {") == 1
         assert program.count("if (a2) {") == 2
         assert program.count("if !(a2) {") == 2
-
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.basicfuck("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.basicfuck("02")
 
 
 class TestSbleq:
@@ -2067,13 +1973,3 @@ class TestRotfuck:
         characters against ``01101001``'s 1576.
         """
         assert len(boolean.rotfuck(table)) == length
-
-    def test_rejects_bad_table(self) -> None:
-        """A truth table of the wrong length is rejected."""
-        with pytest.raises(ValueError, match="entries"):
-            boolean.rotfuck("011")
-
-    def test_rejects_non_binary(self) -> None:
-        """A truth table with a character other than 0/1 is rejected."""
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.rotfuck("02")

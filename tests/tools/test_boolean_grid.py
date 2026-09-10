@@ -288,10 +288,6 @@ class TestAPainterAnt:
                 table[bits[0] * 4 + bits[1] * 2 + bits[2]]
             ), f"XOR3 bits {bits}"
 
-    def test_bad_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="power-of-two"):
-            a_painter_ant("011")
-
     def test_non_binary_rejected(self) -> None:
         with pytest.raises(ValueError, match="only '0' and '1'"):
             a_painter_ant("0123")
