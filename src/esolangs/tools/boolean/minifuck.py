@@ -3049,19 +3049,26 @@ def _mux_scout(
 #: The arity where the sculpt sweep leaves the build path.  Below this every
 #: ``(accumulator, orientation)`` is priced and the shortest build wins, and
 #: the corpus is byte-identical under that contest.  From here the scout's
-#: own cost curve makes the contest the build -- 201s of a 203s dense build
-#: at ten inputs -- so the accumulator is picked by rule instead: the
-#: **largest legal one**, which is the combination the scout prices first
-#: because its rounds are cheapest (a round costs ``3 * (frontier - acc + 1)
-#: + 1``, so the top of the range minimises every rewind).  The rule trades
-#: length for the contest's cost, and the trade shrinks with the arity:
-#: against the sweep's winner the top accumulator builds dense +11.6% at
-#: eight inputs, +6.4% at nine and +1.8% at ten, and at eight and nine
-#: parity picks the very same combination.  It loses no coverage: printability is
-#: decided by the frame constants, which do not depend on the accumulator,
-#: and the rewind guard is loosest exactly at the top of the range, so the
-#: rule's combination builds iff any does.
-_MUX_RULE_ARITY = 10
+#: own cost curve makes the contest the build -- 16.4s of a 16.7s dense
+#: build at nine inputs, 201s of 203s at ten -- so the accumulator is picked
+#: by rule instead: the **largest legal one**, which is the combination the
+#: scout prices first because its rounds are cheapest (a round costs
+#: ``3 * (frontier - acc + 1) + 1``, so the top of the range minimises every
+#: rewind).  It loses no coverage: printability is decided by the frame
+#: constants, which do not depend on the accumulator, and the rewind guard
+#: is loosest exactly at the top of the range, so the rule's combination
+#: builds iff any does.
+#:
+#: The rule trades length for the contest's cost, and the trade shrinks with
+#: the arity, which is what puts the line here.  Against the sweep's winner
+#: the top accumulator builds dense +11.6% at eight inputs, +6.4% at nine
+#: and +1.8% at ten, and at all three arities parity picks the very same
+#: combination -- so the whole corpus cost of the rule is two dense entries.
+#: One arity lower it stops being a trade: at seven the sweep's own winner
+#: is the top accumulator for dense but parity pays +11.0%, and at six dense
+#: pays +9.3% and parity +50.7% -- for a build that costs 0.38s at seven and
+#: 0.06s at six against 3.8s at eight and 35.8s at nine, cold, both shapes.
+_MUX_RULE_ARITY = 8
 
 
 def _mux_rule_tail(
@@ -3200,7 +3207,7 @@ def _mux(truth_table: str, n: int) -> str | None:
     still contributes nothing, and this returns None exactly when the old
     loop did, having priced the same set.
 
-    Above :data:`_MUX_RULE_ARITY` the contest itself is the build's cost,
+    From :data:`_MUX_RULE_ARITY` the contest itself is the build's cost,
     so the accumulator is named rather than measured -- see that constant
     for the rule, the trade and the coverage argument.  Only the
     orientation is still priced (a real contest: 21 to 21 over sampled
