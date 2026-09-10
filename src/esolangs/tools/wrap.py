@@ -119,8 +119,8 @@ def shortest(*candidates: str) -> str:
     encoding against a delta one -- and which shape wins depends on the input,
     not on the language.  Rather than predict the winner, those generators
     build every shape and emit the smallest, a rule the test suite pins in
-    several places (``test_streetcode_emits_the_shorter_of_ring_and_street``,
-    and the ``len(program) <= ...`` bounds in ``test_generate.py``).
+    several places (``test_streetcode_emits_the_shorter_of_ring_and_street``
+    and the ``len(program) <= ...`` bounds in the generator suites).
 
     This names that rule so a reader meets it as a decision rather than
     re-deriving it from a ``min`` with a ``key``.  Ties keep the first
@@ -590,9 +590,9 @@ WRAPPERS = {
     # ``DIGEST``), so it wraps on whitespace like the numeric languages;
     # breaking by character count would split a word and change the program.
     "slow_acv_mammalian": wrap_space_delimited,
-    # Their boolean programs are single long lines that need wrapping, and
-    # their text programs print through a literal that must not be broken;
-    # the literal-aware wrappers above cover both dialects at once.
+    # Their programs are single long lines that need wrapping, and they
+    # print through a literal that must not be broken; the literal-aware
+    # wrappers above are what keeps a break out of one.
     "modulous": _bracket_literal,
     "eval": _quote_literal,
     "sophie": _sophie,

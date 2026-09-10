@@ -39,7 +39,7 @@ class TestTestFiles:
         The narrowings that were tried each left a blind spot: importing
         misses the suites that reach a generator through the package
         re-export (``boolean.laserfuck``), and resolving attribute access
-        still misses ``test_generate``, which dispatches through a table.
+        still misses a suite that dispatches through a table.
         Comparing against the directory listing means a new suite is
         included the moment it is added, with nothing to remember.
         """

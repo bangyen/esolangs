@@ -1149,7 +1149,7 @@ class TestSlowAcvMammalian:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every input combination produces the truth-table result."""
-        program = boolean.slow_acv_mammalian_boolean(table)
+        program = boolean.slow_acv_mammalian(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = run_slow_acv_mammalian(program, [str(b) for b in bits])
@@ -1170,7 +1170,7 @@ class TestSlowAcvMammalian:
         from esolangs.vm import run_until_halt_or_cycle
 
         for table in ("0000", "1111", "0110"):
-            program = boolean.slow_acv_mammalian_boolean(table)
+            program = boolean.slow_acv_mammalian(table)
             assert program.split().count("ACCEPT") == 3  # 2**2 - 1 nodes
             io_obj = ScriptedIO("0\n" * 8)
             run_until_halt_or_cycle(_Machine(program, io_obj))
@@ -1184,7 +1184,7 @@ class TestSlowAcvMammalian:
         while routing needs ``SPRINT`` to move away.  The construction never
         routes at all, and this pins that.
         """
-        program = boolean.slow_acv_mammalian_boolean("01101001")
+        program = boolean.slow_acv_mammalian("01101001")
         assert "SPRINT" not in program
         assert "CONFLAGRATE" not in program
 
@@ -1306,7 +1306,7 @@ class TestSlowAcvMammalian:
         so nothing is ever dropped to be rebuilt -- and the program says
         so: only the six ops the construction needs appear.
         """
-        program = boolean.slow_acv_mammalian_boolean("0110")
+        program = boolean.slow_acv_mammalian("0110")
         used = set(program.split())
         assert used <= {"SEED", "EXCRETE", "DIGEST", "ACCEPT", "PRONOUNCE", "LEAPFROG"}
 
@@ -1318,12 +1318,17 @@ class TestSlowAcvMammalian:
         surface as an error naming the overflow -- not as a program whose
         trampoline spills into the dead pad and executes it.
         """
-        import esolangs.tools.boolean.slow_acv_mammalian as module
+        import importlib
+
+        # The package re-exports the generator under its own module's
+        # name, so the package attribute is the *function*; only
+        # import_module reaches the module.
+        module = importlib.import_module("esolangs.tools.boolean.slow_acv_mammalian")
 
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_widths", lambda n: [0] + [4] * n)
             with pytest.raises(AssertionError, match="slot"):
-                module.slow_acv_mammalian_boolean("0110")
+                module.slow_acv_mammalian("0110")
 
     @pytest.mark.parametrize(
         ("n", "widths"),
@@ -1372,7 +1377,12 @@ class TestSlowAcvMammalian:
         that grew would push these numbers apart -- and documents which
         level is the one to watch.
         """
-        import esolangs.tools.boolean.slow_acv_mammalian as module
+        import importlib
+
+        # The package re-exports the generator under its own module's
+        # name, so the package attribute is the *function*; only
+        # import_module reaches the module.
+        module = importlib.import_module("esolangs.tools.boolean.slow_acv_mammalian")
 
         hops: list[int] = []
         original = module._trampoline  # noqa: SLF001
@@ -1385,7 +1395,7 @@ class TestSlowAcvMammalian:
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_trampoline", record)
             for table in ("0110", "0001", "01101001"):
-                module.slow_acv_mammalian_boolean(table)
+                module.slow_acv_mammalian(table)
         assert hops, "no trampoline was built"
         assert max(hops) == 306
         # Each slot is checked against its own level as the emitter runs

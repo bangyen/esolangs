@@ -1,4 +1,4 @@
-"""Unit tests for the Packlang interpreter and its two generators.
+"""Unit tests for the Packlang interpreter and its generator.
 
 The wiki's five examples are the ground truth here, and two of them
 disagree with the other three about what base a numeric literal is in.
@@ -19,7 +19,7 @@ import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.packlang import _Machine, run
-from esolangs.tools.boolean.packlang import packlang as packlang_boolean
+from esolangs.tools.boolean.packlang import packlang
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,
@@ -635,7 +635,7 @@ class TestCharPut:
 
 def _boolean_rows(table: str, n: int) -> list[str]:
     """Run the generated program on every row and collect what it printed."""
-    program = packlang_boolean(table)
+    program = packlang(table)
     out = []
     for row in range(2**n):
         bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
@@ -680,7 +680,7 @@ class TestBooleanGenerator:
         """
         for table in ("0" * 2**n, "1" * 2**n):
             io = ScriptedIO("0\n" * 8)
-            run(packlang_boolean(table), io)
+            run(packlang(table), io)
             assert io.position() == n, table
 
     def test_the_construction_is_the_anf(self) -> None:
@@ -694,23 +694,23 @@ class TestBooleanGenerator:
         would show here even though every output stayed correct.
         """
         # x0 & x1: one term, degree 2.
-        assert packlang_boolean("0001").count("INCR acc") == 1
-        assert packlang_boolean("0001").count("If ") == 2
+        assert packlang("0001").count("INCR acc") == 1
+        assert packlang("0001").count("If ") == 2
         # x0 ^ x1: two terms, degree 1 each.
-        assert packlang_boolean("0110").count("INCR acc") == 2
-        assert packlang_boolean("0110").count("If ") == 2
+        assert packlang("0110").count("INCR acc") == 2
+        assert packlang("0110").count("If ") == 2
         # 3-way parity: three terms, degree 1 each.
-        assert packlang_boolean("01101001").count("INCR acc") == 3
-        assert packlang_boolean("01101001").count("If ") == 3
+        assert packlang("01101001").count("INCR acc") == 3
+        assert packlang("01101001").count("If ") == 3
         # A constant table has only the degree-zero coefficient: an
         # unguarded INCR, or none at all.
-        assert packlang_boolean("1111").count("If ") == 0
-        assert packlang_boolean("1111").count("INCR acc") == 1
-        assert packlang_boolean("0000").count("INCR acc") == 0
+        assert packlang("1111").count("If ") == 0
+        assert packlang("1111").count("INCR acc") == 1
+        assert packlang("0000").count("INCR acc") == 0
 
     def test_a_one_entry_table_is_refused(self) -> None:
         with pytest.raises(ValueError, match="at least one input"):
-            packlang_boolean("0")
+            packlang("0")
 
 
 class TestEmptyProgram(EmptyProgramContract):

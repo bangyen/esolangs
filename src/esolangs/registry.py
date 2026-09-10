@@ -329,7 +329,7 @@ LANGUAGES: dict[str, Language] = {
     "Forbin": Language(
         "Forbin",
         "other.forbin",
-        boolean=_boolean.forbin_boolean,
+        boolean=_boolean.forbin,
         id="forbin",
     ),
     "function x(y)": Language(
@@ -386,7 +386,7 @@ LANGUAGES: dict[str, Language] = {
         "SLOW ACV MAMMALIAN",
         "tape_based.slow_acv_mammalian",
         id="slow_acv_mammalian",
-        boolean=_boolean.slow_acv_mammalian_boolean,
+        boolean=_boolean.slow_acv_mammalian,
     ),
     "Minifuck": Language(
         "Minifuck",
@@ -542,7 +542,7 @@ LANGUAGES: dict[str, Language] = {
     "ZTOALC L": Language(
         "ZTOALC L",
         "other.ztoalc_l",
-        boolean=_boolean.ztoalc_l_boolean,
+        boolean=_boolean.ztoalc_l,
         id="ztoalc_l",
         split=True,
     ),
