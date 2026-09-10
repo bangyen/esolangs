@@ -8,6 +8,7 @@ from esolangs.tools.text.helpers import (
     _literal_chunks,
     _require_bytes,
     delta_program,
+    factor_triple,
 )
 
 __all__ = [
@@ -112,26 +113,20 @@ def bio(text: str) -> str:
     accept.
     """
     _require_bytes(text, "BIO")
-    res = []
-    value = 0  # register y, mod 256
-    for c in text:
-        target = ord(c)
-        delta = (target - value) % 256
+
+    def step(cur: int, target: int) -> str:
+        delta = (target - cur) % 256
         if delta == 0:
-            res.append("1iy;")
-            continue
-        best = (float("inf"), 1, 0, 0)
-        for total in (delta, delta + 256):
-            for a in range(1, 256):
-                b, r = divmod(total, a)
-                if a + b + r < best[0]:
-                    best = (a + b + r, a, b, r)
-        _, a, b, r = best
-        res.append(
-            "0ox;" * b + "0ix{" + "1ox;" + "0oy;" * a + "};" + "0oy;" * r + "1iy;"
+            return ""  # already holding it; the print alone spells the character
+        # Wrapping the long way can be cheaper, so both totals are factored
+        # and the shorter runs win.
+        _, a, b, r = min(
+            (a + b + r, a, b, r)
+            for a, b, r in (factor_triple(total) for total in (delta, delta + 256))
         )
-        value = target
-    return "".join(res)
+        return "0ox;" * b + "0ix{" + "1ox;" + "0oy;" * a + "};" + "0oy;" * r
+
+    return delta_program(text, step, "1iy;")
 
 
 def sophie(text: str) -> str:
