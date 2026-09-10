@@ -20,6 +20,15 @@ and newline-sensitive languages retain their own layout.
 
 ## Examples
 
+`esolangs generate 123 "Hi!"` emits 76 characters drawn from two digits:
+
+```
+2122221121121121121122212222221121121121121121121121122122221121121121121121
+```
+
+`esolangs run 123` on that prints `Hi!`.
+`tests/test_readme_example.py` executes it, so the block cannot drift.
+
 <!-- EXAMPLES:START -->
 
 Ready-to-run programs are committed under [`examples/`](examples/):
