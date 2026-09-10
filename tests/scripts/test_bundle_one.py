@@ -14,10 +14,21 @@ from pathlib import Path
 
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.registry import LANGUAGES, RUNNERS
+from esolangs.registry import LANGUAGES, RUNNERS, canonical_id
+from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "bundle_one.py"
+
+# Example stems are the hyphenated display slug; the registry is keyed by
+# display name.  Going through ``canonical_id`` joins them without a second
+# hand-maintained table.
+_BY_ID = {lang.id: name for name, lang in LANGUAGES.items()}
+
+
+def _display_name(stem: str) -> str | None:
+    """Return the display name an example stem belongs to, if registered."""
+    return _BY_ID.get(canonical_id(stem.replace("-", " ")))
 
 
 def load_script() -> object:
@@ -41,14 +52,14 @@ def _load_bundle(tmp_path: Path) -> object:
     return module
 
 
-def _run_and_read(bundle_mod: object, arg: str | list[str]) -> str:
+def _run_and_read(bundle_mod: object, arg: str | list[str], stdin: str = "") -> str:
     """Run ``bundle_mod.run`` on ``arg`` and return its captured output.
 
     Two arguments, like ``esolangs.run`` itself: the comparison below is
     against that function, which passes the program and the io object and
     nothing else.
     """
-    io = ScriptedIO()
+    io = ScriptedIO(stdin)
     bundle_mod.run(arg, io=io)
     return io.getvalue()
 
@@ -80,30 +91,39 @@ class TestBundleMatchesPackage:
     def test_generator_languages_match(self, tmp_path: Path) -> None:
         """A generated program runs the same through the bundle and the package.
 
+        Driven by ``BOOLEAN_EXAMPLES`` rather than by calling the generator
+        with a table of this test's own choosing: a boolean program reads
+        its input bits, and one run without them does not merely fail --
+        several interpreters loop forever waiting, which pins a core
+        instead of failing the suite.  The examples carry inputs that are
+        known to drive their program to a halt.
+
         Compares outcome type and output so a ``SystemExit`` (Container) or
         interpreter keyword arguments (Suffolk's ``limit``) match too.
         """
         bundle_one = load_script()
         tested = 0
-        for name in RUNNERS:
-            generator = LANGUAGES[name].boolean
-            if generator is None:
+        for stem, example in sorted(BOOLEAN_EXAMPLES.items()):
+            name = _display_name(stem)
+            if name is None or name not in RUNNERS:
                 continue
-            try:
-                program = generator("0110")
-            except ValueError:
-                continue  # the generator rejects the table; nothing to compare
-            out = tmp_path / f"{name}.py"
+            program = example.build(width=None)
+            stdin = "".join(f"{line}\n" for line in example.inputs)
+            out = tmp_path / f"{stem}.py"
             bundle_one.bundle(name, bundle_one.Source(None), out)
             bundle_mod = _load_bundle(out)
 
             _module, split = RUNNERS[name]
             arg = program.splitlines() if split else program
             expected = _outcome(
-                lambda name=name, program=program: esolangs.run(name, program)
+                lambda name=name, program=program, stdin=stdin: esolangs.run(
+                    name, program, stdin
+                )
             )
             actual = _outcome(
-                lambda bundle_mod=bundle_mod, arg=arg: _run_and_read(bundle_mod, arg)
+                lambda bundle_mod=bundle_mod, arg=arg, stdin=stdin: _run_and_read(
+                    bundle_mod, arg, stdin
+                )
             )
             assert actual == expected, name
             tested += 1
@@ -145,7 +165,7 @@ class TestBundleDetails:
         import subprocess
 
         bundle_one = load_script()
-        program = esolangs.generate("brainfuck", "Hi")
+        program = esolangs.generate("brainfuck", "0110")
         prog_file = tmp_path / "prog.txt"
         prog_file.write_text(program)
         out = tmp_path / "brainfuck.py"
@@ -154,6 +174,9 @@ class TestBundleDetails:
             [sys.executable, str(out), str(prog_file)],
             capture_output=True,
             text=True,
+            input="0\n1\n",
         )
         assert result.returncode == 0
-        assert result.stdout == "Hi"
+        # The bundle reads through the interactive IO, which writes an
+        # "Input: " prompt per read; the program's own output follows them.
+        assert result.stdout == "Input: Input: 1"
