@@ -61,7 +61,7 @@ generators cover one and refuse the other at the same arity):
 | --- | --- | --- | --- |
 | Interprogck8 | 10 | 10 | n=11 dense exhausts the `_REPAIRS = 256` meadow budget after 30s; whether more budget closes it is unmeasured |
 | Polynomial | 10 | 10 | caps at 1934 instructions, one per prime -- the analytic worst case over n=10 tables, so all of n=10 builds; dense n=11 needs 2910 |
-| WII2D | 9 | 10 | dense n=10 needs a 512-point decode, past the fold algebra's measured cliff (live count 512 -> 373 while bit length passes 670000, every candidate enumerated) -- a wall of the exactly-once embed convention, since a per-node re-embed tree does dense n=13; n=9 is admitted but not total -- 6 of 10 sampled tables build, the rest refuse promptly |
+| WII2D | 9 | 10 | dense n=10 needs a 512-point decode, past the fold algebra's measured cliff (live count 512 -> 373 while bit length passes 670000, every candidate enumerated) -- a wall of the exactly-once embed convention, since a per-node re-embed tree does dense n=13, and raising the guard to 512 refuses the table anyway; n=9 is admitted but not total -- 37 of 64 sampled tables build, the rest refuse promptly |
 | ZTOALC L | 10 | 10 | n=11 needs 587 command slots (545 parity) against the anchors' 386 under the 4.19M line ceiling |
 
 6-5 leaves the table too.  Its 35 branch labels are the language's
@@ -205,15 +205,18 @@ ceiling; the whole gap between eight and ten is wall-clock.
   magnitude abort (`_WII2D_MAX_MAGNITUDE`) that turns the doubling trap
   into a prompt refusal: successes never pass 14-bit live values, a
   ratchet doubles its bit length per step. Dense n=9 is *admitted but not
-  total*: the deterministic witness builds in 6.6s (78362 characters, all
-  512 rows executed), 45 of 50 sampled domain-256 patterns decode in ~3s,
-  6 of 10 sampled tables build; every sampled failure returns in 0.7-9.4s.
+  total*: the deterministic witness builds in 1.1s (78362 characters, all
+  512 rows executed), and of 64 sha256-seeded dense n=9 tables 37 build in
+  0.85-2.93s while 27 refuse in 0.49-2.56s, none hanging.
   The abort is load-bearing: lifted, three sampled ratchets ran 136-214s
   without stopping, reaching 1.17M bits. Dense n=10 needs a 512-point
   decode and is a wall of the **exactly-once embed convention**, not of
-  the machine: within a single-embed layout the fold algebra ratchets
-  (live count 512 -> 373, bit length past 670000, every candidate
-  enumerated), but a per-node re-embed tree — which the convention forbids
+  the machine and not of the guard's value: raised to 512 the witness
+  still refuses, 0.22s per branch, and with the magnitude abort lifted too
+  its live count crawls 512 -> 475 over 19 steps while the bit length
+  doubles every step (9 -> 1089888 bits). Full enumeration is no better
+  (512 -> 373, past 670000 bits). A per-node re-embed tree — which the
+  convention forbids
   — does dense n=10 in 14432 characters and n=13 in 146540, every row
   executed. `docs/wii2d_generator.md` has the audit. Structured n=10 is
   unaffected: parity, majority, AND, OR, an xor-of-a-subset and a

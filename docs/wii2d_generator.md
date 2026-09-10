@@ -11,12 +11,10 @@ These limits are source-size and runtime policies, not language walls.
   worse than the 285903 it replaced, and only 8 makes it a win at 261019.
 - `_WII2D_MAX_INDEX_DOMAIN = 256` admits dense nine-input tables when both
   branch decodes land: the deterministic witness (sha256-derived, see the
-  grid tests) builds in 6.6s at 78362 characters with all 512 rows
-  executed; 45 of 50 sampled domain-256 patterns decode in ~3s, and 6 of 10
-  sampled dense n=9 tables build (5-12s, 50-94k characters). Every sampled
-  failure returns promptly (0.7-9.4s), which is what allowed the raise from
-  128. The generator charges the real domain when it is smaller than the
-  worst case.
+  grid tests) builds in 1.1s at 78362 characters with all 512 rows
+  executed. Every sampled failure returns promptly, which is what allowed
+  the raise from 128. The generator charges the real domain when it is
+  smaller than the worst case.
 - `_WII2D_MAX_REAL_DOMAIN = 256` stops rare non-merging chains before they
   emit impractical programs.
 - `_WII2D_MAX_CENTRE = 4096` bounds rendered width. It is not arithmetic
@@ -53,11 +51,30 @@ Domain 256 (dense n=9) is reachable but **not total** — about 1 pattern in
 because `_WII2D_MAX_MAGNITUDE` aborts them; a ratchet left unbounded does
 not stop. So the guard sits at 256 and a bad table costs a prompt
 `ValueError` rather than a hang, and that promptness rests on the abort.
-Measured over 64 adversarial n=9 tables: 48 built, 16 refused, 0 hung,
-worst build 21.5s and worst refusal 5.3s.
+Measured over 64 sha256-seeded dense n=9 tables: 37 built (0.85-2.93s,
+54198-108366 characters), 27 refused (0.49-2.56s), 0 hung. The 64-table
+adversarial sample this replaces ran 48/16 with a 21.5s worst build and a
+5.3s worst refusal, on the `O(P**3)` fold enumeration below.
+
+`_wii2d_folds` reads the pair sums once instead of rescanning the domain
+per centre. `(p - c)**2` collides for exactly the pairs symmetric about
+`c`, so a centre is illegal iff some pair summing to `2c` needs two
+different bits, and it merges as many pairs as sum to `2c`; the widest
+folded value is always a span end. Same candidates in the same order, so
+every emitted program is byte-identical, at `O(P**2)`: dense n=9 goes
+6.3s -> 1.1s (the enumeration itself 5.6s -> 0.22s) and n=1..10 on both
+shapes 7.4s -> 1.4s. Compression is now the expensive half at 0.87s of
+the 1.1s.
 
 Domain 512 (dense n=10) is a wall of the **exactly-once embed convention**,
-not of the machine and not a guard choice. Drop the convention and it goes:
+not of the machine and not a guard choice. Raising
+`_WII2D_MAX_INDEX_DOMAIN` to 512 does not build the sweep's dense n=10
+witness: both branch decodes refuse in 0.22s. Lifting
+`_WII2D_MAX_MAGNITUDE` on top shows why — the decode ratchets, live count
+crawling 512 -> 475 over 19 steps while the bit length doubles every step
+(9 -> 1089888 bits, the 19th step alone 144s), so reaching two live values
+would take ~250 more steps at a magnitude no threshold could spell.
+Drop the convention and it goes:
 a per-node re-embed (a grid decision tree, one row per level, leaves as
 literal digits so the accumulator decodes nothing) builds dense n=10 in
 14432 characters and dense n=13 in 146540, every row executed. It embeds
