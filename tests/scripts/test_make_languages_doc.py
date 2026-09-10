@@ -88,12 +88,8 @@ def test_readme_counts_match_the_registry() -> None:
     number cannot pass the sync tests above.
     """
     module = load_script()
-    text_generators = sum(
-        1 for lang in module.LANGUAGES.values() if lang.text is not None
-    )
     examples = module.render_examples_section()
-    assert f"each of the {text_generators}\nlanguages with a text" in examples
-    assert f"each of the {len(module.BOOLEAN)} languages" in examples
+    assert f"each of the {len(module.BOOLEAN)}\nlanguages with a boolean" in examples
     assert f"  {len(module.BOOLEAN)} of the" in module.render_boolean_count_section()
 
 

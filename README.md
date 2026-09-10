@@ -10,32 +10,33 @@ known boundaries are in [limitations](docs/limitations.md).
 just install-dev
 esolangs list
 esolangs run Suffolk program.txt
-esolangs generate Suffolk "Hello, World!"
+esolangs generate Suffolk 0110
 just test
 ```
 
 The Python API is `esolangs.run`, `generate`, and `list_languages`.
-Use `--width` for command-oriented generated programs; grids
-and newline-sensitive languages retain their own layout.
+`generate` takes a truth table -- `0110` is XOR -- and returns a program
+computing it.  Use `--width` for command-oriented generated programs;
+grids and newline-sensitive languages retain their own layout.
 
 ## Examples
 
-`esolangs generate 123 "Hi!"` emits 76 characters drawn from two digits:
+`esolangs generate Sophie 0110` emits 51 characters computing XOR:
 
 ```
-2122221121121121121122212222221121121121121121121121122122221121121121121121
+;@$48{;@$48{#$48,&}{#$49,&}}{;@$48{#$49,&}{#$48,&}}
 ```
 
-`esolangs run 123` on that prints `Hi!`.
-`tests/test_readme_example.py` executes it, so the block cannot drift.
+Feeding it the two input bits, one per line, prints their XOR.
+`tests/test_readme_example.py` runs all four rows, so the block cannot
+drift.
 
 <!-- EXAMPLES:START -->
 
 Ready-to-run programs are committed under [`examples/`](examples/):
-`examples/hello-world/` holds a "Hello, World!" for each of the 52
-languages with a text generator; `examples/boolean/` holds a truth-table
-program for each of the 69 languages with a boolean generator.  Both
-regenerate via `scripts/write_examples.py`.
+`examples/boolean/` holds a truth-table program for each of the 69
+languages with a boolean generator.  It regenerates via
+`scripts/write_examples.py`.
 
 <!-- EXAMPLES:END -->
 
@@ -166,8 +167,8 @@ tables.
 
 <!-- BOOLEAN-COUNT:END -->
 
-Text generators are available through `esolangs generate`; see `esolangs
-list` for support. Regenerate committed examples with
+Generators are available through `esolangs generate`; see `esolangs list`
+for support. Regenerate committed examples with
 `python scripts/write_examples.py`.
 
 ## Contributing
