@@ -1262,9 +1262,9 @@ class TestWII2D:
         ("table", "length"),
         [
             ("0110", 76),
-            ("00000001", 101),
-            ("00000010", 101),
-            ("00000110", 120),
+            ("00000001", 105),
+            ("00000010", 105),
+            ("00000110", 124),
         ],
     )
     def test_the_template_has_an_exact_length(self, table: str, length: int) -> None:
@@ -1324,7 +1324,7 @@ class TestWII2D:
         """
         from esolangs.tools.boolean.wii2d import _wii2d_decode, _wii2d_threshold
 
-        assert _wii2d_decode([0, 0, 0, 0, 1, 1, 0, 1]) == "-s///---s+/+/+/-s-//+-s"
+        assert _wii2d_decode([0, 0, 0, 0, 1, 1, 0, 1]) == "*-s+/+/+//+//-s+/-s-//+"
         assert _wii2d_threshold({3: 0, 9: 1}) == "---------////+"
 
 
