@@ -834,3 +834,18 @@ def test_arity_caps_are_still_caps() -> None:
         )
         with pytest.raises(ValueError, match=re.escape(pattern)):
             fn(make(cap + 1))
+
+
+def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
+    """Nothing above k2 is needed, so the plan sieve is never entered.
+
+    ``_cm_constants`` bootstraps k1 and k2 unconditionally and only then
+    extends; a caller wanting nothing larger gets those four lines and no
+    build plan at all.
+    """
+    from esolangs.tools.boolean.helpers import _cm_constants
+
+    lines = _cm_constants([1, 2])
+    assert len(lines) == 4
+    assert all(line.endswith("NOT PRINT.") for line in lines)
+    assert _cm_constants([]) == lines

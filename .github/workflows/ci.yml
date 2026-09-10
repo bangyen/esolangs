@@ -103,9 +103,9 @@ jobs:
     - name: Install dependencies
       run: uv sync --extra dev --python ${{ matrix.python-version }}
 
-    # Coverage is consumed from one leg only (Codecov upload, the badge
-    # artifact), and that leg is now 3.14, because which interpreter measures
-    # it decides what it costs.  sys.monitoring cannot measure *branches*
+    # Coverage is consumed from one leg only (the changed-line gate below),
+    # and that leg is now 3.14, because which interpreter measures it
+    # decides what it costs.  sys.monitoring cannot measure *branches*
     # before 3.14, so asking for `--cov-branch` there drops coverage onto the
     # old tracer.  Measured locally over the fast subset at -n 4, coverage
     # 7.13.4, the same flags on both:
@@ -124,8 +124,7 @@ jobs:
       # keep cores free; CI has the box to itself, so ask for all of them.
       #
       # `--cov-branch` is free on this leg (see the table above) and the gate
-      # below needs the arcs.  The badge is unaffected: it reads the XML's
-      # line-rate, which branch mode leaves alone.
+      # below needs the arcs.
       run: uv run pytest -n auto --cov --cov-branch --cov-report=xml --cov-report=term-missing
 
     # Strict here, unlike the local pre-push run: this job runs the whole
@@ -140,36 +139,17 @@ jobs:
       if: matrix.python-version != '3.14'
       run: uv run pytest -n auto
 
-    - name: Upload coverage to Codecov
-      if: matrix.python-version == '3.14'
-      uses: codecov/codecov-action@v7
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
 
-    - name: Upload coverage report for the badge
-      if: matrix.python-version == '3.14'
-      uses: actions/upload-artifact@v7
-      with:
-        name: coverage-xml
-        path: coverage.xml
-        if-no-files-found: error
-        retention-days: 1
-
-  coverage-badge:
+  generated-docs:
+    # The generated docs are committed, so CI re-runs their generator and
+    # fails on a diff: a doc that drifts from the registry is the failure
+    # this catches.  No longer needs the coverage artifact -- the badge it
+    # also regenerated was removed once nothing rendered it.
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: test
     steps:
     - uses: actions/checkout@v7
-
-    - name: Download coverage report
-      uses: actions/download-artifact@v8
-      with:
-        name: coverage-xml
-        path: .
 
     - name: Install uv
       uses: astral-sh/setup-uv@v7
@@ -183,16 +163,6 @@ jobs:
     # a bare `uv sync` would follow the pin rather than the 3.12 set up above.
     - name: Install dependencies
       run: uv sync --extra dev --python 3.12
-
-    - name: Regenerate the coverage badge
-      run: |
-        uv run python scripts/make_coverage_badge.py
-        if ! git diff --exit-code docs/coverage-badge.svg; then
-          echo "docs/coverage-badge.svg is out of date. Run:"
-          echo "  uv run pytest --cov --cov-report=xml"
-          echo "  uv run python scripts/make_coverage_badge.py"
-          exit 1
-        fi
 
     - name: Regenerate the language capabilities doc
       run: |
