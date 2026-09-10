@@ -14,7 +14,7 @@ from esolangs.tools.boolean.helpers import (
     best_input_order,
     decision_tree_tokens,
     essential_inputs,
-    minterm_literals,
+    minterm_sum,
     read_at,
 )
 from esolangs.tools.boolean.laserfuck import laserfuck
@@ -1245,6 +1245,7 @@ def suptiftam(truth_table: str) -> str:
     for name in names:
         lines.append(f"{name}=%-[read]22%")
         lines.append("down(:read:)")
+
     # One minterm per row selected, so a dense table is summed over its
     # zeros and the sum inverted -- ``1 - sum`` is one line however many
     # minterms it saves.
@@ -1253,19 +1254,22 @@ def suptiftam(truth_table: str) -> str:
     # row, dropping an input removes rows and shortens the rows that remain.
     # Every input keeps its read and its normalization (they are the
     # interface); an ignored one is never named as a factor.
-    used = essential_inputs(truth_table, n) or [0]
-    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
-    width = len(used)
-    table, invert = _maybe_complement(reduced)
-    for row in range(2**width):
-        if table[row] != "1":
-            continue
+    def literal(i: int, negated: bool) -> str:  # noqa: FBT001 - a literal's sign
+        return f"%-[1]{names[i]}%" if negated else names[i]
+
+    def product(factors: list[str]) -> str:
+        # ``p=1`` seeds the row, then each factor multiplies into it.  The
+        # seed can sit here rather than before the literals because a
+        # literal only names a factor -- it emits nothing of its own.
         lines.append("p=1")
-        for slot, negated in minterm_literals(row, width):
-            i = used[slot]
-            factor = f"%-[1]{names[i]}%" if negated else names[i]
-            lines += ["prod=0", f"a={factor}", "mulStep(:p:)if(p)", "p=prod"]
-        lines.append("sum=%+[sum]p%")
+        for factor in factors:
+            lines.extend(["prod=0", f"a={factor}", "mulStep(:p:)if(p)", "p=prod"])
+        return "p"
+
+    def accumulate(row: str) -> None:
+        lines.append(f"sum=%+[sum]{row}%")
+
+    _used, _width, invert = minterm_sum(truth_table, literal, product, accumulate)
     lines.append("term=%-[1]sum%" if invert else "term=sum")
     return "\n".join(lines)
 
