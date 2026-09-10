@@ -674,16 +674,21 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 #     polynomial      28.4s -> 5.5s     wii2d            7.2s -> 1.3s
 #     one_two_three   17.8s -> 1.9s
 #
-# The whole n=1..10 sweep is now 51.5s of CPU.  Per arity: n=6 10.2s, n=7
-# 1.1s, n=8 5.9s, n=9 7.5s, n=10 23.9s.  n=6 costing nine times n=7 is not
+# The whole n=1..10 sweep is now 43.4s of CPU.  Per arity: n=6 6.0s, n=7
+# 1.0s, n=8 5.5s, n=9 6.7s, n=10 21.9s.  n=6 costing six times n=7 is not
 # a measurement error and not warmup -- it is ``_ORDER_SEARCH_MAX = 6`` in
 # ``helpers.py``.  At n <= 6 a reordering generator builds all ``n!`` = 720
 # candidate orders and keeps the shortest; at n=7 it switches to the greedy
-# ``O(n**2)`` pick, so a *bigger* table is ~100x faster (laserfuck 2.5s at
-# six against 0.006s at seven, streetcode 1.5s against 0.006s).  Lowering
-# the ceiling below seven therefore does not save what the per-arity rows
-# suggest, and n=6 is the one arity where the sweep pays for program
-# quality rather than for coverage.
+# ``O(n**2)`` pick, so a *bigger* table is hundreds of times faster
+# (laserfuck 1.03s at six against 0.002s at seven, streetcode 0.56s against
+# 0.002s).  Lowering the ceiling below seven therefore does not save what
+# the per-arity rows suggest, and n=6 is the one arity where the sweep pays
+# for program quality rather than for coverage.
+#
+# n=6 was 10.0s of a 50.2s sweep until the candidates themselves were made
+# cheap -- the search still builds every one of the 720 and measures it, so
+# all 1380 programs are byte-identical; see the ``best_input_order``
+# docstring for why the count itself cannot come down.
 #
 # Only one of those rewrites changed a program -- minifuck's dense n=9, by
 # +6.4% -- so 1370 of the registry's 1380 programs are byte-identical

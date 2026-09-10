@@ -349,6 +349,20 @@ def best_input_order(
     taking the shortest gets both right, and any future language's cost
     shape for free.
 
+    **The ``n!`` builds do not come down, and the sweep's own two tables
+    show why.**  A dedupe needs a key available *before* a build, and the
+    only generic one is the permuted table.  On the dense n=6 fixture all
+    720 are distinct, so it collapses nothing.  On parity it collapses all
+    720 into one -- parity is totally symmetric -- and that is the case
+    that refutes the key rather than the one that saves it: over that
+    single table the 720 candidates are still 720 distinct programs,
+    because ``perm`` decides which input each node tests.  basicfuck gives
+    them one length, so its 719 extra builds only confirm a tie; Jaune
+    gives them 176 distinct lengths, because Jaune pays for the address.
+    Which of those a language is cannot be known without building it, so
+    the cost was taken out of the candidates instead -- the n=6 registry
+    sweep is 10.0s -> 6.0s of CPU with all 1380 programs byte-identical.
+
     **The exhaustive search is capped at ``_ORDER_SEARCH_MAX`` inputs**,
     because ``n!`` builds of an ``O(2**n)`` program is the kind of cost that
     does not announce itself: Dimensional renders a 4096-row table, and
