@@ -86,13 +86,13 @@ class TestBundleMatchesPackage:
         bundle_one = load_script()
         tested = 0
         for name in RUNNERS:
-            generator = LANGUAGES[name].text
+            generator = LANGUAGES[name].boolean
             if generator is None:
                 continue
             try:
-                program = generator("Hi")
+                program = generator("0110")
             except ValueError:
-                continue  # the generator rejects "Hi"; nothing to compare
+                continue  # the generator rejects the table; nothing to compare
             out = tmp_path / f"{name}.py"
             bundle_one.bundle(name, bundle_one.Source(None), out)
             bundle_mod = _load_bundle(out)
@@ -113,7 +113,7 @@ class TestBundleMatchesPackage:
         """Languages without a generator still bundle to importable files."""
         bundle_one = load_script()
         for name, (module, _split) in RUNNERS.items():
-            if LANGUAGES[name].text is not None:
+            if LANGUAGES[name].boolean is not None:
                 continue
             out = tmp_path / f"{name}.py"
             bundle_one.bundle(name, bundle_one.Source(None), out)
