@@ -61,7 +61,7 @@ generators cover one and refuse the other at the same arity):
 | --- | --- | --- | --- |
 | Interprogck8 | 10 | 10 | n=11 dense exhausts the `_REPAIRS = 256` meadow budget after 30s; whether more budget closes it is unmeasured |
 | Polynomial | 10 | 10 | caps at 1934 instructions, one per prime -- the analytic worst case over n=10 tables, so all of n=10 builds; dense n=11 needs 2910 |
-| WII2D | 8 | 10 | dense n=9 decode spans 256 points past the `_WII2D_MAX_INDEX_DOMAIN = 128` cost guard; that domain now decodes 18 of 20 sampled patterns, so the guard is the binding choice rather than the reach |
+| WII2D | 9 | 10 | dense n=10 needs a 512-point decode, past the fold algebra's measured cliff (live count 512 -> 373 while bit length passes 670000, every candidate enumerated); n=9 is admitted but not total -- 6 of 10 sampled tables build, the rest refuse promptly |
 | ZTOALC L | 10 | 10 | n=11 needs 587 command slots (545 parity) against the anchors' 386 under the 4.19M line ceiling |
 
 6-5 leaves the table too.  Its 35 branch labels are the language's
@@ -186,13 +186,20 @@ wall-clock.
   took 115s for the first alone, dense n=10 (1638) 44s for all 1024.
   Dense n=11 (2910) is refused.  Still an instruction count and not an
   arity -- a table that collapses renders far past n=10.
-- **WII2D:** a chosen cost guard, now at 128 rather than 64: dense n=8
-  builds in 0.8s (18466 characters) and all 256 rows compute their table.
-  Dense n=9 needs 256, which is now *reachable but not total* — 18 of 20
-  sampled patterns decode in about 3s each, and the other two ratchet into
-  the doubling trap and never return. The guard stays at 128 so a refusal
-  is prompt rather than a hang. Dense n=10 needs 512 and failed every
-  seed. Structured n=10 is unaffected: parity, majority, AND, OR, an
+- **WII2D:** the cost guard now sits at 256 (was 128), backed by a
+  magnitude abort (`_WII2D_MAX_MAGNITUDE`) that turns the doubling trap
+  into a prompt refusal: successes never pass 14-bit live values, a
+  ratchet doubles its bit length per step. Dense n=9 is *admitted but not
+  total*: the deterministic witness builds in 6.6s (78362 characters, all
+  512 rows executed), 45 of 50 sampled domain-256 patterns decode in ~3s,
+  6 of 10 sampled tables build; every sampled failure returns in 0.7-9.4s.
+  Dense n=10 needs a 512-point decode and is a wall of the fold algebra,
+  not a guard: with every candidate enumerated the live count crawls
+  512 -> 373 while the bit length climbs past 670000, the machine has no
+  second register or conditional to construct around, and moving the
+  collapse into the chain faces refined (4/16-class) labels that stall
+  immediately — `docs/wii2d_generator.md` has the construction-space
+  audit. Structured n=10 is unaffected: parity, majority, AND, OR, an
   xor-of-a-subset and a 3-to-8 mux all build and execute all 1024 rows.
 - **ZTOALC L:** was capped at 8 by the trajectory-prefix peak (n=9 peaked
   at 1.2e7 lines against the 4.19M ceiling).  Two changes cleared 10/10:

@@ -634,13 +634,17 @@ class TestWII2D:
             got = [_wii2d_apply(ops, x) for x in range(16)]
             assert got == pattern, (pattern, ops, got)
 
+    @pytest.mark.slow  # ~27s at n == 9: a 6.6s build, then 512 interpreted rows
     def test_a_dense_table_at_the_widest_admitted_domain_runs(self) -> None:
         """The arity the guard now admits is executed, not just rendered.
 
         Raising :data:`_WII2D_MAX_INDEX_DOMAIN` buys width, and width is
         exactly what could break silently: a decode too wide to be laid out
         correctly still renders.  So the last arity the guard admits is run
-        on every row rather than checked for size.
+        on every row rather than checked for size.  Not every dense table at
+        this arity builds (about 6 in 10 sampled do; the rest refuse
+        promptly), so the witness table below is part of the pin: it is
+        known to decode on both branches.
         """
         from esolangs.tools.boolean.wii2d import _WII2D_MAX_INDEX_DOMAIN
 
@@ -891,6 +895,50 @@ class TestWII2D:
 
         assert _wii2d_decode([0, 0, 0, 0]) == "0"
         assert _wii2d_decode([1, 1, 1, 1]) == "1"
+
+    def test_decode_magnitude_abort_fires_on_a_constructed_state(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The ratchet abort is reachable: a tiny bound refuses, the real
+        bound decodes.
+
+        :data:`_WII2D_MAX_MAGNITUDE` never fires on a table that builds
+        (successes stay under 14 bits against its 2**20), so without a
+        constructed state the check would be untested code.  Shrinking the
+        bound below the pattern's own domain makes the first loop iteration
+        trip it; restoring the bound is the positive control that the
+        refusal came from the abort and not the pattern.
+        """
+        import importlib
+
+        from esolangs.tools.boolean.wii2d import _wii2d_decode
+
+        module = importlib.import_module("esolangs.tools.boolean.wii2d")
+        pattern = [0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1]
+        assert _wii2d_decode(list(pattern)) is not None
+        monkeypatch.setattr(module, "_WII2D_MAX_MAGNITUDE", 1)
+        assert _wii2d_decode(list(pattern)) is None
+
+    @pytest.mark.slow  # ~2s: a real doubling-trap pattern at domain 256
+    def test_a_doubling_trap_pattern_is_refused_not_hung(self) -> None:
+        """A domain-256 pattern that ratchets returns ``None`` in seconds.
+
+        About 1 in 10 sampled domain-256 patterns never reaches two live
+        values: its folds ratchet, doubling the bit length each step.  This
+        pattern (``random.Random(9017)``, one of the two failures in the
+        20-pattern sample the guard raise was measured against) is pinned as
+        the representative: the decode must give up promptly -- the
+        magnitude abort fires at 1.7s where the unbounded run dead-ends at
+        2.2s -- rather than diverge, because ``wii2d()`` turns that ``None``
+        into the refusal ``ValueError``.
+        """
+        import random
+
+        from esolangs.tools.boolean.wii2d import _wii2d_decode
+
+        rng = random.Random(9017)
+        pattern = [rng.randint(0, 1) for _ in range(256)]
+        assert _wii2d_decode(pattern) is None
 
     def test_decode_centre_cap_has_a_constructed_miss(
         self, monkeypatch: pytest.MonkeyPatch

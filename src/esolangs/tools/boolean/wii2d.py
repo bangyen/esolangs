@@ -91,6 +91,24 @@ __all__ = ["wii2d"]
 # already avoiding.
 _WII2D_MAX_CENTRE = 4096
 
+# The largest live-value magnitude a decode may reach before it is aborted
+# as diverging.  This is a divergence certificate, not a step budget: on
+# every table that builds, the fold's spread-then-recoup cycle holds the
+# live values small -- max 1922 over the 532-table corpus, max 13499 over
+# eight sampled domain-256 patterns -- while a failing decode *ratchets*,
+# roughly doubling its bit length every step (a sampled domain-512 run
+# climbed 14 -> 670597 bits with every candidate enumerated), so a state
+# past this bound never comes back.  2**20 sits 78x above the largest
+# success.  Measured over 50 domain-256 patterns with the bound lifted,
+# every ratchet also dead-ends on its own within seconds (the centre cap
+# starves it of folds), so today this fires just ahead of a natural stop
+# (1.7s against 2.2s on the worst sampled pattern); it stays because
+# promptness should be a guarantee, not a property of the sample.  The
+# check is on the state, not the candidates, so it cannot change which
+# candidate a succeeding table takes; and it is deterministic where a
+# wall-clock budget would make the program depend on the machine.
+_WII2D_MAX_MAGNITUDE = 1 << 20
+
 # How many candidate folds are compressed before the true ranking is applied.
 #
 # Compression is the expensive half of a candidate -- a per-depth arc scan
@@ -120,7 +138,7 @@ _WII2D_SHORTLIST = 8
 _WII2D_SHIFT_SAMPLES = 40
 
 # The widest decode domain the general (non-symmetric) path will attempt, so
-# that path is used up to ``n == 7`` by default.
+# that path is used up to ``n == 9`` by default.
 #
 # **This is a cost policy, not a capability bound**, and it is charged
 # against :func:`_wii2d_cost` -- the smaller of ``2 ** (n - 1)`` and the
@@ -135,13 +153,20 @@ _WII2D_SHIFT_SAMPLES = 40
 # points via the popcount chain.  ``docs/wii2d_generator.md`` has the measured
 # width and time tables this value was chosen against.
 #
-# 128 admits dense ``n == 8``: 18466 characters built in 0.8s, every one of
-# its 256 rows executed against the interpreter.  The price stays size
-# rather than time, which is what the guard is really rationing -- the
-# previous 64 refused that table while admitting dense ``n == 7`` at 2930
-# characters.  The next doubling is the one to think about: ``n == 9`` needs
-# 256, where the width is four times this and untested.
-_WII2D_MAX_INDEX_DOMAIN = 128
+# 256 admits dense ``n == 9`` *usually*: the deterministic witness table
+# (sha256-derived, see the grid tests) builds in 6.6s at 78362 characters
+# with all 512 rows executed against the interpreter; 45 of 50 sampled
+# domain-256 patterns decode in about 3s each, and 6 of 10 sampled dense
+# n=9 tables build (both branch decodes must land, 5-12s, 50-94k chars).
+# Every sampled failure *returns* -- an aborted ratchet or a fold dead-end,
+# 0.7-9.4s -- so a refusal is prompt rather than a hang, which is what made
+# this raise from 128 safe; :data:`_WII2D_MAX_MAGNITUDE` makes that
+# promptness a guarantee instead of a sample.  Dense ``n == 10`` (domain
+# 512) stays refused: with every candidate enumerated the live count crawls
+# 512 -> 373 over 19 steps while the bit length climbs past 670000, so the
+# next doubling is a wall of the fold algebra, not a budget choice -- see
+# ``docs/wii2d_generator.md``.
+_WII2D_MAX_INDEX_DOMAIN = 256
 
 # The widest *real* chain domain any table may decode over, whatever the
 # arity-scale guard above allows.
@@ -456,6 +481,13 @@ def _wii2d_decode(pattern: list[int]) -> str | None:
     for _ in range(len(bits) + 1):
         live = _wii2d_points(values, bits)
         if live is None:
+            return None
+        # The ratchet abort: a state past the bound is diverging, not slow,
+        # so give up rather than let the fold double its bit length forever.
+        # See :data:`_WII2D_MAX_MAGNITUDE` for the measured separation.  It
+        # sits ahead of the two-live exit so the threshold's ``'-' * c``
+        # spelling is bounded too, not just the fold chain.
+        if max(abs(v) for v in values) > _WII2D_MAX_MAGNITUDE:
             return None
         if len(live) <= 2:
             return ops + _wii2d_threshold(live)
@@ -911,9 +943,12 @@ def wii2d(truth_table: str) -> str:
     Two **cost guards** bound the general path, neither a claim about what
     the construction can represent.  :data:`_WII2D_MAX_INDEX_DOMAIN` charges
     :func:`_wii2d_cost`, the smaller of ``2 ** (n - 1)`` and the domain the
-    chain actually leaves, so dense tables run out at ``n == 7`` while
+    chain actually leaves, so dense tables run out at ``n == 9`` while
     *structured* ones keep going at any arity: an ``n == 8`` xor-of-a-subset
-    collapses to a 4-point decode and builds in 217 characters.
+    collapses to a 4-point decode and builds in 217 characters.  Inside the
+    admitted domains a rare pattern still ratchets into the doubling trap;
+    :data:`_WII2D_MAX_MAGNITUDE` refuses those in seconds instead of
+    diverging.
     :data:`_WII2D_MAX_REAL_DOMAIN` then refuses the rare table admitted on
     its arity whose chain found no merge at all, leaving a decode too wide to
     be worth emitting.  A refusal raises :class:`ValueError` naming which
@@ -948,6 +983,12 @@ def wii2d(truth_table: str) -> str:
                 "the decode would be too wide to be worth emitting (see "
                 "docs/walls.md)"
             )
-        raise ValueError("the WII2D n-embedding construction found no route")
+        raise ValueError(
+            "the WII2D n-embedding construction found no route: a branch "
+            "decode ratcheted past _WII2D_MAX_MAGNITUDE or ran out of legal "
+            "folds; at the domains the guards admit this is the rare "
+            "doubling-trap pattern (about 1 in 10 sampled at domain 256), "
+            "refused promptly rather than left to diverge"
+        )
     start, routes = result
     return "\n".join(_wii2d_layout(n, start, routes))
