@@ -39,9 +39,8 @@ Documented decisions for gaps the wiki leaves open:
   only if a blank line leaves nothing behind.
 * **A label line, a blank line, and any line whose first word is not a
   command all execute as no-ops** when control flows through them.  Both
-  the hello-world example (whose block sits inline and is reached only
-  because the preceding ``skip`` jumps it) and the truth machine (which
-  falls through the ``0`` block's bare ``0``) depend on this.  It is the
+  the truth machine (which falls through the ``0`` block's bare ``0``)
+  depends on this.  It is the
   namesake command working as designed: ``readto`` and ``inject`` write
   arbitrary text into blocks that control can later flow through, so the
   dispatch is "a command word runs, everything else is text".
@@ -81,12 +80,6 @@ backwards, so the polarity the cat example pins is the one implemented.
 ``tests/interpreters/test_inject.py`` runs both: the wiki's program with
 its traced (inverted) behaviour asserted, and a corrected truth machine
 that halts on ``0`` and loops on ``1``.
-
-**Inject has no text generator.**  ``send`` is the only output command and
-it terminates every line it writes, so no Inject program can print text
-that does not end in a newline -- which is what the hello-world harness
-asks for.  The language is registered with a boolean generator only, the
-way Fargo is for its own output-alphabet reason.
 
 The execution model is a pure function over an immutable ``_State``: the
 program's lines, its label spans, the pointer, and whether it has exited.
@@ -266,8 +259,8 @@ def _advance(state: _State, line_in: str | None = None) -> tuple[_State, list[st
     lines, spans, ind, done = state
     line = lines[ind].strip()
 
-    # A blank line and a label line are both no-ops; the hello-world
-    # example runs straight through its block's delimiters.
+    # A blank line and a label line are both no-ops: control runs straight
+    # through a block's delimiters.
     if not line or _LABEL.fullmatch(line):
         return (lines, spans, ind + 1, done), []
 

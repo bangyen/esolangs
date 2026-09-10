@@ -169,8 +169,7 @@ def test_every_boolean_generator_has_an_example() -> None:
 # that is not an I/O truth machine (see docs/walls.md).  They are derived
 # from ``esolangs.tools.boolean.examples``, which records for each committed
 # program the generator, truth table, and input combination that produced it
-# -- so the files stay in sync with the generators the way the hello-world
-# examples do.
+# -- so the files stay in sync with the generators.
 #
 # The input-reading languages take their bits on stdin; the parameterized
 # ones (see ``esolangs.tools.boolean.parameterized``) have the bits embedded

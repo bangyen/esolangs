@@ -206,8 +206,8 @@ class _Machine:
         # Beams are held as the tuples ``_Beams`` is made of, not as
         # lists.  The list store meant ``_state`` rebuilt every beam as a
         # tuple and ``_restore`` rebuilt every one back as a list, once
-        # per step each -- 46% of a run over the hello-world program,
-        # measured -- to hold a value nothing mutates in place: ``*`` and
+        # per step each -- a measured 46% of a run over a long generated
+        # program -- to hold a value nothing mutates in place: ``*`` and
         # ``x`` add and drop whole beams, and a moved beam is assigned
         # over, never edited.  The list around them stays, since the
         # round-robin index has to survive that growing and shrinking.

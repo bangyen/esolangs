@@ -311,9 +311,8 @@ def _best_byte_order(truth_table: Sequence[int], n: int) -> str:
     emits exactly what it emitted before.
 
     The search is capped for the same reason the shared helper caps: ``n!``
-    builds of an ``O(2**n)`` program.  Circlefuck's byte tables come from
-    the text generator at ``n <= 8``, so the cap is reached in practice and
-    the greedy fallback is not decorative.
+    builds of an ``O(2**n)`` program.  The cap is reached in practice at
+    ``n <= 8``, so the greedy fallback is not decorative.
     """
     best = _circlefuck_ordered(list(truth_table), tuple(range(n)))
     if n < 2:

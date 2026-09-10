@@ -561,8 +561,8 @@ def test_bio_indent_preserves_the_command_sequence() -> None:
 def test_bio_leaves_a_flat_program_packed() -> None:
     """A program under two levels deep gains no indentation.
 
-    The text generator emits a flat run of depth-1 groups, where indenting
-    would show nothing that packing does not.
+    A flat run of depth-1 groups, where indenting would show nothing that
+    packing does not.
     """
     flat = "0ox;0ix{1ox;0oy;};0oy;1iy;"
     wrapped = _bio(flat, DEFAULT_WIDTH)

@@ -514,7 +514,7 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
     (work / "examples").symlink_to(ROOT / "examples")
     (proj / "examples").symlink_to(ROOT / "examples")
     # The same for ``tests/fixtures``, which SLOW ACV MAMMALIAN reads its
-    # hello-world program from.  Without it that suite fails its baseline
+    # program from.  Without it that suite fails its baseline
     # outright -- not one mutant, the whole run -- and the language cannot
     # be scored at all.  ``tests/`` here is the directory built above, so
     # only the fixtures need linking into it.
