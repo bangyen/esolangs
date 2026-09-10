@@ -19,29 +19,39 @@ is now implemented, with its own boolean generator.
 
 ## Research
 
-- **Re-screen input reordering, then take what the screen still names.** The
-  59-generator screen (`46a32c85`) measured, at n=3 over all 256 tables, the
-  shortest program any of the six orders emits against the identity's. It
-  lived in `docs/generator-optimizations.md`, which `f1e4ab68` trimmed to a
-  policy page and `920760c3` deleted; the roadmap pointed into it for each
-  reorder verdict, and the ArrowQueue entry below is the only one that
-  survived. **Re-run the screen before citing any figure from it — its
-  verdicts are falsified, not merely stale.** Four of its seven exclusions
-  reorder at HEAD (six_five 17.9%, addsubjump 16.7%, jaune 16.3%, unsquare
-  15.7%), as do three it left unattempted (streetcode 16.8% in `816fb13d`,
-  laserfuck 16.3%, forth 14.5%): seventeen generators call
-  `best_input_order` and five more run their own capped order search. What
-  it named and nothing since has touched is polynomial 25.1%, dig 19.8%,
-  flowchart 17.1%, modulous 16.4% and sophie 16.4%, each verified orderless
-  at HEAD. Its under-15% tail was not re-verified here, and sbleq and
-  three_x from it already reorder.
+- **Take what the reordering screen names.** The screen is re-run and
+  permanent: `scripts/screen_input_reorder.py` measures, at n=3 over all
+  256 tables, the shortest build over the six input orders against the
+  identity's, for all 70 registry languages (the deleted 59-generator
+  ledger's method, `46a32c85`). Its metric reproduces every prior figure
+  still verified at HEAD exactly (dig 19.8%, flowchart 17.1%, modulous
+  16.4%, arrowqueue 12.4%), and its premise is executed, not assumed: 288
+  runs over polynomial and brainfuck, all six orders, every row of three
+  tables. It re-runs in ~4s — re-run it rather than citing this list once
+  a generator moves.
 
-  *The trap to carry forward.* A generator that validates its own output
-  during construction needs that check frame-mapped, or it rejects every
-  correct placement and reports a clean 0.00% — indistinguishable from
-  "reordering does not help here". ZTOALC L is where that happened; wii2d's
-  budget and requirement-set machinery is the next likely instance. A 0% on
-  a generator the screen gives upside is a diagnosis, not a verdict.
+  Unwired with real upside: `%^2^-1` 36.3%, Interprogck8 21.1%, Dig
+  19.8%, Flowchart 17.1%, Inject 13.3%, Minifuck 13.1%, 123 13.0%, BF-PDA
+  12.6%, ArrowQueue 12.4% (own entry below), Sophie 8.1%, WII2D 5.1%,
+  BrainIf 4.9%, COD 3.2% (concentrated in 12/256 tables), SLOW ACV
+  MAMMALIAN 3.2%; everything else screens under 3%. Two stale figures
+  moved with their generators — polynomial 25.1% -> 15.9% (the dense
+  rework, `22f0dce9`..`57caea1d`) and sophie 16.4% -> 8.1% (the
+  subfunction merge, `cbca1f46`) — and COD's old clean verdict is gone
+  (0% -> 3.2%). Polynomial's and Modulous's language walls stand
+  (`docs/walls.md`); Dig and Flowchart are grid placements, 2D layout
+  surgery rather than renaming a branch operand. Every wired generator
+  screens at 3.1% residual (Back) or less.
+
+  *For the no-input languages the wire may be renaming.* Their inputs are
+  substituted, not read from a stream, so building the permuted table and
+  renaming `{Xi}` slots would reach the screened figure without any build
+  entering a permuted frame — untested. Where a build must enter one, the
+  trap stands: a generator that validates its own output during
+  construction needs that check frame-mapped, or it rejects every correct
+  placement and reports a clean 0.00% — ZTOALC L did exactly that, and
+  wii2d's budget machinery is the next likely instance. A 0% where the
+  screen shows upside is a diagnosis, not a verdict.
 - **Scale Line boolean drawings.** Twelve inputs is *measured, and it fits*:
   a 33760x29920 canvas (1.01Gpx, within a rounding of the 33600x29920
   projection) completes the round trip in 289s at 2.60GiB peak, all sampled
