@@ -224,11 +224,20 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     instructions: list[list[Any]] = []
     next_cells: list[str | None] = []
     values: dict[str, int | tuple[str, int]] = {}
+    # The operand names in the order the instructions mention them, recorded
+    # as they are emitted.  The numbering pass below wants exactly this list
+    # and used to recover it by re-scanning every operand of every
+    # instruction -- 3.5M ``isinstance`` calls on a six-input build, which
+    # the order search pays once per candidate.
+    named: list[str] = []
 
     def emit(a: object, b: object, c: object, d: int) -> int:
         idx = len(instructions)
         next_cells.append(f"NEXT{idx}" if c == "next" else None)
         instructions.append([a, b, c, d])
+        for v in (a, b, c):
+            if isinstance(v, str) and v != "next":
+                named.append(v)
         return idx
 
     emit(-9, -6, "next", -7)  # enable flag mode
@@ -255,25 +264,28 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         emit(bit, bit, "next", -7)  # double
         emit(bit, bit, "next", -7)  # double -> {0, 4}
 
-    def build(level: int, rows: list[int]) -> None:
-        results = {truth_table[r] for r in rows}
-        if len(results) == 1:
+    # Rows split most significant first, so the span a node covers is the
+    # contiguous ``truth_table[lo:hi]`` and its two halves are that slice cut
+    # in two.  Carried as a pair rather than as the list of row indices it
+    # used to be: the list rebuilt itself at every node, O(n * 2**n) per
+    # candidate, for spans the slice bounds already name.
+    def build(level: int, lo: int, hi: int) -> None:
+        if truth_table.count(truth_table[lo], lo, hi) == hi - lo:
             # Every read already happened up front, so a folded leaf prints
             # and halts with nothing to drain.
-            out = _ASCII_ZERO + int(results.pop())
+            out = _ASCII_ZERO + int(truth_table[lo])
             emit(-1, f"D{out}", -8, -7)
             return
+        half = (hi - lo) // 2
         if perm[level] not in stored:
             # A discarded input has no cell to test.  Its bit cannot change
             # the answer, so both halves are the same function -- descend
             # into the zero half, keeping the row span halving with level.
-            build(level + 1, [r for r in rows if not ((r >> (n - 1 - level)) & 1)])
+            build(level + 1, lo, lo + half)
             return
         base = len(instructions)
         bit = f"B{perm[level]}"
         jump = f"J{base}"
-        zero = [r for r in rows if not ((r >> (n - 1 - level)) & 1)]
-        one = [r for r in rows if (r >> (n - 1 - level)) & 1]
         # Two instructions precede the trampolines, so the jump cell starts
         # at the zero trampoline two slots on.
         values[jump] = ("t0", base + 2)
@@ -284,13 +296,13 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         emit("U", "U", ztarget, -7)  # zero trampoline
         emit("U", "U", otarget, -7)  # one trampoline
         zstart = len(instructions)
-        build(level + 1, zero)
+        build(level + 1, lo, lo + half)
         ostart = len(instructions)
-        build(level + 1, one)
+        build(level + 1, lo + half, hi)
         values[ztarget] = ("addr", zstart)
         values[otarget] = ("addr", ostart)
 
-    build(0, list(range(2**n)))
+    build(0, 0, 2**n)
 
     base_data = 4 * len(instructions)
     # Insertion-ordered name -> index.  A dict rather than a list because the
@@ -307,10 +319,8 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
             index = names[name] = len(names)
         return base_data + index
 
-    for ins in instructions:
-        for v in ins:
-            if isinstance(v, str) and v != "next":
-                cell(v)
+    for name in named:
+        names.setdefault(name, len(names))
     for name in values:
         cell(name)
     for nc in next_cells:
