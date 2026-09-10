@@ -9,7 +9,7 @@ instantiated rows.
 import re
 from collections.abc import Callable, Iterator
 from functools import cache
-from itertools import pairwise, product
+from itertools import chain, pairwise
 
 from esolangs.tools.boolean.helpers import _validate_truth_table
 
@@ -1063,7 +1063,11 @@ def _deep_body(
     # The ladder subtracted, so one ``p`` turns the order positive; the rows
     # the drop carried past the limit are wiped by the next command's reset.
     body = dropped + "p"
-    current = {r: _apply(-values[r], dropped + "p") for r in rows}
+    # Rows collapse onto their runs' values -- eleven for parity-10, never
+    # more than the span budget allows -- so each code runs once per value,
+    # not once per row.
+    moved = {-v: _apply(-v, dropped + "p") for v in set(values)}
+    current = {r: moved[-values[r]] for r in rows}
     if {r for r in rows if current[r] > _LIMIT} != set(order[:prefix]):
         return None  # pragma: no cover - screened by legality
     cleared = set(order[:prefix])
@@ -1101,12 +1105,14 @@ def _deep_body(
         raise_code = _affine_code(1, up)
         if raise_code is None:
             return None  # pragma: no cover - screened by legality
-        raised = {r: _apply(v, raise_code + "s") for r, v in current.items()}
+        lifted = {v: _apply(v, raise_code + "s") for v in set(current.values())}
+        raised = {r: lifted[v] for r, v in current.items()}
         down = _DEEP_PARK - max(raised.values())
         park = _affine_code(1, down)
         if park is None:
             return None  # pragma: no cover - screened by legality
-        parked = {r: _apply(v, park) for r, v in raised.items()}
+        lowered = {v: _apply(v, park) for v in set(raised.values())}
+        parked = {r: lowered[v] for r, v in raised.items()}
         if max(parked.values()) > _LIMIT:
             return None  # pragma: no cover - screened by legality
         body += raise_code + "s" + park
@@ -1122,7 +1128,8 @@ def _deep_body(
         tail = _affine_code(1, shift)
         if tail is None:
             continue  # pragma: no cover - screened by legality
-        printed = {r: _apply(v, tail) for r, v in current.items()}
+        shifted = {v: _apply(v, tail) for v in set(current.values())}
+        printed = {r: shifted[v] for r, v in current.items()}
         # A band reaching here has a working shift among the seventeen, so
         # the first spellable tail prints and the loop returns.
         if all(  # pragma: no branch
@@ -1170,18 +1177,31 @@ def _cross_class_diffs(truth_table: str, n: int) -> list[tuple[int, ...]]:
     Sixteen rows give 120 pairs but only about 32 distinct vectors, and the
     dedup is what makes the legality test cheap enough to replace planning.
     """
-    seen: set[tuple[int, ...]] = set()
-    for row in range(2**n):
-        for other in range(row + 1, 2**n):
+    # A diff is the disjoint bit pair ``(plus, minus)`` -- where the first
+    # row has a 1 the second lacks, and vice versa -- so pairs dedup as one
+    # packed int each and only the distinct survivors spell out as tuples.
+    # ``lead > 0`` says the top differing bit is a plus, i.e. ``plus > minus``.
+    seen: set[int] = set()
+    size = 2**n
+    for row in range(size):
+        for other in range(row + 1, size):
             if truth_table[row] == truth_table[other]:
                 continue
-            diff = tuple(
-                ((row >> (n - 1 - k)) & 1) - ((other >> (n - 1 - k)) & 1)
+            plus = row & ~other
+            minus = other & ~row
+            if plus < minus:
+                plus, minus = minus, plus
+            seen.add((plus << n) | minus)
+    diffs = []
+    for key in seen:
+        plus, minus = key >> n, key & (size - 1)
+        diffs.append(
+            tuple(
+                ((plus >> (n - 1 - k)) & 1) - ((minus >> (n - 1 - k)) & 1)
                 for k in range(n)
             )
-            lead = next(x for x in diff if x)
-            seen.add(diff if lead > 0 else tuple(-x for x in diff))
-    return sorted(seen)
+        )
+    return sorted(diffs)
 
 
 def _weighting_is_legal(
@@ -1208,17 +1228,30 @@ def _deep_weightings(n: int) -> tuple[tuple[int, ...], ...]:
     ``3003 // 256 == 11`` cannot schedule whatever the table looks like.
     That is not a heuristic -- every weighting observed to fail while its
     collisions were legal failed exactly here, at sum 12, span 3072.
+
+    The enumeration backtracks on the remaining sum budget rather than
+    filtering ``(cap + 1) ** n`` products -- 282M walked tuples at ten
+    inputs against the 343K that survive -- and the sort key is a total
+    order, so generation order cannot show through: same set, same tuple.
     """
-    return tuple(
-        sorted(
-            (
-                units
-                for units in product(range(_DEEP_CAP + 1), repeat=n)
-                if any(units) and sum(units) <= _LIMIT // _BAND_UNIT
-            ),
-            key=lambda u: (sum(u), max(u), u),
-        )
-    )
+    budget = _LIMIT // _BAND_UNIT
+    units = [0] * n
+    by_sum: list[list[tuple[int, ...]]] = [[] for _ in range(budget + 1)]
+
+    def fill(index: int, left: int) -> None:
+        for unit in range(min(_DEEP_CAP, left) + 1):
+            units[index] = unit
+            if index + 1 == n:
+                by_sum[budget - left + unit].append(tuple(units))
+            else:
+                fill(index + 1, left - unit)
+        units[index] = 0
+
+    fill(0, budget)
+    by_sum[0].clear()  # the all-zero tuple, the one sum-0 composition
+    for bucket in by_sum:
+        bucket.sort(key=lambda u: (max(u), u))
+    return tuple(chain.from_iterable(by_sum))
 
 
 def _deep_band(truth_table: str, n: int) -> str | None:
@@ -1258,11 +1291,12 @@ def _deep_band(truth_table: str, n: int) -> str | None:
     structure tolerates the forced collisions builds.  In practice that
     means the symmetric tables, which the popcount ladder serves because
     its collisions are exactly the rows of equal popcount.  Measured: 0 of
-    8 random five-input tables build, at about 18 seconds each to prove it,
-    while parity-5 and majority-5 build in 0.14s.  Paying eighteen seconds
-    for a refusal that a popcount check settles instantly is not worth the
-    shorter program it occasionally finds, so the check runs first and the
-    enumeration is skipped when it cannot pay off.
+    8 random five-input tables build -- about 18 seconds each to prove on
+    the old product enumeration, about 60ms now that zero-unit weightings
+    skip -- while parity-5 and majority-5 build in 0.14s.  The check stays
+    either way: what builds is part of the contract, and the screen is
+    what pins it to the symmetric tables rather than to whatever shorter
+    program the enumeration occasionally finds.
     """
     if n > _LIMIT // _BAND_UNIT:
         # Each unit prices a whole residue system, so even the all-ones
@@ -1270,9 +1304,9 @@ def _deep_band(truth_table: str, n: int) -> str | None:
         # eleven inputs.  A zero unit cannot rescue a table here either:
         # only symmetric tables pass the screen below, and a symmetric
         # table that ignores an input is constant -- which the cascade
-        # already served.  Refusing up front matters because the
-        # enumeration below walks ``(cap + 1) ** n`` tuples before its sum
-        # filter, hours at thirteen inputs, for a refusal this line proves.
+        # already served.  Refusing up front skips the sum-bounded
+        # enumeration below -- a million-tuple walk at thirteen inputs
+        # whose every survivor the zero-unit argument rejects.
         return None
     if n > 4 and any(
         len({truth_table[r] for r in range(2**n) if bin(r).count("1") == pop}) > 1
@@ -1280,7 +1314,23 @@ def _deep_band(truth_table: str, n: int) -> str | None:
     ):
         return None
     diffs = _cross_class_diffs(truth_table, n)
+    # A singleton diff -- rows apart in one coordinate -- totals
+    # ``±units[k]`` under every mask, so a weighting with a zero unit
+    # there is illegal at all masks and can be skipped without testing
+    # any.  Every non-constant symmetric table has all ``n`` singletons
+    # (any coordinate can carry a class-boundary bit flip), and that is
+    # everything past the screen above, so past four inputs the skip is
+    # the C-speed ``0 in units``.  Parity is the extreme case again: all
+    # 24219 weightings ordered before the popcount ladder at nine inputs
+    # have a zero unit, so the ladder is the first weighting *tested*.
+    singles = {diff.index(1) for diff in diffs if sum(map(abs, diff)) == 1}
+    full_screen = len(singles) == n
     for units in _deep_weightings(n):
+        if full_screen:
+            if 0 in units:
+                continue
+        elif any(not units[k] for k in singles):
+            continue
         for mask in range(2**n):
             # Legality decides the weighting; the schedule then follows.  A
             # weighting whose collisions all join rows of one class has never

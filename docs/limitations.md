@@ -122,17 +122,19 @@ is affordable, not where a table is checked.
 
 The other 65 generators build both shapes at n=10, and ZTOALC L and
 Interprogck8 now join them (both caps sit at n=11, so they stay in the
-table). Two are slow rather
-than capped, and their cost is the reason `tests/tools/test_boolean_contract.py`
-sweeps to five inputs rather than ten: Minifuck 187s at n=8 and `%^2^-1` 32s
-at n=9 parity.  Three have left, each byte-identical: ROTfuck (16s to 0.06s
-at n=10) once its emitter stopped stepping moves and the final rotation one
-character at a time; Forþ (61-68s to 0.20s dense / 0.08s parity) once its
-size contest stopped building all 13,122 candidates and scored each order's
-length in closed form; and Circuit Diagram (73s to 0.09s at n=9) once its
-per-cell wire tables -- quadratic in the drawing -- became intervals with a
-slice-painting renderer, which also reaches n=10 at 0.31s for 306MB dense.
-Only the table's rows are
+table). One is slow rather
+than capped, and its cost is the reason `tests/tools/test_boolean_contract.py`
+sweeps to five inputs rather than ten: Minifuck, 187s at n=8.  Four have
+left, each byte-identical: ROTfuck (16s to 0.06s at n=10) once its emitter
+stopped stepping moves and the final rotation one character at a time; Forþ
+(61-68s to 0.20s dense / 0.08s parity) once its size contest stopped
+building all 13,122 candidates and scored each order's length in closed
+form; Circuit Diagram (73s to 0.09s at n=9) once its per-cell wire tables --
+quadratic in the drawing -- became intervals with a slice-painting renderer,
+which also reaches n=10 at 0.31s for 306MB dense; and `%^2^-1` (parity n=9
+30s to 0.16s, n=10 254s to 0.38s) once its deep band stopped paying for
+every zero-unit weighting the singleton diffs already refute.  Only
+the table's rows are
 capability limits, and only WII2D's dense row binds inside the sweep (the
 other three caps sit at n=11); the rest of the gap between five and ten is
 wall-clock.
