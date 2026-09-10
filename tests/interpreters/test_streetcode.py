@@ -785,7 +785,10 @@ class TestStreetcodeLaneMerge:
         branch through the same lane-merge machinery. This pins current
         behavior on the four-way corner pattern -- unlike the three-way
         case in ``test_merge_lands_in_the_right_hand_lane``, no hand-drawn,
-        user-confirmed trace exists for a four-way junction.
+        user-confirmed trace exists for a four-way junction, and none can
+        be taken from the page: neither of the wiki's junction-bearing
+        examples contains a four-way at any cell or heading, so this
+        fixture is the definition rather than a check against one.
 
         The arms are two characters wide, per the spec: with one-cell arms
         the shape is drawn but there are no roads to drive down, so

@@ -27,6 +27,16 @@ structural arguments are in [walls](walls.md).
   specification.**
 - Explicit frame stacks make supported recursion uncapped. Forbin calls in
   expression position remain host-recursive and report their documented limit.
+- Streetcode's **four-way junction is a convention**, and no example can make
+  it anything else. Scanning every cell and heading of both of the wiki's
+  junction-bearing grids, `_junction_kind` answers 3 wherever it fires and 4
+  nowhere — the infinite-loop example fires at ten states, the infinite-cat
+  example at ten, all of them three-way. The page cannot settle it in
+  principle either: its ambiguous-turn rule names only "the leftmost road"
+  and "the second-leftmost one", which is a choice between two, so a
+  four-way's third road is outside what the rule spells. `docs/streetcode.md`
+  stays the spec of record and the implementation's behaviour is the
+  definition.
 
 ## Generator boundaries
 
@@ -329,6 +339,15 @@ at n=11, above the ceiling.
   derived — 6 at n<=3 but 9 at n=4 — so the counts are lower bounds.
 
 ## Assessed and rejected
+
+- **Lowering to Streetcode** — retired, and recoverable. A compiler from
+  Streetcode grids and printed-leaf decision trees was asked for, but
+  `7c440f9e` deleted `src/esolangs/transpilers/` entire — the total
+  brainfuck -> Streetcode transpiler included — because 2069 lines and 47s
+  of suite time served nothing in the repo, following `58427732` on the
+  compilers. Rebuilding a larger version of what was just removed needs a
+  consumer first. The construction is recoverable at `7c440f9e^` if one
+  appears.
 
 - **Pinyin** ([wiki](https://esolangs.org/wiki/Pinyin)) — rejected: the
   command triples are not pinnable to any deterministic reading, and the
