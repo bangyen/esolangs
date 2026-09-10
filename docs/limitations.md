@@ -117,8 +117,9 @@ them (its cap sits at n=11, so it stays in the table). Five are slow rather
 than capped, and their cost is the reason `tests/tools/test_boolean_contract.py`
 sweeps to five inputs rather than ten: Minifuck 187s at n=8, Circuit Diagram
 73s and 60MB of program text at n=9, Forþ 70s at n=10, `%^2^-1` 32s at n=9
-parity, ROTfuck 16s and 20MB at n=10 parity. Only the five above are
-capability limits; the rest of the gap between five and ten is wall-clock.
+parity, ROTfuck 16s and 20MB at n=10 parity. Only the table's rows are
+capability limits, and only four bind inside the sweep (ZTOALC L's cap
+sits at n=11); the rest of the gap between five and ten is wall-clock.
 
 - **6-5:** 35 addressable branch labels is the language's (operands are
   `0-9A-Z`), and it now binds on the table's *distinct* subtrees rather
