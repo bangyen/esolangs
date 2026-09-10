@@ -344,7 +344,7 @@ def _worker(target: str) -> None:
     langs = sorted(RUNNERS)
     slug_of = {name: canonical_id(name) for name in langs}
     by_slug: dict[str, list[str]] = {}
-    for d in ("hello-world", "boolean"):
+    for d in ("boolean",):
         for p in (_ROOT / "examples" / d).glob("*.txt"):
             by_slug.setdefault(p.stem, []).append(p.read_text())
     examples = {name: by_slug.get(slug, []) for name, slug in slug_of.items()}
@@ -383,7 +383,7 @@ def main() -> None:
     # RUNNERS is keyed by display name; the example files by canonical id.
     slug_of = {name: canonical_id(name) for name in langs}
     by_slug: dict[str, list[str]] = {}
-    for d in ("hello-world", "boolean"):
+    for d in ("boolean",):
         for p in (_ROOT / "examples" / d).glob("*.txt"):
             by_slug.setdefault(p.stem, []).append(p.read_text())
     examples = {name: by_slug.get(slug, []) for name, slug in slug_of.items()}

@@ -51,10 +51,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 # Packages the bundle does not inline, whose imports must therefore keep
 # resolving against the installed package.  This is deliberately *not* the
 # set :func:`_reaches_unbundled` drops on: that judgement cuts a test, and a
-# test importing one of these is still perfectly runnable -- BrainIf's suite
-# checks its own generated hello-world through ``esolangs.tools.text``, which
-# only needs to be left alone, not cut.  Rewriting it to ``from bundled
-# import brainif`` asked the bundle for a text generator it never inlines.
+# test importing one of these is still perfectly runnable -- a suite that
+# reaches the registry or the generators only needs them left alone, not
+# cut.  Rewriting such an import to ``from bundled import ...`` asked the
+# bundle for a name it never inlines.
 _NOT_REWRITTEN = ("vm", "registry", "tools")
 
 # The two modules ``bundle_one`` inlines alongside the interpreter.  Their
