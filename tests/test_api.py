@@ -8,9 +8,12 @@ from esolangs.tools import boolean
 
 
 @pytest.mark.parametrize("language", ["Sophie", "Circlefuck", "BFStack"])
-def test_generate_round_trips(language: str) -> None:
-    program = esolangs.generate(language, "Hi")
-    assert esolangs.run(language, program) == "Hi"
+def test_generate_computes_its_table(language: str) -> None:
+    """XOR, executed on all four rows -- the program, not just its text."""
+    program = esolangs.generate(language, "0110")
+    for row, expected in enumerate("0110"):
+        stdin = "".join(f"{bit}\n" for bit in format(row, "02b"))
+        assert esolangs.run(language, program, stdin) == expected
 
 
 def test_run_feeds_stdin() -> None:
@@ -84,7 +87,6 @@ def test_describe_structured_summary() -> None:
     info = esolangs.describe("brainfuck")
     assert info["name"] == "brainfuck"
     assert info["state_model"] == "tape"
-    assert info["text_generator"] is True
     assert info["boolean_generator"] is True
     assert info["interpreter"] == "tape_based.brainfuck"
     assert info["wiki_url"] == "https://esolangs.org/wiki/brainfuck"
