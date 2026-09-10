@@ -1,6 +1,9 @@
 """Boolean-function generator for 6:5.
 
-:func:`six_five` routes a decision tree that folds its constant subtrees.
+:func:`six_five` routes a decision tree that folds its constant subtrees,
+shares its duplicates past the label budget, and falls back to a positional
+walk (:func:`_six_five_walk`) when even the distinct subtrees overflow --
+which makes the generator total through n == 35.
 
 There used to be a second construction, ``six_five_arithmetic``, which
 packed the inputs and the table into single cells and decoded the entry
@@ -17,7 +20,6 @@ assembler were retired.
 
 import string
 from itertools import permutations
-from math import factorial
 
 from esolangs.tools.boolean.helpers import (
     _ASCII_ZERO,
@@ -95,11 +97,10 @@ def six_five(truth_table: str) -> str:
     folded tree fits in 35 labels uses the tree, at any ``n``.
 
     **The budget is spent per input order**, so a table whose identity tree
-    overflows may fold inside it under some other order, and only a table
-    overflowing under *every* order is refused.  An alternating table folds
-    nothing in stream order but is only NOT of the last input, so one
-    reorder collapses it to a single label: a table that merely looks
-    scattered is not a refusal witness.
+    overflows may fold inside it under some other order.  An alternating
+    table folds nothing in stream order but is only NOT of the last input,
+    so one reorder collapses it to a single label: a table that merely
+    looks scattered is not a hard one.
 
     **Past the budget the tree is shared** (:func:`_six_five_shared`), which
     is what carries this generator past n == 5 and inverts which table is
@@ -107,9 +108,17 @@ def six_five(truth_table: str) -> str:
     folds any of its 63 nodes at n == 6, since any permutation of parity is
     parity -- and it is now the *cheapest* wide table there is, because
     those nodes are duplicates of one another: two distinct subtrees per
-    level, 20 markers at n == 10 against 1023 unshared.  What binds instead
+    level, 20 markers at n == 10 against 1023 unshared.  What binds a tree
     is a table with many *different* subtrees, which is the dense one:
-    n == 7 dense needs 47 and is refused.
+    n == 7 dense needs 47.
+
+    **Past even the distinct subtrees the table goes on the tape**
+    (:func:`_six_five_walk`), which spends one label per *input* rather
+    than per subtree and so is total through n == 35: the reads steer the
+    pointer to the row the inputs index instead of steering the cursor.
+    The trees stay preferred while one fits -- they are what every
+    committed size measurement was taken against, and far shorter when a
+    table folds or shares well.
 
     **The order search is capped at ``_ORDER_SEARCH_MAX`` inputs**, the same
     bound and the same greedy fallback ``best_input_order`` uses.  The cap
@@ -142,14 +151,64 @@ def six_five(truth_table: str) -> str:
         if candidate and (not best or len(candidate) < len(best)):
             best = candidate
     if not best:
-        searched = factorial(n) if n <= _ORDER_SEARCH_MAX else len(orders)
-        raise ValueError(
-            "the 6-5 decision tree has 35 branch labels, but this table needs "
-            f"{_six_five_dag_cost(truth_table)} for its distinct subtrees "
-            f"alone -- {_six_five_markers(truth_table)} unshared -- under "
-            f"every one of the {searched} input orders tried (n == {n})"
-        )
+        # Every order overflowed the budget even shared, so the table has
+        # too many distinct subtrees for any tree-shaped emission.  The walk
+        # spends labels per *input* rather than per subtree, so it always
+        # fits at these widths.
+        return _six_five_walk(truth_table)
     return best
+
+
+def _six_five_walk(truth_table: str) -> str:
+    """Emit the positional-walk 6-5 program: the whole table on the tape.
+
+    The tree constructions spend a label per subtree, so a table with more
+    than 35 *distinct* subtrees (dense n == 7 has 47) overflows under every
+    input order.  This one spends exactly ``n`` labels however scattered
+    the table is: the branching moves the *pointer* instead of the cursor.
+
+    Layout: table row ``j`` is preloaded at stride ``n + j`` (``1`` moves
+    two cells, so a stride is one ``1`` and row ``j`` sits at cell
+    ``2 * (n + j)``), ones as ``62`` pairs and zeros left as the tape's
+    own 0.  The pointer returns to cell 0 and each input bit is then read
+    where the pointer stands and decoded in place: bit 1 (cell 9 after the
+    ``2``s) skips the ``8n`` and falls into a run of ``2**(n-1-i)`` strides,
+    bit 0 takes the jump to the ``4`` just past the run.  Both paths then
+    share one more stride, so after ``n`` bits the pointer is at stride
+    ``n + x`` -- the row the inputs index -- and the leaf adds 48 to the
+    0/1 there and prints.  The one ``4`` per bit is the whole label bill.
+
+    The shared stride per bit keeps every read strictly behind the final
+    cell (at bit ``i`` the walk still has ``n - i`` strides to go), so the
+    ``B``s only ever clobber rows this run has already passed -- harmless,
+    since one cell is printed and the program halts.
+
+    Dense n == 10 spends 10 labels and 5319 chars, and all 1024 rows run
+    in 12s; size doubles per input, so the label bound ``n <= 35`` is the
+    only other gate.
+    """
+    n = _validate_truth_table(truth_table)
+    if n > _SIX_FIVE_MAX_LABEL:
+        raise ValueError(
+            f"the 6-5 walk spends one branch label per input and there are "
+            f"only 35, so n == {n} does not fit"
+        )
+    ones = [j for j, value in enumerate(truth_table) if value == "1"]
+    out = ""
+    if ones:
+        # Rows past the last 1 stay virgin: the walk's own strides grow the
+        # tape, and a virgin cell already holds the 0 those rows need.
+        out += "1" * n
+        for j in range(ones[-1] + 1):
+            if truth_table[j] == "1":
+                out += "62"
+            if j != ones[-1]:
+                out += "1"
+        out += "3" * (2 * (n + ones[-1]))
+    for i in range(n):
+        out += "B" + "2" * 8 + "79" + "8" + _six_five_label(i + 1)
+        out += "1" * 2 ** (n - 1 - i) + "4" + "1"
+    return out + "6" * 8 + "A0"
 
 
 def _six_five_dag_cost(truth_table: str) -> int:
