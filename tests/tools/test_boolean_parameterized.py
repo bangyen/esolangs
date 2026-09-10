@@ -2750,14 +2750,17 @@ class TestParameterizedOneTwoThree:
         ``00111000`` has 1-rows above 0-rows, so its build takes the
         shield paints as well as the embed, separation, kill, and
         endgame — a witness that every stage is on a real trajectory,
-        not only inferred from ``construct()``'s success.
+        not only inferred from ``construct()``'s success.  The paints
+        go through ``_paint_all``, which emits the whole campaign at
+        once; ``_paint`` itself is the small-arity route's, covered by
+        ``test_paint_marks_one_cell_and_restores_every_position``.
         """
         from esolangs.tools.boolean import one_two_three_construct as construct_mod
 
         called: set[str] = set()
         originals = {
             name: getattr(construct_mod, name)
-            for name in ("_phase_a", "_separate", "_paint", "_verdict", "_endgame")
+            for name in ("_phase_a", "_separate", "_paint_all", "_verdict", "_endgame")
         }
 
         def watch(name: str, fn: object) -> object:
