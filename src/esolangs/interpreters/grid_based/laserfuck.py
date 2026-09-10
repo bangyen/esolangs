@@ -413,7 +413,10 @@ class _Machine:
 
         byte = None
         if op == ",":
-            # an empty (or blank) input line reads a zero, per the cross-check
+            # An empty (or blank) input line reads a zero -- the package
+            # convention, not the language's.  The wiki says nothing about
+            # input at all, and the cross-check is this repo's own harness,
+            # so neither sources this value.
             line_val = self.io.input_str()
             byte = ord(line_val[0]) if line_val else 0
         split = draw(self._rng, 2) if op == "*" else 0

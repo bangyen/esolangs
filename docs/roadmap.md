@@ -19,13 +19,6 @@ is now implemented, with its own boolean generator.
 
 ## Research
 
-- **Source the empty-input `0`.** `io.input_char` answers `0` on an empty
-  line, pinned across the registry by
-  `tests/interpreters/test_input_convention.py`. Open: whether any language's
-  `0` was ever taken from its own specification rather than chosen — the
-  docstrings citing "the original" are the same author's earlier readings, so
-  they corroborate nothing. Finish condition: every such docstring checked
-  against its wiki page, each `0` ending either sourced or marked chosen.
 - **Settle Streetcode's four-way junction.** `_junction_kind` reports 3 or 4
   roads, and the four-way arm is pinned only to what the implementation does:
   `test_four_way_junction_also_merges` says so in its own docstring — no
