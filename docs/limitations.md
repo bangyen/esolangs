@@ -61,7 +61,7 @@ generators cover one and refuse the other at the same arity):
 | --- | --- | --- | --- |
 | Interprogck8 | 10 | 10 | n=11 dense exhausts the `_REPAIRS = 256` meadow budget after 30s; whether more budget closes it is unmeasured |
 | Polynomial | 10 | 10 | caps at 1934 instructions, one per prime -- the analytic worst case over n=10 tables, so all of n=10 builds; dense n=11 needs 2910 |
-| WII2D | 8 | 10 | dense n=9 decode spans 256 points past the `_WII2D_MAX_INDEX_DOMAIN = 128` cost guard |
+| WII2D | 8 | 10 | dense n=9 decode spans 256 points past the `_WII2D_MAX_INDEX_DOMAIN = 128` cost guard; that domain now decodes 18 of 20 sampled patterns, so the guard is the binding choice rather than the reach |
 | ZTOALC L | 10 | 10 | n=11 needs 587 command slots (545 parity) against the anchors' 386 under the 4.19M line ceiling |
 
 6-5 leaves the table too.  Its 35 branch labels are the language's
@@ -188,7 +188,12 @@ wall-clock.
   arity -- a table that collapses renders far past n=10.
 - **WII2D:** a chosen cost guard, now at 128 rather than 64: dense n=8
   builds in 0.8s (18466 characters) and all 256 rows compute their table.
-  Dense n=9 needs 256, four times the width, and is untested.
+  Dense n=9 needs 256, which is now *reachable but not total* — 18 of 20
+  sampled patterns decode in about 3s each, and the other two ratchet into
+  the doubling trap and never return. The guard stays at 128 so a refusal
+  is prompt rather than a hang. Dense n=10 needs 512 and failed every
+  seed. Structured n=10 is unaffected: parity, majority, AND, OR, an
+  xor-of-a-subset and a 3-to-8 mux all build and execute all 1024 rows.
 - **ZTOALC L:** was capped at 8 by the trajectory-prefix peak (n=9 peaked
   at 1.2e7 lines against the 4.19M ceiling).  Two changes cleared 10/10:
   commands now sit on the *L smallest* trajectory values under the ceiling
