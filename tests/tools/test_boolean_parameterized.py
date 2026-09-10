@@ -2465,7 +2465,8 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.boolean.one_two_three_construct import construct
 
         assert construct("01") == (
-            "22{X0}11121211222211112332332233222211112221113311111112222222123311111111"
+            "2222{X0}1111121211222222111111233222332233222211112221113311111111"
+            "122222222212331111111111"
         )
 
     def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
@@ -2480,7 +2481,7 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.boolean.one_two_three_construct import construct
 
         total = sum(len(construct(format(value, "08b"))) for value in range(256))
-        assert total == 155074
+        assert total == 206791
 
     def test_slots_run_in_name_order(self) -> None:
         """Every emitted template embeds {X0} before {X1}."""
@@ -2547,8 +2548,8 @@ class TestParameterizedOneTwoThree:
         assertion above passes either way and the choice is invisible to
         them.  It is worth a great deal though: swept over all 256
         three-input tables, the wide constructor's template is larger on
-        every one of them, from 1.5x up to 10.5x (``00000001`` is 90 bytes
-        small against 944 wide).  These lengths pin the routing boundary at
+        every one of them, from 1.86x up to 9.55x (``00000010`` is 94 bytes
+        small against 898 wide).  These lengths pin the routing boundary at
         ``n > 3``.
         """
         from esolangs.tools.boolean import parameterized
@@ -2702,8 +2703,8 @@ class TestParameterizedOneTwoThree:
         The total is asserted rather than one table because the flag's
         effect is spread across the whole sweep; it also pins the
         separation law's price, 55238 characters against the retired
-        schedules' 43020 and the wide constructor's 158152 -- the law
-        gives up 1.28x to delete the table and keeps 2.9x over the route
+        schedules' 43020 and the wide constructor's 211102 -- the law
+        gives up 1.28x to delete the table and keeps 3.8x over the route
         that needs none.
         """
         from esolangs.tools.boolean import parameterized
