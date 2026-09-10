@@ -52,8 +52,9 @@ The pipeline
    segment itself just marked — TRUE, and a proven periodic revisit.
    The one escape is a pre-existing mark on the tested cell, which the
    segment then *clears* — so each 0-row below the kill is shielded
-   beforehand by one :func:`_paint`, a pair of walk-descend blocks
-   whose flips cancel everywhere except the 0-row's tested cell.  One
+   beforehand by one paint, a pair of walk-descend blocks whose flips
+   cancel everywhere except the 0-row's tested cell (:func:`_paint_all`
+   emits the whole campaign and applies it in one XOR per row).  One
    kill two above the highest 1-row then loops every 1-row at once.
 4. **Endgame** (`_endgame`): survivors need ``pos < 0`` at end of code.
    A deep descent drops everyone into the ring, where same-residue rows
@@ -108,7 +109,12 @@ def _mask(cells: Iterable[int]) -> int:
     return m
 
 
-#: One emitted token: a literal command, or ``("X", i)`` for a fill slot.
+#: One emitted token: a maximal ``1``/``2`` *run*, or ``("X", i)`` for a
+#: fill slot.  A run rather than a character because a segment is hundreds
+#: of thousands of commands long and only a few dozen runs: storing it per
+#: character made :func:`_row_runs` re-coalesce 21.3M tokens per ten-input
+#: build (3.5s of 7.3s).  A one-character string is still a valid run, so
+#: nothing that hands the builder a token list has to change.
 type _Token = str | tuple[str, int]
 
 
@@ -269,26 +275,46 @@ def _row_runs(row: _Row, toks: list[_Token]) -> list[tuple[str, int]]:
     A fill's character is fixed once the row is known, so a segment that
     a fixpoint re-runs up to 64 times can be resolved and coalesced
     *once* -- which also lets the long right-walks inside it take the
-    batched path in :func:`_exec_run`.
+    batched path in :func:`_exec_run`.  The tokens are already runs, so
+    the loop is over a few dozen of them, not over every command.
     """
     out: list[tuple[str, int]] = []
     for tok in toks:
-        ch = (_ONE if row.bits[tok[1]] else _ZERO) if isinstance(tok, tuple) else tok
-        if out and out[-1][0] == ch:
-            out[-1] = (ch, out[-1][1] + 1)
+        if isinstance(tok, tuple):
+            ch, w = (_ONE if row.bits[tok[1]] else _ZERO), 1
         else:
-            out.append((ch, 1))
+            ch, w = tok[0], len(tok)
+        if out and out[-1][0] == ch:
+            out[-1] = (ch, out[-1][1] + w)
+        else:
+            out.append((ch, w))
     return out
 
 
-def _runs(s: str) -> list[tuple[str, int]]:
-    """``"2211"`` -> ``[("2", 2), ("1", 2)]``."""
-    out: list[tuple[str, int]] = []
-    for ch in s:
-        if out and out[-1][0] == ch:
-            out[-1] = (ch, out[-1][1] + 1)
-        else:
-            out.append((ch, 1))
+def _run_parts(s: str) -> list[str]:
+    """``"2211"`` -> ``["22", "11"]``, the maximal runs as substrings.
+
+    Found with :meth:`str.find` -- one C-level scan per *run* -- rather
+    than a Python loop per character: the ten-input build emits 15.9M
+    commands in about 2000 runs, and splitting them per character cost
+    1.8s of a 7.3s build.
+    """
+    out: list[str] = []
+    size = len(s)
+    i = 0
+    while i < size:
+        ch = s[i]
+        if ch == _ONE:
+            other = _ZERO
+        elif ch == _ZERO:
+            other = _ONE
+        else:  # pragma: no cover - the builder only emits 1/2 runs
+            raise AssertionError(ch)
+        j = s.find(other, i + 1)
+        if j < 0:
+            j = size
+        out.append(s[i:j])
+        i = j
     return out
 
 
@@ -316,15 +342,17 @@ class _Builder:
         if isinstance(tok, tuple):
             _exec_char(row, _ONE if row.bits[tok[1]] else _ZERO)
         else:
-            _exec_char(row, tok)
+            _exec_run(row, tok[0], len(tok))
 
     def run(self, s: str) -> None:
         """Emit straight-line commands; every live row executes them."""
         live = self.live()
-        for ch, w in _runs(s):
+        parts = _run_parts(s)
+        for part in parts:
+            ch, w = part[0], len(part)
             for row in live:
                 _exec_run(row, ch, w)
-        self.seg.extend(s)
+        self.seg.extend(parts)
         self.chunks.append(s)
 
     def fill(self, i: int) -> None:
@@ -342,7 +370,8 @@ class _Builder:
         TRUE re-runs its whole segment, so this is the machine's actual
         behaviour, not an approximation.
         """
-        runs = _row_runs(row, list(self.seg) + list(extra))
+        tail: list[_Token] = list(_run_parts(extra))
+        runs = _row_runs(row, list(self.seg) + tail)
         seen = {(row.pos, row.tape)}
         for _ in range(64):
             for ch, w in runs:
@@ -613,6 +642,48 @@ def _paint(b: _Builder, k: int) -> None:
         b.run("2" * (k - 1) + "1" * (k - 1))
 
 
+def _paint_all(b: _Builder, offsets: list[int]) -> None:
+    """Emit :func:`_paint` at every offset, applying them in one step.
+
+    A paint restores every position and its descent's XOR does not read
+    the tape, so a whole shield campaign is a single shift-and-XOR per
+    row -- ``tape ^= delta << pos`` with bit ``k`` of ``delta`` set per
+    offset -- instead of four simulated runs per paint per row.  At ten
+    inputs that is 2.1M row steps of a 3.2M-step build, and the emitted
+    text is the concatenation the separate paints would have produced,
+    character for character.
+
+    Distinct offsets are what make the fused XOR equal the sequence:
+    two shields on one offset would cancel instead of stacking.  The
+    verdict's collision-freedom argument already gives that, so a clash
+    is a broken precondition rather than a case to handle.
+    """
+    if any(k < 1 for k in offsets):  # pragma: no cover - the verdict computes k >= 1
+        raise ConstructError("a paint offset is not above the row")
+    if len(set(offsets)) != len(offsets):  # pragma: no cover - positions are odd
+        raise ConstructError("two shields aim at one offset")
+    live = b.live()
+    if any(r.pos < 0 for r in live):  # pragma: no cover - separation leaves pos >= 1
+        raise ConstructError("a shield would walk out of the ring")
+    parts: list[str] = []
+    for k in offsets:
+        parts.append(_ZERO * k)
+        parts.append(_ONE * k)
+        if k > 1:
+            parts.append(_ZERO * (k - 1))
+            parts.append(_ONE * (k - 1))
+    _work[0] -= sum(map(len, parts)) * len(live)
+    if _work[0] < 0:
+        raise _WorkExhaustedError
+    delta = 0
+    for k in offsets:
+        delta |= 1 << k
+    for row in live:
+        row.tape ^= delta << (row.pos + _RING)
+    b.seg.extend(parts)
+    b.chunks.append("".join(parts))
+
+
 def _verdict(b: _Builder, table: str) -> None:
     """Shield every 0-row, then loop every 1-row with one planned kill.
 
@@ -635,15 +706,17 @@ def _verdict(b: _Builder, table: str) -> None:
     * The one escape is a pre-existing mark on the tested cell: the
       trailing ``1`` then *clears* it, the row tests FALSE, and it
       skips out unharmed.  That is the shield, and it is plantable per
-      row because positions are distinct: :func:`_paint` at offset
-      ``k`` marks ``pos + k`` for every row, and with all positions
+      row because positions are distinct: a paint at offset ``k``
+      marks ``pos + k`` for every row, and with all positions
       odd, distinct, and below the two tested cells, a shield aimed at
       one 0-row's tested cell can never land on another row's (the
       collision cases all force two rows one cell apart — impossible
       when every position is odd).
 
-    So the whole verdict is: paint one shield per live 0-row below the
-    kill, close the paints (every row still sits on its own unmarked cell,
+    So the whole verdict is: :func:`_paint_all` plants one shield per
+    live 0-row below the kill (in ascending position order, the order
+    the offsets are collected in), close the paints (every row still
+    sits on its own unmarked cell,
     so the test is vacuously FALSE), and emit one kill with ``a`` two above
     the highest 1-row.  Every fate is still validated on the exact model by
     ``test(kills=...)``, and the closing replay re-runs every row on the
@@ -662,14 +735,14 @@ def _verdict(b: _Builder, table: str) -> None:
         # ever breaks the parity.
         raise ConstructError("verdict precondition: positions not distinct odd")
     a = max(r.pos for r in ones) + 2
-    painted = False
+    offsets: list[int] = []
     for r in sorted(live, key=lambda row: row.pos):
         if r.pos >= a or _table_val(table, r.bits) == "1":
             continue
         tested = a if (a - r.pos) % 4 == 0 else a - 1
-        _paint(b, tested - r.pos)
-        painted = True
-    if painted:
+        offsets.append(tested - r.pos)
+    if offsets:
+        _paint_all(b, offsets)
         b.test()
     b.run("1" * a + "2" + "2" * (a - 1) + "12")
     b.test(kills=frozenset(r.bits for r in ones))
