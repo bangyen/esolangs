@@ -88,21 +88,23 @@ _WII2D_MAX_CENTRE = 4096
 
 # How many candidate folds are compressed before the true ranking is applied.
 #
-# Compression is the expensive half of a candidate -- a halving loop over the
-# whole domain, rebuilding the live map at every step -- and the decode takes
-# only the head, so compressing every candidate is work thrown away.
+# Compression is the expensive half of a candidate -- a per-depth arc scan
+# over every close pair -- and the decode takes only the head, so
+# compressing every candidate is work thrown away.
 #
 # The screen cannot be a *bound*.  Compression is a contraction, so the
 # uncompressed magnitude says almost nothing about the compressed one, and no
 # early exit justified that way preserves the answer.  This is an admitted
 # approximation: the shortlist is ranked on the uncompressed state, and only
 # its members get the real key.
-#
-# Four is where the trade settles, and it is both smaller and faster than
-# compressing everything -- not the trade one expects from a cut.  The sweep
-# behind that, and the counterexample that rules out a bound, are in
-# ``docs/wii2d_generator.md``.
-_WII2D_SHORTLIST = 4
+_WII2D_SHORTLIST = 8
+
+# How many legal shifts a compression run examines per depth.  The legal
+# set is exact (the arc-union complement); this only caps how many of its
+# members are scored for merges, taking the first few values of each gap
+# so the smallest legal shift is always among them.  An admitted
+# approximation with the same status as the shortlist above.
+_WII2D_SHIFT_SAMPLES = 40
 
 # The widest decode domain the general (non-symmetric) path will attempt, so
 # that path is used up to ``n == 7`` by default.
@@ -184,33 +186,106 @@ def _wii2d_points(values: list[int], bits: list[int]) -> dict[int, int] | None:
     return seen
 
 
+def _wii2d_legal_shifts(arcs: list[tuple[int, int]], block: int) -> list[int]:
+    """Return up to :data:`_WII2D_SHIFT_SAMPLES` legal shifts, ascending.
+
+    ``arcs`` are the bad cyclic intervals ``(start, length)`` modulo
+    ``block``; a legal shift is any value outside their union.  The gaps
+    between merged arcs are walked in order and the first few values of
+    each are taken, so the result is deterministic and the smallest legal
+    shift always leads.
+    """
+    if not arcs:
+        return list(range(min(_WII2D_SHIFT_SAMPLES, block)))
+    flat = []
+    for start, length in arcs:
+        end = start + length
+        if end <= block:
+            flat.append((start, end))
+        else:  # wraps: split at the block boundary
+            flat.append((start, block))
+            flat.append((0, end - block))
+    flat.sort()
+    out: list[int] = []
+    covered = 0
+    for start, end in flat:
+        for shift in range(covered, min(start, covered + 4)):
+            out.append(shift)
+            if len(out) >= _WII2D_SHIFT_SAMPLES:
+                return out
+        covered = max(covered, end)
+        if covered >= block:
+            return out
+    for shift in range(covered, min(block, covered + 4)):
+        out.append(shift)
+        if len(out) >= _WII2D_SHIFT_SAMPLES:
+            break
+    return out
+
+
 def _wii2d_compress(
     values: list[int], bits: list[int], ops: str
 ) -> tuple[list[int], str]:
-    """Shrink the live values with ``/``, steering with ``+`` when needed.
+    """Merge and shrink the live values with add-then-halve runs.
 
-    Halving is the only thing keeping the fold centres small: ``s`` squares,
-    so without compression the centres (and the ``'-' * c`` runs that spell
-    them) grow past any width worth emitting.  A plain halving sometimes
-    collides two values that need different bits; incrementing first pairs
-    neighbours the other way round, which usually clears the collision.
+    A run of ``k`` halvings with an optional ``+`` before each is exactly
+    ``v -> (v + S) // 2**k``, ``S`` the shift bits read in emission order
+    (the nested-floor identity), so the whole family is searched directly
+    rather than one halving at a time.  Two values land in one block --
+    merging if they need the same bit, fatal if not -- exactly when ``S``
+    falls in a cyclic arc, so each different-bit pair at gap ``g < 2**k``
+    forbids ``2**k - g`` shifts and the legal shifts are the complement of
+    the arc union.  Legality is monotone: a legal depth-``k`` run stays
+    legal truncated to ``k - 1``, so the depth scan stops at the first
+    empty level.
+
+    The choice is a fixed rule, not a search: take the ``(k, S)`` that
+    merges the most values, deepest run then smallest shift on ties, and
+    repeat until no halving is legal.  Steering ``S`` toward collisions is
+    what makes compression the engine's *merging* half -- the fold only
+    reshapes the values so that same-bit values can land in one block --
+    and it is what carries dense domains past the squaring blow-up that a
+    greedy one-level halving walks into (see ``docs/wii2d_generator.md``).
+    Each applied run strictly shrinks the span, so this terminates.
     """
-    # This terminates on the guard alone.  While ``max|v| > 1`` either
-    # halving strictly lowers it -- ``|(v + shift) // 2| < |v|`` holds for
-    # every ``|v| > 1`` and both shifts -- so the loop descends a
-    # non-negative integer and cannot revisit a state.  No "made no progress"
-    # case to break out of.
-    while max(abs(v) for v in values) > 1:
-        for shift in (0, 1):
-            candidate = [(v + shift) // 2 for v in values]
-            if _wii2d_points(candidate, bits) is None:
-                continue
-            ops += "+" * shift + "/"
-            values = candidate
-            break
-        else:
+    while True:
+        live = _wii2d_points(values, bits)
+        if live is None:  # pragma: no cover - callers pass legal states
             return values, ops
-    return values, ops
+        points = sorted(live)
+        span = points[-1] - points[0]
+        # ``max(abs(v)) <= 1`` is the old one-level walk's stop, kept: a
+        # small span at a large magnitude still shrinks (every applied run
+        # strictly lowers the maximum for values past 1), and stopping on
+        # span alone would hand the threshold thousand-character offsets.
+        if max(abs(p) for p in (points[0], points[-1])) <= 1:
+            return values, ops
+        best: tuple[tuple[int, int, int], int, int] | None = None
+        depth = 1
+        while (1 << depth) <= 2 * span + 2:
+            block = 1 << depth
+            arcs = []
+            for i, low in enumerate(points):
+                for high in points[i + 1 :]:
+                    gap = high - low
+                    if gap >= block:
+                        break
+                    if live[low] != live[high]:
+                        arcs.append(((-low) % block, block - gap))
+            shifts = _wii2d_legal_shifts(arcs, block)
+            if not shifts:
+                break
+            for shift in shifts:
+                blocks = {(p + shift) >> depth for p in points}
+                key = (len(points) - len(blocks), depth, -shift)
+                if best is None or key > best[0]:
+                    best = (key, depth, shift)
+            depth += 1
+        if best is None:
+            return values, ops
+        _key, depth, shift = best
+        ops += "".join("+" * ((shift >> k) & 1) + "/" for k in range(depth))
+        values = [(v + shift) >> depth for v in values]
 
 
 def _wii2d_threshold(live: dict[int, int]) -> str:
@@ -227,6 +302,11 @@ def _wii2d_threshold(live: dict[int, int]) -> str:
     if len(points) == 1:
         return str(live[points[0]])
     low, high = points
+    if live[low] == live[high]:
+        # Two values, one answer: a digit resets both.  Reachable when
+        # compression stops at ``{0, 1}`` under one label; the indicator
+        # below would answer (0, 1) or (1, 0), never (c, c).
+        return str(live[low])
     # after the subtraction the values are ``low - high`` and 0, so the
     # halving run only has to be long enough to bottom that span out at -1.
     runs = max(abs(low - high).bit_length() + 1, 1)
@@ -315,20 +395,21 @@ def _wii2d_folds(
         compressed, grown = _wii2d_compress(folded_values, bits, fragment)
         out.append(
             (
-                max(abs(v) for v in compressed),
                 len(set(compressed)),
+                max(abs(v) for v in compressed),
                 len(grown),
                 grown,
                 compressed,
             )
         )
     # Magnitude first.  A fold centre is spelled out as ``'-' * c``, so the
-    # live values *are* the program's width: keeping them small is what keeps
-    # the emitted grid small, and it also steers away from the squaring
-    # blow-up, since every later fold squares whatever this one leaves.
-    # Ranking by live count instead reaches the same two-value state through
-    # much larger numbers -- measured in ``docs/wii2d_generator.md``.
-    out.sort(key=lambda cand: cand[:3])
+    # live values *are* the program's width: keeping them small is what
+    # keeps the emitted grid small.  Ranking survivors first instead reaches
+    # the same two-value state through much larger numbers -- 396131
+    # characters against 285903 over the 532-table corpus, a 39% regression
+    # -- which holds against the steered compression below just as it held
+    # against the one-level halving it replaced.
+    out.sort(key=lambda cand: (cand[1], cand[0], cand[2]))
     return out
 
 
