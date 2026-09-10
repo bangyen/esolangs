@@ -479,12 +479,11 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     the growth created.
 
     Consecutive visits retain the full certificate above.  Alongside that,
-    a Brent checkpoint normalizes a position's state relative to its tape
-    pointer and discovers an arbitrary repeating phase without a caller
-    choosing its length.  It keeps two checkpoints per position, rather
-    than one snapshot for every possible period.  This automatic path is
-    deliberately narrower: a phase must not move left of its checkpoint,
-    so the normalized suffix is a complete translated state.  And ``d ==
+    a Brent checkpoint discovers an arbitrary repeating phase without a
+    caller choosing its length.  It keeps two checkpoints per position,
+    rather than one snapshot for every possible period, and applies the
+    same certificate measured from the checkpoint instead of the last
+    visit, with the minimum tracked since the checkpoint.  And ``d ==
     0`` is not its business: a loop that grows a cell's value rather than
     the tape, such as ``+[<+]``, revisits an exact state once the value
     wraps at 256 and is
@@ -540,9 +539,7 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
             origins[ip] = (current, ptr)
         else:
             before, low = origin
-            if _same_relative_tape(before, current) and _grows_forever(
-                before, current, low
-            ):
+            if _grows_forever(before, current, low):
                 return False
 
         checkpoint = waves.get(ip)
@@ -554,9 +551,7 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
             # origins arm above leaves `+[>+]` proved by this one instead.
             # With that arm in place it always proves the hang first, so
             # nothing reaches this return.
-            if _same_relative_tape(before, current) and _grows_forever(
-                before, current, low
-            ):  # pragma: no cover - see above
+            if _grows_forever(before, current, low):  # pragma: no cover - see above
                 return False
             length += 1
             if length == power:
@@ -592,23 +587,6 @@ def _grows_forever(
         and all(
             tape_after[i + displacement] == tape_before[i]
             for i in range(lowest, len(tape_before))
-        )
-    )
-
-
-def _same_relative_tape(
-    before: tuple[int, tuple[int, ...], int],
-    after: tuple[int, tuple[int, ...], int],
-) -> bool:
-    """Whether two visits have equal tape suffixes relative to their pointers."""
-    ptr_before, tape_before, input_before = before
-    ptr_after, tape_after, input_after = after
-    return (
-        input_after == input_before
-        and len(tape_after) - ptr_after == len(tape_before) - ptr_before
-        and all(
-            tape_after[ptr_after + i] == tape_before[ptr_before + i]
-            for i in range(len(tape_before) - ptr_before)
         )
     )
 
