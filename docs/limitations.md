@@ -60,12 +60,23 @@ generators cover one and refuse the other at the same arity):
 | Generator | dense | parity | what stops it |
 | --- | --- | --- | --- |
 | Interprogck8 | 7 | 7 | n=8 needs 191 routing rounds and 2031s, refused by the `_PATIENCE` cost policy rather than by the reach |
-| 6-5 | 6 | 10 | 35 branch labels against the table's *distinct* subtrees; dense n=7 needs 47 (parity is unbounded here -- it builds n=14 in 0.2s) |
 | Polynomial | 7 | 10 | caps at 328 instructions, one per prime; dense n=8 needs 541, and one row of it takes 82s to *run* |
 | WII2D | 8 | 10 | dense n=9 decode spans 256 points past the `_WII2D_MAX_INDEX_DOMAIN = 128` cost guard |
 | ZTOALC L | 10 | 10 | n=11 needs 587 command slots (545 parity) against the anchors' 386 under the 4.19M line ceiling |
 
-Both entries moved rather than vanished.  Interprogck8 was capped at 3 by
+6-5 leaves the table too.  Its 35 branch labels are the language's
+(operands are `0-9A-Z`), and the tree constructions spend them per subtree:
+sharing duplicates as a DAG bought parity n=14, but a dense table has
+genuinely *different* subtrees -- 47 distinct at n=7 against 35 -- and was
+refused under every input order.  The walk construction spends one label
+per input instead: the table is preloaded onto the tape a row per stride
+(`1` moves two cells), and each read then either falls into a run of
+`2^(n-1-i)` strides or jumps past it, so after n bits the pointer stands on
+the row the inputs index.  Dense n=10 is 10 labels and 5319 chars, all
+1024 rows executed correctly in 12s.  What remains is n<=35 -- a label per
+input -- with program size doubling per input long before that binds.
+
+Both older entries moved rather than vanished.  Interprogck8 was capped at 3 by
 the 255-line reach of one `DownAccLines` against a 452-line n=4 crossing.
 Long hops now relay through rungs -- jumps onward, parked in the dead line
 just past an unconditional jump -- and a chain is laid whole rather than a
@@ -112,23 +123,15 @@ rows, not the row-by-row verification the n=5 claim above rests on** -- a
 full n=10 table is 1024 rows, about ten hours -- so the reach is where a row
 is affordable, not where a table is checked.
 
-The other 64 generators build both shapes at n=10, and ZTOALC L now joins
+The other 65 generators build both shapes at n=10, and ZTOALC L now joins
 them (its cap sits at n=11, so it stays in the table). Five are slow rather
 than capped, and their cost is the reason `tests/tools/test_boolean_contract.py`
 sweeps to five inputs rather than ten: Minifuck 187s at n=8, Circuit Diagram
 73s and 60MB of program text at n=9, Forþ 70s at n=10, `%^2^-1` 32s at n=9
 parity, ROTfuck 16s and 20MB at n=10 parity. Only the table's rows are
-capability limits, and only four bind inside the sweep (ZTOALC L's cap
+capability limits, and only three bind inside the sweep (ZTOALC L's cap
 sits at n=11); the rest of the gap between five and ten is wall-clock.
 
-- **6-5:** 35 addressable branch labels is the language's (operands are
-  `0-9A-Z`), and it now binds on the table's *distinct* subtrees rather
-  than its nodes.  `8n` jumps to the n-th `4` marker, so markers are
-  positional and two branches may name one; past the budget the tree is
-  emitted as a DAG.  This inverts the hard case: parity was the witness
-  that fixed the cap at five and is now the cheapest wide table (20 markers
-  at n=10 against 1023), while a dense table has genuinely different
-  subtrees and refuses at n=7 with 47.
 - **Interprogck8:** a relay-interference limit, not the 255-line reach.
   Rungs repairing one chain break others, and the spacing is tuned against
   that.  Reusing an existing rung instead of laying a new one looked like

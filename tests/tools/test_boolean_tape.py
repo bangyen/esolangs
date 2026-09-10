@@ -20,6 +20,7 @@ from esolangs.tools.boolean.six_five import (
     _six_five_hoisted,
     _six_five_markers,
     _six_five_stream_ordered,
+    _six_five_walk,
 )
 from esolangs.tools.wrap import shortest
 from tests.tools.boolean_runners import (
@@ -336,23 +337,54 @@ class TestSixFive:
         assert _six_five_dag_cost(parity10) == 20 <= 35
         assert boolean.six_five(parity10)
 
-    def test_a_table_whose_distinct_subtrees_overflow_is_refused(self) -> None:
-        """The budget still binds -- on distinct subtrees rather than nodes.
-
-        Dense n == 7 has 46 of them against 35, and the refusal reports
-        that count rather than the 92 an unshared tree would spend.
-        """
-        digest = hashlib.sha256(b"dense:7").digest()
+    @staticmethod
+    def _dense(n: int) -> str:
+        """A hash-derived table with no structure for the trees to exploit."""
+        digest = hashlib.sha256(f"dense:{n}".encode()).digest()
         bits: list[str] = []
         block = 0
-        while len(bits) < 128:
+        while len(bits) < 2**n:
             digest = hashlib.sha256(digest + bytes([block & 255])).digest()
             bits.extend(str(byte & 1) for byte in digest)
             block += 1
-        dense7 = "".join(bits[:128])
+        return "".join(bits[: 2**n])
+
+    def test_a_table_whose_distinct_subtrees_overflow_takes_the_walk(self) -> None:
+        """A table past the shared budget goes on the tape instead.
+
+        Dense n == 7 has 47 distinct subtrees against 35 labels, so every
+        tree-shaped emission overflows under every order -- this used to be
+        the refusal witness.  The walk spends one label per *input*: the
+        reads steer the pointer to the row the inputs index, so 7 labels
+        carry the whole 128-row table.
+        """
+        dense7 = self._dense(7)
         assert _six_five_dag_cost(dense7) > 35
-        with pytest.raises(ValueError, match="47 for its distinct subtrees"):
-            boolean.six_five(dense7)
+        program = boolean.six_five(dense7)
+        assert program == _six_five_walk(dense7)
+        assert _markers(program) == 7
+        for combo in range(128):
+            bits = [(combo >> (6 - i)) & 1 for i in range(7)]
+            got = run_six_five(program, [str(b) for b in bits])
+            assert got == dense7[combo], f"inputs {bits}"
+
+    def test_dense_ten_inputs_render_and_run(self) -> None:
+        """The generator clears n == 10 on a table with nothing to fold.
+
+        Dense n == 10 renders at 10 labels and 5319 chars (all 1024 rows
+        were run exhaustively once, in 12s; this samples).  The feed check
+        proves the walk reads exactly ``n`` lines -- its ``B``s sit inside
+        the pointer walk, so a desync would misroute as well as misread.
+        """
+        dense10 = self._dense(10)
+        program = boolean.six_five(dense10)
+        assert _markers(program) == 10
+        assert len(program) == 5319
+        for combo in (0, 1, 512, 1023, *range(7, 1024, 128)):
+            bits = [(combo >> (9 - i)) & 1 for i in range(10)]
+            feed = iter([str(b) for b in bits])
+            assert run_six_five_from(program, feed) == dense10[combo], f"row {combo}"
+            assert not list(feed), f"inputs {bits} left input unread"
 
     def test_reordering_only_shrinks(self) -> None:
         """No table comes out longer than its identity-order program."""
