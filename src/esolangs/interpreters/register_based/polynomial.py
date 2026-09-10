@@ -33,6 +33,16 @@ instruction ``[v]`` is the linear factor ``x - p**v``.  The interpreter
 therefore factors the polynomial over the integers with ``sympy`` and reads the
 instruction values straight off the factors, exactly -- no floating point, so
 the wide root spreads that defeated float64 root-finding are irrelevant.
+Roots stay exact integer pairs (:class:`_Root`) end to end for the same
+reason: a real root ``p**v`` passes 2**53 at ``p**8`` for ``p >= 100``, where
+``complex`` would round it and ``convert`` would silently drop the
+instruction.
+
+Past :data:`_NTT_MIN_DEGREE` the candidate search runs through the roots of
+the polynomial modulo two fixed small prime fields, found by evaluating it at
+*every* field point with a number-theoretic transform; see
+:func:`_roots_mod`.  Acceptance is exact integer division on either path, so
+the split changes cost only, never the answer.
 
 Malformed programs raise :class:`ValueError`.
 
@@ -58,11 +68,24 @@ import functools
 import math
 import re
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterator, Sequence
+from typing import NamedTuple
 
 import sympy as sp
 
 from esolangs.interpreters.io import IO
+
+
+class _Root(NamedTuple):
+    """A recovered root, exact: ``real + imag*i`` with integer parts.
+
+    Mirrors ``complex``'s ``real``/``imag`` attributes so :func:`convert`
+    takes either, but never rounds -- a real root ``p**v`` overflows
+    float64's exact-integer range at ``p**8`` for ``p >= 100``.
+    """
+
+    real: int
+    imag: int
 
 
 def prime(number: int) -> bool:
@@ -95,18 +118,23 @@ def brackets(string: list[list[int]], pointer: int) -> int:
     return pointer
 
 
-def convert(pre: list[complex]) -> list[list[int]]:
-    """Convert polynomial roots to instruction codes using prime encoding."""
-    rounded_roots = [complex(round(k.real), round(k.imag)) for k in pre]
+def convert(pre: Sequence[complex | _Root]) -> list[list[int]]:
+    """Convert polynomial roots to instruction codes using prime encoding.
+
+    Roots arrive as :class:`_Root` (exact) or ``complex``/``int`` (rounded);
+    the matching below compares plain integers, so an exact root matches
+    exactly however wide it is.
+    """
+    rounded_roots = [(round(k.real), round(k.imag)) for k in pre]
     # Sort by imaginary part, then by real part
-    sorted_roots = sorted(rounded_roots, key=lambda x: (x.imag, x.real))
+    sorted_roots = sorted(rounded_roots, key=lambda x: (x[1], x[0]))
     post: list[list[int]] = []
     num = 2
 
     # A prime power p**v (v >= 1) is always >= p, so once num exceeds the
     # largest root magnitude no further root can match.
     if rounded_roots:
-        limit = max(max(abs(k.imag), abs(k.real)) for k in rounded_roots)
+        limit = max(max(abs(im), abs(real)) for real, im in rounded_roots)
     else:
         limit = 0
 
@@ -115,15 +143,16 @@ def convert(pre: list[complex]) -> list[list[int]]:
             num += 1
             continue
         for root in sorted_roots[:]:  # Use slice to avoid modification during iteration
-            if im := root.imag:
+            real, im = root
+            if im:
                 for val in range(1, 7):
                     if im == num**val:
                         sorted_roots.remove(root)
-                        post.append([int(root.real), val])
+                        post.append([real, val])
                         break
             else:
                 for val in range(1, 9):
-                    if root.real == num**val:
+                    if real == num**val:
                         sorted_roots.remove(root)
                         post.append([val])
                         break
@@ -241,6 +270,254 @@ _PEEL_MAX_REAL_PART = 1 << 20
 #: 4)`` -- recover none.  Wide enough that distinct small ``a`` stay
 #: distinct mod it.
 _PEEL_MODULUS = 18446744073709551629
+
+#: Degree above which the candidate search runs through NTT root sets
+#: instead of enumerating (real roots) and factoring over
+#: :data:`_PEEL_MODULUS` (quadratics).  The NTT path pays a fixed ~0.45s
+#: to evaluate the polynomial over both fields, so it loses below the
+#: crossover and wins above it superlinearly.  Measured on generated
+#: programs, enumerated against screened: degree 74 is 298ms against
+#: 457ms, degree 118 is 687ms against 479ms -- the crossover -- and then
+#: degree 314 is 5.3s against 0.7s, degree 912 is 78s against 2.6s, and
+#: degree 2770 (dense n=10) extrapolates to ~15 minutes against 44s.
+_NTT_MIN_DEGREE = 100
+
+#: The two prime fields the large-degree path finds roots in, as ``(m, c,
+#: k, g)`` with ``m = c * 2**k + 1`` prime and ``g`` a primitive root.
+#: Both are ``1 (mod 4)`` so ``sqrt(-1)`` exists (the same constraint
+#: :data:`_PEEL_MODULUS` carries, for the same pairing).  The first field
+#: is where quadratic candidates are *paired* -- its size bounds the
+#: recoverable real part at ``m // 2`` and sets the spurious-pair rate --
+#: and the second only cross-checks, killing all but ~0.2% of the spurious
+#: pairs before the trial division.  ``test_ntt_field_constants``
+#: re-derives all four numbers of each.
+_NTT_FIELDS = ((163841, 5, 15, 3), (65537, 1, 16, 3))
+
+#: Modulus of the single-word trial division that screens a quadratic
+#: candidate before the exact one (2**61 - 1, prime).  An exact divisor
+#: divides mod anything, so the screen never rejects a true factor; a
+#: spurious candidate dies here in one cheap pass instead of an exact
+#: division over multi-thousand-digit coefficients.
+_TRIAL_MODULUS = (1 << 61) - 1
+
+#: Nonzero bytes in a packed root mask; see :func:`_iter_bits`.
+_NONZERO_BYTE = re.compile(rb"[^\x00]")
+
+
+def _ntt_radix2(vec: list[int], modulus: int, root: int) -> list[int]:
+    """Transform ``vec`` in place: ``out[t] = sum_j vec[j] * root**(j*t)``.
+
+    Iterative radix-2 NTT; ``len(vec)`` must be a power of two and
+    ``root`` a unity root of exactly that order mod ``modulus``.
+    """
+    size = len(vec)
+    j = 0
+    for i in range(1, size):
+        bit = size >> 1
+        while j & bit:
+            j ^= bit
+            bit >>= 1
+        j |= bit
+        if i < j:
+            vec[i], vec[j] = vec[j], vec[i]
+    span = 2
+    while span <= size:
+        step = pow(root, size // span, modulus)
+        half = span >> 1
+        powers = [1] * half
+        for i in range(1, half):
+            powers[i] = powers[i - 1] * step % modulus
+        for start in range(0, size, span):
+            for i in range(half):
+                low = vec[start + i]
+                high = vec[start + i + half] * powers[i] % modulus
+                vec[start + i] = (low + high) % modulus
+                vec[start + i + half] = (low - high) % modulus
+        span <<= 1
+    return vec
+
+
+def _roots_mod(coefficients: list[int], field: tuple[int, int, int, int]) -> set[int]:
+    """Return every root of the polynomial in the prime field, exactly.
+
+    Evaluates the polynomial at *all* field points rather than solving for
+    roots: the multiplicative group has order ``c * 2**k``, so ``f(g**t)``
+    over all ``t`` is a size-``c * 2**k`` DFT of the coefficient sequence
+    (exponents folded mod the group order, which also admits any degree),
+    computed as ``c`` radix-2 NTTs plus a combining pass.  Exhaustive
+    evaluation sees repeated roots and irreducible factors the same as
+    simple ones, so no squarefree or splitting machinery exists to be
+    wrong.
+    """
+    modulus, cofactor, log_size, generator = field
+    group = modulus - 1
+    size = 1 << log_size
+    degree = len(coefficients) - 1
+    folded = [0] * group
+    for i, coefficient in enumerate(coefficients):
+        j = (degree - i) % group
+        folded[j] = (folded[j] + coefficient) % modulus
+    sub_root = pow(generator, cofactor, modulus)
+    parts = []
+    for r in range(cofactor):
+        part = folded[r::cofactor]
+        part += [0] * (size - len(part))
+        parts.append(_ntt_radix2(part, modulus, sub_root))
+    if cofactor == 1:
+        values = parts[0]
+    else:
+        values = [0] * group
+        mask = size - 1
+        for r, part in enumerate(parts):
+            if r == 0:
+                for t in range(group):
+                    values[t] = part[t & mask]
+            else:
+                twiddle = pow(generator, r, modulus)
+                w = 1
+                for t in range(group):
+                    values[t] = (values[t] + w * part[t & mask]) % modulus
+                    w = w * twiddle % modulus
+    roots = {pow(generator, t, modulus) for t, v in enumerate(values) if v == 0}
+    if coefficients[-1] % modulus == 0:
+        roots.add(0)
+    return roots
+
+
+def _iter_bits(mask: int, size: int) -> Iterator[int]:
+    """Yield the set bit positions of ``mask``, a ``size``-bit integer.
+
+    ``mask & -mask`` extraction copies the whole integer per bit, so a
+    20KB mask with 40 hits would move megabytes; scanning the bytes with a
+    compiled pattern finds the nonzero ones at C speed instead.
+    """
+    raw = mask.to_bytes((size + 7) >> 3, "little")
+    for match in _NONZERO_BYTE.finditer(raw):
+        index = match.start()
+        byte = raw[index]
+        base = index << 3
+        while byte:
+            low = byte & -byte
+            yield base + low.bit_length() - 1
+            byte ^= low
+
+
+def _quadratic_candidates_ntt(
+    prime_count: int, root_sets: tuple[set[int], set[int]]
+) -> set[tuple[int, int]]:
+    """Propose ``(a, p**(2*b))`` pairs from the two fields' root sets.
+
+    A factor ``(x - a)**2 + p**(2*b)`` puts ``a ± i*p**b`` in every field's
+    root set, so for each ``(p, b)`` the roots pairing at distance
+    ``2*i*p**b`` in the first field propose an ``a``, read off by rotating
+    the root set's bitmask against itself; the lift ``|a| <= m0 // 2`` is
+    this path's real-part window, and the second field then checks the
+    same pair independently.  Spurious pairs survive at the product of the
+    two fields' densities (~0.2% on the dense n=10 table's 1.5M
+    extractions) and die in the trial division; a real part past the lift
+    window stays for ``factor_list``, exactly like the enumerated path
+    past :data:`_PEEL_MAX_REAL_PART`.
+    """
+    (m0, _, _, g0), (m1, _, _, g1) = _NTT_FIELDS
+    roots0, roots1 = root_sets
+    i0 = pow(g0, (m0 - 1) // 4, m0)
+    i1 = pow(g1, (m1 - 1) // 4, m1)
+    mask0 = 0
+    for r in roots0:
+        mask0 |= 1 << r
+    full = (1 << m0) - 1
+    half = m0 // 2
+    candidates: set[tuple[int, int]] = set()
+    for index, base in enumerate(  # pragma: no branch - ends on the break
+        sp.primerange(2, prime_count * prime_count + 3)
+    ):
+        if index >= prime_count:
+            break
+        power0 = base % m0
+        power1 = base % m1
+        square = base * base
+        for _exponent in range(_PEEL_MAX_IMAGINARY_EXPONENT):
+            delta = 2 * i0 * power0 % m0
+            if delta:
+                rotated = ((mask0 << delta) | (mask0 >> (m0 - delta))) & full
+                hits = mask0 & rotated
+                if hits:
+                    offset0 = i0 * power0 % m0
+                    offset1 = i1 * power1 % m1
+                    for r in _iter_bits(hits, m0):
+                        lifted = (r - offset0) % m0
+                        real = lifted if lifted <= half else lifted - m0
+                        if (real + offset1) % m1 in roots1 and (
+                            real - offset1
+                        ) % m1 in roots1:
+                            candidates.add((real, square))
+            power0 = power0 * base % m0
+            power1 = power1 * base % m1
+            square *= base * base
+    return candidates
+
+
+def _divide_quadratic_mod(
+    coefficients: list[int], real: int, square: int
+) -> list[int] | None:
+    """:func:`_divide_quadratic` over GF(:data:`_TRIAL_MODULUS`).
+
+    The screen half of the candidate check: same long division, single-word
+    arithmetic.  ``None`` means the quadratic cannot divide the integer
+    polynomial either; a quotient only means the exact division is worth
+    running.
+    """
+    modulus = _TRIAL_MODULUS
+    b1 = -2 * real % modulus
+    b0 = (real * real + square) % modulus
+    size = len(coefficients)
+    if size < 3:
+        return None
+    quotient: list[int] = []
+    for index in range(size - 2):
+        value = coefficients[index]
+        if index >= 1:
+            value -= b1 * quotient[index - 1]
+        if index >= 2:
+            value -= b0 * quotient[index - 2]
+        quotient.append(value % modulus)
+    linear = (coefficients[size - 2] - b1 * quotient[size - 3]) % modulus
+    if size >= 4:
+        linear = (linear - b0 * quotient[size - 4]) % modulus
+    if linear:
+        return None
+    constant = (coefficients[size - 1] - b0 * quotient[size - 3]) % modulus
+    if constant:
+        return None
+    return quotient
+
+
+def _divide_out_quadratics(
+    coefficients: list[int], candidates: set[tuple[int, int]]
+) -> tuple[list[tuple[int, int]], list[int]]:
+    """Divide the candidate quadratics out of the polynomial, exactly.
+
+    The acceptance shared by both candidate sources: a pair joins the
+    result only because ``(x - a)**2 + q`` divides the remainder exactly,
+    re-tried until it stops dividing so multiplicities come out.  The
+    single-word division screens each attempt first; both remainders
+    advance together on success, so the screen stays aligned.
+    """
+    found: list[tuple[int, int]] = []
+    remainder = coefficients
+    remainder_mod = [k % _TRIAL_MODULUS for k in coefficients]
+    for real, square in sorted(candidates):
+        while len(remainder) >= 3:
+            quotient_mod = _divide_quadratic_mod(remainder_mod, real, square)
+            if quotient_mod is None:
+                break
+            quotient = _divide_quadratic(remainder, real, square)
+            if quotient is None:
+                break
+            found.append((real, square))
+            remainder = quotient
+            remainder_mod = quotient_mod
+    return found, remainder
 
 
 def _divide_quadratic(
@@ -370,20 +647,12 @@ def _peel_instruction_quadratics(
                     continue
                 candidates.add((real, square))
 
-    found: list[tuple[int, int]] = []
-    remainder = coefficients
-    for real, square in sorted(candidates):
-        while len(remainder) >= 3:
-            quotient = _divide_quadratic(remainder, real, square)
-            if quotient is None:
-                break
-            found.append((real, square))
-            remainder = quotient
-    return found, remainder
+    return _divide_out_quadratics(coefficients, candidates)
 
 
 def _peel_prime_power_roots(
     coefficients: list[int],
+    screen: Callable[[int], bool] | None = None,
 ) -> tuple[list[int], list[int]]:
     """Divide out the real roots that are prime powers, exactly.
 
@@ -406,6 +675,14 @@ def _peel_prime_power_roots(
     linear: on the dense n=6 table (degree 314, a 1677-digit constant term)
     it removes 60 roots in 0.66s, and the 82.65s factorization of the whole
     becomes 35.27s on the degree-254 remainder.
+
+    The exact Horner pass at a wide candidate is itself the expensive step
+    once the degree grows -- its accumulator reaches ``candidate**degree``
+    -- so the large-degree caller passes a ``screen`` that answers "is this
+    candidate a root of the *original* polynomial mod the NTT fields"
+    (every root of a deflated quotient is one), and only survivors pay the
+    Horner: 14.6K probes collapse to the ~170 real roots on the dense n=8
+    table, 48.7s to under a second.
     """
     found: list[int] = []
     limit = max(1, (len(coefficients) - 1) * _PEEL_PRIME_SLACK)
@@ -417,6 +694,9 @@ def _peel_prime_power_roots(
             break
         candidate = base
         for _exponent in range(_PEEL_MAX_EXPONENT):
+            if screen is not None and not screen(candidate):
+                candidate *= base
+                continue
             while len(coefficients) > 1:
                 # Horner: the polynomial's value at ``candidate``.
                 value = 0
@@ -435,7 +715,7 @@ def _peel_prime_power_roots(
 
 
 @functools.lru_cache(maxsize=256)
-def _factor_roots(coefficients: tuple[int, ...]) -> tuple[complex, ...]:
+def _factor_roots(coefficients: tuple[int, ...]) -> tuple[_Root, ...]:
     """Recover the instruction roots by factoring the monic integer polynomial.
 
     A valid program is a product of linear factors ``x - p**v`` (real
@@ -452,16 +732,42 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[complex, ...]:
     remainder -- so see those functions for why they cannot change the
     answer.  On a generated program they usually account for everything and
     ``factor_list`` is never called at all.
-    """
-    peeled, remainder = _peel_prime_power_roots(list(coefficients))
-    roots: list[complex] = [complex(root, 0) for root in peeled]
-    if len(remainder) <= 1:
-        return tuple(roots)
 
-    quadratics, remainder = _peel_instruction_quadratics(remainder)
+    Past :data:`_NTT_MIN_DEGREE` the same two peels run with candidates
+    screened through the fields' root sets instead -- same acceptance,
+    same remainders, so only the search cost moves; see
+    :data:`_NTT_MIN_DEGREE` for the crossover measurements.
+    """
+    if len(coefficients) - 1 > _NTT_MIN_DEGREE:
+        root_sets = tuple(_roots_mod(list(coefficients), f) for f in _NTT_FIELDS)
+
+        def in_every_field(candidate: int) -> bool:
+            return all(
+                candidate % field[0] in roots
+                for field, roots in zip(_NTT_FIELDS, root_sets, strict=True)
+            )
+
+        peeled, remainder = _peel_prime_power_roots(list(coefficients), in_every_field)
+        roots = [_Root(root, 0) for root in peeled]
+        if len(remainder) > 1:
+            prime_count = max(1, (len(coefficients) - 1) * _PEEL_PRIME_SLACK)
+            candidates = _quadratic_candidates_ntt(
+                prime_count, (root_sets[0], root_sets[1])
+            )
+            quadratics, remainder = _divide_out_quadratics(remainder, candidates)
+        else:
+            quadratics = []
+    else:
+        peeled, remainder = _peel_prime_power_roots(list(coefficients))
+        roots = [_Root(root, 0) for root in peeled]
+        if len(remainder) > 1:
+            quadratics, remainder = _peel_instruction_quadratics(remainder)
+        else:
+            quadratics = []
+
     for real, square in quadratics:
         imaginary = math.isqrt(square)
-        roots.extend([complex(real, imaginary), complex(real, -imaginary)])
+        roots.extend([_Root(real, imaginary), _Root(real, -imaginary)])
     if len(remainder) <= 1:
         return tuple(roots)
 
@@ -473,7 +779,7 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[complex, ...]:
         degree = factor.degree()
         if degree == 1:
             a, b = (int(k) for k in factor.all_coeffs())
-            roots.extend([complex(-b // a, 0)] * multiplicity)
+            roots.extend([_Root(-b // a, 0)] * multiplicity)
         elif degree == 2:
             a, b, c = (int(k) for k in factor.all_coeffs())
             if a != 1 or b % 2:
@@ -485,14 +791,32 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[complex, ...]:
             imag = math.isqrt(q)
             if imag * imag != q:
                 continue
-            roots.extend([complex(real, imag), complex(real, -imag)] * multiplicity)
+            roots.extend([_Root(real, imag), _Root(real, -imag)] * multiplicity)
         # higher-degree factors encode no instruction; skip
     return tuple(roots)
 
 
-def _find_roots(coefficients: list[int]) -> list[complex]:
+def _find_roots(coefficients: list[int]) -> list[_Root]:
     """Find the roots of an exact-integer polynomial."""
     return list(_factor_roots(tuple(coefficients)))
+
+
+@functools.lru_cache(maxsize=4)
+def _parse_program(code: str) -> tuple[tuple[int, ...], ...]:
+    """Recover the instruction list from a program's source, once.
+
+    Every row of a truth-table check runs the same program, and before
+    this cache each run re-cleaned, re-parsed, and re-decoded a source
+    that reaches tens of megabytes at high arities -- 0.9s per row on the
+    dense n=8 table even with the factoring itself cached.  Keyed on the
+    source string; a machine copies the tuples into fresh lists.
+    """
+    cleaned_code = re.sub(r"[^\df(x)=+-^]", "", code)
+    if cleaned_code[:5] != "f(x)=":
+        raise ValueError("Polynomial program must start with 'f(x) = '")
+    coefficients = sanitize(cleaned_code)
+    roots = [k for k in _find_roots(coefficients) if k.imag >= 0]
+    return tuple(tuple(instr) for instr in convert(roots))
 
 
 #: The arithmetic instructions, in the order their codes select them.
@@ -587,20 +911,7 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Recover ``code``'s instructions and start with a zero register."""
         self.io = io
-        # Clean the input code
-        cleaned_code = re.sub(r"[^\df(x)=+-^]", "", code)
-        if cleaned_code[:5] != "f(x)=":
-            raise ValueError("Polynomial program must start with 'f(x) = '")
-
-        # Parse polynomial and get coefficients
-        coefficients = sanitize(cleaned_code)
-
-        # Find roots and filter for non-negative imaginary parts
-        roots = [k for k in _find_roots(coefficients) if k.imag >= 0]
-
-        # Convert roots to instruction codes
-        self.instructions = convert(roots)
-
+        self.instructions = [list(instr) for instr in _parse_program(code)]
         self.ind = 0
         self.reg = 0
 

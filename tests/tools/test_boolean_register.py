@@ -185,21 +185,57 @@ class TestPolynomial:
 
         Each instruction takes a fresh prime and becomes a polynomial
         factor, so what the interpreter cannot afford per row is
-        instructions.  A scattered n == 8 table needs ~540 under the cheaper
-        of the two constructions and is refused; the message names the count
+        instructions.  A scattered n == 11 table needs 2874 under its
+        cheapest construction and is refused; the message names the count
         rather than ``n``.
 
-        The witness has to be re-picked whenever the cap moves: a scattered
-        n == 6 table needs ~200, which was refused under the old 138 and
-        renders comfortably under the 328 the peels bought, so the same test
-        body silently stopped exercising the gate.
+        The witness has to be re-picked whenever the cap moves: the
+        scattered n == 6 witness of the 138 era rendered under the 328 the
+        peels bought, and the n == 8 witness of the 328 era renders under
+        the 1934 the NTT screens bought, so a stale body silently stops
+        exercising the gate.
         """
         import random
 
         random.seed(0)
-        scattered = "".join(random.choice("01") for _ in range(256))
+        scattered = "".join(random.choice("01") for _ in range(2**11))
         with pytest.raises(ValueError, match="one instruction per prime"):
             boolean.polynomial(scattered)
+
+    def test_polynomial_cap_admits_every_n10_table(self) -> None:
+        """The cap is the analytic worst case over n == 10 tables.
+
+        Level ``k`` of the machine holds at most ``min(2**k, 2**2**(10-k))``
+        states -- reachability bounds it by doubling, the subtable width by
+        counting -- at 5 instructions plus at most 2 transitions each, and
+        the leaf level 5 each less the final endif.  So the cap admits all
+        of n == 10 by construction, and the dense fixture sits under it
+        with room that is measured, not assumed.
+        """
+        from esolangs.tools.boolean.register import _POLYNOMIAL_MAX_INSTRS
+
+        states = [min(2**k, 2 ** (2 ** (10 - k))) for k in range(11)]
+        assert 7 * sum(states[:10]) + 5 * states[10] - 1 == _POLYNOMIAL_MAX_INSTRS
+
+    @pytest.mark.slow  # 4.5s: one NTT factorization, then 256 cached rows
+    def test_a_dense_eight_input_table_runs_every_row(self) -> None:
+        """The arity the old cap refused now builds, and every row answers.
+
+        Dense n == 8 is 541 instructions -- past the old 328, and past
+        ``_NTT_MIN_DEGREE`` once rendered, so this is the suite's
+        execution-gate witness for the NTT recovery path *and* for the
+        per-program parse cache: the first row pays the factorization
+        (~3.4s) and the other 255 amortize to under a millisecond each,
+        which is what made the cap raisable at all.
+        """
+        from tests.tools.test_boolean_contract import _dense
+
+        table = _dense(8)
+        program = boolean.polynomial(table)
+        for row in range(256):
+            bits = [(row >> (7 - i)) & 1 for i in range(8)]
+            got = run_polynomial(program, [str(b) for b in bits])
+            assert got == table[row], f"row {row}"
 
     @pytest.mark.slow  # 2.3s
     def test_state_machine_renders_past_the_old_input_gate(self) -> None:

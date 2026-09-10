@@ -60,7 +60,7 @@ generators cover one and refuse the other at the same arity):
 | Generator | dense | parity | what stops it |
 | --- | --- | --- | --- |
 | Interprogck8 | 7 | 7 | n=8 needs 191 routing rounds and 2031s, refused by the `_PATIENCE` cost policy rather than by the reach |
-| Polynomial | 7 | 10 | caps at 328 instructions, one per prime; dense n=8 needs 541, and one row of it takes 82s to *run* |
+| Polynomial | 10 | 10 | caps at 1934 instructions, one per prime -- the analytic worst case over n=10 tables, so all of n=10 builds; dense n=11 needs 2910 |
 | WII2D | 8 | 10 | dense n=9 decode spans 256 points past the `_WII2D_MAX_INDEX_DOMAIN = 128` cost guard |
 | ZTOALC L | 10 | 10 | n=11 needs 587 command slots (545 parity) against the anchors' 386 under the 4.19M line ceiling |
 
@@ -143,15 +143,21 @@ sits at n=11); the rest of the gap between five and ten is wall-clock.
 - **NoComment:** a host/runtime configuration limit.  Factor used to sit
   here and no longer does: its limit was CPython's digit guard, which is
   raised and restored around the conversion rather than reported.
-- **Polynomial:** a cost guard on the *interpreter*, not the generator, and
-  now at 328 instructions rather than 138.  The interpreter peels both
-  instruction shapes out of the polynomial before factoring -- real roots by
-  Horner evaluation, complex ones by solving for the real part modulo a prime
-  -- which took dense n=6 from 99.3s a row to 5.3s, so the bound moved with
-  it: dense n=7 (328 instructions) renders and runs a row in 21.1s, while
-  n=8 (541) runs correctly at 82.4s and is refused on cost, since a verified
-  256-row table there is near six hours.  Still an instruction count and not
-  an arity -- parity renders through n=10 well inside the bound.
+- **Polynomial:** a cost guard on the *interpreter*, not the generator,
+  and now at 1934 instructions -- the analytic worst case over n=10
+  tables, so every n=10 table builds.  Two interpreter changes moved it
+  from 328: recovery is cached per program, so the rows of a table share
+  one factorization instead of paying it each (the old six-hour estimate
+  for dense n=8 was per-row arithmetic against an already-amortized
+  cost), and past degree 100 the peels take their candidates from the
+  polynomial's roots over two fixed NTT fields -- found by evaluating it
+  at every field point -- rather than enumerating prime powers and
+  factoring over a 64-bit field.  Acceptance stays exact division, so
+  only the search cost moved.  Measured, every row against its table:
+  dense n=8 (541 instructions) 3.5s for all 256 rows where the old path
+  took 115s for the first alone, dense n=10 (1638) 44s for all 1024.
+  Dense n=11 (2910) is refused.  Still an instruction count and not an
+  arity -- a table that collapses renders far past n=10.
 - **WII2D:** a chosen cost guard, now at 128 rather than 64: dense n=8
   builds in 0.8s (18466 characters) and all 256 rows compute their table.
   Dense n=9 needs 256, four times the width, and is untested.
