@@ -122,13 +122,16 @@ is affordable, not where a table is checked.
 
 The other 65 generators build both shapes at n=10, and ZTOALC L and
 Interprogck8 now join them (both caps sit at n=11, so they stay in the
-table). Four are slow rather
+table). Three are slow rather
 than capped, and their cost is the reason `tests/tools/test_boolean_contract.py`
 sweeps to five inputs rather than ten: Minifuck 187s at n=8, Circuit Diagram
-73s and 60MB of program text at n=9, Forþ 70s at n=10, `%^2^-1` 32s at n=9
-parity. ROTfuck was the fifth (16s at n=10) until its emitter stopped
-stepping moves and the final rotation one character at a time; the same
-20MB program now builds in 0.06s, byte-identical. Only the table's rows are
+73s and 60MB of program text at n=9, `%^2^-1` 32s at n=9 parity.  Two have
+left: ROTfuck (16s at n=10) once its emitter stopped stepping moves and the
+final rotation one character at a time, the same 20MB program now building
+in 0.06s; and Forþ (61-68s at n=10) once its size contest stopped building
+all 13,122 candidate programs and scored each order's length in closed form,
+the winner now building in 0.20s dense / 0.08s parity.  Both byte-identical.
+Only the table's rows are
 capability limits, and only WII2D's dense row binds inside the sweep (the
 other three caps sit at n=11); the rest of the gap between five and ten is
 wall-clock.
