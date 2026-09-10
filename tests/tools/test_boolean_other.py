@@ -1827,8 +1827,7 @@ class TestLaserFuck:
         A return row's beam travels left, so it may only carry ops that
         read the same in reverse -- which a run of one repeated character
         does.  The boolean generator's readers are rings now, but the fold
-        still lays every leaf band and the whole text generator, so the
-        fill is exercised directly here.
+        still lays every leaf band, so the fill is exercised directly here.
         """
         grid = [[" "] * 20 for _ in range(2)]
         end_row, end_col = laserfuck_layout.fold(grid, "-" * 30, 0, 3, 20)
