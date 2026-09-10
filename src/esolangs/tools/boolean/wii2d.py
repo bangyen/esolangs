@@ -99,14 +99,18 @@ _WII2D_MAX_CENTRE = 4096
 # roughly doubling its bit length every step (a sampled domain-512 run
 # climbed 14 -> 670597 bits with every candidate enumerated), so a state
 # past this bound never comes back.  2**20 sits 78x above the largest
-# success.  Measured over 50 domain-256 patterns with the bound lifted,
-# every ratchet also dead-ends on its own within seconds (the centre cap
-# starves it of folds), so today this fires just ahead of a natural stop
-# (1.7s against 2.2s on the worst sampled pattern); it stays because
-# promptness should be a guarantee, not a property of the sample.  The
-# check is on the state, not the candidates, so it cannot change which
-# candidate a succeeding table takes; and it is deterministic where a
-# wall-clock budget would make the program depend on the machine.
+# success.
+#
+# **This bound is load-bearing.**  It does not merely anticipate a stop the
+# centre cap would reach anyway: with it lifted, ratcheting domain-256
+# patterns do not stop at all.  Three sampled tables that abort here in
+# 0.45-1.59s ran 136s, 183s and 214s unbounded, reaching bit lengths of
+# 299526, 1173459 and 644663 and still climbing.  Without this check the
+# 256 guard would ship hangs, so it is what makes a refusal prompt rather
+# than a property of the sample.  The check is on the state, not the
+# candidates, so it cannot change which candidate a succeeding table takes;
+# and it is deterministic where a wall-clock budget would make the program
+# depend on the machine.
 _WII2D_MAX_MAGNITUDE = 1 << 20
 
 # How many candidate folds are compressed before the true ranking is applied.
