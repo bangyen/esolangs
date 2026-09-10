@@ -1,11 +1,10 @@
-"""Check that the generators keep to their two documented signatures.
+"""Check that the generators keep to their documented signature.
 
-The text and boolean generators are already uniform -- of the names the
-two packages export, 46 text generators take ``(text)`` and 67 boolean
-ones take ``(truth_table)`` or are allowlisted below.  This
-check exists to keep them that way, because a convention nothing enforces
-is not a convention: this repo has been bitten before by a documented
-class that turned out not to hold.
+The boolean generators are already uniform -- of the names the package
+exports, 67 take ``(truth_table)`` or are allowlisted below.  This check
+exists to keep them that way, because a convention nothing enforces is not
+a convention: this repo has been bitten before by a documented class that
+turned out not to hold.
 
 Two shapes are legal on the boolean side, and the second is deliberate
 rather than drift:
@@ -41,12 +40,6 @@ _ALLOWED = {
     "jaune_multiply",
 }
 
-# The one extra parameter a text generator may take.  `width` is the
-# de-facto rule already (8 modules use it and nothing else does); naming it
-# stops the next generator inventing a second knob.
-_TEXT_EXTRA = {"width"}
-
-
 def _public(module: object) -> list[tuple[str, Callable[..., Any]]]:
     """Return the generator functions a package re-exports."""
     return [
@@ -56,24 +49,6 @@ def _public(module: object) -> list[tuple[str, Callable[..., Any]]]:
         and callable(getattr(module, name, None))
         and name not in {"instantiate", "main"}
     ]
-
-
-def _check_text(fn: Callable[..., Any]) -> list[str]:
-    """Return the ways a text generator departs from ``(text[, width])``."""
-    params = list(inspect.signature(fn).parameters.values())
-    if not params:
-        return ["takes no arguments; expected (text)"]
-    issues: list[str] = []
-    if params[0].name != "text":
-        issues.append(f"first parameter is {params[0].name!r}, expected 'text'")
-    for extra in params[1:]:
-        if extra.name not in _TEXT_EXTRA:
-            issues.append(
-                f"takes {extra.name!r}; only {sorted(_TEXT_EXTRA)} is allowed"
-            )
-        elif extra.default is inspect.Parameter.empty:
-            issues.append(f"{extra.name!r} has no default")
-    return issues
 
 
 def _check_boolean(name: str, fn: Callable[..., Any]) -> list[str]:
@@ -95,17 +70,10 @@ def _check_boolean(name: str, fn: Callable[..., Any]) -> list[str]:
 
 
 def main() -> int:
-    """Check both generator families; return a nonzero exit on violations."""
+    """Check the generators; return a nonzero exit on violations."""
     from esolangs.tools import boolean as boolean_pkg
-    from esolangs.tools import text as text_pkg
 
     failures = 0
-    for name, fn in _public(text_pkg):
-        issues = _check_text(fn)
-        if issues:
-            failures += 1
-            print(f"text.{name}: " + "; ".join(issues))
-
     for name, fn in _public(boolean_pkg):
         issues = _check_boolean(name, fn)
         if issues:

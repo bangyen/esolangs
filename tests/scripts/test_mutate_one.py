@@ -56,7 +56,7 @@ class TestRewriteImports:
         for line, module in (
             ("from esolangs.tools.boolean import streetcode as gen", "streetcode"),
             (
-                "from esolangs.tools.text.register import polynomial as gen",
+                "from esolangs.tools.boolean.register import polynomial as gen",
                 "register.polynomial",
             ),
             (

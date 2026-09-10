@@ -64,12 +64,12 @@ def canonical_id(name: str) -> str:
     return s
 
 
-# A text generator: ``generator(text)`` returns a program printing it.
-# Most take only the text; the few that lay their program out in two
-# dimensions (Clockwise, which walks a rectangle's perimeter) also accept a
+# A generator: ``generator(truth_table)`` returns a program computing it.
+# Most take only the table; the few that lay their program out in two
+# dimensions (LaserFuck, which folds its beam's track) also accept a
 # ``width`` bounding the columns, since a shape cannot be reflowed after the
 # fact the way a single long line can.  ``...`` keeps both arities callable
-# with the text alone, which is how every width-less caller invokes them.
+# with the table alone, which is how every width-less caller invokes them.
 Generator = Callable[..., str]
 
 # Whether the *language* defines I/O, which is a fact about its
@@ -104,7 +104,7 @@ type Io = Literal["defined", "interpreter_only"]
 # category tuple once exempted twelve interpreters here and hid three real
 # violations.
 #
-# - ``"bytes"``   -- any byte, so a text generator must exist.
+# - ``"bytes"``   -- any byte.
 # - ``"numbers"`` -- digits or bits: a numeric or binary alphabet.
 # - ``"shaped"``  -- a rich alphabet that still cannot spell an arbitrary
 #                    text, because the emission has a fixed shape: a forced
@@ -114,12 +114,19 @@ type Io = Literal["defined", "interpreter_only"]
 # Every language emits something, so there is no "nothing" alphabet: the two
 # that used to claim one now dump like the rest.
 #
-# A text generator is required exactly when ``alphabet`` is ``"bytes"``;
-# ``io`` records why, and is what makes "the language defines no I/O" a fact
-# the registry states rather than one a reader infers from an interpreter.
-# The two are independent: an interpreter-only dump can carry any alphabet,
-# and a language with a defined output command can still be numeric.
-# ``docs/limitations.md`` carries the per-language prose.
+# ``alphabet`` is currently declarative only.  What read it was the rule
+# that a ``"bytes"`` language must have a text generator, and the text
+# generators are gone; it is kept because what a language's channel can
+# spell is a fact about the language rather than about this repo, and
+# ``docs/limitations.md`` still reasons about it in prose.  Nothing enforces
+# it, so a wrong value now fails nothing.
+#
+# ``io`` records why a language has the channel it has, and is what makes
+# "the language defines no I/O" a fact the registry states rather than one a
+# reader infers from an interpreter.  The two are independent: an
+# interpreter-only dump can carry any alphabet, and a language with a
+# defined output command can still be numeric.  ``docs/limitations.md``
+# carries the per-language prose.
 type Alphabet = Literal["bytes", "numbers", "shaped"]
 
 
