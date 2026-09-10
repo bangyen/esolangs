@@ -14,7 +14,7 @@ import math
 import re
 
 from esolangs.tools import laserfuck_layout
-from esolangs.tools.text.helpers import _require_bytes
+from esolangs.tools.text.helpers import _require_bytes, factor_triple
 
 __all__ = ["laserfuck"]
 
@@ -118,18 +118,17 @@ def _laserfuck_base_factor(base: int) -> tuple[int, int, int] | None:
     measuring them, because the ring's row competes with the preload's for
     the widest line and no formula here can see that.
 
-    ``None`` means ``base`` is too small to factor at all.
+    The split itself is :func:`factor_triple` under the default ``a + b + r``
+    cost -- the same search Brainfuck, Home Row, Suffolk and BIO run.  What
+    stays here is the *gate*: a ring only earns its frame if it beats spelling
+    ``base`` out literally, so a triple costing ``base`` or more is declined.
+
+    ``None`` means no split is shorter than the literal run.
     """
-    best: tuple[int, int, int] | None = None
-    cost = base
-    for outer in range(2, base):
-        inner, rest = divmod(base, outer)
-        if inner < 1:
-            break  # pragma: no cover - outer < base keeps inner at least 1
-        candidate = outer + inner + rest
-        if candidate < cost:
-            cost, best = candidate, (outer, inner, rest)
-    return best
+    outer, inner, rest = factor_triple(base)
+    if outer + inner + rest >= base:
+        return None
+    return outer, inner, rest
 
 
 def _laserfuck_base_ring(
