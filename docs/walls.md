@@ -21,7 +21,14 @@ claim is accepted.
   generic tables are closed by counting: 16-bit cofactors over 2048 prefix
   points are nearly all distinct, so compaction stops biting.
 - **WII2D:** routing plus accumulator decoding is the shipped construction;
-  its remaining guards are source-cost policies, not language walls.
+  its guards are source-cost policies, but the dense ten-input table is a
+  measured wall of the machine, not a guard: a 512-point decode ratchets
+  with every candidate enumerated, the interpreter offers no conditional
+  or second register to construct around (`@`/`|` are static, `?` random),
+  no op removes high accumulator bits (which closes every shifted-table
+  readout), and moving the collapse into the chain faces refined 4/16-class
+  labels that stall immediately against a structured-label control that
+  collapses at once.  `docs/wii2d_generator.md` has the audit.
 - **Termination convention:** use only where a specification supplies a
   reliable halt/loop verdict and the runtime can decide it soundly.
 - **Empty input line:** `io.input_char` now returns `0`, matching every
