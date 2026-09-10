@@ -139,12 +139,24 @@ def test_the_scan_finds_the_guards_that_are_really_there() -> None:
     """The detector fires on live code, not only on constructed input.
 
     A lint that matches nothing passes for the same reason a clean repo
-    does.  These four are the guards actually in the tree -- two of them
-    converting the byte they read -- so a change that stops the walker
-    seeing a real spelling fails here rather than going quiet.
+    does.  These six are the guards actually in the tree -- two of them
+    converting the byte they read, and Alight's falling back to a float --
+    so a change that stops the walker seeing a real spelling fails here
+    rather than going quiet.
+
+    Named in full rather than as a sample: the set was assumed to be four
+    while it was six, and an audit of where the blank-line 0 comes from
+    took its population from this assertion.
     """
     found = {name for name, src in _interpreter_sources() if _blank_line_guards(src)}
-    assert {"Jaune", "LaserFuck", "Streetcode", "Suffolk"} <= found, found
+    assert {
+        "Alight",
+        "DINAC",
+        "Jaune",
+        "LaserFuck",
+        "Streetcode",
+        "Suffolk",
+    } <= found, found
 
 
 @pytest.mark.parametrize(

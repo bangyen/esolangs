@@ -386,8 +386,10 @@ class _Machine:
         shell.  ``^`` prints the cell the transition carries forward
         unchanged, and the three reading forms take a line here and convert
         it from its digit before handing the value over -- an empty line
-        reads as zero, which is the language's own rule rather than a
-        default the transition invents.
+        reads as zero.  That zero is *chosen*, not the language's: the wiki
+        defines ``v`` only as "Reads user input to the number" and says
+        nothing about an empty one, so this is the package convention
+        (:meth:`io.IO.input_char`) reached at the call site.
         """
         if self.halted:
             return
