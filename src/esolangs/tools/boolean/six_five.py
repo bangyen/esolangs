@@ -265,7 +265,9 @@ def _six_five_shared(
     def leaf_code(value: str, held: int) -> str:
         delta = _ASCII_ZERO + int(value) - held
         q, r = divmod(delta, 6)
-        return "6" * q + "62" * r + "A0"
+        # one +5 beats five "62" pairs, as _six_five_const already does
+        tail = "5" if r == 5 else "62" * r
+        return "6" * q + tail + "A0"
 
     def right_branch(window: str) -> str:
         """Return the jump taken when the test succeeds.
@@ -384,7 +386,9 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
             return _six_five_move(entry, scratch) + _six_five_const(digit) + "A0"
         delta = _ASCII_ZERO + int(value) - held
         q, r = divmod(delta, 6)
-        return "6" * q + "62" * r + "A0"
+        # one +5 beats five "62" pairs, as _six_five_const already does
+        tail = "5" if r == 5 else "62" * r
+        return "6" * q + tail + "A0"
 
     def node(level: int, lo: int, hi: int, entry: int, held: int | None) -> str:
         nonlocal marker
@@ -467,7 +471,8 @@ def _six_five_stream_ordered(truth_table: str) -> str:
         if len(rows) == 1:
             delta = _ASCII_ZERO + int(truth_table[rows[0]]) - base
             q, r = divmod(delta, 6)
-            return "6" * q + "62" * r + "A0"
+            tail = "5" if r == 5 else "62" * r
+            return "6" * q + tail + "A0"
         values = {truth_table[r] for r in rows}
         if len(values) == 1:
             # A constant subtree emits its value directly instead of the
