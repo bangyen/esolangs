@@ -3059,16 +3059,23 @@ def _mux_scout(
 #: is loosest exactly at the top of the range, so the rule's combination
 #: builds iff any does.
 #:
-#: The rule trades length for the contest's cost, and the trade shrinks with
-#: the arity, which is what puts the line here.  Against the sweep's winner
-#: the top accumulator builds dense +11.6% at eight inputs, +6.4% at nine
-#: and +1.8% at ten, and at all three arities parity picks the very same
-#: combination -- so the whole corpus cost of the rule is two dense entries.
-#: One arity lower it stops being a trade: at seven the sweep's own winner
-#: is the top accumulator for dense but parity pays +11.0%, and at six dense
-#: pays +9.3% and parity +50.7% -- for a build that costs 0.38s at seven and
-#: 0.06s at six against 3.8s at eight and 35.8s at nine, cold, both shapes.
-_MUX_RULE_ARITY = 8
+#: The rule trades length for the contest's cost, so the line sits at the
+#: arity where the contest stops being affordable rather than at the one
+#: where the trade is cheapest.  Cold, both shapes, the contest costs 0.06s
+#: at six inputs, 0.38s at seven, 3.8s at eight and 35.8s at nine: eight is
+#: payable and nine is not, and nine is where the whole registry's sweep
+#: cost used to live.
+#:
+#: Against the sweep's winner the top accumulator builds dense +11.6% at
+#: eight inputs, +6.4% at nine and +1.8% at ten, and at every one of those
+#: arities parity picks the very same combination.  So drawing the line here
+#: costs exactly one dense entry (+6.4% at nine) and leaves everything at
+#: eight and below byte-identical to the contest.  Drawing it one lower
+#: would buy 3.8s for a second, larger dense regression, and lower still it
+#: stops being a trade at all: at seven the sweep's own winner *is* the top
+#: accumulator for dense but parity pays +11.0%, and at six dense pays +9.3%
+#: and parity +50.7%.
+_MUX_RULE_ARITY = 9
 
 
 def _mux_rule_tail(

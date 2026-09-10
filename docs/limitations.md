@@ -122,13 +122,13 @@ is affordable, not where a table is checked.
 
 The other 65 generators build both shapes at n=10, and ZTOALC L and
 Interprogck8 now join them (both caps sit at n=11, so they stay in the
-table). `tests/tools/test_boolean_contract.py` still
-sweeps to eight inputs rather than ten, in two bands -- n<=5 in the default
-gate, n=6..8 marked `slow` -- but Minifuck is no longer what holds it
-there.  The named accumulator now starts at eight rather than ten, and the
-whole n=1..10 both-shapes build is 5.2s against 44s, n=9 alone 35.8s to
-0.71s; it is the one generator here that bought that with length rather
-than for free, and the price is two dense entries -- below.  Four
+table). `tests/tools/test_boolean_contract.py` now
+sweeps the full ten inputs, in two bands -- n<=5 in the default gate,
+n=6..10 marked `slow`.  Minifuck was what held it lower, and no longer is:
+the named accumulator starts at nine rather than ten, and the whole n=1..10
+both-shapes build is 8.5s against 44s, n=9 alone 35.8s to 0.65s.  It is the
+one generator here that bought that with length rather than for free, and
+the price is a single dense entry -- below.  Four
 have left, each byte-identical: ROTfuck (16s to 0.06s at n=10) once its
 emitter stopped stepping moves and the final rotation one character at a
 time; Forþ (61-68s to 0.20s dense / 0.08s parity) once its size contest
@@ -139,11 +139,12 @@ renderer, which also reaches n=10 at 0.31s for 306MB dense; and `%^2^-1`
 (parity n=9 30s to 0.16s, n=10 254s to 0.38s) once its deep band stopped
 paying for every zero-unit weighting the singleton diffs already refute.
 
-So the sweep's bound is cost, not capability, and the cost is concentrated:
-n<=8 is about 19s across the whole registry, n<=9 is 72s and n<=10 is 153s.
-Minifuck was 43s of that ten-input total and spent 34s of it at n=9 alone,
-dropping back to 3s at n=10; naming the accumulator from eight leaves it
-5.2s across n=1..10, so the nine-input spike those figures price is gone.
+The sweep's bound was always cost rather than capability, and the cost has
+now been paid down.  A ten-input sweep of the whole registry cost 141s and
+peaked at n=9 (53s of it); after five generators were rewritten it is 51.5s,
+with n=8 at 5.9s, n=9 at 7.5s and n=10 at 23.9s.  Minifuck was 43s of the
+old total and spent 34s at n=9 alone -- naming the accumulator from nine
+leaves it 8.5s across n=1..10, and the nine-input spike is gone.
 It did not go because the
 frontier recurrence collapsed -- it measurably does not.  The composed
 effect of m pending rounds on a
@@ -157,31 +158,36 @@ Pruning cannot absorb the cost either: seeding the strict abort with the
 true optimum saves 3.4% of the 1.58M
 window-walks at n=8, and a clairvoyant abort that skips every doomed
 combination for free leaves 0.5-0.9%, information available only through the
-collapsed recurrence itself.  What eight inputs and up stopped paying is the
+collapsed recurrence itself.  What nine inputs and up stopped paying is the
 contest those numbers price: from `_MUX_RULE_ARITY` the accumulator is named
 -- the largest legal one, whose combination builds iff any does -- so the
-scout prices two orientations instead of ~3600 combinations at ten, ~1560 at
-nine and ~670 at eight, records the winner's
+scout prices two orientations instead of ~3600 combinations at ten and
+~1560 at nine, records the winner's
 rewinds as it prices, and the build is spelled from them and accepted on its
 own laws replay instead of sculpted.  With the weight gadget and the
 sculpting round each a closed-form law (the separation fell 1.24s to 0.04s),
-a cold ten-input build is 1.47s dense and 1.57s parity, 138x; nine is 0.35s
-and 0.34s against 17.3s and 18.5s, and eight 0.09s and 0.09s against 1.8s
-and 1.9s.  The corpus cost is two entries and no more: dense +11.6% at eight
-(50653 to 56534) and +6.4% at nine (192801 to 205148), +1.8% at ten, with
-parity picking the rule's own combination at all three, so eighteen of the
-twenty n=1..10 programs are byte-identical.  Every instantiated row of both
-shapes at eight (512) and at nine (1024) answers correctly on the shipped
-interpreter, as the 2048 ten-input rows did when the rule landed.  Seven
-keeps the contest because there the rule stops being a trade: dense already
-picks the top accumulator but parity pays +11.0%, for a build that costs
-0.38s cold against 3.8s at eight and 35.8s at nine.
+a cold ten-input build is 1.47s dense and 1.57s parity, 138x, and nine is
+0.35s and 0.30s against 17.3s and 19.1s.  The corpus cost is one entry and
+no more: dense +6.4% at nine (192801 to 205148), plus the +1.8% at ten the
+rule already carried, with parity picking the rule's own combination at
+both -- so nineteen of the twenty n=1..10 programs are byte-identical.
+Every instantiated row of both shapes at nine (1024) answers correctly on
+the shipped interpreter, as the 2048 ten-input rows did when the rule
+landed.
+
+Eight keeps the contest, and that is a deliberate choice rather than the
+edge of the technique: the rule works there and would save 3.8s, but it
+costs dense +11.6% (50653 to 56534), and 3.8s is affordable where nine's
+35.8s was not.  The line is drawn where the contest stops being payable,
+not where the trade is cheapest.  Below eight it stops being a trade at
+all -- at seven dense already picks the top accumulator but parity pays
++11.0%, for a build that costs 0.38s cold.
 The nearest entries to the one-second rule
 are `laserfuck` at 1.377s and `%^2^-1`'s *dense* n=10 at 0.92s; Minifuck's
-1.5s now sits beside them rather than three decades above.  Only the table's rows are
-capability limits, and none of them binds inside the sweep -- WII2D's dense
-row sits at n=9 and the other three caps at n=11, all above the eight-input
-ceiling; the whole gap between eight and ten is wall-clock.
+1.5s now sits beside them rather than three decades above.  Only the table's
+rows are capability limits, and exactly one of them binds inside the sweep:
+WII2D's dense row at n=9, which `_ARITY_CAPPED` pins.  The other three sit
+at n=11, above the ceiling.
 
 - **Interprogck8:** a meadow-budget limit, not the 255-line reach.  The
   express routes against frozen coordinates, so the old relay
