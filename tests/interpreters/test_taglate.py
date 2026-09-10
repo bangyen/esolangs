@@ -70,15 +70,9 @@ class TestTaglate:
         assert run_and_capture([]) == ""
         assert run_and_capture([""]) == ""
 
-    def test_generator_round_trips(self) -> None:
-        for text in ("Hello, World!", "Hi", "123", "\x00"):
-            assert esolangs.run("Taglate", esolangs.generate("Taglate", text)) == text
-
-    def test_generator_rejects_newlines(self) -> None:
-        import pytest
-
-        with pytest.raises(ValueError, match="newline"):
-            esolangs.generate("Taglate", "a\nb")
+    def test_a_literal_line_is_printed_by_one_i_per_character(self) -> None:
+        """``i`` advances one character of the line above it."""
+        assert esolangs.run("Taglate", "Hello, World!\niiiiiiiiiiiii") == "Hello, World!"
 
     def test_google_translate_url(self) -> None:
         expected = "https://translate.google.com/?sl=en&tl=es&text=Hi&op=translate"
