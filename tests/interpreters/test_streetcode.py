@@ -1680,17 +1680,27 @@ def test_an_isolated_cell_is_not_a_street() -> None:
     _Machine([" + ", "+C+", " + "], IO())
 
 
-def test_the_generated_ring_program_runs() -> None:
-    """The counting-ring program the generator emits drives its whole lap.
+# A counting-ring program printing "Hi".  The ring latches a merge as the car
+# approaches the junction, so a full lap is the only thing that drives the
+# latch path end to end -- both tests below need exactly that shape.
+_RING_PROGRAM = [
+    "+----------------------------------------------+",
+    "|                                              |",
+    "|C^        O^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^O;|",
+    "+--+  ++  +------------------------------------+",
+    "   |      |",
+    "   | ^_~ =|",
+    "   | ^++= |",
+    "   |^^++^U|",
+    "   |^^^^^=|",
+    "   |^^^^^^|",
+    "   +------+",
+]
 
-    The ring latches a merge as the car approaches the junction, and the
-    lap is where that latch is followed through to the turn -- so running a
-    generated program is what exercises the merge bookkeeping end to end.
-    """
-    from esolangs.tools.text.streetcode import streetcode as generate
 
-    for text in ("Hi", "Hello, World!"):
-        assert run_and_capture(generate(text).split("\n")) == text
+def test_a_counting_ring_program_drives_its_whole_lap() -> None:
+    """The lap follows the latched merge through to the turn."""
+    assert run_and_capture(_RING_PROGRAM) == "Hi"
 
 
 class TestStreetcodeDriveStates:
@@ -1971,12 +1981,9 @@ class TestStreetcodeGraphBackedStepping:
             code = code[:-1]
         assert self._lockstep(code, stdin="1\n") > 1
 
-    @pytest.mark.parametrize("text", ["Hi", "Hello, World!"])
-    def test_a_generated_ring_agrees(self, text: str) -> None:
+    def test_a_ring_program_agrees(self) -> None:
         """The ring program latches a merge, so it drives the latch path."""
-        from esolangs.tools.text.streetcode import streetcode as generate
-
-        assert self._lockstep(generate(text).split("\n")) > 1
+        assert self._lockstep(_RING_PROGRAM) > 1
 
     def test_an_off_graph_state_falls_back(self) -> None:
         """A state the search never reached still drives, via the phases.

@@ -8,7 +8,6 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.dinac import _Machine, run
 from esolangs.tools.boolean import dinac as dinac_boolean
-from esolangs.tools.text import dinac as dinac_text
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.runner import run_program
@@ -411,43 +410,19 @@ class TestMalformedPrograms:
         assert _run("\n\n# just a comment\n") == ""
 
 
-class TestTextGenerator:
-    """The generated programs are run; source text is not evidence."""
+class TestSpaceSpellings:
+    def test_both_spellings_of_a_space_print_the_same_character(self) -> None:
+        """``OUT '!-`` prints a space, as does the wiki's ``OUT '`` + space.
 
-    @pytest.mark.parametrize(
-        "text",
-        [
-            "Hello, World!\n",
-            "a",
-            "",
-            "tab\there",
-            "back\\slash",
-            "\0nul",
-            "~!@#$%^&*()",
-        ],
-    )
-    def test_generated_program_prints_the_text(self, text: str) -> None:
-        assert _run(dinac_text(text)) == text
-
-    def test_a_space_is_emitted_without_trailing_whitespace(self) -> None:
-        """``OUT '!-`` prints a space; ``OUT '`` + space cannot be committed.
-
-        The literal spelling the wiki uses puts the space in trailing
-        position, which ``tests/scripts/test_examples.py`` forbids in a
-        committed file.  Both spellings print a space -- pinned here, since
+        The literal spelling puts the space in trailing position, which
+        ``tests/scripts/test_examples.py`` forbids in a committed file, so
+        the decrement spelling is the one written down -- pinned here, since
         the substitution is only safe if it is really the same character.
         """
-        program = dinac_text("a b")
+        program = "OUT 'a\nOUT '!-\nOUT 'b"
         assert "\n".join(line.rstrip() for line in program.split("\n")) == program
         assert _run(program) == "a b"
         assert _run("OUT ' ") == " "
-
-    def test_a_character_above_ascii_is_refused(self) -> None:
-        """An aschar is Unicode 0-127, so there is no literal for it."""
-        with raises_message(
-            ValueError, "DINAC can only output ASCII 0-127, got 'é' (U+00E9)"
-        ):
-            dinac_text("café")
 
 
 class TestBooleanGenerator:

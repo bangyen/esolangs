@@ -17,7 +17,6 @@ from dataclasses import dataclass
 from typing import Literal
 
 from esolangs.tools import boolean as _boolean
-from esolangs.tools import text as _generate
 
 # Display names whose canonical id cannot be produced by the slug rules
 # (a name whose meaning is lost by stripping its symbols, like ``%^2^-1``).
@@ -133,17 +132,14 @@ class Language:
     interpreter module, the generator function, and the test file, so every
     internal reference to a language uses the same token.
 
-    ``text`` and ``boolean`` are the language's two generators, either of
-    which may be None: ``text`` produces a program that prints a text, and
-    ``boolean`` one computing a truth table.  Both
-    :data:`GENERATORS` and :data:`~esolangs.tools.boolean.BOOLEAN` are
-    derived from them, so registering a generator here is the whole of
-    adding one, with no second list to keep in step.
+    ``boolean`` is the language's generator, which may be None: it produces
+    a program computing a truth table.
+    :data:`~esolangs.tools.boolean.BOOLEAN` is derived from it, so
+    registering a generator here is the whole of adding one, with no second
+    list to keep in step.
 
     ``io`` says whether the language's *specification* defines I/O, and
-    ``alphabet`` what its output can spell.  ``alphabet`` decides whether
-    ``text`` is allowed to be None -- a ``"bytes"`` language with no text
-    generator is a gap, anything else is an exemption.  A language whose
+    ``alphabet`` what its output can spell.  A language whose
     wiki defines no I/O is ``"interpreter_only"``: its interpreter dumps
     final state by repo convention *because* the language has no output,
     so the dump is a consequence of the spec, not a channel the language
@@ -167,11 +163,10 @@ class Language:
     """
 
     name: str
-    text: Generator | None = None
     interpreter: str | None = None
     split: bool = False
     id: str = ""
-    boolean: Callable[[str], str] | None = None
+    boolean: Generator | None = None
     io: Io = "defined"
     alphabet: Alphabet = "bytes"
 
@@ -179,7 +174,6 @@ class Language:
 LANGUAGES: dict[str, Language] = {
     "AddSubJump": Language(
         "AddSubJump",
-        _generate.addsubjump,
         "register_based.addsubjump",
         boolean=_boolean.addsubjump,
         id="addsubjump",
@@ -194,7 +188,6 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Alight": Language(
         "Alight",
-        _generate.alight,
         "grid_based.alight",
         boolean=_boolean.alight,
         id=canonical_id("Alight"),
@@ -210,21 +203,18 @@ LANGUAGES: dict[str, Language] = {
     ),
     "123": Language(
         "123",
-        _generate.one_two_three,
         "tape_based.one_two_three",
         boolean=_boolean.one_two_three,
         id="one_two_three",
     ),
     "6-5": Language(
         "6-5",
-        _generate.six_five,
         "tape_based.six_five",
         boolean=_boolean.six_five,
         id="six_five",
     ),
     "%^2^-1": Language(
         "%^2^-1",
-        _generate.pct_squared_minus_one,
         "register_based.pct_squared_minus_one",
         boolean=_boolean.pct_squared_minus_one,
         id="pct_squared_minus_one",
@@ -257,14 +247,12 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Basicfuck": Language(
         "Basicfuck",
-        _generate.basicfuck,
         "tape_based.basicfuck",
         boolean=_boolean.basicfuck,
         id="basicfuck",
     ),
     "Between": Language(
         "Between",
-        _generate.between,
         "register_based.between",
         boolean=_boolean.between,
         id="between",
@@ -272,28 +260,24 @@ LANGUAGES: dict[str, Language] = {
     ),
     "brainfuck": Language(
         "brainfuck",
-        _generate.brainfuck,
         "tape_based.brainfuck",
         boolean=_boolean.brainfuck,
         id="brainfuck",
     ),
     "BFStack": Language(
         "BFStack",
-        _generate.bfstack,
         "stack_based.bfstack",
         boolean=_boolean.bfstack,
         id="bfstack",
     ),
     "BIO": Language(
         "BIO",
-        _generate.bio,
         "register_based.bio",
         boolean=_boolean.bio,
         id="bio",
     ),
     "bit~": Language(
         "bit~",
-        _generate.bit_tilde,
         "tape_based.bit_tilde",
         boolean=_boolean.bit_tilde,
         id="bit_tilde",
@@ -308,7 +292,6 @@ LANGUAGES: dict[str, Language] = {
     ),
     "BrainIf": Language(
         "BrainIf",
-        _generate.brainif,
         "tape_based.brainif",
         boolean=_boolean.brainif,
         id="brainif",
@@ -316,7 +299,6 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Circlefuck": Language(
         "Circlefuck",
-        _generate.circlefuck,
         "tape_based.circlefuck",
         boolean=_boolean.circlefuck,
         id="circlefuck",
@@ -332,7 +314,6 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Clockwise": Language(
         "Clockwise",
-        _generate.clockwise,
         "grid_based.clockwise",
         boolean=_boolean.clockwise,
         id="clockwise",
@@ -348,28 +329,24 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Collatz Multiverse": Language(
         "Collatz Multiverse",
-        _generate.collatz_multiverse,
         "register_based.collatz_multiverse",
         boolean=_boolean.collatz_multiverse,
         id="collatz_multiverse",
     ),
     "CV(N)(C)": Language(
         "CV(N)(C)",
-        _generate.cvnc,
         "other.cvnc",
         boolean=_boolean.cvnc,
         id="cvnc",
     ),
     "Decleq": Language(
         "Decleq",
-        _generate.decleq,
         "register_based.decleq",
         boolean=_boolean.decleq,
         id="decleq",
     ),
     "Container": Language(
         "Container",
-        _generate.container,
         "other.container",
         boolean=_boolean.container,
         id="container",
@@ -377,7 +354,6 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Dig": Language(
         "Dig",
-        _generate.dig,
         "grid_based.dig",
         boolean=_boolean.dig,
         id="dig",
@@ -385,28 +361,24 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Dimensional": Language(
         "Dimensional",
-        _generate.dimensional,
         "tape_based.dimensional",
         boolean=_boolean.dimensional,
         id="dimensional",
     ),
     "DINAC": Language(
         "DINAC",
-        _generate.dinac,
         "other.dinac",
         boolean=_boolean.dinac,
         id="dinac",
     ),
     "Eval": Language(
         "Eval",
-        _generate.eval,
         "stack_based.eval",
         boolean=_boolean.eval,
         id="eval",
     ),
     "Factor": Language(
         "Factor",
-        _generate.factor,
         "tape_based.factor",
         boolean=_boolean.factor,
         id="factor",
@@ -430,21 +402,18 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Forþ": Language(
         "Forþ",
-        _generate.forth,
         "stack_based.forth",
         boolean=_boolean.forth,
         id="forth",
     ),
     "Forbin": Language(
         "Forbin",
-        _generate.forbin,
         "other.forbin",
         boolean=_boolean.forbin_boolean,
         id="forbin",
     ),
     "function x(y)": Language(
         "function x(y)",
-        _generate.function_x_y,
         "other.function_x_y",
         boolean=_boolean.function_x_y,
         id="function_x_y",
@@ -459,7 +428,6 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Home Row": Language(
         "Home Row",
-        _generate.home_row,
         "tape_based.home_row",
         boolean=_boolean.home_row,
         id="home_row",
@@ -474,7 +442,6 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Interprogck8": Language(
         "Interprogck8",
-        _generate.interprogck8,
         "register_based.interprogck8",
         boolean=_boolean.interprogck8,
         id=canonical_id("Interprogck8"),
@@ -498,7 +465,6 @@ LANGUAGES: dict[str, Language] = {
     ),
     "LaserFuck": Language(
         "LaserFuck",
-        _generate.laserfuck,
         "grid_based.laserfuck",
         boolean=_boolean.laserfuck,
         id="laserfuck",
@@ -506,14 +472,12 @@ LANGUAGES: dict[str, Language] = {
     ),
     "SLOW ACV MAMMALIAN": Language(
         "SLOW ACV MAMMALIAN",
-        _generate.slow_acv_mammalian,
         "tape_based.slow_acv_mammalian",
         id="slow_acv_mammalian",
         boolean=_boolean.slow_acv_mammalian_boolean,
     ),
     "Minifuck": Language(
         "Minifuck",
-        _generate.minifuck,
         "tape_based.minifuck",
         boolean=_boolean.minifuck,
         id="minifuck",
@@ -528,21 +492,18 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Modulous": Language(
         "Modulous",
-        _generate.modulous,
         "stack_based.modulous",
         boolean=_boolean.modulous,
         id="modulous",
     ),
     "MyScript": Language(
         "MyScript",
-        _generate.myscript,
         "register_based.myscript",
         boolean=_boolean.myscript,
         id="myscript",
     ),
     "Nevermind": Language(
         "Nevermind",
-        _generate.nevermind,
         "register_based.nevermind",
         boolean=_boolean.nevermind,
         id="nevermind",
@@ -550,28 +511,24 @@ LANGUAGES: dict[str, Language] = {
     ),
     "NoComment": Language(
         "NoComment",
-        _generate.nocomment,
         "tape_based.nocomment",
         boolean=_boolean.nocomment,
         id="nocomment",
     ),
     "Packlang": Language(
         "Packlang",
-        _generate.packlang,
         "other.packlang",
         boolean=_boolean.packlang,
         id="packlang",
     ),
     "Painfuck": Language(
         "Painfuck",
-        _generate.painfuck,
         "tape_based.painfuck",
         boolean=_boolean.painfuck,
         id="painfuck",
     ),
     "Polynomial": Language(
         "Polynomial",
-        _generate.polynomial,
         "register_based.polynomial",
         boolean=_boolean.polynomial,
         id="polynomial",
@@ -587,7 +544,6 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Qoibl": Language(
         "Qoibl",
-        _generate.qoibl,
         "register_based.qoibl",
         boolean=_boolean.qoibl,
         id="qoibl",
@@ -603,35 +559,30 @@ LANGUAGES: dict[str, Language] = {
     ),
     "ROTfuck": Language(
         "ROTfuck",
-        _generate.rotfuck,
         "tape_based.rotfuck",
         boolean=_boolean.rotfuck,
         id="rotfuck",
     ),
     "S*bleq": Language(
         "S*bleq",
-        _generate.sbleq,
         "tape_based.sbleq",
         boolean=_boolean.sbleq,
         id="sbleq",
     ),
     "3D Brainfuck": Language(
         "3D Brainfuck",
-        _generate.three_d_brainfuck,
         "tape_based.three_d_brainfuck",
         boolean=_boolean.three_d_brainfuck,
         id="three_d_brainfuck",
     ),
     "Sophie": Language(
         "Sophie",
-        _generate.sophie,
         "register_based.sophie",
         boolean=_boolean.sophie,
         id="sophie",
     ),
     "Streetcode": Language(
         "Streetcode",
-        _generate.streetcode,
         "grid_based.streetcode",
         boolean=_boolean.streetcode,
         id="streetcode",
@@ -639,7 +590,6 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Super SNUSP": Language(
         "Super SNUSP",
-        _generate.super_snusp,
         boolean=_boolean.super_snusp,
         id="super_snusp",
         interpreter="grid_based.super_snusp",
@@ -647,28 +597,24 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Suffolk": Language(
         "Suffolk",
-        _generate.suffolk,
         "tape_based.suffolk",
         boolean=_boolean.suffolk,
         id="suffolk",
     ),
     "Suptiftam": Language(
         "Suptiftam",
-        _generate.suptiftam,
         "other.suptiftam",
         boolean=_boolean.suptiftam,
         id="suptiftam",
     ),
     "3x": Language(
         "3x",
-        _generate.three_x,
         "stack_based.three_x",
         boolean=_boolean.three_x,
         id="three_x",
     ),
     "Taglate": Language(
         "Taglate",
-        _generate.taglate,
         "queue_based.taglate",
         boolean=_boolean.taglate,
         id="taglate",
@@ -676,14 +622,12 @@ LANGUAGES: dict[str, Language] = {
     ),
     "Unsquare": Language(
         "Unsquare",
-        _generate.unsquare,
         "stack_based.unsquare",
         boolean=_boolean.unsquare,
         id="unsquare",
     ),
     "WII2D": Language(
         "WII2D",
-        _generate.wii2d,
         "grid_based.wii2d",
         boolean=_boolean.wii2d,
         id="wii2d",
@@ -691,7 +635,6 @@ LANGUAGES: dict[str, Language] = {
     ),
     "ZTOALC L": Language(
         "ZTOALC L",
-        _generate.ztoalc_l,
         "other.ztoalc_l",
         boolean=_boolean.ztoalc_l_boolean,
         id="ztoalc_l",
@@ -700,26 +643,14 @@ LANGUAGES: dict[str, Language] = {
 }
 
 
-# Display name -> generator function, for languages that have one.
-GENERATORS: dict[str, Generator] = {
-    name: lang.text for name, lang in LANGUAGES.items() if lang.text
-}
-
 # Generator function name -> Language, so tests can look a generator up by
 # the name of its function (e.g. ``six_five`` for "6-5").
-BY_FUNCTION: dict[str, Language] = {
-    lang.text.__name__: lang for lang in LANGUAGES.values() if lang.text is not None
-}
-
-# The same, for the *boolean* generators.  ``BY_FUNCTION`` is keyed by the
-# text generator's name, so a language with a boolean generator and no text
-# one is absent from it entirely -- and a sweep written over ``BY_FUNCTION``
-# silently skips those languages rather than failing.  That is how Jaune's
-# table-dependent input count survived: it is a boolean-only language, so
-# the read-count contract test never saw it.  Sixteen boolean generators
-# were invisible this way when that was found (Bitdeque, RAM0, Lamfunc,
-# Flowchart, Jaune and the rest of the boolean-only set, which has grown
-# since).
+#
+# This used to have a twin keyed by the *text* generator's name, and a sweep
+# written over that twin silently skipped every boolean-only language rather
+# than failing.  That is how Jaune's table-dependent input count survived:
+# sixteen boolean generators were invisible to the read-count contract test.
+# Keying only by ``boolean`` leaves nothing to pick the wrong map from.
 BY_BOOLEAN: dict[str, Language] = {
     lang.boolean.__name__: lang
     for lang in LANGUAGES.values()

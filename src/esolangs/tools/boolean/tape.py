@@ -25,7 +25,6 @@ from esolangs.tools.boolean.helpers import (
 from esolangs.tools.boolean.rotfuck import rotfuck
 from esolangs.tools.boolean.six_five import six_five
 from esolangs.tools.boolean.slow_acv_mammalian import slow_acv_mammalian_boolean
-from esolangs.tools.text.tape import _factor_encode
 
 __all__ = [
     "basicfuck",
@@ -489,6 +488,36 @@ def brainfuck(truth_table: str) -> str:
 #: all 64 rows.
 _DEFAULT_MAX_DIGITS = 500_000
 
+_BF_RESIDUE = {">": 1, "<": 2, "+": 3, "-": 4, ".": 5, ",": 6, "[": 7, "]": 8}
+
+
+def _factor_encode(code: str) -> int:
+    """Encode a brainfuck program as the Factor integer for it.
+
+    The decoder sorts the prime factors ascending, so the encoder walks
+    primes upward and hands each instruction the next prime with the right
+    residue modulo 11 (Dirichlet's theorem guarantees one always exists).  A
+    run of identical instructions is folded into one prime's exponent, which
+    keeps the integer small while decoding to the same run.
+    """
+    from sympy import isprime
+
+    number = 1
+    candidate = 2
+    i = 0
+    while i < len(code):
+        residue = _BF_RESIDUE[code[i]]
+        j = i
+        while j < len(code) and code[j] == code[i]:
+            j += 1
+        prime = candidate
+        while not (prime % 11 == residue and isprime(prime)):
+            prime += 1
+        number *= prime ** (j - i)
+        candidate = prime + 1
+        i = j
+    return number
+
 
 def factor(truth_table: str, *, max_digits: int = _DEFAULT_MAX_DIGITS) -> str:
     """Build a Factor program computing the given truth table.
@@ -498,10 +527,9 @@ def factor(truth_table: str, *, max_digits: int = _DEFAULT_MAX_DIGITS) -> str:
 
     A Factor program is a single integer whose prime factorization decodes
     to brainfuck, so the generator reuses :func:`brainfuck`'s truth-table
-    program unchanged and encodes it with :func:`_factor_encode` -- the same
-    prime-search the text generator uses (walk primes upward, handing each
-    instruction the next one with the right residue mod 11; Dirichlet's
-    theorem guarantees one always exists).
+    program unchanged and encodes it with :func:`_factor_encode` (walk primes
+    upward, handing each instruction the next one with the right residue
+    mod 11; Dirichlet's theorem guarantees one always exists).
 
     Folding the constant subtrees of that program is what turns some
     otherwise unrenderable tables into runnable ones, since the cap below is
