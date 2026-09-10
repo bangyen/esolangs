@@ -27,7 +27,11 @@ claim is accepted.
   *absolutely*, so every prefix leaves a junction at an identical position
   and heading and only the accumulator differs, which makes any program op
   strings interleaved with the n branch pairs.  Within that family a
-  512-point decode ratchets with every candidate enumerated; no op removes
+  512-point decode ratchets: raising the guard to 512 refuses the sweep's
+  dense n=10 witness anyway (0.22s per branch), and with the magnitude
+  abort lifted its live count crawls 512 -> 475 over 19 steps while the
+  bit length doubles every step, 9 -> 1089888 bits.  It ratchets with every
+  candidate enumerated too.  No op removes
   high accumulator bits, closing every shifted-table readout (verified
   exhaustively over op strings to length 5, against controls that fire);
   and a mid-chain collapse under 4-class labels ratchets too.
