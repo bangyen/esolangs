@@ -38,8 +38,9 @@ is now implemented, with its own boolean generator.
   moved with their generators — polynomial 25.1% -> 15.9% (the dense
   rework, `22f0dce9`..`57caea1d`) and sophie 16.4% -> 8.1% (the
   subfunction merge, `cbca1f46`) — and COD's old clean verdict is gone
-  (0% -> 3.2%). Polynomial's and Modulous's language walls stand
-  (`docs/walls.md`); Dig and Flowchart are grid placements, 2D layout
+  (0% -> 3.2%, the dependency reduction, `a25f266f`). Polynomial's and
+  Modulous's language walls stand (`docs/walls.md`); Dig and Flowchart
+  are grid placements, 2D layout
   surgery rather than renaming a branch operand. Every wired generator
   screens at 3.1% residual (Back) or less.
 
