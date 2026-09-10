@@ -3103,14 +3103,20 @@ def test_the_rewind_law_matches_the_parsed_runs() -> None:
     assert skipping.key() == clone.key()
 
 
-@pytest.mark.slow  # a ten-input rule build plus the retired sculpt, ~4s
-def test_the_rule_spelling_matches_the_real_sculpt_at_ten_inputs() -> None:
-    """Above ``_MUX_RULE_ARITY`` the spelled build is the sculpt's bytes.
+@pytest.mark.slow  # the rule build plus the retired sculpt, ~4s at ten
+@pytest.mark.parametrize("n", [8, 10])
+def test_the_rule_spelling_matches_the_real_sculpt(n: int) -> None:
+    """From ``_MUX_RULE_ARITY`` the spelled build is the sculpt's bytes.
 
     The rule names the combination; the spelling must then be exactly what
     :func:`_mux_sculpt` emits at that combination, so the retired machinery
     is run once here as the oracle.  Byte equality is the whole claim --
     the replay acceptance inside ``_mux`` already checked the prints.
+
+    Eight is the boundary the rule now starts at, and it is cheap enough to
+    check next to ten: a spelling that drifted there would be caught only
+    by the fallback, which answers correctly and silently restores the
+    contest's cost.
     """
     import importlib
     import random
@@ -3118,14 +3124,14 @@ def test_the_rule_spelling_matches_the_real_sculpt_at_ten_inputs() -> None:
     module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
     rng = random.Random(20260914)
-    table = format(rng.getrandbits(1024), "01024b")
-    built = module._mux(table, 10)  # noqa: SLF001
+    table = format(rng.getrandbits(2**n), f"0{2**n}b")
+    built = module._mux(table, n)  # noqa: SLF001
     assert built is not None
 
-    base = module._mux_separate(10)  # noqa: SLF001
+    base = module._mux_separate(n)  # noqa: SLF001
     top = min(base.ptrs()) - 2
     winner, trusted = module._mux_scout(  # noqa: SLF001
-        base.fork(), table, 10, range(top, top + 1)
+        base.fork(), table, n, range(top, top + 1)
     )
     assert trusted
     assert winner is not None
@@ -3135,7 +3141,7 @@ def test_the_rule_spelling_matches_the_real_sculpt_at_ten_inputs() -> None:
     sculpted = module._mux_sculpt(  # noqa: SLF001
         base,
         table,
-        10,
+        n,
         acc,
         0,
         direct=direct,

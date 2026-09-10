@@ -679,12 +679,13 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 # one-time warmup paid at every ceiling: generators show 0.1s at n=6 and
 # 0.00s at n=7 on a bigger table.)
 #
-# Note the shape of that curve before lowering the ceiling to nine instead.
-# minifuck is 43s of the ten-input total and spends 34s of it at n=9,
-# dropping to 3s at n=10 where the construction names its accumulator
-# instead of staging through it.  Stopping at nine keeps the single most
-# expensive case in the suite and drops a cheaper one, so the real choice
-# here is eight or ten, never nine.
+# Those figures were measured before minifuck's named accumulator moved
+# down to eight inputs.  It was 43s of the ten-input total and spent 34s of
+# it at n=9 alone -- the spike that made nine the worst ceiling available
+# and the choice here eight or ten -- and is now 5.2s across n=1..10, with
+# n=9 at 0.65s.  Subtract that from the rows above before reading them; the
+# curve no longer peaks at nine, and the ceiling is the parent sweep's call
+# rather than this generator's.
 #
 # Ten additionally peaks at 637MB RSS on Circuit Diagram's n=10 dense
 # table, 306MB of program text.
