@@ -107,3 +107,22 @@ def test_describe_unknown_language_raises() -> None:
 def test_describe_language_without_interpreter() -> None:
     info = esolangs.describe("123")
     assert info["state_model"] == "tape"
+
+
+def test_generate_refuses_a_language_with_no_generator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A registered language may have no generator, and must say so.
+
+    Every language currently has one, so this guard has no live instance --
+    which is exactly why it is pinned here rather than left to be noticed
+    the first time a generator-less language is registered.
+    """
+    from dataclasses import replace
+
+    from esolangs.registry import LANGUAGES
+
+    bare = replace(LANGUAGES["Sophie"], boolean=None)
+    monkeypatch.setitem(LANGUAGES, "Sophie", bare)
+    with pytest.raises(UnknownLanguageError):
+        esolangs.generate("Sophie", "0110")

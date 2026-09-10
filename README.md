@@ -1,5 +1,8 @@
 # Esolang Interpreters
 
+[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 Interpreters and generators for esoteric
 languages. Current work is in [the roadmap](docs/roadmap.md); contracts and
 known boundaries are in [limitations](docs/limitations.md).
