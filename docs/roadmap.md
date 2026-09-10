@@ -21,6 +21,15 @@ readings.
   source-machine emulator, not command transliteration. It needs a constructed
   Streetcode-program corpus/fuzzer and resolution of the reference
   interpreter's junction and post-corner gaps.
+
+  **Undecided: this targets a surface the repo deleted.** `7c440f9e` removed
+  `src/esolangs/transpilers/` entire — including the total brainfuck ->
+  Streetcode transpiler that had just landed — because 2069 lines and 47s of
+  suite time served nothing in the repo, following `58427732`, which dropped
+  the compilers on the same reasoning. Settle whether that rationale governs
+  this item before starting it. The interpreter half stands on its own either
+  way: the junction and post-corner gaps are correctness bugs whether or not a
+  compiler is ever built.
 - **Scale Line boolean drawings.** Twelve inputs is *measured, and it fits*:
   a 33760x29920 canvas (1.01Gpx, within a rounding of the 33600x29920
   projection) completes the round trip in 289s at 2.60GiB peak, all sampled
@@ -44,39 +53,15 @@ readings.
   cleanly at 4x per arity (0.16 / 0.62 / 2.48 / 10.1 / 38.0s for n=8..12),
   so it is predictable and small; `extract` is the stage any future work
   belongs in.
-- **Extend Interprogck8's boolean tree.** *Done twice over.* `77025aa7`
-  built the relay rung asked for here and lifted the ceiling from 3 to 7
-  at a cost that refused n=8 (2031s of rung interference).  The express
-  rewrite then replaced the iterative router: `DownAccLines` keeps the
-  accumulator, so a chain spells its stride once and rides one-line rungs
-  parked in meadows, routed once against frozen coordinates.  Ceiling is
-  now 10 — every row of dense and parity executed at n=8..10, n=10 built
-  in ~10s — and n=7 fell from 3.5s to 0.05s.  `docs/limitations.md`
-  carries the measured edge: n=11 dense exhausts the meadow repair
-  budget.
-- **Close Minifuck's mux sculpt.** The pool-code half is *done*: `5b35c66b`
-  replaced the per-round interpreter scan with `_SCULPT_POOL_CODE`, proved
-  structurally (the probe clamps to one canonical state, so the fifth code
-  answers every arity, accumulator and round) and checked at 169628 probes
-  with the scan kept as the oracle. The 14.5-of-17.9-seconds figure this
-  entry used to carry is stale: `_pool_reaches` now profiles at 0.0% of a
-  ~0.41s five-input build. What remains is the round loop, and it is not
-  merely unfinished but *measured not to close* -- over 36864 round
-  transitions at exhaustive n=3, no round moved a row above the frontier
-  (the monotonicity that bounds the loop) but 27656 moved one below it, so
-  the post-fix column is not predictable without walking. The live cost is
-  now `_mux_probe` at 69% of the build; reopen only with a rule for that
-  cascade, not a wider search.  From nine inputs the loop no longer runs at
-  all: the accumulator is named (`_MUX_RULE_ARITY`), the scout records the
-  winner's rewinds as it prices the two orientations, and the build is
-  spelled from them and accepted on its own laws replay — n=1..10 both
-  shapes 44.7s to 8.9s, n=9 alone 35.8s to 0.65s, at +6.4% dense length at
-  nine and no change to the other nineteen programs, every n=9 row of both
-  shapes executed on the interpreter.  Eight keeps the contest: the rule
-  works there too and would save a further 3.8s, but at +11.6% dense, and
-  3.8s is affordable.  `docs/limitations.md` carries the numbers.
+
 ## Conditional follow-up
 
+- **Minifuck's mux round loop.** The rest of the sculpt closed (pool code in
+  `5b35c66b`, the named accumulator from nine); the round loop did not, and is
+  *measured* not to. Over 36864 round transitions at exhaustive n=3 no round
+  moved a row above the frontier, but 27656 moved one below it, so the
+  post-fix column is not predictable without walking. Reopen only with a rule
+  for the `_mux_probe` cascade — now 69% of the build — not a wider search.
 - **ArrowQueue reusable drain.** Ship the verified deep-fold drain only if a
   proof makes folding meaningfully testable at `n >= 5`; current coverage does
   not reach its crossover.
