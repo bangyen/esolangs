@@ -2435,8 +2435,8 @@ class TestRunUntilHalt:
         """A limit of ``n`` executes ``n`` commands, not ``n - 1`` or ``n + 1``.
 
         ``Debugger.run(max_steps=10)`` is documented as stopping "once that
-        many commands have executed", and the leak sweep escalates a cap on
-        the assumption that a run at cap ``n`` really covered ``n`` steps.
+        many commands have executed", so a caller escalating a cap relies on
+        a run at cap ``n`` having really covered ``n`` steps.
         """
         from esolangs.vm import run_until_halt
 

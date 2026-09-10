@@ -214,3 +214,128 @@ class TestWidthOption:
             call_main(["generate", "brainfuck", TABLE3, "--width", value], capsys)
         assert exc.value.code == 2
         assert "must be positive" in capsys.readouterr().err
+
+
+# ``+.+.+.`` after an 8x8 loop prints A, B, C -- three separate writes, so a
+# break on the second one has a run to stop in the middle of.
+_ABC = "++++++++[>++++++++<-]>+.+.+."
+
+
+def _program(tmp_path: Path, source: str) -> str:
+    """Write ``source`` to a file and return its path."""
+    path = tmp_path / "prog.b"
+    path.write_text(source)
+    return str(path)
+
+
+class TestDebugCommand:
+    """``esolangs debug`` exposes the breakpoint/watch VM on the CLI."""
+
+    def test_it_runs_to_halt_and_reports_the_output(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        out = call_main(["debug", "brainfuck", _program(tmp_path, _ABC)], capsys)
+        assert "halted: yes" in out
+        assert "output: 'ABC'" in out
+
+    def test_steps_bounds_the_run(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A step budget stops the run short, which is the point of it."""
+        out = call_main(
+            ["debug", "--steps", "5", "brainfuck", _program(tmp_path, _ABC)], capsys
+        )
+        assert "halted: no" in out
+        assert "output: ''" in out
+
+    def test_the_option_takes_an_inline_value_too(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """``--steps=5`` is the same option written the other way."""
+        out = call_main(
+            ["debug", "--steps=5", "brainfuck", _program(tmp_path, _ABC)], capsys
+        )
+        assert "halted: no" in out
+
+    def test_watch_cell_reports_one_value_per_step(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The watch history is what the debugger adds over plain stepping."""
+        out = call_main(
+            [
+                "debug",
+                "--steps",
+                "3",
+                "--watch-cell",
+                "0",
+                "brainfuck",
+                _program(tmp_path, _ABC),
+            ],
+            capsys,
+        )
+        assert "cell 0: [1, 2, 3]" in out
+
+    def test_break_on_output_stops_with_the_condition_still_true(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A breakpoint is checked *before* a step, so ``B`` is the last byte."""
+        out = call_main(
+            ["debug", "--break-on-output", "B", "brainfuck", _program(tmp_path, _ABC)],
+            capsys,
+        )
+        assert "halted: no" in out
+        assert "output: 'AB'" in out
+
+    def test_a_raise_is_reported_rather_than_propagated(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A debugged program is one the caller is already unsure of.
+
+        Reading with no input raises, and the state up to the fault is
+        exactly what the caller asked to see -- so it is printed, not
+        turned into a traceback.
+        """
+        out = call_main(["debug", "brainfuck", _program(tmp_path, ",.")], capsys)
+        assert "raised: EOFError" in out
+        assert "halted: no" in out
+
+    def test_unknown_language(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            call_main(["debug", "NoSuchLanguage", _program(tmp_path, "+")], capsys)
+        assert exc.value.code == 2
+        assert "unknown language" in capsys.readouterr().err
+
+    def test_missing_file(self, capsys: pytest.CaptureFixture[str]) -> None:
+        with pytest.raises(SystemExit) as exc:
+            call_main(["debug", "brainfuck", "/no/such/file"], capsys)
+        assert exc.value.code == 2
+        assert "cannot read" in capsys.readouterr().err
+
+    def test_missing_args(self, capsys: pytest.CaptureFixture[str]) -> None:
+        with pytest.raises(SystemExit) as exc:
+            call_main(["debug", "brainfuck"], capsys)
+        assert exc.value.code == 2
+        assert "usage: esolangs debug" in capsys.readouterr().err
+
+    @pytest.mark.parametrize("option", ["--steps", "--watch-cell"])
+    def test_a_non_integer_option_is_refused(
+        self, option: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["debug", option, "x", "brainfuck", _program(tmp_path, "+")], capsys
+            )
+        assert exc.value.code == 2
+        assert "must be an integer" in capsys.readouterr().err
+
+    def test_an_option_with_no_value_is_refused(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The trailing option has nothing to consume, so it is an error
+        rather than a silently missing bound."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["debug", "brainfuck", "prog.b", "--steps"], capsys)
+        assert exc.value.code == 2
+        assert "--steps needs a value" in capsys.readouterr().err

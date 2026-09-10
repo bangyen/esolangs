@@ -11,13 +11,19 @@ just install-dev
 esolangs list
 esolangs run Suffolk program.txt
 esolangs generate Suffolk 0110
+esolangs debug --steps 20 --watch-cell 0 brainfuck program.txt
 just test
 ```
 
-The Python API is `esolangs.run`, `generate`, and `list_languages`.
-`generate` takes a truth table -- `0110` is XOR -- and returns a program
-computing it.  Use `--width` for command-oriented generated programs;
-grids and newline-sensitive languages retain their own layout.
+The Python API is `esolangs.run`, `generate`, `make_debugger`, and
+`list_languages`.  `generate` takes a truth table -- `0110` is XOR -- and
+returns a program computing it.  Use `--width` for command-oriented
+generated programs; grids and newline-sensitive languages retain their own
+layout.
+
+`debug` runs a program under the breakpoint/watch VM and reports where it
+stopped: `--steps` bounds the run, `--watch-cell` prints one value per step,
+and `--break-on-output` stops with the watched text still the last written.
 
 ## Examples
 

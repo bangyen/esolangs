@@ -69,8 +69,8 @@ It does not replay the finished template, and there is no flag to make it:
 a check that costs 81-95% of a call does not belong on the caller, and a
 switch nothing turns on is worse than no switch.  The execution gate lives
 in the suite, which runs emitted programs on the real shipped interpreter
-— exhaustively at ``n <= 3``, row by row above it, and over all 65536
-four-input tables in ``scripts/check_123_four_input.py``.
+— exhaustively at ``n <= 3`` and row by row above it.  All 65536
+four-input tables were swept once, by a script since retired.
 
 :func:`_replay_verdict` remains for those tests.  It is a 123 interpreter
 written here against the language's rules — *not*
@@ -996,10 +996,9 @@ def construct(truth_table: str) -> str:
     suite rather than on every caller.
 
     The execution gate is stronger there than it ever was here:
-    ``test_all_small_tables`` sweeps *every* table at ``n <= 3``, the
-    wider tests replay their templates row by row, and
-    ``scripts/check_123_four_input.py`` carries the exhaustive
-    four-input sweep -- all through the real shipped interpreter
+    ``test_all_small_tables`` sweeps *every* table at ``n <= 3`` and the
+    wider tests replay their templates row by row -- all through the real
+    shipped interpreter
     (``interpreters.tape_based.one_two_three``) rather than the
     in-module :func:`_replay_verdict`, which the suite checks separately
     against that interpreter on random programs.
