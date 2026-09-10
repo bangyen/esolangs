@@ -16,20 +16,29 @@ readings.
 
 ## Research
 
-- **Lower drawn control flow.** Lower arbitrary Streetcode programs and the
-  boolean generator's printed-leaf decision trees. This is a compiler or
-  source-machine emulator, not command transliteration. It needs a constructed
-  Streetcode-program corpus/fuzzer and resolution of the reference
-  interpreter's junction and post-corner gaps.
+- **Settle Streetcode's four-way junction.** `_junction_kind` reports 3 or 4
+  roads, and the four-way arm is pinned only to what the implementation does:
+  `test_four_way_junction_also_merges` says so in its own docstring — no
+  hand-drawn, user-confirmed trace exists for it, unlike the three-way case.
+  The wiki cannot settle it either; it never spells out the geometry behind
+  "drive on the right-hand side" or the leftmost/second-leftmost ambiguous
+  turn rule, which is why `docs/streetcode.md` is the spec of record. Two
+  exits: find a wiki example that forces a four-way choice, making it ground
+  truth, or accept the current behavior as a documented convention and move it
+  to `limitations.md` beside the other interpreter conventions.
 
-  **Undecided: this targets a surface the repo deleted.** `7c440f9e` removed
-  `src/esolangs/transpilers/` entire — including the total brainfuck ->
-  Streetcode transpiler that had just landed — because 2069 lines and 47s of
-  suite time served nothing in the repo, following `58427732`, which dropped
-  the compilers on the same reasoning. Settle whether that rationale governs
-  this item before starting it. The interpreter half stands on its own either
-  way: the junction and post-corner gaps are correctness bugs whether or not a
-  compiler is ever built.
+  *Post-corner is not part of this.* The `near == -1` arm of `_road_mouth` —
+  the car cornering into a mouth it never met head-on — is the most exercised
+  of the three depths, firing 1808 times across the interpreter's 174 tests
+  against 802 for depth 0 and 672 for depth 1.
+
+  **The lowering half of this entry is retired.** It asked for a compiler from
+  Streetcode grids and printed-leaf decision trees; `7c440f9e` then deleted
+  `src/esolangs/transpilers/` entire — the total brainfuck -> Streetcode
+  transpiler included — because 2069 lines and 47s of suite time served
+  nothing in the repo, following `58427732` on the compilers. Rebuilding a
+  larger version of what was just removed needs a consumer first. The
+  construction is recoverable at `7c440f9e^` if one appears.
 - **Scale Line boolean drawings.** Twelve inputs is *measured, and it fits*:
   a 33760x29920 canvas (1.01Gpx, within a rounding of the 33600x29920
   projection) completes the round trip in 289s at 2.60GiB peak, all sampled
