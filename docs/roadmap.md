@@ -66,6 +66,29 @@ is now implemented, with its own boolean generator.
   nothing in the repo, following `58427732` on the compilers. Rebuilding a
   larger version of what was just removed needs a consumer first. The
   construction is recoverable at `7c440f9e^` if one appears.
+- **Re-screen input reordering, then take what the screen still names.** The
+  59-generator screen (`46a32c85`) measured, at n=3 over all 256 tables, the
+  shortest program any of the six orders emits against the identity's. It
+  lived in `docs/generator-optimizations.md`, which `f1e4ab68` trimmed to a
+  policy page and `920760c3` deleted; the roadmap pointed into it for each
+  reorder verdict, and the ArrowQueue entry below is the only one that
+  survived. **Re-run the screen before citing any figure from it — its
+  verdicts are falsified, not merely stale.** Four of its seven exclusions
+  reorder at HEAD (six_five 17.9%, addsubjump 16.7%, jaune 16.3%, unsquare
+  15.7%), as do three it left unattempted (streetcode 16.8% in `816fb13d`,
+  laserfuck 16.3%, forth 14.5%): seventeen generators call
+  `best_input_order` and five more run their own capped order search. What
+  it named and nothing since has touched is polynomial 25.1%, dig 19.8%,
+  flowchart 17.1%, modulous 16.4% and sophie 16.4%, each verified orderless
+  at HEAD. Its under-15% tail was not re-verified here, and sbleq and
+  three_x from it already reorder.
+
+  *The trap to carry forward.* A generator that validates its own output
+  during construction needs that check frame-mapped, or it rejects every
+  correct placement and reports a clean 0.00% — indistinguishable from
+  "reordering does not help here". ZTOALC L is where that happened; wii2d's
+  budget and requirement-set machinery is the next likely instance. A 0% on
+  a generator the screen gives upside is a diagnosis, not a verdict.
 - **Scale Line boolean drawings.** Twelve inputs is *measured, and it fits*:
   a 33760x29920 canvas (1.01Gpx, within a rounding of the 33600x29920
   projection) completes the round trip in 289s at 2.60GiB peak, all sampled
@@ -89,6 +112,10 @@ is now implemented, with its own boolean generator.
   cleanly at 4x per arity (0.16 / 0.62 / 2.48 / 10.1 / 38.0s for n=8..12),
   so it is predictable and small; `extract` is the stage any future work
   belongs in.
+
+  Line's open work that is not about arity — extraction from anti-aliased
+  input, the lattice probe length, ambiguous arrowheads — lives in
+  `extra/line/WIP.md`, the separate suite's own ledger.
 
 ## Conditional follow-up
 
