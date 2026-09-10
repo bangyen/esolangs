@@ -935,20 +935,47 @@ class TestZtoalc:
 
         This is the placement guarantee stated directly: a Collatz
         trajectory visits distinct values until it reaches 1, so the
-        commands land on distinct lines and each executes exactly once.
+        commands land on distinct lines and each executes exactly once --
+        and a subset of the trajectory's positions is still visited in
+        trajectory order, so skipping the large values changes nothing.
         """
-        from esolangs.tools.boolean.ztoalc_l import _collatz_prefix, _commands
+        from esolangs.tools.boolean.ztoalc_l import _commands, _slots
 
         for table in ("0110", "1010001000011000", "0110100110010110"):
             n = len(table).bit_length() - 1
             cmds = _commands(table, n)
             program = boolean.ztoalc_l_boolean(table)
-            start = int(program.splitlines()[0])
-            values = _collatz_prefix(start, len(cmds))
-            assert len(set(values)) == len(values), table
-            assert 1 not in values, table
+            start, slots = _slots(len(cmds))
+            assert len(set(slots)) == len(slots), table
+            assert 1 not in slots, table
             emitted = program.splitlines()
-            assert [emitted[v - 1] for v in values] == cmds, table
+            assert int(emitted[0]) == start, table
+            assert [emitted[v - 1] for v in slots] == cmds, table
+
+    def test_the_slots_are_the_smallest_usable_values(self) -> None:
+        """Placement takes the L smallest values, so size is minimal.
+
+        The emitted line count is the largest slot, and any L values of
+        the trajectory work (they stay in visit order), so the L smallest
+        are the cheapest correct choice -- the prefix the old placement
+        used peaks superexponentially instead, which is what capped the
+        generator at eight inputs.
+        """
+        from esolangs.tools.boolean.ztoalc_l import (
+            _MAX_LINES,
+            _slots,
+            _usable_values,
+        )
+
+        for length in (8, 23, 199, 329):
+            start, slots = _slots(length)
+            usable = _usable_values(start, _MAX_LINES)
+            assert len(slots) == length
+            assert sorted(slots) == sorted(usable)[:length]
+            visit_order = {v: i for i, v in enumerate(usable)}
+            assert [visit_order[v] for v in slots] == sorted(
+                visit_order[v] for v in slots
+            )
 
     def test_xor4_is_small(self) -> None:
         """XOR4 renders compactly, where the old linear fallback was huge.
@@ -994,149 +1021,171 @@ class TestZtoalc:
             with pytest.raises(ValueError, match="at least one input"):
                 boolean.ztoalc_l_boolean(bit)
 
-    def test_table_past_the_anchor_table_is_refused(self) -> None:
-        """A table needing more steps than any committed anchor is refused."""
+    def test_table_past_the_anchor_capacity_is_refused(self) -> None:
+        """A table needing more slots than any committed anchor is refused."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.ztoalc_l")
 
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "ANCHORS", [(1, 2), (8, 6)])
-            with pytest.raises(ValueError, match="longest committed anchor"):
+            with pytest.raises(ValueError, match="committed anchors offer"):
                 module.ztoalc_l_boolean("0110")
 
-    def test_table_needing_too_many_lines_is_refused(self) -> None:
-        """A table whose trajectory peaks past the line limit is refused."""
+    def test_a_lower_line_ceiling_shrinks_the_capacity(self) -> None:
+        """Tightening ``_MAX_LINES`` removes slots, not just lines.
+
+        Capacity is the count of trajectory values at or below the
+        ceiling, so the ceiling and the anchor table are one refusal, not
+        two: at 8 lines even the longest anchor keeps only a handful of
+        usable values.
+        """
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.ztoalc_l")
 
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_MAX_LINES", 8)
-            with pytest.raises(ValueError, match="past the"):
+            with pytest.raises(ValueError, match="at or below 8"):
                 module.ztoalc_l_boolean("0110")
 
-    def test_the_anchor_covers_a_length_landing_on_its_bound(self) -> None:
-        """An interval's bound is inclusive: ``end == length`` still fits.
+    def test_the_anchor_fits_a_length_landing_on_its_capacity(self) -> None:
+        """A capacity bound is inclusive: ``capacity == length`` still fits.
 
-        ``ANCHORS`` maps a length interval to the start with the smallest
-        peak over it, so an off-by-one at the bound silently takes the
-        *next* interval's start -- a working program, but a needlessly
-        taller trajectory.  Every bound is a real case: a one-input table
-        emits exactly eight commands, which is exactly the second anchor's
-        end, and the two one-input tables that are not constant hit it.
+        An off-by-one at the bound silently takes the next anchor -- a
+        working program, but a needlessly larger one.  Start 6 keeps
+        exactly eight usable values (its whole trajectory), and a
+        seven-input constant table emits exactly eight commands, so the
+        bound is a real case.
         """
-        from esolangs.tools.boolean.ztoalc_l import _anchor_for, _commands
-        from esolangs.tools.ztoalc_starts import ANCHORS
+        from esolangs.tools.boolean.ztoalc_l import _commands, _slots
 
-        assert (8, 6) in ANCHORS
-        assert len(_commands("01", 1)) == 8
-        assert _anchor_for(8) == 6
-        # The interval below it, to show the lookup is not simply constant.
-        assert _anchor_for(1) == 2
+        assert len(_commands("0" * 128, 7)) == 8
+        assert _slots(8)[0] == 6
+        assert _slots(9)[0] == 18
+        # The smallest anchor, to show the lookup is not simply constant.
+        assert _slots(1)[0] == 2
 
-    def test_the_anchor_refusal_names_the_length_and_the_bound(self) -> None:
+    def test_the_refusal_names_the_length_and_the_capacity(self) -> None:
         """The refusal reports the request and the committed ceiling.
 
-        Both numbers are what makes the message actionable -- how long a
-        trajectory the table needs, against how far the table reaches -- and
-        a substring match on the wording checks neither, so they are
-        compared whole.  ``_anchor_for`` is exercised directly because no
-        table small enough to build gets near the bound: the longest anchor
-        covers 1132 commands and a five-input table needs tens.
+        Both numbers are what makes the message actionable -- how many
+        slots the table needs, against how many the anchors keep under the
+        line ceiling -- and a substring match on the wording checks
+        neither, so they are compared whole.  ``_slots`` is exercised
+        directly because no valid table lands just past the bound.
         """
-        from esolangs.tools.boolean.ztoalc_l import _anchor_for
+        from esolangs.tools.boolean.ztoalc_l import (
+            _MAX_LINES,
+            _slots,
+            _usable_values,
+        )
         from esolangs.tools.ztoalc_starts import ANCHORS
 
-        longest = ANCHORS[-1][0]
-        with pytest.raises(ValueError, match="longest committed anchor") as caught:
-            _anchor_for(longest + 1)
+        capacity = max(len(_usable_values(s, _MAX_LINES)) for _, s in ANCHORS)
+        assert capacity == 386  # start 511935; the sieved record anywhere is 395
+        with pytest.raises(ValueError, match="committed anchors offer") as caught:
+            _slots(capacity + 1)
         assert str(caught.value) == (
-            f"the ZTOALC L boolean generator needs a trajectory of "
-            f"{longest + 1} steps (the longest committed anchor reaches "
-            f"{longest})"
+            f"the ZTOALC L boolean generator needs {capacity + 1} command "
+            f"lines at or below {_MAX_LINES}; the committed anchors offer "
+            f"at most {capacity}"
         )
 
-    def test_lines_off_the_trajectory_are_left_empty(self) -> None:
+    def test_lines_off_the_slots_are_left_empty(self) -> None:
         """A line no command lands on is blank, not filler.
 
-        The program is one line per value up to the trajectory's peak, so
-        most lines carry nothing -- 38 of ``0110``'s 52.  ZTOALC L reads a
-        blank line as a no-op, and anything else there would be executed,
-        so the padding is required rather than cosmetic.
+        ZTOALC L reads a blank line as a no-op, and anything else there
+        would be executed, so the padding is required rather than
+        cosmetic.  The trajectory's values *above* the last slot need no
+        lines at all -- the interpreter reads past-the-end as blank -- and
+        the emitted size is the largest slot, not the trajectory's peak.
         """
-        from esolangs.tools.boolean.ztoalc_l import _collatz_prefix, _commands
+        from esolangs.tools.boolean.ztoalc_l import _commands, _slots
 
         table = "0110"
         program = boolean.ztoalc_l_boolean(table)
         lines = program.splitlines()
-        cmds = _commands(table, 2)
-        values = _collatz_prefix(int(lines[0]), len(cmds))
-        occupied = {v - 1 for v in values} | {0}
+        _, slots = _slots(len(_commands(table, 2)))
+        occupied = {v - 1 for v in slots} | {0}
+        assert len(lines) == max(slots)
         assert [i for i, ln in enumerate(lines) if ln != ""] == sorted(occupied)
         assert all(lines[i] == "" for i in range(len(lines)) if i not in occupied)
 
-    def test_the_array_is_declared_at_exactly_two_to_the_n(self) -> None:
-        """``t = [2**n]`` holds one slot per row, no more.
+    def test_the_arrays_are_declared_at_exactly_their_domains(self) -> None:
+        """``t`` holds one slot per chunk and ``u`` one per code, no more.
 
-        The row index runs to ``2**n - 1``, so a larger declaration is
-        still *correct* -- it just reserves slots nothing can address.  Only
-        the emitted text sees it, which is why it is asserted here rather
-        than left to the truth-table sweeps.
+        The chunk index runs to ``2**(n - 2) - 1`` and a four-row chunk's
+        code to 15, so larger declarations are still *correct* -- they just
+        reserve slots nothing can address.  Only the emitted text sees the
+        size, which is why it is asserted here rather than left to the
+        truth-table sweeps.
         """
         for table, n in (("0110", 2), ("00010111", 3), ("1010001000011000", 4)):
             program = boolean.ztoalc_l_boolean(table)
-            assert f"t = [{2**n}]" in program, table
+            assert f"t = [{2 ** (n - 2)}]" in program, table
+            assert "u = [16]" in program, table
 
-    def test_the_shorter_row_set_is_encoded(self) -> None:
-        """The init block encodes the smaller of the one- and zero-rows.
+    def test_a_chunk_set_carries_four_rows_in_one_command(self) -> None:
+        """The init block spends one command per nonzero chunk, not per row.
 
-        One command per selected row means encoding the majority polarity
-        would cost up to ``2**n - 1`` commands where the minority costs at
-        most ``2**(n - 1)``.  Both are correct -- the complement is undone
-        by printing ``'1' - r`` -- so the truth-table sweeps cannot see the
-        choice, and it is the whole point of the branch.
+        This is what carries ten inputs: the old one-hot init cost one
+        command per selected row (512 at ``n == 10``, more than any start
+        under the line ceiling has usable values), where the chunk sets
+        cost at most ``2**(n - 2)`` (256) plus a decode block capped at
+        ``1 + 16 + 32``.
         """
         from esolangs.tools.boolean.ztoalc_l import _commands
 
-        for n in (1, 2, 3):
+        for n in (2, 3):
             for table_int in range(2 ** (2**n)):
                 table = format(table_int, f"0{2**n}b")
                 if len(set(table)) == 1:
                     continue
                 cmds = _commands(table, n)
-                rows = sum(1 for c in cmds if c.startswith("t["))
-                assert rows == min(table.count("0"), table.count("1")), table
-                assert rows <= 2 ** (n - 1), table
+                chunks = [table[c * 4 : (c + 1) * 4] for c in range(2 ** (n - 2))]
+                sets = [c for c in cmds if c.startswith("t[")]
+                assert len(sets) == sum(1 for c in chunks if "1" in c), table
+                assert len(sets) <= 2 ** (n - 2), table
 
-    def test_a_balanced_table_encodes_the_one_rows(self) -> None:
-        """On a tie the one-rows win, so no complement is built.
+    def test_the_decode_block_builds_each_code_once(self) -> None:
+        """``u`` gets one entry per *distinct* chunk code, zero included.
 
-        With equal counts either polarity costs the same, so the tie-break
-        is free -- but it is still a choice, and taking the zero-rows would
-        emit the ``q = '1'`` / ``q -= r`` pair instead of ``r + '0'``.  Same
-        length, different program, invisible to every truth-table
-        assertion.
+        Parity's chunks are all ``0110`` or ``1001``, so its decode block
+        is two entries however wide the table -- and a zero chunk needs
+        ``u[0]`` to exist, because ``t``'s elements default to 0 and
+        ``u[t[s]]`` must reach an array, not an int.
         """
         from esolangs.tools.boolean.ztoalc_l import _commands
 
-        for table in ("0110", "1001", "00001111", "01101001"):
-            n = len(table).bit_length() - 1
-            cmds = _commands(table, n)
-            assert not any(c.startswith("q = ") for c in cmds), table
-            assert any(c.startswith("r + ") for c in cmds), table
-            selected = [c for c in cmds if c.startswith("t[")]
-            assert len(selected) == table.count("1"), table
+        cmds = _commands("01101001", 3)  # parity: chunks 0110, 1001
+        assert [c for c in cmds if c.startswith("u = ")] == ["u = [16]"]
+        assert [c for c in cmds if c.startswith("u[") and "= [" in c] == [
+            "u[6] = [4]",
+            "u[9] = [4]",
+        ]
 
-    def test_a_dense_table_builds_the_complement(self) -> None:
-        """More ones than zeros is encoded as the zero-rows and inverted."""
-        from esolangs.tools.boolean.ztoalc_l import _commands
+        cmds = _commands("00000001", 3)  # a zero chunk forces u[0]
+        assert "u[0] = [4]" in cmds
+        assert [c for c in cmds if c.startswith("t[")] == ["t[1] = 1"]
 
-        cmds = _commands("1110", 2)
-        assert [c for c in cmds if c.startswith("t[")] == ["t[3] = 1"]
-        assert any(c.startswith("q = ") for c in cmds)
-        assert any(c == "q -= r" for c in cmds)
-        assert not any(c.startswith("r + ") for c in cmds)
+    def test_ten_inputs_build_and_answer(self) -> None:
+        """Parity at ten inputs builds and answers spot rows correctly.
+
+        The old one-hot encoding needed 555 commands here against a sieved
+        record of 395 usable values, so no placement could save it; the
+        chunked lookup needs 287 (dense worst case 329) against the
+        committed anchors' 386.  All 1024 rows of this table and of a
+        dense pseudo-random one were verified once against the real
+        interpreter (2s each); the sweep here is spot rows to keep the
+        suite's budget.
+        """
+        table = "".join(str(bin(i).count("1") % 2) for i in range(1024))
+        program = boolean.ztoalc_l_boolean(table)
+        assert len(program.splitlines()) <= 2**22
+        for combo in (0, 1, 5, 137, 512, 682, 1000, 1023):
+            bits = [str((combo >> (9 - i)) & 1) for i in range(10)]
+            assert run_ztoalc(program, bits) == table[combo], combo
 
     def test_wrong_length_rejected(self) -> None:
         """A truth table of the wrong length is malformed."""
