@@ -73,27 +73,7 @@ cap is declining to spend, not something it cannot reach. Unlike WII2D's
 analogous "raise the 256 guard" question, which measured *false*, this one
 measured true.
 
-## Text generator blockers
-
-| Language | Why it cannot emit arbitrary text |
-| --- | --- |
-| A Painter Ant | No I/O, so the interpreter dumps state when it proves the ant's routine repeats; that grid raster is limited to its symbols. |
-| Algebraic Programming Language | Executed lines print numeric results only. |
-| ArrowQueue | No I/O, so the interpreter dumps the queue at halt; those headings are numeric. |
-| Back | No I/O, so the interpreter dumps the tape at halt; that has only `0`, `1`, and spaces. |
-| BF-PDA | Output is one bit at a time. |
-| Bitdeque | No I/O, so the interpreter dumps the deque at halt; that dump is numeric. |
-| COD | Its sink prints decimal integers only. |
-| Circuit Diagram | Output is a bit string only. |
-| Fargo | `$` prints the output register as a number. |
-| Flowchart | Its output node emits one bit; the spec's truth machine fixes that convention. |
-| Grapheme | String mode cannot contain `E`, and strings cannot be concatenated. |
-| Inject | `send` appends a newline to every emitted line, so texts without a final newline are unreachable. |
-| Jaune | `^` prints cells as decimal integers only. |
-| Lamfunc | Whitespace tokenization and no concatenation prevent arbitrary text. |
-| Minsky Swap | No I/O, so the interpreter dumps the registers at halt; that dump is numeric. |
-| Point Break | No output command, so the interpreter dumps the variables at halt; that dump is numeric. |
-| RAM0 | No I/O, so the interpreter dumps state at halt; that fixed format cannot address arbitrary text. |
+## Boolean generator caps
 
 Current caps are deliberate:
 
