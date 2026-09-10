@@ -364,7 +364,10 @@ class TestSixFive:
             identity = len(_six_five_stream_ordered(table))
             assert dispatched <= identity, table
             improved += dispatched < identity
-        assert improved == 186  # the rest tie, keeping the old emission
+        # 186 before the leaves gained ``_six_five_const``'s ``r == 5``
+        # shortcut: a shorter leaf changes which orders pay for themselves,
+        # so more tables now beat the identity rather than tying it.
+        assert improved == 208  # the rest tie, keeping the old emission
 
     @pytest.mark.parametrize(
         ("table", "n"),
