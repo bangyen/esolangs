@@ -61,7 +61,7 @@ generators cover one and refuse the other at the same arity):
 | --- | --- | --- | --- |
 | Interprogck8 | 10 | 10 | n=11 dense exhausts the `_REPAIRS = 256` meadow budget after 30s; whether more budget closes it is unmeasured |
 | Polynomial | 10 | 10 | caps at 1934 instructions, one per prime -- the analytic worst case over n=10 tables, so all of n=10 builds; dense n=11 needs 2910 |
-| WII2D | 9 | 10 | dense n=10 needs a 512-point decode, past the fold algebra's measured cliff (live count 512 -> 373 while bit length passes 670000, every candidate enumerated); n=9 is admitted but not total -- 6 of 10 sampled tables build, the rest refuse promptly |
+| WII2D | 9 | 10 | dense n=10 needs a 512-point decode, past the fold algebra's measured cliff (live count 512 -> 373 while bit length passes 670000, every candidate enumerated) -- a wall of the exactly-once embed convention, since a per-node re-embed tree does dense n=13; n=9 is admitted but not total -- 6 of 10 sampled tables build, the rest refuse promptly |
 | ZTOALC L | 10 | 10 | n=11 needs 587 command slots (545 parity) against the anchors' 386 under the 4.19M line ceiling |
 
 6-5 leaves the table too.  Its 35 branch labels are the language's
@@ -193,14 +193,17 @@ wall-clock.
   total*: the deterministic witness builds in 6.6s (78362 characters, all
   512 rows executed), 45 of 50 sampled domain-256 patterns decode in ~3s,
   6 of 10 sampled tables build; every sampled failure returns in 0.7-9.4s.
-  Dense n=10 needs a 512-point decode and is a wall of the fold algebra,
-  not a guard: with every candidate enumerated the live count crawls
-  512 -> 373 while the bit length climbs past 670000, the machine has no
-  second register or conditional to construct around, and moving the
-  collapse into the chain faces refined (4/16-class) labels that stall
-  immediately — `docs/wii2d_generator.md` has the construction-space
-  audit. Structured n=10 is unaffected: parity, majority, AND, OR, an
-  xor-of-a-subset and a 3-to-8 mux all build and execute all 1024 rows.
+  The abort is load-bearing: lifted, three sampled ratchets ran 136-214s
+  without stopping, reaching 1.17M bits. Dense n=10 needs a 512-point
+  decode and is a wall of the **exactly-once embed convention**, not of
+  the machine: within a single-embed layout the fold algebra ratchets
+  (live count 512 -> 373, bit length past 670000, every candidate
+  enumerated), but a per-node re-embed tree — which the convention forbids
+  — does dense n=10 in 14432 characters and n=13 in 146540, every row
+  executed. `docs/wii2d_generator.md` has the audit. Structured n=10 is
+  unaffected: parity, majority, AND, OR, an xor-of-a-subset and a
+  threshold all build and execute all 1024 rows; the 3-to-8 mux builds in
+  only 3 of its 1680 spellings (0.18%), all with the selects read last.
 - **ZTOALC L:** was capped at 8 by the trajectory-prefix peak (n=9 peaked
   at 1.2e7 lines against the 4.19M ceiling).  Two changes cleared 10/10:
   commands now sit on the *L smallest* trajectory values under the ceiling

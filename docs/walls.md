@@ -21,14 +21,25 @@ claim is accepted.
   generic tables are closed by counting: 16-bit cofactors over 2048 prefix
   points are nearly all distinct, so compaction stops biting.
 - **WII2D:** routing plus accumulator decoding is the shipped construction;
-  its guards are source-cost policies, but the dense ten-input table is a
-  measured wall of the machine, not a guard: a 512-point decode ratchets
-  with every candidate enumerated, the interpreter offers no conditional
-  or second register to construct around (`@`/`|` are static, `?` random),
-  no op removes high accumulator bits (which closes every shifted-table
-  readout), and moving the collapse into the chain faces refined 4/16-class
-  labels that stall immediately against a structured-label control that
-  collapses at once.  `docs/wii2d_generator.md` has the audit.
+  its guards are source-cost policies, and the dense ten-input table is a
+  wall of the **exactly-once embed convention**, not of the machine.  Under
+  that convention the construction is closed: `^v<>` fills set the heading
+  *absolutely*, so every prefix leaves a junction at an identical position
+  and heading and only the accumulator differs, which makes any program op
+  strings interleaved with the n branch pairs.  Within that family a
+  512-point decode ratchets with every candidate enumerated; no op removes
+  high accumulator bits, closing every shifted-table readout (verified
+  exhaustively over op strings to length 5, against controls that fire);
+  and a mid-chain collapse under 4-class labels ratchets too.
+  **Drop the convention and the wall goes:** a per-node re-embed (a plain
+  grid decision tree, one row per level) computes dense n=10 in 14432
+  characters and dense n=13 in 146540, every row executed.  It embeds input
+  `i` `2**i` times -- 512 copies of `{X9}` at n=10 -- which is what the
+  invariant in `tests/tools/test_boolean_parameterized.py` forbids and why
+  Dotlang and 2dFish were removed rather than exempted.  So this is a
+  *deliberate* wall, and the thing to re-examine if it ever matters is the
+  convention, not the fold algebra.  `docs/wii2d_generator.md` has the
+  audit.
 - **Termination convention:** use only where a specification supplies a
   reliable halt/loop verdict and the runtime can decide it soundly.
 - **Empty input line:** `io.input_char` now returns `0`, matching every
