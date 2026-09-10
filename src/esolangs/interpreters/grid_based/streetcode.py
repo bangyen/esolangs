@@ -447,7 +447,8 @@ class _Grid:
         # the drawing* from a given car has the same answer every later
         # time it is asked.  It is asked a lot: the steering phases each
         # re-derive the shape, the choices and the merge from scratch, and
-        # the car revisits squares, so over the hello-world program the
+        # the car revisits squares, so over the ring program in
+        # ``tests/fixtures/streetcode_hello.txt`` the
         # rules run 3242/12734/5864 times from only 727/1235/702 distinct
         # states -- between 4.5 and 10.3 calls of every ten are a repeat.
         # ``__setitem__`` clears it, since a redrawn row is a different
@@ -1880,8 +1881,8 @@ class _Machine:
         form admits any wall character at the corner rather than only
         ``+``: together these leave open a question the wiki does not
         settle, whether a road divider must terminate in a ``+``.  The
-        hello-world example leaves its divider ends bare and runs
-        correctly, and nothing in the driving rules keys on the
+        ring program in ``tests/fixtures/streetcode_hello.txt`` leaves its
+        divider ends bare and runs correctly, and nothing keys on the
         difference, so the shape is accepted.  What the forms do reject is
         the hole, whose cell has wall on two opposite sides and open
         ground on the other two, matching no form.

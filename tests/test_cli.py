@@ -15,7 +15,6 @@ import pytest
 import esolangs
 from esolangs.cli import main
 
-
 # A 3-input parity table.  Parity depends on every input, so the program is
 # long enough to have something to wrap -- an echo-one-input table folds
 # down to a few characters and the width options below would be no-ops.

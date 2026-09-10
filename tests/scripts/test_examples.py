@@ -12,14 +12,10 @@ plain test fixtures rather than examples, and live inline in the matching
 ``tests/interpreters/test_*.py`` instead.
 """
 
-import importlib
-import io
-from contextlib import redirect_stdout
 from pathlib import Path
 
 import pytest
 
-from esolangs.interpreters.io import IO
 from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.boolean.examples import HAND_WRITTEN
@@ -34,6 +30,8 @@ from esolangs.vm import (
 from tests.tools.boolean_runners import one_two_three_result, point_break_result
 
 BASE_DIR = Path(__file__).parents[2]
+
+
 def _file_name(display_name: str) -> str:
     return display_name.lower().replace(" ", "-")
 

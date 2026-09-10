@@ -40,6 +40,7 @@ _ALLOWED = {
     "jaune_multiply",
 }
 
+
 def _public(module: object) -> list[tuple[str, Callable[..., Any]]]:
     """Return the generator functions a package re-exports."""
     return [

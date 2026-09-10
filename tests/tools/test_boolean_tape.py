@@ -1068,8 +1068,7 @@ class TestFactor:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_is_the_decimal_encoding_of_the_bf_program(self) -> None:
-        """factor delegates to the brainfuck generator and encodes its
-        output, same as the text generator's factor()."""
+        """factor delegates to the brainfuck generator, then encodes it."""
         from esolangs.tools.boolean.tape import _factor_encode
 
         table = "0110"
