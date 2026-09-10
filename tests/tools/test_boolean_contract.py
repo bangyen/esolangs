@@ -13,7 +13,7 @@ import pytest
 
 import esolangs.tools.boolean as boolean
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.registry import BY_BOOLEAN, BY_FUNCTION, LANGUAGES
+from esolangs.registry import BY_BOOLEAN, LANGUAGES
 from esolangs.vm import run_until_halt_or_cycle
 
 # One constant table against one that folds nothing.  A generator loses reads
@@ -69,9 +69,9 @@ _SLOW_REORDERING_GENERATORS: frozenset[str] = frozenset()
 def _input_reading_generators() -> list[object]:
     """Every boolean generator whose language actually reads input.
 
-    Looked up in ``BY_BOOLEAN``, not ``BY_FUNCTION``.  The latter is keyed
-    by the *text* generator's function name, so a boolean-only language is
-    missing from it entirely and this sweep skipped such languages in
+    Looked up in ``BY_BOOLEAN``.  This swept a twin index keyed by the
+    *text* generator's function name, so a boolean-only language was
+    missing from it entirely and the sweep skipped such languages in
     silence -- sixteen of them, including the one whose contract violation
     that concealed (Jaune read a number of inputs that depended on its
     truth table).  A generator absent from the index it is swept by does
@@ -172,10 +172,9 @@ def _exported_generators() -> dict[str, str]:
 
     A generator function is named for its language's canonical id, so the id
     is the join.  Two naming conventions sit on top of it: a ``_boolean``
-    suffix distinguishes the boolean generator where the text one already
-    owns the plain name (``forbin_boolean``, ``ztoalc_l_boolean``), and a
-    few ids drop an underscore (``bf_pda`` -> ``bfpda``).  ``BY_FUNCTION``
-    covers the languages whose text generator shares the name.
+    suffix, kept from when a text generator owned the plain name
+    (``forbin_boolean``, ``ztoalc_l_boolean``), and a few ids that drop an
+    underscore (``bf_pda`` -> ``bfpda``).
     """
     by_id = {lang.id: name for name, lang in LANGUAGES.items()}
     squashed = {lang.id.replace("_", ""): name for name, lang in LANGUAGES.items()}
@@ -187,7 +186,7 @@ def _exported_generators() -> dict[str, str]:
         display = (
             by_id.get(base)
             or squashed.get(base.replace("_", ""))
-            or (BY_FUNCTION[fn].name if fn in BY_FUNCTION else None)
+            or (BY_BOOLEAN[fn].name if fn in BY_BOOLEAN else None)
         )
         if display is not None:
             found[fn] = display
