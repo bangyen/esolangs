@@ -20,14 +20,14 @@ numeric output alphabet, or cannot emit arbitrary byte sequences. Boolean
 construction is parameterized for 123 and `%^2^-1`; no program reading its
 own inputs overcomes the latter's two-input wall.
 
-Interprogck8's boolean generator caps at three inputs, and the cap is the
-*construction's*, not the language's. `DownAccLines` routes the whole
-decision tree — the current-function slot is never touched, which answers
-the roadmap question it was posed under — but a branch's nine-line jump
-window spells a hop of at most 70 lines and one `DownAccLines` at most 255,
-while at n=4 the bit-0 arm has to cross a 456-line subtree. A rung parked
-inside the crossed region would lift both bounds. All 4, 16 and 256 tables
-at n=1, 2 and 3 are executed over every input row; n≥4 raises `ValueError`.
+Interprogck8's boolean generator reaches seven inputs. It was capped at
+three by the reach of one `DownAccLines` — 255 lines, against a 456-line
+n=4 crossing — and the relay rungs that lift that bound shipped in
+`77025aa7`; the paragraph describing the old cap survived the change and
+contradicted this file's own capability table, which is corrected here.
+What stops n=8 is now cost rather than reach: 191 routing rounds and
+2031s, refused by the `_PATIENCE` policy. See the table below for the
+measured edge and the paragraph after it for why routing closes at all.
 
 ## Text generator blockers
 

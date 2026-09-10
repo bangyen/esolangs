@@ -44,10 +44,16 @@ readings.
   cleanly at 4x per arity (0.16 / 0.62 / 2.48 / 10.1 / 38.0s for n=8..12),
   so it is predictable and small; `extract` is the stage any future work
   belongs in.
-- **Extend Interprogck8's boolean tree.** `DownAccLines` routes the current
-  tree without using the current-function slot, but its 255-line hop and
-  nine-line branch window stop n=4: the bit-0 arm must cross 456 lines. Build
-  and execute a relay rung inside that subtree to lift both bounds.
+- **Extend Interprogck8's boolean tree.** *Done, and this entry was stale.*
+  `77025aa7` built exactly the relay rung asked for here and lifted the
+  ceiling from 3 to 7; the 255-line hop is replaced by chains laid whole at
+  200-line spacing, and the pass cap by a progress guard. Verified rather
+  than taken from the message: n=4 through n=7 all build (4921 to 92739
+  characters, 0.00s to 9.0s), and n=4 parity executes 16 of 16 rows.
+  `docs/limitations.md` carries the measured edge — n=8 is refused at 191
+  routing rounds and 2031s by the `_PATIENCE` cost policy, not by reach.
+  Reopen only against that cost, and only with a rule for the rung
+  interference the entry after it describes.
 - **Close Minifuck's mux sculpt.** The pool-code half is *done*: `5b35c66b`
   replaced the per-round interpreter scan with `_SCULPT_POOL_CODE`, proved
   structurally (the probe clamps to one canonical state, so the fifth code
