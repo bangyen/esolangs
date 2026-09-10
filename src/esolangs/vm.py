@@ -490,6 +490,15 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     wraps at 256 and is
     :func:`run_until_halt_or_cycle`'s to prove.
 
+    One growth shape stays out of reach.  ``>+[[<]>[>]+]`` hangs -- each
+    lap extends a run of ones -- but every lap walks to cell 0, so its
+    visits share a frozen prefix rather than translating, and no
+    certificate built from a pair of configurations can close that class:
+    a machine that counted its walk's length into ``ip`` (protocol-legal;
+    a 2D heading is exactly such state) could halt on a count the pair
+    never witnessed, so a frozen-prefix rule would call a halting program
+    a hang.  Such periods keep the wall-clock backstop.
+
     ``limit`` bounds the walk in steps.  Exhausting it raises
     :class:`TimeoutError` rather than returning a verdict, so a program
     this cannot decide is never reported as halting.
