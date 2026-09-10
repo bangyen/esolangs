@@ -34,13 +34,12 @@ def test_id_matches_the_interpreter_module() -> None:
 def test_id_matches_the_generator_function() -> None:
     """The canonical id is also the generator function's name.
 
-    A ``_boolean`` suffix is allowed: it distinguishes the generator where
-    a text one once owned the plain name (``forbin_boolean``), and a few
-    ids drop an underscore the function keeps (``bf_pda`` -> ``bfpda``).
+    A few ids drop an underscore the function keeps (``bf_pda`` ->
+    ``bfpda``); nothing else may differ.
     """
     for name, lang in LANGUAGES.items():
         if lang.boolean:
-            fn = lang.boolean.__name__.removesuffix("_boolean")
+            fn = lang.boolean.__name__
             assert fn in (lang.id, lang.id.replace("_", "")), name
 
 

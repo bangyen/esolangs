@@ -19,7 +19,7 @@ table literal, with no decision tree, no leaves and no turns: it is one
 straight eastward line.
 
 That shape is why ``alight`` sits in the contract test's ``_UNSHAPED`` list
-alongside ``ztoalc_l_boolean``.  Both are branch-free lookups, so there are
+alongside ``ztoalc_l``.  Both are branch-free lookups, so there are
 no subtrees to collapse and a one-dependency table renders the same length
 as parity -- a 0% fold that is the construction working, not regressing.
 

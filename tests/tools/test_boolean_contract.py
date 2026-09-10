@@ -54,7 +54,7 @@ _SEARCHING_GENERATORS: frozenset[str] = frozenset()
 # the ``_*_ordered`` builder once per input order for every table up to three
 # inputs, so a generator that *searches* pays that cost repeatedly.
 #
-# ``ztoalc_l_boolean`` was this set's only member, at 3.0s in
+# ``ztoalc_l`` was this set's only member, at 3.0s in
 # test_reordering_never_grows_a_program against 0.02s in the read-count sweep
 # above.  It no longer reorders at all -- it constructs one branch-free
 # lookup whose length is permutation-invariant -- so it left both the sweep
@@ -171,10 +171,8 @@ def _exported_generators() -> dict[str, str]:
     """Every boolean generator the package exports, mapped to its language.
 
     A generator function is named for its language's canonical id, so the id
-    is the join.  Two naming conventions sit on top of it: a ``_boolean``
-    suffix, kept from when a text generator owned the plain name
-    (``forbin_boolean``, ``ztoalc_l_boolean``), and a few ids that drop an
-    underscore (``bf_pda`` -> ``bfpda``).
+    is the join.  One convention sits on top of it: a few ids drop an
+    underscore the function keeps (``bf_pda`` -> ``bfpda``).
     """
     by_id = {lang.id: name for name, lang in LANGUAGES.items()}
     squashed = {lang.id.replace("_", ""): name for name, lang in LANGUAGES.items()}
@@ -182,10 +180,9 @@ def _exported_generators() -> dict[str, str]:
     for fn in boolean.__all__:
         if fn in ("BOOLEAN", "instantiate") or not callable(getattr(boolean, fn, None)):
             continue
-        base = fn.removesuffix("_boolean")
         display = (
-            by_id.get(base)
-            or squashed.get(base.replace("_", ""))
+            by_id.get(fn)
+            or squashed.get(fn.replace("_", ""))
             or (BY_BOOLEAN[fn].name if fn in BY_BOOLEAN else None)
         )
         if display is not None:
@@ -270,7 +267,7 @@ def _reordering_generators() -> list[object]:
             # circlefuck() itself lifts it.
             lambda t, p: _circlefuck_ordered([_ASCII_ZERO + int(b) for b in t], p),
         ),
-        ("forbin_boolean", boolean.forbin_boolean, _forbin_ordered),
+        ("forbin", boolean.forbin, _forbin_ordered),
         ("jaune", boolean.jaune, _jaune_ordered),
     ]
     return [
@@ -479,7 +476,7 @@ _MINTERM_SHAPED = {
 # at all: ``jaune_multiply`` takes no argument (it multiplies two decimal
 # numbers, a fixed program), and ``circlefuck_byte`` takes a *byte* table.
 #
-# ``slow_acv_mammalian_boolean`` is a tree, but a deliberately *unfolded*
+# ``slow_acv_mammalian`` is a tree, but a deliberately *unfolded*
 # one, so the folding discriminator does not apply to it.  Its nodes are
 # what read the input -- the branch condition is the bit ``ACCEPT`` just
 # appended -- so collapsing a constant subtree would drop that subtree's
@@ -491,7 +488,7 @@ _MINTERM_SHAPED = {
 # no per-row structure to fold and its size tracks the search rather than the
 # table's shape.
 #
-# ``ztoalc_l_boolean`` emits no tree either, and for a reason the folding
+# ``ztoalc_l`` emits no tree either, and for a reason the folding
 # discriminator cannot see.  It builds one branch-free chunked lookup: the
 # inputs are folded into a chunk index and a bit index, the table's
 # four-row chunks are stored as codes, and a shared decode array turns the
@@ -541,7 +538,7 @@ _REDUCING = {
 }
 
 # ``alight`` is a branch-free lookup of the same class as
-# ``ztoalc_l_boolean``: the inputs are folded into a row index by Horner's
+# ``ztoalc_l``: the inputs are folded into a row index by Horner's
 # rule and the table is a string literal read with ``at{table, i+0.5}``, so
 # there are no subtrees to collapse and every table of a given arity renders
 # to exactly the same length.  A 0% fold is the construction working.
@@ -551,12 +548,12 @@ _UNSHAPED = {
     "alight",
     "wii2d",
     "minifuck",
-    "ztoalc_l_boolean",
+    "ztoalc_l",
     "pct_squared_minus_one",
     "one_two_three",
     "jaune_multiply",
     "circlefuck_byte",
-    "slow_acv_mammalian_boolean",
+    "slow_acv_mammalian",
 }
 
 # Every table depending on exactly one input, at n == 3, both polarities.

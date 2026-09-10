@@ -503,8 +503,8 @@ def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
 
 
 # The walker only concatenates tokens and measures runs of them, never looks
-# inside one, so a token is whatever the caller finds convenient: a string for
-# the generators that emit text, an instruction tuple for S*bleq.
+# inside one, so a token is whatever the caller finds convenient: a string
+# for most generators, an instruction tuple for S*bleq.
 type Leaf[Token] = Callable[[int, int], list[Token]]
 type Node[Token] = Callable[[int, list[Token], list[Token], int], list[Token]]
 

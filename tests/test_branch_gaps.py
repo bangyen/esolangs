@@ -16,7 +16,7 @@ from esolangs.interpreters.other.dinac import run as dinac_run
 from esolangs.interpreters.other.lamfunc import run as lamfunc_run
 from esolangs.interpreters.other.packlang import _Parser
 from esolangs.interpreters.stack_based.three_x import run as three_x_run
-from esolangs.tools.boolean.laserfuck import laserfuck as laserfuck_boolean
+from esolangs.tools.boolean.laserfuck import laserfuck
 from tests.interpreters.runner import run_program
 
 
@@ -92,7 +92,7 @@ class TestLaserfuckGridWrite:
         the arm a forward-only layout never takes.  Asserted on the built
         program: a padding bug there would corrupt the grid, not raise.
         """
-        program = laserfuck_boolean("0110")
+        program = laserfuck("0110")
         # ``test_boolean_other`` runs this program against the table from
         # every heading; here the point is only that the backfilling write
         # produces a grid at all, and that every row it padded is as wide

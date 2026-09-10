@@ -75,7 +75,7 @@ sys.path.insert(0, str(ROOT / "src"))
 # Test-support modules the suites import that are not themselves tests.
 # ``tests.interpreters.runner`` is what ``boolean_runners`` drives the
 # interpreters through, so a generator's output can be executed, and
-# ``tests.raises`` is a helper ``test_generate`` imports at module scope.
+# ``tests.raises`` is a helper the generator suites import at module scope.
 #
 # ``tests.raises`` was missing once, and the way it surfaced is worth
 # keeping: every suite in ``tests/tools`` is copied, so the *file* was
@@ -260,8 +260,8 @@ def _test_files(kind: _Kind) -> list[str]:
       that file.
     * **By attribute access**, resolving ``boolean.<name>`` back to the
       module that defines it.  This catches the re-export, and still misses
-      a suite that dispatches through a string or a table.
-      ``test_generate`` is that shape, and it reaches 19 of the 27 modules.
+      a suite that dispatches through a string or a table, which some
+      of these do.
 
     So selection is a glob, which has no blind spot to construct a
     refutation for.  Breadth is nearly free here because mutmut does not
