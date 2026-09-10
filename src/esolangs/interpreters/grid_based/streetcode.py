@@ -833,9 +833,14 @@ def _junction_kind(grid: _Grid, car: _Car) -> _Junction:
     the window on one wall, not something the spec calls for -- the wiki
     describes the leftmost/second-leftmost choice without restricting
     which side of the road a branch may open on.  Both of the wiki's own
-    junction-bearing examples still detect under this rule (the
-    infinite-loop example at ``(1,5)`` heading West, and the larger
-    infinite-cat example at ``(1,6)`` heading West).
+    junction-bearing examples still detect under this rule: the infinite-loop
+    example first at ``(1,3)`` heading West and the infinite-cat example at
+    ``(1,4)`` heading West, ten firing states each.
+
+    Every one of those twenty is a **three**-way.  Scanning both grids at
+    every cell and heading answers 4 nowhere, so no wiki example forces the
+    four-way choice and that arm is a convention, not a sourced rule -- see
+    ``docs/limitations.md``.
     """
     kind = _junction_shape(grid, car)
     # A drawn junction is only a choice when at least two of the roads
