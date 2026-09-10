@@ -35,13 +35,18 @@ def _six_five_path(src: int, dst: int) -> str:
     The delta is covered by a run of sixes (moving up) or nines (moving down)
     plus ``62``/``95`` pairs for the remainder: each ``62`` nets ``+6 - 5 =
     +1`` and each ``95`` nets ``-6 + 5 = -1``.
+
+    A remainder of exactly 5 spends one op instead of ten, because ``5`` is
+    itself ``+5`` and ``2`` is ``-5`` -- the same shortcut
+    :func:`~esolangs.tools.boolean.six_five._six_five_const` takes, applied
+    here to both directions.
     """
     delta = dst - src
     if delta >= 0:
         q, r = divmod(delta, 6)
-        return "6" * q + "62" * r
+        return "6" * q + ("5" if r == 5 else "62" * r)
     q, r = divmod(-delta, 6)
-    return "9" * q + "95" * r
+    return "9" * q + ("2" if r == 5 else "95" * r)
 
 
 def _mammalian_walk(ptr: int) -> list[dict[int, int]]:
