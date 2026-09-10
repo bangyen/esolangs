@@ -670,30 +670,43 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 # at eight: n<=10 cost 141s of CPU, and n=9 alone was 53s of it.  Five
 # generators were then measured and rewritten:
 #
-#     minifuck        42.8s -> 8.5s     interprogck8    14.7s -> 3.5s
+#     minifuck        42.8s -> 8.6s     interprogck8    14.7s -> 3.5s
 #     polynomial      28.4s -> 5.5s     wii2d            7.2s -> 1.3s
-#     one_two_three   17.8s -> 1.9s
+#     one_two_three   17.8s -> 3.7s
 #
-# The whole n=1..10 sweep is now 43.4s of CPU.  Per arity: n=6 6.0s, n=7
-# 1.0s, n=8 5.5s, n=9 6.7s, n=10 21.9s.  n=6 costing six times n=7 is not
-# a measurement error and not warmup -- it is ``_ORDER_SEARCH_MAX = 6`` in
-# ``helpers.py``.  At n <= 6 a reordering generator builds all ``n!`` = 720
-# candidate orders and keeps the shortest; at n=7 it switches to the greedy
-# ``O(n**2)`` pick, so a *bigger* table is hundreds of times faster
-# (laserfuck 1.03s at six against 0.002s at seven, streetcode 0.56s against
-# 0.002s).  Lowering the ceiling below seven therefore does not save what
-# the per-arity rows suggest, and n=6 is the one arity where the sweep pays
-# for program quality rather than for coverage.
+# plus a generic pass on the order search below.  The whole n=1..10 sweep
+# is now 46.1s of CPU.  Per arity: n=6 6.2s, n=7 1.0s, n=8 5.7s, n=9 7.2s,
+# n=10 23.8s.
 #
-# n=6 was 10.0s of a 50.2s sweep until the candidates themselves were made
-# cheap -- the search still builds every one of the 720 and measures it, so
-# all 1380 programs are byte-identical; see the ``best_input_order``
-# docstring for why the count itself cannot come down.
+# n=6 costing six times n=7 is not a measurement error and not warmup -- it
+# is ``_ORDER_SEARCH_MAX = 6`` in ``helpers.py``.  At n <= 6 a reordering
+# generator builds all ``n!`` = 720 candidate orders and keeps the
+# shortest; at n=7 it switches to the greedy ``O(n**2)`` pick, so a
+# *bigger* table is hundreds of times faster (laserfuck 1.03s at six
+# against 0.002s at seven, streetcode 0.56s against 0.002s).
 #
-# Only one of those rewrites changed a program -- minifuck's dense n=9, by
-# +6.4% -- so 1370 of the registry's 1380 programs are byte-identical
-# across the whole thing, the other nine differences being factor arities
-# that used to refuse.
+# What that 720-build search buys, measured by running the registry at n=6
+# with the cap at 6 and at 5: 3,193,830 chars in 10.7s against 3,195,778 in
+# 0.79s.  Only 13 of 138 cases differ and the registry total is 0.06%, but
+# the win is concentrated, not absent -- ram0 parity 29.9% shorter under the
+# search, circlefuck dense 26.4%, six_five dense 14.2%, unsquare dense
+# 13.5%.  Lowering the cap is a bad trade rather than a free 10s.
+#
+# **Measuring that requires patching six modules, not one.**  ``laserfuck``,
+# ``streetcode``, ``stack``, ``six_five`` and ``tape`` each do ``from
+# .helpers import _ORDER_SEARCH_MAX``, a by-value import, so patching
+# ``helpers`` alone leaves the two most expensive generators exhaustive and
+# reports the greedy side as 5.17s instead of 0.79s.
+#
+# n=6 was 10.0s until the candidates themselves were made cheap.  The
+# search still builds every one of the 720 and measures it -- see the
+# ``best_input_order`` docstring for why the count cannot come down without
+# going per-language -- so that pass left all 1380 programs byte-identical.
+#
+# Across everything here, 1356 of the registry's 1380 programs are
+# byte-identical: the 24 that moved are nine factor arities that used to
+# refuse, minifuck's dense n=9 at +6.4%, and one_two_three's n=4..10 both
+# shapes, which the mark respacing cut by 82% overall.
 #
 # Ten still peaks at 637MB RSS on Circuit Diagram's n=10 dense table, 306MB
 # of program text.  That memory, not the time, is what keeps the band split:
