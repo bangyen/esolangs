@@ -23,15 +23,6 @@ direction, so ``fold`` lays such a stretch backwards along the return row
 rather than leaving it blank.  Since the runs that make these grids wide
 are precisely the long same-character ones -- 48 ``-`` per reader, one
 ``+`` per unit of text -- that halves the rows the fold spends on them.
-
-A loop *frame* is not a straight run: it interleaves tape ops with
-bracket markers, and a marker owns mirror cells on the rows beneath it
-whose columns must match its own.  Breaking inside one of those groups
-would separate a mirror from the marker it serves.  :func:`fold_groups`
-folds the frame anyway, by treating each marker and its mirrors as a single
-unbreakable token and only ever breaking between two of them -- the same
-token-aware rule the brainfuck-family wrappers in
-:mod:`esolangs.tools.wrap` follow, applied to a grid rather than a line.
 """
 
 # The column a fold returns to.  Columns 0..2 carry the funnel (``|o^`` and
@@ -82,8 +73,7 @@ def fold(
     the next segment row as before.
 
     ``grid`` grows downwards as the fold needs rows, so a caller only has to
-    size it for its own geometry; :func:`rows_needed` still estimates the
-    cost of a run for a caller that wants to reserve the space up front.
+    size it for its own geometry.
 
     Returns the row and column the beam occupies once the run is laid, so
     the caller can put whatever follows the run -- ``x``, or the next
@@ -131,98 +121,8 @@ def _fill_backwards(row: list[str], ops: str, start: int, stop: int) -> int:
     return count
 
 
-def fold_groups(
-    grid: list[list[str]],
-    groups: list[tuple[str, str, str]],
-    row: int,
-    col: int,
-    width: int,
-    left: int = MARGIN,
-) -> tuple[int, int]:
-    r"""Lay ``groups`` into ``grid``, breaking only between two of them.
-
-    Each group is a ``(top, middle, bottom)`` triple: what the frame writes
-    on its own row, and the mirror cells that must sit directly beneath it
-    on the next two rows.  A plain tape op carries blank mirrors; a bracket
-    marker carries the cells that turn the beam back into the frame.  The
-    triple is written as a unit, so a marker never loses its mirrors to a
-    row break -- that is the whole reason this exists rather than
-    :func:`fold`.
-
-    The three rows of a segment are followed by a return row, so a segment
-    costs four rows against :func:`fold`'s two.  The beam turns down at the
-    end of a segment, crosses the two mirror rows, and the return row's
-    ``{`` sends it back to ``left`` to start the next segment -- the same
-    idiom :func:`fold` uses, given room for the mirrors.
-
-    Returns the row and column the beam occupies after the last group, on
-    the *top* row of the final segment.
-    """
-    index = 0
-    while index < len(groups):
-        reserve(grid, row + 2)
-        room = max(width - col - 1, 1)  # keep a column for the turn-down 'v'
-        take = 0
-        used = 0
-        while index + take < len(groups):
-            span = len(groups[index + take][0])
-            if used + span > room and take:
-                break
-            used += span
-            take += 1
-            # Exactly filling the row ends it here rather than on the check
-            # above, which needs a group that overruns.
-            if used >= room:
-                break
-
-        for top, middle, bottom in groups[index : index + take]:
-            for offset, char in enumerate(top):
-                grid[row][col + offset] = char
-            for offset, char in enumerate(middle):
-                if char != " ":
-                    grid[row + 1][col + offset] = char
-            for offset, char in enumerate(bottom):
-                if char != " ":
-                    grid[row + 2][col + offset] = char
-            col += len(top)
-        index += take
-
-        if index < len(groups):
-            reserve(grid, row + 4)
-            grid[row][col] = "v"
-            # the beam drops past both mirror rows before turning back left
-            grid[row + 3][col] = "{"
-            grid[row + 3][left] = "v"
-            row += 4
-            grid[row][left] = "}"
-            col = left + 1
-    reserve(grid, row + 3)
-    return row, col
-
-
 def reserve(grid: list[list[str]], row: int) -> None:
     """Extend ``grid`` downwards so ``row`` exists."""
     width = len(grid[0]) if grid else 0
     while len(grid) <= row:
         grid.append([" "] * width)
-
-
-def segment_width(width: int, left: int = MARGIN) -> int:
-    """Columns a folded segment can hold between the margin and the turn."""
-    return max(width - left - 1, 1)
-
-
-def rows_needed(run: int, width: int, left: int = MARGIN) -> int:
-    """Rows a run of ``run`` ops takes when folded to ``width``.
-
-    Two rows per segment (the segment and the return row beneath it), plus
-    a spare pair so a caller can always put a terminator on a fresh row.
-
-    This is an upper bound, not an exact count: :func:`fold` also fills the
-    return rows when the run is one repeated character, which can halve the
-    rows an all-``+`` or all-``-`` run actually uses.  Callers size their
-    grid from this and :func:`fold` grows it further if it ever needs to,
-    so an overestimate costs only the blank trailing rows a caller trims.
-    """
-    segment = segment_width(width, left)
-    return 2 * (-(-run // segment) + 1)
