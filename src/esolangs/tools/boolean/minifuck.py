@@ -2628,34 +2628,72 @@ def _sculpt_pool_code(cell7: int) -> str | None:
     return _SCULPT_POOL_CODE if cell7 == 0 else None
 
 
-def _mux_probe(
-    j: _Joint, acc: int, cell7: int, hint: str | None = None
-) -> tuple[tuple[int, ...], str] | None:
-    """Return the column printed at ``acc`` and the pool code that got it.
+@cache
+def _probe_frame(code: str, byte: int) -> tuple[int, int] | None:
+    """Return ``(landed, parity)`` for ``code`` run from a converged row.
 
-    The same derivation as :func:`_printed_column`, minus the memoisation:
-    sculpting never revisits a state, so the module-level caches would grow
-    one entry per probe and pay for lookups that can never hit.  The pool
-    codes are tried directly instead.
-
-    The code is not searched for.  :data:`_SCULPT_POOL_CODE` names it: the
-    probe state here is canonical (the ``x`` and the clamp below put every
-    row at pointer 0 with the same pool region), so the verdict is a
-    constant of the construction.  See that constant for the derivation and
-    the measurements behind it.  What used to stand here was a scan over
-    :data:`_POOL_CODES` -- 61% of a four-input build, and the module's hot
-    spot at five -- with ``hint`` carrying the previous round's winner ahead
-    of the list to skip most of it.  The hint is accepted and ignored: it
-    was a cache for a value that cannot change between rounds, and the
-    caller still passes it because :func:`_mux` reads the code back out of
-    the return.
-
-    The walk that needs the real accumulator is the one below, and it runs
-    once.  The verdict itself never depended on the distance -- the
-    invariance :data:`_PROBE_WALK_OUT` documents -- which is why naming the
-    code costs no generality.
+    ``landed`` is where the code leaves the pointer and ``parity`` is the
+    XOR of the pool-region cells it leaves between there and cell 7 -- the
+    two constants the closed-form probe column reads.  Derived by running
+    the code on the simulator from ``(byte, pointer 0, no skip)``, twice
+    with different junk above the pool region; None when the two runs
+    disagree or either leaves the region written, a skip pending, the row
+    dead, or the pointer past the region -- states the summary cannot speak
+    for, which send the caller back to simulation.
     """
-    del hint
+    frames = []
+    for high in (0, (1 << 64) - 1):
+        sim = _Sim(_POOL_WIDTH + _PROBE_WALK_OUT + 4)
+        sim.tape = byte | (high << _POOL_WIDTH)
+        sim.apply(_runs(code))
+        if sim.dead or sim.skip or sim.ptr >= _POOL_WIDTH:
+            return None
+        if sim.tape >> _POOL_WIDTH != high:
+            return None
+        frames.append((sim.ptr, sim.tape & _POOL_MASK))
+    if frames[0] != frames[1]:
+        return None
+    landed, low = frames[0]
+    return landed, (low >> (landed + 1)).bit_count() & 1
+
+
+def _sculpt_columns(j: _Joint, acc: int) -> tuple[int, ...] | None:
+    """Return the probe column by the parity law, or None to fall back.
+
+    The probe's forked walk is affine: after the pool code, the cell at
+    ``acc`` is the prefix-XOR carry over everything the walk crossed, so a
+    row's answer is the frame's parity XOR the parity of its own cells
+    ``8..acc``.  Valid only while every row is alive and shares the frame's
+    window byte -- the clamp converges the pointers and the probe's ``x``
+    eats a pending skip, so neither enters the key.  A row outside that
+    summary returns None and the caller simulates instead.
+    """
+    if acc <= _POOL_WIDTH:
+        return None
+    ms = j.ms
+    byte = ms[0].tape & _POOL_MASK
+    frame = _probe_frame(_SCULPT_POOL_CODE, byte)
+    if frame is None:
+        return None
+    parity = frame[1]
+    mask = ((1 << (acc + 1)) - 1) ^ _POOL_MASK
+    column = []
+    for m in ms:
+        if m.dead or (m.tape & _POOL_MASK) != byte:
+            return None
+        column.append(parity ^ ((m.tape & mask).bit_count() & 1))
+    return tuple(column)
+
+
+def _mux_probe_sim(
+    j: _Joint, acc: int, cell7: int
+) -> tuple[tuple[int, ...], str] | None:
+    """Run the probe by simulation: fork, absorb, clamp, set the pool, walk.
+
+    The specification :func:`_mux_probe`'s parity law is held to -- the
+    scout checks the two agree live, once per build -- and the fallback for
+    states :func:`_sculpt_columns` refuses to summarise.
+    """
     probe = j.fork()
     probe.emit("x")  # absorb a pending skip so the clamp below is exact
     _clamp(probe)
@@ -2672,6 +2710,39 @@ def _mux_probe(
         # sculpting rounds at two and three inputs.
         return None
     return tuple(probe.col(probe.ms[0].ptr + 1)), code
+
+
+def _mux_probe(
+    j: _Joint, acc: int, cell7: int, hint: str | None = None
+) -> tuple[tuple[int, ...], str] | None:
+    """Return the column printed at ``acc`` and the pool code that got it.
+
+    The code is not searched for.  :data:`_SCULPT_POOL_CODE` names it: the
+    probe state here is canonical (the ``x`` and the clamp put every row at
+    pointer 0 with the same pool region), so the verdict is a constant of
+    the construction.  See that constant for the derivation and the
+    measurements behind it.  ``hint`` carried the previous round's winner
+    when this was a scan; it is accepted and ignored because the value
+    cannot change between rounds, and callers still pass it because
+    :func:`_mux` reads the code back out of the return.
+
+    The column is not walked for either.  The probe's fork was pure
+    arithmetic -- clamp and walk never depend on anything but the row's
+    cells 8..acc once the pool region is uniform -- so
+    :func:`_sculpt_columns` computes it by the parity law, one popcount per
+    row, and :func:`_mux_probe_sim` remains as the specification and the
+    fallback for any state the law's frame refuses.  The two are compared
+    live once per build by the scout, on top of the differential tests that
+    pin the laws themselves.
+    """
+    del hint
+    code = _sculpt_pool_code(cell7)
+    if code is None:
+        return None
+    column = _sculpt_columns(j, acc)
+    if column is None:
+        return _mux_probe_sim(j, acc, cell7)
+    return column, code
 
 
 def _mux_sculpt(
@@ -2739,6 +2810,244 @@ def _mux_sculpt(
     return None if hit is None else hit.template()
 
 
+# Bit-reversal per byte, for reversing a row's tape about its pointer.
+_REV_BYTE = bytes(int(f"{value:08b}"[::-1], 2) for value in range(256))
+
+
+def _rev_bits(value: int, width: int) -> int:
+    """Return the low ``width`` bits of ``value``, reversed.
+
+    Byte-reversed via the table, then shifted down by the padding: cheap
+    enough to reverse every row's tape once per build.
+    """
+    size = (width + 7) // 8
+    low = value & ((1 << width) - 1)
+    full = int.from_bytes(low.to_bytes(size, "little").translate(_REV_BYTE), "big")
+    return full >> (size * 8 - width)
+
+
+def _mux_scout(
+    base: _Joint, truth_table: str, n: int, accs: range
+) -> tuple[tuple[int, bool, int] | None, bool]:
+    """Price every ``(accumulator, orientation)`` sculpt without emitting.
+
+    Returns ``(winner, trusted)``.  The winner is ``(acc, direct, length)``
+    for the combination :func:`_mux_sweep` would keep -- the shortest build,
+    first in sweep order on a tie -- or None when every combination fails.
+    ``trusted`` False means the base defeats the shadow's summary and the
+    caller must run the sweep itself.
+
+    The shadow replays the sculpt loop in closed form.  The pointers never
+    move between rounds -- a round's ``<`` and ``[x`` runs are a round trip
+    -- so each row is its tape alone, the probe column is the parity law
+    :func:`_sculpt_columns` states, and a round is the walk law applied to
+    each row's rewind window.  The frontier strictly descends (a round
+    leaves every higher row's cells ``8..acc`` untouched and complements the
+    frontier row's carry), so rows above it are settled and skipped, and the
+    endgame's read, pool code and lengths are fixed by the frame constants
+    -- which is what prices a combination without building it.
+
+    Two exactnesses make the answer the sweep's own.  The guard, cap and
+    refusal sites are reproduced one for one, so a combination fails here
+    exactly when its sculpt returns None.  And a combination is abandoned
+    only when its running length strictly exceeds the best completed one, so
+    it can no longer finish at or below it -- ties complete, and the winner
+    is chosen over exact lengths in sweep order.  The one live check: the
+    first column is computed both ways, and a disagreement distrusts the
+    whole scout rather than shipping from the law.
+    """
+    ms = base.ms
+    if any(m.dead or m.skip for m in ms):
+        return None, False
+    byte = ms[0].tape & _POOL_MASK
+    if any((m.tape & _POOL_MASK) != byte for m in ms):
+        return None, False
+    frame = _probe_frame(_SCULPT_POOL_CODE, byte)
+    if frame is None:
+        return None, False
+    c_probe = frame[1]
+    codes = tuple(_POOL_CODES)
+    slice0 = _pool_slice(codes, 0, skip=False)
+    # What `_try_print` will do from the sculpted state: per orientation,
+    # the pool code `_find_pool` names there, where it lands, and the parity
+    # its walk out carries -- None when no code answers, which is that
+    # orientation's `_derive_column` returning None.
+    endgames: dict[int, tuple[int, int, int] | None] = {}
+    for cell7 in (0, 1):
+        chosen = slice0.get((byte, cell7))
+        if chosen is None:
+            endgames[cell7] = None
+            continue
+        end_frame = _probe_frame(codes[chosen[0]], byte)
+        if end_frame is None or end_frame[0] != chosen[1]:
+            return None, False
+        endgames[cell7] = (len(codes[chosen[0]]), chosen[1], end_frame[1])
+
+    want = tuple(int(ch) for ch in truth_table)
+    ptrs = base.ptrs()
+    rows = len(ptrs)
+    highest, lowest = max(ptrs), min(ptrs)
+    order = sorted(range(rows), key=lambda r: ptrs[r], reverse=True)
+    ptrs_s = [ptrs[r] for r in order]
+    want_s = [want[r] for r in order]
+    # Each row's tape reversed about its own pointer -- bit ``j`` is cell
+    # ``ptr - j`` -- so every row's rewind window is its low ``K`` bits
+    # whatever its pointer, the prefix XOR runs as maskless right shifts,
+    # and the parity delta is a shift and a popcount.  Built once: the
+    # combinations all start from this state, and ints never mutate.
+    base_tapes = [_rev_bits(ms[r].tape, ptrs[r] + 1) for r in order]
+    base_len = len(base.template())
+    guard = lowest - _POOL_WIDTH
+    cap = 2**n + 4
+    checked = False
+    best: int | None = None
+    lengths: dict[tuple[int, bool], int] = {}
+    # Scouted largest accumulator first: rounds cost ``3 * K + 1`` with
+    # ``K = frontier - acc + 1``, so the cheap builds sit at the top and
+    # pricing them first is what lets the strict-abort prune the expensive
+    # bottom after a handful of rounds.  The order prices; it never picks.
+    parities: list[int] | None = None
+    for acc in reversed(accs):
+        # Each row's parity over cells ``8..acc`` of the *base* state --
+        # cells ``8..acc`` of a reversed row start ``ptr - acc`` bits up and
+        # run ``acc - 7`` wide.  Walked down one accumulator at a time: the
+        # window loses its top cell, so the parity flips by that one bit.
+        shifts = [p - acc for p in ptrs_s]
+        if parities is None:
+            pmask = (1 << (acc - _POOL_WIDTH + 1)) - 1
+            parities = [
+                ((t >> s) & pmask).bit_count() & 1
+                for t, s in zip(base_tapes, shifts, strict=True)
+            ]
+        else:
+            parities = [
+                par ^ ((t >> (s - 1)) & 1)
+                for par, t, s in zip(parities, base_tapes, shifts, strict=True)
+            ]
+        for direct in (True, False):
+            g = 0 if direct else 1
+            # `_try_print`'s own trial order, decided by the constants: a
+            # read matches when its polarity cancels the constant offset
+            # between the probe's parity and the endgame code's.
+            matched = None
+            for read, cell7 in (
+                (_READS[0], 0),
+                (_READS[0], 1),
+                (_READS[1], 0),
+                (_READS[1], 1),
+            ):
+                end = endgames[cell7]
+                if end is None:
+                    continue
+                offset = g ^ c_probe ^ end[2]
+                if offset == (0 if read == _READS[1] else 1):
+                    matched = (read, end)
+                    break
+            if matched is None:
+                # No read prints this orientation: the sculpt would run its
+                # rounds and then `_try_print` would refuse.  Same outcome.
+                continue
+            read, (code_len, landed, _) = matched
+            # Everything the sculpt emits outside its rounds, priced up
+            # front: the trailing ``x``, the clamp, then the endgame's pool
+            # code, walk out, read, rewind to the pool, and ``[x.``.
+            total = (
+                base_len
+                + 1
+                + (highest + 1)
+                + code_len
+                + 2 * (acc - 1 - landed)
+                + len(read)
+                + (acc - _POOL_WIDTH + 1)
+                + 3
+            )
+            flip = c_probe ^ g
+            if not checked:
+                simmed = _mux_probe_sim(base, acc, 0)
+                fast = _sculpt_columns(base, acc)
+                if simmed is None or fast is None or fast != simmed[0]:
+                    return None, False
+                checked = True
+            # Rounds reach a row lazily, when the frontier scan reads it.
+            # The scan never revisits a row -- one that agrees is settled
+            # (rows above the frontier keep their parity, the invariant
+            # above) and one that disagrees is the frontier, whose fix is
+            # the round itself -- so each row replays the rounds pending at
+            # its one examination, and rows below wherever a combination is
+            # abandoned never pay for the rounds above them at all.
+            aborted = False
+            settled = 0
+            pending: list[tuple[int, int]] = []
+            for _ in range(cap):
+                i = settled
+                while i < rows:
+                    t = base_tapes[i]
+                    got = flip ^ parities[i]
+                    s = shifts[i]
+                    for width, wmask in pending:
+                        win = t & wmask
+                        carr = win
+                        span = 1
+                        while span < width:
+                            carr ^= carr >> span
+                            span <<= 1
+                        delta = win ^ carr ^ wmask
+                        t ^= delta
+                        got ^= (delta >> s).bit_count() & 1
+                    if got != want_s[i]:
+                        break
+                    i += 1
+                if i == rows:
+                    break
+                frontier = ptrs_s[i]
+                rewind = frontier - acc + 1
+                if rewind > guard or (
+                    best is not None and total + 3 * rewind + 1 > best
+                ):
+                    aborted = True
+                    break
+                total += 3 * rewind + 1
+                pending.append((rewind, (1 << rewind) - 1))
+                settled = i + 1
+            else:
+                aborted = True
+            if not aborted:
+                lengths[(acc, direct)] = total
+                if best is None or total < best:
+                    best = total
+    if best is None:
+        return None, True
+    for acc in accs:
+        for direct in (True, False):
+            if lengths.get((acc, direct)) == best:
+                return (acc, direct, best), True
+    raise AssertionError("the scout lost its own winner")  # pragma: no cover
+
+
+def _mux_sweep(base: _Joint, truth_table: str, n: int, accs: range) -> str | None:
+    """Sculpt every combination for real and keep the shortest build.
+
+    The specification :func:`_mux_scout` is held to, and the fallback when
+    it cannot summarise the base or its replayed winner disagrees.  The
+    seed probe settles which orientations can be sculpted at all --
+    ``cell7 == 1`` is answered by no code -- and also hands the sculpt its
+    ``hint``, which is how the loop always read.
+    """
+    best: str | None = None
+    for acc in accs:
+        for cell7 in (0, 1):
+            seed = _mux_probe(base, acc, cell7)
+            if seed is None:
+                continue
+            for direct in (True, False):
+                built = _mux_sculpt(
+                    base, truth_table, n, acc, cell7, direct=direct, hint=seed[1]
+                )
+                if built is not None and (best is None or len(built) < len(best)):
+                    best = built
+    return best
+
+
 def _mux(truth_table: str, n: int) -> str | None:
     """Build by separating the rows, then sculpting the column they print.
 
@@ -2754,9 +3063,20 @@ def _mux(truth_table: str, n: int) -> str | None:
     the top, the bottom and the middle -- so there is no cheap rule to prefer
     over measuring, and measuring is what this does.
 
+    The measuring is the scout's.  Sculpting every combination for real
+    priced the sweep at ``2**3n`` law applications -- 178 cold seconds at
+    eight inputs, 97% of a cold seven-input profile -- so :func:`_mux_scout`
+    prices them all in closed form (the same dense build is 1.9s cold) and
+    exactly one combination, the winner, is sculpted for real.  Nothing is
+    returned on the strength of the shadow: the replayed sculpt simulates
+    every row as it always did, `_try_print` accepts on its own output,
+    and a replay that misses the scout's exact predicted length falls back
+    to :func:`_mux_sweep` -- as does a base state the scout refuses to
+    summarise.
+
     Nothing about *which* tables build changes: a combination that stalls
     still contributes nothing, and this returns None exactly when the old
-    loop did, having tried the same set.
+    loop did, having priced the same set.
     """
     if n < _MUX_MIN_ARITY:
         return None
@@ -2768,30 +3088,27 @@ def _mux(truth_table: str, n: int) -> str | None:
         return None  # pragma: no cover - the separation never refuses
     positions = base.ptrs()
     lowest, highest = min(positions), max(positions)
-    best: str | None = None
     # ``+ 1`` past the rewind guard's ``_POOL_WIDTH``, which is what makes the
     # guard exactly tight rather than slack -- see the constant's own comment.
-    for acc in range(highest - lowest + _POOL_WIDTH + 1, lowest - 1):
-        for cell7 in (0, 1):
-            # Which pool code serves this ``(acc, cell7)`` is settled before
-            # any sculpting, and now by name rather than by measurement:
-            # :data:`_SCULPT_POOL_CODE` answers ``cell7 == 0`` at every
-            # accumulator and ``cell7 == 1`` is answered by none, so half the
-            # combinations below are decided here.  A pair no code reaches
-            # cannot be sculpted at all, so it is skipped -- the same outcome
-            # the sculpt would reach, without the work.  The seed still runs
-            # because it also derives the column, which the constant does
-            # not; what it no longer does is scan.
-            seed = _mux_probe(base, acc, cell7)
-            if seed is None:
-                continue
-            for direct in (True, False):
-                built = _mux_sculpt(
-                    base, truth_table, n, acc, cell7, direct=direct, hint=seed[1]
-                )
-                if built is not None and (best is None or len(built) < len(best)):
-                    best = built
-    return best
+    accs = range(highest - lowest + _POOL_WIDTH + 1, lowest - 1)
+    winner, trusted = _mux_scout(base, truth_table, n, accs)
+    if not trusted:
+        # The separation's state defeats the shadow's summary: not observed
+        # at any arity -- the base is canonical by construction -- so this
+        # is the guard against a future separation the scout cannot price.
+        return _mux_sweep(base, truth_table, n, accs)
+    if winner is None:
+        return None
+    acc, direct, predicted = winner
+    built = _mux_sculpt(
+        base, truth_table, n, acc, 0, direct=direct, hint=_SCULPT_POOL_CODE
+    )
+    if built is None or len(built) != predicted:
+        # The shadow and the sculpt disagreeing is a bug in the pair; the
+        # sweep is the exact spelling, so answer from it rather than raise
+        # -- the build that returns is still one `_try_print` accepted.
+        return _mux_sweep(base, truth_table, n, accs)
+    return built
 
 
 def _lift_leaves_name_order(essential: list[int], n: int) -> bool:
