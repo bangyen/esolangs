@@ -4,7 +4,11 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.stack_based.bfstack import run
-from tests.interpreters.contract import CycleContract, StateViewContract
+from tests.interpreters.contract import (
+    CycleContract,
+    InputCursorContract,
+    StateViewContract,
+)
 from tests.interpreters.runner import run_program
 
 
@@ -137,17 +141,6 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 3
 
-    def test_snapshot_includes_the_input_cursor(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.stack_based.bfstack import _Machine
-
-        machine = _Machine(">,", ScriptedIO("A\nB"))
-        before = machine.snapshot()
-        machine.step()  # > pushes 0
-        machine.step()  # , reads the first input byte
-        assert machine.snapshot() != before
-        assert machine.io.position() == 1
-
 
 def _machine(code: object) -> object:
     from esolangs.interpreters.io import ScriptedIO
@@ -156,7 +149,14 @@ def _machine(code: object) -> object:
     return _Machine(code, ScriptedIO())
 
 
-class TestContract(CycleContract, StateViewContract):
+def _reader(code: object, stdin: str) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.stack_based.bfstack import _Machine
+
+    return _Machine(code, ScriptedIO(stdin))
+
+
+class TestContract(CycleContract, InputCursorContract, StateViewContract):
     """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
@@ -164,3 +164,7 @@ class TestContract(CycleContract, StateViewContract):
     looping_program = ">+[]"
     state_views = ("lst", "ip", "memory")
     viewing_program = ">+."
+    reader = staticmethod(_reader)
+    reading_program = ">,"  # > pushes 0, then , reads the first byte
+    reading_stdin = "A\nB"
+    steps_to_read = 2

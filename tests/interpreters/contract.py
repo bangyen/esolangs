@@ -115,6 +115,55 @@ class SnapshotContract:
         assert machine.snapshot() != before
 
 
+class InputCursorContract:
+    """That reading input moves the snapshot, and the reader with it.
+
+    This is the cycle detector's third precondition, and the one
+    :class:`SnapshotContract` cannot see.  A snapshot that leaves the
+    input cursor out looks identical before and after a read, so a cat
+    loop -- which returns to the same cell with the same tape, differing
+    only in how much input it has consumed -- reads as a repeated state
+    and is reported as a hang.  ``run_until_halt_or_cycle`` would stop a
+    program that was making progress.
+
+    The data is per file for the same reason the rest of this module's
+    is: which program reads, how many steps it takes to get there, and
+    how far the cursor should then have moved are facts about the
+    language.  A file that also wants to assert *what* was read keeps
+    that as its own test.
+    """
+
+    #: Builds the machine from a program *and* its stdin, which the
+    #: ``machine`` hook elsewhere in this module does not take -- the
+    #: other contracts never need a machine that reads anything.
+    reader: ClassVar[Any]
+
+    #: A program that reads from its input, and the stdin it reads.
+    reading_program: ClassVar[Any]
+    reading_stdin: ClassVar[str]
+
+    #: Steps run *before* the snapshot is taken, for a language that has
+    #: to walk somewhere before it can read.  The comparison has to start
+    #: after them: a warm-up moves the snapshot by itself, which would
+    #: satisfy the "changed" half without the read doing anything.
+    steps_before_read: ClassVar[int] = 0
+
+    #: How many steps reach the read, and where the cursor stands after.
+    steps_to_read: ClassVar[int] = 1
+    position_after_read: ClassVar[int] = 1
+
+    def test_snapshot_includes_the_input_cursor(self) -> None:
+        """A read moves the snapshot, so a cat loop is not seen as a cycle."""
+        machine = type(self).reader(self.reading_program, self.reading_stdin)
+        for _ in range(self.steps_before_read):
+            machine.step()
+        before = machine.snapshot()
+        for _ in range(self.steps_to_read):
+            machine.step()
+        assert machine.snapshot() != before
+        assert machine.io.position() == self.position_after_read
+
+
 class CycleContract:
     """What the hang detector concludes about two of a language's programs.
 

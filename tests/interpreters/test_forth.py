@@ -8,6 +8,7 @@ from esolangs.interpreters.stack_based.forth import run
 from tests.interpreters.contract import (
     CycleContract,
     EmptyProgramContract,
+    InputCursorContract,
 )
 
 
@@ -230,14 +231,16 @@ class TestStepMachine:
         assert machine.halted
         assert machine.error is False  # the nested error is discarded
 
-    def test_snapshot_includes_the_input_cursor(self) -> None:
+    def test_the_read_pushes_every_byte_of_the_line(self) -> None:
+        """``,`` pushes the whole line, one byte per cell.
+
+        The cursor and snapshot moving is the shared contract below; that
+        one read yields several stack entries is Forþ's own.
+        """
         from esolangs.interpreters.stack_based.forth import _Machine
 
         machine = _Machine(",", ScriptedIO("hi"))
-        before = machine.snapshot()
-        machine.step()  # , reads the line, pushing each byte
-        assert machine.snapshot() != before
-        assert machine.io.position() == 1
+        machine.step()
         assert list(machine.stack) == [104, 105]
 
 
@@ -248,10 +251,20 @@ def _machine(code: object) -> object:
     return _Machine(code, ScriptedIO())
 
 
-class TestContract(EmptyProgramContract, CycleContract):
+def _reader(code: object, stdin: str) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.stack_based.forth import _Machine
+
+    return _Machine(code, ScriptedIO(stdin))
+
+
+class TestContract(EmptyProgramContract, CycleContract, InputCursorContract):
     """The shared empty-program shape, with this language's data."""
 
     run = staticmethod(run_program)
     machine = staticmethod(_machine)
+    reader = staticmethod(_reader)
+    reading_program = ","
+    reading_stdin = "hi"
     halting_program = "65."
     looping_program = "1[]"

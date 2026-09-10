@@ -3,7 +3,11 @@
 from typing import ClassVar
 
 from esolangs.interpreters.tape_based.brainif import run
-from tests.interpreters.contract import CycleContract, StateViewContract
+from tests.interpreters.contract import (
+    CycleContract,
+    InputCursorContract,
+    StateViewContract,
+)
 from tests.interpreters.runner import run_program
 
 
@@ -171,16 +175,17 @@ class TestStepMachine:
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 2
 
-    def test_snapshot_includes_the_input_cursor(self) -> None:
+    def test_the_read_lands_in_the_cell(self) -> None:
+        """``input`` puts the byte where the language says it goes.
+
+        The cursor and snapshot moving is the shared contract below.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.brainif import _Machine
 
         machine = _Machine(["if 0 input"], ScriptedIO("A"))
-        before = machine.snapshot()
-        machine.step()  # input reads the line into the cell
-        assert machine.snapshot() != before
+        machine.step()
         assert machine.cells == (ord("A"),)
-        assert machine.io.position() == 1
 
     def test_goto_loop_is_detected_as_a_cycle(self) -> None:
         """A goto back to itself with the cell unchanged loops forever."""
@@ -217,10 +222,20 @@ def _machine(code: object) -> object:
     return _Machine(code, ScriptedIO())
 
 
-class TestContract(CycleContract, StateViewContract):
+def _reader(code: object, stdin: str) -> object:
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.brainif import _Machine
+
+    return _Machine(code, ScriptedIO(stdin))
+
+
+class TestContract(CycleContract, InputCursorContract, StateViewContract):
     """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
+    reader = staticmethod(_reader)
+    reading_program: ClassVar[list[str]] = ["if 0 input"]
+    reading_stdin = "A"
     halting_program: ClassVar[list[str]] = ["if 0 output"]
     looping_program: ClassVar[list[str]] = ["if 0 goto 1"]
     state_views: ClassVar[tuple[str, ...]] = ("ptr", "ip", "memory")
