@@ -2072,6 +2072,44 @@ class TestRunUntilHaltOrGrowth:
         # phase is not exposed by the API; Brent finds it automatically.
         assert run_until_halt_or_growth(_Machine("+[[->+<]>++]", ScriptedIO())) is False
 
+    def test_a_period_that_walks_to_cell_zero_is_undecided(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _Machine
+        from esolangs.vm import run_until_halt_or_growth
+
+        # `>+[[<]>[>]+]` grows a run of ones forever, but every lap walks
+        # to cell 0, so its visits share a frozen prefix rather than
+        # translating.  The docstring's ip-counter machine is why no
+        # configuration-pair certificate may close this class, and 5,000
+        # steps is ~70 laps -- room for any certificate that could fire.
+        with pytest.raises(TimeoutError, match="undecided after"):
+            run_until_halt_or_growth(_Machine(">+[[<]>[>]+]", ScriptedIO()), 5_000)
+
+        # Executed positive control: the program is live and still growing.
+        machine = _Machine(">+[[<]>[>]+]", ScriptedIO())
+        for _ in range(5_000):
+            machine.step()
+        assert not machine.halted
+        assert len(machine.tape) == 50
+
+        # Without the append the walk leaves the loop at the first zero,
+        # so undecided above is a judgment, not a default.
+        assert run_until_halt_or_growth(_Machine(">+[[<]>[>]]", ScriptedIO())) is True
+
+    def test_a_climbing_wave_that_wraps_to_a_halt_is_never_certified(self) -> None:
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.brainfuck import _Machine
+        from esolangs.vm import run_until_halt_or_growth
+
+        # `+[[->+<]>+]` copies the cell right and adds one, so the wave
+        # climbs as it travels and no two visits translate -- until the
+        # value wraps at 256 and the run halts, 164,222 steps in
+        # (measured).  Within any smaller budget the only sound answer is
+        # undecided; a certificate loose enough to fire on the climb would
+        # have called a halting program a hang.
+        with pytest.raises(TimeoutError, match="undecided after"):
+            run_until_halt_or_growth(_Machine("+[[->+<]>+]", ScriptedIO()), 2_000)
+
 
 class TestGrowthDetectorAcrossLanguages:
     """The certificate is not brainfuck-specific.
