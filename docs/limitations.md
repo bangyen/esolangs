@@ -71,7 +71,7 @@ generators cover one and refuse the other at the same arity):
 
 | Generator | dense | parity | what stops it |
 | --- | --- | --- | --- |
-| Interprogck8 | 10 | 10 | held at 10 on cost, not capability: `_REPAIRS = 256` refuses dense n=11, and a raised budget builds it at 1445 additions -- see the paragraph below |
+| Interprogck8 | 10 | 10 | held at 10 on cost, not capability: `_REPAIRS = 256` refuses dense n=11, and a raised budget builds it at 1445 additions -- priced under *Generator boundaries* above |
 | Polynomial | 10 | 10 | caps at 1934 instructions, one per prime -- the analytic worst case over n=10 tables, so all of n=10 builds; dense n=11 needs 2910, now priced at 267s a table and a 124MB program -- see the paragraph below |
 | WII2D | 9 | 10 | dense n=10 needs a 512-point decode, past the fold algebra's measured cliff (live count 512 -> 373 while bit length passes 670000, every candidate enumerated) -- a wall of the exactly-once embed convention, since a per-node re-embed tree does dense n=13, and raising the guard to 512 refuses the table anyway; n=9 is admitted but not total -- 37 of 64 sampled tables build, the rest refuse promptly |
 | ZTOALC L | 10 | 10 | n=11 needs 587 command slots (545 parity) against the anchors' 386 under the 4.19M line ceiling |
