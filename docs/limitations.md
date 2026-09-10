@@ -123,10 +123,9 @@ is affordable, not where a table is checked.
 The other 65 generators build both shapes at n=10, and ZTOALC L and
 Interprogck8 now join them (both caps sit at n=11, so they stay in the
 table). One is slow rather
-than capped, and its cost is why `tests/tools/test_boolean_contract.py` runs
-its ten-input sweep in two bands -- n<=5 in the default gate, n=6..10 marked
-`slow` -- rather than putting the whole thing in the inner loop: Minifuck,
-19s at n=9 under the full
+than capped, and its cost is why `tests/tools/test_boolean_contract.py`
+sweeps to eight inputs rather than ten, in two bands -- n<=5 in the default
+gate, n=6..8 marked `slow`: Minifuck, 19s at n=9 under the full
 sculpt contest (was 187s at n=8 -- the sweep prices every candidate in
 closed form and builds only the winner, 95x, byte-identical through n=9;
 n=10, once 203s, now builds by rule in 1.5s -- below).  Four
@@ -140,10 +139,11 @@ renderer, which also reaches n=10 at 0.31s for 306MB dense; and `%^2^-1`
 (parity n=9 30s to 0.16s, n=10 254s to 0.38s) once its deep band stopped
 paying for every zero-unit weighting the singleton diffs already refute.
 
-So the sweep now reaches ten inputs, and Minifuck alone decides where the
-band splits: the whole n=1..10 sweep is 153s of CPU, 43s of it Minifuck and
-another 63s Polynomial, 123 and Interprogck8, against about 13s for a
-seven-input sweep (12.6s of it the 64 generators none of this touched).  Ten
+So the sweep's bound is cost, not capability, and the cost is concentrated:
+n<=8 is about 19s across the whole registry, n<=9 is 72s and n<=10 is 153s.
+Minifuck is 43s of that ten-input total and spends 34s of it at n=9 alone,
+dropping back to 3s at n=10 -- so nine is the worst ceiling available, and
+the choice is eight or ten.  Ten
 is no longer out of reach, and not because the
 frontier recurrence collapsed -- it measurably does not.  The composed
 effect of m pending rounds on a
@@ -172,9 +172,9 @@ interpreter, and n<=9 still builds byte-identically under the full contest.
 The nearest entries to the one-second rule
 are `laserfuck` at 1.377s and `%^2^-1`'s *dense* n=10 at 0.92s; Minifuck's
 1.5s now sits beside them rather than three decades above.  Only the table's rows are
-capability limits, and only WII2D's dense row binds inside the sweep (the
-other three caps sit at n=11); the rest of the gap between five and ten is
-wall-clock.
+capability limits, and none of them binds inside the sweep -- WII2D's dense
+row sits at n=9 and the other three caps at n=11, all above the eight-input
+ceiling; the whole gap between eight and ten is wall-clock.
 
 - **Interprogck8:** a meadow-budget limit, not the 255-line reach.  The
   express routes against frozen coordinates, so the old relay
