@@ -40,5 +40,24 @@ Tape-growth and recursive-frame helpers cover their specific semantic shapes;
 other nontermination still needs a wall-clock backstop. A negative corpus
 search needs a positive control that exercises the proposed mechanism.
 
+**Picking the wrong prover is silent, and costs the whole run.** Suptiftam's
+boolean programs handed *no* input recurse without bound: `mulStep` counts
+down toward a value the missing read never supplies, so a `_CallFrame` is
+pushed and never popped. Measured on the XOR program at 3000 steps: 908 live
+frames, and a snapshot growing about 32 bytes per step, so no state ever
+repeats. `run_until_halt_or_cycle` therefore cannot conclude — it does not
+merely run long, it *cannot* terminate, and holding the states OOM-killed the
+probe. `run_until_halt_or_ancestor`, which Suptiftam supports (it defines
+`frame_entry_key`), returns a bounded verdict on the same program in under a
+second: undecided after 64 pushed frames.
+
+Both facts are in `run_until_halt_or_cycle`'s own docstring — an
+unbounded-growth loop never revisits a state, and the frame helper covers the
+recursive shape — so this is the documented boundary being met, not a defect.
+What it costs is a caller who reaches for the exact-state prover by default on
+one of the nine languages that define `frame_entry_key`. Under-fed programs
+are the way to reach it: with its inputs supplied, the same XOR program is
+correct on all four rows.
+
 Historical attacks, measurements, and removed generators remain in git. Reopen
 a result only with a new semantic mechanism, not a wider blind search.
