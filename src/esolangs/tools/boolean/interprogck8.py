@@ -295,13 +295,42 @@ def _settle(items: list[_Item]) -> None:
 #: guards and promotions that settle afterwards, so it sits well under
 #: that bound.  The router's own reach check refuses a layout that
 #: stretched too far anyway.
-_MEADOW_SPACING = 95
+_MEADOW_SPACING = 80
 
-#: Dead lines reserved per meadow.  What crosses a meadow is one chain per
-#: tree level above it whose sibling subtree spans further than one reach,
-#: each laying a rung of a line plus a few adjusters; a table that
-#: exhausts every meadow within reach of some chain is refused by name.
-_MEADOW_SIZE = 48
+#: Dead lines per meadow: the floor, the ceiling, and the lines added per
+#: express chain crossing the placement point.  Demand is not uniform --
+#: a meadow under a busy subtree carries a rung and a few adjusters for
+#: every chain over it, plus the terminals of the label cluster behind it
+#: -- so capacity follows the measured crossings instead of one number.
+#: The ceiling is a reach constraint, not thrift: a hop may leave one
+#: meadow's start and land at the next one's end, so two meadows and the
+#: pitch between them must stay inside one reach.
+_MEADOW_LEAST = 24
+_MEADOW_MOST = 56
+_MEADOW_PER_CHAIN = 6
+
+#: Meadows the repair may add at shortfalls before a table is refused.
+#: A budget on additions, not a convergence argument: n=10 dense spends
+#: about ninety across a handful of rounds, and the programs above it are
+#: ones this generator should refuse rather than chase.
+_REPAIRS = 128
+
+
+def _spans(items: list[_Item]) -> list[tuple[int, int]]:
+    """Every express jump's (launch, target), on current coordinates."""
+    starts, labels = _index(items)
+    return [
+        (start + item.width, labels[item.label])
+        for item, start in zip(items, starts, strict=True)
+        if isinstance(item, _Jump) and item.express
+    ]
+
+
+def _meadow(size: int, tag: int) -> tuple[list[_Rung], list[_Item]]:
+    """One meadow: its rungs, and the guard-jump block that carries them."""
+    rungs = [_Rung() for _ in range(size)]
+    skip = f"M{tag}"
+    return rungs, [_Jump(skip, 2), *rungs, _Label(skip)]
 
 
 def _place(items: list[_Item]) -> list[list[_Rung]]:
@@ -309,28 +338,53 @@ def _place(items: list[_Item]) -> list[list[_Rung]]:
 
     Runs on settled coordinates, so the spacing seen here is real; the
     guards and promotions that follow stretch it, which is why the pitch
-    sits well under the reach.  The sentinels are consumed either way --
-    placement happens once.
+    sits well under the reach.  Each meadow is sized to the express
+    chains crossing its point.  The sentinels are kept: a routing
+    shortfall later adds meadows at them (:func:`_add`).
     """
     starts, _labels = _index(items)
+    spans = _spans(items)
     out: list[_Item] = []
     meadows: list[list[_Rung]] = []
     last = 0
     for item, start in zip(items, starts, strict=True):
-        if not isinstance(item, _Safe):
-            out.append(item)
-            continue
-        if start - last < _MEADOW_SPACING:
-            continue
-        rungs = [_Rung() for _ in range(_MEADOW_SIZE)]
-        skip = f"M{len(meadows)}"
-        out.append(_Jump(skip, 2))
-        out.extend(rungs)
-        out.append(_Label(skip))
-        meadows.append(rungs)
-        last = start
+        if isinstance(item, _Safe) and start - last >= _MEADOW_SPACING:
+            crossing = sum(low < start < high for low, high in spans)
+            size = min(_MEADOW_MOST, _MEADOW_LEAST + _MEADOW_PER_CHAIN * crossing)
+            rungs, block = _meadow(size, len(meadows))
+            out.extend(block)
+            meadows.append(rungs)
+            last = start
+        out.append(item)
     items[:] = out
     return meadows
+
+
+def _add(items: list[_Item], meadows: list[list[_Rung]], low: int, high: int) -> None:
+    """Insert one more meadow inside the shortfall window ``(low, high)``.
+
+    The repair for a routing shortfall: the refusal names the window that
+    held no usable rung slot, and the meadow goes at the last safe point
+    inside it -- nearest whatever the stranded chain was reaching for.
+    Falls back to the nearest safe point when the window holds none.
+    """
+    starts, _labels = _index(items)
+    at = None
+    fallback = None
+    for position, (item, start) in enumerate(zip(items, starts, strict=True)):
+        if not isinstance(item, _Safe):
+            continue
+        if start >= high:
+            break
+        fallback = position
+        if start > low:
+            at = position
+    if at is None:
+        at = fallback
+    assert at is not None, "a tree always emits safe points"
+    rungs, block = _meadow(_MEADOW_MOST, len(meadows))
+    items[at:at] = block
+    meadows.append(rungs)
 
 
 def _adjust(current: int, wanted: int) -> list[str]:
@@ -412,38 +466,64 @@ def _lay(
     return None
 
 
-def _fits(free: int, landing: int, target: int) -> bool:
+def _fits(free: int, landing: int, target: int, acc: int | None = None) -> bool:
     """Whether a terminal rung landing at ``landing`` can finish in ``free``.
 
-    Mirrors :func:`_lay` with a respell body and no allocation.  A respell
-    is the worst body a terminal can need -- the real lay adjusts from the
-    accumulator the approach delivers when that is shorter -- so a bank
-    that passes here is guaranteed to take the rung later.
+    Mirrors :func:`_lay` with no allocation.  With ``acc`` unknown the
+    body is priced as a respell -- the worst a terminal can need, since
+    the real lay adjusts from the accumulator the approach delivers when
+    that is shorter -- so a bank that passes is guaranteed to take the
+    rung later.  A terminal the entry hop reaches directly knows its
+    accumulator already, and pricing the true adjusters lets it fit in
+    room a respell could not.
     """
     for length in range(1, min(free, _EXPRESS) + 1):
         stride = target - landing - length
-        if 0 <= stride <= _REACH and _hop_width(stride) <= length:
+        if not 0 <= stride <= _REACH:
+            continue
+        if acc is None:
+            need = _hop_width(stride)
+        else:
+            ops = [] if stride == acc else _adjust(acc, stride)
+            need = len(ops) + 1
+        if need <= length:
             return True
     return False
 
 
-def _route(items: list[_Item], meadows: list[list[_Rung]]) -> None:
+class _Stuck(ValueError):
+    """A routing shortfall, naming the window that held no rung slot.
+
+    A :class:`ValueError` so an unrepaired shortfall is the generator's
+    ordinary refusal; the window is where :func:`_add` repairs.  For a
+    stranded approach that is the reach ahead of its landing; for a chain
+    that found no terminal it is the stretch before its target.
+    """
+
+    def __init__(self, low: int, high: int, label: str) -> None:
+        super().__init__(
+            f"no rung slot in lines {low}-{high} for the jump to {label} "
+            f"-- every meadow there is full or out of reach"
+        )
+        self.low = low
+        self.high = high
+
+
+def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_Stuck]:
     """Point every express jump at its chain, laying rungs in meadows.
 
     Coordinates are final -- laying a rung rewrites a placeholder line in
     place -- so chains are planned once, greedily, each hop taking the
-    furthest meadow in reach.  A hop that finds no meadow it can use is a
-    refusal by name, never a mis-routed program.
+    furthest meadow in reach.  A chain that finds no meadow it can use is
+    a shortfall by name, never a mis-routed program; every shortfall of
+    the pass is returned together, so one repair round serves them all.
     """
     starts, labels = _index(items)
     position = {id(item): start for item, start in zip(items, starts, strict=True)}
     banks = [_Bank(rungs, [position[id(rung)] for rung in rungs]) for rungs in meadows]
 
-    def refuse(landing: int, label: str) -> ValueError:
-        return ValueError(
-            f"no rung slot within reach of line {landing} for the jump to "
-            f"{label} -- every meadow ahead is full or out of reach"
-        )
+    def refuse(landing: int, until: int, label: str) -> _Stuck:
+        return _Stuck(landing, until, label)
 
     def onward(landing: int, until: int) -> list[_Bank]:
         """Banks a hop from ``landing`` could land in, furthest first.
@@ -469,10 +549,10 @@ def _route(items: list[_Item], meadows: list[list[_Rung]]) -> None:
         if isinstance(item, _Jump) and item.express
     ]
 
-    for item, launch, target in chains:
+    def route(item: _Jump, launch: int, target: int) -> None:
         if 0 <= target - launch <= _REACH:
             item.to_line = target  # the span settled back under one reach
-            continue
+            return
         # The terminal bank -- the chain's last stop -- is chosen first,
         # nearest the target with room for a worst-case finish, so the
         # chain never discovers at its last stop that the room for the
@@ -487,12 +567,19 @@ def _route(items: list[_Item], meadows: list[list[_Rung]]) -> None:
                 if bank.line is not None
                 and launch < bank.line < target
                 and target - bank.line <= _REACH
-                and _fits(bank.free, bank.line, target)
+                and _fits(
+                    bank.free,
+                    bank.line,
+                    target,
+                    bank.line - launch if bank.line - launch <= _REACH else None,
+                )
             ),
             None,
         )
         if terminal is None or terminal.line is None:
-            raise refuse(launch, item.label)
+            # The shortfall is in the terminal window before the target,
+            # wherever the launch was.
+            raise refuse(max(launch, target - _REACH), target, item.label)
         stop = terminal.line
         if stop - launch <= _REACH:
             item.to_line = stop  # the entry hop reaches the terminal alone
@@ -500,7 +587,7 @@ def _route(items: list[_Item], meadows: list[list[_Rung]]) -> None:
         else:
             first = [b for b in onward(launch, stop) if b is not terminal]
             if not first:
-                raise refuse(launch, item.label)
+                raise refuse(launch, min(stop, launch + _REACH), item.label)
             bank = first[0]
             landing = bank.line or 0
             item.to_line = landing
@@ -524,9 +611,21 @@ def _route(items: list[_Item], meadows: list[list[_Rung]]) -> None:
                         acc, landing, bank = hop, goal_line, goal
                         break
                 else:
-                    raise refuse(landing, item.label)
+                    raise refuse(landing, min(stop, landing + _REACH), item.label)
         if _lay(terminal, acc, stop, target) is None:
-            raise refuse(stop, item.label)
+            raise refuse(stop, target, item.label)
+
+    stuck: list[_Stuck] = []
+    for item, launch, target in chains:
+        try:
+            route(item, launch, target)
+        except _Stuck as shortfall:
+            # Collect rather than stop: every stranded chain names its
+            # window in one pass, so one repair round serves them all.
+            # Rungs a chain laid before stranding stay claimed, which is
+            # fine -- a repaired attempt starts from clean placeholders.
+            stuck.append(shortfall)
+    return stuck
 
 
 def _check(label: str, distance: int, width: int) -> None:
@@ -553,7 +652,37 @@ def interprogck8(truth_table: str) -> str:
     _settle(items)
     meadows = _place(items)
     _settle(items)
-    _route(items, meadows)
+    # Routing is a single pass against frozen coordinates, but demand is
+    # measured, not derived: every stranded chain names the window whose
+    # reach held no usable rung slot, a meadow is added in each distinct
+    # window, and the whole route is retried from clean placeholders.
+    # Each round adds capacity at certificates, so the loop is a bounded
+    # repair, not a search; a table still short after the budget is
+    # refused with one of its remaining shortfalls.
+    added = 0
+    while True:
+        stuck = _route(items, meadows)
+        if not stuck:
+            break
+        if added > _REPAIRS:
+            raise stuck[0]
+        for rungs in meadows:
+            for rung in rungs:
+                rung.op = "x"
+        for item in items:
+            if isinstance(item, _Jump):
+                item.to_line = None
+        # Highest window first, so the insertions this round leave the
+        # coordinates of the windows still waiting untouched; windows
+        # overlapping one already served this round share its meadow.
+        served: list[tuple[int, int]] = []
+        for shortfall in sorted(stuck, key=lambda s: -s.low):
+            if any(shortfall.low < hi and lo < shortfall.high for lo, hi in served):
+                continue
+            _add(items, meadows, shortfall.low, shortfall.high)
+            served.append((shortfall.low, shortfall.high))
+            added += 1
+        _settle(items)
     starts, labels = _index(items)
     out: list[str] = []
     for item, start in zip(items, starts, strict=True):
