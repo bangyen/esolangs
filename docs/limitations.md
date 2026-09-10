@@ -124,9 +124,10 @@ The other 65 generators build both shapes at n=10, and ZTOALC L and
 Interprogck8 now join them (both caps sit at n=11, so they stay in the
 table). One is slow rather
 than capped, and its cost is the reason `tests/tools/test_boolean_contract.py`
-sweeps to five inputs rather than ten: Minifuck, 19s at n=9 and 203s at n=10
-(was 187s at n=8 -- the sculpt sweep now prices every candidate in closed
-form and builds only the winner, 95x, byte-identical through n=9).  Four
+sweeps to five inputs rather than ten: Minifuck, 19s at n=9 under the full
+sculpt contest (was 187s at n=8 -- the sweep prices every candidate in
+closed form and builds only the winner, 95x, byte-identical through n=9;
+n=10, once 203s, now builds by rule in 1.5s -- below).  Four
 have left, each byte-identical: ROTfuck (16s to 0.06s at n=10) once its
 emitter stopped stepping moves and the final rotation one character at a
 time; Forþ (61-68s to 0.20s dense / 0.08s parity) once its size contest
@@ -139,8 +140,9 @@ paying for every zero-unit weighting the singleton diffs already refute.
 
 So the sweep's five-input bound is now Minifuck alone: a seven-input sweep
 costs about 13s across the whole registry (12.6s of it the 64 generators
-none of this touched), and ten stays out of reach: the frontier recurrence
-measurably does not collapse.  The composed effect of m pending rounds on a
+none of this touched).  Ten is no longer out of reach, and not because the
+frontier recurrence collapsed -- it measurably does not.  The composed
+effect of m pending rounds on a
 row is one affine GF(2) map, but each round appends one independent rank-one
 correction to its binomial-Toeplitz bulk -- rank exactly m-1 and displacement
 rank exactly m, measured to m=128 at width 400 and on 60 random width
@@ -151,12 +153,21 @@ Pruning cannot absorb the cost either: seeding the strict abort with the
 true optimum saves 3.4% of the 1.58M
 window-walks at n=8, and a clairvoyant abort that skips every doomed
 combination for free leaves 0.5-0.9%, information available only through the
-collapsed recurrence itself.  Nor is the scout the whole ceiling: at n=10
-dense the separation costs 1.2s and the winner's real sculpt and acceptance
-1.5s against 201s of scout, so a zero-cost scout still builds the row in
-about 2.7s.  The nearest entries to the one-second rule
-are `laserfuck` at 1.377s and `%^2^-1`'s *dense* n=10 at 0.92s, neither of
-them changed here.  Only the table's rows are
+collapsed recurrence itself.  What ten inputs stopped paying is the contest
+those numbers price: from `_MUX_RULE_ARITY` the accumulator is named -- the
+largest legal one, whose combination builds iff any does -- so the scout
+prices two orientations instead of ~3600 combinations, records the winner's
+rewinds as it prices, and the build is spelled from them and accepted on its
+own laws replay instead of sculpted.  With the weight gadget and the
+sculpting round each a closed-form law (the separation fell 1.24s to 0.04s),
+a cold ten-input build is 1.47s dense and 1.57s parity, 138x, at +1.8%
+length over the retired contest's winner (+11.6% at eight, +6.4% at nine,
+measured against sweeps the rule does not run); every one of the 2048
+instantiated rows across both shapes answers correctly on the shipped
+interpreter, and n<=9 still builds byte-identically under the full contest.
+The nearest entries to the one-second rule
+are `laserfuck` at 1.377s and `%^2^-1`'s *dense* n=10 at 0.92s; Minifuck's
+1.5s now sits beside them rather than three decades above.  Only the table's rows are
 capability limits, and only WII2D's dense row binds inside the sweep (the
 other three caps sit at n=11); the rest of the gap between five and ten is
 wall-clock.

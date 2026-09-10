@@ -2545,7 +2545,7 @@ def _mux_separate(n: int) -> _Joint | None:
     _walk_to(j, _mux_start(n) - 1)
     for i, k in enumerate(weights):
         j.emit_setter(i)
-        j.emit(_mux_weight(k))
+        j.emit_weight(_mux_weight(k), k)
         if i + 1 < n:
             j.emit("[x" * (k + pad))
     # The construction is derived, but it is still *checked* before it is
@@ -2833,7 +2833,11 @@ def _rev_bits(value: int, width: int) -> int:
 
 
 def _mux_scout(
-    base: _Joint, truth_table: str, n: int, accs: range
+    base: _Joint,
+    truth_table: str,
+    n: int,
+    accs: range,
+    rewinds_out: dict[tuple[int, bool], list[int]] | None = None,
 ) -> tuple[tuple[int, bool, int] | None, bool]:
     """Price every ``(accumulator, orientation)`` sculpt without emitting.
 
@@ -2861,6 +2865,12 @@ def _mux_scout(
     is chosen over exact lengths in sweep order.  The one live check: the
     first column is computed both ways, and a disagreement distrusts the
     whole scout rather than shipping from the law.
+
+    ``rewinds_out``, when given, collects each completed combination's
+    rewinds in firing order -- the one fact beyond the length that
+    :func:`_mux_rule_tail` needs to spell the build without sculpting it.
+    Recording is free (the pending list already holds them), and leaving
+    the parameter off prices exactly as before.
     """
     ms = base.ms
     if any(m.dead or m.skip for m in ms):
@@ -3023,6 +3033,8 @@ def _mux_scout(
                 aborted = True
             if not aborted:
                 lengths[(acc, direct)] = total
+                if rewinds_out is not None:
+                    rewinds_out[(acc, direct)] = [width for width, _ in pending]
                 if best is None or total < best:
                     best = total
     if best is None:
@@ -3032,6 +3044,106 @@ def _mux_scout(
             if lengths.get((acc, direct)) == best:
                 return (acc, direct, best), True
     raise AssertionError("the scout lost its own winner")  # pragma: no cover
+
+
+#: The arity where the sculpt sweep leaves the build path.  Below this every
+#: ``(accumulator, orientation)`` is priced and the shortest build wins, and
+#: the corpus is byte-identical under that contest.  From here the scout's
+#: own cost curve makes the contest the build -- 201s of a 203s dense build
+#: at ten inputs -- so the accumulator is picked by rule instead: the
+#: **largest legal one**, which is the combination the scout prices first
+#: because its rounds are cheapest (a round costs ``3 * (frontier - acc + 1)
+#: + 1``, so the top of the range minimises every rewind).  The rule trades
+#: length for the contest's cost, and the trade shrinks with the arity:
+#: against the sweep's winner the top accumulator builds dense +11.6% at
+#: eight inputs, +6.4% at nine and +1.8% at ten, and at eight and nine
+#: parity picks the very same combination.  It loses no coverage: printability is
+#: decided by the frame constants, which do not depend on the accumulator,
+#: and the rewind guard is loosest exactly at the top of the range, so the
+#: rule's combination builds iff any does.
+_MUX_RULE_ARITY = 10
+
+
+def _mux_rule_tail(
+    base: _Joint, acc: int, rewinds: list[int], *, direct: bool
+) -> tuple[str, str]:
+    """Spell the sculpt the scout priced, from its recorded rewinds.
+
+    With the rewinds in firing order every emitted part is a constant of
+    the frame: a round is ``<``/``[x`` runs of its rewind and a trailing
+    ``x``, the clamp is ``highest + 1`` (rounds move no pointer), and the
+    endgame's pool code, walk, read and rewind are fixed by ``acc`` and the
+    pool byte -- the same constants the scout priced the combination over.
+    Returns ``(rounds, suffix)``, the tail after ``base``'s own template
+    split where :func:`_mux_replays` switches laws.
+
+    Nothing ships on this spelling alone: :func:`_mux` replays it over
+    every row and accepts on the printed digits, and its length is checked
+    against the scout's independent prediction.
+    """
+    byte = base.ms[0].tape & _POOL_MASK
+    frame = _probe_frame(_SCULPT_POOL_CODE, byte)
+    if frame is None:  # pragma: no cover - the scout priced through this frame
+        raise AssertionError("no probe frame for a priced combination")
+    codes = tuple(_POOL_CODES)
+    slice0 = _pool_slice(codes, 0, skip=False)
+    g = 0 if direct else 1
+    for read, cell7 in (
+        (_READS[0], 0),
+        (_READS[0], 1),
+        (_READS[1], 0),
+        (_READS[1], 1),
+    ):
+        chosen = slice0.get((byte, cell7))
+        if chosen is None:
+            continue
+        end_frame = _probe_frame(codes[chosen[0]], byte)
+        if end_frame is None or end_frame[0] != chosen[1]:  # pragma: no cover
+            raise AssertionError("the endgame frame drifted from the pool slice")
+        if g ^ frame[1] ^ end_frame[1] == (0 if read == _READS[1] else 1):
+            code, landed = codes[chosen[0]], chosen[1]
+            break
+    else:  # pragma: no cover - the scout's winner matched the same trial
+        raise AssertionError("the priced combination has no matching read")
+    highest = max(base.ptrs())
+    rounds: list[str] = []
+    for rewind in rewinds:
+        rounds.append("<" * rewind)
+        rounds.append("[x" * rewind)
+        rounds.append("x")
+    suffix = "".join(
+        (
+            "x",
+            "<" * (highest + 1),
+            code,
+            "[x" * (acc - 1 - landed),
+            read,
+            "<" * (acc - (_POOL_WIDTH - 1)),
+            "[x.",
+        )
+    )
+    return "".join(rounds), suffix
+
+
+def _mux_replays(
+    base: _Joint, rewinds: list[int], suffix: str, truth_table: str
+) -> bool:
+    """Whether the spelled build really prints the table, row by row.
+
+    The module-wide acceptance, applied to the scout's spelling: every row
+    advances through the tail by the laws and the digits it prints are
+    compared against the table -- the same standard :func:`_try_print`
+    holds a sculpted joint to.  The rounds go through the fused
+    :meth:`_Sim.run_rewinds` (one window per row where the parsed runs
+    cost three law calls a round), the endgame through the parsed runs;
+    ``suffix`` must be the tail past the rounds, exactly as
+    :func:`_mux_rule_tail` spells it.
+    """
+    probe = base.fork()
+    for m in probe.ms:
+        m.run_rewinds(rewinds)
+    probe.emit(suffix)
+    return probe.printed() == list(truth_table)
 
 
 def _mux_sweep(base: _Joint, truth_table: str, n: int, accs: range) -> str | None:
@@ -3087,6 +3199,14 @@ def _mux(truth_table: str, n: int) -> str | None:
     Nothing about *which* tables build changes: a combination that stalls
     still contributes nothing, and this returns None exactly when the old
     loop did, having priced the same set.
+
+    Above :data:`_MUX_RULE_ARITY` the contest itself is the build's cost,
+    so the accumulator is named rather than measured -- see that constant
+    for the rule, the trade and the coverage argument.  Only the
+    orientation is still priced (a real contest: 21 to 21 over sampled
+    eight-input tables, worth up to 24%), the scout records the winner's
+    rewinds as it prices, and the build is spelled from them and accepted
+    on its own replay rather than sculpted.
     """
     if n < _MUX_MIN_ARITY:
         return None
@@ -3101,7 +3221,16 @@ def _mux(truth_table: str, n: int) -> str | None:
     # ``+ 1`` past the rewind guard's ``_POOL_WIDTH``, which is what makes the
     # guard exactly tight rather than slack -- see the constant's own comment.
     accs = range(highest - lowest + _POOL_WIDTH + 1, lowest - 1)
-    winner, trusted = _mux_scout(base, truth_table, n, accs)
+    recorded: dict[tuple[int, bool], list[int]] = {}
+    if n >= _MUX_RULE_ARITY:
+        # The rule replaces the contest: one combination, the largest legal
+        # accumulator.  The scout still prices it exactly -- its refusals,
+        # its trust check and its predicted length all carry over -- it is
+        # just no longer asked to price the other ~2 * len(accs) - 1.
+        accs = range(accs.stop - 1, accs.stop)
+    winner, trusted = _mux_scout(
+        base, truth_table, n, accs, recorded if n >= _MUX_RULE_ARITY else None
+    )
     if not trusted:
         # The separation's state defeats the shadow's summary: not observed
         # at any arity -- the base is canonical by construction -- so this
@@ -3110,6 +3239,22 @@ def _mux(truth_table: str, n: int) -> str | None:
     if winner is None:
         return None
     acc, direct, predicted = winner
+    if n >= _MUX_RULE_ARITY:
+        # Spell the winner from the scout's own record and accept it on its
+        # replay: the sculpt re-simulates a probe per round, which at this
+        # arity is most of what remains of the build.
+        widths = recorded.get((acc, direct))
+        if widths is not None:
+            rounds, suffix = _mux_rule_tail(base, acc, widths, direct=direct)
+            spelled = base.template() + rounds + suffix
+            if len(spelled) == predicted and _mux_replays(
+                base, widths, suffix, truth_table
+            ):
+                return spelled
+        # The scout, the spelling and the replay disagreeing is a bug in
+        # the trio; the sweep is the exact spelling, so answer from it
+        # rather than raise.
+        return _mux_sweep(base, truth_table, n, accs)  # pragma: no cover
     built = _mux_sculpt(
         base, truth_table, n, acc, 0, direct=direct, hint=_SCULPT_POOL_CODE
     )
