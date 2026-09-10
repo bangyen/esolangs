@@ -2651,7 +2651,13 @@ def _probe_frame(code: str, byte: int) -> tuple[int, int] | None:
         if sim.tape >> _POOL_WIDTH != high:
             return None
         frames.append((sim.ptr, sim.tape & _POOL_MASK))
-    if frames[0] != frames[1]:
+    if frames[0] != frames[1]:  # pragma: no cover - no code both reads and frames
+        # The two fills differ only above the region, so this catches a code
+        # whose low result *reads* what sits there without writing it -- the
+        # write is the guard above.  Enumerating the whole `<[.x` alphabet
+        # through length 8 from four bytes produced a writer (`.[[...[<`,
+        # covered) and no reader, so this is the residual check rather than a
+        # reachable refusal: it keeps the frame a function of the byte alone.
         return None
     landed, low = frames[0]
     return landed, (low >> (landed + 1)).bit_count() & 1
@@ -3009,7 +3015,11 @@ def _mux_scout(
                 total += 3 * rewind + 1
                 pending.append((rewind, (1 << rewind) - 1))
                 settled = i + 1
-            else:
+            else:  # pragma: no cover - the cap cannot be reached
+                # A round sets ``settled = i + 1`` with ``i >= settled``, so
+                # ``settled`` strictly increases and at most ``rows`` rounds
+                # run against a cap of ``rows + 4``.  The cap is the guard
+                # against that invariant breaking, not a budget in use.
                 aborted = True
             if not aborted:
                 lengths[(acc, direct)] = total
