@@ -1504,32 +1504,54 @@ class TestCircuitDiagramLayoutGuards:
 
     def test_two_signals_may_not_run_the_same_way_through_a_cell(self) -> None:
         layout = self._layout()
-        layout._occupy(layout.horizontal, 3, 4, 7, "horizontally")  # noqa: SLF001
+        layout.run_horizontal(2, 5, 4, 7)
         with pytest.raises(AssertionError) as caught:
-            layout._occupy(layout.horizontal, 3, 4, 9, "horizontally")  # noqa: SLF001
-        assert str(caught.value) == "two signals run horizontally through (3, 4)"
+            layout.run_horizontal(2, 5, 4, 9)
+        assert str(caught.value) == "two signals run horizontal through (3, 4)"
+        layout = self._layout()
+        layout.run_vertical(3, 2, 6, 1)
+        with pytest.raises(AssertionError) as caught:
+            layout.run_vertical(3, 2, 6, 2)
+        assert str(caught.value) == "two signals run vertical through (3, 3)"
 
-    def test_one_signal_may_reclaim_its_own_cell(self) -> None:
+    def test_partly_overlapping_runs_clash_at_the_first_shared_cell(self) -> None:
+        """Runs are intervals now, so overlap is not only exact re-tracing."""
+        layout = self._layout()
+        layout.run_horizontal(2, 6, 4, 7)
+        with pytest.raises(AssertionError) as caught:
+            layout.run_horizontal(4, 8, 4, 9)
+        assert str(caught.value) == "two signals run horizontal through (5, 4)"
+
+    def test_one_signal_may_reclaim_its_own_cells(self) -> None:
         """A repeated claim by the same signal is the ordinary case."""
         layout = self._layout()
-        layout._occupy(layout.horizontal, 3, 4, 7, "horizontally")  # noqa: SLF001
-        layout._occupy(layout.horizontal, 3, 4, 7, "horizontally")  # noqa: SLF001
-        assert layout.horizontal[(3, 4)] == 7
+        layout.run_horizontal(2, 5, 4, 7)
+        layout.run_horizontal(2, 5, 4, 7)
+        assert layout.render().split("\n")[4] == "   --"
 
     def test_two_signals_may_cross_at_right_angles(self) -> None:
-        """The clash is per direction: crossing wires share the cell."""
+        """The clash is per direction: crossing wires share the cell as ``=``."""
         layout = self._layout()
-        layout._occupy(layout.horizontal, 5, 5, 1, "horizontally")  # noqa: SLF001
-        layout._occupy(layout.vertical, 5, 5, 2, "vertically")  # noqa: SLF001
-        assert layout.horizontal[(5, 5)] == 1
-        assert layout.vertical[(5, 5)] == 2
+        layout.run_horizontal(2, 5, 4, 1)
+        layout.run_vertical(3, 2, 6, 2)
+        rows = layout.render().split("\n")
+        assert rows[3] == "   |"
+        assert rows[4] == "   =-"
+        assert rows[5] == "   |"
 
-    def test_a_wire_may_not_cross_a_glyph(self) -> None:
+    @pytest.mark.parametrize(
+        ("run", "args"),
+        [("run_horizontal", (2, 5, 4, 1)), ("run_vertical", (3, 2, 6, 1))],
+    )
+    def test_a_wire_may_not_cross_a_glyph(
+        self, run: str, args: tuple[int, ...]
+    ) -> None:
+        """Both run directions consult the glyphs along their line."""
         layout = self._layout()
-        layout.glyphs[(2, 2)] = "&"
+        layout.glyph(3, 4, "&")
         with pytest.raises(AssertionError) as caught:
-            layout._occupy(layout.horizontal, 2, 2, 1, "horizontally")  # noqa: SLF001
-        assert str(caught.value) == "wire crosses glyph at (2, 2)"
+            getattr(layout, run)(*args)
+        assert str(caught.value) == "wire crosses glyph at (3, 4)"
 
     def test_a_glyph_may_not_land_on_a_glyph(self) -> None:
         layout = self._layout()
@@ -1542,7 +1564,10 @@ class TestCircuitDiagramLayoutGuards:
     def test_a_glyph_may_not_land_on_a_wire(self, axis: str) -> None:
         """Both wire tables are consulted, not just the first."""
         layout = self._layout()
-        layout._occupy(getattr(layout, axis), 1, 1, 1, axis)  # noqa: SLF001
+        if axis == "horizontal":
+            layout.run_horizontal(0, 2, 1, 1)
+        else:
+            layout.run_vertical(1, 0, 2, 1)
         with pytest.raises(AssertionError) as caught:
             layout._check_free(1, 1)  # noqa: SLF001
         assert str(caught.value) == "glyph at (1, 1) lands on a wire"
