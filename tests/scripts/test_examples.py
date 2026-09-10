@@ -26,7 +26,14 @@ from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.boolean.examples import HAND_WRITTEN
 from esolangs.tools.wrap import DEFAULT_WIDTH
-from esolangs.vm import make_vm, run_until_halt_or_cycle
+from esolangs.vm import (
+    _FramedMachine,
+    _TapeMachine,
+    make_vm,
+    run_until_halt_or_ancestor,
+    run_until_halt_or_cycle,
+    run_until_halt_or_growth,
+)
 from tests.tools.boolean_runners import one_two_three_result, point_break_result
 
 BASE_DIR = Path(__file__).parents[2]
@@ -293,6 +300,41 @@ BOOLEAN_EXAMPLES = {
 }
 
 
+def _prove_halt(vm: object) -> bool:
+    """Drive ``vm`` to its halt with the prover its machine supports.
+
+    Every example here is expected to halt, so any of the three provers
+    answers ``True`` on a correct file.  Which one runs matters for the
+    *incorrect* file, which is what this test exists to catch: the three
+    disagree on what they can conclude, and only about non-halting.
+
+    ``run_until_halt_or_cycle`` decides exact state repeats and nothing
+    else.  A machine whose state grows every step -- a recursion that
+    pushes a frame per call, a tape that gains a cell per lap -- never
+    repeats one, so on those the exact-state prover does not run long, it
+    *cannot terminate*, and a broken example would hang the suite instead
+    of failing it.  ``docs/walls.md`` carries the measured instance: a
+    Suptiftam program short of its input grows the snapshot about 32 bytes
+    per step, and holding those states OOM-killed the probe, while the
+    ancestor prover answered in under a second.
+
+    So dispatch on what the machine actually implements.  The protocols
+    are ``runtime_checkable`` and opting into one is a claim about the
+    language's semantics, not merely about having the attributes -- five
+    tape-shaped languages here define ``tape`` and ``ptr`` yet are
+    deliberately not ``_TapeMachine``, and ``isinstance`` is what tells
+    them apart.  The provers raise ``TypeError`` on a machine outside
+    their protocol, so a wrong branch here fails loudly rather than
+    reporting a verdict about state the machine does not have.
+    """
+    machine = getattr(vm, "_machine", vm)
+    if isinstance(machine, _FramedMachine):
+        return run_until_halt_or_ancestor(vm)
+    if isinstance(machine, _TapeMachine):
+        return run_until_halt_or_growth(vm)
+    return run_until_halt_or_cycle(vm)
+
+
 @pytest.mark.parametrize("name", sorted(BOOLEAN_EXAMPLES))
 def test_boolean_example(name: str) -> None:
     _module, inputs, expected, _splitlines, _kwargs = BOOLEAN_EXAMPLES[name]
@@ -312,14 +354,12 @@ def test_boolean_example(name: str) -> None:
         got = vm._machine.render()  # type: ignore[attr-defined]  # noqa: SLF001
     elif name == "suffolk":
         # Suffolk's input-reading programs stop on the next EOF rather than
-        # halting; the detector still drives every preceding step.
+        # halting; the prover still drives every preceding step.
         with pytest.raises(EOFError):
-            run_until_halt_or_cycle(vm)
+            _prove_halt(vm)
         got = vm.output
     else:
-        assert run_until_halt_or_cycle(vm), (
-            f"examples/boolean/{name}.txt repeats a complete machine state"
-        )
+        assert _prove_halt(vm), f"examples/boolean/{name}.txt does not reach its halt"
         # A few state-dumping languages deliberately write on the first step
         # after their halt.  That step is otherwise a no-op, so taking it for
         # every VM exactly matches each interpreter's public ``run`` behavior.
