@@ -60,6 +60,9 @@ additions -- a budget with a certificate per round, not a search -- and a
 table still short after it is refused with the window, never mis-routed.
 """
 
+from bisect import bisect_left, bisect_right
+from functools import cache
+
 from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 
 #: Lines between the two landing sites of the branch gadget, fixed by the
@@ -84,8 +87,14 @@ def _set_acc(target: int) -> list[str]:
     return ["NnNn", *min(up, down, key=len)]
 
 
+@cache
 def _hop_width(distance: int) -> int:
-    """Lines an unconditional hop of ``distance`` needs."""
+    """Lines an unconditional hop of ``distance`` needs.
+
+    Memoised: sizing calls this once per growable jump per pass, and the
+    distances repeat -- a hop spans at most one reach plus whatever a
+    not-yet-promoted jump reads, so the key space is a few hundred wide.
+    """
     return len(_set_acc(distance)) + 1
 
 
@@ -225,44 +234,56 @@ def _emit(table: str, n: int) -> list[_Item]:
 def _index(items: list[_Item]) -> tuple[list[int], dict[str, int]]:
     """Return each item's starting line and every label's line."""
     starts: list[int] = []
+    append = starts.append
     labels: dict[str, int] = {}
     line = 0
+    # Dispatched on the exact class, cheapest case first: all but a few
+    # thousand of the items are plain lines, and this walk runs once per
+    # sizing pass over the whole program.
     for item in items:
-        starts.append(line)
-        if isinstance(item, _Label):
-            labels[item.name] = line
-        elif isinstance(item, _Jump):
-            line += item.width
-        elif not isinstance(item, _Safe):
+        append(line)
+        kind = item.__class__
+        if kind is str or kind is _Rung:
             line += 1
+        elif kind is _Jump:
+            line += item.width  # type: ignore[union-attr]
+        elif kind is _Label:
+            labels[item.name] = line  # type: ignore[union-attr]
     labels["END"] = line
     return starts, labels
 
 
-def _resolve(items: list[_Item]) -> None:
-    """Size every growable jump, iterating until no width changes.
+def _resolve(items: list[_Item]) -> tuple[list[int], dict[str, int]]:
+    """Size every growable jump until no width changes; return the index.
 
     A jump's own width shifts every label after it, so this is a fixed
     point rather than one pass.  A width can shrink as well as grow, so
     the bound is measured rather than argued -- and with every long span
     parked at the fixed express width, what is left to move is local.
+
+    Which jumps are growable cannot change inside the loop, so they are
+    picked out once instead of re-scanned every pass; the returned index
+    is the settled one, so the caller need not walk the program again.
     """
+    growable = [
+        (position, item)
+        for position, item in enumerate(items)
+        # A fixed slot cannot grow: the window is checked at emission,
+        # and an express slot spells any first stride.
+        if isinstance(item, _Jump) and not item.fixed and not item.express
+    ]
     moving = 0
     for _ in range(_PASSES):
         starts, labels = _index(items)
         moving = 0
-        for item, start in zip(items, starts, strict=True):
-            if not isinstance(item, _Jump) or item.fixed or item.express:
-                # A fixed slot cannot grow: the window is checked at
-                # emission, and an express slot spells any first stride.
-                continue
-            distance = labels[item.label] - (start + item.width)
+        for position, jump in growable:
+            distance = labels[jump.label] - (starts[position] + jump.width)
             need = _hop_width(max(distance, 0))
-            if need != item.width:
-                item.width = need
+            if need != jump.width:
+                jump.width = need
                 moving += 1
         if not moving:
-            return
+            return starts, labels
     raise ValueError(
         f"jump widths did not converge in {_PASSES} passes: {moving} jumps still moving"
     )
@@ -276,8 +297,7 @@ def _settle(items: list[_Item]) -> None:
     bound is the jump count, since each round must promote at least one.
     """
     while True:
-        _resolve(items)
-        starts, labels = _index(items)
+        starts, labels = _resolve(items)
         promoted = 0
         for item, start in zip(items, starts, strict=True):
             if not isinstance(item, _Jump) or item.fixed or item.express:
@@ -371,18 +391,26 @@ def _add(items: list[_Item], meadows: list[list[_Rung]], low: int, high: int) ->
     held no usable rung slot, and the meadow goes at the last safe point
     inside it -- nearest whatever the stranded chain was reaching for.
     Falls back to the nearest safe point when the window holds none.
+
+    Walks the lines itself rather than indexing the whole program: the
+    scan stops at the window, and a repair round calls this once per
+    stranded window.
     """
-    starts, _labels = _index(items)
     at = None
     fallback = None
-    for position, (item, start) in enumerate(zip(items, starts, strict=True)):
-        if not isinstance(item, _Safe):
-            continue
-        if start >= high:
-            break
-        fallback = position
-        if start > low:
-            at = position
+    line = 0
+    for position, item in enumerate(items):
+        kind = item.__class__
+        if kind is str or kind is _Rung:
+            line += 1
+        elif kind is _Jump:
+            line += item.width  # type: ignore[union-attr]
+        elif kind is _Safe:
+            if line >= high:
+                break
+            fallback = position
+            if line > low:
+                at = position
     if at is None:
         at = fallback
     if at is None:
@@ -523,8 +551,42 @@ def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_StuckError]:
     the pass is returned together, so one repair round serves them all.
     """
     starts, labels = _index(items)
-    position = {id(item): start for item, start in zip(items, starts, strict=True)}
-    banks = [_Bank(rungs, [position[id(rung)] for rung in rungs]) for rungs in meadows]
+    rung_line = {
+        id(item): start
+        for item, start in zip(items, starts, strict=True)
+        if item.__class__ is _Rung
+    }
+    banks = [_Bank(rungs, [rung_line[id(rung)] for rung in rungs]) for rungs in meadows]
+    # Meadows never overlap, so ordering banks by their first rung orders
+    # them by cursor line too, and the banks a hop could reach are one
+    # slice rather than a filter-and-sort over every meadow in the
+    # program.  That scan was the n=10 price: ~600 meadows re-examined at
+    # each of tens of thousands of hops, once per repair round.
+    banks.sort(key=lambda bank: bank.lines[0])
+    heads = [bank.lines[0] for bank in banks]
+    widest = max((len(bank.rungs) for bank in banks), default=0)
+
+    def within(low: int, high: int) -> list[_Bank]:
+        """Banks whose cursor line lies in ``(low, high]``, furthest first.
+
+        The slice is bounded exactly on the right -- a meadow starting
+        past ``high`` cannot hold a line inside -- and widened on the left
+        by the widest meadow actually laid, since a cursor has drifted at
+        most a whole meadow past its head.  Every candidate is then
+        filtered on its real line, so the widening costs comparisons only
+        and the slice is the same set the old whole-list scan found.
+        """
+        if high <= low:
+            return []
+        left = bisect_left(heads, low - widest + 1)
+        right = bisect_right(heads, high)
+        ahead = [
+            bank
+            for bank in banks[left:right]
+            if bank.line is not None and low < bank.line <= high
+        ]
+        ahead.reverse()
+        return ahead
 
     def refuse(landing: int, until: int, label: str) -> _StuckError:
         return _StuckError(landing, until, label)
@@ -536,16 +598,11 @@ def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_StuckError]:
         never hops into a bank it cannot leave: consecutive strides differ
         by a meadow pitch or two, well inside what thirteen adjusters fix.
         """
-        ahead = [
+        return [
             bank
-            for bank in banks
-            if bank.line is not None
-            and landing < bank.line <= until
-            and bank.line - landing <= _REACH
-            and bank.free >= 14
+            for bank in within(landing, min(until, landing + _REACH))
+            if bank.free >= 14
         ]
-        ahead.sort(key=lambda bank: -(bank.line or 0))
-        return ahead
 
     chains = [
         (item, start + item.width, labels[item.label])
@@ -567,10 +624,8 @@ def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_StuckError]:
         terminal = next(
             (
                 bank
-                for bank in sorted(banks, key=lambda b: -(b.line or 0))
+                for bank in within(max(launch, target - _REACH - 1), target - 1)
                 if bank.line is not None
-                and launch < bank.line < target
-                and target - bank.line <= _REACH
                 and _fits(
                     bank.free,
                     bank.line,
