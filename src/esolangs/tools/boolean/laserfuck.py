@@ -256,10 +256,28 @@ def _laserfuck_place(block: list[str], upright: str) -> _LaserBlock:
     return _LaserBlock(turned, 1, connectors, below, entry + 1)
 
 
-def _laserfuck_assemble_reader(
+def _laserfuck_placements(
     n: int,
-    orientation: str,
     perm: tuple[int, ...] | None = None,
+) -> list[dict[str, _LaserBlock]]:
+    """Place every reader block in *both* orientations, once.
+
+    The caller tries all ``2**count`` orientation words, and a block's
+    placement depends only on the block and its own letter -- so cutting
+    and rotating per word rebuilt the same ``2 * count`` placements
+    ``2**count`` times.  Hoisting them here is what makes the order search
+    affordable: at n=6 it turns 17 reader cuts and 16 rotations per
+    candidate into one and two.
+    """
+    return [
+        {upright: _laserfuck_place(block, upright) for upright in "FR"}
+        for block in _laserfuck_reader_blocks(n, perm)
+    ]
+
+
+def _laserfuck_assemble_reader(
+    placements: list[dict[str, _LaserBlock]],
+    orientation: str,
 ) -> tuple[list[str], int, int]:
     """Chain the reader's blocks, each flat (``F``) or on end (``R``).
 
@@ -274,12 +292,8 @@ def _laserfuck_assemble_reader(
             cells[(row, col)] = char
 
     row = col = 0
-    for block, upright in zip(
-        _laserfuck_reader_blocks(n, perm),
-        orientation,
-        strict=True,
-    ):
-        placed = _laserfuck_place(block, upright)
+    for choices, upright in zip(placements, orientation, strict=True):
+        placed = choices[upright]
         for offset, line in enumerate(placed.rows):
             for index, char in enumerate(line):
                 put(row + placed.top + offset, col + index, char)
@@ -385,11 +399,14 @@ def _laserfuck_build(
     # The tree adds only a column or two past the reader, so the reader is
     # what a width has to bargain with: side by side the rings are one row
     # and forty-odd columns, stacked they are seven rows and under twenty.
-    count = len(_laserfuck_reader_blocks(n, perm))
+    placements = _laserfuck_placements(n, perm)
+    count = len(placements)
     candidates = []
     for choice in range(2**count):
         orientation = "".join("R" if choice >> b & 1 else "F" for b in range(count))
-        rows_of, exit_row, exit_col = _laserfuck_assemble_reader(n, orientation, perm)
+        rows_of, exit_row, exit_col = _laserfuck_assemble_reader(
+            placements, orientation
+        )
         span = max(len(line) for line in rows_of)
         candidates.append((len(rows_of), span, rows_of, exit_row, exit_col))
     candidates.sort(key=lambda item: (item[0], item[1]))
@@ -422,6 +439,21 @@ def _laserfuck_build(
         if len(line) <= col:  # pragma: no branch
             line.extend(" " * (col + 1 - len(line)))
         line[col] = char
+
+    def put_run(row: int, col: int, text: str) -> None:
+        """Write a whole run of cells, growing the ragged grid to reach it.
+
+        The tree arrives as runs, and going through :func:`put` a character
+        at a time is 1.7M calls on a six-input build once the order search
+        multiplies it by ``n!``.  A slice assignment leaves the same line:
+        the run is blank-free, so nothing it covers had to be preserved.
+        """
+        if len(grid) <= row:
+            grid.extend([] for _ in range(row + 1 - len(grid)))
+        line = grid[row]
+        if len(line) < col:
+            line.extend(" " * (col - len(line)))
+        line[col : col + len(text)] = text
 
     # The funnel: every start heading ends up on row 0 moving right.  Cell
     # (0, 0) stays blank so the tape dumps in decimal rather than byte mode.
@@ -458,20 +490,20 @@ def _laserfuck_build(
     # faces it right again on a fresh row.  Rows therefore scale with the
     # number of *one* edges rather than with the node count, and the
     # all-zeros path is a single straight line.
-    tree: dict[tuple[int, int], str] = {}
-    used = [0]
-
-    # Whether any subtree is constant, decided before the walk because it
-    # picks the sweep.  A leaf retires the inputs by driving each cell
-    # negative, which the dump then skips; sized to the bit it is one ``-``
-    # for a zero and two for a one, but that needs a bit a *folded* leaf
-    def lay(row: int, col: int, char: str) -> None:
-        # Every caller passes a beam character: the run is built from
-        # ``><-+`` and the rest are the literals ``x``, ``>#v)`` and ``\``.
-        # The blank test mirrors the text generator's ``put``, where the
-        # grid *is* padded, so the two helpers stay the same shape.
-        if char != " ":  # pragma: no branch - no caller passes a blank
-            tree[(row, col)] = char
+    # The tree as ``(column, text)`` runs per row rather than a cell per
+    # character.  Nothing it lays contains a blank -- the runs are built
+    # from ``><-+`` and the rest are the literals ``x``, ``>#v)`` and
+    # ``\`` -- and every row is filled strictly left to right, so a run is
+    # the whole of what a cell dict was storing one character at a time.
+    # The order search rebuilds this n! times, and the dict cost it twice:
+    # 1.7M single-cell writes going in and 3.1M ``get`` probes coming back
+    # out over the bounding rectangle, which is mostly blank because the
+    # tree is a staircase.
+    #
+    # A row is appended exactly when a ``one`` edge creates it, and the
+    # counter that names it is bumped in the same breath, so ``len(rows)``
+    # is the next row index and the two stay in step.
+    rows: list[list[tuple[int, str]]] = [[]]
 
     def emit(path: list[int], row: int, col: int) -> None:
         """Lay the subtree for ``path``, entered at ``(row, col)`` going right."""
@@ -496,25 +528,27 @@ def _laserfuck_build(
             for level in range(depth, 0, -1):
                 run += "-" * (path[level - 1] + 1) + "<"
             run += "+" if truth_table[index] == "1" else ""
-            for offset, char in enumerate(run):
-                lay(row, col + offset, char)
-            lay(row, col + len(run), "x")
+            rows[row].append((col, run + "x"))
             return
-        for offset, char in enumerate(">#v)"):
-            lay(row, col + offset, char)
+        rows[row].append((col, ">#v)"))
         emit([*path, 0], row, col + 4)  # a zero carries on along this row
-        used[0] += 1
-        drop = used[0]
-        lay(drop, col + 2, "\\")  # a one comes down the 'v' column
+        drop = len(rows)
+        rows.append([(col + 2, "\\")])  # a one comes down the 'v' column
         emit([*path, 1], drop, col + 3)
 
     emit([], 0, 0)
-    height = max(row for row, _ in tree) + 1
-    span = max(col for _, col in tree) + 1
-    upright = [
-        "".join(tree.get((row, col), " ") for col in range(span))
-        for row in range(height)
-    ]
+    span = max(col + len(text) for marks in rows for col, text in marks)
+    upright = []
+    for marks in rows:
+        parts: list[str] = []
+        cursor = 0
+        for col, text in marks:
+            if col > cursor:
+                parts.append(" " * (col - cursor))
+            parts.append(text)
+            cursor = col + len(text)
+        parts.append(" " * (span - cursor))
+        upright.append("".join(parts))
 
     # Where the tree goes depends on whether the width can afford it.
     #
@@ -531,9 +565,13 @@ def _laserfuck_build(
     # carry the beam back to the margin first.
     straight = margin + reader_exit_col + max(len(line) for line in upright)
     if width is None or straight + 1 <= width:
-        for offset, line in enumerate(upright):
-            for index, char in enumerate(line):
-                put(reader_exit_row + offset, margin + reader_exit_col + index, char)
+        # Laid from the runs, not from the padded rows: the tree is a
+        # staircase, so ``upright`` is mostly blanks, and a blank is
+        # re-padded by the next run on its row (or ``rstrip``ed off the
+        # end) rather than written.
+        for offset, marks in enumerate(rows):
+            for col, text in marks:
+                put_run(reader_exit_row + offset, margin + reader_exit_col + col, text)
     else:
         flipped = _laserfuck_flip(upright)
         entry = len(flipped[0].rstrip()) - 1
