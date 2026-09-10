@@ -1,4 +1,4 @@
-"""Polynomial algebra for the Polynomial text generator.
+"""Polynomial algebra for the Polynomial generator.
 
 A Polynomial program is a polynomial whose roots encode instructions: the
 k-th instruction uses the k-th prime p, turned into a complex root

@@ -12,9 +12,9 @@ replaces.
 :data:`SAMPLES` is that table: for every name in
 :data:`~esolangs.registry.RUNNERS`, the smallest program that reaches the
 language's halt, and the stdin it reads on the way (``""`` for the ones
-that read nothing).  The programs are *tiny* deliberately -- a hello-world
-is the wrong input here, since the sweep runs each entry to completion and
-some languages spell a greeting in tens of thousands of steps.
+that read nothing).  The programs are *tiny* deliberately -- a generated
+one is the wrong input here, since the sweep runs each entry to completion
+and some languages take tens of thousands of steps.
 
 ``TestSamplesCoverEveryLanguage`` locks the table against the registry, so
 a language added without an entry fails there rather than being silently

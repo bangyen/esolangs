@@ -1,8 +1,8 @@
 """The committed boolean example programs, as data.
 
 ``examples/boolean`` holds one program per language whose boolean generator
-can be verified end to end, mirroring ``examples/hello-world`` for the text
-generators.  This module is the single source of truth for those files: each
+can be verified end to end.  This module is the single source of truth for
+those files: each
 :class:`BooleanExample` records the generator, the truth table, and the input
 combination that produced its program, plus how the interpreter is invoked.
 
@@ -117,7 +117,7 @@ class BooleanExample:
         :func:`~esolangs.tools.wrap.wrap_program` reflows a finished line
         and so skips a program that is already multi-line, which every such
         generator's output is.  This mirrors what :func:`esolangs.generate`
-        does for the text generators.
+        does.
         """
         if width is not None and takes_width(self.generator):
             program = self.generator(self.table, width)
@@ -488,8 +488,7 @@ def _fill_arrowqueue(template: str, bits: list[int]) -> str:
 
 
 # Example file stem -> how that example is built and run.  Stems match the
-# language's display name lowercased with spaces as dashes, like the
-# hello-world examples.
+# language's display name lowercased with spaces as dashes.
 BOOLEAN_EXAMPLES: dict[str, BooleanExample] = {}
 
 

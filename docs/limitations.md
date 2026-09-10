@@ -40,10 +40,8 @@ structural arguments are in [walls](walls.md).
 
 ## Generator boundaries
 
-Text generators are absent where the language has no output, only a binary or
-numeric output alphabet, or cannot emit arbitrary byte sequences. Boolean
-construction is parameterized for 123 and `%^2^-1`; no program reading its
-own inputs overcomes the latter's two-input wall.
+Boolean construction is parameterized for 123 and `%^2^-1`; no program
+reading its own inputs overcomes the latter's two-input wall.
 
 The n=3 input-reordering screen (`scripts/screen_input_reorder.py`)
 closes eight unwired generators at exactly 0% upside without reading

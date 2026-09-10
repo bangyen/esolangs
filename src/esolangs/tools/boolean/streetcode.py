@@ -382,9 +382,9 @@ def _streetcode_populate(n: int, shape: _Shape) -> list[str]:
     )
 
 
-# The shared lap's ring, widened by ``k`` the way the text generator widens
-# its own.  Only the steering assembly is fixed -- the ``=`` hop below the
-# descent gap, the countdown ``~`` on the top row, and the ``_`` that drops
+# The shared lap's ring, widened by ``k``.  Only the steering assembly is
+# fixed -- the ``=`` hop below the descent gap, the countdown ``~`` on the
+# top row, and the ``_`` that drops
 # CP on the way out -- because those sit on paths the linear body cannot
 # describe.  The cell the single-loop ring used to drop CP on for the *next*
 # lap is deliberately blank: the body's own rewind is sized for arriving with

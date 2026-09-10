@@ -1,7 +1,7 @@
 r"""Wrap generated programs to a readable width, on token boundaries.
 
-The text and boolean generators emit one long line for most languages: a
-Hello-World Polynomial program is 3456 characters, which no diff or review
+The generators emit one long line for most languages: a Polynomial program
+for a dense three-input table is 2471 characters, which no diff or review
 pane shows usefully.  Since most languages treat a newline as whitespace
 (or as a comment character), such a program can be broken across lines
 without changing what it does.
@@ -82,8 +82,8 @@ the tokens sit within a line, each following the shape its language's
 programs actually have.  :func:`_bio` indents a nested BIO program two
 spaces per loop level, since the boolean generator nests one loop per
 truth-table row and that telescoping chain is invisible packed flat; a
-program under two levels deep -- every text-generator one -- is packed as
-before, since indenting a flat run shows nothing.  :func:`wrap_grid`
+program under two levels deep is packed as before, since indenting a flat
+run shows nothing.  :func:`wrap_grid`
 right-aligns into columns instead: the subleq-family OISCs (AddSubJump,
 Decleq, S*bleq) have uniform-width numeric tokens, so padding each into a
 cell and right-aligning it lines the columns up between rows, which makes a
@@ -299,7 +299,7 @@ _SIX_FIVE_COMMAND = r"7[\s\S](?:[78][\s\S]|[\s\S])|8[\s\S]|[\s\S]"
 #
 # A literal wider than the width is then left on its own line rather than
 # broken, which is :func:`_join_tokens`'s existing behaviour for an
-# oversized token: a 3x hello-world is one ``[...]`` and does not wrap.  An
+# oversized token: a 3x program that is one ``[...]`` does not wrap.  An
 # over-wide line is the honest outcome here, since the alternative is a
 # program that prints something else.
 _SOPHIE_COMMAND = r"#\$\d+,|#.,?|."
@@ -326,9 +326,9 @@ def _bio(program: str, width: int) -> str:
     ... }``), so its program is a telescoping chain whose shape is worth
     seeing; packed to a width it reads as one undifferentiated run.  ``0i?``
     opens a level and ``}`` closes one, so the depth is a running count and
-    each line is indented by it.  The text generator's program is a flat
-    sequence of depth-1 groups, where indenting shows nothing packing does
-    not, so a program shallower than two levels takes the flat path.
+    each line is indented by it.  A flat sequence of depth-1 groups shows
+    nothing indented that packing does not, so a program shallower than two
+    levels takes the flat path.
 
     The indent is whitespace *between* commands, which BIO ignores, and no
     break lands inside one -- so an indented program means exactly what the
@@ -486,9 +486,9 @@ def _polynomial(program: str, _width: int) -> str:
     Polynomial's terms are space-delimited, so :func:`wrap_space_delimited`
     would wrap it -- but the ``+`` and ``-`` between two terms are tokens of
     their own, and once the terms grow wider than the width every one of
-    those signs lands alone on its own line.  A Hello-World program wrapped
-    into forty lines alternating a hundred-character coefficient with a
-    single ``+``, the raggedest possible reading of a polynomial.
+    those signs lands alone on its own line.  A dense table's program
+    wrapped into forty lines alternating a hundred-character coefficient
+    with a single ``+``, the raggedest possible reading of a polynomial.
 
     Keeping each sign with the term it signs fixes that much, and packing
     the resulting pairs to a width would be the obvious next step.  This
@@ -603,8 +603,8 @@ WRAPPERS = {
     # can never land inside a command: Taglate joins every line after the
     # queue seed and only then tokenizes (so a two-character ``gy``/``gz``
     # cannot be split across rows), and A Painter Ant drops whitespace
-    # outright.  Their hello-world programs are short; the boolean ones are
-    # the single long lines that need this.
+    # outright.  Their boolean programs are the single long lines that
+    # need this.
     "taglate": _taglate,
     # Line-based: a newline ends a statement rather than continuing it, so
     # this re-emits ``print,`` per line instead of breaking the one the

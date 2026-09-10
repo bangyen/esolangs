@@ -7,9 +7,8 @@ reads a whole number into the current cell and ``o`` prints the current
 cell as a number (see :mod:`simulate`'s module docstring for both), so a
 0/1 input is already exactly what a caller's ``IO.read`` should hand back,
 and a 0/1 result is already exactly what ``IO.write`` receives -- no ASCII
-offset ever enters the picture.  This is the reason the text generator
-(``esolangs.tools.text.tape.brainfuck``) was dropped from scope and the
-brainfuck boolean generator's ``+48``/``+49`` encoding (needed only because
+offset ever enters the picture.  This is the reason the brainfuck boolean
+generator's ``+48``/``+49`` encoding (needed only because
 brainfuck's own ``,``/``.`` are byte-oriented) was never ported over either:
 compiling that encoding through to Line would print 48/49, not 0/1, and
 there is nothing to "strip" -- the fix is to not introduce brainfuck's
