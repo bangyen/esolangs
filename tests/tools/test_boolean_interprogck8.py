@@ -1,4 +1,4 @@
-"""Unit tests for the Interprogck8 generators, boolean and text.
+"""Unit tests for the Interprogck8 boolean generator.
 
 Every claim here is made by running the emitted program: the tree is
 routed by ``DownAccLines``, whose off-by-one is the whole construction, so
@@ -11,7 +11,7 @@ import importlib
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.register_based.interprogck8 import _Machine, run
+from esolangs.interpreters.register_based.interprogck8 import _Machine
 from esolangs.tools.boolean import interprogck8
 from esolangs.tools.boolean.interprogck8 import (
     _REACH,
@@ -189,5 +189,3 @@ class TestLoader:
     def test_overshooting_is_taken_when_it_is_shorter(self) -> None:
         """8 costs four lines counting back, nine counting up."""
         assert len(_set_acc(8)) == 4
-
-

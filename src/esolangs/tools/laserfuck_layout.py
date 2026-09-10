@@ -4,8 +4,7 @@ Both LaserFuck generators lay their code along *rows*, and both are wide
 for the same reason: a run of tape commands is written straight out.  The
 boolean generator spends 49 columns on each input reader (``,`` and 48
 ``-`` to normalize ``'0'``/``'1'``) and another 49 on each leaf's ``+``
-run, and the text generator's linear fallback writes one ``+`` per unit of
-every byte -- 2423 columns for twenty ``x``\ s.
+run, so a wide table outgrows any readable width.
 
 A newline cannot be inserted into a LaserFuck program the way it can into a
 brainfuck one: rows are grid rows, and moving code to the next row moves it
