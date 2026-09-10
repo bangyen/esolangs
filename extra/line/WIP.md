@@ -4,12 +4,15 @@ Line remains a standalone image-language tool: it has no text format and is
 not registered as an `esolangs.run` language. The renderer, extractor,
 simulator, and lattice module docstrings are authoritative.
 
+Boolean-generation limits are measured, not open: twelve inputs round-trips
+in 289s at 2.60GiB on a 1.01Gpx canvas, all sampled parity rows correct.
+`docs/roadmap.md` carries that entry and the per-arity costs.
+
 ## Open work
 
 - Validate extraction on genuine anti-aliased camera or scan input.
 - Derive the lattice probe length from `UNIT` before supporting smaller grid
   units.
-- Establish practical Boolean-generation limits above seven inputs.
 - Define behavior for genuinely ambiguous arrowheads rather than choosing the
   larger candidate.
 
