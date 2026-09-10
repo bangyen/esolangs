@@ -10,9 +10,14 @@ first character's code point with a counting loop instead of a unary walk.
 Two constructions are built and the shorter wins; see :func:`streetcode`.
 """
 
+from esolangs.tools.text.helpers import delta_program, run_step
 from esolangs.tools.wrap import shortest
 
 __all__ = ["streetcode"]
+
+#: ``^``/``~`` step the cell one per command; ``O`` prints it.  All three of
+#: the walks below spell a character the same way, so they share one step.
+_STEP = run_step("^", "~")
 
 
 def streetcode(text: str, width: int | None = None) -> str:
@@ -249,23 +254,14 @@ def _streetcode_ring(text: str) -> str | None:
     # is empty and the street is exactly what it always was.
     prefix = ""
     if target:
-        previous = 0
-        for char in text[:target]:
-            delta = ord(char) - previous
-            prefix += ("^" if delta >= 0 else "~") * abs(delta) + "O"
-            previous = ord(char)
+        prefix += delta_program(text[:target], _STEP, "O")
         # '_' steps down onto cell 0 before the walks, '=' back onto the
         # ring's cell after them: CP arrives here naming cell 1, since that
         # is where the ring counted its product up.
         prefix = "_" + prefix + "="
 
-    tail = []
-    prev = ord(text[target])
-    for char in text[target + 1 :]:
-        delta = ord(char) - prev
-        tail.append(("^" if delta >= 0 else "~") * abs(delta) + "O")
-        prev = ord(char)
-    after = prefix + "^" * remainder + "O" + "".join(tail) + ";"
+    tail = delta_program(text[target + 1 :], _STEP, "O", start=ord(text[target]))
+    after = prefix + "^" * remainder + "O" + tail + ";"
 
     left = 3
     width = left + block_width + len(after) + 1
@@ -398,13 +394,8 @@ def _streetcode_ring_serpentine(text: str, width: int) -> str | None:
     if left + len(prefix) + 1 > width - 1:
         return None
 
-    tail = []
-    prev = ord(text[0])
-    for char in text[1:]:
-        delta = ord(char) - prev
-        tail.append(("^" if delta >= 0 else "~") * abs(delta) + "O")
-        prev = ord(char)
-    cells = list("".join(tail) + ";")
+    tail = delta_program(text[1:], _STEP, "O", start=ord(text[0]))
+    cells = list(tail + ";")
 
     lanes = width - 4
     # The lowest pair holds one full westbound lane plus whatever the
