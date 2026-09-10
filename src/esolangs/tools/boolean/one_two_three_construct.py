@@ -534,7 +534,9 @@ def _separate(b: _Builder, marks: list[int], ws: tuple[int, ...] | None = None) 
             w = max(1, d // 2) if ws is None else ws[i]
             if d < w:  # pragma: no cover - the probed arities all pass
                 raise ConstructError(f"level {i}: walk {d} under escape {w}")
-            if d > w:
+            # `d < w` is refused above, and the planned walk always
+            # overshoots the escape, so this always runs.
+            if d > w:  # pragma: no branch
                 b.run("2" * (d - w))
                 b.test()
             b.run("2" * w)

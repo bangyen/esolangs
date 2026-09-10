@@ -49,13 +49,25 @@ def delta_program(
     Basicfuck ``a += n;``, and 6-5 a run of sixes and ``62`` pairs.
 
     Deliberately *not* general.  A generator that chooses between walking
-    and rebuilding by measuring both (Brainfuck, BFStack -- see the
-    threshold note in :func:`~esolangs.tools.text.tape.bfstack`), carries
-    more state than the one value (Painfuck's tape pointer, 1/2's running
-    XOR, Container's rule index), or rewrites the finished program
-    (ROTfuck's rotation) is not this shape, and giving it a knob here would
-    cost more than it saves.  Validation stays with the caller too, since
-    what a language can print differs.
+    and rebuilding by measuring *whole alternatives* (Brainfuck, BFStack --
+    see the threshold note in :func:`~esolangs.tools.text.tape.bfstack`), or
+    carries more state than the one value (Painfuck's tape pointer, 1/2's
+    running XOR, Container's rule index), is not this shape, and giving it a
+    knob here would cost more than it saves.  Validation stays with the
+    caller too, since what a language can print differs.
+
+    Two things this does *not* rule out, both of which read like exclusions
+    and are not:
+
+    * A per-character choice between a delta and a fresh constant load.
+      ``step`` is an arbitrary callable, so Interprogck8's three anchors and
+      Super SNUSP's letter opcodes live inside it -- they are still a
+      function of ``(cur, target)``, unlike measuring two whole programs.
+      Interprogck8 also shows how to spell a *missing* predecessor: hoist
+      the first character into ``prologue`` and ``start``.
+    * A rewrite of the finished program.  ROTfuck's rotation is a map over
+      the emitted stream, so it runs *after* this returns rather than
+      inside the walk.
     """
     out = [prologue]
     cur = start

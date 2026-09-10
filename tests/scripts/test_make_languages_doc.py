@@ -16,10 +16,6 @@ LANGUAGES_DOC = REPO_ROOT / "docs" / "languages.md"
 
 _README_START = "<!-- IMPLEMENTED:START -->"
 _README_END = "<!-- IMPLEMENTED:END -->"
-_COMPILERS_START = "<!-- COMPILERS:START -->"
-_COMPILERS_END = "<!-- COMPILERS:END -->"
-_EXTRA_START = "<!-- EXTRA:START -->"
-_EXTRA_END = "<!-- EXTRA:END -->"
 _EXAMPLES_START = "<!-- EXAMPLES:START -->"
 _EXAMPLES_END = "<!-- EXAMPLES:END -->"
 _BOOLEAN_COUNT_START = "<!-- BOOLEAN-COUNT:START -->"
@@ -47,57 +43,6 @@ def test_readme_languages_section_is_in_sync() -> None:
         + module.render_languages_section()
         + "\n\n"
         + _README_END
-    )
-    assert text[start:end] == expected
-
-
-def test_readme_compilers_section_is_in_sync() -> None:
-    """Regenerating the compilers section leaves it unchanged."""
-    module = load_script()
-    text = README.read_text()
-    start = text.index(_COMPILERS_START)
-    end = text.index(_COMPILERS_END) + len(_COMPILERS_END)
-    expected = (
-        _COMPILERS_START
-        + "\n\n"
-        + module.render_compilers_section()
-        + "\n\n"
-        + _COMPILERS_END
-    )
-    assert text[start:end] == expected
-
-
-def test_compiler_sets_match_the_compiler_modules() -> None:
-    """The compiler lists are derived from the compiler source files."""
-    module = load_script()
-    assert {
-        "AddSubJump",
-        "BF-PDA",
-        "BFStack",
-        "Collatz Multiverse",
-        "Container",
-        "CV(N)(C)",
-        "Decleq",
-        "Forbin",
-        "Forþ",
-        "Home Row",
-        "Jaune",
-        "MyScript",
-        "RAM0",
-        "S*bleq",
-        "Suffolk",
-        "Unsquare",
-    } == module.ASSEMBLY_COMPILERS
-
-
-def test_readme_extra_section_is_in_sync() -> None:
-    """Regenerating the Extra Implementations section leaves it unchanged."""
-    module = load_script()
-    text = README.read_text()
-    start = text.index(_EXTRA_START)
-    end = text.index(_EXTRA_END) + len(_EXTRA_END)
-    expected = (
-        _EXTRA_START + "\n\n" + module.render_extra_section() + "\n\n" + _EXTRA_END
     )
     assert text[start:end] == expected
 

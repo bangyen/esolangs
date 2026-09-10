@@ -245,7 +245,9 @@ def _parse_primary(reader: _Reader) -> _Expr:
             char = reader.text[reader.pos]
             reader.pos += 1
             value = _parse_aschar(char)
-            if value is not None:
+            # The scan above stops only on " ()~=!,+-", and every one of
+            # those is a legal aschar, so the parse cannot fail here.
+            if value is not None:  # pragma: no branch
                 return ("lit", value)
         raise ValueError("malformed aschar literal")
     if reader.peek() == "(":
@@ -694,7 +696,9 @@ class _Machine:
             return _bit(flag=same if expr[1] == "=" else not same)
         # Unreachable: ``step`` pushes a frame for every call and rewrites
         # its value in before evaluating, so what arrives here is call-free.
-        raise HaltError(f"unresolved call to {expr[1]!r}")
+        raise HaltError(  # pragma: no cover - see the comment above
+            f"unresolved call to {expr[1]!r}"
+        )
 
     def _resolve(self, function: _Function, values: list[_Value]) -> dict[str, _Value]:
         """Bind a call's evaluated arguments to its overload's parameters."""
@@ -791,7 +795,9 @@ class _Machine:
             if value.kind == "snuval":
                 raise HaltError(f"SET {stmt[1]!r} needs a typed initial value")
             scope[stmt[1]] = value
-        elif stmt[0] == "assign":
+        # The outer dispatch sends exactly these five kinds here, so the
+        # chain is exhaustive and the last test never falls through.
+        elif stmt[0] == "assign":  # pragma: no branch
             current = scope.get(stmt[1])
             if current is None:
                 raise HaltError(f"undeclared name {stmt[1]!r}")
@@ -846,7 +852,9 @@ class _Machine:
 
     def _deliver(self, value: _Value) -> None:
         """Hand a finished call's value back to the frame that wanted it."""
-        if self.frames:
+        # A call is always made from somewhere -- the top-level program is
+        # itself a frame -- so popping the callee never empties the stack.
+        if self.frames:  # pragma: no branch
             self.frames[-1].returned = value
 
     def _expression_of(self, stmt: _Stmt) -> _Expr | None:
@@ -884,7 +892,9 @@ class _Machine:
             working = frame.pending if frame.pending is not None else expr
             if frame.returned is not None:
                 call = self._pending_call(working)
-                if call is not None:
+                # A value is waiting only because a call was found and
+                # stepped, so the same search finds it again here.
+                if call is not None:  # pragma: no branch
                     working = self._substitute(working, call, frame.returned)
                 frame.returned = None
             call = self._pending_call(working)

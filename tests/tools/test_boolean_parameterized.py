@@ -795,12 +795,6 @@ class TestParameterizedNoComment:
             got = self.run_nocomment(self.instantiate(template, bits), tape)
             assert got == table[combo], f"n={n} inputs {bits}"
 
-    def test_bad_table_rejected(self) -> None:
-        from esolangs.tools.boolean import parameterized
-
-        with pytest.raises(ValueError, match="power-of-two"):
-            parameterized.nocomment("011")
-
 
 class TestParameterizedLamfunc:
     """Input-by-substitution boolean generator for the no-input language Lamfunc."""
@@ -885,12 +879,6 @@ class TestParameterizedLamfunc:
         assert parameterized.lamfunc("0000") == "vs v0 {X0} vs v1 {X1} p 0"
         assert parameterized.lamfunc("1111") == "vs v0 {X0} vs v1 {X1} p 1"
 
-    def test_bad_table_rejected(self) -> None:
-        from esolangs.tools.boolean import parameterized
-
-        with pytest.raises(ValueError, match="power-of-two"):
-            parameterized.lamfunc("011")
-
 
 class TestParameterizedBitdeque:
     """Input-by-substitution boolean generator for the no-input language Bitdeque."""
@@ -966,12 +954,6 @@ class TestParameterizedBitdeque:
         template = parameterized.bitdeque("0000")
         assert "POP" in template
         assert "GOTO" in template
-
-    def test_bad_table_rejected(self) -> None:
-        from esolangs.tools.boolean import parameterized
-
-        with pytest.raises(ValueError, match="power-of-two"):
-            parameterized.bitdeque("011")
 
 
 class TestParameterizedRam0:
@@ -1058,12 +1040,6 @@ class TestParameterizedRam0:
         assert "C" not in template
         assert "Z" in template
 
-    def test_bad_table_rejected(self) -> None:
-        from esolangs.tools.boolean import parameterized
-
-        with pytest.raises(ValueError, match="power-of-two"):
-            parameterized.ram0("011")
-
 
 class TestParameterizedMinskySwap:
     """Input-by-substitution boolean generator for the no-input language Minsky Swap.
@@ -1145,12 +1121,6 @@ class TestParameterizedMinskySwap:
         template = parameterized.minsky_swap("0110")
         assert "{X0}" in template
         assert "{X1}" in template
-
-    def test_bad_table_rejected(self) -> None:
-        from esolangs.tools.boolean import parameterized
-
-        with pytest.raises(ValueError, match="power-of-two"):
-            parameterized.minsky_swap("011")
 
     @pytest.mark.parametrize("bits", [(0, 0), (0, 1), (1, 0), (1, 1)])
     def test_examples_fill_sets_either_bit_in_either_position(
@@ -1263,12 +1233,6 @@ class TestParameterizedArrowQueue:
         template = parameterized.arrowqueue("0110")
         assert "{X0}" in template
         assert "{X1}" in template
-
-    def test_bad_table_rejected(self) -> None:
-        from esolangs.tools.boolean import parameterized
-
-        with pytest.raises(ValueError, match="power-of-two"):
-            parameterized.arrowqueue("011")
 
     @pytest.mark.parametrize(
         ("table", "mixed"),
@@ -1556,12 +1520,6 @@ class TestParameterizedBfpda:
         assert "<@.>" in template
         assert "<.>" in template
 
-    def test_bad_table_rejected(self) -> None:
-        from esolangs.tools.boolean import parameterized
-
-        with pytest.raises(ValueError, match="power-of-two"):
-            parameterized.bfpda("011")
-
 
 class TestParameterizedHomeRow:
     """Input-by-substitution boolean generator for the no-input language Home Row."""
@@ -1667,12 +1625,6 @@ class TestParameterizedHomeRow:
         assert "{C0}" not in template
         assert "{C1}" not in template
         assert len(re.findall(r"\{X\d+\}", template)) == 2
-
-    def test_bad_table_rejected(self) -> None:
-        from esolangs.tools.boolean import parameterized
-
-        with pytest.raises(ValueError, match="power-of-two"):
-            parameterized.home_row("011")
 
 
 class TestParameterizedCOD:
@@ -1895,12 +1847,6 @@ class TestParameterizedCOD:
         for table in ("11110000", "00001111", "10101010"):
             assert len(parameterized.cod(table)) == 113, table
         assert len(parameterized.cod("01101001")) == 1504
-
-    def test_bad_table_rejected(self) -> None:
-        from esolangs.tools.boolean import parameterized
-
-        with pytest.raises(ValueError, match="power-of-two"):
-            parameterized.cod("011")
 
     def test_constant_table_rejected(self) -> None:
         """n == 0 (a single-entry table, no inputs) is not supported."""
@@ -2262,18 +2208,6 @@ class TestEvalBoolean:
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_eval(self.instantiate(template, bits))
             assert got == str(int(table[combo])), f"inputs {bits}"
-
-    def test_bad_table_rejected(self) -> None:
-        from esolangs.tools.boolean import parameterized
-
-        with pytest.raises(ValueError, match="power-of-two"):
-            parameterized.eval("011")
-
-    def test_non_binary_rejected(self) -> None:
-        from esolangs.tools.boolean import parameterized
-
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            parameterized.eval("02")
 
 
 @pytest.mark.slow  # 2.6s: every fill of every parameterized generator

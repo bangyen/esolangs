@@ -18,10 +18,9 @@ Documented decisions for gaps and divergences:
 - reaching the end of the source without ``;`` halts (the pointer has no
   direction to keep moving);
 - ``l`` pairs alternate by their order in the program (the first and second
-  ``l`` form a loop, the third and fourth form another, and so on), matching
-  the RISC-V compiler's ``loop // 2`` numbering rather than BF-style
-  nesting; an unbalanced trailing ``l`` is a malformed program
-  (:class:`ValueError`).
+  ``l`` form a loop, the third and fourth form another, and so on), a
+  ``loop // 2`` numbering rather than BF-style nesting; an unbalanced
+  trailing ``l`` is a malformed program (:class:`ValueError`).
 
 The interpreter runs on a :class:`_Machine` (the fixed 25-cell grid, the
 pointer, and the code cursor), so it is step-capable: ``step()`` executes
@@ -54,6 +53,7 @@ from __future__ import annotations
 
 import sys
 
+from esolangs.interpreters.brackets import unmatched
 from esolangs.interpreters.io import IO
 
 #: One instant of a run: ``(ind, ptr, grid)`` -- the code cursor, the
@@ -86,7 +86,9 @@ def _matches(code: str) -> tuple[dict[int, int], set[int]]:
             match[i] = j
             match[j] = i
     if stack:
-        raise ValueError(f"unmatched 'l' at position {stack[-1]}")
+        # One glyph both opens and closes here, so the pairing cannot come
+        # from `match_brackets`; the rejection is still the shared one.
+        raise unmatched("l", stack[-1])
     return match, open_l
 
 

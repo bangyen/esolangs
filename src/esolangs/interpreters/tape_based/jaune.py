@@ -15,10 +15,9 @@ so ``v?``/``v!`` jump to the label the input names and ``v@`` calls the
 subroutine it names.
 
 Documented decisions for gaps in the wiki spec:
-- ``^`` prints the current cell as a decimal integer (the compiler's RISC-V
-  output routine does the same), not as a byte;
-- ``v`` reads one input character and stores ``ord(c) - 48`` (the compiler
-  subtracts 48), raising :class:`EOFError` when input runs out;
+- ``^`` prints the current cell as a decimal integer, not as a byte;
+- ``v`` reads one input character and stores ``ord(c) - 48``, raising
+  :class:`EOFError` when input runs out;
 - the pointer starts at cell 0 and moves into an array of zero-initialized
   cells unbounded to the *right*; ``<`` at cell 0 is clamped, as brainfuck
   clamps its own.  The wiki says only "Moves pointer to the previous cell",

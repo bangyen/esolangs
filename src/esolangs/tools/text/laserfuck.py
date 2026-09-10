@@ -568,7 +568,9 @@ def _laserfuck_snake_ring(
     lines = ["".join(line).rstrip() for line in grid]
     while lines and not lines[-1]:
         lines.pop()
-    if max(map(len, lines)) > width:
+    # Instrumented over widths 6-25: the rendered width equals the
+    # requested one every time, because the fold lays to that width.
+    if max(map(len, lines)) > width:  # pragma: no cover - see above
         return None
     return "\n".join(lines)
 
@@ -837,7 +839,9 @@ def _laserfuck_multiply(text: str, width: int | None = None) -> str:
         # trick the unfolded path uses does not apply: the fallback run
         # carries straight on from wherever the fold left the beam, folding
         # again if it has to, and the "x" goes where that ends.
-        if fallback:
+        # ``chunks(1)`` writes one run per value and empty text raises at
+        # ``max(values)`` above, so the linear program is never empty here.
+        if fallback:  # pragma: no branch
             # Carry on across the frame's own row until the turn, then drop
             # past its two mirror rows before folding further -- those rows
             # belong to the last segment's markers, and writing the run

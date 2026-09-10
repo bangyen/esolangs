@@ -12,7 +12,11 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.stack_based.grapheme import run
-from tests.interpreters.contract import CycleContract, EmptyProgramContract
+from tests.interpreters.contract import (
+    CycleContract,
+    EmptyProgramContract,
+    InputCursorContract,
+)
 
 
 def run_program(code: str, stdin: str = "") -> str:
@@ -380,14 +384,16 @@ class TestEdgeCases:
 
 
 class TestStepMachine:
-    def test_snapshot_includes_the_input_cursor(self) -> None:
+    def test_the_read_pushes_the_whole_line(self) -> None:
+        """``W`` pushes the line itself, not a byte of it.
+
+        The cursor and snapshot moving is the shared contract below; that
+        the value is the whole string is Grapheme's own.
+        """
         from esolangs.interpreters.stack_based.grapheme import _Machine
 
         machine = _Machine("W", ScriptedIO("hi"))
-        before = machine.snapshot()
-        machine.step()  # W reads a line, pushing it
-        assert machine.snapshot() != before
-        assert machine.io.position() == 1
+        machine.step()
         assert machine.stack == ["hi"]
 
     def test_a_closed_mode_leaves_the_frame_as_it_found_it(self) -> None:
@@ -481,10 +487,19 @@ def _machine(code: object) -> object:
     return _Machine(str(code), ScriptedIO())
 
 
-class TestContract(EmptyProgramContract, CycleContract):
+def _reader(code: object, stdin: str) -> object:
+    from esolangs.interpreters.stack_based.grapheme import _Machine
+
+    return _Machine(str(code), ScriptedIO(stdin))
+
+
+class TestContract(EmptyProgramContract, CycleContract, InputCursorContract):
     """The shared shapes. ``Z`` re-runs ``KM`` -- dup then pop -- forever."""
 
     run = staticmethod(run_program)
     machine = staticmethod(_machine)
+    reader = staticmethod(_reader)
+    reading_program = "W"
+    reading_stdin = "hi"
     halting_program = "FAFY"
     looping_program = "FAFHKMHZ"

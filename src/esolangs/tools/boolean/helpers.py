@@ -273,6 +273,58 @@ def stored_inputs(truth_table: str, perm: tuple[int, ...]) -> set[int]:
     return {perm[k] for k in branching}
 
 
+def minterm_sum[Factor](
+    truth_table: str,
+    literal: Callable[[int, bool], Factor],
+    product: Callable[[list[Factor]], Factor],
+    accumulate: Callable[[Factor], None],
+) -> tuple[list[int], int, bool]:
+    """Fold each 1-row's literal product into a running sum.
+
+    Returns ``(used, width, inverted)``: the essential inputs, their count,
+    and whether the table was complemented -- everything the caller needs to
+    finish, since the seed and the final flip are per-language.
+
+    The walk is the part every sum-of-minterms generator repeats: reduce to
+    the essential inputs, complement when that makes fewer rows, skip the
+    ``0`` rows, and for each survivor turn its literals into factors, fold
+    them into a product, and add that to the sum.  ``literal(input,
+    negated)`` names one factor *by original input index*, so a caller never
+    sees the reduced frame's slots.
+
+    Contrast :func:`minterm_literals`, which shares only one row's
+    selection; this shares the enumeration around it.
+
+    ``literal`` may emit as a side effect -- Collatz Multiverse allocates a
+    register and writes a line for each non-negated input -- because the
+    callbacks are invoked in exactly the order the hand-written loops used:
+    every literal of a row, then its product, then the accumulate.  A
+    callback that numbers something would drift otherwise.
+
+    **What this deliberately cannot do.**  ROTfuck enumerates *all* rows
+    rather than the 1-rows, in three separate passes over the table
+    (complements, then mismatch counts, then accumulation), so its rows are
+    not visited once each; Grapheme builds both sides and keeps the shorter,
+    which is a choice above this loop rather than inside it; and Circuit
+    Diagram routes a bus pair per literal onto a plane instead of naming a
+    factor.  All three keep their own arithmetic.
+    """
+    n = _validate_truth_table(truth_table)
+    used = essential_inputs(truth_table, n) or [0]
+    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
+    width = len(used)
+    table, inverted = _maybe_complement(reduced)
+    for row in range(2**width):
+        if table[row] == "0":
+            continue
+        factors = [
+            literal(used[slot], negated)
+            for slot, negated in minterm_literals(row, width)
+        ]
+        accumulate(product(factors))
+    return used, width, inverted
+
+
 def best_input_order(
     truth_table: str,
     build: Callable[[str, tuple[int, ...]], str],
@@ -431,19 +483,22 @@ def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
     return tuple(order)
 
 
-Leaf = Callable[[int, int], list[str]]
-Node = Callable[[int, list[str], list[str], int], list[str]]
+# The walker only concatenates tokens and measures runs of them, never looks
+# inside one, so a token is whatever the caller finds convenient: a string for
+# the generators that emit text, an instruction tuple for S*bleq.
+type Leaf[Token] = Callable[[int, int], list[Token]]
+type Node[Token] = Callable[[int, list[Token], list[Token], int], list[Token]]
 
 
-def decision_tree_tokens(
+def decision_tree_tokens[Token](
     truth_table: str,
-    leaf: Leaf,
-    node: Node,
+    leaf: Leaf[Token],
+    node: Node[Token],
     *,
     parent_width: int | Callable[[int], int] = 0,
     start: int = 0,
     collapse: bool = False,
-) -> list[str]:
+) -> list[Token]:
     """Walk a truth table's decision tree, combining caller-emitted parts.
 
     ``leaf(level, row)`` returns the tokens for a leaf reached at ``level``
@@ -465,24 +520,45 @@ def decision_tree_tokens(
     children -- a constant, or a function of the level when a node's own
     width grows with depth, as RAM0's address run does.  So ``at`` is the
     absolute index of the subtree ``node`` is building, which is what lets
-    Bitdeque and RAM0 name the index their one-subtree starts at.  Both used
-    to reserve a slot, recurse, and backpatch it; the index arrives up front
-    instead.
+    Bitdeque, RAM0 and S*bleq name the index their one-subtree starts at.
+    All three used to reserve a slot, recurse, and backpatch it; the index
+    arrives up front instead.
 
     **What this deliberately cannot do**, with the generator each rules out:
 
-    * A node acts only *after* both children, never between them.  6-5
-      allocates its branch label between the two recursive calls and
-      Polynomial appends to a shared buffer while threading the running cell
-      value, so both need a hook this does not offer; giving them one turns
-      the walker back into the recursion with more moving parts.
-    * The zero subtree is laid down first.  Between emits its *one* subtree
-      first, so the indices threaded here would reach its children swapped
-      and every branch line would name the wrong target -- on any table
-      whose two subtrees differ in size.  Which side goes first is a
-      language's own business, so Between keeps its own arithmetic.
+    * A node acts only *after* both children, never between them.  6-5,
+      Jaune and Interprogck8 allocate a branch label between the two
+      recursive calls, and Polynomial appends to a shared buffer while
+      threading the running cell value, so all need a hook this does not
+      offer; giving them one turns the walker back into the recursion with
+      more moving parts.
+    * Nothing is threaded *down* the walk.  ``leaf`` and ``node`` see the
+      level and the index, not the path that reached them, so CV(N)(C)'s
+      accumulator, Jaune's held bit and entry cell, and Circlefuck's pointer
+      position -- each a function of the branch taken above -- have nowhere
+      to live.
+    * The zero subtree is laid down first.  Between, CV(N)(C), Unsquare and
+      Interprogck8 emit their *one* subtree first, so the indices threaded
+      here would reach their children swapped and every branch line would
+      name the wrong target -- on any table whose two subtrees differ in
+      size.  Which side goes first is a language's own business, so those
+      keep their own arithmetic.
     * Rows split most-significant-first, keeping each subtree contiguous.
-      Modulous walks its bits the other way, so its halves are not runs.
+      Modulous and Unsquare walk their bits the other way, so their halves
+      are not runs.
+    * The tree is a token *sequence*, laid out by nesting.  Eval and Forth
+      store theirs in a positional heap instead -- children pinned at
+      ``2i+1``/``2i+2``, a node's own width a function of its index -- so a
+      folded subtree has to be blanked in place rather than deleted, or
+      every later index shifts.  Concatenating variable-length subtrees is
+      exactly what breaks that.
+    * Both children are always built.  A generator that *skips* a subtree
+      cannot say so: AddSubJump and Jaune drop an input no node tests and
+      descend into one half alone, and a ``node`` that discards the other
+      half still pays for the tokens the walk already built -- measured on
+      AddSubJump, 24 of 256 tables came out longer at ``n == 3``, which the
+      suite catches as a reordering regression rather than a wrong answer.
+      Skipping has to happen instead of the recursion, not after it.
     * Lamfunc returns one plain string with no index to thread, so it would
       spend a one-element list at every use to gain four lines.
     * The grid generators' tree is a placement on a plane, not a token
@@ -495,7 +571,7 @@ def decision_tree_tokens(
     n = _validate_truth_table(truth_table)
     width = parent_width if callable(parent_width) else lambda _level: parent_width
 
-    def walk(level: int, lo: int, hi: int, at: int) -> list[str]:
+    def walk(level: int, lo: int, hi: int, at: int) -> list[Token]:
         values = {truth_table[r] for r in range(lo, hi)}
         if level == n or (collapse and len(values) == 1):
             return leaf(level, lo)

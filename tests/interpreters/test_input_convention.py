@@ -259,3 +259,77 @@ def test_the_convention_is_reachable_through_the_base_class() -> None:
 
     with patch("builtins.input", return_value=""):
         assert IO().input_char() == BLANK_LINE
+
+
+#: What a language does when a *reading* program is handed no input at
+#: all.  Twenty-two files pinned this one language at a time; the split
+#: between the two answers is the interesting part, so it is written down
+#: here rather than inferred.
+#:
+#: The default is that the ``EOFError`` escapes: the interpreter does not
+#: catch it, so the caller sees a real end of input.  The languages below
+#: answer differently, and each for a reason of its own -- so the set is a
+#: statement about them, not a list of exceptions to ignore.
+_EOF_IS_A_HALT: dict[str, str] = {
+    # Reads until the input runs out and treats that as its stop, which is
+    # how its generated programs terminate at all.
+    "suffolk": "reads to exhaustion, so EOF is the halt",
+    # Read their inputs before the program runs, so an exhausted stream is
+    # a load-time answer rather than a step that fails.
+    "fargo": "the interpreter reads before the program starts",
+    "circuit_diagram": "resolves its inputs while laying the grid",
+    "flowchart": "reads at the switch, which a program without one skips",
+    "dinac": "its reads are guarded, so a missing line is a zero",
+    "s*bleq": "a failed read leaves the cell alone and the program runs on",
+}
+
+
+@pytest.mark.parametrize("name", sorted(_EOF_IS_A_HALT))
+def test_every_eof_exemption_names_a_real_language(name: str) -> None:
+    """An exemption whose language is gone must not linger unnoticed.
+
+    The roster is hard-coded, which is exactly the shape that silently
+    deselects; comparing it against the registry is what stops an entry
+    outliving the language it describes.
+    """
+    from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
+
+    assert name in BOOLEAN_EXAMPLES
+
+
+def _reading_languages() -> list[str]:
+    """The examples whose programs read their inputs from the stream."""
+    from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
+
+    return sorted(
+        name
+        for name, example in BOOLEAN_EXAMPLES.items()
+        # A ``fill`` means the bits are embedded in the program text, so
+        # the language has no input command to run out of.
+        if example.fill is None
+        and name not in _EOF_IS_A_HALT
+        # Suptiftam's read sits inside a loop that never ends without one,
+        # so an empty stream is a hang rather than a raise.
+        and name != "suptiftam"
+        # Alight raises its own error before the read is reached.
+        and name != "alight"
+    )
+
+
+@pytest.mark.parametrize("name", _reading_languages())
+def test_running_out_of_input_reaches_the_caller(name: str) -> None:
+    """A program that reads, handed nothing, raises rather than inventing.
+
+    This is what makes the blank-line convention above meaningful: a
+    language that swallowed the EOF would answer a missing line with the
+    same byte as an empty one, and the two would stop being distinct.
+    """
+    from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
+
+    example = BOOLEAN_EXAMPLES[name]
+    module = importlib.import_module("esolangs.interpreters." + example.interpreter)
+    program = example.generator("0110")
+    argument = program.splitlines() if example.split else program
+    extra = {key: value for key, value in example.kwargs if key != "seed"}
+    with pytest.raises(EOFError):
+        module.run(argument, io=ScriptedIO(""), **extra)

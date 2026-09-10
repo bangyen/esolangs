@@ -1,1 +1,1 @@
-"""Program generators, boolean-function generators, and transpilers."""
+"""Program generators, boolean-function generators, and layout helpers."""

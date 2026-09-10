@@ -14,6 +14,7 @@ import re
 import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Literal
 
 from esolangs.tools import boolean as _boolean
 from esolangs.tools import text as _generate
@@ -72,6 +73,56 @@ def canonical_id(name: str) -> str:
 # with the text alone, which is how every width-less caller invokes them.
 Generator = Callable[..., str]
 
+# Whether the *language* defines I/O, which is a fact about its
+# specification and not about this repo's interpreter for it.
+#
+# - ``"defined"``         -- the wiki gives the language an output command.
+# - ``"interpreter_only"``-- the wiki defines no I/O.  The interpreter still
+#                            has to report something, so by repo convention
+#                            it dumps final state when the program ends:
+#                            Back's tape, Bitdeque's deque, Minsky Swap's
+#                            registers, RAM0's machine, A Painter Ant's grid
+#                            raster, ArrowQueue's queue, Point Break's
+#                            variables.  The dump exists *because* there is
+#                            no I/O -- it is the consequence, not the
+#                            channel, and its format is the repo's choice,
+#                            not the spec's.  Each of those interpreters
+#                            says so in its module docstring.
+#
+# There is deliberately no third value for "emits nothing at all".
+# ArrowQueue and Point Break were it, on the grounds that a dump would cost
+# ArrowQueue's pure fold and that Point Break had no state worth printing.
+# Both were wrong: the dump belongs in the shell, where it leaves
+# ``_advance`` untouched, and Point Break carries variables exactly as
+# Minsky Swap carries registers.  A language with no I/O gets the
+# convention; being awkward to fit is not a category.
+type Io = Literal["defined", "interpreter_only"]
+
+# ``alphabet`` is what that channel can carry.  Declared rather than
+# inferred: "only prints numbers" is a semantic negative, not decidable by
+# executing programs (the sweep would have to cover all of them) and not
+# soundly decidable by reading interpreter source, which is how a hard-coded
+# category tuple once exempted twelve interpreters here and hid three real
+# violations.
+#
+# - ``"bytes"``   -- any byte, so a text generator must exist.
+# - ``"numbers"`` -- digits or bits: a numeric or binary alphabet.
+# - ``"shaped"``  -- a rich alphabet that still cannot spell an arbitrary
+#                    text, because the emission has a fixed shape: a forced
+#                    trailing newline, whitespace tokenization with no
+#                    concatenation, a fixed-format dump, a grid raster.
+#
+# Every language emits something, so there is no "nothing" alphabet: the two
+# that used to claim one now dump like the rest.
+#
+# A text generator is required exactly when ``alphabet`` is ``"bytes"``;
+# ``io`` records why, and is what makes "the language defines no I/O" a fact
+# the registry states rather than one a reader infers from an interpreter.
+# The two are independent: an interpreter-only dump can carry any alphabet,
+# and a language with a defined output command can still be numeric.
+# ``docs/limitations.md`` carries the per-language prose.
+type Alphabet = Literal["bytes", "numbers", "shaped"]
+
 
 @dataclass(frozen=True)
 class Language:
@@ -89,6 +140,15 @@ class Language:
     derived from them, so registering a generator here is the whole of
     adding one, with no second list to keep in step.
 
+    ``io`` says whether the language's *specification* defines I/O, and
+    ``alphabet`` what its output can spell.  ``alphabet`` decides whether
+    ``text`` is allowed to be None -- a ``"bytes"`` language with no text
+    generator is a gap, anything else is an exemption.  A language whose
+    wiki defines no I/O is ``"interpreter_only"``: its interpreter dumps
+    final state by repo convention *because* the language has no output,
+    so the dump is a consequence of the spec, not a channel the language
+    provides.  See :data:`Io` and :data:`Alphabet`.
+
     ``interpreter`` is the dotted module under
     ``esolangs.interpreters`` that runs programs (None if the executable
     lives elsewhere, e.g. in extra/).  ``split`` passes the program split
@@ -104,14 +164,6 @@ class Language:
     directly and never come through here.  ``esolangs.tools.boolean.
     examples`` keeps its own ``kwargs`` because that one is used.
 
-    ``compiler`` is the module name under ``esolangs.compilers`` holding
-    this language's RISC-V backend, if it has one.  It is registered here
-    for the same reason the generators are: the verification driver used
-    to discover compilers from a hand-appended list of module strings, so
-    a backend nobody remembered to add to that list was never verified and
-    nothing reported its absence.  :data:`COMPILERS` is derived from this
-    field, and ``scripts/check_compilers.py`` fails if a module in
-    ``src/esolangs/compilers/`` is missing from it.
     """
 
     name: str
@@ -120,7 +172,8 @@ class Language:
     split: bool = False
     id: str = ""
     boolean: Callable[[str], str] | None = None
-    compiler: str | None = None
+    io: Io = "defined"
+    alphabet: Alphabet = "bytes"
 
 
 LANGUAGES: dict[str, Language] = {
@@ -130,13 +183,14 @@ LANGUAGES: dict[str, Language] = {
         "register_based.addsubjump",
         boolean=_boolean.addsubjump,
         id="addsubjump",
-        compiler="addsubjump",
     ),
     "A Painter Ant": Language(
         "A Painter Ant",
         boolean=_boolean.a_painter_ant,
         id="a_painter_ant",
         interpreter="grid_based.a_painter_ant",
+        io="interpreter_only",
+        alphabet="shaped",
     ),
     "Alight": Language(
         "Alight",
@@ -151,6 +205,8 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.algebraic_programming_language,
         id="algebraic_programming_language",
         interpreter="other.algebraic_programming_language",
+        io="defined",
+        alphabet="numbers",
     ),
     "123": Language(
         "123",
@@ -179,6 +235,8 @@ LANGUAGES: dict[str, Language] = {
         id="arrowqueue",
         interpreter="grid_based.arrowqueue",
         split=True,
+        io="interpreter_only",
+        alphabet="numbers",
     ),
     "Back": Language(
         "Back",
@@ -186,13 +244,16 @@ LANGUAGES: dict[str, Language] = {
         id="back",
         interpreter="tape_based.back",
         split=True,
+        io="interpreter_only",
+        alphabet="numbers",
     ),
     "BF-PDA": Language(
         "BF-PDA",
         boolean=_boolean.bfpda,
         id="bf_pda",
-        compiler="bf_pda",
         interpreter="stack_based.bf_pda",
+        io="defined",
+        alphabet="numbers",
     ),
     "Basicfuck": Language(
         "Basicfuck",
@@ -222,7 +283,6 @@ LANGUAGES: dict[str, Language] = {
         "stack_based.bfstack",
         boolean=_boolean.bfstack,
         id="bfstack",
-        compiler="bfstack",
     ),
     "BIO": Language(
         "BIO",
@@ -243,6 +303,8 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.bitdeque,
         id="bitdeque",
         interpreter="queue_based.bitdeque",
+        io="interpreter_only",
+        alphabet="numbers",
     ),
     "BrainIf": Language(
         "BrainIf",
@@ -265,6 +327,8 @@ LANGUAGES: dict[str, Language] = {
         id="circuit_diagram",
         interpreter="grid_based.circuit_diagram",
         split=True,
+        io="defined",
+        alphabet="numbers",
     ),
     "Clockwise": Language(
         "Clockwise",
@@ -279,6 +343,8 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.cod,
         id="cod",
         interpreter="grid_based.cod",
+        io="defined",
+        alphabet="numbers",
     ),
     "Collatz Multiverse": Language(
         "Collatz Multiverse",
@@ -286,7 +352,6 @@ LANGUAGES: dict[str, Language] = {
         "register_based.collatz_multiverse",
         boolean=_boolean.collatz_multiverse,
         id="collatz_multiverse",
-        compiler="collatz_multiverse",
     ),
     "CV(N)(C)": Language(
         "CV(N)(C)",
@@ -294,7 +359,6 @@ LANGUAGES: dict[str, Language] = {
         "other.cvnc",
         boolean=_boolean.cvnc,
         id="cvnc",
-        compiler="cvnc",
     ),
     "Decleq": Language(
         "Decleq",
@@ -302,7 +366,6 @@ LANGUAGES: dict[str, Language] = {
         "register_based.decleq",
         boolean=_boolean.decleq,
         id="decleq",
-        compiler="decleq",
     ),
     "Container": Language(
         "Container",
@@ -310,7 +373,6 @@ LANGUAGES: dict[str, Language] = {
         "other.container",
         boolean=_boolean.container,
         id="container",
-        compiler="container",
         split=True,
     ),
     "Dig": Language(
@@ -354,6 +416,8 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.fargo,
         id="fargo",
         interpreter="other.fargo",
+        io="defined",
+        alphabet="numbers",
     ),
     "Flowchart": Language(
         "Flowchart",
@@ -361,6 +425,8 @@ LANGUAGES: dict[str, Language] = {
         id="flowchart",
         interpreter="grid_based.flowchart",
         split=True,
+        io="defined",
+        alphabet="numbers",
     ),
     "Forþ": Language(
         "Forþ",
@@ -368,7 +434,6 @@ LANGUAGES: dict[str, Language] = {
         "stack_based.forth",
         boolean=_boolean.forth,
         id="forth",
-        compiler="forth",
     ),
     "Forbin": Language(
         "Forbin",
@@ -376,7 +441,6 @@ LANGUAGES: dict[str, Language] = {
         "other.forbin",
         boolean=_boolean.forbin_boolean,
         id="forbin",
-        compiler="forbin",
     ),
     "function x(y)": Language(
         "function x(y)",
@@ -390,6 +454,8 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.grapheme,
         id="grapheme",
         interpreter="stack_based.grapheme",
+        io="defined",
+        alphabet="shaped",
     ),
     "Home Row": Language(
         "Home Row",
@@ -397,13 +463,14 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.home_row",
         boolean=_boolean.home_row,
         id="home_row",
-        compiler="home_row",
     ),
     "Inject": Language(
         "Inject",
         boolean=_boolean.inject,
         id="inject",
         interpreter="other.inject",
+        io="defined",
+        alphabet="shaped",
     ),
     "Interprogck8": Language(
         "Interprogck8",
@@ -417,14 +484,17 @@ LANGUAGES: dict[str, Language] = {
         "Jaune",
         boolean=_boolean.jaune,
         id="jaune",
-        compiler="jaune",
         interpreter="tape_based.jaune",
+        io="defined",
+        alphabet="numbers",
     ),
     "Lamfunc": Language(
         "Lamfunc",
         boolean=_boolean.lamfunc,
         id="lamfunc",
         interpreter="other.lamfunc",
+        io="defined",
+        alphabet="shaped",
     ),
     "LaserFuck": Language(
         "LaserFuck",
@@ -453,6 +523,8 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.minsky_swap,
         id="minsky_swap",
         interpreter="register_based.minsky_swap",
+        io="interpreter_only",
+        alphabet="numbers",
     ),
     "Modulous": Language(
         "Modulous",
@@ -467,7 +539,6 @@ LANGUAGES: dict[str, Language] = {
         "register_based.myscript",
         boolean=_boolean.myscript,
         id="myscript",
-        compiler="myscript",
     ),
     "Nevermind": Language(
         "Nevermind",
@@ -511,6 +582,8 @@ LANGUAGES: dict[str, Language] = {
         id="point_break",
         interpreter="register_based.point_break",
         split=True,
+        io="interpreter_only",
+        alphabet="numbers",
     ),
     "Qoibl": Language(
         "Qoibl",
@@ -524,8 +597,9 @@ LANGUAGES: dict[str, Language] = {
         "RAM0",
         boolean=_boolean.ram0,
         id="ram0",
-        compiler="ram0",
         interpreter="register_based.ram0",
+        io="interpreter_only",
+        alphabet="shaped",
     ),
     "ROTfuck": Language(
         "ROTfuck",
@@ -540,7 +614,6 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.sbleq",
         boolean=_boolean.sbleq,
         id="sbleq",
-        compiler="sbleq",
     ),
     "3D Brainfuck": Language(
         "3D Brainfuck",
@@ -578,7 +651,6 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.suffolk",
         boolean=_boolean.suffolk,
         id="suffolk",
-        compiler="suffolk",
     ),
     "Suptiftam": Language(
         "Suptiftam",
@@ -608,7 +680,6 @@ LANGUAGES: dict[str, Language] = {
         "stack_based.unsquare",
         boolean=_boolean.unsquare,
         id="unsquare",
-        compiler="unsquare",
     ),
     "WII2D": Language(
         "WII2D",
@@ -632,14 +703,6 @@ LANGUAGES: dict[str, Language] = {
 # Display name -> generator function, for languages that have one.
 GENERATORS: dict[str, Generator] = {
     name: lang.text for name, lang in LANGUAGES.items() if lang.text
-}
-
-# Display name -> the module under ``esolangs.compilers`` holding that
-# language's RISC-V backend.  Derived rather than listed for the reason
-# given on ``Language.compiler``: the verification driver's own list of
-# module strings could omit a backend without anything noticing.
-COMPILERS: dict[str, str] = {
-    name: lang.compiler for name, lang in LANGUAGES.items() if lang.compiler
 }
 
 # Generator function name -> Language, so tests can look a generator up by
