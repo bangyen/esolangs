@@ -139,8 +139,22 @@ paying for every zero-unit weighting the singleton diffs already refute.
 
 So the sweep's five-input bound is now Minifuck alone: a seven-input sweep
 costs about 13s across the whole registry (12.6s of it the 64 generators
-none of this touched), while ten stays out of reach until Minifuck's
-frontier recurrence collapses.  The nearest entries to the one-second rule
+none of this touched), and ten stays out of reach: the frontier recurrence
+measurably does not collapse.  The composed effect of m pending rounds on a
+row is one affine GF(2) map, but each round appends one independent rank-one
+correction to its binomial-Toeplitz bulk -- rank exactly m-1 and displacement
+rank exactly m, measured to m=128 at width 400 and on 60 random width
+sequences -- and each correction's per-row scalar is one bit of truncation
+feedback, a parity of the row's evolved tape above that round's width, so
+pricing a combination keeps one term per examined row per pending round.
+Pruning cannot absorb the cost either: seeding the strict abort with the
+true optimum saves 3.4% of the 1.58M
+window-walks at n=8, and a clairvoyant abort that skips every doomed
+combination for free leaves 0.5-0.9%, information available only through the
+collapsed recurrence itself.  Nor is the scout the whole ceiling: at n=10
+dense the separation costs 1.2s and the winner's real sculpt and acceptance
+1.5s against 201s of scout, so a zero-cost scout still builds the row in
+about 2.7s.  The nearest entries to the one-second rule
 are `laserfuck` at 1.377s and `%^2^-1`'s *dense* n=10 at 0.92s, neither of
 them changed here.  Only the table's rows are
 capability limits, and only WII2D's dense row binds inside the sweep (the
