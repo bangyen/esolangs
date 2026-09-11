@@ -7,6 +7,13 @@ wrapper around the step-capable interpreters), ``make_debugger`` (a
 breakpoint/watch layer over the VM), ``describe`` (a structured language
 summary), and ``list_languages``.
 
+``evaluate`` and ``verify`` are the round trip those compose into: they
+generate a program for a truth table, run it on every row, and return the
+table it computes (or whether it matches).  They were missing from this
+list and from the README while being the one-call answer to the question
+both documents spend a paragraph posing, so a reader found them only by
+calling ``dir()``.
+
 Every language name is resolved case-insensitively
 (:func:`esolangs.registry.resolve`), so ``Brainfuck`` and ``brainfuck``
 reach the same interpreter and a near miss is answered with a suggestion.
@@ -347,6 +354,14 @@ def check_program(
             program = pathlib.Path(program).read_text(encoding="utf-8").rstrip("\n")
         except OSError as exc:
             raise ProgramError(f"cannot read {program}: {exc}") from exc
+        except UnicodeDecodeError as exc:
+            # Named separately because it is a ``ValueError``, not an
+            # ``OSError``, so the clause above never caught it: a Path to a
+            # PNG raised a bare ``UnicodeDecodeError`` from inside pathlib
+            # where every other unreadable file is a ``ProgramError``.
+            raise ProgramError(
+                f"cannot read {program}: not text (invalid UTF-8 at byte {exc.start})"
+            ) from exc
     if not isinstance(program, str):
         raise ProgramError(
             f"program must be a string of source or a Path, got "

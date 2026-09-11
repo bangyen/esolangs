@@ -6,6 +6,7 @@ skipped the refusals ``run`` had just gained, and the seventeen template
 languages left unreachable by a fix that pointed a CLI user at a Python call.
 """
 
+import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -13,10 +14,30 @@ from unittest.mock import patch
 import pytest
 
 import esolangs
+from esolangs import cli
 from esolangs.cli import main
-from tests.test_cli import _FakeStdin, _program, call_main
+from tests.test_cli import _FakeStdin, _program, call_main, run_cli
 
 EXAMPLES = Path(__file__).parents[1] / "examples" / "boolean"
+
+
+def call_both(
+    args: list[str], capsys: pytest.CaptureFixture[str], stdin: str = ""
+) -> tuple[str, str]:
+    """Run ``main`` and return both streams.
+
+    ``call_main`` reads ``capsys`` itself and hands back only stdout, so a
+    test that then reached for ``.err`` found an empty string and passed
+    while asserting nothing.  These tests are *about* stderr, so they need
+    the one read to return both.
+    """
+    with (
+        patch.object(sys, "argv", ["esolangs", *args]),
+        patch.object(sys, "stdin", _FakeStdin(stdin)),
+    ):
+        main()
+    captured = capsys.readouterr()
+    return str(captured.out), str(captured.err)
 
 
 class TestProgramFilesLoad:
@@ -624,3 +645,277 @@ class TestTheHintsStayQuietWhenTheyDoNotApply:
             call_main(["generate", "011", "brainfuck"], capsys)
         assert exc.value.code == 2
         assert "looks like a truth table" not in capsys.readouterr().err
+
+
+class TestNonTextInputIsRefusedNotCrashed:
+    """Pointing `run` at a PNG dumped a traceback with internal paths in it.
+
+    ``UnicodeDecodeError`` is a ``ValueError``, not an ``OSError``, so the
+    handler that turns "Is a directory" into one clean line never saw it.
+    Four call sites decode -- two files and two stdins -- and all four had
+    the same hole, so all four are pinned here.
+    """
+
+    def test_a_binary_program_file_is_refused(self, tmp_path: Path) -> None:
+        """Reachable by a newcomer pointing `run` at the wrong file."""
+        path = tmp_path / "binary.txt"
+        path.write_bytes(bytes(range(256)))
+        result = run_cli("run", "brainfuck", str(path))
+        assert result.returncode == 2
+        assert "not text" in result.stderr
+        assert "Traceback" not in result.stderr
+
+    def test_debug_refuses_it_too(self, tmp_path: Path) -> None:
+        """The same reader serves both commands."""
+        path = tmp_path / "binary.txt"
+        path.write_bytes(bytes(range(256)))
+        result = run_cli("debug", "--steps", "5", "brainfuck", str(path))
+        assert result.returncode == 2
+        assert "not text" in result.stderr
+
+    def test_binary_stdin_is_refused(self) -> None:
+        """A program's binary output piped into `read-answer`."""
+        result = subprocess.run(
+            [sys.executable, "-m", "esolangs", "read-answer", "brainfuck"],
+            input=b"\x80\x81",
+            capture_output=True,
+            timeout=60,
+            check=False,
+        )
+        assert result.returncode == 2
+        assert b"not text" in result.stderr
+        assert b"Traceback" not in result.stderr
+
+    def test_the_library_names_it_as_a_program_error(self, tmp_path: Path) -> None:
+        """``check_program`` decodes a Path and had the same gap."""
+        path = tmp_path / "binary.txt"
+        path.write_bytes(bytes(range(256)))
+        with pytest.raises(esolangs.ProgramError, match="not text"):
+            esolangs.run("brainfuck", path)
+
+
+class TestTheShapeWarningFiresOnlyWhenItShould:
+    """The last silent-wrong path: stdin in the shape a reader expects.
+
+    A warning, not a refusal -- ``run`` executes arbitrary programs of a
+    language, so a shape this calls wrong may be what a hand-written program
+    wants.  The answer and the exit code are unchanged either way.
+    """
+
+    def test_naive_bits_into_a_different_alphabet_warn(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Grapheme reads any non-empty line as true, so '0' is a 1."""
+        path = tmp_path / "g.txt"
+        path.write_text(esolangs.generate("Grapheme", "0110"))
+        _out, err = call_both(["run", "Grapheme", str(path)], capsys, stdin="1\n0\n")
+        assert "spells its bits" in err
+
+    def test_multiple_lines_into_a_one_line_language_warn(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Clockwise reads its bits in one go."""
+        path = tmp_path / "c.txt"
+        path.write_text(esolangs.generate("Clockwise", "0110"))
+        _out, err = call_both(["run", "Clockwise", str(path)], capsys, stdin="1\n0\n")
+        assert "wants every bit on one line" in err
+
+    def test_multiple_lines_into_a_row_index_language_warn(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Fargo reads one decimal number."""
+        path = tmp_path / "f.txt"
+        path.write_text(esolangs.generate("Fargo", "0110"))
+        _out, err = call_both(["run", "Fargo", str(path)], capsys, stdin="1\n0\n")
+        assert "row index" in err
+
+    def test_the_encoded_stdin_is_not_warned_about(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Doing it right must be quiet, or the warning is noise."""
+        for name in ("Grapheme", "Clockwise", "Fargo"):
+            path = tmp_path / "p.txt"
+            path.write_text(esolangs.generate(name, "0110"))
+            stdin = esolangs.encode_inputs(name, [1, 0])
+            _out, err = call_both(["run", name, str(path)], capsys, stdin=stdin)
+            assert "esolangs encode" not in err, name
+
+    def test_an_ordinary_language_is_never_warned_about(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Sixty-five languages read 0/1 lines and must stay silent."""
+        path = tmp_path / "bf.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="1\n0\n")
+        assert out == "1"
+        assert err == ""
+
+    def test_the_warning_does_not_change_the_answer(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It is advice; the run is exactly what it was."""
+        path = tmp_path / "g.txt"
+        path.write_text(esolangs.generate("Grapheme", "0110"))
+        warned = call_main(["run", "Grapheme", str(path)], capsys, stdin="1\n0\n")
+        capsys.readouterr()
+        stdin = esolangs.encode_inputs("Grapheme", [1, 0])
+        right = call_main(["run", "Grapheme", str(path)], capsys, stdin=stdin)
+        assert warned == "0"
+        assert right == "1"
+
+
+class TestAnUnboundedRunSaysSo:
+    """Several of these languages loop forever by design."""
+
+    def test_the_notice_names_the_flag(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Shortened rather than waited out, so the test costs nothing."""
+        monkeypatch.setattr(cli, "_UNBOUNDED_NOTICE_AFTER", 0.01)
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        call_main(["run", "brainfuck", str(path)], capsys, stdin="1\n0\n")
+        # The run finishes in microseconds, so the notice may or may not
+        # have fired; what must hold is that arming it broke nothing.
+        capsys.readouterr()
+
+    def test_a_bounded_run_never_arms_it(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """With --timeout there is nothing to warn about."""
+        monkeypatch.setattr(cli, "_UNBOUNDED_NOTICE_AFTER", 0.01)
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        _out, err = call_both(
+            ["run", "--timeout", "10", "brainfuck", str(path)], capsys, stdin="1\n0\n"
+        )
+        assert "no bound" not in err
+
+    def test_debug_warns_about_a_termination_language(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """`run` gained this a round earlier and `debug` did not."""
+        program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 0])
+        path = tmp_path / "p.txt"
+        path.write_text(program)
+        _out, err = call_both(["debug", "123", str(path)], capsys)
+        assert "not terminating" in err
+
+    def test_a_bounded_debug_is_not_told_to_pass_a_bound(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """--steps is a bound as much as --timeout is."""
+        program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 1])
+        path = tmp_path / "p.txt"
+        path.write_text(program)
+        _out, err = call_both(["debug", "--steps", "200", "123", str(path)], capsys)
+        assert "pass --timeout" not in err
+
+
+class TestATimeoutValueIsCheckedBeforeThePositionals:
+    """A forgotten number blamed the argument that was not the problem."""
+
+    @pytest.mark.parametrize("command", ["run", "debug"])
+    def test_a_missing_number_names_the_timeout(
+        self, command: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It reported `missing <program-file>`, having eaten the language."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        with pytest.raises(SystemExit) as exc:
+            call_main([command, "--timeout", "brainfuck", str(path)], capsys)
+        assert exc.value.code == 2
+        assert "--timeout must be a number" in capsys.readouterr().err
+
+    @pytest.mark.parametrize("command", ["run", "debug"])
+    def test_a_dash_leading_value_still_reaches_the_finiteness_check(
+        self, command: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The earlier fix depended on option-before-stray order; still holds."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        with pytest.raises(SystemExit) as exc:
+            call_main([command, "--timeout", "-inf", "brainfuck", str(path)], capsys)
+        assert exc.value.code == 2
+        assert "must be finite" in capsys.readouterr().err
+
+
+class TestTheDecodeGuardsInProcess:
+    """The subprocess tests above prove the behaviour; these reach the lines.
+
+    Coverage is measured in this process, so a path exercised only through
+    ``run_cli`` is invisible to it -- which would leave the handlers that
+    fix this round's one real bug looking untested.
+    """
+
+    def test_read_program_refuses_a_binary_file(self, tmp_path: Path) -> None:
+        """The file reader's own clause, called directly."""
+        path = tmp_path / "b.txt"
+        path.write_bytes(bytes(range(256)))
+        with pytest.raises(SystemExit) as exc:
+            cli._read_program(str(path))
+        assert exc.value.code == 2
+
+    def test_read_program_still_refuses_an_unreadable_path(
+        self, tmp_path: Path
+    ) -> None:
+        """The OSError clause beside it, which the new one must not shadow."""
+        with pytest.raises(SystemExit) as exc:
+            cli._read_program(str(tmp_path))
+        assert exc.value.code == 2
+
+    def test_read_stdin_refuses_undecodable_bytes(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A stdin whose read raises, as a piped binary stream's does."""
+
+        class _BadStdin:
+            def isatty(self) -> bool:
+                return False
+
+            def read(self) -> str:
+                raise UnicodeDecodeError("utf-8", b"\x80", 0, 1, "invalid start byte")
+
+        with patch.object(sys, "stdin", _BadStdin()), pytest.raises(SystemExit) as exc:
+            cli._read_stdin()
+        assert exc.value.code == 2
+        assert "not text" in capsys.readouterr().err
+
+    def test_read_stdin_is_empty_on_a_terminal(self) -> None:
+        """The branch beside it: nothing piped in."""
+
+        class _Tty:
+            def isatty(self) -> bool:
+                return True
+
+            def read(self) -> str:  # pragma: no cover - never called
+                raise AssertionError("should not read a terminal")
+
+        with patch.object(sys, "stdin", _Tty()):
+            assert cli._read_stdin() == ""
+
+    def test_the_unbounded_notice_writes_one_line(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Called directly rather than waited for."""
+        cli._UnboundedNotice._say("run")
+        err = capsys.readouterr().err
+        assert "no bound" in err
+        assert "--timeout" in err
+
+    def test_debug_warns_about_a_mismatched_shape_too(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """`run` and `debug` feed the same stdin to the same interpreter."""
+        path = tmp_path / "g.txt"
+        path.write_text(esolangs.generate("Grapheme", "0110"))
+        _out, err = call_both(
+            ["debug", "--steps", "50", "Grapheme", str(path)], capsys, stdin="1\n0\n"
+        )
+        assert "spells its bits" in err

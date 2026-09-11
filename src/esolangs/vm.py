@@ -911,22 +911,30 @@ class VM(Protocol):
     def self_halts(self) -> bool:
         """Whether the program can reach a halt of its own.
 
-        ``False`` for the two languages whose ``halted`` is always
-        ``False`` -- A Painter Ant and Suffolk -- so the obvious
-        ``while not vm.halted: vm.step()`` never returns on them.  A
-        caller driving one has to bound the run itself: a hang detector
-        above, or :func:`esolangs.run`'s ``timeout``.
+        ``False`` where ``halted`` never becomes true, so the obvious
+        ``while not vm.halted: vm.step()`` never returns.  A caller driving
+        such a language has to bound the run itself: a hang detector above,
+        or :func:`esolangs.run`'s ``timeout``.
+
+        No count here, and none below.  This used to say "the two
+        languages" and its sibling "the four languages"; the sibling was
+        wrong -- seven carry it -- because a trait is added by editing an
+        interpreter and the tally lives in a different file.  A number in
+        prose is a second copy of something the registry already knows, so
+        the way to keep it true is not to write it:
+        ``[n for n in list_languages() if describe(n)["self_halts"]]``
+        cannot drift.
         """
 
     @property
     def dumps_on_the_post_halt_step(self) -> bool:
         """Whether the output arrives on the step *after* the halt.
 
-        ``True`` for the four languages whose ``run`` ends its loop with
-        one more ``step()`` to dump the final tape or registers.  A caller
-        that stops at ``halted`` has driven such a program correctly and
-        still holds ``""``; one further ``step()`` writes what ``run``
-        writes, and the no-op step is the one after that.
+        ``True`` where a language's ``run`` ends its loop with one more
+        ``step()`` to dump the final tape or registers.  A caller that stops
+        at ``halted`` has driven such a program correctly and still holds
+        ``""``; one further ``step()`` writes what ``run`` writes, and the
+        no-op step is the one after that.
         """
 
     @property
