@@ -614,6 +614,15 @@ def test_wrappers_refuse_input_they_do_not_recognize() -> None:
     assert _taglate("seed-only", 40) == "seed-only"
 
 
+def test_polynomial_leaves_a_program_too_short_to_have_a_header() -> None:
+    """The ``f(x) =`` header is three terms; a shorter program has none.
+
+    Joining the first three terms only makes sense once they are the header,
+    so a program that does not start that way is returned as it came.
+    """
+    assert _polynomial("1", 10) == "1"
+
+
 def test_six_five_keeps_an_operand_with_its_command() -> None:
     """``7``/``8`` take the next character, so a break never lands between.
 
