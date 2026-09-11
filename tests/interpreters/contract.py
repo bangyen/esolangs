@@ -250,10 +250,23 @@ class StateViewContract:
     file.  They are real API: ``debug.py`` reads the tape through
     ``vm.memory``, and ``vm.py`` looks up ``of`` on a state class.
 
-    The named views are asserted to be *distinct* rather than pinned to
-    values: what a slot holds is the language's business, but two names
-    reading one slot is the failure this shape invites, and it is the same
-    check for every language.
+    What this checks is that every named view is *exercised*: each one must
+    take more than one value over the run, or be declared inert in
+    :attr:`constant_views`.  Values themselves stay the language's business
+    and are pinned in its own file.
+
+    It deliberately does **not** claim to catch aliasing.  An earlier
+    version said the failure it caught was "two names reading one slot", but
+    all it asserted was that the *list* of views differed before and after a
+    run -- which one moving view satisfies, so a second name reading that
+    same slot passed.  A sweep of all thirteen files using this contract
+    found twenty of forty-nine views that could be frozen or rewired with no
+    test noticing, and fourteen of those were read by nothing but the two
+    tests below.  That is what the per-view check fixes: the views were not
+    under-asserted so much as unobserved.  Telling two *moving* views apart
+    still needs a value assertion in the language's own file, because only
+    that file knows which pairs share a slot on purpose -- ``ind`` and ``ip``
+    usually do.
     """
 
     machine: ClassVar[Any]
@@ -263,9 +276,17 @@ class StateViewContract:
     #: RAM0 -- and a name absent here is simply not part of that view.
     state_views: ClassVar[tuple[str, ...]]
 
-    #: A program that leaves at least two views holding different values, so
-    #: "distinct" has something to distinguish.
+    #: A program that moves every name in :attr:`state_views` except those
+    #: listed in :attr:`constant_views`.
     viewing_program: ClassVar[Any]
+
+    #: Views this language's program genuinely cannot move -- a dump flag
+    #: that only flips past the halt, a store the program never writes.
+    #: Naming them is the point: it separates "inert by nature" from "never
+    #: exercised", which is what the old shape could not tell apart.  A view
+    #: listed here that *does* move is an error too, so the list cannot rot
+    #: into a blanket exemption.
+    constant_views: ClassVar[frozenset[str]] = frozenset()
 
     def test_every_named_view_reads_the_machine(self) -> None:
         """Each name resolves, before and after a step, without raising."""
@@ -277,17 +298,36 @@ class StateViewContract:
         for name in self.state_views:
             getattr(machine, name)
 
-    def test_the_views_do_not_alias_one_slot(self) -> None:
-        """Stepping moves at least one view, so they are not one field twice.
+    def test_every_view_moves_or_is_declared_constant(self) -> None:
+        """Each named view takes more than one value, or is declared inert.
 
-        A property returning the wrong tuple index still reads *something*,
-        so resolving is not enough: the run has to move the views apart.
+        Sampled at every step rather than compared end to end: a counter
+        that climbs and returns to where it started moved, and asking only
+        about the first and last state would call it constant and push the
+        file into declaring it.
+
+        Both directions are asserted.  A view that should move and does not
+        is the gap this replaces -- the old check passed as soon as any one
+        view moved, so the rest went unread.  A view declared constant that
+        moves is equally wrong, because the declaration would then be hiding
+        exactly what it claims there is nothing to see.
         """
         machine = type(self).machine(self.viewing_program)
-        before = [repr(getattr(machine, n)) for n in self.state_views]
+        names = self.state_views
+        seen: dict[str, set[str]] = {n: {repr(getattr(machine, n))} for n in names}
         for _ in range(_HALT_BUDGET):
             if machine.halted:
                 break
             machine.step()
-        after = [repr(getattr(machine, n)) for n in self.state_views]
-        assert before != after, "no named view changed over the whole run"
+            for name in names:
+                seen[name].add(repr(getattr(machine, name)))
+
+        moved = {n for n in names if len(seen[n]) > 1}
+        declared = set(self.constant_views)
+        assert declared <= set(names), (
+            f"constant_views names no such view: {declared - set(names)}"
+        )
+        assert moved == set(names) - declared, (
+            f"views that moved: {sorted(moved)}; "
+            f"expected to move: {sorted(set(names) - declared)}"
+        )

@@ -204,3 +204,6 @@ class TestContract(SnapshotContract, StateViewContract):
     # containers' values) is what the tick moves.
     state_views: ClassVar[tuple[str, ...]] = ("queue", "ip", "memory")
     viewing_program: ClassVar[list[str]] = ["A=0:", "+1 A>=0"]
+    # No program in this file moves the queue view; it stays empty
+    # for the whole run.
+    constant_views: ClassVar[frozenset[str]] = frozenset({"queue"})

@@ -331,4 +331,8 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     # It is still read either side, which is what the view is here to pin;
     # `reg` and `ip` are what move.
     state_views = ("ptr", "reg", "dumped", "ip", "memory")
-    viewing_program = "+"
+    # `*` swaps the register pair, so the pointer moves as well as the
+    # register.  `dumped` latches on the step past the halt, which the
+    # check does not take.
+    viewing_program = "*+"
+    constant_views = frozenset({"dumped"})

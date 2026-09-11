@@ -234,7 +234,11 @@ class TestContract(CycleContract, InputCursorContract, StateViewContract):
     halting_program = ">+."
     looping_program = ">+[]"
     state_views = ("lst", "ip", "memory")
-    viewing_program = ">+."
+    # The loop test's own program: it enters a loop, so the loop stack
+    # moves.  `memory` is empty by design here -- BFStack addresses no
+    # cells, its store is `stack` -- so it cannot move and says so.
+    viewing_program = ">+[>+<-]>+."
+    constant_views = frozenset({"memory"})
     reader = staticmethod(_reader)
     reading_program = ">,"  # > pushes 0, then , reads the first byte
     reading_stdin = "A\nB"

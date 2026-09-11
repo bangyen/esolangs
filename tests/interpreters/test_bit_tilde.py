@@ -200,4 +200,6 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     halting_program = "~("
     looping_program = "~{}"
     state_views = ("ind", "cell", "ip", "memory")
-    viewing_program = "~("
+    # Walks out far enough to flip a cell and come back, so `cell`
+    # moves rather than only the cursor.
+    viewing_program = ">>>>>>>~<<<<<<<("
