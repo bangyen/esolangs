@@ -758,28 +758,66 @@ def _taglate(program: str, width: int) -> str:
 # :data:`_PLACEHOLDER`'s business, not this pattern's.
 _PCT_COMMAND = r"."
 
+# What divides a %^2^-1 template's setter header from its body: a blank line,
+# so that a single newline inside either part is that part's own fold.
+#
+# Spelled here rather than imported, because importing it would pull the whole
+# ``esolangs.tools.boolean`` package -- thirty-odd generator modules -- into a
+# module that otherwise needs nothing but the standard library.  The generator
+# owns the value (``pct_squared_minus_one._HEADER_END``) and a test asserts the
+# two agree, so the duplication cannot drift silently.
+_PCT_HEADER_END = "\n\n"
+
 
 def _pct_squared_minus_one(program: str, width: int) -> str:
-    """Wrap %^2^-1, leaving its setter-declaration header on its own row.
+    """Wrap %^2^-1: fold the setter-declaration header as well as the body.
 
-    A %^2^-1 *template* is two lines and the newline between them is
-    structural: ``fill`` partitions on it, reads the ``0=zero|one;1=...``
-    declarations out of the header, and substitutes them into the body.  So
-    the header stays whole -- folding it would move a declaration out of
-    reach of that parse -- while the body below breaks between commands.
+    A %^2^-1 *template* is a header of ``0=zero|one;1=...`` declarations, a
+    blank line, and the body.  ``fill`` reads the declarations out of the
+    header and substitutes them into the body.
 
-    A *filled* program is one line, the header having been consumed, and
-    folds entirely.  Both shapes arrive here: :func:`~esolangs.generate`
-    wraps the template, and the committed examples wrap what ``fill``
-    returns, so this handles whichever it is given.
+    The header used to be left on one row, on the grounds that it was
+    "structural".  It is not the *language's* structure -- the interpreter
+    never sees a header, ``fill`` consumes it -- so what kept it whole was
+    our own template format, and the format changed: the header is
+    terminated by a blank line, and ``fill`` discards the header's newlines
+    before reading it.  So the header folds, and 1407 columns at eight
+    inputs become the width asked for.
+
+    It folds at a ``;`` where it can, so a row holds whole declarations, and
+    *inside* one where it must.  The second case is not an edge: one
+    declaration is 175 characters and does not shrink with ``n``, so
+    breaking only between declarations would leave a 175-column floor
+    whatever the width.
+
+    A *filled* program has no header at all and folds entirely.  Both shapes
+    arrive here: :func:`~esolangs.generate` wraps the template, and the
+    committed examples wrap what ``fill`` returns.
 
     The commands are single characters, so the only unbreakable unit is a
     ``{Xi}`` placeholder in an unfilled template.
     """
-    header, newline, body = program.partition("\n")
-    if not newline:
+    header, blank, body = program.partition(_PCT_HEADER_END)
+    if not blank:
         return wrap_tokens(program, width, _PCT_COMMAND)
-    return header + "\n" + wrap_tokens(body.replace("\n", ""), width, _PCT_COMMAND)
+    folded = _pct_header(header.replace("\n", ""), width)
+    return folded + blank + wrap_tokens(body.replace("\n", ""), width, _PCT_COMMAND)
+
+
+def _pct_header(header: str, width: int) -> str:
+    """Fold a %^2^-1 header, preferring a break between two declarations.
+
+    Each declaration carries the ``;`` that ends it, so the units pack like
+    any other token; a unit too wide for the line is then folded by
+    character, which is safe because ``fill`` strips the header's newlines
+    before it reads.
+    """
+    units = [unit + ";" for unit in header.split(";")]
+    units[-1] = units[-1][:-1]  # the last declaration has no ``;`` after it
+    rows: list[str] = []
+    for row in _join_tokens(units, width, separator="").split("\n"):
+        rows.append(row if len(row) <= width else wrap_chars(row, width))
+    return "\n".join(rows)
 
 
 def _qoibl(program: str, width: int) -> str:
