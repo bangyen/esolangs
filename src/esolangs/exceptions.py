@@ -41,6 +41,16 @@ class UnknownLanguageError(EsolangError, ValueError):
         self.suggestions = suggestions
 
 
+class ArgumentError(EsolangError, ValueError):
+    """An argument's value is outside what the call accepts.
+
+    A width of zero, a non-positive timeout, a width that is not an integer.
+    These were plain ``ValueError``s, which made the package's one promise --
+    that everything raised on purpose derives from :class:`EsolangError` --
+    false for three of the commonest mistakes.
+    """
+
+
 class ProgramError(EsolangError, ValueError):
     """A program could not be loaded: it is malformed for its language."""
 
