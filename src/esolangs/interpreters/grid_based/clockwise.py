@@ -36,6 +36,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 
+from esolangs.exceptions import InputExhaustedError
 from esolangs.interpreters.io import IO
 
 #: How many parity bits make one printed byte.
@@ -234,7 +235,18 @@ class _Machine:
         if not self.state[5]:
             row, col, r, _acc, _out, _inp, _done = self.state
             if move(row, col, r, self.code, self.state[3])[3] == ".":
-                raise EOFError
+                # ``InputExhaustedError``, not a bare ``EOFError``: it *is*
+                # one (that is the class's second base), but the bare form
+                # carried no message and was not an ``EsolangError``, so a
+                # sweep written to the documented ``except EsolangError``
+                # crashed on this one language.  The same program with
+                # *empty* stdin has always raised the typed one, from
+                # ``ScriptedIO``; only this look-ahead raised its own.
+                # The counts come off the io by ``getattr``: this look-ahead
+                # runs against the base ``IO`` too, which does not keep them.
+                raise InputExhaustedError(
+                    getattr(self.io, "reads", 0), getattr(self.io, "supplied", 0)
+                )
         self.state, byte = _advance(self.state, self.code)
         if byte is not None:
             self.io.print_char(chr(byte))

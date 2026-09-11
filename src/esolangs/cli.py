@@ -76,9 +76,12 @@ commands:
                               (--width wraps it; --bits fills a template)
   describe <language>         print how that language reads its input and
                               where it puts the answer
-  run [--timeout S] [--judge] <language> <file>
+  run [--timeout S] [--judge] [--table T] <language> <file>
                               run a program through its interpreter
                               (--judge prints the answer bit instead)
+  check-stdin [--table T] <language>
+                              judge stdin against what that language reads,
+                              without running anything
   read-answer <language>      read a program's output on stdin and print
                               the answer bit it carries
   verify <language> <truth-table>
@@ -203,6 +206,11 @@ options:
                      ArrowQueue and Point Break halt for a 0 and loop
                      forever for a 1, so a timeout there is the answer.
                      A timeout exits 124, distinct from a program error's 1.
+  --table TABLE      the truth table the program was generated from.  Adds
+                     the bit *count* to the stdin check, which is the one
+                     thing a shape check cannot do on its own: three lines
+                     fed to a two-input program, or a row index out of
+                     range, are only wrong relative to an arity.
   --judge            print the answer bit -- 0 or 1 -- instead of the raw
                      output.  Nine languages do not simply print their
                      answer: six dump their whole final state with the
@@ -255,6 +263,24 @@ rather than collapsing to a yes or no.  Exits 0 whenever the program ran.
 examples:
   esolangs evaluate brainfuck 0110
   esolangs evaluate "A Painter Ant" 10010110
+""",
+    "check-stdin": """usage: esolangs check-stdin [--table T] <language>
+
+Read stdin and say whether it is what <language> wants, without running a
+program.
+
+Exits 0 and says nothing when it is fine.  Otherwise it names what is wrong
+and exits 2 -- the wrong alphabet, the wrong number of lines, a row index
+with a leading zero, and with --table the wrong bit count or an index out of
+range.
+
+This is the check `run` applies as a warning and `run --judge` applies as a
+refusal, on its own, so a pipeline can validate input before spending a run
+on it.
+
+examples:
+  esolangs encode Grapheme 10 | esolangs check-stdin Grapheme
+  printf '1\\n0\\n1\\n' | esolangs check-stdin --table 0110 brainfuck
 """,
     "describe": """usage: esolangs describe <language>
 
@@ -330,6 +356,11 @@ def _null_context() -> AbstractContextManager[None]:
     return nullcontext()
 
 
+#: How long a blocking stdin read waits before it says that it is waiting.
+#: Shorter than the run notice: a read that has not finished is far more
+#: likely to be a mistake than a program that is still going.
+_WAITING_NOTICE_AFTER = 3.0
+
 #: How long an unbounded run goes before it says that it is unbounded.
 #: A constant so a test can shorten it rather than wait.
 _UNBOUNDED_NOTICE_AFTER = 10.0
@@ -391,6 +422,7 @@ _ARGUMENTS = {
     "debug": ("<language>", "<program-file>"),
     "describe": ("<language>",),
     "read-answer": ("<language>",),
+    "check-stdin": ("<language>",),
     "verify": ("<language>", "<truth-table>"),
     "evaluate": ("<language>", "<truth-table>"),
 }
@@ -724,7 +756,9 @@ def _read_program(path: str) -> str:
         raise  # pragma: no cover - unreachable; _fail exits
 
 
-def _shape_warning(facts: dict[str, object], stdin: str) -> str:
+def _shape_warning(
+    facts: dict[str, object], stdin: str, table: str | None = None
+) -> str:
     """Return the library's complaint about ``stdin``, or ``''``.
 
     The checks themselves live in :func:`esolangs.check_stdin` now.  They
@@ -737,9 +771,16 @@ def _shape_warning(facts: dict[str, object], stdin: str) -> str:
     if not facts["reads_input"]:
         return ""
     try:
-        check_stdin(str(facts["name"]), stdin)
+        check_stdin(str(facts["name"]), stdin, table)
     except EsolangError as exc:
-        return f"{exc}; `esolangs encode` builds the right stdin"
+        # Some of these already name the exact command; appending the
+        # generic pointer to those said "esolangs encode" twice in one line.
+        tail = (
+            ""
+            if "esolangs encode" in str(exc)
+            else ("; `esolangs encode` builds the right stdin")
+        )
+        return f"{exc}{tail}"
     return ""
 
 
@@ -753,21 +794,104 @@ def _decode_note(exc: UnicodeDecodeError) -> str:
     return f"invalid UTF-8 at byte {exc.start}"
 
 
-def _read_stdin() -> str:
-    """Return this command's stdin, or exit if it is not text.
+def _read_stdin(timeout: float | None = None, hint: str = "") -> str:
+    """Return this command's stdin, or exit if it is not text or never comes.
 
-    Shared by the three commands that read it.  Each called
-    ``sys.stdin.read()`` directly and each therefore had the same hole: a
-    program's binary output piped into ``read-answer`` crashed with a
-    traceback rather than being refused.
+    Shared by the commands that read it.  Each called ``sys.stdin.read()``
+    directly and each therefore had the same hole: a program's binary output
+    piped into ``read-answer`` crashed with a traceback rather than being
+    refused.
+
+    **The read is bounded and announced.**  ``sys.stdin.read()`` blocks
+    until end-of-file, so a pipe that is open and never written -- which is
+    what a terminal looks like, and what a parent process that forgot to
+    close stdin gives you -- hung this command forever with nothing on
+    screen.  ``--timeout`` did not help, because it bounds *execution* and
+    this happens before any program runs.
+
+    So: the read happens on a daemon thread, ``--timeout`` bounds it as
+    well, and an unbounded read that is still waiting says so.  A thread
+    rather than :func:`select.select` because stdin here is not always a
+    real file -- the tests supply an object with no ``fileno`` -- and this
+    works for anything with a ``read``.
     """
     if sys.stdin.isatty():
         return ""
-    try:
-        return sys.stdin.read()
-    except UnicodeDecodeError as exc:
-        _fail(f"cannot read stdin: not text ({_decode_note(exc)})")
-        raise  # pragma: no cover - unreachable; _fail exits
+    box: list[str | BaseException] = []
+
+    def _slurp() -> None:
+        try:
+            box.append(sys.stdin.read())
+        except BaseException as exc:
+            box.append(exc)
+
+    reader = threading.Thread(target=_slurp, daemon=True)
+    reader.start()
+    with _WaitingNotice(hint):
+        reader.join(timeout)
+    if reader.is_alive():
+        _fail(
+            f"no input arrived on stdin within {timeout:.0f}s, and nothing "
+            f"closed it{hint}",
+            _TIMEOUT_EXIT,
+        )
+    result = box[0] if box else ""
+    if isinstance(result, UnicodeDecodeError):
+        _fail(f"cannot read stdin: not text ({_decode_note(result)})")
+    if isinstance(result, BaseException):
+        raise result
+    return result
+
+
+def _stdin_hint(facts: dict[str, object]) -> str:
+    """Return a clause naming what this language wants on stdin, if anything.
+
+    A language whose generator embeds its inputs usually wants nothing, and
+    saying so is most of the help: the reader who typed `esolangs run RAM0
+    prog.txt` and watched it wait was waiting for input the program was
+    never going to ask for.
+
+    *Usually*, not always -- the flag says the generated program reads no
+    stdin, and three of those seventeen languages have an input command a
+    hand-written program may still use.  So this suggests and does not
+    skip.
+    """
+    if not facts["reads_input"] and facts["parameterized"]:
+        return (
+            f"; {facts['name']}'s generated programs embed their inputs and "
+            f"read no stdin, so there is probably nothing to send -- close it"
+        )
+    return "; try: esolangs encode <language> <bits> | ..."
+
+
+class _WaitingNotice:
+    """Say, once, that this command is waiting for input that is not coming.
+
+    The same shape as :class:`_UnboundedNotice` and for the same reason: the
+    default is unchanged and the silence is not.
+    """
+
+    def __init__(self, hint: str = "") -> None:
+        """Arm the notice, mentioning ``hint`` if there is one."""
+        self._timer = threading.Timer(_WAITING_NOTICE_AFTER, self._say, args=(hint,))
+        self._timer.daemon = True
+
+    @staticmethod
+    def _say(hint: str) -> None:
+        """Write the one line, from the timer thread."""
+        sys.stderr.write(
+            f"still waiting for input on stdin after "
+            f"{_WAITING_NOTICE_AFTER:.0f}s; nothing has closed it{hint}\n"
+        )
+
+    def __enter__(self) -> _WaitingNotice:
+        """Start the timer."""
+        self._timer.start()
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        """Cancel it."""
+        self._timer.cancel()
 
 
 def _encode(rest: list[str]) -> None:
@@ -813,7 +937,13 @@ def _list(rest: list[str]) -> None:
 
 def _debug(rest: list[str]) -> None:
     """Run a program under the debugger and report where it stopped."""
-    options_taken = {"--steps", "--watch-cell", "--break-on-output", "--timeout"}
+    options_taken = {
+        "--steps",
+        "--watch-cell",
+        "--break-on-output",
+        "--timeout",
+        "--table",
+    }
     # Options first, then the stray-flag check: a *value* can begin with a
     # dash (``--timeout -inf``), and a check that runs before the pairs are
     # consumed cannot tell one from a flag -- it answered that with
@@ -838,8 +968,12 @@ def _debug(rest: list[str]) -> None:
     if "--steps" in options and int(options["--steps"]) < 0:
         _fail(f"--steps must not be negative, got {options['--steps']}")
     program = _read_program(path)
-
-    stdin = _read_stdin()
+    try:
+        facts = describe(language)
+    except EsolangError as exc:
+        _fail(str(exc))
+        raise  # pragma: no cover - unreachable; _fail exits
+    stdin = _read_stdin(limit, _stdin_hint(facts))
     # The same two refusals ``run`` makes.  Debugging a program is no reason
     # to skip them: an unfilled template stepped confidently to `output: '0'`
     # and reported a wrong answer with no warning at all, and a load error
@@ -868,7 +1002,7 @@ def _debug(rest: list[str]) -> None:
     # state up to the fault is the thing they asked to see.
     fault = None
     reason = None
-    warning = _shape_warning(describe(language), stdin)
+    warning = _shape_warning(describe(language), stdin, options.get("--table"))
     if warning:
         sys.stderr.write(f"{warning}\n")
     # ``run`` gained this last round and ``debug`` did not, so `debug 123
@@ -995,6 +1129,24 @@ def _describe(rest: list[str]) -> None:
         )
 
 
+def _check_stdin(rest: list[str]) -> None:
+    """Judge stdin against a language's declared shape, running nothing."""
+    rest, options = _pop_options(rest, {"--table"})
+    rest = _split_positional(rest, set(), {"--table"})
+    _check_count("check-stdin", rest, 1)
+    language = rest[0]
+    try:
+        facts = describe(language)
+    except EsolangError as exc:
+        _fail(str(exc))
+        raise  # pragma: no cover - unreachable; _fail exits
+    stdin = _read_stdin(hint="; pipe the input in, or close stdin")
+    try:
+        check_stdin(str(facts["name"]), stdin, options.get("--table"))
+    except EsolangError as exc:
+        _fail(str(exc))
+
+
 def _read_answer(rest: list[str]) -> None:
     """Read a program's output on stdin and print the answer bit in it."""
     rest = _split_positional(rest, set())
@@ -1013,7 +1165,7 @@ def _read_answer(rest: list[str]) -> None:
             f"there is no output to read; use: esolangs run --judge "
             f"--timeout <seconds> {facts['name']} <program-file>"
         )
-    output = _read_stdin()
+    output = _read_stdin(hint="; pipe a program's output in, or close stdin")
     if not output.strip():
         _fail(
             f"nothing on stdin to read an answer out of; pipe a program's "
@@ -1092,14 +1244,14 @@ def _judge(language: str, output: str, mode: object) -> str:
 
 def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
-    rest, options = _pop_options(rest, {"--timeout"})
+    rest, options = _pop_options(rest, {"--timeout", "--table"})
     # The value is checked here, before the positionals are counted.  It ran
     # after, so `run --timeout brainfuck prog.txt` -- a forgotten number --
     # swallowed the language as the timeout's value and then reported
     # "missing <program-file>", sending the reader to look at the one
     # argument that was not the problem.
     timeout = _timeout_of(options)
-    rest = _split_positional(rest, {"--judge"}, {"--timeout", "--judge"})
+    rest = _split_positional(rest, {"--judge"}, {"--timeout", "--judge", "--table"})
     judge = "--judge" in rest
     # Refused like every value-taking option is.  `--judge --judge` was
     # accepted in silence while `--timeout 5 --timeout 9` was refused, and
@@ -1110,7 +1262,10 @@ def _run(rest: list[str]) -> None:
     _check_count("run", rest, 2)
     language, path = rest[0], rest[1]
     program = _read_program(path)
-    stdin = _read_stdin()
+    # Resolved *before* stdin is read.  It was after, so
+    # `esolangs run NotALang prog.txt` with stdin held open blocked forever
+    # without ever saying the language was unknown -- the one thing it could
+    # have answered without reading a byte.
     try:
         facts = describe(language)
         mode = facts["answer_mode"]
@@ -1118,6 +1273,7 @@ def _run(rest: list[str]) -> None:
     except EsolangError as exc:
         _fail(str(exc))
         raise  # pragma: no cover - unreachable; _fail exits
+    stdin = _read_stdin(timeout, _stdin_hint(facts))
     if mode == "termination" and timeout is None:
         if judge:
             # Judging needs the bound, so this is a refusal rather than the
@@ -1136,7 +1292,7 @@ def _run(rest: list[str]) -> None:
             f"program with that answer will run until you stop it; pass "
             f"--timeout SECONDS to bound it\n"
         )
-    warning = _shape_warning(facts, stdin)
+    warning = _shape_warning(facts, stdin, options.get("--table"))
     if warning and judge:
         # ``--judge`` is the caller saying "this is a truth-table program and
         # I want its answer bit", so a stdin the language cannot read the way
@@ -1251,6 +1407,7 @@ def main() -> None:
         "generate": _generate,
         "run": _run,
         "read-answer": _read_answer,
+        "check-stdin": _check_stdin,
         "verify": _verify,
         "evaluate": _evaluate,
         "debug": _debug,

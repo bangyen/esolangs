@@ -1364,3 +1364,250 @@ class TestTheAdvisoryNotesAreRenderedOnce:
         """So nobody mistakes it for a checker of a file they wrote."""
         assert "checks the generator" in cli.HELP["verify"]
         assert "run --judge" in cli.HELP["verify"]
+
+
+class TestStdinCannotHangTheCommandForever:
+    """`run` read stdin to EOF before doing anything, and --timeout missed it."""
+
+    def _run_with_open_stdin(self, args: list[str], wait: float) -> tuple[int, str]:
+        """Start the CLI with stdin held open and never written."""
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "esolangs", *args],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        try:
+            proc.wait(timeout=wait)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            return -1, ""
+        finally:
+            if proc.stdin:
+                proc.stdin.close()
+        return proc.returncode, proc.stderr.read() if proc.stderr else ""
+
+    @pytest.mark.slow
+    def test_a_timeout_bounds_the_read(self, tmp_path: Path) -> None:
+        """It bounded execution only, and the block happens before that."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        code, err = self._run_with_open_stdin(
+            ["run", "--timeout", "2", "brainfuck", str(path)], 20
+        )
+        assert code == 124
+        assert "no input arrived on stdin" in err
+
+    @pytest.mark.slow
+    def test_an_unknown_language_is_named_without_reading_stdin(
+        self, tmp_path: Path
+    ) -> None:
+        """It blocked forever before saying the one thing it already knew."""
+        path = tmp_path / "p.txt"
+        path.write_text("+.")
+        code, err = self._run_with_open_stdin(
+            ["run", "--timeout", "30", "NotALang", str(path)], 20
+        )
+        assert code == 2
+        assert "unknown language" in err
+
+    @pytest.mark.slow
+    def test_a_language_that_reads_no_stdin_is_told_so(self, tmp_path: Path) -> None:
+        """RAM0 embeds its inputs, so the wait was for input nobody wanted."""
+        path = tmp_path / "p.txt"
+        path.write_text(
+            esolangs.instantiate("RAM0", esolangs.generate("RAM0", "0110"), [0, 1])
+        )
+        code, err = self._run_with_open_stdin(
+            ["run", "--timeout", "2", "RAM0", str(path)], 20
+        )
+        assert code == 124
+        assert "read no stdin" in err
+
+
+class TestTheTableOptionClosesTheArityGap:
+    """`run` has no arity of its own; the table supplies one."""
+
+    def test_a_wrong_bit_count_on_one_line_is_refused(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Clockwise's underfeed is a shorter string, invisible without this."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("Clockwise", "0110"))
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["run", "--judge", "--table", "0110", "Clockwise", str(path)],
+                capsys,
+                stdin="101",
+            )
+        assert exc.value.code == 2
+        assert "wants 2 bits" in capsys.readouterr().err
+
+    def test_an_out_of_range_row_index_is_refused(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Fargo's 99 is not a row of a four-row table."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("Fargo", "0110"))
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["run", "--judge", "--table", "0110", "Fargo", str(path)],
+                capsys,
+                stdin="99\n",
+            )
+        assert exc.value.code == 2
+        assert "out of range" in capsys.readouterr().err
+
+    def test_a_bit_string_row_index_is_refused_without_a_table(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The leading-zero rule needs no arity at all."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("Fargo", "0010000000000000"))
+        with pytest.raises(SystemExit) as exc:
+            call_main(["run", "--judge", "Fargo", str(path)], capsys, stdin="0010\n")
+        assert exc.value.code == 2
+        err = capsys.readouterr().err
+        assert "leading zero" in err
+        assert err.count("esolangs encode") == 1
+
+    def test_the_right_input_still_passes(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """With --table, the correct stdin must stay silent."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("Clockwise", "0110"))
+        out, err = call_both(
+            ["run", "--judge", "--table", "0110", "Clockwise", str(path)],
+            capsys,
+            stdin=esolangs.encode_inputs("Clockwise", [1, 0], "0110"),
+        )
+        assert out.strip() == "1"
+        assert err == ""
+
+
+class TestCheckStdinIsASubcommand:
+    """The judge, usable without spending a run."""
+
+    def test_it_accepts_a_correct_encoding(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Silence and exit 0."""
+        out, err = call_both(
+            ["check-stdin", "Grapheme"],
+            capsys,
+            stdin=esolangs.encode_inputs("Grapheme", [1, 0]),
+        )
+        assert out == ""
+        assert err == ""
+
+    def test_it_refuses_a_wrong_count_with_a_table(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The arity check, reachable without running a program."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["check-stdin", "--table", "0110", "brainfuck"],
+                capsys,
+                stdin="1\n0\n1\n",
+            )
+        assert exc.value.code == 2
+        assert "reads 2 line(s)" in capsys.readouterr().err
+
+    def test_it_reports_an_unknown_language_before_reading(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Resolved first, so a bad name does not wait on input either."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["check-stdin", "NotALang"], capsys, stdin="1\n")
+        assert exc.value.code == 2
+        assert "unknown language" in capsys.readouterr().err
+
+    def test_it_is_suggested_on_a_typo(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The new command has to be in the set the did-you-mean searches."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["check-stdn", "brainfuck"], capsys)
+        assert exc.value.code == 2
+        assert "did you mean check-stdin" in capsys.readouterr().err
+
+
+class TestTheStdinReaderInProcess:
+    """The subprocess tests prove the behaviour; these reach the lines."""
+
+    def test_a_read_that_never_finishes_is_bounded(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A stdin whose read blocks, as an open-but-silent pipe does."""
+        import threading
+
+        blocked = threading.Event()
+
+        class _BlockingStdin:
+            def isatty(self) -> bool:
+                return False
+
+            def read(self) -> str:
+                blocked.wait(30)
+                return ""
+
+        with (
+            patch.object(sys, "stdin", _BlockingStdin()),
+            pytest.raises(SystemExit) as exc,
+        ):
+            cli._read_stdin(0.2)  # noqa: SLF001
+        blocked.set()
+        assert exc.value.code == 124
+        assert "no input arrived on stdin" in capsys.readouterr().err
+
+    def test_an_unexpected_read_error_is_not_swallowed(self) -> None:
+        """Only a decode error is turned into a message; the rest propagate."""
+
+        class _BrokenStdin:
+            def isatty(self) -> bool:
+                return False
+
+            def read(self) -> str:
+                raise RuntimeError("disk on fire")
+
+        with (
+            patch.object(sys, "stdin", _BrokenStdin()),
+            pytest.raises(RuntimeError, match="disk on fire"),
+        ):
+            cli._read_stdin()  # noqa: SLF001
+
+    def test_the_waiting_notice_writes_one_line(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Called directly rather than waited for."""
+        cli._WaitingNotice._say("; close it")  # noqa: SLF001
+        err = capsys.readouterr().err
+        assert "still waiting for input on stdin" in err
+        assert "close it" in err
+
+    @pytest.mark.parametrize("command", ["run", "debug"])
+    def test_an_unknown_language_is_named_before_stdin_is_read(
+        self, command: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It read stdin first, so this answer waited on input forever."""
+        path = tmp_path / "p.txt"
+        path.write_text("+.")
+
+        class _NeverEnding:
+            def isatty(self) -> bool:
+                return False
+
+            def read(self) -> str:  # pragma: no cover - must not be called
+                raise AssertionError("stdin was read before the name resolved")
+
+        argv = ["esolangs", command, "NotALang", str(path)]
+        with (
+            patch.object(sys, "stdin", _NeverEnding()),
+            patch.object(sys, "argv", argv),
+            pytest.raises(SystemExit) as exc,
+        ):
+            main()
+        assert exc.value.code == 2
+        assert "unknown language" in capsys.readouterr().err

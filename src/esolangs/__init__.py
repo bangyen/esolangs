@@ -7,6 +7,11 @@ wrapper around the step-capable interpreters), ``make_debugger`` (a
 breakpoint/watch layer over the VM), ``describe`` (a structured language
 summary), and ``list_languages``.
 
+``encode_inputs`` and ``read_answer`` are the two halves of feeding a
+program and judging what it printed; ``check_stdin`` says whether stdin is
+what a language wants before anything runs; ``check_program`` applies the
+load-time checks on their own.
+
 ``evaluate`` and ``verify`` are the round trip those compose into: they
 generate a program for a truth table, run it on every row, and return the
 table it computes (or whether it matches).  They were missing from this
@@ -41,6 +46,7 @@ from esolangs.exceptions import (
     GeneratorCapError,
     HaltError,
     InputExhaustedError,
+    InputMismatchWarning,
     ProgramError,
     TemplateError,
     TruthTableError,
@@ -90,6 +96,7 @@ __all__ = [
     "GeneratorCapError",
     "HaltError",
     "InputExhaustedError",
+    "InputMismatchWarning",
     "ProgramError",
     "StopReason",
     "TemplateError",
@@ -539,7 +546,7 @@ def _warn_about_stdin(name: str, stdin: str) -> None:
     try:
         check_stdin(name, stdin)
     except EsolangError as exc:
-        warnings.warn(str(exc), stacklevel=3)
+        warnings.warn(str(exc), InputMismatchWarning, stacklevel=3)
 
 
 def _warn_about_surplus(name: str, io_obj: ScriptedIO) -> None:
@@ -559,6 +566,7 @@ def _warn_about_surplus(name: str, io_obj: ScriptedIO) -> None:
         warnings.warn(
             f"{name} read {read} of the {supplied} lines supplied on stdin; "
             f"the rest were ignored -- is this the right arity?",
+            InputMismatchWarning,
             stacklevel=3,
         )
     if io_obj.past_end and describe(name)["eof_is_a_value"]:
@@ -583,6 +591,7 @@ def _warn_about_surplus(name: str, io_obj: ScriptedIO) -> None:
             f"{name} read past the end of its input {io_obj.past_end} time(s) "
             f"and took a value each time rather than stopping; the answer is "
             f"for the row that implies, not the one the input names",
+            InputMismatchWarning,
             stacklevel=3,
         )
 
@@ -927,7 +936,15 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
         raise ArgumentError(f"stdin must be a string, got {type(stdin).__name__}")
     shape = str(facts["input_shape"])
     zero, one = cast("tuple[str, str]", facts["input_encoding"])
-    lines = stdin.strip().split("\n") if stdin.strip() else []
+    # ``splitlines``, which is what :class:`ScriptedIO` uses to cut stdin
+    # into the lines it hands over -- so this counts exactly the lines the
+    # program will read.  It was ``stdin.strip().split("\n")``, and the
+    # ``strip`` silently dropped a *leading or trailing blank line*: neither
+    # counted nor alphabet-checked here, while the interpreter consumed it
+    # as an input bit.  ``run("brainfuck", xor, "\n\n")`` answered 1 where
+    # XOR of two zeros is 0, with no warning, because this function had
+    # already decided there was nothing there.
+    lines = stdin.splitlines()
     wanted = None
     if truth_table is not None:
         wanted = _validate_shape_for_evaluate(truth_table)
@@ -941,6 +958,18 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
         if len(lines) != 1 or not lines[0].isdigit():
             raise ArgumentError(
                 f"{name} reads one decimal row index, but stdin is {stdin.strip()!r}"
+            )
+        if len(lines[0]) > 1 and lines[0][0] == "0":
+            # A decimal row index never has a leading zero, so this is
+            # almost always the bit string typed out: `0010` fed to a
+            # 16-row program parses as *ten* and answers row 10 instead of
+            # row 2.  Neither a count nor a range check catches it -- ten
+            # is one line and is in range -- and no table is needed to see
+            # it, which is why the rule is shaped this way.
+            raise ArgumentError(
+                f"{name} reads one decimal row index, and {lines[0]!r} has a "
+                f"leading zero -- if those are the input bits, the index is "
+                f"{int(lines[0], 2)}: `esolangs encode {name} {lines[0]}`"
             )
         if wanted is not None and int(lines[0]) >= 2**wanted:
             raise ArgumentError(
@@ -1100,14 +1129,70 @@ def evaluate(language: str, truth_table: str, timeout: float | None = None) -> s
         else:
             source, stdin = program, encode_inputs(name, bits, truth_table)
         if terminating:
-            try:
-                run(name, source, stdin=stdin, timeout=bound)
-                answers.append(halts_is)
-            except ExecutionTimeoutError:
-                answers.append(diverges_is)
+            answers.append(
+                _terminates(name, source, stdin, bound, halts_is, diverges_is)
+            )
         else:
             answers.append(read_answer(name, run(name, source, stdin, bound)))
     return "".join(answers)
+
+
+def _terminates(
+    name: str, source: str, stdin: str, bound: float, halts: str, diverges: str
+) -> str:
+    """Return this row's answer for a language that answers by terminating.
+
+    A *proof* where one is available.  These three answer 1 by never
+    stopping, so the obvious reading is "wait and see", and waiting is what
+    this did: five seconds per 1-row, twenty seconds per language at two
+    inputs and forty at three, which is most of what a sweep over the
+    registry cost.
+
+    A deterministic machine that returns to a state it has already been in
+    will do the same thing again forever, so a repeated snapshot settles it
+    exactly -- and settles it in milliseconds, because these programs
+    revisit a state within a hundred steps.  The clock stays as the
+    backstop :func:`~esolangs.vm.run_until_halt_or_cycle` asks for: it
+    proves *cycles*, and a loop that grows without bound never repeats a
+    state, so a program that does that still has to be timed out.
+
+    This was declined two rounds ago, when the proposal was a step budget.
+    That refusal was right and this is not the same thing: a budget guesses
+    that a program still running will never stop, and can be wrong about a
+    slow one; a repeated state is a fact about every future step.
+    """
+    from esolangs.vm import run_until_halt_or_cycle
+
+    machine = make_vm(name, source, stdin)
+    # A box, because ``_run`` exists to apply the timeout and discards what
+    # it drove -- which is right for ``run``, whose result is the io buffer.
+    verdict: list[bool] = []
+
+    def _drive(*_args: object) -> None:
+        verdict.append(run_until_halt_or_cycle(machine))
+
+    try:
+        _run(_drive, source, ScriptedIO(""), bound)
+    except ExecutionTimeoutError:  # pragma: no cover - see below
+        # No cycle inside the bound: unbounded growth, or simply slow.  The
+        # old answer, and still the right one.
+        #
+        # Not reached by any table the suite runs, and not for want of
+        # trying to: these programs revisit a state inside a hundred steps,
+        # so even a one-millisecond bound proves the cycle before the clock
+        # can fire.  It stays because the detector only proves *cycles* --
+        # a loop that grows without bound never repeats a state -- and its
+        # own docstring asks callers to keep a clock for that case.
+        return diverges
+    except InputExhaustedError:  # pragma: no cover - see below
+        # Reading past the end is how some of these stop; that is a halt.
+        #
+        # Not reachable through :func:`evaluate`, which encodes every row
+        # itself and so never underfeeds one -- kept because this is the
+        # one ending a *cycle* search cannot see coming, and a future
+        # caller passing its own stdin would hit it.
+        return halts
+    return halts if verdict and verdict[0] else diverges
 
 
 def verify(language: str, truth_table: str, timeout: float | None = None) -> bool:
