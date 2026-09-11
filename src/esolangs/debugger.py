@@ -17,11 +17,10 @@ from collections.abc import Callable
 from time import monotonic
 from typing import Literal
 
-from esolangs.exceptions import HaltError
 from esolangs.vm import VM, make_vm, run_until_halt
 
 #: Why a :meth:`Debugger.run` returned.
-StopReason = Literal["halted", "breakpoint", "max_steps"]
+StopReason = Literal["halted", "breakpoint", "max_steps", "timeout"]
 
 
 class Debugger:
@@ -41,6 +40,7 @@ class Debugger:
         self._stack_history: dict[int, list[object]] = {}
         self._suppressed: set[int] = set()
         self._hits: set[int] = set()
+        self._timed_out = False
 
     # -- passthrough to the wrapped VM --------------------------------
 
@@ -115,6 +115,10 @@ class Debugger:
         A cell that does not exist yet records ``None`` (the tape has not
         grown there); the list grows by one per :meth:`step`.  Watching a
         cell again returns the existing history.
+
+        **Recording starts here, not at construction**, so steps taken
+        before this call leave no entry: watch first, then run.  The list is
+        live, so the one returned keeps filling as the machine advances.
         """
         if index not in self._cell_history:
             self._cell_history[index] = []
@@ -148,9 +152,9 @@ class Debugger:
     ) -> StopReason:
         """Execute until the machine halts, a breakpoint fires, or a bound ends it.
 
-        Returns *why* it stopped -- ``"halted"``, ``"breakpoint"`` or
-        ``"max_steps"``.  It used to return ``None``, on the argument that
-        the contract was to stop rather than to report why; but ``halted``
+        Returns *why* it stopped -- ``"halted"``, ``"breakpoint"``,
+        ``"max_steps"`` or ``"timeout"``.  It used to return ``None``, on the
+        argument that the contract was to stop rather than to report why; but ``halted``
         only separates the first case from the other two, so a caller could
         not tell a breakpoint from an exhausted budget at all, and the CLI
         one layer up was already reporting exactly this.
@@ -164,10 +168,12 @@ class Debugger:
         first step executes.
 
         ``max_steps`` bounds the run in steps and ``timeout`` in wall-clock
-        seconds, raising :class:`~esolangs.exceptions.HaltError` when it
-        expires; the default of ``None`` for both is unbounded, which is
+        seconds; the default of ``None`` for both is unbounded, which is
         right for a machine known to halt and a hang for one that is not.
-        The timeout is checked in the same place as a breakpoint rather than
+        Either bound *returns* -- ``"max_steps"`` or ``"timeout"`` -- rather
+        than raising, so one ``reason ==`` covers every way a run can end and
+        a caller bounding both ways needs no ``except`` beside it.  The
+        timeout is checked in the same place as a breakpoint rather than
         through a signal, so it needs no main thread and leaves the machine
         inspectable where it stopped.
 
@@ -177,9 +183,12 @@ class Debugger:
         becoming a hook the shared loop would have to grow.
         """
         deadline = None if timeout is None else monotonic() + timeout
+        self._timed_out = False
         halted = run_until_halt(self, max_steps, stop=lambda: self._stop(deadline))
         if halted:
             return "halted"
+        if self._timed_out:
+            return "timeout"
         if self._at_breakpoint():
             self._suppressed = set(self._hits)
             return "breakpoint"
@@ -188,7 +197,8 @@ class Debugger:
     def _stop(self, deadline: float | None) -> bool:
         """Whether to stop before the next step: a breakpoint, or the clock."""
         if deadline is not None and monotonic() > deadline:
-            raise HaltError("execution exceeded the debugger's timeout")
+            self._timed_out = True
+            return True
         return self._at_breakpoint()
 
     def _at_breakpoint(self) -> bool:

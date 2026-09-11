@@ -1066,8 +1066,18 @@ def make_vm(language: str, program: str, stdin: str = "") -> VM:
     case-insensitively by :func:`~esolangs.registry.resolve`, as everywhere
     else in the API; every registered language is step-capable, so only a
     name outside the registry raises :class:`UnknownLanguageError`.
+
+    An unfilled ``{Xi}`` template is refused here for the same reason
+    :func:`esolangs.run` refuses one, and the check lives at this level
+    because stepping is the *other* way to execute a program: the debugger
+    ran one all the way to a confident ``output: '0'`` and reported it as an
+    answer, which is exactly the outcome the guard on ``run`` exists to
+    prevent.
     """
+    from esolangs import check_runnable
+
     name = resolve(language)
     if name not in _VM_ADAPTERS:
         raise UnknownLanguageError(language)
+    check_runnable(name, program)
     return _VM_ADAPTERS[name](program, stdin)

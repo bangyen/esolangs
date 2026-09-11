@@ -109,6 +109,23 @@ class BooleanExample:
     #: answers the wrong row instead of refusing it.  Carried here so
     #: ``describe`` can tell a caller before they feed it digits.
     alphabet: tuple[str, str] = ("0", "1")
+    #: How the bits are laid out on stdin.  ``line_per_bit`` is the rule
+    #: everywhere else; ``one_line`` puts them all on one (Clockwise packs
+    #: seven bits per character and reads the lot in one go); ``row_index``
+    #: sends a single number whose bits are the inputs (Fargo reads it
+    #: before the program starts and indexes it with ``@ k``).
+    input_shape: str = "line_per_bit"
+    #: Whether an odd input count is padded with a leading zero the program
+    #: reads like any other digit.  Taglate's slot stride has to land on a
+    #: separator, so its n=3 program reads four digits; feeding three is an
+    #: input-exhausted error, and padding at the *end* instead answers every
+    #: MSB-set row wrongly.  One input is the exception -- that arity is an
+    #: affine computation on the bit itself, and reads exactly one digit.
+    ghost_digit: bool = False
+    #: Whether the last bit is followed by a newline.  Taglate reads a
+    #: character at a time, so a trailing one is another character it goes
+    #: looking for and fails to find.
+    trailing_newline: bool = True
     bits: tuple[int, ...] = ()
     fill: Callable[[str, list[int]], str] | None = None
     split: bool = False
@@ -157,6 +174,9 @@ def _reader(
     kwargs: tuple[tuple[str, int], ...] = (),
     note: str = "",
     alphabet: tuple[str, str] = ("0", "1"),
+    input_shape: str = "line_per_bit",
+    ghost_digit: bool = False,
+    trailing_newline: bool = True,
 ) -> BooleanExample:
     """Build an input-reading example, whose bits are read from stdin."""
     return BooleanExample(
@@ -166,6 +186,9 @@ def _reader(
         expected=expected,
         inputs=inputs,
         alphabet=alphabet,
+        input_shape=input_shape,
+        ghost_digit=ghost_digit,
+        trailing_newline=trailing_newline,
         split=split,
         kwargs=kwargs,
         note=note,
@@ -538,7 +561,9 @@ def _register() -> None:
             b.container,
             "other.container",
             split=True,
-            note="halts by exiting with status 0",
+            note="Container prints the answer like any other reader; it "
+            "also ends by calling sys.exit(0) rather than returning, which "
+            "matters to a harness driving it but not to reading the result",
         ),
         # ``send`` terminates every line it writes, so the answer arrives
         # with a newline after it -- there is no other output command.
@@ -562,6 +587,7 @@ def _register() -> None:
             b.clockwise,
             "grid_based.clockwise",
             inputs=("01",),
+            input_shape="one_line",
             split=True,
             note="Clockwise packs seven bits per character and reads them "
             "all in one go, so its inputs are one line, not a line per bit; "
@@ -582,6 +608,7 @@ def _register() -> None:
             b.fargo,
             "other.fargo",
             inputs=("1",),
+            input_shape="row_index",
             note="Fargo reads one number whose bits are the inputs, so the "
             "committed input is the row index rather than a bit per line",
         ),
@@ -645,7 +672,18 @@ def _register() -> None:
         "super-snusp": _reader(b.super_snusp, "grid_based.super_snusp", split=True),
         "suffolk": _reader(b.suffolk, "tape_based.suffolk"),
         "suptiftam": _reader(b.suptiftam, "other.suptiftam"),
-        "taglate": _reader(b.taglate, "queue_based.taglate", split=True),
+        "taglate": _reader(
+            b.taglate,
+            "queue_based.taglate",
+            split=True,
+            ghost_digit=True,
+            trailing_newline=False,
+            note="Taglate reads its bits as characters, not lines: no newline "
+            "after the last one, and an odd input count above 1 is padded with "
+            "a leading zero the program reads like any other digit. Feeding "
+            "n lines to an n=3 program exhausts its input; padding at the end "
+            "instead answers every row whose top bit is set wrongly",
+        ),
         "unsquare": _reader(b.unsquare, "stack_based.unsquare"),
         "ztoalc-l": _reader(b.ztoalc_l, "other.ztoalc_l", split=True),
         "3d-brainfuck": _reader(b.three_d_brainfuck, "tape_based.three_d_brainfuck"),

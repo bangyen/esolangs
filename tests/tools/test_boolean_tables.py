@@ -36,7 +36,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from esolangs import encode_inputs
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
 from tests.raises import raises_message
 
@@ -94,52 +96,25 @@ def _answer(example: BooleanExample, got: str) -> str:
     return got[: -len(suffix)] if suffix and got.endswith(suffix) else got
 
 
-#: Languages whose input is not one ``0``/``1`` line per bit.  Grapheme
-#: reads a whole line and treats every non-empty string as truthy, so its
-#: generator normalizes a two-character alphabet instead; Fargo's
-#: interpreter reads the row index itself, before the program starts.
-#:
-#: Derived from the committed examples rather than written out here, so
-#: this sweep and ``describe(...)["input_encoding"]`` cannot disagree about
-#: what a language reads.  They did: this map knew Grapheme's ``%``/``A``
-#: and the example did not, so the committed program was run on digits --
-#: every one of which Grapheme reads as a 1 -- and passed only because the
-#: pinned row's answer matched the constant that produced.
-_ALPHABET = {
-    stem: example.alphabet
-    for stem, example in BOOLEAN_EXAMPLES.items()
-    if example.alphabet != ("0", "1")
-}
-_ROW_INDEX = frozenset({"fargo"})
-#: Languages that take every bit on one line rather than a line each --
-#: Clockwise packs seven bits per character and reads the lot in one go.
-_ONE_LINE = frozenset({"clockwise"})
-#: Languages whose last read must not be followed by a newline: Taglate
-#: reads a character at a time, so a trailing one is another character it
-#: would go looking for and fail to find.
-_NO_TRAILING_NEWLINE = frozenset({"taglate"})
-#: Taglate pads an odd input count with a leading "ghost" zero -- its
-#: slot stride has to land on a separator -- and reads that extra digit
-#: from the stream like any other, so the feed carries it.  One input is
-#: the exception: that arity is an affine computation on the bit itself
-#: rather than the interleaved fold, and reads exactly the one digit.
-_GHOST_DIGIT = frozenset({"taglate"})
-
-
 def _stdin(name: str, bits: list[int]) -> str:
-    """Spell ``bits`` the way this language's interpreter reads them."""
-    if name in _ROW_INDEX:
-        row = sum(bit << (len(bits) - 1 - i) for i, bit in enumerate(bits))
-        return f"{row}\n"
-    zero, one = _ALPHABET.get(name, ("0", "1"))
-    ghosted = name in _GHOST_DIGIT and len(bits) % 2 and len(bits) > 1
-    padded = [0, *bits] if ghosted else list(bits)
-    digits = [one if bit else zero for bit in padded]
-    if name in _ONE_LINE:
-        return "".join(digits)
-    if name in _NO_TRAILING_NEWLINE:
-        return "\n".join(digits)
-    return "".join(f"{digit}\n" for digit in digits)
+    """Spell ``bits`` the way this language's interpreter reads them.
+
+    The per-language facts -- Grapheme's ``%``/``A``, Clockwise's single
+    line, Fargo's row index, Taglate's ghost digit and missing trailing
+    newline -- used to be four frozensets right here, and that was the
+    problem: a caller of the library had no way to reach them, so each was
+    rediscovered as a silently wrong answer.  They now live on the example
+    entries and this delegates, which also means the sweep and the shipped
+    encoder cannot disagree about what a language reads.
+    """
+    return encode_inputs(_DISPLAY_NAME[name], bits)
+
+
+#: Example stem -> registry display name, which is what the public API takes.
+_BY_ID = {lang.id: name for name, lang in LANGUAGES.items()}
+_DISPLAY_NAME = {
+    stem: _BY_ID[canonical_id(stem.replace("-", " "))] for stem in BOOLEAN_EXAMPLES
+}
 
 
 def _combination(

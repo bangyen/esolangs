@@ -182,10 +182,16 @@ class TestDebuggerResume:
         assert dbg.run() == "halted"
 
     def test_timeout_bounds_an_unbounded_run(self) -> None:
-        """``run()`` with no budget hangs on a program that never halts."""
+        """``run()`` with no budget hangs on a program that never halts.
+
+        Both bounds report through the return value.  A timeout used to
+        raise while ``max_steps`` returned, so a caller bounding a runaway
+        both ways needed a ``try`` around a call whose stated job is to say
+        why it stopped.
+        """
         dbg = esolangs.make_debugger("brainfuck", "+[]", stdin="")
-        with pytest.raises(esolangs.HaltError, match="timeout"):
-            dbg.run(timeout=1)
+        assert dbg.run(timeout=1) == "timeout"
+        assert not dbg.halted
 
 
 class TestDescribe:
