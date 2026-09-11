@@ -12,6 +12,7 @@ than the one they asked for.
 
 import importlib.util
 import re
+import sys
 import tomllib
 from pathlib import Path
 
@@ -203,3 +204,92 @@ class TestCiRedoesEveryLocalStep:
         by_name = dict(verify.STEPS)
         for name in verify.FULL_ONLY:
             assert _signature(by_name[name]) in workflow, name
+
+
+class TestHeavyStepsAreNotRunInPytestsShadow:
+    """The shadow is only free for steps that use one core.
+
+    Filling it with everything was the whole cost of a push: measured alone,
+    pytest took 39.8s and the leak sweep 35.6s, and run together they took
+    137.3s and 85.4s.  Neither step was slow; they were fighting each other
+    for a 10-core machine.  So a step that is parallel in its own right waits
+    for pytest to join, and the ordering that makes that true is pinned here.
+    """
+
+    def test_the_heavy_names_are_real_steps(self) -> None:
+        """A name that drifted would stop deferring, silently.
+
+        ``HEAVY_STEPS`` is matched against the step table by string, so a
+        renamed step would not raise -- it would quietly go back to running
+        beside pytest, which is the thing this exists to prevent.
+        """
+        verify = load_script()
+        names = {name for name, _ in verify.STEPS}
+        assert names >= verify.HEAVY_STEPS
+        assert verify.LEAK_STEP in verify.HEAVY_STEPS
+
+    def test_a_heavy_step_runs_after_pytest_not_beside_it(self) -> None:
+        """Order: tree-mutating, then the cheap steps, then pytest, then heavy.
+
+        The timings come back in completion order, so this reads the schedule
+        off the result rather than off the source.  ``pytest`` landing before
+        the leak sweep is the point: in the old runner it landed last, because
+        it had been left racing everything else.
+        """
+        verify = load_script()
+        noop = [sys.executable, "-c", ""]
+        runnable = [
+            (name, noop, {})
+            for name in ("pre-commit", verify.LEAK_STEP, "bandit", "pytest")
+        ]
+        failures, timings, _ = verify._run_steps(runnable, stream=False)  # noqa: SLF001
+        assert failures == 0
+        assert [name for name, _ in timings] == [
+            "pre-commit",
+            "bandit",
+            "pytest",
+            verify.LEAK_STEP,
+        ]
+
+    def test_the_coverage_gate_still_follows_pytest(self) -> None:
+        """The gate reads the data file pytest writes, so it waits for it.
+
+        It also has to come *before* the heavy steps: it is 0.2s, it unblocks
+        nothing, and running it last would add that wait to a push for no
+        reason.
+        """
+        verify = load_script()
+        noop = [sys.executable, "-c", ""]
+        runnable = [(name, noop, {}) for name in ("pytest", "bandit", verify.LEAK_STEP)]
+        gate = (verify.DIFF_COVERAGE_STEP, noop, {})
+        _, timings, _ = verify._run_steps(runnable, stream=False, gate=gate)  # noqa: SLF001
+        order = [name for name, _ in timings]
+        assert order.index("pytest") < order.index(verify.DIFF_COVERAGE_STEP)
+        assert order.index(verify.DIFF_COVERAGE_STEP) < order.index(verify.LEAK_STEP)
+
+
+class TestOutputIsReplayedNotStreamed:
+    """A passing stack says nothing; a failing one says why.
+
+    The hook runs the whole stack, where streaming every step buries the one
+    line that matters.  A run of a single step is the opposite case, and the
+    two flags are the override in each direction.
+    """
+
+    def test_a_stack_replays_only_failures(self) -> None:
+        verify = load_script()
+        assert not verify._should_stream(5, quiet=False, verbose=False)  # noqa: SLF001
+
+    def test_a_single_step_streams(self) -> None:
+        """`just test-py` is asking to watch pytest run."""
+        verify = load_script()
+        assert verify._should_stream(1, quiet=False, verbose=False)  # noqa: SLF001
+
+    def test_quiet_forbids_streaming_even_alone(self) -> None:
+        """`just test-quick` passes --quiet and means it."""
+        verify = load_script()
+        assert not verify._should_stream(1, quiet=True, verbose=False)  # noqa: SLF001
+
+    def test_verbose_streams_the_whole_stack(self) -> None:
+        verify = load_script()
+        assert verify._should_stream(5, quiet=False, verbose=True)  # noqa: SLF001

@@ -58,9 +58,13 @@ ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || ROOT=""
 # scope all happen before verify.py's first line of output, and a push that
 # prints nothing at all looks like a push that has wedged rather than one that
 # is working.  Naming the escape hatch here is the point: the checks take a
-# couple of minutes on a branch that moved the shared machinery, and a user
-# who cannot see why reaches for --no-verify, which skips them entirely.
-echo "pre-push: running scripts/verify.py (a couple of minutes; --no-verify skips it)"
+# minute or so on a branch that moved the shared machinery, and a user who
+# cannot see why reaches for --no-verify, which skips them entirely.
+#
+# verify.py prints one line per step and replays the output of the ones that
+# failed.  `just test --verbose` streams every step's output live instead; it
+# is a wall of text, which is why the hook does not ask for it.
+echo "pre-push: running scripts/verify.py (about a minute; --no-verify skips it)"
 
 # verify.py picks the project interpreter itself (.venv, then uv run), so
 # the hook can hand it any python that can execute the file.
