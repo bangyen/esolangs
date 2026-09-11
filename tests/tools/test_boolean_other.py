@@ -2566,3 +2566,43 @@ class TestFunctionXY:
         # a nullary table is a constant, not a boolean function
         with pytest.raises(ValueError, match="at least one input"):
             boolean.function_x_y("0")
+
+    def test_a_width_names_the_subtrees_and_it_still_computes(self) -> None:
+        """A narrower program is the same tree with its nesting spread down.
+
+        The ternary is one statement, so its width is the whole tree until
+        a subtree is bound to a name.  What has to hold is that naming an
+        arm -- which evaluates it whether or not it is taken, where the
+        ternary would not have -- computes the same function; the arms are
+        literals and comparisons of already-read variables, so it does.
+        """
+        for table in ("0110", "01101001", "0110100110010110"):
+            n = len(table).bit_length() - 1
+            flat = boolean.function_x_y(table)
+            wide = max(len(row) for row in flat.splitlines())
+            floor = max(len(row) for row in boolean.function_x_y(table, 1).splitlines())
+            assert floor < wide, f"{table} never narrows"
+            for width in (1, 30, 45, 80, wide):
+                narrow = boolean.function_x_y(table, width)
+                columns = max(len(row) for row in narrow.splitlines())
+                assert columns <= max(width, floor), (table, width, columns)
+                for combo in range(2**n):
+                    bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                    got = run_function_x_y(narrow, bits)
+                    assert got == table[combo], (table, width, bits)
+
+    def test_naming_a_subtree_keeps_the_reads_out_of_it(self) -> None:
+        """The reads stay above the tree, one per input, however much is named.
+
+        Hoisting is only safe because the arms have nothing to evaluate
+        twice.  A ``[~]`` inside a named subtree would break that -- it
+        would read whether or not its branch was taken -- so the count of
+        reads is what pins the property down.
+        """
+        table = "0110100110010110"
+        for width in (None, 1, 30, 80):
+            program = boolean.function_x_y(table, width)
+            lines = program.splitlines()
+            reads = [line for line in lines if "[~]" in line]
+            assert reads == [f"var b{i}: [~]" for i in range(4)], width
+            assert program.count("[~]") == 4, width

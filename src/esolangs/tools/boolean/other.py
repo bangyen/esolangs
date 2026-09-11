@@ -74,7 +74,7 @@ def _const(n: int) -> str:
     return prog
 
 
-def function_x_y(truth_table: str) -> str:
+def function_x_y(truth_table: str, width: int | None = None) -> str:
     """Build a function x(y) program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -91,26 +91,84 @@ def function_x_y(truth_table: str) -> str:
     construction needs no control flow beyond it.  **The tree splits in
     whichever input order emits the shortest program**
     (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
+
+    ``width`` asks for a column count, and the tree meets one by *naming*
+    its subtrees.  A ternary is an expression, so the whole tree is one
+    statement and its width is the whole tree -- but ``var`` binds an
+    expression to a name, and a name is three characters wherever it is
+    used.  So a subtree whose text would push its line past the width is
+    emitted as a ``var`` of its own and referred to by name, which is the
+    same program with the nesting spread down the page instead of along
+    the line.
+
+    That is sound here for a reason worth stating, because it is not true
+    of the language in general: a ``var`` is evaluated where it stands,
+    while a ternary's arms are evaluated **lazily, exactly one of them**.
+    Hoisting an arm therefore evaluates it whether or not it is taken.
+    Nothing in this tree minds -- the arms are string literals and
+    comparisons of variables that were read before the tree starts, so they
+    have no effects to duplicate and no errors to raise.  The reads
+    themselves stay where they were, one per input, above the tree and
+    unconditional.
+
+    The floor is one node's own line, ``var tN: (bK == "1")<tA, tB>``, and
+    a width under it returns the narrowest program rather than refusing.
     """
-    return best_input_order(truth_table, _function_x_y_ordered)
+    return best_input_order(
+        truth_table,
+        lambda table, perm: _function_x_y_ordered(table, perm, width),
+    )
 
 
-def _function_x_y_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+def _function_x_y_ordered(
+    truth_table: str, perm: tuple[int, ...], width: int | None = None
+) -> str:
     """Emit one input order's function x(y) program; see :func:`function_x_y`."""
     n = _validate_truth_table(truth_table)
+    named: list[str] = []
+    # The prefix a named subtree's line carries.  It is measured against the
+    # *last* index the tree could reach rather than the next one, because a
+    # node is often named later than it is built -- a sibling subtree can
+    # spend several names in between -- and budgeting for the index at build
+    # time leaves the line a column short once the counter gains a digit.
+    head = len(f"var t{max(1, 2**n - 1)}: ")
 
     def build(i: int, combo: int) -> str:
+        """Return the text for this subtree, naming as much as the width needs.
+
+        The invariant is that what comes back always fits a ``var`` line of
+        its own.  That is what makes naming an arm legal at any point: the
+        arm has already been built to fit a line, so giving it one cannot
+        overflow.  Naming a *node* does not shorten the node, which is the
+        thing to get right -- a line is too long because of what is inside
+        it, so the arms are what have to go.
+        """
         # ``combo`` has the bits above level ``i`` set and the rest clear,
         # so it is the first row of the run this subtree covers.
         run = truth_table[combo : combo + 2 ** (n - i)]
         if i == n or len(set(run)) == 1:
             return f'"{truth_table[combo]}"'
-        one = build(i + 1, combo | (1 << (n - 1 - i)))
-        zero = build(i + 1, combo)
-        return f'(b{perm[i]} == "1")<{one}, {zero}>'
+        arms = [build(i + 1, combo | (1 << (n - 1 - i))), build(i + 1, combo)]
 
+        def compose() -> str:
+            return f'(b{perm[i]} == "1")<{arms[0]}, {arms[1]}>'
+
+        text = compose()
+        while width is not None and head + len(text) > width:
+            longest = max((0, 1), key=lambda j: len(arms[j]))
+            name = f"t{len(named)}"
+            if len(arms[longest]) <= len(name):
+                # Both arms are already names or literals: there is nothing
+                # left to give, and this node's own line is the floor.
+                break
+            named.append(f"var {name}: {arms[longest]}")
+            arms[longest] = name
+            text = compose()
+        return text
+
+    body = build(0, 0)
     reads = [f"var b{i}: [~]" for i in range(n)]
-    return "\n".join(["function truthTable()", *reads, f"`{build(0, 0)}"])
+    return "\n".join(["function truthTable()", *reads, *named, f"`{body}"])
 
 
 def myscript(truth_table: str) -> str:
