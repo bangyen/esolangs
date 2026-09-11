@@ -18,7 +18,6 @@ from pathlib import Path
 # hook repo (as it appears in .pre-commit-config.yaml) -> pyproject dist name
 HOOKS = {
     "https://github.com/charliermarsh/ruff-pre-commit": "ruff",
-    "https://github.com/pre-commit/mirrors-mypy": "mypy",
 }
 
 ROOT = Path(__file__).resolve().parents[1]
