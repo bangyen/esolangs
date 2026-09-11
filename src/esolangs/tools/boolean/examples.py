@@ -129,10 +129,17 @@ class BooleanExample:
     answer_values: tuple[str, str] = ("0", "1")
     #: How this language spells an input 0 and an input 1.  Almost always
     #: the digits, but not universally, and the exception is silent rather
-    #: than loud: Grapheme's ``W`` reads a whole line and every non-empty
-    #: string is truthy, so a ``"0"`` line reads as a 1 and the program
-    #: answers the wrong row instead of refusing it.  Carried here so
-    #: ``describe`` can tell a caller before they feed it digits.
+    #: than loud: Grapheme's generator normalizes each line with
+    #: ``ord(line[0]) - 65``, so ``A`` is a 1 and every other first
+    #: character is a 0 -- a ``"0"`` line and a ``"1"`` line both read as
+    #: 0, and the program answers the all-zeros row instead of refusing.
+    #:
+    #: This said "every non-empty string is truthy, so a ``"0"`` line reads
+    #: as a 1", which is the language's general rule and not what the
+    #: generator does with it.  The warning was right and its direction was
+    #: backwards, which is worse than saying nothing: a reader who trusts
+    #: the reason predicts all-ones and debugs the wrong thing.  Carried
+    #: here so ``describe`` can tell a caller before they feed it digits.
     alphabet: tuple[str, str] = ("0", "1")
     #: How the bits are laid out on stdin.  ``line_per_bit`` is the rule
     #: everywhere else; ``one_line`` puts them all on one (Clockwise packs
@@ -660,9 +667,11 @@ def _register() -> None:
             inputs=("%", "A"),
             alphabet=("%", "A"),
             note=(
-                "Grapheme's W reads a whole line and every non-empty string "
-                "is truthy, so its input bits are spelled % and A; a 0/1 line "
-                "reads as a 1 and the program answers the wrong row"
+                "Grapheme's generator normalizes each input line with "
+                "ord(line[0]) - 65, so its input bits are spelled % and A: "
+                "'A' is a 1 and every other first character is a 0, which "
+                "means a 0/1 line reads as 0 and the program answers the "
+                "all-zeros row"
             ),
         ),
         "jaune": _reader(b.jaune, "tape_based.jaune"),

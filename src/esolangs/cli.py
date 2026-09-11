@@ -47,6 +47,7 @@ from esolangs import (
     check_runnable,
     describe,
     encode_inputs,
+    evaluate,
     generate,
     instantiate,
     list_languages,
@@ -54,7 +55,12 @@ from esolangs import (
     run,
 )
 from esolangs.debugger import make_debugger
-from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
+from esolangs.exceptions import (
+    EsolangError,
+    ExecutionTimeoutError,
+    GeneratorCapError,
+    TemplateError,
+)
 from esolangs.registry import LANGUAGES
 from esolangs.tools.wrap import DEFAULT_WIDTH
 
@@ -73,6 +79,11 @@ commands:
                               (--judge prints the answer bit instead)
   read-answer <language>      read a program's output on stdin and print
                               the answer bit it carries
+  verify <language> <truth-table>
+                              generate, run every row, and report whether
+                              the program computes that table
+  evaluate <language> <truth-table>
+                              the same, printing the table it computed
   debug [--steps N] [--timeout S] [--watch-cell I] [--break-on-output S]
         <language> <file>
                               run under the debugger and report where it
@@ -89,6 +100,7 @@ examples:
   esolangs generate --width brainfuck 10010110
   esolangs generate --bits 10 Minifuck 0110
   esolangs run Circlefuck hello.txt
+  esolangs verify Fargo 10010110
   esolangs encode LaserFuck 10 | esolangs run --judge LaserFuck prog.txt
   esolangs debug --steps 20 --watch-cell 0 brainfuck prog.txt
 """
@@ -167,9 +179,11 @@ The program is read from <program-file>; its input is this command's stdin.
 Most languages read one line per input bit, but four do not: Grapheme reads
 %/A rather than 0/1, Clockwise takes every bit on one line, Fargo takes the
 row index as one decimal number, and Taglate pads an odd input count with a
-leading zero line, so its 3-input programs read four.  Feeding the wrong
-encoding is answered with a wrong result, not an error, so check
-`esolangs describe <language>` -- or have `esolangs encode` spell it for you:
+leading zero line, so its 3-input programs read four.  Stdin is checked
+against that shape: this command warns, and `--judge` refuses outright.  A
+shape indistinguishable from a legitimate one still answers the wrong row,
+so check `esolangs describe <language>` -- or have `esolangs encode` spell
+it for you:
 
     esolangs encode Taglate 101 | esolangs run Taglate prog.txt
 
@@ -195,6 +209,44 @@ options:
                      `@`), and three answer by terminating or not.  Judging
                      needs `--timeout` for those three, since not
                      terminating is what the 1 looks like.
+""",
+    "verify": """usage: esolangs verify [--timeout S] <language> <truth-table>
+
+Generate a program for <truth-table>, run it on every row of its input
+space, and report whether it computes that table.
+
+Prints `ok` and exits 0 on a match.  On a mismatch it prints the table the
+program actually computed beside the one you asked for, and exits 1.
+
+This is the whole round trip in one command: generate, encode each row's
+bits in whatever shape the language wants, run, and read the answer out of
+whatever the program printed.  Doing it by hand means a shell loop over
+2**n rows -- which is what the Python API's `esolangs.verify` was already
+for, and what a CLI-only user had to write out.
+
+A generator may refuse a table as too big for it; that is reported and
+exits 2, since nothing ran.
+
+options:
+  --timeout SECONDS  bound each row.  The three languages that answer 1 by
+                     not terminating pay this on every 1-row, so a low
+                     value is worth setting for them.
+
+examples:
+  esolangs verify brainfuck 0110
+  esolangs verify --timeout 5 123 0110
+""",
+    "evaluate": """usage: esolangs evaluate [--timeout S] <language> <truth-table>
+
+Print the truth table a generated <language> program actually computes.
+
+`verify` with the comparison left to you: the output is a binary string the
+same length as <truth-table>, so a mismatch shows which rows disagree
+rather than collapsing to a yes or no.  Exits 0 whenever the program ran.
+
+examples:
+  esolangs evaluate brainfuck 0110
+  esolangs evaluate "A Painter Ant" 10010110
 """,
     "describe": """usage: esolangs describe <language>
 
@@ -331,6 +383,8 @@ _ARGUMENTS = {
     "debug": ("<language>", "<program-file>"),
     "describe": ("<language>",),
     "read-answer": ("<language>",),
+    "verify": ("<language>", "<truth-table>"),
+    "evaluate": ("<language>", "<truth-table>"),
 }
 
 
@@ -650,11 +704,30 @@ def _shape_warning(facts: dict[str, object], stdin: str) -> str:
     Every test below reads a ``describe`` field, so a fifth exceptional
     language is covered by declaring its shape and nothing here changes.
     """
-    if not stdin.strip():
-        return ""
     shape, alphabet = facts["input_shape"], facts["input_encoding"]
     zero, one = cast("tuple[str, str]", alphabet)
     lines = stdin.strip().split("\n")
+    if shape == "row_index" and not (len(lines) == 1 and lines[0].isdigit()):
+        # Fargo reads one decimal number and indexes its bits with it, so
+        # `abc`, `3.7` and a blank line were each read as row 0 and answered
+        # with a confident bit at exit 0.  It is the least guessable input
+        # shape in the set, which makes it the one most likely to be typed
+        # by hand -- and the likeliest slip, wanting bits `10` and typing
+        # `10`, is decimal ten, which wraps to a row that exists.
+        #
+        # Checked before the blank-stdin return below, because a blank
+        # stdin is one of the inputs this silently read as row 0.
+        #
+        # Out of *range* is a different matter and is not checked here: an
+        # `8` on a three-input program is a perfectly good integer, and this
+        # command does not know the program's arity.  `esolangs verify`
+        # does, because it enumerates the rows itself.
+        return (
+            f"{facts['name']} reads one decimal row index, but stdin is "
+            f"{stdin.strip()!r}; `esolangs encode` builds the right stdin"
+        )
+    if not stdin.strip():
+        return ""
     naive = all(line in ("0", "1") for line in lines)
     if {zero, one} != {"0", "1"} and naive:
         return (
@@ -890,14 +963,29 @@ def _describe(rest: list[str]) -> None:
     except EsolangError as exc:
         _fail(str(exc))
         raise  # pragma: no cover - unreachable; _fail exits
+    # A template language reads no stdin, so its input shape and alphabet
+    # are noise -- and ``input_shape`` is the field the README tells you to
+    # trust.  Hidden here rather than dropped from ``describe()``, whose
+    # keys stay uniform across all 69: a caller that iterates them without
+    # branching is the pattern this package spent four rounds proving, and
+    # a per-language schema would break it.
+    hidden = set()
+    if not facts["reads_input"] and facts["parameterized"]:
+        hidden = {"input_shape", "input_encoding"}
     width = max(len(key) for key in facts)
     for key, value in facts.items():
-        if value is None or value == "":
+        if value is None or value == "" or key in hidden:
             continue
         shown = "\n".join(str(v) for v in value) if isinstance(value, list) else value
         if isinstance(value, tuple):
             shown = " ".join(str(v) for v in value)
         print(f"{key.ljust(width)}  {shown}")
+    if hidden:
+        print(
+            f"{'input'.ljust(width)}  none -- this generator embeds the bits "
+            f"in the program: esolangs generate --bits <bits> "
+            f"{facts['name']} <table>"
+        )
 
 
 def _read_answer(rest: list[str]) -> None:
@@ -929,6 +1017,57 @@ def _read_answer(rest: list[str]) -> None:
         print(read_answer(language, output))
     except EsolangError as exc:
         _fail(str(exc))
+
+
+def _evaluate(rest: list[str]) -> None:
+    """Print the table a generated program actually computes."""
+    _run_round_trip(rest, "evaluate")
+
+
+def _verify(rest: list[str]) -> None:
+    """Report whether a generated program computes the table asked for."""
+    _run_round_trip(rest, "verify")
+
+
+def _run_round_trip(rest: list[str], command: str) -> None:
+    """Shared body of ``verify`` and ``evaluate``.
+
+    One function because they differ only in what they print: the work --
+    generate, walk every row, encode, run, read the answer -- is the same,
+    and is the thing a CLI-only user had to write a shell loop for.
+    """
+    rest, options = _pop_options(rest, {"--timeout"})
+    timeout = _timeout_of(options)
+    rest = _split_positional(rest, set(), {"--timeout"})
+    _check_count(command, rest, 2)
+    language, table = rest[0], rest[1]
+    try:
+        computed = evaluate(language, table, timeout)
+    except GeneratorCapError as exc:
+        # Nothing ran, so this is the usage class: the generator refused the
+        # table rather than building a program that got the wrong answer.
+        _fail(str(exc))
+    except EsolangError as exc:
+        # No ``TemplateError`` clause: this command never hands an unfilled
+        # template on, because ``evaluate`` reads ``parameterized`` and
+        # fills the slots itself.
+        _fail(str(exc), 2 if isinstance(exc, ValueError) else 1)
+    if command == "evaluate":
+        print(computed)
+        return
+    if computed == table:
+        print("ok")
+        return
+    # The computed table beside the wanted one, because which rows disagree
+    # is the whole content of a failure here.
+    differing = [
+        i for i, (a, b) in enumerate(zip(computed, table, strict=True)) if a != b
+    ]
+    _fail(
+        f"computed {computed}, wanted {table}\n"
+        f"{len(differing)} row(s) disagree: {', '.join(map(str, differing))}",
+        1,
+    )
 
 
 def _judge(language: str, output: str, mode: object) -> str:
@@ -1082,6 +1221,8 @@ def main() -> None:
         "generate": _generate,
         "run": _run,
         "read-answer": _read_answer,
+        "verify": _verify,
+        "evaluate": _evaluate,
         "debug": _debug,
     }[cmd](rest)
 

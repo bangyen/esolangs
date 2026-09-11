@@ -333,3 +333,107 @@ class TestWidthEffectSaysWhatWidthDoes:
         assert "\n" not in wide
         assert "\n" in narrow
         assert esolangs.describe("Sophie")["width_effect"] == "wrap"
+
+
+class TestEveryAuditedCapIsCatchable:
+    """The n=11 probe that found the first five was bounded by n=11.
+
+    NoComment first refuses at n=12, so it escaped that sweep and still
+    raised a bare ``ValueError`` -- and a reader following the try/except
+    the previous round *added to the docstring* was met with an uncaught
+    exception.  The fix for a class of bug cannot be found by widening the
+    sweep that missed it, so the remaining sites were audited by reading.
+    """
+
+    def test_nocomment_is_catchable_at_the_size_it_refuses(self) -> None:
+        """The confirmed escape, at the first arity that triggers it."""
+        with pytest.raises(esolangs.GeneratorCapError, match="cell"):
+            esolangs.generate("NoComment", "01" * (1 << 11))
+
+    def test_it_is_catchable_through_evaluate_too(self) -> None:
+        """It leaked through ``evaluate`` identically."""
+        with pytest.raises(esolangs.GeneratorCapError):
+            esolangs.evaluate("NoComment", "01" * (1 << 11))
+
+    @pytest.mark.slow
+    def test_nothing_escapes_the_contract_at_twelve_inputs(self) -> None:
+        """A periodic table, so the generators that blow up stay small."""
+        table = "0010" * (1 << 10)
+        escaped = []
+        for name in esolangs.list_languages():
+            try:
+                esolangs.generate(name, table)
+            except esolangs.EsolangError:
+                pass
+            except Exception as exc:
+                escaped.append(f"{name}: {type(exc).__name__}")
+        assert not escaped, escaped
+
+    def test_the_docstring_states_no_count(self) -> None:
+        """It said "Five do" and six do; a tally in prose is a second copy."""
+        assert esolangs.generate.__doc__ is not None
+        assert "Five do" not in esolangs.generate.__doc__
+
+
+class TestGraphemeReadsWhatTheDocsNowSay:
+    """The stated mechanism was wrong, and so was its stated direction."""
+
+    def test_only_an_a_line_reads_as_one(self) -> None:
+        """'0', '1', 'x' and ' ' are all non-empty and all read as 0."""
+        program = esolangs.generate("Grapheme", "01")
+        answers = {}
+        for line in ("A", "%", "0", "1", "x", " "):
+            output = esolangs.run("Grapheme", program, line + "\n", timeout=10)
+            answers[line] = esolangs.read_answer("Grapheme", output)
+        assert answers == {
+            "A": "1",
+            "%": "0",
+            "0": "0",
+            "1": "0",
+            "x": "0",
+            " ": "0",
+        }
+
+    def test_the_convention_no_longer_claims_truthiness(self) -> None:
+        """It said a 0/1 line reads as a 1; it reads as a 0."""
+        note = str(esolangs.describe("Grapheme")["answer_convention"])
+        assert "non-empty string" not in note
+        assert "ord(line[0]) - 65" in note
+
+    def test_naive_input_answers_the_all_zeros_row(self) -> None:
+        """The true consequence: every bit reads 0, so you get row 0."""
+        table = "0001"  # AND: row 0 is 0, row 3 is 1
+        program = esolangs.generate("Grapheme", table)
+        output = esolangs.run("Grapheme", program, "1\n1\n", timeout=10)
+        assert esolangs.read_answer("Grapheme", output) == table[0]
+
+
+class TestBreakAtChecksTheKindOfPosition:
+    """Both wrong-kind breakpoints were stored and could never fire."""
+
+    def test_a_tuple_is_refused_where_the_ip_is_an_index(self) -> None:
+        """brainfuck's ip is an int."""
+        program = esolangs.generate("brainfuck", "0110")
+        debugger = esolangs.make_debugger("brainfuck", program, "0\n1\n")
+        with pytest.raises(esolangs.ArgumentError, match="could never fire"):
+            debugger.break_at((1, 2))
+
+    def test_an_index_is_refused_where_the_ip_is_a_coordinate(self) -> None:
+        """Alight's is a 4-tuple."""
+        program = esolangs.generate("Alight", "0110")
+        debugger = esolangs.make_debugger("Alight", program, "0\n1\n")
+        with pytest.raises(esolangs.ArgumentError, match="could never fire"):
+            debugger.break_at(10)
+
+    def test_the_right_kind_is_accepted(self) -> None:
+        """And still fires, which is the point of checking the other."""
+        program = esolangs.generate("brainfuck", "0110")
+        debugger = esolangs.make_debugger("brainfuck", program, "0\n1\n")
+        debugger.break_at(0)
+        assert debugger.run(max_steps=100) == "breakpoint"
+
+    def test_the_arity_is_not_checked(self) -> None:
+        """It varies within a run, so checking it would refuse valid ones."""
+        program = esolangs.generate("Alight", "0110")
+        debugger = esolangs.make_debugger("Alight", program, "0\n1\n")
+        debugger.break_at((1, 2))  # wrong arity for Alight, accepted
