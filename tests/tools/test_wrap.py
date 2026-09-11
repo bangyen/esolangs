@@ -29,11 +29,13 @@ from esolangs.tools.wrap import (
     MULTILINE,
     WRAPPERS,
     _bio,
+    _bitdeque,
     _cell_width,
     _polynomial,
     _six_five,
     _span,
     _taglate,
+    takes_width,
     wrap_chars,
     wrap_grid,
     wrap_program,
@@ -44,6 +46,17 @@ from esolangs.tools.wrap import (
 # A 2-input table (XOR), which every boolean generator can build.  Used
 # where a test needs *a* program rather than the language's own example.
 TABLE = "0110"
+
+# A third width, narrower than any a reader would ask for, because a broken
+# wrapper is not broken at every width.  Whether a break lands inside a
+# multi-character token depends on where the width happens to put it, so a
+# wrapper can be wrong and still pass at both conventional widths: Bitdeque
+# answered 1 instead of 0 at 12 and 13 while 11, 14, 40 and 80 were all
+# correct, and the three registered since (Lamfunc, RAM0, Jaune) each broke
+# under wrap_chars at some width between 10 and 50 while passing at 80.
+# Sweeping a dozen widths per language belongs in a scratch harness; one odd
+# width in the suite is what keeps the class from coming back.
+NARROW_WIDTH = 13
 
 # Languages that must never be *reflowed*, and why.  Not a restatement of
 # the implementation: each was verified to break (or to be meaningless) when
@@ -56,12 +69,22 @@ UNWRAPPABLE = {
 # honours a width itself by *laying its program out* to fit rather than by
 # ignoring it, so they belong here rather than in UNWRAPPABLE.  LaserFuck's
 # loop layout is tied to the beam's track and cannot fold, so a loop program
-# wider than the width is re-emitted as the (foldable) linear form; Dig
-# folds its segments over several row pairs.
-WIDTH_HONOURING = {
-    "laserfuck": "falls back to the foldable linear form",
-    "dig": "folds its segments over several row pairs",
-}
+# wider than the width is re-emitted as the (foldable) linear form.
+#
+# Derived from :func:`takes_width` rather than written out, for the reason
+# ``esolangs.tools.boolean.BOOLEAN`` is derived from the registry: the
+# hand-written table had drifted both ways.  It named Dig, which honours no
+# width at all -- ``dig`` takes only a truth table, its ``width`` is the
+# local constant ``len(_DIG_BRANCH)``, and the program it returns is
+# identical whatever width is asked for, running 48 columns at ``n == 6``
+# against a requested 40.  The 2-input table below is 20 columns wide, which
+# is what let it pass.  And it omitted Streetcode, which really does take
+# one.  A derived table cannot make either mistake.
+WIDTH_HONOURING = sorted(
+    lang.id
+    for lang in LANGUAGES.values()
+    if lang.boolean is not None and takes_width(lang.boolean)
+)
 
 # The boolean example for each language, keyed by the language id rather
 # than the example's stem.  The two differ ("6-5" against ``six_five``), and
@@ -113,7 +136,11 @@ def _replaces_a_space(name: str) -> bool:
     character and fixed-token wrappers insert a newline where there was no
     separator at all.  Undoing the wrap therefore differs between the two.
     """
-    return WRAPPERS[LANGUAGES[name].id] in (wrap_space_delimited, _polynomial)
+    return WRAPPERS[LANGUAGES[name].id] in (
+        wrap_space_delimited,
+        _polynomial,
+        _bitdeque,
+    )
 
 
 def _is_grid(name: str) -> bool:
@@ -144,7 +171,7 @@ def _run(name: str, program: str) -> str:
 
 
 @pytest.mark.parametrize("name", WRAPPED)
-@pytest.mark.parametrize("width", [40, DEFAULT_WIDTH])
+@pytest.mark.parametrize("width", [NARROW_WIDTH, 40, DEFAULT_WIDTH])
 def test_wrapped_program_prints_the_same(name: str, width: int) -> None:
     """A wrapped program behaves exactly as the unwrapped one behaves."""
     example = _example(name)
@@ -152,7 +179,7 @@ def test_wrapped_program_prints_the_same(name: str, width: int) -> None:
 
 
 @pytest.mark.parametrize("name", WRAPPED)
-@pytest.mark.parametrize("width", [40, DEFAULT_WIDTH])
+@pytest.mark.parametrize("width", [NARROW_WIDTH, 40, DEFAULT_WIDTH])
 def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
     """Wrapping preserves the token sequence exactly.
 
@@ -181,10 +208,15 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
         return
     # BIO indents by nesting depth, and its commands carry no separator at
     # all -- the whole program is one whitespace-delimited token, so the
-    # token check above says nothing about it.  Stripping the indent off
-    # each line and rejoining must give the original back exactly.
+    # token check above says nothing about it.  What must survive is the
+    # command text; BIO's own parse rejoins across whitespace before reading
+    # it, so a program the wrapper breaks where a space already stood is the
+    # same program even though the space is gone.  Comparing with all
+    # whitespace removed says exactly that, where stripping only the indent
+    # asserted the spacing too and failed at a width that happened to break
+    # on one.
     if WRAPPERS[LANGUAGES[name].id] is _bio:
-        assert "".join(line.strip() for line in wrapped.split("\n")) == plain
+        assert "".join(wrapped.split()) == "".join(plain.split())
         return
     # Taglate's first line is a structural queue seed the wrapper must leave
     # alone; only the commands below it are reflowed.
@@ -277,7 +309,7 @@ def test_unwrappable_languages_are_untouched(name: str) -> None:
     assert wrap_program(program, language.id, 4) == program
 
 
-@pytest.mark.parametrize("name", sorted(WIDTH_HONOURING))
+@pytest.mark.parametrize("name", WIDTH_HONOURING)
 def test_width_honouring_languages_respect_the_width(name: str) -> None:
     """A generator that lays itself out really does fit the width given.
 
@@ -292,7 +324,7 @@ def test_width_honouring_languages_respect_the_width(name: str) -> None:
     pin the layout, not the width.
     """
     language = next(lang for lang in LANGUAGES.values() if lang.id == name)
-    assert language.id not in WRAPPERS, WIDTH_HONOURING[name]
+    assert language.id not in WRAPPERS, f"{name} both lays out and reflows"
     assert language.boolean is not None
     for width in (40, 80, 94):
         program = generate(language.name, TABLE, width)
