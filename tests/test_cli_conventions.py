@@ -1880,3 +1880,189 @@ class TestDebugReportsALoadFailure:
             call_main(["debug", "brainfuck", str(path)], capsys, stdin="1\n0\n")
         assert exc.value.code == 2
         assert "looks like a path" in capsys.readouterr().err
+
+
+class TestReadingTheProgramFileIsBounded:
+    """It was the one unguarded blocking call left in the command."""
+
+    def test_a_character_device_is_refused_by_size(self) -> None:
+        """`/dev/zero` reached 3.9 GB of resident memory and never returned."""
+        result = run_cli("run", "--timeout", "2", "brainfuck", "/dev/zero")
+        assert result.returncode == 2
+        assert "larger than" in result.stderr
+
+    @pytest.mark.slow
+    def test_a_fifo_with_no_writer_is_bounded(self, tmp_path: Path) -> None:
+        """`--timeout` bounds the *run*, and this happens before one.
+
+        The open blocks as well as the read -- a FIFO waits for a writer --
+        so bounding only the read left it hanging one line earlier.
+        """
+        import os
+
+        fifo = tmp_path / "fifo"
+        os.mkfifo(fifo)
+        result = run_cli("run", "--timeout", "2", "brainfuck", str(fifo))
+        assert result.returncode == 124
+        assert "not delivering data" in result.stderr
+
+    def test_an_ordinary_program_still_reads(self, tmp_path: Path) -> None:
+        """The guard is worth nothing if it costs the normal path."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        result = run_cli("run", "--judge", "brainfuck", str(path), stdin="1\n0\n")
+        assert result.returncode == 0
+        assert result.stdout.strip() == "1"
+
+
+class TestTimeoutValuesAreCheckedOnce:
+    """The CLI had its own rules and did not know about the library's."""
+
+    @pytest.mark.parametrize("value", ["1e9", "1e10"])
+    def test_a_huge_bound_is_refused_not_crashed(
+        self, value: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """1e9 gave `ItimerError`, 1e10 an `OverflowError`, both raw."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["run", "--timeout", value, "brainfuck", str(path)],
+                capsys,
+                stdin="1\n0\n",
+            )
+        assert exc.value.code == 2
+        assert "--timeout must be at most" in capsys.readouterr().err
+
+    def test_a_tiny_bound_is_refused_by_the_same_rules(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The floor the library grew, which this used not to apply."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["run", "--timeout", "0.0001", "brainfuck", str(path)],
+                capsys,
+                stdin="1\n0\n",
+            )
+        assert exc.value.code == 2
+        assert "--timeout must be at least" in capsys.readouterr().err
+
+    @pytest.mark.parametrize("value", ["0", "-3", "abc", "inf", "nan"])
+    def test_the_old_refusals_still_hold(
+        self, value: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Delegating must not lose the cases that already worked."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["run", "--timeout", value, "brainfuck", str(path)],
+                capsys,
+                stdin="1\n0\n",
+            )
+        assert exc.value.code == 2
+        assert "--timeout" in capsys.readouterr().err
+
+    def test_a_reasonable_bound_is_accepted(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Between the floor and the ceiling, nothing changes."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        out = call_main(
+            ["run", "--judge", "--timeout", "100000", "brainfuck", str(path)],
+            capsys,
+            stdin="1\n0\n",
+        )
+        assert out.strip() == "1"
+
+
+class TestAClosedPipeIsNotAnError:
+    """`esolangs generate ... | head` is an ordinary thing to type."""
+
+    def test_closing_before_the_first_write_is_silent(self) -> None:
+        """It printed "Exception ignored while flushing sys.stdout"."""
+        import subprocess
+
+        first = subprocess.Popen(
+            [sys.executable, "-m", "esolangs", "generate", "brainfuck", "0110"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        assert first.stdout is not None
+        first.stdout.close()
+        first.wait(timeout=30)
+        assert first.stderr is not None
+        assert "BrokenPipeError" not in first.stderr.read()
+
+
+class TestTheBoundedReaderInProcess:
+    """The subprocess tests prove the behaviour; these reach the lines."""
+
+    def test_a_read_that_never_delivers_is_bounded(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A FIFO with no writer, as an open that never returns."""
+        import os
+
+        fifo = tmp_path / "fifo"
+        os.mkfifo(fifo)
+        with pytest.raises(SystemExit) as exc:
+            cli._bounded_read(str(fifo), 0.2)  # noqa: SLF001
+        assert exc.value.code == 124
+        assert "not delivering data" in capsys.readouterr().err
+
+    def test_an_unreadable_file_is_named(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The OSError clause, now that the open happens on the thread."""
+        with pytest.raises(SystemExit) as exc:
+            cli._bounded_read(str(tmp_path), 1.0)  # noqa: SLF001
+        assert exc.value.code == 2
+        assert "cannot read" in capsys.readouterr().err
+
+    def test_a_binary_file_is_named(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """And the decode clause beside it."""
+        path = tmp_path / "b.txt"
+        path.write_bytes(bytes(range(256)))
+        with pytest.raises(SystemExit) as exc:
+            cli._bounded_read(str(path), 1.0)  # noqa: SLF001
+        assert exc.value.code == 2
+        assert "not text" in capsys.readouterr().err
+
+    def test_an_unexpected_error_propagates(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Only the two named kinds become messages; the rest are bugs."""
+        path = tmp_path / "p.txt"
+        path.write_text("+.")
+
+        def _boom(*_a: object, **_k: object) -> object:
+            raise RuntimeError("disk on fire")
+
+        monkeypatch.setattr("builtins.open", _boom)
+        with pytest.raises(RuntimeError, match="disk on fire"):
+            cli._bounded_read(str(path), 1.0)  # noqa: SLF001
+
+
+class TestAnInterruptIsNotATraceback:
+    """The tool invites Ctrl-C and then tracebacked when it arrived."""
+
+    def test_it_exits_130_with_one_line(
+        self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """130 is the shell's convention for a command killed by SIGINT."""
+
+        def _interrupt() -> None:
+            raise KeyboardInterrupt
+
+        monkeypatch.setattr(cli, "_dispatch", _interrupt)
+        with pytest.raises(SystemExit) as exc:
+            cli.main()
+        assert exc.value.code == 130
+        assert capsys.readouterr().err.strip() == "interrupted"

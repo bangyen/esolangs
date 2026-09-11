@@ -937,34 +937,46 @@ class TestTheTerminationProofFallsBackToTheClock:
 
 
 class TestATimeoutCannotKillTheProcess:
-    """The one open defect of this whole QA loop, and how it was closed.
+    """The long-running defect, and the second thing it turned into.
 
     A sub-millisecond ``timeout`` killed the interpreter outright about one
     run in three: no traceback, no exception, exit 142, which is SIGALRM's
     default disposition doing what it does.  Two attempts to close the race
-    that delivered it -- ignoring the signal before disarming the timer, then
-    making the handler refuse to raise into its own teardown -- cut the rate
-    to roughly one run in four thousand and stopped there, and the path the
-    kernel took to deliver that last one was never derived.
+    that delivers it failed, and the third worked by never restoring
+    ``SIG_DFL`` -- a handler that does nothing cannot kill anything.
 
-    So the fix stopped trying to understand it: ``SIGALRM`` is never handed
-    back to ``SIG_DFL``, and a handler that does nothing cannot kill
-    anything whenever it is reached.  Measured after: zero deaths in four
-    thousand timed runs at a 100-microsecond bound, where the same harness
-    had shown them reliably before.
+    That fix was wrong in a quieter way, and a later reader found it: the
+    no-op stayed installed, so every alarm the *caller* set afterwards was
+    swallowed, and a pending one was cancelled outright.  Taking someone
+    else's signals is worse than a rare death at a bound nobody uses.
+
+    So the disposition is restored exactly, the pending alarm is put back,
+    and the bound that re-opens the race is refused instead.  Measured, with
+    ``SIG_DFL`` genuinely restored: at 100 microseconds 19 of 20 processes
+    hammering it died; at 1 millisecond, none in 4000 runs.  The floor is
+    that measurement, not a taste.
     """
 
-    def test_the_default_disposition_is_never_restored(self) -> None:
-        """Because that default is what turned a bound into a death."""
+    def test_a_bound_too_short_to_service_is_refused(self) -> None:
+        """The floor, which is what makes restoring the disposition safe."""
+        with pytest.raises(esolangs.ArgumentError, match=r"at least 0\.001"):
+            esolangs.run("brainfuck", "+.", "", 0.0001)
+
+    def test_the_caller_gets_their_disposition_back(self) -> None:
+        """Including ``SIG_DFL``, which the previous fix kept for itself."""
         import signal
 
-        program = esolangs.generate("brainfuck", "0110")
-        stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
-        esolangs.run("brainfuck", program, stdin, 10)
-        assert signal.getsignal(signal.SIGALRM) is not signal.SIG_DFL
+        previous = signal.signal(signal.SIGALRM, signal.SIG_DFL)
+        try:
+            program = esolangs.generate("brainfuck", "0110")
+            stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
+            esolangs.run("brainfuck", program, stdin, 5)
+            assert signal.getsignal(signal.SIGALRM) is signal.SIG_DFL
+        finally:
+            signal.signal(signal.SIGALRM, previous)
 
-    def test_a_callers_own_handler_is_given_back(self) -> None:
-        """Only the lethal default is substituted; a real handler is theirs."""
+    def test_a_custom_handler_is_given_back_too(self) -> None:
+        """The case that always worked, kept so the fix cannot regress it."""
         import signal
 
         def _mine(_signum: object, _frame: object) -> None:
@@ -974,36 +986,190 @@ class TestATimeoutCannotKillTheProcess:
         try:
             program = esolangs.generate("brainfuck", "0110")
             stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
-            esolangs.run("brainfuck", program, stdin, 10)
+            esolangs.run("brainfuck", program, stdin, 5)
             assert signal.getsignal(signal.SIGALRM) is _mine
         finally:
             signal.signal(signal.SIGALRM, previous)
 
     def test_the_timer_is_always_disarmed(self) -> None:
-        """The other half: a timer left armed is the next run's stray alarm."""
+        """A timer left armed is the next run's stray alarm."""
         import signal
 
         program = esolangs.generate("brainfuck", "0110")
         stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
-        for bound in (10, 0.0001):
+        for bound in (10, 0.001):
             with contextlib.suppress(esolangs.ExecutionTimeoutError):
                 esolangs.run("brainfuck", program, stdin, bound)
             assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
 
     @pytest.mark.slow
-    def test_many_tiny_timeouts_neither_die_nor_leak(self) -> None:
-        """The stress the fix was measured against, at a tenth the reps.
+    def test_many_runs_at_the_floor_neither_die_nor_leak(self) -> None:
+        """The stress the floor was chosen against, in process.
 
-        In-process, so it is the coverage-visible version: a death here would
-        take the whole test session with it, which is exactly the failure
-        mode being guarded and makes the check unmissable.
+        A death here would take the whole test session with it, which is
+        exactly the failure being guarded and makes it unmissable.
         """
         import signal
 
         program = esolangs.generate("brainfuck", "0110")
         stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
-        for _ in range(400):
-            with contextlib.suppress(esolangs.ExecutionTimeoutError):
-                esolangs.run("brainfuck", program, stdin, 0.0001)
-            assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
-            assert signal.getsignal(signal.SIGALRM) is not signal.SIG_DFL
+        previous = signal.signal(signal.SIGALRM, signal.SIG_DFL)
+        try:
+            for _ in range(400):
+                with contextlib.suppress(esolangs.ExecutionTimeoutError):
+                    esolangs.run("brainfuck", program, stdin, 0.001)
+                assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
+                assert signal.getsignal(signal.SIGALRM) is signal.SIG_DFL
+        finally:
+            signal.signal(signal.SIGALRM, previous)
+
+
+class TestErrorsSurviveAProcessBoundary:
+    """The library's commonest error could not come home from a worker."""
+
+    def test_input_exhausted_round_trips(self) -> None:
+        """It built its message in ``__init__``, so unpickling passed one arg.
+
+        A worker raising it died, and the pool broke with
+        ``BrokenProcessPool`` and no diagnostic -- for the error 43 of the
+        52 stdin languages raise, in the parallel sweep this package is
+        for.
+        """
+        import pickle
+
+        program = esolangs.generate("brainfuck", "10010110")
+        with pytest.raises(esolangs.InputExhaustedError) as caught:
+            esolangs.run("brainfuck", program, "1\n0\n", 10)
+        restored = pickle.loads(pickle.dumps(caught.value))
+        assert str(restored) == str(caught.value)
+        assert restored.reads == caught.value.reads
+        assert restored.supplied == caught.value.supplied
+
+    def test_unknown_language_does_not_grow_its_message(self) -> None:
+        """It re-applied its prefix on every hop: "unknown language: " twice."""
+        import pickle
+
+        with pytest.raises(esolangs.UnknownLanguageError) as caught:
+            esolangs.describe("nosuchlang")
+        current: BaseException = caught.value
+        for _ in range(3):
+            current = pickle.loads(pickle.dumps(current))
+        assert str(current) == str(caught.value)
+
+    def test_every_error_class_round_trips(self) -> None:
+        """The two above were found one at a time; this is the class."""
+        import pickle
+
+        raisers = [
+            lambda: esolangs.describe("nosuchlang"),
+            lambda: esolangs.generate("brainfuck", "011"),
+            lambda: esolangs.encode_inputs("brainfuck", [2, 0]),
+            lambda: esolangs.instantiate("brainfuck", "x", [0]),
+            lambda: esolangs.run("brainfuck", None),  # type: ignore[arg-type]
+            lambda: esolangs.run("brainfuck", "+[]", "", 0.01),
+            lambda: esolangs.run(
+                "brainfuck", esolangs.generate("brainfuck", "10010110"), "1\n0\n", 10
+            ),
+        ]
+        for raise_it in raisers:
+            with pytest.raises(esolangs.EsolangError) as caught:
+                raise_it()
+            restored = pickle.loads(pickle.dumps(caught.value))
+            assert str(restored) == str(caught.value), type(caught.value).__name__
+
+
+class TestTheCallersSignalsAreTheirOwn:
+    """The fix for the death took the caller's SIGALRM hostage."""
+
+    def test_a_pending_alarm_survives_a_timed_run(self) -> None:
+        """Arming ours cancelled theirs, and nothing put it back."""
+        import signal
+
+        previous = signal.signal(signal.SIGALRM, lambda *_a: None)
+        try:
+            signal.alarm(30)
+            program = esolangs.generate("brainfuck", "0110")
+            stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
+            esolangs.run("brainfuck", program, stdin, 5)
+            remaining = signal.alarm(0)
+            assert remaining > 0, "the caller's alarm was cancelled"
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, previous)
+
+    def test_the_default_disposition_is_restored(self) -> None:
+        """It was left as a no-op, which swallowed the caller's later alarms.
+
+        Closing the death by never restoring ``SIG_DFL`` traded one bug for
+        a quieter one: every alarm the caller set afterwards was ignored.
+        """
+        import signal
+
+        previous = signal.signal(signal.SIGALRM, signal.SIG_DFL)
+        try:
+            program = esolangs.generate("brainfuck", "0110")
+            stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
+            esolangs.run("brainfuck", program, stdin, 5)
+            assert signal.getsignal(signal.SIGALRM) is signal.SIG_DFL
+        finally:
+            signal.signal(signal.SIGALRM, previous)
+
+    def test_a_bound_too_short_to_service_is_refused(self) -> None:
+        """Measured: at 100us, 19 of 20 processes died; at 1ms, none of 4000."""
+        with pytest.raises(esolangs.ArgumentError, match=r"at least 0\.001"):
+            esolangs.run("brainfuck", "+.", "", 0.0001)
+
+    def test_the_floor_applies_to_evaluate_too(self) -> None:
+        """Its termination path never reaches ``run``, so it checked nothing.
+
+        The same bound raised for sixty-six languages and was silently read
+        as "diverges" for the other three, which returned a confident
+        ``1111`` for XOR.
+        """
+        with pytest.raises(esolangs.ArgumentError, match=r"at least 0\.001"):
+            esolangs.evaluate("123", "0110", 1e-06)
+
+
+class TestEvaluateCanRunOffTheMainThread:
+    """The wall-clock guard is a signal, and there was no way to opt out."""
+
+    def test_an_explicit_none_means_unbounded(self) -> None:
+        """As it does in ``run``; here the same word meant "use the default"."""
+        import concurrent.futures as cf
+
+        names = ["brainfuck", "Suffolk", "123", "A Painter Ant", "Fargo"]
+        with cf.ThreadPoolExecutor(4) as pool:
+            got = list(pool.map(lambda n: esolangs.verify(n, "0110", None), names))
+        assert all(got), dict(zip(names, got, strict=True))
+
+    def test_omitting_it_still_takes_the_defaults(self) -> None:
+        """A sentinel, so adding the escape hatch broke no existing caller."""
+        assert esolangs.evaluate("123", "0110") == "0110"
+
+
+class TestAPaintersMarkMustBeInAGrid:
+    """Its pattern was ``([o@])``, so any stray ``o`` read as a zero."""
+
+    @pytest.mark.parametrize("junk", ["nonsense", "hello world", "no such thing"])
+    def test_garbage_is_refused(self, junk: str) -> None:
+        """It was the one language that read a crash message as an answer."""
+        with pytest.raises(esolangs.ProgramError):
+            esolangs.read_answer("A Painter Ant", junk)
+
+    def test_a_real_grid_still_reads(self) -> None:
+        """The check is worth nothing if it costs the actual answers."""
+        assert esolangs.evaluate("A Painter Ant", "0110") == "0110"
+
+
+class TestTheDebuggerMirrorsSnapshot:
+    """Reaching through ``.vm`` is what the mirrors exist to avoid."""
+
+    def test_it_matches_the_wrapped_machine(self) -> None:
+        """And is the thing a caller most wants: a repeated state."""
+        program = esolangs.generate("brainfuck", "0110")
+        stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
+        debugger = esolangs.make_debugger("brainfuck", program, stdin)
+        assert debugger.snapshot() == debugger.vm.snapshot()
+        before = debugger.snapshot()
+        debugger.step()
+        assert debugger.snapshot() != before
