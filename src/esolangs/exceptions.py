@@ -47,7 +47,14 @@ class UnknownLanguageError(EsolangError, ValueError):
         commonest failure -- a case or spelling slip -- into a fix the
         reader can apply without opening ``esolangs list``.
         """
-        hint = f" (did you mean {' or '.join(suggestions)}?)" if suggestions else ""
+        # With nothing close enough to suggest, the message was a dead end:
+        # true, and no help at all to someone who has misremembered a name
+        # rather than mistyped one.  So it names the command that lists them.
+        hint = (
+            f" (did you mean {' or '.join(suggestions)}?)"
+            if suggestions
+            else "; `esolangs list` shows all of them"
+        )
         super().__init__(f"unknown language: {language}{hint}")
         self.language = language
         self.suggestions = suggestions
@@ -129,4 +136,15 @@ class GeneratorCapError(EsolangError, ValueError):
     a size where a dense one is refused.  A per-language number would be
     wrong for half the tables it was consulted about; catching this is
     right for all of them.
+    """
+
+
+class InputMismatchWarning(UserWarning):
+    """Warned when stdin does not look like what the program read.
+
+    Its own class so a caller can silence or escalate exactly these and
+    nothing else: ``filterwarnings("error", category=InputMismatchWarning)``
+    turns a silent wrong answer into a test failure, which is what someone
+    sweeping the registry wants, while a plain ``UserWarning`` filter would
+    have caught every other warning in the process too.
     """
