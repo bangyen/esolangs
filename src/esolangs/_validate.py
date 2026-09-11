@@ -88,5 +88,16 @@ def check_bits(bits: object, what: str = "bits") -> list[int]:
         isinstance(bit, bool) or not isinstance(bit, int) or bit not in (0, 1)
         for bit in bits
     ):
+        if any(isinstance(bit, bool) for bit in bits):
+            # Said separately because "must be 0 or 1" reads as wrong when
+            # you passed True, which *is* 1.  The exclusion is deliberate:
+            # `bool` is an `int` subclass, so before this check a
+            # `[True, False]` -- or a `[1.0, 0.0]` -- was accepted and
+            # selected a different row of the table.
+            raise ArgumentError(
+                f"{what} must be the integers 0 and 1; bools are refused on "
+                f"purpose, because True == 1 and a list of them used to be "
+                f"accepted as a different row, got {list(bits)!r}"
+            )
         raise ArgumentError(f"{what} must each be 0 or 1, got {list(bits)!r}")
     return list(bits)

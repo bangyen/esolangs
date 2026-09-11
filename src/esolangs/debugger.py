@@ -133,6 +133,14 @@ class Debugger:
         breakpoints that are perfectly legitimate later in the same run.
         A machine whose ``ip`` is already ``None`` or empty has no shape to
         compare against, and anything is accepted.
+
+        An in-kind position that the program never *reaches* -- ``break_at``
+        on index a million, in a program a hundred long -- is accepted and
+        will not fire.  That is the same silently-dead breakpoint this
+        method refuses elsewhere, and it stays accepted because deciding it
+        needs to know how long the program is, which is not part of the VM
+        protocol: ``ip`` is language-shaped and there is no ``len``.  Said
+        here rather than guessed at.
         """
         if isinstance(ip, int) and not isinstance(ip, bool):
             check_whole(ip, "ip")
@@ -244,7 +252,14 @@ class Debugger:
         return self._cell_history[index]
 
     def watch_stack(self, slot: int) -> list[object]:
-        """Record the ``slot``-th stack value from the top each step."""
+        """Record the ``slot``-th stack value from the top each step.
+
+        A language with no stack records an empty history forever, and
+        is not refused: ``stack`` is ``[]`` for those, which is a
+        legitimate state rather than an absent one, and the VM protocol
+        draws no line between the two.  ``describe(...)["state_model"]``
+        is the fact to consult first.
+        """
         check_whole(slot, "slot")
         if slot not in self._stack_history:
             self._stack_history[slot] = []

@@ -791,3 +791,145 @@ class TestSnapshotSaysItIsOpaque:
         doc = _StepMachine.snapshot.__doc__
         assert doc is not None
         assert "Opaque" in doc
+
+
+class TestTheApiNameListsCannotDriftAgain:
+    """Three rounds running, a reader found a public name in neither list.
+
+    ``evaluate``/``verify`` were missing, then ``check_program``/``make_vm``,
+    then ``encode_inputs``/``read_answer``/``check_stdin``.  Fixing the
+    instance three times is what a test is for.
+    """
+
+    @staticmethod
+    def _public_callables() -> set[str]:
+        """The exported names that are functions a caller would call.
+
+        ``inspect.isfunction`` rather than ``callable``: a ``Literal`` type
+        alias like ``StopReason`` answers ``callable()`` truthfully enough
+        to have been demanded of the README, which is not the point.
+        """
+        import inspect
+
+        return {
+            name
+            for name in esolangs.__all__
+            if inspect.isfunction(getattr(esolangs, name))
+        }
+
+    def test_the_readme_sentence_names_every_public_function(self) -> None:
+        """The sentence that introduces the API has to introduce all of it."""
+        readme = (pathlib.Path(__file__).parents[1] / "README.md").read_text()
+        # The paragraph, not the first "." -- which lands inside
+        # ``esolangs.run`` and made this pass on almost nothing.
+        sentence = readme.split("The Python API is", 1)[1].split("\n\n", 1)[0]
+        missing = sorted(n for n in self._public_callables() if n not in sentence)
+        assert not missing, f"README's API sentence omits: {missing}"
+
+    def test_the_module_docstring_names_every_public_function(self) -> None:
+        """Same for the thing ``help(esolangs)`` shows first."""
+        doc = esolangs.__doc__ or ""
+        missing = sorted(n for n in self._public_callables() if n not in doc)
+        assert not missing, f"esolangs.__doc__ omits: {missing}"
+
+
+class TestDivergenceIsProvenNotWaitedOut:
+    """A repeated state settles it exactly, and in milliseconds."""
+
+    @pytest.mark.parametrize("name", ["123", "ArrowQueue", "Point Break"])
+    @pytest.mark.parametrize("table", ["0110", "00011011"])
+    def test_the_proven_answer_is_the_table(self, name: str, table: str) -> None:
+        """The answers must be the ones the clock used to give, exactly."""
+        assert esolangs.evaluate(name, table) == table
+
+    def test_it_no_longer_costs_a_timeout_per_row(self) -> None:
+        """It was five seconds per 1-row: twenty seconds for this call.
+
+        Timed rather than asserted about, because "it is faster now" is the
+        kind of claim that quietly stops being true.  The bound is loose --
+        it is checking that the *clock* is no longer in the loop, not
+        holding anything to a schedule.
+        """
+        import time
+
+        start = time.monotonic()
+        esolangs.evaluate("123", "0110")
+        assert time.monotonic() - start < 5.0
+
+
+class TestBoolsAreRefusedForAStatedReason:
+    """ "must be 0 or 1" reads as wrong when you passed True, which is 1."""
+
+    def test_the_message_says_why(self) -> None:
+        """The exclusion is deliberate and the reason is a past wrong answer."""
+        with pytest.raises(esolangs.ArgumentError, match="True == 1"):
+            esolangs.encode_inputs("brainfuck", [True, False])
+
+
+class TestUnknownLanguageAlwaysOffersANextStep:
+    """A near miss suggested; a far one was a dead end."""
+
+    def test_a_far_miss_names_the_listing_command(self) -> None:
+        """Someone misremembering a name has nothing to be suggested."""
+        with pytest.raises(esolangs.UnknownLanguageError, match="esolangs list"):
+            esolangs.describe("Malbolge")
+
+    def test_a_near_miss_still_suggests(self) -> None:
+        """The better hint must win where there is one."""
+        with pytest.raises(esolangs.UnknownLanguageError, match="did you mean"):
+            esolangs.describe("Brainfck")
+
+
+class TestTheWarningHasItsOwnClass:
+    """So a sweep can escalate exactly these to errors."""
+
+    def test_it_is_a_user_warning_subclass(self) -> None:
+        """Existing ``UserWarning`` filters must keep working."""
+        assert issubclass(esolangs.InputMismatchWarning, UserWarning)
+        assert "InputMismatchWarning" in esolangs.__all__
+
+    def test_run_raises_it_by_class(self) -> None:
+        """Which is what makes ``filterwarnings("error", ...)`` targeted."""
+        program = esolangs.generate("brainfuck", "00011011")
+        with pytest.warns(esolangs.InputMismatchWarning):
+            esolangs.run("brainfuck", program, "1\n1\n0\n0\n1\n1\n", 10)
+
+
+class TestARowIndexNeverHasALeadingZero:
+    """`0010` fed to a 16-row program parses as ten and answers row 10."""
+
+    def test_a_bit_string_typed_as_an_index_is_caught(self) -> None:
+        """No table needed: the leading zero alone decides it."""
+        with pytest.raises(esolangs.ArgumentError, match="leading zero"):
+            esolangs.check_stdin("Fargo", "0010\n")
+
+    def test_the_message_gives_the_index_they_meant(self) -> None:
+        """`0010` as bits is row 2, and saying so is the whole fix."""
+        with pytest.raises(esolangs.ArgumentError, match="the index is 2"):
+            esolangs.check_stdin("Fargo", "0010\n")
+
+    def test_a_real_index_passes(self) -> None:
+        """Including a single zero, which has no *leading* zero to speak of."""
+        esolangs.check_stdin("Fargo", "0\n")
+        esolangs.check_stdin("Fargo", "15\n")
+
+
+class TestTheTerminationProofFallsBackToTheClock:
+    """A cycle is not the only way to diverge; growth never repeats a state."""
+
+    def test_the_proof_beats_even_a_millisecond_bound(self) -> None:
+        """Which is the measurement, and also why the clock arm is untested.
+
+        I expected a one-millisecond bound to force the fallback and assert
+        the old "diverges" answer.  It does not: these programs revisit a
+        state inside a hundred steps, so the cycle is proven before the
+        clock can fire, and the right table comes back anyway.  The
+        fallback is real -- unbounded growth never repeats a state -- but
+        no table in this suite reaches it.
+        """
+        assert esolangs.evaluate("123", "0110", 0.001) == "0110"
+
+    def test_the_answers_match_what_the_clock_used_to_give(self) -> None:
+        """The proof must not have changed any verdict, only the cost."""
+        for name in ("123", "ArrowQueue", "Point Break"):
+            assert esolangs.evaluate(name, "0110") == "0110"
