@@ -1,8 +1,9 @@
 # ArrowQueue boolean generator
 
 `arrowqueue(t)` is total for every arity: after instantiation, it halts iff
-the selected table bit is `0` and cycles iff it is `1`. The lemmas below were
-checked executably once, by a script since retired.
+the selected table bit is `0` and cycles iff it is `1`. Each lemma below is
+checked executably by `scripts/arrowqueue_lemmas.py`, which `just test` and
+CI both run (0.8s).
 
 The construction has three invariant-preserving parts:
 
