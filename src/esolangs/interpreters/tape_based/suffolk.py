@@ -226,8 +226,14 @@ class _Machine:
         The two I/O commands are here rather than in the transition: this
         is the shell, so it is where an effect belongs.  ``,`` reads a line
         and hands the transition what the accumulator should become -- the
-        sum when there was a character, and zero on a blank line, which is
-        the rule the original spelled inline.
+        sum when there was a character, and zero on a blank line.
+
+        Suffolk is the one language whose page names this value at all:
+        "At EOF, instead set the internal state integer to 0".  But that
+        is *EOF*, which here still raises, and the page carries no
+        implementation spelling a blank-line rule.  So the zero above is
+        the package convention landing on the same number, not the spec's
+        rule applied.
         """
         ind, _ptr, acc, _tape = self.state
         sym = self.code[ind]

@@ -1,5 +1,8 @@
 # Esolang Interpreters
 
+[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 Interpreters and generators for esoteric
 languages. Current work is in [the roadmap](docs/roadmap.md); contracts and
 known boundaries are in [limitations](docs/limitations.md).
@@ -10,23 +13,39 @@ known boundaries are in [limitations](docs/limitations.md).
 just install-dev
 esolangs list
 esolangs run Suffolk program.txt
-esolangs generate Suffolk "Hello, World!"
+esolangs generate Suffolk 0110
+esolangs debug --steps 20 --watch-cell 0 brainfuck program.txt
 just test
 ```
 
-The Python API is `esolangs.run`, `generate`, and `list_languages`.
-Use `--width` for command-oriented generated programs; grids
-and newline-sensitive languages retain their own layout.
+The Python API is `esolangs.run`, `generate`, `make_debugger`, and
+`list_languages`.  `generate` takes a truth table -- `0110` is XOR -- and
+returns a program computing it.  Use `--width` for command-oriented
+generated programs; grids and newline-sensitive languages retain their own
+layout.
+
+`debug` runs a program under the breakpoint/watch VM and reports where it
+stopped: `--steps` bounds the run, `--watch-cell` prints one value per step,
+and `--break-on-output` stops with the watched text still the last written.
 
 ## Examples
+
+`esolangs generate Sophie 0110` emits 51 characters computing XOR:
+
+```
+;@$48{;@$48{#$48,&}{#$49,&}}{;@$48{#$49,&}{#$48,&}}
+```
+
+Feeding it the two input bits, one per line, prints their XOR.
+`tests/test_readme_example.py` runs all four rows, so the block cannot
+drift.
 
 <!-- EXAMPLES:START -->
 
 Ready-to-run programs are committed under [`examples/`](examples/):
-`examples/hello-world/` holds a "Hello, World!" for each of the 52
-languages with a text generator; `examples/boolean/` holds a truth-table
-program for each of the 69 languages with a boolean generator.  Both
-regenerate via `scripts/write_examples.py`.
+`examples/boolean/` holds a truth-table program for each of the 69
+languages with a boolean generator.  It regenerates via
+`scripts/write_examples.py`.
 
 <!-- EXAMPLES:END -->
 
@@ -157,8 +176,8 @@ tables.
 
 <!-- BOOLEAN-COUNT:END -->
 
-Text generators are available through `esolangs generate`; see `esolangs
-list` for support. Regenerate committed examples with
+Generators are available through `esolangs generate`; see `esolangs list`
+for support. Regenerate committed examples with
 `python scripts/write_examples.py`.
 
 ## Contributing

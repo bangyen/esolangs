@@ -1,4 +1,4 @@
-"""Unit tests for the DINAC interpreter and its two generators."""
+"""Unit tests for the DINAC interpreter and its generator."""
 
 from typing import ClassVar
 
@@ -7,8 +7,7 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.dinac import _Machine, run
-from esolangs.tools.boolean import dinac as dinac_boolean
-from esolangs.tools.text import dinac as dinac_text
+from esolangs.tools.boolean import dinac
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.runner import run_program
@@ -411,43 +410,19 @@ class TestMalformedPrograms:
         assert _run("\n\n# just a comment\n") == ""
 
 
-class TestTextGenerator:
-    """The generated programs are run; source text is not evidence."""
+class TestSpaceSpellings:
+    def test_both_spellings_of_a_space_print_the_same_character(self) -> None:
+        """``OUT '!-`` prints a space, as does the wiki's ``OUT '`` + space.
 
-    @pytest.mark.parametrize(
-        "text",
-        [
-            "Hello, World!\n",
-            "a",
-            "",
-            "tab\there",
-            "back\\slash",
-            "\0nul",
-            "~!@#$%^&*()",
-        ],
-    )
-    def test_generated_program_prints_the_text(self, text: str) -> None:
-        assert _run(dinac_text(text)) == text
-
-    def test_a_space_is_emitted_without_trailing_whitespace(self) -> None:
-        """``OUT '!-`` prints a space; ``OUT '`` + space cannot be committed.
-
-        The literal spelling the wiki uses puts the space in trailing
-        position, which ``tests/scripts/test_examples.py`` forbids in a
-        committed file.  Both spellings print a space -- pinned here, since
+        The literal spelling puts the space in trailing position, which
+        ``tests/scripts/test_examples.py`` forbids in a committed file, so
+        the decrement spelling is the one written down -- pinned here, since
         the substitution is only safe if it is really the same character.
         """
-        program = dinac_text("a b")
+        program = "OUT 'a\nOUT '!-\nOUT 'b"
         assert "\n".join(line.rstrip() for line in program.split("\n")) == program
         assert _run(program) == "a b"
         assert _run("OUT ' ") == " "
-
-    def test_a_character_above_ascii_is_refused(self) -> None:
-        """An aschar is Unicode 0-127, so there is no literal for it."""
-        with raises_message(
-            ValueError, "DINAC can only output ASCII 0-127, got 'é' (U+00E9)"
-        ):
-            dinac_text("café")
 
 
 class TestBooleanGenerator:
@@ -457,7 +432,7 @@ class TestBooleanGenerator:
     def test_every_table_computes_its_function(self, n: int) -> None:
         for value in range(2 ** (2**n)):
             table = bin(value)[2:].zfill(2**n)
-            program = dinac_boolean(table)
+            program = dinac(table)
             for row in range(2**n):
                 bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
                 stdin = "".join(f"{bit}\n" for bit in bits)
@@ -467,12 +442,12 @@ class TestBooleanGenerator:
         """The reads are the interface; folding may drop tests, never reads."""
         for table in ("00000000", "01101001"):
             io = ScriptedIO("0\n" * 8)
-            run(dinac_boolean(table), io)
+            run(dinac(table), io)
             assert io.position() == 3, table
 
     def test_a_one_dependency_table_folds(self) -> None:
         """A subtree whose rows agree collapses to one ``OUT``."""
-        assert len(dinac_boolean("11110000")) < len(dinac_boolean("01101001"))
+        assert len(dinac("11110000")) < len(dinac("01101001"))
 
     def test_a_one_entry_table_is_refused(self) -> None:
         with raises_message(
@@ -480,7 +455,7 @@ class TestBooleanGenerator:
             "truth table needs at least one input (n >= 1); "
             "a one-entry table is a constant, not a boolean function",
         ):
-            dinac_boolean("0")
+            dinac("0")
 
 
 def _machine(code: str) -> _Machine:

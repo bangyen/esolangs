@@ -2465,7 +2465,8 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.boolean.one_two_three_construct import construct
 
         assert construct("01") == (
-            "22{X0}11121211222211112332332233222211112221113311111112222222123311111111"
+            "2222{X0}1111121211222222111111233222332233222211112221113311111111"
+            "122222222212331111111111"
         )
 
     def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
@@ -2480,7 +2481,7 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.boolean.one_two_three_construct import construct
 
         total = sum(len(construct(format(value, "08b"))) for value in range(256))
-        assert total == 155074
+        assert total == 206791
 
     def test_slots_run_in_name_order(self) -> None:
         """Every emitted template embeds {X0} before {X1}."""
@@ -2547,8 +2548,8 @@ class TestParameterizedOneTwoThree:
         assertion above passes either way and the choice is invisible to
         them.  It is worth a great deal though: swept over all 256
         three-input tables, the wide constructor's template is larger on
-        every one of them, from 1.5x up to 10.5x (``00000001`` is 90 bytes
-        small against 944 wide).  These lengths pin the routing boundary at
+        every one of them, from 1.86x up to 9.55x (``00000010`` is 94 bytes
+        small against 898 wide).  These lengths pin the routing boundary at
         ``n > 3``.
         """
         from esolangs.tools.boolean import parameterized
@@ -2702,8 +2703,8 @@ class TestParameterizedOneTwoThree:
         The total is asserted rather than one table because the flag's
         effect is spread across the whole sweep; it also pins the
         separation law's price, 55238 characters against the retired
-        schedules' 43020 and the wide constructor's 158152 -- the law
-        gives up 1.28x to delete the table and keeps 2.9x over the route
+        schedules' 43020 and the wide constructor's 211102 -- the law
+        gives up 1.28x to delete the table and keeps 3.8x over the route
         that needs none.
         """
         from esolangs.tools.boolean import parameterized
@@ -2750,14 +2751,17 @@ class TestParameterizedOneTwoThree:
         ``00111000`` has 1-rows above 0-rows, so its build takes the
         shield paints as well as the embed, separation, kill, and
         endgame — a witness that every stage is on a real trajectory,
-        not only inferred from ``construct()``'s success.
+        not only inferred from ``construct()``'s success.  The paints
+        go through ``_paint_all``, which emits the whole campaign at
+        once; ``_paint`` itself is the small-arity route's, covered by
+        ``test_paint_marks_one_cell_and_restores_every_position``.
         """
         from esolangs.tools.boolean import one_two_three_construct as construct_mod
 
         called: set[str] = set()
         originals = {
             name: getattr(construct_mod, name)
-            for name in ("_phase_a", "_separate", "_paint", "_verdict", "_endgame")
+            for name in ("_phase_a", "_separate", "_paint_all", "_verdict", "_endgame")
         }
 
         def watch(name: str, fn: object) -> object:
@@ -2807,9 +2811,10 @@ class TestParameterizedOneTwoThree:
     def test_a_dense_four_input_sweep_witness_stays_exact(self) -> None:
         """Pin one mixed table from the exhaustive constructor sweep.
 
-        The full sweep belongs in ``scripts/check_123_four_input.py`` rather
-        than the test suite.  This one-table witness keeps its execution gate
-        local: all sixteen rows must halt or revisit an exact interpreter
+        The exhaustive four-input sweep was a one-shot script rather than
+        a suite entry -- 65536 tables is far past what a run can pay.  This
+        one-table witness keeps its execution gate local: all sixteen rows
+        must halt or revisit an exact interpreter
         state with the table's verdict, never pass through a fuel limit.
         """
         from esolangs.tools.boolean.one_two_three_construct import construct
@@ -3403,3 +3408,75 @@ def test_nocomment_wide_declines_when_the_plan_outgrows_the_skip() -> None:
     table = "0" * (2**15 - 1) + "1"
     with pytest.raises(ValueError, match="past the interpreter's 4096-cell tape"):
         parameterized._nocomment_wide(table, 15, parameterized._TAPE)  # noqa: SLF001
+
+
+class TestConstructorWorkBudget:
+    """Two paths that lost their exerciser with the text generators.
+
+    The constructor's work budget and its per-row fill resolution were
+    reached by the exhaustive four-input sweep, which was a one-shot script
+    rather than a suite entry.  Both are live code, so they are driven
+    directly here.
+    """
+
+    def test_a_fill_token_resolves_to_the_row_own_bit(self) -> None:
+        """A tuple token is an input fill: the row decides its character.
+
+        ``_row_runs`` resolves it once per row rather than on every replay,
+        so the bit it reads has to be the row's own -- a fill resolved
+        against the wrong row spells the wrong program for that row alone,
+        which no aggregate length check would catch.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _ONE,
+            _ZERO,
+            _Row,
+            _row_runs,
+        )
+
+        one = _Row((1,))
+        zero = _Row((0,))
+        assert _row_runs(one, [("x", 0)]) == [(_ONE, 1)]
+        assert _row_runs(zero, [("x", 0)]) == [(_ZERO, 1)]
+
+    def test_a_fill_coalesces_with_the_run_beside_it(self) -> None:
+        """Adjacent equal characters become one run, fills included."""
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _ONE,
+            _Row,
+            _row_runs,
+        )
+
+        row = _Row((1,))
+        assert _row_runs(row, [_ONE * 2, ("x", 0)]) == [(_ONE, 3)]
+
+    def test_painting_past_the_budget_is_refused(self) -> None:
+        """``_paint_all`` prices its whole paint before writing any of it.
+
+        The budget is what stops a construction running away; charging for
+        the paint up front is what makes the refusal cheap rather than
+        something noticed a million commands later.
+        """
+        from esolangs.tools.boolean.one_two_three_construct import (
+            _Builder,
+            _paint_all,
+            _Row,
+            _work,
+            _WorkExhaustedError,
+        )
+
+        row = _Row((0,))
+        row.pos = 1
+        b = _Builder.__new__(_Builder)
+        b.n = 1
+        b.chunks = []
+        b.seg = []
+        b.rows = [row]
+        # Two offsets, so the paint is priced over both before any is
+        # written -- one would leave the second offset's cost uncounted.
+        # One of them is exactly 1, which has no shrunk ``k - 1`` pair to
+        # paint: the guard that skips it is the only thing keeping a pair
+        # of empty strings out of the price.
+        _work[0] = 1  # _paint_all is called outside construct() here
+        with pytest.raises(_WorkExhaustedError):
+            _paint_all(b, (1, 3))

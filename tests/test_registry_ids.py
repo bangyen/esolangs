@@ -32,10 +32,15 @@ def test_id_matches_the_interpreter_module() -> None:
 
 
 def test_id_matches_the_generator_function() -> None:
-    """The canonical id is also the generator function's name."""
+    """The canonical id is also the generator function's name.
+
+    A few ids drop an underscore the function keeps (``bf_pda`` ->
+    ``bfpda``); nothing else may differ.
+    """
     for name, lang in LANGUAGES.items():
-        if lang.text:
-            assert lang.id == lang.text.__name__, name
+        if lang.boolean:
+            fn = lang.boolean.__name__
+            assert fn in (lang.id, lang.id.replace("_", "")), name
 
 
 def test_modules_are_importable_under_their_id() -> None:

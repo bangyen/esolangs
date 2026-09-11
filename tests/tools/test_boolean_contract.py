@@ -13,7 +13,7 @@ import pytest
 
 import esolangs.tools.boolean as boolean
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.registry import BY_BOOLEAN, BY_FUNCTION, LANGUAGES
+from esolangs.registry import BY_BOOLEAN, LANGUAGES
 from esolangs.vm import run_until_halt_or_cycle
 
 # One constant table against one that folds nothing.  A generator loses reads
@@ -54,7 +54,7 @@ _SEARCHING_GENERATORS: frozenset[str] = frozenset()
 # the ``_*_ordered`` builder once per input order for every table up to three
 # inputs, so a generator that *searches* pays that cost repeatedly.
 #
-# ``ztoalc_l_boolean`` was this set's only member, at 3.0s in
+# ``ztoalc_l`` was this set's only member, at 3.0s in
 # test_reordering_never_grows_a_program against 0.02s in the read-count sweep
 # above.  It no longer reorders at all -- it constructs one branch-free
 # lookup whose length is permutation-invariant -- so it left both the sweep
@@ -69,9 +69,9 @@ _SLOW_REORDERING_GENERATORS: frozenset[str] = frozenset()
 def _input_reading_generators() -> list[object]:
     """Every boolean generator whose language actually reads input.
 
-    Looked up in ``BY_BOOLEAN``, not ``BY_FUNCTION``.  The latter is keyed
-    by the *text* generator's function name, so a boolean-only language is
-    missing from it entirely and this sweep skipped such languages in
+    Looked up in ``BY_BOOLEAN``.  This swept a twin index keyed by the
+    *text* generator's function name, so a boolean-only language was
+    missing from it entirely and the sweep skipped such languages in
     silence -- sixteen of them, including the one whose contract violation
     that concealed (Jaune read a number of inputs that depended on its
     truth table).  A generator absent from the index it is swept by does
@@ -171,11 +171,8 @@ def _exported_generators() -> dict[str, str]:
     """Every boolean generator the package exports, mapped to its language.
 
     A generator function is named for its language's canonical id, so the id
-    is the join.  Two naming conventions sit on top of it: a ``_boolean``
-    suffix distinguishes the boolean generator where the text one already
-    owns the plain name (``forbin_boolean``, ``ztoalc_l_boolean``), and a
-    few ids drop an underscore (``bf_pda`` -> ``bfpda``).  ``BY_FUNCTION``
-    covers the languages whose text generator shares the name.
+    is the join.  One convention sits on top of it: a few ids drop an
+    underscore the function keeps (``bf_pda`` -> ``bfpda``).
     """
     by_id = {lang.id: name for name, lang in LANGUAGES.items()}
     squashed = {lang.id.replace("_", ""): name for name, lang in LANGUAGES.items()}
@@ -183,11 +180,10 @@ def _exported_generators() -> dict[str, str]:
     for fn in boolean.__all__:
         if fn in ("BOOLEAN", "instantiate") or not callable(getattr(boolean, fn, None)):
             continue
-        base = fn.removesuffix("_boolean")
         display = (
-            by_id.get(base)
-            or squashed.get(base.replace("_", ""))
-            or (BY_FUNCTION[fn].name if fn in BY_FUNCTION else None)
+            by_id.get(fn)
+            or squashed.get(fn.replace("_", ""))
+            or (BY_BOOLEAN[fn].name if fn in BY_BOOLEAN else None)
         )
         if display is not None:
             found[fn] = display
@@ -271,7 +267,7 @@ def _reordering_generators() -> list[object]:
             # circlefuck() itself lifts it.
             lambda t, p: _circlefuck_ordered([_ASCII_ZERO + int(b) for b in t], p),
         ),
-        ("forbin_boolean", boolean.forbin_boolean, _forbin_ordered),
+        ("forbin", boolean.forbin, _forbin_ordered),
         ("jaune", boolean.jaune, _jaune_ordered),
     ]
     return [
@@ -480,7 +476,7 @@ _MINTERM_SHAPED = {
 # at all: ``jaune_multiply`` takes no argument (it multiplies two decimal
 # numbers, a fixed program), and ``circlefuck_byte`` takes a *byte* table.
 #
-# ``slow_acv_mammalian_boolean`` is a tree, but a deliberately *unfolded*
+# ``slow_acv_mammalian`` is a tree, but a deliberately *unfolded*
 # one, so the folding discriminator does not apply to it.  Its nodes are
 # what read the input -- the branch condition is the bit ``ACCEPT`` just
 # appended -- so collapsing a constant subtree would drop that subtree's
@@ -492,7 +488,7 @@ _MINTERM_SHAPED = {
 # no per-row structure to fold and its size tracks the search rather than the
 # table's shape.
 #
-# ``ztoalc_l_boolean`` emits no tree either, and for a reason the folding
+# ``ztoalc_l`` emits no tree either, and for a reason the folding
 # discriminator cannot see.  It builds one branch-free chunked lookup: the
 # inputs are folded into a chunk index and a bit index, the table's
 # four-row chunks are stored as codes, and a shared decode array turns the
@@ -542,7 +538,7 @@ _REDUCING = {
 }
 
 # ``alight`` is a branch-free lookup of the same class as
-# ``ztoalc_l_boolean``: the inputs are folded into a row index by Horner's
+# ``ztoalc_l``: the inputs are folded into a row index by Horner's
 # rule and the table is a string literal read with ``at{table, i+0.5}``, so
 # there are no subtrees to collapse and every table of a given arity renders
 # to exactly the same length.  A 0% fold is the construction working.
@@ -552,12 +548,12 @@ _UNSHAPED = {
     "alight",
     "wii2d",
     "minifuck",
-    "ztoalc_l_boolean",
+    "ztoalc_l",
     "pct_squared_minus_one",
     "one_two_three",
     "jaune_multiply",
     "circlefuck_byte",
-    "slow_acv_mammalian_boolean",
+    "slow_acv_mammalian",
 }
 
 # Every table depending on exactly one input, at n == 3, both polarities.
@@ -660,46 +656,111 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
         )
 
 
-# Every boolean generator builds a table at n <= _MAX_ARITY.  Five inputs
-# rather than ten because ten is not a *capability* line: at n=10 ten
-# generators fall short, and only five of those are caps -- the other five
-# (Circuit Diagram, Forþ, Minifuck, ROTfuck, %^2^-1) build fine given time,
-# at up to 187s and 60MB of program text for one table, which no suite can
-# carry.  Five is where the two classes separate: every generator that can
-# build past its own arity cap does so in under 3s.
-_MAX_ARITY = 5
+# Every boolean generator builds a table at n <= _MAX_ARITY.  Ten inputs:
+# the whole registry was swept at n=1..10 on both shapes, and exactly one
+# generator falls short -- WII2D, dense only, recorded below.  Every other
+# one of the 69 builds both shapes at n=10.
+#
+# Ten is here because it was made affordable, not because the cost was
+# waved through.  This sweep stopped at five for a long time, then briefly
+# at eight: n<=10 cost 141s of CPU, and n=9 alone was 53s of it.  Five
+# generators were then measured and rewritten:
+#
+#     minifuck        42.8s -> 8.6s     interprogck8    14.7s -> 3.5s
+#     polynomial      28.4s -> 5.5s     wii2d            7.2s -> 1.3s
+#     one_two_three   17.8s -> 3.7s
+#
+# plus a generic pass on the order search below.  The whole n=1..10 sweep
+# is now 46.1s of CPU.  Per arity: n=6 6.2s, n=7 1.0s, n=8 5.7s, n=9 7.2s,
+# n=10 23.8s.
+#
+# n=6 costing six times n=7 is not a measurement error and not warmup -- it
+# is ``_ORDER_SEARCH_MAX = 6`` in ``helpers.py``.  At n <= 6 a reordering
+# generator builds all ``n!`` = 720 candidate orders and keeps the
+# shortest; at n=7 it switches to the greedy ``O(n**2)`` pick, so a
+# *bigger* table is hundreds of times faster (laserfuck 1.03s at six
+# against 0.002s at seven, streetcode 0.56s against 0.002s).
+#
+# What that 720-build search buys, measured by running the registry at n=6
+# with the cap at 6 and at 5: 3,193,830 chars in 10.7s against 3,195,778 in
+# 0.79s.  Only 13 of 138 cases differ and the registry total is 0.06%, but
+# the win is concentrated, not absent -- ram0 parity 29.9% shorter under the
+# search, circlefuck dense 26.4%, six_five dense 14.2%, unsquare dense
+# 13.5%.  Lowering the cap is a bad trade rather than a free 10s.
+#
+# **Measuring that requires patching six modules, not one.**  ``laserfuck``,
+# ``streetcode``, ``stack``, ``six_five`` and ``tape`` each do ``from
+# .helpers import _ORDER_SEARCH_MAX``, a by-value import, so patching
+# ``helpers`` alone leaves the two most expensive generators exhaustive and
+# reports the greedy side as 5.17s instead of 0.79s.
+#
+# n=6 was 10.0s until the candidates themselves were made cheap.  The
+# search still builds every one of the 720 and measures it -- see the
+# ``best_input_order`` docstring for why the count cannot come down without
+# going per-language -- so that pass left all 1380 programs byte-identical.
+#
+# Across everything here, 1356 of the registry's 1380 programs are
+# byte-identical: the 24 that moved are nine factor arities that used to
+# refuse, minifuck's dense n=9 at +6.4%, and one_two_three's n=4..10 both
+# shapes, which the mark respacing cut by 82% overall.
+#
+# Ten still peaks at 637MB RSS on Circuit Diagram's n=10 dense table, 306MB
+# of program text.  That memory, not the time, is what keeps the band split:
+# n <= _QUICK_ARITY runs in the default gate and the rest is marked slow.
+# Both bands assert the same thing; splitting them keeps the fast gate at
+# the 69 items and ~3s it had when this swept to five.
+_MAX_ARITY = 10
+_QUICK_ARITY = 5
 
-# Every generator reaches _MAX_ARITY.  There used to be two that did not,
-# and both refusals were the *construction's* limit rather than the
-# language's, which is why neither survived being worked on:
+_ARITY_BANDS = (
+    pytest.param(range(1, _QUICK_ARITY + 1), id="quick"),
+    pytest.param(
+        range(_QUICK_ARITY + 1, _MAX_ARITY + 1),
+        id="deep",
+        marks=pytest.mark.slow,
+    ),
+)
+
+# The generators that do not reach _MAX_ARITY, keyed by ``(name, shape)``
+# because a cap can bind on one table shape and not the other.  WII2D is
+# exactly that: a per-name cap of 9 would demand its parity n=10 refuse,
+# which it does not -- that shape builds in 350 characters.
+#
+#   wii2d refuses n=10 dense because the decode spans 512 index points past
+#   the ``_WII2D_MAX_INDEX_DOMAIN = 256`` cost guard.  Unlike the two caps
+#   below, raising the constant does *not* buy the table: at domain 512 the
+#   decode ratchets -- live count crawls 512 -> 475 over 19 steps while the
+#   bit length doubles every step, reaching 1.09M bits, the 19th step alone
+#   144s -- and refuses on the magnitude bound instead.  It is a wall of the
+#   exactly-once embed convention; ``docs/walls.md`` carries the curve.
+#
+# Two generators that used to be here are gone, and both of those refusals
+# were the *construction's* limit rather than the language's:
 #
 #   interprogck8 capped at n=3 because one ``DownAccLines`` reaches 255
 #   lines and the n=4 bit-0 crossing spans 452.  Long hops now ride an
-#   express -- ``DownAccLines`` keeps the accumulator, so a chain spells
-#   its stride once and relays through one-line rungs parked in meadows
-#   -- and the ceiling sits at n=10, every row executed.
+#   express through one-line rungs parked in meadows.
 #
-#   factor capped at n=3 because CPython refuses to render an integer past
-#   ``sys.get_int_max_str_digits()`` (4300 by default) and n=4 parity
-#   encodes to 6390 digits.  That guard is a DoS defence against quadratic
-#   conversions, not a property of Factor, so the generator and the
-#   interpreter both raise it to fit the program and put it back.
+#   factor capped at n=3 on CPython's 4300-digit ``int``-render guard, then
+#   at n=6 on the 16000-digit budget that replaced it.  Both are size
+#   policies rather than anything Factor says.
 #
-# The dict is kept rather than deleted: it is where a *newly* capped
-# generator gets recorded, and an empty one states that none is.  An entry
-# needs the measurement that put it there and the phrase its own refusal is
-# built around -- asserting only that something refused would accept a
-# generator that had started failing for an unrelated reason, since an
-# encoding bug reads exactly like a cap from the outside.
-_ARITY_CAPPED: dict[str, tuple[int, str]] = {}
+# An entry needs the measurement that put it there and the phrase its own
+# refusal is built around -- asserting only that something refused would
+# accept a generator that had started failing for an unrelated reason,
+# since an encoding bug reads exactly like a cap from the outside.
+_ARITY_CAPPED: dict[tuple[str, str], tuple[int, str]] = {
+    ("wii2d", "dense"): (9, "cost guard; below the bound this is a size/time"),
+}
 
 
 # The two table shapes every generator is built against.  A dense
 # pseudo-random table and parity fail *differently*: WII2D reaches n=10 on
-# parity but stops at n=8 dense, and Polynomial's 1934-instruction cap
+# parity but stops at n=9 dense, factor's digit budget runs out a rung
+# earlier on parity than on dense, and Polynomial's 1934-instruction cap
 # refuses dense n=11 (2910) while parity fits far past it.  A single-shape
-# sweep reports the wrong ceiling for both, so both shapes are built here
-# even though neither generator is capped at n<=5.
+# sweep reports the wrong ceiling for all three, which is why both shapes
+# are built at every arity and why the cap table is keyed by shape.
 def _dense(n: int) -> str:
     """A deterministic dense pseudo-random table -- the worst case to fold."""
     digest = hashlib.sha256(f"dense:{n}".encode()).digest()
@@ -717,8 +778,12 @@ def _parity(n: int) -> str:
     return "".join(str(bin(row).count("1") & 1) for row in range(2**n))
 
 
+_SHAPES = (("dense", _dense), ("parity", _parity))
+
+
+@pytest.mark.parametrize("arities", _ARITY_BANDS)
 @pytest.mark.parametrize("name", sorted(BY_BOOLEAN))
-def test_every_generator_builds_up_to_five_inputs(name: str) -> None:
+def test_every_generator_builds_up_to_ten_inputs(name: str, arities: range) -> None:
     """Every boolean generator builds every arity up to :data:`_MAX_ARITY`.
 
     The sweep that pins the registry's *coverage*: a generator that
@@ -734,9 +799,9 @@ def test_every_generator_builds_up_to_five_inputs(name: str) -> None:
     worse than either.
     """
     fn = getattr(boolean, name)
-    cap, pattern = _ARITY_CAPPED.get(name, (_MAX_ARITY, ""))
-    for n in range(1, _MAX_ARITY + 1):
-        for shape, make in (("dense", _dense), ("parity", _parity)):
+    for n in arities:
+        for shape, make in _SHAPES:
+            cap, pattern = _ARITY_CAPPED.get((name, shape), (_MAX_ARITY, ""))
             table = make(n)
             if n <= cap:
                 program = str(fn(table))
@@ -754,9 +819,33 @@ def test_arity_caps_are_still_caps() -> None:
     keeps its entry and this suite keeps asserting the *old* refusal, which
     turns a fixed limitation into a permanently pinned one.  Asserting the
     cap is still binding is what makes the entry falsifiable.
+
+    A cap below :data:`_MAX_ARITY` is only a cap if it is also the *last*
+    arity that builds, so both ends are checked on the shape the entry is
+    keyed to -- an entry whose cap drifted low would otherwise pass here
+    while hiding coverage the generator still has.
     """
-    for name, (cap, pattern) in sorted(_ARITY_CAPPED.items()):
+    makers = dict(_SHAPES)
+    for (name, shape), (cap, pattern) in sorted(_ARITY_CAPPED.items()):
         fn = getattr(boolean, name)
-        assert str(fn(_dense(cap))), f"{name} no longer builds at its cap n={cap}"
+        make = makers[shape]
+        assert str(fn(make(cap))), (
+            f"{name} no longer builds at its cap n={cap} ({shape})"
+        )
         with pytest.raises(ValueError, match=re.escape(pattern)):
-            fn(_dense(cap + 1))
+            fn(make(cap + 1))
+
+
+def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
+    """Nothing above k2 is needed, so the plan sieve is never entered.
+
+    ``_cm_constants`` bootstraps k1 and k2 unconditionally and only then
+    extends; a caller wanting nothing larger gets those four lines and no
+    build plan at all.
+    """
+    from esolangs.tools.boolean.helpers import _cm_constants
+
+    lines = _cm_constants([1, 2])
+    assert len(lines) == 4
+    assert all(line.endswith("NOT PRINT.") for line in lines)
+    assert _cm_constants([]) == lines

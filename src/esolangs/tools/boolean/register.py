@@ -5,6 +5,7 @@ from typing import Any
 from esolangs.tools.boolean.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
+    _cm_constants,
     _validate_truth_table,
     best_input_order,
     essential_inputs,
@@ -12,7 +13,6 @@ from esolangs.tools.boolean.helpers import (
     read_at,
     stored_inputs,
 )
-from esolangs.tools.text.helpers import _cm_constants
 
 # Dig blocks for one level of the decision tree.
 _DIG_BRANCH = ">2$~;#@"  # read a bit, store it, then turn on it
@@ -224,11 +224,20 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     instructions: list[list[Any]] = []
     next_cells: list[str | None] = []
     values: dict[str, int | tuple[str, int]] = {}
+    # The operand names in the order the instructions mention them, recorded
+    # as they are emitted.  The numbering pass below wants exactly this list
+    # and used to recover it by re-scanning every operand of every
+    # instruction -- 3.5M ``isinstance`` calls on a six-input build, which
+    # the order search pays once per candidate.
+    named: list[str] = []
 
     def emit(a: object, b: object, c: object, d: int) -> int:
         idx = len(instructions)
         next_cells.append(f"NEXT{idx}" if c == "next" else None)
         instructions.append([a, b, c, d])
+        for v in (a, b, c):
+            if isinstance(v, str) and v != "next":
+                named.append(v)
         return idx
 
     emit(-9, -6, "next", -7)  # enable flag mode
@@ -255,25 +264,28 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         emit(bit, bit, "next", -7)  # double
         emit(bit, bit, "next", -7)  # double -> {0, 4}
 
-    def build(level: int, rows: list[int]) -> None:
-        results = {truth_table[r] for r in rows}
-        if len(results) == 1:
+    # Rows split most significant first, so the span a node covers is the
+    # contiguous ``truth_table[lo:hi]`` and its two halves are that slice cut
+    # in two.  Carried as a pair rather than as the list of row indices it
+    # used to be: the list rebuilt itself at every node, O(n * 2**n) per
+    # candidate, for spans the slice bounds already name.
+    def build(level: int, lo: int, hi: int) -> None:
+        if truth_table.count(truth_table[lo], lo, hi) == hi - lo:
             # Every read already happened up front, so a folded leaf prints
             # and halts with nothing to drain.
-            out = _ASCII_ZERO + int(results.pop())
+            out = _ASCII_ZERO + int(truth_table[lo])
             emit(-1, f"D{out}", -8, -7)
             return
+        half = (hi - lo) // 2
         if perm[level] not in stored:
             # A discarded input has no cell to test.  Its bit cannot change
             # the answer, so both halves are the same function -- descend
             # into the zero half, keeping the row span halving with level.
-            build(level + 1, [r for r in rows if not ((r >> (n - 1 - level)) & 1)])
+            build(level + 1, lo, lo + half)
             return
         base = len(instructions)
         bit = f"B{perm[level]}"
         jump = f"J{base}"
-        zero = [r for r in rows if not ((r >> (n - 1 - level)) & 1)]
-        one = [r for r in rows if (r >> (n - 1 - level)) & 1]
         # Two instructions precede the trampolines, so the jump cell starts
         # at the zero trampoline two slots on.
         values[jump] = ("t0", base + 2)
@@ -284,13 +296,13 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         emit("U", "U", ztarget, -7)  # zero trampoline
         emit("U", "U", otarget, -7)  # one trampoline
         zstart = len(instructions)
-        build(level + 1, zero)
+        build(level + 1, lo, lo + half)
         ostart = len(instructions)
-        build(level + 1, one)
+        build(level + 1, lo + half, hi)
         values[ztarget] = ("addr", zstart)
         values[otarget] = ("addr", ostart)
 
-    build(0, list(range(2**n)))
+    build(0, 0, 2**n)
 
     base_data = 4 * len(instructions)
     # Insertion-ordered name -> index.  A dict rather than a list because the
@@ -307,10 +319,8 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
             index = names[name] = len(names)
         return base_data + index
 
-    for ins in instructions:
-        for v in ins:
-            if isinstance(v, str) and v != "next":
-                cell(v)
+    for name in named:
+        names.setdefault(name, len(names))
     for name in values:
         cell(name)
     for nc in next_cells:
@@ -352,7 +362,7 @@ def collatz_multiverse(truth_table: str) -> str:
     ``t = negativeOne x + one`` complements.  Each selected row of the table
     contributes its minterm (the AND of each bit's equality indicator); the
     OR is ``1 - prod (1 - minterm)``, and ``48 + result`` is printed.  The
-    byte constants come from the text generator's constant table.
+    byte constants come from :func:`_cm_constants`.
 
     A table with more ones than zeros selects its *zero* rows instead, since
     a minterm costs an indicator per input plus an AND chain.  Inverting the
@@ -722,6 +732,15 @@ def qoibl(truth_table: str) -> str:
 # The count, not the arity, is still what this measures: a table that
 # collapses to few states is cheap at any width, and parity renders far
 # past n == 10 inside the bound.
+#
+# What the bound declines is measured, not assumed: past it, dense n=11
+# (2910 instructions) builds and runs all 2048 rows correctly in 267s --
+# 264.5s of that the single factorization, then 0.001s a row -- for a
+# 123609143-character program.  Against n=10 on the same machine (1638,
+# 56s), 1.78x the instructions costs 4.7x the time.  Left at 1934 on that
+# price -- and 2910 is only the dense fixture: the formula above at
+# n == 11 gives 3726, so even a cap sized to that price leaves the arity
+# partial.
 _POLYNOMIAL_MAX_INSTRS = 1934
 
 # How far above the cheapest candidate the dispatch still renders.  Selection
@@ -905,16 +924,20 @@ def _polynomial_assemble(instrs: list[list[int]]) -> str:
     contributes ``x - p**v``, so the roots the interpreter factors back out
     are exactly the instructions.
     """
-    from esolangs.tools._polynomial import format_coeffs, multiply, primes
+    from esolangs.tools._polynomial import primes, render_product
 
-    coeffs = [1]
+    factors: list[list[int]] = []
     for instr, p in zip(instrs, primes(len(instrs)), strict=True):
         if len(instr) == 2:
             a, b = instr
-            coeffs = multiply(coeffs, [1, -2 * a, a * a + p ** (2 * b)])
+            factors.append([1, -2 * a, a * a + p ** (2 * b)])
         else:
-            coeffs = multiply(coeffs, [1, -(p ** instr[0])])
-    return str(format_coeffs(coeffs))
+            factors.append([1, -(p ** instr[0])])
+    # The expansion is the whole cost past n == 7 -- the factor count is the
+    # degree, and multiplying them in one incremental sweep rescans a
+    # polynomial whose coefficients keep growing.  ``render_product`` cuts
+    # the list into groups and merges them packed; see there.
+    return str(render_product(factors))
 
 
 def _polynomial_states(truth_table: str, n: int) -> list[list[str]]:

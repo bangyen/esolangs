@@ -634,13 +634,17 @@ class TestWII2D:
             got = [_wii2d_apply(ops, x) for x in range(16)]
             assert got == pattern, (pattern, ops, got)
 
+    @pytest.mark.slow  # ~21s at n == 9: a 1.1s build, then 512 interpreted rows
     def test_a_dense_table_at_the_widest_admitted_domain_runs(self) -> None:
         """The arity the guard now admits is executed, not just rendered.
 
         Raising :data:`_WII2D_MAX_INDEX_DOMAIN` buys width, and width is
         exactly what could break silently: a decode too wide to be laid out
         correctly still renders.  So the last arity the guard admits is run
-        on every row rather than checked for size.
+        on every row rather than checked for size.  Not every dense table at
+        this arity builds (about 6 in 10 sampled do; the rest refuse
+        promptly), so the witness table below is part of the pin: it is
+        known to decode on both branches.
         """
         from esolangs.tools.boolean.wii2d import _WII2D_MAX_INDEX_DOMAIN
 
@@ -891,6 +895,50 @@ class TestWII2D:
 
         assert _wii2d_decode([0, 0, 0, 0]) == "0"
         assert _wii2d_decode([1, 1, 1, 1]) == "1"
+
+    def test_decode_magnitude_abort_fires_on_a_constructed_state(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The ratchet abort is reachable: a tiny bound refuses, the real
+        bound decodes.
+
+        :data:`_WII2D_MAX_MAGNITUDE` never fires on a table that builds
+        (successes stay under 14 bits against its 2**20), so without a
+        constructed state the check would be untested code.  Shrinking the
+        bound below the pattern's own domain makes the first loop iteration
+        trip it; restoring the bound is the positive control that the
+        refusal came from the abort and not the pattern.
+        """
+        import importlib
+
+        from esolangs.tools.boolean.wii2d import _wii2d_decode
+
+        module = importlib.import_module("esolangs.tools.boolean.wii2d")
+        pattern = [0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1]
+        assert _wii2d_decode(list(pattern)) is not None
+        monkeypatch.setattr(module, "_WII2D_MAX_MAGNITUDE", 1)
+        assert _wii2d_decode(list(pattern)) is None
+
+    @pytest.mark.slow  # ~2s: a real doubling-trap pattern at domain 256
+    def test_a_doubling_trap_pattern_is_refused_not_hung(self) -> None:
+        """A domain-256 pattern that ratchets returns ``None`` in seconds.
+
+        About 1 in 10 sampled domain-256 patterns never reaches two live
+        values: its folds ratchet, doubling the bit length each step.  This
+        pattern (``random.Random(9017)``, one of the two failures in the
+        20-pattern sample the guard raise was measured against) is pinned as
+        the representative: the decode must give up promptly -- the
+        magnitude abort fires at 1.7s where the unbounded run dead-ends at
+        2.2s -- rather than diverge, because ``wii2d()`` turns that ``None``
+        into the refusal ``ValueError``.
+        """
+        import random
+
+        from esolangs.tools.boolean.wii2d import _wii2d_decode
+
+        rng = random.Random(9017)
+        pattern = [rng.randint(0, 1) for _ in range(256)]
+        assert _wii2d_decode(pattern) is None
 
     def test_decode_centre_cap_has_a_constructed_miss(
         self, monkeypatch: pytest.MonkeyPatch
@@ -1262,9 +1310,9 @@ class TestWII2D:
         ("table", "length"),
         [
             ("0110", 76),
-            ("00000001", 101),
-            ("00000010", 101),
-            ("00000110", 120),
+            ("00000001", 105),
+            ("00000010", 105),
+            ("00000110", 124),
         ],
     )
     def test_the_template_has_an_exact_length(self, table: str, length: int) -> None:
@@ -1324,7 +1372,7 @@ class TestWII2D:
         """
         from esolangs.tools.boolean.wii2d import _wii2d_decode, _wii2d_threshold
 
-        assert _wii2d_decode([0, 0, 0, 0, 1, 1, 0, 1]) == "-s///---s+/+/+/-s-//+-s"
+        assert _wii2d_decode([0, 0, 0, 0, 1, 1, 0, 1]) == "*-s+/+/+//+//-s+/-s-//+"
         assert _wii2d_threshold({3: 0, 9: 1}) == "---------////+"
 
 
@@ -1504,32 +1552,54 @@ class TestCircuitDiagramLayoutGuards:
 
     def test_two_signals_may_not_run_the_same_way_through_a_cell(self) -> None:
         layout = self._layout()
-        layout._occupy(layout.horizontal, 3, 4, 7, "horizontally")  # noqa: SLF001
+        layout.run_horizontal(2, 5, 4, 7)
         with pytest.raises(AssertionError) as caught:
-            layout._occupy(layout.horizontal, 3, 4, 9, "horizontally")  # noqa: SLF001
-        assert str(caught.value) == "two signals run horizontally through (3, 4)"
+            layout.run_horizontal(2, 5, 4, 9)
+        assert str(caught.value) == "two signals run horizontal through (3, 4)"
+        layout = self._layout()
+        layout.run_vertical(3, 2, 6, 1)
+        with pytest.raises(AssertionError) as caught:
+            layout.run_vertical(3, 2, 6, 2)
+        assert str(caught.value) == "two signals run vertical through (3, 3)"
 
-    def test_one_signal_may_reclaim_its_own_cell(self) -> None:
+    def test_partly_overlapping_runs_clash_at_the_first_shared_cell(self) -> None:
+        """Runs are intervals now, so overlap is not only exact re-tracing."""
+        layout = self._layout()
+        layout.run_horizontal(2, 6, 4, 7)
+        with pytest.raises(AssertionError) as caught:
+            layout.run_horizontal(4, 8, 4, 9)
+        assert str(caught.value) == "two signals run horizontal through (5, 4)"
+
+    def test_one_signal_may_reclaim_its_own_cells(self) -> None:
         """A repeated claim by the same signal is the ordinary case."""
         layout = self._layout()
-        layout._occupy(layout.horizontal, 3, 4, 7, "horizontally")  # noqa: SLF001
-        layout._occupy(layout.horizontal, 3, 4, 7, "horizontally")  # noqa: SLF001
-        assert layout.horizontal[(3, 4)] == 7
+        layout.run_horizontal(2, 5, 4, 7)
+        layout.run_horizontal(2, 5, 4, 7)
+        assert layout.render().split("\n")[4] == "   --"
 
     def test_two_signals_may_cross_at_right_angles(self) -> None:
-        """The clash is per direction: crossing wires share the cell."""
+        """The clash is per direction: crossing wires share the cell as ``=``."""
         layout = self._layout()
-        layout._occupy(layout.horizontal, 5, 5, 1, "horizontally")  # noqa: SLF001
-        layout._occupy(layout.vertical, 5, 5, 2, "vertically")  # noqa: SLF001
-        assert layout.horizontal[(5, 5)] == 1
-        assert layout.vertical[(5, 5)] == 2
+        layout.run_horizontal(2, 5, 4, 1)
+        layout.run_vertical(3, 2, 6, 2)
+        rows = layout.render().split("\n")
+        assert rows[3] == "   |"
+        assert rows[4] == "   =-"
+        assert rows[5] == "   |"
 
-    def test_a_wire_may_not_cross_a_glyph(self) -> None:
+    @pytest.mark.parametrize(
+        ("run", "args"),
+        [("run_horizontal", (2, 5, 4, 1)), ("run_vertical", (3, 2, 6, 1))],
+    )
+    def test_a_wire_may_not_cross_a_glyph(
+        self, run: str, args: tuple[int, ...]
+    ) -> None:
+        """Both run directions consult the glyphs along their line."""
         layout = self._layout()
-        layout.glyphs[(2, 2)] = "&"
+        layout.glyph(3, 4, "&")
         with pytest.raises(AssertionError) as caught:
-            layout._occupy(layout.horizontal, 2, 2, 1, "horizontally")  # noqa: SLF001
-        assert str(caught.value) == "wire crosses glyph at (2, 2)"
+            getattr(layout, run)(*args)
+        assert str(caught.value) == "wire crosses glyph at (3, 4)"
 
     def test_a_glyph_may_not_land_on_a_glyph(self) -> None:
         layout = self._layout()
@@ -1542,13 +1612,48 @@ class TestCircuitDiagramLayoutGuards:
     def test_a_glyph_may_not_land_on_a_wire(self, axis: str) -> None:
         """Both wire tables are consulted, not just the first."""
         layout = self._layout()
-        layout._occupy(getattr(layout, axis), 1, 1, 1, axis)  # noqa: SLF001
+        if axis == "horizontal":
+            layout.run_horizontal(0, 2, 1, 1)
+        else:
+            layout.run_vertical(1, 0, 2, 1)
         with pytest.raises(AssertionError) as caught:
             layout._check_free(1, 1)  # noqa: SLF001
         assert str(caught.value) == "glyph at (1, 1) lands on a wire"
 
     def test_a_free_cell_takes_a_glyph(self) -> None:
         self._layout()._check_free(1, 1)  # noqa: SLF001
+
+    def test_a_run_between_touching_junctions_records_nothing(self) -> None:
+        """The span is exclusive, so neighbours leave no cell to claim.
+
+        Two junctions a cell apart -- or the same one twice -- have an empty
+        interior, and recording an empty interval would make the next run
+        through that cell clash with nothing.
+        """
+        layout = self._layout()
+        layout.run_vertical(3, 4, 4, 1)
+        layout.run_vertical(3, 4, 5, 1)
+        assert layout.render() == ""
+        # A real span through the same cells still records, so the guard
+        # above rejected the empty interval rather than the coordinates.
+        layout.run_vertical(3, 2, 6, 1)
+        assert layout.render() != ""
+
+    def test_the_clash_scan_keeps_looking_after_its_first_hit(self) -> None:
+        """The reported cell is the earliest, not the first one found.
+
+        Runs are stored in the order they were laid, so a later entry can
+        clash further left than an earlier one; the scan has to see every
+        run before it names a coordinate.
+        """
+        from esolangs.tools.boolean.circuit_diagram import _Layout
+
+        late_is_earlier = _Layout._clash(  # noqa: SLF001
+            [(6, 9, 1), (2, 4, 2)], None, 0, 10, 9
+        )
+        assert late_is_earlier == (2, True)
+        early_stays = _Layout._clash([(2, 4, 1), (6, 9, 2)], None, 0, 10, 9)  # noqa: SLF001
+        assert early_stays == (2, True)
 
     @pytest.mark.parametrize(
         ("dx", "dy"),

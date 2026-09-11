@@ -1,6 +1,6 @@
 """Public API for the esolangs package.
 
-Provides ``generate`` (produce a program that prints a text), ``run``
+Provides ``generate`` (produce a program computing a truth table), ``run``
 (execute a program through an interpreter), ``make_vm`` (a step-and-inspect
 wrapper around the step-capable interpreters), ``make_debugger`` (a
 breakpoint/watch layer over the VM), ``describe`` (a structured language
@@ -17,7 +17,7 @@ from typing import Any
 from esolangs.debug import Debugger, make_debugger
 from esolangs.exceptions import HaltError, UnknownLanguageError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.registry import GENERATORS, LANGUAGES, RUNNERS
+from esolangs.registry import LANGUAGES, RUNNERS
 from esolangs.tools.wrap import takes_width, wrap_program
 from esolangs.vm import VM, make_vm
 
@@ -34,40 +34,40 @@ _STATE_MODELS = {
 }
 
 
-def generate(language: str, text: str, width: int | None = None) -> str:
-    """Return a program in ``language`` that prints ``text``.
+def generate(language: str, truth_table: str, width: int | None = None) -> str:
+    """Return a program in ``language`` computing ``truth_table``.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first), so the table length implies the input
+    count and the generators take no ``n``.
 
     ``width`` bounds the program to that many columns for readability;
     :data:`esolangs.tools.wrap.DEFAULT_WIDTH` is the conventional choice.
     The default of ``None`` asks for no bound, so a caller that does not
-    want one gets exactly what the generator has always produced.
+    want one gets exactly what the generator produces.
 
     Most languages honour it by *wrapping* the finished program, breaking
     only between whole tokens so it still means the same thing.  A few build
-    a shape rather than a line -- Clockwise weaves its code through a grid
-    the turtle walks -- and cannot be reflowed after the fact; those
-    generators take the width themselves and lay the program out to fit.
+    a shape rather than a line -- LaserFuck folds its grid's straight runs
+    -- and cannot be reflowed after the fact; those generators take the
+    width themselves and lay the program out to fit.
 
     A language whose newlines are semantic (the 2D grid languages) or that
     rejects them outright (NoComment) ignores ``width`` rather than raising,
-    so one width can be passed across every language.
-
-    ``width`` is therefore considered but not guaranteed: every generator
-    narrows what it can, and one asked for less than its construction can
-    occupy returns its narrowest form rather than raising.  The floor is
-    the generator's own -- four columns for Clockwise's weave, but a
-    function of the *text* for the generators whose programs grow with it,
-    so there is no one width below which a caller can expect a refusal.
-    Passing a width no generator can meet is safe; it just gets the
-    narrowest program each of them can build.
+    so one width can be passed across every language.  Passing a width no
+    generator can meet is safe; it just gets the narrowest program each of
+    them can build.
     """
     try:
-        fn = GENERATORS[language]
+        lang = LANGUAGES[language]
     except KeyError:
         raise UnknownLanguageError(language) from None
+    fn = lang.boolean
+    if fn is None:
+        raise UnknownLanguageError(language)
     if width is not None and takes_width(fn):
-        return str(fn(text, width))
-    return wrap_program(str(fn(text)), LANGUAGES[language].id, width)
+        return str(fn(truth_table, width))
+    return wrap_program(str(fn(truth_table)), lang.id, width)
 
 
 def run(
@@ -140,8 +140,8 @@ def describe(language: str) -> dict[str, object]:
     """Return a structured description of ``language``.
 
     The summary carries the state model (derived from the interpreter's
-    module family), whether the language has text and boolean generators,
-    its example programs, and its esolangs.org page.
+    module family), whether the language has a boolean generator, its
+    example programs, and its esolangs.org page.
     """
     try:
         lang = LANGUAGES[language]
@@ -157,7 +157,6 @@ def describe(language: str) -> dict[str, object]:
         "id": lang.id,
         "state_model": _STATE_MODELS.get(family) if family else None,
         "interpreter": lang.interpreter,
-        "text_generator": lang.text is not None,
         "boolean_generator": lang.boolean is not None,
         "examples": examples,
         "wiki_url": f"https://esolangs.org/wiki/{language.replace(' ', '_')}",

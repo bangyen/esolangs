@@ -24,8 +24,7 @@ from esolangs.tools.boolean.helpers import (
 )
 from esolangs.tools.boolean.rotfuck import rotfuck
 from esolangs.tools.boolean.six_five import six_five
-from esolangs.tools.boolean.slow_acv_mammalian import slow_acv_mammalian_boolean
-from esolangs.tools.text.tape import _factor_encode
+from esolangs.tools.boolean.slow_acv_mammalian import slow_acv_mammalian
 
 __all__ = [
     "basicfuck",
@@ -43,7 +42,7 @@ __all__ = [
     "rotfuck",
     "sbleq",
     "six_five",
-    "slow_acv_mammalian_boolean",
+    "slow_acv_mammalian",
     "suffolk",
     "three_d_brainfuck",
 ]
@@ -312,9 +311,8 @@ def _best_byte_order(truth_table: Sequence[int], n: int) -> str:
     emits exactly what it emitted before.
 
     The search is capped for the same reason the shared helper caps: ``n!``
-    builds of an ``O(2**n)`` program.  Circlefuck's byte tables come from
-    the text generator at ``n <= 8``, so the cap is reached in practice and
-    the greedy fallback is not decorative.
+    builds of an ``O(2**n)`` program.  The cap is reached in practice at
+    ``n <= 8``, so the greedy fallback is not decorative.
     """
     best = _circlefuck_ordered(list(truth_table), tuple(range(n)))
     if n < 2:
@@ -475,11 +473,49 @@ def brainfuck(truth_table: str) -> str:
 
 
 #: Digits :func:`factor` renders without being asked twice.  Sized from the
-#: measured worst case at the arity the boolean suite requires: n=5 parity
-#: encodes to 12565 digits (n=5 dense to 8117, n=4 parity to 6390), so this
-#: clears the bar with room and still names a ceiling rather than removing
+#: measured worst case at ten inputs -- n=10 parity encodes to 454832
+#: digits, n=10 dense to 328772 -- so this clears the whole reach of the
+#: construction with room and still names a ceiling rather than removing
 #: one.  Past it the caller passes ``max_digits`` and says how big is fine.
-_DEFAULT_MAX_DIGITS = 16_000
+#:
+#: Sized to the construction's reach rather than to whatever arity the
+#: boolean suite currently sweeps, deliberately: the old 16000 was pinned to
+#: a five-input suite and became the *only* thing stopping this generator at
+#: n=6, so the budget had to be re-argued the moment the sweep moved.  This
+#: one does not.  Raising it costs 2.8s and 78MB at the ten-input worst
+#: case, and an n=6 program built past the old ceiling executes correctly on
+#: all 64 rows.
+_DEFAULT_MAX_DIGITS = 500_000
+
+_BF_RESIDUE = {">": 1, "<": 2, "+": 3, "-": 4, ".": 5, ",": 6, "[": 7, "]": 8}
+
+
+def _factor_encode(code: str) -> int:
+    """Encode a brainfuck program as the Factor integer for it.
+
+    The decoder sorts the prime factors ascending, so the encoder walks
+    primes upward and hands each instruction the next prime with the right
+    residue modulo 11 (Dirichlet's theorem guarantees one always exists).  A
+    run of identical instructions is folded into one prime's exponent, which
+    keeps the integer small while decoding to the same run.
+    """
+    from sympy import isprime
+
+    number = 1
+    candidate = 2
+    i = 0
+    while i < len(code):
+        residue = _BF_RESIDUE[code[i]]
+        j = i
+        while j < len(code) and code[j] == code[i]:
+            j += 1
+        prime = candidate
+        while not (prime % 11 == residue and isprime(prime)):
+            prime += 1
+        number *= prime ** (j - i)
+        candidate = prime + 1
+        i = j
+    return number
 
 
 def factor(truth_table: str, *, max_digits: int = _DEFAULT_MAX_DIGITS) -> str:
@@ -490,10 +526,9 @@ def factor(truth_table: str, *, max_digits: int = _DEFAULT_MAX_DIGITS) -> str:
 
     A Factor program is a single integer whose prime factorization decodes
     to brainfuck, so the generator reuses :func:`brainfuck`'s truth-table
-    program unchanged and encodes it with :func:`_factor_encode` -- the same
-    prime-search the text generator uses (walk primes upward, handing each
-    instruction the next one with the right residue mod 11; Dirichlet's
-    theorem guarantees one always exists).
+    program unchanged and encodes it with :func:`_factor_encode` (walk primes
+    upward, handing each instruction the next one with the right residue
+    mod 11; Dirichlet's theorem guarantees one always exists).
 
     Folding the constant subtrees of that program is what turns some
     otherwise unrenderable tables into runnable ones, since the cap below is

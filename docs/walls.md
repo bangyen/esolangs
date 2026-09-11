@@ -20,8 +20,38 @@ claim is accepted.
   steered into a wipe window, an unbuilt controller -- and fifteen-plus
   generic tables are closed by counting: 16-bit cofactors over 2048 prefix
   points are nearly all distinct, so compaction stops biting.
+- **Polynomial, Modulous:** cannot test inputs out of stream order, so
+  their measured reorder upside (15.9% / 16.4% at n=3,
+  `scripts/screen_input_reorder.py`) is unreachable. Polynomial has one
+  register and nothing else addressable, so a bit must be branched on
+  before the next read overwrites it; Modulous's variables store and
+  print but never load back, and every conditional inspects the stack
+  top alone. Both verified against the interpreter and the wiki; the
+  derivation lives in `best_input_order`'s docstring.
 - **WII2D:** routing plus accumulator decoding is the shipped construction;
-  its remaining guards are source-cost policies, not language walls.
+  its guards are source-cost policies, and the dense ten-input table is a
+  wall of the **exactly-once embed convention**, not of the machine.  Under
+  that convention the construction is closed: `^v<>` fills set the heading
+  *absolutely*, so every prefix leaves a junction at an identical position
+  and heading and only the accumulator differs, which makes any program op
+  strings interleaved with the n branch pairs.  Within that family a
+  512-point decode ratchets: raising the guard to 512 refuses the sweep's
+  dense n=10 witness anyway (0.22s per branch), and with the magnitude
+  abort lifted its live count crawls 512 -> 475 over 19 steps while the
+  bit length doubles every step, 9 -> 1089888 bits.  It ratchets with every
+  candidate enumerated too.  No op removes
+  high accumulator bits, closing every shifted-table readout (verified
+  exhaustively over op strings to length 5, against controls that fire);
+  and a mid-chain collapse under 4-class labels ratchets too.
+  **Drop the convention and the wall goes:** a per-node re-embed (a plain
+  grid decision tree, one row per level) computes dense n=10 in 14432
+  characters and dense n=13 in 146540, every row executed.  It embeds input
+  `i` `2**i` times -- 512 copies of `{X9}` at n=10 -- which is what the
+  invariant in `tests/tools/test_boolean_parameterized.py` forbids and why
+  Dotlang and 2dFish were removed rather than exempted.  So this is a
+  *deliberate* wall, and the thing to re-examine if it ever matters is the
+  convention, not the fold algebra.  `docs/wii2d_generator.md` has the
+  audit.
 - **Termination convention:** use only where a specification supplies a
   reliable halt/loop verdict and the runtime can decide it soundly.
 - **Empty input line:** `io.input_char` now returns `0`, matching every
@@ -29,9 +59,9 @@ claim is accepted.
   used to answer `10` through one path and `0` through the other, which no
   cross-camp translation could reconcile. Exhausted input is still `EOFError`.
   Pinned by `tests/interpreters/test_input_convention.py`, which enumerates
-  the registry rather than a list. Open: whether any language's `0` was ever
-  sourced from its own specification rather than chosen — the docstrings
-  citing "the original" are the same author's earlier readings.
+  the registry rather than a list. Whether any language's `0` was sourced
+  from its specification or merely chosen is live work; see
+  [the roadmap](roadmap.md).
 
 ## Verification boundaries
 

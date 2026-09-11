@@ -11,8 +11,11 @@ Backs the 395 record cited in ``esolangs.tools.boolean.ztoalc_l`` and
 anywhere offers 395, so lifting n=11 (587 dense / 545 parity commands)
 needs a higher ceiling, not a better anchor.
 
+Exits nonzero if the sieve disagrees with the committed 395, so this is a
+guard on a cited constant rather than a one-time measurement.
+
 Usage:
-    python scripts/ztoalc_slot_record.py          # ~2 minutes
+    python scripts/ztoalc_slot_record.py          # 2.2s
 """
 
 import sys

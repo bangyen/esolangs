@@ -852,15 +852,16 @@ class TestParameterizedMinifuck:
         This replays the scan on the states a sculpt actually reaches and
         asserts the constant answers exactly what it returned -- the same
         specification-oracle shape the other closed searches keep.  Both
-        orientations are checked, so "``cell7 == 1`` is answered by none"
-        stays pinned as a measured fact rather than an assumption baked into
-        the constant.
+        orientations are scanned at every recorded state -- the scout means
+        only the winning replay probes now, always at ``cell7 == 0`` -- so
+        "``cell7 == 1`` is answered by none" stays pinned as a measured
+        fact rather than an assumption baked into the constant.
         """
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
-        seen: list[tuple[object, int]] = []
+        seen: list[object] = []
         real = module._mux_probe  # noqa: SLF001
 
         def record(joint: object, acc: int, cell7: int, hint: object = None) -> object:
@@ -868,32 +869,29 @@ class TestParameterizedMinifuck:
                 probe = joint.fork()  # type: ignore[attr-defined]
                 probe.emit("x")
                 module._clamp(probe)  # noqa: SLF001
-                seen.append((probe, cell7))
+                seen.append(probe)
             return real(joint, acc, cell7, hint)
 
         with patch.object(module, "_mux_probe", record):
             assert module._mux("0110100110010110", 4) is not None  # noqa: SLF001
         assert seen, "no sculpting probes were observed"
 
-        for probe, cell7 in seen:
-            scanned = next(
-                (
-                    code
-                    for code in module._POOL_CODES  # noqa: SLF001
-                    if module._pool_reaches(  # noqa: SLF001
-                        probe,
-                        code,
-                        cell7,
-                        module._PROBE_WALK_OUT,  # noqa: SLF001
-                    )
-                ),
-                None,
-            )
-            assert scanned == module._sculpt_pool_code(cell7), cell7  # noqa: SLF001
-
-        # Both orientations really were exercised, so the None half above is
-        # a checked answer and not an unvisited branch.
-        assert {cell7 for _, cell7 in seen} == {0, 1}
+        for probe in seen:
+            for cell7 in (0, 1):
+                scanned = next(
+                    (
+                        code
+                        for code in module._POOL_CODES  # noqa: SLF001
+                        if module._pool_reaches(  # noqa: SLF001
+                            probe,
+                            code,
+                            cell7,
+                            module._PROBE_WALK_OUT,  # noqa: SLF001
+                        )
+                    ),
+                    None,
+                )
+                assert scanned == module._sculpt_pool_code(cell7), cell7  # noqa: SLF001
 
     @pytest.mark.slow  # the six-input build, tens of seconds
     def test_no_arity_is_gated(self) -> None:
@@ -2764,14 +2762,23 @@ class TestParameterizedMinifuck:
 
         # One table per route: a constant (the degenerate cell scan,
         # including the in-pool cell 1 the computed refusal now answers), a
-        # staged pair, a reconverged projection, and the sculpted holdout.
+        # staged pair, a reconverged projection, and three sculpted tables
+        # -- the scout replays only the winning combination, so a sculpted
+        # build is one call site now rather than one per combination.
         with patch.object(module, "_try_print", record):
             module.minifuck.cache_clear()
-            for table in ("1111", "0110", "0011", "01101101"):
+            for table in (
+                "1111",
+                "0110",
+                "0011",
+                "01101101",
+                "1101000011010000",
+                "1010000110011011",
+            ):
                 module.minifuck.__wrapped__(table)
         module.minifuck.cache_clear()
 
-        assert len(sites) > 10, f"expected real call sites, got {len(sites)}"
+        assert len(sites) > 5, f"expected real call sites, got {len(sites)}"
         misses = hits = 0
         for joint, table, acc in sites:
             expected = retired(joint, table, acc)
@@ -2880,3 +2887,316 @@ def test_mux_refuses_below_its_minimum_arity() -> None:
 
     assert module._MUX_MIN_ARITY == 2  # noqa: SLF001
     assert module._mux("01", 1) is None  # noqa: SLF001
+
+
+def test_the_scout_distrusts_states_its_summary_cannot_speak_for() -> None:
+    """A base outside the parity law's key sends ``_mux`` to the sweep.
+
+    The scout summarises a row as its tape alone, which is only sound with
+    no skip pending, no dead row, and one shared pool region.  No
+    separation produces the other states, so they are constructed: each
+    must come back untrusted rather than mispriced.
+    """
+    import importlib
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    base = module._mux_separate(2)  # noqa: SLF001
+    positions = base.ptrs()
+    lowest, highest = min(positions), max(positions)
+    accs = range(highest - lowest + module._POOL_WIDTH + 1, lowest - 1)  # noqa: SLF001
+
+    trusted = module._mux_scout(base, "0110", 2, accs)  # noqa: SLF001
+    assert trusted[1], "the real separation must be scoutable"
+
+    skipped = base.fork()
+    skipped.ms[0].skip = True
+    assert module._mux_scout(skipped, "0110", 2, accs) == (None, False)  # noqa: SLF001
+
+    dead = base.fork()
+    dead.ms[1].dead = True
+    assert module._mux_scout(dead, "0110", 2, accs) == (None, False)  # noqa: SLF001
+
+    torn = base.fork()
+    torn.ms[0].tape ^= 1 << 3
+    assert module._mux_scout(torn, "0110", 2, accs) == (None, False)  # noqa: SLF001
+
+
+def test_the_probe_simulates_when_the_parity_law_declines() -> None:
+    """Off the canonical state the probe answers by simulation, identically.
+
+    ``_sculpt_columns`` refuses a joint whose rows disagree inside the pool
+    region, and ``_mux_probe`` must then hand back exactly what the
+    simulated probe says -- the fallback is the specification, not an
+    approximation of it.
+    """
+    import importlib
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    torn = module._mux_separate(2).fork()  # noqa: SLF001
+    torn.ms[0].tape ^= 1 << 3
+    acc = module._POOL_WIDTH + 4  # noqa: SLF001
+    assert module._sculpt_columns(torn, acc) is None  # noqa: SLF001
+    assert module._mux_probe(torn, acc, 0) == module._mux_probe_sim(  # noqa: SLF001
+        torn, acc, 0
+    )
+
+
+def test_the_probe_frame_refuses_codes_outside_its_key() -> None:
+    """A code that strands a skip or leaves the pool region has no frame.
+
+    The frame summarises a pool code as ``(landed, parity)``, which is only
+    a summary while the code stays inside the region and leaves the row
+    runnable.  ``[`` from the canonical byte cascades and owes a skip; a
+    long walk crosses cell 8.  Both must decline rather than summarise.
+    """
+    import importlib
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    byte = module._mux_separate(2).ms[0].tape & module._POOL_MASK  # noqa: SLF001
+    assert module._probe_frame("[", byte) is None  # noqa: SLF001
+    assert module._probe_frame("[x" * 9, byte) is None  # noqa: SLF001
+    assert module._probe_frame(module._SCULPT_POOL_CODE, byte) is not None  # noqa: SLF001
+
+
+def test_the_weight_law_matches_the_parsed_runs() -> None:
+    """``run_weight`` is ``apply(_runs(_mux_weight(k)))``, or refuses untouched.
+
+    The gadget law is a composition claim over the pinned laws, so the
+    differential is against them, from arbitrary states -- a fresh setter
+    site is exactly where a wrong march model still looks right.  A refusal
+    must leave the row untouched, and both the skip refusal and the floor
+    refusal must actually fire in the sample.
+    """
+    import importlib
+    import random
+
+    from esolangs.tools.boolean.minifuck_sim import _runs, _Sim
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    rng = random.Random(20260910)
+    applied = refused = 0
+    for _ in range(2500):
+        fast = _Sim(64)
+        fast.tape = rng.getrandbits(rng.choice([16, 48, 200]))
+        fast.ptr = rng.randrange(0, 40)
+        fast.skip = rng.random() < 0.2
+        units = rng.randrange(1, 70)
+        slow = fast.copy()
+        if not fast.run_weight(units):
+            refused += 1
+            assert fast.key() == slow.key(), "a refusal touched the row"
+            continue
+        applied += 1
+        slow.apply(_runs(module._mux_weight(units)))  # noqa: SLF001
+        assert fast.key() == slow.key(), (units, slow.key())
+    assert applied, "the fused arm never fired"
+    assert refused, "the refusal arm never fired"
+
+    floor_refusals = 0
+    for ptr in range(6):
+        for units in range(1, 12):
+            fast = _Sim(64)
+            fast.tape, fast.ptr = (1 << 40) - 1, ptr
+            slow = fast.copy()
+            if fast.run_weight(units):
+                slow.apply(_runs(module._mux_weight(units)))  # noqa: SLF001
+                assert fast.key() == slow.key(), (ptr, units)
+            else:
+                floor_refusals += 1
+    assert floor_refusals, "the floor guard never fired"
+
+    # The edge arms: a dead row and zero units are no-ops that still apply.
+    dead = _Sim(16)
+    dead.dead = True
+    frozen = dead.key()
+    assert dead.run_weight(3)
+    assert dead.key() == frozen
+    fresh = _Sim(16)
+    frozen = fresh.key()
+    assert fresh.run_weight(0)
+    assert fresh.key() == frozen
+
+    # The joint-level fallback: a row the law refuses advances by the
+    # parsed runs and the pair must land on the same state.
+    joint = module._Joint(1)  # noqa: SLF001
+    for m in joint.ms:
+        m.tape, m.ptr = 0b1011 << 5, 8
+    joint.ms[0].skip = True
+    clones = [m.copy() for m in joint.ms]
+    code = module._mux_weight(3)  # noqa: SLF001
+    joint.emit_weight(code, 3)
+    assert joint.parts[-1] == code
+    for m, clone in zip(joint.ms, clones, strict=True):
+        clone.apply(_runs(code))
+        assert m.key() == clone.key()
+
+
+def test_the_rewind_law_matches_the_parsed_runs() -> None:
+    """A sculpting round and a fused round sequence match the parsed runs.
+
+    ``run_rewind`` claims the round ``"<"*k + "[x"*k + "x"`` in one law
+    call and ``run_rewinds`` claims a whole sequence over one extracted
+    window; both fall back to the laws when their frame does not hold, so
+    the differential covers fused and fallback states alike.
+    """
+    import random
+
+    from esolangs.tools.boolean.minifuck_sim import _runs, _Sim
+
+    rng = random.Random(20260911)
+    fused = fell_back = 0
+    for _ in range(2500):
+        fast = _Sim(64)
+        fast.tape = rng.getrandbits(rng.choice([32, 400]))
+        fast.ptr = rng.randrange(0, 60)
+        fast.skip = rng.random() < 0.2
+        count = rng.randrange(0, 40)
+        slow = fast.copy()
+        if fast.skip or fast.ptr < count:
+            fell_back += 1
+        else:
+            fused += 1
+        fast.run_rewind(count)
+        slow.apply(_runs("<" * count + "[x" * count + "x"))
+        assert fast.key() == slow.key(), (count, slow.key())
+    assert fused, "the fused arm never fired"
+    assert fell_back, "the fallback arm never fired"
+
+    for _ in range(800):
+        fast = _Sim(64)
+        fast.tape = rng.getrandbits(rng.choice([64, 400]))
+        fast.ptr = rng.randrange(0, 60)
+        fast.skip = rng.random() < 0.15
+        widths = sorted(
+            (rng.randrange(1, 40) for _ in range(rng.randrange(1, 12))),
+            reverse=True,
+        )
+        if rng.random() < 0.3:
+            rng.shuffle(widths)
+        slow = fast.copy()
+        fast.run_rewinds(widths)
+        for width in widths:
+            slow.apply(_runs("<" * width + "[x" * width + "x"))
+        assert fast.key() == slow.key(), (widths, slow.key())
+
+    # The edge arms: dead rows and empty sequences are no-ops, and a zero
+    # count is the bare ``x``, which consumes a pending skip.
+    dead = _Sim(16)
+    dead.dead = True
+    frozen = dead.key()
+    dead.run_rewind(4)
+    dead.run_rewinds([3, 2])
+    assert dead.key() == frozen
+    still = _Sim(16)
+    frozen = still.key()
+    still.run_rewinds([])
+    assert still.key() == frozen
+    skipping = _Sim(16)
+    skipping.skip = True
+    clone = skipping.copy()
+    skipping.run_rewind(0)
+    clone.apply(_runs("x"))
+    assert skipping.key() == clone.key()
+
+
+def _rule_arities() -> list[int]:
+    """The rule's first arity and the top of the sweep.
+
+    Read off ``_MUX_RULE_ARITY`` rather than written down, so that moving
+    the constant moves this test with it.  A hard-coded boundary silently
+    stops testing the boundary the moment the line is redrawn -- which is
+    exactly what happened when the rule was pulled back from eight to nine.
+    """
+    import importlib
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+    first = module._MUX_RULE_ARITY  # noqa: SLF001
+    return sorted({first, 10}) if first <= 10 else [first]
+
+
+@pytest.mark.slow  # the rule build plus the retired sculpt, ~4s at ten
+@pytest.mark.parametrize("n", _rule_arities())
+def test_the_rule_spelling_matches_the_real_sculpt(n: int) -> None:
+    """From ``_MUX_RULE_ARITY`` the spelled build is the sculpt's bytes.
+
+    The rule names the combination; the spelling must then be exactly what
+    :func:`_mux_sculpt` emits at that combination, so the retired machinery
+    is run once here as the oracle.  Byte equality is the whole claim --
+    the replay acceptance inside ``_mux`` already checked the prints.
+
+    Both the rule's own first arity and the top of the sweep are checked: a
+    spelling that drifted at the boundary would otherwise be caught only by
+    the fallback, which answers correctly and silently restores the
+    contest's cost.
+    """
+    import importlib
+    import random
+
+    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+
+    rng = random.Random(20260914)
+    table = format(rng.getrandbits(2**n), f"0{2**n}b")
+    built = module._mux(table, n)  # noqa: SLF001
+    assert built is not None
+
+    base = module._mux_separate(n)  # noqa: SLF001
+    top = min(base.ptrs()) - 2
+    winner, trusted = module._mux_scout(  # noqa: SLF001
+        base.fork(), table, n, range(top, top + 1)
+    )
+    assert trusted
+    assert winner is not None
+    acc, direct, predicted = winner
+    assert acc == top
+    assert len(built) == predicted
+    sculpted = module._mux_sculpt(  # noqa: SLF001
+        base,
+        table,
+        n,
+        acc,
+        0,
+        direct=direct,
+        hint=module._SCULPT_POOL_CODE,  # noqa: SLF001
+    )
+    assert built == sculpted
+
+
+@pytest.mark.slow  # two ten-input builds plus twelve interpreter rows, ~10s
+def test_ten_input_builds_print_on_the_interpreter() -> None:
+    """Sampled rows of both ten-input shapes answer on the real interpreter.
+
+    The rule path's acceptance is the laws' replay; this is the standard
+    above it -- the shipped interpreter running instantiated rows.  Six
+    rows per shape, the two corner rows always among them; the full
+    1024-row sweep was executed when the path landed, both shapes correct.
+    """
+    import hashlib
+    import random
+
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.tape_based.minifuck import run
+    from esolangs.tools.boolean import minifuck
+    from esolangs.tools.boolean.examples import _fill_minifuck
+
+    digest = hashlib.sha256(b"dense:10").digest()
+    bits: list[str] = []
+    block = 0
+    while len(bits) < 1024:
+        digest = hashlib.sha256(digest + bytes([block & 255])).digest()
+        bits.extend(str(byte & 1) for byte in digest)
+        block += 1
+    dense = "".join(bits[:1024])
+    parity = "".join(str(bin(row).count("1") & 1) for row in range(1024))
+
+    rng = random.Random(20260915)
+    for table in (dense, parity):
+        template = minifuck(table)
+        for combo in sorted({*rng.sample(range(1024), 4), 0, 1023}):
+            row = [(combo >> (9 - i)) & 1 for i in range(10)]
+            io_ = ScriptedIO("")
+            run(_fill_minifuck(template, row), io_)
+            assert io_.getvalue() == table[combo], f"row {combo}"

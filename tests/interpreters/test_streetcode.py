@@ -379,7 +379,7 @@ class TestStreetcodeAmbiguousTurns:
         """
         root = Path(__file__).resolve().parents[2]
         for path in (
-            "examples/hello-world/streetcode.txt",
+            "tests/fixtures/streetcode_hello.txt",
             "examples/boolean/streetcode.txt",
         ):
             code = (root / path).read_text().split("\n")
@@ -419,7 +419,7 @@ class TestStreetcodeAmbiguousTurns:
         """
         root = Path(__file__).resolve().parents[2]
         for path, expected in (
-            ("examples/hello-world/streetcode.txt", 384),
+            ("tests/fixtures/streetcode_hello.txt", 384),
             ("examples/boolean/streetcode.txt", 268),
         ):
             code = (root / path).read_text().split("\n")
@@ -785,7 +785,10 @@ class TestStreetcodeLaneMerge:
         branch through the same lane-merge machinery. This pins current
         behavior on the four-way corner pattern -- unlike the three-way
         case in ``test_merge_lands_in_the_right_hand_lane``, no hand-drawn,
-        user-confirmed trace exists for a four-way junction.
+        user-confirmed trace exists for a four-way junction, and none can
+        be taken from the page: neither of the wiki's junction-bearing
+        examples contains a four-way at any cell or heading, so this
+        fixture is the definition rather than a check against one.
 
         The arms are two characters wide, per the spec: with one-cell arms
         the shape is drawn but there are no roads to drive down, so
@@ -1149,7 +1152,8 @@ class TestStreetcodeStreetWidth:
     def test_uncapped_divider_end_is_accepted(self) -> None:
         """Whether a divider must end in a '+' is a spec question the wiki
         does not settle, and the forms deliberately leave it open: the
-        hello-world example draws bare ends and runs correctly."""
+        ring program in tests/fixtures/streetcode_hello.txt draws bare ends
+        and runs correctly."""
         _Machine(
             [
                 "+------+",
@@ -1292,7 +1296,7 @@ class TestStreetcodeStreetWidth:
 
     @pytest.mark.parametrize(
         "path",
-        ["examples/hello-world/streetcode.txt", "examples/boolean/streetcode.txt"],
+        ["tests/fixtures/streetcode_hello.txt", "examples/boolean/streetcode.txt"],
     )
     def test_shipped_examples_are_accepted(self, path: str) -> None:
         """The repo's own programs must survive the check."""
@@ -1677,17 +1681,27 @@ def test_an_isolated_cell_is_not_a_street() -> None:
     _Machine([" + ", "+C+", " + "], IO())
 
 
-def test_the_generated_ring_program_runs() -> None:
-    """The counting-ring program the generator emits drives its whole lap.
+# A counting-ring program printing "Hi".  The ring latches a merge as the car
+# approaches the junction, so a full lap is the only thing that drives the
+# latch path end to end -- both tests below need exactly that shape.
+_RING_PROGRAM = [
+    "+----------------------------------------------+",
+    "|                                              |",
+    "|C^        O^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^O;|",
+    "+--+  ++  +------------------------------------+",
+    "   |      |",
+    "   | ^_~ =|",
+    "   | ^++= |",
+    "   |^^++^U|",
+    "   |^^^^^=|",
+    "   |^^^^^^|",
+    "   +------+",
+]
 
-    The ring latches a merge as the car approaches the junction, and the
-    lap is where that latch is followed through to the turn -- so running a
-    generated program is what exercises the merge bookkeeping end to end.
-    """
-    from esolangs.tools.text.streetcode import streetcode as generate
 
-    for text in ("Hi", "Hello, World!"):
-        assert run_and_capture(generate(text).split("\n")) == text
+def test_a_counting_ring_program_drives_its_whole_lap() -> None:
+    """The lap follows the latched merge through to the turn."""
+    assert run_and_capture(_RING_PROGRAM) == "Hi"
 
 
 class TestStreetcodeDriveStates:
@@ -1764,7 +1778,7 @@ class TestStreetcodeDriveStates:
 
     @pytest.mark.parametrize(
         "path",
-        ["examples/hello-world/streetcode.txt", "examples/boolean/streetcode.txt"],
+        ["tests/fixtures/streetcode_hello.txt", "examples/boolean/streetcode.txt"],
     )
     def test_mouth_depth_bound_does_not_change_the_driving(self, path: str) -> None:
         """``_MOUTH_MAX_DEPTH`` is pinned by behaviour, not by its scans.
@@ -1959,7 +1973,7 @@ class TestStreetcodeGraphBackedStepping:
 
     @pytest.mark.parametrize(
         "path",
-        ["examples/hello-world/streetcode.txt", "examples/boolean/streetcode.txt"],
+        ["tests/fixtures/streetcode_hello.txt", "examples/boolean/streetcode.txt"],
     )
     def test_the_shipped_examples_agree(self, path: str) -> None:
         root = Path(__file__).resolve().parents[2]
@@ -1968,12 +1982,9 @@ class TestStreetcodeGraphBackedStepping:
             code = code[:-1]
         assert self._lockstep(code, stdin="1\n") > 1
 
-    @pytest.mark.parametrize("text", ["Hi", "Hello, World!"])
-    def test_a_generated_ring_agrees(self, text: str) -> None:
+    def test_a_ring_program_agrees(self) -> None:
         """The ring program latches a merge, so it drives the latch path."""
-        from esolangs.tools.text.streetcode import streetcode as generate
-
-        assert self._lockstep(generate(text).split("\n")) > 1
+        assert self._lockstep(_RING_PROGRAM) > 1
 
     def test_an_off_graph_state_falls_back(self) -> None:
         """A state the search never reached still drives, via the phases.
@@ -2089,7 +2100,7 @@ class TestStreetcodeMutationSurvivors:
         output alone does not.
         """
         root = Path(__file__).resolve().parents[2]
-        code = (root / "examples/hello-world/streetcode.txt").read_text().split("\n")
+        code = (root / "tests/fixtures/streetcode_hello.txt").read_text().split("\n")
         if code and code[-1] == "":
             code = code[:-1]
         scripted = ScriptedIO("")
@@ -2113,7 +2124,7 @@ class TestStreetcodeMutationSurvivors:
         keeps the search itself under test.
         """
         root = Path(__file__).resolve().parents[2]
-        code = (root / "examples/hello-world/streetcode.txt").read_text().split("\n")
+        code = (root / "tests/fixtures/streetcode_hello.txt").read_text().split("\n")
         if code and code[-1] == "":
             code = code[:-1]
         machine = _Machine(code, IO())

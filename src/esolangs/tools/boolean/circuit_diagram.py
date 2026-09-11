@@ -121,20 +121,32 @@ class _Layout:
     tell a legitimate crossing (two different signals, drawn ``=``) from a
     collision (two segments of different signals running the same way
     through one cell, which would merge them).
+
+    A run is stored as one interval, not cell by cell: taps grow linearly
+    with the drawing, so per-cell tables cost quadratic time and memory --
+    n=9 held ~20M dict entries and n=10 would not fit.  The collision
+    checks compare intervals instead, and the renderer paints them with
+    slice assignment.
     """
 
     def __init__(self) -> None:
         """Start an empty layout."""
-        # (x, y) -> signal id, for each direction and for junctions.
-        self.horizontal: dict[tuple[int, int], int] = {}
-        self.vertical: dict[tuple[int, int], int] = {}
+        # Runs are half-open interior intervals keyed by the fixed axis:
+        # row -> [(x0, x1, signal)] and column -> [(y0, y1, signal)].
+        self.horizontal: dict[int, list[tuple[int, int, int]]] = {}
+        self.vertical: dict[int, list[tuple[int, int, int]]] = {}
         self.junctions: dict[tuple[int, int], int] = {}
         self.glyphs: dict[tuple[int, int], str] = {}
+        # Glyph coordinates indexed both ways, for the run/glyph checks.
+        self._glyph_rows: dict[int, list[int]] = {}
+        self._glyph_cols: dict[int, list[int]] = {}
 
     def glyph(self, x: int, y: int, char: str) -> None:
         """Place a literal character (a gate, an input dash, an output)."""
         self._check_free(x, y)
         self.glyphs[(x, y)] = char
+        self._glyph_rows.setdefault(y, []).append(x)
+        self._glyph_cols.setdefault(x, []).append(y)
 
     def junction(self, x: int, y: int, signal: int) -> None:
         """Place a ``.`` carrying ``signal``."""
@@ -146,37 +158,63 @@ class _Layout:
 
     def run_horizontal(self, x0: int, x1: int, y: int, signal: int) -> None:
         """Record a horizontal run between two junctions, exclusive."""
-        for x in range(min(x0, x1) + 1, max(x0, x1)):
-            self._occupy(self.horizontal, x, y, signal, "horizontal")
+        lo, hi = min(x0, x1) + 1, max(x0, x1)
+        if lo >= hi:
+            return
+        hit = self._clash(
+            self.horizontal.get(y), self._glyph_rows.get(y), lo, hi, signal
+        )
+        if hit is not None:
+            x, wire = hit
+            if wire:
+                raise AssertionError(f"two signals run horizontal through ({x}, {y})")
+            raise AssertionError(f"wire crosses glyph at ({x}, {y})")
+        self.horizontal.setdefault(y, []).append((lo, hi, signal))
 
     def run_vertical(self, x: int, y0: int, y1: int, signal: int) -> None:
         """Record a vertical run between two junctions, exclusive."""
-        for y in range(min(y0, y1) + 1, max(y0, y1)):
-            self._occupy(self.vertical, x, y, signal, "vertical")
-
-    def _occupy(
-        self,
-        table: dict[tuple[int, int], int],
-        x: int,
-        y: int,
-        signal: int,
-        direction: str,
-    ) -> None:
-        """Claim ``(x, y)`` in one direction, rejecting a same-way clash."""
-        existing = table.get((x, y))
-        if existing is not None and existing != signal:
-            raise AssertionError(
-                f"two signals run {direction} through ({x}, {y})",
-            )
-        if (x, y) in self.glyphs:
+        lo, hi = min(y0, y1) + 1, max(y0, y1)
+        if lo >= hi:
+            return
+        hit = self._clash(self.vertical.get(x), self._glyph_cols.get(x), lo, hi, signal)
+        if hit is not None:
+            y, wire = hit
+            if wire:
+                raise AssertionError(f"two signals run vertical through ({x}, {y})")
             raise AssertionError(f"wire crosses glyph at ({x}, {y})")
-        table[(x, y)] = signal
+        self.vertical.setdefault(x, []).append((lo, hi, signal))
+
+    @staticmethod
+    def _clash(
+        runs: list[tuple[int, int, int]] | None,
+        glyph_line: list[int] | None,
+        lo: int,
+        hi: int,
+        signal: int,
+    ) -> tuple[int, bool] | None:
+        """First cell of ``[lo, hi)`` claimed against ``signal``, if any.
+
+        Returns the offending coordinate along the run's axis and whether
+        the clash is another signal's wire (``True``) or a glyph.
+        """
+        hit: tuple[int, bool] | None = None
+        for a, b, s in runs or ():
+            if s != signal and a < hi and lo < b:
+                at = max(lo, a)
+                if hit is None or at < hit[0]:
+                    hit = (at, True)
+        for g in glyph_line or ():
+            if lo <= g < hi and (hit is None or g < hit[0]):
+                hit = (g, False)
+        return hit
 
     def _check_free(self, x: int, y: int) -> None:
         """Reject placing a glyph or junction over a wire or another glyph."""
         if (x, y) in self.glyphs:
             raise AssertionError(f"two glyphs at ({x}, {y})")
-        if (x, y) in self.horizontal or (x, y) in self.vertical:
+        if any(a <= x < b for a, b, _ in self.horizontal.get(y, ())) or any(
+            a <= y < b for a, b, _ in self.vertical.get(x, ())
+        ):
             raise AssertionError(f"glyph at ({x}, {y}) lands on a wire")
 
     def _check_junction_spacing(self) -> None:
@@ -201,44 +239,75 @@ class _Layout:
                         )
 
     def render(self) -> str:
-        """Return the layout as text, deriving each cell from its coverage."""
-        self._check_junction_spacing()
-        cells = (
-            set(self.horizontal)
-            | set(self.vertical)
-            | set(self.junctions)
-            | set(self.glyphs)
-        )
-        if not cells:
-            return ""  # pragma: no cover - every table lays a wire
-        width = max(x for x, _ in cells) + 1
-        height = max(y for _, y in cells) + 1
+        """Return the layout as text, deriving each cell from its coverage.
 
+        Cell priority is glyph, then junction ``.``, then the wires: a
+        horizontal and a vertical sharing a cell is a crossover ``=`` (the
+        spec connects "opposite wires" across it), either alone is ``-`` or
+        ``|``.  Rows are painted into byte buffers -- horizontal runs by
+        slice, everything else point by point -- and cut at their last
+        occupied cell, which is what per-cell ``rstrip`` did: every covered
+        cell renders non-space.
+        """
+        self._check_junction_spacing()
+
+        height = 0
+        for y in self.horizontal:
+            height = max(height, y + 1)
+        for runs in self.vertical.values():
+            for _, b, _ in runs:
+                height = max(height, b)
+        for _, y in self.junctions:
+            height = max(height, y + 1)
+        for _, y in self.glyphs:
+            height = max(height, y + 1)
+        if height == 0:
+            return ""  # pragma: no cover - every table lays a wire
+
+        # Rightmost occupied cell per row, and the point features by row.
+        last = [-1] * height
+        verts: dict[int, list[int]] = {}
+        for x, runs in self.vertical.items():
+            for a, b, _ in runs:
+                for y in range(a, b):
+                    verts.setdefault(y, []).append(x)
+                    if x > last[y]:
+                        last[y] = x
+        for y, runs in self.horizontal.items():
+            edge = max(b for _, b, _ in runs) - 1
+            if edge > last[y]:
+                last[y] = edge
+        dots: dict[int, list[int]] = {}
+        for x, y in self.junctions:
+            dots.setdefault(y, []).append(x)
+            if x > last[y]:
+                last[y] = x
+        marks: dict[int, list[tuple[int, int]]] = {}
+        for (x, y), char in self.glyphs.items():
+            marks.setdefault(y, []).append((x, ord(char)))
+            if x > last[y]:
+                last[y] = x
+
+        dash, pipe, cross, dot = ord("-"), ord("|"), ord("="), ord(".")
+        dashes = b"-" * (max(last) + 1)
+        spaces = b" " * (max(last) + 1)
         rows = []
         for y in range(height):
-            row = []
-            for x in range(width):
-                row.append(self._char_at(x, y))
-            rows.append("".join(row).rstrip())
+            edge = last[y]
+            if edge < 0:
+                rows.append("")
+                continue
+            buf = bytearray(spaces[: edge + 1])
+            for a, b, _ in self.horizontal.get(y, ()):
+                buf[a:b] = dashes[: b - a]
+            for x in verts.get(y, ()):
+                buf[x] = cross if buf[x] == dash or buf[x] == cross else pipe
+            for x in dots.get(y, ()):
+                buf[x] = dot
+            for x, code in marks.get(y, ()):
+                buf[x] = code
+            rows.append(buf.decode("ascii"))
         return "\n".join(rows)
-
-    def _char_at(self, x: int, y: int) -> str:
-        """Return the character for one cell."""
-        if (x, y) in self.glyphs:
-            return self.glyphs[(x, y)]
-        if (x, y) in self.junctions:
-            return "."
-        across = (x, y) in self.horizontal
-        down = (x, y) in self.vertical
-        if across and down:
-            # Two wires meeting at right angles pass each other through a
-            # crossover, which the spec connects "opposite wires" across.
-            return "="
-        if across:
-            return "-"
-        if down:
-            return "|"
-        return " "
 
 
 class _Builder:

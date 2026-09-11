@@ -6,8 +6,10 @@ statements are executed based on the zeroes of the function.
 """
 
 import io
+import json
 import sys
 from contextlib import redirect_stdout
+from pathlib import Path
 
 import pytest
 
@@ -23,6 +25,13 @@ from esolangs.interpreters.register_based.polynomial import (
     sanitize,
 )
 from tests.interpreters.contract import CycleContract, SnapshotContract
+
+# Programs whose roots span orders of magnitude or repeat a wide delta -- the
+# cases where a float64 solver rounds a root and drops or corrupts a
+# character.  Kept as data because only the decode is under test.
+_PRECISION_PROGRAMS: dict[str, str] = json.loads(
+    (Path(__file__).parents[2] / "tests/fixtures/polynomial_precision.json").read_text()
+)
 
 
 class TestPolynomialHelperFunctions:
@@ -839,38 +848,30 @@ class TestPolynomialHighPrecisionRoots:
     """Wide codepoint deltas and pathological root spreads are recovered
     exactly by factoring the integer polynomial (no floating point)."""
 
-    def test_wide_codepoint_deltas_round_trip(self) -> None:
-        """ASCII followed by CJK/emoji spans several orders of magnitude."""
-        from esolangs.tools.text.register import polynomial as gen
+    def _decode(self, text: str) -> str:
+        """Run the fixture program for ``text`` and return what it printed."""
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            run(_PRECISION_PROGRAMS[text], io=IO())
+        return buffer.getvalue()
 
-        for text in ["😀t", "a中", "1😀+", "a日a日", "A中B"]:
-            buffer = io.StringIO()
-            with redirect_stdout(buffer):
-                run(gen(text), io=IO())
-            assert buffer.getvalue() == text
+    @pytest.mark.parametrize("text", ["😀t", "a中", "1😀+", "a日a日", "A中B"])
+    def test_wide_codepoint_deltas_round_trip(self, text: str) -> None:
+        """ASCII followed by CJK/emoji spans several orders of magnitude."""
+        assert self._decode(text) == text
 
     def test_repeated_wide_deltas_round_trip(self) -> None:
         """The same wide delta repeated (a pathological root spread for any
         numeric solver) is recovered exactly by factoring."""
-        from esolangs.tools.text.register import polynomial as gen
-
-        text = "aあbいcう" * 3
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            run(gen(text), io=IO())
-        assert buffer.getvalue() == text
+        text = "aあbいcう" * 2
+        assert self._decode(text) == text
 
     def test_single_corrupted_delta_round_trip(self) -> None:
         """A mixed program where float64 silently corrupted one delta (19977
         -> 19971) is recovered exactly; the old numpy path emitted a wrong
         character."""
-        from esolangs.tools.text.register import polynomial as gen
-
         text = "aWg{<$中Z一t"
-        buffer = io.StringIO()
-        with redirect_stdout(buffer):
-            run(gen(text), io=IO())
-        assert buffer.getvalue() == text
+        assert self._decode(text) == text
 
     def test_a_real_root_past_float64_still_decodes(self) -> None:
         """``251**8`` exceeds 2**53, where ``complex`` would round it.

@@ -8,9 +8,12 @@ from esolangs.tools import boolean
 
 
 @pytest.mark.parametrize("language", ["Sophie", "Circlefuck", "BFStack"])
-def test_generate_round_trips(language: str) -> None:
-    program = esolangs.generate(language, "Hi")
-    assert esolangs.run(language, program) == "Hi"
+def test_generate_computes_its_table(language: str) -> None:
+    """XOR, executed on all four rows -- the program, not just its text."""
+    program = esolangs.generate(language, "0110")
+    for row, expected in enumerate("0110"):
+        stdin = "".join(f"{bit}\n" for bit in format(row, "02b"))
+        assert esolangs.run(language, program, stdin) == expected
 
 
 def test_run_feeds_stdin() -> None:
@@ -84,7 +87,6 @@ def test_describe_structured_summary() -> None:
     info = esolangs.describe("brainfuck")
     assert info["name"] == "brainfuck"
     assert info["state_model"] == "tape"
-    assert info["text_generator"] is True
     assert info["boolean_generator"] is True
     assert info["interpreter"] == "tape_based.brainfuck"
     assert info["wiki_url"] == "https://esolangs.org/wiki/brainfuck"
@@ -105,3 +107,22 @@ def test_describe_unknown_language_raises() -> None:
 def test_describe_language_without_interpreter() -> None:
     info = esolangs.describe("123")
     assert info["state_model"] == "tape"
+
+
+def test_generate_refuses_a_language_with_no_generator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A registered language may have no generator, and must say so.
+
+    Every language currently has one, so this guard has no live instance --
+    which is exactly why it is pinned here rather than left to be noticed
+    the first time a generator-less language is registered.
+    """
+    from dataclasses import replace
+
+    from esolangs.registry import LANGUAGES
+
+    bare = replace(LANGUAGES["Sophie"], boolean=None)
+    monkeypatch.setitem(LANGUAGES, "Sophie", bare)
+    with pytest.raises(UnknownLanguageError):
+        esolangs.generate("Sophie", "0110")

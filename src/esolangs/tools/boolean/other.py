@@ -1,6 +1,6 @@
 """Boolean-function generators for languages in the ``other`` category."""
 
-# laserfuck, streetcode and ztoalc_l_boolean each own a file because their
+# laserfuck, streetcode and ztoalc_l each own a file because their
 # construction (a grid layout or a program search) dwarfs the rest of the
 # category; they are re-exported here so this module stays the import site
 # the package and tests already use.
@@ -19,14 +19,14 @@ from esolangs.tools.boolean.helpers import (
 )
 from esolangs.tools.boolean.laserfuck import laserfuck
 from esolangs.tools.boolean.streetcode import streetcode
-from esolangs.tools.boolean.ztoalc_l import ztoalc_l_boolean
+from esolangs.tools.boolean.ztoalc_l import ztoalc_l
 
 __all__ = [
     "between",
     "bit_tilde",
     "clockwise",
     "container",
-    "forbin_boolean",
+    "forbin",
     "function_x_y",
     "laserfuck",
     "nevermind",
@@ -34,7 +34,7 @@ __all__ = [
     "suptiftam",
     "taglate",
     "three_x",
-    "ztoalc_l_boolean",
+    "ztoalc_l",
 ]
 
 # Closed-form 3x constant encodings.  Every integer is built from the literal
@@ -1152,7 +1152,7 @@ def bit_tilde(truth_table: str) -> str:
     return "".join(prog)
 
 
-def forbin_boolean(truth_table: str) -> str:
+def forbin(truth_table: str) -> str:
     """Build a Forbin program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -1175,7 +1175,7 @@ def forbin_boolean(truth_table: str) -> str:
 
 
 def _forbin_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order's Forbin program; see :func:`forbin_boolean`."""
+    """Emit one input order's Forbin program; see :func:`forbin`."""
     n = _validate_truth_table(truth_table)
 
     lines: list[str] = ["main {"]
