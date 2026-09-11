@@ -431,9 +431,11 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
     consume this are checked by running them, and running still gives the
     right answer whenever the layout is merely stretched.
 
-    The emitted length is what the formula moves.  All six three-input
-    permutations come out distinct, so the mapping is pinned rather than
-    just its identity case.
+    The emitted length is what the formula moves.  The six three-input
+    permutations take four distinct lengths -- not six, since a permutation
+    and its mirror can move the pointer the same total distance -- so the
+    whole dict is asserted rather than one length per order, and any entry
+    changing fails this.
     """
     from itertools import permutations
 
@@ -444,19 +446,19 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
         for perm in permutations(range(3))
     }
     assert lengths == {
-        (0, 1, 2): 769,
-        (0, 2, 1): 785,
-        (1, 0, 2): 783,
-        (1, 2, 0): 799,
-        (2, 0, 1): 797,
-        (2, 1, 0): 797,
+        (0, 1, 2): 491,
+        (0, 2, 1): 503,
+        (1, 0, 2): 499,
+        (1, 2, 0): 507,
+        (2, 0, 1): 503,
+        (2, 1, 0): 499,
     }
 
     # One and two inputs, where the tape is short enough that an off-by-one
     # in the move would still land inside it.
-    assert len(_decision_tree_program("01", ">", "<", (0,))) == 225
-    assert len(_decision_tree_program("0110", ">", "<", (0, 1))) == 485
-    assert len(_decision_tree_program("0110", ">", "<", (1, 0))) == 499
+    assert len(_decision_tree_program("01", ">", "<", (0,))) == 167
+    assert len(_decision_tree_program("0110", ">", "<", (0, 1))) == 317
+    assert len(_decision_tree_program("0110", ">", "<", (1, 0))) == 321
 
 
 # The shape each boolean generator's construction takes, which decides which

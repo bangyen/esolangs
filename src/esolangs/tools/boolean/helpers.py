@@ -623,21 +623,29 @@ def decision_tree_program(truth_table: str, right: str, left: str) -> str:
     and ``2n + 1``), and a node tests ``[b]`` for the one-side and
     ``[1 - b]`` for the zero-side: the complement guards naturally exclude
     the sibling, so only the matching leaf fires.  Each branch clears its
-    guard cell before its ``]``, so the loop exits after one pass, and a
-    fired leaf clears the result cell, so every ``]`` on the way out sees
-    zero.  The tree is O(2**n) characters, sharing the bit tests.
+    guard cell before its ``]``, so the loop exits after one pass; the result
+    cell is never a guard, so nothing on the way out has to see it.  The tree
+    is O(2**n) characters, sharing the bit tests.
+
+    A leaf only *records* its bit -- a ``'1'`` leaf is one ``+`` on the result
+    cell and a ``'0'`` leaf emits nothing at all -- and the single ``.`` sits
+    below the tree, where the ASCII offset is paid once.  Printing at the leaf
+    instead cost ``_ASCII_ZERO`` characters per leaf, which on a dense table
+    was most of the program: n == 10 xor went from 77,939 characters to
+    21,177.
 
     A subtree whose rows all agree collapses to a leaf rather than branching
     on bits that cannot change the answer: the side jumps straight to the
-    result cell and prints.  This is what the deepest level always did --
-    a one-row span is trivially constant -- lifted to any level, so a table
-    like ``11110000`` spends one leaf per half instead of a full tree.  The
-    inputs are still all read (the reads are unconditional, above the tree),
-    so a folded program consumes its input the same way an unfolded one
-    does.  Factor is the generator that most wants this: it encodes this
-    program as an integer and refuses tables whose encoding exceeds
-    Python's digit limit, so folding turns some previously unrenderable
-    tables into runnable ones.
+    result cell, or is dropped entirely when its value is ``'0'``.  This is
+    what the deepest level always did -- a one-row span is trivially
+    constant -- lifted to any level, so a table like ``11110000`` spends one
+    leaf per half instead of a full tree.  The inputs are still all read (the
+    reads are unconditional, above the tree), so a folded program consumes
+    its input the same way an unfolded one does.  Factor is the generator
+    that most wants this: it encodes this program as an integer and refuses
+    tables whose encoding exceeds Python's digit limit, so folding -- and now
+    the print-once leaf -- turns some previously unrenderable tables into
+    runnable ones.
     """
     return best_input_order(
         truth_table,
@@ -715,11 +723,6 @@ def _decision_tree_program(
     # decision tree: node i entered at cell 2i, exits at cell 2i+1
     result = 2 * n + 2
 
-    def leaf(value: str) -> None:
-        cells.append("+" * (_ASCII_ZERO + int(value)))
-        cells.append(".")
-        cells.append("[-]")  # clear the result so every ] on the way out sees zero
-
     def constant(i: int, combo: int) -> str | None:
         """Return the shared value of the subtree at ``(i, combo)``, else None.
 
@@ -734,19 +737,22 @@ def _decision_tree_program(
     def branch(i: int, combo: int) -> None:
         """Emit one side of node ``i``: a leaf when constant, else a subtree.
 
-        A folded leaf prints from the result cell just as a full-depth one
-        does, so the guard-cell dance around it is unchanged; only the depth
-        it is reached at differs.
+        A ``'1'`` leaf is a single ``+`` on the result cell; a ``'0'`` leaf
+        emits nothing at all, because the result cell is already zero and the
+        arm's own guard clear is enough to exit.  Either way the arm is
+        pointer-neutral, so the guard-cell dance around it is unchanged and
+        only the depth the leaf is reached at differs.
         """
         value = constant(i + 1, combo)
-        # A subtree is entered at the cell holding *its* input, which is
-        # ``2 * perm[i + 1]`` -- adjacent only when the order is the
-        # identity, so the target is computed rather than stepped over.
-        move(result if value is not None else 2 * perm[i + 1])
-        if value is not None:
-            leaf(value)
-        else:
+        if value is None:
+            # A subtree is entered at the cell holding *its* input, which is
+            # ``2 * perm[i + 1]`` -- adjacent only when the order is the
+            # identity, so the target is computed rather than stepped over.
+            move(2 * perm[i + 1])
             node(i + 1, combo)
+        elif value == "1":
+            move(result)
+            cells.append("+")
 
     def node(i: int, combo: int) -> None:
         bit = 2 * perm[i]
@@ -766,6 +772,14 @@ def _decision_tree_program(
 
     move(2 * perm[0])
     node(0, 0)
+
+    # One print, below the tree.  Exactly one leaf fires, leaving 0 or 1 in
+    # the result cell, so the ASCII offset is paid once here instead of at
+    # every leaf -- which is what the whole tree used to spend most of its
+    # characters on.
+    move(result)
+    cells.append("+" * _ASCII_ZERO)
+    cells.append(".")
     return "".join(cells)
 
 
