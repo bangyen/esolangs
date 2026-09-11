@@ -25,6 +25,7 @@ from typing import Any
 
 from esolangs.debugger import Debugger, StopReason, make_debugger
 from esolangs.exceptions import (
+    ArgumentError,
     EsolangError,
     HaltError,
     InputExhaustedError,
@@ -59,6 +60,7 @@ __version__ = "0.1.0"
 #: from the outside which was which.
 __all__ = [
     "VM",
+    "ArgumentError",
     "Debugger",
     "EsolangError",
     "HaltError",
@@ -126,11 +128,16 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
     -- and cannot be reflowed after the fact; those generators take the
     width themselves and lay the program out to fit.
 
-    A language whose newlines are semantic (the 2D grid languages) or that
-    rejects them outright (NoComment) ignores ``width`` rather than raising,
-    so one width can be passed across every language.  Passing a width no
-    generator can meet is safe; it just gets the narrowest program each of
-    them can build.
+    **``width`` is a request, not a guarantee.**  A language whose newlines
+    are semantic (the 2D grid languages) or that rejects them outright
+    (NoComment) ignores it rather than raising, so one width can be passed
+    across every language -- but so does any language with no wrapper, and
+    a language *with* one still overruns on a token longer than the width,
+    since breaking that token is what wrapping exists to avoid.  At
+    ``width=20`` twenty-nine of the sixty-nine come back with a longer line,
+    across every state model rather than only the 2D ones.  Passing a width
+    no generator can meet is safe; it just gets the narrowest program each
+    of them can build, which is sometimes wider than you asked.
     """
     lang = LANGUAGES[resolve(language)]
     fn = lang.boolean
@@ -142,12 +149,12 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
             f"{type(truth_table).__name__}"
         )
     if width is not None and not isinstance(width, int):
-        raise ValueError(f"width must be an integer or None, got {width!r}")
+        raise ArgumentError(f"width must be an integer or None, got {width!r}")
     if width is not None and width <= 0:
         # ``run``'s timeout is refused the same way.  A width of 0 bounds
         # nothing, and returning the unwrapped program for it looked like
         # the option had been honoured.
-        raise ValueError(f"width must be positive, got {width}")
+        raise ArgumentError(f"width must be positive, got {width}")
     if width is not None and _takes_width(fn):
         return str(fn(truth_table, width))
     if lang.id in parameterized_ids():
@@ -285,7 +292,7 @@ def run(
     here derives from :class:`~esolangs.exceptions.EsolangError`.
     """
     if timeout is not None and timeout <= 0:
-        raise ValueError(f"timeout must be positive, got {timeout}")
+        raise ArgumentError(f"timeout must be positive, got {timeout}")
     if timeout is not None and not (
         threading.current_thread() is threading.main_thread()
         and hasattr(signal, "SIGALRM")
@@ -293,7 +300,9 @@ def run(
         # Checked here rather than inside ``_run`` so that every ValueError
         # from the run itself is the interpreter refusing the program, and
         # can be re-raised as one.
-        raise ValueError("the timeout guard uses SIGALRM and needs a Unix main thread")
+        raise ArgumentError(
+            "the timeout guard uses SIGALRM and needs a Unix main thread"
+        )
     # No guard on the lookup: ``resolve`` raises for a name outside the
     # registry, and every registered language has an interpreter, so a name
     # that reaches here is always in ``RUNNERS``.  The guard that used to sit
@@ -391,7 +400,16 @@ def describe(language: str) -> dict[str, object]:
     on.  ``input_encoding`` is the ``(zero, one)`` pair the language spells
     its input bits with -- ``("0", "1")`` almost everywhere, ``("%", "A")``
     for Grapheme, whose read counts any non-empty line as true.
-    ``answer_convention`` is a sentence, or ``None``, saying how to read the
+    ``answer_mode`` is the same fact in a form you can branch on:
+    ``"output"`` (the program prints the answer -- read it as the last
+    non-whitespace character, since a few languages terminate their output
+    with a newline), ``"termination"`` (it
+    halts for a 0 and loops forever for a 1, so a timeout *is* the 1), or
+    ``"dump"`` (it prints its whole final state and the answer sits at a
+    fixed place in it).  ``answer_convention`` is the prose beside it, and
+    names that place.  Both exist because the prose alone could not be
+    consumed: a sweep that hardcoded two of the dumps and forgot a third
+    reported a passing language as broken.  The prose says how to read the
     answer out of a program that does not simply print it: several dump
     their whole state and the answer sits at a fixed place in it, three
     answer by *terminating* (they halt for a 0 and loop forever for a 1, so
@@ -419,6 +437,7 @@ def describe(language: str) -> dict[str, object]:
         "width_aware": lang.boolean is not None and _takes_width(lang.boolean),
         "input_encoding": example.alphabet if example else ("0", "1"),
         "input_shape": example.input_shape if example else "line_per_bit",
+        "answer_mode": example.answer_mode if example else "output",
         "answer_convention": (example.note or None) if example else None,
         "examples": examples,
         "wiki_url": f"https://esolangs.org/wiki/{name.replace(' ', '_')}",
@@ -455,6 +474,12 @@ def encode_inputs(language: str, bits: Sequence[int]) -> str:
     # always finds one; ``example_stems`` covers all 69 and a test pins that.
     example = _example_for(LANGUAGES[resolve(language)].id)
     bits = list(bits)
+    # Checked for the same reason ``instantiate`` checks it: a 2 or a "1"
+    # is not caught downstream.  It encodes as a 1 and the program answers
+    # a different row of the table, which is the wrong answer arriving with
+    # no sign that anything went astray.
+    if any(bit not in (0, 1) for bit in bits):
+        raise ArgumentError(f"bits must each be 0 or 1, got {bits!r}")
     if example.input_shape == "row_index":
         row = sum(bit << (len(bits) - 1 - i) for i, bit in enumerate(bits))
         return f"{row}\n"

@@ -102,6 +102,14 @@ class BooleanExample:
     #: no one should compare against -- which the manifest was presenting as
     #: "this program outputs nothing", when it prints two bytes.
     expected_compared: bool = True
+    #: How the answer reaches the caller.  ``output`` is the usual: the
+    #: program prints it.  ``termination`` means the program *halts* for a 0
+    #: and loops forever for a 1, so a timeout is the 1.  ``dump`` means the
+    #: program prints its whole final state and the answer sits at a fixed
+    #: place in it, which ``note`` names.  Carried as a field because the
+    #: prose alone cannot be branched on: a sweep that hardcoded two of the
+    #: dumps and forgot a third reported a passing language as broken.
+    answer_mode: str = "output"
     #: How this language spells an input 0 and an input 1.  Almost always
     #: the digits, but not universally, and the exception is silent rather
     #: than loud: Grapheme's ``W`` reads a whole line and every non-empty
@@ -113,7 +121,12 @@ class BooleanExample:
     #: everywhere else; ``one_line`` puts them all on one (Clockwise packs
     #: seven bits per character and reads the lot in one go); ``row_index``
     #: sends a single number whose bits are the inputs (Fargo reads it
-    #: before the program starts and indexes it with ``@ k``).
+    #: before the program starts and indexes it with ``@ k``);
+    #: ``char_stream`` is Taglate's, whose reads are characters rather than
+    #: lines -- see ``ghost_digit`` and ``trailing_newline`` for the two
+    #: ways that differs.  Reported as ``line_per_bit`` once, which told a
+    #: caller branching on this field that Taglate was ordinary; it is not,
+    #: and its n=3 program then ran out of input.
     input_shape: str = "line_per_bit"
     #: Whether an odd input count is padded with a leading zero the program
     #: reads like any other digit.  Taglate's slot stride has to land on a
@@ -177,9 +190,11 @@ def _reader(
     input_shape: str = "line_per_bit",
     ghost_digit: bool = False,
     trailing_newline: bool = True,
+    answer_mode: str = "output",
 ) -> BooleanExample:
     """Build an input-reading example, whose bits are read from stdin."""
     return BooleanExample(
+        answer_mode=answer_mode,
         generator=generator,
         table=table,
         interpreter=interpreter,
@@ -207,9 +222,11 @@ def _embedded(
     split: bool = False,
     kwargs: tuple[tuple[str, int], ...] = (),
     note: str = "",
+    answer_mode: str = "output",
 ) -> BooleanExample:
     """Build a parameterized example, whose bits are embedded in the text."""
     return BooleanExample(
+        answer_mode=answer_mode,
         generator=generator,
         table=table,
         interpreter=interpreter,
@@ -631,6 +648,7 @@ def _register() -> None:
         "laserfuck": _reader(
             b.laserfuck,
             "grid_based.laserfuck",
+            answer_mode="dump",
             split=True,
             expected="0",
             kwargs=_kw(seed=0),
@@ -651,6 +669,7 @@ def _register() -> None:
         "point-break": _reader(
             b.point_break,
             "register_based.point_break",
+            answer_mode="termination",
             expected="1 0 1 1 0 0 0 1",
             note=(
                 "Point Break answers by termination -- it halts for a 0 "
@@ -676,6 +695,7 @@ def _register() -> None:
             b.taglate,
             "queue_based.taglate",
             split=True,
+            input_shape="char_stream",
             ghost_digit=True,
             trailing_newline=False,
             note="Taglate reads its bits as characters, not lines: no newline "
@@ -696,6 +716,7 @@ def _register() -> None:
             b.a_painter_ant,
             "grid_based.a_painter_ant",
             _instantiate_apa,
+            answer_mode="dump",
             expected=(
                 "..#......\n.........\n.........\n.........\n.........\n"
                 ".........\n..#...#..\n.###.###.\n##o###.##\n.###.###.\n"
@@ -711,6 +732,7 @@ def _register() -> None:
             b.back,
             "tape_based.back",
             _fill_back,
+            answer_mode="dump",
             split=True,
             expected="1 0 0",
             note=(
@@ -721,7 +743,12 @@ def _register() -> None:
         ),
         "bf-pda": _embedded(b.bfpda, "stack_based.bf_pda", _fill_bfpda),
         "bio": _embedded(b.bio, "register_based.bio", _fill_bio),
-        "bitdeque": _embedded(b.bitdeque, "queue_based.bitdeque", _fill_bitdeque),
+        "bitdeque": _embedded(
+            b.bitdeque,
+            "queue_based.bitdeque",
+            _fill_bitdeque,
+            answer_mode="dump",
+        ),
         "cod": _embedded(
             b.cod,
             "grid_based.cod",
@@ -736,6 +763,7 @@ def _register() -> None:
             b.minsky_swap,
             "register_based.minsky_swap",
             _fill_minsky_swap,
+            answer_mode="dump",
             expected="0 0",
             note=(
                 "Minsky Swap has no output instruction and dumps its "
@@ -747,6 +775,7 @@ def _register() -> None:
             b.ram0,
             "register_based.ram0",
             _fill_ram0,
+            answer_mode="dump",
             expected="z: 0\nn: 1\nram: {\n    0: 0,\n    1: 1\n}",
             note=(
                 "RAM0 has no output instruction and dumps its whole state "
@@ -773,6 +802,7 @@ def _register() -> None:
             b.one_two_three,
             "tape_based.one_two_three",
             _fill_one_two_three,
+            answer_mode="termination",
             expected="",
             expected_compared=False,
             note=(
@@ -787,6 +817,7 @@ def _register() -> None:
             b.arrowqueue,
             "grid_based.arrowqueue",
             _fill_arrowqueue,
+            answer_mode="termination",
             expected="1 0 1 2 3",
             split=True,
             note=(
