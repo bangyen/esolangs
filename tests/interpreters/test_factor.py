@@ -195,9 +195,16 @@ class TestFactorint:
         left goes to ``factorint`` -- but it hands over exactly the input
         that function is worst at, and it takes minutes where the same
         call on the original number takes milliseconds.  This is the
-        program that caught it: the parity table's 3243-digit number
-        factors into 237 primes reaching 16189, and a 10000 ceiling left
-        80 of them inside a 1275-digit composite.
+        program that caught it: the n=4 parity table's 1702-digit number
+        factors into 525 primes reaching 17209, and a 10000 ceiling left
+        170 of them inside a 708-digit composite.
+
+        It was the n=3 parity table until the tree dropped the complement
+        construction and started printing once; that took the n=3 number
+        from 3243 digits to 939, whose largest prime fell under the 10000
+        ceiling, so the case stopped biting at all.  Of all 256 three-input
+        tables not one still reaches past 10000, which is why this moved up
+        an arity rather than sideways.
         """
         import re
         import time
@@ -205,7 +212,7 @@ class TestFactorint:
         from esolangs.interpreters.tape_based.factor import _factorint
         from esolangs.tools import boolean as boolean_tools
 
-        program = str(boolean_tools.factor("01101001"))
+        program = str(boolean_tools.factor("0110100110010110"))
         number = int(re.sub(r"[^0-9]", "", program))
         start = time.perf_counter()
         factors = _factorint(number)
