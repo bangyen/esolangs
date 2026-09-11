@@ -919,3 +919,162 @@ class TestTheDecodeGuardsInProcess:
             ["debug", "--steps", "50", "Grapheme", str(path)], capsys, stdin="1\n0\n"
         )
         assert "spells its bits" in err
+
+
+class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
+    """`encode` refused these bytes all along; `run` answered them.
+
+    A leading space, a tab, a `2` or the word `true` each produced a
+    confident wrong bit at exit 0 -- and brainfuck and Sophie returned
+    *different* answers for the same junk byte, which is what proved nothing
+    was reading it.
+    """
+
+    @pytest.mark.parametrize("line", [" 1", "\t1", "2", "true", "01", "+1"])
+    def test_plain_run_warns_about_a_stray_line(
+        self, line: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A warning, because `run` executes arbitrary programs."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0101"))
+        _out, err = call_both(
+            ["run", "brainfuck", str(path)], capsys, stdin=f"0\n{line}\n"
+        )
+        assert "input alphabet" in err
+
+    @pytest.mark.parametrize("line", [" 1", "2", "true"])
+    def test_judge_refuses_it(
+        self, line: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """--judge asks for an answer bit, so a bad encoding is a usage error."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0101"))
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["run", "--judge", "brainfuck", str(path)], capsys, stdin=f"0\n{line}\n"
+            )
+        assert exc.value.code == 2
+        assert "input alphabet" in capsys.readouterr().err
+
+    def test_a_correct_encoding_is_silent_and_right(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Doing it right must stay quiet, or the check is noise."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0101"))
+        out, err = call_both(
+            ["run", "--judge", "brainfuck", str(path)], capsys, stdin="0\n1\n"
+        )
+        assert out.strip() == "1"
+        assert err == ""
+
+    def test_every_language_accepts_its_own_encoding(self) -> None:
+        """The check must not fire on what `encode_inputs` itself produces."""
+        noisy = []
+        for name in esolangs.list_languages():
+            if esolangs.describe(name)["parameterized"]:
+                continue
+            stdin = esolangs.encode_inputs(name, [1, 0], "0110")
+            if cli._shape_warning(esolangs.describe(name), stdin):  # noqa: SLF001
+                noisy.append(name)
+        assert not noisy, noisy
+
+    def test_the_alphabet_check_reads_the_declared_alphabet(self) -> None:
+        """Grapheme's own bits are %/A, so 0/1 is what is wrong there."""
+        facts = esolangs.describe("Grapheme")
+        assert cli._shape_warning(facts, "%\nA\n") == ""  # noqa: SLF001
+        # 0/1 is wrong *here*, and the specific message is the one that
+        # fires: the general stray-line rule runs last so a language with
+        # something better to say keeps saying it.
+        assert "spells its bits" in cli._shape_warning(facts, "0\n1\n")  # noqa: SLF001
+
+
+class TestTheSmallInconsistencies:
+    """Each one was a place this CLI did not do what it does everywhere else."""
+
+    def test_an_unknown_subcommand_is_suggested(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Languages and options both suggest; the commands did not."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["lst"], capsys)
+        assert exc.value.code == 2
+        assert "did you mean list" in capsys.readouterr().err
+
+    def test_a_repeated_judge_is_refused(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Every value-taking option refused a repeat; this flag did not."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["run", "--judge", "--judge", "brainfuck", str(path)],
+                capsys,
+                stdin="0\n1\n",
+            )
+        assert exc.value.code == 2
+        assert "--judge given more than once" in capsys.readouterr().err
+
+    def test_a_no_op_width_says_so(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """It was silently ignored: two identical programs, one asked to differ."""
+        _out, err = call_both(
+            ["generate", "--width", "10", "Clockwise", "0100"], capsys
+        )
+        assert "no effect on Clockwise" in err
+
+    def test_a_wrapping_width_says_nothing(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The note must not fire where the width does something."""
+        _out, err = call_both(["generate", "--width", "10", "Sophie", "0100"], capsys)
+        assert "no effect" not in err
+
+    def test_describe_reports_the_width_effect(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The field a reader could not work out without the source."""
+        assert "width_effect" in call_main(["describe", "Sophie"], capsys)
+
+    def test_a_breakpoint_that_never_fires_says_so(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It looked exactly like a program that never reached it."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        _out, err = call_both(
+            [
+                "debug",
+                "--break-on-output",
+                "Z",
+                "--steps",
+                "5000",
+                "brainfuck",
+                str(path),
+            ],
+            capsys,
+            stdin="0\n1\n",
+        )
+        assert "no breakpoint matched" in err
+
+    def test_a_breakpoint_that_fires_is_not_reported_as_missed(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The other half, so the note means something."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        out, err = call_both(
+            [
+                "debug",
+                "--break-on-output",
+                "1",
+                "--steps",
+                "5000",
+                "brainfuck",
+                str(path),
+            ],
+            capsys,
+            stdin="0\n1\n",
+        )
+        assert "stopped: breakpoint" in out
+        assert "no breakpoint matched" not in err

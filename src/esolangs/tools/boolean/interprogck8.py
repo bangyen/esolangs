@@ -63,6 +63,7 @@ table still short after it is refused with the window, never mis-routed.
 from bisect import bisect_left, bisect_right
 from functools import cache
 
+from esolangs.exceptions import GeneratorCapError
 from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 
 #: Lines between the two landing sites of the branch gadget, fixed by the
@@ -527,7 +528,7 @@ def _fits(free: int, landing: int, target: int, acc: int | None = None) -> bool:
     return False
 
 
-class _StuckError(ValueError):
+class _StuckError(GeneratorCapError):
     """One routing shortfall, naming the window that held no rung slot.
 
     A :class:`ValueError` so an unrepaired shortfall is the generator's

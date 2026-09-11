@@ -37,6 +37,7 @@ from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
     ExecutionTimeoutError,
+    GeneratorCapError,
     HaltError,
     InputExhaustedError,
     ProgramError,
@@ -82,6 +83,7 @@ __all__ = [
     "Debugger",
     "EsolangError",
     "ExecutionTimeoutError",
+    "GeneratorCapError",
     "HaltError",
     "InputExhaustedError",
     "ProgramError",
@@ -184,6 +186,21 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
     :class:`~esolangs.exceptions.TemplateError` rather than running it --
     the slots are not instructions, and a language that happens to ignore
     them computes a constant and reports it as the answer.
+
+    **A generator may refuse a table that is too big for it**, with
+    :class:`~esolangs.exceptions.GeneratorCapError`.  Five do, each for its
+    own arithmetic reason, and a sweep over the registry should expect it::
+
+        try:
+            program = generate(language, table)
+        except GeneratorCapError as refusal:
+            print(f"{language} cannot build this one: {refusal}")
+
+    There is deliberately no ``describe(...)["max_arity"]`` to consult
+    first, because there is no such number: Polynomial refuses on how many
+    minterms a table needs and Factor on how many digits it encodes to, so a
+    sparse table can build at a size where a dense one is refused.  The
+    refusal is the answer, and it is exact.
 
     ``width`` bounds the program to that many columns for readability;
     :data:`esolangs.tools.wrap.DEFAULT_WIDTH` is the conventional choice.
@@ -470,9 +487,23 @@ def _run_timed_signal(
     timeout: float,
 ) -> None:
     """Run ``run_fn`` under a ``SIGALRM`` wall-clock guard (main thread only)."""
+    # Whether an arriving alarm still means "the run is overrunning".  The
+    # handler fires between two bytecodes -- *any* two, including the ones
+    # in the cleanup below -- so without this it could raise into its own
+    # teardown and skip the rest of it, leaving the timer armed and the old
+    # handler unrestored.  A later alarm then arrived with SIGALRM's default
+    # disposition, which is to terminate the process: a short timeout killed
+    # the interpreter outright roughly one run in three, no traceback and no
+    # exception, which is the worst way for a guard against hanging to fail.
+    #
+    # Clearing it is a single store, so the cleanup cannot be interrupted by
+    # the thing it is cleaning up.
+    armed = True
 
     def _timeout_handler(_signum: int, _frame: object) -> None:
         # coverage cannot trace a raise inside a signal handler
+        if not armed:  # pragma: no cover - a late alarm, not an overrun
+            return
         raise ExecutionTimeoutError(
             f"execution exceeded the {timeout}-second timeout"
         )  # pragma: no cover
@@ -482,6 +513,27 @@ def _run_timed_signal(
     try:
         run_fn(program, io_obj)
     finally:
+        armed = False
+        # Ignore the signal *first*, then disarm, then put the old handler
+        # back.  Disarming first looks sufficient and is not: an alarm can
+        # already be in flight when the run finishes, and if it is delivered
+        # after ``old`` is restored -- and ``old`` is the default
+        # disposition -- SIGALRM's default action is to **terminate the
+        # process**.  It did: a very short timeout killed the interpreter
+        # outright about one run in ten, no traceback, no exception, exit
+        # 142, which is the worst way for a guard against hanging to fail.
+        #
+        # ``SIG_IGN`` is installed at the C level, so an alarm arriving in
+        # this window is discarded rather than reaching that default.
+        #
+        # One window remains by design: an alarm delivered between
+        # ``run_fn`` returning and the line below still finds the custom
+        # handler and raises, reporting a timeout for a run that had just
+        # finished.  That is an exception rather than a death, and closing
+        # it would need the handler to know whether the run was still going
+        # -- a flag read from a signal handler, to save a caller from a
+        # timeout they did set.
+        signal.signal(signal.SIGALRM, signal.SIG_IGN)
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, old)
 
@@ -558,6 +610,7 @@ def describe(language: str) -> dict[str, object]:
         "parameterized": parameterized,
         "reads_input": lang.boolean is not None and not parameterized,
         "width_aware": lang.boolean is not None and _takes_width(lang.boolean),
+        "width_effect": _width_effect(lang),
         "input_encoding": example.alphabet if example else ("0", "1"),
         "input_shape": example.input_shape if example else "line_per_bit",
         "answer_mode": example.answer_mode if example else "output",
@@ -568,6 +621,36 @@ def describe(language: str) -> dict[str, object]:
         "examples": examples,
         "wiki_url": f"https://esolangs.org/wiki/{name.replace(' ', '_')}",
     }
+
+
+def _width_effect(lang: Any) -> str:
+    """Return what ``width`` actually does to this language's program.
+
+    ``width_aware`` answered a narrower question than anyone was asking --
+    whether the *generator* takes the width itself -- so it was ``False``
+    for Sophie, whose program is reflowed to the width afterwards, and
+    ``False`` for Clockwise, which ignores the width entirely.  One flag,
+    three behaviours, and no way to tell them apart without reading the
+    source; a reader said so in as many words.
+
+    * ``"layout"`` -- the generator is handed the width and builds a shape
+      to fit.  A *hint*, not a bound: LaserFuck asked for 10 gives 18, and
+      asked for 200 gives 56, because it folds straight runs rather than
+      breaking lines.
+    * ``"wrap"`` -- the finished program is reflowed between whole tokens,
+      so the width is honoured except by a single token longer than it.
+    * ``"none"`` -- the width is ignored, because the language's newlines
+      are semantic or it rejects them outright.  This is the one worth
+      knowing: it was a silent no-op.
+    """
+    from esolangs.tools.wrap import WRAPPERS
+
+    # One expression rather than an early return for the generator-less
+    # case: every registered language has a generator, so that return was a
+    # line no input could reach.
+    if lang.boolean is not None and _takes_width(lang.boolean):
+        return "layout"
+    return "wrap" if lang.id in WRAPPERS else "none"
 
 
 def encode_inputs(

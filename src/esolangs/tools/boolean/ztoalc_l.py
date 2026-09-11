@@ -9,6 +9,7 @@ the L-th smallest value visited rather than the trajectory's peak.
 
 from functools import cache
 
+from esolangs.exceptions import GeneratorCapError
 from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 from esolangs.tools.ztoalc_starts import ANCHORS
 
@@ -116,7 +117,7 @@ def _slots(length: int) -> tuple[int, list[int]]:
         bound = sorted(values)[length - 1]
         return start, [v for v in values if v <= bound]
     capacity = max(len(_usable_values(s, _MAX_LINES)) for _, s in ANCHORS)
-    raise ValueError(
+    raise GeneratorCapError(
         f"the ZTOALC L boolean generator needs {length} command lines at or "
         f"below {_MAX_LINES}; the committed anchors offer at most {capacity}",
     )
