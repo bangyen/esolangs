@@ -65,17 +65,19 @@ Being unwrappable is not the same as being unbounded, though.  A generator
 that lays out its own *shape* can honour a width by building a different
 shape, which no after-the-fact reflow can do: Streetcode folds its
 instruction line into a boustrophedon, LaserFuck steers the beam down and
-back so a straight run of tape commands costs rows instead of columns, and
-WII2D folds the run that shifts its answer to an ASCII digit the same way.
-Those three generators take the width themselves -- :func:`takes_width` is
-how the callers tell -- and never reach :func:`wrap_program`, which would
-skip them anyway for being already multi-line.
+back so a straight run of tape commands costs rows instead of columns,
+WII2D folds the run that shifts its answer to an ASCII digit the same way,
+and COD stops its left-to-right join of blocks early and swims the cod back
+down and west to the next band.  Those four generators take the width
+themselves -- :func:`takes_width` is how the callers tell -- and never reach
+:func:`wrap_program`, which would skip them anyway for being already
+multi-line.
 
-None of the three folds to an arbitrary width, because in each the part
-that *carries the inputs* cannot move: WII2D's floor is its junction chain,
-one junction per input with a detour row hanging beneath it, so what folds
-is only the decode's tail.  A width under the floor returns the narrowest
-program rather than refusing.
+None of the four folds to an arbitrary width, because in each something
+cannot move: WII2D's junction chain carries one input per junction with a
+detour row beneath it, so only the decode's tail folds, and COD's blocks
+are indivisible, so its floor is the widest single block.  A width under
+the floor returns the narrowest program rather than refusing.
 
 Clockwise is the one that looks like it belongs here and does not.  It
 folds too, but the fold is not a layout one: it collapses a subtree whose
