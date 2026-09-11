@@ -19,7 +19,15 @@ reaches the terminal as a traceback, which is what a traceback should mean.
 
 import sys
 
-from esolangs import describe, generate, list_languages, run
+from esolangs import (
+    __version__,
+    check_runnable,
+    describe,
+    generate,
+    instantiate,
+    list_languages,
+    run,
+)
 from esolangs.debug import make_debugger
 from esolangs.exceptions import EsolangError
 from esolangs.registry import LANGUAGES
@@ -29,21 +37,23 @@ USAGE = """usage: esolangs <command> [...]
 
 commands:
   list [--details]            list the supported languages
-  generate [--width N] <language> <truth-table>
+  generate [--width N] [--bits BITS] <language> <truth-table>
                               print a program computing a truth table
-                              (--width wraps it for readability)
-  run <language> <file>       run a program through its interpreter
+                              (--width wraps it; --bits fills a template)
+  run [--timeout S] <language> <file>
+                              run a program through its interpreter
   debug [--steps N] [--watch-cell I] [--break-on-output S] <language> <file>
                               run under the debugger and report where it
                               stopped, plus any watched cell's history
 
 Language names are case-insensitive.  `esolangs <command> --help` describes
-one command in full.
+one command in full; `--version` prints the version.
 
 examples:
   esolangs list
   esolangs generate Circlefuck 0110
   esolangs generate --width brainfuck 10010110
+  esolangs generate --bits 10 Minifuck 0110
   esolangs run Circlefuck hello.txt
   esolangs debug --steps 20 --watch-cell 0 brainfuck prog.txt
 """
@@ -72,28 +82,44 @@ prints the result.
 Seventeen languages instead return a *template*: their generators embed the
 inputs in the code rather than reading them, leaving a {{Xi}} slot per input.
 Running one unfilled is refused.  `esolangs list --details` marks them
-`tmpl`, and the Python API fills them:
-
-    esolangs.instantiate(language, template, bits)
+`tmpl`; pass --bits to get a runnable program instead of the template.
 
 options:
+  --bits BITS  fill a template's input slots with these bits, one character
+               per input, and print the runnable program.  Substituting them
+               by hand does not work: each language spells a set-input its
+               own way, and a 0/1 in the slot is a different program.
   --width [N]  wrap the program to N columns (default {DEFAULT_WIDTH}) so it
                is readable in a diff.  Breaks only between whole tokens.
                Grid and newline-sensitive languages keep their own layout
                and ignore it.  A bare --width takes the default, so the next
                word is read as the language, not as a width.
+
+examples:
+  esolangs generate brainfuck 0110
+  esolangs generate --bits 10 Minifuck 0110
 """,
     "run": """usage: esolangs run <language> <program-file>
 
 Run a program through its interpreter and print what it writes.
 
-The program is read from <program-file>; its input is this command's stdin,
-one line per read.  A program that reads more than it is given fails with
-an input-exhausted error rather than hanging.
+The program is read from <program-file>; its input is this command's stdin.
+Most languages read one line per input bit, but not all -- Grapheme reads
+%/A rather than 0/1, Clockwise and Fargo take every bit on one line -- so
+check `esolangs list --details` and examples/boolean/MANIFEST.md before
+assuming.  Feeding the wrong encoding is answered with a wrong result, not
+an error.  A program that reads more than it is given fails with an
+input-exhausted error rather than hanging.
 
 Output is written verbatim, with no trailing newline added, so it can be
 compared or piped byte for byte.  One is added when stdout is a terminal,
 where the alternative is the result running into the next prompt.
+
+options:
+  --timeout SECONDS  stop the run after this long and fail, rather than
+                     hanging.  There is no bound by default, and several
+                     languages loop forever by design -- three of them
+                     answer a 1 by *not* terminating.
 """,
     "debug": """usage: esolangs debug [options] <language> <program-file>
 
@@ -265,10 +291,17 @@ def _abridge(history: list[object]) -> str:
 
 
 def _read_program(path: str) -> str:
-    """Return the contents of ``path``, or exit with a usage error."""
+    """Return the program in ``path``, or exit with a usage error.
+
+    The trailing newline is the *file's*, not the program's, and three
+    interpreters (CV(N)(C), Grapheme, NoComment) reject one as an unknown
+    command.  Since ``esolangs generate ... > prog.txt`` writes that newline,
+    keeping it meant this tool produced programs its own ``run`` refused,
+    and the three committed examples could not be run at all.
+    """
     try:
         with open(path) as f:
-            return f.read()
+            return f.read().rstrip("\n")
     except OSError as exc:
         _fail(f"cannot read {path}: {exc}")
         raise  # pragma: no cover - unreachable; _fail exits
@@ -309,13 +342,25 @@ def _debug(rest: list[str]) -> None:
     for name in ("--steps", "--watch-cell"):
         if name in options and not _is_int(options[name]):
             _fail(f"{name} must be an integer, got {options[name]!r}")
+    # A negative bound is not a smaller bound, it is no bound: the run went
+    # unbounded, which is the one thing --steps exists to prevent.
+    if "--steps" in options and int(options["--steps"]) < 0:
+        _fail(f"--steps must not be negative, got {options['--steps']}")
     program = _read_program(path)
 
     stdin = "" if sys.stdin.isatty() else sys.stdin.read()
+    # The same two refusals ``run`` makes.  Debugging a program is no reason
+    # to skip them: an unfilled template stepped confidently to `output: '0'`
+    # and reported a wrong answer with no warning at all, and a load error
+    # escaped as a traceback from the one command whose whole promise is to
+    # report a fault rather than propagate it.
     try:
+        check_runnable(language, program)
         dbg = make_debugger(language, program, stdin)
     except EsolangError as exc:
         _fail(str(exc))
+    except ValueError as exc:
+        _fail(f"{language}: {exc}")
     if "--break-on-output" in options:
         dbg.break_on_output(options["--break-on-output"])
     history = (
@@ -347,11 +392,17 @@ def _debug(rest: list[str]) -> None:
 
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
-    rest = _split_positional(rest, {"--width"})
+    rest = _split_positional(rest, {"--width", "--bits"})
+    rest, options = _pop_options(rest, {"--bits"})
     rest, width, bare = _pop_width(rest)
     _check_count("generate", rest, 2, bare_width=bare)
     try:
         program = generate(rest[0], rest[1], width)
+        if "--bits" in options:
+            bits = options["--bits"]
+            if set(bits) - {"0", "1"} or not bits:
+                _fail(f"--bits must be a string of 0s and 1s, got {bits!r}")
+            program = instantiate(rest[0], program, [int(b) for b in bits])
     except EsolangError as exc:
         _fail(str(exc))
     print(program)
@@ -359,13 +410,22 @@ def _generate(rest: list[str]) -> None:
 
 def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
-    rest = _split_positional(rest, set())
+    rest = _split_positional(rest, {"--timeout"})
+    rest, options = _pop_options(rest, {"--timeout"})
     _check_count("run", rest, 2)
     language, path = rest[0], rest[1]
+    timeout = None
+    if "--timeout" in options:
+        try:
+            timeout = float(options["--timeout"])
+        except ValueError:
+            _fail(f"--timeout must be a number, got {options['--timeout']!r}")
+        if timeout is not None and timeout <= 0:
+            _fail(f"--timeout must be positive, got {options['--timeout']}")
     program = _read_program(path)
     stdin = "" if sys.stdin.isatty() else sys.stdin.read()
     try:
-        output = run(language, program, stdin)
+        output = run(language, program, stdin, timeout)
     except EsolangError as exc:
         # A usage error (an unknown language) is still 2; anything the
         # program itself did is the program's failure, and exits 1.
@@ -385,6 +445,9 @@ def main() -> None:
         sys.exit(2)
 
     cmd, rest = argv[0], argv[1:]
+    if cmd in ("--version", "-V"):
+        print(f"esolangs {__version__}")
+        sys.exit(0)
     if cmd in ("--help", "-h", "help"):
         sys.stdout.write(HELP[rest[0]] if rest and rest[0] in HELP else USAGE)
         sys.exit(0)

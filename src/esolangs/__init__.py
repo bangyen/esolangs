@@ -23,7 +23,7 @@ import threading
 from collections.abc import Callable
 from typing import Any
 
-from esolangs.debug import Debugger, make_debugger
+from esolangs.debug import Debugger, StopReason, make_debugger
 from esolangs.exceptions import (
     EsolangError,
     HaltError,
@@ -42,7 +42,13 @@ from esolangs.registry import (
     parameterized_ids,
     resolve,
 )
-from esolangs.tools.wrap import takes_width, wrap_program
+
+# Imported private: it takes a *generator function*, not a language name, so
+# a caller reaching for ``esolangs.takes_width("LaserFuck")`` got False for
+# every language in the registry, contradicting both its own docstring and
+# ``describe(...)["width_aware"]`` -- which is the question they were asking.
+from esolangs.tools.wrap import takes_width as _takes_width
+from esolangs.tools.wrap import wrap_program
 from esolangs.vm import VM, make_vm
 
 __version__ = "0.1.0"
@@ -58,6 +64,7 @@ __all__ = [
     "HaltError",
     "InputExhaustedError",
     "ProgramError",
+    "StopReason",
     "TemplateError",
     "TruthTableError",
     "UnknownLanguageError",
@@ -77,6 +84,7 @@ _EXAMPLES = pathlib.Path(__file__).resolve().parents[2] / "examples"
 # only for the languages whose generator emits one: ``{`` is a live command
 # in several of the others, so a blanket search would refuse real programs.
 _SLOT = re.compile(r"\{X\d+\}")
+_SLOT_INDEX = re.compile(r"\{X(\d+)\}")
 
 # Interpreter module family -> state model name.
 _STATE_MODELS = {
@@ -134,7 +142,7 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
         )
     if width is not None and not isinstance(width, int):
         raise ValueError(f"width must be an integer or None, got {width!r}")
-    if width is not None and takes_width(fn):
+    if width is not None and _takes_width(fn):
         return str(fn(truth_table, width))
     return wrap_program(str(fn(truth_table)), lang.id, width)
 
@@ -160,6 +168,13 @@ def instantiate(language: str, template: str, bits: list[int] | tuple[int, ...])
     :class:`~esolangs.exceptions.TemplateError`: there is nothing to fill,
     and returning the program unchanged would let a caller believe bits had
     been embedded when the program is still waiting on stdin.
+
+    ``bits`` is checked against the slots the template actually has, and
+    every value must be 0 or 1.  Both are worth a check because neither is
+    caught downstream: too few bits leaves a slot unfilled (which ``run``
+    then refuses, one step from the cause), and a value like ``2`` is
+    substituted without complaint into a program that no longer computes
+    the table.
     """
     name = resolve(language)
     fill = _fills().get(LANGUAGES[name].id)
@@ -168,10 +183,24 @@ def instantiate(language: str, template: str, bits: list[int] | tuple[int, ...])
             f"{name} reads its inputs rather than embedding them, so there "
             f"is nothing to instantiate; pass them to run() as stdin"
         )
-    return fill(template, list(bits))
+    bits = list(bits)
+    wanted = len({int(slot) for slot in _SLOT_INDEX.findall(template)})
+    if len(bits) != wanted:
+        given = (
+            f"{len(bits)} bit was given"
+            if len(bits) == 1
+            else f"{len(bits)} bits were given"
+        )
+        raise TemplateError(
+            f"this {name} template has {wanted} input slot"
+            f"{'' if wanted == 1 else 's'}, but {given}"
+        )
+    if any(bit not in (0, 1) for bit in bits):
+        raise TemplateError(f"bits must each be 0 or 1, got {list(bits)}")
+    return fill(template, bits)
 
 
-def _check_runnable(name: str, program: str) -> None:
+def check_runnable(language: str, program: str) -> None:
     """Reject a program that is a path or an unfilled template.
 
     Both are mistakes a running interpreter cannot report, because both are
@@ -179,7 +208,12 @@ def _check_runnable(name: str, program: str) -> None:
     mostly ignores, and a ``{Xi}`` slot is either a fault far from its cause
     or -- Minifuck's case -- silently nothing.  Each produced a confident
     wrong answer, which is the one outcome worth spending a check to avoid.
+
+    Public because :func:`run` is not the only way to execute a program:
+    the debugger stepped an unfilled template all the way to a confident
+    ``output: '0'``, so the CLI's ``debug`` calls this too.
     """
+    name = resolve(language)
     if "\n" not in program and program.endswith(".txt") and os.path.exists(program):
         raise ProgramError(
             f"program looks like a path, not source: {program!r}. "
@@ -211,13 +245,33 @@ def run(
 
     Input is fed to the program line by line from ``stdin``; a program that
     asks for more than it is given raises
-    :class:`~esolangs.exceptions.InputExhaustedError`.  ``timeout`` bounds
-    execution wall-clock: after ``timeout`` seconds the run raises
-    :class:`HaltError`.  The guard uses ``SIGALRM``, so it requires a Unix
-    main thread; elsewhere a ``timeout`` raises :class:`ValueError`.
+    :class:`~esolangs.exceptions.InputExhaustedError`.  **How a language
+    spells its input bits is not universal** -- Grapheme reads ``%``/``A``
+    and Fargo one number whose bits are the inputs -- so take the encoding
+    from ``describe(language)["input_encoding"]`` rather than assuming
+    ``"0"``/``"1"``; feeding the wrong alphabet is answered with a wrong
+    result, not an error.
+
+    ``timeout`` bounds execution wall-clock: after ``timeout`` seconds the
+    run raises :class:`HaltError`.  The guard uses ``SIGALRM``, so it
+    requires a Unix main thread; elsewhere a ``timeout`` raises
+    :class:`ValueError` and :meth:`Debugger.run`'s cooperative ``timeout``
+    is the way to bound a run off the main thread.
+
+    A program the interpreter cannot load raises
+    :class:`~esolangs.exceptions.ProgramError`, so every deliberate failure
+    here derives from :class:`~esolangs.exceptions.EsolangError`.
     """
     if timeout is not None and timeout <= 0:
         raise ValueError(f"timeout must be positive, got {timeout}")
+    if timeout is not None and not (
+        threading.current_thread() is threading.main_thread()
+        and hasattr(signal, "SIGALRM")
+    ):
+        # Checked here rather than inside ``_run`` so that every ValueError
+        # from the run itself is the interpreter refusing the program, and
+        # can be re-raised as one.
+        raise ValueError("the timeout guard uses SIGALRM and needs a Unix main thread")
     # No guard on the lookup: ``resolve`` raises for a name outside the
     # registry, and every registered language has an interpreter, so a name
     # that reaches here is always in ``RUNNERS``.  The guard that used to sit
@@ -225,7 +279,12 @@ def run(
     name = resolve(language)
     module, split = RUNNERS[name]
     if isinstance(program, os.PathLike):
-        program = pathlib.Path(program).read_text(encoding="utf-8")
+        # A committed program is a text file, so it ends with a newline; three
+        # interpreters (CV(N)(C), Grapheme, NoComment) reject one as an
+        # unknown command, which made ``run(lang, Path(describe(lang)
+        # ["examples"][0]))`` fail on the very files this package ships.  The
+        # trailing newline is the file's, not the program's.
+        program = pathlib.Path(program).read_text(encoding="utf-8").rstrip("\n")
     if not isinstance(program, str):
         raise ProgramError(
             f"program must be a string of source or a Path, got "
@@ -236,11 +295,19 @@ def run(
             f"stdin must be a string, got {type(stdin).__name__}; "
             f"join your lines with '\\n'"
         )
-    _check_runnable(name, program)
+    check_runnable(name, program)
     run_fn = importlib.import_module("esolangs.interpreters." + module).run
     io_obj = ScriptedIO(stdin)
     program_args: str | list[str] = program.splitlines() if split else program
-    _run(run_fn, program_args, io_obj, timeout)
+    try:
+        _run(run_fn, program_args, io_obj, timeout)
+    except ValueError as exc:
+        # The interpreters signal a malformed program with a plain
+        # ValueError, one per language and each well worded.  Re-raising as
+        # a ProgramError keeps those words and makes the package's promise
+        # true: `except EsolangError` around user-supplied source now holds,
+        # which is the handler an embedder actually writes.
+        raise ProgramError(str(exc)) from exc
     return io_obj.getvalue()
 
 
@@ -250,15 +317,15 @@ def _run(
     io_obj: ScriptedIO,
     timeout: float | None,
 ) -> None:
-    """Run ``run_fn``, applying the wall-clock ``timeout`` guard when set."""
+    """Run ``run_fn``, applying the wall-clock ``timeout`` guard when set.
+
+    Whether a timeout *can* be applied is settled in :func:`run` before this
+    is reached, so there is no third case here.
+    """
     if timeout is None:
         run_fn(program, io_obj)
-    elif threading.current_thread() is threading.main_thread() and hasattr(
-        signal, "SIGALRM"
-    ):
-        _run_timed_signal(run_fn, program, io_obj, timeout)
     else:
-        raise ValueError("the timeout guard uses SIGALRM and needs a Unix main thread")
+        _run_timed_signal(run_fn, program, io_obj, timeout)
 
 
 def _run_timed_signal(
@@ -293,6 +360,18 @@ def describe(language: str) -> dict[str, object]:
     (``parameterized``) and so takes no stdin (``reads_input``), whether it
     lays its own program out to a width (``width_aware``), its example
     programs, and its esolangs.org page.
+
+    Two keys exist because assuming their default is answered with a wrong
+    result rather than an error, which is the failure worth spending an API
+    on.  ``input_encoding`` is the ``(zero, one)`` pair the language spells
+    its input bits with -- ``("0", "1")`` almost everywhere, ``("%", "A")``
+    for Grapheme, whose read counts any non-empty line as true.
+    ``answer_convention`` is a sentence, or ``None``, saying how to read the
+    answer out of a program that does not simply print it: several dump
+    their whole state and the answer sits at a fixed place in it, three
+    answer by *terminating* (they halt for a 0 and loop forever for a 1, so
+    a timeout is the 1), and Fargo reads one number whose bits are the
+    inputs rather than a line per bit.
     """
     name = resolve(language)
     lang = LANGUAGES[name]
@@ -303,6 +382,7 @@ def describe(language: str) -> dict[str, object]:
         str(p.relative_to(_EXAMPLES.parent)) for p in _EXAMPLES.glob(f"*/{stem}.txt")
     )
     parameterized = lang.id in parameterized_ids()
+    example = _example_for(lang.id)
     return {
         "name": name,
         "id": lang.id,
@@ -311,10 +391,24 @@ def describe(language: str) -> dict[str, object]:
         "boolean_generator": lang.boolean is not None,
         "parameterized": parameterized,
         "reads_input": lang.boolean is not None and not parameterized,
-        "width_aware": lang.boolean is not None and takes_width(lang.boolean),
+        "width_aware": lang.boolean is not None and _takes_width(lang.boolean),
+        "input_encoding": example.alphabet if example else ("0", "1"),
+        "answer_convention": (example.note or None) if example else None,
         "examples": examples,
         "wiki_url": f"https://esolangs.org/wiki/{name.replace(' ', '_')}",
     }
+
+
+def _example_for(language_id: str) -> Any:
+    """Return the committed boolean example for ``language_id``, or None.
+
+    Deferred like the rest of the example lookups: ``examples`` imports the
+    registry, so importing it at module scope would close a cycle.
+    """
+    from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
+
+    stem = example_stems().get(language_id)
+    return BOOLEAN_EXAMPLES.get(stem) if stem is not None else None
 
 
 def list_languages() -> list[str]:

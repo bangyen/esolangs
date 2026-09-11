@@ -29,7 +29,7 @@ program has them embedded, and takes no input at all.
 | `brainif.txt` | BrainIf | `0001` | 0 1 | '0' |
 | `circlefuck.txt` | Circlefuck | `0001` | 0 1 | '0' |
 | `circuit_diagram.txt` | Circuit Diagram | `0001` | 0 1 | '0' |
-| `clockwise.txt` | Clockwise | `0001` | 0 1 | '0' |
+| `clockwise.txt` | Clockwise | `0001` | 01 | '0' |
 | `cod.txt` | COD | `0001` | embedded 01 | '0' |
 | `collatz-multiverse.txt` | Collatz Multiverse | `0001` | 0 1 | '0' |
 | `container.txt` | Container | `0001` | 0 1 | '0' |
@@ -45,7 +45,7 @@ program has them embedded, and takes no input at all.
 | `forbin.txt` | Forbin | `0001` | 0 1 | '0' |
 | `forþ.txt` | Forþ | `0001` | 0 1 | '0' |
 | `function-x(y).txt` | function x(y) | `0001` | 0 1 | '0' |
-| `grapheme.txt` | Grapheme | `0001` | 0 1 | '0' |
+| `grapheme.txt` | Grapheme | `0001` | % A | '0' |
 | `home-row.txt` | Home Row | `0001` | embedded 01 | '0' |
 | `inject.txt` | Inject | `0001` | 0 1 | '0\n' |
 | `interprogck8.txt` | Interprogck8 | `0001` | 0 1 | '0' |
@@ -85,9 +85,11 @@ program has them embedded, and takes no input at all.
 - **algebraic-programming-language** -- an executed line prints its result, so the answer ends in a newline
 - **arrowqueue** -- ArrowQueue answers by termination -- it halts for a 0 result and loops forever for a 1, so only the halting branch is committed.  The headings printed are its interpreter-only queue dump, which the verdict does not read: the answer is that the program halted at all
 - **back** -- Back has no output instruction and dumps its tape at halt; the answer is cell n, past the n input cells -- which the reorder may hold in either order, so only cell n is pinned
+- **clockwise** -- Clockwise packs seven bits per character and reads them all in one go, so its inputs are one line, not a line per bit; a line per bit is read as a different row and answered wrongly
 - **cod** -- COD has no runtime input and no I/O but a printed number
 - **container** -- halts by exiting with status 0
 - **fargo** -- Fargo reads one number whose bits are the inputs, so the committed input is the row index rather than a bit per line
+- **grapheme** -- Grapheme's W reads a whole line and every non-empty string is truthy, so its input bits are spelled % and A; a 0/1 line reads as a 1 and the program answers the wrong row
 - **inject** -- send terminates each line, so the answer ends in a newline
 - **laserfuck** -- the initial heading is random by spec, so the example pins the source it is drawn from: seed 0 draws heading 3
 - **minsky-swap** -- Minsky Swap has no output instruction and dumps its registers at halt; the answer is the second one
