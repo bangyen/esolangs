@@ -1706,8 +1706,11 @@ class TestCircuitDiagramLayoutGuards:
             # what moves when they stop being: the rows are untouched, since
             # reuse gives back columns and never a band.
             ("00010111", 61, 61),
-            # Four inputs, where reuse is worth the most: 219 columns before.
-            ("0110100110010110", 147, 99),
+            # Four inputs, where the two savings compound: 219 columns as a
+            # left fold with no reuse, 99 once groups were recycled, and 87
+            # once the folds were balanced.  The rows never move -- neither
+            # change gives back a band.
+            ("0110100110010110", 147, 87),
         ],
     )
     def test_the_drawing_has_exact_dimensions(
@@ -1729,6 +1732,42 @@ class TestCircuitDiagramLayoutGuards:
         drawing = circuit_diagram(table).split("\n")
         assert len(drawing) == rows
         assert max(len(row) for row in drawing) == columns
+
+    def test_balancing_the_folds_keeps_the_width_logarithmic(self) -> None:
+        """Each extra input doubles the minterms and costs a bounded step.
+
+        A gate sits right of every bus it reads, so the drawing's width is
+        set by the gate network's *depth*.  Folded left that depth is the
+        number of parts, and an extra input would roughly double it; folded
+        in half it is the logarithm, so an extra input adds one level.
+
+        The pins are what a regression would move.  Left-folded, the same
+        four are 61, 99, 161 and 271.
+        """
+        widths = {}
+        for n in (3, 4, 5, 6):
+            table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
+            drawing = boolean.circuit_diagram(table)
+            widths[n] = max(len(row) for row in drawing.splitlines())
+        assert widths == {3: 61, 4: 87, 5: 113, 6: 133}
+        steps = [widths[n + 1] - widths[n] for n in (3, 4, 5)]
+        assert max(steps) <= 30, steps
+
+    def test_a_balanced_fold_holds_only_its_depth_live(self) -> None:
+        """The halves are drawn one after the other, not all up front.
+
+        Building every minterm chain first and then combining them would
+        have the same depth but put each chain's result on a bus of its
+        own, spending in columns what the balancing saved.  Drawing each
+        half fully before starting the next keeps at most one partial
+        result per level alive, which is why the width falls rather than
+        merely moving.
+        """
+        # Sixteen minterms at n=5: all-up-front would need sixteen live
+        # buses, which at two columns each could not fit in this width.
+        table = "".join(str(bin(i).count("1") % 2) for i in range(32))
+        drawing = boolean.circuit_diagram(table)
+        assert max(len(row) for row in drawing.splitlines()) == 113
 
     def test_real_layouts_never_come_within_one_cell(self) -> None:
         """The generator's spacing keeps every table clear of the guard.
