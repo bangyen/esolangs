@@ -1,16 +1,22 @@
 """Machine checks backing the A Painter Ant uniform-in-n correctness proof.
 
-Run:  uv run python tests/tools/apa_uniform_proof_check.py
+Run:  just apa-proof   (or python tests/tools/apa_uniform_proof_check.py)
 
 Each check corresponds to a lemma in docs/a_painter_ant_uniform_proof.md.
-It is a standing check, not a one-time run: a change to the head, body, or
-routing invalidates the motif table, and re-running this is how that is
-caught.  Named without a ``test_`` prefix so pytest does not collect it --
-it takes minutes, and the checked-in tests cover the shipped behaviour.
-The proof reduces "all tables at every arity" to a finite computation, in
-the style of docs/proofs.md: the arity-dependent part is arithmetic over
-signed sums of distinct powers of two (L1, L2), and the behavioural part is
-confined to a bounded window whose vocabulary does not grow with n (L3, L4).
+
+**Run it by hand when A Painter Ant's head, body, or routing changes** --
+that is what invalidates the motif table, and re-running this is how it is
+caught.  Nothing runs it for you: it is 5m40s single-threaded, against 2.5
+minutes for the whole suite under ``-n auto``, so neither pytest (no
+``test_`` prefix, so it is not collected) nor CI pays that on every push for
+inputs that move this rarely.
+
+What it buys over the suite is the *uniform-in-n* half.  The checked-in
+tests cover the shipped behaviour at the arities they can enumerate; this
+reduces "all tables at every arity" to a finite computation, in the style of
+docs/proofs.md: the arity-dependent part is arithmetic over signed sums of
+distinct powers of two (L1, L2), and the behavioural part is confined to a
+bounded window whose vocabulary does not grow with n (L3, L4).
 """
 
 from __future__ import annotations
