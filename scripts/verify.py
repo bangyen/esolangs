@@ -28,12 +28,17 @@ extra/line's (its two 5.2s render round trips, which CI's ``line`` job runs
 unfiltered).  ``--full``, ``just test-full``, and an explicit ``--only`` all
 still run them.
 
-The steps do not all run one after another.  ``pytest`` takes longer than
-everything else put together, so it is launched first and the short steps run
-while it goes; ``pre-commit`` runs to completion before anything else starts,
-because its fix hooks rewrite the very files the other steps read.  That
-makes the timing table's two totals differ: the sum is how much work ran, the
-wall is how long the push waited.
+The steps do not all run one after another.  ``pytest`` is the longest, so it
+is launched first and the one-core steps run while it goes; ``pre-commit``
+runs to completion before anything else starts, because its fix hooks rewrite
+the very files the other steps read; and the steps that are parallel in their
+own right wait until pytest has joined, because beside it they were not
+overlapping work but fighting it for cores.  That makes the timing table's
+two totals differ: the sum is how much work ran, the wall is how long the
+push waited.
+
+Output is replayed only for the steps that failed.  A run of one step streams
+it live instead (``--verbose`` forces that, ``--quiet`` forbids it).
 
 Usage:
     python scripts/verify.py [--only STEPS] [--skip STEPS] [--full] [--list]
@@ -51,7 +56,6 @@ import sys
 import time
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import Any
 
 ROOT = Path(__file__).parents[1]
 
@@ -387,7 +391,7 @@ def _scoped_cmd(name: str, cmd: list[str], changed: list[str]) -> list[str] | No
     return cmd
 
 
-def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool, bool]:
+def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool, bool, bool]:
     parser = argparse.ArgumentParser(description="Run the local verification stack")
     parser.add_argument(
         "--only",
@@ -410,7 +414,13 @@ def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool, bool]:
         "--quiet",
         "-q",
         action="store_true",
-        help="suppress successful step output (only failures, [ok] and timing)",
+        help="suppress successful step output even for a single-step run",
+    )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="stream every step's output live instead of replaying failures",
     )
     parser.add_argument(
         "--full",
@@ -425,7 +435,7 @@ def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool, bool]:
         sys.exit(0)
     only = {s.strip() for s in args.only.split(",") if s.strip()} if args.only else None
     skip = {s.strip() for s in args.skip.split(",") if s.strip()} if args.skip else None
-    return only, skip, args.full, args.quiet
+    return only, skip, args.full, args.quiet, args.verbose
 
 
 # The step that mutates the working tree.  pre-commit's ruff/ruff-format and
@@ -434,9 +444,69 @@ def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool, bool]:
 # the read.  The only such step: everything else only reads.
 MUTATES_TREE = "pre-commit"
 
-# The long pole.  Every other step put together is shorter than this one, so
-# the runner starts it first and fills its shadow with the rest.
+# The long pole.  The runner starts it first and fills its shadow with the
+# cheap steps.
 LONG_STEP = "pytest"
+
+# Steps that are *themselves* parallel, so running them beside pytest does not
+# overlap work -- it oversubscribes the machine and makes both slower.  The
+# shadow is only free for steps that use one core.
+#
+# Measured on a 10-core laptop (8 performance), each alone against the same
+# step inside the old all-at-once shadow: pytest 39.8s alone vs 137.3s,
+# bandit 2.7s vs 11.2s, the line suites 2.6s vs 28.5s, the leak sweep
+# (`--all`) 35.6s vs 85.4s scoped.  Nothing was slow; everything was
+# contending.  So the heavy steps wait for pytest to finish and then get the
+# machine to themselves.
+LEAK_STEP = "exception leaks"
+HEAVY_STEPS = frozenset({LEAK_STEP})
+
+#: Workers for the leak sweep when *this* runner drives it.  The script's own
+#: default is a deliberate 2, sized for a laptop doing other things; here the
+#: heavy steps run alone with pytest already joined, which is the "cores to
+#: spare" case its comment names.  6 is measured: 70.9s at 2, 35.6s at 6 over
+#: `--all`, and past the 8 performance cores the curve turns back up (the
+#: same shape pyproject records for xdist).  A caller who sets the variable
+#: keeps their value.
+LEAKSWEEP_JOBS = "6"
+
+
+def _should_stream(steps: int, *, quiet: bool, verbose: bool) -> bool:
+    """Whether the steps write to the terminal directly rather than be replayed.
+
+    A stack's worth of streamed output is a wall of text nobody reads: every
+    pre-commit hook line, mypy's tally, uv's resolution, two suites' progress
+    dots, all to say what the ``[ok]`` lines already say -- and the one thing
+    worth reading, a failure, is buried in it.  So the default replays only
+    the steps that failed, which is the whole of what a passing run has to
+    say plus the whole of what a failing one does.
+
+    A run of one step is the other case: `just test-py` is asking to watch
+    pytest run.  Nothing else is writing to the terminal then, so the output
+    cannot interleave with another step's into nonsense.
+    """
+    if verbose:
+        return True
+    return steps == 1 and not quiet
+
+
+def _wait_with_heartbeat(
+    proc: subprocess.Popen[str], name: str, start: float
+) -> tuple[str, int]:
+    """Collect *proc*'s output, saying every ``HEARTBEAT_SECONDS`` it is alive.
+
+    Waiting in one blocking call left the push silent for the minutes the
+    stack takes, which reads as a hang -- long enough to invite the Ctrl-C
+    that skips the checks.  Waiting in slices costs nothing, and it is what
+    lets the output be captured at all: a captured step prints nothing until
+    it ends, so without this the silence would get worse, not better.
+    """
+    while True:
+        try:
+            output, _ = proc.communicate(timeout=HEARTBEAT_SECONDS)
+            return output, proc.returncode
+        except subprocess.TimeoutExpired:
+            print(f"[....] {name} still running ({time.time() - start:.0f}s elapsed)")
 
 
 def _report(name: str, elapsed: float, returncode: int, output: str | None) -> bool:
@@ -451,59 +521,77 @@ def _report(name: str, elapsed: float, returncode: int, output: str | None) -> b
 def _run_steps(
     runnable: list[tuple[str, list[str], dict[str, str]]],
     *,
-    quiet: bool,
+    stream: bool,
     gate: tuple[str, list[str], dict[str, str]] | None = None,
 ) -> tuple[int, list[tuple[str, float]], float]:
-    """Run the planned steps, overlapping the long one with the short ones.
+    """Run the planned steps, overlapping the long one with the cheap ones.
 
-    ``pytest`` is longer than everything else combined, so it is launched
-    first and left running while the short steps go by in order.  *gate* is
-    the touched-file coverage check, which reads the data file ``pytest``
-    writes and so can only run once it has exited.  Its output
-    is captured either way -- two live subprocesses writing to one terminal
-    interleave into nonsense -- so unlike the short steps it does not stream
-    even outside ``--quiet``.  ``pre-commit`` rewrites files, so it is run to
-    completion *before* anything is launched against the tree it edits.
+    Four phases.  ``pre-commit`` rewrites files, so it runs to completion
+    before anything reads the tree it edits.  Then ``pytest`` is launched and
+    the one-core steps go by in its shadow, which is free.  Then the
+    ``HEAVY_STEPS`` -- parallel in their own right, so the shadow was never
+    free for them -- run with the machine to themselves.  *gate* is the
+    touched-file coverage check, which reads the data file ``pytest`` writes,
+    so it goes between the two: as soon as the data is complete, before the
+    heavy steps make it wait.
+
+    Output is captured and replayed only on failure unless *stream*.  A step
+    that is holding the terminal alone can stream it live instead; two can
+    not, since concurrent writers interleave into nonsense.
 
     Returns the failure count, per-step CPU timings, and the wall time, which
     concurrency makes smaller than the timings' sum.
     """
-    failures = 0
+    failed: list[str] = []
     timings: list[tuple[str, float]] = []
     wall_start = time.time()
 
+    def record(name: str, elapsed: float, returncode: int, output: str | None) -> None:
+        timings.append((name, elapsed))
+        if not _report(name, elapsed, returncode, output):
+            failed.append(name)
+
     def run_serial(name: str, cmd: list[str], step_env: dict[str, str]) -> None:
-        nonlocal failures
         start = time.time()
-        result: subprocess.CompletedProcess[Any]
         # Only the captured branch has output to replay; the streaming one
         # already wrote it straight to the terminal.
         captured: str | None = None
-        if quiet:
-            result = subprocess.run(
-                cmd,
-                env=step_env,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-            )
-            captured = result.stdout
+        if stream:
+            returncode = subprocess.run(cmd, env=step_env).returncode
         else:
-            result = subprocess.run(cmd, env=step_env)
-        elapsed = time.time() - start
-        timings.append((name, elapsed))
-        failures += not _report(name, elapsed, result.returncode, captured)
+            # Captured, but not in one blocking call: a captured step prints
+            # nothing until it ends, and the leak sweep runs for half a
+            # minute.  Waiting in slices costs nothing and keeps it legible.
+            captured, returncode = _wait_with_heartbeat(
+                subprocess.Popen(
+                    cmd,
+                    env=step_env,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                ),
+                name,
+                start,
+            )
+        record(name, time.time() - start, returncode, captured)
 
     # Phase 1: the tree-mutating step, alone, before anything reads the tree.
     for name, cmd, step_env in runnable:
         if name == MUTATES_TREE:
             run_serial(name, cmd, step_env)
 
-    # Phase 2: launch the long step, then run the short ones in its shadow.
+    # Phase 2: launch the long step, then run the cheap ones in its shadow.
     rest = [s for s in runnable if s[0] != MUTATES_TREE]
     long_step = next((s for s in rest if s[0] == LONG_STEP), None)
+    shadow = [s for s in rest if s[0] != LONG_STEP and s[0] not in HEAVY_STEPS]
+    heavy = [s for s in rest if s[0] in HEAVY_STEPS]
     proc = None
     long_start = 0.0
+    # Nothing to fill the shadow with: run it as an ordinary step, which lets
+    # a single-step run (`just test-py`) stream its output live.
+    if long_step is not None and not shadow:
+        run_serial(*long_step)
+        long_step = None
     if long_step is not None:
         _, cmd, step_env = long_step
         long_start = time.time()
@@ -516,41 +604,34 @@ def _run_steps(
         )
         print(f"[....] {LONG_STEP} (running alongside the remaining steps)")
 
-    for name, cmd, step_env in rest:
-        if name != LONG_STEP:
-            run_serial(name, cmd, step_env)
+    for name, cmd, step_env in shadow:
+        run_serial(name, cmd, step_env)
 
     if proc is not None:
-        # The short steps are done and pytest holds the only remaining output,
-        # captured rather than streamed so two live subprocesses cannot
-        # interleave into nonsense.  Waiting on it in one blocking call meant
-        # the push sat silent for the ~2 minutes the suite takes, which reads
-        # as a hang -- long enough to invite the Ctrl-C that skips the checks.
-        # Waiting in slices costs nothing and keeps the wait legible.
-        output = ""
-        while True:
-            try:
-                output, _ = proc.communicate(timeout=HEARTBEAT_SECONDS)
-                break
-            except subprocess.TimeoutExpired:
-                waited = time.time() - long_start
-                print(f"[....] {LONG_STEP} still running ({waited:.0f}s elapsed)")
-        elapsed = time.time() - long_start
-        timings.append((LONG_STEP, elapsed))
-        pytest_ok = _report(LONG_STEP, elapsed, proc.returncode, output)
-        failures += not pytest_ok
-        # Only meaningful once the data file is complete, and only if the run
-        # that wrote it passed: coverage from a failed suite records which
-        # lines ran before the failure, not which are tested.
-        if pytest_ok and gate is not None:
-            run_serial(*gate)
+        # The cheap steps are done and pytest holds the only remaining output.
+        output, returncode = _wait_with_heartbeat(proc, LONG_STEP, long_start)
+        record(LONG_STEP, time.time() - long_start, returncode, output)
 
-    return failures, timings, time.time() - wall_start
+    # Phase 3: the coverage gate, which only speaks for a complete data file,
+    # and only if the run that wrote it passed -- coverage from a failed suite
+    # records which lines ran before the failure, not which are tested.  Keyed
+    # on pytest alone, not on the failure count: another step failing says
+    # nothing about the data file.  It is 0.2s and it unblocks nothing, so it
+    # goes before the heavy steps rather than after them.
+    ran_pytest = any(name == LONG_STEP for name, _ in timings)
+    if gate is not None and ran_pytest and LONG_STEP not in failed:
+        run_serial(*gate)
+
+    # Phase 4: the parallel steps, now that they can have the machine.
+    for name, cmd, step_env in heavy:
+        run_serial(name, cmd, step_env)
+
+    return len(failed), timings, time.time() - wall_start
 
 
 def main() -> int:
     """Compile and run every example, reporting failures."""
-    only, skip, full, quiet = _parse_only_skip()
+    only, skip, full, quiet, verbose = _parse_only_skip()
 
     # An explicit --only is already a hand-picked subset; scoping it further
     # would silently drop steps the caller asked for by name.
@@ -611,6 +692,8 @@ def main() -> int:
         # unfiltered on every push, so deselecting them here trades no
         # coverage either.
         step_env = env
+        if name == LEAK_STEP and "LEAKSWEEP_JOBS" not in env:
+            step_env = dict(step_env, LEAKSWEEP_JOBS=LEAKSWEEP_JOBS)
         if name == "pre-commit":
             # Skip the config's mypy hook: the very next step runs mypy over
             # src/ *and* scripts/ from the project env, against the same
@@ -658,7 +741,8 @@ def main() -> int:
             gate_cmd.append("--partial")
         gate = (DIFF_COVERAGE_STEP, gate_cmd, env)
 
-    failures, timings, wall = _run_steps(runnable, quiet=quiet, gate=gate)
+    stream = _should_stream(len(runnable), quiet=quiet, verbose=verbose)
+    failures, timings, wall = _run_steps(runnable, stream=stream, gate=gate)
 
     if timings:
         print("-" * 40)
