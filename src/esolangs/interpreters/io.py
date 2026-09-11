@@ -34,6 +34,8 @@ from __future__ import annotations
 
 import io as _stdlib_io
 
+from esolangs.exceptions import InputExhaustedError
+
 
 class IO:
     """Routes interpreter output and input through pluggable primitives.
@@ -150,7 +152,8 @@ class ScriptedIO(IO):
     def __init__(self, stdin: str = "") -> None:
         """Read input from ``stdin`` and capture all output internally."""
         super().__init__()
-        self._lines = iter(stdin.splitlines())
+        self._supplied = stdin.splitlines()
+        self._lines = iter(self._supplied)
         self._reads = 0
         self._buffer = _stdlib_io.StringIO()
 
@@ -158,7 +161,13 @@ class ScriptedIO(IO):
         try:
             value = next(self._lines)
         except StopIteration:
-            raise EOFError from None
+            # An InputExhaustedError *is* an EOFError, so the repo-wide
+            # convention every interpreter documents -- and Suffolk's run
+            # loop detects -- is unchanged.  What it adds is the message:
+            # a bare EOFError() reaches the caller as the empty string,
+            # which cannot say that the program wanted more input than the
+            # caller passed, or how much it had.
+            raise InputExhaustedError(self._reads, len(self._supplied)) from None
         self._reads += 1
         return value
 
