@@ -2427,6 +2427,73 @@ class TestAlgebraicProgrammingLanguage:
         with pytest.raises(ValueError, match="a one-entry table is a constant"):
             boolean.algebraic_programming_language("0")
 
+    def test_a_width_spreads_the_sum_over_definitions(self) -> None:
+        """A narrower program is the same sum, named a piece at a time.
+
+        The language prints *every* executed line, so the sum cannot be
+        split across several; what it can be split across is definitions,
+        which are not executed.  The answer is what says the pieces still
+        add up.
+        """
+        for table in ("0110", "01101001", "0110100110010110"):
+            n = len(table).bit_length() - 1
+            flat = boolean.algebraic_programming_language(table)
+            wide = max(len(row) for row in flat.splitlines())
+            floor = max(
+                len(row)
+                for row in boolean.algebraic_programming_language(table, 1).splitlines()
+            )
+            for width in (1, 25, 40, 60, wide):
+                narrow = boolean.algebraic_programming_language(table, width)
+                columns = max(len(row) for row in narrow.splitlines())
+                assert columns <= max(width, floor), (table, width, columns)
+                for combo in range(2**n):
+                    got = self._run(narrow, n, combo)
+                    assert got == table[combo] + "\n", (table, width, combo)
+
+    def test_the_executed_line_still_names_every_input(self) -> None:
+        """Naming a term moves it off the one line that reads.
+
+        A variable is read by appearing on an executed line, and the
+        interpreter binds every unbound one there before evaluating.  A
+        term hoisted into a definition therefore takes its variables out of
+        the reading, and the prefix is what puts them back -- in order, and
+        contributing nothing, since ``a & ... & 0`` is 0 either way.
+        """
+        table = "0110100110010110"
+        narrow = boolean.algebraic_programming_language(table, 30)
+        # the ``!x`` header is the first four lines and its body sits inside
+        # braces; past it, a line without an ``=`` is one that runs, and
+        # there must be exactly one however much was hoisted
+        lines = narrow.splitlines()
+        assert lines[:4] == ["!x = {", "x & $0", "$1", "}"], lines[:4]
+        executed = [line for line in lines[4:] if "=" not in line]
+        assert len(executed) == 1, executed
+        line = executed[0]
+        assert line.startswith("(a & b & c & d & 0) | "), line
+        # and every input is still read exactly once, in order
+        assert [ch for ch in line if ch in "abcd"] == ["a", "b", "c", "d"]
+
+    def test_narrowing_below_the_floor_does_not_widen(self) -> None:
+        """Asking for less than it can do returns its narrowest, not a worse one.
+
+        Splitting below the floor lengthens the names rather than the
+        lines, and the executed line carries two names -- so an unclamped
+        fold made width 1 come out *wider* than width 20.  The floor is
+        what a smaller request is raised to.
+        """
+        for table in ("11111111", "0110100110010110", "01111111"):
+            widths = [
+                max(
+                    len(row)
+                    for row in boolean.algebraic_programming_language(
+                        table, w
+                    ).splitlines()
+                )
+                for w in (1, 5, 10, 20)
+            ]
+            assert len(set(widths)) == 1, (table, widths)
+
 
 class TestAlgebraicProgrammingLanguageShapes:
     """The structural corners of the minterm expansion, at four inputs.

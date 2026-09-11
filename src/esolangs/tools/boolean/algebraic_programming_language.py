@@ -24,7 +24,7 @@ _NAMES = "abcdefghijklmnopqrstuvwxyzàáâãäåæçèéêëìíîïñòóôõö
 _NOT = "!x = {\nx & $0\n$1\n}"
 
 
-def algebraic_programming_language(truth_table: str) -> str:
+def algebraic_programming_language(truth_table: str, width: int | None = None) -> str:
     """Build an APL program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -70,10 +70,29 @@ def algebraic_programming_language(truth_table: str) -> str:
     ``2**55`` rows, which cannot be constructed to pass in, so there is
     no alphabet check here: it would be a guard no argument could reach.
     """
-    return best_input_order(truth_table, _apl_ordered)
+    return best_input_order(
+        truth_table, lambda table, perm: _apl_ordered(table, perm, width)
+    )
 
 
-def _apl_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+def _apl_name(index: int) -> str:
+    """Return the ``index``-th function name: an uppercase run, A..Z, AA, AB.
+
+    A function name is a *run of uppercase letters* -- the parser takes the
+    longest one -- so there are no digits to spell an index with and the
+    names count in base 26 instead.
+    """
+    name = ""
+    while True:
+        name = chr(ord("A") + index % 26) + name
+        index = index // 26 - 1
+        if index < 0:
+            return name
+
+
+def _apl_ordered(
+    truth_table: str, perm: tuple[int, ...], width: int | None = None
+) -> str:
     """Emit one input order's APL program.
 
     See :func:`algebraic_programming_language`.
@@ -95,9 +114,80 @@ def _apl_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
             bit = (row >> (n - 1 - level)) & 1
             name = _NAMES[perm[level]]
             literals.append(f"!!{name}" if bit else f"!{name}")
-        terms.append(" & ".join(sorted(literals, key=_order_key)))
-    body = " | ".join(f"({t})" for t in terms)
-    return f"{_NOT}\n{body}"
+        terms.append(sorted(literals, key=_order_key))
+    flat = " | ".join("(" + " & ".join(t) + ")" for t in terms)
+    if width is None or len(flat) <= width:
+        return f"{_NOT}\n{flat}"
+    return f"{_NOT}\n" + _apl_narrowed(terms, n, width)
+
+
+def _apl_narrowed(terms: list[list[str]], n: int, width: int) -> str:
+    """Spread the minterm sum over definitions until every line fits.
+
+    An uppercase name defined without parentheses is a nullary function, so
+    any subexpression can be given a line of its own and called back in
+    four characters.  Definitions are not executed and so print nothing,
+    which is what makes this legal at all: the language prints *every*
+    executed line, so the sum cannot simply be split across several.
+
+    What cannot move off the executed line is the *reading*.  A variable is
+    read by appearing on an executed line, and the interpreter binds every
+    unbound one there in a pre-scan before evaluating -- so a variable that
+    only ever appeared inside a definition would be unbound when the call
+    reached it.  The line therefore keeps a prefix naming every input in
+    order.  ``a & b & ... & 0`` is always 0, whichever way it
+    short-circuits, and ``0 | rest`` is ``rest``, so the prefix reads the
+    inputs and contributes nothing to the answer.  That prefix is also the
+    floor: it cannot be split, and it grows with ``n``.
+    """
+    named: list[str] = []
+    reads = " & ".join(_NAMES[i] for i in range(n)) + " & 0"
+    # Splitting below the floor does not narrow anything -- it lengthens the
+    # names, and the executed line carries two of them -- so the floor is
+    # what a width under it is raised to.  Without this, asking for 1 gives
+    # a *wider* program than asking for 20, which is not what "the narrowest
+    # it can build" should mean.
+    limit = max(width, len(reads) + 9)
+    # Definitions are bounded by two per node of a tree over the literals,
+    # and the prefix has to be budgeted against the longest name that tree
+    # can reach rather than the next one -- a subexpression is named later
+    # than it is built, so the counter may gain a letter in between.
+    bound = 4 * len(terms) * (n + 1) + 4
+    head = len(f"{_apl_name(bound)} = ")
+
+    def define(text: str) -> str:
+        """Bind ``text`` to a fresh nullary name and return the call."""
+        name = _apl_name(len(named))
+        named.append(f"{name} = {text}")
+        return f"{name}()"
+
+    def fold(parts: list[str], op: str) -> str:
+        """Join ``parts`` with ``op``, halving into definitions until it fits.
+
+        Splitting is what shortens a line, so a part that is still too long
+        is named rather than joined -- and a name is four characters, which
+        is why halving terminates.
+        """
+        if len(parts) == 1:
+            return parts[0]
+        text = op.join(parts)
+        if head + len(text) <= limit:
+            return text
+        half = (len(parts) + 1) // 2
+        left = define(fold(parts[:half], op))
+        right = define(fold(parts[half:], op))
+        return op.join([left, right])
+
+    products = [fold(literals, " & ") for literals in terms]
+    # A product that stayed inline keeps the brackets the flat form gives
+    # it; one that became a call does not need them.
+    summands = [part if part.endswith("()") else f"({part})" for part in products]
+    body = fold(summands, " | ")
+    if len(reads) + len(body) + 6 > limit and not body.endswith("()"):
+        # The executed line carries the prefix as well as the sum, so it is
+        # the one line ``fold`` cannot have budgeted for.
+        body = define(body)
+    return "\n".join([*named, f"({reads}) | {body}"])
 
 
 def _order_key(literal: str) -> tuple[str, int]:
