@@ -283,6 +283,14 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
     # there the newline turns back into that space; every other wrapper
     # inserts the newline between two adjacent commands, so it just goes
     # away.  Either way no command may be dropped, reordered, or split.
+    # Polynomial now breaks in both places -- between two terms, where a
+    # space was, and *inside* a coefficient, where nothing was -- so no
+    # single substitution restores it.  Its parser deletes whitespace
+    # before reading, so the invariant that means anything there is that
+    # the two agree once whitespace is gone.
+    if WRAPPERS[LANGUAGES[name].id] is _polynomial:
+        assert re.sub(r"\s", "", wrapped) == re.sub(r"\s", "", plain)
+        return
     restored = wrapped.replace("\n", " ") if _replaces_a_space(name) else wrapped
     assert restored.replace("\n", "") == plain
 
@@ -291,22 +299,17 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
 def test_wrapping_respects_the_width(name: str) -> None:
     """No line exceeds the width, unless a single token already does.
 
-    Polynomial's big-integer coefficients are longer than 80 characters and
-    cannot be broken without changing the number, so such a token gets a
-    line of its own rather than being split.  Its unbreakable unit is the
-    ``sign term`` pair rather than the bare term -- splitting the two is
-    what stranded a lone ``+`` on a line -- so a line holding one runs two
-    characters past the term's own length, and the allowance below follows
-    the wrapper rather than the whitespace.
+    Polynomial used to need an allowance here -- its coefficients run to
+    thousands of digits and were held to be unbreakable, so a line carrying
+    one overran by the width of the sign as well.  They are breakable: the
+    interpreter deletes whitespace before parsing, so a newline between two
+    digits is not in the number.  Polynomial now meets the width like
+    everything else, and :func:`test_polynomial_meets_the_width_it_is_given`
+    holds it to that at four widths rather than just this one.
     """
     wrapped = _example(name).build(DEFAULT_WIDTH)
-    signed = WRAPPERS[LANGUAGES[name].id] is _polynomial
     for line in wrapped.split("\n"):
-        tokens = line.split()
-        longest_token = max((len(t) for t in tokens), default=0)
-        if signed and tokens and tokens[0] in ("+", "-"):
-            # The sign and the space that keeps it attached to its term.
-            longest_token += 2
+        longest_token = max((len(t) for t in line.split()), default=0)
         assert len(line) <= max(DEFAULT_WIDTH, longest_token)
 
 
@@ -379,6 +382,41 @@ def test_every_wrapper_fires_on_a_template_too(name: str) -> None:
         )
         return
     pytest.skip(f"{name}: no table up to 4 inputs gives a template long enough")
+
+
+@pytest.mark.parametrize("name", WRAPPED)
+def test_no_width_breaks_a_placeholder(name: str) -> None:
+    """No width may put a line break through the middle of a ``{Xi}``.
+
+    ``fill`` finds a placeholder by string replace, so a newline inside one
+    leaves it unfilled and the program reads the two halves as commands.
+
+    This is a *different* question from the one
+    :func:`test_every_wrapper_fires_on_a_template_too` asks, and the reason
+    both exist: that test wants the wrapper to do something, this one wants
+    what it does to be harmless.  Tiling does not give the second for free
+    -- a ``.`` alternative tiles a placeholder one character at a time, so
+    the tokens still cover the program and the packing is still free to
+    break it.  Six languages did, at widths up to 118, and every one of
+    them satisfied the tiling check while doing it.
+
+    The width sweep is exhaustive rather than sampled because the fault is
+    a coincidence between the width and where the placeholder happens to
+    fall: Eval survives 40 and fails 10, so any fixed pair of widths is a
+    coin toss.
+    """
+    example = _example(name)
+    if example.fill is None:
+        pytest.skip(f"{name} is not parameterized; it has no placeholder")
+    for arity in range(1, 4):
+        template = generate(name, _table(arity))
+        placeholders = [f"{{X{i}}}" for i in range(arity) if f"{{X{i}}}" in template]
+        for width in range(4, 121):
+            wrapped = generate(name, _table(arity), width)
+            for placeholder in placeholders:
+                assert wrapped.count(placeholder) == template.count(placeholder), (
+                    f"{name}: width {width} at {arity} inputs broke {placeholder}"
+                )
 
 
 # Tables the generators take a *different path* on than parity.  The
@@ -670,34 +708,53 @@ def test_polynomial_never_strands_a_sign_on_its_own_line() -> None:
     assert not [line for line in program.split("\n") if line.strip() in ("+", "-")]
 
 
-def test_polynomial_puts_one_term_on_each_line() -> None:
-    """The layout: every line is exactly one term, sign included.
+def test_polynomial_starts_a_term_only_on_a_line_of_its_own() -> None:
+    """The layout: a term starts a line, and only ever at the start of one.
 
     A packed line would hold however many terms happened to fit, so its
     breaks would fall where the arithmetic landed rather than between two
-    things a reader wants separated.
+    things a reader wants separated.  A term too wide for the line carries
+    over onto further rows, so not every line *is* a term any more -- but no
+    line holds the end of one term and the start of another.
     """
     program = generate("Polynomial", TABLE, DEFAULT_WIDTH)
     lines = program.split("\n")
-    # Line 1 is ``f(x) = <term>``; every other line is ``<sign> <term>``.
+    # Line 1 is ``f(x) = <term>``: ``f(x)``, ``=`` and the unsigned term.
     assert lines[0].startswith("f(x) = ")
-    # ``f(x)``, ``=`` and the unsigned leading term.
     assert len(lines[0].split()) == 3
-    assert all(len(line.split()) == 2 for line in lines[1:])
+    for line in lines[1:]:
+        # Either a line that starts a term -- ``<sign> <term>`` -- or a row
+        # carrying the previous one over, which is one unbroken run.
+        assert len(line.split()) == (2 if line.startswith(("+ ", "- ")) else 1)
 
 
-def test_polynomial_continuation_lines_start_with_their_sign() -> None:
-    """Every line but the first opens with the sign of its term."""
+def test_polynomial_carries_a_term_over_without_inventing_a_sign() -> None:
+    """A row continuing a term is bare: the sign belongs to the term's start.
+
+    This is what keeps the two kinds of row apart for a reader, now that a
+    line is not always a whole term.
+    """
     program = generate("Polynomial", TABLE, DEFAULT_WIDTH)
-    lines = program.split("\n")
-    assert all(line.startswith(("+ ", "- ")) for line in lines[1:])
+    carried = [
+        line for line in program.split("\n")[1:] if not line.startswith(("+ ", "- "))
+    ]
+    assert carried, "the table is too small to fold a term -- pick a wider one"
+    assert all(line.strip() and " " not in line for line in carried)
 
 
-def test_polynomial_wrap_is_undone_by_swapping_newlines_for_spaces() -> None:
-    """The wrap only moves separators, so the program is byte-identical."""
+def test_polynomial_wrap_is_undone_by_deleting_whitespace() -> None:
+    """The wrap only inserts newlines, so the parsed program is unchanged.
+
+    Not "newlines become spaces" any more: a break between two terms lands
+    where a space was, but a break inside a coefficient lands where nothing
+    was, so no single substitution undoes both.  The interpreter deletes
+    whitespace before parsing, which is what makes the second legal, and is
+    the comparison that means something.
+    """
     plain = generate("Polynomial", TABLE)
     wrapped = generate("Polynomial", TABLE, DEFAULT_WIDTH)
-    assert wrapped.replace("\n", " ") == plain
+    assert wrapped != plain
+    assert re.sub(r"\s", "", wrapped) == re.sub(r"\s", "", plain)
 
 
 def test_polynomial_keeps_the_header_with_the_first_term() -> None:
@@ -705,14 +762,19 @@ def test_polynomial_keeps_the_header_with_the_first_term() -> None:
     assert _polynomial("f(x) = x^2 - 3x + 7", 80).split("\n")[0] == "f(x) = x^2"
 
 
-def test_polynomial_layout_does_not_depend_on_the_width() -> None:
-    """One term to a line whatever the width -- it is only the on/off switch.
+def test_polynomial_meets_the_width_it_is_given() -> None:
+    """Every row fits, at every width -- the coefficients fold too.
 
-    The terms of any interesting program outrun any width, so packing them
-    to one would be a layout that changed with a number nobody chose.
+    This replaces a test asserting the opposite, that the layout ignored
+    its width.  That was true while a term was indivisible, and a term is
+    not: ``_parse_program`` deletes whitespace before it reads, so a
+    newline between two digits is gone by the time the number is built.
+    The widest row on the dense eight-input table was 5954 characters.
     """
     program = generate("Polynomial", TABLE)
-    assert _polynomial(program, 40) == _polynomial(program, 200)
+    for width in (13, 40, 80, 200):
+        for line in _polynomial(program, width).split("\n"):
+            assert len(line) <= width
 
 
 def test_polynomial_keeps_an_oversized_term_with_its_sign() -> None:
