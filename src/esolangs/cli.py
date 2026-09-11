@@ -345,7 +345,8 @@ they are refused here and named: use `run --judge --timeout S` instead.
 examples:
   esolangs encode LaserFuck 10 | esolangs run LaserFuck p.txt \
     | esolangs read-answer LaserFuck
-  esolangs run --judge --timeout 10 123 prog.txt
+  esolangs generate --bits 01 123 0110 > p123.txt
+  esolangs run --judge --timeout 10 123 p123.txt
 """,
     "debug": """usage: esolangs debug [options] <language> <program-file>
 

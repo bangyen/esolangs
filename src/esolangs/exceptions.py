@@ -89,7 +89,13 @@ class ProgramError(EsolangError, ValueError):
 
 
 class TruthTableError(EsolangError, ValueError):
-    """A truth table was not a binary string of length ``2**n``."""
+    """A truth table was not a usable binary string of length ``2**n``.
+
+    *Usable* because the length rule alone is not the rule: ``"0"`` is a
+    binary string of length ``2**0`` and is refused, since a one-entry
+    table is a constant rather than a function of any input, and every
+    generator here exists to read inputs and branch on them.
+    """
 
 
 class TemplateError(EsolangError, ValueError):
@@ -175,4 +181,21 @@ class InputMismatchWarning(UserWarning):
     turns a silent wrong answer into a test failure, which is what someone
     sweeping the registry wants, while a plain ``UserWarning`` filter would
     have caught every other warning in the process too.
+    """
+
+
+class InterpreterLimitError(HaltError):
+    """An interpreter hit an implementation limit running a program.
+
+    Not a fault in the program and not a refusal by a generator: the
+    program is well formed and the interpreter simply cannot carry it.
+    Qoibl's is recursive, so a large enough program exhausts Python's
+    stack, and a bare ``RecursionError`` came straight out of
+    :func:`esolangs.verify` -- the one exception in the package that was
+    not an :class:`EsolangError`, which is the single promise the module
+    docstring makes about errors.
+
+    Separate from :class:`~esolangs.exceptions.GeneratorCapError` because
+    the two say different things.  A cap is a generator declining to build;
+    this is a program that was built, is correct, and cannot be run here.
     """

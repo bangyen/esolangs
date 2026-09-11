@@ -47,6 +47,7 @@ from esolangs.exceptions import (
     HaltError,
     InputExhaustedError,
     InputMismatchWarning,
+    InterpreterLimitError,
     ProgramError,
     TemplateError,
     TruthTableError,
@@ -97,6 +98,7 @@ __all__ = [
     "HaltError",
     "InputExhaustedError",
     "InputMismatchWarning",
+    "InterpreterLimitError",
     "ProgramError",
     "StopReason",
     "TemplateError",
@@ -395,8 +397,16 @@ def check_program(
     A :class:`~pathlib.Path` is read here.  Its trailing newline is the
     file's rather than the program's, and three interpreters (CV(N)(C),
     Grapheme, NoComment) reject one as an unknown command, which made
-    ``run(lang, Path(describe(lang)["examples"][0]))`` fail on the very
-    files this package ships.
+    reading a committed example fail on the very files this package ships.
+
+    That is fixed, but the one-liner this used to show as proof was not a
+    working example: two of those three read stdin, so
+    ``run(lang, Path(describe(lang)["examples"][0]))`` raises
+    :class:`~esolangs.exceptions.InputExhaustedError` for them -- for want
+    of input, not for the newline.  The whole call is::
+
+        path = pathlib.Path(describe(lang)["examples"][0])
+        run(lang, path, encode_inputs(lang, [0, 1]))
     """
     name = resolve(language)
     if isinstance(program, os.PathLike):
@@ -511,6 +521,17 @@ def run(
     _warn_about_stdin(name, stdin)
     try:
         _run(run_fn, program_args, io_obj, timeout)
+    except RecursionError as exc:
+        # An interpreter that recurses -- Qoibl's does -- runs out of
+        # Python stack on a large enough program, and the bare
+        # ``RecursionError`` was the only exception in the package that
+        # escaped ``EsolangError``.  A sweep written to the documented
+        # handler crashed on it.
+        raise InterpreterLimitError(
+            f"the {name} interpreter recursed deeper than Python allows on "
+            f"this program ({len(program)} characters); the program is well "
+            f"formed, but this interpreter cannot carry one that large"
+        ) from exc
     except ValueError as exc:
         # The interpreters signal a malformed program with a plain
         # ValueError, one per language and each well worded.  Re-raising as
@@ -700,8 +721,12 @@ def describe(language: str) -> dict[str, object]:
     narrower shape, rather than emitting a line that
     :func:`~esolangs.tools.wrap.wrap_program` reflows afterwards.  It is not
     a promise the result fits: see :func:`generate` on why a width is a
-    request.  Two languages have it, and one of them (LaserFuck) can still
-    overrun.
+    request.  Two languages have it and *both* can still overrun.  This
+    used to name LaserFuck as the one that does, which was the wrong one to
+    single out: Streetcode overruns at more widths and by a wider margin.
+    No numbers here -- they are what
+    ``test_both_width_aware_generators_can_overrun`` measures, and a count
+    in prose is a second copy of something a run can answer.
 
     Two keys exist because assuming their default is answered with a wrong
     result rather than an error, which is the failure worth spending an API
@@ -1132,9 +1157,24 @@ def evaluate(
     * ``answer_encoding`` gives *which way* that goes, rather than leaving
       "halting means zero" to be read out of the prose.
 
-    ``timeout`` bounds each row.  The default is 30 seconds for an ordinary
-    row and 5 for one of the termination languages, where the timeout is
-    the answer and so is paid on every 1.
+    ``timeout`` bounds each row, and for most languages that is all it
+    does.  **The three that answer by not terminating do not pay it**:
+    their rows are settled by a repeated machine state, which proves the
+    loop in microseconds, and the bound is only the backstop for a program
+    that diverges by growing instead of repeating.  So a whole table from
+    one of them comes back in milliseconds, not in five seconds per 1.
+
+    This said the timeout "is paid on every 1", which was true when it was
+    written and stopped being true in the same change that added the
+    proof -- while :meth:`~esolangs.debugger.Debugger.snapshot`'s docstring
+    described the new mechanism.  Two docstrings in one package disagreeing
+    about how something works is worse than either being merely out of
+    date, so: the proof is the mechanism, and this is the backstop.
+
+    Omitting the argument takes the defaults (30 seconds for an ordinary
+    row, 5 for a termination one); passing ``None`` explicitly means
+    *unbounded*, as it does in :func:`run`, which is what makes these
+    callable off the main thread.
     """
     # Checked here, not only inside ``run``: the termination path drives the
     # machine itself and never reaches ``run``, so a bound too small to
