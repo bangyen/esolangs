@@ -76,11 +76,11 @@ Algebraic Programming Language both *name* their subexpressions -- the one
 binding subtrees to ``var``s, the other minterms to nullary functions -- so
 what was a single statement becomes one statement a line.  Flowchart stacks
 its drawn tree the way Clockwise stacks its ring, putting every node on one
-column.  Those nine generators take the width themselves --
-:func:`takes_width` is how the callers tell -- and never reach
-:func:`wrap_program`.
+column, and Alight steers its walk into a boustrophedon with ``turn``.
+Those ten generators take the width themselves -- :func:`takes_width` is
+how the callers tell -- and never reach :func:`wrap_program`.
 
-Seven of the nine are grids, which :func:`wrap_program` would skip anyway
+Eight of the ten are grids, which :func:`wrap_program` would skip anyway
 for being already multi-line.  The two naming ones are not: they are
 line-structured source, so they are *also* in the tests' unwrappable table.
 The two facts are independent -- a finished line of either still must not
@@ -95,9 +95,10 @@ turn round exactly once, since two bands running the same way would share
 the column offsets the turn exists to keep apart; function x(y) floors at
 one node's own line, ``var tN: (bK == "1")<tA, tB>``; APL floors at the
 prefix that reads its inputs, which cannot be split and grows with ``n``;
-and Flowchart floors at ``n + 5``, one column of corridor per level beside
-the spine.  A width under the floor returns the narrowest program rather
-than refusing.
+Flowchart floors at ``n + 5``, one column of corridor per level beside the
+spine; and Alight floors at its table literal, ``2 ** n`` characters that
+are one token of one command.  A width under the floor returns the
+narrowest program rather than refusing.
 
 What Clockwise trades is rows: a stacked level writes the subtree below it
 twice over, so each one doubles the program's height.  Its own fold --

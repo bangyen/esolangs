@@ -31,8 +31,101 @@ from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 
 __all__ = ["alight"]
 
+#: The two turns a fold spends.  ``turn`` pivots *at its own semicolon's
+#: cell* and the next command begins one cell beyond it in the new heading,
+#: so a fold is two of them: one along the row to face south, one written
+#: downward to face along the next row.  Which one depends on the heading --
+#: right of east is south and right of south is west, while it takes two
+#: lefts to get from west back to east.
+_ALIGHT_EAST_TURN = "turn right;"
+_ALIGHT_WEST_TURN = "turn left;"
 
-def alight(truth_table: str) -> str:
+
+def _alight_folded(commands: list[str], width: int) -> str:
+    """Lay ``commands`` out as a boustrophedon inside ``width`` columns.
+
+    A command is a *word walked cell by cell*, so a row end cuts one in
+    half -- which is why Alight cannot be reflowed after the fact and has
+    to be laid out here instead.  What makes the layout possible is that
+    the walk's heading is steerable: a row runs east, two ``turn right``
+    bring it round to run west, and two ``turn left`` bring it back.  The
+    first of each pair sits on the row and pivots at its own semicolon; the
+    second is written *downward* from the cell beyond it, which is what
+    turns the walk along the next row.
+
+    Going west the characters are written in the order the walk meets
+    them, which is right to left on the page -- so a westward ``end;``
+    reads ``;dne``.  Nothing is reversed; the row is.
+
+    **The turn always sits at the far edge**, and the gap before it is
+    filled with bare semicolons -- the empty command, which the language
+    makes a nop.  Folding where the commands happen to run out instead
+    leaves the next row starting wherever that was, so it gets less than a
+    full row to work with, and a long command then has nowhere to go but
+    off the left edge.  Padding costs nothing and makes every row the same
+    width.
+
+    The floor is the longest single command plus the turn that shares its
+    row, and for this generator that is the table literal: ``2 ** n``
+    characters that cannot be split, since a string is one token of one
+    command.  A width under the floor is raised to it.
+    """
+    longest = max(len(command) for command in commands) + 1
+    # Every row runs the full span, so one command plus its turn is what a
+    # row has to hold; a narrower request cannot be met by folding.
+    limit = max(width, longest + len(_ALIGHT_EAST_TURN) + 1)
+    cells: dict[tuple[int, int], str] = {}
+    row, col, step = 0, 0, 1
+    pending = list(commands)
+    # Every pass places at least one command and the pass that empties
+    # ``pending`` leaves through the break below, so the loop has no other
+    # way out and says so.
+    while True:
+        turn = _ALIGHT_EAST_TURN if step == 1 else _ALIGHT_WEST_TURN
+        edge = limit - 1 if step == 1 else 0
+        turn_start = edge - step * (len(turn) - 1)
+        room = abs(turn_start - col)
+        taken: list[str] = []
+        used = 0
+        while pending:
+            piece = pending[0] + ";"
+            if taken and used + len(piece) > room:
+                break
+            taken.append(piece)
+            used += len(piece)
+            pending.pop(0)
+        for i, char in enumerate("".join(taken)):
+            cells[row, col + i * step] = char
+        col += step * used
+        if not pending:
+            break
+        while col != turn_start:
+            cells[row, col] = ";"
+            col += step
+        for i, char in enumerate(turn):
+            cells[row, col + i * step] = char
+        col = edge
+        for i, char in enumerate(turn):
+            cells[row + 1 + i, col] = char
+        row += len(turn)
+        step = -step
+        col += step
+    if min(c for _, c in cells) < 0:
+        raise AssertionError("a run walked off the left edge")
+    height = max(r for r, _ in cells) + 1
+    ends: dict[int, int] = {}
+    for r, c in cells:
+        ends[r] = max(ends.get(r, 0), c)
+    # A row is trimmed to its last *written* cell rather than stripped:
+    # ``turn right`` has a space in the middle, so a vertical turn writes a
+    # blank that is part of a command and has to survive.
+    return "\n".join(
+        "".join(cells.get((r, c), " ") for c in range(ends.get(r, -1) + 1))
+        for r in range(height)
+    )
+
+
+def alight(truth_table: str, width: int | None = None) -> str:
     """Return an Alight program printing ``truth_table``'s entry for its input.
 
     Reads ``n`` characters (one per line, ``'0'`` or ``'1'``), folds them
@@ -64,4 +157,7 @@ def alight(truth_table: str) -> str:
     commands.append(f'set r at{{"{truth_table}", i+0.5}}')
     commands.append("out r")
     commands.append("end")
-    return ";".join(commands) + ";"
+    flat = ";".join(commands) + ";"
+    if width is None or len(flat) <= width:
+        return flat
+    return _alight_folded(commands, width)
