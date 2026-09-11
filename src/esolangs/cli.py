@@ -56,6 +56,7 @@ from esolangs import (
     read_answer,
     run,
 )
+from esolangs._validate import check_timeout
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import (
     EsolangError,
@@ -389,6 +390,14 @@ def _null_context() -> AbstractContextManager[None]:
 #: Shorter than the run notice: a read that has not finished is far more
 #: likely to be a mistake than a program that is still going.
 _WAITING_NOTICE_AFTER = 3.0
+
+#: The most a program file may hold.  Two orders of magnitude above the
+#: largest program any generator here produces.
+_MAX_PROGRAM_BYTES = 1024 * 1024
+
+#: How long to wait for a program file that is not delivering, when no
+#: ``--timeout`` was given to bound it instead.
+_READ_DEADLINE = 10.0
 
 #: How long an unbounded run goes before it says that it is unbounded.
 #: A constant so a test can shorten it rather than wait.
@@ -754,21 +763,31 @@ def _abridge(history: Sequence[object]) -> str:
 
 
 def _timeout_of(options: dict[str, str]) -> float | None:
-    """Return the ``--timeout`` seconds, or None, refusing a bad value."""
+    """Return the ``--timeout`` seconds, or None, refusing a bad value.
+
+    The *value* checks are :func:`esolangs.check_stdin`'s neighbour
+    :func:`esolangs._validate.check_timeout`, not a second copy: this had
+    its own rules for zero, negatives and non-finite values, and the
+    library then grew a floor and a ceiling that this did not know about.
+    A ``--timeout 1e10`` therefore got past here and overflowed the C
+    timer three calls later, as a raw ``OverflowError``.
+    """
     if "--timeout" not in options:
         return None
     try:
         seconds = float(options["--timeout"])
     except ValueError:
         _fail(f"--timeout must be a number, got {options['--timeout']!r}")
-    if seconds != seconds or seconds in (float("inf"), float("-inf")):
-        _fail(f"--timeout must be finite, got {options['--timeout']!r}")
-    if seconds <= 0:
-        _fail(f"--timeout must be positive, got {options['--timeout']}")
+    try:
+        check_timeout(seconds)
+    except EsolangError as exc:
+        # Re-worded from ``timeout`` to ``--timeout``: the library names the
+        # parameter, and this names the flag the reader typed.
+        _fail(str(exc).replace("timeout must", "--timeout must", 1))
     return seconds
 
 
-def _read_program(path: str) -> str:
+def _read_program(path: str, timeout: float | None = None) -> str:
     """Return the program in ``path``, or exit with a usage error.
 
     The trailing newline is the *file's*, not the program's, and three
@@ -777,20 +796,11 @@ def _read_program(path: str) -> str:
     keeping it meant this tool produced programs its own ``run`` refused,
     and the three committed examples could not be run at all.
     """
-    try:
-        with open(path) as f:
-            return f.read().rstrip("\n")
-    except OSError as exc:
-        _fail(f"cannot read {path}: {exc}")
-        raise  # pragma: no cover - unreachable; _fail exits
-    except UnicodeDecodeError as exc:
-        # Its own clause, deliberately.  ``UnicodeDecodeError`` is a
-        # ``ValueError``, not an ``OSError``, so the handler above never saw
-        # it and pointing ``run`` at a PNG -- or any latin-1 file -- dumped a
-        # raw traceback with internal paths in it, where every other
-        # unreadable file gets one clean line.
-        _fail(f"cannot read {path}: not text ({_decode_note(exc)})")
-        raise  # pragma: no cover - unreachable; _fail exits
+    # The *open* is on the thread as well as the read.  Opening a FIFO
+    # blocks until a writer appears, so bounding only the read left the
+    # command hanging one line earlier -- which is what a reader saw when
+    # ``--timeout 2`` did not stop ``run`` on an unfed pipe.
+    return _bounded_read(path, timeout).rstrip("\n")
 
 
 def _shape_warning(
@@ -824,6 +834,58 @@ def _shape_warning(
 def _note(message: str) -> None:
     """Write one advisory line to stderr, without Python's warning framing."""
     sys.stderr.write(f"{message}\n")
+
+
+def _bounded_read(path: str, timeout: float | None) -> str:
+    """Open and read ``path``, with a size cap and a deadline.
+
+    Both halves on a daemon thread, because both can block forever and
+    neither can be interrupted from Python: ``open`` on a FIFO waits for a
+    writer, and a read of a character device never ends -- ``/dev/zero``
+    reached 3.9 GB of resident memory, ignored ``--timeout``, and ignored
+    SIGINT, because the interpreter sat inside one C-level call throughout.
+
+    The size cap is two orders of magnitude above the largest program any
+    generator here produces.  The deadline is the caller's ``--timeout``
+    when there is one, so the bound they asked for covers the whole
+    command rather than only the part after the file is in memory.
+    """
+    box: list[str | BaseException] = []
+
+    def _slurp() -> None:
+        try:
+            with open(path) as handle:
+                box.append(handle.read(_MAX_PROGRAM_BYTES + 1))
+        except BaseException as exc:
+            box.append(exc)
+
+    reader = threading.Thread(target=_slurp, daemon=True)
+    reader.start()
+    waited = timeout if timeout is not None else _READ_DEADLINE
+    reader.join(waited)
+    if reader.is_alive():
+        _fail(
+            f"gave up reading {path} after {waited:.0f}s -- it is not "
+            f"delivering data (a FIFO with no writer, or a device)",
+            _TIMEOUT_EXIT,
+        )
+    result = box[0] if box else ""
+    if isinstance(result, OSError):
+        _fail(f"cannot read {path}: {result}")
+    if isinstance(result, UnicodeDecodeError):
+        # Its own clause: ``UnicodeDecodeError`` is a ``ValueError``, not an
+        # ``OSError``, so pointing ``run`` at a PNG used to dump a raw
+        # traceback where every other unreadable file gets one clean line.
+        _fail(f"cannot read {path}: not text ({_decode_note(result)})")
+    if isinstance(result, BaseException):
+        raise result
+    if len(result) > _MAX_PROGRAM_BYTES:
+        _fail(
+            f"{path} is larger than the {_MAX_PROGRAM_BYTES // 1024} KiB this "
+            f"reads; the largest program this package generates is far under "
+            f"it, so this is almost certainly not a program"
+        )
+    return result
 
 
 def _decode_note(exc: UnicodeDecodeError) -> str:
@@ -1004,7 +1066,7 @@ def _debug(rest: list[str]) -> None:
     # unbounded, which is the one thing --steps exists to prevent.
     if "--steps" in options and int(options["--steps"]) < 0:
         _fail(f"--steps must not be negative, got {options['--steps']}")
-    program = _read_program(path)
+    program = _read_program(path, limit)
     try:
         facts = describe(language)
     except EsolangError as exc:
@@ -1395,7 +1457,7 @@ def _run(rest: list[str]) -> None:
     rest = [arg for arg in rest if arg != "--judge"]
     _check_count("run", rest, 2)
     language, path = rest[0], rest[1]
-    program = _read_program(path)
+    program = _read_program(path, timeout)
     # Resolved *before* stdin is read.  It was after, so
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever
     # without ever saying the language was unknown -- the one thing it could
@@ -1536,6 +1598,40 @@ def _run(rest: list[str]) -> None:
 
 
 def main() -> None:
+    """Dispatch the ``esolangs`` subcommands, and handle an interrupt.
+
+    ``KeyboardInterrupt`` is caught here because this tool *invites* it:
+    on a language that answers by not terminating it prints "will run until
+    you stop it", and then dumped a traceback when the reader did. 130 is
+    the shell convention for a command killed by SIGINT.
+
+    ``BrokenPipeError`` likewise: ``esolangs generate ... | head`` is an
+    ordinary thing to type, and closing the pipe before the first write
+    left ``Exception ignored while flushing sys.stdout`` on the terminal
+    and exit 120.
+    """
+    try:
+        _dispatch()
+        # Flushed here, where the failure is catchable.  Python flushes
+        # stdout again during interpreter shutdown, and a pipe closed
+        # before the first write made *that* print "Exception ignored
+        # while flushing sys.stdout" after the command had otherwise
+        # finished.
+        sys.stdout.flush()
+    except KeyboardInterrupt:
+        sys.stderr.write("interrupted\n")
+        sys.exit(130)
+    except BrokenPipeError:  # pragma: no cover - needs a closed pipe
+        # Python flushes stdout at exit and would report the same error
+        # again from the interpreter's own teardown; pointing it at
+        # ``devnull`` is the documented way to stop that.
+        import os
+
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        sys.exit(120)
+
+
+def _dispatch() -> None:
     """Dispatch the ``esolangs`` subcommands."""
     argv = sys.argv[1:]
     if not argv:

@@ -59,6 +59,20 @@ class UnknownLanguageError(EsolangError, ValueError):
         self.language = language
         self.suggestions = suggestions
 
+    def __reduce__(self) -> tuple[object, tuple[object, ...]]:
+        """Rebuild from the arguments, not from the rendered message.
+
+        An exception that composes its message in ``__init__`` cannot use
+        the default, which replays ``self.args`` -- and ``self.args`` here is
+        the *message*, not the arguments.  So unpickling called
+        ``__init__(message)`` and this class needs two, which is why a
+        message got the prefix and the suffix applied *again* on every
+        round trip -- "unknown language: unknown language: nosuchlang" after
+        one hop, tripled after two -- so a bad name coming back from a
+        worker process arrived already doubled.
+        """
+        return (type(self), (self.language, self.suggestions))
+
 
 class ArgumentError(EsolangError, ValueError):
     """An argument's value is outside what the call accepts.
@@ -106,6 +120,20 @@ class InputExhaustedError(EsolangError, EOFError):
         )
         self.reads = reads
         self.supplied = supplied
+
+    def __reduce__(self) -> tuple[object, tuple[object, ...]]:
+        """Rebuild from the arguments, not from the rendered message.
+
+        An exception that composes its message in ``__init__`` cannot use
+        the default, which replays ``self.args`` -- and ``self.args`` here is
+        the *message*, not the arguments.  So unpickling called
+        ``__init__(message)`` and this class needs two, which is why a
+        worker raising it took a ``ProcessPoolExecutor`` down with
+        ``BrokenProcessPool`` and no diagnostic: the error could not survive
+        the trip home.  It is the commonest error in the package, and a
+        parallel sweep over the registry is the obvious thing to build.
+        """
+        return (type(self), (self.reads, self.supplied))
 
 
 class GeneratorCapError(EsolangError, ValueError):

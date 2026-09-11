@@ -448,11 +448,18 @@ def run(
     claim it was.
 
     Measured, underfeeding a three-input program by one bit across the
-    fifty-two languages that read stdin at all: **43 raise**, **6 answer a
-    different row of the table** in silence (Circuit Diagram, Clockwise,
-    DINAC, Fargo, Flowchart, S*bleq), 2 run on and produce output
-    :func:`read_answer` then refuses (Suffolk, Suptiftam), and Alight
-    raises about its own arithmetic.
+    fifty-two languages that read stdin at all: **43 raise**, 6 answer a
+    different row of the table (Circuit Diagram, Clockwise, DINAC, Fargo,
+    Flowchart, S*bleq), 2 run on and produce output :func:`read_answer`
+    then refuses (Suffolk, Suptiftam), and Alight raises about its own
+    arithmetic.
+
+    Four of those six now say so, with an
+    :class:`~esolangs.exceptions.InputMismatchWarning`; this said all six
+    were silent, which understated the package.  The two that stay silent
+    are Clockwise and Fargo, whose underfed input is a single line of
+    exactly the right shape -- there is no read past an end to notice, and
+    only ``check_stdin`` with the table can catch them.
 
     ``describe(language)["eof_is_a_value"]`` marks the ones that take an
     exhausted read as a value.  Clockwise is *not* among them and still
@@ -613,21 +620,6 @@ def _run(
         _run_timed_signal(run_fn, program, io_obj, timeout)
 
 
-def _sigalrm_noop(_signum: int, _frame: object) -> None:
-    """Swallow an alarm that belongs to a run which has already finished.
-
-    Installed in place of ``SIG_DFL`` by :func:`_run_timed_signal`, because
-    the default disposition for ``SIGALRM`` is to kill the process and a
-    late alarm therefore turned a bounded run into a silent death.
-    """
-
-
-#: The handler ``SIG_DFL`` is replaced with.  A module-level function rather
-#: than a lambda so it compares equal across calls and shows a useful name
-#: in ``signal.getsignal``.
-_SIGALRM_NOOP = _sigalrm_noop
-
-
 def _run_timed_signal(
     run_fn: Callable[..., Any],
     program: str | list[str],
@@ -656,25 +648,11 @@ def _run_timed_signal(
             f"execution exceeded the {timeout}-second timeout"
         )  # pragma: no cover
 
+    # The caller's alarm, saved and put back.  Arming our own cancels
+    # theirs, so a ``signal.alarm(30)`` set before a timed run came back
+    # with zero seconds left and would never have fired.
     old = signal.signal(signal.SIGALRM, _timeout_handler)
-    if old is signal.SIG_DFL:
-        # **Never give SIGALRM back to the default disposition.**  That
-        # default is to terminate the process, and a stray alarm arriving
-        # once it is restored kills the interpreter outright -- no
-        # traceback, no exception, exit 142.  Two attempts to close the race
-        # that delivers it (ignoring the signal before disarming, then
-        # making the handler refuse to raise into its own teardown) took the
-        # rate from roughly one run in three to about one in four thousand
-        # at a 100-microsecond bound, and neither got it to zero; the exact
-        # path the kernel takes to deliver it was never derived.
-        #
-        # So this stops trying to win that argument.  A no-op handler cannot
-        # kill anything, whenever it is reached, which makes the mechanism
-        # irrelevant instead of understood.  ``old`` becomes the no-op only
-        # when it was the default: a caller who installed their own handler
-        # gets exactly theirs back.
-        old = _SIGALRM_NOOP
-    signal.setitimer(signal.ITIMER_REAL, timeout)
+    pending = signal.setitimer(signal.ITIMER_REAL, timeout)[0]
     try:
         run_fn(program, io_obj)
     finally:
@@ -701,6 +679,11 @@ def _run_timed_signal(
         signal.signal(signal.SIGALRM, signal.SIG_IGN)
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, old)
+        if pending:
+            # Whatever was left of the caller's alarm, resumed.  Not exact
+            # -- the run's own duration is not deducted -- but a timer that
+            # fires late is a great deal better than one silently cancelled.
+            signal.setitimer(signal.ITIMER_REAL, pending)
 
 
 def describe(language: str) -> dict[str, object]:
@@ -1099,6 +1082,21 @@ def read_answer(language: str, output: str) -> str:
 #: :data:`STOP_REASONS` was added to close for the debugger.
 TERMINATION_OUTCOMES: tuple[str, str] = ("halts", "diverges")
 
+
+class _Default:
+    """The "argument was not given" marker for :func:`evaluate`.
+
+    Needed because ``None`` already means something: in :func:`run` it means
+    *unbounded*, and a reader found that the same word meant "use the
+    default" here -- so there was no value at all that turned the alarm off,
+    and the two headline convenience functions could not be called from a
+    thread.  Now omitting the argument takes the defaults and passing
+    ``None`` means what it means everywhere else.
+    """
+
+
+_DEFAULT = _Default()
+
 #: A termination-answering language proves a 1 by *not* halting, so
 #: :func:`evaluate` pays this once for every such row.  Three languages
 #: carry that convention, so the floor is real and small.
@@ -1109,7 +1107,9 @@ _TERMINATION_TIMEOUT = 5.0
 _ROW_TIMEOUT = 30.0
 
 
-def evaluate(language: str, truth_table: str, timeout: float | None = None) -> str:
+def evaluate(
+    language: str, truth_table: str, timeout: float | _Default | None = _DEFAULT
+) -> str:
     """Return the truth table a generated ``language`` program *actually* computes.
 
     Generates the program for ``truth_table``, runs it on every row of its
@@ -1136,15 +1136,28 @@ def evaluate(language: str, truth_table: str, timeout: float | None = None) -> s
     row and 5 for one of the termination languages, where the timeout is
     the answer and so is paid on every 1.
     """
+    # Checked here, not only inside ``run``: the termination path drives the
+    # machine itself and never reaches ``run``, so a bound too small to
+    # service was refused for sixty-six languages and silently read as
+    # "diverges" for the other three -- the same argument answering a
+    # different table depending on which kind of language it was.
+    if not isinstance(timeout, _Default):
+        check_timeout(timeout)
     facts = describe(language)
     name = str(facts["name"])
     inputs = _validate_shape_for_evaluate(truth_table)
     terminating = facts["answer_mode"] == "termination"
-    bound = (
-        timeout
-        if timeout is not None
-        else (_TERMINATION_TIMEOUT if terminating else _ROW_TIMEOUT)
-    )
+    bound: float | None
+    if isinstance(timeout, _Default):
+        bound = _TERMINATION_TIMEOUT if terminating else _ROW_TIMEOUT
+    else:
+        # An explicit ``None`` means *unbounded*, the way it does in
+        # :func:`run` -- and it is the escape hatch for a thread, since the
+        # wall-clock guard is a ``SIGALRM`` and needs the main one.  Safe
+        # here in a way it would not be for arbitrary programs: every
+        # program this runs is one it generated, and the three that diverge
+        # are settled by a repeated state rather than a clock.
+        bound = timeout
     program = generate(name, truth_table)
     if terminating:
         # Which of halting and diverging means 1, as data.  It is
@@ -1170,7 +1183,12 @@ def evaluate(language: str, truth_table: str, timeout: float | None = None) -> s
 
 
 def _terminates(
-    name: str, source: str, stdin: str, bound: float, halts: str, diverges: str
+    name: str,
+    source: str,
+    stdin: str,
+    bound: float | None,
+    halts: str,
+    diverges: str,
 ) -> str:
     """Return this row's answer for a language that answers by terminating.
 
@@ -1227,7 +1245,9 @@ def _terminates(
     return halts if verdict and verdict[0] else diverges
 
 
-def verify(language: str, truth_table: str, timeout: float | None = None) -> bool:
+def verify(
+    language: str, truth_table: str, timeout: float | _Default | None = _DEFAULT
+) -> bool:
     """Whether a generated ``language`` program really computes ``truth_table``.
 
     :func:`evaluate` with the comparison done, for the common case where

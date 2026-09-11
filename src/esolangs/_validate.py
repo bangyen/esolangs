@@ -20,6 +20,14 @@ from __future__ import annotations
 
 _INFINITE = (float("inf"), float("-inf"))
 
+#: The shortest wall-clock bound the ``SIGALRM`` guard can service.  See
+#: :func:`check_timeout` for the measurement behind the number.
+_TIMEOUT_FLOOR = 0.001
+
+#: The longest one it can take.  ``setitimer``'s interval is a C type and
+#: a large enough float overflows it; see :func:`check_timeout`.
+_TIMEOUT_CEILING = 2_592_000.0
+
 
 def check_whole(value: object, name: str) -> int:
     """Return ``value`` as a non-negative index, or refuse it by name."""
@@ -48,6 +56,35 @@ def check_timeout(timeout: object) -> None:
         raise ArgumentError(f"timeout must be finite, got {timeout!r}")
     if timeout <= 0:
         raise ArgumentError(f"timeout must be positive, got {timeout}")
+    if timeout > _TIMEOUT_CEILING:
+        # ``setitimer`` takes a C interval, and a big enough float does not
+        # fit one: 1e9 came back as ``ItimerError: [Errno 22] Invalid
+        # argument`` and 1e10 as ``OverflowError: timestamp out of range``,
+        # both as raw tracebacks.  Zero, negatives, ``inf`` and ``nan`` were
+        # all refused cleanly; only the large finite case fell through, and
+        # a year-long bound is not one anybody wants anyway.
+        raise ArgumentError(
+            f"timeout must be at most {_TIMEOUT_CEILING} seconds (about a "
+            f"month), got {timeout}; a longer one does not fit the "
+            f"wall-clock timer"
+        )
+    if timeout < _TIMEOUT_FLOOR:
+        # Measured, not chosen.  The guard arms a ``SIGALRM`` and takes it
+        # down again, and below about a millisecond the alarm starts landing
+        # inside that teardown: with the caller's own disposition restored
+        # -- which it must be, or a later alarm of theirs is swallowed --
+        # 19 of 20 processes hammering a 100-microsecond bound were killed
+        # outright, and none at all at a millisecond or above (4000 runs
+        # each).
+        #
+        # So the bound this cannot service is refused rather than offered
+        # and quietly turned into a death.  Nothing realistic asks for one:
+        # the shortest bound anything in this package uses is five seconds.
+        raise ArgumentError(
+            f"timeout must be at least {_TIMEOUT_FLOOR} seconds, got "
+            f"{timeout}; the wall-clock guard is a signal and cannot be "
+            f"taken down reliably faster than that"
+        )
 
 
 def check_width(width: object) -> None:
