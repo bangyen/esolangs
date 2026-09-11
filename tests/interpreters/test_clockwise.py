@@ -194,4 +194,7 @@ class TestContract(EmptyProgramContract, CycleContract, StateViewContract):
     # the ring runs rather than only at the end.
     state_views: ClassVar[tuple[str, ...]] = ("out", "inp", "ip", "memory")
     viewing_program: ClassVar[list[str]] = ["+;S;S;S;S;S;+;R", "R             R"]
+    # The machine hook supplies no stdin, so the input cursor has
+    # nothing to consume and cannot move.
+    constant_views: ClassVar[frozenset[str]] = frozenset({"inp"})
     looping_program: ClassVar[list[str]] = ["SS?R ", "+?+S-", "R!!RS"]

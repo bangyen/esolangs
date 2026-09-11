@@ -274,4 +274,7 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     halting_program = "3!"
     looping_program = "3()"
     state_views = ("ind", "variables", "ip", "memory")
-    viewing_program = "3!"
+    # Assigns a variable, so `variables` moves.  `memory` stays empty
+    # for every program in this file.
+    viewing_program = "3333xv3^!"
+    constant_views = frozenset({"memory"})
