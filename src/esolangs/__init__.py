@@ -188,8 +188,9 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
     them computes a constant and reports it as the answer.
 
     **A generator may refuse a table that is too big for it**, with
-    :class:`~esolangs.exceptions.GeneratorCapError`.  Five do, each for its
-    own arithmetic reason, and a sweep over the registry should expect it::
+    :class:`~esolangs.exceptions.GeneratorCapError`.  Several do, each for
+    its own arithmetic reason, and a sweep over the registry should expect
+    it::
 
         try:
             program = generate(language, table)
@@ -559,7 +560,8 @@ def describe(language: str) -> dict[str, object]:
     result rather than an error, which is the failure worth spending an API
     on.  ``input_encoding`` is the ``(zero, one)`` pair the language spells
     its input bits with -- ``("0", "1")`` almost everywhere, ``("%", "A")``
-    for Grapheme, whose read counts any non-empty line as true.
+    for Grapheme, whose generator reads a 1 only from a line beginning
+    ``A``.
     For an ``answer_mode`` of ``"termination"``, ``answer_encoding`` is the
     *polarity* -- ``("halts", "diverges")`` -- so which way the answer goes
     is data rather than something to read out of the prose.  Otherwise

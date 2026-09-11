@@ -892,11 +892,20 @@ class VM(Protocol):
 
     @property
     def ip(self) -> int | tuple[int, ...] | None:
-        """The current code/instruction position, or (position, direction).
+        """The current code/instruction position, language-shaped.
 
         A linear language's ``ip`` is an index into its program; a 2D
-        language's is the moving agent's ``(x, y, heading)``; a language
-        whose agent has been consumed reports ``None``.
+        language's is a coordinate tuple; a language whose agent has been
+        consumed reports ``None``.
+
+        **The tuple's arity is the language's own and is not stable within
+        a run.**  This used to promise ``(x, y, heading)``, which is three
+        of them: the registry also has 1-, 2-, 4- and 6-tuples, and six
+        languages change shape mid-run -- Basicfuck, Flowchart, MyScript and
+        Super SNUSP to ``None``, COD and ``function x(y)`` to an empty
+        tuple -- so a caller must read the shape rather than assume one.
+        :meth:`~esolangs.debugger.Debugger.break_at` checks the kind for
+        exactly this reason, and deliberately does not check the arity.
         """
 
     @property

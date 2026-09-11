@@ -95,7 +95,7 @@ that row is actually spelled for the language.
 - **cod** -- COD has no runtime input and no I/O but a printed number
 - **container** -- Container prints the answer like any other reader; it also ends by calling sys.exit(0) rather than returning, which matters to a harness driving it but not to reading the result
 - **fargo** -- Fargo reads one number whose bits are the inputs, so the committed input is the row index rather than a bit per line
-- **grapheme** -- Grapheme's W reads a whole line and every non-empty string is truthy, so its input bits are spelled % and A; a 0/1 line reads as a 1 and the program answers the wrong row
+- **grapheme** -- Grapheme's generator normalizes each input line with ord(line[0]) - 65, so its input bits are spelled % and A: 'A' is a 1 and every other first character is a 0, which means a 0/1 line reads as 0 and the program answers the all-zeros row
 - **inject** -- send terminates each line, so the answer ends in a newline
 - **laserfuck** -- the initial heading is random by spec, so the example pins the source it is drawn from: seed 0 draws heading 3
 - **minsky-swap** -- Minsky Swap has no output instruction and dumps its registers at halt; the answer is the second one

@@ -11,6 +11,7 @@ from collections.abc import Callable, Iterator
 from functools import cache
 from itertools import chain, pairwise
 
+from esolangs.exceptions import GeneratorCapError
 from esolangs.tools.boolean.helpers import _validate_truth_table
 
 __all__ = ["pct_squared_minus_one"]
@@ -3587,7 +3588,7 @@ def pct_squared_minus_one(truth_table: str) -> str:
         # emitting nothing is better than emitting a program for the wrong
         # function.
         if fold is None:
-            raise ValueError(
+            raise GeneratorCapError(
                 f"%^2^-1 builds every table at one, two, three and four "
                 f"inputs, and every table tried from five through thirteen; "
                 f"beyond those a conjunction or disjunction of literals at "
