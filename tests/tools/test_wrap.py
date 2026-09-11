@@ -416,6 +416,28 @@ def _columns(program: str) -> int:
     return max(len(line) for line in program.split("\n"))
 
 
+def _laid_out(name: str, table: str, bits: str, width: int | None) -> str:
+    """``name``'s program for ``table`` and ``bits``, laid out to ``width``.
+
+    Goes through the language's own example rather than calling the
+    generator, because a width-honouring generator may also be
+    *parameterized*: WII2D has no input command, so what it returns is a
+    template whose ``{Xi}`` placeholders the example's ``fill`` replaces.
+    Running the template instead would not fail -- the interpreter reads
+    ``{`` and ``X`` as no-ops and a digit as a load -- it would quietly
+    compute something unrelated, identically for every width, and the
+    comparison would pass without ever testing a fold.
+    """
+    example = EXAMPLE_BY_ID[LANGUAGES[name].id]
+    variant = replace(
+        example,
+        table=table,
+        bits=tuple(int(bit) for bit in bits) if example.fill else (),
+        inputs=() if example.fill else tuple(bits),
+    )
+    return variant.build(width)
+
+
 @pytest.mark.parametrize("name", WIDTH_HONOURING)
 def test_width_honouring_layout_meets_any_width_it_can(name: str) -> None:
     """The layout fits the width whenever the generator can build it that narrow.
@@ -435,9 +457,11 @@ def test_width_honouring_layout_meets_any_width_it_can(name: str) -> None:
     """
     language = next(lang for lang in LANGUAGES.values() if lang.id == name)
     for label, table in _HONOUR_TABLES.items():
-        narrowest = _columns(generate(language.name, table, 1))
+        arity = len(table).bit_length() - 1
+        bits = "0" * arity
+        narrowest = _columns(_laid_out(language.name, table, bits, 1))
         for width in _HONOUR_WIDTHS:
-            columns = _columns(generate(language.name, table, width))
+            columns = _columns(_laid_out(language.name, table, bits, width))
             assert columns <= max(width, narrowest), (
                 f"{name}: {label} at width {width} came out {columns} columns, "
                 f"wider than both the width and its {narrowest}-column floor"
@@ -459,16 +483,18 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
     which is exactly "these two programs do the same thing".
     """
     language = next(lang for lang in LANGUAGES.values() if lang.id == name)
+    example = EXAMPLE_BY_ID[language.id]
     relaid = 0
     for label, table in _HONOUR_TABLES.items():
         arity = len(table).bit_length() - 1
-        compact = generate(language.name, table)
         for combo in range(2**arity):
             bits = format(combo, f"0{arity}b")
-            stdin = "".join(f"{bit}\n" for bit in bits)
+            # A parameterized generator embeds its inputs and reads nothing.
+            stdin = "" if example.fill else "".join(f"{bit}\n" for bit in bits)
+            compact = _laid_out(language.name, table, bits, None)
             expected = _behaviour(language.name, compact, stdin)
             for width in _HONOUR_WIDTHS:
-                folded = generate(language.name, table, width)
+                folded = _laid_out(language.name, table, bits, width)
                 relaid += folded != compact
                 assert _behaviour(language.name, folded, stdin) == expected, (
                     f"{name}: laying {label} out to width {width} changed the "
