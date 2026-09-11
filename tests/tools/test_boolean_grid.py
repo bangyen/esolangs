@@ -1702,7 +1702,12 @@ class TestCircuitDiagramLayoutGuards:
             ("01", 1, 4),
             ("0001", 7, 11),
             ("0110", 23, 35),
-            ("00010111", 61, 91),
+            # 91 columns before gate groups were recycled, and the width is
+            # what moves when they stop being: the rows are untouched, since
+            # reuse gives back columns and never a band.
+            ("00010111", 61, 61),
+            # Four inputs, where reuse is worth the most: 219 columns before.
+            ("0110100110010110", 147, 99),
         ],
     )
     def test_the_drawing_has_exact_dimensions(

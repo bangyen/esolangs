@@ -326,6 +326,15 @@ class _Builder:
         self.next_signal = 0
         # signal id -> (column, topmost row the bus has reached)
         self.buses: dict[int, tuple[int, int]] = {}
+        # Gate column groups that may be handed out again, and the group each
+        # recyclable signal was cut from.  Only a *gate's* output is ever
+        # entered here: an input rail and a complement are read by every
+        # minterm that selects them, so their columns stay live for the whole
+        # drawing, while the circuit below is a left fold -- each ``a`` chain
+        # result and each running ``o`` result is read exactly once, by the
+        # gate on the next band down -- so those die as soon as they are read.
+        self.free_strides: list[int] = []
+        self.stride_of: dict[int, int] = {}
 
     def _new_signal(self) -> int:
         """Return a fresh signal id."""
@@ -334,7 +343,11 @@ class _Builder:
         return signal
 
     def _new_column(self) -> int:
-        """Return a fresh bus column, right of every column already in use.
+        """Return a fresh bus column, right of every bus column in use.
+
+        Input rails only.  A rail is read by every minterm that selects it,
+        so it is live for the whole drawing and its column is never given
+        back; :func:`_gate_columns` is where the recycling happens.
 
         A gate is drawn one column left of the bus it drives and reads its
         inputs one column left of *that*, so the columns a gate occupies
@@ -347,16 +360,49 @@ class _Builder:
         self.next_column += _COL_STEP
         return column
 
-    def _gate_columns(self) -> tuple[int, int]:
+    def _gate_columns(self, after: int = -1) -> tuple[int, int]:
         """Reserve the columns one gate needs: its inputs, glyph, and output.
 
         Three consecutive columns are taken at once -- the input junctions,
         the gate itself, and the bus it drives -- so no earlier bus can run
         down through any of them.
         """
-        first = self.next_column
-        self.next_column += 3 * _COL_STEP
+        # A dead group is reused rather than a fresh one taken.  Two things
+        # make that safe.
+        #
+        # Rows: the drawing only ever moves *down*.  ``_new_band`` hands out
+        # increasing rows and ``_tap`` only extends a bus downward, so a
+        # recycled group's old wiring ends at the row of the gate that read
+        # it last, and everything drawn into it afterwards starts a band
+        # below that.
+        #
+        # Columns: the signal flows left to right, and a gate must sit to the
+        # *right* of every bus it reads.  ``_tap`` runs the bus along the
+        # gate's row to the input junction one column left of the glyph, so a
+        # group recycled to the left of a source would have that run cross
+        # the gate's own glyph cell -- which is how this first went wrong,
+        # caught by :class:`_Layout` refusing to draw it.  ``after`` is the
+        # rightmost bus the gate will read, and only a group past it will do.
+        usable = [group for group in self.free_strides if group + _COL_STEP > after]
+        if usable:
+            first = min(usable)
+            self.free_strides.remove(first)
+        else:
+            first = self.next_column
+            self.next_column += 3 * _COL_STEP
         return first, first + _COL_STEP
+
+    def _release(self, signal: int) -> None:
+        """Give back ``signal``'s column group, if it owns one to give.
+
+        Called once the signal has been read into the gate that consumes
+        it.  A rail or a complement is not in :attr:`stride_of` at all and
+        so is never released; a gate output is removed as it is released, so
+        a second call cannot hand the same group out twice.
+        """
+        stride = self.stride_of.pop(signal, None)
+        if stride is not None:
+            self.free_strides.append(stride)
 
     def _new_band(self) -> int:
         """Return the centre row of a fresh three-row gate band."""
@@ -390,7 +436,7 @@ class _Builder:
 
     def invert(self, source: int) -> int:
         """Return a signal carrying ``~source``, computed once."""
-        _, column = self._gate_columns()
+        _, column = self._gate_columns(self.buses[source][0])
         row = self._new_band()
 
         # ``~`` reads the cell level with it, so the tap has to end on the
@@ -404,8 +450,15 @@ class _Builder:
         return signal
 
     def gate(self, kind: _GateGlyph, left: int, right: int) -> int:
-        """Place a two-input ``kind`` gate and return its output signal."""
-        _, column = self._gate_columns()
+        """Place a two-input ``kind`` gate and return its output signal.
+
+        The group is taken before the inputs are read and the inputs are
+        released after, so a gate can never be handed the very group it is
+        about to read out of.
+        """
+        first, column = self._gate_columns(
+            max(self.buses[left][0], self.buses[right][0])
+        )
         row = self._new_band()
 
         self._feed(left, column - 1, row - 1)
@@ -415,6 +468,9 @@ class _Builder:
         signal = self._new_signal()
         self.layout.junction(column + 1, row, signal)
         self.buses[signal] = (column + 1, row)
+        self.stride_of[signal] = first
+        self._release(left)
+        self._release(right)
         return signal
 
     def constant(self, source: int, kind: _ConstGlyph) -> int:
@@ -425,7 +481,7 @@ class _Builder:
         from the same bus, which the interpreter accepts because the wiki's
         own constant-output circuit is drawn that way.
         """
-        _, column = self._gate_columns()
+        _, column = self._gate_columns(self.buses[source][0])
         row = self._new_band()
 
         self._tap(source, column - 1, row - 1)
@@ -528,6 +584,16 @@ def circuit_diagram(truth_table: str) -> str:
     other sum-of-minterms generators.  It is worth more here than there: a
     chain is a gate per literal plus the runs feeding it, so a dense
     three-input table drops from ~7000 characters to ~130.
+
+    The drawing's *width* is gate column groups, and a group is reused once
+    the bus it drives is dead.  What makes so many die is the shape of the
+    circuit rather than any analysis: only the rails and their complements
+    are read more than once, and everything else is a left fold -- each
+    ``a`` chain result and each running ``o`` result is read exactly once,
+    by the gate on the next band down -- so a group is free again one band
+    after it is taken.  A gate must still sit right of every bus it reads,
+    since the run feeding it travels along its row, so what is reused is the
+    leftmost dead group past those buses.  Four inputs: 219 columns to 99.
     """
     _validate_truth_table(truth_table)
 
