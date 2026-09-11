@@ -352,6 +352,35 @@ def test_every_wrapper_actually_fires(name: str) -> None:
     pytest.fail(f"{name}: no table up to 4 inputs produced a program long enough")
 
 
+@pytest.mark.parametrize("name", WRAPPED)
+def test_every_wrapper_fires_on_a_template_too(name: str) -> None:
+    """A parameterized language's *template* must wrap, not just its program.
+
+    :func:`~esolangs.generate` hands the wrapper what the generator
+    returned, and for a parameterized language that is the template, ``{Xi}``
+    placeholders and all.  A token rule that does not know about ``{Xi}``
+    fails to tile it, and the wrappers here answer that by returning the
+    program untouched -- which reads as "it fits" and is not.
+
+    :func:`test_every_wrapper_actually_fires` cannot see this: it tries the
+    language's own example first and returns as soon as *that* wraps, and an
+    example is filled before it is wrapped.  BIO passed that way while
+    ``generate`` gave back a single 3466-column line at eight inputs.
+    """
+    example = _example(name)
+    if example.fill is None:
+        pytest.skip(f"{name} is not parameterized; its template is its program")
+    for arity in range(1, 5):
+        template = generate(name, _table(arity))
+        if "\n" in template or len(template) <= 40:
+            continue
+        assert generate(name, _table(arity), 40) != template, (
+            f"{name}: the wrapper left the template untouched"
+        )
+        return
+    pytest.skip(f"{name}: no table up to 4 inputs gives a template long enough")
+
+
 # Tables the generators take a *different path* on than parity.  The
 # committed examples are all AND2, and the sweeps above grow parity, so
 # between them they exercise two shapes -- and a wrapper is exercised by the

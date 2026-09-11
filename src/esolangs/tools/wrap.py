@@ -318,7 +318,14 @@ def _join_tokens(tokens: list[str], width: int, separator: str) -> str:
 # ``};`` that closes one -- plus the space the boolean generator separates
 # commands with.  The commands are why BIO cannot be wrapped by character
 # count, and their varying width is why a fixed stride will not do either.
-_BIO_COMMAND = r"[01][oOiI][xXyYzZ](?:\{|;)|\};| "
+#
+# ``{Xi}`` is here because BIO is *parameterized*: what
+# :func:`~esolangs.generate` is handed to wrap is the template, placeholders
+# and all.  Without it the tokens did not cover the program, :func:`_bio`
+# took its "I cannot read this, leave it alone" exit, and the wrapper was a
+# silent no-op on every template -- 3466 columns at eight inputs, reported
+# as wrapped.  The committed examples never saw it because they fill first.
+_BIO_COMMAND = r"[01][oOiI][xXyYzZ](?:\{|;)|\};|\{X\d+\}| "
 
 # Brainfuck-family single-character commands, and the languages that
 # extend them with a digit argument (Dimensional's ``>0``/``<0``).
