@@ -651,6 +651,14 @@ def resolve(name: str) -> str:
     A name matching nothing raises :class:`UnknownLanguageError` naming the
     closest registered spellings.
     """
+    if not isinstance(name, str):
+        # Checked before ``canonical_id`` touches it, which would otherwise
+        # answer a ``None`` language with ``'NoneType' object has no
+        # attribute 'replace'`` -- the one wrong-type argument in the API
+        # that escaped as an internal AttributeError.
+        raise UnknownLanguageError(
+            f"expected a language name, got {type(name).__name__}"
+        )
     if name in LANGUAGES:
         return name
     match = _BY_ID.get(canonical_id(name))

@@ -20,7 +20,7 @@ import pathlib
 import re
 import signal
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from esolangs.debugger import Debugger, StopReason, make_debugger
@@ -70,6 +70,7 @@ __all__ = [
     "UnknownLanguageError",
     "__version__",
     "describe",
+    "encode_inputs",
     "generate",
     "instantiate",
     "list_languages",
@@ -142,12 +143,30 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
         )
     if width is not None and not isinstance(width, int):
         raise ValueError(f"width must be an integer or None, got {width!r}")
+    if width is not None and width <= 0:
+        # ``run``'s timeout is refused the same way.  A width of 0 bounds
+        # nothing, and returning the unwrapped program for it looked like
+        # the option had been honoured.
+        raise ValueError(f"width must be positive, got {width}")
     if width is not None and _takes_width(fn):
         return str(fn(truth_table, width))
+    if lang.id in parameterized_ids():
+        # A template is not wrapped.  No wrapper names ``{Xi}`` as a token,
+        # so a narrow width breaks a slot in half -- ``{X`` ending one line
+        # and ``1}`` starting the next -- and the template silently stops
+        # being instantiable: ``generate --width 10 "Home Row" 0110`` then
+        # reported one input slot where the table has two.  Wrapping belongs
+        # after the slots are gone, so :func:`instantiate` takes the width.
+        return str(fn(truth_table))
     return wrap_program(str(fn(truth_table)), lang.id, width)
 
 
-def instantiate(language: str, template: str, bits: list[int] | tuple[int, ...]) -> str:
+def instantiate(
+    language: str,
+    template: str,
+    bits: list[int] | tuple[int, ...],
+    width: int | None = None,
+) -> str:
     """Fill a parameterized generator's ``{Xi}`` slots with ``bits``.
 
     The seventeen parameterized generators embed their inputs in the program
@@ -197,7 +216,10 @@ def instantiate(language: str, template: str, bits: list[int] | tuple[int, ...])
         )
     if any(bit not in (0, 1) for bit in bits):
         raise TemplateError(f"bits must each be 0 or 1, got {list(bits)}")
-    return fill(template, bits)
+    # The width lands here rather than on ``generate``, because a slot is
+    # not a token any wrapper knows and a break inside one destroys the
+    # template.  Once the bits are in, the program is ordinary text again.
+    return wrap_program(fill(template, bits), LANGUAGES[name].id, width)
 
 
 def check_runnable(language: str, program: str) -> None:
@@ -284,7 +306,10 @@ def run(
         # unknown command, which made ``run(lang, Path(describe(lang)
         # ["examples"][0]))`` fail on the very files this package ships.  The
         # trailing newline is the file's, not the program's.
-        program = pathlib.Path(program).read_text(encoding="utf-8").rstrip("\n")
+        try:
+            program = pathlib.Path(program).read_text(encoding="utf-8").rstrip("\n")
+        except OSError as exc:
+            raise ProgramError(f"cannot read {program}: {exc}") from exc
     if not isinstance(program, str):
         raise ProgramError(
             f"program must be a string of source or a Path, got "
@@ -393,10 +418,54 @@ def describe(language: str) -> dict[str, object]:
         "reads_input": lang.boolean is not None and not parameterized,
         "width_aware": lang.boolean is not None and _takes_width(lang.boolean),
         "input_encoding": example.alphabet if example else ("0", "1"),
+        "input_shape": example.input_shape if example else "line_per_bit",
         "answer_convention": (example.note or None) if example else None,
         "examples": examples,
         "wiki_url": f"https://esolangs.org/wiki/{name.replace(' ', '_')}",
     }
+
+
+def encode_inputs(language: str, bits: Sequence[int]) -> str:
+    r"""Return the stdin that feeds ``bits`` to a ``language`` program.
+
+    Most languages read one ``0``/``1`` line per input, and for those this
+    is just ``"".join(f"{bit}\\n" ...)``.  Four are not most languages, and
+    every one of them fails *silently* when fed the obvious thing:
+
+    * **Grapheme** reads a whole line and counts any non-empty string as
+      true, so its bits are spelled ``%`` and ``A``; a ``"0"`` line is a 1.
+    * **Clockwise** packs seven bits per character and reads them in one
+      go, so they go on a single line with no separator.
+    * **Fargo** reads one *number* before the program starts and indexes
+      its bits, so the input is the row index.
+    * **Taglate** reads characters rather than lines: no trailing newline,
+      and an odd input count above one is padded with a leading zero that
+      the program consumes like any other digit.
+
+    Each of those was found by a reader feeding digits a line at a time and
+    getting a plausible wrong answer back -- or, for Taglate at three
+    inputs, an input-exhausted error.  The knowledge existed, in a table in
+    the test suite; this is that table, shipped, so the answer is available
+    to the callers who need it rather than to the suite alone.
+
+    ``describe(language)["input_shape"]`` and ``["input_encoding"]`` report
+    the same facts one at a time, for a caller who wants to branch on them.
+    """
+    # Every registered language has a committed example, so the lookup
+    # always finds one; ``example_stems`` covers all 69 and a test pins that.
+    example = _example_for(LANGUAGES[resolve(language)].id)
+    bits = list(bits)
+    if example.input_shape == "row_index":
+        row = sum(bit << (len(bits) - 1 - i) for i, bit in enumerate(bits))
+        return f"{row}\n"
+    zero, one = example.alphabet
+    padded = [0, *bits] if example.ghost_digit and len(bits) % 2 and bits[1:] else bits
+    digits = [one if bit else zero for bit in padded]
+    if example.input_shape == "one_line":
+        return "".join(digits)
+    if not example.trailing_newline:
+        return "\n".join(digits)
+    return "".join(f"{digit}\n" for digit in digits)
 
 
 def _example_for(language_id: str) -> Any:
