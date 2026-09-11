@@ -99,3 +99,34 @@ class InputExhaustedError(EsolangError, EOFError):
         )
         self.reads = reads
         self.supplied = supplied
+
+
+class GeneratorCapError(EsolangError, ValueError):
+    """A boolean generator refusing a table that is too big for it.
+
+    Deliberate, and that is the whole point of the class.  Five generators
+    stop rather than build: Factor's encoded integer outgrows its digit
+    budget, Polynomial emits one instruction per prime and runs out of them,
+    WII2D's decode spans more points than its cost guard allows, ZTOALC L
+    needs more command lines than its committed anchors offer, and
+    Interprogck8 cannot find a rung slot for a jump.
+
+    All five used to raise a plain :class:`ValueError` -- Interprogck8 a
+    *private* ``_StuckError`` nothing exported, so a caller could not name
+    it to catch it -- which broke this package's one stated promise about
+    errors: "Every error raised on purpose derives from ``EsolangError``".
+    The refusals are as on-purpose as an error gets; each carries a
+    hand-written sentence explaining the arithmetic that defeated it.  A
+    sweep over the registry written to the documented idiom crashed on the
+    first of them.
+
+    Still a :class:`ValueError`, so code catching that keeps working.
+
+    This is also the answer to "what is this generator's maximum arity?",
+    which ``describe`` deliberately does not carry.  The caps are not
+    arity-bounded: Polynomial refuses on how many minterms a table needs and
+    Factor on how many digits it encodes to, so a sparse table can build at
+    a size where a dense one is refused.  A per-language number would be
+    wrong for half the tables it was consulted about; catching this is
+    right for all of them.
+    """

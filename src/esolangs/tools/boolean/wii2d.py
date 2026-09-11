@@ -17,6 +17,7 @@ widens a beam, or retries, so the program is a direct function of the table.
 import heapq
 import re
 
+from esolangs.exceptions import GeneratorCapError
 from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 
 __all__ = ["wii2d"]
@@ -1077,20 +1078,20 @@ def wii2d(truth_table: str, width: int | None = None) -> str:
         _chain, states = _wii2d_chain(n, truth_table)
         charged = _wii2d_cost(n, states)
         if charged > _WII2D_MAX_INDEX_DOMAIN:
-            raise ValueError(
+            raise GeneratorCapError(
                 f"the WII2D decode for this n == {n} table spans {charged} "
-                f"points, past the _WII2D_MAX_INDEX_DOMAIN = "
-                f"{_WII2D_MAX_INDEX_DOMAIN} cost guard; below the bound this "
+                f"points, past the {_WII2D_MAX_INDEX_DOMAIN}-point cost "
+                f"guard; below the bound this "
                 "is a size/time policy, but raising the constant does not "
                 "buy the next doubling -- a domain-512 decode ratchets (live "
                 "512 -> 475 over 19 steps, bit length doubling every step) "
-                "and refuses on _WII2D_MAX_MAGNITUDE anyway.  See "
+                "and refuses on the magnitude bound anyway.  See "
                 "docs/walls.md: dense n == 10 is a wall of the exactly-once "
                 "embed convention"
             )
         real = _wii2d_real_domain(states)
         if real > _WII2D_MAX_REAL_DOMAIN:
-            raise ValueError(
+            raise GeneratorCapError(
                 f"the WII2D chain for this n == {n} table leaves a decode "
                 f"domain of {real} points, past the _WII2D_MAX_REAL_DOMAIN = "
                 f"{_WII2D_MAX_REAL_DOMAIN} width guard; the table is inside "
@@ -1098,7 +1099,7 @@ def wii2d(truth_table: str, width: int | None = None) -> str:
                 "the decode would be too wide to be worth emitting (see "
                 "docs/walls.md)"
             )
-        raise ValueError(
+        raise GeneratorCapError(
             "the WII2D n-embedding construction found no route: a branch "
             "decode ratcheted past _WII2D_MAX_MAGNITUDE or ran out of legal "
             "folds; at the domains the guards admit this is the rare "

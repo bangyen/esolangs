@@ -237,3 +237,99 @@ class TestTheNewChecksRefuseTheirOwnBadInput:
 
         with pytest.raises(esolangs.UnknownLanguageError):
             machine_traits("Nonexistent")
+
+
+class TestADeliberateRefusalIsAnEsolangError:
+    """The package promises it, and the five refusals broke the promise.
+
+    Every generator cap raised a plain ``ValueError`` -- Interprogck8 a
+    *private* ``_StuckError`` nothing exported -- so ``except EsolangError``
+    around a registry sweep, the idiom the docs advertise, crashed on the
+    first of them.
+    """
+
+    #: The five that stop rather than build.  Only these are built here: the
+    #: other sixty-four succeed at n=11 and several take minutes to do it.
+    _REFUSERS = ("Factor", "Interprogck8", "Polynomial", "WII2D", "ZTOALC L")
+
+    @staticmethod
+    def _big_table() -> str:
+        """Return a dense n=11 table, past every cap below."""
+        import random
+
+        rng = random.Random(7)
+        return "".join(rng.choice("01") for _ in range(2048))
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("name", _REFUSERS)
+    def test_the_refusal_is_catchable(self, name: str) -> None:
+        """And by the documented base class, not only the specific one."""
+        with pytest.raises(esolangs.GeneratorCapError):
+            esolangs.generate(name, self._big_table())
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("name", _REFUSERS)
+    def test_the_documented_idiom_catches_it(self, name: str) -> None:
+        """``except EsolangError`` is what the package docstring promises."""
+        with pytest.raises(esolangs.EsolangError):
+            esolangs.generate(name, self._big_table())
+
+    def test_it_is_still_a_value_error(self) -> None:
+        """Callers catching ValueError must not be broken by the new class."""
+        assert issubclass(esolangs.GeneratorCapError, ValueError)
+        assert issubclass(esolangs.GeneratorCapError, esolangs.EsolangError)
+
+    def test_it_is_exported(self) -> None:
+        """A refusal nobody can name is a refusal nobody can catch."""
+        assert "GeneratorCapError" in esolangs.__all__
+
+    @pytest.mark.slow
+    def test_no_private_name_leaks_into_a_message(self) -> None:
+        """WII2D's named its own module-private constant at the reader."""
+        with pytest.raises(esolangs.GeneratorCapError) as exc:
+            esolangs.generate("WII2D", self._big_table())
+        assert "_WII2D" not in str(exc.value)
+
+
+class TestWidthEffectSaysWhatWidthDoes:
+    """One flag, three behaviours, and no way to tell them apart.
+
+    ``width_aware`` answered a narrower question -- whether the generator
+    takes the width itself -- so it was ``False`` both for Sophie, whose
+    program *is* reflowed, and for Clockwise, which ignores the width
+    entirely.  A reader reported being unable to work out what the field
+    meant without reading the source, which is the tripwire.
+    """
+
+    def test_every_language_declares_one_of_three(self) -> None:
+        """A fourth value would be a behaviour nobody documented."""
+        seen = {esolangs.describe(n)["width_effect"] for n in esolangs.list_languages()}
+        assert seen <= {"wrap", "layout", "none"}
+
+    def test_layout_is_exactly_the_width_aware_generators(self) -> None:
+        """The old field is the new field's `layout` case, and only that."""
+        for name in esolangs.list_languages():
+            facts = esolangs.describe(name)
+            assert (facts["width_effect"] == "layout") == facts["width_aware"], name
+
+    @pytest.mark.slow
+    def test_the_declaration_matches_what_width_actually_does(self) -> None:
+        """The drift guard: `none` must really be a no-op."""
+        wrong = []
+        for name in esolangs.list_languages():
+            facts = esolangs.describe(name)
+            plain = esolangs.generate(name, "0110")
+            narrow = esolangs.generate(name, "0110", 20)
+            if facts["width_effect"] == "none" and plain != narrow:
+                wrong.append(f"{name}: declared none but --width changed it")
+            # `wrap` and `layout` may coincide on a program already narrower
+            # than the width, so only the `none` direction is decidable here.
+        assert not wrong, "\n".join(wrong)
+
+    def test_a_wrapping_language_really_reflows(self) -> None:
+        """The positive control for the check above, which only tests `none`."""
+        wide = esolangs.generate("Sophie", "0110")
+        narrow = esolangs.generate("Sophie", "0110", 10)
+        assert "\n" not in wide
+        assert "\n" in narrow
+        assert esolangs.describe("Sophie")["width_effect"] == "wrap"
