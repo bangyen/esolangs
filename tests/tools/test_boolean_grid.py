@@ -1797,6 +1797,98 @@ class TestCircuitDiagramLayoutGuards:
         assert closest, "no layout carried two signals' junctions"
         assert min(closest) >= 2
 
+    @staticmethod
+    def _run_at(table: str, width: int | None) -> str:
+        """The banded program's output for every input, in table order."""
+        from esolangs.interpreters.grid_based.circuit_diagram import run
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+
+        n = len(table).bit_length() - 1
+        program = circuit_diagram(table, width).split("\n")
+        results = []
+        for index in range(len(table)):
+            stdin = "".join(f"{bit}\n" for bit in format(index, f"0{n}b"))
+            io = ScriptedIO(stdin)
+            run(program, io)
+            results.append(io.getvalue())
+        return "".join(results)
+
+    def test_a_width_bands_the_drawing_and_it_still_computes(self) -> None:
+        """Banding carries the live signals left; the circuit is unchanged.
+
+        A gate must sit right of every bus it reads, so a group freed
+        behind the drawing is unusable and the width grows with the
+        network's depth.  A band moves what is still live back to the left
+        and frees everything behind it -- and a wire that merged with
+        another would be wrong in a way only a run would show, so this runs
+        every input combination.
+        """
+        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+
+        # ``00101111`` at 30 is the case that bands on the final ``~``: a
+        # dense table is drawn from its zero rows and inverted, and that one
+        # gate sits past the whole network, where it used to run over the
+        # width because only ``gate`` checked.
+        for table in ("01101001", "0110100110010110", "00010111", "00101111"):
+            flat = circuit_diagram(table)
+            wide = max(len(row) for row in flat.splitlines())
+            floor = max(len(row) for row in circuit_diagram(table, 1).splitlines())
+            for width in (1, 30, 50, 60, 80, wide):
+                narrow = circuit_diagram(table, width)
+                columns = max(len(row) for row in narrow.splitlines())
+                assert columns <= max(width, floor), (table, width, columns)
+                assert self._run_at(table, width) == table, (table, width)
+
+    def test_banding_brings_every_arity_inside_eighty(self) -> None:
+        """Which is the point: unbanded, parity clears 80 columns at n == 4.
+
+        The floor is what a band cannot reclaim -- the rails and the
+        complements, read by every minterm and so live for the whole
+        drawing -- so it grows with the *inputs* rather than with the
+        table, which is why it stays well under 80 while the flat drawing
+        does not.
+        """
+        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+
+        for n in (4, 5, 6):
+            table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
+            flat = circuit_diagram(table)
+            banded = circuit_diagram(table, 80)
+            assert max(len(row) for row in flat.splitlines()) > 80, n
+            assert max(len(row) for row in banded.splitlines()) <= 80, n
+            # and it costs rows, which is the trade
+            assert len(banded.splitlines()) > len(flat.splitlines()), n
+
+    def test_a_band_must_re_carry_what_an_earlier_one_moved(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Forgetting a carried signal hands its column away while it is live.
+
+        That is how this first went wrong, and it is the layout guard that
+        caught it rather than a wrong answer.  Making ``_band`` forget makes
+        it fire again -- so the guard is what licenses the banding, not a
+        check that happens to pass.
+        """
+        import importlib
+
+        from esolangs.tools.boolean.circuit_diagram import _Builder
+
+        module = importlib.import_module("esolangs.tools.boolean.circuit_diagram")
+        original = getattr(_Builder, "_band")  # noqa: B009 - SLF001 otherwise
+
+        def forgetful(self: _Builder) -> None:
+            original(self)
+            self.live.clear()
+
+        table = "".join(str(bin(i).count("1") % 2) for i in range(32))
+        monkeypatch.setattr(_Builder, "_band", forgetful)
+        with pytest.raises(AssertionError, match="two signals run vertical"):
+            module.circuit_diagram(table, 40)
+        monkeypatch.undo()
+        # and with the carry kept, the same drawing builds and computes
+        assert self._run_at(table, 40) == table
+
 
 class TestSuperSNUSP:
     """The Super SNUSP generator (an ANF evaluator over a value stack).
