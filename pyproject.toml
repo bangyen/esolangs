@@ -96,6 +96,7 @@ ignore = [
 "__init__.py" = ["F401"]
 # The leak sweep imports the package under test, so it has to extend
 # sys.path before those imports can resolve.
+"scripts/verify_no_exception_leaks.py" = ["E402"]
 # Test files are exempt from docstring requirements: test method and class
 # names are self-documenting, so the D rules would only add boilerplate.
 "tests/**/*.py" = ["D", "N802"]
