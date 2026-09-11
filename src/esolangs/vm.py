@@ -12,14 +12,25 @@ Every registered interpreter exposes a ``step()``/``halted`` state object,
 so every language in the registry can be wrapped; only an unregistered name
 is refused.
 
-Two of the languages' conventions defeat the obvious driving loop, so the
+Three of the languages' conventions defeat the obvious driving loop, so the
 :class:`VM` reports them rather than leaving a caller to find out:
-``self_halts`` is ``False`` where ``halted`` never becomes true, and
+``self_halts`` is ``False`` where ``halted`` never becomes true,
 ``dumps_on_the_post_halt_step`` is ``True`` where the output is written on
-the step after the halt.  ``while not vm.halted: vm.step()`` hangs on the
-first group and returns ``""`` on the second, and neither is discoverable
-from the protocol alone.  A hang detector below is the other way to drive
-the first group, and takes the bound off the caller entirely.
+the step after the halt, and ``steppable_to_answer`` is ``False`` where no
+number of steps reaches the answer at all.  ``while not vm.halted:
+vm.step()`` hangs on the first group and returns ``""`` on the second, and
+neither is discoverable from the protocol alone.  A hang detector below is
+the other way to drive the first group, and takes the bound off the caller
+entirely.
+
+The third group has one member, A Painter Ant, and it is not a hang that a
+bound fixes: the language is an unconditional infinite loop whose answer is
+the *painted grid* once the ant's walk provably repeats, so
+:func:`esolangs.run` proves the cycle and renders, and stepping -- which
+can only ever be mid-walk -- has nothing to read.  Three million steps
+produce ``halted=False`` and ``output=''``.  That is a property of the
+language rather than a defect to route around, so it is stated as one:
+a caller that steps consults the flag and uses :func:`esolangs.run`.
 
 The five hang detectors here -- :func:`run_until_halt_or_cycle`,
 :func:`run_until_halt_or_all_branches_cycle`,
@@ -40,7 +51,9 @@ That is the loop every consumer of :func:`make_vm` was writing itself.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable, Hashable, Sequence
+from functools import cache
 from typing import Any, Protocol, cast, runtime_checkable
 
 from esolangs.exceptions import UnknownLanguageError
@@ -916,6 +929,22 @@ class VM(Protocol):
         writes, and the no-op step is the one after that.
         """
 
+    @property
+    def steppable_to_answer(self) -> bool:
+        """Whether stepping this language ever reaches the answer.
+
+        ``False`` for A Painter Ant alone, and not for want of a bigger
+        budget: the answer is the grid rendered *after* the ant's walk is
+        proven periodic, so a stepping caller -- always mid-walk -- has
+        nothing to read no matter how long it goes.  Three million steps
+        leave ``halted`` false and ``output`` empty.
+
+        Distinct from ``self_halts``, which Suffolk also carries and which
+        does not imply this: Suffolk writes its answer while being stepped.
+        A caller that steps should consult this and fall back to
+        :func:`esolangs.run`, which owns the cycle proof and the render.
+        """
+
 
 class _DelegatingVM:
     """A VM for an interpreter that describes its own shape.
@@ -989,6 +1018,10 @@ class _DelegatingVM:
     def dumps_on_the_post_halt_step(self) -> bool:
         return bool(getattr(self._machine, "dumps_on_the_post_halt_step", False))
 
+    @property
+    def steppable_to_answer(self) -> bool:
+        return bool(getattr(self._machine, "steppable_to_answer", True))
+
 
 def _derived_adapter(language: str) -> type[_DelegatingVM]:
     """Build the adapter for a language whose wrapper is pure boilerplate.
@@ -1057,7 +1090,40 @@ _VM_ADAPTERS: dict[str, type[_DelegatingVM]] = {
 }
 
 
-def make_vm(language: str, program: str, stdin: str = "") -> VM:
+@cache
+def machine_traits(language: str) -> dict[str, bool]:
+    """Return ``language``'s three driving traits without running anything.
+
+    The same ``self_halts`` / ``dumps_on_the_post_halt_step`` /
+    ``steppable_to_answer`` a :class:`VM` exposes, read off the interpreter's
+    state *class* rather than an instance, so :func:`esolangs.describe` can
+    report them.  It could not before: the traits were reachable only
+    through a VM, which needs a program, which for seventeen languages needs
+    the bits -- so a caller deciding *how to drive* a language had to first
+    build the thing it was deciding about.
+
+    The defaults match the wrapper's, and for the same reason: they are the
+    common case, so the fifty-odd languages that follow it declare nothing
+    and only the exceptions carry a line.
+    """
+    import importlib
+
+    # No membership check beyond ``resolve``: it only ever returns a name in
+    # the registry, and the registry and ``RUNNERS`` are the same 69 names,
+    # so a second guard here would be a line no input can reach.
+    name = resolve(language)
+    module = importlib.import_module(f"esolangs.interpreters.{RUNNERS[name][0]}")
+    state = getattr(module, "_Machine")  # noqa: B009
+    return {
+        "self_halts": bool(getattr(state, "self_halts", True)),
+        "dumps_on_the_post_halt_step": bool(
+            getattr(state, "dumps_on_the_post_halt_step", False)
+        ),
+        "steppable_to_answer": bool(getattr(state, "steppable_to_answer", True)),
+    }
+
+
+def make_vm(language: str, program: str | os.PathLike[str], stdin: str = "") -> VM:
     """Return a step-and-inspect wrapper around ``language``'s interpreter.
 
     The wrapper exposes ``step()``, ``halted``, ``output``, ``ip``,
@@ -1073,11 +1139,18 @@ def make_vm(language: str, program: str, stdin: str = "") -> VM:
     to a confident ``output: '0'`` and was reported as an answer, and a
     ``None`` program raised ``'NoneType' is not a container or iterable``
     from inside an interpreter rather than being named at the boundary.
+
+    ``program`` may be a :class:`~pathlib.Path`, exactly as ``run`` allows.
+    The check was already shared; its *return value* was not, so a path was
+    validated -- read off disk, and found to be a fine program -- and then
+    handed to the interpreter unread, which met it with ``'PosixPath'
+    object is not iterable``.  Checking a value and using it have to be the
+    same expression or they drift, which is the whole argument for
+    :mod:`esolangs._validate`.
     """
     from esolangs import check_program
 
     name = resolve(language)
     if name not in _VM_ADAPTERS:
         raise UnknownLanguageError(language)
-    check_program(name, program, stdin)
-    return _VM_ADAPTERS[name](program, stdin)
+    return _VM_ADAPTERS[name](check_program(name, program, stdin), stdin)

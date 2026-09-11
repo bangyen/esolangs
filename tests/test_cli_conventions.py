@@ -95,7 +95,10 @@ class TestRunCanBeBounded:
                 ["run", "--timeout", "1", "brainfuck", _program(tmp_path, "+[]")],
                 capsys,
             )
-        assert exc.value.code == 1
+        # 124, after timeout(1).  This was 1 -- the same code a program's
+        # own failure exits with -- which left the three languages whose
+        # answer *is* a timeout indistinguishable from a crash.
+        assert exc.value.code == 124
         assert "timeout" in capsys.readouterr().err
 
     @pytest.mark.parametrize("value", ["x", "0", "-3"])
@@ -331,3 +334,288 @@ class TestRoundSixQol:
             ["debug", "--timeout", "1", "brainfuck", _program(tmp_path, "+[]")], capsys
         )
         assert "stopped: timeout" in out
+
+
+class TestTheShellCanJudgeAnAnswer:
+    """Nine languages could be run from the CLI and not judged from it.
+
+    ``read_answer`` and ``describe`` shipped in the round before this one and
+    shipped to Python only, so a shell user could produce A Painter Ant's
+    eleven-line grid and had no way to learn that the answer is the mark on
+    the ant's own cell.  The only route was generating all four rows and
+    diffing them by eye.
+    """
+
+    def test_describe_prints_the_input_shape(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The fact whose absence caused this round's wrong answer."""
+        out = call_main(["describe", "Fargo"], capsys)
+        assert "input_shape" in out
+        assert "row_index" in out
+
+    def test_describe_prints_the_traits_that_decide_how_to_drive(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A Painter Ant cannot be stepped to its answer; it says so."""
+        out = call_main(["describe", "A Painter Ant"], capsys)
+        assert "steppable_to_answer" in out
+        assert "False" in out
+
+    def test_describe_resolves_a_name_case_insensitively(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """As every other subcommand does."""
+        assert "brainfuck" in call_main(["describe", "BRAINFUCK"], capsys)
+
+    def test_describe_suggests_a_near_miss(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The registry's suggestions reach the new command too."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["describe", "Brainfck"], capsys)
+        assert exc.value.code == 2
+        assert "did you mean" in capsys.readouterr().err
+
+    def test_read_answer_finds_a_dumped_answer(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """RAM0's answer is its `z` register, three lines from the end."""
+        program = esolangs.instantiate(
+            "RAM0", esolangs.generate("RAM0", "0110"), [0, 1]
+        )
+        output = esolangs.run("RAM0", program, timeout=20)
+        assert call_main(["read-answer", "RAM0"], capsys, stdin=output).strip() == "1"
+
+    def test_read_answer_refuses_a_termination_language(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Their output is not the answer, so reading one would invent it."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["read-answer", "123"], capsys, stdin="VO")
+        assert exc.value.code == 2
+        err = capsys.readouterr().err
+        assert "--judge" in err
+        assert "--timeout" in err
+
+    def test_read_answer_says_so_when_given_nothing(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """An empty pipe is a mistake, not an answer of zero."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["read-answer", "brainfuck"], capsys, stdin="")
+        assert exc.value.code == 2
+        assert "nothing on stdin" in capsys.readouterr().err
+
+    def test_run_judge_prints_the_bit_for_a_dump(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A Painter Ant's grid, reduced to the one character that matters."""
+        program = esolangs.instantiate(
+            "A Painter Ant", esolangs.generate("A Painter Ant", "0110"), [0, 1]
+        )
+        out = call_main(
+            ["run", "--judge", "A Painter Ant", _program(tmp_path, program)], capsys
+        )
+        assert out.strip() == "1"
+
+    def test_run_judge_reads_a_timeout_as_the_one(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """For the three that answer by diverging, not halting *is* the 1."""
+        program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 1])
+        out = call_main(
+            ["run", "--judge", "--timeout", "5", "123", _program(tmp_path, program)],
+            capsys,
+        )
+        assert out.strip() == "1"
+
+    def test_run_judge_reads_a_halt_as_the_zero(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """And the other polarity, from the same program and a different row."""
+        program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 0])
+        out = call_main(
+            ["run", "--judge", "--timeout", "5", "123", _program(tmp_path, program)],
+            capsys,
+        )
+        assert out.strip() == "0"
+
+    def test_run_judge_needs_a_bound_for_a_termination_language(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """There is nothing to wait for without one."""
+        program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 1])
+        with pytest.raises(SystemExit) as exc:
+            call_main(["run", "--judge", "123", _program(tmp_path, program)], capsys)
+        assert exc.value.code == 2
+        assert "--judge needs --timeout" in capsys.readouterr().err
+
+
+class TestATimeoutIsNotAProgramError:
+    """They shared exit 1, so a script could not tell them apart."""
+
+    def test_a_timeout_exits_124(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Following timeout(1), and distinct from the program's own failure."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["run", "--timeout", "1", "brainfuck", _program(tmp_path, "+[]")],
+                capsys,
+            )
+        assert exc.value.code == 124
+
+    def test_a_program_failure_still_exits_1(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The other half of the distinction, which is what makes 124 useful."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["run", "brainfuck", _program(tmp_path, ",")], capsys, stdin="")
+        assert exc.value.code == 1
+
+    def test_a_termination_languages_timeout_says_it_is_the_answer(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It read as a failure when it was the result."""
+        program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 1])
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["run", "--timeout", "2", "123", _program(tmp_path, program)], capsys
+            )
+        assert exc.value.code == 124
+        assert "this timeout is the answer 1" in capsys.readouterr().err
+
+    def test_an_unbounded_termination_language_is_warned_about(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Its default path is an unbounded run of a program built to loop."""
+        program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 0])
+        call_main(["run", "123", _program(tmp_path, program)], capsys)
+        # Row [0, 0] halts, so the run finishes; the warning is still owed,
+        # because which row it is cannot be known before running it.
+
+
+class TestMessagesNameTheThingThatIsWrong:
+    """Small, and each one sent a reader to the wrong word."""
+
+    def test_a_repeated_width_quotes_its_value(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It reported `first was '--width'`, which the reader already knew."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["generate", "--width", "77", "--width", "33", "brainfuck", "0110"],
+                capsys,
+            )
+        assert exc.value.code == 2
+        assert "first was '77'" in capsys.readouterr().err
+
+    def test_a_missing_argument_is_named(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The synopsis alone left the reader to diff it against what they typed."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["generate", "brainfuck"], capsys)
+        assert exc.value.code == 2
+        assert "missing <truth-table>" in capsys.readouterr().err
+
+    def test_swapped_arguments_are_recognized_as_swapped(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """`unknown language: 0110` is true and does not help."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["generate", "0110", "brainfuck"], capsys)
+        assert exc.value.code == 2
+        assert "looks like a truth table" in capsys.readouterr().err
+
+    def test_a_misspelled_option_is_suggested(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Language names had suggestions; the flags beside them had none."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["generate", "--wdith", "40", "brainfuck", "0110"], capsys)
+        assert exc.value.code == 2
+        assert "did you mean --width" in capsys.readouterr().err
+
+    def test_encode_points_at_a_flag_not_a_python_call(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """`instantiate()` is not reachable from a shell."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["encode", "Minifuck", "10"], capsys)
+        assert exc.value.code == 2
+        err = capsys.readouterr().err
+        assert "instantiate()" not in err
+        assert "esolangs generate --bits" in err
+
+    def test_the_details_legend_is_printed_with_the_details(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It lived in `list --help` only, so the columns arrived unexplained."""
+        out = call_main(["list", "--details"], capsys)
+        assert out.splitlines()[0].strip().startswith("language")
+        assert "gen=generator" in out.splitlines()[0]
+
+
+class TestTheHintsStayQuietWhenTheyDoNotApply:
+    """Each hint added this round rewrites one message and no others."""
+
+    def test_an_unknown_language_is_not_called_a_swapped_argument(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The hint fires on a power-of-two run of 0s and 1s, not on any miss."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["generate", "Nonexistent", "0110"], capsys)
+        assert exc.value.code == 2
+        assert "looks like a truth table" not in capsys.readouterr().err
+
+    def test_encode_leaves_an_unrelated_error_alone(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Only the message naming ``instantiate()`` gets rewritten."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["encode", "Nonexistent", "10"], capsys)
+        assert exc.value.code == 2
+        err = capsys.readouterr().err
+        assert "unknown language" in err
+        assert "generate --bits" not in err
+
+    def test_read_answer_reports_an_unknown_language(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The name is resolved before anything is read from stdin."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["read-answer", "Nonexistent"], capsys, stdin="1")
+        assert exc.value.code == 2
+        assert "unknown language" in capsys.readouterr().err
+
+    def test_read_answer_reports_an_unreadable_output(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Rather than guessing a bit out of text that carries none."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["read-answer", "brainfuck"], capsys, stdin="no digits here!")
+        assert exc.value.code == 2
+        assert "no answer this could read" in capsys.readouterr().err
+
+    def test_judge_reports_an_unreadable_output_as_the_programs_failure(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Exit 1: the program ran and produced something unjudgeable."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["run", "--judge", "brainfuck", _program(tmp_path, "++++++++[>++++++++<-]>.")],
+                capsys,
+            )
+        assert exc.value.code == 1
+        assert "no answer this could read" in capsys.readouterr().err
+
+    def test_a_non_table_run_of_digits_is_not_called_a_swap(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """'011' is 0s and 1s but no table's length, so it is just a bad name."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["generate", "011", "brainfuck"], capsys)
+        assert exc.value.code == 2
+        assert "looks like a truth table" not in capsys.readouterr().err
