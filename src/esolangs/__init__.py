@@ -1006,10 +1006,20 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
             # row 2.  Neither a count nor a range check catches it -- ten
             # is one line and is in range -- and no table is needed to see
             # it, which is why the rule is shaped this way.
+            # The bit-string reading is only offered when the digits *are*
+            # bits.  ``int(x, 2)`` on ``'02'`` raises, so the message meant
+            # to explain a leading zero crashed on one -- a traceback out
+            # of the function whose whole job is to refuse cleanly.
+            if not set(lines[0]) - {"0", "1"}:
+                raise ArgumentError(
+                    f"{name} reads one decimal row index, and {lines[0]!r} "
+                    f"has a leading zero -- if those are the input bits, the "
+                    f"index is {int(lines[0], 2)}: "
+                    f"`esolangs encode {name} {lines[0]}`"
+                )
             raise ArgumentError(
                 f"{name} reads one decimal row index, and {lines[0]!r} has a "
-                f"leading zero -- if those are the input bits, the index is "
-                f"{int(lines[0], 2)}: `esolangs encode {name} {lines[0]}`"
+                f"leading zero, which a decimal index never has"
             )
         if wanted is not None and int(lines[0]) >= 2**wanted:
             raise ArgumentError(

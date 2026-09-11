@@ -135,8 +135,7 @@ def test_every_documented_command_runs(where: str, tmp_path: pathlib.Path) -> No
         if result.returncode != 0:
             first = result.stderr.strip().splitlines()
             failures.append(
-                f"{command}\n    rc={result.returncode} "
-                f"{first[0] if first else ''}"
+                f"{command}\n    rc={result.returncode} {first[0] if first else ''}"
             )
         elif expected is not None and result.stdout.strip() != expected:
             failures.append(
