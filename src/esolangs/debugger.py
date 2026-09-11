@@ -14,9 +14,11 @@ the step that would move past it).
 from __future__ import annotations
 
 from collections.abc import Callable
+from inspect import signature
 from time import monotonic
 from typing import Literal
 
+from esolangs._validate import check_timeout, check_whole
 from esolangs.exceptions import ArgumentError
 from esolangs.vm import VM, make_vm, run_until_halt
 
@@ -28,20 +30,6 @@ StopReason = Literal["halted", "breakpoint", "max_steps", "timeout"]
 #: by reading a docstring; this is the same list a caller can loop over or
 #: assert against.
 STOP_REASONS: tuple[StopReason, ...] = ("halted", "breakpoint", "max_steps", "timeout")
-
-
-def _whole(value: object, name: str) -> int:
-    """Return ``value`` as a non-negative index, or refuse it by name.
-
-    Every one of these was accepted and then failed open somewhere later:
-    ``max_steps=-1`` disabled the bound entirely (the drive counts up to it,
-    so a negative is never reached) in the one tool whose job is stopping a
-    runaway, and ``watch_cell(-5)`` waited until a ``run`` to raise a bare
-    ``IndexError`` naming neither the cell nor the call.
-    """
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-        raise ArgumentError(f"{name} must be a non-negative integer, got {value!r}")
-    return value
 
 
 class Debugger:
@@ -105,12 +93,15 @@ class Debugger:
         reaches, so the breakpoint would simply never fire, and a silently
         dead breakpoint is worse than an error.
         """
-        if isinstance(ip, bool) or not (
-            isinstance(ip, int)
-            or (isinstance(ip, tuple) and all(isinstance(part, int) for part in ip))
+        if isinstance(ip, int) and not isinstance(ip, bool):
+            check_whole(ip, "ip")
+        elif not (
+            isinstance(ip, tuple)
+            and ip
+            and all(isinstance(part, int) and not isinstance(part, bool) for part in ip)
         ):
             raise ArgumentError(
-                f"ip must be an integer or a tuple of integers, got {ip!r}"
+                f"ip must be a non-negative integer or a tuple of them, got {ip!r}"
             )
         self._breakpoints.append(lambda vm: vm.ip == ip)
 
@@ -120,7 +111,7 @@ class Debugger:
         ``value`` is checked for the same reason ``ip`` is above: a cell
         holds an ``int``, so a breakpoint on anything else never fires.
         """
-        _whole(index, "index")
+        check_whole(index, "index")
         if isinstance(value, bool) or not isinstance(value, int):
             raise ArgumentError(f"value must be an integer, got {value!r}")
         self._breakpoints.append(
@@ -134,17 +125,43 @@ class Debugger:
         its language pushes, which is not always an int -- but the slot is
         an index like any other.
         """
-        _whole(slot, "slot")
+        check_whole(slot, "slot")
         self._breakpoints.append(
             lambda vm: slot < len(vm.stack) and vm.stack[-1 - slot] == value
         )
 
     def break_on_output(self, text: str) -> None:
-        """Stop once ``text`` has been written so far."""
+        """Stop once ``text`` has been written so far.
+
+        Checked here rather than at the stop: a non-string was registered
+        without complaint and then raised ``'in <string>' requires string
+        as left operand`` from inside the run loop, pointing at the VM
+        instead of at the argument.
+        """
+        if not isinstance(text, str):
+            raise ArgumentError(f"text must be a string, got {type(text).__name__}")
         self._breakpoints.append(lambda vm: text in vm.output)
 
     def break_when(self, predicate: Callable[[VM], bool]) -> None:
-        """Stop when ``predicate(vm)`` holds; a catch-all for the rest."""
+        """Stop when ``predicate(vm)`` holds; a catch-all for the rest.
+
+        The predicate takes the VM and returns a bool.  Both halves are
+        checked now, because neither failed where it was given: a
+        non-callable raised ``'int' object is not callable`` from the run
+        loop, and a zero-argument lambda raised ``takes 0 positional
+        arguments but 1 was given`` -- each naming the loop rather than the
+        setter that accepted it.
+        """
+        if not callable(predicate):
+            raise ArgumentError(
+                f"predicate must be callable, got {type(predicate).__name__}"
+            )
+        try:
+            signature(predicate).bind(self.vm)
+        except TypeError as exc:
+            raise ArgumentError(
+                f"predicate must take one argument, the VM: {exc}"
+            ) from exc
         self._breakpoints.append(predicate)
 
     def clear_breakpoints(self) -> None:
@@ -172,14 +189,14 @@ class Debugger:
         before this call leave no entry: watch first, then run.  The list is
         live, so the one returned keeps filling as the machine advances.
         """
-        _whole(index, "index")
+        check_whole(index, "index")
         if index not in self._cell_history:
             self._cell_history[index] = []
         return self._cell_history[index]
 
     def watch_stack(self, slot: int) -> list[object]:
         """Record the ``slot``-th stack value from the top each step."""
-        _whole(slot, "slot")
+        check_whole(slot, "slot")
         if slot not in self._stack_history:
             self._stack_history[slot] = []
         return self._stack_history[slot]
@@ -237,13 +254,8 @@ class Debugger:
         becoming a hook the shared loop would have to grow.
         """
         if max_steps is not None:
-            _whole(max_steps, "max_steps")
-        if timeout is not None and (
-            isinstance(timeout, bool)
-            or not isinstance(timeout, int | float)
-            or timeout <= 0
-        ):
-            raise ArgumentError(f"timeout must be a positive number, got {timeout!r}")
+            check_whole(max_steps, "max_steps")
+        check_timeout(timeout)
         deadline = None if timeout is None else monotonic() + timeout
         self._timed_out = False
         halted = run_until_halt(self, max_steps, stop=lambda: self._stop(deadline))

@@ -1067,17 +1067,17 @@ def make_vm(language: str, program: str, stdin: str = "") -> VM:
     else in the API; every registered language is step-capable, so only a
     name outside the registry raises :class:`UnknownLanguageError`.
 
-    An unfilled ``{Xi}`` template is refused here for the same reason
-    :func:`esolangs.run` refuses one, and the check lives at this level
-    because stepping is the *other* way to execute a program: the debugger
-    ran one all the way to a confident ``output: '0'`` and reported it as an
-    answer, which is exactly the outcome the guard on ``run`` exists to
-    prevent.
+    The program and ``stdin`` are checked exactly as :func:`esolangs.run`
+    checks them, and for the same reason: stepping is the *other* way to
+    execute a program.  An unfilled ``{Xi}`` template ran here all the way
+    to a confident ``output: '0'`` and was reported as an answer, and a
+    ``None`` program raised ``'NoneType' is not a container or iterable``
+    from inside an interpreter rather than being named at the boundary.
     """
-    from esolangs import check_runnable
+    from esolangs import check_program
 
     name = resolve(language)
     if name not in _VM_ADAPTERS:
         raise UnknownLanguageError(language)
-    check_runnable(name, program)
+    check_program(name, program, stdin)
     return _VM_ADAPTERS[name](program, stdin)

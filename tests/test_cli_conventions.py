@@ -291,3 +291,43 @@ class TestRoundSixQol:
         empty = tmp_path / "empty.txt"
         empty.write_text("")
         assert call_main(["run", "brainfuck", str(empty)], capsys) == ""
+
+    @pytest.mark.parametrize("value", ["inf", "nan", "-inf"])
+    def test_a_nonfinite_timeout_is_refused(
+        self, value: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A deadline that never arrives is not a bound."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["run", "--timeout", value, "brainfuck", _program(tmp_path, "+")],
+                capsys,
+            )
+        assert exc.value.code == 2
+        assert "finite" in capsys.readouterr().err
+
+    def test_an_empty_break_on_output_is_refused(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Every output contains '', so it fired before anything ran."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                [
+                    "debug",
+                    "--break-on-output",
+                    "",
+                    "brainfuck",
+                    _program(tmp_path, "+++"),
+                ],
+                capsys,
+            )
+        assert exc.value.code == 2
+        assert "needs some text" in capsys.readouterr().err
+
+    def test_debug_can_be_bounded_by_time(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """`run` had --timeout and `debug`, which you reach for on a hang, did not."""
+        out = call_main(
+            ["debug", "--timeout", "1", "brainfuck", _program(tmp_path, "+[]")], capsys
+        )
+        assert "stopped: timeout" in out

@@ -24,7 +24,8 @@ import threading
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from esolangs.debugger import Debugger, StopReason, make_debugger
+from esolangs._validate import check_bits, check_timeout, check_width
+from esolangs.debugger import STOP_REASONS, Debugger, StopReason, make_debugger
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
@@ -68,6 +69,7 @@ except _metadata.PackageNotFoundError:  # pragma: no cover - installed in CI
 #: alongside the six functions anyone wants, and there was no way to tell
 #: from the outside which was which.
 __all__ = [
+    "STOP_REASONS",
     "VM",
     "ArgumentError",
     "Debugger",
@@ -81,6 +83,7 @@ __all__ = [
     "TruthTableError",
     "UnknownLanguageError",
     "__version__",
+    "check_program",
     "describe",
     "encode_inputs",
     "generate",
@@ -120,25 +123,6 @@ _STATE_MODELS = {
     "queue_based": "queue",
     "other": "other",
 }
-
-
-def _check_width(width: object) -> None:
-    """Refuse a width that is not a positive integer.
-
-    Shared by :func:`generate` and :func:`instantiate` because they are the
-    same option on the same program, and only one of them used to check it:
-    ``instantiate(..., width=0)`` and ``width=-2`` were accepted and ignored
-    while ``generate`` refused them, and ``width="8"`` reached the
-    comparison and leaked a ``TypeError`` about ``str`` and ``int``.  A
-    width of 0 bounds nothing, and returning the unwrapped program for it
-    looked like the option had been honoured.
-    """
-    if width is None:
-        return
-    if isinstance(width, bool) or not isinstance(width, int):
-        raise ArgumentError(f"width must be an integer or None, got {width!r}")
-    if width <= 0:
-        raise ArgumentError(f"width must be positive, got {width}")
 
 
 def generate(language: str, truth_table: str, width: int | None = None) -> str:
@@ -189,7 +173,7 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
             f"truth table must be a string of '0' and '1', got "
             f"{type(truth_table).__name__}"
         )
-    _check_width(width)
+    check_width(width)
     if width is not None and _takes_width(fn):
         return str(fn(truth_table, width))
     if lang.id in parameterized_ids():
@@ -237,7 +221,7 @@ def instantiate(
     substituted without complaint into a program that no longer computes
     the table.
     """
-    _check_width(width)
+    check_width(width)
     name = resolve(language)
     fill = _fills().get(LANGUAGES[name].id)
     if fill is None:
@@ -245,7 +229,12 @@ def instantiate(
             f"{name} reads its inputs rather than embedding them, so there "
             f"is nothing to instantiate; pass them in as stdin instead"
         )
-    bits = list(bits)
+    if not isinstance(template, str):
+        raise TemplateError(
+            f"template must be the string generate() returned, got "
+            f"{type(template).__name__}"
+        )
+    bits = check_bits(bits, "bits")
     wanted = len({int(slot) for slot in _SLOT_INDEX.findall(template)})
     if len(bits) != wanted:
         given = (
@@ -257,8 +246,6 @@ def instantiate(
             f"this {name} template has {wanted} input slot"
             f"{'' if wanted == 1 else 's'}, but {given}"
         )
-    if any(bit not in (0, 1) for bit in bits):
-        raise TemplateError(f"bits must each be 0 or 1, got {list(bits)}")
     # The width lands here rather than on ``generate``, because a slot is
     # not a token any wrapper knows and a break inside one destroys the
     # template.  Once the bits are in, the program is ordinary text again.
@@ -291,6 +278,43 @@ def check_runnable(language: str, program: str) -> None:
             f"unfilled slots ({', '.join(slots)}); fill them with "
             f"esolangs.instantiate({name!r}, program, bits)"
         )
+
+
+def check_program(
+    language: str, program: str | os.PathLike[str], stdin: str = ""
+) -> str:
+    """Return ``program`` as source, having checked it and ``stdin``.
+
+    The whole load-time contract in one place, because there are two ways
+    to execute a program and only :func:`run` used to apply it:
+    ``make_debugger("brainfuck", None)`` raised ``'NoneType' is not a
+    container or iterable`` from inside an interpreter, where ``run`` had
+    long said ``program must be a string of source or a Path``.
+
+    A :class:`~pathlib.Path` is read here.  Its trailing newline is the
+    file's rather than the program's, and three interpreters (CV(N)(C),
+    Grapheme, NoComment) reject one as an unknown command, which made
+    ``run(lang, Path(describe(lang)["examples"][0]))`` fail on the very
+    files this package ships.
+    """
+    name = resolve(language)
+    if isinstance(program, os.PathLike):
+        try:
+            program = pathlib.Path(program).read_text(encoding="utf-8").rstrip("\n")
+        except OSError as exc:
+            raise ProgramError(f"cannot read {program}: {exc}") from exc
+    if not isinstance(program, str):
+        raise ProgramError(
+            f"program must be a string of source or a Path, got "
+            f"{type(program).__name__}"
+        )
+    if not isinstance(stdin, str):
+        raise ProgramError(
+            f"stdin must be a string, got {type(stdin).__name__}; "
+            f"join your lines with '\\n'"
+        )
+    check_runnable(name, program)
+    return program
 
 
 def run(
@@ -330,8 +354,7 @@ def run(
     :class:`~esolangs.exceptions.ProgramError`, so every deliberate failure
     here derives from :class:`~esolangs.exceptions.EsolangError`.
     """
-    if timeout is not None and timeout <= 0:
-        raise ArgumentError(f"timeout must be positive, got {timeout}")
+    check_timeout(timeout)
     if timeout is not None and not (
         threading.current_thread() is threading.main_thread()
         and hasattr(signal, "SIGALRM")
@@ -348,27 +371,7 @@ def run(
     # here re-raised the error ``resolve`` had already raised.
     name = resolve(language)
     module, split = RUNNERS[name]
-    if isinstance(program, os.PathLike):
-        # A committed program is a text file, so it ends with a newline; three
-        # interpreters (CV(N)(C), Grapheme, NoComment) reject one as an
-        # unknown command, which made ``run(lang, Path(describe(lang)
-        # ["examples"][0]))`` fail on the very files this package ships.  The
-        # trailing newline is the file's, not the program's.
-        try:
-            program = pathlib.Path(program).read_text(encoding="utf-8").rstrip("\n")
-        except OSError as exc:
-            raise ProgramError(f"cannot read {program}: {exc}") from exc
-    if not isinstance(program, str):
-        raise ProgramError(
-            f"program must be a string of source or a Path, got "
-            f"{type(program).__name__}"
-        )
-    if not isinstance(stdin, str):
-        raise ProgramError(
-            f"stdin must be a string, got {type(stdin).__name__}; "
-            f"join your lines with '\\n'"
-        )
-    check_runnable(name, program)
+    program = check_program(name, program, stdin)
     run_fn = importlib.import_module("esolangs.interpreters." + module).run
     io_obj = ScriptedIO(stdin)
     program_args: str | list[str] = program.splitlines() if split else program
@@ -434,11 +437,21 @@ def describe(language: str) -> dict[str, object]:
     lays its own program out to a width (``width_aware``), its example
     programs, and its esolangs.org page.
 
+    ``width_aware`` says the generator takes the width *itself* and builds a
+    narrower shape, rather than emitting a line that
+    :func:`~esolangs.tools.wrap.wrap_program` reflows afterwards.  It is not
+    a promise the result fits: see :func:`generate` on why a width is a
+    request.  Two languages have it, and one of them (LaserFuck) can still
+    overrun.
+
     Two keys exist because assuming their default is answered with a wrong
     result rather than an error, which is the failure worth spending an API
     on.  ``input_encoding`` is the ``(zero, one)`` pair the language spells
     its input bits with -- ``("0", "1")`` almost everywhere, ``("%", "A")``
     for Grapheme, whose read counts any non-empty line as true.
+    For an ``answer_mode`` of ``"termination"``, ``answer_encoding`` is the
+    *polarity* -- ``("halts", "diverges")`` -- so which way the answer goes
+    is data rather than something to read out of the prose.  Otherwise
     ``answer_pattern`` and ``answer_encoding`` are how :func:`read_answer`
     finds the answer: the regex whose first group holds it (empty means the
     last non-whitespace character) and the ``(zero, one)`` pair that
@@ -530,13 +543,11 @@ def encode_inputs(language: str, bits: Sequence[int]) -> str:
             f"there is nothing to encode; pass the bits to instantiate() "
             f"instead"
         )
-    bits = list(bits)
     # Checked for the same reason ``instantiate`` checks it: a 2 or a "1"
     # is not caught downstream.  It encodes as a 1 and the program answers
     # a different row of the table, which is the wrong answer arriving with
     # no sign that anything went astray.
-    if any(bit not in (0, 1) for bit in bits):
-        raise ArgumentError(f"bits must each be 0 or 1, got {bits!r}")
+    bits = check_bits(bits, "bits")
     if example.input_shape == "row_index":
         row = sum(bit << (len(bits) - 1 - i) for i, bit in enumerate(bits))
         return f"{row}\n"
