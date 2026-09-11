@@ -397,6 +397,88 @@ def test_wrapping_holds_on_a_table_the_examples_do_not_cover(
         )
 
 
+# Tables and widths for the two generators that lay themselves out.  The
+# widths reach well below what either can build, which is the point: the
+# narrow end is where a layout generator has to decide what to do when the
+# width cannot be met, and the test above this comment only ever asked for
+# widths every program already fitted.
+_HONOUR_TABLES = {
+    "parity1": "01",
+    "parity2": "0110",
+    "parity3": "01101001",
+    "majority3": "00010111",
+}
+_HONOUR_WIDTHS = (10, 20, 40, 80)
+
+
+def _columns(program: str) -> int:
+    """The width of the widest row of ``program``."""
+    return max(len(line) for line in program.split("\n"))
+
+
+@pytest.mark.parametrize("name", WIDTH_HONOURING)
+def test_width_honouring_layout_meets_any_width_it_can(name: str) -> None:
+    """The layout fits the width whenever the generator can build it that narrow.
+
+    Neither generator can build arbitrarily narrow -- LaserFuck's beam needs
+    a margin cell to turn in, Streetcode's tree has a span its rows cannot
+    fold below -- and both *raise* a width under that floor to it rather
+    than refusing, which :func:`~esolangs.generate` documents as the
+    behaviour of asking for a width no generator can meet.
+
+    So the bound is stated against the floor rather than absolutely, and the
+    floor is *measured* rather than tabulated (asking for width 1 yields the
+    narrowest program the generator has), because a table of floor constants
+    is the kind that drifts: LaserFuck's are 12, 18, 24 and 30 columns at one
+    through four inputs and Streetcode's 21, 33, 44 and 52, both growing six
+    columns an input, and none of that belongs pinned in a test.
+    """
+    language = next(lang for lang in LANGUAGES.values() if lang.id == name)
+    for label, table in _HONOUR_TABLES.items():
+        narrowest = _columns(generate(language.name, table, 1))
+        for width in _HONOUR_WIDTHS:
+            columns = _columns(generate(language.name, table, width))
+            assert columns <= max(width, narrowest), (
+                f"{name}: {label} at width {width} came out {columns} columns, "
+                f"wider than both the width and its {narrowest}-column floor"
+            )
+
+
+@pytest.mark.parametrize("name", WIDTH_HONOURING)
+def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
+    """Laying the program out to a width does not change what it computes.
+
+    The bound was the only thing asserted of these two for a long time, and
+    a bound is the easier half: a generator that folds a beam or a
+    boustrophedon is *rewriting the program*, so a fold that mis-routes is a
+    wrong answer, not a ragged edge.  Nothing ran them.
+
+    The compact form is the reference rather than a recomputed truth table,
+    for the same reason the wrap sweeps compare against the unwrapped
+    program: what must hold is that the layout is irrelevant to the result,
+    which is exactly "these two programs do the same thing".
+    """
+    language = next(lang for lang in LANGUAGES.values() if lang.id == name)
+    relaid = 0
+    for label, table in _HONOUR_TABLES.items():
+        arity = len(table).bit_length() - 1
+        compact = generate(language.name, table)
+        for combo in range(2**arity):
+            bits = format(combo, f"0{arity}b")
+            stdin = "".join(f"{bit}\n" for bit in bits)
+            expected = _behaviour(language.name, compact, stdin)
+            for width in _HONOUR_WIDTHS:
+                folded = generate(language.name, table, width)
+                relaid += folded != compact
+                assert _behaviour(language.name, folded, stdin) == expected, (
+                    f"{name}: laying {label} out to width {width} changed the "
+                    f"answer for inputs {bits}"
+                )
+    # A generator that stopped laying anything out would pass every
+    # assertion above by comparing the compact form against itself.
+    assert relaid, f"{name}: no width produced a different layout"
+
+
 @pytest.mark.parametrize("name", sorted(UNWRAPPABLE))
 def test_unwrappable_languages_are_untouched(name: str) -> None:
     """A language that cannot take newlines ignores the width."""
