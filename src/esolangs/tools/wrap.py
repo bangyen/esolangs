@@ -67,8 +67,10 @@ shape, which no after-the-fact reflow can do: Streetcode folds its
 instruction line into a boustrophedon, LaserFuck steers the beam down and
 back so a straight run of tape commands costs rows instead of columns,
 WII2D folds the run that shifts its answer to an ASCII digit the same way,
-COD stops its left-to-right join of blocks early and swims the cod back
-down and west to the next band, Clockwise stacks the shallow levels of its
+COD turns its whole drawing a quarter turn -- its blocks are joined left to
+right, so the width becomes the *tallest* block rather than the widest, and
+what was the width becomes height, which costs nothing -- Clockwise stacks
+the shallow levels of its
 decision tree so a branch costs one column instead of the ``2 ** (n -
 bit)`` it displaces, Dig turns its tree round once so the deep levels run
 back west over the columns the shallow ones used, and function x(y) and the
@@ -94,8 +96,9 @@ than by folding the ones it has.
 
 Only Clockwise folds to an arbitrary width; in the others something cannot
 move.  WII2D's junction chain carries one input per junction with a detour
-row beneath it, so only the decode's tail folds; COD's blocks are
-indivisible, so its floor is the widest single block; and Dig's tree can
+row beneath it, so only the decode's tail folds; COD's floor is its tallest
+block once the drawing is turned a quarter turn, ``2 ** (n + 1) + 1``; and
+Dig's tree can
 turn round exactly once, since two bands running the same way would share
 the column offsets the turn exists to keep apart; function x(y) floors at
 one node's own line, ``var tN: (bK == "1")<tA, tB>``; APL floors at the
