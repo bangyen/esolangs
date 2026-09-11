@@ -1294,3 +1294,73 @@ class TestAMultiWordNameSuggestsQuoting:
             call_main(["describe", "brainfuck", "zzz"], capsys)
         assert exc.value.code == 2
         assert "unexpected argument" in capsys.readouterr().err
+
+
+class TestTheAdvisoryNotesAreRenderedOnce:
+    """The library warns; this command renders, and does not also duplicate."""
+
+    def test_a_surplus_line_is_noted_without_pythons_framing(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A raw UserWarning would print this file's path and a line of it."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "00010111"))
+        out, err = call_both(
+            ["run", "brainfuck", str(path)], capsys, stdin="1\n1\n0\n0\n1\n1\n"
+        )
+        assert out == "1"
+        assert "read 3 of the 6 lines" in err
+        assert "UserWarning" not in err
+        assert "cli.py" not in err
+
+    def test_a_surplus_line_is_said_exactly_once(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It was printed by the CLI and warned by the library both."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("Grapheme", "0110"))
+        _out, err = call_both(["run", "Grapheme", str(path)], capsys, stdin="0\n1\n")
+        assert err.count("spells its bits") == 1
+
+    def test_judge_refuses_a_surplus_line_once(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The arity mismatch `--judge` exists to catch."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "00010111"))
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["run", "--judge", "brainfuck", str(path)],
+                capsys,
+                stdin="1\n1\n0\n0\n1\n1\n",
+            )
+        assert exc.value.code == 2
+        err = capsys.readouterr().err
+        assert err.count("lines supplied") == 1
+
+    def test_an_empty_program_file_is_noted(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It ran and printed nothing, at exit 0, with no explanation."""
+        path = tmp_path / "empty.txt"
+        path.write_text("")
+        _out, err = call_both(["run", "brainfuck", str(path)], capsys, stdin="0\n0\n")
+        assert "is empty" in err
+
+    def test_a_mixed_none_watch_history_is_legended(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The all-None case was annotated; the mixed one needed it more."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("Streetcode", "0110"))
+        out, _err = call_both(
+            ["debug", "--steps", "30", "--watch-cell", "0", "Streetcode", str(path)],
+            capsys,
+            stdin="0\n1\n",
+        )
+        assert "did not exist yet" in out
+
+    def test_verify_says_it_checks_the_generator(self) -> None:
+        """So nobody mistakes it for a checker of a file they wrote."""
+        assert "checks the generator" in cli.HELP["verify"]
+        assert "run --judge" in cli.HELP["verify"]

@@ -78,7 +78,18 @@ class _StepMachine(Protocol):
         """Whether the machine has finished executing."""
 
     def snapshot(self) -> Hashable:
-        """Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection.
+
+        **Opaque, and language-shaped.**  What the tuple holds is whatever
+        that interpreter's state is -- a tape and two cursors here, a grid
+        and a heading there -- so the positions are not a schema and are not
+        named: there is no arrangement that would mean the same thing across
+        sixty-nine machines.  It exists to be compared and hashed, which is
+        what a cycle detector needs and all it needs.
+
+        Read ``ip``, ``memory``, ``stack`` and ``output`` for state a caller
+        can interpret; those *are* uniform and documented individually.
+        """
 
 
 @runtime_checkable

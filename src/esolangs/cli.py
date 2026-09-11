@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import sys
 import threading
+import warnings
 from collections.abc import Iterable, Sequence
 from contextlib import AbstractContextManager, nullcontext
 from difflib import get_close_matches
@@ -218,6 +219,12 @@ space, and report whether it computes that table.
 
 Prints `ok` and exits 0 on a match.  On a mismatch it prints the table the
 program actually computed beside the one you asked for, and exits 1.
+
+**It checks the generator, not a file of yours.**  The program it runs is
+the one it just generated, so `ok` means "this language's generator builds
+a correct program for this table" -- it cannot tell you anything about a
+program you wrote.  For that, run yours and judge the output:
+`esolangs run --judge <language> <your-file>`.
 
 This is the whole round trip in one command: generate, encode each row's
 bits in whatever shape the language wants, run, and read the answer out of
@@ -736,6 +743,11 @@ def _shape_warning(facts: dict[str, object], stdin: str) -> str:
     return ""
 
 
+def _note(message: str) -> None:
+    """Write one advisory line to stderr, without Python's warning framing."""
+    sys.stderr.write(f"{message}\n")
+
+
 def _decode_note(exc: UnicodeDecodeError) -> str:
     """Describe where a decode failed, without the codec's full sentence."""
     return f"invalid UTF-8 at byte {exc.start}"
@@ -848,11 +860,8 @@ def _debug(rest: list[str]) -> None:
             _fail("--break-on-output needs some text; every output contains ''")
         dbg.break_on_output(options["--break-on-output"])
         breakpoints_set = True
-    history = (
-        dbg.watch_cell(int(options["--watch-cell"]))
-        if "--watch-cell" in options
-        else None
-    )
+    watched = int(options["--watch-cell"]) if "--watch-cell" in options else None
+    history = dbg.watch_cell(watched) if watched is not None else None
     steps = int(options["--steps"]) if "--steps" in options else None
     # A debugged program is one the caller is already unsure of, so a raise
     # here is a result to report rather than a crash to propagate: the
@@ -892,7 +901,17 @@ def _debug(rest: list[str]) -> None:
     print(f"output: {dbg.output!r}")
     if history is not None:
         values = list(history)
-        untouched = " (never written)" if set(values) <= {None} else ""
+        # A `None` means the cell did not exist yet at that step -- the tape
+        # had not grown that far, or the language has no such store.  The
+        # all-`None` case was annotated and the *mixed* case was not, which
+        # is the one where a reader actually needs telling: a row reading
+        # `[None, None, 0, 0, ...]` otherwise looks like a value.
+        if set(values) <= {None}:
+            untouched = " (never written)"
+        elif None in values:
+            untouched = " (None: the cell did not exist yet at that step)"
+        else:
+            untouched = ""
         print(f"cell {options['--watch-cell']}: {_abridge(values)}{untouched}")
     if fault is not None:
         print(f"raised: {fault}")
@@ -1129,11 +1148,29 @@ def _run(rest: list[str]) -> None:
         # That split is the answer to "warn or refuse?" -- the flag says
         # which of the two situations you are in.
         _fail(f"{warning}\n(refused because --judge asks for an answer bit)")
-    if warning:
-        sys.stderr.write(f"{warning}\n")
+    # No copy of the warning here.  ``run`` emits the same judgement as a
+    # ``UserWarning`` now, so printing it as well said everything twice --
+    # and Python's default format would have put this file's path and a line
+    # of its source in front of it, which is nobody's idea of a CLI message.
     try:
-        with _UnboundedNotice("run") if timeout is None else _null_context():
+        with (
+            _UnboundedNotice("run") if timeout is None else _null_context(),
+            warnings.catch_warnings(record=True) as caught,
+        ):
+            warnings.simplefilter("always")
             output = run(language, program, stdin, timeout)
+        surplus = next(
+            (str(e.message) for e in caught if "lines supplied" in str(e.message)),
+            None,
+        )
+        if judge and surplus is not None:
+            # A surplus read under ``--judge`` is the arity mismatch the
+            # flag exists to catch: the answer bit would be for a different
+            # row.  Refused *instead of* being rendered as advice, so it is
+            # said once rather than twice.
+            _fail(f"{surplus}\n(refused because --judge asks for an answer bit)")
+        for entry in caught:
+            _note(str(entry.message))
     except TemplateError as exc:
         _fail(_template_hint(exc, language))
     except ExecutionTimeoutError as exc:
@@ -1169,6 +1206,11 @@ def _run(rest: list[str]) -> None:
     # get from an empty file or the wrong path.  Say so on a terminal, where
     # the alternative is a blank line and no way to tell the two apart; a
     # pipe still receives exactly the empty output.
+    if not program.strip():
+        # Legal, and almost never what was meant: an empty file is what you
+        # get from a redirect that failed or a generate that was never run.
+        # Said on stderr, so a pipeline still receives the empty output.
+        _note(f"note: {path} is empty, so there was no program to run")
     if not output and sys.stdout.isatty():
         sys.stderr.write(
             f"{language}: the program ran and printed nothing"
