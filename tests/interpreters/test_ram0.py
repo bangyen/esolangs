@@ -486,3 +486,23 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
 
 if __name__ == "__main__":
     pytest.main([__file__])
+
+
+class TestStateViewValues:
+    """The named views read the slots they claim, not one another.
+
+    The shared contract checks that each view *moves*; which slot it moves
+    with is this file's business, because only this file knows which of its
+    names could be confused for each other.  A value pinned at a step where
+    they hold different things is what a rewiring would change.
+    """
+
+    def test_n_and_z_are_separate_registers(self) -> None:
+        """One step in they differ; by the end of the run they agree.
+
+        Reading them at the end would not tell the two apart, which is why
+        this stops after the first command.
+        """
+        machine = _machine("A N S")
+        machine.step()
+        assert (machine.z, machine.n) == (1, 0)

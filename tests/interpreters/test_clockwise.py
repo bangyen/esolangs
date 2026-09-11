@@ -198,3 +198,21 @@ class TestContract(EmptyProgramContract, CycleContract, StateViewContract):
     # nothing to consume and cannot move.
     constant_views: ClassVar[frozenset[str]] = frozenset({"inp"})
     looping_program: ClassVar[list[str]] = ["SS?R ", "+?+S-", "R!!RS"]
+
+
+class TestStateViewValues:
+    """The named views read the slots they claim, not one another.
+
+    The shared contract checks that each view *moves*; which slot it moves
+    with is this file's business, because only this file knows which of its
+    names could be confused for each other.  A value pinned at a step where
+    they hold different things is what a rewiring would change.
+    """
+
+    def test_out_is_the_output_buffer_and_inp_the_input(self) -> None:
+        """Two steps in, one character has been buffered and none read."""
+        machine = _machine(["+;S;S;S;S;S;+;R", "R             R"])
+        machine.step()
+        machine.step()
+        assert machine.out == ("1",)
+        assert machine.inp == ()

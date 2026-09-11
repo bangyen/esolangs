@@ -278,3 +278,21 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     # for every program in this file.
     viewing_program = "3333xv3^!"
     constant_views = frozenset({"memory"})
+
+
+class TestStateViewValues:
+    """The named views read the slots they claim, not one another.
+
+    The shared contract checks that each view *moves*; which slot it moves
+    with is this file's business, because only this file knows which of its
+    names could be confused for each other.  A value pinned at a step where
+    they hold different things is what a rewiring would change.
+    """
+
+    def test_variables_is_the_variable_map(self) -> None:
+        """The assignment lands in ``variables``, and ``memory`` stays empty."""
+        machine = _machine("3333xv3^!")
+        while not machine.halted:
+            machine.step()
+        assert machine.variables == {Fraction(3): Fraction(0)}
+        assert machine.memory == []
