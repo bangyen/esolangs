@@ -45,6 +45,7 @@ from typing import cast
 from esolangs import (
     __version__,
     check_runnable,
+    check_stdin,
     describe,
     encode_inputs,
     evaluate,
@@ -717,76 +718,21 @@ def _read_program(path: str) -> str:
 
 
 def _shape_warning(facts: dict[str, object], stdin: str) -> str:
-    """Return a warning when ``stdin`` looks like the naive shape, else ''.
+    """Return the library's complaint about ``stdin``, or ``''``.
 
-    The last silent-wrong path anyone found: four languages do not read one
-    ``0``/``1`` line per bit, and feeding them the obvious thing is answered
-    with a *wrong bit* rather than an error, exit 0.  It is documented in
-    three places and ``encode`` exists to spell the right stdin -- but a
-    reader who types what they expect gets no sign at the moment they do it.
-
-    A warning rather than a refusal.  ``run`` executes arbitrary programs of
-    a language, not only generated truth-table ones, so a shape this thinks
-    is wrong may be exactly what a hand-written program wants; refusing
-    would break that, and saying so costs nothing.
-
-    Every test below reads a ``describe`` field, so a fifth exceptional
-    language is covered by declaring its shape and nothing here changes.
+    The checks themselves live in :func:`esolangs.check_stdin` now.  They
+    were written here, and a Python caller had no way to reach them -- the
+    one place the API was weaker than this command line, and the guards in
+    question are the ones every reader of this package trips over.  Two
+    copies would have drifted, as two copies of a check in this repository
+    have twice before.
     """
-    shape, alphabet = facts["input_shape"], facts["input_encoding"]
-    zero, one = cast("tuple[str, str]", alphabet)
-    lines = stdin.strip().split("\n")
-    if shape == "row_index" and not (len(lines) == 1 and lines[0].isdigit()):
-        # Fargo reads one decimal number and indexes its bits with it, so
-        # `abc`, `3.7` and a blank line were each read as row 0 and answered
-        # with a confident bit at exit 0.  It is the least guessable input
-        # shape in the set, which makes it the one most likely to be typed
-        # by hand -- and the likeliest slip, wanting bits `10` and typing
-        # `10`, is decimal ten, which wraps to a row that exists.
-        #
-        # Checked before the blank-stdin return below, because a blank
-        # stdin is one of the inputs this silently read as row 0.
-        #
-        # Out of *range* is a different matter and is not checked here: an
-        # `8` on a three-input program is a perfectly good integer, and this
-        # command does not know the program's arity.  `esolangs verify`
-        # does, because it enumerates the rows itself.
-        return (
-            f"{facts['name']} reads one decimal row index, but stdin is "
-            f"{stdin.strip()!r}; `esolangs encode` builds the right stdin"
-        )
-    if not stdin.strip():
+    if not facts["reads_input"]:
         return ""
-    naive = all(line in ("0", "1") for line in lines)
-    if {zero, one} != {"0", "1"} and naive:
-        return (
-            f"stdin looks like 0/1 lines, but {facts['name']} spells its bits "
-            f"{zero!r} and {one!r}; `esolangs encode` builds the right stdin"
-        )
-    if shape in ("one_line", "row_index") and len(lines) > 1:
-        wanted = (
-            "every bit on one line"
-            if shape == "one_line"
-            else "the row index as one decimal number"
-        )
-        return (
-            f"stdin is {len(lines)} lines, but {facts['name']} wants {wanted}; "
-            f"`esolangs encode` builds the right stdin"
-        )
-    # An exact match against the declared alphabet, which is why one rule
-    # covers a leading space, a tab, a `2` and the word `true` alike.  All
-    # four were answered with a confident wrong bit at exit 0, and two
-    # languages handed back *different* answers for the same junk byte,
-    # which is the proof that nothing was reading it.  `esolangs encode`
-    # has always refused exactly these.
-    if shape in ("line_per_bit", "line_per_bit_padded"):
-        stray = [line for line in lines if line not in (zero, one)]
-        if stray:
-            return (
-                f"stdin has {len(stray)} line(s) outside {facts['name']}'s "
-                f"input alphabet {zero!r}/{one!r} -- first is {stray[0]!r}; "
-                f"`esolangs encode` builds the right stdin"
-            )
+    try:
+        check_stdin(str(facts["name"]), stdin)
+    except EsolangError as exc:
+        return f"{exc}; `esolangs encode` builds the right stdin"
     return ""
 
 

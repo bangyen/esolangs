@@ -775,10 +775,13 @@ class TestWII2D:
         # Matched on the numbers, not just the phrase: the message reports
         # the domain it measured and the limit it was compared against, and
         # a substring match on "width guard" passes however those drift.
+        # The constant's *name* used to appear here too, in the message and
+        # so in this pattern; a reader reported it as an internal
+        # identifier leaking at them, so the message names the value only.
         # 1025 is n == 7's worst case, one past the 2**10 the chain would
         # need to merge, so an off-by-one in the domain count shows here.
         with pytest.raises(
-            ValueError, match=r"domain of 1025 points.*_WII2D_MAX_REAL_DOMAIN = 256"
+            ValueError, match=r"domain of 1025 points, past the 256-point width guard"
         ):
             boolean.wii2d(table)
 

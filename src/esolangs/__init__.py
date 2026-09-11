@@ -29,7 +29,7 @@ import re
 import signal
 import threading
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import Any, cast
 
 from esolangs._validate import check_bits, check_timeout, check_width
 from esolangs.debugger import STOP_REASONS, Debugger, StopReason, make_debugger
@@ -77,6 +77,8 @@ except _metadata.PackageNotFoundError:  # pragma: no cover - installed in CI
 #: alongside the six functions anyone wants, and there was no way to tell
 #: from the outside which was which.
 __all__ = [
+    "ANSWER_MODES",
+    "INPUT_SHAPES",
     "STOP_REASONS",
     "TERMINATION_OUTCOMES",
     "VM",
@@ -94,6 +96,7 @@ __all__ = [
     "UnknownLanguageError",
     "__version__",
     "check_program",
+    "check_stdin",
     "describe",
     "encode_inputs",
     "evaluate",
@@ -764,6 +767,109 @@ def encode_inputs(
     if example.input_shape == "one_line":
         return "".join(digits)
     return "".join(f"{digit}\n" for digit in digits)
+
+
+#: The three ways a language hands back its answer, as data.  The closed set
+#: a generic caller branches on, exported for the same reason
+#: :data:`STOP_REASONS` and :data:`TERMINATION_OUTCOMES` are: a verifier that
+#: branches on ``answer_mode`` otherwise has to spell ``"termination"`` as a
+#: magic string, which is the one thing those two constants exist to stop.
+ANSWER_MODES: tuple[str, ...] = ("output", "dump", "termination")
+
+#: The four stdin layouts, likewise.  ``line_per_bit`` is the rule;
+#: ``line_per_bit_padded`` prepends a zero line for an odd input count,
+#: ``one_line`` puts every bit on one line, and ``row_index`` sends a single
+#: decimal number whose bits are the inputs.
+INPUT_SHAPES: tuple[str, ...] = (
+    "line_per_bit",
+    "line_per_bit_padded",
+    "one_line",
+    "row_index",
+)
+
+
+def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> None:
+    """Refuse ``stdin`` that cannot be what ``language`` wants to read.
+
+    The judge the CLI has always applied, moved here so Python callers get
+    it too -- it was the one place the API was strictly weaker than the
+    command line, and the sharp edges it guards are the ones every blind
+    reader of this package has found: a ``0``/``1`` line fed to Grapheme,
+    several lines fed to Clockwise, anything but a number fed to Fargo.
+
+    Raises :class:`~esolangs.exceptions.ArgumentError`.  A *raise* rather
+    than a warning because a caller reaching for this function has asked
+    to be told; :func:`run` itself still executes whatever it is given,
+    since it runs arbitrary programs of a language and not only the
+    generated truth-table ones, and a shape this rejects may be exactly
+    what a hand-written program wants.
+
+    ``truth_table`` is optional and adds the count: with it, stdin must
+    hold as many bits as the program reads, which catches the *surplus*
+    case too.  Six lines fed to a three-input program answered the first
+    three and ignored the rest, at exit 0 -- and the count was available
+    all along, since the too-few case has always reported "2 lines
+    supplied, read 3".
+
+    Every check reads a :func:`describe` field, so a language with a new
+    shape is covered by declaring it.
+    """
+    facts = describe(language)
+    name = str(facts["name"])
+    if not facts["reads_input"]:
+        raise ArgumentError(
+            f"{name} embeds its inputs in the program and reads no stdin; "
+            f"there is nothing to check"
+        )
+    if not isinstance(stdin, str):
+        raise ArgumentError(f"stdin must be a string, got {type(stdin).__name__}")
+    shape = str(facts["input_shape"])
+    zero, one = cast("tuple[str, str]", facts["input_encoding"])
+    lines = stdin.strip().split("\n") if stdin.strip() else []
+    wanted = None
+    if truth_table is not None:
+        wanted = _validate_shape_for_evaluate(truth_table)
+        if shape == "line_per_bit_padded" and wanted % 2 and wanted > 1:
+            # Taglate's pad is a digit the program reads like any other, so
+            # an odd input count above one costs an extra line.  Read off
+            # the shape, which is where that fact already lives.
+            wanted += 1
+
+    if shape == "row_index":
+        if len(lines) != 1 or not lines[0].isdigit():
+            raise ArgumentError(
+                f"{name} reads one decimal row index, but stdin is {stdin.strip()!r}"
+            )
+        if wanted is not None and int(lines[0]) >= 2**wanted:
+            raise ArgumentError(
+                f"{name} row index {lines[0]} is out of range for a "
+                f"{wanted}-input program (0..{2**wanted - 1})"
+            )
+        return
+    if shape == "one_line":
+        if len(lines) != 1:
+            raise ArgumentError(
+                f"{name} wants every bit on one line, but stdin is {len(lines)} line(s)"
+            )
+        if wanted is not None and len(lines[0]) != wanted:
+            raise ArgumentError(
+                f"{name} wants {wanted} bits on its one line, got {len(lines[0])}"
+            )
+        return
+    stray = [line for line in lines if line not in (zero, one)]
+    if stray:
+        # Phrased around the alphabet rather than the stray count, because
+        # the useful half is what this language *does* spell its bits with:
+        # a reader who fed 0/1 lines to Grapheme needs '%' and 'A', not a
+        # tally of how many lines were wrong.
+        raise ArgumentError(
+            f"{name} spells its bits {zero!r} and {one!r}, and {len(stray)} "
+            f"stdin line(s) are outside that -- the first is {stray[0]!r}"
+        )
+    if wanted is not None and len(lines) != wanted:
+        raise ArgumentError(
+            f"{name} reads {wanted} line(s) for this table, but stdin has {len(lines)}"
+        )
 
 
 def read_answer(language: str, output: str) -> str:

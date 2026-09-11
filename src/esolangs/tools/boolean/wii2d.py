@@ -1093,15 +1093,16 @@ def wii2d(truth_table: str, width: int | None = None) -> str:
         if real > _WII2D_MAX_REAL_DOMAIN:
             raise GeneratorCapError(
                 f"the WII2D chain for this n == {n} table leaves a decode "
-                f"domain of {real} points, past the _WII2D_MAX_REAL_DOMAIN = "
-                f"{_WII2D_MAX_REAL_DOMAIN} width guard; the table is inside "
+                f"domain of {real} points, past the "
+                f"{_WII2D_MAX_REAL_DOMAIN}-point width guard; the table is "
+                "inside "
                 "the arity-scale cost guard but its chain found no merge, so "
                 "the decode would be too wide to be worth emitting (see "
                 "docs/walls.md)"
             )
         raise GeneratorCapError(
             "the WII2D n-embedding construction found no route: a branch "
-            "decode ratcheted past _WII2D_MAX_MAGNITUDE or ran out of legal "
+            "decode ratcheted past the magnitude bound or ran out of legal "
             "folds; at the domains the guards admit this is the rare "
             "doubling-trap pattern (about 1 in 10 sampled at domain 256), "
             "refused promptly rather than left to diverge"
