@@ -95,6 +95,13 @@ class BooleanExample:
     interpreter: str
     expected: str
     inputs: tuple[str, ...] = ()
+    #: How this language spells an input 0 and an input 1.  Almost always
+    #: the digits, but not universally, and the exception is silent rather
+    #: than loud: Grapheme's ``W`` reads a whole line and every non-empty
+    #: string is truthy, so a ``"0"`` line reads as a 1 and the program
+    #: answers the wrong row instead of refusing it.  Carried here so
+    #: ``describe`` can tell a caller before they feed it digits.
+    alphabet: tuple[str, str] = ("0", "1")
     bits: tuple[int, ...] = ()
     fill: Callable[[str, list[int]], str] | None = None
     split: bool = False
@@ -142,6 +149,7 @@ def _reader(
     split: bool = False,
     kwargs: tuple[tuple[str, int], ...] = (),
     note: str = "",
+    alphabet: tuple[str, str] = ("0", "1"),
 ) -> BooleanExample:
     """Build an input-reading example, whose bits are read from stdin."""
     return BooleanExample(
@@ -150,6 +158,7 @@ def _reader(
         interpreter=interpreter,
         expected=expected,
         inputs=inputs,
+        alphabet=alphabet,
         split=split,
         kwargs=kwargs,
         note=note,
@@ -543,7 +552,11 @@ def _register() -> None:
         "clockwise": _reader(
             b.clockwise,
             "grid_based.clockwise",
+            inputs=("01",),
             split=True,
+            note="Clockwise packs seven bits per character and reads them "
+            "all in one go, so its inputs are one line, not a line per bit; "
+            "a line per bit is read as a different row and answered wrongly",
         ),
         "cvnc": _reader(b.cvnc, "other.cvnc"),
         "decleq": _reader(b.decleq, "register_based.decleq"),
@@ -567,7 +580,17 @@ def _register() -> None:
         "forbin": _reader(b.forbin, "other.forbin"),
         "forþ": _reader(b.forth, "stack_based.forth"),
         "function-x(y)": _reader(b.function_x_y, "other.function_x_y"),
-        "grapheme": _reader(b.grapheme, "stack_based.grapheme"),
+        "grapheme": _reader(
+            b.grapheme,
+            "stack_based.grapheme",
+            inputs=("%", "A"),
+            alphabet=("%", "A"),
+            note=(
+                "Grapheme's W reads a whole line and every non-empty string "
+                "is truthy, so its input bits are spelled % and A; a 0/1 line "
+                "reads as a 1 and the program answers the wrong row"
+            ),
+        ),
         "jaune": _reader(b.jaune, "tape_based.jaune"),
         "laserfuck": _reader(
             b.laserfuck,
