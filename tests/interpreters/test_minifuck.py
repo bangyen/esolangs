@@ -15,7 +15,15 @@ def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
 
 class TestMinifuck:
     def test_cat_program(self) -> None:
-        """The canonical cat program echoes its input."""
+        """The canonical cat program echoes its input.
+
+        ``.`` is the whole of the language's I/O, and it has two faces: it
+        prints cells 0-7 as one byte, except when those eight cells are
+        zero, where it reads a byte of input into them instead.  The cat is
+        the shortest program showing both -- its first ``.`` lands on a zero
+        window and reads, its second lands on the byte that read left and
+        prints it.
+        """
         assert run_and_capture("<[<.[<.", inputs=["A"]) == "A"
         assert run_and_capture("<[<.[<.", inputs=["B"]) == "B"
 
@@ -28,9 +36,10 @@ class TestMinifuck:
 
         Every other test stays inside the first few cells, where the tape
         never has to grow: the eight it starts with are enough.  Seven ``[``
-        walk the pointer to 8, which appends past the initial eight, and the
-        ``.`` then prints cells 0-7 only -- 0b01111111 -- so the print window
-        stays eight wide no matter how long the tape has become.
+        walk the pointer to 7, which already appends a ninth cell, and the
+        ``.`` takes it to 8 and appends a tenth.  That ``.`` still prints
+        cells 0-7 only -- 0b01111111 -- so the print window stays eight wide
+        no matter how long the tape has become.
         """
         assert run_and_capture("[[[[[[[.") == "\x7f"
 
@@ -54,7 +63,7 @@ class TestStepMachine:
         ``test_tape_grows_past_the_initial_eight_cells`` asserts the printed
         byte, which only reads cells 0-7 -- so where the tape *ends* and what
         the appended cells hold went unchecked.  Seven ``[`` leave the
-        pointer at 8 on a ten-cell tape: one cell past the pointer, and the
+        pointer at 7 on a nine-cell tape: one cell past the pointer, and the
         rest flipped to 1 on the way.
         """
         from esolangs.interpreters.io import ScriptedIO
@@ -87,19 +96,24 @@ class TestStepMachine:
         assert machine.ptr == 5
 
     def test_the_tape_starts_eight_cells_wide(self) -> None:
-        """Eight is the width the print window reads, so it is asserted.
+        """The tape starts eight cells wide, which no output can reveal.
 
         Every other test looks at the tape after something has run, by
         which point growth has already changed its length -- so the tape
         could start one cell too long and only the untouched trailing zero
-        would show it.
+        would show it.  Nor would anything else: the length only gates
+        growth, growth only ever appends zeros, and a cell past the seventh
+        never reaches the print window, so starting wider is invisible
+        through ``run``.  That makes this the one assertion here with no
+        black-box equivalent -- it pins the representation, not the
+        language, and is the only place the width can be checked at all.
         """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.minifuck import _Machine
 
         assert _Machine("", ScriptedIO()).tape == [0] * 8
 
-    def test_only_the_two_commands_reach_the_pointer(self) -> None:
+    def test_an_unlisted_character_is_not_a_command(self) -> None:
         """A character that is neither ``<`` nor ``.`` nor ``[`` does nothing.
 
         ``test_comment_characters_ignored`` uses ``abc``, and every letter
