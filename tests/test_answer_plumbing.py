@@ -37,6 +37,7 @@ _SHAPE_PROSE = {
 }
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 class TestTheProseMatchesTheData:
     """Three documents named the shapes; one of the four names was wrong."""
 
@@ -375,6 +376,7 @@ class TestEveryAuditedCapIsCatchable:
         assert "Five do" not in esolangs.generate.__doc__
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 class TestGraphemeReadsWhatTheDocsNowSay:
     """The stated mechanism was wrong, and so was its stated direction."""
 
@@ -439,6 +441,7 @@ class TestBreakAtChecksTheKindOfPosition:
         debugger.break_at((1, 2))  # wrong arity for Alight, accepted
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 class TestWhatHappensWhenAProgramIsUnderfed:
     """``run`` promised an exception for all sixty-nine.  Forty-five give it.
 
@@ -652,3 +655,139 @@ class TestTheStdinJudgeIsReachableFromPython:
         }
         assert modes <= set(esolangs.ANSWER_MODES)
         assert shapes <= set(esolangs.INPUT_SHAPES)
+
+
+class TestRunSaysWhenStdinLooksWrong:
+    """Silence was indistinguishable from correctness, from Python."""
+
+    def test_a_surplus_line_is_warned_about(self) -> None:
+        """Six lines into a three-input program answered the first three."""
+        program = esolangs.generate("brainfuck", "00010111")
+        with pytest.warns(UserWarning, match="read 3 of the 6 lines"):
+            answer = esolangs.run("brainfuck", program, "1\n1\n0\n0\n1\n1\n", 10)
+        # A warning, not a refusal: the run still happened and still answered.
+        assert answer == "1"
+
+    def test_the_wrong_alphabet_is_warned_about(self) -> None:
+        """The same judgement `check_stdin` raises, rendered as advice."""
+        program = esolangs.generate("Grapheme", "0110")
+        with pytest.warns(UserWarning, match="spells its bits"):
+            esolangs.run("Grapheme", program, "0\n1\n", 10)
+
+    def test_the_documented_path_is_silent(self) -> None:
+        """A warning that fires on correct input is worse than none."""
+        import warnings
+
+        noisy = []
+        for name in esolangs.list_languages():
+            facts = esolangs.describe(name)
+            if facts["parameterized"]:
+                continue
+            program = esolangs.generate(name, "0110")
+            if facts["answer_mode"] == "termination":
+                continue
+            stdin = esolangs.encode_inputs(name, [1, 0], "0110")
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                esolangs.run(name, program, stdin, 20)
+            if caught:
+                noisy.append(f"{name}: {caught[0].message}")
+        assert not noisy, "\n".join(noisy)
+
+    def test_a_program_that_reads_nothing_is_not_warned_about(self) -> None:
+        """Reading none of what it was given is not an arity mistake."""
+        import warnings
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            esolangs.run("brainfuck", "+.", "1\n0\n", 10)
+        assert not [c for c in caught if "lines supplied" in str(c.message)]
+
+    def test_taking_a_value_from_past_the_end_is_warned_about(self) -> None:
+        """The six that answer an underfed program now say they did.
+
+        The signal is the *count of reads past the end*, not a guess from
+        the supplied length: an underfeed supplies some input and runs off
+        the end after it, which a ``supplied == 0`` test misses entirely.
+        """
+        for name in ("Circuit Diagram", "DINAC", "Flowchart", "S*bleq"):
+            program = esolangs.generate(name, "10010110")
+            short = esolangs.encode_inputs(name, [1, 0])
+            with pytest.warns(UserWarning, match="past the end"):
+                esolangs.run(name, program, short, 10)
+
+    def test_forgetting_stdin_entirely_is_warned_about(self) -> None:
+        """Fargo answered row 0 -- the starkest case, since nothing was fed."""
+        with pytest.warns(UserWarning, match="past the end"):
+            esolangs.run("Fargo", esolangs.generate("Fargo", "10010110"), "", 10)
+
+    def test_a_language_whose_documented_stop_is_eof_is_not_warned_about(
+        self,
+    ) -> None:
+        """Suffolk's programs end *by* running out of input.
+
+        It halts rather than taking a value, so the warning is gated on
+        ``eof_is_a_value`` -- counting the read alone warned about every
+        correct Suffolk run there is, which is the false positive that
+        makes a warning worth less than silence.
+        """
+        import warnings
+
+        program = esolangs.generate("Suffolk", "0110")
+        stdin = esolangs.encode_inputs("Suffolk", [1, 0], "0110")
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            assert esolangs.run("Suffolk", program, stdin, 20) == "1"
+        assert not caught
+
+    def test_no_language_warns_on_its_own_encoding(self) -> None:
+        """The sweep that decides whether any of this is worth having."""
+        import warnings
+
+        noisy = []
+        for name in esolangs.list_languages():
+            facts = esolangs.describe(name)
+            if facts["parameterized"] or facts["answer_mode"] == "termination":
+                continue
+            stdin = esolangs.encode_inputs(name, [1, 0], "0110")
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                esolangs.run(name, esolangs.generate(name, "0110"), stdin, 20)
+            if caught:
+                noisy.append(f"{name}: {caught[0].message}")
+        assert not noisy, "\n".join(noisy)
+
+
+class TestInstantiateCanCheckProvenance:
+    """A tag cannot survive a file, but a table can be compared against."""
+
+    def test_a_hand_written_template_is_refused_given_the_table(self) -> None:
+        """`"hello {X0}"` filled to `'hello [<'` and ran to nothing."""
+        with pytest.raises(esolangs.TemplateError, match="is not the template"):
+            esolangs.instantiate("Minifuck", "hello {X0}", [1], truth_table="01")
+
+    def test_the_real_template_passes(self) -> None:
+        """And still fills, and still answers its row."""
+        template = esolangs.generate("Minifuck", "0110")
+        program = esolangs.instantiate("Minifuck", template, [0, 1], truth_table="0110")
+        assert (
+            esolangs.read_answer("Minifuck", esolangs.run("Minifuck", program, "", 20))
+            == "1"
+        )
+
+    def test_the_table_stays_optional(self) -> None:
+        """Every existing caller passes three arguments."""
+        template = esolangs.generate("Minifuck", "0110")
+        assert esolangs.instantiate("Minifuck", template, [0, 1])
+
+
+class TestSnapshotSaysItIsOpaque:
+    """Its positions are not a schema and cannot be."""
+
+    def test_the_docstring_says_so(self) -> None:
+        """A reader asked what the fields were; there are no fields."""
+        from esolangs.vm import _StepMachine
+
+        doc = _StepMachine.snapshot.__doc__
+        assert doc is not None
+        assert "Opaque" in doc
