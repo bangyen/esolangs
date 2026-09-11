@@ -8,8 +8,9 @@ which files happen to sit in examples/.
 """
 
 import pathlib
+import textwrap
 
-from esolangs.registry import LANGUAGES, RUNNERS
+from esolangs.registry import LANGUAGES, RUNNERS, parameterized_ids
 from esolangs.tools.boolean import BOOLEAN
 
 ROOT = pathlib.Path(__file__).parents[1]
@@ -92,11 +93,25 @@ def _source_link(name: str) -> str:
     )
 
 
+def _template_list() -> str:
+    """Return the parameterized languages as one wrapped Markdown line.
+
+    Derived from the registry rather than written out.  The hand-kept
+    version named fifteen languages and three different subsets appeared in
+    three documents; the two it left out (123 and Home Row) emit a `{Xi}`
+    slot like the rest.
+    """
+    ids = parameterized_ids()
+    names = sorted(name for name, lang in LANGUAGES.items() if lang.id in ids)
+    return textwrap.fill(", ".join(names) + ".", width=72)
+
+
 def _capabilities(name: str) -> dict[str, bool]:
     lang = LANGUAGES.get(name)
     return {
         "interpreter": lang.interpreter is not None if lang else False,
         "boolean": name in BOOLEAN,
+        "template": lang is not None and lang.id in parameterized_ids(),
     }
 
 
@@ -112,18 +127,27 @@ def render() -> str:
         "",
         "**Python** means an in-repo interpreter under `esolangs.interpreters`.",
         "**Boolean** marks the boolean-function generators.",
+        "**Template** marks the parameterized ones -- see below.",
         "",
         "## Parameterized generators",
         "",
-        "Parameterized generators embed `{Xi}` input bits in a template. The",
-        "harness instantiates and runs one program per input row.",
+        "A parameterized generator embeds the input bits in a template with",
+        "one `{Xi}` slot per input, rather than returning a program that",
+        "reads them. `esolangs.generate` returns that template; fill it with",
+        "`esolangs.instantiate(language, template, bits)`, which is what the",
+        "committed `examples/` programs are built by. Running one unfilled",
+        "raises `TemplateError`.",
         "",
-        "- **The no-input languages** (Back, BIO, NoComment, BF-PDA, Lamfunc,",
-        "  Bitdeque, RAM0, Minsky Swap, Eval, ArrowQueue, A Painter Ant, WII2D),",
-        "  which have no input command at all.",
-        "- **Cod, Minifuck, and %^2^-1**, where embedded input is the supported",
-        "  Boolean-generator route. %^2^-1 cannot compute a two-input function",
-        "  from runtime input; Cod's edge input would require horizontal routing.",
+        f"The {len(parameterized_ids())} of them are marked **Template** in the",
+        "matrix below:",
+        "",
+        _template_list(),
+        "",
+        "Most have no input command at all. The exceptions are Cod, Minifuck,",
+        "123, Home Row and %^2^-1, where an embedded input is the supported",
+        "Boolean-generator route: %^2^-1 cannot compute a two-input function",
+        "from runtime input, and Cod's edge input would require horizontal",
+        "routing.",
         "",
         "## How %^2^-1 reaches its tables",
         "",
@@ -134,14 +158,15 @@ def render() -> str:
         "",
         "## The matrix",
         "",
-        "| Language | Python | Boolean |",
-        "| --- | :---: | :---: |",
+        "| Language | Python | Boolean | Template |",
+        "| --- | :---: | :---: | :---: |",
     ]
     for name in sorted(LANGUAGES):
         c = _capabilities(name)
         lines.append(
             f"| {name} | {'yes' if c['interpreter'] else ''} | "
-            f"{'yes' if c['boolean'] else ''} |"
+            f"{'yes' if c['boolean'] else ''} | "
+            f"{'yes' if c['template'] else ''} |"
         )
     lines += ["", "The `esolangs` command lists the languages with Python support:"]
     lines += ["", "```bash", "esolangs list", "```", ""]

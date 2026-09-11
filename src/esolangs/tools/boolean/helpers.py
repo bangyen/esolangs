@@ -12,6 +12,8 @@ generators take no ``n`` parameter.
 from collections.abc import Callable, Iterable
 from itertools import permutations
 
+from esolangs.exceptions import TruthTableError
+
 # ``ord("0")``.  Input digits arrive as 48/49 from a byte-oriented read, and a
 # result prints as ``_ASCII_ZERO + bit``, so this offset appears in every
 # generator that reads or writes a digit.  Named because a bare ``48`` in a run
@@ -45,7 +47,7 @@ def _validate_truth_table(truth_table: str) -> int:
     """
     n = _validate_shape(truth_table)
     if n == 0:
-        raise ValueError(
+        raise TruthTableError(
             "truth table needs at least one input (n >= 1); "
             "a one-entry table is a constant, not a boolean function"
         )
@@ -64,7 +66,7 @@ def _validate_shape(truth_table: str) -> int:
     """
     n = len(truth_table).bit_length() - 1
     if len(truth_table) != 2**n:
-        raise ValueError(
+        raise TruthTableError(
             "truth table must have a power-of-two number of entries "
             f"(2**n), got {len(truth_table)}",
         )
@@ -73,7 +75,7 @@ def _validate_shape(truth_table: str) -> int:
     # runs ~720 times per call at n=6 and a per-character Python loop over
     # 2**n shows up (0.86s of the n=6 registry sweep).
     if set(truth_table) - {"0", "1"}:
-        raise ValueError("truth table must contain only '0' and '1'")
+        raise TruthTableError("truth table must contain only '0' and '1'")
     return n
 
 

@@ -19,8 +19,10 @@ structural arguments are in [walls](walls.md).
   DINAC "Empty input returns \n", Packlang "Empty input returns a
   newline". Five say nothing about an empty read. Suffolk alone names the
   value — "At EOF, instead set the internal state integer to 0" — but that
-  is EOF, which still raises here, so it corroborates the number and not
-  the rule. Jaune's two linked implementations were checked as well and
+  is EOF, which is a *stop* here rather than a state change, so it
+  corroborates the number and not the rule. (Suffolk's `run` returns on
+  that EOF instead of propagating it, which is the documented end of its
+  run; the read still raises for a step-level caller.) Jaune's two linked implementations were checked as well and
   neither defines an empty read: the JavaScript one calls
   `Scanner.nextInt()`, the Common Lisp one bare `read`, and both error
   rather than yield 0. **No language's `0` comes from its own
@@ -40,8 +42,11 @@ structural arguments are in [walls](walls.md).
 
 ## Generator boundaries
 
-Boolean construction is parameterized for 123 and `%^2^-1`; no program
-reading its own inputs overcomes the latter's two-input wall.
+Boolean construction is parameterized for seventeen languages, listed and
+kept current in [`languages.md`](languages.md#parameterized-generators);
+no program reading its own inputs overcomes `%^2^-1`'s two-input wall.
+That list is derived from the generators, not written down here: three
+documents each named a different subset of it, and each was wrong.
 
 The n=3 input-reordering screen (`scripts/screen_input_reorder.py`)
 closes eight unwired generators at exactly 0% upside without reading
