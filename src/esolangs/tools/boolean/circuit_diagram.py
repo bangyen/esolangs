@@ -345,6 +345,15 @@ class _Builder:
         # gate on the next band down -- so those die as soon as they are read.
         self.free_strides: list[int] = []
         self.stride_of: dict[int, int] = {}
+        # Set once a width is asked for: the column a new band starts at,
+        # and the width the bands have to stay inside.  ``live`` is every
+        # intermediate signal not yet read into the gate that consumes it,
+        # in the order they were made -- what a band has to carry.  Rails
+        # and complements are not in it: they are read by everything, sit
+        # left of ``band_start``, and are never reclaimed.
+        self.limit: int | None = None
+        self.band_start = 0
+        self.live: list[int] = []
 
     def _new_signal(self) -> int:
         """Return a fresh signal id."""
@@ -402,6 +411,55 @@ class _Builder:
             self.next_column += 3 * _COL_STEP
         return first, first + _COL_STEP
 
+    def _band(self) -> None:
+        """Start a fresh band of columns, carrying the live signals back left.
+
+        Gates march right because one has to sit right of every bus it
+        reads, so a column group freed behind the drawing can never be
+        handed out again -- which is what makes the width grow with the
+        network's depth.  A band breaks that: every signal still live is
+        *moved* to a column near the left, and the columns behind it all
+        become free again.
+
+        Moving a bus needs no new primitive.  :meth:`_tap` already runs a
+        bus down to a row and then along it to a column, in either
+        direction, and the whole path carries the one signal -- so running
+        it leftwards and then continuing the bus from there is the same
+        wiring with the same single driver.  What it crosses on the way is
+        every rail and complement, which is a crossing and what ``=`` is
+        for.
+
+        Each carried signal takes a row of its own.  Two horizontal runs of
+        different signals on one row would collide, and :class:`_Layout`
+        says so rather than drawing it.
+
+        Resetting the column counter is safe for the reason group reuse is:
+        the drawing only ever moves down, so a column re-used in this band
+        is entered below everything the last band left in it.
+        """
+        for offset, signal in enumerate(self.live):
+            column = self.band_start + offset * _COL_STEP
+            row = self._new_band()
+            self._tap(signal, column, row)
+            self.buses[signal] = (column, row)
+        # A carried signal sits in a column of its own rather than a gate's
+        # group, so releasing it gives nothing back.  It stays in ``live``,
+        # though: a later band has to carry it again, and forgetting one is
+        # how this first went wrong -- the next band handed its column to
+        # another signal while its bus was still running down it, which
+        # :class:`_Layout` refused to draw.
+        self.stride_of.clear()
+        self.free_strides.clear()
+        self.next_column = self.band_start + len(self.live) * _COL_STEP
+
+    def _room(self, after: int) -> bool:
+        """Whether a gate reading up to ``after`` fits without a new band."""
+        if self.limit is None:
+            return True
+        if any(group + _COL_STEP > after for group in self.free_strides):
+            return True
+        return self.next_column + 3 * _COL_STEP <= self.limit
+
     def _release(self, signal: int) -> None:
         """Give back ``signal``'s column group, if it owns one to give.
 
@@ -413,6 +471,8 @@ class _Builder:
         stride = self.stride_of.pop(signal, None)
         if stride is not None:
             self.free_strides.append(stride)
+        if signal in self.live:
+            self.live.remove(signal)
 
     def _new_band(self) -> int:
         """Return the centre row of a fresh three-row gate band."""
@@ -445,7 +505,15 @@ class _Builder:
         return signal
 
     def invert(self, source: int) -> int:
-        """Return a signal carrying ``~source``, computed once."""
+        """Return a signal carrying ``~source``, computed once.
+
+        Bands the same way :meth:`gate` does.  The complements are built
+        before a limit is set, so this only ever fires for the ``~`` that
+        inverts a dense table's result -- which is one gate past the whole
+        network and was exactly the one that ran over the width.
+        """
+        if not self._room(self.buses[source][0]):
+            self._band()
         _, column = self._gate_columns(self.buses[source][0])
         row = self._new_band()
 
@@ -465,7 +533,15 @@ class _Builder:
         The group is taken before the inputs are read and the inputs are
         released after, so a gate can never be handed the very group it is
         about to read out of.
+
+        When a width was asked for and this gate would take the drawing past
+        it, :meth:`_band` carries the live signals back to the left first --
+        so the check happens here, before the group is chosen, and the
+        inputs' columns are re-read afterwards because the band has moved
+        them.
         """
+        if not self._room(max(self.buses[left][0], self.buses[right][0])):
+            self._band()
         first, column = self._gate_columns(
             max(self.buses[left][0], self.buses[right][0])
         )
@@ -479,6 +555,8 @@ class _Builder:
         self.layout.junction(column + 1, row, signal)
         self.buses[signal] = (column + 1, row)
         self.stride_of[signal] = first
+        if self.limit is not None:
+            self.live.append(signal)
         self._release(left)
         self._release(right)
         return signal
@@ -589,7 +667,7 @@ def _fold(builder: _Builder, glyph: _GateGlyph, parts: list[int]) -> int:
     return builder.gate(glyph, left, _fold(builder, glyph, parts[half:]))
 
 
-def circuit_diagram(truth_table: str) -> str:
+def _circuit_diagram_at(truth_table: str, limit: int | None) -> str:
     """Build a Circuit Diagram program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -677,6 +755,11 @@ def circuit_diagram(truth_table: str) -> str:
             (rail, builder.invert(rail) if needed else None)
             for rail, needed in zip(rails, needs_complement, strict=True)
         ]
+        # The rails and complements are read by everything below and so stay
+        # live for the whole drawing; a band can only reclaim what comes
+        # after them, which is why the limit is set here and not sooner.
+        builder.band_start = builder.next_column
+        builder.limit = limit
 
         def combine(lo: int, hi: int) -> int:
             """Sum ``minterms[lo:hi]`` as a balanced tree of ``o`` gates.
@@ -697,3 +780,35 @@ def circuit_diagram(truth_table: str) -> str:
         result = builder.invert(result)
     builder.output(result)
     return builder.layout.render()
+
+
+def circuit_diagram(truth_table: str, width: int | None = None) -> str:
+    """Build a Circuit Diagram program computing the given truth table.
+
+    See :func:`_circuit_diagram_at` for the construction.  ``width`` asks
+    for a column count: the drawing is built once without one, and again
+    inside the width if that came out too wide.
+
+    What a width buys is *banding*.  Gates march right because one has to
+    sit right of every bus it reads, so a column group freed behind the
+    drawing can never be handed out again -- and the width grows with the
+    network's depth.  A band carries every live signal back to a column near
+    the left and frees everything behind it, which :meth:`_Builder._band`
+    does with no new primitive: a tap already runs a bus down and then along
+    a row in either direction.
+
+    The floor is what a band cannot reclaim -- the rails and the complements,
+    which every minterm reads and which therefore stay live for the whole
+    drawing -- plus the carried signals and one gate group.  That is about
+    ``8 * n`` columns, so the floor grows with the inputs rather than with
+    the table.
+    """
+    flat = _circuit_diagram_at(truth_table, None)
+    if width is None or max(len(line) for line in flat.split("\n")) <= width:
+        return flat
+    banded = _circuit_diagram_at(truth_table, width)
+    if max(len(line) for line in banded.split("\n")) < max(
+        len(line) for line in flat.split("\n")
+    ):
+        return banded
+    return flat
