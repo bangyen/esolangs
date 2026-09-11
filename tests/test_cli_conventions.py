@@ -37,7 +37,9 @@ class TestProgramFilesLoad:
         """All three failed on the newline their own file ends with."""
         zero, one = esolangs.describe(name)["input_encoding"]  # type: ignore[misc]
         out = call_main(
-            ["run", name, str(EXAMPLES / f"{stem}.txt")], capsys, stdin=f"{zero}\n{one}\n"
+            ["run", name, str(EXAMPLES / f"{stem}.txt")],
+            capsys,
+            stdin=f"{zero}\n{one}\n",
         )
         assert out
 
@@ -131,9 +133,7 @@ class TestTemplatesAreReachableFromTheCli:
         assert exc.value.code == 2
         assert "must be a string of 0s and 1s" in capsys.readouterr().err
 
-    def test_bits_on_a_reader_says_so(
-        self, capsys: pytest.CaptureFixture[str]
-    ) -> None:
+    def test_bits_on_a_reader_says_so(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as exc:
             call_main(["generate", "--bits", "01", "brainfuck", "0110"], capsys)
         assert exc.value.code == 2

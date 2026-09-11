@@ -95,6 +95,13 @@ class BooleanExample:
     interpreter: str
     expected: str
     inputs: tuple[str, ...] = ()
+    #: Whether ``expected`` is the program's actual output.  False where the
+    #: answer is the *halt* and the bytes written on the way out are junk:
+    #: 123's constructed template pops through location -2 while merging and
+    #: prints whatever that cell holds.  ``expected`` is then a placeholder
+    #: no one should compare against -- which the manifest was presenting as
+    #: "this program outputs nothing", when it prints two bytes.
+    expected_compared: bool = True
     #: How this language spells an input 0 and an input 1.  Almost always
     #: the digits, but not universally, and the exception is silent rather
     #: than loud: Grapheme's ``W`` reads a whole line and every non-empty
@@ -173,6 +180,7 @@ def _embedded(
     table: str = AND2,
     bits: tuple[int, ...] = (0, 1),
     expected: str = "0",
+    expected_compared: bool = True,
     split: bool = False,
     kwargs: tuple[tuple[str, int], ...] = (),
     note: str = "",
@@ -183,6 +191,7 @@ def _embedded(
         table=table,
         interpreter=interpreter,
         expected=expected,
+        expected_compared=expected_compared,
         bits=bits,
         fill=fill,
         split=split,
@@ -727,9 +736,13 @@ def _register() -> None:
             "tape_based.one_two_three",
             _fill_one_two_three,
             expected="",
+            expected_compared=False,
             note=(
-                "123 has no output: the program halts for a 0 result and loops "
-                "forever for a 1, so only the halting branch is committed"
+                "123 answers by terminating: it halts for a 0 result and loops "
+                "forever for a 1, so only the halting branch is committed. Its "
+                "output is not the answer and is not compared -- the merge pops "
+                "through location -2 and prints whatever that cell holds, which "
+                "for this program is the two bytes 'VO with a diaeresis'"
             ),
         ),
         "arrowqueue": _embedded(

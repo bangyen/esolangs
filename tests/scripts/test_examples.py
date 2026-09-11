@@ -251,12 +251,17 @@ def test_boolean_example(name: str) -> None:
         # every VM exactly matches each interpreter's public ``run`` behavior.
         vm.step()
         got = vm.output
-    if name == "123":
+    if not BOOLEAN_GENERATED[name].expected_compared:
         # The constructed 123 template pops through location -2 while
         # merging, and a ``2`` there prints whatever the cell holds --
         # junk bytes that are deliberately not the answer, which is the
         # proven halt asserted above.  The retired stored plans happened
         # to have a silent halting row; the construction does not, so the
         # bytes are not compared.
+        #
+        # Read from the entry rather than matched on the name, so the
+        # manifest generated from these entries can say the same thing:
+        # rendering ``expected`` for this one advertised "outputs nothing"
+        # for a program that prints two bytes.
         return
     assert got == expected

@@ -23,7 +23,7 @@ import threading
 from collections.abc import Callable
 from typing import Any
 
-from esolangs.debug import Debugger, StopReason, make_debugger
+from esolangs.debugger import Debugger, StopReason, make_debugger
 from esolangs.exceptions import (
     EsolangError,
     HaltError,
