@@ -248,11 +248,22 @@ def test_every_wrapper_actually_fires(name: str) -> None:
     raw = example.build(width=None)
     if example.build(40) != raw:
         return
+    structural = LANGUAGES[name].id in MULTILINE
     for arity in range(1, 5):
         grown = generate(name, _table(arity))
-        if "\n" in grown or len(grown) <= 40:
+        # A newline disqualifies a grown program only where it means layout.
+        # A :data:`MULTILINE` language starts with a structural row its
+        # wrapper keeps and folds the rest, so the question there is whether
+        # wrapping adds *more* rows, not whether any exist -- and whether the
+        # part it may fold is itself long enough to need a break.  Measuring
+        # the whole program instead stops the search at the first arity whose
+        # *header* pushes it past the width, which for %^2^-1 is an arity
+        # whose body is still thirteen characters.
+        foldable = grown.split("\n", 1)[1] if structural else grown
+        if ("\n" in grown and not structural) or len(foldable) <= 40:
             continue
-        assert "\n" in generate(name, _table(arity), 40), f"{name}: wrapper never fired"
+        narrowed = generate(name, _table(arity), 40)
+        assert narrowed.count("\n") > grown.count("\n"), f"{name}: wrapper never fired"
         return
     pytest.fail(f"{name}: no table up to 4 inputs produced a program long enough")
 
