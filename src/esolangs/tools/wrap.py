@@ -273,6 +273,22 @@ def _span(length: int, cell: int) -> int:
     return max(1, -(-(length + 1) // (cell + 1)))
 
 
+#: A ``{Xi}`` placeholder is one token in *every* language, because
+#: ``BooleanExample.fill`` finds one by string replace: a newline through the
+#: middle leaves it unfilled and the program reads the halves as commands.
+#:
+#: This belongs here rather than in the individual patterns because it is a
+#: property of the templates, not of any language's grammar -- and stating it
+#: per-pattern is what let it be missed.  Tiling is not enough to protect it:
+#: a ``.`` alternative tiles a placeholder one character at a time, so the
+#: tokens still cover the program and :func:`_join_tokens` is still free to
+#: break it in half.  Six languages did, at widths up to 118.
+#:
+#: A *filled* program has no placeholder in it, so this changes nothing for
+#: one; it only ever applies to a template.
+_PLACEHOLDER = r"\{X\d+\}"
+
+
 def wrap_tokens(program: str, width: int, pattern: str) -> str:
     """Wrap a program whose tokens are the matches of ``pattern``.
 
@@ -281,8 +297,14 @@ def wrap_tokens(program: str, width: int, pattern: str) -> str:
     pattern must tile the program exactly -- every character belongs to some
     token -- so that rejoining the tokens reproduces the input; a program
     that does not tile is returned unwrapped rather than corrupted.
+
+    A :data:`_PLACEHOLDER` is tried ahead of ``pattern``, so no caller has to
+    remember to spell one out.  Alternation is ordered and anchored at each
+    position, so this only wins where a placeholder actually begins: a
+    command that merely happens to carry a ``{`` still matches its own
+    alternative.
     """
-    tokens = re.findall(pattern, program)
+    tokens = re.findall(f"{_PLACEHOLDER}|{pattern}", program)
     if "".join(tokens) != program:
         return program
     return _join_tokens(tokens, width, separator="")
@@ -292,9 +314,15 @@ def wrap_chars(program: str, width: int) -> str:
     """Wrap a program whose every character is its own token.
 
     The single-character-command families (Brainfuck and its relatives),
-    where any position is a legal break.
+    where any position is a legal break -- except through a
+    :data:`_PLACEHOLDER`, which is why a template takes the token path.  The
+    slice below is the same packing for single-character tokens and stays
+    the path for the programs that have no placeholder to protect.
     """
-    return "\n".join(program[i : i + width] for i in range(0, len(program), width))
+    if "{X" not in program:
+        return "\n".join(program[i : i + width] for i in range(0, len(program), width))
+    tokens = re.findall(f"{_PLACEHOLDER}|[\\s\\S]", program)
+    return _join_tokens(tokens, width, separator="")
 
 
 def _join_tokens(tokens: list[str], width: int, separator: str) -> str:
@@ -325,6 +353,11 @@ def _join_tokens(tokens: list[str], width: int, separator: str) -> str:
 # took its "I cannot read this, leave it alone" exit, and the wrapper was a
 # silent no-op on every template -- 3466 columns at eight inputs, reported
 # as wrapped.  The committed examples never saw it because they fill first.
+#
+# It stays spelled out here, unlike in :data:`_PCT_COMMAND`, because
+# :func:`_bio` tokenizes with this pattern *itself* rather than through
+# :func:`wrap_tokens` -- so it does not get :data:`_PLACEHOLDER` prepended,
+# and dropping this alternative would restore the no-op.  A test covers it.
 _BIO_COMMAND = r"[01][oOiI][xXyYzZ](?:\{|;)|\};|\{X\d+\}| "
 
 # Brainfuck-family single-character commands, and the languages that
@@ -620,7 +653,7 @@ def _quote_literal(program: str, width: int) -> str:
     return wrap_tokens(program, width, _QUOTE_LITERAL)
 
 
-def _polynomial(program: str, _width: int) -> str:
+def _polynomial(program: str, width: int) -> str:
     """Lay a Polynomial program out one signed term to a line.
 
     Polynomial's terms are space-delimited, so :func:`wrap_space_delimited`
@@ -640,16 +673,31 @@ def _polynomial(program: str, _width: int) -> str:
     same judgement the module docstring records for Forbin: a language whose
     own idiom is one-item-per-line is left that way rather than packed.
 
-    The width is therefore only the on/off switch :func:`wrap_program`
-    already applies -- the layout does not depend on its value, since the
-    terms of any interesting program outrun any width, so the parameter is
-    taken and ignored to keep the shape every :data:`WRAPPERS` entry is
-    called with.  The header stays with the first term so ``f(x)`` and ``=``
-    do not become lines of their own.
+    A term can outrun any width on its own, though -- a single coefficient
+    is 5950 digits on the dense eight-input table -- so one term to a line
+    is a layout, not yet a width.  The term is folded too, so the width is
+    met: 5954 columns become 80.
 
-    Replacing every newline with a space reproduces the input exactly, so
-    the program is untouched; the interpreter strips whitespace before
-    parsing either way.
+    Folding *inside* a number is safe here, which is the part worth being
+    explicit about: the interpreter's :func:`_parse_program` runs
+    ``re.sub(r"[^\\d...]", "", code)`` over the source before it parses, so
+    a newline between two digits is deleted and the halves are one number
+    again.  It is not that the digits are re-joined by luck -- they are
+    never separate.  The same pass is what makes the existing one-term-a-
+    line layout legal, so this only carries the rule further in.
+
+    The ``int`` digit-cap derivation does not trip over this either, though
+    it looks like it should: ``sanitize`` sizes the cap from the longest
+    digit run it can see, and a fold splits those runs -- but
+    ``_parse_program`` hands it the *cleaned* text, in which the runs are
+    already whole.  A dense eight-input execution is in the sweep because
+    small tables cannot reach the cap to show it.
+
+    The header stays with the first term so ``f(x)`` and ``=`` do not become
+    lines of their own.
+
+    Discarding every newline and space reproduces what the interpreter
+    parses, so the program is unchanged.
     """
     terms: list[str] = []
     pending = ""
@@ -672,7 +720,20 @@ def _polynomial(program: str, _width: int) -> str:
     # ``f(x)``, ``=`` and the leading term are three tokens of one line.
     if len(terms) >= 3 and terms[0] == "f(x)" and terms[1] == "=":
         terms[:3] = [" ".join(terms[:3])]
-    return "\n".join(terms)
+    return "\n".join(_folded_term(term, width) for term in terms)
+
+
+def _folded_term(term: str, width: int) -> str:
+    """Break one Polynomial term across rows of at most ``width``.
+
+    The rows are not indented, though an indent would mark a continuation
+    nicely: it would be *invented* whitespace, and the suite's restoration
+    invariant is that deleting what the wrapper inserted gives the program
+    back.  A row that carries a number over is told from a row that starts a
+    term by the sign, which only the second has.
+    """
+    rows = [term[i : i + width] for i in range(0, len(term), max(1, width))]
+    return "\n".join(rows)
 
 
 def _taglate(program: str, width: int) -> str:
@@ -691,9 +752,9 @@ def _taglate(program: str, width: int) -> str:
     return seed + "\n" + wrap_chars(commands.replace("\n", ""), width)
 
 
-# A ``{Xi}`` placeholder is one token: ``fill`` finds it by string replace, so
-# a newline through the middle of one would leave it unfilled.
-_PCT_COMMAND = r"\{X\d+\}|."
+# %^2^-1's commands are single characters; the placeholder that is not one is
+# :data:`_PLACEHOLDER`'s business, not this pattern's.
+_PCT_COMMAND = r"."
 
 
 def _pct_squared_minus_one(program: str, width: int) -> str:
