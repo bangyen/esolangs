@@ -45,8 +45,8 @@ class TestTheExceptionalLanguages:
             ("Grapheme", [1, 0, 1], "A\n%\nA\n"),  # a "0" line reads as true
             ("Clockwise", [1, 0, 1], "101"),  # seven bits per character
             ("Fargo", [1, 0, 1], "5\n"),  # one number, indexed by bit
-            ("Taglate", [1, 0, 1], "0\n1\n0\n1"),  # ghost digit, no final \n
-            ("Taglate", [1, 0], "1\n0"),  # even arity takes no ghost
+            ("Taglate", [1, 0, 1], "0\n1\n0\n1\n"),  # the leading ghost digit
+            ("Taglate", [1, 0], "1\n0\n"),  # an even arity takes no ghost
         ],
     )
     def test_the_encoding_is_what_the_language_reads(
@@ -132,9 +132,9 @@ class TestAnswerMode:
         modes = {esolangs.describe(n)["answer_mode"] for n in esolangs.list_languages()}
         assert modes == {"output", "termination", "dump"}
 
-    def test_taglates_shape_is_not_reported_as_ordinary(self) -> None:
-        """It read ``line_per_bit``, which is what a caller branches on."""
-        assert esolangs.describe("Taglate")["input_shape"] == "char_stream"
+    def test_taglates_shape_names_its_padding(self) -> None:
+        """Plain ``line_per_bit`` hid the pad digit its n=3 program needs."""
+        assert esolangs.describe("Taglate")["input_shape"] == "line_per_bit_padded"
 
     @pytest.mark.slow
     def test_output_mode_means_the_printed_answer_is_the_table(self) -> None:

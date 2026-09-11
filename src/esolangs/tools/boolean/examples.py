@@ -122,11 +122,13 @@ class BooleanExample:
     #: seven bits per character and reads the lot in one go); ``row_index``
     #: sends a single number whose bits are the inputs (Fargo reads it
     #: before the program starts and indexes it with ``@ k``);
-    #: ``char_stream`` is Taglate's, whose reads are characters rather than
-    #: lines -- see ``ghost_digit`` and ``trailing_newline`` for the two
-    #: ways that differs.  Reported as ``line_per_bit`` once, which told a
-    #: caller branching on this field that Taglate was ordinary; it is not,
-    #: and its n=3 program then ran out of input.
+    #: ``line_per_bit_padded`` is Taglate's: a line per bit like the
+    #: majority, plus the leading zero ``ghost_digit`` describes.  It was
+    #: briefly called ``char_stream``, on the strength of a comment saying
+    #: Taglate "reads a character at a time" -- true of the interpreter,
+    #: false of the stdin it wants, since :class:`ScriptedIO` hands over
+    #: whole lines.  Feeding it literal characters (``"01"``) is an
+    #: input-exhausted error; a line per bit is what works.
     input_shape: str = "line_per_bit"
     #: Whether an odd input count is padded with a leading zero the program
     #: reads like any other digit.  Taglate's slot stride has to land on a
@@ -135,10 +137,6 @@ class BooleanExample:
     #: MSB-set row wrongly.  One input is the exception -- that arity is an
     #: affine computation on the bit itself, and reads exactly one digit.
     ghost_digit: bool = False
-    #: Whether the last bit is followed by a newline.  Taglate reads a
-    #: character at a time, so a trailing one is another character it goes
-    #: looking for and fails to find.
-    trailing_newline: bool = True
     bits: tuple[int, ...] = ()
     fill: Callable[[str, list[int]], str] | None = None
     split: bool = False
@@ -189,7 +187,6 @@ def _reader(
     alphabet: tuple[str, str] = ("0", "1"),
     input_shape: str = "line_per_bit",
     ghost_digit: bool = False,
-    trailing_newline: bool = True,
     answer_mode: str = "output",
 ) -> BooleanExample:
     """Build an input-reading example, whose bits are read from stdin."""
@@ -203,7 +200,6 @@ def _reader(
         alphabet=alphabet,
         input_shape=input_shape,
         ghost_digit=ghost_digit,
-        trailing_newline=trailing_newline,
         split=split,
         kwargs=kwargs,
         note=note,
@@ -695,14 +691,13 @@ def _register() -> None:
             b.taglate,
             "queue_based.taglate",
             split=True,
-            input_shape="char_stream",
+            input_shape="line_per_bit_padded",
             ghost_digit=True,
-            trailing_newline=False,
-            note="Taglate reads its bits as characters, not lines: no newline "
-            "after the last one, and an odd input count above 1 is padded with "
-            "a leading zero the program reads like any other digit. Feeding "
-            "n lines to an n=3 program exhausts its input; padding at the end "
-            "instead answers every row whose top bit is set wrongly",
+            note="Taglate takes a line per bit like most languages, but an "
+            "odd input count above 1 is padded with a leading zero it reads "
+            "like any other digit: an n=3 program wants four lines. Feeding "
+            "three exhausts its input; padding at the end instead answers "
+            "every row whose top bit is set wrongly",
         ),
         "unsquare": _reader(b.unsquare, "stack_based.unsquare"),
         "ztoalc-l": _reader(b.ztoalc_l, "other.ztoalc_l", split=True),
