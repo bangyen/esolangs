@@ -437,3 +437,128 @@ class TestBreakAtChecksTheKindOfPosition:
         program = esolangs.generate("Alight", "0110")
         debugger = esolangs.make_debugger("Alight", program, "0\n1\n")
         debugger.break_at((1, 2))  # wrong arity for Alight, accepted
+
+
+class TestWhatHappensWhenAProgramIsUnderfed:
+    """``run`` promised an exception for all sixty-nine.  Forty-five give it.
+
+    A three-input program fed two bits: most raise, and seven take the
+    exhausted read as a *value*, so the program answers a different row of
+    its table with nothing in the output to show for it.  That convention
+    was audited against the wiki pages and settled deliberately, so it is
+    declared rather than rewritten -- but the promise was false and a
+    caller had no way to find out for which languages.
+    """
+
+    TABLE = "10010110"  # n = 3
+
+    def _underfed(self, name: str) -> tuple[str, str | None]:
+        """Return ``(outcome, answer)`` for ``name`` fed one bit too few."""
+        program = esolangs.generate(name, self.TABLE)
+        short = esolangs.encode_inputs(name, [1, 0])
+        try:
+            output = esolangs.run(name, program, short, timeout=10)
+        except esolangs.InputExhaustedError:
+            return "raised", None
+        except esolangs.EsolangError:
+            return "language error", None
+        try:
+            return "answered", esolangs.read_answer(name, output)
+        except esolangs.EsolangError:
+            return "unreadable", None
+
+    @pytest.mark.slow
+    def test_only_the_declared_languages_answer_an_underfed_program(self) -> None:
+        """The census, as a sweep: the flag and the behaviour must agree."""
+        mismatched = []
+        for name in esolangs.list_languages():
+            facts = esolangs.describe(name)
+            if facts["parameterized"]:
+                continue  # no stdin to underfeed
+            if facts["input_shape"] == "one_line":
+                # Underfeeding a one-line language gives it a *shorter
+                # string*, not a read past an end, so there is no EOF to
+                # declare and nothing that could detect it.  Exempted by
+                # its shape rather than by its name.
+                continue
+            outcome, _answer = self._underfed(name)
+            declared = bool(facts["eof_is_a_value"])
+            if outcome == "answered" and not declared:
+                mismatched.append(f"{name}: answered but does not declare it")
+            if outcome == "raised" and declared:
+                mismatched.append(f"{name}: declares eof_is_a_value but raised")
+        assert not mismatched, "\n".join(mismatched)
+
+    @pytest.mark.slow
+    def test_most_languages_raise(self) -> None:
+        """The norm, counted, so a regression that erodes it is visible."""
+        raised = sum(
+            1
+            for name in esolangs.list_languages()
+            if not esolangs.describe(name)["parameterized"]
+            and self._underfed(name)[0] == "raised"
+        )
+        # 43 of the 52 that read stdin, measured.  Pinned exactly, so that
+        # a change which quietly moves a language out of the norm shows up
+        # here rather than in a docstring nobody re-derives.
+        assert raised == 43
+
+    def test_the_trait_is_reported_by_describe(self) -> None:
+        """A caller must be able to learn this without underfeeding one."""
+        assert esolangs.describe("DINAC")["eof_is_a_value"] is True
+        assert esolangs.describe("brainfuck")["eof_is_a_value"] is False
+
+    def test_clockwise_is_not_marked_because_it_never_reads_past_an_end(
+        self,
+    ) -> None:
+        """Its underfed input is a shorter one-line string: no EOF happens."""
+        assert esolangs.describe("Clockwise")["eof_is_a_value"] is False
+        outcome, _answer = self._underfed("Clockwise")
+        assert outcome == "answered"
+
+    def test_run_no_longer_promises_the_exception_everywhere(self) -> None:
+        """The sentence that was false for seven languages."""
+        assert esolangs.run.__doc__ is not None
+        assert "eof_is_a_value" in esolangs.run.__doc__
+
+
+class TestTheTerminationVocabularyIsExported:
+    """A reader hand-copied this tuple and said so."""
+
+    def test_it_matches_what_describe_reports(self) -> None:
+        """The same two strings, in the order the polarity is read from."""
+        for name in ("123", "ArrowQueue", "Point Break"):
+            assert (
+                esolangs.describe(name)["answer_encoding"]
+                == esolangs.TERMINATION_OUTCOMES
+            )
+
+    def test_it_is_exported(self) -> None:
+        """Beside ``STOP_REASONS``, which closed the same gap for stopping."""
+        assert "TERMINATION_OUTCOMES" in esolangs.__all__
+
+
+class TestCapMessagesNameOnlyReachableRemedies:
+    """Factor's told you to pass a parameter the public API has not got."""
+
+    @pytest.mark.slow
+    def test_factor_does_not_name_a_private_knob(self) -> None:
+        """`generate(language, truth_table, width)` has no `max_digits`."""
+        import random
+
+        rng = random.Random(7)
+        table = "".join(rng.choice("01") for _ in range(2048))
+        with pytest.raises(esolangs.GeneratorCapError) as exc:
+            esolangs.generate("Factor", table)
+        assert "max_digits" not in str(exc.value)
+
+
+class TestBreakAtNamesTheKindNotTheValue:
+    """It said "ip is 0" where it meant "ip is an index"."""
+
+    def test_the_message_describes_the_kind(self) -> None:
+        """A reader cannot generalize from one position's value."""
+        program = esolangs.generate("brainfuck", "0110")
+        debugger = esolangs.make_debugger("brainfuck", program, "0\n1\n")
+        with pytest.raises(esolangs.ArgumentError, match="is an index"):
+            debugger.break_at((1, 2))

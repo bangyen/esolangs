@@ -576,7 +576,7 @@ def factor(truth_table: str, *, max_digits: int = _DEFAULT_MAX_DIGITS) -> str:
         raise GeneratorCapError(
             f"the Factor boolean generator's encoded integer needs about "
             f"{digits} digits, over the {max_digits}-digit limit this call "
-            "allows -- pass a larger max_digits, or try a sparser table",
+            "allows -- try a sparser table, or fewer inputs",
         )
     limit = sys.get_int_max_str_digits()
     if digits <= limit:
