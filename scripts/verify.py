@@ -156,8 +156,9 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
 
 STEPS = [
     ("pre-commit", [*PY, "-m", "pre_commit", "run", "--all-files"]),
-    # pre-commit's mypy hook is scoped to src/ (its isolated env lacks the
-    # scripts' imports), so scripts/ is type-checked here, in the project env.
+    # The only mypy run.  pre-commit has no mypy hook: the mirror's isolated
+    # env lacks the scripts' imports, so it could only ever cover src/, and
+    # this run covers src/ and scripts/ both from the project env.
     ("mypy (src + scripts)", [*PY, "-m", "mypy"]),
     # `--cov-report=` writes no report: the run is here for the data file,
     # which the touched-file gate reads afterwards.

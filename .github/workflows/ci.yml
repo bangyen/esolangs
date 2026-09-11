@@ -54,9 +54,9 @@ jobs:
     - name: Check generator conventions
       run: uv run python scripts/check_generators.py
 
-    # pre-commit's mypy hook is scoped to src/ because its isolated env
-    # lacks the scripts' imports; this run covers src/ and scripts/ both,
-    # using the project env where those imports resolve.
+    # The only mypy run: pre-commit has no mypy hook, because the mirror's
+    # isolated env lacks the scripts' imports and could only ever cover
+    # src/.  This covers src/ and scripts/ both, from the project env.
     - name: Type-check src/ and scripts/
       run: uv run mypy
 
