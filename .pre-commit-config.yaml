@@ -24,20 +24,11 @@ repos:
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.3.1
-    hooks:
-      - id: mypy
-        # The mirror's default --ignore-missing-imports would suppress the
-        # sympy import-untyped error and trip warn_unused_ignores, so pass no
-        # extra flags and rely on the pyproject strict config, scoped to src/.
-        # scripts/ is also checked (see `files` in pyproject), but not here:
-        # it imports esolangs and urllib3, neither of which exists in
-        # this hook's isolated env.  The `mypy` step in CI's lint job and
-        # `just lint-python` cover it instead.
-        args: []
-        additional_dependencies: [types-requests, types-setuptools, sympy]
-        files: ^src/
+  # No mypy hook.  The mirror runs in an isolated env, so it could only ever
+  # reach ``src/`` -- ``scripts/`` imports esolangs and urllib3, which are
+  # not there -- while ``uv run mypy`` covers ``src`` and ``scripts`` under
+  # the same strict pyproject config in the project env.  Keeping both
+  # type-checked ``src/`` twice and pinned mypy in two places.
 
   - repo: local
     hooks:
