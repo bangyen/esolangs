@@ -203,3 +203,21 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     # Walks out far enough to flip a cell and come back, so `cell`
     # moves rather than only the cursor.
     viewing_program = ">>>>>>>~<<<<<<<("
+
+
+class TestStateViewValues:
+    """The named views read the slots they claim, not one another.
+
+    The shared contract checks that each view *moves*; which slot it moves
+    with is this file's business, because only this file knows which of its
+    names could be confused for each other.  A value pinned at a step where
+    they hold different things is what a rewiring would change.
+    """
+
+    def test_cell_is_the_data_pointer_not_the_code_cursor(self) -> None:
+        """Nine steps in, the pointer has turned back and the cursor has not."""
+        machine = _machine(">>>>>>>~<<<<<<<(")
+        for _ in range(9):
+            machine.step()
+        assert machine.cell == 6  # walked out to 7 and back one
+        assert machine.ind == 9  # still counting forward
