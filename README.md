@@ -31,8 +31,8 @@ on `PATH` only once that venv is active; `uv run esolangs ...` works
 without activating it.
 
 The Python API is `esolangs.run`, `generate`, `instantiate`,
-`encode_inputs`, `read_answer`, `evaluate`, `verify`, `make_debugger`,
-`describe`, and `list_languages`.  `generate` takes a
+`encode_inputs`, `read_answer`, `evaluate`, `verify`, `check_stdin`,
+`make_debugger`, `describe`, and `list_languages`.  `generate` takes a
 truth table -- `0110` is XOR -- and returns a program computing it.  Use
 `--width` for command-oriented generated programs; grids and
 newline-sensitive languages retain their own layout.
@@ -41,10 +41,12 @@ newline-sensitive languages retain their own layout.
 `0`/`1` line each, but Grapheme reads `%`/`A`, Clockwise wants every bit on
 one line, Fargo wants the row index as a single decimal number (`1111` is
 `15`), and Taglate pads an odd input count with a leading zero line (its
-three-input programs read four lines).  The CLI checks stdin against the
-shape and alphabet a language declares -- `esolangs run` warns and
-`esolangs run --judge` refuses -- but a shape it cannot tell apart from a
-legitimate one still answers the wrong row, so let
+three-input programs read four lines).  Stdin is checked against the shape and alphabet a
+language declares: `esolangs run` warns, `esolangs run --judge` refuses,
+and `esolangs.check_stdin(language, stdin, truth_table)` is the same judge
+from Python -- give it the table and it checks the bit *count* too, which
+catches a surplus line as well as a missing one.  A shape it cannot tell
+apart from a legitimate one still answers the wrong row, so let
 `esolangs.encode_inputs(language, bits)` build the stdin — or read the
 Input column of [`examples/boolean/MANIFEST.md`](examples/boolean/MANIFEST.md),
 which lists every language's.

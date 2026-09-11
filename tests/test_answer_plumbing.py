@@ -562,3 +562,93 @@ class TestBreakAtNamesTheKindNotTheValue:
         debugger = esolangs.make_debugger("brainfuck", program, "0\n1\n")
         with pytest.raises(esolangs.ArgumentError, match="is an index"):
             debugger.break_at((1, 2))
+
+
+class TestTheStdinJudgeIsReachableFromPython:
+    """The one place the API was weaker than the command line."""
+
+    def test_it_accepts_what_encode_inputs_builds(self) -> None:
+        """The check must never fire on this package's own encoding.
+
+        The sweep that matters: a judge which rejects the correct stdin for
+        any language is worse than no judge, because the correct stdin is
+        what every documented path produces.
+        """
+        wrong = []
+        for name in esolangs.list_languages():
+            facts = esolangs.describe(name)
+            if not facts["reads_input"]:
+                continue
+            for table, bits in (("0110", [1, 0]), ("00010111", [1, 0, 1])):
+                stdin = esolangs.encode_inputs(name, bits, table)
+                try:
+                    esolangs.check_stdin(name, stdin, table)
+                except esolangs.EsolangError as exc:
+                    wrong.append(f"{name} n={len(bits)}: {exc}")
+        assert not wrong, "\n".join(wrong)
+
+    def test_it_catches_the_wrong_alphabet(self) -> None:
+        """0/1 lines into Grapheme, the sharpest edge in the package."""
+        with pytest.raises(esolangs.ArgumentError, match="spells its bits"):
+            esolangs.check_stdin("Grapheme", "0\n1\n")
+
+    def test_it_catches_a_surplus_line(self) -> None:
+        """Six lines into a three-input program answered the first three."""
+        with pytest.raises(esolangs.ArgumentError, match="reads 3 line"):
+            esolangs.check_stdin("brainfuck", "1\n1\n0\n0\n1\n1\n", "00010111")
+
+    def test_it_catches_a_missing_line(self) -> None:
+        """The direction that already errored at run time, now before it."""
+        with pytest.raises(esolangs.ArgumentError, match="reads 3 line"):
+            esolangs.check_stdin("brainfuck", "1\n0\n", "00010111")
+
+    def test_it_catches_an_out_of_range_row_index(self) -> None:
+        """What `run` could not check, because it does not know the arity."""
+        with pytest.raises(esolangs.ArgumentError, match="out of range"):
+            esolangs.check_stdin("Fargo", "8\n", "00010111")
+
+    def test_it_catches_taglates_pad(self) -> None:
+        """Its odd input count costs an extra line, and the shape says so."""
+        esolangs.check_stdin(
+            "Taglate",
+            esolangs.encode_inputs("Taglate", [1, 0, 1], "00010111"),
+            "00010111",
+        )
+        with pytest.raises(esolangs.ArgumentError):
+            esolangs.check_stdin("Taglate", "1\n0\n1\n", "00010111")
+
+    def test_it_refuses_a_language_with_no_stdin(self) -> None:
+        """A template language reads none, so there is nothing to judge."""
+        with pytest.raises(esolangs.ArgumentError, match="reads no stdin"):
+            esolangs.check_stdin("Minifuck", "1\n0\n")
+
+    def test_the_table_is_optional(self) -> None:
+        """Shape and alphabet are checkable without knowing the arity."""
+        esolangs.check_stdin("brainfuck", "1\n0\n")
+
+    def test_a_non_string_stdin_is_named(self) -> None:
+        """A caller who passes the bit list itself, which is an easy slip."""
+        with pytest.raises(esolangs.ArgumentError, match="stdin must be a string"):
+            esolangs.check_stdin("brainfuck", [1, 0], "0110")  # type: ignore[arg-type]
+
+    def test_a_one_line_language_has_its_bits_counted(self) -> None:
+        """Clockwise's underfeed is a shorter string, not a missing line.
+
+        Undetectable from the run, which is why it stayed on the documented
+        footgun list for three rounds -- but perfectly detectable *here*,
+        because the table says how many bits that one line should hold.
+        """
+        esolangs.check_stdin("Clockwise", "101", "00010111")
+        with pytest.raises(esolangs.ArgumentError, match="wants 3 bits"):
+            esolangs.check_stdin("Clockwise", "10", "00010111")
+
+    def test_the_closed_sets_are_exported(self) -> None:
+        """A verifier branching on these should not spell a magic string."""
+        modes = {
+            str(esolangs.describe(n)["answer_mode"]) for n in esolangs.list_languages()
+        }
+        shapes = {
+            str(esolangs.describe(n)["input_shape"]) for n in esolangs.list_languages()
+        }
+        assert modes <= set(esolangs.ANSWER_MODES)
+        assert shapes <= set(esolangs.INPUT_SHAPES)

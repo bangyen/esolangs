@@ -940,7 +940,7 @@ class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
         _out, err = call_both(
             ["run", "brainfuck", str(path)], capsys, stdin=f"0\n{line}\n"
         )
-        assert "input alphabet" in err
+        assert "spells its bits" in err
 
     @pytest.mark.parametrize("line", [" 1", "2", "true"])
     def test_judge_refuses_it(
@@ -954,7 +954,7 @@ class TestStdinIsCheckedAgainstTheDeclaredAlphabet:
                 ["run", "--judge", "brainfuck", str(path)], capsys, stdin=f"0\n{line}\n"
             )
         assert exc.value.code == 2
-        assert "input alphabet" in capsys.readouterr().err
+        assert "spells its bits" in capsys.readouterr().err
 
     def test_a_correct_encoding_is_silent_and_right(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
