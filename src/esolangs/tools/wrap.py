@@ -310,6 +310,13 @@ _SIX_FIVE_COMMAND = r"7[\s\S](?:[78][\s\S]|[\s\S])|8[\s\S]|[\s\S]"
 # over-wide line is the honest outcome here, since the alternative is a
 # program that prints something else.
 _SOPHIE_COMMAND = r"#\$\d+,|#.,?|."
+
+# Jaune's operators take an operand *before* them: ``3?`` jumps to label 3,
+# ``2+`` adds 2, and ``v`` is a number too, so ``v?`` jumps to the label the
+# input names.  Those pairs are the only unbreakable units.  A repeated bare
+# command (``++``) is a counted one, but splitting it changes nothing --
+# adding 1 twice is adding 2 -- so a run needs no rule of its own.
+_JAUNE_COMMAND = r"\d+[-+:?!$@]|v[-+?!@]|."
 _BRACKET_LITERAL = r"\[[^\]]*\]|."
 _QUOTE_LITERAL = r'"[^"]*"|.'
 
@@ -472,6 +479,21 @@ def _sophie(program: str, width: int) -> str:
     return wrap_tokens(program, width, _SOPHIE_COMMAND)
 
 
+def _jaune(program: str, width: int) -> str:
+    """Wrap Jaune, keeping each operand attached to the operator it feeds.
+
+    Jaune writes an operand before its operator, so ``3?`` is a jump to
+    label 3 and ``12+`` adds twelve.  A character wrap that lands between
+    the two leaves a bare ``?``, which is a command needing a number and so
+    a load error -- loud, unlike Sophie's.  What makes it worth a pattern
+    rather than a narrower width is that the break is *positional*: the
+    boolean programs survive a wrap at 40 and 80 and fail at 10, 17, 25, 37
+    and 50, so a suite testing only the two conventional widths reports a
+    wrapper that works.
+    """
+    return wrap_tokens(program, width, _JAUNE_COMMAND)
+
+
 def _bracket_literal(program: str, width: int) -> str:
     """Wrap 3x and Modulous, keeping a bracketed group whole.
 
@@ -625,6 +647,14 @@ WRAPPERS = {
     # ``DIGEST``), so it wraps on whitespace like the numeric languages;
     # breaking by character count would split a word and change the program.
     "slow_acv_mammalian": wrap_space_delimited,
+    # Space-delimited too, and the space is the only safe break: Lamfunc's
+    # ``vs``/``vg``/``0b1`` and RAM0's operands (``L C 19``) are multi-
+    # character tokens that a character wrap splits.  RAM0's numbers are
+    # instruction indices, which a break between tokens leaves alone.
+    "lamfunc": wrap_space_delimited,
+    "ram0": wrap_space_delimited,
+    # Operand-before-operator, so a break between the two is a load error.
+    "jaune": _jaune,
     # Their programs are single long lines that need wrapping, and they
     # print through a literal that must not be broken; the literal-aware
     # wrappers above are what keeps a break out of one.
