@@ -263,4 +263,6 @@ class TestContract(CycleContract, InputCursorContract, StateViewContract):
     # while the jump stack stays empty -- which is the point: they are
     # separate slots, not one field read under four names.
     state_views = ("ind", "acc", "stack", "jumps", "ip", "memory")
-    viewing_program = "Io"
+    # The loop test's own program: it moves the accumulator, the jump
+    # stack, and the data stack, where "Io" moved only the last.
+    viewing_program = "++>Po-<"

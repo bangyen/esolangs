@@ -480,7 +480,8 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     # `Z` zeroes the accumulator and `A` increments it, so the cursor and
     # `z` move while `n` stays put -- three slots, not one read thrice.
     state_views = ("ind", "z", "n", "ip", "memory")
-    viewing_program = "ZA"
+    # `S` is what moves `n`; "ZA" left it at its initial value.
+    viewing_program = "A N S"
 
 
 if __name__ == "__main__":

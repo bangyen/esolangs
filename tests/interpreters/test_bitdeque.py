@@ -184,3 +184,6 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     # what the run moves.
     state_views = ("rendered", "ip", "memory")
     viewing_program = "INVERT PUSH"
+    # `rendered` latches on the step *past* the halt, and the check
+    # stops at the halt, so no program can move it here.
+    constant_views = frozenset({"rendered"})
