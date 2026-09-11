@@ -110,6 +110,17 @@ class BooleanExample:
     #: prose alone cannot be branched on: a sweep that hardcoded two of the
     #: dumps and forgot a third reported a passing language as broken.
     answer_mode: str = "output"
+    #: Where the answer sits in the output, as a regex whose first group is
+    #: it.  Empty means the last non-whitespace character, which is right
+    #: for every language that prints its answer and for four of the six
+    #: that dump state -- their dump happens to end on it.  The other two
+    #: need saying: RAM0's answer is its ``z`` register, three lines above
+    #: the end, and A Painter Ant's is a mark in a painted grid.
+    answer_pattern: str = ""
+    #: How this language spells a 0 and a 1 *in the answer position*, the
+    #: mirror of ``alphabet`` for input.  A Painter Ant marks the ant's own
+    #: cell ``o`` on black and ``@`` on white, so its answer is a letter.
+    answer_values: tuple[str, str] = ("0", "1")
     #: How this language spells an input 0 and an input 1.  Almost always
     #: the digits, but not universally, and the exception is silent rather
     #: than loud: Grapheme's ``W`` reads a whole line and every non-empty
@@ -188,10 +199,14 @@ def _reader(
     input_shape: str = "line_per_bit",
     ghost_digit: bool = False,
     answer_mode: str = "output",
+    answer_pattern: str = "",
+    answer_values: tuple[str, str] = ("0", "1"),
 ) -> BooleanExample:
     """Build an input-reading example, whose bits are read from stdin."""
     return BooleanExample(
         answer_mode=answer_mode,
+        answer_pattern=answer_pattern,
+        answer_values=answer_values,
         generator=generator,
         table=table,
         interpreter=interpreter,
@@ -219,10 +234,14 @@ def _embedded(
     kwargs: tuple[tuple[str, int], ...] = (),
     note: str = "",
     answer_mode: str = "output",
+    answer_pattern: str = "",
+    answer_values: tuple[str, str] = ("0", "1"),
 ) -> BooleanExample:
     """Build a parameterized example, whose bits are embedded in the text."""
     return BooleanExample(
         answer_mode=answer_mode,
+        answer_pattern=answer_pattern,
+        answer_values=answer_values,
         generator=generator,
         table=table,
         interpreter=interpreter,
@@ -712,6 +731,8 @@ def _register() -> None:
             "grid_based.a_painter_ant",
             _instantiate_apa,
             answer_mode="dump",
+            answer_pattern=r"([o@])",
+            answer_values=("o", "@"),
             expected=(
                 "..#......\n.........\n.........\n.........\n.........\n"
                 ".........\n..#...#..\n.###.###.\n##o###.##\n.###.###.\n"
@@ -771,6 +792,7 @@ def _register() -> None:
             "register_based.ram0",
             _fill_ram0,
             answer_mode="dump",
+            answer_pattern=r"z: (\d+)",
             expected="z: 0\nn: 1\nram: {\n    0: 0,\n    1: 1\n}",
             note=(
                 "RAM0 has no output instruction and dumps its whole state "
