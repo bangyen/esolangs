@@ -1999,3 +1999,65 @@ class TestSuperSNUSP:
             super_snusp("010")
         with pytest.raises(ValueError, match="only '0' and '1'"):
             super_snusp("012x")
+
+
+class TestAlightWidth:
+    """Alight's boustrophedon, which is the only way its line can fold.
+
+    A command is a word walked cell by cell, so a row end cuts one in half
+    and no after-the-fact reflow can touch it.  What the generator has that
+    a wrapper does not is ``turn``.
+    """
+
+    @staticmethod
+    def _run(program: str, bits: list[str]) -> str:
+        import esolangs
+
+        stdin = "".join(f"{bit}\n" for bit in bits)
+        return esolangs.run("Alight", program, stdin=stdin, timeout=5.0).strip()
+
+    def test_a_width_folds_the_walk_and_it_still_computes(self) -> None:
+        """The folded walk computes what the straight one did."""
+        for table in ("0110", "01101001", "0110100110010110"):
+            n = len(table).bit_length() - 1
+            flat = boolean.alight(table)
+            wide = max(len(row) for row in flat.splitlines())
+            floor = max(len(row) for row in boolean.alight(table, 1).splitlines())
+            assert floor < wide, f"{table} never narrows"
+            for width in (1, 40, 60, wide):
+                narrow = boolean.alight(table, width)
+                columns = max(len(row) for row in narrow.splitlines())
+                assert columns <= max(width, floor), (table, width, columns)
+                for combo in range(2**n):
+                    bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                    assert self._run(narrow, bits) == table[combo], (table, width)
+
+    def test_the_table_literal_is_the_floor(self) -> None:
+        """A string is one token of one command, so it sets how narrow it goes.
+
+        Everything else in the program is ``O(n)``; the literal is
+        ``2 ** n`` characters and cannot be split, so the floor doubles with
+        each input even though the flat program's width barely grows.
+        """
+        for n in (2, 3, 4, 5):
+            table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
+            narrow = boolean.alight(table, 1)
+            floor = max(len(row) for row in narrow.splitlines())
+            literal = len(f'set r at{{"{table}", i+0.5}};')
+            # the floor is that command plus the turn that shares its row
+            assert literal < floor <= literal + 13, (n, floor, literal)
+
+    def test_a_folded_row_keeps_the_space_inside_its_turn(self) -> None:
+        """``turn right`` has a space, and a vertical turn writes it as a cell.
+
+        Stripping a row's trailing blank -- which is what every other
+        generator here does -- deletes that space and the walk reads
+        ``turnright``.  So rows are trimmed to their last *written* cell
+        instead, and a row whose only content is that blank stays a blank.
+        """
+        narrow = boolean.alight("0110100110010110", 40)
+        rows = narrow.splitlines()
+        assert any(row.strip() == "" and row != "" for row in rows), (
+            "the turn's own space was stripped away"
+        )
+        assert "turnright" not in narrow.replace("\n", "")
