@@ -421,6 +421,14 @@ def _shell_hint(message: str, language: str) -> str:
     )
 
 
+def _looks_like_a_table(value: str) -> bool:
+    """Whether ``value`` is a power-of-two run of 0s and 1s."""
+    if not value or set(value) - {"0", "1"}:
+        return False
+    n = len(value).bit_length() - 1
+    return len(value) == 2**n and n >= 1
+
+
 def _swapped_hint(language: str, table: str) -> str:
     """Return a hint when the language and truth-table arguments look swapped.
 
@@ -506,7 +514,12 @@ def _split_positional(
 
 
 def _check_count(
-    command: str, args: list[str], wanted: int, *, bare_width: bool = False
+    command: str,
+    args: list[str],
+    wanted: int,
+    *,
+    bare_width: bool = False,
+    eaten: str = "",
 ) -> None:
     """Refuse a call with the wrong number of positional arguments.
 
@@ -529,8 +542,24 @@ def _check_count(
         # here.  ``_ARGUMENTS`` names them in order.
         missing = _ARGUMENTS.get(command, ())[len(args) : wanted]
         named = f"\n\nmissing {', '.join(missing)}" if missing else ""
-        _fail(f"{synopsis}{named}")
+        _fail(f"{synopsis}{named}{eaten}")
     if len(args) > wanted:
+        # A name with spaces in it arrives as several positionals, and the
+        # complaint named whichever word landed past the count.  The
+        # resolver can match the joined words; it was never asked.
+        joined = " ".join(args)
+        try:
+            from esolangs.registry import resolve
+
+            resolved = resolve(joined)
+        except EsolangError:
+            resolved = None
+        if resolved is not None:
+            _fail(
+                f"unexpected argument: {args[wanted]!r}; did you mean the "
+                f"language {resolved!r}?  Quote a name with spaces in it: "
+                f'"{resolved}"'
+            )
         hint = (
             f"; --width took no value here (only an integer counts as one), so "
             f"it used the default width and {args[0]!r} was read as the language"
@@ -926,9 +955,22 @@ def _debug(rest: list[str]) -> None:
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
     rest, options = _pop_options(rest, {"--bits"})
+    before = list(rest)
     rest, width, bare = _pop_width(rest)
     rest = _split_positional(rest, set(), {"--bits", "--width"})
-    _check_count("generate", rest, 2, bare_width=bare)
+    # `--width` takes an *optional* N, so a truth table typed straight after
+    # it is consumed as the width and the report lands on the table being
+    # missing -- which is baffling when you did type one.
+    eaten = ""
+    if width is not None and not bare:
+        for i, arg in enumerate(before[:-1]):
+            value = before[i + 1]
+            if arg == "--width" and _looks_like_a_table(value):
+                eaten = (
+                    f"\n\nnote: --width consumed {value!r}, which looks like a "
+                    f"truth table; put the table after the language"
+                )
+    _check_count("generate", rest, 2, bare_width=bare, eaten=eaten)
     try:
         program = generate(rest[0], rest[1], width)
         if "--bits" in options:

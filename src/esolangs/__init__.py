@@ -78,6 +78,7 @@ except _metadata.PackageNotFoundError:  # pragma: no cover - installed in CI
 #: from the outside which was which.
 __all__ = [
     "STOP_REASONS",
+    "TERMINATION_OUTCOMES",
     "VM",
     "ArgumentError",
     "Debugger",
@@ -409,9 +410,26 @@ def run(
     ``run(lang, "examples/boolean/brainfuck.txt")`` quietly printed a null
     byte instead of saying it had run the filename.
 
-    Input is fed to the program line by line from ``stdin``; a program that
-    asks for more than it is given raises
-    :class:`~esolangs.exceptions.InputExhaustedError`.  **How a language
+    Input is fed to the program line by line from ``stdin``.  A program
+    that asks for more than it is given usually raises
+    :class:`~esolangs.exceptions.InputExhaustedError`, and that is the
+    package norm -- but not a universal one, and this sentence used to
+    claim it was.
+
+    Measured, underfeeding a three-input program by one bit across the
+    fifty-two languages that read stdin at all: **43 raise**, **6 answer a
+    different row of the table** in silence (Circuit Diagram, Clockwise,
+    DINAC, Fargo, Flowchart, S*bleq), 2 run on and produce output
+    :func:`read_answer` then refuses (Suffolk, Suptiftam), and Alight
+    raises about its own arithmetic.
+
+    ``describe(language)["eof_is_a_value"]`` marks the ones that take an
+    exhausted read as a value.  Clockwise is *not* among them and still
+    answers: its input is a single line, so an underfed program gets a
+    shorter string and never reads past an end -- undetectable in
+    principle, like Taglate's pad order.  The zero-beyond-input convention
+    was audited against the wiki pages and settled deliberately, so it is
+    reported here rather than rewritten.  **How a language
     spells its input bits is not universal** -- Grapheme reads ``%``/``A``
     and Fargo one number whose bits are the inputs -- so take the encoding
     from ``describe(language)["input_encoding"]`` rather than assuming
@@ -690,10 +708,22 @@ def encode_inputs(
     it takes no arity, so three bits aimed at a four-input program were
     encoded as cheerfully as four.  For Fargo that means
     ``encode_inputs("Fargo", [1, 0, 1])`` emits row ``5`` of a table with
-    four rows, and the program answers it without complaint.  Only the
-    line-per-bit languages catch it at all, and only by accident -- the
-    program reads a fourth line that is not there and raises
-    :class:`~esolangs.exceptions.InputExhaustedError`.
+    four rows, and the program answers it without complaint.
+
+    How far the underfed program gets before anything notices was measured
+    rather than assumed, because the sentence here used to assume it and
+    was wrong twice over -- it named the wrong group of languages *and* the
+    wrong outcome.  Of the fifty-two that read stdin, 43 raise
+    :class:`~esolangs.exceptions.InputExhaustedError`, 6 answer a different
+    row in silence, 2 produce output :func:`read_answer` refuses, and one
+    raises about its own arithmetic.  See :func:`run` for the split and
+    ``describe(language)["eof_is_a_value"]`` for the flag.
+
+    ``truth_table`` stays optional and will: the CLI's ``encode`` cannot
+    pass it, since it runs before any table exists
+    (``esolangs encode Taglate 101``).  Requiring it would break a real
+    caller to move a check that :func:`evaluate` and :func:`verify` already
+    make on every row.
     """
     # Every registered language has a committed example, so the lookup
     # always finds one; ``example_stems`` covers all 69 and a test pins that.
@@ -788,6 +818,17 @@ def read_answer(language: str, output: str) -> str:
         f"{one!r} {where}, got {output[-40:]!r}"
     )
 
+
+#: The two outcomes an ``answer_mode`` of ``"termination"`` reports, in the
+#: order ``describe(...)["answer_encoding"]`` gives them: index 0 is the
+#: answer 0 and index 1 the answer 1, so ``encoding.index("diverges")`` is
+#: which way round the polarity goes.
+#:
+#: Exported because a caller writing the generic round trip needs the
+#: vocabulary and there was nowhere to read it: one reader hand-copied this
+#: tuple into their own code and said so, which is the same gap
+#: :data:`STOP_REASONS` was added to close for the debugger.
+TERMINATION_OUTCOMES: tuple[str, str] = ("halts", "diverges")
 
 #: A termination-answering language proves a 1 by *not* halting, so
 #: :func:`evaluate` pays this once for every such row.  Three languages
