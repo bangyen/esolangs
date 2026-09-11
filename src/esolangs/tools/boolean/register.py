@@ -22,6 +22,7 @@ from esolangs.tools.boolean.helpers import (
 _DIG_BRANCH = "$3~;#"  # arm three, read a bit, store it, then turn on it
 _DIG_ENTER = ">"  # the root's turn out of the column the mole starts down
 _DIG_CONTINUE = ">"  # a child of a branch: keep facing right into its block
+_DIG_RETURN = "<"  # the same, for a child the mole reaches facing west
 _DIG_PRINT = "{}:@"  # set the mole to the result and print it
 # ``$`` reads its repeat count from the digit beside it, so a run of cells
 # under one ``$`` is at most nine long.
@@ -29,6 +30,18 @@ _DIG_SPAN = 9
 # Columns one level owns.  A block is five cells and its ``#`` is the last,
 # so the child's ``>`` sits under that ``#`` -- which is the cell before the
 # child's own block, and the stride is what puts it there.
+_DIG_STRIDE = len(_DIG_BRANCH)
+# A banded level leaves one column spare.  Six is what makes the two bands
+# able to share columns at all: see :func:`_dig_columns`.
+_DIG_BAND = _DIG_STRIDE + 1
+# Cells a mole walking over them does not obey.  Everything else is
+# scenery while the underground counter is at zero -- digits included,
+# which is what lets a corridor cross a block's middle.
+_DIG_OPAQUE = "^>'<#$@"
+# Cells that hold a digit where a neighbouring ``$`` or ``#`` would find
+# one.  ``;`` counts: it writes the mole into its own cell, so on the
+# executed path it *is* a digit.
+_DIG_DIGITS = "0123456789;"
 _DIG_STRIDE = len(_DIG_BRANCH)
 
 
@@ -548,18 +561,223 @@ def _sophie_hybrid(truth_table: str) -> str:
     return "".join(out)
 
 
-def dig(truth_table: str) -> str:
+def _dig_leaf(reads: int, value: int, *, aligned: bool) -> str:
+    """Build a leaf that consumes ``reads`` inputs, then prints ``value``.
+
+    ``$`` makes the cells after it commands, as many as the digit beside it
+    says, so the reads a folded leaf still owes need no block each: one
+    ``$`` covers every ``~`` plus the three cells that print.  Its count is
+    a single digit, so a window holds at most nine cells; past that the
+    windows chain, and a window that spends its whole count leaves the
+    counter at zero, which is what arms the next ``$`` with no cell in
+    between.
+
+    ``aligned`` is for the banded layout, where a leaf shares columns with
+    the other band and its cells have to fall where that band's do not
+    care.  Two things change.  Windows become exactly ``_DIG_BAND`` cells
+    long, so every ``$`` in the chain keeps the column residue the first
+    one had.  And a blank goes before the value when ``reads`` is even --
+    a blank inside an armed window only spends a count -- which puts the
+    value digit an odd number of cells from the ``$``, where the other
+    band's ``$`` and ``#`` never look.
+    """
+    out = ""
+    if not aligned:
+        while reads > _DIG_SPAN - 3:
+            take = min(_DIG_SPAN - 1, reads - (_DIG_SPAN - 3))
+            out += f"${take + 1}" + "~" * take
+            reads -= take
+        return out + f"${reads + 3}" + "~" * reads + _DIG_PRINT.format(value)
+    while reads > _DIG_BAND - 1:
+        take = _DIG_BAND - 2
+        out += f"${take + 1}" + "~" * take
+        reads -= take
+    pad = 1 - reads % 2
+    tail = "~" * reads + " " * pad + _DIG_PRINT.format(value)
+    return out + f"${reads + pad + 3}" + tail
+
+
+def _dig_columns(n: int, split: int | None) -> tuple[int, int]:
+    """Where the two bands start, or the one band if ``split`` is ``None``.
+
+    A flat tree walks east the whole way and every level owns five columns
+    of its own.  A banded one turns round once: the levels before ``split``
+    run east, the rest run west over the same columns, mirrored so the mole
+    still meets each block's ``$`` first.
+
+    The bands can overlap at all only because of how their columns line up.
+    Read a block's cells by their offset: a ``$`` or a ``#`` -- the only
+    two that consult a neighbour -- sits at 0 or 4, and the digits that
+    could confuse one sit at 1 and 3.  So with a stride of six, letting
+    ``d`` be an east block's column minus a west block's, a digit lands on
+    a neighbour-reading cell when ``d`` is 1, 3, -1 or -3, and a mole
+    falling from a ``#`` lands on a ``$`` or a ``#`` when ``d`` is 0 or -4.
+    Every one of those is 0, 1, 2, 3 or 5 modulo six.  **Four is not**, so
+    fixing ``d`` at four modulo six clears all of them at once, whatever
+    the overlap -- and every pair of an east and a west block differs by
+    ``d`` plus a multiple of six.
+
+    That also says why the turn happens once and not twice.  A second turn
+    would put two bands running the same way, and two east blocks differ by
+    a multiple of six, which is zero modulo six -- the case ``d`` had to
+    avoid.  So one turn is the whole of what Dig's geometry allows.
+    """
+    if split is None:
+        return 1, 0
+    # The west band ends four columns short of where the east band's last
+    # ``#`` stands, which is the cell the mole turns west from; putting it
+    # one stride further back is what makes ``d`` four modulo six.
+    return 1, _DIG_BAND * (n - split) + 3
+
+
+def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
+    """Lay the decision tree out, in one band east or two that turn round."""
+    total = 2 ** (n + 1) - 1
+    east, west = _dig_columns(n, split)
+    cells: dict[tuple[int, int], str] = {}
+    corridors: list[tuple[int, int, int]] = []
+
+    def leftward(level: int) -> bool:
+        """Whether this level's block is entered facing west."""
+        return split is not None and level >= split
+
+    def dollar(level: int) -> int:
+        """Return the column of this level's ``$``, the cell the mole meets first."""
+        if split is None:
+            return east + _DIG_STRIDE * level
+        if level < split:
+            return east + _DIG_BAND * level
+        return west + 4 - _DIG_BAND * (level - split)
+
+    def place(row: int, col: int, text: str) -> None:
+        """Write ``text`` along ``row`` from ``col``, refusing an occupied cell.
+
+        The columns above are what keeps two cells apart; this is what says
+        so.  A Dig cell steers or arms the mole that stands on it, so an
+        overwrite is one of the two ways a bad layout goes wrong, and the
+        other -- a mole falling through a cell that acts on it -- is what
+        :func:`_dig_clear` checks.
+        """
+        for i, char in enumerate(text):
+            if col + i < 0:
+                raise AssertionError(f"cell off the left edge at row {row}")
+            if (row, col + i) in cells:
+                raise AssertionError(f"two cells at {(row, col + i)}")
+            cells[row, col + i] = char
+
+    def block(row: int, level: int, text: str) -> None:
+        """Write a block so the mole meets its first cell first."""
+        col = dollar(level)
+        if leftward(level):
+            place(row, col - len(text) + 1, text[::-1])
+        else:
+            place(row, col, text)
+
+    def walk(row: int, level: int, lo: int, hi: int) -> None:
+        """Lay the subtree for ``truth_table[lo:hi]`` at ``row``."""
+        if level == n or len(set(truth_table[lo:hi])) == 1:
+            # A constant slice cannot be told apart by more branching, so
+            # this is a leaf and every row below it goes unwritten.  It
+            # still reads what it did not branch on: a program whose input
+            # count depended on its table would desync a caller feeding
+            # several programs from one stream.
+            reads = n - level
+            block(
+                row,
+                level,
+                _dig_leaf(reads, int(truth_table[lo]), aligned=split is not None),
+            )
+            return
+        block(row, level, _DIG_BRANCH)
+        col = dollar(level)
+        hop = col - 4 if leftward(level) else col + 4
+        step = 2 ** (n - level - 1)
+        half = (hi - lo) // 2
+        # ``#`` rotates one way on a 0 and the other on a 1, so which child
+        # is up and which is down follows the mole's heading: a bit that
+        # sends an eastbound mole down sends a westbound one up.
+        one, zero = (
+            (row - step, row + step) if leftward(level) else (row + step, row - step)
+        )
+        for child, bounds in (
+            (one, (lo + half, hi)),
+            (zero, (lo, lo + half)),
+        ):
+            # the mole arrives here vertically from the parent's "#", which
+            # is the cell right before the child's own block -- so the turn
+            # goes in that column, pointing the way the child is entered
+            place(child, hop, _DIG_RETURN if leftward(level + 1) else _DIG_CONTINUE)
+            corridors.append((hop, row, child))
+            walk(child, level + 1, *bounds)
+
+    # The mole starts at (0, 0) facing right, so the ``'`` below turns it
+    # down column 0 and this is the cell that turns it back out of it.
+    place(total // 2, east - 1, _DIG_ENTER)
+    walk(total // 2, 0, 0, 2**n)
+    _dig_clear(cells, corridors)
+
+    if (0, 0) in cells:
+        raise AssertionError("the start marker's cell is taken")
+    cells[0, 0] = "'"
+    span = max(col for _, col in cells) + 1
+    grid = [[" "] * span for _ in range(total)]
+    for (row, col), char in cells.items():
+        grid[row][col] = char
+    # Rows are painted into a rectangle of blanks, but the mole never walks
+    # past the last command on a row, so the trailing filler is inert and is
+    # trimmed rather than committed.
+    return "\n".join("".join(row).rstrip() for row in grid)
+
+
+def _dig_clear(
+    cells: dict[tuple[int, int], str],
+    corridors: list[tuple[int, int, int]],
+) -> None:
+    """Refuse a grid whose moles would be stopped on their way.
+
+    Two things can go wrong that placing cells cannot see.  A mole falling
+    from a ``#`` to its child passes every row between, and a cell it meets
+    there steers or arms it unless it is scenery -- which, with the counter
+    at zero, everything but :data:`_DIG_OPAQUE` is.  And a ``$`` or a ``#``
+    takes its digit from the first of up, right, down, left that has one,
+    so a digit directly above or below either is a wrong answer that runs.
+
+    Both are checked against the grid rather than argued from the column
+    rule, because the rule is what *places* the cells and an argument that
+    places and checks with the same reasoning checks nothing.
+    """
+    for col, start, end in corridors:
+        low, high = sorted((start, end))
+        for row in range(low + 1, high):
+            char = cells.get((row, col))
+            if char is not None and char in _DIG_OPAQUE:
+                raise AssertionError(
+                    f"mole from row {start} meets {char!r} at {(row, col)}"
+                )
+    for (row, col), char in cells.items():
+        if char not in "$#":
+            continue
+        for step in (-1, 1):
+            above = cells.get((row + step, col))
+            if above is not None and above in _DIG_DIGITS:
+                raise AssertionError(f"{char!r} at {(row, col)} reads {above!r} first")
+
+
+def dig(truth_table: str, width: int | None = None) -> str:
     """Build a Dig program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
+    ``width`` asks for a column count; the tree turns round once if that is
+    what it takes to meet one, and a width under the floor returns the
+    narrowest program rather than refusing.
 
     The tree is laid out so the mole starts in the top-left corner (``'``)
     facing down into the root.  Each branch block reads one input bit:
     ``~`` inputs it, ``;`` stores it in the grid, and ``#`` turns the mole
-    down or up on that bit.  The two children of a node keep facing right
-    into the next level's branch, and the leaves print the function's value
-    for the input combination they stand for.
+    down or up on that bit.  The two children of a node keep facing the way
+    the next level's branch is entered, and the leaves print the function's
+    value for the input combination they stand for.
 
     A subtree whose rows all agree becomes a leaf, and the rows it would
     have filled are never written -- which is what the walk buys over filling
@@ -571,8 +789,7 @@ def dig(truth_table: str) -> str:
     feeding several programs from one stream.  Those reads are cheap: a
     branch spends ``;`` to store its bit for its own ``#``, and a leaf turns
     nowhere, so the read is bare -- and ``$`` covers a run of cells at once,
-    so they need no block each.  ``$`` takes its count from the digit beside
-    it, so a run is at most nine cells and longer ones chain.
+    so they need no block each.
 
     A level costs five columns, not seven.  Two cells the blocks used to
     spend are not needed.  The ``>`` that opened a block only ever repeated
@@ -583,86 +800,33 @@ def dig(truth_table: str) -> str:
     always sees a 0 or a 1 and always turns.  Putting the count to the
     right of its ``$`` rather than the left is what lets the blocks abut,
     since ``$`` looks up, right, down, left and takes the first digit it
-    finds.  Chained read windows drop their ``>`` for the same reason: a
-    window ends with the counter back at zero, so the next ``$`` arms
-    itself.
+    finds.
 
-    Nothing about the geometry needed rechecking for the narrower stride,
-    and that is the point of it: a block's ``$`` and ``#`` are the only
-    cells that read a neighbour, they sit at ``5k + 1`` and ``5k + 5``, and
-    the digits that could confuse them sit at ``5k + 2`` and ``5k + 4`` --
-    residues that no two levels share.  The mole's hop from a ``#`` to its
-    child crosses only rows of levels at least two deeper, whose columns
-    start further right than the column it falls down.
+    ``5 * n + 6`` columns is what that comes to, and a width under it is met
+    by turning the tree round once: the levels past the turn run west over
+    the columns the levels before it already used, their blocks mirrored so
+    the mole still meets each ``$`` first.  Nothing has to be routed back --
+    the ``#`` at the end of the last eastbound block turns the mole onto its
+    child's row, and a ``<`` there points it into a block that starts where
+    it stands.  What the two bands cost is one spare column a level, and
+    :func:`_dig_columns` is where the arithmetic that lets them overlap
+    lives, along with the reason a *second* turn is not possible.
     """
     n = _validate_truth_table(truth_table)
-    total = 2 ** (n + 1) - 1
-    lines = ["" for _ in range(total)]
-
-    def place(row: int, col: int, block: str) -> None:
-        """Write ``block`` on ``row``, starting at column ``col``."""
-        lines[row] = lines[row].ljust(col) + block
-
-    def leaf(reads: int, value: int) -> str:
-        """Build a leaf that consumes ``reads`` inputs, then prints ``value``.
-
-        ``$`` makes the cells after it commands, as many as the digit beside
-        it says, so the reads a folded leaf still owes need no block each:
-        one ``$`` covers every ``~`` plus the three cells that print.
-
-        Its count is a single digit, so a window holds at most nine cells.
-        Past that the windows chain, and a window that spends its whole
-        count leaves the counter at zero -- which is what arms the next
-        ``$`` with no cell in between.  The chain is sized so the last
-        window is the one that prints: it takes what it must to leave a
-        remainder the final window can still cover.
-        """
-        out = ""
-        while reads > _DIG_SPAN - 3:
-            take = min(_DIG_SPAN - 1, reads - (_DIG_SPAN - 3))
-            out += f"${take + 1}" + "~" * take
-            reads -= take
-        return out + f"${reads + 3}" + "~" * reads + _DIG_PRINT.format(value)
-
-    def walk(row: int, level: int, lo: int, hi: int) -> None:
-        """Lay the subtree for ``truth_table[lo:hi]`` at ``row``."""
-        col = _DIG_STRIDE * level + 1
-        if level == n or len(set(truth_table[lo:hi])) == 1:
-            # A constant slice cannot be told apart by more branching, so
-            # this is a leaf and every row below it goes unwritten.  It
-            # still reads what it did not branch on: a program whose input
-            # count depended on its table would desync a caller feeding
-            # several programs from one stream.
-            place(row, col, leaf(n - level, int(truth_table[lo])))
-            return
-        place(row, col, _DIG_BRANCH)
-        step = 2 ** (n - level - 1)
-        half = (hi - lo) // 2
-        for child, bounds in (
-            (row + step, (lo + half, hi)),
-            (row - step, (lo, lo + half)),
-        ):
-            # the mole arrives here vertically from the parent's "#", which
-            # is the cell right before the child's own block -- so the turn
-            # goes in that column and the mole walks straight into it
-            place(child, col + _DIG_STRIDE - 1, _DIG_CONTINUE)
-            walk(child, level + 1, *bounds)
-
-    # The mole starts at (0, 0) facing right, so the ``'`` below turns it
-    # down column 0 and this is the cell that turns it back out of it.
-    place(total // 2, 0, _DIG_ENTER)
-    walk(total // 2, 0, 0, 2**n)
-
-    # The root branch sits at row ``total // 2``, so row 0 is only ever a
-    # leaf or a deep fragment and its column 0 is blank or left padding --
-    # every block on it starts at level 1 or deeper.  Overwrite that one
-    # free cell with the mole's start marker rather than special-casing
-    # row 0's emission in two different places above.
-    lines[0] = "'" + lines[0][1:]
-    # Rows are padded to a common width while the blocks are laid out, but the
-    # mole never walks past the last command on a row, so the trailing filler
-    # is inert and is trimmed rather than committed.
-    return "\n".join(line.rstrip() for line in lines)
+    flat = _dig_grid(truth_table, n, None)
+    if width is None or n < 2:
+        return flat
+    if max(len(line) for line in flat.split("\n")) <= width:
+        return flat
+    # The turn has to leave the westbound band room to finish left of where
+    # the eastbound one starts its last block, which is what fixes the
+    # split rather than any search: the halves are as even as that allows.
+    banded = _dig_grid(truth_table, n, -(-(n + 2) // 2))
+    if max(len(line) for line in banded.split("\n")) < max(
+        len(line) for line in flat.split("\n")
+    ):
+        return banded
+    return flat
 
 
 def _qoibl_enc(n: int) -> str:

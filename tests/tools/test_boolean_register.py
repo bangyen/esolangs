@@ -10,6 +10,9 @@ import pytest
 import esolangs
 from esolangs.tools import boolean
 from esolangs.tools.boolean.register import (
+    _DIG_BRANCH,
+    _DIG_RETURN,
+    _DIG_STRIDE,
     _addsubjump_ordered,
     _polynomial_dag,
     _polynomial_states,
@@ -514,6 +517,86 @@ class TestDig:
         program = boolean.dig(table)
         assert program.count("$") > 1  # more than one window
         assert esolangs.run("Dig", program, stdin="\n".join(["1"] * 7)).strip() == "1"
+
+    def test_a_width_turns_the_tree_round_and_it_still_computes(self) -> None:
+        """A narrower grid is the same walk, folded back over its own columns.
+
+        The deep levels run west through mirrored blocks, so the mole meets
+        each ``$`` first either way.  Only running it says the turn kept
+        every path intact.
+        """
+        for table in ("0110", "10010110", "0110100110010110", "00010111"):
+            n = len(table).bit_length() - 1
+            flat = boolean.dig(table)
+            wide = max(len(row) for row in flat.splitlines())
+            floor = max(len(row) for row in boolean.dig(table, 1).splitlines())
+            assert floor < wide, f"{table} never narrows"
+            for width in (1, 12, 18, 24, wide):
+                narrow = boolean.dig(table, width)
+                columns = max(len(row) for row in narrow.splitlines())
+                assert columns <= max(width, floor), (table, width, columns)
+                for combo in range(2**n):
+                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    got = run_dig(narrow, [str(b) for b in bits])
+                    assert got == str(int(table[combo])), (table, width, bits)
+
+    def test_a_folded_table_keeps_the_flat_layout(self) -> None:
+        """Turning round is not always narrower, so the narrower one wins.
+
+        A table that folds has few blocks to spread in the first place, and
+        what the turn costs -- a spare column a level, and a leaf padded so
+        its digits fall where the other band does not look -- can come to
+        more than the fold saved.  ``dig`` lays both out and keeps the
+        narrower, so a width it cannot meet still gets the best there is.
+
+        These also drive the banded leaf's chained windows: a constant table
+        at ``n == 6`` folds at the root and still owes six reads, one more
+        than a single window covers.
+        """
+        for table in ("1" * 64, "1" * 32 + "0" * 32):
+            n = len(table).bit_length() - 1
+            flat = boolean.dig(table)
+            assert boolean.dig(table, 1) == flat, table
+            for combo in (0, 2 ** (n - 1), 2**n - 1):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = run_dig(flat, [str(b) for b in bits])
+                assert got == str(int(table[combo])), (table, bits)
+
+    def test_the_turn_mirrors_the_blocks_it_writes(self) -> None:
+        """Past the turn a block is written backwards, so its ``$`` comes first.
+
+        A westbound mole meets the block's cells in the opposite order, so
+        the block that steers it has to be the reverse of the eastbound one
+        -- and the ``<`` that points it in has to sit where the parent's
+        ``#`` turned it.
+        """
+        narrow = boolean.dig("0110100110010110", 1)
+        assert _DIG_BRANCH[::-1] in narrow, "no mirrored block: the tree never turned"
+        assert _DIG_RETURN in narrow, "nothing points the mole west"
+        flat = boolean.dig("0110100110010110")
+        assert _DIG_BRANCH[::-1] not in flat
+        assert _DIG_RETURN not in flat
+
+    def test_the_layout_check_refuses_a_stride_that_collides(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The clearance check is what licenses the two bands sharing columns.
+
+        With a stride of six the eastbound hops miss every westbound ``$``,
+        ``#`` and digit; with the flat layout's five they do not, and the
+        grid that comes out is wrong in a way only a run would show.  So the
+        check has to refuse it -- a silent pass here would mean it was
+        licensing nothing at all.
+        """
+        from esolangs.tools.boolean import register
+
+        monkeypatch.setattr(register, "_DIG_BAND", _DIG_STRIDE)
+        for table in ("0110", "10010110", "0110100110010110"):
+            with pytest.raises(AssertionError):
+                boolean.dig(table, 1)
+        monkeypatch.undo()
+        # and the stride the rule names still builds
+        assert boolean.dig("0110100110010110", 1)
 
 
 class TestSophie:
