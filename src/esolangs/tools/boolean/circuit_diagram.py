@@ -58,10 +58,20 @@ most significant first, matching the other generators in this package.
   it, and emitting one anyway leaves a ``~`` driving a bus nothing consumes,
   plus the tap and the run out to it.  AND needs no ``~`` at all, which
   takes its drawing from 324 characters to 144.
-* each minterm (a row of the table whose entry is ``1``) is a chain of
-  two-input ``a`` gates over the ``n`` literal buses its index selects;
-* the minterms are combined by a chain of ``o`` gates, and the result runs
-  into ``-:``.
+* each minterm (a row of the table whose entry is ``1``) is a balanced tree
+  of two-input ``a`` gates over the ``n`` literal buses its index selects;
+* the minterms are combined by a balanced tree of ``o`` gates, and the
+  result runs into ``-:``.
+
+**Both folds are balanced, and that is a width decision.**  A gate has to
+sit right of every bus it reads, so the drawing's width is set by the
+*depth* of the gate network rather than by how many gates it holds.
+Folding left makes that depth the number of parts; splitting in half makes
+it the logarithm.  The halves are drawn one after the other, so no more
+than the depth's worth of partial results is live at once -- building every
+chain up front instead would put each on a bus of its own and spend in
+columns exactly what the balancing saved.  Parity at ``n == 6`` goes from
+271 columns to 133, and from 131932 characters to 84092.
 
 **A dense table is drawn as its complement.**  The cost is one ``a`` chain
 per row selected, so a table with more ones than zeros is built from its
@@ -560,10 +570,23 @@ def _minterm(
             raise AssertionError(f"input {position} needs its complement")
         else:
             chosen.append(negated)
-    result = chosen[0]
-    for literal in chosen[1:]:
-        result = builder.gate("a", result, literal)
-    return result
+    return _fold(builder, "a", chosen)
+
+
+def _fold(builder: _Builder, glyph: _GateGlyph, parts: list[int]) -> int:
+    """Combine ``parts`` with ``glyph`` gates, balanced rather than in a chain.
+
+    A gate has to sit right of every bus it reads, so the drawing's width
+    is set by the *depth* of the gate network, not by how many gates it
+    has.  Folding left makes that depth the number of parts; splitting in
+    half makes it the logarithm, and the halves are drawn one after the
+    other so no more than the depth's worth of results is live at a time.
+    """
+    if len(parts) == 1:
+        return parts[0]
+    half = len(parts) // 2
+    left = _fold(builder, glyph, parts[:half])
+    return builder.gate(glyph, left, _fold(builder, glyph, parts[half:]))
 
 
 def circuit_diagram(truth_table: str) -> str:
@@ -654,9 +677,21 @@ def circuit_diagram(truth_table: str) -> str:
             (rail, builder.invert(rail) if needed else None)
             for rail, needed in zip(rails, needs_complement, strict=True)
         ]
-        result = _minterm(builder, literals, minterms[0])
-        for index in minterms[1:]:
-            result = builder.gate("o", result, _minterm(builder, literals, index))
+
+        def combine(lo: int, hi: int) -> int:
+            """Sum ``minterms[lo:hi]`` as a balanced tree of ``o`` gates.
+
+            The chains are built inside the recursion rather than all up
+            front, so at most one partial sum per level is live at a time --
+            building them all first would put every chain's result on a bus
+            of its own and spend in columns what the balancing saved.
+            """
+            if hi - lo == 1:
+                return _minterm(builder, literals, minterms[lo])
+            mid = (lo + hi) // 2
+            return builder.gate("o", combine(lo, mid), combine(mid, hi))
+
+        result = combine(0, len(minterms))
 
     if invert_result:
         result = builder.invert(result)
