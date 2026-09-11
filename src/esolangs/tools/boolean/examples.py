@@ -747,7 +747,7 @@ def _register() -> None:
             "grid_based.a_painter_ant",
             _instantiate_apa,
             answer_mode="dump",
-            answer_pattern=r"([o@])",
+            answer_pattern=r"(?m)^[.#o@]*([o@])[.#o@]*$",
             answer_values=("o", "@"),
             expected=(
                 "..#......\n.........\n.........\n.........\n.........\n"

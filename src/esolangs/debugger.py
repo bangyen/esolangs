@@ -108,6 +108,18 @@ class Debugger:
         """Whether stepping this language ever reaches the answer."""
         return self.vm.steppable_to_answer
 
+    def snapshot(self) -> object:
+        """Return the wrapped machine's complete state, hashable.
+
+        Mirrored for the reason this class already gives for the traits: a
+        caller reaching through ``self.vm`` to get at it is doing the thing
+        the mirrors exist to avoid.  And this one is worth reaching for --
+        a repeated snapshot proves a loop, which is how the three
+        termination languages are settled in microseconds instead of by
+        waiting out a clock.
+        """
+        return self.vm.snapshot()
+
     # -- breakpoints --------------------------------------------------
 
     def break_at(self, ip: int | tuple[int, ...]) -> None:
