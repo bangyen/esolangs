@@ -65,11 +65,20 @@ class TestTheExceptionalLanguages:
         assert esolangs.describe("Fargo")["input_shape"] == "row_index"
         assert esolangs.describe("brainfuck")["input_shape"] == "line_per_bit"
 
-    def test_every_language_has_an_encoding(self) -> None:
-        """``encode_inputs`` indexes the example table, which must cover all."""
+    def test_every_reading_language_has_an_encoding(self) -> None:
+        """``encode_inputs`` indexes the example table, which must cover all.
+
+        The parameterized languages read no stdin at all, and asking for
+        theirs is refused rather than answered -- ``instantiate`` is where
+        their bits go.
+        """
         assert set(example_stems()) == {lang.id for lang in LANGUAGES.values()}
         for name in esolangs.list_languages():
-            assert esolangs.encode_inputs(name, [0, 1])
+            if esolangs.describe(name)["parameterized"]:
+                with pytest.raises(esolangs.ArgumentError, match="reads no stdin"):
+                    esolangs.encode_inputs(name, [0, 1])
+            else:
+                assert esolangs.encode_inputs(name, [0, 1])
 
 
 class TestTemplatesAreNotWrapped:

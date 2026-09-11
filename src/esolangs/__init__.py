@@ -92,6 +92,17 @@ __all__ = [
     "run",
 ]
 
+
+def __dir__() -> list[str]:
+    """Return the public surface, so tab-completion matches ``__all__``.
+
+    Without this ``dir(esolangs)`` also offered ``os``, ``re``, ``signal``,
+    ``threading`` and a dozen internals -- every module this one imports --
+    with nothing to mark which of them the package actually supports.
+    """
+    return sorted(__all__)
+
+
 _EXAMPLES = pathlib.Path(__file__).resolve().parents[2] / "examples"
 
 # An unfilled input slot in a parameterized generator's template.  Matched
@@ -109,6 +120,25 @@ _STATE_MODELS = {
     "queue_based": "queue",
     "other": "other",
 }
+
+
+def _check_width(width: object) -> None:
+    """Refuse a width that is not a positive integer.
+
+    Shared by :func:`generate` and :func:`instantiate` because they are the
+    same option on the same program, and only one of them used to check it:
+    ``instantiate(..., width=0)`` and ``width=-2`` were accepted and ignored
+    while ``generate`` refused them, and ``width="8"`` reached the
+    comparison and leaked a ``TypeError`` about ``str`` and ``int``.  A
+    width of 0 bounds nothing, and returning the unwrapped program for it
+    looked like the option had been honoured.
+    """
+    if width is None:
+        return
+    if isinstance(width, bool) or not isinstance(width, int):
+        raise ArgumentError(f"width must be an integer or None, got {width!r}")
+    if width <= 0:
+        raise ArgumentError(f"width must be positive, got {width}")
 
 
 def generate(language: str, truth_table: str, width: int | None = None) -> str:
@@ -159,13 +189,7 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
             f"truth table must be a string of '0' and '1', got "
             f"{type(truth_table).__name__}"
         )
-    if width is not None and not isinstance(width, int):
-        raise ArgumentError(f"width must be an integer or None, got {width!r}")
-    if width is not None and width <= 0:
-        # ``run``'s timeout is refused the same way.  A width of 0 bounds
-        # nothing, and returning the unwrapped program for it looked like
-        # the option had been honoured.
-        raise ArgumentError(f"width must be positive, got {width}")
+    _check_width(width)
     if width is not None and _takes_width(fn):
         return str(fn(truth_table, width))
     if lang.id in parameterized_ids():
@@ -213,12 +237,13 @@ def instantiate(
     substituted without complaint into a program that no longer computes
     the table.
     """
+    _check_width(width)
     name = resolve(language)
     fill = _fills().get(LANGUAGES[name].id)
     if fill is None:
         raise TemplateError(
             f"{name} reads its inputs rather than embedding them, so there "
-            f"is nothing to instantiate; pass them to run() as stdin"
+            f"is nothing to instantiate; pass them in as stdin instead"
         )
     bits = list(bits)
     wanted = len({int(slot) for slot in _SLOT_INDEX.findall(template)})
@@ -293,7 +318,10 @@ def run(
     result, not an error.
 
     ``timeout`` bounds execution wall-clock: after ``timeout`` seconds the
-    run raises :class:`HaltError`.  The guard uses ``SIGALRM``, so it
+    run raises :class:`~esolangs.exceptions.ExecutionTimeoutError`, a
+    :class:`HaltError` that is also a :class:`TimeoutError` -- catch that
+    rather than the base, so a program halting on an invalid operation is
+    not mistaken for the clock running out.  The guard uses ``SIGALRM``, so it
     requires a Unix main thread; elsewhere a ``timeout`` raises
     :class:`ValueError` and :meth:`Debugger.run`'s cooperative ``timeout``
     is the way to bound a run off the main thread.
@@ -411,6 +439,15 @@ def describe(language: str) -> dict[str, object]:
     on.  ``input_encoding`` is the ``(zero, one)`` pair the language spells
     its input bits with -- ``("0", "1")`` almost everywhere, ``("%", "A")``
     for Grapheme, whose read counts any non-empty line as true.
+    ``answer_pattern`` and ``answer_encoding`` are how :func:`read_answer`
+    finds the answer: the regex whose first group holds it (empty means the
+    last non-whitespace character) and the ``(zero, one)`` pair that
+    position is spelled with.  They mirror ``input_shape`` and
+    ``input_encoding`` on the way in.  **They describe the raw output, not
+    what :func:`read_answer` gives back** -- that is always ``"0"`` or
+    ``"1"`` -- so A Painter Ant's ``("o", "@")`` is the mark in its grid,
+    not a value you will be handed.
+
     ``answer_mode`` is the same fact in a form you can branch on:
     ``"output"`` (the program prints the answer -- read it as the last
     non-whitespace character, since a few languages terminate their output
@@ -450,7 +487,7 @@ def describe(language: str) -> dict[str, object]:
         "input_shape": example.input_shape if example else "line_per_bit",
         "answer_mode": example.answer_mode if example else "output",
         "answer_pattern": example.answer_pattern if example else "",
-        "answer_values": example.answer_values if example else ("0", "1"),
+        "answer_encoding": example.answer_values if example else ("0", "1"),
         "answer_convention": (example.note or None) if example else None,
         "examples": examples,
         "wiki_url": f"https://esolangs.org/wiki/{name.replace(' ', '_')}",
@@ -485,7 +522,14 @@ def encode_inputs(language: str, bits: Sequence[int]) -> str:
     """
     # Every registered language has a committed example, so the lookup
     # always finds one; ``example_stems`` covers all 69 and a test pins that.
-    example = _example_for(LANGUAGES[resolve(language)].id)
+    name = resolve(language)
+    example = _example_for(LANGUAGES[name].id)
+    if example.fill is not None:
+        raise ArgumentError(
+            f"{name} embeds its inputs in the program and reads no stdin, so "
+            f"there is nothing to encode; pass the bits to instantiate() "
+            f"instead"
+        )
     bits = list(bits)
     # Checked for the same reason ``instantiate`` checks it: a 2 or a "1"
     # is not caught downstream.  It encodes as a 1 and the program answers
@@ -528,6 +572,8 @@ def read_answer(language: str, output: str) -> str:
     and catch :class:`~esolangs.exceptions.ExecutionTimeoutError` instead.
     """
     name = resolve(language)
+    if not isinstance(output, str):
+        raise ProgramError(f"output must be a string, got {type(output).__name__}")
     example = _example_for(LANGUAGES[name].id)
     if example.answer_mode == "termination":
         raise ArgumentError(

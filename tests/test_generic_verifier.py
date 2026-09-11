@@ -79,7 +79,7 @@ class TestTheFactsThatMakeItPossible:
     def test_a_dump_says_where_its_answer_is(self) -> None:
         """``answer_mode`` said a language dumps, never where to look."""
         assert esolangs.describe("RAM0")["answer_pattern"] == r"z: (\d+)"
-        assert esolangs.describe("A Painter Ant")["answer_values"] == ("o", "@")
+        assert esolangs.describe("A Painter Ant")["answer_encoding"] == ("o", "@")
 
     def test_reading_a_dump_needs_no_parsing_by_the_caller(self) -> None:
         ram0 = "z: 1\nn: 1\nram: {\n    0: 0,\n    1: 1\n}"
