@@ -9,77 +9,80 @@ Input column shows, which is not `0`/`1` lines for every language
 `esolangs.encode_inputs(language, bits)` builds the right stdin
 for any of them.
 
-| Program | Language | Table | Input | Expected output |
-| --- | --- | --- | --- | --- |
-| `123.txt` | 123 | `0001` | embedded 01 | not the answer -- see note |
-| `3d-brainfuck.txt` | 3D Brainfuck | `0001` | 0 1 | '0' |
-| `3x.txt` | 3x | `0001` | 0 1 | '0' |
-| `6-5.txt` | 6-5 | `0001` | 0 1 | '0' |
-| `a-painter-ant.txt` | A Painter Ant | `0001` | embedded 01 | '..#......\n.........\n.........\n.........\n.........\n.........\n..#...#..\n.###.###.\n##o###.##\n.###.###.\n..#...#..' |
-| `addsubjump.txt` | AddSubJump | `0001` | 0 1 | '0' |
-| `algebraic-programming-language.txt` | Algebraic Programming Language | `0001` | 0 1 | '0\n' |
-| `alight.txt` | Alight | `0001` | 0 1 | '0' |
-| `arrowqueue.txt` | ArrowQueue | `0001` | embedded 01 | '1 0 1 2 3' |
-| `back.txt` | Back | `0001` | embedded 01 | '1 0 0' |
-| `basicfuck.txt` | Basicfuck | `0001` | 0 1 | '0' |
-| `between.txt` | Between | `0001` | 0 1 | '0' |
-| `bf-pda.txt` | BF-PDA | `0001` | embedded 01 | '0' |
-| `bfstack.txt` | BFStack | `0001` | 0 1 | '0' |
-| `bio.txt` | BIO | `0001` | embedded 01 | '0' |
-| `bitdeque.txt` | Bitdeque | `0001` | embedded 01 | '0' |
-| `bit~.txt` | bit~ | `0001` | 0 1 | '0' |
-| `brainfuck.txt` | brainfuck | `0001` | 0 1 | '0' |
-| `brainif.txt` | BrainIf | `0001` | 0 1 | '0' |
-| `circlefuck.txt` | Circlefuck | `0001` | 0 1 | '0' |
-| `circuit_diagram.txt` | Circuit Diagram | `0001` | 0 1 | '0' |
-| `clockwise.txt` | Clockwise | `0001` | 01 | '0' |
-| `cod.txt` | COD | `0001` | embedded 01 | '0' |
-| `collatz-multiverse.txt` | Collatz Multiverse | `0001` | 0 1 | '0' |
-| `container.txt` | Container | `0001` | 0 1 | '0' |
-| `cvnc.txt` | CV(N)(C) | `0001` | 0 1 | '0' |
-| `decleq.txt` | Decleq | `0001` | 0 1 | '0' |
-| `dig.txt` | Dig | `0001` | 0 1 | '0' |
-| `dimensional.txt` | Dimensional | `0001` | 0 1 | '0' |
-| `dinac.txt` | DINAC | `0001` | 0 1 | '0' |
-| `eval.txt` | Eval | `0001` | embedded 01 | '0' |
-| `factor.txt` | Factor | `0001` | 0 1 | '0' |
-| `fargo.txt` | Fargo | `0001` | 1 | '0' |
-| `flowchart.txt` | Flowchart | `0001` | 0 1 | '0' |
-| `forbin.txt` | Forbin | `0001` | 0 1 | '0' |
-| `forþ.txt` | Forþ | `0001` | 0 1 | '0' |
-| `function-x(y).txt` | function x(y) | `0001` | 0 1 | '0' |
-| `grapheme.txt` | Grapheme | `0001` | % A | '0' |
-| `home-row.txt` | Home Row | `0001` | embedded 01 | '0' |
-| `inject.txt` | Inject | `0001` | 0 1 | '0\n' |
-| `interprogck8.txt` | Interprogck8 | `0001` | 0 1 | '0' |
-| `jaune.txt` | Jaune | `0001` | 0 1 | '0' |
-| `lamfunc.txt` | Lamfunc | `0001` | embedded 01 | '0' |
-| `laserfuck.txt` | LaserFuck | `0001` | 0 1 | '0' |
-| `minifuck.txt` | Minifuck | `0001` | embedded 01 | '0' |
-| `minsky-swap.txt` | Minsky Swap | `0001` | embedded 01 | '0 0' |
-| `modulous.txt` | Modulous | `0001` | 0 1 | '0' |
-| `myscript.txt` | MyScript | `0001` | 0 1 | '0' |
-| `nevermind.txt` | Nevermind | `0001` | 0 1 | '0' |
-| `nocomment.txt` | NoComment | `0001` | embedded 01 | '0' |
-| `packlang.txt` | Packlang | `0001` | 0 1 | '0' |
-| `painfuck.txt` | Painfuck | `0001` | 0 1 | '0' |
-| `pct-squared-minus-one.txt` | %^2^-1 | `0001` | embedded 01 | '0' |
-| `point-break.txt` | Point Break | `0001` | 0 1 | '1 0 1 1 0 0 0 1' |
-| `polynomial.txt` | Polynomial | `0001` | 0 1 | '0' |
-| `qoibl.txt` | Qoibl | `0001` | 0 1 | '0' |
-| `ram0.txt` | RAM0 | `0001` | embedded 01 | 'z: 0\nn: 1\nram: {\n    0: 0,\n    1: 1\n}' |
-| `rotfuck.txt` | ROTfuck | `0001` | 0 1 | '0' |
-| `s*bleq.txt` | S*bleq | `0001` | 0 1 | '0' |
-| `slow-acv-mammalian.txt` | SLOW ACV MAMMALIAN | `0001` | 0 1 | '0' |
-| `sophie.txt` | Sophie | `0001` | 0 1 | '0' |
-| `streetcode.txt` | Streetcode | `0001` | 0 1 | '0' |
-| `suffolk.txt` | Suffolk | `0001` | 0 1 | '0' |
-| `super-snusp.txt` | Super SNUSP | `0001` | 0 1 | '0' |
-| `suptiftam.txt` | Suptiftam | `0001` | 0 1 | '0' |
-| `taglate.txt` | Taglate | `0001` | 0 1 | '0' |
-| `unsquare.txt` | Unsquare | `0001` | 0 1 | '0' |
-| `wii2d.txt` | WII2D | `0001` | embedded 01 | '0' |
-| `ztoalc-l.txt` | ZTOALC L | `0001` | 0 1 | '0' |
+The Row column is the logical input bits; the Input column is how
+that row is actually spelled for the language.
+
+| Program | Language | Table | Row | Input | Expected output |
+| --- | --- | --- | --- | --- | --- |
+| `123.txt` | 123 | `0001` | `01` | embedded 01 | not the answer -- see note |
+| `3d-brainfuck.txt` | 3D Brainfuck | `0001` | `01` | 0 1 | '0' |
+| `3x.txt` | 3x | `0001` | `01` | 0 1 | '0' |
+| `6-5.txt` | 6-5 | `0001` | `01` | 0 1 | '0' |
+| `a-painter-ant.txt` | A Painter Ant | `0001` | `01` | embedded 01 | '..#......\n.........\n.........\n.........\n.........\n.........\n..#...#..\n.###.###.\n##o###.##\n.###.###.\n..#...#..' |
+| `addsubjump.txt` | AddSubJump | `0001` | `01` | 0 1 | '0' |
+| `algebraic-programming-language.txt` | Algebraic Programming Language | `0001` | `01` | 0 1 | '0\n' |
+| `alight.txt` | Alight | `0001` | `01` | 0 1 | '0' |
+| `arrowqueue.txt` | ArrowQueue | `0001` | `01` | embedded 01 | '1 0 1 2 3' |
+| `back.txt` | Back | `0001` | `01` | embedded 01 | '1 0 0' |
+| `basicfuck.txt` | Basicfuck | `0001` | `01` | 0 1 | '0' |
+| `between.txt` | Between | `0001` | `01` | 0 1 | '0' |
+| `bf-pda.txt` | BF-PDA | `0001` | `01` | embedded 01 | '0' |
+| `bfstack.txt` | BFStack | `0001` | `01` | 0 1 | '0' |
+| `bio.txt` | BIO | `0001` | `01` | embedded 01 | '0' |
+| `bitdeque.txt` | Bitdeque | `0001` | `01` | embedded 01 | '0' |
+| `bit~.txt` | bit~ | `0001` | `01` | 0 1 | '0' |
+| `brainfuck.txt` | brainfuck | `0001` | `01` | 0 1 | '0' |
+| `brainif.txt` | BrainIf | `0001` | `01` | 0 1 | '0' |
+| `circlefuck.txt` | Circlefuck | `0001` | `01` | 0 1 | '0' |
+| `circuit_diagram.txt` | Circuit Diagram | `0001` | `01` | 0 1 | '0' |
+| `clockwise.txt` | Clockwise | `0001` | `01` | 01 | '0' |
+| `cod.txt` | COD | `0001` | `01` | embedded 01 | '0' |
+| `collatz-multiverse.txt` | Collatz Multiverse | `0001` | `01` | 0 1 | '0' |
+| `container.txt` | Container | `0001` | `01` | 0 1 | '0' |
+| `cvnc.txt` | CV(N)(C) | `0001` | `01` | 0 1 | '0' |
+| `decleq.txt` | Decleq | `0001` | `01` | 0 1 | '0' |
+| `dig.txt` | Dig | `0001` | `01` | 0 1 | '0' |
+| `dimensional.txt` | Dimensional | `0001` | `01` | 0 1 | '0' |
+| `dinac.txt` | DINAC | `0001` | `01` | 0 1 | '0' |
+| `eval.txt` | Eval | `0001` | `01` | embedded 01 | '0' |
+| `factor.txt` | Factor | `0001` | `01` | 0 1 | '0' |
+| `fargo.txt` | Fargo | `0001` | `01` | 1 | '0' |
+| `flowchart.txt` | Flowchart | `0001` | `01` | 0 1 | '0' |
+| `forbin.txt` | Forbin | `0001` | `01` | 0 1 | '0' |
+| `forþ.txt` | Forþ | `0001` | `01` | 0 1 | '0' |
+| `function-x(y).txt` | function x(y) | `0001` | `01` | 0 1 | '0' |
+| `grapheme.txt` | Grapheme | `0001` | `01` | % A | '0' |
+| `home-row.txt` | Home Row | `0001` | `01` | embedded 01 | '0' |
+| `inject.txt` | Inject | `0001` | `01` | 0 1 | '0\n' |
+| `interprogck8.txt` | Interprogck8 | `0001` | `01` | 0 1 | '0' |
+| `jaune.txt` | Jaune | `0001` | `01` | 0 1 | '0' |
+| `lamfunc.txt` | Lamfunc | `0001` | `01` | embedded 01 | '0' |
+| `laserfuck.txt` | LaserFuck | `0001` | `01` | 0 1 | '0' |
+| `minifuck.txt` | Minifuck | `0001` | `01` | embedded 01 | '0' |
+| `minsky-swap.txt` | Minsky Swap | `0001` | `01` | embedded 01 | '0 0' |
+| `modulous.txt` | Modulous | `0001` | `01` | 0 1 | '0' |
+| `myscript.txt` | MyScript | `0001` | `01` | 0 1 | '0' |
+| `nevermind.txt` | Nevermind | `0001` | `01` | 0 1 | '0' |
+| `nocomment.txt` | NoComment | `0001` | `01` | embedded 01 | '0' |
+| `packlang.txt` | Packlang | `0001` | `01` | 0 1 | '0' |
+| `painfuck.txt` | Painfuck | `0001` | `01` | 0 1 | '0' |
+| `pct-squared-minus-one.txt` | %^2^-1 | `0001` | `01` | embedded 01 | '0' |
+| `point-break.txt` | Point Break | `0001` | `01` | 0 1 | '1 0 1 1 0 0 0 1' |
+| `polynomial.txt` | Polynomial | `0001` | `01` | 0 1 | '0' |
+| `qoibl.txt` | Qoibl | `0001` | `01` | 0 1 | '0' |
+| `ram0.txt` | RAM0 | `0001` | `01` | embedded 01 | 'z: 0\nn: 1\nram: {\n    0: 0,\n    1: 1\n}' |
+| `rotfuck.txt` | ROTfuck | `0001` | `01` | 0 1 | '0' |
+| `s*bleq.txt` | S*bleq | `0001` | `01` | 0 1 | '0' |
+| `slow-acv-mammalian.txt` | SLOW ACV MAMMALIAN | `0001` | `01` | 0 1 | '0' |
+| `sophie.txt` | Sophie | `0001` | `01` | 0 1 | '0' |
+| `streetcode.txt` | Streetcode | `0001` | `01` | 0 1 | '0' |
+| `suffolk.txt` | Suffolk | `0001` | `01` | 0 1 | '0' |
+| `super-snusp.txt` | Super SNUSP | `0001` | `01` | 0 1 | '0' |
+| `suptiftam.txt` | Suptiftam | `0001` | `01` | 0 1 | '0' |
+| `taglate.txt` | Taglate | `0001` | `01` | 0 1 | '0' |
+| `unsquare.txt` | Unsquare | `0001` | `01` | 0 1 | '0' |
+| `wii2d.txt` | WII2D | `0001` | `01` | embedded 01 | '0' |
+| `ztoalc-l.txt` | ZTOALC L | `0001` | `01` | 0 1 | '0' |
 
 ## Notes
 

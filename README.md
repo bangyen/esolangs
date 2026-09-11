@@ -31,8 +31,8 @@ on `PATH` only once that venv is active; `uv run esolangs ...` works
 without activating it.
 
 The Python API is `esolangs.run`, `generate`, `instantiate`,
-`encode_inputs`, `read_answer`, `make_debugger`, `describe`, and
-`list_languages`.  `generate` takes a
+`encode_inputs`, `read_answer`, `evaluate`, `verify`, `make_debugger`,
+`describe`, and `list_languages`.  `generate` takes a
 truth table -- `0110` is XOR -- and returns a program computing it.  Use
 `--width` for command-oriented generated programs; grids and
 newline-sensitive languages retain their own layout.
@@ -61,9 +61,21 @@ three answer by *terminating* -- they halt for a 0 and loop forever for a 1.
 `esolangs.read_answer(language, output)` handles the first two cases; for
 the third, bound the run and catch `ExecutionTimeoutError` as the 1.  With
 `describe`, `encode_inputs`, `instantiate` and `read_answer`, a caller can
-generate, feed and judge a program in a language it knows nothing about --
-`tests/test_generic_verifier.py` does exactly that for all 69, with no
-per-language branch anywhere in it.
+generate, feed and judge a program in a language it knows nothing about,
+with no per-language branch anywhere.
+
+**That round trip is `evaluate`, so you do not have to write it.**  It runs
+the generated program on every row of its input space and returns the table
+it actually computes; `verify` is the same thing with the comparison done:
+
+```python
+esolangs.evaluate("A Painter Ant", "0110")  # -> '0110'
+esolangs.verify("Fargo", "10010110")  # -> True
+```
+
+Both work for all 69 -- the four odd input shapes, the seventeen template
+languages and the three that answer by diverging included -- because every
+decision they make reads a `describe` field rather than a language name.
 
 `debug` runs a program under the breakpoint/watch VM and reports where it
 stopped: `--steps` bounds the run, `--watch-cell` prints one value per step,
