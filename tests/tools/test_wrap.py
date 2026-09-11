@@ -26,6 +26,7 @@ from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.boolean.examples import BooleanExample
 from esolangs.tools.wrap import (
+    _PCT_HEADER_END,
     DEFAULT_WIDTH,
     MULTILINE,
     WRAPPERS,
@@ -800,6 +801,70 @@ def test_polynomial_keeps_a_sign_with_no_term_to_attach_to() -> None:
     ``- `` -- so this is only the helper staying total.
     """
     assert _polynomial("f(x) = x + - 7", 80) == "f(x) = x\n+\n- 7"
+
+
+def test_pct_header_terminator_matches_the_generator() -> None:
+    """:mod:`wrap` spells %^2^-1's header terminator; the generator owns it.
+
+    It is spelled rather than imported so that :mod:`wrap`, which otherwise
+    needs nothing but the standard library, does not pull the whole
+    ``esolangs.tools.boolean`` package in.  That is only safe with something
+    holding the two copies together.
+    """
+    from esolangs.tools.boolean.pct_squared_minus_one import _HEADER_END
+
+    assert _PCT_HEADER_END == _HEADER_END
+
+
+def test_pct_folds_its_header_to_the_width() -> None:
+    """The header meets the width, at every arity -- it is not kept whole.
+
+    It used to be, on the grounds that it was structural.  It is structural
+    to ``fill``, which is *ours*, not to the interpreter, which never sees a
+    header -- so the template format changed and the header folds.  1407
+    columns at eight inputs, and it did not shrink with a narrower width
+    because nothing folded it.
+
+    A declaration is 175 characters and does not shrink with ``n``, so a
+    wrapper that broke only *between* declarations would still be over 80 at
+    every arity here.  That is why this checks the width rather than merely
+    checking that something folded.
+    """
+    for arity in (2, 4, 6):
+        template = generate("%^2^-1", _table(arity))
+        for width in (40, 80):
+            wrapped = generate("%^2^-1", _table(arity), width)
+            assert _PCT_HEADER_END in wrapped, "the header and body ran together"
+            for line in wrapped.split("\n"):
+                assert len(line) <= width, f"{arity} inputs, width {width}: {len(line)}"
+        assert len(template.split("\n")[0]) > 80 or arity == 2
+
+
+def test_pct_fill_is_unchanged_by_where_the_header_folded() -> None:
+    """However the header is folded, the filled program is byte-identical.
+
+    ``fill`` discards the header's newlines before reading it, which is what
+    lets the wrapper break *inside* a declaration -- and what keeps the two
+    branches of a setter equal width in text as well as in commands.
+
+    The folds below deliberately include ones that land mid-declaration and
+    mid-branch, not just at a ``;``: those are the ones the stripping is
+    for, and a fold only at ``;`` would pass without it.
+    """
+    from esolangs.tools.boolean.pct_squared_minus_one import _HEADER_END, fill
+
+    for arity in (2, 4):
+        template = generate("%^2^-1", _table(arity))
+        header, _, body = template.partition(_HEADER_END)
+        for every in (7, 23, 174, 175):
+            refolded = (
+                "\n".join(header[i : i + every] for i in range(0, len(header), every))
+                + _HEADER_END
+                + body
+            )
+            for combo in range(2**arity):
+                bits = [(combo >> (arity - 1 - i)) & 1 for i in range(arity)]
+                assert fill(refolded, bits) == fill(template, bits)
 
 
 def test_wrap_grid_right_aligns_into_columns() -> None:

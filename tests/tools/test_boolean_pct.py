@@ -368,12 +368,14 @@ class TestParameterizedPctSquaredMinusOne:
         order changes.  This table is the smallest that *needs* the escape,
         so it pins the mechanism rather than merely exercising the path.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import _fold
+        from esolangs.tools.boolean.pct_squared_minus_one import _HEADER_END, _fold
 
         table = "00000101"
         template = _fold(table, 3)
         assert template is not None
-        assert "m" in template.partition("\n")[2], "the doubling never fired"
+        # The body, not the header: the ``m`` is the doubling the body does.
+        body = template.partition(_HEADER_END)[2]
+        assert "m" in body, "the doubling never fired"
         lengths = set()
         for row in range(8):
             bits = [(row >> (2 - k)) & 1 for k in range(3)]
