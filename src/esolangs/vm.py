@@ -947,6 +947,23 @@ class VM(Protocol):
         """
 
     @property
+    def eof_is_a_value(self) -> bool:
+        """Whether a read past the end of the input yields a value here.
+
+        The norm is to raise :class:`~esolangs.exceptions.InputExhaustedError`
+        and most languages do.  ``True`` marks the ones that take the
+        exhausted read as a value instead, so an underfed program answers a
+        different row of its table rather than refusing -- which is a wrong
+        answer with nothing in the output to show for it.
+
+        Reported rather than changed: the zero-beyond-input convention was
+        audited against the wiki pages and settled on purpose.  What was
+        actually broken is that :func:`esolangs.run` promised the exception
+        for every language, and a caller had no way to learn which ones
+        it does not come from.
+        """
+
+    @property
     def steppable_to_answer(self) -> bool:
         """Whether stepping this language ever reaches the answer.
 
@@ -1038,6 +1055,10 @@ class _DelegatingVM:
     @property
     def steppable_to_answer(self) -> bool:
         return bool(getattr(self._machine, "steppable_to_answer", True))
+
+    @property
+    def eof_is_a_value(self) -> bool:
+        return bool(getattr(self._machine, "eof_is_a_value", False))
 
 
 def _derived_adapter(language: str) -> type[_DelegatingVM]:
@@ -1137,6 +1158,7 @@ def machine_traits(language: str) -> dict[str, bool]:
             getattr(state, "dumps_on_the_post_halt_step", False)
         ),
         "steppable_to_answer": bool(getattr(state, "steppable_to_answer", True)),
+        "eof_is_a_value": bool(getattr(state, "eof_is_a_value", False)),
     }
 
 

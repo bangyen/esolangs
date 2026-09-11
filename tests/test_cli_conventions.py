@@ -1252,3 +1252,45 @@ class TestBreakAtWhereThereIsNoShape:
         assert debugger.ip is None
         debugger.break_at(3)
         debugger.break_at((1, 2))
+
+
+class TestTheWidthFlagDoesNotEatTheTable:
+    """`--width` takes an optional N, so it swallowed the truth table."""
+
+    def test_a_swallowed_table_is_named(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """`generate brainfuck --width 0110` said only "missing <truth-table>"."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["generate", "brainfuck", "--width", "0110"], capsys)
+        assert exc.value.code == 2
+        assert "--width" in capsys.readouterr().err
+
+    def test_a_real_width_still_works(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """The hint must not fire where the width is a width."""
+        out = call_main(["generate", "--width", "20", "brainfuck", "0110"], capsys)
+        assert out.strip()
+
+
+class TestAMultiWordNameSuggestsQuoting:
+    """`describe A Painter Ant` blamed the third word."""
+
+    def test_the_joined_positionals_are_suggested(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The suggester can already resolve it; it was never asked."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["describe", "A", "Painter", "Ant"], capsys)
+        assert exc.value.code == 2
+        err = capsys.readouterr().err
+        assert "quote" in err.lower()
+        assert "A Painter Ant" in err
+
+    def test_a_genuine_extra_argument_still_says_so(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The hint must not swallow a real mistake."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["describe", "brainfuck", "zzz"], capsys)
+        assert exc.value.code == 2
+        assert "unexpected argument" in capsys.readouterr().err

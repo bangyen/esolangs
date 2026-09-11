@@ -181,3 +181,15 @@ class TestTheConstructorsTakeWhatRunTakes:
         from_path = _drive(esolangs.make_vm("brainfuck", example, "1\n0\n"))
         from_text = _drive(esolangs.make_vm("brainfuck", source, "1\n0\n"))
         assert from_path == from_text
+
+
+class TestTheEofTraitIsOnTheVmToo:
+    """``describe`` reads the class; a driving caller holds the wrapper."""
+
+    def test_the_wrapper_reports_it(self) -> None:
+        """Same value from both, or one of them is lying."""
+        for name in ("DINAC", "brainfuck"):
+            program = esolangs.generate(name, "0110")
+            stdin = esolangs.encode_inputs(name, [0, 1], "0110")
+            vm = esolangs.make_vm(name, program, stdin)
+            assert vm.eof_is_a_value == esolangs.describe(name)["eof_is_a_value"]

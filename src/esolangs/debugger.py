@@ -146,11 +146,11 @@ class Debugger:
             )
         here = self.vm.ip
         if here is not None and here != ():
-            wanted = "a tuple of integers" if isinstance(here, tuple) else "an integer"
+            kind = "a coordinate tuple" if isinstance(here, tuple) else "an index"
             if isinstance(here, tuple) != isinstance(ip, tuple):
                 raise ArgumentError(
-                    f"this language's ip is {here!r}, so a breakpoint on "
-                    f"{ip!r} could never fire; it needs {wanted}"
+                    f"this language's ip is {kind} (currently {here!r}), so a "
+                    f"breakpoint on {ip!r} could never fire"
                 )
         self._breakpoints.append(lambda vm: vm.ip == ip)
 
