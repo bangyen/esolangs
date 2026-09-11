@@ -1280,3 +1280,99 @@ class TestEvaluateNoLongerClaimsToPayTheTimeout:
         # has to be there is the mechanism and the denial.
         assert "repeated machine state" in doc
         assert "do not pay it" in doc
+
+
+class TestDescribeDocumentsWhatItReturns:
+    """A key you get back should be findable in the docstring you read.
+
+    ``width_effect`` was the case that prompted this: it was explained in
+    ``generate --help`` and in a *private* function's docstring, so a
+    library reader running ``help(esolangs.describe)`` got a long paragraph
+    about ``width_aware`` and not one word about the key that superseded
+    it.  Four more keys were described in prose -- "the state model", "its
+    example programs" -- which reads well and is invisible to anyone
+    grepping for a key they just got back from the dict.
+    """
+
+    def test_every_key_is_named_in_the_docstring(self) -> None:
+        """Naming, not explaining: a grep for the key has to land somewhere."""
+        doc = esolangs.describe.__doc__ or ""
+        missing = sorted(k for k in esolangs.describe("brainfuck") if k not in doc)
+        assert not missing, (
+            f"describe() returns keys its docstring never names: {missing}"
+        )
+
+    def test_every_language_returns_the_same_keys(self) -> None:
+        """The guard above reads one language, so the keys must not vary."""
+        keys = {frozenset(esolangs.describe(n)) for n in esolangs.list_languages()}
+        assert len(keys) == 1
+
+
+class TestTheTwoWidthKeysCannotDrift:
+    """``width_aware`` is exactly ``width_effect == "layout"``.
+
+    It used to be a second copy of the expression ``_width_effect``
+    evaluates, so the two could have come to disagree about one language
+    with nothing to catch it.  It is derived now, and this is what says so.
+    """
+
+    def test_width_aware_is_the_layout_case(self) -> None:
+        """Every language, not a sample: the old duplication was per-language."""
+        for name in esolangs.list_languages():
+            described = esolangs.describe(name)
+            assert described["width_aware"] == (
+                described["width_effect"] == "layout"
+            ), name
+
+    def test_all_three_effects_are_represented(self) -> None:
+        """A guard over a field with one value in practice guards nothing.
+
+        The counts are here because they are the reason ``width_aware``
+        was not enough on its own: it is ``False`` for both of the two
+        large groups, which is what a reader ran into.
+        """
+        counts: dict[str, int] = {}
+        for name in esolangs.list_languages():
+            effect = str(esolangs.describe(name)["width_effect"])
+            counts[effect] = counts.get(effect, 0) + 1
+        assert counts == {"none": 38, "wrap": 29, "layout": 2}
+
+
+class TestEveryDumpSaysWhereTheAnswerIs:
+    """A dump prints the whole final state, so "where" is the question.
+
+    For ``answer_mode == "output"`` the answer simply *is* the output and
+    53 languages rightly carry neither a pattern nor a note.  For a dump it
+    is a real gap, and Bitdeque was the one dump with neither -- the reader
+    who found it could not tell whether that meant "nothing to say" or
+    "nobody wrote it down".  It was the former, and now it says so.
+    """
+
+    def test_a_dump_has_a_pattern_or_a_note(self) -> None:
+        """Either a regex that finds the answer, or prose that locates it."""
+        silent = [
+            name
+            for name in esolangs.list_languages()
+            if esolangs.describe(name)["answer_mode"] == "dump"
+            and not esolangs.describe(name)["answer_pattern"]
+            and not esolangs.describe(name)["answer_convention"]
+        ]
+        assert not silent, (
+            f"dump languages that never say where the answer is: {silent}"
+        )
+
+    def test_bitdeques_note_is_true(self) -> None:
+        """It claims the whole dump is the answer bit.  Check that, do not trust it.
+
+        A note is prose, and prose is the thing in this package that goes
+        stale; the claim is cheap to run, so it gets run.
+        """
+        note = str(esolangs.describe("Bitdeque")["answer_convention"])
+        assert "the whole dump is the answer" in note
+        template = esolangs.generate("Bitdeque", "0110")
+        for combo in range(4):
+            bits = [(combo >> (1 - i)) & 1 for i in range(2)]
+            program = esolangs.instantiate("Bitdeque", template, bits)
+            dump = esolangs.run("Bitdeque", program, "", timeout=10)
+            assert dump == "0110"[combo], bits
+            assert len(dump) == 1, dump

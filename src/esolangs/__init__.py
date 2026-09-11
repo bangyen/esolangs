@@ -710,23 +710,46 @@ def _run_timed_signal(
 def describe(language: str) -> dict[str, object]:
     """Return a structured description of ``language``.
 
-    The summary carries the state model (derived from the interpreter's
-    module family), whether the language has a boolean generator, whether
-    that generator returns a template rather than a runnable program
-    (``parameterized``) and so takes no stdin (``reads_input``), whether it
-    lays its own program out to a width (``width_aware``), its example
-    programs, and its esolangs.org page.
+    The summary carries the ``state_model`` (derived from the
+    interpreter's module family), whether the language has a
+    ``boolean_generator``, whether that generator returns a template rather
+    than a runnable program (``parameterized``) and so takes no stdin
+    (``reads_input``), what a width does to it (``width_effect``), its
+    ``examples``, and its ``wiki_url``.
 
-    ``width_aware`` says the generator takes the width *itself* and builds a
-    narrower shape, rather than emitting a line that
-    :func:`~esolangs.tools.wrap.wrap_program` reflows afterwards.  It is not
-    a promise the result fits: see :func:`generate` on why a width is a
-    request.  Two languages have it and *both* can still overrun.  This
+    ``width_effect`` is what a ``width`` actually does to this language,
+    and it is the one of the two width keys to read:
+
+    * ``"layout"`` -- the generator is handed the width and builds a shape
+      to fit.  A *hint*, not a bound: LaserFuck asked for 10 gives 18, and
+      asked for 200 gives 56, because it folds straight runs rather than
+      breaking lines.
+    * ``"wrap"`` -- the finished program is reflowed between whole tokens,
+      so the width is honoured except by a single token longer than it.
+    * ``"none"`` -- the width is ignored, because the language's newlines
+      are semantic or the language rejects them outright.  This is the one
+      worth knowing, because it was a silent no-op.
+
+    ``width_aware`` answers the narrower question ``width_effect ==
+    "layout"`` -- whether the *generator* takes the width itself -- and is
+    exactly that, for every language.  It is the older key, and on its own
+    it could not tell "reflowed afterwards" from "ignored": both are
+    ``False``, and those two groups are most of the registry.  A reader hit
+    that and said so.  The split is counted in
+    ``test_all_three_effects_are_represented`` rather than here.
+
+    Neither key promises the result fits: see :func:`generate` on why a
+    width is a request.  Both ``layout`` languages can still overrun.  This
     used to name LaserFuck as the one that does, which was the wrong one to
     single out: Streetcode overruns at more widths and by a wider margin.
     No numbers here -- they are what
     ``test_both_width_aware_generators_can_overrun`` measures, and a count
     in prose is a second copy of something a run can answer.
+
+    ``self_halts``, ``dumps_on_the_post_halt_step``, ``steppable_to_answer``
+    and ``eof_is_a_value`` are the machine traits, merged in from
+    :func:`~esolangs.vm.machine_traits` and documented there rather than
+    copied to here.
 
     Two keys exist because assuming their default is answered with a wrong
     result rather than an error, which is the failure worth spending an API
@@ -783,7 +806,10 @@ def describe(language: str) -> dict[str, object]:
         "boolean_generator": lang.boolean is not None,
         "parameterized": parameterized,
         "reads_input": lang.boolean is not None and not parameterized,
-        "width_aware": lang.boolean is not None and _takes_width(lang.boolean),
+        # Derived, not recomputed: this was a second copy of the very
+        # expression _width_effect() evaluates, so the two could drift into
+        # disagreeing about the same language.
+        "width_aware": _width_effect(lang) == "layout",
         "width_effect": _width_effect(lang),
         "input_encoding": example.alphabet if example else ("0", "1"),
         "input_shape": example.input_shape if example else "line_per_bit",
