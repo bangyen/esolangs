@@ -422,20 +422,20 @@ def test_the_greedy_order_is_the_documented_one() -> None:
 def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
     """``perm`` reaches the emission in exactly one place, and it shows.
 
-    The layout puts input ``i``'s bit at cell ``2 * perm[i]`` with its
-    complement alongside, and that is the only place the permutation is
-    spent -- the reads and the complement construction above the tree run
-    in their own order.  So a mutated cell formula (``3 * perm[i]``,
-    ``perm[i - 1]``, an off-by-one on the move) still emits a *runnable*
-    brainfuck program over a differently-shaped tape; the generators that
-    consume this are checked by running them, and running still gives the
-    right answer whenever the layout is merely stretched.
+    The layout puts input ``i``'s bit at cell ``2 * perm[i]`` with that
+    node's flag cell alongside, and that is the only place the permutation
+    is spent -- the reads above the tree run in their own order.  So a
+    mutated cell formula (``3 * perm[i]``, ``perm[i - 1]``, an off-by-one on
+    the move) still emits a *runnable* brainfuck program over a
+    differently-shaped tape; the generators that consume this are checked by
+    running them, and running still gives the right answer whenever the
+    layout is merely stretched.
 
     The emitted length is what the formula moves.  The six three-input
-    permutations take four distinct lengths -- not six, since a permutation
-    and its mirror can move the pointer the same total distance -- so the
-    whole dict is asserted rather than one length per order, and any entry
-    changing fails this.
+    permutations take five distinct lengths -- not six, since two orders can
+    move the pointer the same total distance -- so the whole dict is
+    asserted rather than one length per order, and any entry changing fails
+    this.
     """
     from itertools import permutations
 
@@ -446,19 +446,19 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
         for perm in permutations(range(3))
     }
     assert lengths == {
-        (0, 1, 2): 491,
-        (0, 2, 1): 503,
-        (1, 0, 2): 499,
-        (1, 2, 0): 507,
-        (2, 0, 1): 503,
-        (2, 1, 0): 499,
+        (0, 1, 2): 299,
+        (0, 2, 1): 313,
+        (1, 0, 2): 309,
+        (1, 2, 0): 317,
+        (2, 0, 1): 313,
+        (2, 1, 0): 311,
     }
 
     # One and two inputs, where the tape is short enough that an off-by-one
     # in the move would still land inside it.
-    assert len(_decision_tree_program("01", ">", "<", (0,))) == 167
-    assert len(_decision_tree_program("0110", ">", "<", (0, 1))) == 317
-    assert len(_decision_tree_program("0110", ">", "<", (1, 0))) == 321
+    assert len(_decision_tree_program("01", ">", "<", (0,))) == 115
+    assert len(_decision_tree_program("0110", ">", "<", (0, 1))) == 205
+    assert len(_decision_tree_program("0110", ">", "<", (1, 0))) == 211
 
 
 # The shape each boolean generator's construction takes, which decides which

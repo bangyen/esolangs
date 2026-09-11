@@ -1014,15 +1014,17 @@ class TestBfTree:
         constant slice above one row, so the tree keeps all ``2**n - 1``
         nodes and every one of the ``2**n`` rows keeps its own leaf.
 
-        Counted through the arm-ending guard clear rather than through
-        ``.``: leaves no longer print, they record a bit for the single
-        print below the tree, so a ``'0'`` leaf emits nothing at all.  Each
-        of the 7 nodes ends both its arms with one, giving 14; the same
-        table folded to a single node (``11110000``) gives 2.
+        Counted through the arm-opening ``[-`` rather than through ``.``:
+        leaves no longer print, they record a bit for the single print below
+        the tree, so a ``'0'`` leaf emits nothing at all and counting leaves
+        directly is not possible.  Every loop in the tree opens by clearing
+        what it tested, and each of the 7 nodes opens two -- one for the bit
+        and one for the flag -- giving 14; the same table folded to a single
+        node (``11110000``) gives 2.
         """
         xor3 = "10010110"
-        assert boolean.bf_tree(xor3).count("[-]]") == 14
-        assert boolean.bf_tree("11110000").count("[-]]") == 2
+        assert boolean.bf_tree(xor3).count("[-") == 14
+        assert boolean.bf_tree("11110000").count("[-") == 2
 
 
 class TestThreeDBf:
@@ -1088,20 +1090,21 @@ class TestFactor:
         assert boolean.factor("1" * 16).isdigit()
 
     def test_a_table_past_cpythons_own_limit_still_renders(self) -> None:
-        """XOR5 encodes to 4817 digits, past CPython's 4300-digit default.
+        """XOR6 encodes to 5934 digits, past CPython's 4300-digit default.
 
         That default is a DoS guard on quadratic int-to-str conversion, not
         anything Factor says, so it is raised for the render rather than
         reported as a property of the language -- which is what used to cap
         this generator at n=3.
 
-        XOR4 was the table here until the tree started printing once below
-        itself instead of at every leaf; that took the encoding from 6390
-        digits to 2842, back under the default, so the check moved up an
-        arity to keep exercising the raise.
+        The table here keeps climbing as the tree gets smaller: XOR4 (6390
+        digits) until the print-once leaf took it to 2842, then XOR5 until
+        dropping the complement construction took that to 3107.  Both fell
+        back under the default, so the check moves up rather than losing the
+        raise it exists to exercise.
         """
-        xor5 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(32))
-        program = boolean.factor(xor5)
+        xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
+        program = boolean.factor(xor6)
         assert program.isdigit()
         assert len(program) > sys.get_int_max_str_digits()
 
@@ -1122,13 +1125,13 @@ class TestFactor:
 
         The count is a bit-length estimate, not a conversion: sizing it
         exactly means doing the very thing the check exists to avoid.  It is
-        asserted as the "about" it reports -- here the estimate happens to
-        land on XOR4's real 2842 digits, but nothing makes it have to.  The
+        asserted as the "about" it reports -- it lands one over XOR4's real
+        1702 digits, which is the point: it is a bound, not a count.  The
         limit has to stay restored on the refusing path too.
         """
         before = sys.get_int_max_str_digits()
         xor4 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
-        with pytest.raises(ValueError, match="about 2842 digits"):
+        with pytest.raises(ValueError, match="about 1703 digits"):
             boolean.factor(xor4, max_digits=1000)
         assert sys.get_int_max_str_digits() == before
 
