@@ -8,7 +8,7 @@ program has them embedded, and takes no input at all.
 
 | Program | Language | Table | Input | Expected output |
 | --- | --- | --- | --- | --- |
-| `123.txt` | 123 | `0001` | embedded 01 | (nothing) |
+| `123.txt` | 123 | `0001` | embedded 01 | not the answer -- see note |
 | `3d-brainfuck.txt` | 3D Brainfuck | `0001` | 0 1 | '0' |
 | `3x.txt` | 3x | `0001` | 0 1 | '0' |
 | `6-5.txt` | 6-5 | `0001` | 0 1 | '0' |
@@ -80,7 +80,7 @@ program has them embedded, and takes no input at all.
 
 ## Notes
 
-- **123** -- 123 has no output: the program halts for a 0 result and loops forever for a 1, so only the halting branch is committed
+- **123** -- 123 answers by terminating: it halts for a 0 result and loops forever for a 1, so only the halting branch is committed. Its output is not the answer and is not compared -- the merge pops through location -2 and prints whatever that cell holds, which for this program is the two bytes 'VO with a diaeresis'
 - **a-painter-ant** -- A Painter Ant has no output: it paints a grid and the answer is which of the two leaf rings the ant rests in, shown by 'o' (on black, a zero) or '@' (on white, a one)
 - **algebraic-programming-language** -- an executed line prints its result, so the answer ends in a newline
 - **arrowqueue** -- ArrowQueue answers by termination -- it halts for a 0 result and loops forever for a 1, so only the halting branch is committed.  The headings printed are its interpreter-only queue dump, which the verdict does not read: the answer is that the program halted at all

@@ -797,7 +797,7 @@ class _SteppableMachine(Protocol):
 
     Deliberately smaller than :class:`_StepMachine`: driving a machine to
     its halt never calls ``snapshot()``, and requiring one would exclude
-    the very callers this is for.  :class:`~esolangs.debug.Debugger` is the
+    the very callers this is for.  :class:`~esolangs.debugger.Debugger` is the
     case that matters -- it forwards ``step``/``halted`` and records a
     watch on the way, but keeps no snapshot of its own.
     """
@@ -824,7 +824,7 @@ def run_until_halt(
     when it was still going when the run stopped.
 
     Every consumer of :func:`make_vm` was writing this loop out again --
-    ``tests/test_vm_protocol.py`` and :meth:`~esolangs.debug.Debugger.run`
+    ``tests/test_vm_protocol.py`` and :meth:`~esolangs.debugger.Debugger.run`
     among them -- with a different budget each time and a different thing
     done on overrun: an ``AssertionError``, a silent return, a ``False``.
     Those differences are real and stay with the callers.  What is shared is the
