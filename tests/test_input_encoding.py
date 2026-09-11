@@ -123,3 +123,68 @@ class TestRemainingGuards:
         """Only the slot refusal names a Python call worth rewriting."""
         other = TemplateError("brainfuck reads its inputs rather than embedding them")
         assert _template_hint(other, "brainfuck") == str(other)
+
+
+class TestAnswerMode:
+    """The structured counterpart to the ``answer_convention`` prose."""
+
+    def test_every_language_declares_one_of_three_modes(self) -> None:
+        modes = {esolangs.describe(n)["answer_mode"] for n in esolangs.list_languages()}
+        assert modes == {"output", "termination", "dump"}
+
+    def test_taglates_shape_is_not_reported_as_ordinary(self) -> None:
+        """It read ``line_per_bit``, which is what a caller branches on."""
+        assert esolangs.describe("Taglate")["input_shape"] == "char_stream"
+
+    @pytest.mark.slow
+    def test_output_mode_means_the_printed_answer_is_the_table(self) -> None:
+        """The classification is held to the interpreters, not just asserted.
+
+        A structured field that lies is worse than the prose it replaces, so
+        every language claiming ``output`` is run: the last non-whitespace
+        character of each row must be that row of the table.
+        """
+        wrong = []
+        for name in esolangs.list_languages():
+            facts = esolangs.describe(name)
+            if facts["parameterized"] or facts["answer_mode"] != "output":
+                continue
+            program = esolangs.generate(name, XOR)
+            got = "".join(
+                esolangs.run(
+                    name,
+                    program,
+                    stdin=esolangs.encode_inputs(name, [(row >> 1) & 1, row & 1]),
+                    timeout=30,
+                ).strip()[-1:]
+                or "?"
+                for row in range(4)
+            )
+            if got != XOR:
+                wrong.append((name, got))
+        assert wrong == []
+
+
+class TestEveryDeliberateErrorHasTheBase:
+    """``except EsolangError`` is the whole handler, option errors included."""
+
+    @pytest.mark.parametrize(
+        "call",
+        [
+            lambda: esolangs.generate("brainfuck", XOR, width=0),
+            lambda: esolangs.generate("brainfuck", XOR, width="20"),
+            lambda: esolangs.run("brainfuck", "+.", timeout=0),
+            lambda: esolangs.encode_inputs("brainfuck", [2, 0]),
+        ],
+    )
+    def test_an_invalid_option_is_an_esolangerror(self, call: object) -> None:
+        """These were bare ValueErrors, so the documented base class missed."""
+        with pytest.raises(esolangs.ArgumentError) as exc:
+            call()  # type: ignore[operator]
+        assert isinstance(exc.value, esolangs.EsolangError)
+        assert isinstance(exc.value, ValueError), "the old base still catches"
+
+    def test_encode_inputs_refuses_a_non_bit(self) -> None:
+        """A 2 encoded as a 1 and answered a different row, in silence."""
+        with pytest.raises(esolangs.ArgumentError, match="must each be 0 or 1"):
+            esolangs.encode_inputs("brainfuck", [2, 0])
