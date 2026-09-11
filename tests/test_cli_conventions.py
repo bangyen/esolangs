@@ -148,3 +148,32 @@ class TestVersion:
             call_main(["--version"], capsys)
         assert exc.value.code == 0
         assert esolangs.__version__ in capsys.readouterr().out
+
+
+class TestRoundThreeFixes:
+    """What the third blind pass hit."""
+
+    def test_a_negative_watch_cell_is_refused(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It printed cell 0's history under the name -1: a wrong answer."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["debug", "--watch-cell", "-1", "brainfuck", _program(tmp_path, "+++")],
+                capsys,
+            )
+        assert exc.value.code == 2
+        assert "must not be negative" in capsys.readouterr().err
+
+    def test_the_template_refusal_names_the_cli_flag(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It pointed a CLI-only user at ``esolangs.instantiate(...)``."""
+        path = tmp_path / "t.txt"
+        path.write_text(esolangs.generate("Minifuck", "0110"))
+        with pytest.raises(SystemExit) as exc:
+            call_main(["run", "Minifuck", str(path)], capsys)
+        assert exc.value.code == 2
+        err = capsys.readouterr().err
+        assert "esolangs generate --bits" in err
+        assert "esolangs.instantiate" not in err

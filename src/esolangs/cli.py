@@ -29,7 +29,7 @@ from esolangs import (
     run,
 )
 from esolangs.debugger import make_debugger
-from esolangs.exceptions import EsolangError
+from esolangs.exceptions import EsolangError, TemplateError
 from esolangs.registry import LANGUAGES
 from esolangs.tools.wrap import DEFAULT_WIDTH
 
@@ -70,7 +70,8 @@ options:
                        runnable program -- see `esolangs generate --help`
                 ex     a committed program in examples/
 """,
-    "generate": f"""usage: esolangs generate [--width N] <language> <truth-table>
+    "generate": f"""usage: esolangs generate [--width N] [--bits BITS] <language>
+                         <truth-table>
 
 Print a program in <language> computing <truth-table>.
 
@@ -91,9 +92,12 @@ options:
                own way, and a 0/1 in the slot is a different program.
   --width [N]  wrap the program to N columns (default {DEFAULT_WIDTH}) so it
                is readable in a diff.  Breaks only between whole tokens.
-               Grid and newline-sensitive languages keep their own layout
-               and ignore it.  A bare --width takes the default, so the next
-               word is read as the language, not as a width.
+               Newline-sensitive languages ignore it, and the generators
+               that lay out their own shape (LaserFuck, Streetcode) build a
+               narrower shape rather than reflowing one.  A template is
+               wrapped only once --bits has filled its slots.  A bare
+               --width takes the default, so the next word is read as the
+               language, not as a width.
 
 examples:
   esolangs generate brainfuck 0110
@@ -104,12 +108,16 @@ examples:
 Run a program through its interpreter and print what it writes.
 
 The program is read from <program-file>; its input is this command's stdin.
-Most languages read one line per input bit, but not all -- Grapheme reads
-%/A rather than 0/1, Clockwise and Fargo take every bit on one line -- so
-check `esolangs list --details` and examples/boolean/MANIFEST.md before
-assuming.  Feeding the wrong encoding is answered with a wrong result, not
-an error.  A program that reads more than it is given fails with an
-input-exhausted error rather than hanging.
+Most languages read one line per input bit, but four do not: Grapheme reads
+%/A rather than 0/1, Clockwise and Fargo take every bit on one line, and
+Taglate reads characters with no trailing newline.  Feeding the wrong
+encoding is answered with a wrong result, not an error, so check the Input
+column of examples/boolean/MANIFEST.md -- or have the API spell it for you:
+
+    python -c 'import esolangs; print(esolangs.encode_inputs("Taglate",[1,0,1]))'
+
+A program that reads more than it is given fails with an input-exhausted
+error rather than hanging.
 
 Output is written verbatim, with no trailing newline added, so it can be
 compared or piped byte for byte.  One is added when stdout is a terminal,
@@ -145,6 +153,21 @@ options:
 # thing was one line of 486 comma-separated values for a 486-step program,
 # which buries the ends that are actually read.
 _HISTORY_SHOWN = 40
+
+
+def _template_hint(exc: TemplateError, language: str) -> str:
+    """Re-point a template refusal at the CLI flag that fills the slots.
+
+    The library's message names ``esolangs.instantiate(...)``, which is the
+    right answer for a Python caller and a dead end for someone who has
+    only ever typed ``esolangs``.
+    """
+    message = str(exc)
+    pointer = "fill them with esolangs.instantiate("
+    if pointer not in message:
+        return message
+    head = message.split(pointer)[0]
+    return f"{head}fill them with: esolangs generate --bits <bits> {language} <table>"
 
 
 def _fail(message: str, code: int = 2) -> None:
@@ -341,6 +364,11 @@ def _debug(rest: list[str]) -> None:
     for name in ("--steps", "--watch-cell"):
         if name in options and not _is_int(options[name]):
             _fail(f"{name} must be an integer, got {options[name]!r}")
+    # A negative cell index is Python list indexing leaking through: it
+    # printed cell 0's history under the name -1, which is a wrong answer
+    # rather than an empty one.  Every other negative here is refused.
+    if "--watch-cell" in options and int(options["--watch-cell"]) < 0:
+        _fail(f"--watch-cell must not be negative, got {options['--watch-cell']}")
     # A negative bound is not a smaller bound, it is no bound: the run went
     # unbounded, which is the one thing --steps exists to prevent.
     if "--steps" in options and int(options["--steps"]) < 0:
@@ -356,6 +384,8 @@ def _debug(rest: list[str]) -> None:
     try:
         check_runnable(language, program)
         dbg = make_debugger(language, program, stdin)
+    except TemplateError as exc:
+        _fail(_template_hint(exc, language))
     except EsolangError as exc:
         _fail(str(exc))
     except ValueError as exc:
@@ -401,7 +431,9 @@ def _generate(rest: list[str]) -> None:
             bits = options["--bits"]
             if set(bits) - {"0", "1"} or not bits:
                 _fail(f"--bits must be a string of 0s and 1s, got {bits!r}")
-            program = instantiate(rest[0], program, [int(b) for b in bits])
+            # The width applies to the *filled* program: a template is left
+            # unwrapped because no wrapper treats a {Xi} slot as a token.
+            program = instantiate(rest[0], program, [int(b) for b in bits], width)
     except EsolangError as exc:
         _fail(str(exc))
     print(program)
@@ -425,6 +457,8 @@ def _run(rest: list[str]) -> None:
     stdin = "" if sys.stdin.isatty() else sys.stdin.read()
     try:
         output = run(language, program, stdin, timeout)
+    except TemplateError as exc:
+        _fail(_template_hint(exc, language))
     except EsolangError as exc:
         # A usage error (an unknown language) is still 2; anything the
         # program itself did is the program's failure, and exits 1.
