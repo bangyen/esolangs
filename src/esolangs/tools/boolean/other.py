@@ -1510,7 +1510,97 @@ def _flowchart_render(cells: dict[tuple[int, int], str]) -> str:
     return "\n".join("".join(row).rstrip() for row in grid)
 
 
-def flowchart(truth_table: str) -> str:
+def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
+    """Paint the tree with its subtrees stacked rather than side by side.
+
+    The flat drawing gives every leaf a column of its own, so it grows as
+    ``2 ** n``.  Stacking separates the two subtrees by *rows* instead: the
+    one-branch hangs directly below the switch, and the zero-branch falls
+    down a column of its own, past every row the one-branch occupies, to
+    start below it.  Every node then sits on the same column, and what the
+    width costs is height -- the drawing is as tall as the whole tree.
+
+    A switch entered travelling down sends register 1 to the grid-east and
+    register 0 to the grid-west, so neither branch may simply continue
+    down; each is caught by a corner and routed.  The one-branch turns down
+    one column east, comes back west a row later, and drops onto the spine.
+    The zero-branch runs west to a column reserved for its depth, falls the
+    height of the one-branch, and comes back east.
+
+    Those corridors need no crossings, which is what keeps the drawing
+    simple.  A corridor for depth ``d`` occupies column ``d``, and
+    everything below it in the tree is at a *deeper* depth and so further
+    east; the rails that run west to reach it do so on the switch's own
+    row, above every descendant.  So no rail and no corridor ever meet.
+    """
+    n = (len(truth_table) - 1).bit_length()
+    # Columns 0..n-1 are the corridors, one per depth; the tree itself sits
+    # on ``spine``, far enough east that a leaf's five-cell ``(( ))`` clears
+    # them.
+    spine = n + 2
+    cells: dict[tuple[int, int], str] = {}
+
+    def put(x: int, y: int, text: str) -> None:
+        for i, char in enumerate(text):
+            cells[(x + i, y)] = char
+
+    def reads(y: int, count: int) -> int:
+        """Draw ``count`` ``/ /`` nodes down the spine; return the row after."""
+        for _ in range(count):
+            put(spine - 1, y, "/ /")
+            cells[(spine, y + 1)] = "│"
+            y += 2
+        return y
+
+    def leaf(y: int, depth: int, bit: str) -> int:
+        """Draw the leaf for ``bit``, entered at ``(spine, y)``.
+
+        A folded leaf still owes the reads of the levels it skipped -- the
+        reads are the interface -- and here they simply stack above it,
+        which is what the flat drawing spends a rail on.
+        """
+        y = reads(y, n - depth)
+        put(spine - 1, y, "[ }" if bit == "1" else "{ ]")
+        cells[(spine, y + 1)] = "│"
+        put(spine - 1, y + 2, "\\ \\")
+        cells[(spine, y + 3)] = "│"
+        put(spine - 2, y + 4, "(( ))")
+        return y + 5
+
+    def walk(lo: int, hi: int, depth: int, y: int) -> int:
+        """Draw the subtree for ``truth_table[lo:hi]``; return the row after."""
+        if len(set(truth_table[lo:hi])) == 1:
+            return leaf(y, depth, truth_table[lo])
+        put(spine - 1, y, "/ /")
+        cells[(spine, y + 1)] = "│"
+        put(spine - 1, y + 2, "< >")
+        # b=1: east out of the switch, down, back west, onto the spine
+        cells[(spine + 2, y + 2)] = "┐"
+        cells[(spine + 2, y + 3)] = "┘"
+        cells[(spine + 1, y + 3)] = "─"
+        cells[(spine, y + 3)] = "┌"
+        half = (hi - lo) // 2
+        below = walk(lo + half, hi, depth + 1, y + 4)
+        # b=0: west to this depth's own column, down past everything the
+        # one-branch drew, then east again onto the spine
+        for x in range(depth + 1, spine - 1):
+            cells[(x, y + 2)] = "─"
+        cells[(depth, y + 2)] = "┌"
+        for row in range(y + 3, below):
+            cells[(depth, row)] = "│"
+        cells[(depth, below)] = "└"
+        for x in range(depth + 1, spine):
+            cells[(x, below)] = "─"
+        cells[(spine, below)] = "┐"
+        return walk(lo, lo + half, depth + 1, below + 1)
+
+    walk(0, len(truth_table), 0, 2)
+    put(spine - 1, 0, "( )")
+    cells[(spine, 1)] = "│"
+    return cells
+
+
+def flowchart(truth_table: str, width: int | None = None) -> str:
     """Build a Flowchart program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -1561,9 +1651,27 @@ def flowchart(truth_table: str) -> str:
     that would benefit from the wider coverage; it costs a ``4n``-row
     prologue and depends on push-top/pop-bottom being FIFO, a silent
     wrong-answer trap if the pop is ever changed to pop-top.
+    ``width`` asks for a column count.  The flat drawing gives every leaf a
+    column of its own and so grows as ``2 ** n``; a width under that is met
+    by *stacking* the tree instead, separating the two subtrees by rows and
+    putting every node on one column.  See :func:`_flowchart_stacked` for
+    how the branches are routed and why the corridors never cross.  The
+    stacked drawing is ``n + 5`` columns whatever the table, so the width
+    stops tracking ``n`` -- and pays for it in height, being as tall as the
+    whole tree.  A width under that floor returns the narrower of the two
+    rather than refusing, and a heavily folded table is sometimes already
+    narrower flat.
     """
     _validate_truth_table(truth_table)
-    return _flowchart_render(_flowchart_cells(truth_table))
+    flat = _flowchart_render(_flowchart_cells(truth_table))
+    if width is None or max(len(line) for line in flat.split("\n")) <= width:
+        return flat
+    stacked = _flowchart_render(_flowchart_stacked(truth_table))
+    if max(len(line) for line in stacked.split("\n")) < max(
+        len(line) for line in flat.split("\n")
+    ):
+        return stacked
+    return flat
 
 
 def _dinac_name(i: int) -> str:
