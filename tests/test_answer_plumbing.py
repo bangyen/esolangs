@@ -1173,3 +1173,110 @@ class TestTheDebuggerMirrorsSnapshot:
         before = debugger.snapshot()
         debugger.step()
         assert debugger.snapshot() != before
+
+
+class TestAnInterpreterLimitIsStillAnEsolangError:
+    """Qoibl's interpreter recurses, and Python's stack is finite."""
+
+    @staticmethod
+    def _parity(n: int) -> str:
+        """Return the parity table of arity ``n`` -- reliably a hard one."""
+        return "".join(str(bin(i).count("1") % 2) for i in range(2**n))
+
+    @pytest.mark.slow
+    def test_a_recursion_error_does_not_escape(self) -> None:
+        """It was the one exception in the package that was not ours.
+
+        The package makes exactly one promise about errors -- that every
+        deliberate failure derives from ``EsolangError`` -- and a sweep
+        written to it crashed here.
+        """
+        with pytest.raises(esolangs.EsolangError) as caught:
+            esolangs.verify("Qoibl", self._parity(6))
+        assert isinstance(caught.value, esolangs.InterpreterLimitError)
+        assert "recursed deeper" in str(caught.value)
+
+    def test_it_is_a_halt_error(self) -> None:
+        """The run ended abnormally, which is what that base means."""
+        assert issubclass(esolangs.InterpreterLimitError, esolangs.HaltError)
+        assert "InterpreterLimitError" in esolangs.__all__
+
+    def test_it_is_not_a_generator_cap(self) -> None:
+        """A cap declines to build; this built and could not be run."""
+        assert not issubclass(
+            esolangs.InterpreterLimitError, esolangs.GeneratorCapError
+        )
+
+
+class TestBothWidthAwareGeneratorsCanOverrun:
+    """The docstring named LaserFuck; Streetcode is the worse of the two."""
+
+    @staticmethod
+    def _overruns(name: str, table: str) -> tuple[int, int]:
+        """Return how many widths overran, and by the worst margin."""
+        counted = [
+            max(len(line) for line in esolangs.generate(name, table, w).splitlines())
+            - w
+            for w in range(8, 124, 4)
+        ]
+        over = [margin for margin in counted if margin > 0]
+        return len(over), max(over, default=0)
+
+    def test_both_width_aware_generators_can_overrun(self) -> None:
+        """Which is the claim; the numbers live here rather than in prose."""
+        for name in ("LaserFuck", "Streetcode"):
+            widths, worst = self._overruns(name, "10010110")
+            assert widths > 0, f"{name} never overran"
+            assert worst > 0
+
+    def test_streetcode_is_the_worse_of_the_two(self) -> None:
+        """The specific thing the docstring got backwards."""
+        laser_widths, laser_worst = self._overruns("LaserFuck", "10010110")
+        street_widths, street_worst = self._overruns("Streetcode", "10010110")
+        assert street_widths > laser_widths
+        assert street_worst > laser_worst
+
+    def test_they_are_exactly_the_width_aware_pair(self) -> None:
+        """So a third one appearing makes the sentence above wrong loudly."""
+        aware = {
+            name
+            for name in esolangs.list_languages()
+            if esolangs.describe(name)["width_aware"]
+        }
+        assert aware == {"LaserFuck", "Streetcode"}
+
+
+class TestTheCheckProgramExampleRuns:
+    """Its inline one-liner raised for two of the three languages it names."""
+
+    @pytest.mark.parametrize("name", ["CV(N)(C)", "Grapheme", "NoComment"])
+    def test_reading_a_committed_example_works(self, name: str) -> None:
+        """The newline fix is real; the snippet showing it was not runnable."""
+        import pathlib as _pathlib
+
+        path = _pathlib.Path(str(esolangs.describe(name)["examples"][0]))
+        facts = esolangs.describe(name)
+        stdin = "" if not facts["reads_input"] else esolangs.encode_inputs(name, [0, 1])
+        assert esolangs.run(name, path, stdin, 20) is not None
+
+
+class TestEvaluateNoLongerClaimsToPayTheTimeout:
+    """Its docstring and ``Debugger.snapshot``'s disagreed about the same thing."""
+
+    def test_a_termination_table_returns_far_inside_the_bound(self) -> None:
+        """Five seconds per 1-row would be twenty for this table."""
+        import time
+
+        start = time.monotonic()
+        assert esolangs.evaluate("123", "0110") == "0110"
+        assert time.monotonic() - start < 2.0
+
+    def test_the_docstring_says_the_proof_is_the_mechanism(self) -> None:
+        """Prose, checked, because it was prose that had gone stale."""
+        doc = esolangs.evaluate.__doc__
+        assert doc is not None
+        # Not a search for the old phrase: the correction quotes it in
+        # order to retract it, so an absence test fails on the fix.  What
+        # has to be there is the mechanism and the denial.
+        assert "repeated machine state" in doc
+        assert "do not pay it" in doc
