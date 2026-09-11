@@ -958,11 +958,20 @@ def _wii2d_layout(
     # The chain cannot fold -- each junction is where one input is embedded
     # and each detour row hangs beneath its own junction -- so the narrowest
     # program this builds is the chain plus the one column the 'v' leaves
-    # on.  A width at or above the flat form folds nothing, so asking for a
-    # generous width returns exactly what no width returns.
+    # on.
+    #
+    # Whether to fold at all is *not* decided here, and that is the point.
+    # ``flat_cols`` counts grid cells, while the program's width is counted
+    # in characters -- and a junction cell holds a ``{Xi}`` placeholder,
+    # which is four characters wide in the template.  Comparing the
+    # requested width against the cell count declined to fold programs that
+    # rendered well past it: parity at ``n == 6`` is 80 cells and 92
+    # characters, so a request for 80 came back at 92.  :func:`wii2d`
+    # measures the rendered flat form and only asks for a fold when that is
+    # too wide, so this folds whenever it is given a width.
     folded: dict[tuple[int, int], str] = {}
     total_cols = flat_cols
-    if width is not None and width < flat_cols:
+    if width is not None:
         span = max(_WII2D_MIN_FOLD_SPAN, min(width, decode_start + 1))
         folded = _wii2d_fold_decode(
             decode_start, "+" * shift_to_ascii_digit + print_op, span, n + 1
@@ -1097,4 +1106,10 @@ def wii2d(truth_table: str, width: int | None = None) -> str:
             "refused promptly rather than left to diverge"
         )
     start, routes = result
+    flat = "\n".join(_wii2d_layout(n, start, routes, None))
+    if width is None or max(len(line) for line in flat.split("\n")) <= width:
+        return flat
+    # Measured on the rendered text rather than on the grid's cell count: a
+    # junction cell is a four-character ``{Xi}`` in the template, so the two
+    # differ by more than the fold's own margin.
     return "\n".join(_wii2d_layout(n, start, routes, width))
