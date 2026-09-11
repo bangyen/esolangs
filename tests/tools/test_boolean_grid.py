@@ -2124,20 +2124,57 @@ class TestAlightWidth:
                     bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                     assert self._run(narrow, bits) == table[combo], (table, width)
 
-    def test_the_table_literal_is_the_floor(self) -> None:
-        """A string is one token of one command, so it sets how narrow it goes.
+    def test_splitting_the_literal_takes_the_floor_off_the_table(self) -> None:
+        """The literal was the floor; chunking it means the arity no longer is.
 
-        Everything else in the program is ``O(n)``; the literal is
-        ``2 ** n`` characters and cannot be split, so the floor doubles with
-        each input even though the flat program's width barely grows.
+        A string is one token of one command, so an unsplit table literal
+        makes the floor ``2 ** n`` -- 48, 64, 96, 160 columns at n=4..7,
+        doubling with every input even though the flat program's width
+        barely grows.  Split into guarded chunks, the floor is one chunk
+        plus its guard and the turn they share a row with, which the width
+        picks: it stops tracking ``n`` altogether.
         """
-        for n in (2, 3, 4, 5):
+        floors = {}
+        for n in (4, 5, 6, 7):
             table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
             narrow = boolean.alight(table, 1)
-            floor = max(len(row) for row in narrow.splitlines())
+            floors[n] = max(len(row) for row in narrow.splitlines())
+            # the unsplit literal alone would have been wider than this
             literal = len(f'set r at{{"{table}", i+0.5}};')
-            # the floor is that command plus the turn that shares its row
-            assert literal < floor <= literal + 13, (n, floor, literal)
+            assert floors[n] < literal or n == 4, (n, floors[n], literal)
+        assert max(floors.values()) - min(floors.values()) <= 4, floors
+
+    def test_a_width_is_met_at_every_arity(self) -> None:
+        """Which is what splitting the literal buys: 80 columns holds at n=7.
+
+        Unsplit, the literal alone put n=6 at 96 columns however narrow the
+        request.
+        """
+        for n in (4, 5, 6, 7):
+            table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
+            for width in (60, 80):
+                narrow = boolean.alight(table, width)
+                assert max(len(row) for row in narrow.splitlines()) <= width, (n, width)
+
+    def test_a_chunk_and_its_guard_stay_on_one_row(self) -> None:
+        """``skip`` guards the *next command along the heading*.
+
+        A fold between the two would leave the ``skip`` skipping the turn
+        instead of the lookup, and the walk would carry straight on off the
+        grid.  So the pair is one unit to the folder, and the check is that
+        every ``skip`` has its lookup after it on the same row -- read in
+        the direction that row runs.
+        """
+        table = "".join(str(bin(i).count("1") % 2) for i in range(64))
+        rows = boolean.alight(table, 60).splitlines()
+        seen = 0
+        for row in rows:
+            for text in (row, row[::-1]):
+                for index in range(len(text) - 4):
+                    if text[index : index + 4] == "skip":
+                        seen += 1
+                        assert "set r at{" in text[index:], text
+        assert seen, "no guarded chunk in the drawing"
 
     def test_a_folded_row_keeps_the_space_inside_its_turn(self) -> None:
         """``turn right`` has a space, and a vertical turn writes it as a cell.
