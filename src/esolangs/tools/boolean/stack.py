@@ -3,6 +3,7 @@
 from functools import cache
 from itertools import product
 
+from esolangs.exceptions import GeneratorCapError
 from esolangs.tools.boolean.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -81,6 +82,51 @@ def _grapheme_push65() -> str:
     return "FGF" + "FEF" + "FAF" + "R" + "B"  # 70 - (50 / 10)
 
 
+#: The reserved variable key, holding the 65 that normalizes an input bit.
+_GRAPHEME_CONST_KEY = 90
+
+#: Digit letters a variable key may use, in slot order.
+#:
+#: A key is written ``F<letter>F``, where the letter is the digit and the
+#: ``F``s delimit int mode -- so the letter ``F`` cannot be a digit, and
+#: ``chr(key // 10 + 64)`` walked straight into it.  Slot 5's key of 60
+#: encoded as ``FFF``: three delimiters and no number.  The framing then
+#: collapsed for the rest of the program, and the *next* slot's letter was
+#: then executed as a command.  Restoring the old alphabet reproduces both
+#: deaths: six essential inputs raised ``ProgramError: Grapheme produced no
+#: answer this could read``, and seven raised ``HaltError: G needs a string
+#: or a function``.
+#:
+#: ``I`` is skipped for a second, quieter collision.  It is 90, the key the
+#: normalizing constant already lives in, so with only ``F`` removed slot 7
+#: stores its input bit over the 65.  That one does not raise -- eight
+#: essential inputs still come out right, because slot 7 is read last and
+#: nothing reads the constant afterwards, and it is *nine* that returns a
+#: wrong table.  A wrong answer that arrives quietly is the worse of the
+#: two, and it is the reason this list is filtered rather than shortened.
+#:
+#: Both walls stood at *essential* inputs, not arity: a table of any size
+#: that reduces to five or fewer inputs always worked, which is why the
+#: build sweep -- which never runs what it builds -- saw nothing.
+_GRAPHEME_KEY_LETTERS = [
+    letter
+    for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    if letter not in {"F", chr(_GRAPHEME_CONST_KEY // 10 + 64)}
+]
+
+
+def _grapheme_slot_key(slot: int) -> int:
+    """Return the variable key holding input ``slot``."""
+    if slot >= len(_GRAPHEME_KEY_LETTERS):  # pragma: no cover - see below
+        # Twenty-four usable keys against a table that would need 2**24
+        # rows to reach them; unreachable, and refused rather than aliased.
+        raise GeneratorCapError(
+            f"Grapheme has {len(_GRAPHEME_KEY_LETTERS)} variable keys, "
+            f"and slot {slot} needs one past them"
+        )
+    return (ord(_GRAPHEME_KEY_LETTERS[slot]) - 64) * 10
+
+
 def _grapheme_push_key(key: int) -> str:
     """Grapheme code pushing the integer variable key ``key`` (a multiple of 10)."""
     return "F" + chr(key // 10 + 64) + "F"
@@ -157,7 +203,9 @@ def _grapheme_head(truth_table: str, n: int) -> tuple[str, str, int]:
     # written over the reduced table's slots, so it never names a dropped one.
     slot_of = {i: s for s, i in enumerate(used)}
 
-    prog = [_grapheme_push65() + _grapheme_push_key(90) + "C"]  # vars[90] = 65
+    prog = [
+        _grapheme_push65() + _grapheme_push_key(_GRAPHEME_CONST_KEY) + "C"
+    ]  # the normalization constant
     for i in range(n):
         if i not in slot_of:
             prog.append("W")  # read the ignored input and abandon it
@@ -165,11 +213,11 @@ def _grapheme_head(truth_table: str, n: int) -> tuple[str, str, int]:
         # W reads the bit; normalize to 0/1; store under key 10*(slot+1).
         prog.append(
             "W"
-            + _grapheme_push_key(90)
+            + _grapheme_push_key(_GRAPHEME_CONST_KEY)
             + "D"
             + "B"
             + "T"
-            + _grapheme_push_key(10 * (slot_of[i] + 1))
+            + _grapheme_push_key(_grapheme_slot_key(slot_of[i]))
             + "C"
         )
     return "".join(prog), table, len(used)
@@ -192,10 +240,14 @@ def _grapheme_side(table: str, width: int, head: str, *, zero_rows: bool) -> str
             if negated:
                 # factor = 1 - b_i
                 body.append(
-                    _grapheme_push1() + _grapheme_push_key(10 * (i + 1)) + "D" + "B"
+                    _grapheme_push1()
+                    + _grapheme_push_key(_grapheme_slot_key(i))
+                    + "D"
+                    + "B"
                 )
             else:
-                body.append(_grapheme_push_key(10 * (i + 1)) + "D")  # factor = b_i
+                # factor = b_i
+                body.append(_grapheme_push_key(_grapheme_slot_key(i)) + "D")
             body.append("S")
         body.append(op)  # fold the minterm into the accumulator
     return head + "".join(body) + "Y"
