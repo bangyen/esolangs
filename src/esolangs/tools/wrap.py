@@ -309,7 +309,24 @@ _SIX_FIVE_COMMAND = r"7[\s\S](?:[78][\s\S]|[\s\S])|8[\s\S]|[\s\S]"
 # oversized token: a 3x program that is one ``[...]`` does not wrap.  An
 # over-wide line is the honest outcome here, since the alternative is a
 # program that prints something else.
-_SOPHIE_COMMAND = r"#\$\d+,|#.,?|."
+# Sophie's loads and branches take a *run* of digits, and the interpreter
+# matches each as one unit: ``#\$(\d+)`` for a numeric load, ``@\$(\d+){``
+# for a numeric branch, and the one-character forms behind them.  The
+# alternatives below are those four, longest first, so a break can never
+# land inside a number or between ``@$48`` and the ``{`` it opens.
+#
+# The earlier pattern spelled the load ``#\$\d+,`` with the comma required,
+# which is a different command -- so ``#$1`` fell through to the
+# one-character form, tokenized as ``#$`` and ``1``, and a newline between
+# them left a load of the character ``'\n'``.
+_SOPHIE_COMMAND = r"@\$\d+\{|@\$?.\{|#\$\d+|#\$?.|."
+
+# A collapsed Minifuck ``[`` skips the next *character* (the interpreter
+# advances ``ind + 2``), so a newline sitting there is what gets skipped and
+# the instruction it should have skipped runs instead.  Consecutive ``[``
+# chain that displacement, so a whole run has to stay with the character
+# after it rather than just the last one.
+_MINIFUCK_COMMAND = r"\[+.|."
 
 # Jaune's operators take an operand *before* them: ``3?`` jumps to label 3,
 # ``2+`` adds 2, and ``v`` is a number too, so ``v?`` jumps to the label the
@@ -477,6 +494,24 @@ def _sophie(program: str, width: int) -> str:
     rather than as anything that looked wrong.
     """
     return wrap_tokens(program, width, _SOPHIE_COMMAND)
+
+
+def _minifuck(program: str, width: int) -> str:
+    """Wrap Minifuck, keeping a ``[`` run with the character it may skip.
+
+    ``[`` skips the next instruction when its flipped bit is zero, and the
+    interpreter spells that as a cursor advance of two *characters* -- so it
+    skips whatever sits there, a newline included.  Put one after a ``[``
+    and the ``[`` consumes it, leaving the instruction it was meant to skip
+    to run.
+
+    A run of ``[`` chains the displacement, which is why the rule covers the
+    whole run rather than a single one: in ``[[x`` a break before ``x`` is
+    unsafe even though the character after the *last* ``[`` is not a
+    newline, because the first ``[`` can skip the second and land the cursor
+    past where the program used to end.
+    """
+    return wrap_tokens(program, width, _MINIFUCK_COMMAND)
 
 
 def _bitdeque(program: str, width: int) -> str:
@@ -656,7 +691,8 @@ WRAPPERS = {
     "brainfuck": wrap_chars,
     "three_d_brainfuck": wrap_chars,
     "circlefuck": wrap_chars,
-    "minifuck": wrap_chars,
+    # Not single-character after all: ``[`` skips the character after it.
+    "minifuck": _minifuck,
     "factor": wrap_chars,
     "home_row": wrap_chars,
     "painfuck": wrap_chars,
