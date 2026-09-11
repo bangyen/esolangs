@@ -28,6 +28,7 @@ from esolangs.debugger import Debugger, StopReason, make_debugger
 from esolangs.exceptions import (
     ArgumentError,
     EsolangError,
+    ExecutionTimeoutError,
     HaltError,
     InputExhaustedError,
     ProgramError,
@@ -71,6 +72,7 @@ __all__ = [
     "ArgumentError",
     "Debugger",
     "EsolangError",
+    "ExecutionTimeoutError",
     "HaltError",
     "InputExhaustedError",
     "ProgramError",
@@ -86,6 +88,7 @@ __all__ = [
     "list_languages",
     "make_debugger",
     "make_vm",
+    "read_answer",
     "run",
 ]
 
@@ -380,7 +383,7 @@ def _run_timed_signal(
 
     def _timeout_handler(_signum: int, _frame: object) -> None:
         # coverage cannot trace a raise inside a signal handler
-        raise HaltError(
+        raise ExecutionTimeoutError(
             f"execution exceeded the {timeout}-second timeout"
         )  # pragma: no cover
 
@@ -446,6 +449,8 @@ def describe(language: str) -> dict[str, object]:
         "input_encoding": example.alphabet if example else ("0", "1"),
         "input_shape": example.input_shape if example else "line_per_bit",
         "answer_mode": example.answer_mode if example else "output",
+        "answer_pattern": example.answer_pattern if example else "",
+        "answer_values": example.answer_values if example else ("0", "1"),
         "answer_convention": (example.note or None) if example else None,
         "examples": examples,
         "wiki_url": f"https://esolangs.org/wiki/{name.replace(' ', '_')}",
@@ -497,6 +502,57 @@ def encode_inputs(language: str, bits: Sequence[int]) -> str:
     if example.input_shape == "one_line":
         return "".join(digits)
     return "".join(f"{digit}\n" for digit in digits)
+
+
+def read_answer(language: str, output: str) -> str:
+    """Return the answer bit a ``language`` program's ``output`` carries.
+
+    The counterpart to :func:`encode_inputs`.  Most languages print the
+    answer and this is the last non-whitespace character; the six that dump
+    their whole final state instead need to be told where in the dump it
+    sits, and two of those genuinely differ -- RAM0's answer is its ``z``
+    register, three lines above the end, and A Painter Ant marks the ant's
+    own cell ``o`` on black and ``@`` on white rather than printing a digit.
+    ``describe(language)["answer_pattern"]`` is the same fact as data.
+
+    This exists because ``answer_mode`` alone was not enough: it said *that*
+    a language dumps without saying *where*, so a verifier still had to read
+    the prose, and one that hardcoded two of the dumps and forgot a third
+    reported a passing language as broken.  The other four dumps happen to
+    end on the answer, which is what makes the gap easy to miss.
+
+    A language whose answer is its *termination* raises
+    :class:`~esolangs.exceptions.ArgumentError`: 123, ArrowQueue and Point
+    Break halt for a 0 and loop forever for a 1, so their output is not the
+    answer and reading one out of it would invent a result.  Bound the run
+    and catch :class:`~esolangs.exceptions.ExecutionTimeoutError` instead.
+    """
+    name = resolve(language)
+    example = _example_for(LANGUAGES[name].id)
+    if example.answer_mode == "termination":
+        raise ArgumentError(
+            f"{name} answers by terminating, not by printing: run it under a "
+            f"timeout and read a caught ExecutionTimeoutError as the 1"
+        )
+    if example.answer_pattern:
+        found = re.findall(example.answer_pattern, output)
+        raw = found[-1] if found else ""
+    else:
+        raw = output.strip()[-1:]
+    zero, one = example.answer_values
+    if raw == one:
+        return "1"
+    if raw == zero:
+        return "0"
+    where = (
+        f"matching {example.answer_pattern!r}"
+        if example.answer_pattern
+        else "as the last character"
+    )
+    raise ProgramError(
+        f"{name} produced no answer this could read: expected {zero!r} or "
+        f"{one!r} {where}, got {output[-40:]!r}"
+    )
 
 
 def _example_for(language_id: str) -> Any:

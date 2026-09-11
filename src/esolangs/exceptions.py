@@ -25,6 +25,18 @@ class HaltError(EsolangError):
     """
 
 
+class ExecutionTimeoutError(HaltError, TimeoutError):
+    """A run was stopped by its wall-clock bound rather than by the program.
+
+    Separate from a plain :class:`HaltError` because the two mean opposite
+    things to a caller checking a truth table.  Three languages answer by
+    *terminating* -- they halt for a 0 and loop forever for a 1 -- so
+    ``except HaltError: answer = 1`` is the natural code, and it would score
+    an invalid-operation halt as a 1.  Catching this instead says only what
+    it means: the clock ran out.
+    """
+
+
 class UnknownLanguageError(EsolangError, ValueError):
     """A language name was not in the registry."""
 
