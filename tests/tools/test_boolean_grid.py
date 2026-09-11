@@ -2061,3 +2061,60 @@ class TestAlightWidth:
             "the turn's own space was stripped away"
         )
         assert "turnright" not in narrow.replace("\n", "")
+
+
+class TestSuperSNUSPWidth:
+    """SNUSP's mirrors, which make this the cheapest fold of any generator here.
+
+    ``\\`` sends an eastward pointer down and a downward one west, so two
+    stacked turn a row round in one row and one column; ``/`` is the mirror
+    image and brings it back.
+    """
+
+    @staticmethod
+    def _run(program: str, bits: list[str]) -> str:
+        import esolangs
+
+        stdin = "".join(f"{bit}\n" for bit in bits)
+        return esolangs.run("Super SNUSP", program, stdin=stdin, timeout=5.0).strip()
+
+    def test_a_width_folds_the_line_and_it_still_computes(self) -> None:
+        """The folded pointer computes what the straight one did."""
+        for table in ("0110", "01101001", "0110100110010110"):
+            n = len(table).bit_length() - 1
+            flat = boolean.super_snusp(table)
+            wide = max(len(row) for row in flat.splitlines())
+            floor = max(len(row) for row in boolean.super_snusp(table, 1).splitlines())
+            assert floor < wide, f"{table} never narrows"
+            for width in (1, 6, 12, 20, wide):
+                narrow = boolean.super_snusp(table, width)
+                columns = max(len(row) for row in narrow.splitlines())
+                assert columns <= max(width, floor), (table, width, columns)
+                for combo in range(2**n):
+                    bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                    assert self._run(narrow, bits) == table[combo], (table, width)
+
+    def test_both_mirrors_are_used(self) -> None:
+        """A program long enough to fold twice turns round and back again.
+
+        One mirror pair would be enough to show a fold; it takes the other
+        to show the pointer coming *back*, and a rule that only ever went
+        one way would pass a one-fold test.
+        """
+        table = "".join(str(bin(i).count("1") % 2) for i in range(32))
+        narrow = boolean.super_snusp(table, 12)
+        assert "\\" in narrow, narrow
+        assert "/" in narrow, narrow
+        assert narrow.count("\\") >= 2, "an east-to-west turn is two mirrors"
+        assert narrow.count("/") >= 2, "so is a west-to-east one"
+
+    def test_a_digit_run_is_never_split_by_a_fold(self) -> None:
+        """``48`` has to stay on one row: a mirror in between would make it 4, 8.
+
+        A digit multiplies what the cell holds by ten and *any* non-digit
+        clears that, so the mirrors of a fold between the two digits would
+        leave 4 and then 8 rather than 48.
+        """
+        for width in range(4, 20):
+            narrow = boolean.super_snusp("0110100110010110", width)
+            assert "48" in narrow, (width, narrow)

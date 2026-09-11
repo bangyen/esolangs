@@ -76,11 +76,13 @@ Algebraic Programming Language both *name* their subexpressions -- the one
 binding subtrees to ``var``s, the other minterms to nullary functions -- so
 what was a single statement becomes one statement a line.  Flowchart stacks
 its drawn tree the way Clockwise stacks its ring, putting every node on one
-column, and Alight steers its walk into a boustrophedon with ``turn``.
-Those ten generators take the width themselves -- :func:`takes_width` is
+column, Alight steers its walk into a boustrophedon with ``turn``, and
+Super SNUSP does the same with mirrors -- ``\`` and ``/`` stacked in pairs,
+which turn a row round in one row and one column, the cheapest fold here.
+Those eleven generators take the width themselves -- :func:`takes_width` is
 how the callers tell -- and never reach :func:`wrap_program`.
 
-Eight of the ten are grids, which :func:`wrap_program` would skip anyway
+Nine of the eleven are grids, which :func:`wrap_program` would skip anyway
 for being already multi-line.  The two naming ones are not: they are
 line-structured source, so they are *also* in the tests' unwrappable table.
 The two facts are independent -- a finished line of either still must not
@@ -96,9 +98,11 @@ the column offsets the turn exists to keep apart; function x(y) floors at
 one node's own line, ``var tN: (bK == "1")<tA, tB>``; APL floors at the
 prefix that reads its inputs, which cannot be split and grows with ``n``;
 Flowchart floors at ``n + 5``, one column of corridor per level beside the
-spine; and Alight floors at its table literal, ``2 ** n`` characters that
-are one token of one command.  A width under the floor returns the
-narrowest program rather than refusing.
+spine; Alight floors at its table literal, ``2 ** n`` characters that are
+one token of one command; and Super SNUSP floors at four columns, since
+every one of its tokens is a single cell but the ``48`` its decode leans
+on.  A width under the floor returns the narrowest program rather than
+refusing.
 
 What Clockwise trades is rows: a stacked level writes the subtree below it
 twice over, so each one doubles the program's height.  Its own fold --
