@@ -39,6 +39,16 @@ class TestBitdeque:
         """GOTO with a nonzero register jumps to a numbered instruction."""
         assert run_and_capture("INVERT GOTO 2 PUSH PUSH") == "1 1"
 
+    def test_goto_does_not_jump_on_a_zero_register(self) -> None:
+        """GOTO is conditional, and nothing else here reaches the false arm.
+
+        Every other GOTO program inverts first, so the register is 1 by the
+        time the jump is read and an unconditional jump passes all of them.
+        Left alone the register is 0, so the GOTO must fall through to the
+        two PUSHes; a jump would land on the second and print one value.
+        """
+        assert run_and_capture("GOTO 2 PUSH PUSH") == "0 0"
+
     def test_goto_target_is_zero_based(self) -> None:
         """GOTO N lands on the Nth command counting from zero.
 
@@ -58,6 +68,21 @@ class TestBitdeque:
         """
         assert run_and_capture("INVERT GOTO12 PUSH PUSH") == ""
 
+    def test_goto_takes_any_run_of_spaces(self) -> None:
+        """The pattern allows any number of spaces, not just nought or one.
+
+        ``test_goto`` uses one and ``test_goto_without_a_space`` uses none,
+        which two different patterns -- ``GOTO *`` and ``GOTO ?`` -- both
+        accept, so neither test tells them apart.  Two spaces is the first
+        case that does: read as one token this jumps to 3 and prints once,
+        while a pattern stopping at one space fails to match the GOTO at
+        all, leaving two bare PUSHes.
+
+        This pins what the interpreter already does rather than narrowing
+        it; nothing says a wider run of spaces should be rejected.
+        """
+        assert run_and_capture("INVERT GOTO  3 PUSH PUSH") == "1"
+
     def test_inject_adds_to_the_front(self) -> None:
         """INJECT puts the register at the front, where PUSH appends.
 
@@ -66,6 +91,17 @@ class TestBitdeque:
         """
         assert run_and_capture("INVERT PUSH INVERT INJECT") == "0 1"
         assert run_and_capture("INVERT PUSH PUSH INVERT INJECT") == "0 1 1"
+
+    def test_push_appends_rather_than_prepending(self) -> None:
+        """PUSH works the back, told apart from INJECT rather than from nothing.
+
+        The two assertions above pair a PUSH with an INJECT symmetrically,
+        so a build where PUSH *also* prepends produces the same deque and
+        passes them -- they pin INJECT against doing nothing, not against
+        PUSH.  Three pushes with the register changing partway are not
+        symmetric: appending gives 1 1 0 and prepending gives 0 1 1.
+        """
+        assert run_and_capture("INVERT PUSH PUSH INVERT PUSH") == "1 1 0"
 
     def test_eject_takes_from_the_front(self) -> None:
         """EJECT pops the front, where POP takes the back.
