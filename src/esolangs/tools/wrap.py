@@ -68,18 +68,21 @@ instruction line into a boustrophedon, LaserFuck steers the beam down and
 back so a straight run of tape commands costs rows instead of columns,
 WII2D folds the run that shifts its answer to an ASCII digit the same way,
 COD stops its left-to-right join of blocks early and swims the cod back
-down and west to the next band, and Clockwise stacks the shallow levels of
-its decision tree so a branch costs one column instead of the ``2 ** (n -
-bit)`` it displaces.  Those five generators take the width themselves --
-:func:`takes_width` is how the callers tell -- and never reach
-:func:`wrap_program`, which would skip them anyway for being already
-multi-line.
+down and west to the next band, Clockwise stacks the shallow levels of its
+decision tree so a branch costs one column instead of the ``2 ** (n -
+bit)`` it displaces, and Dig turns its tree round once so the deep levels
+run back west over the columns the shallow ones used.  Those six
+generators take the width themselves -- :func:`takes_width` is how the
+callers tell -- and never reach :func:`wrap_program`, which would skip
+them anyway for being already multi-line.
 
 Only Clockwise folds to an arbitrary width; in the others something cannot
 move.  WII2D's junction chain carries one input per junction with a detour
-row beneath it, so only the decode's tail folds, and COD's blocks are
-indivisible, so its floor is the widest single block.  A width under the
-floor returns the narrowest program rather than refusing.
+row beneath it, so only the decode's tail folds; COD's blocks are
+indivisible, so its floor is the widest single block; and Dig's tree can
+turn round exactly once, since two bands running the same way would share
+the column offsets the turn exists to keep apart.  A width under the floor
+returns the narrowest program rather than refusing.
 
 What Clockwise trades is rows: a stacked level writes the subtree below it
 twice over, so each one doubles the program's height.  Its own fold --
