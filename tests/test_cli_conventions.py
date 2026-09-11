@@ -605,7 +605,12 @@ class TestTheHintsStayQuietWhenTheyDoNotApply:
         """Exit 1: the program ran and produced something unjudgeable."""
         with pytest.raises(SystemExit) as exc:
             call_main(
-                ["run", "--judge", "brainfuck", _program(tmp_path, "++++++++[>++++++++<-]>.")],
+                [
+                    "run",
+                    "--judge",
+                    "brainfuck",
+                    _program(tmp_path, "++++++++[>++++++++<-]>."),
+                ],
                 capsys,
             )
         assert exc.value.code == 1
