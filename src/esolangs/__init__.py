@@ -15,6 +15,7 @@ Every error raised on purpose derives from
 """
 
 import importlib
+import importlib.metadata as _metadata
 import os
 import pathlib
 import re
@@ -52,7 +53,14 @@ from esolangs.tools.wrap import takes_width as _takes_width
 from esolangs.tools.wrap import wrap_program
 from esolangs.vm import VM, make_vm
 
-__version__ = "0.1.0"
+#: Read from the installed distribution rather than written here: the
+#: hand-kept copy said 0.1.0 while the package was 0.2.0, so ``--version``
+#: named a release that does not exist.  The fallback covers a source tree
+#: that was never installed.
+try:
+    __version__ = _metadata.version("esolangs")
+except _metadata.PackageNotFoundError:  # pragma: no cover - installed in CI
+    __version__ = "0.0.0+unknown"
 
 #: The public surface.  Without it ``dir(esolangs)`` advertised ``Any``,
 #: ``Callable``, ``importlib``, ``pathlib``, ``signal`` and ``threading``
@@ -457,9 +465,9 @@ def encode_inputs(language: str, bits: Sequence[int]) -> str:
       go, so they go on a single line with no separator.
     * **Fargo** reads one *number* before the program starts and indexes
       its bits, so the input is the row index.
-    * **Taglate** reads characters rather than lines: no trailing newline,
-      and an odd input count above one is padded with a leading zero that
-      the program consumes like any other digit.
+    * **Taglate** takes a line per bit, but an odd input count above one is
+      padded with a leading zero it consumes like any other digit, so an
+      n=3 program wants four lines.
 
     Each of those was found by a reader feeding digits a line at a time and
     getting a plausible wrong answer back -- or, for Taglate at three
@@ -488,8 +496,6 @@ def encode_inputs(language: str, bits: Sequence[int]) -> str:
     digits = [one if bit else zero for bit in padded]
     if example.input_shape == "one_line":
         return "".join(digits)
-    if not example.trailing_newline:
-        return "\n".join(digits)
     return "".join(f"{digit}\n" for digit in digits)
 
 

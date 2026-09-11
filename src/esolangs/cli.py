@@ -110,9 +110,10 @@ Run a program through its interpreter and print what it writes.
 The program is read from <program-file>; its input is this command's stdin.
 Most languages read one line per input bit, but four do not: Grapheme reads
 %/A rather than 0/1, Clockwise and Fargo take every bit on one line, and
-Taglate reads characters with no trailing newline.  Feeding the wrong
-encoding is answered with a wrong result, not an error, so check the Input
-column of examples/boolean/MANIFEST.md -- or have the API spell it for you:
+Taglate pads an odd input count with a leading zero line, so its 3-input
+programs read four.  Feeding the wrong encoding is answered with a wrong
+result, not an error, so check the Input column of
+examples/boolean/MANIFEST.md -- or have the API spell it for you:
 
     python -c 'import esolangs; print(esolangs.encode_inputs("Taglate",[1,0,1]))'
 
@@ -125,9 +126,10 @@ where the alternative is the result running into the next prompt.
 
 options:
   --timeout SECONDS  stop the run after this long and fail, rather than
-                     hanging.  There is no bound by default, and several
-                     languages loop forever by design -- three of them
-                     answer a 1 by *not* terminating.
+                     hanging.  There is no bound by default, and three
+                     languages answer a 1 by *not* terminating -- 123,
+                     ArrowQueue and Point Break halt for a 0 and loop
+                     forever for a 1, so a timeout there is the answer.
 """,
     "debug": """usage: esolangs debug [options] <language> <program-file>
 
@@ -219,7 +221,11 @@ def _check_count(
     into a fixable mistake.
     """
     if len(args) < wanted:
-        _fail(HELP[command].splitlines()[0])
+        # The whole synopsis, not its first line: ``generate``'s wraps onto
+        # a second, so a missing truth table was reported with a usage
+        # string that did not mention the truth table.
+        synopsis = HELP[command].split("\n\n", 1)[0]
+        _fail(synopsis)
     if len(args) > wanted:
         hint = (
             f"; --width took no value here (only an integer counts as one), so "

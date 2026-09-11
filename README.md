@@ -38,10 +38,12 @@ newline-sensitive languages retain their own layout.
 
 **How a language reads its input bits is not universal.**  Most take one
 `0`/`1` line each, but Grapheme reads `%`/`A`, Clockwise and Fargo want
-every bit on one line, and Taglate reads characters with no trailing
-newline.  Feeding the wrong shape gets a wrong answer, not an error, so let
+every bit on one line, and Taglate pads an odd input count with a leading
+zero line (its three-input programs read four lines).  Feeding the wrong
+shape gets a wrong answer, not an error, so let
 `esolangs.encode_inputs(language, bits)` build the stdin — or read the
-Input column of [`examples/boolean/MANIFEST.md`](examples/boolean/MANIFEST.md).
+Input column of [`examples/boolean/MANIFEST.md`](examples/boolean/MANIFEST.md),
+which lists every language's.
 
 Seventeen languages have a **parameterized** generator: it embeds the
 inputs in the program rather than reading them, so `generate` returns a

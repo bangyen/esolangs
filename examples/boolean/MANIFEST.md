@@ -98,4 +98,4 @@ for any of them.
 - **minsky-swap** -- Minsky Swap has no output instruction and dumps its registers at halt; the answer is the second one
 - **point-break** -- Point Break answers by termination -- it halts for a 0 result and loops forever for a 1, so only the halting branch is committed.  The numbers printed are its interpreter-only variable dump, which the verdict does not read: the answer is that the program halted at all
 - **ram0** -- RAM0 has no output instruction and dumps its whole state at halt; the answer is the 'z' register
-- **taglate** -- Taglate reads its bits as characters, not lines: no newline after the last one, and an odd input count above 1 is padded with a leading zero the program reads like any other digit. Feeding n lines to an n=3 program exhausts its input; padding at the end instead answers every row whose top bit is set wrongly
+- **taglate** -- Taglate takes a line per bit like most languages, but an odd input count above 1 is padded with a leading zero it reads like any other digit: an n=3 program wants four lines. Feeding three exhausts its input; padding at the end instead answers every row whose top bit is set wrongly
