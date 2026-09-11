@@ -679,19 +679,21 @@ def _polynomial(program: str, width: int) -> str:
     met: 5954 columns become 80.
 
     Folding *inside* a number is safe here, which is the part worth being
-    explicit about: the interpreter's :func:`_parse_program` runs
-    ``re.sub(r"[^\\d...]", "", code)`` over the source before it parses, so
-    a newline between two digits is deleted and the halves are one number
-    again.  It is not that the digits are re-joined by luck -- they are
-    never separate.  The same pass is what makes the existing one-term-a-
-    line layout legal, so this only carries the rule further in.
+    explicit about: the interpreter's ``_parse_program`` deletes every
+    character that is not a digit or one of its few operators from the
+    source before it parses, a newline included, so the halves of a split
+    number are one number again.  It is not that the digits are re-joined
+    by luck -- they are never separate.  The same pass is what makes the
+    existing one-term-a-line layout legal, so this only carries the rule
+    further in.
 
     The ``int`` digit-cap derivation does not trip over this either, though
     it looks like it should: ``sanitize`` sizes the cap from the longest
     digit run it can see, and a fold splits those runs -- but
     ``_parse_program`` hands it the *cleaned* text, in which the runs are
-    already whole.  A dense eight-input execution is in the sweep because
-    small tables cannot reach the cap to show it.
+    already whole.  Checked by parsing a dense eight-input table folded and
+    unfolded and comparing the coefficients, since no small table comes
+    near the 4300-digit default cap.
 
     The header stays with the first term so ``f(x)`` and ``=`` do not become
     lines of their own.
