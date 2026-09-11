@@ -14,13 +14,22 @@ from esolangs.tools.boolean.helpers import (
     stored_inputs,
 )
 
-# Dig blocks for one level of the decision tree.
-_DIG_BRANCH = ">2$~;#@"  # read a bit, store it, then turn on it
-_DIG_CONTINUE = "> "  # a child of a branch: keep facing right into its own block
-_DIG_LEAF = ">$3{}:@"  # set the mole to the result and print it
+# Dig blocks for one level of the decision tree.  ``$`` takes its count
+# from the digit beside it and looks up, right, down, left for one, so the
+# count sits to the *right* of the ``$`` and the whole block is entered
+# from the left: the count digit is itself the first of the commands it
+# arms, which is why three covers a read and a store.
+_DIG_BRANCH = "$3~;#"  # arm three, read a bit, store it, then turn on it
+_DIG_ENTER = ">"  # the root's turn out of the column the mole starts down
+_DIG_CONTINUE = ">"  # a child of a branch: keep facing right into its block
+_DIG_PRINT = "{}:@"  # set the mole to the result and print it
 # ``$`` reads its repeat count from the digit beside it, so a run of cells
 # under one ``$`` is at most nine long.
 _DIG_SPAN = 9
+# Columns one level owns.  A block is five cells and its ``#`` is the last,
+# so the child's ``>`` sits under that ``#`` -- which is the cell before the
+# child's own block, and the stride is what puts it there.
+_DIG_STRIDE = len(_DIG_BRANCH)
 
 
 def decleq(truth_table: str) -> str:
@@ -563,17 +572,36 @@ def dig(truth_table: str) -> str:
     branch spends ``;`` to store its bit for its own ``#``, and a leaf turns
     nowhere, so the read is bare -- and ``$`` covers a run of cells at once,
     so they need no block each.  ``$`` takes its count from the digit beside
-    it, so a run is at most nine cells and longer ones chain, each window
-    spending one cell on the ``>`` that opens the next.
+    it, so a run is at most nine cells and longer ones chain.
+
+    A level costs five columns, not seven.  Two cells the blocks used to
+    spend are not needed.  The ``>`` that opened a block only ever repeated
+    the heading the mole already had -- every block but the root's is
+    entered moving right -- so only the root keeps one, to turn out of the
+    column it starts down.  And the ``@`` that closed a block was never
+    reached: ``;`` writes the bit it just read, so the ``#`` beside it
+    always sees a 0 or a 1 and always turns.  Putting the count to the
+    right of its ``$`` rather than the left is what lets the blocks abut,
+    since ``$`` looks up, right, down, left and takes the first digit it
+    finds.  Chained read windows drop their ``>`` for the same reason: a
+    window ends with the counter back at zero, so the next ``$`` arms
+    itself.
+
+    Nothing about the geometry needed rechecking for the narrower stride,
+    and that is the point of it: a block's ``$`` and ``#`` are the only
+    cells that read a neighbour, they sit at ``5k + 1`` and ``5k + 5``, and
+    the digits that could confuse them sit at ``5k + 2`` and ``5k + 4`` --
+    residues that no two levels share.  The mole's hop from a ``#`` to its
+    child crosses only rows of levels at least two deeper, whose columns
+    start further right than the column it falls down.
     """
     n = _validate_truth_table(truth_table)
     total = 2 ** (n + 1) - 1
     lines = ["" for _ in range(total)]
-    width = len(_DIG_BRANCH)
 
-    def place(row: int, level: int, block: str) -> None:
-        """Write ``block`` on ``row``, in the column ``level`` owns."""
-        lines[row] = lines[row].ljust(level * width) + block
+    def place(row: int, col: int, block: str) -> None:
+        """Write ``block`` on ``row``, starting at column ``col``."""
+        lines[row] = lines[row].ljust(col) + block
 
     def leaf(reads: int, value: int) -> str:
         """Build a leaf that consumes ``reads`` inputs, then prints ``value``.
@@ -583,41 +611,46 @@ def dig(truth_table: str) -> str:
         one ``$`` covers every ``~`` plus the three cells that print.
 
         Its count is a single digit, so a window holds at most nine cells.
-        Past that the windows chain -- each spends one of its nine on the
-        ``>`` that opens the next -- staying linear in the reads where a
-        block apiece is four characters each.
+        Past that the windows chain, and a window that spends its whole
+        count leaves the counter at zero -- which is what arms the next
+        ``$`` with no cell in between.  The chain is sized so the last
+        window is the one that prints: it takes what it must to leave a
+        remainder the final window can still cover.
         """
-        if reads == 0:
-            return _DIG_LEAF.format(value)
         out = ""
-        while reads + 3 > _DIG_SPAN:
-            take = _DIG_SPAN - 3
-            out += f">${take + 1}" + "~" * take
+        while reads > _DIG_SPAN - 3:
+            take = min(_DIG_SPAN - 1, reads - (_DIG_SPAN - 3))
+            out += f"${take + 1}" + "~" * take
             reads -= take
-        return out + f">${reads + 3}" + "~" * reads + f"{value}:@"
+        return out + f"${reads + 3}" + "~" * reads + _DIG_PRINT.format(value)
 
     def walk(row: int, level: int, lo: int, hi: int) -> None:
         """Lay the subtree for ``truth_table[lo:hi]`` at ``row``."""
+        col = _DIG_STRIDE * level + 1
         if level == n or len(set(truth_table[lo:hi])) == 1:
             # A constant slice cannot be told apart by more branching, so
             # this is a leaf and every row below it goes unwritten.  It
             # still reads what it did not branch on: a program whose input
             # count depended on its table would desync a caller feeding
             # several programs from one stream.
-            place(row, level, leaf(n - level, int(truth_table[lo])))
+            place(row, col, leaf(n - level, int(truth_table[lo])))
             return
-        place(row, level, _DIG_BRANCH)
+        place(row, col, _DIG_BRANCH)
         step = 2 ** (n - level - 1)
         half = (hi - lo) // 2
         for child, bounds in (
             (row + step, (lo + half, hi)),
             (row - step, (lo, lo + half)),
         ):
-            # the mole arrives here vertically from the parent's "#";
-            # right-justify the turn so the ">" sits under that "#"
-            place(child, level, _DIG_CONTINUE.rjust(width))
+            # the mole arrives here vertically from the parent's "#", which
+            # is the cell right before the child's own block -- so the turn
+            # goes in that column and the mole walks straight into it
+            place(child, col + _DIG_STRIDE - 1, _DIG_CONTINUE)
             walk(child, level + 1, *bounds)
 
+    # The mole starts at (0, 0) facing right, so the ``'`` below turns it
+    # down column 0 and this is the cell that turns it back out of it.
+    place(total // 2, 0, _DIG_ENTER)
     walk(total // 2, 0, 0, 2**n)
 
     # The root branch sits at row ``total // 2``, so row 0 is only ever a

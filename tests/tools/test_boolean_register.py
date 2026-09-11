@@ -462,15 +462,21 @@ class TestDig:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_xor_layout(self) -> None:
-        """The XOR gate produces the standard two-level decision tree."""
+        """The XOR gate produces the standard two-level decision tree.
+
+        A level is five columns and the blocks abut: the ``#`` a node turns
+        on is the cell right before its child's block, so the child's ``>``
+        goes in that column and the mole walks straight out of the turn
+        into the next ``$``.
+        """
         expected = (
-            "'           > >$30:@\n"
-            "     > >2$~;#@\n"
-            "            > >$31:@\n"
-            ">2$~;#@\n"
-            "            > >$31:@\n"
-            "     > >2$~;#@\n"
-            "            > >$30:@"
+            "'         >$30:@\n"
+            "     >$3~;#\n"
+            "          >$31:@\n"
+            ">$3~;#\n"
+            "          >$31:@\n"
+            "     >$3~;#\n"
+            "          >$30:@"
         )
         assert boolean.dig("0110") == expected
 
