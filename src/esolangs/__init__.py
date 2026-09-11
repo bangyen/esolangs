@@ -613,6 +613,21 @@ def _run(
         _run_timed_signal(run_fn, program, io_obj, timeout)
 
 
+def _sigalrm_noop(_signum: int, _frame: object) -> None:
+    """Swallow an alarm that belongs to a run which has already finished.
+
+    Installed in place of ``SIG_DFL`` by :func:`_run_timed_signal`, because
+    the default disposition for ``SIGALRM`` is to kill the process and a
+    late alarm therefore turned a bounded run into a silent death.
+    """
+
+
+#: The handler ``SIG_DFL`` is replaced with.  A module-level function rather
+#: than a lambda so it compares equal across calls and shows a useful name
+#: in ``signal.getsignal``.
+_SIGALRM_NOOP = _sigalrm_noop
+
+
 def _run_timed_signal(
     run_fn: Callable[..., Any],
     program: str | list[str],
@@ -642,6 +657,23 @@ def _run_timed_signal(
         )  # pragma: no cover
 
     old = signal.signal(signal.SIGALRM, _timeout_handler)
+    if old is signal.SIG_DFL:
+        # **Never give SIGALRM back to the default disposition.**  That
+        # default is to terminate the process, and a stray alarm arriving
+        # once it is restored kills the interpreter outright -- no
+        # traceback, no exception, exit 142.  Two attempts to close the race
+        # that delivers it (ignoring the signal before disarming, then
+        # making the handler refuse to raise into its own teardown) took the
+        # rate from roughly one run in three to about one in four thousand
+        # at a 100-microsecond bound, and neither got it to zero; the exact
+        # path the kernel takes to deliver it was never derived.
+        #
+        # So this stops trying to win that argument.  A no-op handler cannot
+        # kill anything, whenever it is reached, which makes the mechanism
+        # irrelevant instead of understood.  ``old`` becomes the no-op only
+        # when it was the default: a caller who installed their own handler
+        # gets exactly theirs back.
+        old = _SIGALRM_NOOP
     signal.setitimer(signal.ITIMER_REAL, timeout)
     try:
         run_fn(program, io_obj)

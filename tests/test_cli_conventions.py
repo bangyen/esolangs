@@ -260,7 +260,13 @@ class TestRoundSixQol:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """It vanished on a raise, the one case a script most wants to read."""
-        out = call_main(["debug", "brainfuck", _program(tmp_path, ",.")], capsys)
+        # Exits 1 now -- a raise is the program's own failure, which is what
+        # `run` has always called exit 1 -- but the report is still printed
+        # first, which is the property under test.
+        with pytest.raises(SystemExit) as exc:
+            call_main(["debug", "brainfuck", _program(tmp_path, ",.")], capsys)
+        assert exc.value.code == 1
+        out = capsys.readouterr().out
         assert "stopped: raised" in out
         assert "raised: InputExhaustedError" in out
 
@@ -351,10 +357,15 @@ class TestRoundSixQol:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """`run` had --timeout and `debug`, which you reach for on a hang, did not."""
-        out = call_main(
-            ["debug", "--timeout", "1", "brainfuck", _program(tmp_path, "+[]")], capsys
-        )
-        assert "stopped: timeout" in out
+        # 124 now, matching `run`: a bound that fired is not the same
+        # outcome as a program that broke, and a script could not tell.
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["debug", "--timeout", "1", "brainfuck", _program(tmp_path, "+[]")],
+                capsys,
+            )
+        assert exc.value.code == 124
+        assert "stopped: timeout" in capsys.readouterr().out
 
 
 class TestTheShellCanJudgeAnAnswer:
@@ -1161,22 +1172,42 @@ class TestFargoRowIndexIsCheckedForBeingOne:
         """Row 3 of 10010110 is 1."""
         path = tmp_path / "f.txt"
         path.write_text(esolangs.generate("Fargo", "10010110"))
+        # With `--table`, because `--judge` now refuses a row-index language
+        # without one: it cannot check the bit count from a single number,
+        # and every other refusal it makes taught readers it would.
         out, err = call_both(
-            ["run", "--judge", "Fargo", str(path)], capsys, stdin="3\n"
+            ["run", "--judge", "--table", "10010110", "Fargo", str(path)],
+            capsys,
+            stdin="3\n",
         )
         assert out.strip() == "1"
         assert err == ""
 
-    def test_an_out_of_range_index_is_not_claimed_to_be_caught(
+    def test_an_out_of_range_index_is_no_longer_answered(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """`run` does not know the program's arity; `verify` enumerates rows."""
+        """This used to answer it, and this test used to say so.
+
+        `run` still does not know the program's arity -- that has not
+        changed -- but `--judge` no longer pretends it can judge without
+        one: for a row-index language it refuses and names the two ways to
+        supply the arity.  With `--table` the range check then fires.
+        """
         path = tmp_path / "f.txt"
         path.write_text(esolangs.generate("Fargo", "10010110"))
-        out, _err = call_both(
-            ["run", "--judge", "Fargo", str(path)], capsys, stdin="8\n"
-        )
-        assert out.strip() in ("0", "1")
+        with pytest.raises(SystemExit) as exc:
+            call_main(["run", "--judge", "Fargo", str(path)], capsys, stdin="8\n")
+        assert exc.value.code == 2
+        assert "cannot be checked from stdin alone" in capsys.readouterr().err
+
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["run", "--judge", "--table", "10010110", "Fargo", str(path)],
+                capsys,
+                stdin="8\n",
+            )
+        assert exc.value.code == 2
+        assert "out of range" in capsys.readouterr().err
 
 
 class TestDescribeHidesInputFieldsWithNoInput:
@@ -1611,3 +1642,241 @@ class TestTheStdinReaderInProcess:
             main()
         assert exc.value.code == 2
         assert "unknown language" in capsys.readouterr().err
+
+
+class TestTheAnswerCommandDoesOneRow:
+    """`verify` does every row; nothing did one, so a reader wrote a wrapper."""
+
+    @pytest.mark.parametrize(
+        ("bits", "expected"), [("00", "0"), ("01", "1"), ("10", "1"), ("11", "0")]
+    )
+    def test_it_answers_each_row_of_xor(
+        self, bits: str, expected: str, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Both polarities, so a command that always printed 1 would fail."""
+        out = call_main(["answer", "brainfuck", "0110", bits], capsys)
+        assert out.strip() == expected
+
+    @pytest.mark.parametrize(
+        "name", ["Fargo", "Grapheme", "Clockwise", "Taglate", "Minifuck", "RAM0"]
+    )
+    def test_it_encodes_the_odd_shapes_for_you(
+        self, name: str, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Which is the point: the encoding step is the one people get wrong."""
+        assert call_main(["answer", name, "0110", "10"], capsys).strip() == "1"
+
+    def test_it_supplies_a_bound_for_a_diverging_language(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A one-liner that needs a flag for three of sixty-nine is not one."""
+        assert call_main(["answer", "123", "0110", "01"], capsys).strip() == "1"
+        assert call_main(["answer", "123", "0110", "00"], capsys).strip() == "0"
+
+    @pytest.mark.slow
+    def test_it_agrees_with_evaluate_everywhere(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Row by row against the whole-table command, for all sixty-nine."""
+        table = "0110"
+        for name in esolangs.list_languages():
+            for row, bits in enumerate(("00", "01", "10", "11")):
+                got = call_main(["answer", name, table, bits], capsys).strip()
+                assert got == table[row], f"{name} row {bits}"
+
+    def test_bad_bits_are_refused(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Same refusal `encode` makes on the same argument."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["answer", "brainfuck", "0110", "1x"], capsys)
+        assert exc.value.code == 2
+        assert "bits must be a string of 0s and 1s" in capsys.readouterr().err
+
+    def test_a_missing_argument_is_named(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Three positionals, so the shared machinery has to know about it."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["answer", "brainfuck", "0110"], capsys)
+        assert exc.value.code == 2
+        assert "missing <bits>" in capsys.readouterr().err
+
+
+class TestJudgeAdmitsWhatItCannotCheck:
+    """It refuses every bad shape and then invented a bit for a bad arity."""
+
+    def test_it_says_so_without_a_table(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Its other refusals teach a reader that --judge is the safe path."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("Fargo", "0110"))
+        with pytest.raises(SystemExit) as exc:
+            call_main(["run", "--judge", "Fargo", str(path)], capsys, stdin="2\n")
+        assert exc.value.code == 2
+        assert "bit count cannot be checked" in capsys.readouterr().err
+
+    def test_with_a_table_it_refuses_an_out_of_range_row(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Row 5 of a four-row table does not exist."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("Fargo", "0110"))
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["run", "--judge", "--table", "0110", "Fargo", str(path)],
+                capsys,
+                stdin="5\n",
+            )
+        assert exc.value.code == 2
+        assert "out of range" in capsys.readouterr().err
+
+    def test_the_note_is_absent_when_a_table_is_given(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It must not nag a caller who did the thing it asked for."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        _out, err = call_both(
+            ["run", "--judge", "--table", "0110", "brainfuck", str(path)],
+            capsys,
+            stdin="1\n0\n",
+        )
+        assert err == ""
+
+
+class TestDebugMirrorsRunsExitCodes:
+    """It exited 0 for a clean halt, a timeout and a crash alike."""
+
+    def test_a_raise_exits_one(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The program failed, which is `run`'s exit 1."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        with pytest.raises(SystemExit) as exc:
+            call_main(["debug", "brainfuck", str(path)], capsys, stdin="")
+        assert exc.value.code == 1
+
+    def test_a_timeout_exits_124(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Matching `run`, and distinct from the program having broken."""
+        path = tmp_path / "p.txt"
+        path.write_text("+[]")
+        with pytest.raises(SystemExit) as exc:
+            call_main(["debug", "--timeout", "1", "brainfuck", str(path)], capsys)
+        assert exc.value.code == 124
+
+    def test_a_clean_halt_and_a_step_bound_exit_zero(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Neither is a failure, so neither may look like one."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        assert call_main(
+            ["debug", "--steps", "5", "brainfuck", str(path)], capsys, stdin="1\n0\n"
+        )
+        assert call_main(["debug", "brainfuck", str(path)], capsys, stdin="1\n0\n")
+
+
+class TestSmallerReportsFromRoundFifteen:
+    """Each one was information that was wrong or hard to find."""
+
+    def test_a_bad_truth_table_echoes_the_argument(self) -> None:
+        """It printed ``sorted(set(...))``: "nonsense" came back as "enos"."""
+        with pytest.raises(esolangs.TruthTableError, match="got 'nonsense'"):
+            esolangs.generate("brainfuck", "nonsense")
+
+    def test_it_also_names_the_offending_character(self) -> None:
+        """So a long table does not have to be diffed by eye."""
+        with pytest.raises(esolangs.TruthTableError, match="at position 2"):
+            esolangs.generate("brainfuck", "01x1")
+
+    def test_check_stdin_admits_it_checked_only_the_shape(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The dedicated checker was weaker than `run` and did not say so."""
+        # No note: it printed one whenever `--table` was absent, which is
+        # every plain shape check, and advice on correct input is what this
+        # CLI has spent rounds removing.  `check-stdin --help` says what the
+        # flag adds.
+        _out, err = call_both(["check-stdin", "brainfuck"], capsys, stdin="1\n0\n")
+        assert err == ""
+        assert "--table" in cli.HELP["check-stdin"]
+
+    def test_a_never_written_cell_reports_a_verdict_not_a_wall(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Four hundred Nones with the answer at the far right of the line."""
+        path = tmp_path / "p.txt"
+        path.write_text(esolangs.generate("brainfuck", "0110"))
+        out = call_main(
+            ["debug", "--steps", "40", "--watch-cell", "999", "brainfuck", str(path)],
+            capsys,
+            stdin="1\n0\n",
+        )
+        assert "never written in 40 step(s)" in out
+        assert "None" not in out
+
+    @pytest.mark.parametrize(
+        ("name", "phrase"),
+        [
+            ("Clockwise", "every bit on one line"),
+            ("Fargo", "one decimal row index"),
+            ("Taglate", "padded with a leading"),
+            ("brainfuck", "one line per bit"),
+        ],
+    )
+    def test_describe_spells_the_stdin_out(
+        self, name: str, phrase: str, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A reader had two fields to compose; templates got a sentence."""
+        out = call_main(["describe", name], capsys)
+        assert phrase in out
+
+
+class TestTheAnswerCommandsFailurePaths:
+    """What it does when the language or the table is wrong."""
+
+    def test_an_unknown_language_is_named(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Resolved through the same suggester as everything else."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["answer", "NotALang", "0110", "10"], capsys)
+        assert exc.value.code == 2
+        assert "unknown language" in capsys.readouterr().err
+
+    def test_a_malformed_table_is_named(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """And named as a table, at the usage exit code."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["answer", "brainfuck", "011", "10"], capsys)
+        assert exc.value.code == 2
+        assert "power-of-two" in capsys.readouterr().err
+
+    def test_a_wrong_bit_count_is_named(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The table is right there, so the arity is always checkable here."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["answer", "brainfuck", "0110", "101"], capsys)
+        assert exc.value.code == 2
+        assert "3 bits were given" in capsys.readouterr().err
+
+
+class TestDebugReportsALoadFailure:
+    """The clause between the template refusal and the interpreter's own."""
+
+    def test_a_program_that_is_really_a_path_is_refused(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """`run` has refused this for rounds; `debug` shares the check."""
+        example = esolangs.describe("brainfuck")["examples"][0]  # type: ignore[index]
+        path = tmp_path / "p.txt"
+        path.write_text(str(example))
+        with pytest.raises(SystemExit) as exc:
+            call_main(["debug", "brainfuck", str(path)], capsys, stdin="1\n0\n")
+        assert exc.value.code == 2
+        assert "looks like a path" in capsys.readouterr().err

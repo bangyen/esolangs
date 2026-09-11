@@ -17,6 +17,7 @@ instead of being read and believed.
 
 from __future__ import annotations
 
+import contextlib
 import pathlib
 import re
 
@@ -933,3 +934,76 @@ class TestTheTerminationProofFallsBackToTheClock:
         """The proof must not have changed any verdict, only the cost."""
         for name in ("123", "ArrowQueue", "Point Break"):
             assert esolangs.evaluate(name, "0110") == "0110"
+
+
+class TestATimeoutCannotKillTheProcess:
+    """The one open defect of this whole QA loop, and how it was closed.
+
+    A sub-millisecond ``timeout`` killed the interpreter outright about one
+    run in three: no traceback, no exception, exit 142, which is SIGALRM's
+    default disposition doing what it does.  Two attempts to close the race
+    that delivered it -- ignoring the signal before disarming the timer, then
+    making the handler refuse to raise into its own teardown -- cut the rate
+    to roughly one run in four thousand and stopped there, and the path the
+    kernel took to deliver that last one was never derived.
+
+    So the fix stopped trying to understand it: ``SIGALRM`` is never handed
+    back to ``SIG_DFL``, and a handler that does nothing cannot kill
+    anything whenever it is reached.  Measured after: zero deaths in four
+    thousand timed runs at a 100-microsecond bound, where the same harness
+    had shown them reliably before.
+    """
+
+    def test_the_default_disposition_is_never_restored(self) -> None:
+        """Because that default is what turned a bound into a death."""
+        import signal
+
+        program = esolangs.generate("brainfuck", "0110")
+        stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
+        esolangs.run("brainfuck", program, stdin, 10)
+        assert signal.getsignal(signal.SIGALRM) is not signal.SIG_DFL
+
+    def test_a_callers_own_handler_is_given_back(self) -> None:
+        """Only the lethal default is substituted; a real handler is theirs."""
+        import signal
+
+        def _mine(_signum: object, _frame: object) -> None:
+            """A handler a caller might have installed."""
+
+        previous = signal.signal(signal.SIGALRM, _mine)
+        try:
+            program = esolangs.generate("brainfuck", "0110")
+            stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
+            esolangs.run("brainfuck", program, stdin, 10)
+            assert signal.getsignal(signal.SIGALRM) is _mine
+        finally:
+            signal.signal(signal.SIGALRM, previous)
+
+    def test_the_timer_is_always_disarmed(self) -> None:
+        """The other half: a timer left armed is the next run's stray alarm."""
+        import signal
+
+        program = esolangs.generate("brainfuck", "0110")
+        stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
+        for bound in (10, 0.0001):
+            with contextlib.suppress(esolangs.ExecutionTimeoutError):
+                esolangs.run("brainfuck", program, stdin, bound)
+            assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
+
+    @pytest.mark.slow
+    def test_many_tiny_timeouts_neither_die_nor_leak(self) -> None:
+        """The stress the fix was measured against, at a tenth the reps.
+
+        In-process, so it is the coverage-visible version: a death here would
+        take the whole test session with it, which is exactly the failure
+        mode being guarded and makes the check unmissable.
+        """
+        import signal
+
+        program = esolangs.generate("brainfuck", "0110")
+        stdin = esolangs.encode_inputs("brainfuck", [0, 1], "0110")
+        for _ in range(400):
+            with contextlib.suppress(esolangs.ExecutionTimeoutError):
+                esolangs.run("brainfuck", program, stdin, 0.0001)
+            assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
+            assert signal.getsignal(signal.SIGALRM) is not signal.SIG_DFL
