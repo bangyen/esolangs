@@ -465,18 +465,28 @@ def brainfuck(truth_table: str) -> str:
     tree was full and so paid for every input on sparse tables where the
     minterm paid only per one-row.  Once the tree started folding constant
     subtrees it won on every table at n <= 4 but the two constant ones,
-    where it costs about 2.5x the minterm (629 against 253 characters at
-    n == 4) -- a bounded factor on two tables out of 65536, not worth a
-    second construction and a dispatch to choose between them.
+    where it costs about 2.1x the minterm (549 characters at n == 4 against
+    the 253 the minterm measured before it was removed) -- a bounded factor
+    on two tables out of 65536, not worth a second construction and a
+    dispatch to choose between them.  A constant table is the one shape the
+    print-once leaf barely helps: its tree is a single leaf already, so what
+    is left is the reads and the complement construction.
     """
     return bf_tree(truth_table)
 
 
 #: Digits :func:`factor` renders without being asked twice.  Sized from the
-#: measured worst case at ten inputs -- n=10 parity encodes to 454832
-#: digits, n=10 dense to 328772 -- so this clears the whole reach of the
-#: construction with room and still names a ceiling rather than removing
-#: one.  Past it the caller passes ``max_digits`` and says how big is fine.
+#: measured worst case at ten inputs, which the print-once leaf cut by 3.9x:
+#: n=10 parity encodes to 117331 digits (was 454832), n=10 dense to 87753
+#: (was 328772).  So this clears the whole reach of the construction with
+#: room and still names a ceiling rather than removing one.  Past it the
+#: caller passes ``max_digits`` and says how big is fine.
+#:
+#: The budget is deliberately left at 500000 rather than tightened to the new
+#: worst case: n=11 parity now encodes to 241533 digits where it used to need
+#: 952366 and was refused outright, so the headroom this constant already had
+#: is what an arity lift would spend.  Whether n=11 is *supported* is a
+#: question for the contract sweep, not for this constant.
 #:
 #: Sized to the construction's reach rather than to whatever arity the
 #: boolean suite currently sweeps, deliberately: the old 16000 was pinned to
@@ -649,8 +659,8 @@ def bf_tree(truth_table: str) -> str:
     The construction is :func:`decision_tree_program`, shared with
     :func:`dimensional_tree`.  The tree is O(2**n) characters (sharing the
     bit tests), versus the branch-free minterm evaluator's O(n * 2**n); for
-    XOR-n it measures 1.4K..20K characters at n = 2..8 against the
-    minterm's 1.4K..33M.
+    XOR-n it measures 0.3K..6.1K characters at n = 2..8, against the
+    1.4K..33M the minterm measured before it was removed.
     """
     return decision_tree_program(truth_table, ">", "<")
 
