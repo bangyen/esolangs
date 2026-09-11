@@ -319,7 +319,13 @@ _SIX_FIVE_COMMAND = r"7[\s\S](?:[78][\s\S]|[\s\S])|8[\s\S]|[\s\S]"
 # which is a different command -- so ``#$1`` fell through to the
 # one-character form, tokenized as ``#$`` and ``1``, and a newline between
 # them left a load of the character ``'\n'``.
-_SOPHIE_COMMAND = r"@\$\d+\{|@\$?.\{|#\$\d+|#\$?.|."
+# ``}{`` is the last alternative and not a command at all: it is an
+# if-block's close beside its else-block's open.  A failed branch jumps to
+# the close and then tests whether the *next* character is ``{`` to decide
+# whether an else-block follows, so a newline between the two loses the
+# else.  Only that adjacency matters -- a ``}`` followed by anything else
+# was not opening an else either way.
+_SOPHIE_COMMAND = r"@\$\d+\{|@\$?.\{|#\$\d+|#\$?.|\}\{|."
 
 # A collapsed Minifuck ``[`` skips the next *character* (the interpreter
 # advances ``ind + 2``), so a newline sitting there is what gets skipped and

@@ -62,7 +62,7 @@ NARROW_WIDTH = 13
 # the implementation: each was verified to break (or to be meaningless) when
 # newlines are inserted, so the table is the record of that finding.
 #
-# The six below NoComment were found the same way, by inserting a newline
+# The eight below NoComment were found the same way, by inserting a newline
 # at every position of the language's own boolean program and running each
 # one.  Grapheme, CV(N)(C), Fargo and Super SNUSP have no safe position at
 # all; Alight has only the very end, where the newline adds an empty row
@@ -75,11 +75,16 @@ NARROW_WIDTH = 13
 # otherwise looks like an oversight -- CV(N)(C) reaches 1162 columns at
 # n == 4 and Super SNUSP 286.
 #
-# The last two are 2D, where the general rule already says a newline is a
-# row.  They are named anyway because each has a *specific* reason worth
-# keeping: Alight's commands are words walked out cell by cell, so a row
-# end cuts one in half, and Super SNUSP with no start marker enters at the
-# bottom right, so an added row moves where the program begins.
+# Four of them are already covered by a general rule and named anyway,
+# because each has a *specific* reason worth keeping rather than deriving
+# again.  Alight and Super SNUSP are 2D, where a newline is a row: Alight's
+# commands are words walked out cell by cell, so a row end cuts one in
+# half, and Super SNUSP with no start marker enters at the bottom right, so
+# an added row moves where the program begins.  function x(y) and the
+# Algebraic Programming Language are line-structured source rather than
+# grids -- the first takes one indented statement per line, the second
+# decides a line's *meaning* by whether it contains an ``=``, so a break
+# does not reflow a line but turns one line into two with different jobs.
 UNWRAPPABLE = {
     "nocomment": "a newline is an unrecognized command, a load error",
     "grapheme": "every character must be A-Z, so a newline is a load error",
@@ -88,6 +93,8 @@ UNWRAPPABLE = {
     "minsky_swap": "its second line is absolute offsets into its first",
     "alight": "a command is a word walked cell by cell; a row end cuts it",
     "super_snusp": "with no marker it enters the bottom right, which a row moves",
+    "function_x_y": "its statements are one per line, and indented",
+    "algebraic_programming_language": "a line with '=' defines, one without runs",
 }
 
 # These are 2D too, and wrap_program must not touch them either -- but each
