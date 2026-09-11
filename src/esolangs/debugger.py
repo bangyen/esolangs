@@ -17,19 +17,44 @@ from collections.abc import Callable
 from time import monotonic
 from typing import Literal
 
+from esolangs.exceptions import ArgumentError
 from esolangs.vm import VM, make_vm, run_until_halt
 
 #: Why a :meth:`Debugger.run` returned.
 StopReason = Literal["halted", "breakpoint", "max_steps", "timeout"]
+
+#: The four values :data:`StopReason` allows, as data.  A ``Literal`` cannot
+#: be iterated or attribute-accessed, so its members were discoverable only
+#: by reading a docstring; this is the same list a caller can loop over or
+#: assert against.
+STOP_REASONS: tuple[StopReason, ...] = ("halted", "breakpoint", "max_steps", "timeout")
+
+
+def _whole(value: object, name: str) -> int:
+    """Return ``value`` as a non-negative index, or refuse it by name.
+
+    Every one of these was accepted and then failed open somewhere later:
+    ``max_steps=-1`` disabled the bound entirely (the drive counts up to it,
+    so a negative is never reached) in the one tool whose job is stopping a
+    runaway, and ``watch_cell(-5)`` waited until a ``run`` to raise a bare
+    ``IndexError`` naming neither the cell nor the call.
+    """
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ArgumentError(f"{name} must be a non-negative integer, got {value!r}")
+    return value
 
 
 class Debugger:
     """Breakpoints and watches over a :class:`VM`.
 
     ``step()`` advances one command; ``run()`` advances until the machine
-    halts or a breakpoint fires.  The ``halted``/``output``/``ip``/``memory``/
-    ``stack`` properties mirror the wrapped VM, and ``watch_cell``/
-    ``watch_stack`` accumulate a per-step history.
+    halts or a breakpoint fires -- **pass ``max_steps`` or ``timeout``
+    unless the program is known to halt**, since neither is bounded by
+    default and several of these languages loop forever by design.
+
+    The ``halted``/``output``/``ip``/``memory``/``stack`` properties mirror
+    the wrapped VM, and ``watch_cell``/``watch_stack`` accumulate a per-step
+    history.
     """
 
     def __init__(self, vm: VM) -> None:
@@ -72,17 +97,44 @@ class Debugger:
     # -- breakpoints --------------------------------------------------
 
     def break_at(self, ip: int | tuple[int, ...]) -> None:
-        """Stop when the program counter reaches ``ip``."""
+        """Stop when the program counter reaches ``ip``.
+
+        A position is an ``int``, or a tuple of them for the grid languages
+        whose ``ip`` is a coordinate.  Anything else is refused rather than
+        stored: it compares unequal to every position the machine ever
+        reaches, so the breakpoint would simply never fire, and a silently
+        dead breakpoint is worse than an error.
+        """
+        if isinstance(ip, bool) or not (
+            isinstance(ip, int)
+            or (isinstance(ip, tuple) and all(isinstance(part, int) for part in ip))
+        ):
+            raise ArgumentError(
+                f"ip must be an integer or a tuple of integers, got {ip!r}"
+            )
         self._breakpoints.append(lambda vm: vm.ip == ip)
 
     def break_on_cell(self, index: int, value: int) -> None:
-        """Stop when ``memory[index]`` holds ``value``."""
+        """Stop when ``memory[index]`` holds ``value``.
+
+        ``value`` is checked for the same reason ``ip`` is above: a cell
+        holds an ``int``, so a breakpoint on anything else never fires.
+        """
+        _whole(index, "index")
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise ArgumentError(f"value must be an integer, got {value!r}")
         self._breakpoints.append(
             lambda vm: index < len(vm.memory) and vm.memory[index] == value
         )
 
     def break_on_stack(self, slot: int, value: object) -> None:
-        """Stop when the ``slot``-th stack value from the top holds ``value``."""
+        """Stop when the ``slot``-th stack value from the top holds ``value``.
+
+        ``value`` is deliberately unchecked -- a stack slot holds whatever
+        its language pushes, which is not always an int -- but the slot is
+        an index like any other.
+        """
+        _whole(slot, "slot")
         self._breakpoints.append(
             lambda vm: slot < len(vm.stack) and vm.stack[-1 - slot] == value
         )
@@ -120,12 +172,14 @@ class Debugger:
         before this call leave no entry: watch first, then run.  The list is
         live, so the one returned keeps filling as the machine advances.
         """
+        _whole(index, "index")
         if index not in self._cell_history:
             self._cell_history[index] = []
         return self._cell_history[index]
 
     def watch_stack(self, slot: int) -> list[object]:
         """Record the ``slot``-th stack value from the top each step."""
+        _whole(slot, "slot")
         if slot not in self._stack_history:
             self._stack_history[slot] = []
         return self._stack_history[slot]
@@ -162,7 +216,7 @@ class Debugger:
         A breakpoint is checked before each step, so the run stops with the
         watched condition still true.  **A breakpoint that stopped the last
         run does not fire again until its condition goes false**, which is
-        what lets a resumed run advance; see :meth:`_at_breakpoint`.  A
+        what lets a resumed run advance; see the note on re-firing below.  A
         breakpoint that has not fired yet is checked as it always was, so
         ``break_at(ip)`` on the initial position still stops before the
         first step executes.
@@ -182,6 +236,14 @@ class Debugger:
         records the watches, so recording stays part of a step instead of
         becoming a hook the shared loop would have to grow.
         """
+        if max_steps is not None:
+            _whole(max_steps, "max_steps")
+        if timeout is not None and (
+            isinstance(timeout, bool)
+            or not isinstance(timeout, int | float)
+            or timeout <= 0
+        ):
+            raise ArgumentError(f"timeout must be a positive number, got {timeout!r}")
         deadline = None if timeout is None else monotonic() + timeout
         self._timed_out = False
         halted = run_until_halt(self, max_steps, stop=lambda: self._stop(deadline))

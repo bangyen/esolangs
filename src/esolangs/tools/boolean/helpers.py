@@ -64,18 +64,26 @@ def _validate_shape(truth_table: str) -> int:
     than refused.  Minifuck's ``_solve`` is the one caller -- its public
     entry still validates in full, so the relaxation never reaches an API.
     """
+    # The alphabet is checked first because it is the more specific
+    # complaint: ``01a`` is three characters, so a length-first order
+    # answered it with "must have a power-of-two number of entries, got 3"
+    # and never mentioned the ``a`` that was actually wrong.
+    #
+    # Spelled as a set difference rather than ``all(c in "01" ...)``: the
+    # order search revalidates the same table once per candidate, so this
+    # runs ~720 times per call at n=6 and a per-character Python loop over
+    # 2**n shows up (0.86s of the n=6 registry sweep).
+    if set(truth_table) - {"0", "1"}:
+        bad = sorted(set(truth_table) - {"0", "1"})
+        raise TruthTableError(
+            f"truth table must contain only '0' and '1', got {''.join(bad)!r}"
+        )
     n = len(truth_table).bit_length() - 1
     if len(truth_table) != 2**n:
         raise TruthTableError(
             "truth table must have a power-of-two number of entries "
             f"(2**n), got {len(truth_table)}",
         )
-    # Spelled as a set difference rather than ``all(c in "01" ...)``: the
-    # order search revalidates the same table once per candidate, so this
-    # runs ~720 times per call at n=6 and a per-character Python loop over
-    # 2**n shows up (0.86s of the n=6 registry sweep).
-    if set(truth_table) - {"0", "1"}:
-        raise TruthTableError("truth table must contain only '0' and '1'")
     return n
 
 

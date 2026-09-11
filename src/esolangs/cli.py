@@ -2,6 +2,7 @@
 
 Subcommands:
     esolangs list                         list the supported languages
+    esolangs encode <language> <bits>     print the stdin those bits need
     esolangs generate <language> <table>  print a program computing a table
                                           (``--width N`` wraps it to N columns)
     esolangs run <language> <file>        run a program through its interpreter
@@ -18,11 +19,13 @@ reaches the terminal as a traceback, which is what a traceback should mean.
 """
 
 import sys
+from collections.abc import Sequence
 
 from esolangs import (
     __version__,
     check_runnable,
     describe,
+    encode_inputs,
     generate,
     instantiate,
     list_languages,
@@ -37,7 +40,8 @@ USAGE = """usage: esolangs <command> [...]
 
 commands:
   list [--details]            list the supported languages
-  generate [--width N] [--bits BITS] <language> <truth-table>
+  encode <language> <bits>    print the stdin that feeds those bits
+  generate [--width [N]] [--bits BITS] <language> <truth-table>
                               print a program computing a truth table
                               (--width wraps it; --bits fills a template)
   run [--timeout S] <language> <file>
@@ -51,6 +55,7 @@ one command in full; `--version` prints the version.
 
 examples:
   esolangs list
+  esolangs encode Grapheme 10
   esolangs generate Circlefuck 0110
   esolangs generate --width brainfuck 10010110
   esolangs generate --bits 10 Minifuck 0110
@@ -59,6 +64,22 @@ examples:
 """
 
 HELP = {
+    "encode": """usage: esolangs encode <language> <bits>
+
+Print the stdin that feeds <bits> to a <language> program, so it can be
+piped straight into `esolangs run`:
+
+    esolangs encode Taglate 101 | esolangs run Taglate prog.txt
+
+Most languages read one 0/1 line per bit and this is no more than what you
+would have typed.  Four are not most languages, and each fails silently if
+you guess: Grapheme spells its bits %/A, Clockwise and Fargo want them all
+on one line, and Taglate pads an odd input count with a leading zero line.
+The Input column of examples/boolean/MANIFEST.md lists every language's.
+
+A language whose generator embeds the inputs in the program reads no stdin
+at all; `esolangs generate --bits` builds those.
+""",
     "list": """usage: esolangs list [--details]
 
 List the supported languages, one per line.
@@ -113,9 +134,9 @@ Most languages read one line per input bit, but four do not: Grapheme reads
 Taglate pads an odd input count with a leading zero line, so its 3-input
 programs read four.  Feeding the wrong encoding is answered with a wrong
 result, not an error, so check the Input column of
-examples/boolean/MANIFEST.md -- or have the API spell it for you:
+examples/boolean/MANIFEST.md -- or have `esolangs encode` spell it for you:
 
-    python -c 'import esolangs; print(esolangs.encode_inputs("Taglate",[1,0,1]))'
+    esolangs encode Taglate 101 | esolangs run Taglate prog.txt
 
 A program that reads more than it is given fails with an input-exhausted
 error rather than hanging.
@@ -281,6 +302,18 @@ def _pop_width(rest: list[str]) -> tuple[list[str], int | None, bool]:
     return args, width, bare
 
 
+def _refuse_repeat(found: dict[str, str], name: str) -> None:
+    """Refuse a second copy of an option that takes a value.
+
+    Last-wins is the common convention, but this CLI refuses nearly every
+    other ambiguity, so silently dropping the first of two ``--bits`` was
+    the outlier -- and the one that quietly emits a program for the wrong
+    input row.
+    """
+    if name in found:
+        _fail(f"{name} given more than once (first was {found[name]!r})")
+
+
 def _pop_options(rest: list[str], names: set[str]) -> tuple[list[str], dict[str, str]]:
     """Split ``--name V`` and ``--name=V`` options out of ``rest``.
 
@@ -299,9 +332,11 @@ def _pop_options(rest: list[str], names: set[str]) -> tuple[list[str], dict[str,
             args.append(arg)
             i += 1
         elif sep:
+            _refuse_repeat(found, name)
             found[name] = inline
             i += 1
         elif i + 1 < len(rest):
+            _refuse_repeat(found, name)
             found[name] = rest[i + 1]
             i += 2
         else:
@@ -309,7 +344,7 @@ def _pop_options(rest: list[str], names: set[str]) -> tuple[list[str], dict[str,
     return args, found
 
 
-def _abridge(history: list[object]) -> str:
+def _abridge(history: Sequence[object]) -> str:
     """Render a watch history, eliding the middle of a long one."""
     if len(history) <= _HISTORY_SHOWN:
         return str(history)
@@ -333,6 +368,19 @@ def _read_program(path: str) -> str:
     except OSError as exc:
         _fail(f"cannot read {path}: {exc}")
         raise  # pragma: no cover - unreachable; _fail exits
+
+
+def _encode(rest: list[str]) -> None:
+    """Print the stdin that feeds a language its input bits."""
+    rest = _split_positional(rest, set())
+    _check_count("encode", rest, 2)
+    language, bits = rest[0], rest[1]
+    if set(bits) - {"0", "1"} or not bits:
+        _fail(f"bits must be a string of 0s and 1s, got {bits!r}")
+    try:
+        sys.stdout.write(encode_inputs(language, [int(bit) for bit in bits]))
+    except EsolangError as exc:
+        _fail(str(exc))
 
 
 def _list(rest: list[str]) -> None:
@@ -415,12 +463,15 @@ def _debug(rest: list[str]) -> None:
         fault = f"{type(exc).__name__}: {exc}"
 
     print(f"halted: {'yes' if dbg.halted else 'no'}")
-    if reason is not None:
-        print(f"stopped: {reason}")
+    # Always printed, so a script reading fixed field positions does not
+    # break on the one case it most wants to parse.
+    print(f"stopped: {reason if reason is not None else 'raised'}")
     print(f"ip: {dbg.ip}")
     print(f"output: {dbg.output!r}")
     if history is not None:
-        print(f"cell {options['--watch-cell']}: {_abridge(list(history))}")
+        values = list(history)
+        untouched = " (never written)" if set(values) <= {None} else ""
+        print(f"cell {options['--watch-cell']}: {_abridge(values)}{untouched}")
     if fault is not None:
         print(f"raised: {fault}")
 
@@ -474,6 +525,15 @@ def _run(rest: list[str]) -> None:
     # result with no trailing newline runs into the next shell prompt.
     if output and not output.endswith("\n") and sys.stdout.isatty():
         sys.stdout.write("\n")
+    # A program that printed nothing is a legal program, and also what you
+    # get from an empty file or the wrong path.  Say so on a terminal, where
+    # the alternative is a blank line and no way to tell the two apart; a
+    # pipe still receives exactly the empty output.
+    if not output and sys.stdout.isatty():
+        sys.stderr.write(
+            f"{language}: the program ran and printed nothing"
+            f"{' (the file is empty)' if not program.strip() else ''}\n"
+        )
 
 
 def main() -> None:
@@ -484,7 +544,10 @@ def main() -> None:
         sys.exit(2)
 
     cmd, rest = argv[0], argv[1:]
-    if cmd in ("--version", "-V"):
+    # Accepted after a subcommand too.  The top-level help advertises it
+    # without saying where it goes, and `esolangs list --version` answering
+    # "unknown option" is a strange way to learn that.
+    if {"--version", "-V"} & set(argv):
         print(f"esolangs {__version__}")
         sys.exit(0)
     if cmd in ("--help", "-h", "help"):
@@ -496,7 +559,13 @@ def main() -> None:
         sys.stdout.write(HELP[cmd])
         sys.exit(0)
 
-    {"list": _list, "generate": _generate, "run": _run, "debug": _debug}[cmd](rest)
+    {
+        "list": _list,
+        "encode": _encode,
+        "generate": _generate,
+        "run": _run,
+        "debug": _debug,
+    }[cmd](rest)
 
 
 if __name__ == "__main__":
