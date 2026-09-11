@@ -17,6 +17,7 @@ must come back unwrapped rather than subtly broken.
 """
 
 import re
+from dataclasses import replace
 
 import pytest
 
@@ -330,6 +331,70 @@ def test_every_wrapper_actually_fires(name: str) -> None:
         assert narrowed.count("\n") > grown.count("\n"), f"{name}: wrapper never fired"
         return
     pytest.fail(f"{name}: no table up to 4 inputs produced a program long enough")
+
+
+# Tables the generators take a *different path* on than parity.  The
+# committed examples are all AND2, and the sweeps above grow parity, so
+# between them they exercise two shapes -- and a wrapper is exercised by the
+# shape of the program, not by the table directly.  Sophie's else-block bug
+# needed a table that puts an if-block beside an else-block, which neither
+# AND2 nor parity produces at three inputs; majority does.
+_OTHER_TABLES = {"majority": "00010111", "mixed": "11111001"}
+
+# Long enough that a run which has not finished is looping, short enough
+# that eight of them are not a wait.  123 answers by *looping forever* for a
+# one, so a timeout is one of the behaviours being compared rather than a
+# failure -- what must match is that the wrapped program loops exactly where
+# the unwrapped one does.
+_RUN_TIMEOUT = 5.0
+
+
+def _behaviour(name: str, program: str, stdin: str) -> str:
+    """What ``program`` does, as a value: its output, or how it failed."""
+    try:
+        return run(name, program, stdin, timeout=_RUN_TIMEOUT)
+    except Exception as exc:
+        return f"{type(exc).__name__}: {exc}"
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("name", WRAPPED)
+@pytest.mark.parametrize("shape", sorted(_OTHER_TABLES))
+def test_wrapping_holds_on_a_table_the_examples_do_not_cover(
+    name: str, shape: str
+) -> None:
+    """Wrapping still preserves behaviour on a bigger, differently-shaped table.
+
+    The other execution sweep runs one short AND2 program per language,
+    which is too small to exercise a token rule: three wrappers shipped
+    broken behind it.  Bitdeque separated ``GOTO`` from its target, Minifuck
+    let a ``[`` skip a newline instead of the instruction after it, and
+    Sophie split ``#$1`` and then detached an else-block.  Each answered
+    with a wrong number or nothing at all, and each was green.
+
+    So this drives every wrapper over a three-input table at the width that
+    caught all three, on every input combination, and asks the only question
+    that matters: does the wrapped program still do what the unwrapped one
+    does?  Marked slow -- it is a few hundred interpreter runs.
+    """
+    example = _example(name)
+    table = _OTHER_TABLES[shape]
+    for combo in range(8):
+        bits = tuple(int(b) for b in format(combo, "03b"))
+        variant = replace(
+            example,
+            table=table,
+            bits=bits if example.fill else (),
+            inputs=() if example.fill else tuple(str(b) for b in bits),
+        )
+        plain = variant.build(width=None)
+        wrapped = variant.build(NARROW_WIDTH)
+        if wrapped == plain:
+            continue
+        stdin = "".join(f"{line}\n" for line in variant.inputs)
+        assert _behaviour(name, wrapped, stdin) == _behaviour(name, plain, stdin), (
+            f"{name}: wrapping changed the answer on the {shape} table, inputs {bits}"
+        )
 
 
 @pytest.mark.parametrize("name", sorted(UNWRAPPABLE))
