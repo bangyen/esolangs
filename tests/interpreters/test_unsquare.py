@@ -266,3 +266,22 @@ class TestContract(CycleContract, InputCursorContract, StateViewContract):
     # The loop test's own program: it moves the accumulator, the jump
     # stack, and the data stack, where "Io" moved only the last.
     viewing_program = "++>Po-<"
+
+
+class TestStateViewValues:
+    """The named views read the slots they claim, not one another.
+
+    The shared contract checks that each view *moves*; which slot it moves
+    with is this file's business, because only this file knows which of its
+    names could be confused for each other.  A value pinned at a step where
+    they hold different things is what a rewiring would change.
+    """
+
+    def test_acc_and_jumps_are_their_own_slots(self) -> None:
+        """Six steps into the loop all four hold different things."""
+        machine = _machine("++>Po-<")
+        for _ in range(6):
+            machine.step()
+        assert machine.acc == 2  # decremented once inside the body
+        assert machine.jumps == (1,)  # the > that was entered
+        assert machine.stack == (4,)  # what P pushed on the first pass
