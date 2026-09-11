@@ -479,6 +479,30 @@ def _sophie(program: str, width: int) -> str:
     return wrap_tokens(program, width, _SOPHIE_COMMAND)
 
 
+def _bitdeque(program: str, width: int) -> str:
+    r"""Wrap Bitdeque, keeping each ``GOTO`` with the operand it jumps to.
+
+    Bitdeque is space-delimited, but its parser spells the jump
+    ``GOTO *(\d+)`` -- spaces between the two, not whitespace -- so a break
+    that puts ``GOTO`` at the end of one line and ``26`` at the start of the
+    next stops matching as a jump.  The token *sequence* is untouched, which
+    is why the generic space wrapper looked right: what changes is only
+    which characters sit between two tokens, and for this one language that
+    is the difference between a jump and something else.
+
+    The effect is silent -- the boolean program answers 1 where it should
+    answer 0 -- and positional, so it appears at widths 12 and 13 and not at
+    11, 14 or anything wider, a span the conventional 40 and 80 never reach.
+    """
+    tokens: list[str] = []
+    for token in program.split():
+        if tokens and tokens[-1] == "GOTO":
+            tokens[-1] = f"GOTO {token}"
+        else:
+            tokens.append(token)
+    return _join_tokens(tokens, width, separator=" ")
+
+
 def _jaune(program: str, width: int) -> str:
     """Wrap Jaune, keeping each operand attached to the operator it feeds.
 
@@ -622,7 +646,8 @@ WRAPPERS = {
     # sign on a line by itself; ``_polynomial`` keeps each sign with its
     # term and gives each term a line.
     "polynomial": _polynomial,
-    "bitdeque": wrap_space_delimited,
+    # Space-delimited, but ``GOTO`` and its target must stay on one line.
+    "bitdeque": _bitdeque,
     "bio": _bio,
     "dimensional": _dimensional,
     # Almost single-character, but 7n/8n are two-character tokens that a
