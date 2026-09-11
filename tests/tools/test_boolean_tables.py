@@ -201,8 +201,13 @@ def test_a_table_of_the_wrong_length_is_refused(name: str) -> None:
 @pytest.mark.parametrize("name", sorted(BOOLEAN_EXAMPLES))
 def test_a_table_of_other_characters_is_refused(name: str) -> None:
     """A truth table carrying anything but ``0``/``1`` builds nothing."""
+    # The message echoes the *argument* now, and names the offending
+    # character and where it is: it used to print ``sorted(set(...))``, so
+    # a reader who typed "nonsense" was told "got 'enos'".
     with raises_message(
-        ValueError, "truth table must contain only '0' and '1', got '2'"
+        ValueError,
+        "truth table must contain only '0' and '1', got '02' -- "
+        "'2' at position 1 is not one of them",
     ):
         BOOLEAN_EXAMPLES[name].generator("02")
 
