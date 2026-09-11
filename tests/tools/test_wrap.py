@@ -64,11 +64,14 @@ NARROW_WIDTH = 13
 #
 # The four below NoComment were found the same way, by inserting a newline
 # at every position of the language's own boolean program and running each
-# one: none of the four has a single position that keeps the answer, so
-# there is no token rule to find and no narrower width that would help.
-# They are recorded because "we tried and it cannot be done" is worth as
-# much as a wrapper, and because each is a long line that otherwise looks
-# like an oversight -- CV(N)(C) reaches 1162 columns at n == 4.
+# one.  Grapheme, CV(N)(C) and Fargo have no safe position at all.  Minsky
+# Swap has six, but none a wrapper could use: five sit inside its leading
+# ``****`` run and the sixth is the end of the program, so there is nowhere
+# between two statements to break.  Either way there is no token rule to
+# find and no narrower width that would help.  They are recorded because
+# "we tried and it cannot be done" is worth as much as a wrapper, and
+# because each is a long line that otherwise looks like an oversight --
+# CV(N)(C) reaches 1162 columns at n == 4.
 UNWRAPPABLE = {
     "nocomment": "a newline is an unrecognized command, a load error",
     "grapheme": "every character must be A-Z, so a newline is a load error",
