@@ -152,9 +152,19 @@ every factor measured 0.000s and the divisions 0.04s.  Gating the test on a
 *barren* chunk -- one that divided nothing out, the only point its answer is
 worth paying for -- puts n=5 parity at 0.041s a row.  Numbers of this shape
 reach 1 without a barren chunk ever occurring.  Reach past n=5, generating
-and interpreting one row: n=7 0.56s, n=8 2.2s, n=9 8.8s, n=10 36s (454832
-digits), n=11 151s (952366 digits), each answering correctly.  The cost is
-roughly 4x an input, so n=12 is near ten minutes a row.  **These are single
+and interpreting one row: n=7 0.2s, n=8 0.5s, n=9 1.4s, n=10 5.1s (104659
+digits), n=11 20.1s (219455 digits), each answering correctly.  The cost is
+still roughly 4x an input, so n=12 is near a minute and a half a row.
+
+These were 0.56s / 2.2s / 8.8s / 36s / 151s, on encodings of 454832 digits
+at n=10 and 952366 at n=11, until the decision tree stopped printing at
+every leaf and dropped its complement construction (`226a442b`,
+`4454cd9a`).  The time here is dominated by the number's width, so a 4.3x
+smaller encoding is most of a 7x faster row -- and n=11 now renders under
+the default digit budget, where it used to need `max_digits` raised past
+500000 to render at all.
+
+**These are single
 rows, not the row-by-row verification the n=5 claim above rests on** -- a
 full n=10 table is 1024 rows, about ten hours -- so the reach is where a row
 is affordable, not where a table is checked.
