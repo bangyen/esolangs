@@ -169,6 +169,10 @@ options:
                        it exactly.
   --break-on-output S  stop once S has been written, with S still the last
                        thing written.
+  --timeout SECONDS    stop the run after this long, reporting
+                       `stopped: timeout`.  Like --steps this bounds a
+                       program that never halts, which is what the three
+                       terminate-as-answer languages are.
 """,
 }
 
@@ -222,7 +226,12 @@ def _split_positional(rest: list[str], known: set[str]) -> list[str]:
     for i, arg in enumerate(rest):
         if arg == "--":
             return args + rest[i + 1 :]
-        if arg.startswith("--") and arg.partition("=")[0] not in known:
+        # Any leading dash is an option, not a positional.  A single-dash
+        # ``-w`` used to be kept as one, so the error named whichever word
+        # then landed in the wrong slot.  A leading digit is exempt so a
+        # negative number can still be an argument.
+        looks_like_option = len(arg) > 1 and arg[0] == "-" and not arg[1].isdigit()
+        if looks_like_option and arg.partition("=")[0] not in known:
             _fail(f"unknown option: {arg}")
         args.append(arg)
     return args
@@ -271,6 +280,7 @@ def _pop_width(rest: list[str]) -> tuple[list[str], int | None, bool]:
     args: list[str] = []
     width: int | None = None
     bare = False
+    seen: dict[str, str] = {}
     i = 0
     while i < len(rest):
         arg = rest[i]
@@ -278,6 +288,8 @@ def _pop_width(rest: list[str]) -> tuple[list[str], int | None, bool]:
         # the separator and passed on what followed it, so this only ever
         # sees positionals and the one option it owns.
         if arg == "--width":
+            _refuse_repeat(seen, "--width")
+            seen["--width"] = arg
             following = rest[i + 1] if i + 1 < len(rest) else None
             if following is None or not _is_int(following):
                 width = DEFAULT_WIDTH
@@ -287,6 +299,8 @@ def _pop_width(rest: list[str]) -> tuple[list[str], int | None, bool]:
             value = following
             i += 2
         elif arg.startswith("--width="):
+            _refuse_repeat(seen, "--width")
+            seen["--width"] = arg
             value = arg.split("=", 1)[1]
             i += 1
         else:
@@ -353,6 +367,21 @@ def _abridge(history: Sequence[object]) -> str:
     return f"[{head}, ... {len(history) - _HISTORY_SHOWN} more ..., {tail}]"
 
 
+def _timeout_of(options: dict[str, str]) -> float | None:
+    """Return the ``--timeout`` seconds, or None, refusing a bad value."""
+    if "--timeout" not in options:
+        return None
+    try:
+        seconds = float(options["--timeout"])
+    except ValueError:
+        _fail(f"--timeout must be a number, got {options['--timeout']!r}")
+    if seconds != seconds or seconds in (float("inf"), float("-inf")):
+        _fail(f"--timeout must be finite, got {options['--timeout']!r}")
+    if seconds <= 0:
+        _fail(f"--timeout must be positive, got {options['--timeout']}")
+    return seconds
+
+
 def _read_program(path: str) -> str:
     """Return the program in ``path``, or exit with a usage error.
 
@@ -410,9 +439,13 @@ def _list(rest: list[str]) -> None:
 
 def _debug(rest: list[str]) -> None:
     """Run a program under the debugger and report where it stopped."""
-    options_taken = {"--steps", "--watch-cell", "--break-on-output"}
-    rest = _split_positional(rest, options_taken)
+    options_taken = {"--steps", "--watch-cell", "--break-on-output", "--timeout"}
+    # Options first, then the stray-flag check: a *value* can begin with a
+    # dash (``--timeout -inf``), and a check that runs before the pairs are
+    # consumed cannot tell one from a flag -- it answered that with
+    # "unknown option: -inf" instead of "must be finite".
     rest, options = _pop_options(rest, options_taken)
+    rest = _split_positional(rest, set())
     _check_count("debug", rest, 2)
     language, path = rest[0], rest[1]
     for name in ("--steps", "--watch-cell"):
@@ -445,6 +478,8 @@ def _debug(rest: list[str]) -> None:
     except ValueError as exc:
         _fail(f"{language}: {exc}")
     if "--break-on-output" in options:
+        if not options["--break-on-output"]:
+            _fail("--break-on-output needs some text; every output contains ''")
         dbg.break_on_output(options["--break-on-output"])
     history = (
         dbg.watch_cell(int(options["--watch-cell"]))
@@ -452,13 +487,14 @@ def _debug(rest: list[str]) -> None:
         else None
     )
     steps = int(options["--steps"]) if "--steps" in options else None
+    limit = _timeout_of(options)
     # A debugged program is one the caller is already unsure of, so a raise
     # here is a result to report rather than a crash to propagate: the
     # state up to the fault is the thing they asked to see.
     fault = None
     reason = None
     try:
-        reason = dbg.run(steps)
+        reason = dbg.run(steps, limit)
     except Exception as exc:
         fault = f"{type(exc).__name__}: {exc}"
 
@@ -478,9 +514,9 @@ def _debug(rest: list[str]) -> None:
 
 def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
-    rest = _split_positional(rest, {"--width", "--bits"})
     rest, options = _pop_options(rest, {"--bits"})
     rest, width, bare = _pop_width(rest)
+    rest = _split_positional(rest, set())
     _check_count("generate", rest, 2, bare_width=bare)
     try:
         program = generate(rest[0], rest[1], width)
@@ -498,18 +534,11 @@ def _generate(rest: list[str]) -> None:
 
 def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
-    rest = _split_positional(rest, {"--timeout"})
     rest, options = _pop_options(rest, {"--timeout"})
+    rest = _split_positional(rest, set())
     _check_count("run", rest, 2)
     language, path = rest[0], rest[1]
-    timeout = None
-    if "--timeout" in options:
-        try:
-            timeout = float(options["--timeout"])
-        except ValueError:
-            _fail(f"--timeout must be a number, got {options['--timeout']!r}")
-        if timeout is not None and timeout <= 0:
-            _fail(f"--timeout must be positive, got {options['--timeout']}")
+    timeout = _timeout_of(options)
     program = _read_program(path)
     stdin = "" if sys.stdin.isatty() else sys.stdin.read()
     try:

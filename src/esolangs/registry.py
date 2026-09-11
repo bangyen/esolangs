@@ -54,10 +54,20 @@ def canonical_id(name: str) -> str:
     (``6-5`` -> ``six_five``).  A couple of names that no slug can capture
     are pinned in :data:`_CANONICAL_OVERRIDES`.
     """
-    if name in _CANONICAL_OVERRIDES:
-        return _CANONICAL_OVERRIDES[name]
-    s = name.replace("~", "_tilde").replace("þ", "th").replace("*", "")
-    s = unicodedata.normalize("NFKD", s.lower())
+    # Matched case-insensitively: the override is keyed by the display name,
+    # so an exact-key lookup made ``CV(N)(C)`` the one language ``resolve``
+    # could not match on case -- ``cv(n)(c)`` fell through to the slug rules
+    # and became ``cv_n_c``, which is nothing's id.  Every other awkward
+    # name (``BRAINFUCK``, ``s*bleq``, ``forþ``) was already tolerant.
+    folded = {key.casefold(): value for key, value in _CANONICAL_OVERRIDES.items()}
+    if name.casefold() in folded:
+        return folded[name.casefold()]
+    # Lowercased *before* the transliterations, not after: they name
+    # lowercase characters, so ``FORÞ`` kept its uppercase thorn, fell
+    # through to the punctuation rule and came out ``for`` -- the one
+    # display name whose upper-case spelling did not resolve.
+    s = name.lower().replace("~", "_tilde").replace("þ", "th").replace("*", "")
+    s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c))
     s = re.sub(r"[^a-z0-9]+", "_", s).strip("_")
     if s and s[0].isdigit():

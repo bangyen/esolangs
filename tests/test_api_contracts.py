@@ -313,9 +313,14 @@ class TestInstantiateValidates:
             esolangs.instantiate("Minifuck", template, [1])
 
     def test_a_bit_must_be_a_bit(self) -> None:
-        """``2`` was substituted silently into a program that then lied."""
+        """``2`` was substituted silently into a program that then lied.
+
+        An :class:`ArgumentError` rather than a ``TemplateError``: the
+        template is fine, the argument is not, and the same check now backs
+        ``encode_inputs`` -- which has no template to complain about.
+        """
         template = esolangs.generate("Minifuck", XOR)
-        with pytest.raises(TemplateError, match="must each be 0 or 1"):
+        with pytest.raises(esolangs.ArgumentError, match="must each be 0 or 1"):
             esolangs.instantiate("Minifuck", template, [2, 0])
 
 

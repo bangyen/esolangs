@@ -120,6 +120,12 @@ class BooleanExample:
     #: How this language spells a 0 and a 1 *in the answer position*, the
     #: mirror of ``alphabet`` for input.  A Painter Ant marks the ant's own
     #: cell ``o`` on black and ``@`` on white, so its answer is a letter.
+    #:
+    #: For an ``answer_mode`` of ``termination`` this is the *polarity*
+    #: instead -- ``("halts", "diverges")`` -- because which way round it
+    #: goes was prose only, so a caller reading ``answer_mode`` still had to
+    #: hardcode halt-means-0 from the English.  It is the one convention a
+    #: zero-per-language verifier could not get from the API.
     answer_values: tuple[str, str] = ("0", "1")
     #: How this language spells an input 0 and an input 1.  Almost always
     #: the digits, but not universally, and the exception is silent rather
@@ -685,6 +691,7 @@ def _register() -> None:
             b.point_break,
             "register_based.point_break",
             answer_mode="termination",
+            answer_values=("halts", "diverges"),
             expected="1 0 1 1 0 0 0 1",
             note=(
                 "Point Break answers by termination -- it halts for a 0 "
@@ -820,6 +827,7 @@ def _register() -> None:
             "tape_based.one_two_three",
             _fill_one_two_three,
             answer_mode="termination",
+            answer_values=("halts", "diverges"),
             expected="",
             expected_compared=False,
             note=(
@@ -835,6 +843,7 @@ def _register() -> None:
             "grid_based.arrowqueue",
             _fill_arrowqueue,
             answer_mode="termination",
+            answer_values=("halts", "diverges"),
             expected="1 0 1 2 3",
             split=True,
             note=(
