@@ -34,6 +34,42 @@ def _display_name(stem: str) -> str:
     return _BY_ID.get(canonical_id(stem.replace("-", " ")), stem)
 
 
+def _logical_row(stem: str, example: object) -> str:
+    """Return the input row as plain bits, however the language spells it.
+
+    The Input column shows the *encoded* stdin, which made this table
+    unusable for judging an example programmatically: a reader had to work
+    back from ``% A`` to ``10`` for Grapheme, and from the decimal ``1`` to
+    ``01`` for Fargo.  A template language already records its bits; a
+    reading one does not, so the row is recovered by encoding each candidate
+    and keeping the one that reproduces the stored input.
+
+    That search is also a check.  There are only ``2**n`` candidates and
+    exactly one can match, so a stored input that no row encodes to is a
+    disagreement between the committed example and ``encode_inputs`` -- and
+    it is reported here rather than written as a confident wrong row.
+    """
+    import esolangs
+
+    bits = getattr(example, "bits", ())
+    if getattr(example, "fill", None) is not None:
+        return "".join(str(b) for b in bits)
+    inputs = list(getattr(example, "inputs", ()))
+    if not inputs:
+        return "(none)"
+    name = _display_name(stem)
+    arity = len(example.table).bit_length() - 1  # type: ignore[attr-defined]
+    for row in range(2**arity):
+        candidate = [(row >> (arity - 1 - i)) & 1 for i in range(arity)]
+        encoded = esolangs.encode_inputs(name, candidate).strip().split("\n")
+        if encoded == inputs:
+            return "".join(str(b) for b in candidate)
+    raise AssertionError(
+        f"{stem}: no input row encodes to {inputs!r}; the committed example "
+        f"and encode_inputs disagree"
+    )
+
+
 def write_boolean_manifest() -> None:
     """Write the table saying what each committed boolean program computes.
 
@@ -56,21 +92,25 @@ def write_boolean_manifest() -> None:
         "`esolangs.encode_inputs(language, bits)` builds the right stdin",
         "for any of them.",
         "",
-        "| Program | Language | Table | Input | Expected output |",
-        "| --- | --- | --- | --- | --- |",
+        "The Row column is the logical input bits; the Input column is how",
+        "that row is actually spelled for the language.",
+        "",
+        "| Program | Language | Table | Row | Input | Expected output |",
+        "| --- | --- | --- | --- | --- | --- |",
     ]
     for stem, example in sorted(BOOLEAN_EXAMPLES.items()):
         if example.fill is not None:
             given = "embedded " + "".join(str(b) for b in example.bits)
         else:
             given = " ".join(example.inputs) or "(none)"
+        row = _logical_row(stem, example)
         if not example.expected_compared:
             expected = "not the answer -- see note"
         else:
             expected = repr(example.expected) if example.expected else "(nothing)"
         rows.append(
             f"| `{stem}.txt` | {_display_name(stem)} | `{example.table}` | "
-            f"{given} | {expected} |"
+            f"`{row}` | {given} | {expected} |"
         )
     if any(e.note for e in BOOLEAN_EXAMPLES.values()):
         rows += ["", "## Notes", ""]

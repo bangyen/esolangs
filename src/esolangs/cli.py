@@ -33,8 +33,12 @@ an unexpected error still reaches the terminal as a traceback, which is what
 a traceback should mean.
 """
 
+from __future__ import annotations
+
 import sys
+import threading
 from collections.abc import Iterable, Sequence
+from contextlib import AbstractContextManager, nullcontext
 from difflib import get_close_matches
 from typing import cast
 
@@ -69,7 +73,8 @@ commands:
                               (--judge prints the answer bit instead)
   read-answer <language>      read a program's output on stdin and print
                               the answer bit it carries
-  debug [--steps N] [--watch-cell I] [--break-on-output S] <language> <file>
+  debug [--steps N] [--timeout S] [--watch-cell I] [--break-on-output S]
+        <language> <file>
                               run under the debugger and report where it
                               stopped, plus any watched cell's history
 
@@ -254,6 +259,58 @@ _HISTORY_SHOWN = 40
 #: Flags every subcommand accepts, so a near miss on one of them is
 #: suggested by whichever subcommand it was typed after.
 _GLOBAL_FLAGS = {"--help", "--version"}
+
+
+def _null_context() -> AbstractContextManager[None]:
+    """Return a do-nothing ``with`` target, for an already-bounded run."""
+    return nullcontext()
+
+
+#: How long an unbounded run goes before it says that it is unbounded.
+#: A constant so a test can shorten it rather than wait.
+_UNBOUNDED_NOTICE_AFTER = 10.0
+
+
+class _UnboundedNotice:
+    """Print one line if an unbounded run is still going after a while.
+
+    ``run`` and ``debug`` take no bound by default, which is right -- most
+    of these programs halt, and imposing a budget nobody chose would be
+    worse.  But several languages loop forever *by design*, and the
+    unbounded path on one of those is an indefinite spin with no output and
+    nothing on screen to suggest a cause; one reader killed it after eight
+    CPU-minutes.
+
+    So the default is unchanged and the silence is not: a timer fires once,
+    names the flag, and is cancelled the moment the run finishes.  Nothing
+    is printed for the ordinary case of a program that halts promptly.
+    """
+
+    def __init__(self, command: str) -> None:
+        """Arm the notice for ``command``, which names the flag to pass."""
+        self._timer = threading.Timer(
+            _UNBOUNDED_NOTICE_AFTER, self._say, args=(command,)
+        )
+        self._timer.daemon = True
+
+    @staticmethod
+    def _say(command: str) -> None:
+        """Write the one line, from the timer thread."""
+        sys.stderr.write(
+            f"still running after {_UNBOUNDED_NOTICE_AFTER:.0f}s with no bound; "
+            f"several of these languages loop forever by design -- "
+            f"`esolangs {command} --timeout SECONDS` stops one\n"
+        )
+
+    def __enter__(self) -> _UnboundedNotice:
+        """Start the timer."""
+        self._timer.start()
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        """Cancel it, whether the run finished or raised."""
+        self._timer.cancel()
+
 
 #: A run stopped by its ``--timeout``, following timeout(1).  Distinct from
 #: a program error's 1, which it shared: for the three languages that answer
@@ -562,6 +619,77 @@ def _read_program(path: str) -> str:
     except OSError as exc:
         _fail(f"cannot read {path}: {exc}")
         raise  # pragma: no cover - unreachable; _fail exits
+    except UnicodeDecodeError as exc:
+        # Its own clause, deliberately.  ``UnicodeDecodeError`` is a
+        # ``ValueError``, not an ``OSError``, so the handler above never saw
+        # it and pointing ``run`` at a PNG -- or any latin-1 file -- dumped a
+        # raw traceback with internal paths in it, where every other
+        # unreadable file gets one clean line.
+        _fail(f"cannot read {path}: not text ({_decode_note(exc)})")
+        raise  # pragma: no cover - unreachable; _fail exits
+
+
+def _shape_warning(facts: dict[str, object], stdin: str) -> str:
+    """Return a warning when ``stdin`` looks like the naive shape, else ''.
+
+    The last silent-wrong path anyone found: four languages do not read one
+    ``0``/``1`` line per bit, and feeding them the obvious thing is answered
+    with a *wrong bit* rather than an error, exit 0.  It is documented in
+    three places and ``encode`` exists to spell the right stdin -- but a
+    reader who types what they expect gets no sign at the moment they do it.
+
+    A warning rather than a refusal.  ``run`` executes arbitrary programs of
+    a language, not only generated truth-table ones, so a shape this thinks
+    is wrong may be exactly what a hand-written program wants; refusing
+    would break that, and saying so costs nothing.
+
+    Every test below reads a ``describe`` field, so a fifth exceptional
+    language is covered by declaring its shape and nothing here changes.
+    """
+    if not stdin.strip():
+        return ""
+    shape, alphabet = facts["input_shape"], facts["input_encoding"]
+    zero, one = cast("tuple[str, str]", alphabet)
+    lines = stdin.strip().split("\n")
+    naive = all(line in ("0", "1") for line in lines)
+    if {zero, one} != {"0", "1"} and naive:
+        return (
+            f"stdin looks like 0/1 lines, but {facts['name']} spells its bits "
+            f"{zero!r} and {one!r}; `esolangs encode` builds the right stdin"
+        )
+    if shape in ("one_line", "row_index") and len(lines) > 1:
+        wanted = (
+            "every bit on one line"
+            if shape == "one_line"
+            else "the row index as one decimal number"
+        )
+        return (
+            f"stdin is {len(lines)} lines, but {facts['name']} wants {wanted}; "
+            f"`esolangs encode` builds the right stdin"
+        )
+    return ""
+
+
+def _decode_note(exc: UnicodeDecodeError) -> str:
+    """Describe where a decode failed, without the codec's full sentence."""
+    return f"invalid UTF-8 at byte {exc.start}"
+
+
+def _read_stdin() -> str:
+    """Return this command's stdin, or exit if it is not text.
+
+    Shared by the three commands that read it.  Each called
+    ``sys.stdin.read()`` directly and each therefore had the same hole: a
+    program's binary output piped into ``read-answer`` crashed with a
+    traceback rather than being refused.
+    """
+    if sys.stdin.isatty():
+        return ""
+    try:
+        return sys.stdin.read()
+    except UnicodeDecodeError as exc:
+        _fail(f"cannot read stdin: not text ({_decode_note(exc)})")
+        raise  # pragma: no cover - unreachable; _fail exits
 
 
 def _encode(rest: list[str]) -> None:
@@ -613,6 +741,9 @@ def _debug(rest: list[str]) -> None:
     # consumed cannot tell one from a flag -- it answered that with
     # "unknown option: -inf" instead of "must be finite".
     rest, options = _pop_options(rest, options_taken)
+    # Before the positional count, matching ``run``: a forgotten number made
+    # the language the timeout's value and the complaint landed on the file.
+    limit = _timeout_of(options)
     rest = _split_positional(rest, set(), options_taken)
     _check_count("debug", rest, 2)
     language, path = rest[0], rest[1]
@@ -630,7 +761,7 @@ def _debug(rest: list[str]) -> None:
         _fail(f"--steps must not be negative, got {options['--steps']}")
     program = _read_program(path)
 
-    stdin = "" if sys.stdin.isatty() else sys.stdin.read()
+    stdin = _read_stdin()
     # The same two refusals ``run`` makes.  Debugging a program is no reason
     # to skip them: an unfilled template stepped confidently to `output: '0'`
     # and reported a wrong answer with no warning at all, and a load error
@@ -655,14 +786,29 @@ def _debug(rest: list[str]) -> None:
         else None
     )
     steps = int(options["--steps"]) if "--steps" in options else None
-    limit = _timeout_of(options)
     # A debugged program is one the caller is already unsure of, so a raise
     # here is a result to report rather than a crash to propagate: the
     # state up to the fault is the thing they asked to see.
     fault = None
     reason = None
+    warning = _shape_warning(describe(language), stdin)
+    if warning:
+        sys.stderr.write(f"{warning}\n")
+    # ``run`` gained this last round and ``debug`` did not, so `debug 123
+    # prog.txt` -- the command you reach for precisely when something is
+    # not stopping -- still hung with nothing on screen.  ``--steps`` counts
+    # as a bound here as much as ``--timeout`` does, so a run that has one
+    # is not told to pass one.
+    bounded = steps is not None or limit is not None
+    if describe(language)["answer_mode"] == "termination" and not bounded:
+        sys.stderr.write(
+            f"{describe(language)['name']}: this language answers 1 by not "
+            f"terminating, so a program with that answer will run until you "
+            f"stop it; pass --timeout SECONDS or --steps N to bound it\n"
+        )
     try:
-        reason = dbg.run(steps, limit)
+        with _UnboundedNotice("debug") if not bounded else _null_context():
+            reason = dbg.run(steps, limit)
     except Exception as exc:
         fault = f"{type(exc).__name__}: {exc}"
 
@@ -737,7 +883,7 @@ def _read_answer(rest: list[str]) -> None:
             f"there is no output to read; use: esolangs run --judge "
             f"--timeout <seconds> {facts['name']} <program-file>"
         )
-    output = "" if sys.stdin.isatty() else sys.stdin.read()
+    output = _read_stdin()
     if not output.strip():
         _fail(
             f"nothing on stdin to read an answer out of; pipe a program's "
@@ -766,17 +912,23 @@ def _judge(language: str, output: str, mode: object) -> str:
 def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
     rest, options = _pop_options(rest, {"--timeout"})
+    # The value is checked here, before the positionals are counted.  It ran
+    # after, so `run --timeout brainfuck prog.txt` -- a forgotten number --
+    # swallowed the language as the timeout's value and then reported
+    # "missing <program-file>", sending the reader to look at the one
+    # argument that was not the problem.
+    timeout = _timeout_of(options)
     rest = _split_positional(rest, {"--judge"}, {"--timeout", "--judge"})
     judge = "--judge" in rest
     rest = [arg for arg in rest if arg != "--judge"]
     _check_count("run", rest, 2)
     language, path = rest[0], rest[1]
-    timeout = _timeout_of(options)
     program = _read_program(path)
-    stdin = "" if sys.stdin.isatty() else sys.stdin.read()
+    stdin = _read_stdin()
     try:
-        mode = describe(language)["answer_mode"]
-        name = describe(language)["name"]
+        facts = describe(language)
+        mode = facts["answer_mode"]
+        name = facts["name"]
     except EsolangError as exc:
         _fail(str(exc))
         raise  # pragma: no cover - unreachable; _fail exits
@@ -798,8 +950,12 @@ def _run(rest: list[str]) -> None:
             f"program with that answer will run until you stop it; pass "
             f"--timeout SECONDS to bound it\n"
         )
+    warning = _shape_warning(facts, stdin)
+    if warning:
+        sys.stderr.write(f"{warning}\n")
     try:
-        output = run(language, program, stdin, timeout)
+        with _UnboundedNotice("run") if timeout is None else _null_context():
+            output = run(language, program, stdin, timeout)
     except TemplateError as exc:
         _fail(_template_hint(exc, language))
     except ExecutionTimeoutError as exc:
