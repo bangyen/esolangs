@@ -31,7 +31,8 @@ on `PATH` only once that venv is active; `uv run esolangs ...` works
 without activating it.
 
 The Python API is `esolangs.run`, `generate`, `instantiate`,
-`encode_inputs`, `make_debugger`, `describe`, and `list_languages`.  `generate` takes a
+`encode_inputs`, `read_answer`, `make_debugger`, `describe`, and
+`list_languages`.  `generate` takes a
 truth table -- `0110` is XOR -- and returns a program computing it.  Use
 `--width` for command-oriented generated programs; grids and
 newline-sensitive languages retain their own layout.
@@ -52,6 +53,16 @@ template with a `{Xi}` slot per input.  Fill it with
 refused.  `esolangs list --details` marks them `tmpl`, and
 [`docs/languages.md`](docs/languages.md#parameterized-generators) lists
 them.
+
+**Reading the answer back is the same story.**  Most languages print it,
+but six dump their whole final state with the answer somewhere inside, and
+three answer by *terminating* -- they halt for a 0 and loop forever for a 1.
+`esolangs.read_answer(language, output)` handles the first two cases; for
+the third, bound the run and catch `ExecutionTimeoutError` as the 1.  With
+`describe`, `encode_inputs`, `instantiate` and `read_answer`, a caller can
+generate, feed and judge a program in a language it knows nothing about --
+`tests/test_generic_verifier.py` does exactly that for all 69, with no
+per-language branch anywhere in it.
 
 `debug` runs a program under the breakpoint/watch VM and reports where it
 stopped: `--steps` bounds the run, `--watch-cell` prints one value per step,
