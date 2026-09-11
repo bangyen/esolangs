@@ -421,7 +421,9 @@ class TestArgumentHygiene:
         assert exc.value.code == 2
         err = capsys.readouterr().err
         assert "unexpected argument: '0110'" in err
-        assert "bare --width" in err
+        # The message must name the word that was shifted, not just describe
+        # the rule: the complaint was that it never said what 'abc' became.
+        assert "'abc' was read as the language" in err
 
     def test_list_takes_no_arguments(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as exc:

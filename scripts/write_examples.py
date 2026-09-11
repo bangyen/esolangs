@@ -61,7 +61,10 @@ def write_boolean_manifest() -> None:
             given = "embedded " + "".join(str(b) for b in example.bits)
         else:
             given = " ".join(example.inputs) or "(none)"
-        expected = repr(example.expected) if example.expected else "(nothing)"
+        if not example.expected_compared:
+            expected = "not the answer -- see note"
+        else:
+            expected = repr(example.expected) if example.expected else "(nothing)"
         rows.append(
             f"| `{stem}.txt` | {_display_name(stem)} | `{example.table}` | "
             f"{given} | {expected} |"

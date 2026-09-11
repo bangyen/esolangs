@@ -28,7 +28,7 @@ from esolangs import (
     list_languages,
     run,
 )
-from esolangs.debug import make_debugger
+from esolangs.debugger import make_debugger
 from esolangs.exceptions import EsolangError
 from esolangs.registry import LANGUAGES
 from esolangs.tools.wrap import DEFAULT_WIDTH
@@ -199,9 +199,8 @@ def _check_count(
         _fail(HELP[command].splitlines()[0])
     if len(args) > wanted:
         hint = (
-            "; a bare --width takes the default width, so the word after it "
-            f"was read as the {'language' if command == 'generate' else 'first'} "
-            "argument"
+            f"; --width took no value here (only an integer counts as one), so "
+            f"it used the default width and {args[0]!r} was read as the language"
             if bare_width
             else ""
         )
