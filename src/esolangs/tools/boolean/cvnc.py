@@ -97,6 +97,7 @@ Measured over every table at ``n <= 3`` and 300 sampled at ``n == 4``, that
 is 13.8% and 17.9% shorter respectively, and no table grows.
 """
 
+from esolangs.exceptions import GeneratorCapError
 from esolangs.tools.boolean.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -356,5 +357,5 @@ def cvnc(truth_table: str) -> str:
     _validate_truth_table(truth_table)
     program = best_input_order(truth_table, _ordered_candidate)
     if len(program) >= _HALT_REACH:
-        raise ValueError("program outgrew the halting goto's reach")
+        raise GeneratorCapError("program outgrew the halting goto's reach")
     return program

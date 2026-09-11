@@ -21,6 +21,7 @@ assembler were retired.
 import string
 from itertools import permutations
 
+from esolangs.exceptions import GeneratorCapError
 from esolangs.tools.boolean.helpers import (
     _ASCII_ZERO,
     _ORDER_SEARCH_MAX,
@@ -189,7 +190,12 @@ def _six_five_walk(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     if n > _SIX_FIVE_MAX_LABEL:
-        raise ValueError(
+        # Unreachable in practice: it takes a table of 2**36 entries, which
+        # is more characters than the machine has memory for.  Kept because
+        # the walk's arithmetic genuinely depends on the bound, and
+        # converted to the cap class with its siblings so the class is not
+        # half-applied.
+        raise GeneratorCapError(  # pragma: no cover - needs a 2**36 table
             f"the 6-5 walk spends one branch label per input and there are "
             f"only 35, so n == {n} does not fit"
         )
@@ -519,7 +525,7 @@ def _six_five_stream_ordered(truth_table: str) -> str:
     n = _validate_truth_table(truth_table)
     labels = _six_five_markers(truth_table)
     if labels > 35:
-        raise ValueError(
+        raise GeneratorCapError(
             "the 6-5 decision tree has 35 branch labels, but this table needs "
             f"{labels} after folding its constant subtrees (n == {n})"
         )

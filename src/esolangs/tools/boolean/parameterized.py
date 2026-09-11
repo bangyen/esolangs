@@ -9,6 +9,8 @@ bits leaking through program length.
 from functools import cache
 from math import factorial
 
+from esolangs.exceptions import GeneratorCapError
+
 # Re-exported so this module stays the import site for the whole
 # parameterized family; each of these owns a file because its
 # construction (a search or a grid layout) dwarfs the others.
@@ -788,7 +790,7 @@ def _nocomment_wide(truth_table: str, n: int, tape: int) -> str:
     # and the walk itself reaches one staircase past that.
     top = apron + 2 * cap + 1
     if top >= tape:
-        raise ValueError(
+        raise GeneratorCapError(
             f"the NoComment boolean generator needs cell {top} for n == {n}, "
             f"past the interpreter's {tape}-cell tape"
         )

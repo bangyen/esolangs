@@ -118,6 +118,21 @@ class Debugger:
         stored: it compares unequal to every position the machine ever
         reaches, so the breakpoint would simply never fire, and a silently
         dead breakpoint is worse than an error.
+
+        The *kind* is checked against this language too, because the same
+        argument applies one level up: ``break_at((1, 2))`` on brainfuck,
+        whose ``ip`` is an index, and ``break_at(10)`` on Alight, whose
+        ``ip`` is a coordinate, were both stored and both could never fire.
+
+        Only the kind, not the arity.  A tuple ``ip``'s length is the
+        language's own -- three for ArrowQueue and Clockwise, four for
+        Alight and COD, six for one of them -- and it is not even constant
+        within a run: six languages change shape as they go, several to
+        ``None`` once the agent they were tracking is consumed, and COD from
+        a 4-tuple to an empty one.  So an arity check would refuse
+        breakpoints that are perfectly legitimate later in the same run.
+        A machine whose ``ip`` is already ``None`` or empty has no shape to
+        compare against, and anything is accepted.
         """
         if isinstance(ip, int) and not isinstance(ip, bool):
             check_whole(ip, "ip")
@@ -129,6 +144,14 @@ class Debugger:
             raise ArgumentError(
                 f"ip must be a non-negative integer or a tuple of them, got {ip!r}"
             )
+        here = self.vm.ip
+        if here is not None and here != ():
+            wanted = "a tuple of integers" if isinstance(here, tuple) else "an integer"
+            if isinstance(here, tuple) != isinstance(ip, tuple):
+                raise ArgumentError(
+                    f"this language's ip is {here!r}, so a breakpoint on "
+                    f"{ip!r} could never fire; it needs {wanted}"
+                )
         self._breakpoints.append(lambda vm: vm.ip == ip)
 
     def break_on_cell(self, index: int, value: int) -> None:
