@@ -1,9 +1,11 @@
 """Interpreter for Clockwise.
 
-A pointer walks clockwise around a square ring, turning at R cells (or at ?
-when the accumulator is nonzero, or ! when it is zero).  ; outputs the
-accumulator parity, . reads an input bit, S zeroes the accumulator, and seven
-parity bits are grouped into one printed byte.
+A pointer walks clockwise around a square ring, turning a quarter at R cells
+and at ! when the accumulator is zero.  ? turns a quarter *for every count*
+the accumulator holds -- the condition below is the accumulator itself, not a
+test of it -- so 2 reverses the pointer and 0 leaves it on course.  ; outputs
+the accumulator parity, . reads an input bit, S zeroes the accumulator, and
+seven parity bits are grouped into one printed byte.
 
 The wiki defines the program as a closed ring; a pointer that walks off the
 edge is a malformed program and is rejected with :class:`ValueError`.  Input
@@ -133,9 +135,10 @@ class _Machine:
     ``step()`` moves the pointer one cell, executes its instruction, and
     flushes a printed byte when seven parity bits accumulate; ``halted`` is
     true once the pointer returns to the origin (a ``0`` heading is the only
-    return that is *not* a halt, so a ring that re-enters the origin heading
-    right loops forever).  The VM and the state-cycle hang detector expose
-    this object.
+    return that is *not* a halt, and no ring can arrive that way, since a
+    step onto the origin heading right starts from ``(0, -1)`` -- which
+    :func:`move` refuses -- so that arm is a guard, not a loop).  The VM and
+    the state-cycle hang detector expose this object.
     """
 
     def __init__(self, code: list[str], io: IO) -> None:
