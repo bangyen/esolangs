@@ -17,9 +17,14 @@ esolangs --help
 esolangs list
 esolangs generate Suffolk 0110 > program.txt
 printf '0\n1\n' | esolangs run Suffolk program.txt
-esolangs debug --steps 20 --watch-cell 0 brainfuck program.txt
+
+esolangs generate brainfuck 0110 > bf.txt
+printf '0\n1\n' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
 just test
 ```
+
+Pass each command the language it was generated for: running a Suffolk
+program as brainfuck does not fail, it reports something useless.
 
 `just install-dev` puts the `esolangs` entry point in `.venv/bin`, so it is
 on `PATH` only once that venv is active; `uv run esolangs ...` works

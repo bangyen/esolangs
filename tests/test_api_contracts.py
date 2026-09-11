@@ -224,3 +224,102 @@ class TestPackageSurface:
 
     def test_version_is_present(self) -> None:
         assert esolangs.__version__
+
+
+class TestConventionsAreDiscoverable:
+    """How to feed a language, and how to read its answer, are askable."""
+
+    def test_grapheme_names_its_input_alphabet(self) -> None:
+        """Digits are read as truthy, so 0/1 lines answer the wrong row."""
+        assert esolangs.describe("Grapheme")["input_encoding"] == ("%", "A")
+        assert esolangs.describe("brainfuck")["input_encoding"] == ("0", "1")
+
+    def test_the_named_alphabet_is_the_one_that_works(self) -> None:
+        """The point of the key: using it reproduces the truth table."""
+        zero, one = esolangs.describe("Grapheme")["input_encoding"]  # type: ignore[misc]
+        program = esolangs.generate("Grapheme", XOR)
+        got = "".join(
+            esolangs.run(
+                "Grapheme", program, stdin=f"{[zero, one][a]}\n{[zero, one][b]}\n"
+            )
+            for a in (0, 1)
+            for b in (0, 1)
+        )
+        assert got == XOR
+
+    @pytest.mark.parametrize("name", ["123", "ArrowQueue", "Point Break", "Fargo"])
+    def test_a_language_that_needs_explaining_explains_itself(self, name: str) -> None:
+        """Termination-as-answer and Fargo's row index are not guessable."""
+        assert esolangs.describe(name)["answer_convention"]
+
+    def test_a_plain_printer_needs_no_note(self) -> None:
+        assert esolangs.describe("brainfuck")["answer_convention"] is None
+
+
+class TestEveryDeliberateErrorIsCatchable:
+    """The package docstring's promise, checked against the interpreters."""
+
+    @pytest.mark.parametrize(
+        ("language", "source"),
+        [
+            ("brainfuck", "[[["),
+            ("Sophie", "{{{"),
+            ("Streetcode", "zzz"),
+            ("Grapheme", "abc"),
+        ],
+    )
+    def test_a_malformed_program_is_a_programerror(
+        self, language: str, source: str
+    ) -> None:
+        """They were bare ValueErrors, so the documented base class missed."""
+        with pytest.raises(ProgramError) as exc:
+            esolangs.run(language, source, timeout=5)
+        assert isinstance(exc.value, EsolangError)
+        assert str(exc.value)
+
+    def test_every_committed_example_runs_from_its_described_path(self) -> None:
+        """describe() handed out paths run() choked on: the file's newline."""
+        failures = []
+        for name in esolangs.list_languages():
+            facts = esolangs.describe(name)
+            if facts["parameterized"] or facts["answer_convention"]:
+                continue  # needs bits embedded, or answers by terminating
+            zero, one = facts["input_encoding"]  # type: ignore[misc]
+            for example in facts["examples"]:  # type: ignore[union-attr]
+                try:
+                    esolangs.run(
+                        name,
+                        pathlib.Path(ROOT / example),
+                        stdin=f"{zero}\n{one}\n",
+                        timeout=20,
+                    )
+                except EsolangError as exc:
+                    failures.append(f"{name}: {type(exc).__name__}: {exc}")
+        assert failures == []
+
+
+class TestInstantiateValidates:
+    """A wrong call is refused where it is made, not one layer downstream."""
+
+    def test_the_bit_count_must_match_the_slots(self) -> None:
+        template = esolangs.generate("Minifuck", XOR)
+        with pytest.raises(TemplateError, match="2 input slots, but 1 bit was given"):
+            esolangs.instantiate("Minifuck", template, [1])
+
+    def test_a_bit_must_be_a_bit(self) -> None:
+        """``2`` was substituted silently into a program that then lied."""
+        template = esolangs.generate("Minifuck", XOR)
+        with pytest.raises(TemplateError, match="must each be 0 or 1"):
+            esolangs.instantiate("Minifuck", template, [2, 0])
+
+
+class TestNoTwoNamesDisagree:
+    """One question, one answer."""
+
+    def test_width_awareness_has_a_single_spelling(self) -> None:
+        """``esolangs.takes_width`` took a function and answered False here."""
+        assert not hasattr(esolangs, "takes_width")
+        assert esolangs.describe("LaserFuck")["width_aware"] is True
+
+    def test_the_debugger_stop_reason_type_is_exported(self) -> None:
+        assert "StopReason" in esolangs.__all__

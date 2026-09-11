@@ -98,7 +98,18 @@ def _answer(example: BooleanExample, got: str) -> str:
 #: reads a whole line and treats every non-empty string as truthy, so its
 #: generator normalizes a two-character alphabet instead; Fargo's
 #: interpreter reads the row index itself, before the program starts.
-_ALPHABET = {"grapheme": ("%", "A")}
+#:
+#: Derived from the committed examples rather than written out here, so
+#: this sweep and ``describe(...)["input_encoding"]`` cannot disagree about
+#: what a language reads.  They did: this map knew Grapheme's ``%``/``A``
+#: and the example did not, so the committed program was run on digits --
+#: every one of which Grapheme reads as a 1 -- and passed only because the
+#: pinned row's answer matched the constant that produced.
+_ALPHABET = {
+    stem: example.alphabet
+    for stem, example in BOOLEAN_EXAMPLES.items()
+    if example.alphabet != ("0", "1")
+}
 _ROW_INDEX = frozenset({"fargo"})
 #: Languages that take every bit on one line rather than a line each --
 #: Clockwise packs seven bits per character and reads the lot in one go.
