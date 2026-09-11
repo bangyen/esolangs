@@ -1297,6 +1297,63 @@ class TestClockwise:
                 table = format(table_int, f"0{2**n}b")
                 assert len(boolean.clockwise(table)) <= unfolded, table
 
+    def test_a_width_stacks_the_tree_and_it_still_computes(self) -> None:
+        """A narrower ring is the same function, laid out down instead of across.
+
+        Stacking moves a level's separation from columns into rows, so the
+        two subtrees no longer share a bottom row -- which is the whole of
+        what could go wrong, since the ring used to close through one.  The
+        answer is what says it did not.
+        """
+        for table in ("01101001", "0110100110010110", "00010111"):
+            n = len(table).bit_length() - 1
+            flat = boolean.clockwise(table)
+            wide = max(len(row) for row in flat.splitlines())
+            for width in (8, 10, 14, 20):
+                narrow = boolean.clockwise(table, width)
+                columns = max(len(row) for row in narrow.splitlines())
+                floor = max(
+                    len(row) for row in boolean.clockwise(table, 1).splitlines()
+                )
+                assert columns <= max(width, floor), (table, width, columns)
+                if columns < wide:
+                    assert len(narrow.splitlines()) > len(flat.splitlines()), (
+                        f"{table} at {width} narrowed without spending rows"
+                    )
+                for combo in range(2**n):
+                    bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                    assert run_clockwise(narrow, bits) == table[combo], (
+                        table,
+                        width,
+                        bits,
+                    )
+
+    def test_stacked_leaves_leave_by_rows_of_their_own(self) -> None:
+        """A stacked tree's leaves finish on different rows, and column 0 closes.
+
+        The flat ring funnels every leaf along one shared bottom row into
+        the corner.  Stacking breaks that by construction -- a leaf below
+        another ends lower -- so the exits are per-row instead: each ends at
+        a ``!`` in column 0, which only turns a path whose accumulator the
+        leaf's own ``S`` left at zero, and the ``+`` above it puts the
+        accumulator back so the climb passes the exits above without
+        turning on them.
+        """
+        table = "01101001"
+        flat = boolean.clockwise(table)
+        stacked = boolean.clockwise(table, 10)
+
+        def exit_rows(program: str) -> list[int]:
+            rows = program.splitlines()
+            return sorted({y for y, row in enumerate(rows) if row[:1] == "!"})
+
+        assert len(exit_rows(flat)) == 1, "a flat ring closes through one row"
+        assert len(exit_rows(stacked)) > 1, "stacking must spread the exits"
+        for y in exit_rows(stacked):
+            assert stacked.splitlines()[y - 1][:1] == "+", (
+                f"exit row {y} has no '+' above it to re-arm the climb"
+            )
+
 
 class TestTaglate:
     @pytest.mark.parametrize(

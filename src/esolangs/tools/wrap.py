@@ -67,24 +67,24 @@ shape, which no after-the-fact reflow can do: Streetcode folds its
 instruction line into a boustrophedon, LaserFuck steers the beam down and
 back so a straight run of tape commands costs rows instead of columns,
 WII2D folds the run that shifts its answer to an ASCII digit the same way,
-and COD stops its left-to-right join of blocks early and swims the cod back
-down and west to the next band.  Those four generators take the width
-themselves -- :func:`takes_width` is how the callers tell -- and never reach
+COD stops its left-to-right join of blocks early and swims the cod back
+down and west to the next band, and Clockwise stacks the shallow levels of
+its decision tree so a branch costs one column instead of the ``2 ** (n -
+bit)`` it displaces.  Those five generators take the width themselves --
+:func:`takes_width` is how the callers tell -- and never reach
 :func:`wrap_program`, which would skip them anyway for being already
 multi-line.
 
-None of the four folds to an arbitrary width, because in each something
-cannot move: WII2D's junction chain carries one input per junction with a
-detour row beneath it, so only the decode's tail folds, and COD's blocks
-are indivisible, so its floor is the widest single block.  A width under
-the floor returns the narrowest program rather than refusing.
+Only Clockwise folds to an arbitrary width; in the others something cannot
+move.  WII2D's junction chain carries one input per junction with a detour
+row beneath it, so only the decode's tail folds, and COD's blocks are
+indivisible, so its floor is the widest single block.  A width under the
+floor returns the narrowest program rather than refusing.
 
-Clockwise is the one that looks like it belongs here and does not.  It
-folds too, but the fold is not a layout one: it collapses a subtree whose
-rows all agree, so the ring narrows with the *table* rather than to a
-request.  Its width is the sum of its branches' displacements, ``2 ** (n +
-1)`` for a table that does not collapse, which passes 80 columns at
-``n == 6`` with nothing a caller can do about it.
+What Clockwise trades is rows: a stacked level writes the subtree below it
+twice over, so each one doubles the program's height.  Its own fold --
+collapsing a subtree whose rows all agree -- narrows with the *table*
+instead, and the two are independent.
 
 Wrapping otherwise assumes a single-line program, since a newline in one
 already means layout.  Taglate is the exception: its first line seeds the
