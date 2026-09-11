@@ -72,7 +72,7 @@ from collections.abc import Sequence
 
 from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 
-__all__ = ["slow_acv_mammalian_boolean"]
+__all__ = ["slow_acv_mammalian"]
 
 # The byte a stash chunk appends.  It is what raises the sum, and the sum is
 # what puts a distant token index within a jump's reach, so the chunk buys
@@ -340,7 +340,7 @@ def _subtree(
     ]
 
 
-def slow_acv_mammalian_boolean(truth_table: str) -> str:
+def slow_acv_mammalian(truth_table: str) -> str:
     """Build a SLOW ACV MAMMALIAN program evaluating ``truth_table``.
 
     The program reads ``n`` digits with ``ACCEPT`` and prints the table entry

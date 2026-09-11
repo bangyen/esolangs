@@ -447,7 +447,8 @@ class _Grid:
         # the drawing* from a given car has the same answer every later
         # time it is asked.  It is asked a lot: the steering phases each
         # re-derive the shape, the choices and the merge from scratch, and
-        # the car revisits squares, so over the hello-world program the
+        # the car revisits squares, so over the ring program in
+        # ``tests/fixtures/streetcode_hello.txt`` the
         # rules run 3242/12734/5864 times from only 727/1235/702 distinct
         # states -- between 4.5 and 10.3 calls of every ten are a repeat.
         # ``__setitem__`` clears it, since a redrawn row is a different
@@ -833,9 +834,14 @@ def _junction_kind(grid: _Grid, car: _Car) -> _Junction:
     the window on one wall, not something the spec calls for -- the wiki
     describes the leftmost/second-leftmost choice without restricting
     which side of the road a branch may open on.  Both of the wiki's own
-    junction-bearing examples still detect under this rule (the
-    infinite-loop example at ``(1,5)`` heading West, and the larger
-    infinite-cat example at ``(1,6)`` heading West).
+    junction-bearing examples still detect under this rule: the infinite-loop
+    example first at ``(1,3)`` heading West and the infinite-cat example at
+    ``(1,4)`` heading West, ten firing states each.
+
+    Every one of those twenty is a **three**-way.  Scanning both grids at
+    every cell and heading answers 4 nowhere, so no wiki example forces the
+    four-way choice and that arm is a convention, not a sourced rule -- see
+    ``docs/limitations.md``.
     """
     kind = _junction_shape(grid, car)
     # A drawn junction is only a choice when at least two of the roads
@@ -1875,8 +1881,8 @@ class _Machine:
         form admits any wall character at the corner rather than only
         ``+``: together these leave open a question the wiki does not
         settle, whether a road divider must terminate in a ``+``.  The
-        hello-world example leaves its divider ends bare and runs
-        correctly, and nothing in the driving rules keys on the
+        ring program in ``tests/fixtures/streetcode_hello.txt`` leaves its
+        divider ends bare and runs correctly, and nothing keys on the
         difference, so the shape is accepted.  What the forms do reject is
         the hole, whose cell has wall on two opposite sides and open
         ground on the other two, matching no form.

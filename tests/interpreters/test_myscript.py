@@ -330,18 +330,11 @@ class TestFrameStack:
         assert max(depths) >= 2
 
 
-class TestGenerator:
-    def test_round_trip(self) -> None:
-        from esolangs.tools import text as gen
-
-        for text in ["Hi", "Hello, World!", "a\tb\nc", 'quote"and\\slash']:
-            assert run_and_capture(gen.myscript(text)) == text
-
-    def test_unrepresentable_rejected(self) -> None:
-        from esolangs.tools import text as gen
-
-        with pytest.raises(ValueError, match="representable"):
-            gen.myscript("\x07")
+class TestSayEscapes:
+    def test_say_unescapes_tab_newline_quote_and_backslash(self) -> None:
+        assert run_and_capture('say "Hi"') == "Hi"
+        assert run_and_capture('say "a\\tb\\nc"') == "a\tb\nc"
+        assert run_and_capture('say "quote\\"and\\\\slash"') == 'quote"and\\slash'
 
 
 class TestSnapshot:

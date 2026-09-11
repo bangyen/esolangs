@@ -9,7 +9,7 @@ A truth table's length determines its input count: a valid table has
 generators take no ``n`` parameter.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from itertools import permutations
 
 # ``ord("0")``.  Input digits arrive as 48/49 from a byte-oriented read, and a
@@ -68,7 +68,11 @@ def _validate_shape(truth_table: str) -> int:
             "truth table must have a power-of-two number of entries "
             f"(2**n), got {len(truth_table)}",
         )
-    if not all(c in "01" for c in truth_table):
+    # Spelled as a set difference rather than ``all(c in "01" ...)``: the
+    # order search revalidates the same table once per candidate, so this
+    # runs ~720 times per call at n=6 and a per-character Python loop over
+    # 2**n shows up (0.86s of the n=6 registry sweep).
+    if set(truth_table) - {"0", "1"}:
         raise ValueError("truth table must contain only '0' and '1'")
     return n
 
@@ -235,15 +239,16 @@ def read_at(truth_table: str, inputs: tuple[int, ...] | list[int], n: int) -> st
     projects tables it has already validated, and revalidating a narrowed
     table here would check the wrong width.
     """
-    k = len(inputs)
-    rows = []
-    for row in range(2**k):
-        original = 0
-        for slot, i in enumerate(inputs):
-            if (row >> (k - 1 - slot)) & 1:
-                original |= 1 << (n - 1 - i)
-        rows.append(truth_table[original])
-    return "".join(rows)
+    # The row indices are built by doubling rather than by re-scattering
+    # each row's bits: slot ``k`` is the next-most-significant bit, so
+    # appending ``o | mask`` after ``o`` extends the list in row order.
+    # That is O(2**k) list work against O(2**k * k) bit tests -- worth the
+    # doubling because the order search calls this once per candidate.
+    originals = [0]
+    for i in inputs:
+        mask = 1 << (n - 1 - i)
+        originals = [x for o in originals for x in (o, o | mask)]
+    return "".join([truth_table[o] for o in originals])
 
 
 def stored_inputs(truth_table: str, perm: tuple[int, ...]) -> set[int]:
@@ -343,6 +348,20 @@ def best_input_order(
     input and cares only about the fold.  Building all ``n!`` candidates and
     taking the shortest gets both right, and any future language's cost
     shape for free.
+
+    **The ``n!`` builds do not come down, and the sweep's own two tables
+    show why.**  A dedupe needs a key available *before* a build, and the
+    only generic one is the permuted table.  On the dense n=6 fixture all
+    720 are distinct, so it collapses nothing.  On parity it collapses all
+    720 into one -- parity is totally symmetric -- and that is the case
+    that refutes the key rather than the one that saves it: over that
+    single table the 720 candidates are still 720 distinct programs,
+    because ``perm`` decides which input each node tests.  basicfuck gives
+    them one length, so its 719 extra builds only confirm a tie; Jaune
+    gives them 176 distinct lengths, because Jaune pays for the address.
+    Which of those a language is cannot be known without building it, so
+    the cost was taken out of the candidates instead -- the n=6 registry
+    sweep is 10.0s -> 6.0s of CPU with all 1380 programs byte-identical.
 
     **The exhaustive search is capped at ``_ORDER_SEARCH_MAX`` inputs**,
     because ``n!`` builds of an ``O(2**n)`` program is the kind of cost that
@@ -484,8 +503,8 @@ def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
 
 
 # The walker only concatenates tokens and measures runs of them, never looks
-# inside one, so a token is whatever the caller finds convenient: a string for
-# the generators that emit text, an instruction tuple for S*bleq.
+# inside one, so a token is whatever the caller finds convenient: a string
+# for most generators, an instruction tuple for S*bleq.
 type Leaf[Token] = Callable[[int, int], list[Token]]
 type Node[Token] = Callable[[int, list[Token], list[Token], int], list[Token]]
 
@@ -572,8 +591,13 @@ def decision_tree_tokens[Token](
     width = parent_width if callable(parent_width) else lambda _level: parent_width
 
     def walk(level: int, lo: int, hi: int, at: int) -> list[Token]:
-        values = {truth_table[r] for r in range(lo, hi)}
-        if level == n or (collapse and len(values) == 1):
+        # ``count`` over the span rather than a set comprehension over it:
+        # the constant test runs at every node of every one of the n!
+        # candidates, and it is also skipped entirely when ``collapse`` is
+        # off, which the set built unconditionally.
+        if level == n or (
+            collapse and truth_table.count(truth_table[lo], lo, hi) == hi - lo
+        ):
             return leaf(level, lo)
         half = (hi - lo) // 2
         below = at + width(level)
@@ -649,7 +673,10 @@ def _decision_tree_program(
     # read bits b_i at cell 2i, leaving the complements (cells 1, 3, ...) zero
     for i in range(n):
         cells.append(",")
-        cells.extend("-" * _ASCII_ZERO)
+        # ``append`` of the run, not ``extend`` over its characters: the run
+        # is 48 long and the join sees the same text either way, but the
+        # order search pays the per-character list work n! times.
+        cells.append("-" * _ASCII_ZERO)
         if i < n - 1:
             move(pos + 2)
 
@@ -689,7 +716,7 @@ def _decision_tree_program(
     result = 2 * n + 2
 
     def leaf(value: str) -> None:
-        cells.extend("+" * (_ASCII_ZERO + int(value)))
+        cells.append("+" * (_ASCII_ZERO + int(value)))
         cells.append(".")
         cells.append("[-]")  # clear the result so every ] on the way out sees zero
 
@@ -740,3 +767,83 @@ def _decision_tree_program(
     move(2 * perm[0])
     node(0, 0)
     return "".join(cells)
+
+
+# The build plan for every Collatz Multiverse constant: ``_PLAN[n]`` is
+# ``(needed, decompositions)`` where ``needed`` is the smallest set of
+# constants (beyond k1/k2) required to build ``k n`` and ``decompositions``
+# maps each such constant to the ``(b, a, c)`` it is built from.
+_PLAN: dict[int, tuple[frozenset[int], dict[int, tuple[int, int, int]]]] = {
+    1: (frozenset(), {}),
+    2: (frozenset(), {}),
+}
+
+
+def _extend_plans(maxval: int) -> None:
+    """Fill ``_PLAN`` up to ``maxval`` with minimal two-line build plans.
+
+    A Collatz Multiverse line ``v = a x + b`` applies the Collatz rule to
+    ``v``'s current value: an odd (or zero) value becomes ``value * a + b``
+    and an even value halves.  A fresh register (value 0) therefore copies
+    any built constant ``b`` with ``v = negativeOne x + b``, and when the
+    copied value is *odd* a second line ``v = a x + c`` turns it into
+    ``b * a + c``.  Each constant costs two lines once its operands exist, so
+    a value ``n`` is reachable as ``b * a + c`` with an odd ``b``.  This
+    reaches large values in O(log) constants instead of the +1/+2 chain.
+    """
+    for m in range(3, maxval + 1):
+        if m in _PLAN:
+            continue
+        best: tuple[frozenset[int], dict[int, tuple[int, int, int]]] | None = None
+        for b in range(1, m, 2):
+            for a in range(1, min(m // b + 1, m)):
+                rem = m - b * a
+                need = frozenset({m}) | _PLAN[b][0] | _PLAN[a][0]
+                if rem > 2:
+                    need |= _PLAN[rem][0]
+                if best is None or len(need) < len(best[0]):
+                    best = (need, {m: (b, a, rem)})
+        if best is None:
+            raise AssertionError("b = 1 always yields a finite plan")
+        plan = dict(best[1])
+        for v in best[0]:
+            if v >= 3 and v != m:
+                plan.update(_PLAN[v][1])
+        _PLAN[m] = (best[0], plan)
+
+
+def _cm_constants(needed: Iterable[int]) -> list[str]:
+    """Lines building Collatz Multiverse constants for the values in ``needed``.
+
+    ``k1``/``k2`` are bootstrapped from ``negativeOne``, then each further
+    constant is built by the two-line multiply-add trick from
+    :func:`_extend_plans` (``k{n} = negativeOne x + k{b}`` copies the odd
+    ``b``, ``k{n} = k{a} x + k{c}`` multiplies it by ``a`` and adds ``c``).
+    Only the constants the program actually references are built, rather than
+    a full ``1..maxval`` chain.
+    """
+    need = sorted(n for n in set(needed) if n > 2)
+    lines = [
+        "k1 = negativeOne x + negativeOne, NOT PRINT.",
+        "k1 = negativeOne x + zero, NOT PRINT.",
+        "k2 = negativeOne x + negativeOne, NOT PRINT.",
+        "k2 = negativeOne x + k1, NOT PRINT.",
+    ]
+    if not need:
+        return lines
+    _extend_plans(max(need))
+    total: frozenset[int] = frozenset()
+    decomp: dict[int, tuple[int, int, int]] = {}
+    for n in need:
+        s, d = _PLAN[n]
+        total |= s
+        decomp.update(d)
+    for n in range(3, max(need) + 1):
+        if n in total:
+            b, a, c = decomp[n]
+            lines.append(f"k{n} = negativeOne x + k{b}, NOT PRINT.")
+            if c == 0:
+                lines.append(f"k{n} = k{a} x + zero, NOT PRINT.")
+            else:
+                lines.append(f"k{n} = k{a} x + k{c}, NOT PRINT.")
+    return lines

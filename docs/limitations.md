@@ -10,15 +10,45 @@ structural arguments are in [walls](walls.md).
   another sentinel. Malformed programs raise `ValueError`; runtime failure
   raises `HaltError`.
 - Character input is line-delimited: one line supplies one character.
+- A blank line reads as `0`, and that `0` is **chosen** everywhere. Audited
+  against the current page of all eight sites that reach it — the six
+  guards `test_input_convention.py` finds by AST (Alight, DINAC, Jaune,
+  LaserFuck, Streetcode, Suffolk), plus Dig, which zeroes its mole by
+  leaving the read unset, and Packlang, which takes `io.input_char`
+  directly. Two pages specify the opposite and are knowingly overridden:
+  DINAC "Empty input returns \n", Packlang "Empty input returns a
+  newline". Five say nothing about an empty read. Suffolk alone names the
+  value — "At EOF, instead set the internal state integer to 0" — but that
+  is EOF, which still raises here, so it corroborates the number and not
+  the rule. Jaune's two linked implementations were checked as well and
+  neither defines an empty read: the JavaScript one calls
+  `Scanner.nextInt()`, the Common Lisp one bare `read`, and both error
+  rather than yield 0. **No language's `0` comes from its own
+  specification.**
 - Explicit frame stacks make supported recursion uncapped. Forbin calls in
   expression position remain host-recursive and report their documented limit.
+- Streetcode's **four-way junction is a convention**, and no example can make
+  it anything else. Scanning every cell and heading of both of the wiki's
+  junction-bearing grids, `_junction_kind` answers 3 wherever it fires and 4
+  nowhere — the infinite-loop example fires at ten states, the infinite-cat
+  example at ten, all of them three-way. The page cannot settle it in
+  principle either: its ambiguous-turn rule names only "the leftmost road"
+  and "the second-leftmost one", which is a choice between two, so a
+  four-way's third road is outside what the rule spells. `docs/streetcode.md`
+  stays the spec of record and the implementation's behaviour is the
+  definition.
 
 ## Generator boundaries
 
-Text generators are absent where the language has no output, only a binary or
-numeric output alphabet, or cannot emit arbitrary byte sequences. Boolean
-construction is parameterized for 123 and `%^2^-1`; no program reading its
-own inputs overcomes the latter's two-input wall.
+Boolean construction is parameterized for 123 and `%^2^-1`; no program
+reading its own inputs overcomes the latter's two-input wall.
+
+The n=3 input-reordering screen (`scripts/screen_input_reorder.py`)
+closes eight unwired generators at exactly 0% upside without reading
+their code — A Painter Ant, Alight, Container, Grapheme, Home Row,
+Packlang, Point Break, Suptiftam — most sum-of-minterms, where the
+minterm count does not depend on split order. Suffolk, Circuit Diagram
+and Collatz Multiverse improve a handful of tables each for under 0.05%.
 
 Interprogck8's boolean generator reaches ten inputs. It was capped at
 three by the reach of one `DownAccLines` — 255 lines, against a 456-line
@@ -29,27 +59,19 @@ also retired the old router's patience knob and its 2031s n=8 price. See
 the table below for the measured edge and the paragraph after it for the
 mechanism.
 
-## Text generator blockers
+The ten is now a cost call rather than an open question. `_REPAIRS` is a
+budget on meadow additions, and dense n=11 closes when given more: at 4096
+it builds in 20.9s spending 1445 additions, emits 1203786 characters over
+279181 lines, and **all 2048 rows execute correctly**. The shipped 256
+refuses it in 2.9s after 350 additions — re-measured, against the 30s this
+ledger used to carry, which predates the router's recent perf work. Dense
+n=10 spends 103, inside the 95-126 the entry already recorded. The budget
+is unchanged: 1445 additions and a 1.2MB program for one arity is what the
+cap is declining to spend, not something it cannot reach. Unlike WII2D's
+analogous "raise the 256 guard" question, which measured *false*, this one
+measured true.
 
-| Language | Why it cannot emit arbitrary text |
-| --- | --- |
-| A Painter Ant | No I/O, so the interpreter dumps state when it proves the ant's routine repeats; that grid raster is limited to its symbols. |
-| Algebraic Programming Language | Executed lines print numeric results only. |
-| ArrowQueue | No I/O, so the interpreter dumps the queue at halt; those headings are numeric. |
-| Back | No I/O, so the interpreter dumps the tape at halt; that has only `0`, `1`, and spaces. |
-| BF-PDA | Output is one bit at a time. |
-| Bitdeque | No I/O, so the interpreter dumps the deque at halt; that dump is numeric. |
-| COD | Its sink prints decimal integers only. |
-| Circuit Diagram | Output is a bit string only. |
-| Fargo | `$` prints the output register as a number. |
-| Flowchart | Its output node emits one bit; the spec's truth machine fixes that convention. |
-| Grapheme | String mode cannot contain `E`, and strings cannot be concatenated. |
-| Inject | `send` appends a newline to every emitted line, so texts without a final newline are unreachable. |
-| Jaune | `^` prints cells as decimal integers only. |
-| Lamfunc | Whitespace tokenization and no concatenation prevent arbitrary text. |
-| Minsky Swap | No I/O, so the interpreter dumps the registers at halt; that dump is numeric. |
-| Point Break | No output command, so the interpreter dumps the variables at halt; that dump is numeric. |
-| RAM0 | No I/O, so the interpreter dumps state at halt; that fixed format cannot address arbitrary text. |
+## Boolean generator caps
 
 Current caps are deliberate:
 
@@ -59,10 +81,27 @@ generators cover one and refuse the other at the same arity):
 
 | Generator | dense | parity | what stops it |
 | --- | --- | --- | --- |
-| Interprogck8 | 10 | 10 | n=11 dense exhausts the `_REPAIRS = 256` meadow budget after 30s; whether more budget closes it is unmeasured |
-| Polynomial | 10 | 10 | caps at 1934 instructions, one per prime -- the analytic worst case over n=10 tables, so all of n=10 builds; dense n=11 needs 2910 |
-| WII2D | 8 | 10 | dense n=9 decode spans 256 points past the `_WII2D_MAX_INDEX_DOMAIN = 128` cost guard |
+| Interprogck8 | 10 | 10 | held at 10 on cost, not capability: `_REPAIRS = 256` refuses dense n=11, and a raised budget builds it at 1445 additions -- priced under *Generator boundaries* above |
+| Polynomial | 10 | 10 | caps at 1934 instructions, one per prime -- the analytic worst case over n=10 tables, so all of n=10 builds; dense n=11 needs 2910, now priced at 267s a table and a 124MB program -- see the paragraph below |
+| WII2D | 9 | 10 | dense n=10 needs a 512-point decode, past the fold algebra's measured cliff (live count 512 -> 373 while bit length passes 670000, every candidate enumerated) -- a wall of the exactly-once embed convention, since a per-node re-embed tree does dense n=13, and raising the guard to 512 refuses the table anyway; n=9 is admitted but not total -- 37 of 64 sampled tables build, the rest refuse promptly |
 | ZTOALC L | 10 | 10 | n=11 needs 587 command slots (545 parity) against the anchors' 386 under the 4.19M line ceiling |
+
+Polynomial's guard is priced too, and it guards the *interpreter*: the
+question was never whether the generator can spell 2910 instructions but
+what they cost to run. Raised past the cap, dense n=11 builds in 14.7s and
+emits 123609143 characters; **all 2048 rows execute correctly** in 267s.
+Effectively all of that is one factorization -- 264.5s for the first row,
+then 0.001s a row for the other 2047, which share it. Against the n=10
+anchor re-measured on the same machine (1638 instructions, 36349164
+characters, 56s a table, 55.7s of it the factorization), 1.78x the
+instructions costs 4.7x the time and 3.4x the program. The cap stays at
+1934: the policy is "admit what a suite can afford to check", and 267s
+plus a 124MB artifact for one table is what that policy declines. What
+moved is that the price is now measured rather than projected.
+
+And 2910 is only the *fixture*, not the arity: the same formula at n=11
+gives 3726, so even a cap sized to that price would leave n=11 partial.
+Admitting the arity is a fresh derivation, not a constant bump.
 
 6-5 leaves the table too.  Its 35 branch labels are the language's
 (operands are `0-9A-Z`), and the tree constructions spend them per subtree:
@@ -122,14 +161,72 @@ is affordable, not where a table is checked.
 
 The other 65 generators build both shapes at n=10, and ZTOALC L and
 Interprogck8 now join them (both caps sit at n=11, so they stay in the
-table). Five are slow rather
-than capped, and their cost is the reason `tests/tools/test_boolean_contract.py`
-sweeps to five inputs rather than ten: Minifuck 187s at n=8, Circuit Diagram
-73s and 60MB of program text at n=9, Forþ 70s at n=10, `%^2^-1` 32s at n=9
-parity, ROTfuck 16s and 20MB at n=10 parity. Only the table's rows are
-capability limits, and only WII2D's dense row binds inside the sweep (the
-other three caps sit at n=11); the rest of the gap between five and ten is
-wall-clock.
+table). `tests/tools/test_boolean_contract.py` now
+sweeps the full ten inputs, in two bands -- n<=5 in the default gate,
+n=6..10 marked `slow`.  Minifuck was what held it lower, and no longer is:
+the named accumulator starts at nine rather than ten, and the whole n=1..10
+both-shapes build is 8.5s against 44s, n=9 alone 35.8s to 0.65s.  It is the
+one generator here that bought that with length rather than for free, and
+the price is a single dense entry -- below.  Four
+have left, each byte-identical: ROTfuck (16s to 0.06s at n=10) once its
+emitter stopped stepping moves and the final rotation one character at a
+time; Forþ (61-68s to 0.20s dense / 0.08s parity) once its size contest
+stopped building all 13,122 candidates and scored each order's length in
+closed form; Circuit Diagram (73s to 0.09s at n=9) once its per-cell wire
+tables -- quadratic in the drawing -- became intervals with a slice-painting
+renderer, which also reaches n=10 at 0.31s for 306MB dense; and `%^2^-1`
+(parity n=9 30s to 0.16s, n=10 254s to 0.38s) once its deep band stopped
+paying for every zero-unit weighting the singleton diffs already refute.
+
+The sweep's bound was always cost rather than capability, and the cost has
+now been paid down.  A ten-input sweep of the whole registry cost 141s and
+peaked at n=9 (53s of it); after five generators were rewritten it is 51.5s,
+with n=8 at 5.9s, n=9 at 7.5s and n=10 at 23.9s.  Minifuck was 43s of the
+old total and spent 34s at n=9 alone -- naming the accumulator from nine
+leaves it 8.5s across n=1..10, and the nine-input spike is gone.
+It did not go because the
+frontier recurrence collapsed -- it measurably does not.  The composed
+effect of m pending rounds on a
+row is one affine GF(2) map, but each round appends one independent rank-one
+correction to its binomial-Toeplitz bulk -- rank exactly m-1 and displacement
+rank exactly m, measured to m=128 at width 400 and on 60 random width
+sequences -- and each correction's per-row scalar is one bit of truncation
+feedback, a parity of the row's evolved tape above that round's width, so
+pricing a combination keeps one term per examined row per pending round.
+Pruning cannot absorb the cost either: seeding the strict abort with the
+true optimum saves 3.4% of the 1.58M
+window-walks at n=8, and a clairvoyant abort that skips every doomed
+combination for free leaves 0.5-0.9%, information available only through the
+collapsed recurrence itself.  What nine inputs and up stopped paying is the
+contest those numbers price: from `_MUX_RULE_ARITY` the accumulator is named
+-- the largest legal one, whose combination builds iff any does -- so the
+scout prices two orientations instead of ~3600 combinations at ten and
+~1560 at nine, records the winner's
+rewinds as it prices, and the build is spelled from them and accepted on its
+own laws replay instead of sculpted.  With the weight gadget and the
+sculpting round each a closed-form law (the separation fell 1.24s to 0.04s),
+a cold ten-input build is 1.47s dense and 1.57s parity, 138x, and nine is
+0.35s and 0.30s against 17.3s and 19.1s.  The corpus cost is one entry and
+no more: dense +6.4% at nine (192801 to 205148), plus the +1.8% at ten the
+rule already carried, with parity picking the rule's own combination at
+both -- so nineteen of the twenty n=1..10 programs are byte-identical.
+Every instantiated row of both shapes at nine (1024) answers correctly on
+the shipped interpreter, as the 2048 ten-input rows did when the rule
+landed.
+
+Eight keeps the contest, and that is a deliberate choice rather than the
+edge of the technique: the rule works there and would save 3.8s, but it
+costs dense +11.6% (50653 to 56534), and 3.8s is affordable where nine's
+35.8s was not.  The line is drawn where the contest stops being payable,
+not where the trade is cheapest.  Below eight it stops being a trade at
+all -- at seven dense already picks the top accumulator but parity pays
++11.0%, for a build that costs 0.38s cold.
+The nearest entries to the one-second rule
+are `laserfuck` at 1.377s and `%^2^-1`'s *dense* n=10 at 0.92s; Minifuck's
+1.5s now sits beside them rather than three decades above.  Only the table's
+rows are capability limits, and exactly one of them binds inside the sweep:
+WII2D's dense row at n=9, which `_ARITY_CAPPED` pins.  The other three sit
+at n=11, above the ceiling.
 
 - **Interprogck8:** a meadow-budget limit, not the 255-line reach.  The
   express routes against frozen coordinates, so the old relay
@@ -156,9 +253,27 @@ wall-clock.
   took 115s for the first alone, dense n=10 (1638) 44s for all 1024.
   Dense n=11 (2910) is refused.  Still an instruction count and not an
   arity -- a table that collapses renders far past n=10.
-- **WII2D:** a chosen cost guard, now at 128 rather than 64: dense n=8
-  builds in 0.8s (18466 characters) and all 256 rows compute their table.
-  Dense n=9 needs 256, four times the width, and is untested.
+- **WII2D:** the cost guard now sits at 256 (was 128), backed by a
+  magnitude abort (`_WII2D_MAX_MAGNITUDE`) that turns the doubling trap
+  into a prompt refusal: successes never pass 14-bit live values, a
+  ratchet doubles its bit length per step. Dense n=9 is *admitted but not
+  total*: the deterministic witness builds in 1.1s (78362 characters, all
+  512 rows executed), and of 64 sha256-seeded dense n=9 tables 37 build in
+  0.85-2.93s while 27 refuse in 0.49-2.56s, none hanging.
+  The abort is load-bearing: lifted, three sampled ratchets ran 136-214s
+  without stopping, reaching 1.17M bits. Dense n=10 needs a 512-point
+  decode and is a wall of the **exactly-once embed convention**, not of
+  the machine and not of the guard's value: raised to 512 the witness
+  still refuses, 0.22s per branch, and with the magnitude abort lifted too
+  its live count crawls 512 -> 475 over 19 steps while the bit length
+  doubles every step (9 -> 1089888 bits). Full enumeration is no better
+  (512 -> 373, past 670000 bits). A per-node re-embed tree — which the
+  convention forbids
+  — does dense n=10 in 14432 characters and n=13 in 146540, every row
+  executed. `docs/wii2d_generator.md` has the audit. Structured n=10 is
+  unaffected: parity, majority, AND, OR, an xor-of-a-subset and a
+  threshold all build and execute all 1024 rows; the 3-to-8 mux builds in
+  only 3 of its 1680 spellings (0.18%), all with the selects read last.
 - **ZTOALC L:** was capped at 8 by the trajectory-prefix peak (n=9 peaked
   at 1.2e7 lines against the 4.19M ceiling).  Two changes cleared 10/10:
   commands now sit on the *L smallest* trajectory values under the ceiling
@@ -213,6 +328,15 @@ wall-clock.
   derived — 6 at n<=3 but 9 at n=4 — so the counts are lower bounds.
 
 ## Assessed and rejected
+
+- **Lowering to Streetcode** — retired, and recoverable. A compiler from
+  Streetcode grids and printed-leaf decision trees was asked for, but
+  `7c440f9e` deleted `src/esolangs/transpilers/` entire — the total
+  brainfuck -> Streetcode transpiler included — because 2069 lines and 47s
+  of suite time served nothing in the repo, following `58427732` on the
+  compilers. Rebuilding a larger version of what was just removed needs a
+  consumer first. The construction is recoverable at `7c440f9e^` if one
+  appears.
 
 - **Pinyin** ([wiki](https://esolangs.org/wiki/Pinyin)) — rejected: the
   command triples are not pinnable to any deterministic reading, and the

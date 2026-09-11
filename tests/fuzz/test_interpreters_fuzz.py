@@ -60,24 +60,16 @@ def _generated_seed(language: str) -> str | None:
     a sweep over all 64 languages executed a median of twelve steps each,
     one step per variant, and Container executed nothing at all.
 
-    Every registered language has a generator, and their output is the
-    corpus this file was missing: text generators emit a median of 97
-    characters.  Seeding from them multiplied executed steps by 3.7x, and
-    4.0x together with the per-seed alphabet below.
+    Generator output is the corpus this file was missing; seeding from it
+    multiplied executed steps by 2.4x, and more together with the per-seed
+    alphabet below.  A boolean generator takes a truth-table string whose
+    length implies the arity.  ``random.seed`` is set by the caller because
+    some generators draw from the global RNG, and the suite runs under
+    xdist.
 
-    Generators are called exactly as ``test_fuzz_generators.py`` calls them
-    -- a text generator takes the text to print, a boolean generator a
-    truth-table string whose length implies the arity -- and the boolean
-    fallback covers the seventeen languages with no text generator (2.4x
-    there).  ``random.seed`` is set by the caller because some generators
-    draw from the global RNG, and the suite runs under xdist.
+    A language with no boolean generator falls back to ``SAMPLES``.
     """
-    language_data = LANGUAGES[language]
-    generator = language_data.text
-    if generator is not None:
-        with suppress(Exception):
-            return generator("a")
-    boolean_generator = language_data.boolean
+    boolean_generator = LANGUAGES[language].boolean
     if boolean_generator is not None:
         with suppress(Exception):
             return boolean_generator("0110")
@@ -114,13 +106,12 @@ def _expired_at(deadline: float) -> Callable[[], bool]:
 #:
 #: Factor's program *is* an integer and ``make_vm`` factors it with sympy
 #: before any step runs, so a mutation that turns a 60-digit factorable
-#: number into a 62-digit semiprime costs unbounded, uninterruptible C time
-#: -- ``scripts/verify_no_exception_leaks.py`` documents the same wedge and
-#: bounds it with a subprocess kill.  A fuzz test cannot pay that, and the
-#: fix that file suggests is this one: guard the digit length.  Twelve
-#: digits factor instantly and still exercise every path that a longer
-#: number would, since the interpreter's behaviour does not depend on the
-#: operand's size.
+#: number into a 62-digit semiprime costs unbounded, uninterruptible C time.
+#: Bounding that wedge at all needs a subprocess with a hard kill, which a
+#: fuzz test cannot pay; the cheap half of the remedy is this one, guarding
+#: the digit length instead.  Twelve digits factor instantly and still
+#: exercise every path that a longer number would, since the interpreter's
+#: behaviour does not depend on the operand's size.
 _MAX_OPERAND_DIGITS = 12
 
 
@@ -151,12 +142,11 @@ def _drives_cheaply(language: str, seed: str) -> bool:
     prefix.  It screens by measured cost rather than by a list of slow
     languages, because a list would go stale the moment a generator changed.
 
-    The screen cannot be made airtight, and the repo already knows why:
-    ``scripts/verify_no_exception_leaks.py`` records that a SIGALRM cannot
-    land inside sympy's uninterruptible C, so bounding Factor there needed
-    a subprocess with a hard kill -- far too heavy for a unit test.  The
-    cheap half of its own suggested remedy, "a digit-length guard on
-    Factor's mutants", is what :func:`_affordable_variant` applies below:
+    The screen cannot be made airtight, and the repo already knows why: a
+    SIGALRM cannot land inside sympy's uninterruptible C, so bounding
+    Factor that way needs a subprocess with a hard kill -- far too heavy
+    for a unit test.  The cheap half of the remedy, a digit-length guard on
+    Factor's mutants, is what :func:`_affordable_variant` applies below:
     keep the operand small enough that factoring it is never the cost.
     """
     if not _affordable_variant(seed):

@@ -7,6 +7,8 @@ a command spelling that survives its rotation
 (:func:`_rotfuck_allowed`, :func:`_rotfuck_neutral`).
 """
 
+from functools import cache
+
 from esolangs.tools.boolean.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -53,6 +55,31 @@ def _rotfuck_neutral(offset: int) -> str:
     )
 
 
+@cache
+def _rotfuck_move_cycle(state: int, direction: str) -> tuple[tuple[str, ...], int, str]:
+    """Tile the move pattern from offset state ``state`` (mod 8).
+
+    A move's emission depends only on the offset mod 8: an allowed offset
+    emits the direction (offset + 1), a forbidden one a neutral pair first
+    (offset + 2).  The per-move texts are therefore eventually periodic in
+    the move count.  Returns the texts up to the first repeated state, the
+    index where the cycle starts, and the cycle joined.
+    """
+    texts: list[str] = []
+    seen = {state: 0}
+    while True:
+        pads: list[str] = []
+        while direction not in _rotfuck_allowed(state):
+            pads.append(_rotfuck_neutral(state))
+            state = (state + 2) % 8
+        texts.append("".join(pads) + direction)
+        state = (state + 1) % 8
+        if state in seen:
+            start = seen[state]
+            return tuple(texts), start, "".join(texts[start:])
+        seen[state] = len(texts)
+
+
 def _rotfuck_move(ptr: int, goal: int, offset: int, direction: str) -> str:
     """Emit ``>``/``<`` to move ``ptr`` toward ``goal``.
 
@@ -60,39 +87,28 @@ def _rotfuck_move(ptr: int, goal: int, offset: int, direction: str) -> str:
     padding pair is inserted there to shift past them while every command
     stays at an allowed offset.
     """
-    out: list[str] = []
-    while ptr < goal if direction == ">" else ptr > goal:
-        if direction in _rotfuck_allowed(offset % 8):
-            out.append(direction)
-            ptr += 1 if direction == ">" else -1
-            offset += 1
-        else:
-            pad = _rotfuck_neutral(offset % 8)
-            out.append(pad)
-            offset += 2
-    return "".join(out)
+    dist = goal - ptr if direction == ">" else ptr - goal
+    texts, start, cycle = _rotfuck_move_cycle(offset % 8, direction)
+    if dist <= len(texts):
+        return "".join(texts[:dist])
+    reps, rem = divmod(dist - start, len(texts) - start)
+    return "".join(texts[:start]) + cycle * reps + "".join(texts[start : start + rem])
 
 
-def _rotfuck_body(guard: int, target: int, op: str) -> str:
-    """Build a body that moves the pointer from ``guard`` to ``target``.
-
-    The body applies ``op`` to the target cell and returns to ``guard``.  It
-    is straight-line ``+-><`` only, has length ``L`` with
-    ``L + 1 ≡ 0 (mod 8)``, and every command sits at an allowed offset.  The
-    tested cell (``guard``) stays nonzero, so the phantom ``[`` at the block
-    end does not fire on the body path.
-    """
+@cache
+def _rotfuck_body_for(delta: int, op: str) -> str:
+    """Build the body for a guard-relative target at offset ``delta``."""
     out: list[str] = []
     offset = 0
-    ptr = guard
-    if target > guard:
-        out.append(_rotfuck_move(ptr, target, offset, ">"))
+    ptr = 0
+    if delta > 0:
+        out.append(_rotfuck_move(ptr, delta, offset, ">"))
         offset += len(out[-1])
-        ptr = target
+        ptr = delta
     else:
-        out.append(_rotfuck_move(ptr, target, offset, "<"))
+        out.append(_rotfuck_move(ptr, delta, offset, "<"))
         offset += len(out[-1])
-        ptr = target
+        ptr = delta
     if op not in _rotfuck_allowed(offset % 8):
         pad = _rotfuck_neutral(offset % 8)
         out.append(pad)
@@ -104,10 +120,10 @@ def _rotfuck_body(guard: int, target: int, op: str) -> str:
             )  # pragma: no cover
     out.append(op)
     offset += 1
-    if guard > target:
-        out.append(_rotfuck_move(ptr, guard, offset, ">"))
+    if delta < 0:
+        out.append(_rotfuck_move(ptr, 0, offset, ">"))
     else:
-        out.append(_rotfuck_move(ptr, guard, offset, "<"))
+        out.append(_rotfuck_move(ptr, 0, offset, "<"))
     offset += len(out[-1])
     body = "".join(out)
     need = (8 - (len(body) + 1) % 8) % 8
@@ -117,6 +133,31 @@ def _rotfuck_body(guard: int, target: int, op: str) -> str:
         offset += 2
         need -= 2
     return body
+
+
+def _rotfuck_body(guard: int, target: int, op: str) -> str:
+    """Build a body that moves the pointer from ``guard`` to ``target``.
+
+    The body applies ``op`` to the target cell and returns to ``guard``.  It
+    is straight-line ``+-><`` only, has length ``L`` with
+    ``L + 1 ≡ 0 (mod 8)``, and every command sits at an allowed offset.  The
+    tested cell (``guard``) stays nonzero, so the phantom ``[`` at the block
+    end does not fire on the body path.  Only the offset ``target - guard``
+    matters, so the builder is cached on it.
+    """
+    return _rotfuck_body_for(target - guard, op)
+
+
+# Rotating the finished program: the char at absolute position ``i`` becomes
+# ``rot^{-i}`` of itself, so one translation table per residue class mod 8.
+_ROT_TABLES = tuple(
+    bytes.maketrans(
+        _ROTFUCK_CHAIN.encode(),
+        "".join(_rotfuck_rot(c, -res) for c in _ROTFUCK_CHAIN).encode(),
+    )
+    for res in range(8)
+)
+_PHANTOM = tuple(ord(_rotfuck_rot("]", -res)) for res in range(8))
 
 
 def rotfuck(truth_table: str) -> str:
@@ -164,28 +205,31 @@ def rotfuck(truth_table: str) -> str:
     m = list(range(2 * n + 1 + 2**width, 2 * n + 1 + 2 * 2**width))
 
     eff: list[str] = []
+    pos = 0
     phantoms: dict[int, int] = {}
 
-    def emit(cmds: list[str]) -> None:
-        eff.extend(cmds)
+    def emit(text: str) -> None:
+        nonlocal pos
+        eff.append(text)
+        pos += len(text)
 
     # Read the bits (each on its own line), normalize to 0/1, set the
     # complements to 1, set the minterm cells to 1 (mismatch cells start 0).
     for i in range(n):
-        emit([","])
-        emit(["-"] * _ASCII_ZERO)
+        emit(",")
+        emit("-" * _ASCII_ZERO)
         if i < n - 1:
-            emit([">"])
-    emit([">"] * (c[0] - (n - 1)))
+            emit(">")
+    emit(">" * (c[0] - (n - 1)))
     for i in range(n):
-        emit(["+"])
+        emit("+")
         if i < n - 1:
-            emit([">"])
-    emit([">"] * (m[0] - c[-1]))
+            emit(">")
+    emit(">" * (m[0] - c[-1]))
     for k in range(2**width):
-        emit(["+"])
+        emit("+")
         if k < 2**width - 1:
-            emit([">"])
+            emit(">")
 
     # Block layout: for each minterm, each input bit guards a mismatch count;
     # a single block then zeroes the minterm iff its count is nonzero; and
@@ -205,33 +249,29 @@ def rotfuck(truth_table: str) -> str:
 
     ptr = m[-1]
     for guard, target, op in block_specs:
-        while ptr < guard:
-            emit([">"])
-            ptr += 1
-        while ptr > guard:
-            emit(["<"])
-            ptr -= 1
-        p = len(eff)
-        emit(["["])
+        if ptr < guard:
+            emit(">" * (guard - ptr))
+        elif ptr > guard:
+            emit("<" * (ptr - guard))
+        ptr = guard
+        p = pos
+        emit("[")
         body = _rotfuck_body(guard, target, op)
-        emit(list(body))
-        emit(["]"])
+        emit(body)
+        emit("]")
         phantoms[p + len(body) + 1] = p
 
-    while ptr < r:  # pragma: no cover - the last block's guard sits above r
-        emit([">"])
-        ptr += 1
-    while ptr > r:
-        emit(["<"])
-        ptr -= 1
-    emit(["+"] * _ASCII_ZERO)
-    emit(["."])
+    if ptr < r:  # pragma: no cover - the last block's guard sits above r
+        emit(">" * (r - ptr))
+    else:
+        emit("<" * (ptr - r))
+    emit("+" * _ASCII_ZERO)
+    emit(".")
 
-    return "".join(
-        (
-            _rotfuck_rot("]", -(phantoms[i] + 1))
-            if i in phantoms
-            else _rotfuck_rot(cmd, -i)
-        )
-        for i, cmd in enumerate(eff)
-    )
+    program = "".join(eff).encode()
+    rotated = bytearray(program)
+    for res, table_ in enumerate(_ROT_TABLES):
+        rotated[res::8] = program[res::8].translate(table_)
+    for i, p in phantoms.items():
+        rotated[i] = _PHANTOM[(p + 1) % 8]
+    return rotated.decode()

@@ -206,8 +206,8 @@ class _Machine:
         # Beams are held as the tuples ``_Beams`` is made of, not as
         # lists.  The list store meant ``_state`` rebuilt every beam as a
         # tuple and ``_restore`` rebuilt every one back as a list, once
-        # per step each -- 46% of a run over the hello-world program,
-        # measured -- to hold a value nothing mutates in place: ``*`` and
+        # per step each -- a measured 46% of a run over a long generated
+        # program -- to hold a value nothing mutates in place: ``*`` and
         # ``x`` add and drop whole beams, and a moved beam is assigned
         # over, never edited.  The list around them stays, since the
         # round-robin index has to survive that growing and shrinking.
@@ -413,7 +413,10 @@ class _Machine:
 
         byte = None
         if op == ",":
-            # an empty (or blank) input line reads a zero, per the cross-check
+            # An empty (or blank) input line reads a zero -- the package
+            # convention, not the language's.  The wiki says nothing about
+            # input at all, and the cross-check is this repo's own harness,
+            # so neither sources this value.
             line_val = self.io.input_str()
             byte = ord(line_val[0]) if line_val else 0
         split = draw(self._rng, 2) if op == "*" else 0
