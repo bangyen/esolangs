@@ -121,6 +121,7 @@ class _Machine:
         self.io = io
         self.code = code
         self.state: _State = (0, 0, 0, (0,))
+        self._exhausted = False
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -143,8 +144,30 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        """The wiki's rerun never halts; only a repeated state proves a loop."""
-        return False
+        """True once a read has run past the end of the input.
+
+        The wiki's rerun never halts on its own, so for a long while this
+        was a constant ``False`` and the exhausted read was left to escape
+        as :class:`EOFError` -- :func:`run` caught it as the run's ordinary
+        ending, and the argument was that a step-level caller should see the
+        exception unchanged.
+
+        That argument was wrong, and the way it was wrong is the point:
+        ``run`` and the step path then disagreed about the same program.
+        ``run("Suffolk", p, s)`` returned ``'1'``, and
+        ``make_debugger("Suffolk", p, s).run(max_steps=100000)`` raised
+        :class:`~esolangs.exceptions.InputExhaustedError` -- from a call
+        documented to *return* its stop reason rather than raise.  One of
+        the two had to be the language's semantics, and it is ``run``'s:
+        the output is already complete when the read fires, which is
+        exactly what that docstring argues below.
+
+        So exhaustion is a halt, and both paths now end the same way.
+        ``self_halts`` stays ``False`` because it still is: a program that
+        never reads has no input to run out of, and ends only by repeating
+        a state, which is a proof no stepping loop performs.
+        """
+        return self._exhausted
 
     # ``esolangs.vm._AffineMachine``: the growing-cell hang certificate.
     # Suffolk qualifies because ``_advance`` never reads a value to decide
@@ -235,11 +258,21 @@ class _Machine:
         the package convention landing on the same number, not the spec's
         rule applied.
         """
+        if self._exhausted:
+            return
         ind, _ptr, acc, _tape = self.state
         sym = self.code[ind]
         byte = None
         if sym == ",":
-            inp = self.io.input_str()
+            # The read past the end of the input is this language's stop,
+            # so it ends the machine here rather than escaping to whoever
+            # happens to be driving.  Nothing has advanced yet, so the
+            # state stays the one that produced the finished output.
+            try:
+                inp = self.io.input_str()
+            except EOFError:
+                self._exhausted = True
+                return
             byte = acc + ord(inp[0]) if inp else 0
         elif sym == "." and acc:
             self.io.print_char(chr(acc - 1))
@@ -277,21 +310,24 @@ def run(code: str, io: IO) -> None:
     language -- every Suffolk program the boolean generator produces reads,
     so ``esolangs.run("Suffolk", ...)`` raised :class:`EOFError` for all of
     them, including the committed example, and the README's own
-    ``generate``/``run`` pair could not be completed.  ``step`` is what
-    raises, so catching it here leaves the exception the step-level callers
-    (the VM, the debugger) see exactly as it was.
+    ``generate``/``run`` pair could not be completed.
+
+    That ending now lives in :meth:`_Machine.step` as a halt, rather than
+    here as a caught exception.  The difference is who agrees with whom:
+    while the ``except`` was here, this function returned the answer and the
+    step-level callers -- the VM, the debugger -- got the raise instead, for
+    the same program and the same input.  One of those was the language's
+    semantics and it was this one, so the machine says so and every driver
+    inherits it.
     """
     machine = _Machine(code, io)
     seen: set[tuple[object, ...]] = set()
-    while True:
+    while not machine.halted:
         state = machine.snapshot()
         if state in seen:
             return
         seen.add(state)
-        try:
-            machine.step()
-        except EOFError:
-            return
+        machine.step()
 
 
 if __name__ == "__main__":
