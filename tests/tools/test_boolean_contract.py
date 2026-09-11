@@ -604,6 +604,60 @@ def test_a_one_entry_table_is_refused(name: str, fn: object, table: str) -> None
 
 
 @pytest.mark.parametrize(
+    ("name", "fn"),
+    sorted(
+        (lang.id, lang.boolean)
+        for lang in LANGUAGES.values()
+        if lang.boolean is not None
+    ),
+    ids=lambda v: v if isinstance(v, str) else "",
+)
+@pytest.mark.parametrize(
+    ("table", "fragment"),
+    [("011", "power-of-two"), ("0123", "only '0' and '1'")],
+)
+def test_a_malformed_table_is_refused_in_the_shared_words(
+    name: str, fn: object, table: str, fragment: str
+) -> None:
+    """Every generator rejects a malformed table in the *shared* validator's words.
+
+    The sibling above pins that a nullary table is refused; this pins the
+    other two rejections, and pins them by wording rather than by type.  All
+    69 generators route these through
+    :func:`~esolangs.tools.boolean.helpers._validate_truth_table`, so the
+    message is uniform today -- a generator that grows its own validator
+    keeps raising ``ValueError`` and passes every other check while telling
+    the caller something different from its 68 siblings.
+
+    That gap is not hypothetical.  It is what a blind reconstruction of
+    ``packlang`` did: inlined its own checks, reported ``"must be a binary
+    string"`` for ``"0123"`` and ``"needs at least one input: a power-of-two
+    length"`` for ``"011"``, and nothing in the suite noticed.  These two
+    messages were pinned per generator in four files and packlang was in
+    none of them; ``scripts/check_generators.py`` checks the signature, not
+    the words.
+
+    The second assertion is what catches that ``"011"`` case, and is the
+    reason this is not merely a substring check: a *malformed* table and a
+    *nullary* one are different defects, so the nullary wording must not
+    appear here.  Reporting "needs at least one input" for a three-entry
+    table names the wrong problem while still containing the right
+    substring.  No registry generator conflates them today.
+
+    Swept from the registry for the same reason as the nullary check: it has
+    to stay true when the next language lands.
+    """
+    assert callable(fn), name
+    with pytest.raises(ValueError, match=re.escape(fragment)) as caught:
+        fn(table)
+    assert "at least one input" not in str(caught.value), (
+        f"{name} on {table!r} said {str(caught.value)!r}, which reports a "
+        f"nullary table -- {table!r} is malformed, not nullary, and the two "
+        f"are separate rejections with separate words"
+    )
+
+
+@pytest.mark.parametrize(
     "name",
     sorted(
         n
