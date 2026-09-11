@@ -747,6 +747,71 @@ class TestFlowchart:
         with pytest.raises(ValueError, match="power-of-two"):
             boolean.flowchart("011")
 
+    def test_a_width_stacks_the_tree_onto_one_column(self) -> None:
+        """A narrower drawing is the same tree, separated by rows not columns.
+
+        Neither branch may simply continue down -- a switch entered
+        travelling down sends 1 east and 0 west -- so both are caught by
+        corners and routed, and only running it says the routing kept every
+        path on its own leaf.
+        """
+        for table in ("0110", "01101001", "0110100110010110"):
+            n = len(table).bit_length() - 1
+            flat = boolean.flowchart(table)
+            wide = max(len(row) for row in flat.splitlines())
+            floor = max(len(row) for row in boolean.flowchart(table, 1).splitlines())
+            assert floor < wide, f"{table} never narrows"
+            for width in (1, 12, 20, wide):
+                narrow = boolean.flowchart(table, width)
+                columns = max(len(row) for row in narrow.splitlines())
+                assert columns <= max(width, floor), (table, width, columns)
+                for combo in range(2**n):
+                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    got = run_flowchart(narrow, [str(b) for b in bits])
+                    assert got == table[combo], (table, width, bits)
+
+    def test_stacking_costs_rows_and_stops_tracking_the_table(self) -> None:
+        """The stacked drawing is ``n + 5`` columns whatever the table.
+
+        That is the whole of the trade: the flat drawing gives every leaf a
+        column and grows as ``2 ** n``, and stacking puts every node on one
+        column and grows as ``2 ** n`` in *rows* instead.
+        """
+        for n in (2, 3, 4):
+            table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
+            flat = boolean.flowchart(table)
+            stacked = boolean.flowchart(table, 1)
+            assert max(len(row) for row in stacked.splitlines()) == n + 5, n
+            assert max(len(row) for row in flat.splitlines()) == 5 * 2**n, n
+            assert len(stacked.splitlines()) > len(flat.splitlines()), n
+        # A table that folds to a single leaf is already as wide as one
+        # ``(( ))``, and stacking spends a corridor column per level on top
+        # of that -- so there the flat drawing is the narrower of the two
+        # and asking for any width keeps it.
+        assert boolean.flowchart("1111", 1) == boolean.flowchart("1111")
+
+    def test_a_stacked_corridor_belongs_to_its_depth(self) -> None:
+        """Depth ``d``'s zero-branch falls down column ``d``, and nothing else.
+
+        That is what makes the corridors crossing-free: everything below a
+        node is deeper, and so further east, while the rail that reaches
+        the corridor runs on the switch's own row, above every descendant.
+        So the left ``n`` columns carry only line, never a node -- a rail
+        reaching a further-left corridor does pass through them -- and no
+        cell ever has to be a ``┼``, which is the check that says a rail and
+        a corridor never meet.
+        """
+        table = "0110100110010110"
+        n = 4
+        drawing = boolean.flowchart(table, 1)
+        rows = drawing.splitlines()
+        width = max(len(row) for row in rows)
+        grid = [row.ljust(width) for row in rows]
+        for x in range(n):
+            column = {row[x] for row in grid} - {" "}
+            assert column <= set("│┌└─"), (x, column)
+        assert "┼" not in drawing, "a rail crossed a corridor"
+
 
 class TestBetween:
     @pytest.mark.parametrize(
