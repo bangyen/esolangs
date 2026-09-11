@@ -859,7 +859,7 @@ class TestTheDecodeGuardsInProcess:
         path = tmp_path / "b.txt"
         path.write_bytes(bytes(range(256)))
         with pytest.raises(SystemExit) as exc:
-            cli._read_program(str(path))
+            cli._read_program(str(path))  # noqa: SLF001
         assert exc.value.code == 2
 
     def test_read_program_still_refuses_an_unreadable_path(
@@ -867,7 +867,7 @@ class TestTheDecodeGuardsInProcess:
     ) -> None:
         """The OSError clause beside it, which the new one must not shadow."""
         with pytest.raises(SystemExit) as exc:
-            cli._read_program(str(tmp_path))
+            cli._read_program(str(tmp_path))  # noqa: SLF001
         assert exc.value.code == 2
 
     def test_read_stdin_refuses_undecodable_bytes(
@@ -883,7 +883,7 @@ class TestTheDecodeGuardsInProcess:
                 raise UnicodeDecodeError("utf-8", b"\x80", 0, 1, "invalid start byte")
 
         with patch.object(sys, "stdin", _BadStdin()), pytest.raises(SystemExit) as exc:
-            cli._read_stdin()
+            cli._read_stdin()  # noqa: SLF001
         assert exc.value.code == 2
         assert "not text" in capsys.readouterr().err
 
@@ -898,13 +898,13 @@ class TestTheDecodeGuardsInProcess:
                 raise AssertionError("should not read a terminal")
 
         with patch.object(sys, "stdin", _Tty()):
-            assert cli._read_stdin() == ""
+            assert cli._read_stdin() == ""  # noqa: SLF001
 
     def test_the_unbounded_notice_writes_one_line(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Called directly rather than waited for."""
-        cli._UnboundedNotice._say("run")
+        cli._UnboundedNotice._say("run")  # noqa: SLF001
         err = capsys.readouterr().err
         assert "no bound" in err
         assert "--timeout" in err
