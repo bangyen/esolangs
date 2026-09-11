@@ -61,8 +61,20 @@ NARROW_WIDTH = 13
 # Languages that must never be *reflowed*, and why.  Not a restatement of
 # the implementation: each was verified to break (or to be meaningless) when
 # newlines are inserted, so the table is the record of that finding.
+#
+# The four below NoComment were found the same way, by inserting a newline
+# at every position of the language's own boolean program and running each
+# one: none of the four has a single position that keeps the answer, so
+# there is no token rule to find and no narrower width that would help.
+# They are recorded because "we tried and it cannot be done" is worth as
+# much as a wrapper, and because each is a long line that otherwise looks
+# like an oversight -- CV(N)(C) reaches 1162 columns at n == 4.
 UNWRAPPABLE = {
     "nocomment": "a newline is an unrecognized command, a load error",
+    "grapheme": "every character must be A-Z, so a newline is a load error",
+    "cvnc": "the source must syllabify and a newline is in no syllable",
+    "fargo": "its newlines already separate statements",
+    "minsky_swap": "its second line is absolute offsets into its first",
 }
 
 # These are 2D too, and wrap_program must not touch them either -- but each
