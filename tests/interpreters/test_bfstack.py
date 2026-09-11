@@ -54,6 +54,18 @@ class TestBFStack:
         """, pushes ASCII input onto the stack."""
         assert run_and_capture(">,.", inputs=["Z"]) == "Z"
 
+    def test_input_adds_a_cell_rather_than_overwriting_one(self) -> None:
+        """``,`` pushes, so what was on top before is still underneath.
+
+        ``test_input`` prints the byte immediately, which reads the same
+        whether ``,`` pushed a cell or overwrote the one ``>`` made -- and
+        the InputCursorContract's ``">,"`` reads as though a cell has to
+        exist first, so the file pointed both ways at once.  Popping the
+        read byte settles it: pushing leaves the 1 below it to print, while
+        overwriting would have consumed it and left the stack empty.
+        """
+        assert run_and_capture(">+,<.", inputs=["Z"]) == "\x01"
+
     def test_loop(self) -> None:
         """A loop that zeroes its cell executes exactly once."""
         assert run_and_capture(">+[>+<-]>+.") == "\x01"
@@ -140,6 +152,65 @@ class TestStepMachine:
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 3
+
+    def test_lst_holds_the_positions_of_entered_loops(self) -> None:
+        """``lst`` is the loop stack: a ``[`` that is entered records itself.
+
+        This is the piece of the machine nothing else names.  ``]`` does not
+        scan backwards for its partner -- it pops the position the matching
+        ``[`` pushed -- so the loop stack is what decides where a jump goes,
+        and two runs on the same command with different loop stacks go
+        different places.  ``state_views`` lists ``lst`` but the shared
+        contract only checks that the name resolves and that *some* view
+        moves, which ``ip`` alone satisfies, so a property returning a
+        constant passed.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.bfstack import _Machine
+
+        machine = _Machine(">+[", ScriptedIO())
+        for _ in range(3):
+            machine.step()
+        assert machine.lst == (2,)  # the [ at index 2, entered with a 1 on top
+
+    def test_memory_is_empty_because_the_store_is_the_stack(self) -> None:
+        """``memory`` and ``stack`` are different views, not one field twice.
+
+        BFStack addresses no cells, so the VM's ``memory`` is deliberately
+        empty and ``stack`` carries the data.  The contract's non-aliasing
+        check compares the views before and after a run and passes as soon
+        as any one of them moves, so ``memory`` quietly returning the data
+        stack -- the exact aliasing that check is named for -- went unseen.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.bfstack import _Machine
+
+        machine = _Machine(">+", ScriptedIO())
+        for _ in range(2):
+            machine.step()
+        assert machine.memory == []
+        assert machine.stack == [1]
+
+    def test_an_unmatched_bracket_leaves_the_machine_halted(self) -> None:
+        """The cursor is moved to the end before the error is raised.
+
+        ``test_loop_skip_unmatched`` checks the message, and the message is
+        all it checks -- the machine it was raised from is thrown away by
+        ``run_and_capture``.  But where the cursor is left is deliberate:
+        the scan that fails runs to the end of the code, and a caller that
+        catches the ValueError should find a halted machine rather than one
+        still sitting on the bracket, which is what stepping it again would
+        otherwise re-raise from.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.stack_based.bfstack import _Machine
+
+        machine = _Machine(">[", ScriptedIO())
+        machine.step()  # > pushes 0
+        with pytest.raises(ValueError, match=r"^unmatched '\['$"):
+            machine.step()  # [ scans for a partner and runs off the end
+        assert machine.halted
+        assert machine.ind == 2
 
 
 def _machine(code: object) -> object:
