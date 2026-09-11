@@ -63,13 +63,20 @@ wraps like any other single-character-command language.
 
 Being unwrappable is not the same as being unbounded, though.  A generator
 that lays out its own *shape* can honour a width by building a different
-shape, which no after-the-fact reflow can do: Clockwise picks a ring that
-fits, Streetcode and WII2D fold their instruction line into a boustrophedon,
-and LaserFuck steers the beam down and back so a straight run of tape
-commands costs rows instead of columns.  Those generators take the width
-themselves -- :func:`takes_width` is how the callers tell -- and never reach
-:func:`wrap_program`, which would skip them anyway for being already
-multi-line.
+shape, which no after-the-fact reflow can do: Streetcode folds its
+instruction line into a boustrophedon, and LaserFuck steers the beam down
+and back so a straight run of tape commands costs rows instead of columns.
+Those two generators take the width themselves -- :func:`takes_width` is how
+the callers tell -- and never reach :func:`wrap_program`, which would skip
+them anyway for being already multi-line.
+
+They are the only two.  Clockwise and WII2D fold as well, but neither fold
+is a *layout* one and neither takes a width: Clockwise collapses a subtree
+whose rows all agree, so its ring narrows with the table rather than to a
+request, and WII2D's fold is arithmetic in its decode algebra, not a
+boustrophedon.  Both grids therefore come out at whatever width their table
+forces -- Clockwise as ``2 ** (n + 1)``, which passes 80 columns at
+``n == 6``.
 
 Wrapping otherwise assumes a single-line program, since a newline in one
 already means layout.  Taglate is the exception: its first line seeds the
@@ -551,6 +558,34 @@ def _taglate(program: str, width: int) -> str:
     return seed + "\n" + wrap_chars(commands.replace("\n", ""), width)
 
 
+# A ``{Xi}`` placeholder is one token: ``fill`` finds it by string replace, so
+# a newline through the middle of one would leave it unfilled.
+_PCT_COMMAND = r"\{X\d+\}|."
+
+
+def _pct_squared_minus_one(program: str, width: int) -> str:
+    """Wrap %^2^-1, leaving its setter-declaration header on its own row.
+
+    A %^2^-1 *template* is two lines and the newline between them is
+    structural: ``fill`` partitions on it, reads the ``0=zero|one;1=...``
+    declarations out of the header, and substitutes them into the body.  So
+    the header stays whole -- folding it would move a declaration out of
+    reach of that parse -- while the body below breaks between commands.
+
+    A *filled* program is one line, the header having been consumed, and
+    folds entirely.  Both shapes arrive here: :func:`~esolangs.generate`
+    wraps the template, and the committed examples wrap what ``fill``
+    returns, so this handles whichever it is given.
+
+    The commands are single characters, so the only unbreakable unit is a
+    ``{Xi}`` placeholder in an unfilled template.
+    """
+    header, newline, body = program.partition("\n")
+    if not newline:
+        return wrap_tokens(program, width, _PCT_COMMAND)
+    return header + "\n" + wrap_tokens(body.replace("\n", ""), width, _PCT_COMMAND)
+
+
 # Language id -> the wrapper that language needs.  A language absent here
 # is never wrapped: either its newlines are semantic (the 2D grid
 # languages), it rejects them outright (NoComment), or its own execution
@@ -606,19 +641,23 @@ WRAPPERS = {
     # outright.  Their boolean programs are the single long lines that
     # need this.
     "taglate": _taglate,
-    # Line-based: a newline ends a statement rather than continuing it, so
-    # this re-emits ``print,`` per line instead of breaking the one the
-    # Line-based like Nevermind, and wrapped the same way: ``p`` writes with
-    # no trailing newline, so the literal is split across several print
     "a_painter_ant": wrap_chars,
+    # Its body is the longest unwrapped line in the corpus -- 2444 columns at
+    # ``n == 3`` -- and its header is structural, so it wraps like Taglate.
+    "pct_squared_minus_one": _pct_squared_minus_one,
+    # Single-character stack commands, no literal and no multi-character
+    # token, so any position is a legal break.
+    "bf_pda": wrap_chars,
 }
 
 
 # The languages whose wrapper handles an already-multi-line program itself,
 # rather than being skipped by :func:`wrap_program` for having a newline in
-# it.  Taglate's first line seeds its queue and is structural; Between's
-# ``.x.`` trailer is a second instruction and its wrapper re-emits it.
-MULTILINE = frozenset({"taglate"})
+# it.  Taglate's first line seeds its queue and is structural, so its
+# wrapper keeps that row whole and folds only the commands below it;
+# %^2^-1's first line declares its setters and is structural for the same
+# reason, being what ``fill`` parses to instantiate the body.
+MULTILINE = frozenset({"taglate", "pct_squared_minus_one"})
 
 
 def takes_width(fn: Callable[..., str]) -> bool:
