@@ -11,9 +11,11 @@ import re
 
 import pytest
 
+import esolangs
 import esolangs.tools.boolean as boolean
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import BY_BOOLEAN, LANGUAGES
+from esolangs.tools.boolean.helpers import essential_inputs
 from esolangs.vm import run_until_halt_or_cycle
 
 # One constant table against one that folds nothing.  A generator loses reads
@@ -905,3 +907,55 @@ def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
     assert len(lines) == 4
     assert all(line.endswith("NOT PRINT.") for line in lines)
     assert _cm_constants([]) == lines
+
+
+# The build sweep above proves every generator *returns* a program up to ten
+# inputs.  It never runs one, and for four years nothing else ran one past
+# four inputs either.  Grapheme's variable keys collided with two of its own
+# command characters from slot 5 onward, so from six essential inputs it
+# emitted a program its own interpreter could not execute -- and the sweep
+# saw a healthy non-empty string every time.
+#
+# The property that matters is not table *size* but how many inputs are
+# *essential*: a dense n=9 table that folds down to one input exercises one
+# slot and sails through.  A single-minterm table is the cheap way to force
+# all n of them -- its one 1 makes every input matter, while the program
+# stays small enough to execute.  Grapheme n=9 costs 0.18s that way against
+# 11.7s for an all-essential random table, which is the difference between a
+# test and a nightly job.
+#
+# n=6 is the floor that would have caught the bug and is affordable for all
+# 69: 18.6s of work in total, no language over 4.3s, 6.9s wall across the
+# four workers this suite runs on, and none excluded.  Restoring the old
+# key alphabet makes this fail, which is the only evidence that the arity
+# is high enough.
+# There is deliberately no exclusion table here -- an empty one is the
+# finding, and if a language ever needs to be added, it needs a reason and a
+# cost beside it like ``_ARITY_CAPPED`` carries.
+#
+# A wider probe backs the choice rather than a hunch: 517 evaluations over
+# all 69 languages, both shapes, n=5..8, found zero further failures of this
+# kind, so Grapheme was the only one.  22 language/arity pairs were too
+# expensive to reach and are *unchecked*, not passing.
+_ONE_MINTERM_ARITY = 6
+
+
+@pytest.mark.parametrize("name", sorted(esolangs.list_languages()))
+def test_every_generator_runs_what_it_builds(name: str) -> None:
+    """Build a table using all six inputs, execute it, and check every row.
+
+    Parameterized per language rather than looped so that a failure names
+    the one that broke instead of stopping at the first.
+    """
+    table = "1" + "0" * (2**_ONE_MINTERM_ARITY - 1)
+    assert esolangs.evaluate(name, table, timeout=30) == table
+
+
+def test_the_minterm_table_really_needs_every_input() -> None:
+    """The guard above is worthless if its table folds.
+
+    This is the assumption the whole file rests on, and it is one line to
+    check, so it is checked rather than asserted in a comment.
+    """
+    table = "1" + "0" * (2**_ONE_MINTERM_ARITY - 1)
+    assert len(essential_inputs(table, _ONE_MINTERM_ARITY)) == _ONE_MINTERM_ARITY
