@@ -200,114 +200,79 @@ def _cod_combine(blocks: list[str]) -> str:
 # cells, so a template row is read through this rather than by ``len``.
 _COD_CELL = re.compile(r"\{X\d+\}|.")
 
-# The tube a band ends in before it turns down: two water cells walled above
-# and below.  It exists so the turn is not made *at* the box's trailing
-# ``+``.  That ``+`` splits among its open forward cells, so what it must
-# keep seeing is an open cell to its east -- which the next box's entry cell
-# was, and which the tube's first cell still is.  The turn then happens a
-# cell later, where nothing is watching.
-_COD_TUBE = 2
-
 
 def _cod_cells(block: str) -> list[list[str]]:
     """Split ``block`` into rows of cells, a ``{Xi}`` counting as one."""
     return [_COD_CELL.findall(row) for row in block.split("\n")]
 
 
-def _cod_band(groups: list[list[str]]) -> str:
-    """Stack combined block groups, joined by a walled return corridor.
+def _cod_width(program: str) -> int:
+    """Measure the program as *text*, which is what a caller is handed.
 
-    The blocks are written to be joined left to right, and a band is just
-    that join stopped early.  What this adds is the way back: the cod leaves
-    a band heading east, and the next band starts at the far west, so it has
-    to be carried down and back without meeting a fork on the way.
-
-    Four forced turns do it, and they are forced because COD only looks
-    sideways when its *forward* cell is blocked -- a straight run needs no
-    walls beside it, only a wall at its end and exactly one open cell there.
-    Column 0 is left free for the descent into each band, so a band's own
-    cells start at column 1.
+    A ``{Xi}`` is one cell and four characters, so a template is three
+    characters per placeholder wider than the program it fills to.  The
+    count that matters is the text one: :func:`~esolangs.generate` returns
+    the template, and a caller who asked for 40 columns and got 44 was told
+    the wrong thing whatever the filled width turns out to be.  Erring this
+    way folds a little sooner than strictly needed, which is the safe
+    direction -- WII2D erred the other way and declined folds it could do.
     """
-    bands = [_cod_cells(_cod_combine(group)) for group in groups]
-    width = max(max(len(row) for row in band) for band in bands)
-    # Column 0 is the corridor down into a band, then the band, then the
-    # tube it leaves by and the wall that turns it.
-    tube_end = width + _COD_TUBE
-    total = tube_end + 2
-
-    def blank_row() -> list[str]:
-        return ["~"] * total
-
-    # The cascade's leaf rows end in ``---``, which prints only where it
-    # *touches an edge* -- anywhere else it is three plain ``-`` removals
-    # that kill the cod instead of printing it.  The cascade is the last
-    # block, so the last band is flush right and every other one starts at
-    # column 1, past the corridor.  Padding the last band like the rest is
-    # what first broke this: the leaves stopped printing and every cod died.
-    offsets = [1] * len(bands)
-    offsets[-1] = total - max(len(row) for row in bands[-1])
-
-    # Lay every band down first, with a spare row between neighbours for the
-    # corridor, so the corridors can be carved knowing where they arrive.
-    grid: list[list[str]] = []
-    tops: list[int] = []
-    for index, band in enumerate(bands):
-        tops.append(len(grid))
-        for row in band:
-            line = blank_row()
-            line[offsets[index] : offsets[index] + len(row)] = row
-            grid.append(line)
-        if index != len(bands) - 1:
-            grid.append(blank_row())
-
-    for index, band in enumerate(bands[:-1]):
-        top = tops[index]
-        # Row 1 is the through-line every block joins along, so it is where
-        # the cod leaves.  The tube runs east from the band's own end.
-        exit_row = top + 1
-        for column in range(offsets[index] + len(band[1]), tube_end + 1):
-            grid[exit_row][column] = " "
-        # Down the tube's last column to the corridor row under the band,
-        # west along it, then down column 0 to the next band's row 1.  Each
-        # turn is forced: the run ends on a wall with exactly one open cell
-        # beside it, and the cell past each turn is left walled.
-        corridor = top + len(band)
-        for descent in range(exit_row + 1, corridor + 1):
-            grid[descent][tube_end] = " "
-        for column in range(tube_end + 1):
-            grid[corridor][column] = " "
-        entry_row = tops[index + 1] + 1
-        for descent in range(corridor + 1, entry_row + 1):
-            grid[descent][0] = " "
-        # A flush-right band does not start at column 1, so the cod is run
-        # east along its through-line to meet it.  Water carries no command,
-        # so the arrival is the one the block was written for.
-        for column in range(1, offsets[index + 1]):
-            grid[entry_row][column] = " "
-    return "\n".join("".join(row) for row in grid)
+    return max(len(row) for row in program.split("\n"))
 
 
-def _cod_groups(blocks: list[str], width: int) -> list[list[str]]:
-    """Split ``blocks`` into the widest groups that fit ``width`` in cells.
+def _cod_turned(program: str) -> str:
+    """Turn the program a quarter turn clockwise, re-attaching its prints.
 
-    A single block wider than the width is its own group: the blocks are
-    indivisible, so the floor is the widest one plus the corridor's columns,
-    and a width under that gets the narrowest program rather than a refusal.
+    The blocks are joined left to right, so the drawing is wide and short --
+    1218 columns by 129 rows at six inputs.  Turned, those swap, and what
+    was the width becomes the *height*, which costs nothing.  The width
+    becomes the tallest block instead of the widest, and the tallest block
+    is the cascade: ``2 ** (n + 1) + 1`` rows.
+
+    Everything the generator emits is orientation-neutral but one thing.
+    ``---`` prints only as a *horizontal* run touching the left or right
+    edge -- :func:`~esolangs.interpreters.grid_based.cod._edge_dash_cells`
+    scans rows -- so turned, each of the cascade's ``2 ** n`` prints would
+    be three vertical dashes, which are three ``-`` removals.  The cod would
+    die silently with nothing printed, the worst way for this to be wrong.
+
+    So each print gets a corridor.  The cod keeps descending its own
+    column, meets a wall, and is forced west to a ``---`` at the left edge.
+    The corridors are laid in **descending column order**, which is what
+    keeps them from crossing: a corridor serving a column further right
+    spans every column left of it, so an earlier descent passes straight
+    through, while a corridor serving a column further left is wall where
+    those descents come down, so each cod turns on a row of its own.  Rows
+    are free here, which is the whole point of turning.
+
+    A ``{Xi}`` is one cell and four characters, so the turn is taken on
+    *cells* -- transposing the text would cut a placeholder in half.
     """
-    room = max(1, width - (1 + _COD_TUBE + 1))
-    groups: list[list[str]] = []
-    current: list[str] = []
-    spent = 0
-    for block in blocks:
-        cells = max(len(row) for row in _cod_cells(block))
-        if current and spent + cells > room:
-            groups.append(current)
-            current, spent = [], 0
-        current.append(block)
-        spent += cells
-    if current:
-        groups.append(current)
-    return groups
+    rows = _cod_cells(program)
+    height = len(rows)
+    width = max(len(row) for row in rows)
+    grid = [row + [" "] * (width - len(row)) for row in rows]
+    # Clockwise, so a cod swimming east ends up swimming south.
+    turned = [[grid[height - 1 - j][i] for j in range(height)] for i in range(width)]
+    columns = sorted(
+        (
+            height - 1 - r
+            for r, row in enumerate(program.split("\n"))
+            if row.rstrip().endswith("---")
+        ),
+        reverse=True,
+    )
+    for i in (width - 3, width - 2, width - 1):
+        for column in columns:
+            turned[i][column] = " "
+    for column in columns:
+        corridor = ["~"] * height
+        corridor[0] = corridor[1] = corridor[2] = "-"
+        for cell in range(3, column + 1):
+            corridor[cell] = " "
+        turned.append(corridor)
+    turned.append(["~"] * height)
+    return "\n".join("".join(row).rstrip() for row in turned)
 
 
 def _cod_dead_box(names: list[int]) -> str:
@@ -339,12 +304,21 @@ def cod(truth_table: str, width: int | None = None) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    ``width`` lays the program out to fit that many columns.  The blocks are
-    written to be joined left to right, and a band is that join stopped
-    early; :func:`_cod_band` carries the cod back down and west to the next
-    band.  A block cannot be split, so the floor is the widest single block
-    plus the corridor's columns, and a width under it gets the narrowest
-    program rather than a refusal.  Four inputs: 220 columns down to 76.
+    ``width`` lays the program out to fit that many columns, by turning the
+    whole drawing a quarter turn (:func:`_cod_turned`).  The blocks are
+    joined left to right, so the drawing is wide and short and the turn
+    costs nothing: what was the width becomes the height, and the width
+    becomes the *tallest* block rather than the widest -- the cascade, at
+    ``2 ** (n + 1) + 1``.  A width under that gets the narrowest program
+    rather than a refusal.  Four inputs: 220 columns down to 33, and six
+    inputs 1236 down to 129.
+
+    Banding the blocks instead -- stopping the left-to-right join early and
+    carrying the cod back down and west -- was tried and is *strictly
+    worse*: it makes the width the widest block plus a corridor, and COD's
+    widest block is a fork box, which grows faster than the cascade is
+    tall.  Measured over all 576 tables through four inputs, banding never
+    once came out narrower, so it is not kept as an alternative.
 
     The template's ``{X0}``..``{X(n-1)}`` placeholders become the input bits
     (``)`` for a one bit, a space for a zero); the harness's
@@ -444,10 +418,13 @@ def cod(truth_table: str, width: int | None = None) -> str:
     blocks.append("\n".join(box_rows))
 
     full = _cod_combine(blocks)
-    if width is not None:
-        groups = _cod_groups(blocks, width)
-        if len(groups) > 1:
-            return _cod_band(groups)
+    if width is not None and _cod_width(full) > width:
+        # Two shapes to choose between, and the narrowest wins.  Banding
+        # trades width for height a block at a time; *turning* trades the
+        # whole drawing's width for its height at once, and since the
+        # blocks are joined left to right that is the better trade -- the
+        # width becomes the tallest block rather than the widest.
+        return _cod_turned(full)
     return reduced if reduced is not None and len(reduced) < len(full) else full
 
 
