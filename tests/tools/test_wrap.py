@@ -106,13 +106,13 @@ UNWRAPPABLE = {
 #
 # Derived from :func:`takes_width` rather than written out, for the reason
 # ``esolangs.tools.boolean.BOOLEAN`` is derived from the registry: the
-# hand-written table had drifted both ways.  It named Dig, which honours no
-# width at all -- ``dig`` takes only a truth table, and the program it
-# returns is identical whatever width is asked for.  Its columns are
-# ``5 * n + 6``, so it clears 80 only past ``n == 14``, and the 2-input
-# table below is 16 columns wide, which is what let it pass.  And the table
-# omitted Streetcode, which really does take one.  A derived table cannot
-# make either mistake.
+# hand-written table had drifted both ways.  It omitted Streetcode, which
+# really does take a width.  And it named Dig, which at the time took only
+# a truth table and returned the same program whatever width was asked for
+# -- the 2-input table below was inside 80 columns either way, which is
+# what let it pass.  Dig has since grown a real one, so that entry would be
+# right today for a reason the table never had; a derived table cannot make
+# either mistake in the first place.
 WIDTH_HONOURING = sorted(
     lang.id
     for lang in LANGUAGES.values()
