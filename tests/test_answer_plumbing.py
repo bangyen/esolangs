@@ -54,9 +54,7 @@ class TestTheProseMatchesTheData:
         }
 
     @pytest.mark.parametrize("document", ["README", "run", "encode"])
-    def test_each_document_describes_each_shape_correctly(
-        self, document: str
-    ) -> None:
+    def test_each_document_describes_each_shape_correctly(self, document: str) -> None:
         """Fargo was lumped in with Clockwise in all three at once."""
         # Whitespace collapsed first: these documents are hard-wrapped, so a
         # newline lands in the middle of the phrase being matched.
@@ -68,9 +66,11 @@ class TestTheProseMatchesTheData:
             assert name in text, (document, name)
             naming = [s for s in re.split(r"(?<=[.,;])\s+", text) if name in s]
             # Some sentence has to describe it correctly...
-            assert any(
-                re.search(_SHAPE_PROSE[str(shape)], s) for s in naming
-            ), (document, name, naming)
+            assert any(re.search(_SHAPE_PROSE[str(shape)], s) for s in naming), (
+                document,
+                name,
+                naming,
+            )
             # ...and none may describe it as a shape it does not have.  This
             # second half is the one that catches the bug that prompted the
             # test: "Clockwise and Fargo want them all on one line" names
@@ -135,9 +135,12 @@ class TestATemplateKnowsWhoseItIs:
         """And the filled program answers the row it was asked for."""
         template = esolangs.generate("Minifuck", "0110")
         program = esolangs.instantiate("Minifuck", template, [0, 1])
-        assert esolangs.read_answer(
-            "Minifuck", esolangs.run("Minifuck", program, timeout=20)
-        ) == "1"
+        assert (
+            esolangs.read_answer(
+                "Minifuck", esolangs.run("Minifuck", program, timeout=20)
+            )
+            == "1"
+        )
 
     def test_the_name_is_resolved_before_it_is_compared(self) -> None:
         """A case variant is the same language, not a mismatch."""
