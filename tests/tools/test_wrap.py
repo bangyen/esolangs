@@ -86,6 +86,13 @@ NARROW_WIDTH = 13
 # grids -- the first takes one indented statement per line, the second
 # decides a line's *meaning* by whether it contains an ``=``, so a break
 # does not reflow a line but turns one line into two with different jobs.
+#
+# Unwrappable is not the same as unbounded, and the two memberships are
+# independent: a language here may still take a width by *emitting* a
+# narrower program, which is what function x(y) does by naming its
+# subtrees.  What this table says is only that :func:`wrap_program` must
+# not touch the finished text -- the reasons above are why a break is
+# destructive, and those hold whatever the generator learns to do.
 UNWRAPPABLE = {
     "nocomment": "a newline is an unrecognized command, a load error",
     "grapheme": "every character must be A-Z, so a newline is a load error",
