@@ -238,13 +238,12 @@ def test_boolean_example(name: str) -> None:
         while vm.ip != 0:
             vm.step()
         got = vm._machine.render()  # type: ignore[attr-defined]  # noqa: SLF001
-    elif name == "suffolk":
-        # Suffolk's input-reading programs stop on the next EOF rather than
-        # halting; the prover still drives every preceding step.
-        with pytest.raises(EOFError):
-            _prove_halt(vm)
-        got = vm.output
     else:
+        # Suffolk used to need a branch here: its reading programs stopped
+        # on an escaping ``EOFError`` rather than halting, so the prover had
+        # to be wrapped in ``pytest.raises``.  The exhausted read is a halt
+        # now -- which is what ``run`` always treated it as -- so it takes
+        # the common path and the branch is gone.
         assert _prove_halt(vm), f"examples/boolean/{name}.txt does not reach its halt"
         # A few state-dumping languages deliberately write on the first step
         # after their halt.  That step is otherwise a no-op, so taking it for

@@ -13,6 +13,7 @@ the step that would move past it).
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from inspect import signature
 from time import monotonic
@@ -43,6 +44,16 @@ class Debugger:
     The ``halted``/``output``/``ip``/``memory``/``stack`` properties mirror
     the wrapped VM, and ``watch_cell``/``watch_stack`` accumulate a per-step
     history.
+
+    So do the three language traits -- ``self_halts``,
+    ``dumps_on_the_post_halt_step`` and ``steppable_to_answer``.  They were
+    the mirrors left out, and they are the ones a *driving* caller needs:
+    they say whether to bound the run, whether the answer arrives one step
+    past the halt, and whether stepping reaches it at all.  Reading them
+    meant reaching through ``self.vm``, which is the wrapped machine and is
+    public for exactly the cases this class does not cover -- but a trait
+    that decides how to drive the debugger should not need the thing being
+    driven.
     """
 
     def __init__(self, vm: VM) -> None:
@@ -81,6 +92,21 @@ class Debugger:
     def stack(self) -> list[object]:
         """The wrapped VM's stack."""
         return self.vm.stack
+
+    @property
+    def self_halts(self) -> bool:
+        """Whether a program in this language can reach a halt of its own."""
+        return self.vm.self_halts
+
+    @property
+    def dumps_on_the_post_halt_step(self) -> bool:
+        """Whether the output lands on the step *after* ``halted`` goes true."""
+        return self.vm.dumps_on_the_post_halt_step
+
+    @property
+    def steppable_to_answer(self) -> bool:
+        """Whether stepping this language ever reaches the answer."""
+        return self.vm.steppable_to_answer
 
     # -- breakpoints --------------------------------------------------
 
@@ -212,9 +238,21 @@ class Debugger:
     # -- execution ----------------------------------------------------
 
     def step(self) -> None:
-        """Execute one command, recording any watches."""
-        if self.halted:
-            return
+        """Execute one command, recording any watches.
+
+        Past the halt this delegates like any other step, because that is
+        where six languages keep their answer.  It used to return early on
+        ``halted``, which looks like a kindness and cost those six their
+        output: ``dumps_on_the_post_halt_step`` means the dump *is* the step
+        after the halt, so refusing to take it left ``output`` empty with
+        the machine finished, and the only way through was to reach past
+        this class and call ``self.vm.step()``.  A debugger-driven verifier
+        scored 62/69 on that alone.
+
+        The guard was not protecting anything either: an interpreter's
+        ``step`` past its halt is a no-op by construction, so the delegation
+        is safe for the other sixty-three as well.
+        """
         self.vm.step()
         self._record()
 
@@ -297,7 +335,9 @@ class Debugger:
         return bool(hits - self._suppressed)
 
 
-def make_debugger(language: str, program: str, stdin: str = "") -> Debugger:
+def make_debugger(
+    language: str, program: str | os.PathLike[str], stdin: str = ""
+) -> Debugger:
     """Return a :class:`Debugger` over a fresh :class:`VM` for ``language``.
 
     ``stdin`` is fed to the program line by line, like :func:`esolangs.run`.

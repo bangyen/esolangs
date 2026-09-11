@@ -211,18 +211,24 @@ class TestStepMachine:
         """A read one byte from EOF must not be reported as a hang.
 
         The cursor makes each read a fresh state, so the detector runs the
-        program out to the ``EOFError`` instead of stopping at a repeat that
-        only looked like one.
-        """
-        import pytest
+        program out to its exhausted read instead of stopping at a repeat
+        that only looked like one.
 
+        That exhausted read used to escape as an ``EOFError`` and this test
+        asserted it did.  It is a *halt* now -- ``run`` had always treated it
+        as the run's ordinary ending, and the step path disagreeing was how
+        the same program answered from one entry point and raised from the
+        other.  The property under test is unchanged: the detector must
+        reach the end of the input rather than call the reading loop
+        periodic, and reaching it is now spelled ``halted``.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.suffolk import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
         machine = _Machine(",.", ScriptedIO("A\n"))
-        with pytest.raises(EOFError):
-            run_until_halt_or_cycle(machine)
+        assert run_until_halt_or_cycle(machine) is True
+        assert machine.halted
 
     def test_snapshot_excludes_pass_count(self) -> None:
         from esolangs.interpreters.tape_based.suffolk import _Machine

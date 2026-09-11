@@ -2,24 +2,41 @@
 
 Subcommands:
     esolangs list                         list the supported languages
+    esolangs describe <language>          print its input shape and where
+                                          the answer lands
     esolangs encode <language> <bits>     print the stdin those bits need
     esolangs generate <language> <table>  print a program computing a table
                                           (``--width N`` wraps it to N columns)
     esolangs run <language> <file>        run a program through its interpreter
+                                          (``--judge`` prints the answer bit)
+    esolangs read-answer <language>       print the answer bit in a program's
+                                          output, read from stdin
     esolangs debug <language> <file>      run under the breakpoint/watch VM
 
 Every subcommand takes ``--help``.  For anything else, invoke the module
 directly with ``python -m``.
 
-Exit codes separate the two kinds of failure a caller handles differently:
-**2** is a usage error (an unknown command, option, or language -- nothing
-ran), **1** is the program's own failure (it read past its input, halted on
-an invalid operation, was a template).  Only an unexpected error still
-reaches the terminal as a traceback, which is what a traceback should mean.
+``describe`` and ``read-answer`` are here because the two facts that decided
+every wrong answer this tool ever handed out -- how a language wants its
+input bits, and where in the output its answer sits -- were readable from
+Python and from nowhere else.  A shell user could run all nine of the
+languages that do not simply print their answer, and could not judge one of
+them: A Painter Ant's answer is a mark on one cell of an eleven-line grid.
+
+Exit codes separate the failures a caller handles differently: **2** is a
+usage error (an unknown command, option, or language -- nothing ran), **1**
+is the program's own failure (it read past its input, halted on an invalid
+operation, was a template), and **124** is a run stopped by ``--timeout``,
+after timeout(1).  That last one used to be 1 as well, which left the three
+languages whose answer *is* a timeout indistinguishable from a crash.  Only
+an unexpected error still reaches the terminal as a traceback, which is what
+a traceback should mean.
 """
 
 import sys
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
+from difflib import get_close_matches
+from typing import cast
 
 from esolangs import (
     __version__,
@@ -29,10 +46,11 @@ from esolangs import (
     generate,
     instantiate,
     list_languages,
+    read_answer,
     run,
 )
 from esolangs.debugger import make_debugger
-from esolangs.exceptions import EsolangError, TemplateError
+from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
 from esolangs.registry import LANGUAGES
 from esolangs.tools.wrap import DEFAULT_WIDTH
 
@@ -44,8 +62,13 @@ commands:
   generate [--width [N]] [--bits BITS] <language> <truth-table>
                               print a program computing a truth table
                               (--width wraps it; --bits fills a template)
-  run [--timeout S] <language> <file>
+  describe <language>         print how that language reads its input and
+                              where it puts the answer
+  run [--timeout S] [--judge] <language> <file>
                               run a program through its interpreter
+                              (--judge prints the answer bit instead)
+  read-answer <language>      read a program's output on stdin and print
+                              the answer bit it carries
   debug [--steps N] [--watch-cell I] [--break-on-output S] <language> <file>
                               run under the debugger and report where it
                               stopped, plus any watched cell's history
@@ -55,11 +78,13 @@ one command in full; `--version` prints the version.
 
 examples:
   esolangs list
+  esolangs describe Fargo
   esolangs encode Grapheme 10
   esolangs generate Circlefuck 0110
   esolangs generate --width brainfuck 10010110
   esolangs generate --bits 10 Minifuck 0110
   esolangs run Circlefuck hello.txt
+  esolangs encode LaserFuck 10 | esolangs run --judge LaserFuck prog.txt
   esolangs debug --steps 20 --watch-cell 0 brainfuck prog.txt
 """
 
@@ -73,9 +98,10 @@ piped straight into `esolangs run`:
 
 Most languages read one 0/1 line per bit and this is no more than what you
 would have typed.  Four are not most languages, and each fails silently if
-you guess: Grapheme spells its bits %/A, Clockwise and Fargo want them all
-on one line, and Taglate pads an odd input count with a leading zero line.
-The Input column of examples/boolean/MANIFEST.md lists every language's.
+you guess: Grapheme spells its bits %/A, Clockwise wants them all on one
+line, Fargo wants the row index as one decimal number, and Taglate pads an
+odd input count with a leading zero line.  `esolangs describe <language>`
+prints which of those you are dealing with.
 
 A language whose generator embeds the inputs in the program reads no stdin
 at all; `esolangs generate --bits` builds those.
@@ -124,17 +150,17 @@ examples:
   esolangs generate brainfuck 0110
   esolangs generate --bits 10 Minifuck 0110
 """,
-    "run": """usage: esolangs run <language> <program-file>
+    "run": """usage: esolangs run [--timeout S] [--judge] <language> <program-file>
 
 Run a program through its interpreter and print what it writes.
 
 The program is read from <program-file>; its input is this command's stdin.
 Most languages read one line per input bit, but four do not: Grapheme reads
-%/A rather than 0/1, Clockwise and Fargo take every bit on one line, and
-Taglate pads an odd input count with a leading zero line, so its 3-input
-programs read four.  Feeding the wrong encoding is answered with a wrong
-result, not an error, so check the Input column of
-examples/boolean/MANIFEST.md -- or have `esolangs encode` spell it for you:
+%/A rather than 0/1, Clockwise takes every bit on one line, Fargo takes the
+row index as one decimal number, and Taglate pads an odd input count with a
+leading zero line, so its 3-input programs read four.  Feeding the wrong
+encoding is answered with a wrong result, not an error, so check
+`esolangs describe <language>` -- or have `esolangs encode` spell it for you:
 
     esolangs encode Taglate 101 | esolangs run Taglate prog.txt
 
@@ -151,6 +177,50 @@ options:
                      languages answer a 1 by *not* terminating -- 123,
                      ArrowQueue and Point Break halt for a 0 and loop
                      forever for a 1, so a timeout there is the answer.
+                     A timeout exits 124, distinct from a program error's 1.
+  --judge            print the answer bit -- 0 or 1 -- instead of the raw
+                     output.  Nine languages do not simply print their
+                     answer: six dump their whole final state with the
+                     answer at a fixed place in it (RAM0's is its `z`
+                     register; A Painter Ant marks the ant's cell `o` or
+                     `@`), and three answer by terminating or not.  Judging
+                     needs `--timeout` for those three, since not
+                     terminating is what the 1 looks like.
+""",
+    "describe": """usage: esolangs describe <language>
+
+Print what a language does with its input bits and where it puts the answer.
+
+The fields are the ones the Python API returns from `esolangs.describe`:
+its state model and interpreter, whether it has a truth-table generator and
+whether that generator embeds the bits (`--bits`) or reads them from stdin,
+the input shape and alphabet, and how to find the answer in the output.
+
+This exists because those facts decided every wrong answer anyone got out
+of this tool, and the only place they were readable was a Python session.
+
+examples:
+  esolangs describe Fargo
+  esolangs describe "A Painter Ant"
+""",
+    "read-answer": """usage: esolangs read-answer <language>
+
+Read a program's output on stdin and print the answer bit it carries.
+
+For most languages the answer is the last thing printed and this is barely
+more than `tail`.  For nine it is not: six dump their entire final machine
+state, and the answer sits at a fixed place in it -- RAM0's in its `z`
+register three lines from the end, A Painter Ant's as the mark on the ant's
+own cell (`o` for 0, `@` for 1) somewhere in an eleven-line grid.  Working
+that out by hand meant generating all four rows and diffing them.
+
+The three languages that answer by terminating have no output to read, so
+they are refused here and named: use `run --judge --timeout S` instead.
+
+examples:
+  esolangs encode LaserFuck 10 | esolangs run LaserFuck p.txt \
+    | esolangs read-answer LaserFuck
+  esolangs run --judge --timeout 10 123 prog.txt
 """,
     "debug": """usage: esolangs debug [options] <language> <program-file>
 
@@ -181,6 +251,27 @@ options:
 # which buries the ends that are actually read.
 _HISTORY_SHOWN = 40
 
+#: Flags every subcommand accepts, so a near miss on one of them is
+#: suggested by whichever subcommand it was typed after.
+_GLOBAL_FLAGS = {"--help", "--version"}
+
+#: A run stopped by its ``--timeout``, following timeout(1).  Distinct from
+#: a program error's 1, which it shared: for the three languages that answer
+#: by not terminating, the timeout is the *answer*, and a script had no way
+#: to tell that from the program having broken.
+_TIMEOUT_EXIT = 124
+
+#: Each command's positional arguments, in order, so a missing one can be
+#: named rather than left to be inferred from the usage line.
+_ARGUMENTS = {
+    "encode": ("<language>", "<bits>"),
+    "generate": ("<language>", "<truth-table>"),
+    "run": ("<language>", "<program-file>"),
+    "debug": ("<language>", "<program-file>"),
+    "describe": ("<language>",),
+    "read-answer": ("<language>",),
+}
+
 
 def _template_hint(exc: TemplateError, language: str) -> str:
     """Re-point a template refusal at the CLI flag that fills the slots.
@@ -197,6 +288,56 @@ def _template_hint(exc: TemplateError, language: str) -> str:
     return f"{head}fill them with: esolangs generate --bits <bits> {language} <table>"
 
 
+def _shell_hint(message: str, language: str) -> str:
+    """Re-point ``encode``'s refusal at the flag that does the same job.
+
+    Same problem as :func:`_template_hint` and the sibling it was written
+    for: ``encode Minifuck 10`` was answered with "pass the bits to
+    instantiate() instead", and ``instantiate()`` is not a thing you can
+    type at a shell.  The flag that embeds bits is ``generate --bits``.
+    """
+    pointer = "pass the bits to instantiate() instead"
+    if pointer not in message:
+        return message
+    head = message.split(pointer)[0]
+    return (
+        f"{head}embed them in the program instead: "
+        f"esolangs generate --bits <bits> {language} <table>"
+    )
+
+
+def _swapped_hint(language: str, table: str) -> str:
+    """Return a hint when the language and truth-table arguments look swapped.
+
+    ``generate 0110 brainfuck`` was answered with "unknown language: 0110",
+    which is true and unhelpful: a power-of-two run of 0s and 1s in the
+    language slot is a swap, not a language nobody has implemented.
+    """
+    looks_like_table = bool(language) and not set(language) - {"0", "1"}
+    if not looks_like_table:
+        return ""
+    n = len(language).bit_length() - 1
+    if len(language) != 2**n or n < 1:
+        return ""
+    return (
+        f"; {language!r} looks like a truth table -- the language comes "
+        f"first: esolangs generate {table} {language}"
+    )
+
+
+def _did_you_mean(word: str, known: Iterable[str]) -> str:
+    """Return a ``did you mean`` clause for ``word``, or an empty string.
+
+    Language names have had suggestions for a while and option names had
+    none, so ``--wdith 40`` was a flat "unknown option" while ``Brainfck``
+    got helped.  Same cutoff as :func:`esolangs.registry.resolve` uses.
+    """
+    close = get_close_matches(word, sorted(known), n=2, cutoff=0.6)
+    if not close:
+        return ""
+    return f"; did you mean {' or '.join(close)}?"
+
+
 def _fail(message: str, code: int = 2) -> None:
     sys.stderr.write(message + "\n")
     sys.exit(code)
@@ -211,8 +352,18 @@ def _is_int(value: str) -> bool:
     return True
 
 
-def _split_positional(rest: list[str], known: set[str]) -> list[str]:
+def _split_positional(
+    rest: list[str],
+    known: set[str],
+    vocabulary: set[str] = frozenset(),  # type: ignore[assignment]
+) -> list[str]:
     """Return ``rest``'s positionals, refusing any unrecognized option.
+
+    ``vocabulary`` is only for the did-you-mean: the value-taking options
+    have already been consumed by the time this runs, so ``known`` no
+    longer contains them and a misspelling of one had nothing to match
+    against -- ``--wdith`` was a flat "unknown option" while ``Brainfck``
+    got a suggestion.  The caller names its full option set here.
 
     An unknown ``--option`` used to be kept as a positional, on the reasoning
     that a program file named ``--x`` should stay reachable.  It did, but a
@@ -232,7 +383,9 @@ def _split_positional(rest: list[str], known: set[str]) -> list[str]:
         # negative number can still be an argument.
         looks_like_option = len(arg) > 1 and arg[0] == "-" and not arg[1].isdigit()
         if looks_like_option and arg.partition("=")[0] not in known:
-            _fail(f"unknown option: {arg}")
+            name = arg.partition("=")[0]
+            suggest = set(known) | set(vocabulary) | _GLOBAL_FLAGS
+            _fail(f"unknown option: {arg}{_did_you_mean(name, suggest)}")
         args.append(arg)
     return args
 
@@ -255,7 +408,13 @@ def _check_count(
         # a second, so a missing truth table was reported with a usage
         # string that did not mention the truth table.
         synopsis = HELP[command].split("\n\n", 1)[0]
-        _fail(synopsis)
+        # And say which one is missing.  The synopsis alone left the reader
+        # to diff what they typed against a usage line -- easy for two
+        # arguments, and it is exactly the two-argument commands that get
+        # here.  ``_ARGUMENTS`` names them in order.
+        missing = _ARGUMENTS.get(command, ())[len(args) : wanted]
+        named = f"\n\nmissing {', '.join(missing)}" if missing else ""
+        _fail(f"{synopsis}{named}")
     if len(args) > wanted:
         hint = (
             f"; --width took no value here (only an integer counts as one), so "
@@ -289,19 +448,25 @@ def _pop_width(rest: list[str]) -> tuple[list[str], int | None, bool]:
         # sees positionals and the one option it owns.
         if arg == "--width":
             _refuse_repeat(seen, "--width")
-            seen["--width"] = arg
             following = rest[i + 1] if i + 1 < len(rest) else None
             if following is None or not _is_int(following):
+                # A bare ``--width`` has no value to quote, so the option
+                # itself is what a repeat report names.
+                seen["--width"] = arg
                 width = DEFAULT_WIDTH
                 bare = True
                 i += 1
                 continue
             value = following
+            # The *value*, like every other repeatable option reports.  This
+            # said ``first was '--width'``, which is the one thing the reader
+            # already knows and omits the number they have to go and find.
+            seen["--width"] = value
             i += 2
         elif arg.startswith("--width="):
             _refuse_repeat(seen, "--width")
-            seen["--width"] = arg
             value = arg.split("=", 1)[1]
+            seen["--width"] = value
             i += 1
         else:
             args.append(arg)
@@ -409,7 +574,7 @@ def _encode(rest: list[str]) -> None:
     try:
         sys.stdout.write(encode_inputs(language, [int(bit) for bit in bits]))
     except EsolangError as exc:
-        _fail(str(exc))
+        _fail(_shell_hint(str(exc), language))
 
 
 def _list(rest: list[str]) -> None:
@@ -422,6 +587,9 @@ def _list(rest: list[str]) -> None:
             print(name)
         return
     width = max(len(name) for name in LANGUAGES)
+    # The legend lived in `list --help` only, so the marker columns arrived
+    # unexplained for anyone who ran the thing before reading about it.
+    print(f"{'language'.ljust(width)}  gen=generator tmpl={{Xi}} ex=example")
     for name in list_languages():
         facts = describe(name)
         marks = " ".join(
@@ -445,7 +613,7 @@ def _debug(rest: list[str]) -> None:
     # consumed cannot tell one from a flag -- it answered that with
     # "unknown option: -inf" instead of "must be finite".
     rest, options = _pop_options(rest, options_taken)
-    rest = _split_positional(rest, set())
+    rest = _split_positional(rest, set(), options_taken)
     _check_count("debug", rest, 2)
     language, path = rest[0], rest[1]
     for name in ("--steps", "--watch-cell"):
@@ -516,7 +684,7 @@ def _generate(rest: list[str]) -> None:
     """Print a program computing a truth table."""
     rest, options = _pop_options(rest, {"--bits"})
     rest, width, bare = _pop_width(rest)
-    rest = _split_positional(rest, set())
+    rest = _split_positional(rest, set(), {"--bits", "--width"})
     _check_count("generate", rest, 2, bare_width=bare)
     try:
         program = generate(rest[0], rest[1], width)
@@ -528,27 +696,136 @@ def _generate(rest: list[str]) -> None:
             # unwrapped because no wrapper treats a {Xi} slot as a token.
             program = instantiate(rest[0], program, [int(b) for b in bits], width)
     except EsolangError as exc:
-        _fail(str(exc))
+        _fail(f"{exc}{_swapped_hint(rest[0], rest[1])}")
     print(program)
+
+
+def _describe(rest: list[str]) -> None:
+    """Print a language's input shape, answer location and capabilities."""
+    rest = _split_positional(rest, set())
+    _check_count("describe", rest, 1)
+    try:
+        facts = describe(rest[0])
+    except EsolangError as exc:
+        _fail(str(exc))
+        raise  # pragma: no cover - unreachable; _fail exits
+    width = max(len(key) for key in facts)
+    for key, value in facts.items():
+        if value is None or value == "":
+            continue
+        shown = "\n".join(str(v) for v in value) if isinstance(value, list) else value
+        if isinstance(value, tuple):
+            shown = " ".join(str(v) for v in value)
+        print(f"{key.ljust(width)}  {shown}")
+
+
+def _read_answer(rest: list[str]) -> None:
+    """Read a program's output on stdin and print the answer bit in it."""
+    rest = _split_positional(rest, set())
+    _check_count("read-answer", rest, 1)
+    language = rest[0]
+    try:
+        facts = describe(language)
+    except EsolangError as exc:
+        _fail(str(exc))
+        raise  # pragma: no cover - unreachable; _fail exits
+    if facts["answer_mode"] == "termination":
+        polarity = cast("tuple[str, str]", facts["answer_encoding"])
+        zero, one = polarity
+        _fail(
+            f"{facts['name']} answers by {zero} for a 0 and {one} for a 1, so "
+            f"there is no output to read; use: esolangs run --judge "
+            f"--timeout <seconds> {facts['name']} <program-file>"
+        )
+    output = "" if sys.stdin.isatty() else sys.stdin.read()
+    if not output.strip():
+        _fail(
+            f"nothing on stdin to read an answer out of; pipe a program's "
+            f"output in: esolangs run {language} prog.txt | esolangs "
+            f"read-answer {language}"
+        )
+    try:
+        print(read_answer(language, output))
+    except EsolangError as exc:
+        _fail(str(exc))
+
+
+def _judge(language: str, output: str, mode: object) -> str:
+    """Return the answer bit for a finished run, or exit explaining why not."""
+    if mode == "termination":
+        # It halted, and halting is this group's 0.  The 1 is the timeout,
+        # which never reaches here -- ``_run`` reports it before judging.
+        return "0"
+    try:
+        return read_answer(language, output)
+    except EsolangError as exc:
+        _fail(str(exc), 1)
+        raise  # pragma: no cover - unreachable; _fail exits
 
 
 def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
     rest, options = _pop_options(rest, {"--timeout"})
-    rest = _split_positional(rest, set())
+    rest = _split_positional(rest, {"--judge"}, {"--timeout", "--judge"})
+    judge = "--judge" in rest
+    rest = [arg for arg in rest if arg != "--judge"]
     _check_count("run", rest, 2)
     language, path = rest[0], rest[1]
     timeout = _timeout_of(options)
     program = _read_program(path)
     stdin = "" if sys.stdin.isatty() else sys.stdin.read()
     try:
+        mode = describe(language)["answer_mode"]
+        name = describe(language)["name"]
+    except EsolangError as exc:
+        _fail(str(exc))
+        raise  # pragma: no cover - unreachable; _fail exits
+    if mode == "termination" and timeout is None:
+        if judge:
+            # Judging needs the bound, so this is a refusal rather than the
+            # warning below -- and only one of the two is printed.
+            _fail(
+                f"--judge needs --timeout for {name}: its answer for a 1 is "
+                f"that the program never stops, so there is nothing to wait "
+                f"for without a bound"
+            )
+        # The default path for these three is an unbounded run of a program
+        # written to loop forever, which is a hang with no output and no
+        # explanation.  Not refused -- a program whose answer is 0 halts,
+        # and running one unbounded is perfectly sensible -- but said aloud.
+        sys.stderr.write(
+            f"{name}: this language answers 1 by not terminating, so a "
+            f"program with that answer will run until you stop it; pass "
+            f"--timeout SECONDS to bound it\n"
+        )
+    try:
         output = run(language, program, stdin, timeout)
     except TemplateError as exc:
         _fail(_template_hint(exc, language))
+    except ExecutionTimeoutError as exc:
+        if mode == "termination":
+            # The timeout *is* the answer here, so it is not a failure.
+            if judge:
+                print("1")
+                return
+            sys.stderr.write(
+                f"{exc}\nnote: {name} answers 1 by not terminating, so for a "
+                f"generated truth-table program this timeout is the answer 1"
+                f" -- `--judge` prints it as one\n"
+            )
+            sys.exit(_TIMEOUT_EXIT)
+        # Distinct from a program error's 1, following timeout(1), so a
+        # script can tell "ran out of time" from "the program broke".  Those
+        # shared exit 1, which made the three termination languages'
+        # answer indistinguishable from a crash.
+        _fail(str(exc), _TIMEOUT_EXIT)
     except EsolangError as exc:
         # A usage error (an unknown language) is still 2; anything the
         # program itself did is the program's failure, and exits 1.
         _fail(str(exc), 2 if isinstance(exc, ValueError) else 1)
+    if judge:
+        print(_judge(language, output, mode))
+        return
     sys.stdout.write(output)
     # Piped output stays byte-exact -- it gets compared and diffed -- but a
     # result with no trailing newline runs into the next shell prompt.
@@ -590,9 +867,11 @@ def main() -> None:
 
     {
         "list": _list,
+        "describe": _describe,
         "encode": _encode,
         "generate": _generate,
         "run": _run,
+        "read-answer": _read_answer,
         "debug": _debug,
     }[cmd](rest)
 
