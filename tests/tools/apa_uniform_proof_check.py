@@ -11,6 +11,13 @@ minutes for the whole suite under ``-n auto``, so neither pytest (no
 ``test_`` prefix, so it is not collected) nor CI pays that on every push for
 inputs that move this rarely.
 
+It sits here rather than in ``scripts/`` beside ``arrowqueue_lemmas.py``,
+its opposite number for ArrowQueue, because of what it imports: those
+lemmas reach only into ``esolangs``, while this shares
+``tests.tools.a_painter_ant_trace`` with ``test_boolean_grid.py``.  A
+``scripts/`` module importing from ``tests/`` would invert that dependency,
+and mypy checks ``scripts`` but not ``tests``.
+
 What it buys over the suite is the *uniform-in-n* half.  The checked-in
 tests cover the shipped behaviour at the arities they can enumerate; this
 reduces "all tables at every arity" to a finite computation, in the style of

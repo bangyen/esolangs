@@ -152,6 +152,22 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
         "scripts/bundle_one.py",
         "scripts/verify_install_one.py",
     ),
+    # The lemmas import the generator and nothing else, so only it and the
+    # script itself can break them.
+    "arrowqueue lemmas": (
+        "src/esolangs/tools/boolean/parameterized.py",
+        "scripts/arrowqueue_lemmas.py",
+    ),
+    # The sieve reads only the ceiling constant and its own source.
+    "ztoalc slot record": (
+        "src/esolangs/tools/boolean/ztoalc_l.py",
+        "scripts/ztoalc_slot_record.py",
+    ),
+    # Only an interpreter (or the sweep itself) can introduce a leak.
+    "exception leaks": (
+        "src/esolangs/interpreters/",
+        "scripts/verify_no_exception_leaks.py",
+    ),
 }
 
 STEPS = [
@@ -228,6 +244,30 @@ STEPS = [
     (
         "single-interpreter installer",
         [*PY, "scripts/verify_install_one.py"],
+    ),
+    # Twelve named lemmas behind docs/arrowqueue_generator.md, each pinning
+    # one finite fact the total-over-every-arity proof rests on.  0.8s, so
+    # it is a gate rather than the by-hand check the A Painter Ant proof
+    # has to be (`just apa-proof`, 5m40s).
+    (
+        "arrowqueue lemmas",
+        [*PY, "scripts/arrowqueue_lemmas.py"],
+    ),
+    # Sieves every ZTOALC start under the line ceiling and fails if the best
+    # capacity is not the 395 that ztoalc_l.py and docs/limitations.md both
+    # cite.  2.2s, and it is the only thing standing between that figure and
+    # silent staleness.
+    (
+        "ztoalc slot record",
+        [*PY, "scripts/ztoalc_slot_record.py"],
+    ),
+    # The contract exceptions.py states, executed: no interpreter may leak a
+    # raw Python error to its caller.  Bare, it checks only the languages
+    # this branch touched, which is why it is affordable here; CI runs
+    # --all (69 languages, 68s).
+    (
+        "exception leaks",
+        [*PY, "scripts/verify_no_exception_leaks.py"],
     ),
 ]
 
