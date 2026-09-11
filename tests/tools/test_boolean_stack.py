@@ -6,7 +6,9 @@ Forþ, Modulous, BFStack, and Unsquare.
 
 import pytest
 
+import esolangs
 from esolangs.tools import boolean
+from esolangs.tools.boolean import stack
 from esolangs.tools.boolean.helpers import permute_truth_table
 from tests.tools.boolean_runners import (
     run_bfstack,
@@ -574,3 +576,69 @@ class TestUnsquare:
         """Only the characters Unsquare reads are emitted."""
         for table in ("10", "0110", "0001", "11111110"):
             assert set(boolean.unsquare(table)) <= set("+-<>AIOPSiox"), table
+
+
+class TestGraphemeKeysAvoidItsOwnAlphabet:
+    """Two variable keys collided with the language, and only one raised.
+
+    Both were invisible to the arity sweep in
+    ``tests/tools/test_boolean_contract.py``, which builds every generator
+    to ten inputs but never runs what it builds.  ``boolean.grapheme``
+    returned a healthy-looking program for all of these.
+    """
+
+    @staticmethod
+    def _one_minterm(n: int) -> str:
+        """A table whose single 1 makes every one of its ``n`` inputs matter."""
+        return "1" + "0" * (2**n - 1)
+
+    def test_no_key_letter_is_the_int_mode_delimiter(self) -> None:
+        """``F`` framed the key, so it could not also be the digit inside it."""
+        assert "F" not in stack._GRAPHEME_KEY_LETTERS  # noqa: SLF001
+
+    def test_no_key_letter_aliases_the_constant(self) -> None:
+        """The normalizing 65 owns key 90, and a slot must not store over it."""
+        keys = [
+            stack._grapheme_slot_key(slot)  # noqa: SLF001
+            for slot in range(len(stack._GRAPHEME_KEY_LETTERS))  # noqa: SLF001
+        ]
+        assert stack._GRAPHEME_CONST_KEY not in keys  # noqa: SLF001
+        assert len(set(keys)) == len(keys)
+
+    @pytest.mark.parametrize("n", [6, 7, 8, 9])
+    def test_a_table_using_every_input_still_computes(self, n: int) -> None:
+        """Six essential inputs reached slot 5, and slot 5's key was ``FFF``.
+
+        Under the old alphabet six raised ``ProgramError: Grapheme produced
+        no answer this could read`` and seven raised ``HaltError: G needs a
+        string or a function``.  Five and below were always fine, at any
+        arity, because the wall stood at essential inputs rather than table
+        size -- a dense n=9 table that folds to one input never saw it.
+        """
+        table = self._one_minterm(n)
+        assert esolangs.evaluate("Grapheme", table, timeout=60) == table
+
+    def test_parity_at_six_inputs_computes(self) -> None:
+        """Parity is the table with nothing to fold, so all six slots are live."""
+        table = "".join(str(bin(row).count("1") & 1) for row in range(64))
+        assert esolangs.evaluate("Grapheme", table, timeout=60) == table
+
+    def test_the_constant_alias_returned_a_wrong_answer(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The positive control, and the reason ``I`` is filtered out.
+
+        Dropping only ``F`` leaves ``I`` at slot 7 holding key 90 -- the
+        constant's.  That collision does not raise: eight essential inputs
+        still come out right, because slot 7 is read last and nothing reads
+        the constant after it.  Nine is where the clobbered 65 is read back
+        and the table comes out wrong, quietly.  Without this control the
+        ``I`` skip looks like superstition.
+        """
+        monkeypatch.setattr(
+            stack,
+            "_GRAPHEME_KEY_LETTERS",
+            [letter for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" if letter != "F"],
+        )
+        table = self._one_minterm(9)
+        assert esolangs.evaluate("Grapheme", table, timeout=60) != table
