@@ -298,7 +298,14 @@ class TestDebugCommand:
         diagnosis for this fault and is what a bare ``EOFError`` -- whose
         message is the empty string -- could never carry.
         """
-        out = call_main(["debug", "brainfuck", _program(tmp_path, ",.")], capsys)
+        # Reported, not propagated -- the whole report is printed -- and
+        # *then* exit 1, matching what `run` has always called a program's
+        # own failure.  `debug` used to exit 0 for every outcome alike, so
+        # a script could not tell a crash from a clean halt.
+        with pytest.raises(SystemExit) as exc:
+            call_main(["debug", "brainfuck", _program(tmp_path, ",.")], capsys)
+        assert exc.value.code == 1
+        out = capsys.readouterr().out
         assert "raised: InputExhaustedError" in out
         assert "0 lines supplied" in out
         assert "halted: no" in out

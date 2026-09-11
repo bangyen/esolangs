@@ -84,6 +84,9 @@ commands:
                               without running anything
   read-answer <language>      read a program's output on stdin and print
                               the answer bit it carries
+  answer <language> <truth-table> <bits>
+                              generate, feed those bits, run, and print the
+                              one answer bit
   verify <language> <truth-table>
                               generate, run every row, and report whether
                               the program computes that table
@@ -105,6 +108,7 @@ examples:
   esolangs generate --width brainfuck 10010110
   esolangs generate --bits 10 Minifuck 0110
   esolangs run Circlefuck hello.txt
+  esolangs answer brainfuck 0110 10
   esolangs verify Fargo 10010110
   esolangs encode LaserFuck 10 | esolangs run --judge LaserFuck prog.txt
   esolangs debug --steps 20 --watch-cell 0 brainfuck prog.txt
@@ -219,6 +223,31 @@ options:
                      `@`), and three answer by terminating or not.  Judging
                      needs `--timeout` for those three, since not
                      terminating is what the 1 looks like.
+""",
+    "answer": """usage: esolangs answer [--timeout S] <language> <truth-table> <bits>
+
+Generate a program for <truth-table>, feed it <bits>, run it, and print the
+single answer bit.
+
+This is `verify` for one row instead of all of them.  Everything it does was
+already possible -- generate to a file, encode the bits, pipe them in, judge
+the output -- but that is four commands and a temporary file, and the
+encoding step is the one people get wrong.  Nothing here can be
+mis-encoded: the bits go in as bits.
+
+  esolangs answer brainfuck 0110 10        -> 1
+  esolangs answer Fargo 10010110 101       -> 1
+  esolangs answer "A Painter Ant" 0110 01  -> 1
+
+Works for every language, including the seventeen whose generators embed
+their inputs, the six that dump their whole final state, and the three that
+answer by not terminating -- for those a bound is needed, and the default
+below is applied.
+
+options:
+  --timeout SECONDS  bound the run.  Defaults to 5 seconds for the three
+                     languages whose answer for a 1 is that the program
+                     never stops, and to none for the rest.
 """,
     "verify": """usage: esolangs verify [--timeout S] <language> <truth-table>
 
@@ -413,6 +442,13 @@ class _UnboundedNotice:
 #: to tell that from the program having broken.
 _TIMEOUT_EXIT = 124
 
+#: The two input shapes whose bit count cannot be recovered from stdin.
+#: Every other language reads a line per bit, so a run can compare what it
+#: took against what it was given; these two read a single line -- all the
+#: bits at once, or a row index -- and a wrong count is indistinguishable
+#: from a right one without knowing the arity.
+_UNCOUNTABLE_SHAPES = ("one_line", "row_index")
+
 #: Each command's positional arguments, in order, so a missing one can be
 #: named rather than left to be inferred from the usage line.
 _ARGUMENTS = {
@@ -423,6 +459,7 @@ _ARGUMENTS = {
     "describe": ("<language>",),
     "read-answer": ("<language>",),
     "check-stdin": ("<language>",),
+    "answer": ("<language>", "<truth-table>", "<bits>"),
     "verify": ("<language>", "<truth-table>"),
     "evaluate": ("<language>", "<truth-table>"),
 }
@@ -1028,6 +1065,10 @@ def _debug(rest: list[str]) -> None:
         # never reached it, and the report said nothing either way.
         sys.stderr.write("note: no breakpoint matched during this run\n")
     print(f"halted: {'yes' if dbg.halted else 'no'}")
+    # Exit codes below, after the report is printed: a script that cannot
+    # tell a clean halt from a crash has to parse prose, and `run` has had
+    # this taxonomy for several rounds.  The state up to the fault is still
+    # printed either way, which is the whole point of the command.
     # Always printed, so a script reading fixed field positions does not
     # break on the one case it most wants to parse.
     print(f"stopped: {reason if reason is not None else 'raised'}")
@@ -1046,9 +1087,24 @@ def _debug(rest: list[str]) -> None:
             untouched = " (None: the cell did not exist yet at that step)"
         else:
             untouched = ""
-        print(f"cell {options['--watch-cell']}: {_abridge(values)}{untouched}")
+        if set(values) <= {None}:
+            # Verdict first, and no wall of Nones: a never-written cell used
+            # to print four hundred of them and put "(never written)" at the
+            # far right of a wrapped line.
+            print(
+                f"cell {options['--watch-cell']}: never written in "
+                f"{len(values)} step(s)"
+            )
+        else:
+            print(f"cell {options['--watch-cell']}: {_abridge(values)}{untouched}")
     if fault is not None:
         print(f"raised: {fault}")
+        # 1, like ``run``: the program itself failed.  This exited 0 for
+        # every outcome -- a clean halt, a timeout and a crash alike -- so a
+        # script could not tell them apart without parsing the report.
+        sys.exit(1)
+    if reason == "timeout":
+        sys.exit(_TIMEOUT_EXIT)
 
 
 def _generate(rest: list[str]) -> None:
@@ -1127,6 +1183,12 @@ def _describe(rest: list[str]) -> None:
             f"in the program: esolangs generate --bits <bits> "
             f"{facts['name']} <table>"
         )
+    else:
+        # The symmetric row.  A reader had ``input_encoding`` and
+        # ``input_shape`` and had to compose them, while the template
+        # languages got a sentence -- so the languages where getting it
+        # wrong is possible were the ones told least plainly.
+        print(f"{'input'.ljust(width)}  {_input_sentence(facts)}")
 
 
 def _check_stdin(rest: list[str]) -> None:
@@ -1141,10 +1203,37 @@ def _check_stdin(rest: list[str]) -> None:
         _fail(str(exc))
         raise  # pragma: no cover - unreachable; _fail exits
     stdin = _read_stdin(hint="; pipe the input in, or close stdin")
+    table = options.get("--table")
     try:
-        check_stdin(str(facts["name"]), stdin, options.get("--table"))
+        check_stdin(str(facts["name"]), stdin, table)
     except EsolangError as exc:
         _fail(str(exc))
+    # No note about ``--table`` here.  The first draft printed one whenever
+    # it was absent, which is every call that is simply checking a shape --
+    # advice on correct input, which is the thing this CLI has spent several
+    # rounds removing.  ``check-stdin --help`` says what the flag adds.
+
+
+def _input_sentence(facts: dict[str, object]) -> str:
+    """Describe this language's stdin in one line, with an example.
+
+    Composed from ``input_shape`` and ``input_encoding`` rather than stored,
+    so a language that declares a new shape is described by declaring it.
+    """
+    zero, one = cast("tuple[str, str]", facts["input_encoding"])
+    shape = str(facts["input_shape"])
+    example = f"{one}{zero}"
+    if shape == "row_index":
+        return 'one decimal row index, e.g. "2" for the bits 10'
+    if shape == "one_line":
+        return f'every bit on one line, e.g. "{example}"'
+    lines = f"{one}\\n{zero}"
+    if shape == "line_per_bit_padded":
+        return (
+            f'one line per bit, e.g. "{lines}" -- and an odd count above one '
+            f"is padded with a leading {zero} line"
+        )
+    return f'one line per bit, e.g. "{lines}"'
 
 
 def _read_answer(rest: list[str]) -> None:
@@ -1176,6 +1265,51 @@ def _read_answer(rest: list[str]) -> None:
         print(read_answer(language, output))
     except EsolangError as exc:
         _fail(str(exc))
+
+
+def _answer(rest: list[str]) -> None:
+    """Generate, feed one row's bits, run, and print the answer bit."""
+    rest, options = _pop_options(rest, {"--timeout"})
+    timeout = _timeout_of(options)
+    rest = _split_positional(rest, set(), {"--timeout"})
+    _check_count("answer", rest, 3)
+    language, table, bits = rest
+    if set(bits) - {"0", "1"} or not bits:
+        _fail(f"bits must be a string of 0s and 1s, got {bits!r}")
+    try:
+        facts = describe(language)
+        name = str(facts["name"])
+        row = [int(bit) for bit in bits]
+        program = generate(name, table)
+        if facts["parameterized"]:
+            source, stdin = instantiate(name, program, row, truth_table=table), ""
+        else:
+            source, stdin = program, encode_inputs(name, row, table)
+        if facts["answer_mode"] == "termination":
+            # A bound is the answer here rather than a safeguard, so one is
+            # supplied: this command exists to be a one-liner, and making a
+            # reader discover that three of the sixty-nine need a flag would
+            # defeat that.
+            print(_diverging_answer(name, source, stdin, timeout or 5.0, facts))
+            return
+        print(read_answer(name, run(name, source, stdin, timeout)))
+    except EsolangError as exc:
+        # No ``TemplateError`` clause: this command generates the template
+        # and fills it in the same breath, so it never hands an unfilled one
+        # on -- the same reason ``evaluate`` has none.
+        _fail(str(exc), 2 if isinstance(exc, ValueError) else 1)
+
+
+def _diverging_answer(
+    name: str, source: str, stdin: str, bound: float, facts: dict[str, object]
+) -> str:
+    """Return the answer bit for a language that answers by terminating."""
+    encoding = cast("tuple[str, str]", facts["answer_encoding"])
+    try:
+        run(name, source, stdin, bound)
+    except ExecutionTimeoutError:
+        return str(encoding.index("diverges"))
+    return str(encoding.index("halts"))
 
 
 def _evaluate(rest: list[str]) -> None:
@@ -1292,7 +1426,8 @@ def _run(rest: list[str]) -> None:
             f"program with that answer will run until you stop it; pass "
             f"--timeout SECONDS to bound it\n"
         )
-    warning = _shape_warning(facts, stdin, options.get("--table"))
+    table = options.get("--table")
+    warning = _shape_warning(facts, stdin, table)
     if warning and judge:
         # ``--judge`` is the caller saying "this is a truth-table program and
         # I want its answer bit", so a stdin the language cannot read the way
@@ -1304,6 +1439,32 @@ def _run(rest: list[str]) -> None:
         # That split is the answer to "warn or refuse?" -- the flag says
         # which of the two situations you are in.
         _fail(f"{warning}\n(refused because --judge asks for an answer bit)")
+    if judge and table is None and facts["input_shape"] in _UNCOUNTABLE_SHAPES:
+        # Last, after the specific diagnoses above.  Put first, this swallowed
+        # them: `abc` fed to Fargo was answered with "pass --table" instead of
+        # "reads one decimal row index", which is the more useful of the two
+        # by a wide margin.  So this only speaks when nothing else has -- when
+        # the stdin is a perfectly good single line and the only thing that
+        # cannot be checked is how many bits it should hold.
+        #
+        # A refusal rather than advice, and only for these two shapes.  The
+        # first draft printed a note on every `--judge` call without a table,
+        # including the ones where nothing was wrong, and a warning that fires
+        # on correct input is worth less than no warning at all.  The other
+        # sixty-seven read a line per bit, so `run` counts what the program
+        # took against what it was given and catches a mismatch after the
+        # fact; these two read a single line and never run off an end to
+        # count.
+        reads = (
+            "one line of bits"
+            if facts["input_shape"] == "one_line"
+            else "one row index"
+        )
+        _fail(
+            f"{name} reads {reads}, so the bit count cannot be checked from "
+            f"stdin alone -- pass --table <truth-table> with --judge, or use: "
+            f"esolangs answer {name} <truth-table> <bits>"
+        )
     # No copy of the warning here.  ``run`` emits the same judgement as a
     # ``UserWarning`` now, so printing it as well said everything twice --
     # and Python's default format would have put this file's path and a line
@@ -1408,6 +1569,7 @@ def main() -> None:
         "run": _run,
         "read-answer": _read_answer,
         "check-stdin": _check_stdin,
+        "answer": _answer,
         "verify": _verify,
         "evaluate": _evaluate,
         "debug": _debug,

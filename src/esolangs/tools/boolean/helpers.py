@@ -74,9 +74,15 @@ def _validate_shape(truth_table: str) -> int:
     # runs ~720 times per call at n=6 and a per-character Python loop over
     # 2**n shows up (0.86s of the n=6 registry sweep).
     if set(truth_table) - {"0", "1"}:
-        bad = sorted(set(truth_table) - {"0", "1"})
+        # The *argument*, plus which character is wrong and where.  This
+        # printed ``sorted(set(...))``, so someone who typed ``nonsense``
+        # was told "got 'enos'" -- a string they had never seen, which
+        # reads like a shell-quoting bug rather than a typo.  The sibling
+        # validator in ``encode`` echoed the argument all along.
+        bad = next((i, c) for i, c in enumerate(truth_table) if c not in {"0", "1"})
         raise TruthTableError(
-            f"truth table must contain only '0' and '1', got {''.join(bad)!r}"
+            f"truth table must contain only '0' and '1', got {truth_table!r} "
+            f"-- {bad[1]!r} at position {bad[0]} is not one of them"
         )
     n = len(truth_table).bit_length() - 1
     if len(truth_table) != 2**n:
