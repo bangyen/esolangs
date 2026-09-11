@@ -143,11 +143,11 @@ jobs:
   generated-docs:
     # The generated docs are committed, so CI re-runs their generator and
     # fails on a diff: a doc that drifts from the registry is the failure
-    # this catches.  No longer needs the coverage artifact -- the badge it
-    # also regenerated was removed once nothing rendered it.
+    # this catches.  It reads only the registry, so it neither needs the
+    # suite to have passed nor waits for it -- the `needs: test` this
+    # carried was for the coverage artifact the removed badge consumed.
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: test
     steps:
     - uses: actions/checkout@v7
 
