@@ -3,10 +3,6 @@
 # Auto-detect uv - falls back to plain python if not available
 PYTHON := `command -v uv >/dev/null 2>&1 && echo "uv run python" || echo "python"`
 
-# Tool paths
-HOMEBREW_BIN := "/opt/homebrew/bin"
-LLVM_BIN := `command -v brew >/dev/null 2>&1 && echo "$(brew --prefix llvm)/bin" || echo ""`
-
 # Help
 help:
     @echo "Available targets:"
@@ -15,11 +11,11 @@ help:
     @echo "  test         - Local check, scoped to this branch; slow tests left to CI"
     @echo "  test-full    - Every check, whole tree"
     @echo "  test-quick   - Fast dev loop: pre-commit + pytest (skip slow) (~6s pytest)"
-    @echo "  test-py      - pytest only (~16s, 3325 tests, -n auto; skip slow with -m 'not slow')"
+    @echo "  test-py      - pytest only (8749 tests, -n auto; skip slow with -m 'not slow')"
     @echo "  test-line    - extra/line suites with pytest only (~3s)"
     @echo "  test-anchor  - ztoalc anchor table check (~3.2s)"
     @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
-    @echo "  mutate-gen MOD - mutation-test one generator (e.g. just mutate-gen text/streetcode)"
+    @echo "  mutate-gen MOD - mutation-test one generator (e.g. just mutate-gen boolean/streetcode)"
     @echo "  install-dev  - Install development dependencies"
     @echo "  clean        - Clean up generated files"
     @echo ""
@@ -103,16 +99,15 @@ mutate language *args:
     {{PYTHON}} scripts/mutate_one.py "{{language}}" {{args}}
 
 # the same for one generator, named family/module after where it lives under
-# src/esolangs/tools (e.g. just mutate-gen boolean/register, just mutate-gen
-# text/streetcode).  A bare name works where only one family defines it, but
-# eight -- helpers, laserfuck, other, register, stack, streetcode,
-# super_snusp, tape -- exist in both and are refused unqualified.  Every
-# suite in tests/tools runs; slow tests are deselected unless --slow is
-# passed, since a mutation run pays the suite's cost once per mutant.
+# src/esolangs/tools (e.g. just mutate-gen boolean/register).  A bare name
+# works where only one family defines it; the families no longer share a
+# module name, so in practice every bare name resolves.  Every suite in
+# tests/tools runs; slow tests are deselected unless --slow is passed, since
+# a mutation run pays the suite's cost once per mutant.
 mutate-gen module *args:
     {{PYTHON}} scripts/mutate_generator.py {{module}} {{args}}
 
 # clean generated
 clean:
     #!/usr/bin/env bash
-    find . \( -name "*.pyc" -o -name "__pycache__" -o -name "*.egg-info" -o -name "*.o" -o -name "*.so" -o -name "*.dylib" -o -name "*.exe" \) -delete 2>/dev/null || true
+    find . \( -name "*.pyc" -o -name "__pycache__" -o -name "*.egg-info" \) -delete 2>/dev/null || true
