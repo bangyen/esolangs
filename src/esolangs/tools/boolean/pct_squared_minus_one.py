@@ -35,7 +35,16 @@ _CLASS_PAIRS = tuple(
 )
 
 #: Separates the setter header from the program body in a template.
-_HEADER_END = "\n"
+#:
+#: A *blank line*, not a newline, so that the header may be folded across
+#: rows like the body: a single newline is then interior to whichever of the
+#: two it falls in, and only the blank line divides them.  Nothing emits a
+#: blank line inside either part -- the wrapper's packing never produces an
+#: empty row -- so the division is unambiguous.
+#:
+#: This is a template-format constant, not a language one.  The interpreter
+#: never sees a header; :func:`fill` consumes it.
+_HEADER_END = "\n\n"
 
 #: Matches one setter declaration in the header, ``k=<zero>|<one>``.
 _DECL_RE = re.compile(r"(\d+)=([^|;]*)\|([^;]*)")
@@ -3625,8 +3634,17 @@ def fill(template: str, bits: list[int]) -> str:
     every ``{Xi}`` with the branch that input's bit selects.  The branches
     are equal width, so every instantiation has the same length whatever the
     inputs.
+
+    The header's own newlines are discarded before it is read, which is what
+    lets the wrapper fold a header at all -- and lets it fold *inside* a
+    declaration rather than only between two, which matters because a single
+    declaration is 175 characters and does not shrink with ``n``.  Stripping
+    here rather than substituting the rows as they come keeps the filled
+    program byte-identical however the header was folded, so the two
+    branches stay equal width in text as well as in commands.
     """
     header, _, body = template.partition(_HEADER_END)
+    header = header.replace("\n", "")
     branches = {
         int(m.group(1)): (m.group(2), m.group(3)) for m in _DECL_RE.finditer(header)
     }
