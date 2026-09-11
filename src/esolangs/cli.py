@@ -1551,6 +1551,22 @@ def _run(rest: list[str]) -> None:
             _fail(f"{surplus}\n(refused because --judge asks for an answer bit)")
         for entry in caught:
             _note(str(entry.message))
+        # The count and range checks `--table` buys.  ``run`` warns through
+        # the library, which is not given the table and so can only judge
+        # shape and alphabet -- so `run --table` computed this and used it
+        # for nothing, while `check-stdin --table` and `run --judge --table`
+        # both refused the same stdin.  Three routes, two answers.
+        #
+        # Only when the library did not already say it: a shape complaint
+        # comes back from both, and saying it twice is what the note-vs-
+        # warning split was cleaned up to stop.
+        said = {str(entry.message) for entry in caught}
+        if (
+            warning
+            and warning not in said
+            and not any(warning.startswith(one.rstrip(".")) for one in said)
+        ):
+            _note(warning)
     except TemplateError as exc:
         _fail(_template_hint(exc, language))
     except ExecutionTimeoutError as exc:

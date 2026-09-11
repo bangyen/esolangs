@@ -2066,3 +2066,102 @@ class TestAnInterruptIsNotATraceback:
             cli.main()
         assert exc.value.code == 130
         assert capsys.readouterr().err.strip() == "interrupted"
+
+
+class TestALeadingZeroIndexNeverCrashes:
+    """The message explaining a leading zero crashed on one."""
+
+    @pytest.mark.parametrize("value", ["02", "07", "012", "089"])
+    def test_a_non_binary_leading_zero_is_refused_cleanly(self, value: str) -> None:
+        """`int('02', 2)` raises, so the friendly message threw a traceback."""
+        with pytest.raises(esolangs.ArgumentError, match="leading zero"):
+            esolangs.check_stdin("Fargo", f"{value}\n")
+
+    @pytest.mark.parametrize("value", ["00", "01", "010", "011"])
+    def test_a_binary_one_still_offers_the_index(self, value: str) -> None:
+        """The helpful half must survive the fix to the crashing half."""
+        with pytest.raises(esolangs.ArgumentError, match="if those are the input bits"):
+            esolangs.check_stdin("Fargo", f"{value}\n")
+
+    def test_the_suggested_index_is_right(self) -> None:
+        """`010` as bits is row 2, and the message says so."""
+        with pytest.raises(esolangs.ArgumentError, match="the index is 2"):
+            esolangs.check_stdin("Fargo", "010\n")
+
+
+class TestTheTableOptionIsUsedByPlainRun:
+    """It computed the check and threw the result away."""
+
+    def test_an_out_of_range_row_is_warned_about(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """`check-stdin --table` refused this and `run --table` answered it."""
+        path = tmp_path / "f.txt"
+        path.write_text(esolangs.generate("Fargo", "0110"))
+        out, err = call_both(
+            ["run", "--table", "0110", "Fargo", str(path)], capsys, stdin="9\n"
+        )
+        assert out  # still answers: plain `run` warns rather than refusing
+        assert "out of range" in err
+
+    def test_a_wrong_bit_count_is_warned_about(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Clockwise's is a shorter line, invisible without the arity."""
+        path = tmp_path / "c.txt"
+        path.write_text(esolangs.generate("Clockwise", "0110"))
+        _out, err = call_both(
+            ["run", "--table", "0110", "Clockwise", str(path)], capsys, stdin="101"
+        )
+        assert "wants 2 bits" in err
+
+    def test_a_correct_input_stays_silent(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A warning that fires on correct input is worth less than none."""
+        path = tmp_path / "f.txt"
+        path.write_text(esolangs.generate("Fargo", "0110"))
+        _out, err = call_both(
+            ["run", "--table", "0110", "Fargo", str(path)],
+            capsys,
+            stdin=esolangs.encode_inputs("Fargo", [1, 0], "0110"),
+        )
+        assert err == ""
+
+    def test_a_shape_complaint_is_said_once(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The library warns too, and both saying it is the old bug."""
+        path = tmp_path / "g.txt"
+        path.write_text(esolangs.generate("Grapheme", "0110"))
+        _out, err = call_both(
+            ["run", "--table", "0110", "Grapheme", str(path)], capsys, stdin="0\n1\n"
+        )
+        assert err.count("spells its bits") == 1
+
+    def test_the_three_routes_agree(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """`check-stdin --table`, `run --judge --table` and `run --table`.
+
+        They disagreed about the same stdin: two refused it and the third
+        answered a row that does not exist.  They need not have the same
+        *severity* -- plain `run` warns by design -- but they must all
+        notice.
+        """
+        path = tmp_path / "f.txt"
+        path.write_text(esolangs.generate("Fargo", "0110"))
+        with pytest.raises(SystemExit):
+            call_main(["check-stdin", "--table", "0110", "Fargo"], capsys, stdin="9\n")
+        assert "out of range" in capsys.readouterr().err
+        with pytest.raises(SystemExit):
+            call_main(
+                ["run", "--judge", "--table", "0110", "Fargo", str(path)],
+                capsys,
+                stdin="9\n",
+            )
+        assert "out of range" in capsys.readouterr().err
+        _out, err = call_both(
+            ["run", "--table", "0110", "Fargo", str(path)], capsys, stdin="9\n"
+        )
+        assert "out of range" in err
