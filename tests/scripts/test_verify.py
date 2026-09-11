@@ -11,6 +11,7 @@ than the one they asked for.
 """
 
 import importlib.util
+import re
 import tomllib
 from pathlib import Path
 
@@ -134,3 +135,71 @@ class TestPytestScopeCollects:
         )
         patterns = config["tool"]["pytest"]["ini_options"]["python_files"]
         assert list(verify.COLLECTED_PATTERNS) == patterns
+
+
+CI = REPO_ROOT / ".github" / "workflows" / "ci.yml"
+
+
+def _signature(cmd: list[str]) -> str:
+    """The token that identifies one ``STEPS`` command inside ``ci.yml``.
+
+    A step is identified by what it *runs*, not by its display name: the two
+    files name the same check differently ("docstring check" against "Check
+    interpreter docstrings"), so matching on names would pin the prose and
+    miss the thing that matters.  ``--directory`` comes before ``--with``
+    because the line step carries both and its directory is the distinctive
+    half; a bare ``-q`` tail is not distinctive at all.
+    """
+    joined = " ".join(cmd)
+    found = re.search(r"scripts/[a-z_0-9]+\.py", joined)
+    if found:
+        return found.group(0)
+    for flag in ("--directory", "--with", "-m"):
+        if flag in cmd:
+            return cmd[cmd.index(flag) + 1].replace("_", "-")
+    return cmd[-1]
+
+
+class TestCiRedoesEveryLocalStep:
+    """The standing argument this module opens with, checked against CI.
+
+    ``verify.py`` narrows a default run -- it deselects ``slow`` and skips
+    :data:`FULL_ONLY` outright -- and every one of those subtractions is
+    justified by CI redoing the work on every push.  That argument is only
+    sound while CI actually runs each step, and nothing enforced it: a check
+    added to ``STEPS`` and not to ``ci.yml`` would leave the local gate
+    skipping work in the belief that CI covers it, with no failure anywhere.
+    """
+
+    def test_every_step_is_also_run_by_ci(self) -> None:
+        verify = load_script()
+        workflow = CI.read_text(encoding="utf-8")
+        missing = [
+            name for name, cmd in verify.STEPS if _signature(cmd) not in workflow
+        ]
+        assert not missing, f"steps CI does not run: {missing}"
+
+    def test_a_step_ci_does_not_run_is_reported(self) -> None:
+        """The positive control: the check above must be able to fail.
+
+        Every signature matching is the expected result, so the assertion
+        proves nothing on its own -- a derivation that silently produced an
+        empty list, or a token as common as ``-q``, would pass it just as
+        well.
+        """
+        workflow = CI.read_text(encoding="utf-8")
+        bogus = _signature(["uv", "run", "python", "scripts/no_such_check.py"])
+        assert bogus not in workflow
+
+    def test_the_skipped_step_is_one_ci_re_derives(self) -> None:
+        """``FULL_ONLY`` is skipped locally *because* CI redoes it.
+
+        This is the subtraction with the least margin -- the step does not
+        run at push time at all -- so it is pinned by name rather than left
+        to the sweep above.
+        """
+        verify = load_script()
+        workflow = CI.read_text(encoding="utf-8")
+        by_name = dict(verify.STEPS)
+        for name in verify.FULL_ONLY:
+            assert _signature(by_name[name]) in workflow, name
