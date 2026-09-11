@@ -236,7 +236,9 @@ tables.
 
 Generators are available through `esolangs generate`; `esolangs list
 --details` marks which languages have one (`gen`), which return a template
-(`tmpl`), and which have a committed example (`ex`). Regenerate committed
+(`tmpl`), and which have a committed example (`ex`). Add `--json` to get
+those as an object per language instead of a marker column, and `esolangs
+describe --json <language>` for the whole record. Regenerate committed
 examples with `python scripts/write_examples.py`.
 
 ## Contributing

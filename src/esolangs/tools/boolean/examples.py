@@ -780,6 +780,11 @@ def _register() -> None:
             "queue_based.bitdeque",
             _fill_bitdeque,
             answer_mode="dump",
+            note=(
+                "Bitdeque has no output instruction and dumps its deque at "
+                "halt; the generator leaves exactly one bit on it, so the "
+                "whole dump is the answer and there is no position to name"
+            ),
         ),
         "cod": _embedded(
             b.cod,

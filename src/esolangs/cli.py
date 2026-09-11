@@ -35,6 +35,7 @@ a traceback should mean.
 
 from __future__ import annotations
 
+import json
 import sys
 import threading
 import warnings
@@ -133,7 +134,7 @@ prints which of those you are dealing with.
 A language whose generator embeds the inputs in the program reads no stdin
 at all; `esolangs generate --bits` builds those.
 """,
-    "list": """usage: esolangs list [--details]
+    "list": """usage: esolangs list [--details] [--json]
 
 List the supported languages, one per line.
 
@@ -143,6 +144,9 @@ options:
                 tmpl   that generator returns a {Xi} template rather than a
                        runnable program -- see `esolangs generate --help`
                 ex     a committed program in examples/
+  --json      print a JSON array instead: names alone, or with --details
+              an object per language carrying the same three facts as
+              booleans, so nobody has to parse the marker column.
 """,
     "generate": f"""usage: esolangs generate [--width [N]] [--bits BITS] <language>
                          <truth-table>
@@ -312,7 +316,7 @@ examples:
   esolangs encode Grapheme 10 | esolangs check-stdin Grapheme
   printf '1\\n0\\n1\\n' | esolangs check-stdin --table 0110 brainfuck
 """,
-    "describe": """usage: esolangs describe <language>
+    "describe": """usage: esolangs describe [--json] <language>
 
 Print what a language does with its input bits and where it puts the answer.
 
@@ -324,9 +328,18 @@ the input shape and alphabet, and how to find the answer in the output.
 This exists because those facts decided every wrong answer anyone got out
 of this tool, and the only place they were readable was a Python session.
 
+options:
+  --json      print `esolangs.describe` verbatim as JSON.  The default
+              layout is for reading and loses things on the way: a pair
+              prints as `0 1` with no way back to two values, an empty
+              field is dropped rather than shown as empty, and the closing
+              `input` line is a sentence this command composes and not a
+              key at all.  --json is the dict, exactly.
+
 examples:
   esolangs describe Fargo
   esolangs describe "A Painter Ant"
+  esolangs describe --json brainfuck
 """,
     "read-answer": """usage: esolangs read-answer <language>
 
@@ -1009,9 +1022,32 @@ def _encode(rest: list[str]) -> None:
 
 def _list(rest: list[str]) -> None:
     """Print the supported languages, optionally with capability markers."""
-    rest = _split_positional(rest, {"--details"})
+    rest = _split_positional(rest, {"--details", "--json"})
     details = "--details" in rest
-    _check_count("list", [a for a in rest if a != "--details"], 0)
+    as_json = "--json" in rest
+    _check_count("list", [a for a in rest if a not in {"--details", "--json"}], 0)
+    if as_json:
+        if not details:
+            print(json.dumps(list_languages(), indent=2))
+            return
+        print(
+            json.dumps(
+                [
+                    {
+                        "name": name,
+                        # The three the marker column encodes, spelled out.
+                        "boolean_generator": facts["boolean_generator"],
+                        "parameterized": facts["parameterized"],
+                        "has_example": bool(facts["examples"]),
+                    }
+                    for name, facts in (
+                        (name, describe(name)) for name in list_languages()
+                    )
+                ],
+                indent=2,
+            )
+        )
+        return
     if not details:
         for name in list_languages():
             print(name)
@@ -1216,13 +1252,21 @@ def _generate(rest: list[str]) -> None:
 
 def _describe(rest: list[str]) -> None:
     """Print a language's input shape, answer location and capabilities."""
-    rest = _split_positional(rest, set())
+    rest = _split_positional(rest, {"--json"})
+    as_json = "--json" in rest
+    rest = [a for a in rest if a != "--json"]
     _check_count("describe", rest, 1)
     try:
         facts = describe(rest[0])
     except EsolangError as exc:
         _fail(str(exc))
         raise  # pragma: no cover - unreachable; _fail exits
+    if as_json:
+        # Verbatim, including the keys the reading layout hides: a caller
+        # asking for JSON is not reading it, and a field that vanishes when
+        # it is empty is the thing that makes a schema unusable.
+        print(json.dumps(facts, indent=2))
+        return
     # A template language reads no stdin, so its input shape and alphabet
     # are noise -- and ``input_shape`` is the field the README tells you to
     # trust.  Hidden here rather than dropped from ``describe()``, whose

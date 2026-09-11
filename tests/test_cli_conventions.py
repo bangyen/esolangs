@@ -6,6 +6,7 @@ skipped the refusals ``run`` had just gained, and the seventeen template
 languages left unreachable by a fix that pointed a CLI user at a Python call.
 """
 
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -2165,3 +2166,86 @@ class TestTheTableOptionIsUsedByPlainRun:
             ["run", "--table", "0110", "Fargo", str(path)], capsys, stdin="9\n"
         )
         assert "out of range" in err
+
+
+class TestJsonOutput:
+    """The reading layout is lossy, so scripting it meant reparsing prose.
+
+    Three separate losses, all of which `--json` avoids rather than
+    documents: a pair prints as ``0 1``, an empty field is dropped instead
+    of shown, and the final ``input`` line is a sentence the CLI composes
+    that is not a key at all.
+    """
+
+    def test_describe_json_is_the_dict_exactly(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Not "close to" -- the same keys and the same values."""
+        out, _err = call_both(["describe", "--json", "brainfuck"], capsys)
+        assert json.loads(out) == json.loads(json.dumps(esolangs.describe("brainfuck")))
+
+    def test_describe_json_keeps_what_the_layout_drops(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The empty and the paired fields, which the columns cannot carry."""
+        payload = json.loads(call_both(["describe", "--json", "brainfuck"], capsys)[0])
+        assert payload["answer_pattern"] == ""  # dropped by the reading layout
+        assert payload["answer_convention"] is None  # dropped as well
+        assert payload["input_encoding"] == ["0", "1"]  # not the string "0 1"
+        assert "input" not in payload  # the composed sentence is not a key
+
+    def test_describe_json_works_for_every_language(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A field that is not JSON-serializable would fail on one language only."""
+        for name in esolangs.list_languages():
+            out, _err = call_both(["describe", "--json", name], capsys)
+            assert json.loads(out)["name"] == name
+
+    def test_describe_json_still_refuses_an_unknown_language(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The flag must not become a way past the error path."""
+        with pytest.raises(SystemExit):
+            call_main(["describe", "--json", "nosuchlang"], capsys)
+        assert "nosuchlang" in capsys.readouterr().err
+
+    def test_list_json_is_the_names(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """Same order, same 69."""
+        out, _err = call_both(["list", "--json"], capsys)
+        assert json.loads(out) == esolangs.list_languages()
+
+    def test_list_json_details_spells_out_the_markers(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The point of the flag: three booleans instead of a marker column."""
+        rows = json.loads(call_both(["list", "--json", "--details"], capsys)[0])
+        assert [row["name"] for row in rows] == esolangs.list_languages()
+        for row in rows:
+            facts = esolangs.describe(row["name"])
+            assert row["boolean_generator"] == facts["boolean_generator"]
+            assert row["parameterized"] == facts["parameterized"]
+            assert row["has_example"] == bool(facts["examples"])
+
+    def test_list_json_agrees_with_the_marker_column(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Two renderings of one fact, so they are checked against each other."""
+        rows = json.loads(call_both(["list", "--json", "--details"], capsys)[0])
+        text, _err = call_both(["list", "--details"], capsys)
+        lines = text.splitlines()[1:]  # the legend header
+        assert len(lines) == len(rows)
+        for line, row in zip(lines, rows, strict=True):
+            marks = line[len(row["name"]) :].split()
+            assert ("gen" in marks) == row["boolean_generator"]
+            assert ("tmpl" in marks) == row["parameterized"]
+            assert ("ex" in marks) == row["has_example"]
+
+    def test_both_commands_still_reject_a_stray_argument(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """--json must not swallow the count check that guards each command."""
+        with pytest.raises(SystemExit):
+            call_main(["list", "--json", "extra"], capsys)
+        with pytest.raises(SystemExit):
+            call_main(["describe", "--json", "brainfuck", "extra"], capsys)
