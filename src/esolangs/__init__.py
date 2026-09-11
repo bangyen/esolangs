@@ -28,6 +28,7 @@ import pathlib
 import re
 import signal
 import threading
+import warnings
 from collections.abc import Callable, Sequence
 from typing import Any, cast
 
@@ -258,6 +259,7 @@ def instantiate(
     template: str,
     bits: list[int] | tuple[int, ...],
     width: int | None = None,
+    truth_table: str | None = None,
 ) -> str:
     """Fill a parameterized generator's ``{Xi}`` slots with ``bits``.
 
@@ -280,6 +282,13 @@ def instantiate(
     and returning the program unchanged would let a caller believe bits had
     been embedded when the program is still waiting on stdin.
 
+    ``truth_table`` is optional and is the table the template should have
+    come from; passing it checks that this *is* that template.  Worth
+    having because the language tag cannot: a tag does not survive a file,
+    so a plain string is accepted unchecked, and a hand-written
+    ``"hello {X0}"`` was substituted into and returned a program that ran
+    to nothing.  With the table there is something to compare against.
+
     ``bits`` is checked against the slots the template actually has, and
     every value must be 0 or 1.  Both are worth a check because neither is
     caught downstream: too few bits leaves a slot unfilled (which ``run``
@@ -289,6 +298,18 @@ def instantiate(
     """
     check_width(width)
     name = resolve(language)
+    if truth_table is not None and template != generate(name, truth_table):
+        # The provenance check a tag cannot make.  A template carries its
+        # language, so filling one language's as another is refused -- but a
+        # *hand-written* string is untagged by design (a tag cannot survive
+        # a file), and `instantiate("Minifuck", "hello {X0}", [1])` happily
+        # substituted into it and returned something that ran to nothing.
+        # Given the table it should have come from, that is decidable.
+        raise TemplateError(
+            f"this is not the template generate({name!r}, {truth_table!r}) "
+            f"returns, so filling it would produce a program that does not "
+            f"compute that table"
+        )
     fill = _fills().get(LANGUAGES[name].id)
     if fill is None:
         raise TemplateError(
@@ -473,6 +494,7 @@ def run(
     run_fn = importlib.import_module("esolangs.interpreters." + module).run
     io_obj = ScriptedIO(stdin)
     program_args: str | list[str] = program.splitlines() if split else program
+    _warn_about_stdin(name, stdin)
     try:
         _run(run_fn, program_args, io_obj, timeout)
     except ValueError as exc:
@@ -482,7 +504,87 @@ def run(
         # true: `except EsolangError` around user-supplied source now holds,
         # which is the handler an embedder actually writes.
         raise ProgramError(str(exc)) from exc
+    _warn_about_surplus(name, io_obj)
     return io_obj.getvalue()
+
+
+def _warn_about_stdin(name: str, stdin: str) -> None:
+    """Warn, once, if ``stdin`` contradicts what ``name`` declares it reads.
+
+    A warning and not a refusal, for the reason :func:`run` gives: this
+    executes arbitrary programs of a language, not only the generated
+    truth-table ones, so a shape that looks wrong for a boolean program may
+    be exactly what a hand-written one wants.  But silence was
+    indistinguishable from correctness, and the checks already existed --
+    the command line applied them and a Python caller got nothing.
+
+    :func:`check_stdin` raises; this is the same judgement rendered as
+    advice, so the strict path and the advisory path cannot disagree.
+    """
+    if not stdin:
+        # An empty stdin is "I am not feeding this anything", which is a
+        # legitimate thing to do with an arbitrary program -- the protocol
+        # tests run sixty-nine programs that way.  Judging it by *shape*
+        # warned about all of them.  The case that matters, a program that
+        # reads anyway and gets a value, is decided after the run from the
+        # counts, where there is no guessing: see below.
+        return
+    if not describe(name)["reads_input"]:
+        # A language that embeds its inputs is *given* no stdin by design --
+        # ``evaluate`` passes "" for all seventeen of them -- so there is
+        # nothing here to be wrong.  ``check_stdin`` refuses the pair
+        # outright, which is right for a caller who asked; as advice it was
+        # just noise, and it fired once per row of every template language.
+        return
+    try:
+        check_stdin(name, stdin)
+    except EsolangError as exc:
+        warnings.warn(str(exc), stacklevel=3)
+
+
+def _warn_about_surplus(name: str, io_obj: ScriptedIO) -> None:
+    """Warn if the program left supplied input unread.
+
+    Six lines fed to a three-input program answered the first three and
+    ignored the rest, with nothing to show it had happened -- while feeding
+    too *few* had always said "2 lines supplied, read 3".  The count was
+    there the whole time; only the other direction was never checked.
+
+    It cannot be an error: reading less than it is given is what a great
+    many perfectly good programs do.  The arity mismatch it usually means
+    is the thing worth naming.
+    """
+    read, supplied = io_obj.reads, io_obj.supplied
+    if supplied > read > 0:
+        warnings.warn(
+            f"{name} read {read} of the {supplied} lines supplied on stdin; "
+            f"the rest were ignored -- is this the right arity?",
+            stacklevel=3,
+        )
+    if io_obj.past_end and describe(name)["eof_is_a_value"]:
+        # The exact signal, and the one worth having most: this run asked
+        # for input that was not there and *kept going*.  Only the seven
+        # languages ``eof_is_a_value`` marks reach here -- for the other
+        # forty-five the read raises and nothing below runs -- and this is
+        # the wrong answer those seven produce in silence: an underfed
+        # program answers a different row, and a program given no stdin at
+        # all answers row 0.
+        #
+        # Counted rather than inferred from ``supplied == 0``: that missed
+        # the underfeed case, where some input was supplied and the reads
+        # past the end came after it.
+        #
+        # Gated on ``eof_is_a_value`` because reading past the end is not
+        # always a mistake: Suffolk's generated programs end *by* running
+        # out of input -- it is that language's documented stop, and it
+        # halts rather than taking a value -- so counting the read alone
+        # warned about every correct Suffolk run there is.
+        warnings.warn(
+            f"{name} read past the end of its input {io_obj.past_end} time(s) "
+            f"and took a value each time rather than stopping; the answer is "
+            f"for the row that implies, not the one the input names",
+            stacklevel=3,
+        )
 
 
 def _run(
