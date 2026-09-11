@@ -704,6 +704,24 @@ def _pct_squared_minus_one(program: str, width: int) -> str:
     return header + "\n" + wrap_tokens(body.replace("\n", ""), width, _PCT_COMMAND)
 
 
+def _qoibl(program: str, width: int) -> str:
+    """Wrap Qoibl, folding each of its lines but keeping them apart.
+
+    A Qoibl program is one statement a line and each statement is
+    space-separated tokens -- and a newline between two tokens is just
+    whitespace, which is what lets this fold at all.  Every space on a line
+    may become a break and the program still computes the same thing;
+    measured, not assumed.
+
+    So each line folds on its own with :func:`wrap_space_delimited`, rather
+    than the whole program being re-flowed as one stream.  Joining the
+    statements first would fold *across* them, and while the language would
+    not notice, the reader would: the one-statement-a-line shape is the only
+    structure the text has.
+    """
+    return "\n".join(wrap_space_delimited(line, width) for line in program.split("\n"))
+
+
 # Language id -> the wrapper that language needs.  A language absent here
 # is never wrapped: either its newlines are semantic (the 2D grid
 # languages), it rejects them outright (NoComment), or its own execution
@@ -776,6 +794,9 @@ WRAPPERS = {
     # Single-character stack commands, no literal and no multi-character
     # token, so any position is a legal break.
     "bf_pda": wrap_chars,
+    # One statement a line, each of space-separated tokens, and a newline
+    # between two tokens is just whitespace -- so each line folds on its own.
+    "qoibl": _qoibl,
 }
 
 
@@ -785,7 +806,11 @@ WRAPPERS = {
 # wrapper keeps that row whole and folds only the commands below it;
 # %^2^-1's first line declares its setters and is structural for the same
 # reason, being what ``fill`` parses to instantiate the body.
-MULTILINE = frozenset({"taglate", "pct_squared_minus_one"})
+# Qoibl is multi-line for a third reason: none of its lines is structural,
+# but every one is a statement, so its wrapper folds each separately rather
+# than reflowing the program as one stream.  The language would not notice
+# the difference -- a newline is whitespace to it -- but the reader would.
+MULTILINE = frozenset({"taglate", "pct_squared_minus_one", "qoibl"})
 
 
 def takes_width(fn: Callable[..., str]) -> bool:
