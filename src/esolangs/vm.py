@@ -45,7 +45,7 @@ from typing import Any, Protocol, cast, runtime_checkable
 
 from esolangs.exceptions import UnknownLanguageError
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.registry import RUNNERS
+from esolangs.registry import RUNNERS, resolve
 
 
 @runtime_checkable
@@ -1062,10 +1062,12 @@ def make_vm(language: str, program: str, stdin: str = "") -> VM:
 
     The wrapper exposes ``step()``, ``halted``, ``output``, ``ip``,
     ``memory``, and ``stack`` between commands.  ``stdin`` is fed to the
-    program line by line, like :func:`esolangs.run`.  Every registered
-    language is step-capable, so only a name outside the registry raises
-    :class:`UnknownLanguageError`.
+    program line by line, like :func:`esolangs.run`.  The name is resolved
+    case-insensitively by :func:`~esolangs.registry.resolve`, as everywhere
+    else in the API; every registered language is step-capable, so only a
+    name outside the registry raises :class:`UnknownLanguageError`.
     """
-    if language not in _VM_ADAPTERS:
+    name = resolve(language)
+    if name not in _VM_ADAPTERS:
         raise UnknownLanguageError(language)
-    return _VM_ADAPTERS[language](program, stdin)
+    return _VM_ADAPTERS[name](program, stdin)

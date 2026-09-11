@@ -14,8 +14,14 @@ the step that would move past it).
 from __future__ import annotations
 
 from collections.abc import Callable
+from time import monotonic
+from typing import Literal
 
+from esolangs.exceptions import HaltError
 from esolangs.vm import VM, make_vm, run_until_halt
+
+#: Why a :meth:`Debugger.run` returned.
+StopReason = Literal["halted", "breakpoint", "max_steps"]
 
 
 class Debugger:
@@ -33,6 +39,8 @@ class Debugger:
         self._breakpoints: list[Callable[[VM], bool]] = []
         self._cell_history: dict[int, list[int | None]] = {}
         self._stack_history: dict[int, list[object]] = {}
+        self._suppressed: set[int] = set()
+        self._hits: set[int] = set()
 
     # -- passthrough to the wrapped VM --------------------------------
 
@@ -87,6 +95,18 @@ class Debugger:
         """Stop when ``predicate(vm)`` holds; a catch-all for the rest."""
         self._breakpoints.append(predicate)
 
+    def clear_breakpoints(self) -> None:
+        """Drop every breakpoint, leaving the watches and the run intact.
+
+        The counterpart the breakpoint setters lacked.  Without it a
+        condition that stays true -- :meth:`break_on_output`'s does, since
+        output only accumulates -- could not be taken back, and the session
+        that set one had no way to reach the end of its program.
+        """
+        self._breakpoints.clear()
+        self._suppressed.clear()
+        self._hits.clear()
+
     # -- watches ------------------------------------------------------
 
     def watch_cell(self, index: int) -> list[int | None]:
@@ -123,28 +143,74 @@ class Debugger:
         self.vm.step()
         self._record()
 
-    def run(self, max_steps: int | None = None) -> None:
-        """Execute until the machine halts or a breakpoint fires.
+    def run(
+        self, max_steps: int | None = None, timeout: float | None = None
+    ) -> StopReason:
+        """Execute until the machine halts, a breakpoint fires, or a bound ends it.
+
+        Returns *why* it stopped -- ``"halted"``, ``"breakpoint"`` or
+        ``"max_steps"``.  It used to return ``None``, on the argument that
+        the contract was to stop rather than to report why; but ``halted``
+        only separates the first case from the other two, so a caller could
+        not tell a breakpoint from an exhausted budget at all, and the CLI
+        one layer up was already reporting exactly this.
 
         A breakpoint is checked before each step, so the run stops with the
-        watched condition still true.  ``max_steps`` bounds the run as a
-        guard against runaway programs; the run simply stops (without
-        erroring) once that many commands have executed.
+        watched condition still true.  **A breakpoint that stopped the last
+        run does not fire again until its condition goes false**, which is
+        what lets a resumed run advance; see :meth:`_at_breakpoint`.  A
+        breakpoint that has not fired yet is checked as it always was, so
+        ``break_at(ip)`` on the initial position still stops before the
+        first step executes.
 
-        The drive itself is :func:`~esolangs.vm.run_until_halt`, and what
-        is stepped is ``self`` rather than ``self.vm`` -- :meth:`step`
-        already records the watches, so recording stays part of a step
-        instead of becoming a hook the shared loop would have to grow.  A
-        breakpoint is the ``stop`` predicate, which is checked before each
-        step and so keeps the watched condition true at the return.  Its
-        ``False`` verdict is discarded because this method's contract is to
-        stop, not to report why.
+        ``max_steps`` bounds the run in steps and ``timeout`` in wall-clock
+        seconds, raising :class:`~esolangs.exceptions.HaltError` when it
+        expires; the default of ``None`` for both is unbounded, which is
+        right for a machine known to halt and a hang for one that is not.
+        The timeout is checked in the same place as a breakpoint rather than
+        through a signal, so it needs no main thread and leaves the machine
+        inspectable where it stopped.
+
+        The drive itself is :func:`~esolangs.vm.run_until_halt`, and what is
+        stepped is ``self`` rather than ``self.vm`` -- :meth:`step` already
+        records the watches, so recording stays part of a step instead of
+        becoming a hook the shared loop would have to grow.
         """
-        run_until_halt(self, max_steps, stop=self._at_breakpoint)
+        deadline = None if timeout is None else monotonic() + timeout
+        halted = run_until_halt(self, max_steps, stop=lambda: self._stop(deadline))
+        if halted:
+            return "halted"
+        if self._at_breakpoint():
+            self._suppressed = set(self._hits)
+            return "breakpoint"
+        return "max_steps"
+
+    def _stop(self, deadline: float | None) -> bool:
+        """Whether to stop before the next step: a breakpoint, or the clock."""
+        if deadline is not None and monotonic() > deadline:
+            raise HaltError("execution exceeded the debugger's timeout")
+        return self._at_breakpoint()
 
     def _at_breakpoint(self) -> bool:
-        """Whether any breakpoint condition holds right now."""
-        return any(cond(self.vm) for cond in self._breakpoints)
+        """Whether a breakpoint fires now: one that holds and did not already.
+
+        A breakpoint that *stopped* the last run is suppressed until its
+        condition goes false again, which is what makes a resumed run
+        advance.  The distinction is invisible for the position and value
+        breakpoints, whose conditions stop holding as soon as the machine
+        moves, and it is the whole story for :meth:`break_on_output`: output
+        only accumulates, so ``text in vm.output`` is true forever after the
+        first time and re-firing on it meant the run never progressed.
+
+        Suppression is per condition, so a second breakpoint still stops a
+        resumed run, and it is dropped the moment the condition is false --
+        an output breakpoint on a language that can rewrite its output would
+        re-arm itself like any other.
+        """
+        hits = {i for i, cond in enumerate(self._breakpoints) if cond(self.vm)}
+        self._suppressed &= hits
+        self._hits = hits
+        return bool(hits - self._suppressed)
 
 
 def make_debugger(language: str, program: str, stdin: str = "") -> Debugger:

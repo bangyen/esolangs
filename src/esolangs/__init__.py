@@ -1,27 +1,82 @@
 """Public API for the esolangs package.
 
-Provides ``generate`` (produce a program computing a truth table), ``run``
+Provides ``generate`` (produce a program computing a truth table),
+``instantiate`` (fill a parameterized generator's ``{Xi}`` slots), ``run``
 (execute a program through an interpreter), ``make_vm`` (a step-and-inspect
 wrapper around the step-capable interpreters), ``make_debugger`` (a
 breakpoint/watch layer over the VM), ``describe`` (a structured language
 summary), and ``list_languages``.
+
+Every language name is resolved case-insensitively
+(:func:`esolangs.registry.resolve`), so ``Brainfuck`` and ``brainfuck``
+reach the same interpreter and a near miss is answered with a suggestion.
+Every error raised on purpose derives from
+:class:`~esolangs.exceptions.EsolangError`.
 """
 
 import importlib
+import os
 import pathlib
+import re
 import signal
 import threading
 from collections.abc import Callable
 from typing import Any
 
 from esolangs.debug import Debugger, make_debugger
-from esolangs.exceptions import HaltError, UnknownLanguageError
+from esolangs.exceptions import (
+    EsolangError,
+    HaltError,
+    InputExhaustedError,
+    ProgramError,
+    TemplateError,
+    TruthTableError,
+    UnknownLanguageError,
+)
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.registry import LANGUAGES, RUNNERS
+from esolangs.registry import (
+    LANGUAGES,
+    RUNNERS,
+    _fills,
+    example_stems,
+    parameterized_ids,
+    resolve,
+)
 from esolangs.tools.wrap import takes_width, wrap_program
 from esolangs.vm import VM, make_vm
 
+__version__ = "0.1.0"
+
+#: The public surface.  Without it ``dir(esolangs)`` advertised ``Any``,
+#: ``Callable``, ``importlib``, ``pathlib``, ``signal`` and ``threading``
+#: alongside the six functions anyone wants, and there was no way to tell
+#: from the outside which was which.
+__all__ = [
+    "VM",
+    "Debugger",
+    "EsolangError",
+    "HaltError",
+    "InputExhaustedError",
+    "ProgramError",
+    "TemplateError",
+    "TruthTableError",
+    "UnknownLanguageError",
+    "__version__",
+    "describe",
+    "generate",
+    "instantiate",
+    "list_languages",
+    "make_debugger",
+    "make_vm",
+    "run",
+]
+
 _EXAMPLES = pathlib.Path(__file__).resolve().parents[2] / "examples"
+
+# An unfilled input slot in a parameterized generator's template.  Matched
+# only for the languages whose generator emits one: ``{`` is a live command
+# in several of the others, so a blanket search would refuse real programs.
+_SLOT = re.compile(r"\{X\d+\}")
 
 # Interpreter module family -> state model name.
 _STATE_MODELS = {
@@ -41,6 +96,16 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
     inputs (most significant first), so the table length implies the input
     count and the generators take no ``n``.
 
+    **Seventeen languages return a *template*, not a runnable program.**
+    Their generators embed the inputs in the code instead of reading them,
+    leaving a ``{Xi}`` slot per input; :func:`instantiate` fills the slots
+    with that language's own code for setting an input, and
+    ``describe(language)["parameterized"]`` says in advance which kind you
+    will get.  Passing an unfilled template to :func:`run` raises
+    :class:`~esolangs.exceptions.TemplateError` rather than running it --
+    the slots are not instructions, and a language that happens to ignore
+    them computes a constant and reports it as the answer.
+
     ``width`` bounds the program to that many columns for readability;
     :data:`esolangs.tools.wrap.DEFAULT_WIDTH` is the conventional choice.
     The default of ``None`` asks for no bound, so a caller that does not
@@ -58,37 +123,120 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
     generator can meet is safe; it just gets the narrowest program each of
     them can build.
     """
-    try:
-        lang = LANGUAGES[language]
-    except KeyError:
-        raise UnknownLanguageError(language) from None
+    lang = LANGUAGES[resolve(language)]
     fn = lang.boolean
     if fn is None:
         raise UnknownLanguageError(language)
+    if not isinstance(truth_table, str):
+        raise TruthTableError(
+            f"truth table must be a string of '0' and '1', got "
+            f"{type(truth_table).__name__}"
+        )
+    if width is not None and not isinstance(width, int):
+        raise ValueError(f"width must be an integer or None, got {width!r}")
     if width is not None and takes_width(fn):
         return str(fn(truth_table, width))
     return wrap_program(str(fn(truth_table)), lang.id, width)
 
 
+def instantiate(language: str, template: str, bits: list[int] | tuple[int, ...]) -> str:
+    """Fill a parameterized generator's ``{Xi}`` slots with ``bits``.
+
+    The seventeen parameterized generators embed their inputs in the program
+    text rather than reading them, so :func:`generate` returns a template
+    with one ``{Xi}`` slot per input.  This substitutes ``bits[i]`` into slot
+    ``i`` using the language's own code for setting an input, returning a
+    program that runs with no stdin at all::
+
+        template = generate("Minifuck", "0110")
+        run("Minifuck", instantiate("Minifuck", template, [1, 0]))
+
+    The per-language substitution is the one each committed example already
+    uses, so an instantiated program here is built exactly the way
+    ``examples/boolean`` is.  Every setter spells a 0 and a 1 at the same
+    width, so the program's length never leaks the bits it evaluates.
+
+    A language whose generator reads its inputs instead raises
+    :class:`~esolangs.exceptions.TemplateError`: there is nothing to fill,
+    and returning the program unchanged would let a caller believe bits had
+    been embedded when the program is still waiting on stdin.
+    """
+    name = resolve(language)
+    fill = _fills().get(LANGUAGES[name].id)
+    if fill is None:
+        raise TemplateError(
+            f"{name} reads its inputs rather than embedding them, so there "
+            f"is nothing to instantiate; pass them to run() as stdin"
+        )
+    return fill(template, list(bits))
+
+
+def _check_runnable(name: str, program: str) -> None:
+    """Reject a program that is a path or an unfilled template.
+
+    Both are mistakes a running interpreter cannot report, because both are
+    *valid* input to it: a filename is a string of characters the language
+    mostly ignores, and a ``{Xi}`` slot is either a fault far from its cause
+    or -- Minifuck's case -- silently nothing.  Each produced a confident
+    wrong answer, which is the one outcome worth spending a check to avoid.
+    """
+    if "\n" not in program and program.endswith(".txt") and os.path.exists(program):
+        raise ProgramError(
+            f"program looks like a path, not source: {program!r}. "
+            f"Read the file first, or pass pathlib.Path({program!r})"
+        )
+    if LANGUAGES[name].id in parameterized_ids() and _SLOT.search(program):
+        slots = sorted(set(_SLOT.findall(program)))
+        raise TemplateError(
+            f"{name}'s generator returns a template, and this one still has "
+            f"unfilled slots ({', '.join(slots)}); fill them with "
+            f"esolangs.instantiate({name!r}, program, bits)"
+        )
+
+
 def run(
     language: str,
-    program: str,
+    program: str | os.PathLike[str],
     stdin: str = "",
     timeout: float | None = None,
 ) -> str:
     """Execute ``program`` and return its output.
 
-    Input is fed to the program line by line from ``stdin``.  ``timeout``
-    bounds execution wall-clock: after ``timeout`` seconds the run raises
+    ``program`` is the program's *source*.  A :class:`~pathlib.Path` is read
+    first, so the CLI's file-taking habit carries over; a plain string that
+    names an existing ``.txt`` file is refused rather than executed, because
+    a filename is a perfectly legal program in most of these languages and
+    ``run(lang, "examples/boolean/brainfuck.txt")`` quietly printed a null
+    byte instead of saying it had run the filename.
+
+    Input is fed to the program line by line from ``stdin``; a program that
+    asks for more than it is given raises
+    :class:`~esolangs.exceptions.InputExhaustedError`.  ``timeout`` bounds
+    execution wall-clock: after ``timeout`` seconds the run raises
     :class:`HaltError`.  The guard uses ``SIGALRM``, so it requires a Unix
     main thread; elsewhere a ``timeout`` raises :class:`ValueError`.
     """
     if timeout is not None and timeout <= 0:
         raise ValueError(f"timeout must be positive, got {timeout}")
-    try:
-        module, split = RUNNERS[language]
-    except KeyError:
-        raise UnknownLanguageError(language) from None
+    # No guard on the lookup: ``resolve`` raises for a name outside the
+    # registry, and every registered language has an interpreter, so a name
+    # that reaches here is always in ``RUNNERS``.  The guard that used to sit
+    # here re-raised the error ``resolve`` had already raised.
+    name = resolve(language)
+    module, split = RUNNERS[name]
+    if isinstance(program, os.PathLike):
+        program = pathlib.Path(program).read_text(encoding="utf-8")
+    if not isinstance(program, str):
+        raise ProgramError(
+            f"program must be a string of source or a Path, got "
+            f"{type(program).__name__}"
+        )
+    if not isinstance(stdin, str):
+        raise ProgramError(
+            f"stdin must be a string, got {type(stdin).__name__}; "
+            f"join your lines with '\\n'"
+        )
+    _check_runnable(name, program)
     run_fn = importlib.import_module("esolangs.interpreters." + module).run
     io_obj = ScriptedIO(stdin)
     program_args: str | list[str] = program.splitlines() if split else program
@@ -140,26 +288,32 @@ def describe(language: str) -> dict[str, object]:
     """Return a structured description of ``language``.
 
     The summary carries the state model (derived from the interpreter's
-    module family), whether the language has a boolean generator, its
-    example programs, and its esolangs.org page.
+    module family), whether the language has a boolean generator, whether
+    that generator returns a template rather than a runnable program
+    (``parameterized``) and so takes no stdin (``reads_input``), whether it
+    lays its own program out to a width (``width_aware``), its example
+    programs, and its esolangs.org page.
     """
-    try:
-        lang = LANGUAGES[language]
-    except KeyError:
-        raise UnknownLanguageError(language) from None
-    module = RUNNERS.get(language)
+    name = resolve(language)
+    lang = LANGUAGES[name]
+    module = RUNNERS.get(name)
     family = module[0].split(".")[0] if module else None
+    stem = example_stems().get(lang.id, lang.id)
     examples = sorted(
-        str(p.relative_to(_EXAMPLES.parent)) for p in _EXAMPLES.glob(f"*/{lang.id}.txt")
+        str(p.relative_to(_EXAMPLES.parent)) for p in _EXAMPLES.glob(f"*/{stem}.txt")
     )
+    parameterized = lang.id in parameterized_ids()
     return {
-        "name": language,
+        "name": name,
         "id": lang.id,
         "state_model": _STATE_MODELS.get(family) if family else None,
         "interpreter": lang.interpreter,
         "boolean_generator": lang.boolean is not None,
+        "parameterized": parameterized,
+        "reads_input": lang.boolean is not None and not parameterized,
+        "width_aware": lang.boolean is not None and takes_width(lang.boolean),
         "examples": examples,
-        "wiki_url": f"https://esolangs.org/wiki/{language.replace(' ', '_')}",
+        "wiki_url": f"https://esolangs.org/wiki/{name.replace(' ', '_')}",
     }
 
 

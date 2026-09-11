@@ -10,11 +10,14 @@ canonical internal identifier, so the two are derived, not maintained in
 parallel.
 """
 
+import difflib
 import re
 import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import cache
 
+from esolangs.exceptions import UnknownLanguageError
 from esolangs.tools import boolean as _boolean
 
 # Display names whose canonical id cannot be produced by the slug rules
@@ -569,3 +572,89 @@ RUNNERS: dict[str, tuple[str, bool]] = {
     for name, lang in LANGUAGES.items()
     if lang.interpreter
 }
+
+
+@cache
+def example_stems() -> dict[str, str]:
+    """Return canonical id -> the ``examples/`` filename stem, per language.
+
+    The stems are dash-separated display names (``a-painter-ant``), while
+    every internal reference is the underscored :func:`canonical_id` slug
+    (``a_painter_ant``), and a few match neither by hand (``6-5``,
+    ``pct-squared-minus-one``).  Deriving the map from the example table the
+    same way :meth:`~esolangs.tools.boolean.examples.BooleanExample.build`
+    does keeps the two spellings from drifting: a stem with no language, or
+    a language with no stem, shows up as a missing key rather than as a
+    silently empty example list, which is how 19 of the 69 came to report
+    none.
+
+    The import is deferred because ``examples`` imports this module; the
+    map is wanted only when someone asks for a description, so paying for
+    it then costs nothing at import time.
+    """
+    from esolangs.tools.boolean import examples as _examples
+
+    return {
+        canonical_id(stem.replace("-", " ")): stem
+        for stem in set(_examples.BOOLEAN_EXAMPLES) | set(_examples.HAND_WRITTEN)
+    }
+
+
+@cache
+def _fills() -> dict[str, Callable[[str, list[int]], str]]:
+    """Return canonical id -> the substitution that instantiates a template.
+
+    A *parameterized* generator returns a program with ``{Xi}`` slots rather
+    than one that reads its inputs, and the slots are filled with that
+    language's own code for setting an input.  Each committed example
+    already carries that substitution as its ``fill``, so this is the
+    existing recipe exposed rather than a second list to keep in step.
+
+    Membership here is the definition of "parameterized" used everywhere in
+    the package, and it is derived rather than written down for a measured
+    reason: the same set taken from ``parameterized.__all__`` omits Home
+    Row, whose generator emits ``{X0}`` all the same, and the three
+    hand-kept lists in the docs each named a different subset.  ``fill`` is
+    the only spelling that matches what the generators actually emit -- 17
+    languages, checked against a ``{Xi}`` search over all 69.
+    """
+    from esolangs.tools.boolean import examples as _examples
+
+    return {
+        canonical_id(stem.replace("-", " ")): example.fill
+        for stem, example in _examples.BOOLEAN_EXAMPLES.items()
+        if example.fill is not None
+    }
+
+
+def parameterized_ids() -> frozenset[str]:
+    """Return the canonical ids whose boolean generator emits a template."""
+    return frozenset(_fills())
+
+
+# Canonical id -> display name, the index :func:`resolve` matches against.
+_BY_ID: dict[str, str] = {lang.id: name for name, lang in LANGUAGES.items()}
+
+
+def resolve(name: str) -> str:
+    """Return the registered display name matching ``name``.
+
+    An exact hit wins.  Otherwise the name is matched by its
+    :func:`canonical_id`, which makes the lookup case- and
+    punctuation-insensitive: ``Brainfuck``, ``brainfuck`` and ``BRAINFUCK``
+    all reach the one registered ``brainfuck``.  That the display names mix
+    conventions (``brainfuck``, ``Suffolk``, ``bit~``) is exactly why -- a
+    caller cannot guess which one a given language follows, and being told
+    "unknown language" for a name that is plainly in ``esolangs list`` is
+    the wrong answer to a question of spelling.
+
+    A name matching nothing raises :class:`UnknownLanguageError` naming the
+    closest registered spellings.
+    """
+    if name in LANGUAGES:
+        return name
+    match = _BY_ID.get(canonical_id(name))
+    if match is not None:
+        return match
+    close = difflib.get_close_matches(canonical_id(name), _BY_ID, n=2, cutoff=0.6)
+    raise UnknownLanguageError(name, tuple(_BY_ID[c] for c in close))

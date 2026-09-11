@@ -269,6 +269,17 @@ def run(code: str, io: IO) -> None:
     be a second bound at the wrong layer, and no other interpreter carries
     one except the OISCs, whose self-modifying memory rules out proving a
     loop from a repeated state at all.
+
+    Both stops *return*.  The exhausted read is this run's ordinary ending,
+    not a failure: the docstring above is the argument that the output is
+    already complete when it fires, so re-raising it would report a
+    successful run as an error.  It did, and the cost was the whole
+    language -- every Suffolk program the boolean generator produces reads,
+    so ``esolangs.run("Suffolk", ...)`` raised :class:`EOFError` for all of
+    them, including the committed example, and the README's own
+    ``generate``/``run`` pair could not be completed.  ``step`` is what
+    raises, so catching it here leaves the exception the step-level callers
+    (the VM, the debugger) see exactly as it was.
     """
     machine = _Machine(code, io)
     seen: set[tuple[object, ...]] = set()
@@ -277,7 +288,10 @@ def run(code: str, io: IO) -> None:
         if state in seen:
             return
         seen.add(state)
-        machine.step()
+        try:
+            machine.step()
+        except EOFError:
+            return
 
 
 if __name__ == "__main__":

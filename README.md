@@ -10,19 +10,34 @@ known boundaries are in [limitations](docs/limitations.md).
 ## Use
 
 ```bash
-just install-dev
+just install-dev                 # installs into ./.venv
+source .venv/bin/activate        # ...or prefix each command with `uv run`
+
+esolangs --help
 esolangs list
-esolangs run Suffolk program.txt
-esolangs generate Suffolk 0110
+esolangs generate Suffolk 0110 > program.txt
+printf '0\n1\n' | esolangs run Suffolk program.txt
 esolangs debug --steps 20 --watch-cell 0 brainfuck program.txt
 just test
 ```
 
-The Python API is `esolangs.run`, `generate`, `make_debugger`, and
-`list_languages`.  `generate` takes a truth table -- `0110` is XOR -- and
-returns a program computing it.  Use `--width` for command-oriented
-generated programs; grids and newline-sensitive languages retain their own
-layout.
+`just install-dev` puts the `esolangs` entry point in `.venv/bin`, so it is
+on `PATH` only once that venv is active; `uv run esolangs ...` works
+without activating it.
+
+The Python API is `esolangs.run`, `generate`, `instantiate`,
+`make_debugger`, `describe`, and `list_languages`.  `generate` takes a
+truth table -- `0110` is XOR -- and returns a program computing it.  Use
+`--width` for command-oriented generated programs; grids and
+newline-sensitive languages retain their own layout.
+
+Seventeen languages have a **parameterized** generator: it embeds the
+inputs in the program rather than reading them, so `generate` returns a
+template with a `{Xi}` slot per input.  Fill it with
+`esolangs.instantiate(language, template, bits)` -- running one unfilled is
+refused.  `esolangs list --details` marks them `tmpl`, and
+[`docs/languages.md`](docs/languages.md#parameterized-generators) lists
+them.
 
 `debug` runs a program under the breakpoint/watch VM and reports where it
 stopped: `--steps` bounds the run, `--watch-cell` prints one value per step,
@@ -176,9 +191,10 @@ tables.
 
 <!-- BOOLEAN-COUNT:END -->
 
-Generators are available through `esolangs generate`; see `esolangs list`
-for support. Regenerate committed examples with
-`python scripts/write_examples.py`.
+Generators are available through `esolangs generate`; `esolangs list
+--details` marks which languages have one (`gen`), which return a template
+(`tmpl`), and which have a committed example (`ex`). Regenerate committed
+examples with `python scripts/write_examples.py`.
 
 ## Contributing
 
