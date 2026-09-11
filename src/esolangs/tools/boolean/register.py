@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from esolangs.exceptions import GeneratorCapError
 from esolangs.tools.boolean.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
@@ -1073,7 +1074,7 @@ def polynomial(truth_table: str) -> str:
 
     fits = [(cost, build) for cost, build in builders if cost <= _POLYNOMIAL_MAX_INSTRS]
     if not fits:
-        raise ValueError(
+        raise GeneratorCapError(
             "the Polynomial boolean generator emits one instruction per "
             f"prime and caps at {_POLYNOMIAL_MAX_INSTRS}, but this table "
             f"needs {min(cost for cost, _ in builders)} under its cheapest "

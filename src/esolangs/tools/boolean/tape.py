@@ -5,6 +5,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import permutations
 
+from esolangs.exceptions import GeneratorCapError
+
 # rotfuck and six_five each own a file because their construction (a
 # per-position rotation, an assembler) dwarfs the rest of the category, and
 # dimensional keeps one for its pinned-dimension moves; they are re-exported
@@ -571,7 +573,7 @@ def factor(truth_table: str, *, max_digits: int = _DEFAULT_MAX_DIGITS) -> str:
     # integer without paying for the conversion that would size it exactly.
     digits = int(number.bit_length() * 0.30103) + 1
     if digits > max_digits:
-        raise ValueError(
+        raise GeneratorCapError(
             f"the Factor boolean generator's encoded integer needs about "
             f"{digits} digits, over the {max_digits}-digit limit this call "
             "allows -- pass a larger max_digits, or try a sparser table",

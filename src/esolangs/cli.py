@@ -122,7 +122,7 @@ options:
                        runnable program -- see `esolangs generate --help`
                 ex     a committed program in examples/
 """,
-    "generate": f"""usage: esolangs generate [--width N] [--bits BITS] <language>
+    "generate": f"""usage: esolangs generate [--width [N]] [--bits BITS] <language>
                          <truth-table>
 
 Print a program in <language> computing <truth-table>.
@@ -144,9 +144,13 @@ options:
                own way, and a 0/1 in the slot is a different program.
   --width [N]  wrap the program to N columns (default {DEFAULT_WIDTH}) so it
                is readable in a diff.  Breaks only between whole tokens.
-               Newline-sensitive languages ignore it, and the generators
-               that lay out their own shape (LaserFuck, Streetcode) build a
-               narrower shape rather than reflowing one.  A template is
+               `esolangs describe <language>` reports which of three
+               things it does, as `width_effect`: `wrap` reflows the
+               finished program between whole tokens, `layout` hands the
+               width to the generator as a *hint* (LaserFuck asked for 10
+               gives 18, asked for 200 gives 56, because it folds runs
+               rather than breaking lines), and `none` ignores it, because
+               the language's newlines are semantic or it rejects them.  A template is
                wrapped only once --bits has filled its slots.  A bare
                --width takes the default, so the next word is read as the
                language, not as a width.
@@ -667,6 +671,20 @@ def _shape_warning(facts: dict[str, object], stdin: str) -> str:
             f"stdin is {len(lines)} lines, but {facts['name']} wants {wanted}; "
             f"`esolangs encode` builds the right stdin"
         )
+    # An exact match against the declared alphabet, which is why one rule
+    # covers a leading space, a tab, a `2` and the word `true` alike.  All
+    # four were answered with a confident wrong bit at exit 0, and two
+    # languages handed back *different* answers for the same junk byte,
+    # which is the proof that nothing was reading it.  `esolangs encode`
+    # has always refused exactly these.
+    if shape in ("line_per_bit", "line_per_bit_padded"):
+        stray = [line for line in lines if line not in (zero, one)]
+        if stray:
+            return (
+                f"stdin has {len(stray)} line(s) outside {facts['name']}'s "
+                f"input alphabet {zero!r}/{one!r} -- first is {stray[0]!r}; "
+                f"`esolangs encode` builds the right stdin"
+            )
     return ""
 
 
@@ -776,10 +794,12 @@ def _debug(rest: list[str]) -> None:
         _fail(str(exc))
     except ValueError as exc:
         _fail(f"{language}: {exc}")
+    breakpoints_set = False
     if "--break-on-output" in options:
         if not options["--break-on-output"]:
             _fail("--break-on-output needs some text; every output contains ''")
         dbg.break_on_output(options["--break-on-output"])
+        breakpoints_set = True
     history = (
         dbg.watch_cell(int(options["--watch-cell"]))
         if "--watch-cell" in options
@@ -812,6 +832,10 @@ def _debug(rest: list[str]) -> None:
     except Exception as exc:
         fault = f"{type(exc).__name__}: {exc}"
 
+    if breakpoints_set and reason != "breakpoint":
+        # A breakpoint that never fires looks exactly like a program that
+        # never reached it, and the report said nothing either way.
+        sys.stderr.write("note: no breakpoint matched during this run\n")
     print(f"halted: {'yes' if dbg.halted else 'no'}")
     # Always printed, so a script reading fixed field positions does not
     # break on the one case it most wants to parse.
@@ -843,6 +867,17 @@ def _generate(rest: list[str]) -> None:
             program = instantiate(rest[0], program, [int(b) for b in bits], width)
     except EsolangError as exc:
         _fail(f"{exc}{_swapped_hint(rest[0], rest[1])}")
+    if (width is not None or bare) and describe(rest[0])["width_effect"] == "none":
+        # Silently ignoring the flag was the sharpest half of the width
+        # confusion: two identical programs, one of which was asked to be
+        # narrower.  The languages that ignore it have semantic newlines or
+        # reject them outright, so honouring it is not on the table --
+        # saying so is.
+        sys.stderr.write(
+            f"note: --width has no effect on {describe(rest[0])['name']} -- "
+            f"its newlines are part of the program, so it is emitted as the "
+            f"generator built it\n"
+        )
     print(program)
 
 
@@ -920,6 +955,11 @@ def _run(rest: list[str]) -> None:
     timeout = _timeout_of(options)
     rest = _split_positional(rest, {"--judge"}, {"--timeout", "--judge"})
     judge = "--judge" in rest
+    # Refused like every value-taking option is.  `--judge --judge` was
+    # accepted in silence while `--timeout 5 --timeout 9` was refused, and
+    # the inconsistency is the finding rather than either policy.
+    if rest.count("--judge") > 1:
+        _fail("--judge given more than once")
     rest = [arg for arg in rest if arg != "--judge"]
     _check_count("run", rest, 2)
     language, path = rest[0], rest[1]
@@ -951,6 +991,17 @@ def _run(rest: list[str]) -> None:
             f"--timeout SECONDS to bound it\n"
         )
     warning = _shape_warning(facts, stdin)
+    if warning and judge:
+        # ``--judge`` is the caller saying "this is a truth-table program and
+        # I want its answer bit", so a stdin the language cannot read the way
+        # they meant is a usage error rather than advice: the whole output of
+        # this command would be one wrong digit.  Plain ``run`` only warns,
+        # because it executes arbitrary programs of the language and the
+        # shape this calls wrong may be exactly what one of them wants.
+        #
+        # That split is the answer to "warn or refuse?" -- the flag says
+        # which of the two situations you are in.
+        _fail(f"{warning}\n(refused because --judge asks for an answer bit)")
     if warning:
         sys.stderr.write(f"{warning}\n")
     try:
@@ -1016,7 +1067,10 @@ def main() -> None:
         sys.stdout.write(HELP[rest[0]] if rest and rest[0] in HELP else USAGE)
         sys.exit(0)
     if cmd not in HELP:
-        _fail(f"unknown command: {cmd}\n\n{USAGE}")
+        # Languages and options both suggest a near miss; the subcommands
+        # they are typed after did not, so `esolangs lst` got the whole
+        # usage block and no hint that `list` was one letter away.
+        _fail(f"unknown command: {cmd}{_did_you_mean(cmd, set(HELP))}\n\n{USAGE}")
     if {"--help", "-h"} & set(rest):
         sys.stdout.write(HELP[cmd])
         sys.exit(0)
