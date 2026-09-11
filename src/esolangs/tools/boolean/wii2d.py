@@ -860,7 +860,56 @@ def _wii2d_parity_routes(
     return 0, routes
 
 
-def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str]:
+# The narrowest fold that makes progress: a turn column at each end and one
+# op column between them.  A width below this is raised to it rather than
+# refused, matching the width plumbing everywhere else.
+_WII2D_MIN_FOLD_SPAN = 3
+
+
+def _wii2d_fold_decode(
+    decode_start: int, ops: str, span: int, first_row: int
+) -> dict[tuple[int, int], str]:
+    """Lay ``ops`` out as a boustrophedon below the chain, not along row 0.
+
+    The decode's tail is a straight run of ``+`` -- the shift to an ASCII
+    digit, 48 columns of it -- followed by ``~.``.  A straight run of one
+    commutative op is exactly what a fold turns from columns into rows, and
+    this one folds with nothing re-derived: ``+`` commutes, so the order the
+    run is walked in cannot matter, and the cells a turn spends are
+    accumulator-neutral, since :func:`_accumulate` returns the accumulator
+    unchanged for ``v``, ``<``, ``>`` and for the blanks the pointer crosses
+    on its way down.  The value that reaches ``~`` is therefore the value
+    the flat run would have reached.
+
+    The pointer leaves row 0 heading south on a ``v`` at ``decode_start``,
+    falls through the detour rows -- blank at that column, which is past
+    every merge -- and lands on ``first_row``, where a ``<`` turns it west.
+    Columns 0 and ``span - 1`` are turn columns and the ops go between them,
+    so a fold row carries ``span - 2`` of them.
+    """
+    cells: dict[tuple[int, int], str] = {}
+    row = first_row
+    # The entry turn sits at the column the pointer falls down, which is at
+    # or east of the span, so it never lands on an op column.
+    cells[(row, decode_start)] = "<"
+    step = -1
+    col = span - 2
+    for op in ops:
+        if not 1 <= col <= span - 2:
+            turn = 0 if step < 0 else span - 1
+            cells[(row, turn)] = "v"
+            row += 1
+            cells[(row, turn)] = ">" if step < 0 else "<"
+            step = -step
+            col = 1 if step > 0 else span - 2
+        cells[(row, col)] = op
+        col += step
+    return cells
+
+
+def _wii2d_layout(
+    n: int, start: int, routes: list[tuple[str, str]], width: int | None = None
+) -> list[str]:
     """Lay out the junction chain template.
 
     ``{Xi}`` placeholders on row 0, each branch's op cells on row 0 (bit 0)
@@ -904,9 +953,24 @@ def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str
     decode_start = merge_col[n - 1] + 1  # the column past the last merge
     shift_to_ascii_digit = _ASCII_ZERO
     print_op = "~."
-    total_cols = decode_start + shift_to_ascii_digit + len(print_op)
+    flat_cols = decode_start + shift_to_ascii_digit + len(print_op)
 
-    grid = [[" "] * total_cols for _ in range(n + 1)]
+    # The chain cannot fold -- each junction is where one input is embedded
+    # and each detour row hangs beneath its own junction -- so the narrowest
+    # program this builds is the chain plus the one column the 'v' leaves
+    # on.  A width at or above the flat form folds nothing, so asking for a
+    # generous width returns exactly what no width returns.
+    folded: dict[tuple[int, int], str] = {}
+    total_cols = flat_cols
+    if width is not None and width < flat_cols:
+        span = max(_WII2D_MIN_FOLD_SPAN, min(width, decode_start + 1))
+        folded = _wii2d_fold_decode(
+            decode_start, "+" * shift_to_ascii_digit + print_op, span, n + 1
+        )
+        total_cols = max(decode_start + 1, span)
+
+    total_rows = max((row for row, _ in folded), default=n) + 1
+    grid = [[" "] * total_cols for _ in range(total_rows)]
     grid[0][0] = ">"
     if start:
         grid[0][1] = str(start)
@@ -924,10 +988,15 @@ def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str
             grid[i + 1][placeholder_col[i] + 1 + k] = ch
         grid[i + 1][merge_col[i]] = "^"
         grid[0][merge_col[i]] = ">"
-    for k in range(shift_to_ascii_digit):
-        grid[0][decode_start + k] = "+"
-    for k, op in enumerate(print_op):
-        grid[0][decode_start + shift_to_ascii_digit + k] = op
+    if folded:
+        grid[0][decode_start] = "v"
+        for (fold_row, fold_col), cell in folded.items():
+            grid[fold_row][fold_col] = cell
+    else:
+        for k in range(shift_to_ascii_digit):
+            grid[0][decode_start + k] = "+"
+        for k, op in enumerate(print_op):
+            grid[0][decode_start + shift_to_ascii_digit + k] = op
     grid[1][0] = "!"
     rows = ["".join(row).rstrip() for row in grid]
     return [
@@ -935,11 +1004,22 @@ def _wii2d_layout(n: int, start: int, routes: list[tuple[str, str]]) -> list[str
     ]
 
 
-def wii2d(truth_table: str) -> str:
+def wii2d(truth_table: str, width: int | None = None) -> str:
     """Build a WII2D template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
+
+    ``width`` lays the program out to fit that many columns rather than
+    reflowing it afterwards, which a grid cannot be.  What folds is the
+    48-cell run that shifts the answer to an ASCII digit -- a straight run
+    of one commutative op, so the fold needs nothing re-derived; see
+    :func:`_wii2d_fold_decode`.  What does not fold is the junction chain,
+    since each junction is where one input is embedded and each detour row
+    hangs beneath its own junction, so the chain's length plus one column is
+    the floor.  A width under it returns the narrowest program rather than
+    refusing, and a width at or above the unfolded form returns exactly what
+    no width returns.  At three inputs that is 71 columns down to 22.
 
     WII2D has no input command, so this is a parameterized generator: the
     template's ``{Xi}`` placeholders are junction cells that the harness
@@ -1017,4 +1097,4 @@ def wii2d(truth_table: str) -> str:
             "refused promptly rather than left to diverge"
         )
     start, routes = result
-    return "\n".join(_wii2d_layout(n, start, routes))
+    return "\n".join(_wii2d_layout(n, start, routes, width))

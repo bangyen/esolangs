@@ -64,19 +64,25 @@ wraps like any other single-character-command language.
 Being unwrappable is not the same as being unbounded, though.  A generator
 that lays out its own *shape* can honour a width by building a different
 shape, which no after-the-fact reflow can do: Streetcode folds its
-instruction line into a boustrophedon, and LaserFuck steers the beam down
-and back so a straight run of tape commands costs rows instead of columns.
-Those two generators take the width themselves -- :func:`takes_width` is how
-the callers tell -- and never reach :func:`wrap_program`, which would skip
-them anyway for being already multi-line.
+instruction line into a boustrophedon, LaserFuck steers the beam down and
+back so a straight run of tape commands costs rows instead of columns, and
+WII2D folds the run that shifts its answer to an ASCII digit the same way.
+Those three generators take the width themselves -- :func:`takes_width` is
+how the callers tell -- and never reach :func:`wrap_program`, which would
+skip them anyway for being already multi-line.
 
-They are the only two.  Clockwise and WII2D fold as well, but neither fold
-is a *layout* one and neither takes a width: Clockwise collapses a subtree
-whose rows all agree, so its ring narrows with the table rather than to a
-request, and WII2D's fold is arithmetic in its decode algebra, not a
-boustrophedon.  Both grids therefore come out at whatever width their table
-forces -- Clockwise as ``2 ** (n + 1)``, which passes 80 columns at
-``n == 6``.
+None of the three folds to an arbitrary width, because in each the part
+that *carries the inputs* cannot move: WII2D's floor is its junction chain,
+one junction per input with a detour row hanging beneath it, so what folds
+is only the decode's tail.  A width under the floor returns the narrowest
+program rather than refusing.
+
+Clockwise is the one that looks like it belongs here and does not.  It
+folds too, but the fold is not a layout one: it collapses a subtree whose
+rows all agree, so the ring narrows with the *table* rather than to a
+request.  Its width is the sum of its branches' displacements, ``2 ** (n +
+1)`` for a table that does not collapse, which passes 80 columns at
+``n == 6`` with nothing a caller can do about it.
 
 Wrapping otherwise assumes a single-line program, since a newline in one
 already means layout.  Taglate is the exception: its first line seeds the
