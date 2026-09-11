@@ -71,27 +71,29 @@ COD stops its left-to-right join of blocks early and swims the cod back
 down and west to the next band, Clockwise stacks the shallow levels of its
 decision tree so a branch costs one column instead of the ``2 ** (n -
 bit)`` it displaces, Dig turns its tree round once so the deep levels run
-back west over the columns the shallow ones used, and function x(y) binds
-its subtrees to ``var`` names so a tree that was one statement becomes one
-statement a line.  Those seven generators take the width themselves --
-:func:`takes_width` is how the callers tell -- and never reach
-:func:`wrap_program`.
+back west over the columns the shallow ones used, and function x(y) and the
+Algebraic Programming Language both *name* their subexpressions -- the one
+binding subtrees to ``var``s, the other minterms to nullary functions -- so
+what was a single statement becomes one statement a line.  Those eight
+generators take the width themselves -- :func:`takes_width` is how the
+callers tell -- and never reach :func:`wrap_program`.
 
-Six of the seven are grids, which :func:`wrap_program` would skip anyway
-for being already multi-line.  function x(y) is the one that is not: it is
-line-structured source, so it is *also* in the tests' unwrappable table.
-The two facts are independent -- a finished line of it still must not be
-broken, and the generator narrows by emitting different lines rather than
-by folding the ones it has.
+Six of the eight are grids, which :func:`wrap_program` would skip anyway
+for being already multi-line.  The two naming ones are not: they are
+line-structured source, so they are *also* in the tests' unwrappable table.
+The two facts are independent -- a finished line of either still must not
+be broken, and the generator narrows by emitting different lines rather
+than by folding the ones it has.
 
 Only Clockwise folds to an arbitrary width; in the others something cannot
 move.  WII2D's junction chain carries one input per junction with a detour
 row beneath it, so only the decode's tail folds; COD's blocks are
 indivisible, so its floor is the widest single block; and Dig's tree can
 turn round exactly once, since two bands running the same way would share
-the column offsets the turn exists to keep apart; and function x(y) floors
-at one node's own line, ``var tN: (bK == "1")<tA, tB>``.  A width under the
-floor returns the narrowest program rather than refusing.
+the column offsets the turn exists to keep apart; function x(y) floors at
+one node's own line, ``var tN: (bK == "1")<tA, tB>``; and APL floors at the
+prefix that reads its inputs, which cannot be split and grows with ``n``.
+A width under the floor returns the narrowest program rather than refusing.
 
 What Clockwise trades is rows: a stacked level writes the subtree below it
 twice over, so each one doubles the program's height.  Its own fold --
