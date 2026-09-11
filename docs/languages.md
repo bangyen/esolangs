@@ -15,8 +15,10 @@ A parameterized generator embeds the input bits in a template with
 one `{Xi}` slot per input, rather than returning a program that
 reads them. `esolangs.generate` returns that template; fill it with
 `esolangs.instantiate(language, template, bits)`, which is what the
-committed `examples/` programs are built by. Running one unfilled
-raises `TemplateError`.
+committed `examples/` programs are built by, or from the command
+line with `esolangs generate --bits 10 <language> <table>`. Running
+one unfilled raises `TemplateError`; filling the slots by hand does
+not work, since each language spells a set-input its own way.
 
 The 17 of them are marked **Template** in the
 matrix below:
@@ -25,10 +27,10 @@ matrix below:
 COD, Eval, Home Row, Lamfunc, Minifuck, Minsky Swap, NoComment, RAM0,
 WII2D.
 
-Most have no input command at all. The exceptions are Cod, Minifuck,
+Most have no input command at all. The exceptions are COD, Minifuck,
 123, Home Row and %^2^-1, where an embedded input is the supported
 Boolean-generator route: %^2^-1 cannot compute a two-input function
-from runtime input, and Cod's edge input would require horizontal
+from runtime input, and COD's edge input would require horizontal
 routing.
 
 ## How %^2^-1 reaches its tables

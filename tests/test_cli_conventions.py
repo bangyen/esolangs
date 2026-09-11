@@ -6,12 +6,15 @@ skipped the refusals ``run`` had just gained, and the seventeen template
 languages left unreachable by a fix that pointed a CLI user at a Python call.
 """
 
+import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 import esolangs
-from tests.test_cli import _program, call_main
+from esolangs.cli import main
+from tests.test_cli import _FakeStdin, _program, call_main
 
 EXAMPLES = Path(__file__).parents[1] / "examples" / "boolean"
 
@@ -177,3 +180,114 @@ class TestRoundThreeFixes:
         err = capsys.readouterr().err
         assert "esolangs generate --bits" in err
         assert "esolangs.instantiate" not in err
+
+
+class TestRoundSixQol:
+    """The CLI no longer sends its users to the Python API for basics."""
+
+    def test_encode_prints_the_stdin_a_language_wants(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """`run --help` used to answer this with a `python -c` incantation."""
+        assert call_main(["encode", "Grapheme", "10"], capsys) == "A\n%\n"
+        assert call_main(["encode", "Taglate", "101"], capsys) == "0\n1\n0\n1\n"
+
+    def test_encode_then_run_computes_the_table(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The pipeline the help now recommends, on the awkward language."""
+        path = tmp_path / "tg.txt"
+        path.write_text(esolangs.generate("Taglate", "10010110"))
+        got = ""
+        for row in range(8):
+            stdin = call_main(["encode", "Taglate", f"{row:03b}"], capsys)
+            got += call_main(["run", "Taglate", str(path)], capsys, stdin=stdin)[-1:]
+        assert got == "10010110"
+
+    def test_encode_refuses_a_language_that_reads_nothing(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            call_main(["encode", "123", "01"], capsys)
+        assert exc.value.code == 2
+        assert "reads no stdin" in capsys.readouterr().err
+
+    def test_version_is_accepted_after_a_subcommand(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The top-level help advertises it without saying where it goes."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["list", "--version"], capsys)
+        assert exc.value.code == 0
+        assert esolangs.__version__ in capsys.readouterr().out
+
+    def test_a_repeated_option_is_refused(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Last-wins quietly emitted the program for the wrong input row."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["generate", "--bits", "10", "--bits", "01", "Minifuck", "0110"], capsys
+            )
+        assert exc.value.code == 2
+        assert "more than once" in capsys.readouterr().err
+
+    def test_debug_always_prints_its_stopped_field(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """It vanished on a raise, the one case a script most wants to read."""
+        out = call_main(["debug", "brainfuck", _program(tmp_path, ",.")], capsys)
+        assert "stopped: raised" in out
+        assert "raised: InputExhaustedError" in out
+
+    def test_a_watched_cell_that_is_never_written_says_so(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        out = call_main(
+            [
+                "debug",
+                "--steps",
+                "5",
+                "--watch-cell",
+                "999",
+                "brainfuck",
+                _program(tmp_path, "+++++"),
+            ],
+            capsys,
+        )
+        assert "never written" in out
+
+    def test_encode_refuses_a_non_binary_bit_string(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            call_main(["encode", "brainfuck", "2x"], capsys)
+        assert exc.value.code == 2
+        assert "0s and 1s" in capsys.readouterr().err
+
+    def test_a_program_that_prints_nothing_says_so_on_a_terminal(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Silence was indistinguishable from piping to the wrong path."""
+        empty = tmp_path / "empty.txt"
+        empty.write_text("")
+        # Not ``call_main``: it drains the capture buffer to return stdout,
+        # and the note under test goes to stderr.
+        with (
+            patch.object(sys, "argv", ["esolangs", "run", "brainfuck", str(empty)]),
+            patch.object(sys, "stdin", _FakeStdin("")),
+            patch.object(sys.stdout, "isatty", lambda: True),
+        ):
+            main()
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert "printed nothing" in captured.err
+        assert "the file is empty" in captured.err
+
+    def test_a_pipe_still_receives_exactly_nothing(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The note is for a terminal; piped output stays byte-exact."""
+        empty = tmp_path / "empty.txt"
+        empty.write_text("")
+        assert call_main(["run", "brainfuck", str(empty)], capsys) == ""
