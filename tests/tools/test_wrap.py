@@ -33,6 +33,7 @@ from esolangs.tools.wrap import (
     _bitdeque,
     _cell_width,
     _polynomial,
+    _qoibl,
     _six_five,
     _span,
     _taglate,
@@ -80,8 +81,12 @@ NARROW_WIDTH = 13
 # because each has a *specific* reason worth keeping rather than deriving
 # again.  Alight and Super SNUSP are 2D, where a newline is a row: Alight's
 # commands are words walked out cell by cell, so a row end cuts one in
-# half, and Super SNUSP with no start marker enters at the bottom right, so
-# an added row moves where the program begins.  function x(y) and the
+# half, and Super SNUSP's pointer walks a grid, so a break relocates code
+# rather than reflowing it.  (The older reason given here -- that with no
+# start marker it enters at the bottom right -- is true of the language but
+# not of these programs, which all begin with an explicit ``"``.)  Both now
+# take a width themselves, by folding on their own turns and mirrors; that
+# is the independence the paragraph below is about.  function x(y) and the
 # Algebraic Programming Language are line-structured source rather than
 # grids -- the first takes one indented statement per line, the second
 # decides a line's *meaning* by whether it contains an ``=``, so a break
@@ -100,7 +105,7 @@ UNWRAPPABLE = {
     "fargo": "its newlines already separate statements",
     "minsky_swap": "its second line is absolute offsets into its first",
     "alight": "a command is a word walked cell by cell; a row end cuts it",
-    "super_snusp": "with no marker it enters the bottom right, which a row moves",
+    "super_snusp": "a row is a grid row; a break moves code, it does not reflow",
     "function_x_y": "its statements are one per line, and indented",
     "algebraic_programming_language": "a line with '=' defines, one without runs",
 }
@@ -257,6 +262,13 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
     # on one.
     if WRAPPERS[LANGUAGES[name].id] is _bio:
         assert "".join(wrapped.split()) == "".join(plain.split())
+        return
+    # Qoibl is multi-line with no structural first line: every line is a
+    # statement and every one folds, so what must survive is the token
+    # sequence across the whole program, exactly as for the grid wrappers.
+    # Its newlines replace spaces, so splitting on whitespace recovers it.
+    if WRAPPERS[LANGUAGES[name].id] is _qoibl:
+        assert wrapped.split() == plain.split()
         return
     # Taglate's first line is a structural queue seed the wrapper must leave
     # alone; only the commands below it are reflowed.
