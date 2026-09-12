@@ -9,6 +9,7 @@ languages left unreachable by a fix that pointed a CLI user at a Python call.
 import importlib
 import inspect
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -723,6 +724,28 @@ class TestNonTextInputIsRefusedNotCrashed:
         assert b"not text" in result.stderr
         assert b"Traceback" not in result.stderr
 
+    def test_binary_stdin_is_refused_under_utf8_mode(self) -> None:
+        """The same pipe on a runner whose locale is ``C``.
+
+        The test above passes only where the standard streams decode
+        strictly.  CI's do not -- Python enables UTF-8 mode under a ``C``
+        locale, which decodes stdin with ``surrogateescape`` -- and this
+        refusal reached a reader there instead, for one release.  Setting
+        the flag reproduces that runner anywhere.
+        """
+        env = {**os.environ, "PYTHONUTF8": "1"}
+        result = subprocess.run(
+            [sys.executable, "-m", "esolangs", "read-answer", "brainfuck"],
+            input=b"\x80\x81",
+            capture_output=True,
+            timeout=60,
+            check=False,
+            env=env,
+        )
+        assert result.returncode == 2
+        assert b"not text" in result.stderr
+        assert b"Traceback" not in result.stderr
+
     def test_the_library_names_it_as_a_program_error(self, tmp_path: Path) -> None:
         """``check_program`` decodes a Path and had the same gap."""
         path = tmp_path / "binary.txt"
@@ -923,6 +946,46 @@ class TestTheDecodeGuardsInProcess:
             cli._read_stdin()  # noqa: SLF001
         assert exc.value.code == 2
         assert "not text" in capsys.readouterr().err
+
+    def test_read_stdin_refuses_bytes_a_lenient_stream_let_through(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The same stdin under UTF-8 mode, where the read does not raise.
+
+        Python turns UTF-8 mode on by itself under a ``C`` locale, and it
+        decodes the standard streams with ``surrogateescape``.  So the
+        clause above never fired on CI: the bytes arrived as surrogates and
+        reached a reader, which reported them as a bad *answer*.  The
+        message and the offset must match the strict-mode refusal.
+        """
+
+        class _LenientStdin:
+            def isatty(self) -> bool:
+                return False
+
+            def read(self) -> str:
+                return "\udc80\udc81"
+
+        with (
+            patch.object(sys, "stdin", _LenientStdin()),
+            pytest.raises(SystemExit) as exc,
+        ):
+            cli._read_stdin()  # noqa: SLF001
+        assert exc.value.code == 2
+        assert "not text (invalid UTF-8 at byte 0)" in capsys.readouterr().err
+
+    def test_read_stdin_keeps_text_a_lenient_stream_decoded(self) -> None:
+        """The check must not cost a well-formed stdin its characters."""
+
+        class _WideStdin:
+            def isatty(self) -> bool:
+                return False
+
+            def read(self) -> str:
+                return "é\N{ROCKET}1\n"
+
+        with patch.object(sys, "stdin", _WideStdin()):
+            assert cli._read_stdin() == "é\N{ROCKET}1\n"  # noqa: SLF001
 
     def test_read_stdin_is_empty_on_a_terminal(self) -> None:
         """The branch beside it: nothing piped in."""

@@ -937,6 +937,42 @@ def _decode_note(exc: UnicodeDecodeError) -> str:
     return f"invalid UTF-8 at byte {exc.start}"
 
 
+def _smuggled_bytes(text: str) -> UnicodeDecodeError | None:
+    """Return the decode error ``surrogateescape`` hid in *text*, if any.
+
+    ``sys.stdin`` decodes strictly only some of the time.  Under UTF-8
+    mode -- which Python enables by itself when the locale is ``C``, as it
+    is on a bare CI runner -- the standard streams decode with
+    ``surrogateescape`` instead, so a binary stdin never raises: its bytes
+    arrive as lone surrogates and flow on into a reader, which then
+    complains about a U+DC80 rather than refusing the input.
+
+    This adds no refusal.  It gives UTF-8 mode the behaviour strict mode
+    already had at the call below -- same message, same exit code, same
+    byte offset -- by encoding the escapes back to the bytes they stand
+    for and decoding those strictly, which raises what the stream did not.
+
+    Lone surrogates are the only characters UTF-8 cannot encode, so that
+    failure is the test for whether the round trip is worth making.
+    """
+    try:
+        text.encode("utf-8")
+    except UnicodeEncodeError:
+        pass
+    else:
+        return None
+    encoding = getattr(sys.stdin, "encoding", None) or "utf-8"
+    try:
+        text.encode(encoding, "surrogateescape").decode(encoding)
+    except UnicodeDecodeError as exc:
+        return exc
+    except (UnicodeEncodeError, LookupError):
+        # A surrogate outside the escape range, so not a byte this stream
+        # smuggled in; leave it to the reader that asked for the text.
+        return None
+    return None
+
+
 def _read_stdin(timeout: float | None = None, hint: str = "") -> str:
     """Return this command's stdin, or exit if it is not text or never comes.
 
@@ -983,6 +1019,9 @@ def _read_stdin(timeout: float | None = None, hint: str = "") -> str:
         _fail(f"cannot read stdin: not text ({_decode_note(result)})")
     if isinstance(result, BaseException):
         raise result
+    hidden = _smuggled_bytes(result)
+    if hidden is not None:
+        _fail(f"cannot read stdin: not text ({_decode_note(hidden)})")
     return result
 
 
