@@ -10,6 +10,9 @@ function they call, because that is how the caller met them.
 import importlib
 import inspect
 import pathlib
+import re
+import subprocess
+import sys
 import threading
 from pathlib import Path
 
@@ -667,3 +670,65 @@ class TestTheThreadRefusalNamesAWayThrough:
     def test_the_main_thread_is_unaffected(self) -> None:
         """The refusal is about threads, not about timeouts."""
         assert esolangs.run("brainfuck", "+++.", "", 5) == "\x03"
+
+
+class TestTheVersionIsResolvedWhenAsked:
+    """``importlib.metadata`` was two fifths of the import for a string.
+
+    It drags in ``email.parser`` to read a wheel's metadata, and measured
+    23ms of this package's 56ms import -- paid by every caller, and most
+    of them never read the version at all.  PEP 562 defers it to whoever
+    asks; import is 35ms now and ``importlib.metadata`` is not in the tree.
+    """
+
+    def test_it_still_answers(self) -> None:
+        """Lazy is only acceptable while the answer is the same one."""
+        assert re.match(r"^\d+\.\d+", esolangs.__version__)
+
+    def test_it_is_cached_after_the_first_read(self) -> None:
+        """Otherwise every access pays what the import used to."""
+        first = esolangs.__version__
+        assert "__version__" in vars(esolangs)
+        assert esolangs.__version__ is first
+
+    def test_metadata_is_not_imported_by_importing_us(self) -> None:
+        """The measurement, as a check rather than a note in a commit.
+
+        A fresh interpreter, so nothing else in this process has pulled
+        it in first.
+        """
+        code = "import sys; import esolangs; print('importlib.metadata' in sys.modules)"
+        result = subprocess.run(
+            [sys.executable, "-c", code], capture_output=True, text=True, check=True
+        )
+        assert result.stdout.strip() == "False", result.stdout
+
+    def test_reading_it_does_import_metadata(self) -> None:
+        """The other half: deferred, not removed."""
+        code = (
+            "import sys; import esolangs; esolangs.__version__; "
+            "print('importlib.metadata' in sys.modules)"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", code], capture_output=True, text=True, check=True
+        )
+        assert result.stdout.strip() == "True", result.stdout
+
+    def test_an_unknown_attribute_still_fails_normally(self) -> None:
+        """A module ``__getattr__`` that swallows misses hides typos."""
+        with pytest.raises(AttributeError, match="nosuchthing"):
+            esolangs.nosuchthing  # type: ignore[attr-defined]  # noqa: B018
+
+    def test_the_namespace_is_unchanged(self) -> None:
+        """``dir`` must still match ``__all__``, which the hook could break."""
+        assert dir(esolangs) == sorted(esolangs.__all__)
+
+    def test_the_cli_reports_it(self) -> None:
+        """The one caller that always wants it."""
+        result = subprocess.run(
+            [sys.executable, "-m", "esolangs", "--version"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        assert result.stdout.strip() == f"esolangs {esolangs.__version__}"
