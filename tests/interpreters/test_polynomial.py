@@ -35,10 +35,8 @@ _PRECISION_PROGRAMS: dict[str, str] = json.loads(
 
 
 class TestPolynomialHelperFunctions:
-    """Test helper functions for polynomial processing."""
 
     def test_prime_function(self) -> None:
-        """Test prime number detection."""
         assert prime(2) is True
         assert prime(3) is True
         assert prime(4) is False
@@ -74,27 +72,22 @@ class TestPolynomialHelperFunctions:
         assert _factor_roots((1, -1, 0, -2, 2)) == (_Root(1, 0),)
 
     def test_sanitize_simple_polynomial(self) -> None:
-        """Test polynomial parsing for simple cases."""
         result = sanitize("f(x) = 3x^2 + x + 7")
         assert result == [3, 1, 7]
 
     def test_sanitize_complex_polynomial(self) -> None:
-        """Test polynomial parsing for complex cases."""
         result = sanitize("f(x) = x^3 - 2x^2 + x - 1")
         assert result == [1, -2, 1, -1]
 
     def test_sanitize_missing_terms(self) -> None:
-        """Test polynomial parsing with missing terms."""
         result = sanitize("f(x) = x^3 + 1")
         assert result == [1, 0, 0, 1]
 
     def test_brackets_simple(self) -> None:
-        """Test bracket matching for simple cases."""
         code = [[1], [2]]  # if, endif
         assert brackets(code, 0) == 1
 
     def test_brackets_nested(self) -> None:
-        """Test bracket matching for nested structures."""
         code = [[1], [1], [2], [2]]  # if, if, endif, endif
         assert brackets(code, 0) == 3
         assert brackets(code, 1) == 2
@@ -119,10 +112,8 @@ class TestPolynomialHelperFunctions:
 
 
 class TestPolynomialValidation:
-    """Test polynomial input validation."""
 
     def test_empty_program_validation(self) -> None:
-        """Test that empty program is handled correctly."""
         from esolangs.interpreters.register_based.polynomial import run
 
         with pytest.raises(
@@ -131,7 +122,6 @@ class TestPolynomialValidation:
             run("", io=IO())
 
     def test_invalid_format_validation(self) -> None:
-        """Test that invalid format raises ValueError."""
         from esolangs.interpreters.register_based.polynomial import run
 
         with pytest.raises(
@@ -141,36 +131,29 @@ class TestPolynomialValidation:
 
 
 class TestPolynomialParsing:
-    """Test polynomial parsing functionality."""
 
     def test_constant_polynomial_parsing(self) -> None:
-        """Test parsing of constant polynomials."""
         result = sanitize("f(x) = 5")
         assert result == [5]
 
     def test_linear_polynomial_parsing(self) -> None:
-        """Test parsing of linear polynomials."""
         result = sanitize("f(x) = x + 1")
         assert result == [1, 1]
 
     def test_quadratic_polynomial_parsing(self) -> None:
-        """Test parsing of quadratic polynomials."""
         result = sanitize("f(x) = x^2 + 1")
         assert result == [1, 0, 1]
 
     def test_polynomial_with_negative_coefficients(self) -> None:
-        """Test parsing of polynomials with negative coefficients."""
         result = sanitize("f(x) = -x^2 + 1")
         assert result == [-1, 0, 1]
 
     def test_polynomial_missing_constant(self) -> None:
-        """Test parsing of polynomials missing constant term."""
         result = sanitize("f(x) = x^2 + x")
         assert result == [1, 1, 0]
 
 
 class TestPolynomialMathematicalProperties:
-    """Test polynomial mathematical properties."""
 
     def test_convert_empty_list(self) -> None:
         """An empty root list converts to an empty instruction list."""
@@ -179,20 +162,16 @@ class TestPolynomialMathematicalProperties:
 
 
 class TestPolynomialEdgeCases:
-    """Test polynomial edge cases and error conditions."""
 
     def test_zero_polynomial_parsing(self) -> None:
-        """Test parsing of zero polynomial."""
         result = sanitize("f(x) = 0")
         assert result == [0]
 
     def test_high_degree_polynomial_parsing(self) -> None:
-        """Test parsing of high degree polynomial."""
         result = sanitize("f(x) = x^5 + x^3 + 1")
         assert result == [1, 0, 1, 0, 0, 1]
 
     def test_polynomial_with_large_coefficients(self) -> None:
-        """Test parsing of polynomial with large coefficients."""
         result = sanitize("f(x) = 100x^2 + 50x + 25")
         assert result == [100, 50, 25]
 
@@ -207,7 +186,6 @@ class TestPolynomialSafety:
     """
 
     def test_helper_functions_safe(self) -> None:
-        """Test that helper functions are safe to call."""
         # Test prime function with various inputs
         assert prime(2) is True
         assert prime(1) is False  # 1 is not prime
@@ -223,7 +201,6 @@ class TestPolynomialSafety:
 
 
 class TestPolynomialExecution:
-    """Test that valid polynomial programs actually execute."""
 
     def test_output_instruction(self) -> None:
         """A root of 2i encodes an output instruction (reg starts at 0)."""
