@@ -120,7 +120,7 @@ def _advance(state: _State, code: str, value: int | None = None) -> _State:
             stk = (*stk, ind)
     elif c in "]*":
         if not stk:
-            raise HaltError
+            raise HaltError(f"{c!r} at position {ind} closes a loop that never opened")
         ind = stk[-1] - 1
         stk = stk[:-1]
         if c == "*":

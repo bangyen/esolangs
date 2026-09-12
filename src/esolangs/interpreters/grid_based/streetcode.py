@@ -2128,7 +2128,11 @@ class _Machine:
             # runtime rather than a manoeuvre with a sensible fallback.
             turned = _drive(self.grid, state, arrival_cell, arrival_cell)
             if turned is None or turned == "halt":
-                raise HaltError
+                raise HaltError(
+                    f"a U-turn at {arrival_cell} has nowhere to end: the "
+                    f"street has no opposite lane, which is narrower than "
+                    f"the spec allows"
+                )
             self._state = turned
             return
         elif op == "NOP":

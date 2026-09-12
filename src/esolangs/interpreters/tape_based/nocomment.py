@@ -238,7 +238,9 @@ class _Machine:
         ind, _ptr, _tape, stack, acc, _dirty = self.state
         char = self.code[ind]
         if char == "f" and not stack:
-            raise HaltError
+            raise HaltError(
+                f"'f' at position {ind} pops the stack and the stack is empty"
+            )
         if char in "sb" and acc and stack:
             # ``s`` skips X forward and ``b`` jumps back X-1: the next
             # command is at ind ± X + 1.  Kept as one check because each
@@ -248,7 +250,10 @@ class _Machine:
             # branches behind.
             delta = stack[-1] if char == "s" else -stack[-1]
             if not 0 <= ind + delta + 1 < self.length:
-                raise HaltError
+                raise HaltError(
+                    f"{char!r} at position {ind} jumps {delta:+d} to "
+                    f"{ind + delta + 1}, outside the program's 0..{self.length - 1}"
+                )
         elif char == "o":
             self.io.print_char(chr(acc))
         elif char not in "idclrnfsb":

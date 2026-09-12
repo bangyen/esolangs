@@ -248,7 +248,10 @@ class _Machine:
         byte = None
         if tok == "A":
             if not 0 <= tape[cell] <= _MAX_CHAR:
-                raise HaltError
+                raise HaltError(
+                    f"'A' prints cell {cell} as a character and it holds "
+                    f"{tape[cell]}, outside 0..{_MAX_CHAR}"
+                )
             self.io.print_char(chr(tape[cell]))
         elif tok == "B":
             byte = self.io.input_char()

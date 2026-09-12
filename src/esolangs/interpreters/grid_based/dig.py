@@ -57,7 +57,10 @@ def _value(code: tuple[str, ...], row: int, col: int, size: int) -> int:
             val = code[row + d_row][col + d_col]
             if val.isdigit():
                 return int(val)
-    raise HaltError
+    raise HaltError(
+        f"the operator at row {row}, column {col} has no digit beside it "
+        f"to use as its operand"
+    )
 
 
 def _write(code: tuple[str, ...], row: int, col: int, text: str) -> tuple[str, ...]:
@@ -107,7 +110,7 @@ def _advance(
             mole *= _value(code, row, col, size)
         elif char == "/":
             if (n := _value(code, row, col, size)) == 0:
-                raise HaltError
+                raise HaltError(f"division by zero at row {row}, column {col}")
             mole //= n
         elif char == ";":
             code = _write(code, row, col, str(mole))

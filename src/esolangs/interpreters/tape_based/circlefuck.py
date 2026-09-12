@@ -281,7 +281,10 @@ class _Machine:
         byte = None
         if char == "}" and len(cells) == 1:
             # Deleting the last cell would leave nothing to run.
-            raise HaltError
+            raise HaltError(
+                "'}' deletes the current cell and this is the last one, "
+                "so there would be no program left to run"
+            )
         if char == ",":
             byte = self.io.input_char()
         elif char == ".":

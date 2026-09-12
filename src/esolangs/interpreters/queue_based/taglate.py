@@ -102,7 +102,7 @@ def _pop(state: _State) -> tuple[int, _State]:
     """
     queue, ind = state
     if not queue:
-        raise HaltError
+        raise HaltError("the queue is empty, so there is nothing to pop")
     return (queue[0], (queue[1:], ind))
 
 
@@ -150,7 +150,7 @@ def _advance(
         x, state = _pop(state)
         y, state = _pop(state)
         if not y:
-            raise HaltError
+            raise HaltError(f"'d' divides {x} by the queued {y}, which is zero")
         state = _push(state, x // y)
     elif tok == "e":
         x, state = _pop(state)
