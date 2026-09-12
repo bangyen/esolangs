@@ -8,6 +8,7 @@ languages left unreachable by a fix that pointed a CLI user at a Python call.
 
 import importlib
 import inspect
+import io
 import json
 import os
 import pathlib
@@ -110,6 +111,189 @@ class TestDebugMakesTheSameRefusals:
             )
         assert exc.value.code == 2
         assert "must not be negative" in capsys.readouterr().err
+
+    def test_a_negative_break_at_is_refused(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The third integer flag, and the one that had no such guard.
+
+        It passed the is-an-integer check, reached ``break_at``'s own
+        validation, and came back out of the catch-all as "this is a bug in
+        esolangs" at exit 70 -- a bug report invited by a typo.
+        """
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["debug", "--break-at", "-1", "brainfuck", _program(tmp_path, "+")],
+                capsys,
+            )
+        assert exc.value.code == 2
+        assert "--break-at must not be negative" in capsys.readouterr().err
+
+    def test_an_internal_fault_is_still_reported_not_raised(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The last resort, planted rather than found.
+
+        ``--break-at -1`` and ``--tui --stdin`` were the only two things in
+        this suite that reached the catch-all, and both are refused at exit
+        2 now -- so fixing them left the handler with no coverage and no
+        test.  A fault has to be planted to exercise it honestly, since by
+        construction nothing reachable should arrive there.
+        """
+
+        def boom(*_args: object, **_kwargs: object) -> None:
+            raise RuntimeError("planted")
+
+        with patch("esolangs.cli.describe", boom), pytest.raises(SystemExit) as exc:
+            call_main(["describe", "brainfuck"], capsys)
+        assert exc.value.code == 70
+        err = capsys.readouterr().err
+        assert "internal error: RuntimeError: planted" in err
+        assert "not in your program" in err
+
+
+class TestTheLastResortPaths:
+    """Refusals a reader only meets when something has already gone wrong.
+
+    None of these are reachable from an ordinary command, which is why they
+    had no tests -- and why the file having been edited is what surfaced
+    them: the coverage rule is per touched *file*, so inheriting an
+    untested corner is part of editing one.
+    """
+
+    def test_an_oversized_program_is_refused(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A megabyte is far past anything this package generates."""
+        path = tmp_path / "huge.bf"
+        path.write_text("+" * (1024 * 1024 + 1))
+        with pytest.raises(SystemExit) as exc:
+            call_main(["run", "brainfuck", str(path)], capsys)
+        assert exc.value.code == 2
+        assert "larger than" in capsys.readouterr().err
+
+    def test_a_surrogate_outside_the_escape_range_is_left_alone(self) -> None:
+        """``_smuggled_bytes`` gives up rather than guessing at a stray point.
+
+        ``surrogateescape`` only round-trips the low-surrogate band it
+        reserves for smuggled bytes.  Anything outside it is a code point
+        the program meant rather than a byte the stream hid, so there is
+        nothing to report about it.
+
+        The band is described rather than written out: an escape for one
+        of those code points inside a docstring compiles to a real
+        surrogate, and pytest's assertion rewriter cannot re-serialize the
+        module afterwards.
+        """
+        assert cli._smuggled_bytes("\udfff") is None  # noqa: SLF001 - private path
+
+    def test_output_a_terminal_cannot_encode_is_written_as_bytes(self) -> None:
+        """A lone surrogate reaches the byte stream rather than raising."""
+        written: list[bytes] = []
+
+        class _Narrow(io.StringIO):
+            # utf-8, because the fallback re-encodes with ``surrogatepass``
+            # and that is only defined for the utf codecs -- an ascii
+            # stream would fail there for a different reason than the one
+            # under test.
+            encoding = "utf-8"
+            buffer = type(
+                "_Bytes",
+                (),
+                {
+                    "write": lambda _s, data: written.append(data),
+                    "flush": lambda _s: None,
+                },
+            )()
+
+            def write(self, text: str) -> int:
+                raise UnicodeEncodeError("ascii", text, 0, 1, "narrow")
+
+        with patch.object(sys, "stdout", _Narrow()):
+            cli._write_output("\ud800")  # noqa: SLF001 - the path is private
+        assert written, "nothing reached the byte stream"
+
+    def test_a_value_error_from_the_screen_is_a_refusal(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """``run_tui`` reports an unusable terminal as a message, not a crash."""
+
+        def boom(*_args: object, **_kwargs: object) -> None:
+            raise ValueError("no room to draw")
+
+        with (
+            patch("esolangs.cli.run_tui", boom),
+            patch.object(_FakeStdin, "isatty", lambda _self: True),
+            pytest.raises(SystemExit) as exc,
+        ):
+            call_main(["debug", "--tui", "brainfuck", _program(tmp_path, "+")], capsys)
+        assert exc.value.code == 2
+        assert "no room to draw" in capsys.readouterr().err
+
+
+class TestTheLastResortPathsContinued:
+    """The rest of the corners, each reached deliberately."""
+
+    def test_a_surrogate_pair_that_round_trips_reports_nothing(self) -> None:
+        """Two escaped bytes can form a character, and then nothing is wrong.
+
+        Each half is a byte ``surrogateescape`` hid, but together they are
+        valid UTF-8 -- so the round trip succeeds and there is no decode
+        error to hand back, which is the one way out of this function that
+        neither returns early nor reports.
+        """
+        smuggled = "".join(chr(0xDC00 + byte) for byte in (0xC3, 0xA9))
+        assert cli._smuggled_bytes(smuggled) is None  # noqa: SLF001 - private path
+
+    def test_output_survives_a_stream_with_no_byte_buffer(self) -> None:
+        """Some streams are text only, and then the escape is the best there is."""
+        written: list[str] = []
+
+        class _TextOnly(io.StringIO):
+            encoding = "ascii"
+            buffer = None
+
+            def write(self, text: str) -> int:
+                if any(0xD800 <= ord(ch) <= 0xDFFF for ch in text):
+                    raise UnicodeEncodeError("ascii", text, 0, 1, "narrow")
+                written.append(text)
+                return len(text)
+
+        with patch.object(sys, "stdout", _TextOnly()):
+            cli._write_output("a\udc80b")  # noqa: SLF001 - private path
+        assert written
+        assert "\\udc80" in written[0]
+
+    def test_partial_output_already_ending_in_a_newline_gains_no_second_one(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The prefix is terminated so a pipe reads clean lines, once.
+
+        A failed run writes what the program managed to print, and adds the
+        newline only when the program did not -- otherwise a program whose
+        last act was a newline would be followed by a blank line that it
+        never printed.
+        """
+        failure = esolangs.HaltError("stopped")
+        failure.partial_output = "Hi\n"
+        cli._emit_partial(failure)  # noqa: SLF001 - private path
+        assert capsys.readouterr().out == "Hi\n"
+
+    def test_a_value_error_from_the_run_is_a_refusal(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A bare ``ValueError`` out of the debugger names the language."""
+
+        def boom(*_args: object, **_kwargs: object) -> None:
+            raise ValueError("not a position")
+
+        with (
+            patch("esolangs.cli.make_debugger", boom),
+            pytest.raises(SystemExit) as exc,
+        ):
+            call_main(["debug", "brainfuck", _program(tmp_path, "+")], capsys)
+        assert exc.value.code == 2
+        assert "brainfuck: not a position" in capsys.readouterr().err
 
 
 class TestRunCanBeBounded:
