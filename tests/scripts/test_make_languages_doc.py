@@ -16,18 +16,18 @@ README = REPO_ROOT / "README.md"
 LANGUAGES_DOC = REPO_ROOT / "docs" / "languages.md"
 USAGE_DOC = REPO_ROOT / "docs" / "usage.md"
 
-_README_START = "<!-- IMPLEMENTED:START -->"
-_README_END = "<!-- IMPLEMENTED:END -->"
-_EXAMPLES_START = "<!-- EXAMPLES:START -->"
-_EXAMPLES_END = "<!-- EXAMPLES:END -->"
-_BOOLEAN_COUNT_START = "<!-- BOOLEAN-COUNT:START -->"
-_BOOLEAN_COUNT_END = "<!-- BOOLEAN-COUNT:END -->"
-_SHAPES_START = "<!-- INPUT-SHAPES:START -->"
-_SHAPES_END = "<!-- INPUT-SHAPES:END -->"
-_API_START = "<!-- PUBLIC-API:START -->"
-_API_END = "<!-- PUBLIC-API:END -->"
-_TUI_START = "<!-- TUI-FRAME:START -->"
-_TUI_END = "<!-- TUI-FRAME:END -->"
+
+def _markers(tag: str) -> tuple[str, str]:
+    """Return the pair of HTML comments the generator fences ``tag`` with."""
+    return f"<!-- {tag}:START -->", f"<!-- {tag}:END -->"
+
+
+_README_START, _README_END = _markers("IMPLEMENTED")
+_EXAMPLES_START, _EXAMPLES_END = _markers("EXAMPLES")
+_BOOLEAN_COUNT_START, _BOOLEAN_COUNT_END = _markers("BOOLEAN-COUNT")
+_SHAPES_START, _SHAPES_END = _markers("INPUT-SHAPES")
+_API_START, _API_END = _markers("PUBLIC-API")
+_TUI_START, _TUI_END = _markers("TUI-FRAME")
 
 
 def load_script() -> object:
