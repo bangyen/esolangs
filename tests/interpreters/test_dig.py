@@ -27,15 +27,12 @@ class TestDigHaltAndMovement:
     """Test overground movement commands."""
 
     def test_halt_command(self) -> None:
-        """Test @ halt command."""
         assert run_and_capture(["@"]) == ""
 
     def test_move_right_then_halt(self) -> None:
-        """Test simple movement with halt."""
         assert run_and_capture([">@"]) == ""
 
     def test_work_commands_ignored_overground(self) -> None:
-        """Test that work commands do nothing while overground."""
         assert run_and_capture([">H:@", "  2 "]) == ""
 
     def test_a_letter_overground_does_not_steer(self) -> None:
@@ -78,19 +75,15 @@ class TestDigUndergroundCommands:
     """Test work commands that only function underground."""
 
     def test_print_initial_zero(self) -> None:
-        """Test that : prints the mole's initial value of 0."""
         assert run_and_capture([">$:", " 2 "]) == "0"
 
     def test_print_digit(self) -> None:
-        """Test that a digit sets the mole and : outputs it."""
         assert run_and_capture([">$5:", " 2 "]) == "5"
 
     def test_last_digit_wins(self) -> None:
-        """Test that consecutive digits keep only the last value."""
         assert run_and_capture([">$99:", " 3 "]) == "9"
 
     def test_print_character(self) -> None:
-        """Test that letters set the mole to their ASCII value."""
         assert run_and_capture([">$H:", " 2 "]) == "H"
 
     def test_a_letter_underground_is_not_an_input_command(self) -> None:
@@ -106,11 +99,9 @@ class TestDigUndergroundCommands:
         assert run_and_capture([">$3::", " 3   "]) == "30"
 
     def test_newline_output(self) -> None:
-        """Test that % with a 1 beside it outputs a newline."""
         assert run_and_capture([">$%:", " 21"]) == "\n"
 
     def test_space_output(self) -> None:
-        """Test that % with a 0 beside it outputs a space."""
         assert run_and_capture([">$%:", " 20"]) == " "
 
 
@@ -134,7 +125,6 @@ class TestDigArithmetic:
         assert run_and_capture([">$ 8/:", " 4  2 "]) == "4"
 
     def test_large_result_printed_as_character(self) -> None:
-        """Test that values >= 10 are printed as characters."""
         assert run_and_capture([">$ 6+:", " 4  5 "]) == "\x0b"
 
 
@@ -142,11 +132,9 @@ class TestDigInput:
     """Test the input commands."""
 
     def test_integer_input(self) -> None:
-        """Test that ~ reads a single integer."""
         assert run_and_capture([">$~:", " 2 "], inputs=["7"]) == "7"
 
     def test_character_input(self) -> None:
-        """Test that = reads a single character."""
         assert run_and_capture([">$=:", " 2 "], inputs=["A"]) == "A"
 
 
@@ -154,12 +142,10 @@ class TestDigExamplePrograms:
     """Test example programs from esolangs.org."""
 
     def test_hello_world(self) -> None:
-        """Test the Hello World program from esolangs.org."""
         hello_world = [">$H:e:l:l:$o:%:W:o:$r:l:d:!:@", " 8        8  0     8"]
         assert run_and_capture(hello_world) == "Hello World!"
 
     def test_nand_gate(self) -> None:
-        """Test the NAND gate program from esolangs.org."""
         nand_gate = [
             "'2  > $~ >$ 1:@",
             ">$~;#@2   3",
