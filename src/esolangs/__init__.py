@@ -1203,7 +1203,10 @@ _ROW_TIMEOUT = 30.0
 
 
 def evaluate(
-    language: str, truth_table: str, timeout: float | _Default | None = _DEFAULT
+    language: str,
+    truth_table: str,
+    timeout: float | _Default | None = _DEFAULT,
+    width: int | None = None,
 ) -> str:
     """Return the truth table a generated ``language`` program *actually* computes.
 
@@ -1226,6 +1229,16 @@ def evaluate(
       three languages answer by not halting and have no output to read;
     * ``answer_encoding`` gives *which way* that goes, rather than leaving
       "halting means zero" to be read out of the prose.
+
+    ``width`` is passed straight through to the build, so this answers the
+    question a round trip is usually written for: *does the program still
+    compute its table once it has been wrapped?*  Hand-rolling that meant
+    reimplementing the loop below and losing the divergence proof with it,
+    which turns three languages from milliseconds into a full bound per
+    1-row.  A width is a request rather than a promise -- see
+    :func:`generate` -- and ``width_effect`` on :func:`describe` says which
+    of the three things it does to a given language, including the 38 it
+    does nothing to.
 
     ``timeout`` bounds each row, and for most languages that is all it
     does.  **The three that answer by not terminating do not pay it**:
@@ -1268,7 +1281,10 @@ def evaluate(
         # program this runs is one it generated, and the three that diverge
         # are settled by a repeated state rather than a clock.
         bound = timeout
-    program = generate(name, truth_table)
+    # The width goes to whichever call builds the runnable text: for a
+    # template that is ``instantiate`` below, since a ``{Xi}`` slot is not a
+    # token any wrapper knows and a break inside one destroys it.
+    program = generate(name, truth_table, None if facts["parameterized"] else width)
     if terminating:
         # Which of halting and diverging means 1, as data.  It is
         # ``("halts", "diverges")`` for all three, but reading the order
@@ -1280,15 +1296,34 @@ def evaluate(
     for row in range(len(truth_table)):
         bits = [(row >> (inputs - 1 - i)) & 1 for i in range(inputs)]
         if facts["parameterized"]:
-            source, stdin = instantiate(name, program, bits), ""
+            source, stdin = instantiate(name, program, bits, width), ""
         else:
             source, stdin = program, encode_inputs(name, bits, truth_table)
-        if terminating:
-            answers.append(
-                _terminates(name, source, stdin, bound, halts_is, diverges_is)
+        try:
+            if terminating:
+                answers.append(
+                    _terminates(name, source, stdin, bound, halts_is, diverges_is)
+                )
+            else:
+                answers.append(read_answer(name, run(name, source, stdin, bound)))
+        except EsolangError as exc:
+            # Which row, as a note rather than a new exception: the classes
+            # here do not share a constructor -- ``InputExhaustedError``
+            # takes two counts and builds its own message -- so re-raising
+            # with a longer string would mean knowing all of them.
+            #
+            # Without this a failure on a 1024-row table said only that
+            # something exceeded the bound, and "row 0 is pathological" and
+            # "row 900 is" are different problems with the same message.
+            # The bits are here too, since they are what makes the row
+            # reproducible in one call.
+            exc.add_note(
+                f"while evaluating row {row} of {len(truth_table)} "
+                f"(inputs {''.join(str(b) for b in bits)}), after "
+                f"{len(answers)} row{'' if len(answers) == 1 else 's'} "
+                f"answered {''.join(answers) or '(none)'}"
             )
-        else:
-            answers.append(read_answer(name, run(name, source, stdin, bound)))
+            raise
     return "".join(answers)
 
 
@@ -1356,7 +1391,10 @@ def _terminates(
 
 
 def verify(
-    language: str, truth_table: str, timeout: float | _Default | None = _DEFAULT
+    language: str,
+    truth_table: str,
+    timeout: float | _Default | None = _DEFAULT,
+    width: int | None = None,
 ) -> bool:
     """Whether a generated ``language`` program really computes ``truth_table``.
 
@@ -1365,7 +1403,7 @@ def verify(
     locating: it returns the table the program computed, so the rows that
     disagree are visible rather than summarized to ``False``.
     """
-    return evaluate(language, truth_table, timeout) == truth_table
+    return evaluate(language, truth_table, timeout, width) == truth_table
 
 
 def _validate_shape_for_evaluate(truth_table: str) -> int:

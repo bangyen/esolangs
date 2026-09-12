@@ -1679,3 +1679,147 @@ class TestReadAnswerExplainsInWords:
                 esolangs.read_answer(name, "garbage")
             note = facts["answer_convention"]
             assert note is None or str(note) in str(caught.value), name
+
+
+class TestAFailedRowSaysWhichRow:
+    """``execution exceeded the 0.2-second timeout`` and nothing else.
+
+    On a 1024-row table "row 0 is pathological" and "row 900 is" are
+    different problems, and they had the same message.  A note carries the
+    row rather than a longer message because the exceptions here do not
+    share a constructor -- ``InputExhaustedError`` takes two counts and
+    builds its own text -- so re-raising with more words would mean knowing
+    every class that can arrive.
+    """
+
+    def test_the_note_names_the_row_and_the_inputs(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Failure forced at a chosen row, since a real one lands on row 0.
+
+        A timeout small enough to bite bites the first row, which is the
+        case that never needed the note.
+        """
+        real_run = esolangs.run
+
+        def fail_on_the_sixth(
+            language: str, program: object, stdin: str = "", timeout: object = None
+        ) -> str:
+            if stdin == "1\n0\n1\n":  # row 5 of an eight-row table
+                raise esolangs.ExecutionTimeoutError("execution exceeded the bound")
+            return real_run(language, program, stdin, timeout)  # type: ignore[arg-type]
+
+        monkeypatch.setattr(esolangs, "run", fail_on_the_sixth)
+        with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
+            esolangs.evaluate("brainfuck", "01101001", timeout=10)
+        note = "\n".join(getattr(caught.value, "__notes__", []))
+        assert "row 5 of 8" in note
+        assert "inputs 101" in note
+        assert "after 5 rows" in note
+        assert "01101" in note  # the answers that did come back
+
+    def test_a_real_timeout_carries_one_too(self) -> None:
+        """Not only the stand-in: the path a caller actually hits."""
+        table = "".join(str(bin(r).count("1") & 1) for r in range(128))
+        with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
+            esolangs.evaluate("Circuit Diagram", table, timeout=1)
+        note = "\n".join(getattr(caught.value, "__notes__", []))
+        assert "row 0 of 128" in note
+
+    def test_a_clean_evaluate_adds_nothing(self) -> None:
+        """A note is for a failure; a success must not grow one."""
+        assert esolangs.evaluate("brainfuck", "0110") == "0110"
+
+    def test_the_note_survives_the_exception_type(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The reason it is a note: the class and its arguments are untouched.
+
+        ``InputExhaustedError`` builds its message from two counts, so a
+        re-raise that rewrote the text would have to reconstruct it.
+        """
+        real_run = esolangs.run
+
+        def exhaust(
+            language: str, program: object, stdin: str = "", timeout: object = None
+        ) -> str:
+            if stdin == "1\n1\n":
+                raise esolangs.InputExhaustedError(2, 2)
+            return real_run(language, program, stdin, timeout)  # type: ignore[arg-type]
+
+        monkeypatch.setattr(esolangs, "run", exhaust)
+        with pytest.raises(esolangs.InputExhaustedError) as caught:
+            esolangs.evaluate("brainfuck", "0110", timeout=10)
+        assert caught.value.reads == 2
+        assert caught.value.supplied == 2
+        assert "read past the end of input" in str(caught.value)
+        assert "row 3 of 4" in "\n".join(getattr(caught.value, "__notes__", []))
+
+
+class TestEvaluateTakesAWidth:
+    """Checking a wrapped program meant reimplementing the loop.
+
+    A width is the one build option that can change whether the program
+    still *works* -- a break inside a token computes a different table, or
+    none -- so "does it survive the wrap" is the round trip most worth
+    running.  ``evaluate`` and ``verify`` did not take one, and hand-rolling
+    it also lost the divergence proof, which turns the three languages that
+    answer 1 by not terminating from milliseconds into a full bound per
+    1-row.
+    """
+
+    def test_every_language_survives_a_wrap(self) -> None:
+        """All 69, because a wrapper that broke one would break it quietly.
+
+        1.8s for the set at two inputs, which is the whole point of doing it
+        here rather than leaving it to a caller who has to write the loop.
+        """
+        wrong = [
+            name
+            for name in esolangs.list_languages()
+            if esolangs.evaluate(name, "0110", timeout=30, width=40) != "0110"
+        ]
+        assert not wrong
+
+    @pytest.mark.parametrize(
+        ("name", "effect"),
+        [("brainfuck", "wrap"), ("LaserFuck", "layout"), ("Clockwise", "none")],
+    )
+    def test_it_works_for_each_width_effect(self, name: str, effect: str) -> None:
+        """The three things a width can do, one language each.
+
+        Pinned against ``describe`` rather than named in prose, so a
+        language that changes effect fails here instead of quietly making
+        this a test of one behaviour three times.
+        """
+        assert esolangs.describe(name)["width_effect"] == effect
+        assert esolangs.evaluate(name, "0110", timeout=30, width=25) == "0110"
+
+    def test_a_template_language_gets_the_width_too(self) -> None:
+        """The width lands on ``instantiate``, not on ``generate``.
+
+        A ``{Xi}`` slot is not a token any wrapper knows and a break inside
+        one destroys the template, so a parameterized language has to be
+        wrapped after its bits are in -- which is a place a caller writing
+        the loop by hand would plausibly get wrong.
+        """
+        assert esolangs.describe("Minifuck")["parameterized"] is True
+        assert esolangs.evaluate("Minifuck", "0110", timeout=30, width=40) == "0110"
+
+    def test_the_width_actually_reaches_the_program(self) -> None:
+        """Otherwise this would pass with the argument thrown away."""
+        wide = esolangs.generate("brainfuck", "10010110")
+        narrow = esolangs.generate("brainfuck", "10010110", 30)
+        assert "\n" not in wide  # the unwrapped default is one line
+        assert "\n" in narrow
+        assert max(len(line) for line in narrow.splitlines()) <= 30
+        assert esolangs.evaluate("brainfuck", "10010110", width=30) == "10010110"
+
+    def test_verify_takes_one_as_well(self) -> None:
+        """It is ``evaluate`` with the comparison done, so it must pass it on."""
+        assert esolangs.verify("brainfuck", "10010110", width=30)
+
+    def test_no_width_is_unchanged(self) -> None:
+        """The default has to stay exactly what it was."""
+        assert esolangs.evaluate("brainfuck", "0110") == "0110"
+        assert esolangs.verify("brainfuck", "0110")
