@@ -65,7 +65,7 @@ from esolangs.exceptions import (
     GeneratorCapError,
     TemplateError,
 )
-from esolangs.registry import LANGUAGES
+from esolangs.registry import LANGUAGES, SUGGESTION_CUTOFF
 from esolangs.tools.wrap import DEFAULT_WIDTH
 
 USAGE = """usage: esolangs <command> [...]
@@ -555,7 +555,7 @@ def _did_you_mean(word: str, known: Iterable[str]) -> str:
     none, so ``--wdith 40`` was a flat "unknown option" while ``Brainfck``
     got helped.  Same cutoff as :func:`esolangs.registry.resolve` uses.
     """
-    close = get_close_matches(word, sorted(known), n=2, cutoff=0.6)
+    close = get_close_matches(word, sorted(known), n=2, cutoff=SUGGESTION_CUTOFF)
     if not close:
         return ""
     return f"; did you mean {' or '.join(close)}?"

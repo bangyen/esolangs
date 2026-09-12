@@ -45,6 +45,21 @@ _DIGIT_WORDS = {
 }
 
 
+#: How close a miss has to be before it is offered as "did you mean".
+#:
+#: 0.6 offered ``Sophie`` for ``nope``, which is worse than saying nothing:
+#: a wrong guess sends the reader off to check a language they never meant.
+#: Measured rather than picked -- across 298 single-edit typos of the 69
+#: names, 0.6 and 0.65 both rescue 291, while 0.65 is the lowest value that
+#: suggests nothing for any of ``nope``, ``zzzz``, ``xyz``, ``qqqqqq``,
+#: ``hello``, ``python``, ``asdf``, ``test`` and ``foo``.  0.7 starts
+#: costing real rescues.  ``notes/cutoff.py`` is the measurement.
+#:
+#: Shared with the CLI's option-name suggester, which had drifted to its
+#: own copy of the number under a docstring promising they were the same.
+SUGGESTION_CUTOFF = 0.65
+
+
 def canonical_id(name: str) -> str:
     """Return the canonical internal identifier for a language's display name.
 
@@ -682,5 +697,7 @@ def resolve(name: str) -> str:
     match = _BY_ID.get(canonical_id(name))
     if match is not None:
         return match
-    close = difflib.get_close_matches(canonical_id(name), _BY_ID, n=2, cutoff=0.6)
+    close = difflib.get_close_matches(
+        canonical_id(name), _BY_ID, n=2, cutoff=SUGGESTION_CUTOFF
+    )
     raise UnknownLanguageError(name, tuple(_BY_ID[c] for c in close))
