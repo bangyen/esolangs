@@ -21,6 +21,7 @@ import contextlib
 import difflib
 import pathlib
 import re
+from typing import ClassVar
 
 import pytest
 
@@ -263,7 +264,7 @@ class TestADeliberateRefusalIsAnEsolangError:
     #: n=12 table in under three seconds.  Carried per language rather than
     #: as one table, because a shared n=11 quietly stopped testing Factor at
     #: all: the ``pytest.raises`` simply saw the program get built.
-    _REFUSERS = {
+    _REFUSERS: ClassVar[dict[str, int]] = {
         "Factor": 13,
         "Interprogck8": 11,
         "Polynomial": 11,

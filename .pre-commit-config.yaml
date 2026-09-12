@@ -2,10 +2,16 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
+      # The recorded output matches its generator exactly, trailing spaces
+      # included -- Alight pads a turn's column and the generator emits it.
+      # Both paths: the files live under src/ so they ship in the wheel, and
+      # `examples/` at the root is a symlink to them.  While this said only
+      # `^examples/` the hook stripped the real files and
+      # test_boolean_example_matches_generator caught it.
       - id: trailing-whitespace
-        exclude: ^examples/  # Recorded output matches its generator exactly
+        exclude: ^(src/esolangs/)?examples/
       - id: end-of-file-fixer
-        exclude: ^examples/  # Recorded output matches its generator exactly
+        exclude: ^(src/esolangs/)?examples/
       - id: check-yaml
         args: ['--unsafe']  # Allow custom YAML tags
       - id: check-added-large-files
