@@ -36,7 +36,27 @@ class HaltError(EsolangError):
     result, so the interpreter halts rather than inventing one.  Raising
     ``HaltError`` makes that halt explicit instead of leaking an incidental
     Python error.
+
+    **A bare ``raise HaltError`` is not silent any more.**  It used to be:
+    the message was ``""``, so ``esolangs run`` forwarded an empty string
+    and a failing program printed *nothing at all* and exited 1 --
+    indistinguishable from a crash, and from success on a program that
+    prints nothing.  A reader found it in Modulous and it was not a
+    Modulous bug: the same bare raise appears in thirteen interpreters.
+
+    The default is deliberately weak, because a real one cannot be written
+    from here -- it says what class of thing happened and admits it does
+    not know which.  Every site that can say more should, and
+    ``test_no_interpreter_halts_without_saying_why`` holds the count of the
+    ones that still cannot down rather than letting it grow.
     """
+
+    #: What a bare ``raise HaltError`` says, since it has to say something.
+    DEFAULT = "the interpreter halted on an operation with no defined result"
+
+    def __init__(self, *args: object) -> None:
+        """Fall back to :data:`DEFAULT` when raised with no message."""
+        super().__init__(*(args or (self.DEFAULT,)))
 
 
 class ExecutionTimeoutError(HaltError, TimeoutError):
