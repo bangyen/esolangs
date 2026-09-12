@@ -1,8 +1,4 @@
-"""Unit tests for WII2D (Why Is It 2D?) interpreter.
-
-Tests cover all WII2D commands, edge cases, and example programs from esolangs.org.
-Includes timeout protection to prevent hanging tests.
-"""
+r"""Unit tests for WII2D (Why Is It 2D?) interpreter."""
 
 import io
 import signal
@@ -18,28 +14,16 @@ from tests.interpreters.contract import CycleContract, SnapshotContract
 
 
 class _TestTimeoutError(Exception):
-    """Custom timeout exception for test protection."""
+    r"""Custom timeout exception for test protection."""
 
 
 def timeout_handler(_signum: int, _frame: Any) -> None:
-    """Signal handler for timeout protection."""
+    r"""Signal handler for timeout protection."""
     raise _TestTimeoutError("Test execution timed out")
 
 
 def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 5) -> Any:
-    """Run a function with timeout protection.
-
-    Args:
-        func: Function to execute
-        timeout_seconds: Maximum execution time in seconds
-
-    Returns:
-        Function result
-
-    Raises:
-        _TestTimeoutError: If function exceeds timeout
-
-    """
+    r"""Run a function with timeout protection."""
     # Set up signal handler for.
     old_handler = signal.signal(signal.SIGALRM, timeout_handler)
     signal.alarm(timeout_seconds)
@@ -53,10 +37,10 @@ def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 5) -> Any:
 
 
 class TestWII2DBasicCommands:
-    """Test basic WII2D command functionality."""
+    r"""Test basic WII2D command functionality."""
 
     def test_movement_commands(self) -> None:
-        """Test directional movement commands (^v<>)."""
+        r"""Test directional movement commands (^v<>)."""
         # Simple program that moves.
         code = [">~.", "!"]
 
@@ -65,14 +49,7 @@ class TestWII2DBasicCommands:
         assert f.getvalue() == "\x00"
 
     def test_each_heading_moves_its_own_way(self) -> None:
-        """All four headings are distinct, and each is the one it names.
-
-        Only ``>`` was ever driven, so the other three entries of the
-        heading table were free -- a table that repeated a direction, or
-        swapped two, would still pass.  Each program here lays a different
-        digit in the path of one heading, so the printed byte says which
-        way the pointer actually went.
-        """
+        r"""All four headings are distinct, and each is the one it names."""
         for code, expected in (
             ([">3~.", "!  "], "\x03"),
             (["~4<.", "  ! "], "\x04"),
@@ -84,7 +61,7 @@ class TestWII2DBasicCommands:
             assert f.getvalue() == expected, code
 
     def test_arithmetic_operations(self) -> None:
-        """Test arithmetic operations (+-*/s)."""
+        r"""Test arithmetic operations (+-*/s)."""
         # Test increment - move right,.
         code = [">+~.", "!"]
 
@@ -93,7 +70,7 @@ class TestWII2DBasicCommands:
         assert f.getvalue() == "\x01"  # 0 + 1 = 1.
 
     def test_digit_commands(self) -> None:
-        """Test digit commands (0-9) that set accumulator."""
+        r"""Test digit commands (0-9) that set accumulator."""
         # Test setting accumulator to 5.
         code = [">5~.", "!"]
 
@@ -102,7 +79,7 @@ class TestWII2DBasicCommands:
         assert f.getvalue() == "\x05"  # ASCII 5.
 
     def test_output_command(self) -> None:
-        """Test output command (~) that prints accumulator as ASCII."""
+        r"""Test output command (~) that prints accumulator as ASCII."""
         # Test outputting 'A' (ASCII.
         code = [">65~.", "!"]
 
@@ -111,7 +88,7 @@ class TestWII2DBasicCommands:
         assert f.getvalue() == "\x05"  # The program outputs 65 as a.
 
     def test_halt_command(self) -> None:
-        """Test halt command (.) that ends program execution."""
+        r"""Test halt command (.) that ends program execution."""
         code = ["!", "."]
 
         with redirect_stdout(io.StringIO()) as f:
@@ -120,7 +97,7 @@ class TestWII2DBasicCommands:
         run_with_timeout(lambda: run(code, IO()))
 
     def test_nop_command(self) -> None:
-        """Test nop command (#) that does nothing."""
+        r"""Test nop command (#) that does nothing."""
         code = [">#~.", "!"]
 
         with redirect_stdout(io.StringIO()) as f:
@@ -129,10 +106,10 @@ class TestWII2DBasicCommands:
 
 
 class TestWII2DArithmetic:
-    """Test WII2D arithmetic operations."""
+    r"""Test WII2D arithmetic operations."""
 
     def test_increment_operation(self) -> None:
-        """Test + operation that increments accumulator."""
+        r"""Test + operation that increments accumulator."""
         code = [">+++~.", "!"]
 
         with redirect_stdout(io.StringIO()) as f:
@@ -140,7 +117,7 @@ class TestWII2DArithmetic:
         assert f.getvalue() == "\x03"  # 0 + 1 + 1 + 1 = 3.
 
     def test_decrement_operation(self) -> None:
-        """Test - operation that decrements accumulator."""
+        r"""Test - operation that decrements accumulator."""
         code = [">5---~.", "!"]
 
         with redirect_stdout(io.StringIO()) as f:
@@ -148,7 +125,7 @@ class TestWII2DArithmetic:
         assert f.getvalue() == "\x02"  # 5 - 1 - 1 - 1 = 2.
 
     def test_double_operation(self) -> None:
-        """Test * operation that doubles accumulator."""
+        r"""Test * operation that doubles accumulator."""
         code = [">3*~.", "!"]
 
         with redirect_stdout(io.StringIO()) as f:
@@ -156,7 +133,7 @@ class TestWII2DArithmetic:
         assert f.getvalue() == "\x06"  # 3 * 2 = 6.
 
     def test_halve_operation(self) -> None:
-        """Test / operation that halves accumulator."""
+        r"""Test / operation that halves accumulator."""
         code = [">8/~.", "!"]
 
         with redirect_stdout(io.StringIO()) as f:
@@ -164,7 +141,7 @@ class TestWII2DArithmetic:
         assert f.getvalue() == "\x04"  # 8 / 2 = 4.
 
     def test_square_operation(self) -> None:
-        """Test s operation that squares accumulator."""
+        r"""Test s operation that squares accumulator."""
         code = [">3s~.", "!"]
 
         with redirect_stdout(io.StringIO()) as f:
@@ -172,7 +149,7 @@ class TestWII2DArithmetic:
         assert f.getvalue() == "\x09"  # 3^2 = 9.
 
     def test_complex_arithmetic(self) -> None:
-        """Test complex arithmetic expression."""
+        r"""Test complex arithmetic expression."""
         code = [">2+*s~.", "!"]  # (2+1)*2 = 6, then 6^2 = 36.
 
         with redirect_stdout(io.StringIO()) as f:
@@ -181,26 +158,16 @@ class TestWII2DArithmetic:
 
 
 class TestJumpTargets:
-    """Which ``@`` a jump picks, asked of the chooser directly.
-
-    The two ``@`` programs elsewhere offer a single candidate, on a row
-    below the first -- so neither the row-0 exclusion nor the distance
-    being minimised was ever exercised by them.
-    """
+    r"""Which ``@`` a jump picks, asked of the chooser directly."""
 
     def test_the_nearest_at_by_manhattan_distance_wins(self) -> None:
-        """Two candidates, and the answer changes with where the jump starts."""
+        r"""Two candidates, and the answer changes with where the jump starts."""
         grid = ["....", "@...", "....", "....", ".....@"]
         assert close(grid)(2, 0) == (1, 0)
         assert close(grid)(4, 4) == (4, 5)
 
     def test_an_at_on_the_first_row_is_not_a_candidate(self) -> None:
-        """Row 0 is excluded even when its ``@`` is much the closest.
-
-        From ``(0, 1)`` the ``@`` at ``(0, 0)`` is one step away and the
-        one at ``(2, 3)`` is four, so a chooser that considered row 0
-        would answer differently.
-        """
+        r"""Row 0 is excluded even when its ``@`` is much the closest."""
         assert close(["@...", "....", "...@"])(0, 1) == (2, 3)
 
     def test_no_candidate_gives_none(self) -> None:
@@ -208,10 +175,10 @@ class TestJumpTargets:
 
 
 class TestWII2DControlFlow:
-    """Test WII2D control flow commands."""
+    r"""Test WII2D control flow commands."""
 
     def test_jump_command(self) -> None:
-        """Test @ command that jumps to closest @."""
+        r"""Test @ command that jumps to closest @."""
         code = ["!", ">@~.", "  @"]
 
         with redirect_stdout(io.StringIO()) as f:
@@ -219,7 +186,7 @@ class TestWII2DControlFlow:
         assert f.getvalue() == "\x00"
 
     def test_reverse_direction(self) -> None:
-        """Test | command that reverses the direction of travel."""
+        r"""Test | command that reverses the direction of travel."""
         # Pointer starts north of .
         code = ["|", "!", "."]
 
@@ -228,10 +195,10 @@ class TestWII2DControlFlow:
         assert f.getvalue() == ""
 
     def test_reverse_horizontal_direction(self) -> None:
-        """Test | reversing an east-moving pointer back to the west."""
+        r"""Test | reversing an east-moving pointer back to the west."""
 
         class _Scripted:
-            """Hands out a fixed sequence of turns, one per ``?``."""
+            r"""Hands out a fixed sequence of turns, one per ``?``."""
 
             def __init__(self, draws: list[int]) -> None:
                 self._draws = list(draws)
@@ -249,10 +216,10 @@ class TestWII2DControlFlow:
 
 
 class TestWII2DHelloWorld:
-    """Test WII2D Hello World program from esolangs.org."""
+    r"""Test WII2D Hello World program from esolangs.org."""
 
     def test_hello_world_program(self) -> None:
-        """Test the complete Hello World program from esolangs.org."""
+        r"""Test the complete Hello World program from esolangs.org."""
         # The Hello World program from.
         hello_world_code = [
             ">8s++++++++~9+s+~+++++++~~+++~9+**++++~8**~*9+s-------------~9+s+++++++++++~+++~9+s++++++++~9+s~4s*+~.",
@@ -264,7 +231,7 @@ class TestWII2DHelloWorld:
         assert f.getvalue() == "Hello, World!"
 
     def test_character_generation_pattern(self) -> None:
-        """Test pattern for generating specific ASCII characters."""
+        r"""Test pattern for generating specific ASCII characters."""
         # Generate 'H' (ASCII 72).
         code = [">72~.", "!"]
 
@@ -273,7 +240,7 @@ class TestWII2DHelloWorld:
         assert f.getvalue() == "\x02"  # The program outputs 72 as a.
 
     def test_simple_hello_pattern(self) -> None:
-        """Test a simplified hello pattern."""
+        r"""Test a simplified hello pattern."""
         # Generate "Hi" using.
         code = [">72~105~.", "!"]  # H (72) then i (105) then halt.
 
@@ -283,31 +250,31 @@ class TestWII2DHelloWorld:
 
 
 class TestWII2DEdgeCases:
-    """Test WII2D edge cases and error conditions."""
+    r"""Test WII2D edge cases and error conditions."""
 
     def test_empty_program(self) -> None:
-        """Test that an empty program is rejected."""
+        r"""Test that an empty program is rejected."""
         code: list[str] = []
 
         with pytest.raises(ValueError, match="start marker"):
             run_with_timeout(lambda: run(code, IO()))
 
     def test_program_without_start_marker(self) -> None:
-        """Test program without ! start marker."""
+        r"""Test program without ."""
         code = ["~.", "  "]
 
         with pytest.raises(ValueError, match="start marker"):
             run_with_timeout(lambda: run(code, IO()))
 
     def test_multiple_start_markers(self) -> None:
-        """Test program with more than one ! start marker."""
+        r"""Test program with more than one ."""
         code = ["~.", "!", "!"]
 
         with pytest.raises(ValueError, match="start marker"):
             run_with_timeout(lambda: run(code, IO()))
 
     def test_uneven_line_lengths(self) -> None:
-        """Test program with uneven line lengths."""
+        r"""Test program with uneven line lengths."""
         code = [">~.", "  +", "!"]
 
         with redirect_stdout(io.StringIO()) as f:
@@ -315,7 +282,7 @@ class TestWII2DEdgeCases:
         assert f.getvalue() == "\x00"
 
     def test_large_accumulator_values(self) -> None:
-        """Test handling of large accumulator values."""
+        r"""Test handling of large accumulator values."""
         code = [">255~.", "!"]  # Maximum byte value.
 
         with redirect_stdout(io.StringIO()) as f:
@@ -323,7 +290,7 @@ class TestWII2DEdgeCases:
         assert f.getvalue() == "\x05"  # 255 outputs as 2 then 5 then.
 
     def test_division_by_zero_equivalent(self) -> None:
-        """Test division when accumulator is 1 (results in 0)."""
+        r"""Test division when accumulator is 1 (results in 0)."""
         code = [">1/~.", "!"]  # 1 / 2 = 0 (integer division).
 
         with redirect_stdout(io.StringIO()) as f:
@@ -331,7 +298,7 @@ class TestWII2DEdgeCases:
         assert f.getvalue() == "\x00"
 
     def test_no_at_commands_for_jump(self) -> None:
-        """Test @ command when no other @ commands exist."""
+        r"""Test @ command when no other @ commands exist."""
         code = [">@~.", "!"]  # Try to jump but no other @.
 
         with redirect_stdout(io.StringIO()) as f:
@@ -340,10 +307,10 @@ class TestWII2DEdgeCases:
 
 
 class TestWII2DIntegration:
-    """Integration tests for WII2D interpreter."""
+    r"""Integration tests for WII2D interpreter."""
 
     def test_complex_program_with_multiple_operations(self) -> None:
-        """Test a complex program with multiple operations."""
+        r"""Test a complex program with multiple operations."""
         code = [">5+*s/~.", "!"]  # (5+1)*2 = 12, 12^2 = 144,.
 
         with redirect_stdout(io.StringIO()) as f:
@@ -351,7 +318,7 @@ class TestWII2DIntegration:
         assert f.getvalue() == "H"  # ASCII 72.
 
     def test_character_arithmetic_chain(self) -> None:
-        """Test a chain of character arithmetic operations."""
+        r"""Test a chain of character arithmetic operations."""
         # Test multiple character.
         code = [">65~66~67~.", "!"]  # A (65), B (66), C (67) then.
 
@@ -361,10 +328,10 @@ class TestWII2DIntegration:
 
 
 class TestWII2DMathematicalOperations:
-    """Test WII2D mathematical operations from esolangs.org examples."""
+    r"""Test WII2D mathematical operations from esolangs.org examples."""
 
     def test_addition_simulation(self) -> None:
-        """Test addition using increment operations."""
+        r"""Test addition using increment operations."""
         code = [">3++++~.", "!"]  # 3 + 4 = 7.
 
         with redirect_stdout(io.StringIO()) as f:
@@ -372,7 +339,7 @@ class TestWII2DMathematicalOperations:
         assert f.getvalue() == "\x07"
 
     def test_multiplication_simulation(self) -> None:
-        """Test multiplication using doubling operations."""
+        r"""Test multiplication using doubling operations."""
         code = [">4**~.", "!"]  # 4 * 2 * 2 = 16.
 
         with redirect_stdout(io.StringIO()) as f:
@@ -380,7 +347,7 @@ class TestWII2DMathematicalOperations:
         assert f.getvalue() == "\x10"
 
     def test_division_simulation(self) -> None:
-        """Test division using halving operations."""
+        r"""Test division using halving operations."""
         code = [">16//~.", "!"]  # 16 / 2 / 2 = 4.
 
         with redirect_stdout(io.StringIO()) as f:
@@ -389,7 +356,7 @@ class TestWII2DMathematicalOperations:
 
 
 class TestShellEffects:
-    """Output and arithmetic are covered through WII2D programs."""
+    r"""Output and arithmetic are covered through WII2D programs."""
 
     @staticmethod
     def _run_cells(cells: str) -> str:
@@ -421,13 +388,7 @@ class TestStepMachine:
         assert machine.acc == 0
 
     def test_the_vm_view_reports_the_grid_position(self) -> None:
-        """``ip``/``memory``/``stack`` are the shared names over WII2D's state.
-
-        WII2D's cursor is a grid position and a heading rather than an
-        index, so ``ip`` is the triple and ``memory`` is the single
-        accumulator -- the debugger reads both through those names, and
-        nothing else here does.
-        """
+        r"""``ip``/``memory``/``stack`` are the shared names over WII2D's state."""
         from esolangs.interpreters.grid_based.wii2d import _Machine
 
         machine = _Machine([">+~.", "!"], IO())
@@ -461,7 +422,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(SnapshotContract, CycleContract):
-    """The shared shapes, with this language's own programs."""
+    r"""The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program: ClassVar[list[str]] = [">+~.", "!"]

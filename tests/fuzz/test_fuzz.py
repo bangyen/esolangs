@@ -1,9 +1,4 @@
-"""Regression fuzz tests: random programs must not crash interpreters.
-
-These interpreters terminate by construction (single pass over the program),
-so random programs are safe to run in-process. A fixed seed keeps the tests
-deterministic.
-"""
+r"""Regression fuzz tests: random programs must not crash interpreters."""
 
 import importlib
 import io
@@ -33,7 +28,7 @@ minsky_run = importlib.import_module(
 
 
 def run_safely(fn: Callable[..., Any], program: str | list[str]) -> None:
-    """Run a program, asserting it raises nothing unexpected."""
+    r"""Run a program, asserting it raises nothing unexpected."""
     buffer = io.StringIO()
     with patch("builtins.input", return_value="0"), redirect_stdout(buffer):
         fn(program, io=IO())
@@ -134,14 +129,7 @@ def test_eval_random() -> None:
 
 
 def test_painfuck_random_including_random_skip() -> None:
-    """Fuzz ``y`` through every coin outcome, not one seeded outcome.
-
-    Painfuck's random skip used to be absent from random-program fuzzing:
-    a deterministic cycle detector cannot call a revisit a loop when a later
-    coin toss could escape it.  Its branching machine can enumerate both
-    choices exactly, so each finite program is now either shown to have a
-    halting draw or shown to cycle on every draw.
-    """
+    r"""Fuzz ``y`` through every coin outcome, not one seeded outcome."""
     from esolangs.interpreters.tape_based.painfuck import _CYCLES, _Machine
 
     random.seed(12)
@@ -171,7 +159,7 @@ def test_painfuck_random_including_random_skip() -> None:
 
 
 def test_wii2d_random_turns() -> None:
-    """Fuzz WII2D's ``?`` by exploring its four headings at each turn."""
+    r"""Fuzz WII2D's ``?`` by exploring its four headings at each turn."""
     from esolangs.interpreters.grid_based.wii2d import _Machine
 
     random.seed(13)

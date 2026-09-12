@@ -1,19 +1,4 @@
-"""Verify the single-interpreter installer end to end.
-
-``scripts/install_one.sh`` downloads ``bundle_one.py`` from a base URL and
-runs it, which fetches the interpreter plus the shared modules over HTTP and
-inlines them into one runnable file.  The unit tests exercise the bundler
-against the local checkout, but not the HTTP fetch or the shell wrapper, so
-this script serves the repository over a local HTTP server and runs the real
-installer against it for a few representative languages.
-
-It is called from CI's ``lint`` job and from ``verify.py`` locally.
-
-Usage:
-    python scripts/verify_install_one.py
-
-Requires: curl and python3 on PATH (the installer's own requirements).
-"""
+r"""Verify the single-interpreter installer end to end."""
 
 import shutil
 import subprocess
@@ -41,10 +26,10 @@ _PROGRAMS = {
 
 
 def _serve() -> ThreadingHTTPServer:
-    """Serve the repository root over HTTP on a random localhost port."""
+    r"""Serve the repository root over HTTP on a random localhost port."""
 
     class _QuietHandler(SimpleHTTPRequestHandler):
-        """A handler that does not log each request to stderr."""
+        r"""A handler that does not log each request to stderr."""
 
         def log_message(self, _format: str, *args: object) -> None:
             pass
@@ -59,7 +44,7 @@ def _serve() -> ThreadingHTTPServer:
 def _install(
     base: str, language: str, workdir: Path
 ) -> subprocess.CompletedProcess[str]:
-    """Run the installer against ``base`` in ``workdir``."""
+    r"""Run the installer against ``base`` in ``workdir``."""
     env = {"ESOLANGS_BASE": base}
     return subprocess.run(
         ["sh", str(INSTALLER), language],
@@ -71,7 +56,7 @@ def _install(
 
 
 def _run_bundle(workdir: Path, program: str) -> str:
-    """Run the bundled file (named by the canonical id) on ``program``."""
+    r"""Run the bundled file (named by the canonical id) on ``program``."""
     bundle = next(workdir.glob("esolangs_*.py"))
     prog = workdir / "prog.txt"
     prog.write_text(program)
@@ -84,7 +69,7 @@ def _run_bundle(workdir: Path, program: str) -> str:
 
 
 def main() -> int:
-    """Install and run a bundled interpreter for each sample language."""
+    r"""Install and run a bundled interpreter for each sample language."""
     if shutil.which("curl") is None:
         print("[skip] install-one check: curl not installed")
         return 0

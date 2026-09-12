@@ -1,1 +1,1 @@
-"""Interpreters for stack-based esolangs."""
+r"""Interpreters for stack-based esolangs."""

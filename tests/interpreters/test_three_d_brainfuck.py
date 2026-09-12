@@ -1,4 +1,4 @@
-"""Unit tests for the 3D Brainfuck interpreter."""
+r"""Unit tests for the 3D Brainfuck interpreter."""
 
 import pytest
 
@@ -22,13 +22,7 @@ class Test3DBrainfuck:
         assert run_program("+" * 256 + ".") == "\x00"
 
     def test_cell_wraps_below_zero(self) -> None:
-        """One decrement from 0 is 255, which pins the width and direction.
-
-        Wrapping upward lands on 0 under any modulus, and the decrement was
-        only ever run on a cell holding more than it subtracts -- so the
-        step down could have been an addition, or the modulus anything at
-        all, and every program still agreed.
-        """
+        r"""One decrement from 0 is 255, which pins the width and direction."""
         assert run_program("-.") == "\xff"
         assert run_program("--.") == "\xfe"
 
@@ -43,15 +37,7 @@ class Test3DBrainfuck:
         assert run_program("n+.e+.u+.") == "\x01\x01\x01"
 
     def test_each_axis_has_an_inverse(self) -> None:
-        """s, w and d undo n, e and u.
-
-        Only the three positive directions were used anywhere, and every
-        program walked outward from the origin -- so which axis a move
-        actually took never mattered, the cells being distinct either way.
-        Marking the origin and returning to it says the move came back to
-        the same cell, and reading a neighbour says it went somewhere else
-        on the way.
-        """
+        r"""s, w and d undo n, e and u."""
         assert run_program("+ns.") == "\x01"
         assert run_program("+ew.") == "\x01"
         assert run_program("+ud.") == "\x01"
@@ -62,16 +48,7 @@ class Test3DBrainfuck:
         assert run_program("u+d.") == "\x00"
 
     def test_each_move_goes_the_way_its_axis_points(self) -> None:
-        """The array pointer lands on the named coordinate, not its mirror.
-
-        Output cannot show this.  ``_ARRAY`` is closed under negation, so
-        flipping the sign of any component relabels a pair of moves --
-        ``n``/``s``, ``u``/``d``, ``e``/``w`` -- and every program that walks
-        out and back returns to the origin either way, while one that only
-        walks out lands on a cell that is distinct either way.  The
-        coordinate itself is the thing that differs, so it is what these
-        assert: one move per axis, each naming the cell it wrote.
-        """
+        r"""The array pointer lands on the named coordinate, not its mirror."""
         for program, cell in (
             ("n+", (1, 0, 0)),
             ("s+", (-1, 0, 0)),
@@ -87,15 +64,7 @@ class Test3DBrainfuck:
             assert machine.cells == {cell: 1}, program
 
     def test_the_instruction_pointer_advances_along_its_heading(self) -> None:
-        """The instruction pointer moves the way the heading points.
-
-        The same negation symmetry sits on the advance: flipping a component
-        of the heading sends the pointer the other way along that axis.  On
-        the default +X heading the program simply runs, so the flip shows
-        only off-axis -- where the pointer leaves the source line and the
-        program halts either way, at the same step count.  The *position* it
-        stops at is what separates them.
-        """
+        r"""The instruction pointer moves the way the heading points."""
         for block, heading in (
             ("U", (0, 1, 0)),
             ("D", (0, -1, 0)),
@@ -115,13 +84,7 @@ class Test3DBrainfuck:
         assert run_program("n+[-].") == "\x00"
 
     def test_a_zero_cell_skips_the_loop_body(self) -> None:
-        """``[`` jumps past its ``]`` when the cell is 0, rather than in.
-
-        Every loop tested entered its body at least once, so a ``[`` that
-        stopped jumping entirely -- or jumped somewhere other than one past
-        the match -- still produced the same output.  These two say where
-        it went: the body must not run, and what follows the loop must.
-        """
+        r"""``[`` jumps past its ``]`` when the cell is 0, rather than in."""
         assert run_program("[+].") == "\x00"
         assert run_program("[.]") == ""
         # The jump reads the bracket.
@@ -132,25 +95,13 @@ class Test3DBrainfuck:
         assert run_program("+-[+].") == "\x00"
 
     def test_an_untouched_cell_reads_as_zero(self) -> None:
-        """Cells are created on demand, and one never written holds 0.
-
-        The array is a dict, so every read needs a default; without one it
-        yields None and the print raises instead of emitting a NUL.  Only a
-        cell the program has never written reaches that path.
-        """
+        r"""Cells are created on demand, and one never written holds 0."""
         assert run_program(".") == "\x00"
         assert run_program("n.") == "\x00"
         assert run_program("nu.") == "\x00"
 
     def test_a_loop_ends_on_a_cell_it_never_wrote(self) -> None:
-        """``]`` reads the same on-demand default that everything else does.
-
-        Every loop so far closed over the cell it had been counting down,
-        which is written by definition.  Moving the array pointer inside
-        the body leaves ``]`` reading a cell that was never written, and
-        the loop only terminates if that reads as 0 -- a missing or
-        non-zero default spins here forever.
-        """
+        r"""``]`` reads the same on-demand default that everything else does."""
         assert run_program("+[n].") == "\x00"
         assert run_program("++[-n].") == "\x00"
 
@@ -214,7 +165,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(SnapshotContract, CycleContract):
-    """The shared shapes, with this language's own programs."""
+    r"""The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program = "+."

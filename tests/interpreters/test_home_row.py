@@ -1,8 +1,4 @@
-"""Unit tests for the Home Row interpreter.
-
-Tests cover the BF-like commands (a/s/d/f/j/k/l/;), the 5x5 torus grid,
-the while-nonzero loop, and the malformed-program rule.
-"""
+r"""Unit tests for the Home Row interpreter."""
 
 import pytest
 
@@ -52,12 +48,7 @@ class TestPointer:
         assert run_program("ad" * 5 + "k;") == "\x01"
 
     def test_down_lands_on_the_next_row(self) -> None:
-        """``d`` moves a whole row forward, not backward.
-
-        Every other pointer test moves in multiples of five, which return
-        to the start either way -- so moving down and moving up were the
-        same thing.  One ``d`` has to land on cell 5.
-        """
+        r"""``d`` moves a whole row forward, not backward."""
         from esolangs.interpreters.tape_based.home_row import _Machine
 
         machine = _Machine("d", ScriptedIO())
@@ -65,15 +56,7 @@ class TestPointer:
         assert machine.ptr == 5
 
     def test_forward_wraps_at_the_row_edge(self) -> None:
-        """``f`` returns to the start of its row rather than crossing into
-        the next.
-
-        The wrap fires on the column the pointer lands in, and only there:
-        after a single ``f`` the pointer is at cell 1 and must *not* have
-        been pulled back a row.  Five ``f``s return it to cell 0, which is
-        the wrap doing its job -- but that alone cannot tell a check on the
-        wrong column apart, since both land there.
-        """
+        r"""``f`` returns to the start of its row rather than crossing into the."""
         from esolangs.interpreters.tape_based.home_row import _Machine
 
         machine = _Machine("f", ScriptedIO())
@@ -86,7 +69,7 @@ class TestPointer:
         assert machine.ptr == 0
 
     def test_grid_is_five_by_five(self) -> None:
-        """The grid holds exactly twenty-five cells."""
+        r"""The grid holds exactly twenty-five cells."""
         from esolangs.interpreters.tape_based.home_row import _Machine
 
         assert len(_Machine("", ScriptedIO()).grid) == 25
@@ -114,13 +97,7 @@ class TestSkip:
         assert run_program("ajak;") == "\x02"
 
     def test_jump_skips_relative_to_itself(self) -> None:
-        """``j`` steps over the command after it, wherever it sits.
-
-        Every other skip runs ``j`` as the first or second command, where
-        moving one forward and jumping to a fixed second position are the
-        same thing.  Two moves first put it further along, where they are
-        not.
-        """
+        r"""``j`` steps over the command after it, wherever it sits."""
         assert run_program("ffjak;") == "\x00"
 
 
@@ -149,7 +126,7 @@ class TestLoop:
 
 class TestLongProgram:
     def test_multiply_loops_print_hello_world(self) -> None:
-        """Thirteen multiply-loops end to end, one per character."""
+        r"""Thirteen multiply-loops end to end, one per character."""
         program = (
             "aaaaaaaalfaaaaaaaaaffffslfkffffaaaaaaaaaalfaaaaaaaaaaffffslfakffffaa"
             "aaaaaaalfaaaaaaaaaaaaffffslfkffffaaaaaaaaalfaaaaaaaaaaaaffffslfkffff"
@@ -189,7 +166,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(EmptyProgramContract, CycleContract, StateViewContract):
-    """The shared empty-program shape, with this language's data."""
+    r"""The shared empty-program shape, with this language's data."""
 
     run = staticmethod(run_program)
     machine = staticmethod(_machine)

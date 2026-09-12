@@ -1,18 +1,4 @@
-"""Tests for line_boolean.py: render -> extract -> simulate round-trips.
-
-Run via: uv run --with pytest pytest test_line_boolean.py
-
-Covers n=1 through n=3 across every input combination, plus the specific
-geometry bug this module's development caught: render.py's `_layout` used
-to space sibling fork arms *outward* with absolute nesting depth, which
-looks intuitively safer but is backwards for a tree that turns 90 degrees
-at every fork -- a deeper arm's own children turn back toward the
-*original* heading and, given enough length, cross an ancestor fork's own
-line.  n=1 and n=2 (single fork level) cannot expose this at all; n=3 is
-the first case with a re-converging inward turn, so it is the regression
-test for the fix (`_BRANCH_SPACING` scaling by 2**remaining-depth instead
-of by absolute depth -- see render.py's own comment for the full story).
-"""
+r"""Tests for line_boolean.py: render -> extract -> simulate."""
 
 from __future__ import annotations
 
@@ -48,51 +34,36 @@ def _check_truth_table(
 
 
 class TestLineBoolean:
-    """Generated decision trees, end to end through render -> extract -> simulate."""
+    r"""Generated decision trees, end to end through render -> extract ->."""
 
     def test_identity_n1(self, tmp_path: Path) -> None:
-        """Identity on one input: output follows the single bit."""
+        r"""Identity on one input: output follows the single bit."""
         _check_truth_table("01", 1, tmp_path)
 
     def test_not_n1(self, tmp_path: Path) -> None:
-        """NOT on one input: output is the inverted bit."""
+        r"""NOT on one input: output is the inverted bit."""
         _check_truth_table("10", 1, tmp_path)
 
     def test_and_n2(self, tmp_path: Path) -> None:
-        """AND over two inputs."""
+        r"""AND over two inputs."""
         _check_truth_table("0001", 2, tmp_path)
 
     def test_xor_n2(self, tmp_path: Path) -> None:
-        """XOR over two inputs."""
+        r"""XOR over two inputs."""
         _check_truth_table("0110", 2, tmp_path)
 
     def test_majority_n3(self, tmp_path: Path) -> None:
-        """The regression case: a 3-deep tree with an inward-turning arm."""
+        r"""The regression case: a 3-deep tree with an inward-turning arm."""
         _check_truth_table("00010111", 3, tmp_path)
 
     @pytest.mark.slow  # 5.2s: 32 input combinations.
     def test_parity_n5(self, tmp_path: Path) -> None:
-        """5-input parity, past the ceiling this generator used to document.
-
-        `line_boolean.py` recorded a practical limit of n<=4, with n=5
-        projected at roughly 35000x17000px and called impractical.  That was
-        an artifact of `render._fork_depth`'s fork-counting arm spacing, not
-        of decision trees: with extent-based spacing n=5 renders at 4000x2620
-        and extracts in about a second.  Pinned here at n=5 rather than the
-        n=7 that also passes, to keep the suite fast (n=7 spends ~9s in
-        extract plus execution) while still covering two levels past where
-        coverage used to stop -- deep enough that a regression in arm sizing
-        shows up as a real failure here rather than only as a larger drawing.
-
-        Parity is the useful table at this depth: every one of the 32 input
-        combinations reaches a distinct leaf, so a mis-sized arm anywhere in
-        the tree changes an answer rather than hiding in an unvisited branch.
-        """
+        r"""5-input parity, past the ceiling this generator used to document."""
         _check_truth_table("01101001100101101001011001101001", 5, tmp_path)
 
     @pytest.mark.slow  # 7s: all 256 rendered-tree.
     def test_parity_n8(self, tmp_path: Path) -> None:
-        """8-input parity reaches every leaf through the real PNG round trip."""
+        r"""8-input parity reaches every leaf through the real PNG round trip."""
         _check_truth_table(
             "".join(str(bits.bit_count() % 2) for bits in range(2**8)),
             8,
@@ -118,7 +89,7 @@ class TestLineBoolean:
     # rendering.
     @pytest.mark.slow  # 13s: one n=9 drawing,.
     def test_parity_n9_on_boundary_rows(self, tmp_path: Path) -> None:
-        """9-input parity is checked where an arm's size can go wrong."""
+        r"""9-input parity is checked where an arm's size can go wrong."""
         n = 9
         rows = {0, 2**n - 1}
         rows.update(1 << i for i in range(n))
@@ -132,11 +103,11 @@ class TestLineBoolean:
         )
 
     def test_invalid_length_rejected(self) -> None:
-        """A truth table whose length is not a power of two is rejected."""
+        r"""A truth table whose length is not a power of two is rejected."""
         with pytest.raises(ValueError, match="power-of-two"):
             line_boolean("010")
 
     def test_invalid_characters_rejected(self) -> None:
-        """A truth table containing anything but 0/1 is rejected."""
+        r"""A truth table containing anything but 0/1 is rejected."""
         with pytest.raises(ValueError, match="only '0' and '1'"):
             line_boolean("0102")

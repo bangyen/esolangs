@@ -1,4 +1,4 @@
-"""Unit tests for the Lamfunc interpreter."""
+r"""Unit tests for the Lamfunc interpreter."""
 
 import pytest
 
@@ -24,71 +24,29 @@ class TestBuiltins:
         assert run_program("p 0b101") == "101"
 
     def test_combining_bits_with_a_zero_operand(self) -> None:
-        """``cb`` concatenates unless *both* operands are zero.
-
-        The only case tested had two nonzero operands, where every part of
-        this is satisfied whichever way it is spelled.  A single zero still
-        concatenates -- ``cb 0 1`` is 1 and ``cb 1 0`` is 10 -- so the
-        empty-result guard is an ``or``; two zeros give 0 rather than the
-        empty string ``int()`` would refuse.
-
-        Zero also stands next to the interpreter's own sanity check, which
-        asserts that neither operand is negative.  No Lamfunc value can be,
-        so the check never fires -- but a comparison written one step
-        further in would reject zero, which is why these cases have to run
-        rather than merely be argued about.
-        """
+        r"""``cb`` concatenates unless *both* operands are zero."""
         assert run_program("p cb 0 1") == "1"
         assert run_program("p cb 1 0") == "10"
         assert run_program("p cb 5 0") == "1010"
         assert run_program("p cb 0 0") == "0"
 
     def test_printing_a_function_reference(self) -> None:
-        """``p .f`` prints the function's name once.
-
-        ``.f`` only ever appeared as an argument to something else, so the
-        frame a reference opens was never the one whose value was printed
-        -- and a frame started one token along repeats the name.
-        """
+        r"""``p .f`` prints the function's name once."""
         assert run_program("p .p") == "p"
 
     def test_a_stored_variable_reads_back_as_its_value(self) -> None:
-        """``vs`` stores a value under a name, and the name resolves to it.
-
-        The existing case stores and reads within one expression; storing
-        on one line and reading on the next makes the lookup go through the
-        variable table rather than the expression's own operands, so a
-        lookup that returned the name would show as the name being printed.
-        """
+        r"""``vs`` stores a value under a name, and the name resolves to it."""
         assert run_program("vs 'a' 1\np 'a'") == "1"
 
     def test_a_binary_literal_needs_digits_and_only_binary_ones(self) -> None:
-        """``0b`` alone is a name, and so is ``0b`` followed by a 2.
-
-        Only well-formed literals were ever written, so the two halves of
-        the check never had to hold: a prefix with nothing after it, and a
-        digit outside ``01``.  Both make the token a plain name, which
-        prints as itself rather than as a number -- and ``0b0`` is the
-        shortest well-formed one, which a check reading past the first
-        digit would reject.
-        """
+        r"""``0b`` alone is a name, and so is ``0b`` followed by a 2."""
         assert run_program("p 0b") == "0b"
         assert run_program("p 0b2") == "0b2"
         assert run_program("p 0b12") == "0b12"
         assert run_program("p 0b0") == "0"
 
     def test_an_unknown_name_in_a_skipped_branch_is_one_token(self) -> None:
-        """``_scan`` sizes an unevaluated branch without running it.
-
-        A token that is neither a builtin nor a user definition is an
-        atom taking one slot, so the ``p 7`` after it is a separate
-        statement rather than its argument.  Sized as a call instead --
-        which either half of that test being flipped would do -- the
-        unknown name swallows what follows and the 7 is never printed.
-
-        The unchosen branch is what makes this visible: an unknown name
-        the program actually *runs* halts before anything else can show.
-        """
+        r"""``_scan`` sizes an unevaluated branch without running it."""
         assert run_program("p i 1 3 foo p 7") == "11111"  # 3 then 7, in binary.
         with raises_message(HaltError, "calling undefined function 'foo'"):
             run_program("p i 0 3 foo p 7")
@@ -120,7 +78,7 @@ class TestBuiltins:
 
 class TestFunctions:
     def test_call_parameters_shadow_and_restore_variables(self) -> None:
-        """A call temporarily binds its parameter without losing the caller's value."""
+        r"""A call temporarily binds its parameter without losing the caller's."""
         code = "F f a - p a\nvs a 3\nf 7\np vg a"
         assert run_program(code) == "11111"
 
@@ -159,10 +117,7 @@ class TestRecursion:
         assert run_program(code) == "10001001010"
 
     def test_deep_recursion_no_longer_capped(self) -> None:
-        """A correct, terminating recursion past Python's default 1000-frame
-        limit completes, since a call pushes an explicit frame instead of
-        recursing natively.
-        """
+        r"""A correct, terminating recursion past Python's default 1000-frame."""
         depth = 2000
         lines = []
         for i in range(depth):
@@ -178,7 +133,7 @@ class TestPartialApplication:
     def test_a_returned_one_argument_partial_absorbs_the_next_top_level_token(
         self,
     ) -> None:
-        """A returned ``p`` partial consumes the remaining main-program token."""
+        r"""A returned ``p`` partial consumes the remaining main-program token."""
         assert run_program("F f x - p\nf 1 8") == "1000"
 
     def test_prints_a_partial_application_by_name(self) -> None:
@@ -205,18 +160,7 @@ class TestValues:
 
 class TestErrors:
     def test_the_rejection_messages_are_exact(self) -> None:
-        """Each message is pinned whole, and names what it is complaining about.
-
-        ``match=`` is a substring search, so a fragment leaves the wording
-        free and never checks the name each message quotes.  The
-        undefined-function message is raised from two separate places, a
-        bare call and a ``.`` reference, and both have to name the
-        function.
-
-        ``expected a number`` is deliberately not compared whole: it
-        interpolates a function object with no ``__repr__``, so the text
-        carries a memory address and would differ between runs.
-        """
+        r"""Each message is pinned whole, and names what it is complaining."""
         with raises_message(ValueError, "function 'f' redefined"):
             run_program("F f x - x\nF f y - y")
 
@@ -245,7 +189,7 @@ class TestMachine:
         assert machine.io.getvalue() == "101"
 
     def test_referencing_an_undefined_function_halts(self) -> None:
-        """``.name`` builds a function value, so an unknown name has no arity."""
+        r"""``.name`` builds a function value, so an unknown name has no arity."""
         with pytest.raises(HaltError) as caught:
             run_program("p .nope")
         assert str(caught.value) == "calling undefined function 'nope'"
@@ -259,7 +203,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(SnapshotContract):
-    """The shared shapes, with this language's own programs."""
+    r"""The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program = "p 5"

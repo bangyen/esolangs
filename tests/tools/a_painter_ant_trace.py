@@ -1,27 +1,4 @@
-"""Step-by-step tracer and cycle-stability checker for A Painter Ant programs.
-
-The interpreter prints only the bounding box of the cells the ant has
-visited (a raster that carries no coordinates), which is enough to confirm
-that a program is a cycle-stable fixed point, and to read the generator's
-answer off the ant's own cell, but not to see why a later cycle diverges.
-The boolean generator reads its answer from the same semantic grid model
-this module exposes:
-
-- :func:`run` steps the ant command by command and records every blocked
-  move, fired move, and paint, so a diverging cycle can be pinned to the
-  exact instruction.
-- :func:`box` renders the interpreter's bounding box from that model, and
-  :func:`cycle_stable` compares the box across whole numbers of cycles.
-- :func:`first_divergence` runs cycles 1 and 2 and reports the first
-  instruction where the ant's position, effect, or paint disagrees with
-  cycle 1 -- the feedback loop the n == 3 cycle-2 construction needs.
-
-The command set matches :mod:`esolangs.interpreters.grid_based.a_painter_ant`:
-lowercase moves fire only onto black cells, uppercase only onto white,
-``p`` paints the current cell black, ``P`` paints it white, and whitespace
-is ignored (a space in the source is a no-op that still occupies a
-position).
-"""
+r"""Step-by-step tracer and cycle-stability checker for A Painter Ant."""
 
 from __future__ import annotations
 
@@ -36,7 +13,7 @@ Action = Literal["blocked", "moved", "paint_black", "paint_white"]
 
 @dataclass(frozen=True)
 class Step:
-    """One executed instruction: its position, effect, and move target."""
+    r"""One executed instruction: its position, effect, and move target."""
 
     index: int
     command: str
@@ -47,7 +24,7 @@ class Step:
 
 @dataclass
 class Run:
-    """The semantic outcome of running a program for whole cycles."""
+    r"""The semantic outcome of running a program for whole cycles."""
 
     grid: dict[tuple[int, int], int]
     visited: set[tuple[int, int]]
@@ -56,13 +33,13 @@ class Run:
     landings: list[tuple[int, int]]
 
     def landing_colour(self) -> int:
-        """Colour of the cell the ant rests on after the run (1 white, 0 black)."""
+        r"""Colour of the cell the ant rests on after the run (1 white, 0."""
         return self.grid.get(self.position, 0)
 
 
 @dataclass(frozen=True)
 class Divergence:
-    """The first instruction where the re-run breaks cycle stability."""
+    r"""The first instruction where the re-run breaks cycle stability."""
 
     index: int
     command: str
@@ -72,12 +49,7 @@ class Divergence:
 
 
 def run(program: str, cycles: int = 1) -> Run:
-    """Step ``program`` for ``cycles`` whole cycles on the semantic grid.
-
-    Whitespace is ignored (matching the interpreter), and each instruction
-    records where the ant was, what it did, and its move target.  The
-    ``landings`` list captures the ant's position after each whole cycle.
-    """
+    r"""Step ``program`` for ``cycles`` whole cycles on the semantic grid."""
     prog = [c for c in program if not c.isspace()]
     for c in prog:
         if c.lower() not in _MOVE and c not in _PAINTS:
@@ -111,11 +83,7 @@ def run(program: str, cycles: int = 1) -> Run:
 
 
 def box(program: str, cycles: int = 1) -> str:
-    """Render the interpreter's bounding-box raster from the semantic grid.
-
-    Mirrors the interpreter's four glyphs: ``#`` white, ``.`` black, and the
-    ant's own cell as ``@`` on white or ``o`` on black.
-    """
+    r"""Render the interpreter's bounding-box raster from the semantic grid."""
     outcome = run(program, cycles)
     min_x = min(vx for vx, _ in outcome.visited)
     max_x = max(vx for vx, _ in outcome.visited)
@@ -135,34 +103,17 @@ def box(program: str, cycles: int = 1) -> str:
 
 
 def landing_after(program: str, cycles: int = 6) -> int:
-    """Landing-cell colour after ``cycles`` cycles (the generator's answer)."""
+    r"""Landing-cell colour after ``cycles`` cycles (the generator's."""
     return run(program, cycles).landing_colour()
 
 
 def cycle_stable(program: str, cycles: int = 10) -> bool:
-    """Compare the interpreter's box for 1 and ``cycles`` whole cycles."""
+    r"""Compare the interpreter's box for 1 and ``cycles`` whole cycles."""
     return box(program, 1) == box(program, cycles)
 
 
 def first_divergence(program: str) -> Divergence | None:
-    """Report the first instruction that breaks cycle stability.
-
-    A program is a cycle-stable fixed point when the interpreter's box is
-    identical for every whole number of cycles and the landing colour never
-    changes.  Because the cycle-2 run is a different walk on purpose (the
-    dance), per-instruction equality with cycle 1 is *not* the criterion.
-    This checks, in order of severity:
-
-    1. a cycle-2 move that leaves the cycle-1 bounding box (the box grows),
-    2. a cycle-2 paint that changes a cell's colour (the box content
-       changes),
-    3. a cycle-2 landing colour different from cycle 1's (the answer
-       changes),
-    4. a cycle-3 step that differs from cycle 2 (the dance is not yet a
-       fixed point, so later cycles could still drift).
-
-    A program that passes all four checks returns ``None``.
-    """
+    r"""Report the first instruction that breaks cycle stability."""
     first = run(program, 1)
     second = run(program, 2)
     third = run(program, 3)

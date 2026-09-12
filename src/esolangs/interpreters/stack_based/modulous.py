@@ -1,34 +1,4 @@
-"""Interpreter for Modulous.
-
-Commands are written as ``[OP arg]`` tokens.  PSH pushes an integer, string,
-or variable value; POP/SWP/DUP reshape the stack; PRT prints the top as an
-integer or byte; INP reads a line; JMP/IF conditionally jump; RST resets the
-pointer to the start of the program; and END halts.
-
-The wiki declares four variables (VAR1-VAR4), and those are the four that
-exist: every variable op -- the ``PSH`` store, the ``PRT`` read, and the
-``VARn+k``/``VARn-k`` arithmetic -- halts on any other name.  The store
-used to be the exception, creating whatever name it was given, which made
-``[PSH VAR VAR1]`` (the keyword spelling; the syntax is ``[PSH VAR1]``)
-store into a phantom ``VAR`` and silently leave ``VAR1`` alone.
-
-Operations that act on an empty stack, an undefined variable, or a missing
-operand are invalid: they halt the program with
-:class:`~esolangs.exceptions.HaltError`, and a malformed token (a missing
-required argument) is rejected with :class:`ValueError`.
-
-**Unknown commands and stray text are refused, and that is a choice.**  The
-wiki says only that "a module is a command surrounded by square brackets"
-and never says what an implementation should do with anything else, so
-there is no spec to follow here.  Both used to be silent: ``[PRTINT]`` -- a
-plausible slip for ``[PRT INT]`` -- ran as nothing at all, and ``[PSH INT
-1[END]`` dropped the unbalanced first half and ran the second, each exiting
-0 having printed nothing.  A program that does nothing and reports success
-is the worst answer to a typo, so both raise now.  A reader who wants a
-comment has ``[]``, which the empty-token rule already skips.
-
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
-"""
+r"""Interpreter for Modulous."""
 
 import re
 import sys
@@ -44,15 +14,7 @@ _TOKEN = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
 
 
 def _reject_stray_text(code: str) -> None:
-    """Refuse anything outside a bracketed command.
-
-    ``findall`` skips whatever does not match, so an unbalanced bracket
-    simply vanished: ``[PSH INT 1[END]`` lost its first half and ran
-    ``END``, exiting 0 with nothing printed and nothing said.  Whitespace
-    between commands is fine and everything else is a mistake -- the wiki
-    describes no comment syntax, and ``[]`` is already a skipped token for
-    anyone who wants one.
-    """
+    r"""Refuse anything outside a bracketed command."""
     end = 0
     stray: list[str] = []
     for match in _TOKEN.finditer(code):
@@ -99,19 +61,19 @@ _RND_FANOUT = 256
 
 
 def _freeze(state: _State) -> _BranchState:
-    """Return ``state`` with its variable map made hashable."""
+    r"""Return ``state`` with its variable map made hashable."""
     (stk, var, ind), halted = state
     return ((stk, tuple(sorted(var.items())), ind), halted)
 
 
 def _thaw(state: _BranchState) -> _State:
-    """Invert :func:`_freeze` so a handler sees the map it expects."""
+    r"""Invert :func:`_freeze` so a handler sees the map it expects."""
     (stk, var, ind), halted = state
     return ((stk, dict(var), ind), halted)
 
 
 class _Machine:
-    """Stack, variables, and instruction pointer for a Modulous run."""
+    r"""Stack, variables, and instruction pointer for a Modulous run."""
 
     stk: tuple[int, ...]
     var: dict[str, int]
@@ -124,7 +86,7 @@ class _Machine:
     rng: Randomness | None
 
     def __init__(self, code: str, io: IO, rng: Randomness | None = None) -> None:
-        """Build a state for ``code`` with its variables and parsed tokens."""
+        r"""Build a state for ``code`` with its variables and parsed tokens."""
         self.stk = ()
         self.var = {f"VAR{k}": 0 for k in range(1, 5)}
         self.ind = 0
@@ -136,7 +98,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        """Whether the instruction pointer has run off the program."""
+        r"""Whether the instruction pointer has run off the program."""
         return self._halted or self.ind >= len(self.tokens)
 
     # The VM's language-shaped.
@@ -144,21 +106,21 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        """The token cursor."""
+        r"""The token cursor."""
         return self.ind
 
     @property
     def memory(self) -> list[int]:
-        """No addressable cells; the store is the stack."""
+        r"""No addressable cells; the store is the stack."""
         return []
 
     @property
     def stack(self) -> list[object]:
-        """The data stack, bottom first."""
+        r"""The data stack, bottom first."""
         return list(self.stk)
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        r"""Return the complete internal state, hashable for cycle detection."""
         return (
             self.ind,
             self.stk,
@@ -174,34 +136,18 @@ class _Machine:
     # rather than forking, and.
 
     def branching_snapshot(self) -> _BranchState:
-        """Return the current state as the search's starting point."""
+        r"""Return the current state as the search's starting point."""
         return _freeze(self._state)
 
     def branching_halted(self, state: object) -> bool:
-        """Report whether ``state`` has ended or run off the program.
-
-        Unlike a machine-shaped halt this reads the value alone: ``END``
-        sets the flag inside the state, and running off the token list is a
-        property of the cursor, so both live in the tuple.
-        """
+        r"""Report whether ``state`` has ended or run off the program."""
         (_stk, _var, ind), halted = cast(_BranchState, state)
         return halted or ind >= len(self.tokens)
 
     def branching_successors(
         self, state: object, _limit: int
     ) -> tuple[_BranchState, ...] | None:
-        """Return the state for every value ``RND`` could draw.
-
-        Mirrors :meth:`step`, whose cursor advances *before* the handler
-        runs, so a successor that dispatched on the un-advanced core would
-        re-run the same token forever.
-
-        ``RND n`` takes its range from the program text rather than from a
-        fixed coin, so one token can ask for arbitrarily many outcomes;
-        that is charged against ``limit`` instead of being materialized.
-        ``n < 1`` draws nothing and is left to the single deterministic
-        call, exactly as the step leaves it.
-        """
+        r"""Return the state for every value ``RND`` could draw."""
         core, halted = _thaw(cast(_BranchState, state))
         stk, var, ind = core
         mod = self.tokens[ind]
@@ -237,23 +183,17 @@ class _Machine:
 
     @property
     def _state(self) -> _State:
-        """The complete changing state, with the handler core inside it."""
+        r"""The complete changing state, with the handler core inside it."""
         return ((self.stk, self.var, self.ind), self._halted)
 
     def _restore(self, state: _State) -> None:
-        """Write a transition result back onto the machine shell."""
+        r"""Write a transition result back onto the machine shell."""
         (stk, var, self.ind), self._halted = state
         self.stk = stk
         self.var = var
 
     def step(self) -> None:
-        """Execute one ``[OP arg]`` token, advancing the pointer.
-
-        The three effectful commands are answered here rather than by their
-        handlers: ``PRT`` prints the value the handler then consumes,
-        ``INP`` takes a line, and ``RND`` draws.  Everything else is a pure
-        map from one core to the next.
-        """
+        r"""Execute one ``[OP arg]`` token, advancing the pointer."""
         if self.halted:
             return
         (stk, var, ind), halted = self._state
@@ -292,7 +232,7 @@ class _Machine:
         self._restore((handler(core, mod, arg, value), halted or arg[0] == "END"))
 
     def _print(self, mod: str, arg: list[str]) -> None:
-        """Write what ``PRT`` names: a variable, or the top of the stack."""
+        r"""Write what ``PRT`` names: a variable, or the top of the stack."""
         n = _named(self.var, _operand(arg, 1)) if "VAR" in mod else _top(self.stk)
         if "INT" in mod:
             self.io.print_num(n)
@@ -301,21 +241,21 @@ class _Machine:
 
 
 def _top(stk: tuple[int, ...]) -> int:
-    """Return the top of the stack, halting on an empty stack."""
+    r"""Return the top of the stack, halting on an empty stack."""
     if not stk:
         raise HaltError("the stack is empty, so there is no top value to read")
     return stk[-1]
 
 
 def _operand(arg: list[str], n: int) -> str:
-    """Return the ``n``-th token of a command, rejecting a missing operand."""
+    r"""Return the ``n``-th token of a command, rejecting a missing operand."""
     if n >= len(arg):
         raise ValueError(f"missing operand in {' '.join(arg)}")
     return arg[n]
 
 
 def _named(var: Mapping[str, int], name: str) -> int:
-    """Return the value of ``name``, halting when it is not a variable."""
+    r"""Return the value of ``name``, halting when it is not a variable."""
     if name not in var:
         known = ", ".join(sorted(var)) or "none are defined yet"
         raise HaltError(f"{name} is not a defined variable ({known})")
@@ -323,7 +263,7 @@ def _named(var: Mapping[str, int], name: str) -> int:
 
 
 def _jmp(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Core:
-    """Jump relative, optionally only when the top matches an operand."""
+    r"""Jump relative, optionally only when the top matches an operand."""
     stk, var, ind = core
     cond = True
     val = _top(stk) if stk else 0
@@ -342,27 +282,27 @@ def _jmp(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
 
 
 def _add(core: _Core, _mod: str, arg: list[str], _value: str | int | None) -> _Core:
-    """Add an operand to the top of the stack."""
+    r"""Add an operand to the top of the stack."""
     stk, var, ind = core
     n = int(_operand(arg, 1))
     return ((*stk[:-1], _top(stk) + n), var, ind)
 
 
 def _sub(core: _Core, _mod: str, arg: list[str], _value: str | int | None) -> _Core:
-    """Subtract an operand from the top of the stack."""
+    r"""Subtract an operand from the top of the stack."""
     stk, var, ind = core
     n = int(_operand(arg, 1))
     return ((*stk[:-1], _top(stk) - n), var, ind)
 
 
 def _rst(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _Core:
-    """Send the cursor back to the first token."""
+    r"""Send the cursor back to the first token."""
     stk, var, _ind = core
     return (stk, var, 0)
 
 
 def _psh(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Core:
-    """Push a literal, the characters of a string, or store into a variable."""
+    r"""Push a literal, the characters of a string, or store into a."""
     stk, var, ind = core
     if "INT" in mod:
         return ((*stk, int(_operand(arg, 2))), var, ind)
@@ -383,14 +323,14 @@ def _psh(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
 
 
 def _pop(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _Core:
-    """Discard the top of the stack."""
+    r"""Discard the top of the stack."""
     stk, var, ind = core
     _top(stk)
     return (stk[:-1], var, ind)
 
 
 def _swp(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _Core:
-    """Move the second value to the top."""
+    r"""Move the second value to the top."""
     stk, var, ind = core
     if len(stk) < 2:
         were = "is 1" if len(stk) == 1 else f"are {len(stk)}"
@@ -399,7 +339,7 @@ def _swp(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _
 
 
 def _prt(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Core:
-    """Consume what the shell printed: a popped top, or nothing for a variable."""
+    r"""Consume what the shell printed: a popped top, or nothing for a."""
     stk, var, ind = core
     if "VAR" in mod:
         _named(var, _operand(arg, 1))
@@ -409,12 +349,7 @@ def _prt(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
 
 
 def _inp(core: _Core, mod: str, _arg: list[str], value: str | int | None) -> _Core:
-    """Push what the shell read.
-
-    ``INT`` pushes the line as one number and the bare form pushes its
-    characters, rightmost on top -- so what arrives is a sequence either
-    way, and an empty ``INT`` read pushes nothing at all.
-    """
+    r"""Push what the shell read."""
     stk, var, ind = core
     text = "" if value is None else str(value)
     if "INT" in mod and text:
@@ -425,18 +360,18 @@ def _inp(core: _Core, mod: str, _arg: list[str], value: str | int | None) -> _Co
 
 
 def _end(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _Core:
-    """Halt: the shell reads the sentinel cursor and stops."""
+    r"""Halt: the shell reads the sentinel cursor and stops."""
     return core
 
 
 def _dup(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _Core:
-    """Push a copy of the top."""
+    r"""Push a copy of the top."""
     stk, var, ind = core
     return ((*stk, _top(stk)), var, ind)
 
 
 def _rnd(core: _Core, _mod: str, arg: list[str], value: str | int | None) -> _Core:
-    """Push the draw the shell made, rejecting a bound below one."""
+    r"""Push the draw the shell made, rejecting a bound below one."""
     stk, var, ind = core
     n = int(_operand(arg, 1))
     if n < 1:
@@ -445,7 +380,7 @@ def _rnd(core: _Core, _mod: str, arg: list[str], value: str | int | None) -> _Co
 
 
 def _var_arith(core: _Core, mod: str) -> _Core:
-    """Add to or subtract from a named variable, in place in the token."""
+    r"""Add to or subtract from a named variable, in place in the token."""
     stk, var, ind = core
     if "+" in mod:
         lhs, rhs = mod.split("+")
@@ -473,15 +408,7 @@ _DISPATCH: dict[str, Callable[[_Core, str, list[str], str | int | None], _Core]]
 
 
 def run(code: str, io: IO, rng: Randomness | None = None) -> None:
-    """Run a Modulous program, drawing ``RND`` from ``rng``.
-
-    ``rng`` is the source ``RND`` draws from; ``None`` draws for real,
-    which is the spec's behaviour and what a plain run gets.  The machine
-    has always taken one -- it is how the VM makes a stepped run
-    reproducible -- but ``run`` did not forward it, so a caller holding
-    only ``run`` could not pin the draw without patching ``secrets``
-    globally.  This is the signature COD, WII2D and LaserFuck take.
-    """
+    r"""Run a Modulous program, drawing ``RND`` from ``rng``."""
     state = _Machine(code, io, rng)
 
     while not state.halted:

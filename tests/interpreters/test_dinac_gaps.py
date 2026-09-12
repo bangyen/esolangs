@@ -1,8 +1,4 @@
-"""DINAC's rejection paths, which the wiki's examples never take.
-
-The module docstring lists what a malformed program and an invalid
-runtime operation each raise; every case listed there is run here.
-"""
+r"""DINAC's rejection paths, which the wiki's examples never take."""
 
 import pytest
 
@@ -123,7 +119,7 @@ class TestRuntimeErrors:
 
 
 class TestCallRewriting:
-    """A call in argument position is stepped and rewritten in place."""
+    r"""A call in argument position is stepped and rewritten in place."""
 
     def test_a_call_under_a_negation_returns(self) -> None:
         program = "DEF/41 f x:41\n    GIVE x\nOUT ~f(00)"

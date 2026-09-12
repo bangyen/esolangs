@@ -1,11 +1,4 @@
-"""Boolean-function generator for ROTFuck.
-
-Every command is written rotated by its own position, so the generator
-builds the program in plain Brainfuck and rotates each character into place
-at the end (:func:`_rotfuck_rot`).  The helpers pick, for each tape offset,
-a command spelling that survives its rotation
-(:func:`_rotfuck_allowed`, :func:`_rotfuck_neutral`).
-"""
+r"""Boolean-function generator for ROTFuck."""
 
 from functools import cache
 
@@ -24,29 +17,19 @@ _ROTFUCK_CHAIN = "+-><,.[]"
 
 
 def _rotfuck_rot(char: str, steps: int) -> str:
-    """Advance ``char`` ``steps`` steps along the ROTfuck rotation cycle."""
+    r"""Advance ``char`` ``steps`` steps along the ROTfuck rotation cycle."""
     index = _ROTFUCK_CHAIN.index(char)
     return _ROTFUCK_CHAIN[(index + steps) % 8]
 
 
 def _rotfuck_allowed(offset: int) -> list[str]:
-    """Commands a body may place at relative offset ``offset``.
-
-    At the ``[``-fire seek state ``p + 1``, a body command at relative offset
-    ``j`` shows ``rot^{-j}(cmd)``, which must not be a bracket (else the
-    seek's depth count changes).  So ``cmd`` must not be ``rot^{j}`` of a
-    bracket.
-    """
+    r"""Commands a body may place at relative offset ``offset``."""
     bad = {_rotfuck_rot("[", offset), _rotfuck_rot("]", offset)}
     return [c for c in "+-><" if c not in bad]
 
 
 def _rotfuck_neutral(offset: int) -> str:
-    """Return a two-char net-neutral pair usable at ``offset``.
-
-    The pair is ``+-``/``-+`` or ``><``/``<>``, both of whose characters are
-    allowed at ``offset`` and ``offset + 1``.
-    """
+    r"""Return a two-char net-neutral pair usable at ``offset``."""
     for pair in ("+-", "-+", "><", "<>"):
         if all(c in _rotfuck_allowed(offset + i) for i, c in enumerate(pair)):
             return pair
@@ -57,14 +40,7 @@ def _rotfuck_neutral(offset: int) -> str:
 
 @cache
 def _rotfuck_move_cycle(state: int, direction: str) -> tuple[tuple[str, ...], int, str]:
-    """Tile the move pattern from offset state ``state`` (mod 8).
-
-    A move's emission depends only on the offset mod 8: an allowed offset
-    emits the direction (offset + 1), a forbidden one a neutral pair first
-    (offset + 2).  The per-move texts are therefore eventually periodic in
-    the move count.  Returns the texts up to the first repeated state, the
-    index where the cycle starts, and the cycle joined.
-    """
+    r"""Tile the move pattern from offset state ``state`` (mod 8)."""
     texts: list[str] = []
     seen = {state: 0}
     while True:
@@ -81,12 +57,7 @@ def _rotfuck_move_cycle(state: int, direction: str) -> tuple[tuple[str, ...], in
 
 
 def _rotfuck_move(ptr: int, goal: int, offset: int, direction: str) -> str:
-    """Emit ``>``/``<`` to move ``ptr`` toward ``goal``.
-
-    The direction command is forbidden at some offsets, so a net-neutral
-    padding pair is inserted there to shift past them while every command
-    stays at an allowed offset.
-    """
+    r"""Emit ``>``/``<`` to move ``ptr`` toward ``goal``."""
     dist = goal - ptr if direction == ">" else ptr - goal
     texts, start, cycle = _rotfuck_move_cycle(offset % 8, direction)
     if dist <= len(texts):
@@ -97,7 +68,7 @@ def _rotfuck_move(ptr: int, goal: int, offset: int, direction: str) -> str:
 
 @cache
 def _rotfuck_body_for(delta: int, op: str) -> str:
-    """Build the body for a guard-relative target at offset ``delta``."""
+    r"""Build the body for a guard-relative target at offset ``delta``."""
     out: list[str] = []
     offset = 0
     ptr = 0
@@ -136,15 +107,7 @@ def _rotfuck_body_for(delta: int, op: str) -> str:
 
 
 def _rotfuck_body(guard: int, target: int, op: str) -> str:
-    """Build a body that moves the pointer from ``guard`` to ``target``.
-
-    The body applies ``op`` to the target cell and returns to ``guard``.  It
-    is straight-line ``+-><`` only, has length ``L`` with
-    ``L + 1 ≡ 0 (mod 8)``, and every command sits at an allowed offset.  The
-    tested cell (``guard``) stays nonzero, so the phantom ``[`` at the block
-    end does not fire on the body path.  Only the offset ``target - guard``
-    matters, so the builder is cached on it.
-    """
+    r"""Build a body that moves the pointer from ``guard`` to ``target``."""
     return _rotfuck_body_for(target - guard, op)
 
 
@@ -161,63 +124,7 @@ _PHANTOM = tuple(ord(_rotfuck_rot("]", -res)) for res in range(8))
 
 
 def rotfuck(truth_table: str) -> str:
-    """Build a ROTfuck program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    ROTfuck rotates the program after every command, which defeats the
-    brainfuck decision-tree strategy (a firing bracket seeks its partner in
-    the rotated program).  The generator instead lays out one ``[ body ]``
-    block per guard, where the body is a straight-line ``+-><`` walk that
-    moves the pointer from the tested cell to a target, applies one
-    ``+``/``-``, and returns.  The closing ``]`` is a *phantom*: its source
-    character is the inverse rotation of ``]`` at the ``[``-fire seek state,
-    so the skip path (tested cell == 0) finds it and jumps past the block,
-    while the body path (tested cell != 0) sees it as a non-firing ``[``.
-    Both paths re-converge after the block in the same rotation state because
-    every body length is ``7 (mod 8)``.
-
-    The truth table is evaluated as a minterm sum: the input bits are read
-    and normalized into cells ``0..n-1``, their complements into
-    ``n..2n-1``, and a single mismatch count and minterm cell sit at
-    ``2n+1`` and ``2n+2``.  Each ``1``-row's literals guard increments of
-    the mismatch count, one block zeroes the minterm cell iff that count is
-    nonzero, a matching minterm accumulates into the result cell, and
-    ``48 + r`` is printed.
-
-    **The two working cells are reused, not allocated per row.**  A row
-    undoes itself before the next one runs: ``m`` is restored by the same
-    ``mc`` guard that cleared it, and ``mc`` by re-running each literal
-    guard with ``-``.  Both fire on exactly the conditions that changed the
-    cell, so neither undo needs the runtime value -- which a plain reset
-    would, since ``mc`` holds a count between 0 and ``width``.
-
-    The cells used to be two arrays of ``2**width``, which put them up to
-    528 cells out at eight inputs while every block is guarded on an input
-    cell below 16.  Each block body walks guard to target and back in
-    unary, so that layout spent 75% of the program on ``>``/``<``.  The
-    block *count* is unchanged for a half-dense table -- only ``1``-rows
-    are built now, at ``2 * width + 3`` blocks each instead of every row at
-    ``width + 1`` -- but the bodies are short.
-
-    Measured on the contract sweep's dense tables.  Both shapes were
-    executed over every input combination through eight inputs and over 48
-    sampled combinations at nine and ten, and every table through three
-    inputs was executed against every combination::
-
-        n      two arrays    two cells    factor    highest cell
-        3           1,707        1,412     1.21x        23 ->  9
-        5          17,597        3,904     4.51x        75 -> 13
-        6          69,159       13,026     5.31x       140 -> 15
-        8       1,158,946       86,605    13.38x       528 -> 19
-        9       4,811,236      194,945    24.68x     1,043 -> 21
-        10     20,438,259      484,928    42.15x     2,068 -> 23
-
-    The reach is now ``2n + 3``, so unlike the array layout it does not
-    grow with the table at all.  Every arity gets shorter, including the
-    small ones.
-    """
+    r"""Build a ROTfuck program computing the given truth table."""
     n = _validate_truth_table(truth_table)
 
     # A table that ignores some of.

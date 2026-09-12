@@ -1,4 +1,4 @@
-"""Unit tests for the Back interpreter."""
+r"""Unit tests for the Back interpreter."""
 
 import io
 from contextlib import redirect_stdout
@@ -30,68 +30,39 @@ class TestBack:
         assert run_and_capture([">--*"]) == "0 0"
 
     def test_skip_instruction_on_zero(self) -> None:
-        """+ skips the next cell when the current bit is 0."""
+        r"""+ skips the next cell when the current bit is 0."""
         assert run_and_capture([">+-*"]) == "0 0"
 
     def test_reflect_backslash(self) -> None:
-        """\\ reflects the direction."""
+        r"""\ reflects the direction."""
         assert run_and_capture(["\\-*"]) == "1"
 
     def test_reflect_slash(self) -> None:
-        """/ reflects the direction."""
+        r"""/ reflects the direction."""
         assert run_and_capture(["/-*"]) == "1"
 
     def test_move_left(self) -> None:
-        """< moves the tape head left when it is not at zero."""
+        r"""< moves the tape head left when it is not at zero."""
         assert run_and_capture([">>-<*"]) == "0 0 1"
 
     def test_move_left_lands_on_the_previous_cell(self) -> None:
-        """< steps back exactly one cell, and the cell it lands on is used.
-
-        ``test_move_left`` halts straight after the ``<``, so the pointer's
-        landing place is never read: moving back one, back two, or jumping
-        to cell 1 all print the same tape.  Flipping the bit after the move
-        shows which cell the head actually reached.
-        """
+        r"""< steps back exactly one cell, and the cell it lands on is used."""
         assert run_and_capture([">-<-*"]) == "1 1"
 
     def test_beam_travels_down_a_column(self) -> None:
-        """The beam moves by rows too, not only along one line.
-
-        Every other program here is a single row, where the row index stays
-        0 whatever is added to it -- so the row half of the beam's step was
-        unconstrained.  Here ``\\`` turns the beam downward and it crosses
-        two more rows before halting.
-        """
+        r"""The beam moves by rows too, not only along one line."""
         assert run_and_capture(["\\", "-", "*"]) == "1"
 
     def test_slash_reflects_the_beam(self) -> None:
-        """/ turns the beam, rather than letting it carry straight on.
-
-        ``test_reflect_slash`` runs on one row, where a beam that keeps
-        going reaches the same cells in the same order as one that turns --
-        so the reflection could have done nothing.  On two rows the turn
-        decides which row the beam prints from.
-        """
+        r"""/ turns the beam, rather than letting it carry straight on."""
         assert run_and_capture(["/*", "--"]) == "1"
 
     def test_skip_moves_the_beam_by_a_whole_row(self) -> None:
-        """+ steps the beam along its heading, rows included.
-
-        ``test_skip_instruction_on_zero`` is a single row, so the row half
-        of the skip was free to be anything.  Here the beam is heading
-        downward when it meets the ``+``, and skipping upward instead never
-        reaches the ``*``.
-        """
+        r"""+ steps the beam along its heading, rows included."""
         assert run_and_capture(["\\", "+", "-", "*"]) == "0"
 
     def test_blank_only_program_is_empty(self) -> None:
-        """Programs of only blank lines are rejected, not crashed on.
-
-        The message is matched whole, and with its casing: ``match="empty"``
-        is a substring search, so the wording could drift to anything still
-        containing the word and no test would say so.
-        """
+        r"""Programs of only blank lines are rejected, not crashed on."""
         import pytest
 
         message = r"^Back program cannot be empty$"
@@ -101,28 +72,13 @@ class TestBack:
             run_and_capture(["   ", "\t"])
 
     def test_a_short_line_is_padded_on_the_right(self) -> None:
-        r"""A short row keeps its content at the left, and the pad goes right.
-
-        ``test_short_lines_pad_on_the_right`` already covers this, but it
-        settles the question with the cycle detector, so it cannot run
-        against a bundled interpreter and is dropped before mutation ever
-        sees it.  This grid decides the same thing by halting either way:
-        the beam reflects off the ``\`` on the short first row, and which
-        column that row's content sits in changes which cell the tape ends
-        up holding -- 1 when the row is padded on the right, 0 when the pad
-        goes in front of it instead.
-        """
+        r"""A short row keeps its content at the left, and the pad goes right."""
         assert run_and_capture(["\\", "\\-*"]) == "1"
 
 
 class TestStepMachine:
     def test_a_fresh_machine_reports_a_boolean(self) -> None:
-        """``halted`` starts as False itself, not merely as something falsey.
-
-        Every other read of it is a truthiness test, which ``None`` passes
-        just as well, so the flag could start un-set rather than unset and
-        nothing would object -- while ``halted`` is annotated as a bool.
-        """
+        r"""``halted`` starts as False itself, not merely as something falsey."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.back import _Machine
 
@@ -147,12 +103,7 @@ class TestStepMachine:
         assert machine.row == 0
 
     def test_moving_left_from_cell_zero_stays_put(self) -> None:
-        """``<`` at the leftmost cell is a no-op, not an underflow.
-
-        The tape only grows rightward, so there is nothing to the left of
-        cell 0 to step onto; without the guard the pointer would go
-        negative and start indexing the tape from its far end.
-        """
+        r"""``<`` at the leftmost cell is a no-op, not an underflow."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.back import _Machine
 
@@ -164,11 +115,7 @@ class TestStepMachine:
         assert machine.tape[0] == 1, "the flip landed on cell 0"
 
     def test_moving_right_grows_the_tape_only_at_its_end(self) -> None:
-        """``>`` appends a cell when it steps past the last one, once.
-
-        Stepping back and forth over ground already covered must not keep
-        appending, or the tape would grow with every lap of a loop.
-        """
+        r"""``>`` appends a cell when it steps past the last one, once."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.back import _Machine
 
@@ -196,7 +143,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(SnapshotContract, CycleContract):
-    """The shared shapes, with this language's own programs."""
+    r"""The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program: ClassVar[list[str]] = ["-*"]

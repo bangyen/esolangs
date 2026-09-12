@@ -1,15 +1,4 @@
-"""Check .pre-commit-config.yaml's hook revs against pyproject.toml's pins.
-
-Dependabot watches pyproject.toml's dev extra but has no pre-commit
-ecosystem, so a bump there leaves the matching hook ``rev`` behind and the
-two run different versions of the same tool.  That is not cosmetic: a
-ruff-format hook a minor behind the project's ruff reformats files the
-project's ruff considers formatted, so ``just test-quick`` never converges.
-
-This enforces the rule .github/dependabot.yml states in prose.  It is
-deliberately literal -- it maps a hook repo to the distribution it ships and
-compares the two strings -- so a new tool must be added here to be checked.
-"""
+r"""Check .pre-commit-config.yaml's hook revs against pyproject.toml's."""
 
 import re
 import sys
@@ -24,18 +13,18 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _pyproject_pins(text: str) -> dict[str, str]:
-    """Map distribution name to its exact pin, for ``name==version`` only."""
+    r"""Map distribution name to its exact pin, for ``name==version`` only."""
     return {m[1]: m[2] for m in re.finditer(r'"([A-Za-z0-9_.-]+)==([^"]+)"', text)}
 
 
 def _hook_revs(text: str) -> dict[str, str]:
-    """Map hook repo URL to its ``rev``, leading ``v`` stripped."""
+    r"""Map hook repo URL to its ``rev``, leading ``v`` stripped."""
     pairs = re.findall(r"-\s+repo:\s*(\S+)\s*\n\s*rev:\s*(\S+)", text)
     return {repo: rev.lstrip("v") for repo, rev in pairs}
 
 
 def main() -> int:
-    """Report any hook rev that disagrees with its pyproject pin."""
+    r"""Report any hook rev that disagrees with its pyproject pin."""
     pins = _pyproject_pins((ROOT / "pyproject.toml").read_text())
     revs = _hook_revs((ROOT / ".pre-commit-config.yaml").read_text())
 

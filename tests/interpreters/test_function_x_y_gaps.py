@@ -1,4 +1,4 @@
-"""Function x(y) programs the wiki's examples never spell: the rejections."""
+r"""Function x(y) programs the wiki's examples never spell: the."""
 
 import pytest
 
@@ -42,22 +42,14 @@ class TestParseErrors:
 
 class TestBinaryOperators:
     def test_a_space_that_no_operator_follows_is_not_one(self) -> None:
-        """The space is necessary but not sufficient: the word must match.
-
-        Refused as trailing input rather than parsed as an operator, which
-        is what keeps ``a < b`` a comparison and ``)<(`` a ternary.
-        """
+        r"""The space is necessary but not sufficient: the word must match."""
         with pytest.raises(ValueError, match="trailing input"):
             _run("function f(n)\n-> n &1")
 
 
 class TestUnknownNodeKind:
     def test_a_node_the_parser_never_emits_halts(self) -> None:
-        """``_advance``'s dispatch is exhaustive over the parsed kinds.
-
-        No program spells this node; it guards the invariant that every
-        kind the parser can build has an arm here.
-        """
+        r"""``_advance``'s dispatch is exhaustive over the parsed kinds."""
         function = _Function("f", [], [])
         frame = (0, 0, (), (("bogus",),))
         with pytest.raises(HaltError, match="unknown expression"):

@@ -1,14 +1,4 @@
-"""Unit tests for the Minifuck boolean generator.
-
-Covers :mod:`esolangs.tools.boolean.minifuck`, split out of
-``test_boolean_parameterized.py``: Minifuck is one language's solver and the
-largest single block of those tests.
-
-The two helpers below are duplicated from that module rather than shared.
-``mutate_one`` copies test bodies and drops module-level imports, so a helper
-imported from a common module would leave these tests silently uncovered
-under mutation.
-"""
+r"""Unit tests for the Minifuck boolean generator."""
 
 import importlib
 import re
@@ -20,19 +10,12 @@ from esolangs.tools.boolean.helpers import essential_inputs
 
 
 def _unreachable(*_args: object, **_kwargs: object) -> None:
-    """Stand in for a function a test asserts is never called."""
+    r"""Stand in for a function a test asserts is never called."""
     raise AssertionError("this should not have been called")
 
 
 def _all_derived_plans(derived_plans, staged_arities, n: int) -> dict:
-    """Every staging the enumeration places at ``n``, in one pass.
-
-    ``_derived_plans`` is asked for the tables it should look for, so a test
-    that wants the whole arity has to name them.  The arity guard is checked
-    *first*: naming every table means ``2 ** (2 ** n)`` of them, which is
-    unbuildable past four inputs, and the guard is what the unstaged arities
-    are being tested for anyway.
-    """
+    r"""Every staging the enumeration places at ``n``, in one pass."""
     if n not in staged_arities:
         return derived_plans(n, ())
     every = tuple(format(v, f"0{2**n}b") for v in range(2 ** (2**n)))
@@ -40,7 +23,7 @@ def _all_derived_plans(derived_plans, staged_arities, n: int) -> dict:
 
 
 def _slot_order(gen: object, table: str) -> list[int] | None:
-    """The ``{Xi}`` indices in the order ``gen`` emits them, or None."""
+    r"""The ``{Xi}`` indices in the order ``gen`` emits them, or None."""
     import re
 
     try:
@@ -52,19 +35,7 @@ def _slot_order(gen: object, table: str) -> list[int] | None:
 
 @pytest.mark.slow  # the degenerate tables are the.
 def test_minifuck_slots_run_in_name_order() -> None:
-    """Minifuck emits in name order, including the tables that once did not.
-
-    This was a strict ``xfail``.  The tables listed here are the ones that
-    used to leave sequence, kept as the regression: ``11001100`` is closed by
-    solving at full arity rather than projecting, and ``01010101`` /
-    ``10101010`` -- the projections onto the *last* input, which full arity
-    cannot reach -- by emitting the ignored setters first and reconverging
-    the rows before the essential one.
-
-    Degenerate tables only: they are the closed-form path, and the only ones
-    whose slot order can leave sequence.  A table needing the search takes
-    tens of seconds and cannot exercise this.
-    """
+    r"""Minifuck emits in name order, including the tables that once did."""
     from esolangs.tools.boolean import parameterized
 
     for table in ("11001100", "10101010", "01010101", "00001111"):
@@ -103,14 +74,7 @@ def test_minifuck_slots_run_in_name_order() -> None:
 
 @pytest.mark.slow  # two closed-form builds plus.
 def test_minifuck_reconverged_tables_compute_their_function() -> None:
-    """The reconvergence route computes, not merely emits in order.
-
-    ``01010101`` and ``10101010`` are built by emitting the inputs the table
-    ignores *first* and then erasing them, which is a different construction
-    from every other table's -- so ordering alone is not evidence it works.
-    Only running every row is, and a wrong build here would otherwise look
-    exactly like a right one to the test above.
-    """
+    r"""The reconvergence route computes, not merely emits in order."""
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.minifuck import run
     from esolangs.tools.boolean import parameterized
@@ -132,12 +96,7 @@ def test_minifuck_reconverged_tables_compute_their_function() -> None:
 
 
 def test_minifuck_reconvergence_declines_outside_one_or_two_essentials() -> None:
-    """The reconvergence route only handles one or two essential inputs.
-
-    With none there is no table left to build once the ignored inputs are
-    erased, and with three or more the route has no embed geometry to fall
-    back on -- both decline up front rather than searching.
-    """
+    r"""The reconvergence route only handles one or two essential inputs."""
 
     from esolangs.tools.boolean.minifuck import _reconverged
 
@@ -148,16 +107,7 @@ def test_minifuck_reconvergence_declines_outside_one_or_two_essentials() -> None
 # 2.3s: two three-input.
 @pytest.mark.slow
 def test_minifuck_single_essential_falls_past_the_degenerate_lookup() -> None:
-    """One essential input does not guarantee the cell lookup resolves it.
-
-    ``_degenerate`` answers from a column of the embed rather than
-    searching, and a projection onto the *last* input has no such column, so
-    it declines.  These tables reach it through the projection block, which
-    returns whatever ``_lift`` builds; the later ``len(essential) <= 1``
-    lookup is not what serves them.  That one is reachable only when no
-    projection happened at all -- ``n <= 1`` -- and every such table
-    resolves, so its own decline branch cannot be taken from here.
-    """
+    r"""One essential input does not guarantee the cell lookup resolves it."""
     import importlib
 
     from esolangs.interpreters.io import ScriptedIO
@@ -183,19 +133,7 @@ def test_minifuck_single_essential_falls_past_the_degenerate_lookup() -> None:
 # effectively free next to.
 @pytest.mark.slow
 def test_minifuck_builds_five_input_xor() -> None:
-    """Five-input XOR builds from a staging and prints all 32 rows.
-
-    This is the table the arity turns on.  ``docs/generators/minifuck_generator.md``
-    records XOR as
-    the four-input table the searches could not build, and at five inputs a
-    fully-essential table has no search that reaches it at all -- so a
-    result here is a staging result or it is nothing.
-
-    Running every row on the shipped interpreter is the whole point: a
-    template that has not been seen to print is not evidence, and the
-    equal-width check is what keeps the instantiation from leaking its
-    inputs through ``len()``.
-    """
+    r"""Five-input XOR builds from a staging and prints all 32 rows."""
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.minifuck import run
     from esolangs.tools.boolean import parameterized
@@ -222,26 +160,7 @@ def test_minifuck_builds_five_input_xor() -> None:
 # silent coverage regression,.
 @pytest.mark.slow
 def test_the_fused_column_walk_matches_the_one_at_a_time_derivation() -> None:
-    """``_column_sweep`` agrees with ``_printed_column``, which is its oracle.
-
-    The sweep reads every accumulator's column off a *single* walk, which is
-    sound only because the pool code does not depend on the accumulator --
-    ``_find_pool`` takes a ``walk_out`` and so could answer differently per
-    accumulator, in which case the fused walk would be wrong.  That is an
-    empirical fact about the pool patterns, not a guarantee, so the
-    one-at-a-time derivation is kept as the reference and the equivalence is
-    checked rather than argued.
-
-    Nothing else calls ``_printed_column``: production takes the sweep, so
-    the oracle only runs when something compares them.  Left uncompared it
-    would rot, and a future pool family that broke the accumulator
-    independence would be caught by nothing.
-
-    The stagings are the real ones -- captured from a build rather than
-    constructed -- and every accumulator is compared for both ``cell7``
-    values, including the unreachable ones where the sweep omits the key and
-    the oracle returns None.
-    """
+    r"""``_column_sweep`` agrees with ``_printed_column``, which is its."""
     from esolangs.tools.boolean.minifuck import (
         _MAX_ACC,
         _column_sweep,
@@ -291,21 +210,7 @@ def test_the_fused_column_walk_matches_the_one_at_a_time_derivation() -> None:
 
 
 def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
-    """``flips`` is a live derivation coordinate, not dead weight.
-
-    The pass that varied it was removed and the parameter kept, so no build
-    passes a mask any more -- which left the gadget it emits unrun.  Kept
-    open, it should still do what its docstring says, and the two claims are
-    separable:
-
-    First, the mask *lands*: each set bit adds exactly one ``_FLIP`` gadget,
-    so the template grows by three characters per bit and by nothing at all
-    for the empty mask.  Second, the setters stay in ascending name order
-    whatever the mask says -- the gadget goes after the setter it
-    complements, never in place of a different one -- which is the invariant
-    every generator here is held to, and the one a "complement input i"
-    coordinate is most likely to break.
-    """
+    r"""``flips`` is a live derivation coordinate, not dead weight."""
     import re
 
     from esolangs.tools.boolean.minifuck import _FLIP, _embed
@@ -324,16 +229,7 @@ def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
 
 
 def test_the_coverage_population_is_its_stated_definition() -> None:
-    """The 109 the ``_SEPS`` figures are stated over, re-derived each run.
-
-    The comment used to say only "non-degenerate", which is 125 -- and that
-    missing half of the definition is what left two later re-probes unable
-    to reconcile the counts.  Deriving it here means the denominator cannot
-    drift from the words again.
-
-    The holdout is the pin: a wrong population of a coincidentally similar
-    size would not put the single miss on the table the comment names.
-    """
+    r"""The 109 the ``_SEPS`` figures are stated over, re-derived each run."""
     module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
     def complement(table: str) -> str:
@@ -365,14 +261,7 @@ def test_the_coverage_population_is_its_stated_definition() -> None:
 
 @pytest.mark.slow  # 7.1s: enumerates the stagings.
 def test_the_constraint_query_matches_the_index() -> None:
-    """``_first_staging`` answers exactly what the index spelling answers.
-
-    The constraint intersection is the shipped assignment and the
-    first-claim-wins dictionary stays as its oracle, so the two are held
-    equal key for key -- every reachable column at two and three inputs,
-    plus random tables for the misses, plus small budgets, whose cap the
-    query lays over the passes where the index bakes it into the fill.
-    """
+    r"""``_first_staging`` answers exactly what the index spelling answers."""
     import importlib
     import random
 
@@ -414,15 +303,7 @@ def test_the_constraint_query_matches_the_index() -> None:
 
 @pytest.mark.slow  # two arity tabulations plus.
 def test_the_constraint_query_matches_the_index_where_inserts_live() -> None:
-    """The same equality at the arities the insert family serves.
-
-    Two and three inputs never reach the insert pass, so this is the check
-    that the pass boundary -- pure runs across every slice before any
-    insert -- survives in the query's spelling of the order.  Sampled,
-    because the full four-input key set costs ~10s; the sample is spread
-    across the whole index rather than taken from its head, so both passes
-    and every slice appear.
-    """
+    r"""The same equality at the arities the insert family serves."""
     import importlib
     import random
 
@@ -445,12 +326,7 @@ def test_the_constraint_query_matches_the_index_where_inserts_live() -> None:
 
 
 def test_the_batched_planned_bits_match() -> None:
-    """``_planned_bits`` equals ``_planned_bit`` per accumulator, per plan.
-
-    The batched form re-spells the per-accumulator case analysis one region
-    at a time, so the per-accumulator function stays as the specification
-    and every plan the staged arities actually build is walked both ways.
-    """
+    r"""``_planned_bits`` equals ``_planned_bit`` per accumulator, per plan."""
     from esolangs.tools.boolean.minifuck import (
         _BASE,
         _MAX_ACC,
@@ -492,14 +368,7 @@ def test_the_batched_planned_bits_match() -> None:
 # for what it costs on its own.
 @pytest.mark.slow
 def test_minifuck_five_input_plans_are_derived_per_table() -> None:
-    """At five inputs the derivation is asked for one table, not the arity.
-
-    A whole-arity spelling would pre-build a dict over every table, which is
-    ``2**32`` entries at this arity and will not be built.  Every arity is
-    now asked for its targets, and this pins what that has to give back: the
-    arity is staged, and asking ``_derived_plans`` for a target set returns
-    at most those targets rather than a whole-arity map.
-    """
+    r"""At five inputs the derivation is asked for one table, not the arity."""
 
     from esolangs.tools.boolean.minifuck import (
         _INSERT_ARITIES,
@@ -521,15 +390,7 @@ def test_minifuck_five_input_plans_are_derived_per_table() -> None:
 # 3.2s over 129 tests: runs the.
 @pytest.mark.medium
 class TestParameterizedMinifuck:
-    """Input-by-substitution boolean generator for Minifuck.
-
-    Minifuck's only read is ``.`` pulling a byte when the eight-cell pool is
-    zero, which a boolean program cannot use without destroying the pool it
-    is about to print -- so the inputs are embedded instead.  The generator
-    simulates every row as it emits and raises rather than returning a
-    program it has not seen print the table, so these tests are checking the
-    *interpreter* agrees with that simulation.
-    """
+    r"""Input-by-substitution boolean generator for Minifuck."""
 
     def run_minifuck(self, prog: str) -> str:
         from esolangs.interpreters.io import ScriptedIO
@@ -540,7 +401,7 @@ class TestParameterizedMinifuck:
         return io_.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        """Fill the template the way the example harness does."""
+        r"""Fill the template the way the example harness does."""
         from esolangs.tools.boolean.examples import _fill_minifuck
 
         return _fill_minifuck(tpl, bits)
@@ -569,7 +430,7 @@ class TestParameterizedMinifuck:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        """Every instantiated input produces the truth-table result."""
+        r"""Every instantiated input produces the truth-table result."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.minifuck(table)
@@ -579,19 +440,7 @@ class TestParameterizedMinifuck:
             assert got == table[combo], f"{table} inputs {bits}"
 
     def test_all_two_input_tables(self) -> None:
-        """Every two-input table builds, including the ones the wall named.
-
-        A wall once recorded NAND, NOR and XNOR as unreachable.  It does not
-        hold either way round: embedding lifts it, which is what this checks,
-        and ``docs/generators/minifuck_generator.md`` now also records a
-        *reading* construction
-        verifying all sixteen -- the searches behind the original claim were
-        length-bounded well below what it needs.
-
-        No longer marked ``slow``: two inputs come from a derived staging
-        rather than a search, so all sixteen build in about a second
-        together where they used to cost 2.5-9s each.
-        """
+        r"""Every two-input table builds, including the ones the wall named."""
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(16):
@@ -603,15 +452,7 @@ class TestParameterizedMinifuck:
                 assert got == table[combo], f"{table} inputs {bits}"
 
     def test_two_inputs_never_search(self) -> None:
-        """No two-input table reaches the searches.
-
-        The construction's value is that it is a *derivation*: every table
-        has a staging, so the column and parked searches -- which is what
-        made this generator cost tens of seconds -- must never run at this
-        arity.  Asserting on the templates alone would not catch a
-        regression that quietly fell through to the search and got the same
-        answer slowly, so the searches themselves are stubbed to fail.
-        """
+        r"""No two-input table reaches the searches."""
         import importlib
 
         from esolangs.tools.boolean import parameterized
@@ -634,18 +475,7 @@ class TestParameterizedMinifuck:
 
     @pytest.mark.slow  # derives a staging for all.
     def test_the_derivation_reaches_every_two_input_table(self) -> None:
-        """Every two-input table gets a staging from the enumeration alone.
-
-        There is no stored two-input plan to check against, so what this pins
-        is the property that plan used to guarantee: the enumeration reaches
-        all sixteen, and reaches them within its own caps rather than by
-        running off the end.
-
-        A table and its complement share a staging -- the endgame tries both
-        read polarities, and the printed digit is ``NOT(v XOR cell7)`` -- so
-        the pair costs one derivation between them, which is why the sweep
-        finds the second member of each pair as readily as the first.
-        """
+        r"""Every two-input table gets a staging from the enumeration alone."""
 
         from esolangs.tools.boolean.minifuck import (
             _MAX_ACC,
@@ -667,20 +497,7 @@ class TestParameterizedMinifuck:
 
     @pytest.mark.slow  # builds all 38 degenerate.
     def test_degenerate_three_input_tables_never_search(self) -> None:
-        """Every table with at most two essential inputs is search-free.
-
-        A table that ignores an input is a smaller table wearing extra ones,
-        so it projects onto a two-input problem -- which is a closed form.
-        Nothing here needed its own construction; the arity below carries it.
-
-        Ten of these come out with their slots *not* in ascending order, and
-        all ten have the same shape: the ignored input is the *middle* one
-        (essential ``[0, 2]``).  Emitting it first cannot sort them, since it
-        already follows ``{X0}``, and no reset fixes it -- reconvergence
-        works by driving every row to one state, so it cannot collapse
-        ``x1`` while preserving ``x0``.  Searched to depth 14: none exists.
-        Sorting those needs the solver to assign names.
-        """
+        r"""Every table with at most two essential inputs is search-free."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -707,33 +524,7 @@ class TestParameterizedMinifuck:
     # does not pay for the staged.
     @pytest.mark.slow
     def test_a_table_with_no_staging_falls_through(self) -> None:
-        """An unplanned table declines the staging and reaches the next route.
-
-        Both three-input plans are now complete, so the fall-through is
-        exercised at an arity that has no plan at all -- which is the case
-        that matters, since it is what lets a wider table reach the sculpted
-        route instead of failing outright.
-
-        That arity is now six: four and five are both staged (partially), so
-        probing the fall-through at either would miss the point and pay that
-        arity's derivation to do it.
-
-        The unstaged arity is read off :data:`_STAGED_ARITIES` rather than
-        written down, so raising the staged arity again moves this test with
-        it instead of breaking it.  What is asserted is the *gate* -- that an
-        unstaged arity declines immediately -- which is what keeps the miss
-        cheap: without it the table would grind through the whole enumeration
-        before giving up.
-
-        **What is probed is ``_derive_staging``, not ``_staged``.**  This used
-        to assert that ``_staged`` itself returned None at the unstaged arity,
-        which was only true while :func:`_mux` carried an arity gate of its
-        own; with that gate gone the fall-through *succeeds*, and asserting
-        None would be asserting the generator is partial.  Six inputs does
-        build here -- 1822 characters in about 35 seconds for the all-ones
-        table -- so the cheap half of the claim is kept by probing the
-        staging derivation directly, which still declines in 0.000s.
-        """
+        r"""An unplanned table declines the staging and reaches the next route."""
         from esolangs.tools.boolean import parameterized
         from esolangs.tools.boolean.minifuck import (
             _STAGED_ARITIES,
@@ -758,30 +549,7 @@ class TestParameterizedMinifuck:
 
     @pytest.mark.slow  # the four-input derivation is.
     def test_four_input_xor_builds_from_a_staging(self) -> None:
-        """XOR4 builds without searching, and computes its function.
-
-        Four inputs is the arity the insert family was added for, and XOR is
-        the pointed case: ``docs/generators/minifuck_generator.md`` records it
-        as the four-input
-        table the searches fail on.  The searches are stubbed to raise, so a
-        table that builds here built from a staging.
-
-        Every row is run on the interpreter and the widths are compared: a
-        template that computes the table but whose fills differ in length
-        leaks its inputs through ``len(program)``, which is the one thing the
-        parameterized convention exists to prevent.
-
-        **Only one table.**  This used to build five, and assert besides that
-        a plans miss returns None -- which forced a *whole-arity* derivation
-        on top of the ordinary one and put the test past nine minutes for
-        five builds.  That second sweep (the flipped-embed pass) has since
-        been removed outright, but the lever is unchanged: a four-input miss
-        still runs the staged enumeration to its caps, so what this costs is
-        how much of the arity it demands.  The recorded claim is about XOR4,
-        and that is what is kept; the miss path is covered at an unstaged
-        arity by :meth:`test_a_table_with_no_staging_falls_through`, which
-        pays no derivation at all.
-        """
+        r"""XOR4 builds without searching, and computes its function."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -804,22 +572,7 @@ class TestParameterizedMinifuck:
 
     @pytest.mark.slow  # the four-input separation.
     def test_sculpted_route_computes_and_is_row_addressable(self) -> None:
-        """``_mux`` builds a fully-essential table and every row is run.
-
-        The sculpted route is what closes four inputs: a derived,
-        table-independent suffix drives the sixteen rows to sixteen distinct
-        pointer positions -- each input still embedded exactly once, the
-        rule every generator here holds to -- and the printed column is then
-        fixed one row at a time from the highest position down.  XOR4 is
-        used because it is this file's historically pointed table; the route
-        itself never consults the stagings, so this exercises it directly
-        without paying the four-input whole-arity derivation.
-
-        The separation claim is asserted structurally too: sixteen rows at
-        sixteen distinct pointers, with each ``{Xi}`` appearing once,
-        because row addressability without re-embedding is exactly what the
-        route contributes.
-        """
+        r"""``_mux`` builds a fully-essential table and every row is run."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -844,24 +597,7 @@ class TestParameterizedMinifuck:
         assert len(widths) == 1, widths
 
     def test_sculpt_pool_code_matches_scan(self) -> None:
-        """The named sculpt code is what the replaced scan would have found.
-
-        ``_mux_probe`` used to scan ``_POOL_CODES`` through ``_pool_reaches``
-        -- a real interpreter probe, and the module's hot spot at five
-        inputs.  It is now :data:`_SCULPT_POOL_CODE`, a constant, because the
-        probe state is canonical: the ``x`` and the clamp put every row at
-        pointer 0 with the same pool region, a sculpting round cannot write
-        into that region under the rewind guard, and no pool code's own
-        execution reaches past cell 6.
-
-        This replays the scan on the states a sculpt actually reaches and
-        asserts the constant answers exactly what it returned -- the same
-        specification-oracle shape the other closed searches keep.  Both
-        orientations are scanned at every recorded state -- the scout means
-        only the winning replay probes now, always at ``cell7 == 0`` -- so
-        "``cell7 == 1`` is answered by none" stays pinned as a measured
-        fact rather than an assumption baked into the constant.
-        """
+        r"""The named sculpt code is what the replaced scan would have found."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -900,27 +636,7 @@ class TestParameterizedMinifuck:
 
     @pytest.mark.slow  # the six-input build, tens of.
     def test_no_arity_is_gated(self) -> None:
-        """A fully-essential six-input table builds and prints all 64 rows.
-
-        Six is the first arity the old ``_MUX_ARITIES = (2, 3, 4, 5)``
-        declined, and it declined in **0.000s** -- a configuration gate, not
-        a construction that failed.  ``docs/generators/minifuck_generator.md``
-        ("Is ``_mux`` total?") closes all six of the route's refusal sites
-        with arguments carrying no
-        residual ``n``, and the gate is now the floor
-        :data:`_MUX_MIN_ARITY`, which only keeps constants and one-input
-        projections on the :func:`_degenerate` path.
-
-        This is the execution half of that claim, which is the half the repo's
-        standing rule says a generated program is worth.  The table must be
-        **fully essential**: a six-input table with a narrow core projects to
-        an arity the old tuple already carried, so it built even while the
-        gate stood, and asserting on one would test nothing.
-
-        Every row is run and the widths compared, the same as at four inputs
-        -- a template that computes the table but whose fills differ in length
-        leaks its inputs through ``len(program)``.
-        """
+        r"""A fully-essential six-input table builds and prints all 64 rows."""
         import importlib
 
         from esolangs.tools.boolean.helpers import essential_inputs
@@ -947,21 +663,7 @@ class TestParameterizedMinifuck:
         assert len(widths) == 1, widths
 
     def test_staging_budget_is_counted_in_stagings_not_seconds(self) -> None:
-        """The budget is machine-independent, and it ships disabled.
-
-        A wall-clock budget would make this generator non-deterministic: the
-        same table would build on a fast host and fall through on a slow
-        one, and which template a table got would depend on machine load.
-        Counting *stagings* -- one ``(separator, settle, suffix,
-        accumulator)`` tuple of :func:`_stagings` -- is identical everywhere,
-        so a budget selects the same tables on any hardware.
-
-        Two properties are pinned.  The default is ``None``, because
-        anything else would change every recorded template.  And the slice
-        order is the plain enumeration order while unbudgeted -- yield
-        ordering only applies when something is actually being given up, and
-        only at the arity it was measured at.
-        """
+        r"""The budget is machine-independent, and it ships disabled."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -982,22 +684,7 @@ class TestParameterizedMinifuck:
 
     @pytest.mark.slow
     def test_the_slice_order_is_its_measured_yield(self) -> None:
-        """The yield ranking is re-derived, not trusted.
-
-        The comment above ``_SLICE_YIELD_ORDER`` states the measurement
-        that produced it -- each slice's yield at four inputs, best 2874
-        against worst 424 -- but a stated measurement is not a checked
-        one, and the table is dormant as shipped, so nothing else would
-        catch it drifting.
-
-        The yield is *marginal*, not intrinsic: a slice is credited with
-        the columns it is the first to reach in the plain enumeration,
-        not with everything it could place on its own.  That distinction
-        is what picks this order out -- ranking slices by their
-        independent reach gives a different one -- so the assertion
-        pins the mechanism and not just the numbers.  All ten counts are
-        distinct, so descending order is total and needs no tie-break.
-        """
+        r"""The yield ranking is re-derived, not trusted."""
         import importlib
         from collections import Counter
 
@@ -1012,13 +699,7 @@ class TestParameterizedMinifuck:
         assert min(counts.values()) == 424
 
     def test_five_input_budget_uses_its_separate_default(self) -> None:
-        """The five-input override is selected only while budgets are off.
-
-        Five inputs were measured separately from the smaller staging passes,
-        so its disabled-budget value must not accidentally inherit a future
-        finite general budget.  Patch both values to make the dispatch, not
-        their current equal ``None`` spelling, observable.
-        """
+        r"""The five-input override is selected only while budgets are off."""
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
         with pytest.MonkeyPatch.context() as patch:
@@ -1033,17 +714,7 @@ class TestParameterizedMinifuck:
             assert module._budget(5) == 23  # noqa: SLF001
 
     def test_a_budget_gives_up_length_not_coverage(self) -> None:
-        """A table the budget skips still builds, through the sculpted route.
-
-        This is the property that makes lowering the budget safe on a slow
-        machine: the staged route is what emits *short* templates, and
-        :func:`_mux` is total at four inputs, so a budget trades program
-        length for time and never coverage.
-
-        Uses a tiny budget and a table the staged route would otherwise
-        place, so the fall-through is what is exercised.  Every row is run:
-        an emitted template is not evidence it computes.
-        """
+        r"""A table the budget skips still builds, through the sculpted route."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -1069,22 +740,7 @@ class TestParameterizedMinifuck:
         assert len(widths) == 1, widths
 
     def test_a_budget_stops_the_suffix_pass_too(self) -> None:
-        """The budget is checked in the insert pass, not only the first one.
-
-        ``test_a_budget_gives_up_length_not_coverage`` above spends the
-        budget immediately, so the enumeration stops in the bracket-run loop
-        and the suffix pass that follows it never runs.  A budget that
-        outlives the first loop and expires inside the second is what proves
-        the later checks are wired: without them a budget would be ignored
-        for the whole insert pass, which is the more expensive half.
-
-        The table matters as much as the budget.  A table the staged route
-        *places* is claimed before the budget can bite, so this uses one the
-        enumeration never places -- the sculpted route is what serves it --
-        and the spend was measured rather than guessed: the insert pass is
-        entered at 7540 stagings and the whole enumeration costs 120640, so
-        8000 lands inside it.
-        """
+        r"""The budget is checked in the insert pass, not only the first one."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -1115,15 +771,7 @@ class TestParameterizedMinifuck:
         assert len(widths) == 1, widths
 
     def test_a_spent_budget_stops_before_the_first_staging(self) -> None:
-        """A budget of zero derives nothing at all, in both spellings.
-
-        The exhaustion check runs before the first embed rather than after
-        it, so a budget already spent costs nothing rather than one staging.
-        Both the oracle and the index it is compared against are asked, since
-        each carries its own copy of the loop and a budget honoured in only
-        one of them would make the two disagree for a reason unrelated to
-        the enumeration order they exist to pin.
-        """
+        r"""A budget of zero derives nothing at all, in both spellings."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -1149,18 +797,7 @@ class TestParameterizedMinifuck:
 
     @pytest.mark.slow  # ~3.6s: a five-input index.
     def test_a_table_no_staging_reaches_costs_length_not_coverage(self) -> None:
-        """A table outside every staging still builds, the other way.
-
-        A five-input table the tabulation cannot answer is an index miss --
-        the linear-algebra screen that used to pre-empt the lookup is gone,
-        see the note above ``_CHAIN_CAP`` -- so the danger is not a wrong
-        admission but a table that stops being built at all.  This drives
-        the miss and the fall-through below it.
-
-        Executed on every row rather than merely emitted, because a miss
-        that quietly rerouted a table to a *wrong* program would look
-        identical to one that rerouted it to a longer one.
-        """
+        r"""A table outside every staging still builds, the other way."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -1179,16 +816,7 @@ class TestParameterizedMinifuck:
         assert len(widths) == 1, widths
 
     def test_sculpted_route_separates_every_arity_by_construction(self) -> None:
-        """The separation is constructed, so it is exact and immediate.
-
-        This used to pin the opposite: that five inputs declined, because no
-        derivation had driven 32 rows to 32 distinct pointers and the
-        searches took about three minutes to fail at it.  Weighting each
-        input as it lands makes the pointer the row's binary expansion, so
-        every arity separates in closed form -- and five is now built rather
-        than declined.  What is pinned is the property the searches could
-        not guarantee: ``2**n`` rows, ``2**n`` distinct pointers, fast.
-        """
+        r"""The separation is constructed, so it is exact and immediate."""
         import importlib
         import time
 
@@ -1203,13 +831,7 @@ class TestParameterizedMinifuck:
 
     @pytest.mark.slow  # 3.1s: a five-input sculpted.
     def test_five_input_tables_build_and_print_every_row(self) -> None:
-        """A five-input table builds through the sculpted route and runs.
-
-        Five-input XOR is the pointed one: ``docs/generators/minifuck_generator.md``
-        records it as a table no search here builds at all.  Every row is
-        run on the shipped interpreter, because a template that emits
-        without computing would otherwise pass silently.
-        """
+        r"""A five-input table builds through the sculpted route and runs."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -1228,17 +850,7 @@ class TestParameterizedMinifuck:
 
     @pytest.mark.slow  # builds and runs all 256.
     def test_every_three_input_table_is_search_free(self) -> None:
-        """All 256 three-input tables build without searching.
-
-        With ``_find_column`` and ``_find_parked`` stubbed to raise, every
-        table still builds -- and every row is run, because a staging that
-        emits without computing would otherwise pass silently.
-
-        The searches are kept anyway.  They are the fallback for an arity
-        with no plan, and this assertion is what would notice if a staging
-        stopped working: the table would fall through and raise here rather
-        than quietly costing two minutes.
-        """
+        r"""All 256 three-input tables build without searching."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -1262,13 +874,7 @@ class TestParameterizedMinifuck:
         assert searched == [], searched
 
     def test_only_the_first_separators_are_scanned(self) -> None:
-        """The searching routes scan two separators; the plan names the rest.
-
-        Adding a separator to :data:`_SEPS` widens what the plan can *name*
-        without widening what the searches must *try* -- each extra separator
-        would multiply the cost of every fallback search.  This pins that
-        split, which is easy to undo by looping over ``_SEPS`` out of habit.
-        """
+        r"""The searching routes scan two separators; the plan names the rest."""
 
         from esolangs.tools.boolean.minifuck import (
             _SCAN_SEPS,
@@ -1285,25 +891,7 @@ class TestParameterizedMinifuck:
         assert offered == set(range(len(_SEPS))), offered
 
     def test_the_pool_codes_cover_every_route(self) -> None:
-        """The fixed codes must serve every route that reaches the endgame.
-
-        They replaced a breadth-first search, so the property that matters
-        is coverage: wherever the search would have found a pool, the list
-        must too.  This builds through the public entry point precisely
-        because the routes differ -- the degenerate and reconverged ones
-        reach the endgame from states the staged route never produces, and
-        six of the ten codes answer only those.
-
-        It deliberately does not assert that each code is necessary.
-        Measured, none of them is: every one can be dropped alone and every
-        table at both arities still builds.  That is not because the codes
-        cover for each other -- six of them uniquely answer 40 of the 16766
-        call sites -- but because a missing pool is *recoverable*:
-        ``_endgame`` raises, ``_try_print`` counts it as one failed
-        read/orientation, and another accumulator answers the table.  So
-        coverage of the routes is the real property, and minimality is not
-        one to pin.
-        """
+        r"""The fixed codes must serve every route that reaches the endgame."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -1313,21 +901,7 @@ class TestParameterizedMinifuck:
             assert module.minifuck.__wrapped__(table), table
 
     def test_the_pool_codes_all_serve_one_orientation(self) -> None:
-        """Every pool code answers ``cell7 == 0``, and that is enough.
-
-        The list looks like half a list: no code satisfies ``cell7 == 1``,
-        yet the endgame asks about both orientations.  It works because a
-        missing pool is recoverable -- ``_try_print`` forks the same state
-        for both orientations and both reads, so a refusal is one failed
-        attempt among four.
-
-        The list carried the ``cell7 == 1`` mirrors for one commit.  They
-        changed 136 templates and bought nothing, which an ablation only
-        exposed once the fallback searches were stubbed: with the
-        fallthrough open, a gutted pool list still "works", because the
-        searches quietly rebuild what it drops.  So this pins the property
-        that made the mirrors droppable rather than the mirrors.
-        """
+        r"""Every pool code answers ``cell7 == 0``, and that is enough."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -1409,16 +983,7 @@ class TestParameterizedMinifuck:
         )
 
     def test_no_pool_code_serves_both_orientations(self) -> None:
-        """A code answers ``cell7 == 0`` or ``cell7 == 1``, never both.
-
-        Per site this is forced rather than observed: a code's effect on a
-        fixed state is deterministic, so it leaves one value in cell 7 and can
-        match at most one of the two targets.  Checked here on the shipped
-        five and on two codes from the other orientation, because the fact is
-        what makes the list's one-sidedness structural -- the space has no
-        code that would let one string serve both, so "half a list" is the
-        shape of the space rather than a gap in these five.
-        """
+        r"""A code answers ``cell7 == 0`` or ``cell7 == 1``, never both."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -1457,20 +1022,7 @@ class TestParameterizedMinifuck:
                 assert not both, f"{code!r} answered both orientations at one site"
 
     def test_the_pool_codes_are_generated_from_the_law(self) -> None:
-        """The five codes are spelled by the law, not stored as strings.
-
-        ``_POOL_CODES`` is built by walking ``_PLANS`` through :func:`_step`,
-        which inverts the ``ceil(k / 2)`` law: a carry of ``c`` fixes the
-        bracket run at ``2 * c - 1``, or ``2 * c`` where the pending skip is
-        not wanted.  The five literals below are the anchor -- with the source
-        deriving them, every number in the plans and in the step law is
-        otherwise unpinned, and this one assertion is what makes a wrong
-        carry, a wrong override, or a reordered plan fail.
-
-        The plans are also checked for the property that makes them a
-        construction rather than five parameter dumps: two of the five carry
-        no override at all.
-        """
+        r"""The five codes are spelled by the law, not stored as strings."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -1505,25 +1057,7 @@ class TestParameterizedMinifuck:
             assert all(0 <= i < n for i in over), (n, over)
 
     def test_the_pool_codes_are_one_construction(self) -> None:
-        """Each pool code is a mark, shifted three cells by a shared core.
-
-        The five read as unrelated strings -- edit distance 2 to 7, and an
-        exact regex factors *longer* than it lists -- but that measures
-        spelling.  Behaviourally every code is ``prefix + '[[[<[' + suffix``
-        with the core appearing exactly once, and for three of the five the
-        prefix plants a single 1 that the core then shifts three cells right.
-
-        One law runs through it: a run of ``k`` brackets carries a mark right
-        by ``ceil(k / 2)``, leaving a pending skip when ``k`` is odd.  The
-        core opens with three brackets and so moves a mark +2; the suffixes
-        that open with none only reposition the pointer, which is why two
-        codes share the suffix ``'<[<'`` verbatim at different marks.
-
-        The exception is the point: the walk is clean only when the pointer
-        sits just left of the mark.  The code with an empty prefix has no
-        mark to carry, and ``'[<[<[<<'`` arrives at cell 3 with the pointer
-        at 1 rather than 2, so the core spreads marks instead of moving one.
-        """
+        r"""Each pool code is a mark, shifted three cells by a shared core."""
 
         from esolangs.tools.boolean.minifuck import _POOL_CODES, _Sim
 
@@ -1574,30 +1108,7 @@ class TestParameterizedMinifuck:
 
     @pytest.mark.slow  # one full three-input ablation.
     def test_dropping_a_pool_code_is_measured_not_assumed(self) -> None:
-        """What each pool code is worth, ablated rather than argued.
-
-        This replaced an assertion on ``len(_POOL_CODES)``, which noticed
-        only that the list had been edited.  The property worth pinning is
-        what each code *does*, and it is not uniform: three of the five
-        strand tables when dropped, and two strand none.
-
-        The two that strand nothing are still not free, which is the trap
-        this records.  Removing both keeps every table correct and makes the
-        build faster -- and pushes eight tables off ``_reconverged`` onto a
-        route that cannot sort their slots, taking the out-of-name-order
-        count from ten to eighteen.  Coverage and correctness are the loud
-        properties; slot order is the quiet one, and it is what a trim
-        actually costs here.
-
-        The searches are stubbed, so a table that loses its pool fails here
-        rather than being rebuilt slowly by a fallback -- with the
-        fallthrough open this test would pass on any list at all.
-        The one pair the two-insert family used to reach is skipped for the
-        same reason it always was: it has no staged route, so it would
-        strand under every drop and add a flat 2 to every count.  Three
-        inputs, because two is not enough: two of the codes strand nothing
-        at ``n == 2`` and 20 and 18 tables at ``n == 3``.
-        """
+        r"""What each pool code is worth, ablated rather than argued."""
         import importlib
         import re
 
@@ -1686,18 +1197,7 @@ class TestParameterizedMinifuck:
             reset(original)
 
     def test_the_degenerate_cells_are_where_they_were_written_down(self) -> None:
-        """Measuring the embed reproduces the six cells that used to be stored.
-
-        ``_degenerate_cells`` replaced a written-down mapping, and the reason
-        it can is the reason the mapping was constant in the first place: the
-        carry chain preserves ``b0`` and ``b1`` individually before the
-        prefix-XOR starts mixing.  This pins the collapse to the numbers it
-        replaced, so a change to the embed or the separator that moved these
-        columns would be caught here rather than as a slow degenerate build.
-
-        The cells are the same at every arity the route serves, which is what
-        let one mapping serve all of them.
-        """
+        r"""Measuring the embed reproduces the six cells that used to be stored."""
 
         from esolangs.tools.boolean.minifuck import _degenerate_cells
 
@@ -1721,15 +1221,7 @@ class TestParameterizedMinifuck:
         }
 
     def test_the_enumeration_and_the_derivation_agree(self) -> None:
-        """``_stagings`` states the order ``_derived_plans`` actually walks.
-
-        The derivation interleaves the four loops with the machines it is
-        advancing, so a bracket count costs one instruction rather than a
-        rebuild -- which means the order is written out twice, once as a
-        generator and once as nested loops.  This checks they match, since a
-        drift between them would silently change which staging each table
-        gets while every other test still passed.
-        """
+        r"""``_stagings`` states the order ``_derived_plans`` actually walks."""
 
         from esolangs.tools.boolean.minifuck import (
             _MAX_ACC,
@@ -1782,19 +1274,7 @@ class TestParameterizedMinifuck:
     def test_the_search_tiers_still_build_when_the_cheap_routes_miss(
         self, table: str, tier: str
     ) -> None:
-        """With the derived routes stubbed off, the searches build the table.
-
-        Every supported table is served by the staged, degenerate, or
-        reconverged route, so these tiers are dead weight on the measured
-        path -- but they are the fallback the module keeps for tables a
-        future enumeration does not reach.  Stubbing the cheap routes is the
-        only way to run them, and they answer in well under a second at two
-        inputs, so this stays off the slow marker.
-
-        The program is executed against every input row rather than merely
-        being returned: a tier that builds the wrong thing is the failure
-        this is here to catch.
-        """
+        r"""With the derived routes stubbed off, the searches build the table."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -1819,15 +1299,7 @@ class TestParameterizedMinifuck:
     # 4.8s: the enumeration it.
     @pytest.mark.slow
     def test_the_enumeration_skips_a_column_that_is_not_one_digit(self) -> None:
-        """A probe printing anything but single digits is passed over.
-
-        Measured over ``_derived_plans(2)``, all 1844 prints the enumeration
-        makes are single digits, so this filter never fires on the stagings
-        that exist -- it is what keeps a column from being *decoded* out of a
-        print the endgame did not actually produce one digit per row for.
-        Forcing it needs the print itself stubbed, and the caches cleared
-        either side so neither the stub nor the real run is served stale.
-        """
+        r"""A probe printing anything but single digits is passed over."""
 
         from esolangs.tools.boolean.minifuck import (
             _STAGED_ARITIES,
@@ -1852,16 +1324,7 @@ class TestParameterizedMinifuck:
         assert _all_derived_plans(_derived_plans, _STAGED_ARITIES, 2)
 
     def test_reconverged_declines_what_it_cannot_replay(self) -> None:
-        """``_reconverged`` bails rather than replaying a staging it lacks.
-
-        Neither refusal fires on real data -- every two-input inner table has
-        a staging, and every one of those stagings is a plain bracket run, so
-        the two-essential-input route always has something to replay.  They
-        are the guards that keep a *future* enumeration, one with a gap or
-        one carrying the literal-suffix form, from being replayed by a route
-        that makes no walk.  Forcing them is the only way to reach them, so
-        the enumeration is stubbed the way the search-route tests stub theirs.
-        """
+        r"""``_reconverged`` bails rather than replaying a staging it lacks."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -1895,14 +1358,7 @@ class TestParameterizedMinifuck:
             assert module._reconverged(table, list(pair), n) is None  # noqa: SLF001
 
     def test_reconverged_declines_a_reset_that_splits_the_rows(self) -> None:
-        """A reset leaving the rows in different states is not built on.
-
-        The route's whole premise is that the ignored inputs are gone, which
-        a split state has not achieved.  The reset is constructed now rather
-        than searched, so there is one of them and the guard *declines*
-        instead of trying the next candidate -- which is safe because
-        ``_solve`` falls through to a route that does not need the reset.
-        """
+        r"""A reset leaving the rows in different states is not built on."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -1920,13 +1376,7 @@ class TestParameterizedMinifuck:
             assert module._reconverged(table, essential, n) is None  # noqa: SLF001
 
     def test_the_constructed_reset_converges_every_arity(self) -> None:
-        """``_reset_code`` drives all ``2**k`` rows to one identical state.
-
-        This is what the breadth-first search used to look for, and it found
-        the answer only up to three ignored inputs -- its depth cap bit at
-        four.  The construction has no cap, so the property is asserted well
-        past where the search stopped.
-        """
+        r"""``_reset_code`` drives all ``2**k`` rows to one identical state."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -1940,15 +1390,7 @@ class TestParameterizedMinifuck:
             assert len({m.key() for m in joint.ms}) == 1, ignored
 
     def test_the_sculpted_route_returns_its_shortest_build(self) -> None:
-        """``_mux`` keeps the shortest build, not the first one that prints.
-
-        The accumulator sets the price of every sculpting round -- a round is
-        ``3 * K + 1`` characters for a rewind of ``K`` -- so which one is
-        chosen decides the program's length, and the first is a poor choice.
-        This pins the property rather than a number: no ``(C, orientation,
-        read)`` combination may produce a build shorter than the one
-        returned.
-        """
+        r"""``_mux`` keeps the shortest build, not the first one that prints."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -1974,23 +1416,7 @@ class TestParameterizedMinifuck:
     def test_closed_sweeps_match_the_emit_and_walk_sweep(
         self, sep_index: int, settle: int
     ) -> None:
-        """The derived accumulator sweeps equal the interpreter's, per suffix.
-
-        ``_staging_index`` fills from ``_closed_sweeps``, which computes each
-        staging's columns arithmetically -- the bracket staircase, the
-        slice-constant pool, the walk-out XOR -- where ``_column_sweep``
-        emits the pool code and walks.  The index-vs-oracle tests compare
-        the two end to end; this is the direct per-suffix pin, at the first
-        arity with the insert family, so a formula that drifts is named by
-        the ``(slice, suffix, orientation)`` it breaks on rather than by a
-        reassigned staging three layers up.
-
-        Two slices rather than ten to stay in the fast suite; the full
-        cross-check behind the closed form ran every slice at two, three
-        and four inputs -- 10440 sweeps -- with no disagreement.  The
-        slices chosen span both settles and include the one five-input XOR
-        builds from.
-        """
+        r"""The derived accumulator sweeps equal the interpreter's, per suffix."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -2021,33 +1447,7 @@ class TestParameterizedMinifuck:
                 assert derived[cell7] == walked, (sep_index, settle, suffix, cell7)
 
     def test_the_staging_index_agrees_with_the_enumeration(self) -> None:
-        """The inverted index assigns exactly what the per-table sweep does.
-
-        ``_derive_staging`` reads ``_staging_index``, which walks the
-        enumeration once per arity and tabulates column -> first staging;
-        ``_derived_plans`` walks the same order per table.  They must agree
-        tuple for tuple, because the order -- not a stored answer -- is what
-        decides which program a truth table gets.
-
-        This is the regression net for one specific mistake, and what makes
-        it hard to catch: an index that walks the order wrongly still
-        produces columns that are all reachable and all valid.
-        A draft of the index interleaved the two enumeration passes per
-        slice instead of running every pure bracket run before any insert
-        suffix, and the only symptom was five-input XOR being assigned
-        ``None`` where the enumeration assigns ``(2, 0, 0, 33)``.  Every
-        program it did emit still printed its table.  So the assertion here
-        is on the staging *tuple*, never on whether the build works.
-
-        ``_derived_plans`` takes a *tuple* of targets and answers them in one
-        walk of the order, so every table is asked at once rather than one
-        call per table.  That is the whole cost: 256 separate three-input
-        walks were 7.4s, and the single walk answering all of them is 0.12s.
-        The comparison is unchanged -- still every table at arity 2 and 3,
-        still against the staging tuple -- and the complement is dropped from
-        the targets only because at these arities the complement of every
-        table is already in the set.
-        """
+        r"""The inverted index assigns exactly what the per-table sweep does."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -2063,28 +1463,7 @@ class TestParameterizedMinifuck:
 
     @pytest.mark.slow  # ~22s: the arity 4 and 5 index.
     def test_the_staging_index_agrees_at_the_wider_arities(self) -> None:
-        """The same agreement where the insert family and the budget live.
-
-        Four inputs is the first arity with a second enumeration pass (the
-        insert suffixes), and five is the only one that runs under a staging
-        budget and in slice-yield rather than plain order.  Both are code
-        paths the two- and three-input check above never reaches, and both
-        are where an index that mis-walks the order would show up.
-
-        Batched for the same reason as the check above: ``_derived_plans``
-        answers a whole tuple of targets in one walk, so the sample costs one
-        four-input enumeration instead of one per table -- 97s of per-table
-        calls against 2.6s for the single walk, to the same answers.  The
-        complements go into the targets explicitly here, because a 40-table
-        sample at arity 4 does not already contain them the way the
-        exhaustive arities above do.
-
-        What is left is the oracle's emit-and-walk enumerations -- the index
-        builds themselves derive their columns in closed form and cost 0.62s
-        and 1.12s -- and the oracle is the independent spelling this test
-        exists to compare against, not overhead the test can drop.  So it
-        stays marked slow.
-        """
+        r"""The same agreement where the insert family and the budget live."""
         import importlib
         import random
 
@@ -2112,13 +1491,7 @@ class TestParameterizedMinifuck:
                 assert index.get(column) == plans.get(table), (arity, table)
 
     def test_the_staging_enumeration_is_offered_only_at_its_arities(self) -> None:
-        """Outside ``_STAGED_ARITIES`` the derivation offers nothing.
-
-        One input is solved by the degenerate route and four is past what the
-        enumeration covers, so neither asks for a staging.  The guard is what
-        lets the caller fall through to the searches rather than paying an
-        enumeration that has no entries to give.
-        """
+        r"""Outside ``_STAGED_ARITIES`` the derivation offers nothing."""
 
         from esolangs.tools.boolean.minifuck import (
             _STAGED_ARITIES,
@@ -2135,24 +1508,7 @@ class TestParameterizedMinifuck:
         assert _all_derived_plans(_derived_plans, _STAGED_ARITIES, 2)
 
     def test_the_pool_rule_matches_the_scan_it_replaced(self) -> None:
-        """``_find_pool`` answers what trying every code would have answered.
-
-        The scan below *is* the specification: it is what ``_find_pool`` used
-        to do -- walk the codes in order through the simulator and take the
-        first that reaches the pool.  The shipped rule instead asks each row
-        which code it names and checks the rows agree, so this pins the two
-        together over the whole domain the rule claims, not over the states a
-        build happens to visit.
-
-        Both halves matter and each caught a real bug while landing.  The
-        exhaustive half covers every single-row key; the random half builds
-        *joints*, which is where the two cross-row conditions live -- rows must
-        name the same code and be left on the same cell by it.  Independent
-        random rows almost never collide in the low byte, so the joints are
-        drawn by perturbing one window: with rows drawn independently the
-        end-pointer split showed up in none of 40000 joints, and in 5 of the
-        first 80000 built this way.
-        """
+        r"""``_find_pool`` answers what trying every code would have answered."""
         import importlib
         import random
 
@@ -2162,7 +1518,7 @@ class TestParameterizedMinifuck:
         ptr_max = module._POOL_PTR_MAX  # noqa: SLF001
 
         def scan(joint: object, cell7: int, walk_out: int) -> str | None:
-            """The replaced search, kept as the oracle."""
+            r"""The replaced search, kept as the oracle."""
             for code in codes:
                 if module._pool_reaches(joint, code, cell7, walk_out):  # noqa: SLF001
                     return code
@@ -2210,15 +1566,7 @@ class TestParameterizedMinifuck:
                 ), [(s.tape & ((1 << width) - 1), s.ptr) for s in sims]
 
     def test_the_pool_slices_cover_the_whole_domain(self) -> None:
-        """Deriving a slice at a time answers what one big table would.
-
-        The slices exist so a caller pays for the ``(pointer, skip)`` it
-        actually asks about -- a build touches one of the six, and deriving
-        all of them on first use billed a 0.2ms build 57ms of work it had no
-        use for.  What must not change is the *answers*: this rebuilds the
-        whole-domain derivation the slices replaced and pins the union to it,
-        so a slice that quietly disagreed with it would fail here.
-        """
+        r"""Deriving a slice at a time answers what one big table would."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -2252,14 +1600,7 @@ class TestParameterizedMinifuck:
         assert whole, "the derivation should not be empty"
 
     def test_the_pool_rule_declines_outside_its_domain(self) -> None:
-        """The bound is a refusal, not a gap in a table.
-
-        Past ``_POOL_PTR_MAX`` the window byte is no longer the whole key --
-        the codes reach above cell 7 -- so there is no answer to look up and
-        the rule says None rather than guessing.  Codes do still fit out
-        there, which is the point: this is where the rule stops claiming, not
-        where the language stops working.
-        """
+        r"""The bound is a refusal, not a gap in a table."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -2282,15 +1623,7 @@ class TestParameterizedMinifuck:
         assert served, "expected the scan to still answer outside the domain"
 
     def test_pool_reaches_refuses_a_code_that_kills_a_row(self) -> None:
-        """``_pool_reaches`` rejects code that kills or desynchronises a row.
-
-        The pool list is chosen so the codes it does offer keep every row
-        alive, so this refusal never fires during a build -- but it is what
-        makes a *candidate* code safe to try.  Checked against joints
-        captured from a real build rather than a hand-built state, for the
-        reason the pool test gives: a bare embed is not a state any call
-        sees.
-        """
+        r"""``_pool_reaches`` rejects code that kills or desynchronises a row."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -2332,27 +1665,7 @@ class TestParameterizedMinifuck:
 
     @pytest.mark.slow  # re-simulates a derived.
     def test_stagings_deliver_the_column_the_read_sees(self) -> None:
-        """Every staging really does deliver its table's column at the read.
-
-        This recomputes what a staging leaves at its accumulator *as the read
-        sees it* -- after the pool code and the walk out, which is where the
-        running prefix-XOR applies -- and checks it against the table it was
-        derived for.  Selecting on the pre-walk column instead is the mistake
-        that covered 10 of 16 at two inputs, so the transform is the point
-        rather than an implementation detail.
-
-        The derivation accepts a staging by *printing*, which is a stronger
-        test than this one and would catch a broken staging on its own.  What
-        this adds is the reason: it pins that the column arrives at the read,
-        so a future change that made the printing accidental rather than
-        earned would show up here.
-
-        ``01101101`` used to be listed here as the table only the two-insert
-        family reached.  That family is gone and the sculpted route builds
-        the pair instead, so the table has no staging to check -- it is not
-        an omission, and adding it back would assert on a route that no
-        longer produces stagings at all.
-        """
+        r"""Every staging really does deliver its table's column at the read."""
 
         from esolangs.tools.boolean.minifuck import (
             _BASE,
@@ -2403,13 +1716,7 @@ class TestParameterizedMinifuck:
                 assert arrived is not None, (n, key, sep_index, settle, suffix, acc)
 
     def test_template_is_input_independent_and_equal_length(self) -> None:
-        """The template has placeholders and every fill has the same length.
-
-        Both properties concern the same expensive ``0110`` construction.
-        Building it separately only to inspect its placeholders duplicated
-        construction without exercising a distinct path.  The current
-        combined check takes 0.12s serially, so it belongs in the fast suite.
-        """
+        r"""The template has placeholders and every fill has the same length."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.minifuck("0110")
@@ -2421,16 +1728,7 @@ class TestParameterizedMinifuck:
         assert len(lengths) == 1, f"unequal instantiation lengths: {lengths}"
 
     def test_the_simulator_mirrors_the_interpreter_at_its_edges(self) -> None:
-        """The search's model of a row has to match what Minifuck does.
-
-        The search prunes on simulated state, so a divergence here would
-        make it reason about tapes the interpreter never produces.  The
-        edges are the ones a mid-tape step never shows: a dead row ignores
-        everything after it, a spent skip eats one instruction, ``<`` is
-        pinned at cell 0, the tape grows on demand, and a print reads the
-        first eight cells as one byte -- emitting that character, or
-        killing the row if the byte is zero.
-        """
+        r"""The search's model of a row has to match what Minifuck does."""
         from esolangs.tools.boolean.minifuck import _Sim
 
         dead = _Sim(16)
@@ -2468,21 +1766,7 @@ class TestParameterizedMinifuck:
         assert zero.out == []
 
     def test_the_simulator_agrees_with_a_real_run_on_random_streams(self) -> None:
-        """``_Sim`` and a whole-program run agree, instruction for instruction.
-
-        The edges above are hand-picked; this is the same claim made over
-        random programs, which is what would catch a divergence nobody
-        thought to write a case for.  ``_Sim`` advances by its own closed-
-        form laws -- that is the point of the module, the build path no
-        longer drives the interpreter -- so the two *can* disagree now, and
-        this comparison against a real ``run`` is one of the two tests that
-        would say so (the other pins each law to ``_step`` from arbitrary
-        states, below).
-
-        Only live rows are compared cell by cell: once a row is ``dead`` the
-        emitter stops tracking it by contract, while a real run keeps going,
-        so past that point only the output and the death itself are shared.
-        """
+        r"""``_Sim`` and a whole-program run agree, instruction for instruction."""
         import random
 
         from esolangs.interpreters.io import ScriptedIO
@@ -2522,21 +1806,7 @@ class TestParameterizedMinifuck:
         assert skips, "no stream ended on a pending skip"
 
     def test_the_closed_form_runs_agree_with_stepping_them(self) -> None:
-        """A whole run's law matches applying it one instruction at a time.
-
-        ``run_left``, ``run_walk`` and ``run_brackets`` each claim a closed
-        form over a run of ``k`` tokens; ``exec`` applies the same laws one
-        token at a time.  The two spellings must compose to the same state
-        -- the staircase inverse and the prefix-XOR doubling are exactly the
-        parts a per-token application does not share -- and the
-        disagreement this invites is not hypothetical: a first ``run_walk``
-        that ignored the cascade a ``[`` fires when its flip lands on zero
-        matched on the easy states and diverged on 877 of 3000 random ones.
-
-        So the comparison is made from *arbitrary* states, not fresh ones --
-        a fresh row has a zero tape and no pending skip, which is exactly
-        where a wrong model still looks right.
-        """
+        r"""A whole run's law matches applying it one instruction at a time."""
         import random
 
         from esolangs.tools.boolean.minifuck import _Sim
@@ -2586,20 +1856,7 @@ class TestParameterizedMinifuck:
         assert walks_cascaded, "no walk touched the tape"
 
     def test_the_laws_agree_with_the_interpreters_step(self) -> None:
-        """Every law matches ``_step``, from arbitrary states, over the
-        construction's own vocabulary.
-
-        The laws are the module's own statement of the language -- the build
-        path no longer delegates to the interpreter -- so this differential
-        is what now pins them to ``_step``, which stays Minifuck's single
-        definition.  The reference is the retired delegating stepper,
-        rebuilt here from ``_step`` itself; the states are arbitrary rather
-        than fresh (fresh ones are where a wrong model still looks right);
-        and the codes are the strings the generator actually emits --
-        separators, setters, reads, pool codes, weight gadgets, resets --
-        plus bare runs and random mixed streams, so no law is exercised
-        only on the shapes it was derived from.
-        """
+        r"""Every law matches ``_step``, from arbitrary states, over the."""
         import importlib
         import random
 
@@ -2611,7 +1868,7 @@ class TestParameterizedMinifuck:
         m = importlib.import_module("esolangs.tools.boolean.minifuck")
 
         def reference(row: _Sim, code: str) -> None:
-            """The retired stepper: one ``_step`` call per character."""
+            r"""The retired stepper: one ``_step`` call per character."""
             for ins in code:
                 if row.dead:
                     return
@@ -2684,18 +1941,7 @@ class TestParameterizedMinifuck:
         assert skips, "no state ended on a pending skip"
 
     def test_the_parsed_emission_matches_stepping_every_row(self) -> None:
-        """``_Joint.emit`` parses a code once and advances rows by whole runs.
-
-        The parse and the per-run laws have to compose to exactly what
-        applying the laws one character at a time does -- the run boundaries
-        and the skip handed from one run to the next are where a parse bug
-        would live.  Synthetic codes do not reach the states this has to get
-        right: random emissions leave the rows' pointers converged, and it
-        is precisely the *divergent* pointers the real construction creates
-        that make an emission's effect differ row by row.  So the generator
-        itself drives the comparison, with every emission checked both ways
-        as it happens.
-        """
+        r"""``_Joint.emit`` parses a code once and advances rows by whole runs."""
         from esolangs.tools.boolean import minifuck_sim
         from esolangs.tools.boolean.minifuck import minifuck
 
@@ -2731,21 +1977,13 @@ class TestParameterizedMinifuck:
         assert checked[0], "no emission met rows whose pointers had diverged"
 
     def test_the_computed_endgame_choice_matches_trying_all_four(self) -> None:
-        """``_try_print`` names the pair the retired four-fork trial found.
-
-        The trial loop -- fork the joint, run every ``(read, orientation)``
-        endgame, keep whichever printed -- is the specification, so it is
-        replayed here, spelled as it stood, against the computed choice on
-        the call sites real builds reach.  Corpus identity already pins
-        today's outcomes; this pins the *selection rule*, which is what
-        would drift if the polarity mapping or the trial order were edited.
-        """
+        r"""``_try_print`` names the pair the retired four-fork trial found."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.boolean.minifuck")
 
         def retired(joint: object, truth_table: str, acc: int) -> object:
-            """The replaced trial loop, verbatim."""
+            r"""The replaced trial loop, verbatim."""
             for read in module._READS:  # noqa: SLF001
                 for cell7 in (0, 1):
                     probe = joint.fork()  # type: ignore[attr-defined]
@@ -2800,14 +2038,7 @@ class TestParameterizedMinifuck:
         assert misses, "no site declined"
 
     def test_the_walk_needs_a_converged_pointer_going_right(self) -> None:
-        """``[x`` walks are only safe rightward from one shared position.
-
-        Every row runs the same program, so a walk emitted while the rows
-        disagree about where the pointer is would move them different
-        distances.  And ``[x`` only advances -- the pointer is Minifuck's
-        one leftward channel, and it is not this one -- so a leftward
-        target is refused rather than silently ignored.
-        """
+        r"""``[x`` walks are only safe rightward from one shared position."""
         from esolangs.tools.boolean.minifuck import _clamp, _embed, _walk_to
 
         spread = _embed(2)
@@ -2820,12 +2051,7 @@ class TestParameterizedMinifuck:
             _walk_to(clamped, -5)
 
     def test_the_pool_search_needs_the_rows_to_agree_on_the_pointer(self) -> None:
-        """A pool is only a pool if every row reads it from one place.
-
-        The embed leaves the rows on different cells -- that spread is what
-        carries the inputs -- so the pool search declines outright until a
-        clamp has brought them back together.
-        """
+        r"""A pool is only a pool if every row reads it from one place."""
         from esolangs.tools.boolean.minifuck import _clamp, _embed, _find_pool
 
         spread = _embed(2)
@@ -2837,13 +2063,7 @@ class TestParameterizedMinifuck:
         assert len(set(clamped.ptrs())) == 1
 
     def test_the_endgame_refuses_an_impossible_setup(self) -> None:
-        """Two ways the endgame cannot run, reported rather than emitted.
-
-        The pool occupies cells 0..7, so an accumulator inside it would be
-        overwritten by the digit it is supposed to carry.  And the pool has
-        to be *built*: if no pattern reaches it from here, there is nothing
-        to print, and emitting the read anyway would print a junk byte.
-        """
+        r"""Two ways the endgame cannot run, reported rather than emitted."""
         import importlib
 
         # The package re-exports the.
@@ -2865,14 +2085,7 @@ class TestParameterizedMinifuck:
 
 @pytest.mark.slow  # one four-input staging.
 def test_insert_pass_stops_as_soon_as_its_last_target_is_placed() -> None:
-    """The second pass has its own early exit, and only it can reach this one.
-
-    The bracket-run pass returns when it places the last table, so a target it
-    reaches never gets as far as the insert family.  This table does not build
-    from a pure run -- its staging carries an insert string rather than a
-    bracket count -- so asking for it alone is what drives ``remaining`` to
-    zero inside the second loop.
-    """
+    r"""The second pass has its own early exit, and only it can reach this."""
     import importlib
 
     module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -2885,7 +2098,7 @@ def test_insert_pass_stops_as_soon_as_its_last_target_is_placed() -> None:
 
 
 def test_mux_refuses_below_its_minimum_arity() -> None:
-    """``_mux`` separates rows, which needs at least two of them to separate."""
+    r"""``_mux`` separates rows, which needs at least two of them to."""
     import importlib
 
     module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -2895,13 +2108,7 @@ def test_mux_refuses_below_its_minimum_arity() -> None:
 
 
 def test_the_scout_distrusts_states_its_summary_cannot_speak_for() -> None:
-    """A base outside the parity law's key sends ``_mux`` to the sweep.
-
-    The scout summarises a row as its tape alone, which is only sound with
-    no skip pending, no dead row, and one shared pool region.  No
-    separation produces the other states, so they are constructed: each
-    must come back untrusted rather than mispriced.
-    """
+    r"""A base outside the parity law's key sends ``_mux`` to the sweep."""
     import importlib
 
     module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -2928,13 +2135,7 @@ def test_the_scout_distrusts_states_its_summary_cannot_speak_for() -> None:
 
 
 def test_the_probe_simulates_when_the_parity_law_declines() -> None:
-    """Off the canonical state the probe answers by simulation, identically.
-
-    ``_sculpt_columns`` refuses a joint whose rows disagree inside the pool
-    region, and ``_mux_probe`` must then hand back exactly what the
-    simulated probe says -- the fallback is the specification, not an
-    approximation of it.
-    """
+    r"""Off the canonical state the probe answers by simulation,."""
     import importlib
 
     module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -2949,13 +2150,7 @@ def test_the_probe_simulates_when_the_parity_law_declines() -> None:
 
 
 def test_the_probe_frame_refuses_codes_outside_its_key() -> None:
-    """A code that strands a skip or leaves the pool region has no frame.
-
-    The frame summarises a pool code as ``(landed, parity)``, which is only
-    a summary while the code stays inside the region and leaves the row
-    runnable.  ``[`` from the canonical byte cascades and owes a skip; a
-    long walk crosses cell 8.  Both must decline rather than summarise.
-    """
+    r"""A code that strands a skip or leaves the pool region has no frame."""
     import importlib
 
     module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -2967,14 +2162,7 @@ def test_the_probe_frame_refuses_codes_outside_its_key() -> None:
 
 
 def test_the_weight_law_matches_the_parsed_runs() -> None:
-    """``run_weight`` is ``apply(_runs(_mux_weight(k)))``, or refuses untouched.
-
-    The gadget law is a composition claim over the pinned laws, so the
-    differential is against them, from arbitrary states -- a fresh setter
-    site is exactly where a wrong march model still looks right.  A refusal
-    must leave the row untouched, and both the skip refusal and the floor
-    refusal must actually fire in the sample.
-    """
+    r"""``run_weight`` is ``apply(_runs(_mux_weight(k)))``, or refuses."""
     import importlib
     import random
 
@@ -3041,13 +2229,7 @@ def test_the_weight_law_matches_the_parsed_runs() -> None:
 
 
 def test_the_rewind_law_matches_the_parsed_runs() -> None:
-    """A sculpting round and a fused round sequence match the parsed runs.
-
-    ``run_rewind`` claims the round ``"<"*k + "[x"*k + "x"`` in one law
-    call and ``run_rewinds`` claims a whole sequence over one extracted
-    window; both fall back to the laws when their frame does not hold, so
-    the differential covers fused and fallback states alike.
-    """
+    r"""A sculpting round and a fused round sequence match the parsed runs."""
     import random
 
     from esolangs.tools.boolean.minifuck_sim import _runs, _Sim
@@ -3109,13 +2291,7 @@ def test_the_rewind_law_matches_the_parsed_runs() -> None:
 
 
 def _rule_arities() -> list[int]:
-    """The rule's first arity and the top of the sweep.
-
-    Read off ``_MUX_RULE_ARITY`` rather than written down, so that moving
-    the constant moves this test with it.  A hard-coded boundary silently
-    stops testing the boundary the moment the line is redrawn -- which is
-    exactly what happened when the rule was pulled back from eight to nine.
-    """
+    r"""The rule's first arity and the top of the sweep."""
     import importlib
 
     module = importlib.import_module("esolangs.tools.boolean.minifuck")
@@ -3126,18 +2302,7 @@ def _rule_arities() -> list[int]:
 @pytest.mark.slow  # the rule build plus the.
 @pytest.mark.parametrize("n", _rule_arities())
 def test_the_rule_spelling_matches_the_real_sculpt(n: int) -> None:
-    """From ``_MUX_RULE_ARITY`` the spelled build is the sculpt's bytes.
-
-    The rule names the combination; the spelling must then be exactly what
-    :func:`_mux_sculpt` emits at that combination, so the retired machinery
-    is run once here as the oracle.  Byte equality is the whole claim --
-    the replay acceptance inside ``_mux`` already checked the prints.
-
-    Both the rule's own first arity and the top of the sweep are checked: a
-    spelling that drifted at the boundary would otherwise be caught only by
-    the fallback, which answers correctly and silently restores the
-    contest's cost.
-    """
+    r"""From ``_MUX_RULE_ARITY`` the spelled build is the sculpt's bytes."""
     import importlib
     import random
 
@@ -3172,13 +2337,7 @@ def test_the_rule_spelling_matches_the_real_sculpt(n: int) -> None:
 
 @pytest.mark.slow  # two ten-input builds plus.
 def test_ten_input_builds_print_on_the_interpreter() -> None:
-    """Sampled rows of both ten-input shapes answer on the real interpreter.
-
-    The rule path's acceptance is the laws' replay; this is the standard
-    above it -- the shipped interpreter running instantiated rows.  Six
-    rows per shape, the two corner rows always among them; the full
-    1024-row sweep was executed when the path landed, both shapes correct.
-    """
+    r"""Sampled rows of both ten-input shapes answer on the real."""
     import hashlib
     import random
 

@@ -1,28 +1,4 @@
-"""Interpreter for ZTOALC L.
-
-Programs are a list of lines; line 1 holds the initial pointer.  Execution
-visits line ``v`` when the Collatz step equals ``v``, halting when the value
-reaches 1.  Commands print, jump, assign, add, and subtract using the current
-value as an expression.
-
-Expressions follow the wiki's grammar: ``input`` (read a character's ASCII
-value), a variable, a number, ``[size]`` to create an array of ``size``
-elements, and ``array[index]`` where ``array`` is any expression evaluating
-to an array -- so nested indexing and arrays-of-arrays (an element that is
-itself an array) are supported.  A command missing a required operand, an
-empty or unbalanced index expression (``a[]``, ``a[1``), is a malformed
-program and is rejected with :class:`ValueError`; referencing an undefined
-variable, indexing out of range, reaching a negative pointer, or using an
-array where a number is required are invalid operations that halt the
-program with :class:`~esolangs.exceptions.HaltError`.
-
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
-
-The interpreter runs on a :class:`_Machine` (the code, variables, and
-Collatz pointer), so it is step-capable: ``step()`` executes the line at
-the current pointer and advances it to the next line in the trajectory,
-and ``halted`` is true once the pointer reaches 1.
-"""
+r"""Interpreter for ZTOALC L."""
 
 import sys
 from collections.abc import Callable, Mapping
@@ -36,12 +12,12 @@ Value = int | list["Value"]
 
 
 def _is_int(tok: str) -> bool:
-    """Whether ``tok`` is a decimal integer literal (possibly negative)."""
+    r"""Whether ``tok`` is a decimal integer literal (possibly negative)."""
     return tok.lstrip("-").isdigit() and tok != "-"
 
 
 def _as_int(value: Value) -> int:
-    """Require ``value`` to be an integer, halting on an array."""
+    r"""Require ``value`` to be an integer, halting on an array."""
     if not isinstance(value, int):
         raise HaltError(
             f"a number is required here, but the value is an array "
@@ -51,7 +27,7 @@ def _as_int(value: Value) -> int:
 
 
 def _freeze(value: Value) -> object:
-    """Return a hashable form of ``value`` (arrays become nested tuples)."""
+    r"""Return a hashable form of ``value`` (arrays become nested tuples)."""
     if isinstance(value, list):
         return tuple(_freeze(v) for v in value)
     return value
@@ -67,19 +43,14 @@ def _freeze(value: Value) -> object:
 #: frozen form survives.
 @dataclass(frozen=True)
 class _Print:
-    """Write one codepoint."""
+    r"""Write one codepoint."""
 
     value: int
 
 
 @dataclass(frozen=True)
 class _Store:
-    """Assign ``value`` to ``name`` walked through ``indexes``.
-
-    The indexes are already evaluated.  They have to be: an index can read
-    ``input``, and that read is part of the step's evaluation rather than
-    of applying its result.
-    """
+    r"""Assign ``value`` to ``name`` walked through ``indexes``."""
 
     name: str
     indexes: tuple[int, ...]
@@ -91,7 +62,7 @@ type _Effect = _Print | _Store
 
 @dataclass
 class _State:
-    """The changing Collatz pointer and alias-preserving variable heap."""
+    r"""The changing Collatz pointer and alias-preserving variable heap."""
 
     ptr: int
     var: dict[str, Value]
@@ -106,18 +77,14 @@ type _Read = Callable[[], int]
 
 
 def _no_read() -> int:
-    """Refuse a read from a context that cannot hold an ``input`` atom."""
+    r"""Refuse a read from a context that cannot hold an ``input`` atom."""
     raise AssertionError("a store target cannot read input")
 
 
 def _atom(
     exp: str, pos: int, var: Mapping[str, Value], read: _Read
 ) -> tuple[Value, int]:
-    """Parse the leading atom of ``exp`` from ``pos``.
-
-    Returns ``(value, next_position)``.  An atom is ``[expr]`` (array
-    creation), the ``input`` keyword, a number, or a variable name.
-    """
+    r"""Parse the leading atom of ``exp`` from ``pos``."""
     if not exp:
         raise ValueError("missing expression")
     if pos >= len(exp):
@@ -153,13 +120,7 @@ def _atom(
 
 
 def _closing(exp: str, pos: int) -> int:
-    """Step past the ``]`` closing an index, refusing a missing one.
-
-    This was ``pos += 1  # the closing ']'`` at both call sites, taken on
-    faith.  So ``x[1`` -- which the module docstring names as a malformed
-    program -- parsed as though the bracket were there and ran to a normal
-    answer, byte-identical to the well-formed ``x[1]``.
-    """
+    r"""Step past the ``]`` closing an index, refusing a missing one."""
     if pos >= len(exp) or exp[pos] != "]":
         raise ValueError(f"{exp!r} is missing the ']' closing an index")
     return pos + 1
@@ -168,12 +129,7 @@ def _closing(exp: str, pos: int) -> int:
 def _eval(
     exp: str, pos: int, var: Mapping[str, Value], read: _Read
 ) -> tuple[Value, int]:
-    """Evaluate the expression ``exp`` from ``pos``, returning (value, pos).
-
-    An expression is an atom followed by any number of ``[index]``
-    indexings, so ``array[index]`` with a general ``array`` expression
-    (including further indexings) works.
-    """
+    r"""Evaluate the expression ``exp`` from ``pos``, returning (value,."""
     value, pos = _atom(exp, pos, var, read)
     while pos < len(exp) and exp[pos] == "[":
         index, pos = _eval(exp, pos + 1, var, read)
@@ -191,20 +147,20 @@ def _eval(
 
 
 def _val(exp: str, var: Mapping[str, Value], read: _Read) -> Value:
-    """Evaluate the expression ``exp``."""
+    r"""Evaluate the expression ``exp``."""
     value, _ = _eval(exp, 0, var, read)
     return value
 
 
 def _operand(lst: list[str], n: int) -> str:
-    """Return the ``n``-th token of a command, rejecting a missing one."""
+    r"""Return the ``n``-th token of a command, rejecting a missing one."""
     if n >= len(lst):
         raise ValueError("missing operand in " + " ".join(lst))
     return lst[n]
 
 
 def _split(lhs: str) -> tuple[str, list[str]]:
-    """Split ``lhs`` into its base atom and index-expression strings."""
+    r"""Split ``lhs`` into its base atom and index-expression strings."""
     atom = lhs[: lhs.find("[")]
     indexes: list[str] = []
     pos = lhs.find("[")
@@ -225,27 +181,14 @@ def _split(lhs: str) -> tuple[str, list[str]]:
 
 
 def _next_ptr(ptr: int) -> int:
-    """Return the next line in the Collatz trajectory of ``ptr``."""
+    r"""Return the next line in the Collatz trajectory of ``ptr``."""
     return 3 * ptr + 1 if ptr % 2 else ptr // 2
 
 
 def _advance_line(
     ptr: int, code: list[str], var: Mapping[str, Value], read: _Read
 ) -> tuple[int, list[_Effect]]:
-    """Return the next pointer and what the line under ``ptr`` wants done.
-
-    Pure: it reads its arguments and returns a description.  Nothing is
-    written and nothing is printed -- the caller does both, which is what
-    lets a store reach the live arrays and keeps the aliasing the language
-    has.
-
-    ``read`` is the input port.  It is called as the evaluation reaches
-    each ``input`` atom, so a line that faults part-way has consumed
-    exactly the bytes to the left of the fault.
-
-    A taken ``jump`` returns ``ptr + 1`` rather than the Collatz successor:
-    it is the one line that chooses where to go.
-    """
+    r"""Return the next pointer and what the line under ``ptr`` wants done."""
     p = ptr - 1
     if p < 0:
         raise HaltError(f"the pointer is at line {ptr}, before the first line")
@@ -300,12 +243,7 @@ def _advance_line(
 def _store_effect(
     lhs: str, value: Value, var: Mapping[str, Value], read: _Read
 ) -> _Store:
-    """Describe an assignment to ``lhs``, evaluating its index path.
-
-    The indexes are evaluated here rather than by the caller, because an
-    index expression can contain ``input`` and that read happens while the
-    step runs, not while its result is written.
-    """
+    r"""Describe an assignment to ``lhs``, evaluating its index path."""
     if "[" not in lhs:
         return _Store(lhs, (), value)
     atom, indexes = _split(lhs)
@@ -317,7 +255,7 @@ def _store_effect(
 
 
 class _Machine:
-    """One ZTOALC L run: the code, variables, and Collatz pointer."""
+    r"""One ZTOALC L run: the code, variables, and Collatz pointer."""
 
     def __init__(self, code: list[str], io: IO) -> None:
         if not code:
@@ -337,7 +275,7 @@ class _Machine:
 
     @property
     def ptr(self) -> int:
-        """The current Collatz pointer."""
+        r"""The current Collatz pointer."""
         return self.state.ptr
 
     @ptr.setter
@@ -346,12 +284,12 @@ class _Machine:
 
     @property
     def var(self) -> dict[str, Value]:
-        """The variable heap, including its live list aliases."""
+        r"""The variable heap, including its live list aliases."""
         return self.state.var
 
     @property
     def halted(self) -> bool:
-        """Whether the Collatz trajectory has reached 1."""
+        r"""Whether the Collatz trajectory has reached 1."""
         return self.ptr == 1
 
     # The VM's language-shaped.
@@ -359,21 +297,21 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        """The current instruction position."""
+        r"""The current instruction position."""
         return self.ptr
 
     @property
     def memory(self) -> list[int]:
-        """The addressable cells."""
+        r"""The addressable cells."""
         return [v for _, v in sorted(self.var.items()) if isinstance(v, int)]
 
     @property
     def stack(self) -> list[object]:
-        """No stack in this language."""
+        r"""No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        r"""Return the complete internal state, hashable for cycle detection."""
         return (
             self.ptr,
             tuple(sorted((k, _freeze(v)) for k, v in self.var.items())),
@@ -381,11 +319,7 @@ class _Machine:
         )
 
     def _apply(self, effect: _Effect) -> None:
-        """Carry out one effect the core described.
-
-        A store walks the live arrays and writes into the last one, which
-        is what keeps two names sharing an array in step with each other.
-        """
+        r"""Carry out one effect the core described."""
         if isinstance(effect, _Print):
             self.io.print_char(chr(effect.value))
             return
@@ -421,13 +355,7 @@ class _Machine:
         target[i] = effect.value
 
     def step(self) -> None:
-        """Execute the line at ``ptr`` and advance to the next in trajectory.
-
-        The input port is passed in rather than reached for: the core
-        calls ``read`` as it meets each ``input`` atom, so the line runs
-        once and a fault part-way leaves the bytes to its left consumed,
-        as the original did.
-        """
+        r"""Execute the line at ``ptr`` and advance to the next in trajectory."""
         if self.halted:
             return
         ptr, effects = _advance_line(self.ptr, self.code, self.var, self.io.input_char)
@@ -437,7 +365,7 @@ class _Machine:
 
 
 def run(code: list[str], io: IO) -> None:
-    """Run a ZTOALC L program, following the Collatz trajectory of line 1."""
+    r"""Run a ZTOALC L program, following the Collatz trajectory of line 1."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

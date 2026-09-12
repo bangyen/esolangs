@@ -1,9 +1,4 @@
-"""Unit tests for the Grapheme interpreter.
-
-Covers the mode system (string/int/function), the arithmetic and stack
-commands, variables, function execution, truthiness-driven skips, and the
-documented error conventions.
-"""
+r"""Unit tests for the Grapheme interpreter."""
 
 import contextlib
 
@@ -47,14 +42,7 @@ class TestModes:
         assert run_program("FAFHYHIE") == "10"
 
     def test_an_unterminated_mode_is_flushed_when_its_frame_ends(self) -> None:
-        """Each mode still yields its value when the code runs out.
-
-        At the top level the flushed value lands on the stack after the
-        last command, where nothing is left to print it -- so the flush
-        was only ever checked by the program not raising.  Ending a
-        *called* body in a mode puts the value where the caller can print
-        it, one per mode.
-        """
+        r"""Each mode still yields its value when the code runs out."""
         assert run_program("HEABHIY") == "AB"  # string.
         assert run_program("HFABHIY") == "120"  # int.
         assert run_program("EHABEGNY") == "AB"  # function, via N.
@@ -123,7 +111,7 @@ class TestFunctions:
         assert run_program("FAFEYEG") == "10"
 
     def test_g_on_input_with_bad_commands_rejected(self) -> None:
-        """A string read from input and executed via G is validated, not asserted on."""
+        r"""A string read from input and executed via G is validated, not."""
         import pytest
 
         with pytest.raises(ValueError, match="unhandled command"):
@@ -146,13 +134,7 @@ class TestFunctions:
 
 
 class TestConditionalsThatDoNothing:
-    """Each conditional command's other arm: the case where it declines.
-
-    ``Q``, ``V`` and ``Z`` all guard on what they popped, and the suite only
-    ever showed them acting.  A command that quietly does nothing is the
-    half more likely to go wrong unnoticed, so each is pinned here by what
-    it leaves behind.
-    """
+    r"""Each conditional command's other arm: the case where it declines."""
 
     def test_q_ignores_a_value_that_is_not_a_function(self) -> None:
         # Q pops two integers rather.
@@ -186,35 +168,18 @@ class TestSkips:
         assert run_program("FFFAFXYK") == "0"
 
     def test_the_command_u_skips_is_one_that_would_have_printed(self) -> None:
-        """Which way ``U`` skips, read from the output rather than the stack.
-
-        The tests above both skip a ``K`` that sits before a ``Y``, and a
-        duplicate the ``Y`` never reaches leaves the printed value the
-        same either way -- so an inverted skip passes both.  Skipping the
-        ``Y`` itself is the difference.
-        """
+        r"""Which way ``U`` skips, read from the output rather than the stack."""
         assert run_program("FAFFFUY") == ""  # falsy: the Y is skipped.
         assert run_program("FBFFAFUY") == "20"  # truthy: the Y runs.
 
     def test_x_resumes_two_commands_on(self) -> None:
-        """After the one command it lets through, ``X`` skips exactly one.
-
-        The suite's truthy ``X`` puts the skipped command last, where
-        skipping it and running it off the end look alike.  Following it
-        with more code shows where execution comes back.
-        """
+        r"""After the one command it lets through, ``X`` skips exactly one."""
         # [10, 20, 30]: X pops the.
         # and the last Y prints the 10.
         assert run_program("FAFFBFFCFXYKY") == "2010"
 
     def test_x_can_open_the_body_it_governs(self) -> None:
-        """``X`` works at the very start of a called body.
-
-        The pending skip is remembered as a position, and the first
-        position in a frame is the one an offset-based check is most
-        likely to mistake for "nothing pending" -- but the main program
-        can never put ``X`` there, since it would pop an empty stack.
-        """
+        r"""``X`` works at the very start of a called body."""
         # the body is XYK: X pops the.
         assert run_program("FAFFBFHXYKHI") == "10"
 
@@ -238,12 +203,7 @@ class TestErrors:
             run_program("hello")
 
     def test_constructor_builds_a_runnable_machine_and_validates(self) -> None:
-        """The constructor is the one way a program becomes a machine.
-
-        ``run`` and the VM adapter both use it.  The tests reach it only
-        via ``run``, which hides the recorded end of the top-level frame
-        that ``ip`` reports once every frame has popped.
-        """
+        r"""The constructor is the one way a program becomes a machine."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.stack_based.grapheme import _Machine
 
@@ -295,45 +255,24 @@ class TestEdgeCases:
         assert run_program("H") == ""
 
     def test_v_jumps_forward_over_the_commands_it_counts(self) -> None:
-        """``V`` moves the cursor on, not back.
-
-        The suite's jumping ``V`` uses an offset large enough to leave the
-        program, which ends the frame whichever way it went; a jump of one
-        that lands on a later command is what fixes the direction.
-        """
+        r"""``V`` moves the cursor on, not back."""
         # [20, 1, 0]: V pops the falsy.
         # that would otherwise discard.
         assert run_program("FBFFFTFFVMY") == "20"
 
     def test_a_z_lap_starts_with_nothing_pending(self) -> None:
-        """Each pass over a ``Z`` body begins with no skip outstanding.
-
-        The frame is reused rather than rebuilt, so a pending-skip marker
-        left pointing at a position the new lap will reach would swallow a
-        command partway through it.  The suite's ``Z`` bodies are one or
-        two commands long, too short to reach such a position.
-        """
+        r"""Each pass over a ``Z`` body begins with no skip outstanding."""
         # four values, and a body of.
         assert run_program("FAFFBFFCFFDFHKMMYHZ") == "3010"
 
     def test_a_call_does_not_repeat_itself(self) -> None:
-        """Only ``Z`` re-runs its body; ``I`` runs it once.
-
-        The looping flag is empty for every other call, and an empty flag
-        and a set one part ways only when the stack outlives the body --
-        which is exactly what this program leaves behind.
-        """
+        r"""Only ``Z`` re-runs its body; ``I`` runs it once."""
         # 10 and 20 on the stack, the.
         # returns; the 10 is still.
         assert run_program("FAFFBFHYHI") == "20"
 
     def test_the_last_command_leaves_the_machine_halted(self) -> None:
-        """A frame finishes on the step that runs its final command.
-
-        Reaching the end is otherwise only visible one step later, when
-        the cursor is found past the code -- so a caller stepping exactly
-        as many times as there are commands is what tells the two apart.
-        """
+        r"""A frame finishes on the step that runs its final command."""
         from esolangs.interpreters.stack_based.grapheme import _Machine
 
         machine = _Machine("FAFY", ScriptedIO())
@@ -343,7 +282,7 @@ class TestEdgeCases:
         assert machine.halted
 
     def test_recursion_is_not_artificially_capped(self) -> None:
-        """A 501-deep finite call chain follows the language's unbounded stack."""
+        r"""A 501-deep finite call chain follows the language's unbounded stack."""
         # the body decrements the.
         # again through Q while the.
         program = "H" + "FFTBKFAFDQ" + "H" + "FAFC" + "FAFD" + "G"
@@ -351,13 +290,7 @@ class TestEdgeCases:
         assert run_program("FEZF" + "FFT" + "A" + program) == ""
 
     def test_the_error_messages_read_in_full(self) -> None:
-        """Each message entire, not the fragment the tests match on.
-
-        ``match=`` is a substring search, so the assertions above pass on
-        a message padded or reworded around the phrase they look for.  The
-        two "cannot name" sites are separate raises with the same words,
-        so each needs its own program.
-        """
+        r"""Each message entire, not the fragment the tests match on."""
         import re
 
         for code, message in (
@@ -374,7 +307,7 @@ class TestEdgeCases:
             assert str(caught.value) == message
 
     def test_the_malformed_program_message_reads_in_full(self) -> None:
-        """The rejection names its own rule, in the case it uses."""
+        r"""The rejection names its own rule, in the case it uses."""
         import re
 
         message = "Grapheme programs may only contain uppercase Latin letters"
@@ -385,11 +318,7 @@ class TestEdgeCases:
 
 class TestStepMachine:
     def test_the_read_pushes_the_whole_line(self) -> None:
-        """``W`` pushes the line itself, not a byte of it.
-
-        The cursor and snapshot moving is the shared contract below; that
-        the value is the whole string is Grapheme's own.
-        """
+        r"""``W`` pushes the line itself, not a byte of it."""
         from esolangs.interpreters.stack_based.grapheme import _Machine
 
         machine = _Machine("W", ScriptedIO("hi"))
@@ -397,14 +326,7 @@ class TestStepMachine:
         assert machine.stack == ["hi"]
 
     def test_a_closed_mode_leaves_the_frame_as_it_found_it(self) -> None:
-        """After a mode ends, the frame reads as one that never opened it.
-
-        The cycle detector compares whole snapshots, so a frame left
-        holding a spent mode name -- or a buffer emptied to something
-        other than a list -- would keep two identical machines apart, or
-        break the snapshot outright.  Nothing else reads those fields once
-        the mode is over, so only the snapshot can say what is in them.
-        """
+        r"""After a mode ends, the frame reads as one that never opened it."""
         from esolangs.interpreters.stack_based.grapheme import _Machine
 
         for code, value in (("EAEK", "A"), ("FAFK", 10), ("HAHK", ("func", "A"))):
@@ -420,12 +342,7 @@ class TestStepMachine:
 
 
 class TestNumberEncoding:
-    """Letters stand for digits, with Z standing for zero.
-
-    Numbers only ever reach the tests through programs that print their
-    result, where the encoding and the arithmetic that follows it cannot be
-    told apart.  These read the conversion directly.
-    """
+    r"""Letters stand for digits, with Z standing for zero."""
 
     def test_letters_count_from_a(self) -> None:
         from esolangs.interpreters.stack_based.grapheme import _to_int
@@ -434,13 +351,13 @@ class TestNumberEncoding:
         assert _to_int("B") == 20
 
     def test_z_is_zero_not_its_place_in_the_alphabet(self) -> None:
-        """``Z`` is the one letter that does not stand for its offset."""
+        r"""``Z`` is the one letter that does not stand for its offset."""
         from esolangs.interpreters.stack_based.grapheme import _to_int
 
         assert _to_int("Z") == 0
 
     def test_each_letter_shifts_the_ones_before_it(self) -> None:
-        """Position matters: AZ and ZA are different numbers."""
+        r"""Position matters: AZ and ZA are different numbers."""
         from esolangs.interpreters.stack_based.grapheme import _to_int
 
         assert _to_int("AZ") == 100
@@ -453,13 +370,7 @@ class TestNumberEncoding:
         assert _to_int("") == 0
 
     def test_intmode_reads_z_as_zero_too(self) -> None:
-        """The buffer a closing ``F`` parses follows the same rule as ``J``.
-
-        The two conversions are written out separately, and only the ``J``
-        one is read here -- so intmode's own ``Z`` went unchecked, and
-        every program that spells a number avoids ``Z`` by writing the
-        shorter letter instead.
-        """
+        r"""The buffer a closing ``F`` parses follows the same rule as ``J``."""
         from esolangs.interpreters.stack_based.grapheme import _int_from
 
         assert _int_from(list("Z")) == 0
@@ -470,18 +381,12 @@ class TestNumberEncoding:
         assert run_program("FAZFY") == "100"
 
     def test_an_empty_string_is_worth_nothing_in_arithmetic(self) -> None:
-        """``A`` on two empty strings is 0, not the ord of a stand-in.
-
-        A string operand contributes its first character, and the empty
-        string has none -- so the value the code substitutes for the
-        missing character is what decides the sum, and every other string
-        in the suite has a first character of its own.
-        """
+        r"""``A`` on two empty strings is 0, not the ord of a stand-in."""
         assert run_program("EEEEAY") == "0"
 
 
 def _machine(code: object) -> object:
-    """A machine with ``code`` in its first frame."""
+    r"""A machine with ``code`` in its first frame."""
     from esolangs.interpreters.stack_based.grapheme import _Machine
 
     return _Machine(str(code), ScriptedIO())
@@ -494,7 +399,7 @@ def _reader(code: object, stdin: str) -> object:
 
 
 class TestContract(EmptyProgramContract, CycleContract, InputCursorContract):
-    """The shared shapes. ``Z`` re-runs ``KM`` -- dup then pop -- forever."""
+    r"""The shared shapes."""
 
     run = staticmethod(run_program)
     machine = staticmethod(_machine)

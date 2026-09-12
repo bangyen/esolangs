@@ -1,23 +1,4 @@
-"""A terminal step-through over the debugger.
-
-:func:`render` is a pure function from one :class:`Frame` -- a VM's state
-between two commands -- to the text of a screen, and :func:`drive` is the
-loop that repaints it and reads keys.  That loop takes its input and output
-as arguments, so a test drives it with scripted keys and collects what it
-paints; only :func:`run_tui`, which puts the terminal in raw mode and hands
-it the real stdin, goes unexercised.
-
-The one thing a stepper has to do that :mod:`esolangs.debugger` does not is say
-*where in the program* execution is, and ``ip`` is not one type across the
-registry.  :func:`locate` turns one into a place on the source, but it
-cannot do that from the value alone: a cell, a call depth paired with a
-cursor, and a stack of one position per frame are all tuples of small ints
-and none of them can be told from the others by looking.  So the language
-says which it means, through ``ip_shape`` on its machine, and a language
-that says nothing while reporting a tuple is simply not highlighted.  The
-header prints the raw ``ip`` either way, which is what keeps a missing
-highlight readable rather than silent.
-"""
+r"""A terminal step-through over the debugger."""
 
 from __future__ import annotations
 
@@ -32,21 +13,7 @@ _OFF = "\x1b[0m"
 
 
 def _style(*, run: bool, stopped: bool, picked: bool) -> str:
-    """Return the escape for a cell in any combination of the three states.
-
-    Three things can be true of one cell at once -- the run is on it, a
-    breakpoint is on it, and the selector is on it -- so the attributes
-    compose rather than one winning.  Reverse video is the run, red is a
-    breakpoint, and an underline is the selector.
-
-    The bold is the awkward one, and it earns its place.  Reverse video over
-    a red background swaps the red onto the *foreground*, so "run on a
-    breakpoint" comes out as another mostly-red cell and reads the same as
-    the breakpoint alone; bold is what separates them.  It is a shape rather
-    than a hue, which is the same reason the selector is an underline: a
-    reader who cannot tell two reds apart, or a terminal with its own
-    palette, still sees three different things.
-    """
+    r"""Return the escape for a cell in any combination of the three states."""
     params = []
     if stopped:
         params.append("41")
@@ -61,7 +28,7 @@ def _style(*, run: bool, stopped: bool, picked: bool) -> str:
 
 @dataclass(frozen=True)
 class Mark:
-    """Where the current op is on the screen, and how much of it to mark."""
+    r"""Where the current op is on the screen, and how much of it to mark."""
 
     row: int
     col: int
@@ -70,19 +37,7 @@ class Mark:
 
 @dataclass(frozen=True)
 class Frame:
-    """One VM state, between two commands.
-
-    The views :class:`~esolangs.vm.VM` offers every language, the step
-    count, and whatever else the machine names itself -- ``acc``, ``ptr``,
-    ``ind`` -- in :attr:`views`.
-
-    Those are read off the machine rather than inferred, which is the whole
-    difference between showing them and guessing.  Only eighteen of the
-    sixty-nine interpreters have a ``ptr`` at all and the ``ind`` thirty-three
-    carry is usually an instruction index, so a "pointer" row invented for
-    every language would be wrong more often than right; a row a language
-    named itself cannot be.
-    """
+    r"""One VM state, between two commands."""
 
     language: str
     program: str
@@ -107,7 +62,7 @@ class Frame:
         step: int,
         fault: str | None = None,
     ) -> Frame:
-        """Snapshot ``dbg`` into a frame, copying the views that are lists."""
+        r"""Snapshot ``dbg`` into a frame, copying the views that are lists."""
         return cls(
             language=language,
             program=program,
@@ -124,55 +79,21 @@ class Frame:
 
 
 def grid(program: str) -> list[str]:
-    """Return ``program``'s lines padded to a rectangle.
-
-    Grid languages are written ragged -- a row's trailing blanks are not in
-    the file -- but they step over the rectangle those lines imply, so a
-    column routinely runs past the end of its own line.  Padding here is what
-    lets :func:`locate` bounds-check a position against the shape the
-    interpreter actually walks.
-    """
+    r"""Return ``program``'s lines padded to a rectangle."""
     lines = program.splitlines() or [""]
     width = max(len(line) for line in lines)
     return [line.ljust(width) for line in lines]
 
 
 def _is_index(value: object) -> TypeGuard[int]:
-    """Whether ``value`` is usable as a position.
-
-    ``bool`` is excluded even though it is an ``int``, since ``True`` would
-    otherwise read as offset 1.  It is a :class:`~typing.TypeGuard` so the
-    checker narrows the union ``ip`` arrives as, rather than each caller
-    repeating the pair of ``isinstance`` calls to get the same effect.
-    """
+    r"""Whether ``value`` is usable as a position."""
     return isinstance(value, int) and not isinstance(value, bool)
 
 
 def locate(
     program: str, ip: int | tuple[int, ...] | None, shape: str = "offset"
 ) -> Mark | None:
-    """Return where ``ip`` sits in :func:`grid`, or ``None``.
-
-    ``shape`` is the language's own answer to what its ``ip`` counts, taken
-    from :attr:`~esolangs.vm.VM.ip_shape`, because the value cannot be read
-    without it.  ``"offset"`` counts characters into the program text,
-    ``"grid"`` is ``(row, col)`` with any rest a heading, and ``"line"``
-    starts with a line number -- which marks the whole line, that being all
-    such a language knows about where it is.
-
-    ``"opaque"`` is a position that is not a place in the source at all: a
-    frame stack, a call depth paired with a cursor, a 3-D point.  It is
-    declared rather than left to the default so that an undeclared tuple
-    stays distinguishable from one somebody has looked at and classified;
-    both end up unmarked here, but only one of them is a question nobody
-    has answered.  ``test_a_positional_ip_says_what_it_counts`` is what
-    keeps them apart.
-
-    A shape that is none of those, or a value that does not fit the shape it
-    claims, is not located.  Guessing is what this function exists to avoid:
-    those three all look exactly like a ``(row, col)``, so reading one as a
-    cell marks a real character that is not the one running.
-    """
+    r"""Return where ``ip`` sits in :func:`grid`, or ``None``."""
     rows = grid(program)
     if shape == "grid":
         if isinstance(ip, tuple) and len(ip) >= 2 and all(map(_is_index, ip[:2])):
@@ -192,18 +113,7 @@ def locate(
 
 
 def at_cell(program: str, shape: str, row: int, col: int) -> Mark | None:
-    """Return the mark a breakpoint on ``(row, col)`` covers, or ``None``.
-
-    The counterpart to :func:`locate`: that turns a machine's position into
-    a place on the screen, and this turns a place on the screen into the
-    mark a position there would produce.  Comparing the two is what lets a
-    breakpoint put somewhere by hand be recognised when the run arrives.
-
-    A line-counting language gets the whole line whichever column was
-    picked, because a line is all it can distinguish; a language whose
-    position is not on the source at all can hold no such breakpoint, and
-    says so with ``None``.
-    """
+    r"""Return the mark a breakpoint on ``(row, col)`` covers, or ``None``."""
     rows = grid(program)
     if shape not in {"offset", "grid", "line"}:
         return None
@@ -215,14 +125,14 @@ def at_cell(program: str, shape: str, row: int, col: int) -> Mark | None:
 
 
 def _window(total: int, focus: int, size: int) -> int:
-    """Return where a ``size``-wide window over ``total`` starts to show ``focus``."""
+    r"""Return where a ``size``-wide window over ``total`` starts to show."""
     if total <= size:
         return 0
     return max(0, min(focus - size // 2, total - size))
 
 
 def _cells(values: tuple[object, ...], width: int) -> str:
-    """Render as many of ``values`` as fit in ``width``, noting what was dropped."""
+    r"""Render as many of ``values`` as fit in ``width``, noting what was."""
     if not values:
         return "(empty)"
     shown: list[str] = []
@@ -249,12 +159,7 @@ def _cells(values: tuple[object, ...], width: int) -> str:
 def _paint(
     text: str, row_marks: dict[int, tuple[int, bool, bool, bool]], left: int, reach: int
 ) -> str:
-    """Wrap each marked run of ``text`` in the style that mark calls for.
-
-    The runs are applied right to left so that inserting the escapes for one
-    cannot shift the offsets of the next, which is the whole reason this is
-    a separate pass rather than done while the row is sliced.
-    """
+    r"""Wrap each marked run of ``text`` in the style that mark calls for."""
     for col in sorted(row_marks, reverse=True):
         span, run, stopped, picked = row_marks[col]
         cut = col - left
@@ -272,12 +177,7 @@ def _paint(
 
 
 def _recent(values: tuple[int | None, ...], width: int) -> str:
-    """Render the newest of ``values`` that fit, oldest dropped first.
-
-    The opposite end from :func:`_cells`, and for a different reason: a
-    tape is read from cell zero outwards, but a trace is read from *now*
-    backwards, so what has to survive a narrow row is the other end of it.
-    """
+    r"""Render the newest of ``values`` that fit, oldest dropped first."""
     if not values:
         return "(none yet)"
     shown: list[str] = []
@@ -308,13 +208,7 @@ def render(
     picked: Mark | None = None,
     watch: tuple[int, tuple[int | None, ...]] | None = None,
 ) -> str:
-    """Return the screen for ``frame``, windowed to ``height`` by ``width``.
-
-    The program pane scrolls in both directions around the highlighted cell,
-    because the registry's programs run to hundreds of lines and thousands of
-    columns.  The column window is shared by every visible line so a grid
-    language's rows stay aligned under each other.
-    """
+    r"""Return the screen for ``frame``, windowed to ``height`` by."""
     rows = grid(program := frame.program)
     at = locate(program, frame.ip, frame.ip_shape)
     # The pane follows the selector.
@@ -396,18 +290,7 @@ def render(
 
 
 def replay(language: str, program: str, stdin: str, step: int) -> Frame:
-    """Return the frame ``step`` commands into a fresh run.
-
-    This derives a frame from nothing, which is exact because every VM here
-    is deterministic -- the adapters hand a seeded source to the languages
-    with a random instruction -- so re-running from the start reaches the
-    same state and no snapshot of a language's private state is needed.
-
-    It is not how the stepper goes backwards.  :class:`History` keeps the
-    frames it has already built, which is a lookup rather than a re-run;
-    this is the fallback for a step so old it has been dropped, and the
-    reference the tests check that lookup against.
-    """
+    r"""Return the frame ``step`` commands into a fresh run."""
     dbg = make_debugger(language, program, stdin)
     fault = None
     taken = 0
@@ -428,7 +311,7 @@ def replay(language: str, program: str, stdin: str, step: int) -> Frame:
 
 
 def _frame_bytes(frame: Frame) -> int:
-    """Estimate what retaining ``frame`` costs, cheaply enough to do per step."""
+    r"""Estimate what retaining ``frame`` costs, cheaply enough to do per."""
     return (
         200
         + len(frame.memory) * 32
@@ -439,28 +322,13 @@ def _frame_bytes(frame: Frame) -> int:
 
 
 class History:
-    """The frames stepped through so far, so going back is a lookup.
-
-    A :class:`Frame` is already an immutable snapshot of everything the
-    screen draws, and one is built per step regardless, so keeping them
-    costs nothing beyond the memory.  That is what makes stepping cheap:
-    the machine only ever runs forward, and every key that lands on a step
-    already visited reads it out of the list.
-
-    Retention is bounded in *bytes* rather than in frames, because a frame
-    is not a fixed size -- the median across the registry is about 260
-    bytes, but NoComment's four-thousand-cell tape makes one 147 KB, and
-    the run key's million-step bound would turn that into 148 GB.  When the
-    budget is spent the oldest quarter is dropped, and a step older than
-    what is left falls back to :func:`replay`, which is exact because the
-    VMs are deterministic.
-    """
+    r"""The frames stepped through so far, so going back is a lookup."""
 
     # : What the retained frames.
     budget = 64 << 20
 
     def __init__(self, language: str, program: str, stdin: str = "") -> None:
-        """Start a history at step 0 of a fresh run."""
+        r"""Start a history at step 0 of a fresh run."""
         self._language = language
         self._program = program
         self._stdin = stdin
@@ -474,16 +342,16 @@ class History:
 
     @property
     def top(self) -> int:
-        """The furthest step reached, which is where the machine itself sits."""
+        r"""The furthest step reached, which is where the machine itself sits."""
         return self._top
 
     @property
     def retained(self) -> int:
-        """How many frames are held right now, which :attr:`budget` bounds."""
+        r"""How many frames are held right now, which :attr:`budget` bounds."""
         return len(self._frames)
 
     def at(self, step: int) -> Frame:
-        """Return the frame at ``step``, running forward only if it is new."""
+        r"""Return the frame at ``step``, running forward only if it is new."""
         step = max(0, step)
         if self._base <= step < self._base + len(self._frames):
             return self._frames[step - self._base]
@@ -498,21 +366,7 @@ class History:
     def find(
         self, step: int, stop: Callable[[Frame], bool] | None, limit: int
     ) -> Frame:
-        """Return the first frame after ``step`` where ``stop`` holds.
-
-        Without a ``stop`` this is a plain run to the halt, which is what
-        makes the continue key the same thing as the run key for a program
-        with no breakpoints on it.
-
-        The predicate is read off a *frame*, which is the state between two
-        commands, so it sees the same instant
-        :meth:`~esolangs.debugger.Debugger.run` checks before stepping -- a
-        breakpoint therefore stops with its condition still true, and the
-        screen and the command line agree about where a program stopped.
-
-        Stepping goes through :meth:`at`, so a frame already kept is a
-        lookup and only the ones past the furthest step run the machine.
-        """
+        r"""Return the first frame after ``step`` where ``stop`` holds."""
         current = step
         while current < limit:
             current += 1
@@ -524,18 +378,7 @@ class History:
         return self.at(limit)
 
     def trace(self, index: int, upto: int, span: int) -> tuple[int | None, ...]:
-        """Return up to ``span`` values of cell ``index``, ending at ``upto``.
-
-        A watch needs no bookkeeping of its own here.  ``Debugger`` records
-        one by appending a value per step, but every frame this class keeps
-        already holds the whole tape, so the history of a cell is a view
-        over what is retained rather than a second copy of it.
-
-        That also sets the limit honestly: the trace reaches back only as
-        far as the retained window, which the byte budget bounds.  A cell
-        the tape has not grown to yet reads ``None``, the same absence
-        ``Debugger.watch_cell`` records for it.
-        """
+        r"""Return up to ``span`` values of cell ``index``, ending at ``upto``."""
         if not self._frames:
             return ()
         last = min(upto, self._base + len(self._frames) - 1)
@@ -548,7 +391,7 @@ class History:
         )
 
     def _advance(self) -> None:
-        """Run the machine one command and keep the frame it produces."""
+        r"""Run the machine one command and keep the frame it produces."""
         try:
             self._dbg.step()
         except Exception as exc:
@@ -569,7 +412,7 @@ class History:
         )
 
     def _remember(self, frame: Frame) -> None:
-        """Append ``frame``, dropping the oldest quarter once over budget."""
+        r"""Append ``frame``, dropping the oldest quarter once over budget."""
         self._frames.append(frame)
         self._bytes += _frame_bytes(frame)
         if self._bytes <= self.budget or len(self._frames) < 4:
@@ -599,18 +442,7 @@ def breakpoint_for(
     cell: tuple[int, int] | None = None,
     output: str | None = None,
 ) -> Callable[[Frame], bool] | None:
-    """Return one predicate over frames for the breakpoints asked for.
-
-    ``None`` when none was, which is what leaves the continue key running
-    to the halt.  Several together stop at whichever is reached first, the
-    way :class:`~esolangs.debugger.Debugger`'s list of conditions does.
-
-    These mirror ``Debugger.break_at``, ``break_on_cell`` and
-    ``break_on_output`` rather than reaching for them, because the screen
-    tests a :class:`Frame` it has already kept, not a live machine -- which
-    is what lets a breakpoint be found among steps that have been run
-    without running them again.
-    """
+    r"""Return one predicate over frames for the breakpoints asked for."""
     tests: list[Callable[[Frame], bool]] = []
     if at is not None:
         tests.append(lambda frame: frame.ip == at)
@@ -630,18 +462,7 @@ def _with_marks(
     stop: Callable[[Frame], bool] | None,
     marked: set[Mark],
 ) -> Callable[[Frame], bool] | None:
-    """Add the marked positions to whatever the caller already asked for.
-
-    The test is on the *position* the frame is at, not on its raw ``ip``.
-    That is what makes the drawing and the stopping agree: a grid language's
-    ``ip`` carries a heading, so matching the raw value would stop only on
-    one approach to a cell while the screen had the whole cell marked.  A
-    breakpoint on a cell now means the cell, however the run arrives at it.
-
-    Rebuilt on each use rather than kept, because the set is edited between
-    keys and a predicate closed over a stale copy would stop in last
-    minute's places.
-    """
+    r"""Add the marked positions to whatever the caller already asked for."""
     if not marked:
         return stop
 
@@ -663,27 +484,7 @@ def drive(
     at: tuple[int | tuple[int, ...], ...] = (),
     watch: int | None = None,
 ) -> None:
-    """Repaint and read keys until asked to stop.
-
-    The loop takes its input and output as arguments rather than reaching
-    for the terminal, which is what lets it be driven from a test with
-    scripted keys.  What is left in :func:`run_tui` is the raw-mode wrapper
-    around it, and that is the only part no test exercises.
-
-    An empty key means the input ended, and is treated as a quit so a closed
-    stream stops the loop instead of spinning on it.
-
-    ``hjkl`` move a selector over the program and ``t`` toggles a breakpoint
-    under it, so a breakpoint can be put somewhere the run has not reached.
-    The selector starts on the run and snaps back to it whenever the run
-    moves, which is what keeps "where am I" and "where am I pointing" from
-    drifting apart over a long session.
-
-    Those keys rather than the arrows because an arrow is a multi-byte
-    escape and ``read_key`` returns one character; hjkl also keeps a
-    scripted test a plain string.  ``at`` seeds the breakpoints from the
-    command line, so the flag and the key put them in the same place.
-    """
+    r"""Repaint and read keys until asked to stop."""
     step = 0
     frame = history.at(step)
     shape, program = frame.ip_shape, frame.program
@@ -756,16 +557,7 @@ def run_tui(
     at: tuple[int | tuple[int, ...], ...] = (),
     watch: int | None = None,
 ) -> None:  # pragma: no cover - the raw-terminal wrapper; the loop is tested
-    """Step ``program`` interactively on this terminal.
-
-    ``max_steps`` bounds the ``r`` key.  It is not a nicety: some languages
-    here never halt on their own (``self_halts`` on the VM protocol says so),
-    and a run key without a bound would hang the terminal on them.
-
-    Everything here is the terminal itself -- raw mode on, restore it
-    whatever happens, and where to read and write.  The stepping is
-    :func:`drive`.
-    """
+    r"""Step ``program`` interactively on this terminal."""
     import shutil
     import sys
     import termios

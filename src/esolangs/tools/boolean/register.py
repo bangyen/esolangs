@@ -1,4 +1,4 @@
-"""Boolean-function generators for register-based languages."""
+r"""Boolean-function generators for register-based languages."""
 
 from typing import Any
 
@@ -47,63 +47,16 @@ _DIG_STRIDE = len(_DIG_BRANCH)
 
 
 def decleq(truth_table: str) -> str:
-    """Build a Decleq program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Decleq's only arithmetic is ``b = a - 1`` with a ``<= 0`` jump, so each
-    input byte (48/49) is normalized to 1/2 by a 47-step decrement chain,
-    which makes ``cell cell c`` a branch: a ``0`` bit (1) decrements to 0 and
-    jumps to ``c``, a ``1`` bit (2) falls through.  The decision tree routes
-    those branches to leaves that output 48 or 49 (placed in data cells of
-    the self-modifying memory) and then halt.
-
-    A subtree whose rows all agree becomes a leaf rather than branching on
-    bits that cannot change the answer.  Rows split most-significant-first,
-    so a subtree is a contiguous run and ``11110000`` folds to a single
-    branch -- unlike the generators that split the other way, where that
-    table folds nothing.
-
-    The fold has to be counted *before* it is emitted.  ``data_base`` sits
-    above the code, so the output cells' addresses depend on how long the
-    tree came out; :func:`tree_instrs` walks it first and must stop in
-    exactly the places :func:`node` will.  When it does, the code ends
-    exactly at ``data_base`` and the ``extend`` below allocates only the
-    ``n`` read cells and the two output cells -- every cell in the program
-    holds either an instruction or live data.
-
-    Getting the count wrong does not produce a *broken* program: the
-    ``extend`` fills out to whatever address was reserved, so the leaves
-    still resolve and the output is still correct.  It silently inserts a
-    run of dead zero cells instead (63 of them at ``n == 3`` if the tree is
-    sized as though nothing folded), which is why the test pins the cell
-    count rather than the output -- an output-based test cannot see it.
-
-    Every input is still read, so the program consumes exactly ``n`` input
-    bytes.  But an ignored input never controls a non-folded branch, so it
-    needs no 47-step normalization chain: the fixed cost is
-    ``47 * len(essential_inputs)`` rather than ``47 * n``.
-    """
+    r"""Build a Decleq program computing the given truth table."""
     n = _validate_truth_table(truth_table)
 
     def constant(level: int, row: int) -> bool:
-        """Whether every row this subtree covers agrees.
-
-        Rows split most-significant-first, so a subtree covers the
-        contiguous run of ``2 ** (n - level)`` rows starting at ``row``.
-        """
+        r"""Whether every row this subtree covers agrees."""
         span = 2 ** (n - level)
         return len(set(truth_table[row : row + span])) == 1
 
     def tree_instrs(level: int, row: int) -> int:
-        """Instructions the subtree at ``(level, row)`` emits.
-
-        The data cells sit above the code, so their addresses depend on the
-        tree's length -- which folding changes.  The count has to come from
-        the same walk that emits, or every leaf would name the wrong output
-        cell.
-        """
+        r"""Instructions the subtree at ``(level, row)`` emits."""
         if level == n or constant(level, row):
             return 2  # output, then halt.
         return (
@@ -192,56 +145,12 @@ def decleq(truth_table: str) -> str:
 
 
 def addsubjump(truth_table: str) -> str:
-    """Build an AddSubJump program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    ASJ's instruction is ``a b c d``: ``*a += *b`` (when ``*d <= 0``) or
-    ``*a -= *b`` (when ``*d > 0``), then ``goto *c``, where ``c`` is a cell
-    holding the next instruction pointer.  There is no data-testable jump,
-    so the generator routes a decision tree through two trampolines: a jump
-    cell initialized to the zero trampoline's address is advanced by
-    ``4 * bit``, and ``goto *jump`` lands on the zero or one trampoline,
-    which jumps to the corresponding subtree.  Leaves print 48/49 and halt
-    via ``c = -8`` (a special address).  Subtrees whose table entries are
-    constant collapse to a leaf.
-
-    **All ``n`` bits are read up front**, each into a cell of its own and
-    normalized there once from 48/49 to ``{0, 4}`` (subtract 48, double
-    twice).  A node then spends two instructions -- ``J += B`` naming
-    whichever bit it tests, and ``goto *J``.  Reading at the node instead
-    would repeat the four-instruction normalization at every node and make a
-    folded leaf drain the reads its untaken siblings skipped; hoisting pays
-    for both once, 25.1% of the program at n == 3 before any reordering.
-
-    **The tree then splits on its inputs in whichever order emits the
-    shortest program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`),
-    which the hoist enables: with every bit in its own cell, ``J += *b`` can
-    name any of them, so a node is not tied to the bit just read.  The reads
-    stay in stream order, so the program consumes its input exactly as
-    before.  Reordering adds 8.9% on top of the hoist at n == 3, for 31.7%
-    together, rising to 41.0% at n == 4 and 47.8% at n == 5.
-
-    Only the inputs the tree actually branches on get a cell; one no node
-    tests is read into write-only scratch, so a constant table still
-    consumes every input without storing any.
-    """
+    r"""Build an AddSubJump program computing the given truth table."""
     return best_input_order(truth_table, _addsubjump_ordered)
 
 
 def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order's AddSubJump program; see :func:`addsubjump`.
-
-    ``truth_table`` is already permuted, so every row index here is in the
-    permuted frame; ``perm`` surfaces only where a node names the *stream*
-    input whose cell it tests.
-
-    Cells are named by the input they hold (``B{i}`` for stream input ``i``),
-    not by the instruction index that allocated them.  The node-read build
-    keyed its names off ``len(instructions)``, which a reorder shifts; naming
-    by input keeps every reference stable however the tree comes out.
-    """
+    r"""Emit one input order's AddSubJump program; see :func:`addsubjump`."""
     n = _validate_truth_table(truth_table)
 
     instructions: list[list[Any]] = []
@@ -374,25 +283,7 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
 
 def collatz_multiverse(truth_table: str) -> str:
-    """Build a Collatz Multiverse program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    A register holding 0 or 1 is always odd, so on such registers the Collatz
-    rule is affine (``v`` becomes ``v*var2+var3``), which makes AND, NOT, and
-    minterms buildable: ``t = src x + zero`` multiplies by a 0/1 ``src`` and
-    ``t = negativeOne x + one`` complements.  Each selected row of the table
-    contributes its minterm (the AND of each bit's equality indicator); the
-    OR is ``1 - prod (1 - minterm)``, and ``48 + result`` is printed.  The
-    byte constants come from :func:`_cm_constants`.
-
-    A table with more ones than zeros selects its *zero* rows instead, since
-    a minterm costs an indicator per input plus an AND chain.  Inverting the
-    answer costs nothing: the OR already ends on the ``flip`` that turns
-    ``prod (1 - minterm)`` into the result, so a complemented table keeps the
-    accumulator as it stands.
-    """
+    r"""Build a Collatz Multiverse program computing the given truth table."""
     n = _validate_truth_table(truth_table)
     if all(c == truth_table[0] for c in truth_table):
         # A constant table needs no.
@@ -477,29 +368,7 @@ def collatz_multiverse(truth_table: str) -> str:
 
 
 def sophie(truth_table: str) -> str:
-    """Build a Sophie program computing the given truth table.
-
-    ``truth_table`` is a binary string of length 2**n indexed by the inputs
-    (most significant first), ``n`` is the input count implied by the table length.
-
-    Sophie reads a character with ``;`` and branches on the accumulator with
-    ``@$48{then}{else}`` -- the else block runs flat after a failed check, so
-    consecutive conditionals must use the block form. Each leaf sets the
-    result with ``#$48``/``#$49`` and prints it before halting.
-
-    :func:`_sophie_hybrid` nests unshared residual states like a tree and
-    labels only states reached from multiple parents. It therefore keeps
-    constant-subtree folding while merging equal residual subfunctions.
-
-    The hybrid only pays a label where sharing needs it, so it cannot lose
-    the tree's compact unshared regions.
-
-    **Reordering the inputs is not available here**, unlike most tree
-    generators: ``;`` and ``:`` *assign* to the accumulator, ``#`` loads only
-    a literal, and nothing else writes it, so a bit can only be branched on
-    before the next read and the test order is the stream order.  The merge
-    collects the saving a reorder would have found.
-    """
+    r"""Build a Sophie program computing the given truth table."""
     _validate_truth_table(truth_table)
     return _sophie_hybrid(truth_table)
 
@@ -515,31 +384,7 @@ _SOPHIE_RESERVED = frozenset({_ASCII_ZERO, _ASCII_ONE})
 
 
 def sophie_labels(retained: list[list[str]]) -> list[dict[str, int]]:
-    """Return one label per retained state, unique across all levels.
-
-    This used to draw from two bands by level parity -- ``((1, 20), (21,
-    40))`` -- on the reasoning that a fired block leaves the accumulator
-    holding a *next*-level label, which no remaining test in the chain can
-    match.  The reasoning holds for consecutive levels and that is not the
-    relation that matters.  Unshared states are *inlined*, so one top-level
-    block contains jumps originating at many different depths, and two
-    levels of the same parity are both jump targets from inside it.  Level 2
-    and level 4 then both got label ``1``, and since level 2 is emitted
-    first, a jump meant for level 4 fired level 2 on the way past -- reading
-    inputs the caller never supplied.
-
-    The smallest table that does it is the five-input
-    ``00000000000000010000000100000100``, whose program carries two ``@$1``
-    blocks.  It is shape-dependent rather than size-dependent, so it hides
-    from parity and dense tables and shows up on one-hot: over 500 random
-    tables per arity, 1.6% collide at n=5, 11.2% at n=6, 35.0% at n=7 and
-    87.6% at n=8, while all 65536 tables at n <= 4 are clean.
-
-    Numbering across the whole program rather than per level also retires a
-    second latent collision: the bands' upper bounds were never read, so a
-    level with more than twenty retained states ran straight into the next
-    band.
-    """
+    r"""Return one label per retained state, unique across all levels."""
     labels: list[dict[str, int]] = []
     number = 1
     for states in retained:
@@ -554,7 +399,7 @@ def sophie_labels(retained: list[list[str]]) -> list[dict[str, int]]:
 
 
 def _sophie_hybrid(truth_table: str) -> str:
-    """Emit a Sophie tree that labels only shared residual states."""
+    r"""Emit a Sophie tree that labels only shared residual states."""
     n = _validate_truth_table(truth_table)
     levels = _polynomial_states(truth_table, n)
     references: list[dict[str, int]] = [{} for _ in levels]
@@ -605,25 +450,7 @@ def _sophie_hybrid(truth_table: str) -> str:
 
 
 def _dig_leaf(reads: int, value: int, *, aligned: bool) -> str:
-    """Build a leaf that consumes ``reads`` inputs, then prints ``value``.
-
-    ``$`` makes the cells after it commands, as many as the digit beside it
-    says, so the reads a folded leaf still owes need no block each: one
-    ``$`` covers every ``~`` plus the three cells that print.  Its count is
-    a single digit, so a window holds at most nine cells; past that the
-    windows chain, and a window that spends its whole count leaves the
-    counter at zero, which is what arms the next ``$`` with no cell in
-    between.
-
-    ``aligned`` is for the banded layout, where a leaf shares columns with
-    the other band and its cells have to fall where that band's do not
-    care.  Two things change.  Windows become exactly ``_DIG_BAND`` cells
-    long, so every ``$`` in the chain keeps the column residue the first
-    one had.  And a blank goes before the value when ``reads`` is even --
-    a blank inside an armed window only spends a count -- which puts the
-    value digit an odd number of cells from the ``$``, where the other
-    band's ``$`` and ``#`` never look.
-    """
+    r"""Build a leaf that consumes ``reads`` inputs, then prints ``value``."""
     out = ""
     if not aligned:
         while reads > _DIG_SPAN - 3:
@@ -641,30 +468,7 @@ def _dig_leaf(reads: int, value: int, *, aligned: bool) -> str:
 
 
 def _dig_columns(n: int, split: int | None) -> tuple[int, int]:
-    """Where the two bands start, or the one band if ``split`` is ``None``.
-
-    A flat tree walks east the whole way and every level owns five columns
-    of its own.  A banded one turns round once: the levels before ``split``
-    run east, the rest run west over the same columns, mirrored so the mole
-    still meets each block's ``$`` first.
-
-    The bands can overlap at all only because of how their columns line up.
-    Read a block's cells by their offset: a ``$`` or a ``#`` -- the only
-    two that consult a neighbour -- sits at 0 or 4, and the digits that
-    could confuse one sit at 1 and 3.  So with a stride of six, letting
-    ``d`` be an east block's column minus a west block's, a digit lands on
-    a neighbour-reading cell when ``d`` is 1, 3, -1 or -3, and a mole
-    falling from a ``#`` lands on a ``$`` or a ``#`` when ``d`` is 0 or -4.
-    Every one of those is 0, 1, 2, 3 or 5 modulo six.  **Four is not**, so
-    fixing ``d`` at four modulo six clears all of them at once, whatever
-    the overlap -- and every pair of an east and a west block differs by
-    ``d`` plus a multiple of six.
-
-    That also says why the turn happens once and not twice.  A second turn
-    would put two bands running the same way, and two east blocks differ by
-    a multiple of six, which is zero modulo six -- the case ``d`` had to
-    avoid.  So one turn is the whole of what Dig's geometry allows.
-    """
+    r"""Where the two bands start, or the one band if ``split`` is ``None``."""
     if split is None:
         return 1, 0
     # The west band ends four.
@@ -674,18 +478,18 @@ def _dig_columns(n: int, split: int | None) -> tuple[int, int]:
 
 
 def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
-    """Lay the decision tree out, in one band east or two that turn round."""
+    r"""Lay the decision tree out, in one band east or two that turn round."""
     total = 2 ** (n + 1) - 1
     east, west = _dig_columns(n, split)
     cells: dict[tuple[int, int], str] = {}
     corridors: list[tuple[int, int, int]] = []
 
     def leftward(level: int) -> bool:
-        """Whether this level's block is entered facing west."""
+        r"""Whether this level's block is entered facing west."""
         return split is not None and level >= split
 
     def dollar(level: int) -> int:
-        """Return the column of this level's ``$``, the cell the mole meets first."""
+        r"""Return the column of this level's ``$``, the cell the mole meets."""
         if split is None:
             return east + _DIG_STRIDE * level
         if level < split:
@@ -693,14 +497,7 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
         return west + 4 - _DIG_BAND * (level - split)
 
     def place(row: int, col: int, text: str) -> None:
-        """Write ``text`` along ``row`` from ``col``, refusing an occupied cell.
-
-        The columns above are what keeps two cells apart; this is what says
-        so.  A Dig cell steers or arms the mole that stands on it, so an
-        overwrite is one of the two ways a bad layout goes wrong, and the
-        other -- a mole falling through a cell that acts on it -- is what
-        :func:`_dig_clear` checks.
-        """
+        r"""Write ``text`` along ``row`` from ``col``, refusing an occupied."""
         for i, char in enumerate(text):
             if col + i < 0:
                 raise AssertionError(f"cell off the left edge at row {row}")
@@ -709,7 +506,7 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
             cells[row, col + i] = char
 
     def block(row: int, level: int, text: str) -> None:
-        """Write a block so the mole meets its first cell first."""
+        r"""Write a block so the mole meets its first cell first."""
         col = dollar(level)
         if leftward(level):
             place(row, col - len(text) + 1, text[::-1])
@@ -717,7 +514,7 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
             place(row, col, text)
 
     def walk(row: int, level: int, lo: int, hi: int) -> None:
-        """Lay the subtree for ``truth_table[lo:hi]`` at ``row``."""
+        r"""Lay the subtree for ``truth_table[lo:hi]`` at ``row``."""
         if level == n or len(set(truth_table[lo:hi])) == 1:
             # A constant slice cannot be.
             # this is a leaf and every row.
@@ -776,19 +573,7 @@ def _dig_clear(
     cells: dict[tuple[int, int], str],
     corridors: list[tuple[int, int, int]],
 ) -> None:
-    """Refuse a grid whose moles would be stopped on their way.
-
-    Two things can go wrong that placing cells cannot see.  A mole falling
-    from a ``#`` to its child passes every row between, and a cell it meets
-    there steers or arms it unless it is scenery -- which, with the counter
-    at zero, everything but :data:`_DIG_OPAQUE` is.  And a ``$`` or a ``#``
-    takes its digit from the first of up, right, down, left that has one,
-    so a digit directly above or below either is a wrong answer that runs.
-
-    Both are checked against the grid rather than argued from the column
-    rule, because the rule is what *places* the cells and an argument that
-    places and checks with the same reasoning checks nothing.
-    """
+    r"""Refuse a grid whose moles would be stopped on their way."""
     for col, start, end in corridors:
         low, high = sorted((start, end))
         for row in range(low + 1, high):
@@ -807,54 +592,7 @@ def _dig_clear(
 
 
 def dig(truth_table: str, width: int | None = None) -> str:
-    """Build a Dig program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-    ``width`` asks for a column count; the tree turns round once if that is
-    what it takes to meet one, and a width under the floor returns the
-    narrowest program rather than refusing.
-
-    The tree is laid out so the mole starts in the top-left corner (``'``)
-    facing down into the root.  Each branch block reads one input bit:
-    ``~`` inputs it, ``;`` stores it in the grid, and ``#`` turns the mole
-    down or up on that bit.  The two children of a node keep facing the way
-    the next level's branch is entered, and the leaves print the function's
-    value for the input combination they stand for.
-
-    A subtree whose rows all agree becomes a leaf, and the rows it would
-    have filled are never written -- which is what the walk buys over filling
-    the grid level by level, where a pruned row still had to be skipped by
-    hand.  A constant table collapses to a single line.
-
-    A folded leaf still reads the inputs it never branched on, since a
-    program whose input count depended on its table would desync a caller
-    feeding several programs from one stream.  Those reads are cheap: a
-    branch spends ``;`` to store its bit for its own ``#``, and a leaf turns
-    nowhere, so the read is bare -- and ``$`` covers a run of cells at once,
-    so they need no block each.
-
-    A level costs five columns, not seven.  Two cells the blocks used to
-    spend are not needed.  The ``>`` that opened a block only ever repeated
-    the heading the mole already had -- every block but the root's is
-    entered moving right -- so only the root keeps one, to turn out of the
-    column it starts down.  And the ``@`` that closed a block was never
-    reached: ``;`` writes the bit it just read, so the ``#`` beside it
-    always sees a 0 or a 1 and always turns.  Putting the count to the
-    right of its ``$`` rather than the left is what lets the blocks abut,
-    since ``$`` looks up, right, down, left and takes the first digit it
-    finds.
-
-    ``5 * n + 6`` columns is what that comes to, and a width under it is met
-    by turning the tree round once: the levels past the turn run west over
-    the columns the levels before it already used, their blocks mirrored so
-    the mole still meets each ``$`` first.  Nothing has to be routed back --
-    the ``#`` at the end of the last eastbound block turns the mole onto its
-    child's row, and a ``<`` there points it into a block that starts where
-    it stands.  What the two bands cost is one spare column a level, and
-    :func:`_dig_columns` is where the arithmetic that lets them overlap
-    lives, along with the reason a *second* turn is not possible.
-    """
+    r"""Build a Dig program computing the given truth table."""
     n = _validate_truth_table(truth_table)
     flat = _dig_grid(truth_table, n, None)
     if width is None or n < 2:
@@ -873,28 +611,12 @@ def dig(truth_table: str, width: int | None = None) -> str:
 
 
 def _qoibl_enc(n: int) -> str:
-    """Qoibl binary literal for ``n`` (e is 0, y is 1)."""
+    r"""Qoibl binary literal for ``n`` (e is 0, y is 1)."""
     return f"{n:b}".replace("0", "e").replace("1", "y")
 
 
 def qoibl(truth_table: str) -> str:
-    """Build a Qoibl program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Each input is read with ``et`` and normalized to 0/1 (``ry ey ry 48``),
-    and each one's complement ``1 - bit`` is stored too.  The function is then
-    evaluated as the sum over its minterms: every ``1`` row contributes the
-    product of the bits (or complements) that select it, accumulated into a
-    sum variable, and ``tt`` prints ``48 + sum``.  Qoibl's ``ry`` chains parse
-    right-associatively from the leftmost ``ry``, so each minterm is a chain
-    of plain ``qe`` reads (no operator inside a factor).
-
-    When the table has more ``1``s than ``0``s the complement is evaluated
-    instead (fewer minterms) and ``49 - sum`` is printed, keeping the program
-    under the size of the sparser half.
-    """
+    r"""Build a Qoibl program computing the given truth table."""
     n = _validate_truth_table(truth_table)
     # A table that ignores some of.
     # minterm costs one ``qe``.
@@ -1002,63 +724,7 @@ _POLYNOMIAL_SCREEN_SLACK = 10
 
 
 def polynomial(truth_table: str) -> str:
-    """Build a Polynomial program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Polynomial programs are polynomials whose roots encode instructions, so
-    both constructions below emit complex ``[a, b]`` (arithmetic, input,
-    output) and real ``[val]`` (if/endif) roots that expand into
-    ``f(x) = ...``.  Each instruction consumes a fresh prime, so the
-    program's size and the interpreter's factorization cost both track the
-    *instruction count* -- which is what the two constructions compete on.
-
-    Every construction here is :func:`_polynomial_hybrid` at some ``k``:
-    ``k == n`` branches every bit and never reaches a machine (a plain
-    decision tree, collapsing a constant subtable to its output), ``k == 0``
-    hands the whole table to one machine, and the interior branches ``k``
-    bits and gives each surviving residual its own machine.  The reduced
-    variants prepend a drain for a leading run of ignored inputs and rebuild
-    on the smaller table.
-
-    The machine merges any two prefixes with the *same residual
-    subfunction* rather than only constant ones -- an ordered BDD where the
-    tree is a plain tree.  That merge is strictly stronger than the fold and
-    the gap grows with ``n``: parity is the tree's worst case at every width
-    (``2**n - 1`` internal nodes, 2298 instructions at n == 8) and needs just
-    two states per level, so ``k == 0`` is *linear* there -- 13 instructions
-    per input, 106 at n == 8.  Small or near-constant tables still favour the
-    tree end.
-
-    The interior is where neither endpoint serves: a table whose residuals
-    merge *within* a top-level split but not *across* it defeats both, since
-    the tree cannot merge them at all and the machine pays a full state level
-    for the split.  ``00000101`` is 43 instructions at ``k == n`` and 39 at
-    ``k == 0``, but 36 at ``k == 1``.  Against the two-construction dispatch
-    this family shortens 36 of 256 tables at n == 3 (median 3.6%, best
-    30.3%) and 3846 of 65536 at n == 4 (median 6.5%, best 39.8%), and grows
-    none.
-
-    **The order the tree tests its inputs in is not free here**, unlike
-    every other decision-tree generator: a read *assigns* to the single
-    register, so nothing survives it and the tested bit is always the one
-    just read.  Every construction consumes input in stream order, so
-    reordering is unreachable rather than merely unhelpful.  What the machine
-    recovers is the *saving* a reorder would have bought -- the residual
-    merge subsumes the folds a better order would have exposed.
-
-    Selection is on *rendered characters* rather than instruction count,
-    because the two disagree; the count screens which candidates are worth
-    rendering.  See the dispatch below.
-
-    A table needing more than ``_POLYNOMIAL_MAX_INSTRS`` instructions under
-    both constructions raises :class:`ValueError`: the interpreter recovers
-    instructions by factoring the polynomial, and that is what becomes
-    impractical.  The bound is on instructions rather than on ``n``, but it
-    is sized so every n == 10 table fits; a table that collapses to few
-    states renders at any width beyond that.
-    """
+    r"""Build a Polynomial program computing the given truth table."""
     n = _validate_truth_table(truth_table)
 
     # Every construction here is.
@@ -1157,13 +823,7 @@ def polynomial(truth_table: str) -> str:
 
 
 def _polynomial_assemble(instrs: list[list[int]]) -> str:
-    """Expand an instruction list into its ``f(x) = ...`` polynomial.
-
-    The k-th instruction takes the k-th prime ``p``: a complex instruction
-    ``[a, b]`` contributes ``(x - a)**2 + p**(2*b)`` and a real one ``[v]``
-    contributes ``x - p**v``, so the roots the interpreter factors back out
-    are exactly the instructions.
-    """
+    r"""Expand an instruction list into its ``f(x) = ...`` polynomial."""
     from esolangs.tools._polynomial import primes, render_product
 
     factors: list[list[int]] = []
@@ -1181,14 +841,7 @@ def _polynomial_assemble(instrs: list[list[int]]) -> str:
 
 
 def _polynomial_states(truth_table: str, n: int) -> list[list[str]]:
-    """Return the distinct residual subfunctions at each level.
-
-    Level ``k``'s states are the distinct subtables of width ``2**(n-k)``
-    reachable after reading ``k`` bits.  Two prefixes that leave the same
-    subtable are the *same* state and share one continuation -- the merge a
-    decision tree cannot make, since it can only collapse a constant
-    subtable.
-    """
+    r"""Return the distinct residual subfunctions at each level."""
     levels = [[truth_table]]
     for k in range(n):
         width = 2 ** (n - k - 1)
@@ -1202,7 +855,7 @@ def _polynomial_states(truth_table: str, n: int) -> list[list[str]]:
 
 
 def _polynomial_dag_cost(truth_table: str) -> int:
-    """Return :func:`_polynomial_dag`'s instruction count without emitting it."""
+    r"""Return :func:`_polynomial_dag`'s instruction count without emitting."""
     n = _validate_truth_table(truth_table)
     levels = _polynomial_states(truth_table, n)
     index = [{state: i for i, state in enumerate(level)} for level in levels]
@@ -1220,34 +873,7 @@ def _polynomial_dag_cost(truth_table: str) -> int:
 
 
 def _polynomial_dag(truth_table: str) -> list[list[int]]:
-    """Emit the state-machine instructions; see :func:`polynomial`.
-
-    The register is the only storage and a read *assigns* to it, so nothing
-    survives a read except the instruction cursor.  The state is therefore
-    carried as *which branch is running*: each level is a chain of
-    ``-= 1`` / ``if == 0`` tests over the live states, and the branch that
-    fires reads its bit and moves to the child state's index.
-
-    Two details are required.
-
-    **``[0, b]`` is I/O, not arithmetic.**  The interpreter tests ``a == 0``
-    before the opcode, so ``[0, 3]`` reads a character rather than
-    multiplying by zero -- exactly the instruction a naive builder wants when
-    both children merge.  That case instead reads and divides the bit away
-    (``//= 50``), and an assertion below keeps any other ``a == 0`` from
-    being emitted.
-
-    **A chain of equality tests re-fires.**  A taken branch leaves the
-    register holding its child state, and the chain's remaining ``-= 1``
-    steps keep running, so a later test can zero it and fire too.  Every
-    branch therefore parks the register at ``offset + child + remaining``,
-    so the trailing decrements bring each to the same ``offset + child`` and
-    the value is never zero mid-chain; the next level's chain subtracts
-    ``offset`` to recover the index.
-
-    Exactly one branch fires per level, and every branch reads once, so each
-    path consumes ``n`` inputs by construction rather than by draining.
-    """
+    r"""Emit the state-machine instructions; see :func:`polynomial`."""
     n = _validate_truth_table(truth_table)
     levels = _polynomial_states(truth_table, n)
     index = [{s: i for i, s in enumerate(level)} for level in levels]
@@ -1308,30 +934,7 @@ def _polynomial_dag(truth_table: str) -> list[list[int]]:
 
 
 def _polynomial_hybrid(truth_table: str, k: int) -> list[list[int]]:
-    """Emit ``k`` tree levels above a state machine per surviving residual.
-
-    This is the whole construction family, not a third option beside two
-    others.  ``k == n`` never reaches the machine and emits exactly what a
-    plain decision tree emits; ``k == 0`` hands the whole table to one
-    machine.  Between them the tree branches the top ``k`` bits and each
-    surviving residual gets its own machine.
-
-    The endpoints are worth having as one function because the interior is
-    where the wins are.  The tree cannot merge two prefixes leaving the same
-    residual; the machine pays for a level of states even where the table's
-    top split is the only structure there is.  A table whose residuals merge
-    *within* a top-level split but not *across* it is served by neither --
-    ``00000101`` costs 43 instructions at ``k == n`` and 39 at ``k == 0``,
-    but 36 at ``k == 1``.
-
-    The splice has one requirement.  The machine's entry chain opens with
-    ``if reg == 0`` on its first state, while a tree arm arrives holding the
-    bit it branched on, so each arm normalizes to 0 first (``last`` is what
-    it carries).  Inside a tree arm the register is then parked nonzero,
-    exactly as a collapsed leaf parks it, so the enclosing ``else`` skips;
-    at the top level there is no enclosing ``else``, so the park is dropped
-    and ``k == 0`` is the machine itself.
-    """
+    r"""Emit ``k`` tree levels above a state machine per surviving residual."""
     n = _validate_truth_table(truth_table)
     instrs: list[list[int]] = []
 
@@ -1372,19 +975,7 @@ def _polynomial_hybrid(truth_table: str, k: int) -> list[list[int]]:
 
 
 def _polynomial_drained_dag(truth_table: str) -> list[list[int]] | None:
-    """Drain a leading run of ignored inputs, then run the machine.
-
-    The reduction the tree gets above is available to the machine too, but
-    only once the drain stops leaving a bit behind.  ``input; -= 48`` leaves
-    0 or 1, and the machine's entry chain opens by testing for zero, so a
-    drained ``1`` fell past every state test -- the combination answered
-    correctly only while the drained bit was 0.  Draining with the
-    ``//= 50`` pair the machine already uses for a merged child lands on 0
-    either way, for the same two instructions per level.
-
-    Returns ``None`` when no input is ignored, or when the reduction leaves
-    a single row (a constant, which the tree already spells cheaply).
-    """
+    r"""Drain a leading run of ignored inputs, then run the machine."""
     n = _validate_truth_table(truth_table)
     essential = essential_inputs(truth_table, n) or [0]
     lead = next((i for i in range(n) if i in essential), n)
@@ -1403,7 +994,7 @@ def _polynomial_drained_dag(truth_table: str) -> list[list[int]] | None:
 
 
 def _polynomial_drained_dag_cost(truth_table: str) -> int | None:
-    """Return :func:`_polynomial_drained_dag`'s instruction count."""
+    r"""Return :func:`_polynomial_drained_dag`'s instruction count."""
     n = _validate_truth_table(truth_table)
     essential = essential_inputs(truth_table, n) or [0]
     lead = next((i for i in range(n) if i in essential), n)
@@ -1418,13 +1009,7 @@ def _polynomial_drained_dag_cost(truth_table: str) -> int | None:
 
 
 def _polynomial_hybrid_cost(truth_table: str, k: int) -> int:
-    """Return :func:`_polynomial_hybrid`'s instruction count without emitting it.
-
-    A deliberate mirror of the emitter above: the dispatch screens on this
-    before rendering, so a drift between the two would screen out a table
-    the emitter would have won.  ``test_polynomial_hybrid_cost_mirrors_build``
-    asserts they agree over the whole ``n <= 3`` corpus.
-    """
+    r"""Return :func:`_polynomial_hybrid`'s instruction count without."""
     n = _validate_truth_table(truth_table)
 
     def delta(value: int) -> int:
@@ -1448,7 +1033,7 @@ def _polynomial_hybrid_cost(truth_table: str, k: int) -> int:
 
 
 def _pb_name(index: int) -> str:
-    """Build the ``index``-th lowercase variable name (a, b, ..., z, aa, ...)."""
+    r"""Build the ``index``-th lowercase variable name (a, b, ..., z, aa,."""
     name = ""
     index += 1
     while index > 0:
@@ -1459,37 +1044,7 @@ def _pb_name(index: int) -> str:
 
 
 def point_break(truth_table: str) -> str:
-    """Build a Point Break program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Point Break has no output command, so the generator uses the
-    termination convention: the program halts iff the function's value is
-    0 and loops forever iff it is 1 -- the wiki's own truth-machine
-    semantics.  Each input is read with ``?``, every bit is complemented
-    (``1 - bit``), and the function is evaluated as the sum of its
-    minterms, each a product of bits and complements; every computation is
-    a single-operation ``LET`` so no expression-precedence rule is relied
-    on.
-
-    A table with more ones than zeros sums its *zero* rows instead, since
-    each row costs a ``LET`` per factor.  Inverting is free rather than one
-    more line: ``g`` breaks the loop on a nonzero, so it is already the
-    complement of the answer, and a complemented sum *is* ``g`` -- the
-    subtraction is dropped rather than added to.
-
-    The result ``f`` feeds a fixed template -- ``LET g:=one-f`` then
-    ``POINT loop`` / ``IF g BREAK loop`` / ``END loop`` -- where ``g`` is
-    nonzero exactly when ``f`` is 0, so the loop breaks (and the program
-    halts) exactly on the 0 outputs and spins forever on the 1 outputs.  A
-    constant table needs none of the sum and emits the template directly --
-    all-0 a ``LET`` that always halts, all-1 the loop with a never-firing
-    break -- but it still *reads* its ``n`` inputs first and discards them.
-    A program whose input count depended on its truth table would leave the
-    caller's remaining bits on the stream for whatever ran next; the reads
-    are the interface, and only the body may shrink.
-    """
+    r"""Build a Point Break program computing the given truth table."""
     n = _validate_truth_table(truth_table)
     # The reads a constant table.
     # and the names are the ones.

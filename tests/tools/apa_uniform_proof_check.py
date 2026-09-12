@@ -1,30 +1,4 @@
-"""Machine checks backing the A Painter Ant uniform-in-n correctness proof.
-
-Run:  just apa-proof   (or python tests/tools/apa_uniform_proof_check.py)
-
-Each check corresponds to a lemma in docs/generators/a_painter_ant_uniform_proof.md.
-
-**Run it by hand when A Painter Ant's head, body, or routing changes** --
-that is what invalidates the motif table, and re-running this is how it is
-caught.  Nothing runs it for you: it is 5m40s single-threaded, against 2.5
-minutes for the whole suite under ``-n auto``, so neither pytest (no
-``test_`` prefix, so it is not collected) nor CI pays that on every push for
-inputs that move this rarely.
-
-It sits here rather than in ``scripts/`` beside ``arrowqueue_lemmas.py``,
-its opposite number for ArrowQueue, because of what it imports: those
-lemmas reach only into ``esolangs``, while this shares
-``tests.tools.a_painter_ant_trace`` with ``test_boolean_grid.py``.  A
-``scripts/`` module importing from ``tests/`` would invert that dependency,
-and mypy checks ``scripts`` but not ``tests``.
-
-What it buys over the suite is the *uniform-in-n* half.  The checked-in
-tests cover the shipped behaviour at the arities they can enumerate; this
-reduces "all tables at every arity" to a finite computation, in the style of
-docs/proofs.md: the arity-dependent part is arithmetic over signed sums of
-distinct powers of two (L1, L2), and the behavioural part is confined to a
-bounded window whose vocabulary does not grow with n (L3, L4).
-"""
+r"""Machine checks backing the A Painter Ant uniform-in-n correctness."""
 
 from __future__ import annotations
 
@@ -51,12 +25,12 @@ _D = {"n": (0, -1), "s": (0, 1), "e": (1, 0), "w": (-1, 0)}
 
 
 def bits_of(idx: int, n: int) -> list[int]:
-    """Input vector for table index ``idx``, most-significant bit first."""
+    r"""Input vector for table index ``idx``, most-significant bit first."""
     return [(idx >> (n - 1 - k)) & 1 for k in range(n)]
 
 
 def _move_targets(n: int, bits: list[int]) -> list[tuple[int, int]]:
-    """Every cell the head's outbound walk to a leaf moves onto."""
+    r"""Every cell the head's outbound walk to a leaf moves onto."""
     x = y = 0
     out = []
     for k, b in enumerate(bits):
@@ -69,7 +43,7 @@ def _move_targets(n: int, bits: list[int]) -> list[tuple[int, int]]:
 
 
 def head_block_lengths(table: str, n: int) -> list[int]:
-    """Non-space length of each head leaf-block, in head-visit order."""
+    r"""Non-space length of each head leaf-block, in head-visit order."""
     out = []
     for _x, _y, leaf_bits in _leaf_positions(n):
         if not _leaf_color(table, list(leaf_bits)):
@@ -89,7 +63,7 @@ def head_block_lengths(table: str, n: int) -> list[int]:
 
 
 def check_l1(max_n: int = 12) -> list[str]:
-    """L1: leaves are distinct and pairwise >= 4 apart (Chebyshev)."""
+    r"""L1: leaves are distinct and pairwise >= 4 apart (Chebyshev)."""
     lines = []
     for n in range(1, max_n + 1):
         pts = [(x, y) for x, y, _ in _leaf_positions(n)]
@@ -104,7 +78,7 @@ def check_l1(max_n: int = 12) -> list[str]:
 
 
 def check_l2(max_n: int = 9) -> list[str]:
-    """L2: no head move target is a foreign leaf, so paint cannot block it."""
+    r"""L2: no head move target is a foreign leaf, so paint cannot block it."""
     lines = []
     for n in range(1, max_n + 1):
         leafset = {(x, y) for x, y, _ in _leaf_positions(n)}
@@ -131,7 +105,7 @@ def check_l2(max_n: int = 9) -> list[str]:
 
 
 def check_l3() -> list[str]:
-    """L3: a run blocked on its first character is a no-op at any length."""
+    r"""L3: a run blocked on its first character is a no-op at any length."""
     lines = []
     for ch in "NSEW":
         base = None
@@ -147,11 +121,7 @@ def check_l3() -> list[str]:
 
 
 def check_l4(table: str, idx: int, n: int) -> tuple[bool, bool, bool, bool, int]:
-    """L4 invariants for one program.
-
-    Returns (I2 rest point, I3 zero paint, I4 fixed point, correctness,
-    cycle-2 radius).
-    """
+    r"""L4 invariants for one program."""
     prog = _instantiate_apa(a_painter_ant(table), bits_of(idx, n))
     length = len([c for c in prog if not c.isspace()])
     first = run(prog, 1)
@@ -178,7 +148,7 @@ def check_l4(table: str, idx: int, n: int) -> tuple[bool, bool, bool, bool, int]
 
 
 def _unit_spans(n: int, leaf_bits) -> list[tuple[str, object, object, int]]:
-    """(kind, horizontal, bit, length) per unit of a leaf block, in order."""
+    r"""(kind, horizontal, bit, length) per unit of a leaf block, in order."""
     spans: list[tuple[str, object, object, int]] = []
     lead = "WS" if n >= 3 and n % 2 == 1 else ""
     if lead:
@@ -207,7 +177,7 @@ def _unit_spans(n: int, leaf_bits) -> list[tuple[str, object, object, int]]:
 def motif_pass(
     table: str, idx: int, n: int, motifs: dict, errors: list, *, learn: bool
 ):
-    """Learn or replay the per-unit motif table for one program's cycle 2."""
+    r"""Learn or replay the per-unit motif table for one program's cycle 2."""
     prog = _instantiate_apa(a_painter_ant(table), bits_of(idx, n))
     length = len([c for c in prog if not c.isspace()])
     first = run(prog, 1)

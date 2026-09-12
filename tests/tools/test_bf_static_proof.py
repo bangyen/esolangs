@@ -1,10 +1,10 @@
-"""Z3 proofs for bounded Brainfuck loop templates."""
+r"""Z3 proofs for bounded Brainfuck loop templates."""
 
 import z3
 
 
 def test_affine_transfer_loop_invariant() -> None:
-    """The accepted transfer template clears its counter and adds to targets."""
+    r"""The accepted transfer template clears its counter and adds to."""
     counter, initial, first, first_initial, second, second_initial, a, b, iteration = (
         z3.Ints(
             "counter initial first first_initial second second_initial a b iteration"
@@ -54,7 +54,7 @@ def test_affine_transfer_loop_invariant() -> None:
 
 
 def test_affine_transfer_stays_in_a_byte_when_its_postcondition_does() -> None:
-    """A bounded affine transfer needs no wraparound gadget."""
+    r"""A bounded affine transfer needs no wraparound gadget."""
     counter, first, second, a, b, first_base, second_base, iteration = z3.Ints(
         "counter first second a b first_base second_base iteration"
     )

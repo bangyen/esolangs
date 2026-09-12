@@ -1,52 +1,4 @@
-"""Interpreter for Collatz Multiverse.
-
-An OISC where every line is ``[var1] = [var2] x + [var3], [DO|NOT] PRINT.``
-The Collatz rule applies to var1: if it is odd (or 0), it becomes
-``var1 * var2 + var3``; if it is even, it is halved.  ``DO`` prints the
-result as a byte, ``NOT`` does not.  Variables are named by letters, digits,
-and underscores (not starting with a digit) and start at 0; ``arr[var]``
-indexes an array (bare ``arr`` acts as ``arr[0]``); ``negativeOne`` starts
-at -1; ``input`` reads an integer from stdin and cannot be a target; and
-``lineNumber`` reads the current line (1-indexed), and assigning to it moves
-the instruction pointer to that line without executing it immediately.
-
-Documented decisions for gaps in the wiki spec:
-- the program is its non-blank lines, numbered from 1; execution starts at
-  line 1 and halts when the pointer leaves the program;
-- var2/var3 and array indices must be variable names, not numeric literals
-  (the wiki rejects ``var = 3 x + 1``);
-- assigning to ``lineNumber`` applies the Collatz rule to the current line
-  number and jumps to the result (the wiki does not exempt it);
-- ``DO`` prints the low byte of the result;
-- ``input`` raises :class:`EOFError` when input runs out (repo-wide
-  convention);
-- a malformed line, a numeric literal, or an attempt to redefine ``input``
-  is malformed (:class:`ValueError`).
-
-The interpreter runs on a :class:`_Machine` (the registers, the arrays, and
-the line pointer), so it is step-capable: ``step()`` executes one line and
-``halted`` is true once the pointer leaves the program.  A ``lineNumber``
-jump that returns to an exact state is a cycle the state-cycle hang detector
-proves; the ``run()`` backstop stays for the unbounded-growth class (a
-register that keeps growing).
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and a parsed line to the next state, and
-never mutates what it is given.  It takes no ``io`` argument at all, so it
-is total and side-effect free by construction rather than by inspection.
-
-Reading is where this language differs from the others in the series: a
-read can *do* something.  ``input`` consumes from stdin, and an indexed
-read used to create the array as a side effect of looking in it.  So the
-shell reads every ``input`` a line needs before the transition runs and
-passes them in, and :func:`_read` is a pure lookup that defaults a missing
-array or register to zero rather than creating one.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so the mutation lives in
-exactly one assignment and every rule about what Collatz Multiverse *does*
-stays in the pure layer.
-"""
+r"""Interpreter for Collatz Multiverse."""
 
 from __future__ import annotations
 
@@ -79,7 +31,7 @@ type _State = tuple[int, _Regs, _Arrays]
 
 
 def _reg_get(regs: _Regs, name: str) -> int:
-    """Return the value of ``name``, or zero for a register never written."""
+    r"""Return the value of ``name``, or zero for a register never written."""
     for key, value in regs:
         if key == name:
             return value
@@ -87,17 +39,13 @@ def _reg_get(regs: _Regs, name: str) -> int:
 
 
 def _reg_set(regs: _Regs, name: str, value: int) -> _Regs:
-    """Return ``regs`` with ``name`` set to ``value``, in name order."""
+    r"""Return ``regs`` with ``name`` set to ``value``, in name order."""
     kept = tuple((k, v) for k, v in regs if k != name)
     return tuple(sorted((*kept, (name, value))))
 
 
 def _arr_get(arrays: _Arrays, name: str, index: int) -> int:
-    """Return ``name[index]``, or zero for a cell never written.
-
-    A pure lookup: unlike the ``setdefault`` this replaces, asking about an
-    array does not bring it into being.
-    """
+    r"""Return ``name[index]``, or zero for a cell never written."""
     for key, cells in arrays:
         if key == name:
             for i, value in cells:
@@ -108,7 +56,7 @@ def _arr_get(arrays: _Arrays, name: str, index: int) -> int:
 
 
 def _arr_set(arrays: _Arrays, name: str, index: int, value: int) -> _Arrays:
-    """Return ``arrays`` with ``name[index]`` set, in name and index order."""
+    r"""Return ``arrays`` with ``name[index]`` set, in name and index order."""
     cells: tuple[tuple[int, int], ...] = ()
     for key, existing in arrays:
         if key == name:
@@ -129,15 +77,10 @@ _LINE = re.compile(
 
 
 class _Machine:
-    """Per-run Collatz Multiverse state: registers, arrays, and the pointer.
-
-    ``step()`` executes one line; ``halted`` is true once the pointer leaves
-    the program.  The VM and the state-cycle hang detector expose this
-    object.
-    """
+    r"""Per-run Collatz Multiverse state: registers, arrays, and the."""
 
     def __init__(self, code: str, io: IO) -> None:
-        """Parse ``code`` into lines and start at line 1."""
+        r"""Parse ``code`` into lines and start at line 1."""
         self.io = io
         lines = [ln for ln in code.splitlines() if ln.strip()]
         self.n = len(lines)
@@ -164,22 +107,22 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        """The current line, 1-indexed."""
+        r"""The current line, 1-indexed."""
         return self.state[0]
 
     @property
     def registers(self) -> dict[str, int]:
-        """The named registers."""
+        r"""The named registers."""
         return dict(self.state[1])
 
     @property
     def arrays(self) -> dict[str, dict[int, int]]:
-        """The arrays, by name."""
+        r"""The arrays, by name."""
         return {name: dict(cells) for name, cells in self.state[2]}
 
     @property
     def halted(self) -> bool:
-        """Whether the pointer has left the program."""
+        r"""Whether the pointer has left the program."""
         return not (1 <= self.state[0] <= self.n)
 
     # The VM's language-shaped.
@@ -187,17 +130,17 @@ class _Machine:
 
     @property
     def memory(self) -> list[int]:
-        """The addressable cells."""
+        r"""The addressable cells."""
         # The registers are kept in.
         return [value for _name, value in self.state[1]]
 
     @property
     def stack(self) -> list[object]:
-        """No stack in this language."""
+        r"""No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        r"""Return the complete internal state, hashable for cycle detection."""
         # Frozensets, as this always.
         # already canonically ordered.
         ip, regs, arrays = self.state
@@ -209,13 +152,7 @@ class _Machine:
         )
 
     def step(self) -> None:
-        """Execute one line, moving the pointer.
-
-        Every ``input`` the line names is read here, in the order the
-        transition would have read them, and handed over as values.  That
-        is what lets :func:`_advance` be pure: ``input`` is the one read
-        that consumes something, and a line can name it up to three times.
-        """
+        r"""Execute one line, moving the pointer."""
         if self.halted:
             return
         line = self.parsed[self.state[0] - 1]
@@ -245,22 +182,13 @@ type _Line = tuple[str, str | None, str, str | None, str, str | None, str]
 
 
 def _plain(state: _State, name: str) -> int:
-    """Read a non-indexed, non-input operand.
-
-    Index operands come through here too: an array subscript is always a
-    bare name, so it can never itself be indexed or read input.
-    """
+    r"""Read a non-indexed, non-input operand."""
     ip, regs, _arrays = state
     return ip if name == "lineNumber" else _reg_get(regs, name)
 
 
 def _operand(state: _State, spec: _Operand, pending: list[int]) -> int:
-    """Read one operand, taking any ``input`` value the shell pre-read.
-
-    ``pending`` is consumed in the same order the operands name ``input``,
-    which is the order :meth:`_Machine.step` filled it: index before the
-    name it subscripts, and operands left to right.
-    """
+    r"""Read one operand, taking any ``input`` value the shell pre-read."""
     name, index = spec
     idx = 0
     if index == "input":
@@ -281,20 +209,7 @@ def _advance(
     line: _Line,
     reads: tuple[int, ...],
 ) -> tuple[int, _State]:
-    """Return the computed value and the state after executing one line.
-
-    Pure: it reads ``state`` and returns a new one.  The value comes back
-    alongside because ``DO PRINT`` needs it and printing is the shell's --
-    returning it is cheaper than making the caller recompute the Collatz
-    step to find out what was printed.
-
-    ``reads`` holds the ``input`` values the shell already consumed, in the
-    order the operands name them.
-
-    The Collatz rule: an odd (or zero) target becomes ``var1 * var2 +
-    var3``, and an even one is halved.  Assigning to ``lineNumber`` moves
-    the pointer to the result instead of writing a register.
-    """
+    r"""Return the computed value and the state after executing one line."""
     ip, regs, arrays = state
     var1, idx1, var2, idx2, var3, idx3, _do_print = line
     pending = list(reads)
@@ -315,7 +230,7 @@ def _advance(
 
 
 def run(code: str, io: IO) -> None:
-    """Run a Collatz Multiverse program."""
+    r"""Run a Collatz Multiverse program."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
