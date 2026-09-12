@@ -7,6 +7,7 @@ resumed past.  They are grouped by the promise they keep rather than by the
 function they call, because that is how the caller met them.
 """
 
+import inspect
 import pathlib
 
 import pytest
@@ -338,3 +339,66 @@ class TestNoTwoNamesDisagree:
 
     def test_the_debugger_stop_reason_type_is_exported(self) -> None:
         assert "StopReason" in esolangs.__all__
+
+
+class TestTheSignaturesAgreeWithThemselves:
+    """Two functions taking the same argument should describe it the same.
+
+    Found by reading the public signatures side by side rather than by
+    using any one of them, which is the view a caller writing against the
+    package gets and no single call ever shows.
+    """
+
+    def test_bits_is_annotated_the_same_in_both_places(self) -> None:
+        """``encode_inputs`` promised more than it accepts.
+
+        It was annotated ``Sequence[int]`` while ``instantiate`` said
+        ``list[int] | tuple[int, ...]``, and *both* refuse anything else at
+        runtime -- so a typed caller passing a ``range`` got mypy's
+        approval and an ``ArgumentError``.  The narrow one was the true
+        one.
+        """
+        annotations = {
+            fn.__name__: inspect.signature(fn).parameters["bits"].annotation
+            for fn in (esolangs.encode_inputs, esolangs.instantiate)
+        }
+        assert len(set(annotations.values())) == 1, annotations
+
+    @pytest.mark.parametrize(
+        "call",
+        [
+            lambda bits: esolangs.encode_inputs("brainfuck", bits),
+            lambda bits: esolangs.instantiate(
+                "Minifuck", esolangs.generate("Minifuck", "0110"), bits
+            ),
+        ],
+    )
+    def test_both_accept_and_refuse_the_same_things(self, call: object) -> None:
+        """The annotation is only right while the behaviour matches it."""
+        call([1, 0])  # type: ignore[operator]
+        call((1, 0))  # type: ignore[operator]
+        with pytest.raises(esolangs.ArgumentError, match="list or tuple"):
+            call(range(2))  # type: ignore[operator]
+
+    def test_the_default_sentinel_reads_as_a_default(self) -> None:
+        """``help`` showed a memory address that changed every run.
+
+        ``timeout: float | esolangs._Default | None = <esolangs._Default
+        object at 0x105fa12b0>`` is documentation nobody can use; the
+        sentinel means "omit this", so it says so.
+        """
+        for fn in (esolangs.evaluate, esolangs.verify):
+            rendered = str(inspect.signature(fn))
+            assert "<default>" in rendered, fn.__name__
+            assert "object at 0x" not in rendered, fn.__name__
+
+    def test_language_is_first_everywhere(self) -> None:
+        """The one argument every public call shares, in the same place."""
+        for name in esolangs.__all__:
+            attribute = getattr(esolangs, name)
+            if not inspect.isfunction(attribute):
+                continue
+            first = next(iter(inspect.signature(attribute).parameters), None)
+            if first in {None, "output", "truth_table"}:
+                continue
+            assert first == "language", (name, first)
