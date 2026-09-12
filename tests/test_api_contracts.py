@@ -7,8 +7,10 @@ resumed past.  They are grouped by the promise they keep rather than by the
 function they call, because that is how the caller met them.
 """
 
+import importlib
 import inspect
 import pathlib
+from pathlib import Path
 
 import pytest
 
@@ -402,3 +404,122 @@ class TestTheSignaturesAgreeWithThemselves:
             if first in {None, "output", "truth_table"}:
                 continue
             assert first == "language", (name, first)
+
+
+class TestDescribeHasANameableType:
+    """``dict[str, object]`` was accurate and useless.
+
+    Every field access needed a cast, and ``mypy --strict`` over an
+    ordinary consumer program reported five errors, all of them this one.
+    The docstring already specified every key; ``LanguageInfo`` is that
+    specification in a form a type checker can read.
+    """
+
+    def test_it_is_exported(self) -> None:
+        """A type you cannot name is a type you cannot annotate with."""
+        assert "LanguageInfo" in esolangs.__all__
+        assert esolangs.LanguageInfo.__doc__
+
+    def test_every_key_is_declared(self) -> None:
+        """The TypedDict and the dict must not drift apart."""
+        declared = set(esolangs.LanguageInfo.__annotations__)
+        assert declared == set(esolangs.describe("brainfuck"))
+
+    def test_every_language_matches_the_declared_types(self) -> None:
+        """Declared from a survey of all 69, so it is checked against all 69.
+
+        A TypedDict is not enforced at runtime, so nothing but this notices
+        a language whose field is a different shape.
+        """
+        import typing
+
+        hints = typing.get_type_hints(esolangs.LanguageInfo)
+        for name in esolangs.list_languages():
+            for key, value in esolangs.describe(name).items():
+                expected = hints[key]
+                if expected is str:
+                    assert isinstance(value, str), (name, key)
+                elif expected is bool:
+                    assert isinstance(value, bool), (name, key)
+                elif expected == list[str]:
+                    assert isinstance(value, list), (name, key)
+                    assert all(isinstance(v, str) for v in value), (name, key)
+                elif expected == tuple[str, str]:
+                    assert isinstance(value, tuple), (name, key)
+                    assert len(value) == 2, (name, key)
+                else:  # the two that may be None
+                    assert value is None or isinstance(value, str), (name, key)
+
+    def test_the_four_machine_traits_are_still_carried(self) -> None:
+        """They were merged with ``**``, which a TypedDict cannot verify.
+
+        Spelling them out is what let the type land, and it means a
+        renamed trait is now a type error rather than a silently missing
+        key.
+        """
+        facts = esolangs.describe("RAM0")
+        for key in (
+            "self_halts",
+            "dumps_on_the_post_halt_step",
+            "steppable_to_answer",
+            "eof_is_a_value",
+        ):
+            assert isinstance(facts[key], bool), key  # type: ignore[literal-required]
+
+
+class TestSpecAbortsRatherThanReturningNothing:
+    """``-OO`` strips docstrings, and ``spec`` read one.
+
+    So it returned ``""`` for all 69 languages -- a silent wrong answer
+    from the function whose whole promise is that it cannot go stale.
+    """
+
+    def test_it_raises_when_there_is_no_docstring(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Simulated by emptying one, since the test run is not under -OO."""
+        module = importlib.import_module(
+            "esolangs.interpreters."
+            + str(esolangs.describe("brainfuck")["interpreter"])
+        )
+        monkeypatch.setattr(module, "__doc__", None)
+        with pytest.raises(esolangs.ProgramError, match="-OO"):
+            esolangs.spec("brainfuck")
+
+    def test_it_still_returns_the_text_normally(self) -> None:
+        """The abort must not have eaten the ordinary path."""
+        assert esolangs.spec("brainfuck").startswith("Interpreter for")
+
+
+class TestAMissingFileIsAFileNotFoundError:
+    """``run`` takes an ``os.PathLike``, so a caller writes the stdlib catch.
+
+    It got a ``ProgramError``, which is a ``ValueError`` and not an
+    ``OSError``, so ``except FileNotFoundError`` missed it entirely --
+    while ``ExecutionTimeoutError`` had been a ``TimeoutError`` all along.
+    """
+
+    def test_it_is_catchable_both_ways(self, tmp_path: Path) -> None:
+        """Ours for callers who catch ours, the stdlib's for the rest."""
+        missing = tmp_path / "absent.bf"
+        with pytest.raises(FileNotFoundError):
+            esolangs.run("brainfuck", missing, "", 5)
+        with pytest.raises(esolangs.EsolangError):
+            esolangs.run("brainfuck", missing, "", 5)
+        with pytest.raises(esolangs.ProgramError):
+            esolangs.run("brainfuck", missing, "", 5)
+
+    def test_an_unreadable_file_is_still_a_plain_program_error(
+        self, tmp_path: Path
+    ) -> None:
+        """Only *absent* is a FileNotFoundError; the rest keep their class."""
+        blocked = tmp_path / "blocked.bf"
+        blocked.write_bytes(b"\xff\xfe\x00")
+        with pytest.raises(esolangs.ProgramError) as caught:
+            esolangs.run("brainfuck", blocked, "", 5)
+        assert not isinstance(caught.value, FileNotFoundError)
+
+    def test_version_is_not_star_imported(self) -> None:
+        """``from esolangs import *`` injected a dunder into the namespace."""
+        assert "__version__" not in esolangs.__all__
+        assert esolangs.__version__  # still reachable by name

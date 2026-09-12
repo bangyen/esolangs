@@ -134,6 +134,21 @@ class ProgramError(EsolangError, ValueError):
     """A program could not be loaded: it is malformed for its language."""
 
 
+class ProgramNotFoundError(ProgramError, FileNotFoundError):
+    """A program file could not be read because it is not there.
+
+    A :class:`ProgramError` like any other unreadable program, and also a
+    :class:`FileNotFoundError`, because :func:`esolangs.run` accepts an
+    ``os.PathLike`` and a caller who passes one writes ``except
+    FileNotFoundError`` -- and missed this entirely, since ``ProgramError``
+    is a :class:`ValueError` and not an :class:`OSError`.
+
+    The same move :class:`ExecutionTimeoutError` already makes by being a
+    :class:`TimeoutError`: the package's own class for callers who catch
+    ours, the stdlib's for callers who catch theirs.
+    """
+
+
 class TruthTableError(EsolangError, ValueError):
     """A truth table was not a usable binary string of length ``2**n``.
 
