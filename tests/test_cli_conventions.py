@@ -9,6 +9,7 @@ languages left unreachable by a fix that pointed a CLI user at a Python call.
 import importlib
 import inspect
 import json
+import pathlib
 import re
 import subprocess
 import sys
@@ -2909,3 +2910,116 @@ class TestAnswerProvesRatherThanWaits:
                 ["answer", "--timeout", "20", "123", "0110", bits], capsys
             )
             assert out.strip() == expected, bits
+
+
+class TestCheckStdinSaysWhatItCanActuallyCheck:
+    """Its help listed "the wrong number of lines" among what it catches
+    without ``--table``.  For 67 of the 69 it cannot.
+
+    Without a table it judges *shape*, and for a line-per-bit language a
+    shape is not a count: one line, three lines and none at all are
+    equally well formed.  An empty stdin passing ``check-stdin brainfuck``
+    is the trap, and the help now names it.
+    """
+
+    def test_a_line_per_bit_language_accepts_any_count(self) -> None:
+        """Not a bug -- a count needs an arity, and only ``--table`` has one."""
+        for stdin in ("", "1\n", "1\n0\n1\n"):
+            esolangs.check_stdin("brainfuck", stdin)
+
+    def test_the_table_is_what_catches_the_count(self) -> None:
+        """The other half of the claim: with one, the count is checked."""
+        with pytest.raises(esolangs.ArgumentError):
+            esolangs.check_stdin("brainfuck", "1\n0\n1\n", "0110")
+
+    def test_the_two_shape_languages_are_the_two_named(self) -> None:
+        """The help names Clockwise and Fargo, so the data must agree.
+
+        The first draft said "three languages want every bit on one line",
+        which was wrong -- one does.  Counted here rather than believed.
+        """
+        shapes = {
+            name: str(esolangs.describe(name)["input_shape"])
+            for name in esolangs.list_languages()
+        }
+        assert [n for n, s in shapes.items() if s == "one_line"] == ["Clockwise"]
+        assert [n for n, s in shapes.items() if s == "row_index"] == ["Fargo"]
+        assert sum(s == "line_per_bit" for s in shapes.values()) == 66
+
+    def test_a_one_line_language_does_catch_a_stray_line(self) -> None:
+        """Which is why the help can still claim a shape check at all."""
+        with pytest.raises(esolangs.ArgumentError, match="one line"):
+            esolangs.check_stdin("Clockwise", "1\n0\n")
+
+    def test_the_help_no_longer_overstates(self) -> None:
+        """The retired phrase, so it cannot come back."""
+        text = " ".join(HELP["check-stdin"].split())
+        assert "the wrong number of lines" not in text
+        assert "only --table knows how many bits the program wanted" in text
+
+
+class TestExamplesIsACheckoutOnlyField:
+    """``describe(...)["examples"]`` is populated here and ``[]`` installed.
+
+    The wheel does not carry ``examples/``, and the path it resolves --
+    ``parents[2]`` -- is the repository root from a checkout and the
+    directory above ``site-packages`` from an install.  Present-and-empty
+    with no signal was the worst of the three options, so the docstring
+    says which you have.
+    """
+
+    def test_this_checkout_populates_it(self) -> None:
+        """The guard must not have turned the working case off."""
+        populated = [
+            name
+            for name in esolangs.list_languages()
+            if esolangs.describe(name)["examples"]
+        ]
+        assert len(populated) == 69
+
+    def test_every_reported_path_exists(self) -> None:
+        """A path that is reported and absent is worse than none reported."""
+        for name in esolangs.list_languages():
+            for path in esolangs.describe(name)["examples"]:
+                assert pathlib.Path(path).is_file(), (name, path)
+
+    def test_the_manifest_guard_is_what_decides(self) -> None:
+        """Without it an unrelated ``examples/`` above site-packages globs in.
+
+        A wrong answer rather than a missing one, which is the distinction
+        the guard exists for.
+        """
+        assert esolangs._HAS_EXAMPLES is True  # noqa: SLF001
+
+    def test_the_docstring_says_so(self) -> None:
+        """The signal, since the field itself cannot carry one."""
+        doc = " ".join((esolangs.describe.__doc__ or "").split())
+        assert "empty unless you are running from a source checkout" in doc
+
+
+class TestEvaluateNeedsNoSeed:
+    """``run`` takes a seed and ``evaluate``/``verify`` do not, which looks
+    like a half-migration and is not.
+
+    ``evaluate`` only ever runs programs this package *generated*, and
+    those do not reach the random commands -- so a seed would be surface
+    with no behaviour behind it.  Two reporters raised it and neither
+    could make it flake; this is the check that says why.
+    """
+
+    @pytest.mark.parametrize(
+        "language",
+        ["COD", "Interprogck8", "LaserFuck", "Modulous", "Painfuck", "WII2D"],
+    )
+    def test_a_drawing_language_evaluates_the_same_every_time(
+        self, language: str
+    ) -> None:
+        """The seven that draw, less the slowest, four runs each."""
+        answers = {esolangs.evaluate(language, "0110", timeout=30) for _ in range(4)}
+        assert answers == {"0110"}
+
+    def test_run_still_takes_one_because_it_takes_any_program(self) -> None:
+        """The distinction: ``run`` executes what a caller wrote."""
+        assert {
+            esolangs.run("LaserFuck", "o+++.\n", "", 5, seed=0) for _ in range(4)
+        } == {esolangs.run("LaserFuck", "o+++.\n", "", 5, seed=0)}

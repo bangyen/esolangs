@@ -136,7 +136,20 @@ def __dir__() -> list[str]:
     return sorted(__all__)
 
 
+#: The committed example programs, when running from a source checkout.
+#:
+#: ``parents[2]`` is the repository root from ``src/esolangs/__init__.py``
+#: and something else entirely from ``site-packages/esolangs/__init__.py``
+#: -- the directory above ``site-packages``.  The wheel does not carry
+#: ``examples/``, so an installed copy finds nothing, which is why
+#: ``describe(...)["examples"]`` is ``[]`` there and populated here.
+#:
+#: Guarded by the manifest rather than by the directory alone: an
+#: unrelated ``examples/`` sitting above ``site-packages`` would otherwise
+#: be globbed and reported as this package's, which is a wrong answer
+#: rather than a missing one.
 _EXAMPLES = pathlib.Path(__file__).resolve().parents[2] / "examples"
+_HAS_EXAMPLES = (_EXAMPLES / "boolean" / "MANIFEST.md").is_file()
 
 # An unfilled input slot in a parameterized generator's template.  Matched
 # only for the languages whose generator emits one: ``{`` is a live command
@@ -570,8 +583,24 @@ def run(
         # Checked here rather than inside ``_run`` so that every ValueError
         # from the run itself is the interpreter refusing the program, and
         # can be re-raised as one.
+        #
+        # The message used to stop after the constraint, which left a
+        # caller on a worker thread with two options and no third: a
+        # timeout that raises, or ``None`` that runs forever.  Both routes
+        # out already exist and neither was mentioned.
+        #
+        # Deliberately *not* a silent fallback to the stepping path.  Two
+        # execution paths for one function is how the step route and this
+        # one came to disagree in the first place -- which is why
+        # ``tests/test_stepping_parity.py`` exists -- and a divergence a
+        # caller cannot see is worse than a refusal they can read.
         raise ArgumentError(
-            "the timeout guard uses SIGALRM and needs a Unix main thread"
+            "the timeout guard uses SIGALRM and needs a Unix main thread; "
+            "off it, either bound the run cooperatively with "
+            "make_debugger(language, program, stdin).run(timeout=...), "
+            "which steps and so needs no signal, or use evaluate/verify "
+            "with timeout=None -- they settle a diverging row by proving "
+            "the loop rather than waiting for it"
         )
     # No guard on the lookup: ``resolve`` raises for a name outside the
     # registry, and every registered language has an interpreter, so a name
@@ -921,6 +950,13 @@ def describe(language: str) -> LanguageInfo:
     :func:`~esolangs.vm.machine_traits` and documented there rather than
     copied to here.
 
+    ``examples`` is **empty unless you are running from a source
+    checkout**.  The committed programs live in ``examples/`` at the
+    repository root, which the wheel does not carry, so an installed copy
+    reports ``[]`` -- present and empty rather than absent, so a caller
+    iterating the keys still finds it.  ``examples/boolean/MANIFEST.md``,
+    which says what each one computes, is in the repository too.
+
     Two keys exist because assuming their default is answered with a wrong
     result rather than an error, which is the failure worth spending an API
     on.  ``input_encoding`` is the ``(zero, one)`` pair the language spells
@@ -965,7 +1001,9 @@ def describe(language: str) -> LanguageInfo:
     # ["examples"][0]))`` -- work from one directory and nowhere else: a
     # ``chdir`` away it is ``cannot read examples/boolean/brainfuck.txt``,
     # and for anyone who pip-installed there is no such directory at all.
-    examples = sorted(str(p) for p in _EXAMPLES.glob(f"*/{stem}.txt"))
+    examples = (
+        sorted(str(p) for p in _EXAMPLES.glob(f"*/{stem}.txt")) if _HAS_EXAMPLES else []
+    )
     traits = machine_traits(name)
     parameterized = lang.id in parameterized_ids()
     example = _example_for(lang.id)
