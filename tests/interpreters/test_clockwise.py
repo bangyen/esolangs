@@ -1,5 +1,3 @@
-"""Unit tests for the Clockwise interpreter."""
-
 from typing import ClassVar
 
 import pytest
@@ -20,12 +18,10 @@ def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
 
 class TestClockwise:
     def test_output_character(self) -> None:
-        """Pushing bits 1000001 outputs 'A'."""
         code = ["+;S;S;S;S;S;+;R", "R             R"]
         assert run_and_capture(code) == "A"
 
     def test_truth_machine_zero(self) -> None:
-        """Truth-machine with input 0 halts after outputting '0'."""
         code = ["+-?.;.;.;.;.;.;.;?R", "  R              R", "R                 R"]
         assert run_and_capture(code, inputs=["0"]) == "0"
 
@@ -81,7 +77,6 @@ class TestClockwise:
         assert run_and_capture(["  !", "R R"]) == ""
 
     def test_unclosed_ring_rejected(self) -> None:
-        """A pointer that walks off the ring is a malformed program."""
         with pytest.raises(ValueError, match=r"^Clockwise ring is not closed$"):
             run_and_capture(["+;S"])
 

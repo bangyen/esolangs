@@ -1,5 +1,3 @@
-"""Unit tests for the 6-5 interpreter."""
-
 import importlib
 
 from tests.interpreters.contract import CycleContract, SnapshotContract
@@ -43,11 +41,9 @@ class TestSixFive:
         assert run_and_capture("0") == ""
 
     def test_hello_world(self) -> None:
-        """Hello World program from esolangs.org."""
         assert run_and_capture(HELLO_WORLD) == "Hello, World"
 
     def test_move_right_twice(self) -> None:
-        """1 moves the pointer right two cells."""
         assert run_and_capture("15555555555A0") == "2"
 
     def test_right_move_reuses_an_already_allocated_tape(self) -> None:
@@ -56,7 +52,6 @@ class TestSixFive:
         assert state == (1, 2, (0, 0, 0))
 
     def test_move_left(self) -> None:
-        """3 moves the pointer left."""
         assert run_and_capture("313A0") == "\x00"
 
     def test_the_conditional_skip_only_fires_on_a_match(self) -> None:
@@ -116,23 +111,18 @@ class TestSixFive:
         assert run_and_capture("5A5A0") == "\x05\n"
 
     def test_input_adds_to_cell(self) -> None:
-        """B stores input in the cell, then arithmetic applies on top."""
         assert run_and_capture("B5A0", inputs=["A"]) == "F"
 
     def test_jump_to_four(self) -> None:
-        """8n jumps to the nth 4 marker."""
         assert run_and_capture("81A4A0") == "\x00"
 
     def test_jump_to_second_four(self) -> None:
-        """8n jumps past the nth 4, skipping code before it."""
         assert run_and_capture("825A46A4A0") == "\x00"
 
     def test_skip_when_equal(self) -> None:
-        """7n skips the next instruction when the cell equals n."""
         assert run_and_capture("55A7A5A0") == "\n\n"
 
     def test_negative_cell_output_halts(self) -> None:
-        """Outputting a negative cell value is an invalid operation."""
         import pytest
 
         from esolangs.exceptions import HaltError
