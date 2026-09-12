@@ -2,14 +2,12 @@
 
 ## Supported versions
 
-The latest release on PyPI and the current `main` branch. There are no
-maintenance branches for older versions.
+The latest PyPI release and `main`; older versions are unsupported.
 
 ## What is in scope
 
-Interpreters execute untrusted programs by design, so a program producing
-wrong output, looping forever, or exhausting memory is a correctness bug.
-Open a normal issue for those.
+Wrong output, loops, and resource exhaustion are correctness bugs; use a
+normal issue.
 
 In scope for a security report is anything that escapes the interpreter:
 
@@ -22,14 +20,9 @@ In scope for a security report is anything that escapes the interpreter:
 
 ## Reporting
 
-Report privately through GitHub's
-[security advisory form](https://github.com/bangyen/esolangs/security/advisories/new),
-not a public issue.
+Use GitHub's private
+[security advisory form](https://github.com/bangyen/esolangs/security/advisories/new).
 
-Please include the language, the smallest program that shows it, the commit or
-released version, and what the program achieved that it should not have been
-able to.
+Include the language, smallest reproducer, version, and impact.
 
-Expect an acknowledgement within a week. This is a personal project
-maintained in spare time, so a fix may take longer; you will get an honest
-estimate rather than silence.
+Expect acknowledgement within a week; a fix may take longer.
