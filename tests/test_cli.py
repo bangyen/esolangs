@@ -441,6 +441,30 @@ class TestBreakpointOptions:
 class TestTuiFlag:
     """``--tui`` hands the run to the step-through screen."""
 
+    @pytest.fixture(autouse=True)
+    def _pretend_a_terminal(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Say that a terminal is present, because pytest's stdin is not one.
+
+        These tests patch ``run_tui`` and check the handoff, so they never
+        reach curses and do not need a real terminal -- but the guard that
+        refuses ``--tui`` without one is upstream of the handoff and would
+        exit 2 first.
+
+        They used to get past it by passing ``--stdin``, which the guard
+        exempted.  That exemption was a bug: it is what let a real
+        ``--tui --stdin`` run in a pipe reach curses and fail with
+        ``(19, 'Operation not supported by device')`` reported as an
+        internal error.  With the exemption gone the pretence has to be
+        explicit, which is the honest shape for it -- these tests are about
+        the handoff, not about terminal detection, and
+        ``test_tui_without_a_terminal_is_refused`` covers that separately.
+
+        Patched on :class:`_FakeStdin` rather than on ``sys.stdin``, because
+        :func:`call_main` installs one of those *itself* -- so anything set
+        on ``sys.stdin`` out here is replaced before the guard reads it.
+        """
+        monkeypatch.setattr(_FakeStdin, "isatty", lambda _self: True)
+
     def test_it_calls_the_screen_with_the_program_and_input(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -578,13 +602,22 @@ class TestTuiFlag:
             )
         assert screen.call_args.kwargs["stop"] is None
 
-    def test_a_piped_stream_without_stdin_is_refused(
+
+class TestTuiNeedsATerminal:
+    """``--tui`` is refused where there are no keys to read.
+
+    Outside :class:`TestTuiFlag` deliberately: that class patches the tty
+    check so it can test the handoff, and a guard cannot be tested by a
+    class that has disabled it.
+    """
+
+    def test_a_piped_stream_is_refused(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Keys and program input cannot share one descriptor.
 
         Rather than let the screen read the program's bytes as keystrokes,
-        the pipe is rejected and ``--stdin`` is named as the way in.
+        the pipe is rejected.
         """
         with pytest.raises(SystemExit) as exc:
             call_main(
@@ -593,7 +626,33 @@ class TestTuiFlag:
                 stdin="Z",
             )
         assert exc.value.code == 2
-        assert "--stdin" in capsys.readouterr().err
+        assert "terminal" in capsys.readouterr().err
+
+    def test_stdin_does_not_buy_a_terminal(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The exemption that used to be here was the bug.
+
+        ``--stdin`` was the remedy this guard's message recommended, and
+        passing it stopped the guard firing -- so the advice led to curses
+        failing with ``(19, 'Operation not supported by device')``, reported
+        through the catch-all as an internal error at exit 70.  It settles
+        where the program's input comes from and cannot conjure a terminal.
+        """
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                [
+                    "debug",
+                    "--tui",
+                    "--stdin",
+                    "1",
+                    "brainfuck",
+                    _program(tmp_path, ",."),
+                ],
+                capsys,
+            )
+        assert exc.value.code == 2
+        assert "terminal" in capsys.readouterr().err
 
     def test_an_unknown_language_is_reported(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
