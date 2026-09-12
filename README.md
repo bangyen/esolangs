@@ -5,7 +5,8 @@
 
 Interpreters and generators for esoteric
 languages. Current work is in [the roadmap](docs/roadmap.md); contracts and
-known boundaries are in [limitations](docs/limitations.md).
+known boundaries are in [limitations](docs/limitations.md). The rest of
+[`docs/`](docs/README.md) is indexed there.
 
 ## Use
 
