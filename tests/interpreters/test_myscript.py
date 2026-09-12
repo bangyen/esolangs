@@ -1,10 +1,4 @@
-"""Unit tests for the MyScript interpreter.
-
-MyScript is a JavaScript-inspired prefix language: prefix function calls
-(``add a b``), line-based statements, and indented ``while``/``check``
-blocks and function bodies.  These tests pin the wiki's examples and the
-edge cases (undefined variables, out-of-range indexing, mismatched calls).
-"""
+r"""Unit tests for the MyScript interpreter."""
 
 import pytest
 
@@ -60,12 +54,7 @@ class TestExamples:
 
 class TestBuiltins:
     def test_ask_reaches_every_expression_context(self) -> None:
-        """Nested expressions retain their IO and lexical scope.
-
-        ``ask`` is not just a top-level argument: assignments, arrays,
-        function arguments, loop conditions, and check arms all parse through
-        separate helpers.  The values make each path observable.
-        """
+        r"""Nested expressions retain their IO and lexical scope."""
         code = (
             "var saved is ask\n"
             "var array is [ask]\n"
@@ -82,13 +71,7 @@ class TestBuiltins:
         assert run_and_capture(code, inputs=["s", "a", "e", "", "x", "x"]) == "ematchsa"
 
     def test_a_check_resolves_its_arms_against_the_scope(self) -> None:
-        """The subject, each case, and an ``else`` body all see variables.
-
-        The checks elsewhere compare a bare ``ask`` with itself, which
-        needs no scope to resolve -- so the scope threaded into those
-        three evaluations was never used, and dropping it from any of
-        them went unnoticed.
-        """
+        r"""The subject, each case, and an ``else`` body all see variables."""
         subject = 'var a is "1",\ncheck a,\n  if "1",\n    say "hit"'
         assert run_and_capture(subject) == "hit"
         case = 'var a is "1",\nvar b is "1",\ncheck a,\n  if b,\n    say "hit"'
@@ -122,13 +105,13 @@ class TestErrors:
             run_and_capture("say missing")
 
     def test_missing_operands_are_rejected(self) -> None:
-        """A prefix call that ends before its arity is malformed text."""
+        r"""A prefix call that ends before its arity is malformed text."""
         for code in ("say", "add", "add 1", "not", "itemat"):
             with pytest.raises(ValueError, match="ended before its operands"):
                 run_and_capture(code)
 
     def test_incomplete_var_declaration_is_rejected(self) -> None:
-        """The ``var`` form is checked before its parts are read."""
+        r"""The ``var`` form is checked before its parts are read."""
         for code in ("var", "var b0", "var b0 "):
             with pytest.raises(ValueError, match="malformed var declaration"):
                 run_and_capture(code)
@@ -152,7 +135,7 @@ class TestErrors:
             run("say ask", ScriptedIO(""))
 
     def test_lines_without_tokens_are_ignored(self) -> None:
-        """A line with no tokenizable content is skipped, not crashed on."""
+        r"""A line with no tokenizable content is skipped, not crashed on."""
         assert run_and_capture("-}`\n") == ""
 
     def test_truthiness_coercion(self) -> None:
@@ -223,14 +206,7 @@ class TestStepMachine:
             run_and_capture("is 5")
 
     def test_every_halt_message_is_exact(self) -> None:
-        """Each invalid operation says its own thing, checked whole.
-
-        The suite either matches a fragment or only the exception type, and
-        ``match=`` is a substring search -- so the wording was free and one
-        message could be swapped for another without a failure.  All six
-        come from different checks, and several from the same builtin, so
-        the text is what says which one fired.
-        """
+        r"""Each invalid operation says its own thing, checked whole."""
         for code, message in (
             ("say x", "undefined variable: x"),
             ("x is 1", "assignment to undefined variable: x"),
@@ -244,13 +220,7 @@ class TestStepMachine:
             assert str(caught.value) == message, code
 
     def test_itemat_reaches_the_last_item_but_not_past_it(self) -> None:
-        """The index bound is exclusive, which only the last index shows.
-
-        An out-of-range test that overshoots by a wide margin passes
-        whichever way the comparison is written; index 2 on a two-item
-        array is the first that must fail, and index 1 the last that must
-        not.
-        """
+        r"""The index bound is exclusive, which only the last index shows."""
         assert run_and_capture("say itemat [1, 2] 1") == "2"
         with pytest.raises(HaltError):
             run_and_capture("say itemat [1, 2] 2")
@@ -260,14 +230,10 @@ class TestStepMachine:
 
 
 class TestFrameStack:
-    """The guarantees a call being a frame -- rather than Python recursion -- buys."""
+    r"""The guarantees a call being a frame -- rather than Python recursion."""
 
     def test_deep_recursion_is_not_capped(self) -> None:
-        """A terminating recursion past Python's default 1000-frame limit runs.
-
-        A call pushes a frame rather than recursing natively, so depth is
-        heap rather than Python stack and no ``RecursionError`` is possible.
-        """
+        r"""A terminating recursion past Python's default 1000-frame limit runs."""
         depth = 2000
         lines = ["var countdown is func n"]
         lines.append("  check n,")
@@ -279,12 +245,7 @@ class TestFrameStack:
         assert run_and_capture("\n".join(lines)) == "done"
 
     def test_a_loop_inside_a_function_body_is_provably_cyclic(self) -> None:
-        """A hang inside a call is visible to the state-cycle detector.
-
-        Running a called function to completion inside one ``step()`` hid
-        this: the loop never returned, so no intermediate state ever
-        reached ``snapshot()`` and the detector could not see it.
-        """
+        r"""A hang inside a call is visible to the state-cycle detector."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.myscript import _Machine
         from esolangs.vm import run_until_halt_or_cycle
@@ -294,11 +255,7 @@ class TestFrameStack:
         assert run_until_halt_or_cycle(machine) is False
 
     def test_a_call_in_a_while_condition_is_stepped(self) -> None:
-        """A condition may itself call, on the first check and every re-check.
-
-        The re-check runs on the body's own frame, so a call there stacks a
-        frame above the loop and unwinds back into it once per lap.
-        """
+        r"""A condition may itself call, on the first check and every re-check."""
         code = (
             "var i is 2\n"
             "var dec is func n\n"
@@ -311,12 +268,12 @@ class TestFrameStack:
         assert run_and_capture(code) == "210"
 
     def test_a_call_in_a_check_subject_and_case_is_stepped(self) -> None:
-        """A ``check`` evaluates its subject and each case lazily, calls included."""
+        r"""A ``check`` evaluates its subject and each case lazily, calls."""
         code = 'var idf is func n\n  return n\ncheck idf 5,\n  if idf 5,\n    say "hit"'
         assert run_and_capture(code) == "hit"
 
     def test_one_statement_inside_a_call_is_one_step(self) -> None:
-        """A called function's statements are stepped, not run in one step."""
+        r"""A called function's statements are stepped, not run in one step."""
         from esolangs.interpreters.io import IO
         from esolangs.interpreters.register_based.myscript import _Machine
 
@@ -339,12 +296,12 @@ class TestSayEscapes:
 
 class TestSnapshot:
     def test_check_runs_the_first_matching_case(self) -> None:
-        """A matching case runs its block and stops the check."""
+        r"""A matching case runs its block and stops the check."""
         code = 'check 5,\n  if 5,\n    say "hit"\n  if 5,\n    say "again"'
         assert run_and_capture(code) == "hit"
 
     def test_snapshot_captures_a_nested_scope_chain(self) -> None:
-        """A function frame's scope chain is folded into the snapshot key."""
+        r"""A function frame's scope chain is folded into the snapshot key."""
         from esolangs.interpreters.register_based.myscript import _Machine
 
         code = "var f is func x\n  return add x 1\nsay f 1"
@@ -364,7 +321,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(SnapshotContract):
-    """The shared shapes, with this language's own programs."""
+    r"""The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program = "var a is 1\nsay a"

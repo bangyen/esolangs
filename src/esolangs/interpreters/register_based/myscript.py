@@ -1,53 +1,4 @@
-r"""Interpreter for MyScript.
-
-A JavaScript-inspired prefix language: functions are called without
-parentheses (``add a b`` is ``add(a, b)``), statements are line-based, and
-``while``/``check`` blocks and function bodies are introduced by an
-indented block after a line ending in ``,``.  ``var x is expr`` declares a
-variable, ``x is expr`` modifies one, ``return``/``return val`` leaves the
-current function, ``say expr`` prints a value, ``ask`` reads a line of
-input, and ``check val?`` starts an ``if``/``else`` switch.  Values are
-integers, floats, strings (double quotes, escapes ``\\0 \\n \\\\ \\t \\f
-\\"``), booleans ``yes``/``no``, and arrays ``[a, b, c]``.  Functions are
-first-class values created with ``var f is func arg1 arg2`` whose body is
-the indented block after the declaration; calling ``f x y`` binds the
-parameters and runs the body.
-
-Errors: a ``var`` declaration missing ``is``, an unrecognized ``check``
-case, and a bare ``is`` at statement position are malformed programs and
-raise :class:`ValueError`; an undefined variable, a call with the wrong
-number of arguments, an ``if``/``else`` outside a ``check``, arithmetic on
-a non-number, and an out-of-range ``itemat`` are invalid operations that
-halt the program with :class:`~esolangs.exceptions.HaltError`; a
-``while yes`` loop runs forever unless the program ends, and ``ask``
-raises :class:`EOFError` when input runs out (the repo-wide convention).
-
-The interpreter runs on a :class:`_Machine`: an explicit stack of frames
-stands in for Python's own, so **nesting of every kind is data rather than
-Python stack**.  One statement is one ``step()`` however deep it sits --
-inside a ``while``, a ``check`` arm, or a called function -- so every
-intermediate state reaches :meth:`_Machine.snapshot`, and a loop inside a
-called function is provable by :func:`esolangs.vm.run_until_halt_or_cycle`
-rather than hanging where nothing can observe it.
-
-There is therefore no recursion ceiling.  A program that recurses forever
-grows the frame list rather than Python's stack; that class revisits no
-state, so it is what ``esolangs.run``'s wall-clock ``timeout`` is for,
-exactly as ``grapheme.py`` records.  ``eval.py`` says its machine and this
-one are built the same way and for the same reasons, and they now are.
-
-Evaluation is scheduled rather than recursive: a frame carries the pending
-steps of the statement in progress (``todo``) and the finished operands
-they have produced.  The tokens are scheduled directly rather than
-pre-parsed into a tree, because MyScript's grammar is *binding-dependent* --
-``add f 3`` shapes one way when ``f`` holds a one-parameter function and
-another when it holds a number, so argument *N*'s start position is known
-only once argument *N-1* has been evaluated.  Operands therefore carry the
-position they ended at.  ``io`` is threaded through the transition rather
-than lifted into the shell: a statement's expression may read and print any
-number of times, at points that depend on values computed part-way through
-it.
-"""
+r"""Interpreter for MyScript."""
 
 import re
 import sys
@@ -109,7 +60,7 @@ Node = tuple[list[str], list["Node"]]
 
 
 def _parse_string(raw: str) -> str:
-    """Decode a MyScript string literal (including its surrounding quotes)."""
+    r"""Decode a MyScript string literal (including its surrounding quotes)."""
     body = raw[1:-1]
     out: list[str] = []
     i = 0
@@ -125,12 +76,12 @@ def _parse_string(raw: str) -> str:
 
 
 def _tokenize(line: str) -> list[str]:
-    """Split one stripped line into tokens."""
+    r"""Split one stripped line into tokens."""
     return _TOKEN.findall(line)
 
 
 def _block_tree(code: str) -> list[Node]:
-    """Build the indentation tree of ``(tokens, children)`` nodes."""
+    r"""Build the indentation tree of ``(tokens, children)`` nodes."""
     root: list[Node] = []
     stack: list[tuple[int, list[Node]]] = [(0, root)]
     for raw in code.split("\n"):
@@ -150,7 +101,7 @@ def _block_tree(code: str) -> list[Node]:
 
 
 def _truthy(value: object) -> bool:
-    """MyScript's boolean coercion."""
+    r"""MyScript's boolean coercion."""
     if isinstance(value, bool):
         return value
     if isinstance(value, (int, float)):
@@ -163,7 +114,7 @@ def _truthy(value: object) -> bool:
 
 
 def _as_str(value: object) -> str:
-    """Render a value the way MyScript prints or concatenates it."""
+    r"""Render a value the way MyScript prints or concatenates it."""
     if isinstance(value, bool):
         return "yes" if value else "no"
     if isinstance(value, float) and value.is_integer():
@@ -172,39 +123,39 @@ def _as_str(value: object) -> str:
 
 
 def _num(value: object) -> int | float:
-    """Require ``value`` to be a number, halting otherwise."""
+    r"""Require ``value`` to be a number, halting otherwise."""
     if not isinstance(value, (int, float)):
         raise HaltError("expected a number")
     return value
 
 
 def _as_list(value: object) -> list[object]:
-    """Require ``value`` to be an array, halting otherwise."""
+    r"""Require ``value`` to be an array, halting otherwise."""
     if not isinstance(value, list):
         raise HaltError("expected an array")
     return value
 
 
 class _Function:
-    """A user-defined function value: parameters, body, and defining scope."""
+    r"""A user-defined function value: parameters, body, and defining scope."""
 
     def __init__(self, params: list[str], body: list[Node], outer: "Scope") -> None:
-        """Bind ``params`` to a ``body`` tree that runs against ``outer``."""
+        r"""Bind ``params`` to a ``body`` tree that runs against ``outer``."""
         self.params = params
         self.body = body
         self.outer = outer
 
 
 class Scope:
-    """A variable scope chaining to its defining scope."""
+    r"""A variable scope chaining to its defining scope."""
 
     def __init__(self, parent: "Scope | None" = None) -> None:
-        """Start empty, falling back to ``parent`` for lookups."""
+        r"""Start empty, falling back to ``parent`` for lookups."""
         self.vars: dict[str, object] = {}
         self.parent = parent
 
     def get(self, name: str) -> object:
-        """Return ``name``'s value, walking the scope chain."""
+        r"""Return ``name``'s value, walking the scope chain."""
         scope: Scope | None = self
         while scope is not None:
             if name in scope.vars:
@@ -213,11 +164,11 @@ class Scope:
         raise HaltError(f"undefined variable: {name}")
 
     def declare(self, name: str, value: object) -> None:
-        """Bind ``name`` in this scope."""
+        r"""Bind ``name`` in this scope."""
         self.vars[name] = value
 
     def assign(self, name: str, value: object) -> None:
-        """Rebind ``name`` where it already exists, else error."""
+        r"""Rebind ``name`` where it already exists, else error."""
         scope: Scope | None = self
         while scope is not None:
             if name in scope.vars:
@@ -235,7 +186,7 @@ class Scope:
 # : an ``assert`` disappears.
 # : frame into a silent wrong.
 def _typed[T](value: object, kind: type[T]) -> T:
-    """Return ``value`` narrowed to ``kind``, raising if it is not one."""
+    r"""Return ``value`` narrowed to ``kind``, raising if it is not one."""
     if not isinstance(value, kind):
         raise AssertionError(f"malformed frame: expected {kind.__name__}")
     return value
@@ -281,12 +232,12 @@ type _Frame = tuple[
 
 
 def _frame(nodes: list[Node], scope: "Scope", kind: object = None) -> _Frame:
-    """Build a fresh frame for ``nodes``, at its start."""
+    r"""Build a fresh frame for ``nodes``, at its start."""
     return (nodes, 0, scope, (), (), kind)
 
 
 def _apply_builtin(name: _Builtin, args: list[object], io: IO) -> object:
-    """Apply a builtin function to its already-evaluated arguments."""
+    r"""Apply a builtin function to its already-evaluated arguments."""
     if name == "add":
         return _num(args[0]) + _num(args[1])
     if name == "subtract":
@@ -321,29 +272,19 @@ type _Frames = tuple[_Frame, ...]
 def _with(
     frames: _Frames, todo: tuple[_Todo, ...], operands: tuple[_Operand, ...]
 ) -> _Frames:
-    """Return ``frames`` with the innermost frame's evaluation state replaced."""
+    r"""Return ``frames`` with the innermost frame's evaluation state."""
     nodes, pos, scope, _, _, kind = frames[-1]
     return (*frames[:-1], (nodes, pos, scope, todo, operands, kind))
 
 
 def _deliver(frames: _Frames, value: object, end: int) -> _Frames:
-    """Land a finished ``value`` on the innermost frame's operand stack."""
+    r"""Land a finished ``value`` on the innermost frame's operand stack."""
     nodes, pos, scope, todo, operands, kind = frames[-1]
     return (*frames[:-1], (nodes, pos, scope, todo, (*operands, (value, end)), kind))
 
 
 def _return_value(frames: _Frames, value: object) -> _Frames:
-    """Unwind to the nearest call boundary, delivering ``value`` to its caller.
-
-    ``return`` crosses ``step()`` boundaries now that a body is frames
-    rather than Python recursion, so it cannot be an exception.  With no
-    call boundary above it, a ``return`` is a top-level one and ends the
-    program -- the behaviour the recursive interpreter gave it.
-
-    A call frame's ``kind`` carries the token position its arguments ended
-    at, so the value it returns resumes the caller's expression exactly
-    where the call's operands stopped.
-    """
+    r"""Unwind to the nearest call boundary, delivering ``value`` to its."""
     while frames:
         kind = frames[-1][5]
         frames = frames[:-1]
@@ -356,11 +297,7 @@ def _return_value(frames: _Frames, value: object) -> _Frames:
 def _schedule_expr(
     frames: _Frames, tokens: list[str], pos: int, io: IO, scope: Scope
 ) -> _Frames:
-    """Take one evaluation step on the expression starting at ``tokens[pos]``.
-
-    Every branch either delivers a finished operand or pushes the work that
-    will produce one, so no branch recurses: the nesting lives in ``todo``.
-    """
+    r"""Take one evaluation step on the expression starting at."""
     _, _, _, todo, operands, _ = frames[-1]
     if pos >= len(tokens):
         raise ValueError("expression ended before its operands")
@@ -395,7 +332,7 @@ def _schedule_expr(
 
 
 def _resume(frames: _Frames, io: IO, scope: Scope) -> _Frames:
-    """Advance the innermost frame's pending evaluation by one step."""
+    r"""Advance the innermost frame's pending evaluation by one step."""
     _, _, _, todo, operands, _ = frames[-1]
     item = todo[0]
     rest = todo[1:]
@@ -465,7 +402,7 @@ def _resume(frames: _Frames, io: IO, scope: Scope) -> _Frames:
 
 
 def _finish_statement(frames: _Frames, item: _Todo, scope: Scope) -> _Frames:
-    """Complete a statement whose expression has produced its value."""
+    r"""Complete a statement whose expression has produced its value."""
     kind = item[1]
     _, _, _, todo, operands, _ = frames[-1]
     value = operands[-1][0]
@@ -513,12 +450,7 @@ def _finish_statement(frames: _Frames, item: _Todo, scope: Scope) -> _Frames:
 def _check_case(
     frames: _Frames, subject: object, cases: list[Node], scope: Scope
 ) -> _Frames:
-    """Try the next ``check`` case, running the first whose value matches.
-
-    Cases are tried in order and their expressions evaluated lazily, so a
-    case after the matching one never runs -- and, now that a case value may
-    contain a call, never gets stepped either.
-    """
+    r"""Try the next ``check`` case, running the first whose value matches."""
     _, _, _, todo, operands, _ = frames[-1]
     for index, case in enumerate(cases):
         case_tokens, body = case
@@ -535,7 +467,7 @@ def _check_case(
 def _begin_statement(
     frames: _Frames, tokens: list[str], children: list[Node]
 ) -> _Frames:
-    """Schedule the work of one statement onto the innermost frame."""
+    r"""Schedule the work of one statement onto the innermost frame."""
     _, _, _, todo, operands, _ = frames[-1]
     head = tokens[0]
 
@@ -569,21 +501,7 @@ def _begin_statement(
 
 
 def _advance(frames: _Frames, io: IO) -> _Frames:
-    """Execute one step, returning the frame stack that follows.
-
-    Pure in the *stack*: it returns a new tuple rather than editing the one
-    it was handed.  It is deliberately not pure in the scopes, and that is a
-    property of the language rather than a shortcut.  A function value
-    closes over the scope object it was declared in, so a later assignment
-    to that scope is visible through the closure -- ``var x is 1`` /
-    ``func`` / ``var x is 9`` prints 9.  Rebuilding scopes as values per
-    statement would sever exactly that aliasing, which is why
-    :meth:`_Machine.snapshot` settles for a ``repr``-based view of them.
-
-    ``io`` is threaded through rather than lifted into the shell: a
-    statement's expression may read and print any number of times, at points
-    that depend on values computed part-way through it.
-    """
+    r"""Execute one step, returning the frame stack that follows."""
     nodes, pos, scope, todo, _, kind = frames[-1]
 
     if todo:
@@ -607,20 +525,20 @@ def _advance(frames: _Frames, io: IO) -> _Frames:
 
 
 def _while_todo(tokens: list[str], nodes: list[Node]) -> tuple[_Todo, ...]:
-    """Build the pending steps that re-check a ``while`` and re-enter it."""
+    r"""Build the pending steps that re-check a ``while`` and re-enter it."""
     return (("expr", tokens, 0), ("stmt", "while", tokens, nodes, True))
 
 
 @dataclass
 class _State:
-    """The root scope and complete call-frame stack of a MyScript run."""
+    r"""The root scope and complete call-frame stack of a MyScript run."""
 
     scope: Scope
     frames: _Frames
 
 
 class _Machine:
-    """One MyScript run: the frame stack, I/O, and the root scope."""
+    r"""One MyScript run: the frame stack, I/O, and the root scope."""
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
@@ -637,7 +555,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        """Whether the frame stack has emptied (or a top-level return fired)."""
+        r"""Whether the frame stack has emptied (or a top-level return fired)."""
         return not self.frames
 
     # The VM's language-shaped view.
@@ -652,44 +570,27 @@ class _Machine:
 
     @property
     def ip(self) -> tuple[int, int] | None:
-        """The call depth and the innermost frame's position.
-
-        ``None`` once every frame has returned.
-        """
+        r"""The call depth and the innermost frame's position."""
         if not self.frames:
             return None
         return len(self.frames), self.frames[-1][1]
 
     @property
     def memory(self) -> list[int]:
-        """The innermost scope's integer variables."""
+        r"""The innermost scope's integer variables."""
         if not self.frames:
             return []
         return [v for v in self.frames[-1][2].vars.values() if type(v) is int]
 
     @property
     def stack(self) -> list[object]:
-        """The innermost frame's finished operands, outermost first."""
+        r"""The innermost frame's finished operands, outermost first."""
         if not self.frames:
             return []
         return [value for value, _ in self.frames[-1][4]]
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection.
-
-        Scopes and function values are not meaningfully hashable (a
-        function closes over a live, mutable scope), so the snapshot
-        captures each frame's position and a shallow, ``repr``-based view
-        of its scope chain -- sufficient for the state-cycle detector's
-        purpose, since a genuine hang re-executes the same frame position
-        with the same variable bindings on every lap.
-
-        The pending steps and finished operands are folded in too, and by
-        ``repr`` for the same reason: an operand may be a list, which is not
-        hashable.  Leaving them out would let two genuinely different
-        mid-statement states hash alike, and the detector would call a
-        program cyclic that is not.
-        """
+        r"""Return the complete internal state, hashable for cycle detection."""
         return (
             tuple(
                 (
@@ -713,19 +614,14 @@ class _Machine:
         return tuple(chain)
 
     def step(self) -> None:
-        """Execute one top-level-block statement, advancing the frame stack.
-
-        The ports stay inside the transition rather than in this shell: a
-        statement's expression may read and print any number of times, at
-        points that depend on values computed part-way through it.
-        """
+        r"""Execute one top-level-block statement, advancing the frame stack."""
         if self.halted:
             return
         self.frames = _advance(self.frames, self.io)
 
 
 def run(code: str, io: IO) -> None:
-    """Run a MyScript program."""
+    r"""Run a MyScript program."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

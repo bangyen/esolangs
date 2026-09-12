@@ -1,17 +1,4 @@
-"""Unit tests for the Point Break interpreter.
-
-Point Break has no output command -- the wiki gives it ``?`` for input and
-no way to print -- so behavior is asserted through the halt-vs-loop
-convention.  Both sides are decided deterministically by state-cycle
-detection: the interpreter is step-capable, and a run that revisits its
-complete internal state has looped forever, so neither ``assert_halts``
-nor ``assert_loops`` needs a wall-clock bound at all.
-
-A halting run also dumps its variables, the repo convention for
-interpreter-only languages; ``TestTheVariableDump`` covers that, and the
-halt-vs-loop tests are unaffected by it since a looping run never reaches
-the dump.
-"""
+r"""Unit tests for the Point Break interpreter."""
 
 import re
 
@@ -44,40 +31,26 @@ END while"""
 
 
 def assert_halts(program: str, stdin: str = "") -> None:
-    """Assert ``program`` halts, via deterministic cycle detection."""
+    r"""Assert ``program`` halts, via deterministic cycle detection."""
     machine = _Machine(program, ScriptedIO(stdin))
     assert run_until_halt_or_cycle(machine) is True
 
 
 def assert_loops(program: str, stdin: str = "") -> None:
-    """Assert ``program`` loops forever, via deterministic cycle detection."""
+    r"""Assert ``program`` loops forever, via deterministic cycle detection."""
     machine = _Machine(program, ScriptedIO(stdin))
     assert run_until_halt_or_cycle(machine) is False
 
 
 def run_and_capture(program: str, stdin: str = "") -> str:
-    """Run ``program`` through :func:`run` and return what it wrote.
-
-    Goes through ``run`` rather than stepping a machine, so the end-of-run
-    dump is driven the way ``esolangs.run`` drives it -- including the
-    extra post-halt ``step()`` that writes it.
-    """
+    r"""Run ``program`` through :func:`run` and return what it wrote."""
     io = ScriptedIO(stdin)
     run(program, io)
     return io.getvalue()
 
 
 class TestTheVariableDump:
-    """The end-of-run dump: what it prints, when, and exactly once.
-
-    The wiki gives Point Break ``?`` for input and no way to print, so the
-    interpreter dumps the variables when the program ends -- the repo
-    convention for interpreter-only languages.  Every mutation of that dump
-    survived the suite until these tests: the flag that keeps it to one
-    write, the separator, and the values themselves were all unasserted,
-    because the only committed program leaves a single variable and prints
-    the same however the join is spelled.
-    """
+    r"""The end-of-run dump: what it prints, when, and exactly once."""
 
     def test_the_dump_prints_the_variables_in_name_order(self) -> None:
         assert run_and_capture("LET b:=2\nLET a:=1") == "1 2"
@@ -104,7 +77,7 @@ class TestTheVariableDump:
 
 
 class TestWikiExamples:
-    """The three examples from the wiki page behave as their names say."""
+    r"""The three examples from the wiki page behave as their names say."""
 
     def test_infinite_loop(self) -> None:
         program = """\
@@ -127,14 +100,10 @@ END loop"""
 
 
 class TestBreakSemantics:
-    """The implicit-close reading documented in the module docstring."""
+    r"""The implicit-close reading documented in the module docstring."""
 
     def test_break_of_implicit_child_resumes_at_parent_end(self) -> None:
-        """Breaking a child closed by an ancestor's END loops back.
-
-        The inner loop breaks when ``n`` is nonzero, so ``n`` keeps
-        growing and the outer loop never exits.
-        """
+        r"""Breaking a child closed by an ancestor's END loops back."""
         program = """\
 LET n:=?
 POINT outer
@@ -145,7 +114,7 @@ END outer"""
         assert_loops(program, "0")
 
     def test_break_after_explicit_end_skips_the_rest_of_the_body(self) -> None:
-        """Breaking an explicitly closed loop resumes after its END."""
+        r"""Breaking an explicitly closed loop resumes after its END."""
         program = """\
 LET n:=?
 LET one:=1
@@ -159,13 +128,7 @@ END outer"""
         assert_halts(program, "1")
 
     def test_one_end_closes_every_loop_below_it(self) -> None:
-        """An ``END`` records a close for each descendant, not just one.
-
-        Three loops are open when ``END a`` arrives, so it has to close
-        ``b`` and ``c`` as well as ``a``.  A walk that starts one frame too
-        early or too late leaves a descendant with no recorded ``END``, and
-        breaking to it then finds nothing to resume at.
-        """
+        r"""An ``END`` records a close for each descendant, not just one."""
         program = """\
 LET n:=?
 POINT a
@@ -177,11 +140,11 @@ END a"""
 
 
 class TestArithmetic:
-    """Arithmetic is observed through the loop-iff-zero pattern."""
+    r"""Arithmetic is observed through the loop-iff-zero pattern."""
 
     @staticmethod
     def loop_iff(expr: str, zero_when: int) -> str:
-        """A program that loops forever iff ``expr`` evaluates to zero."""
+        r"""A program that loops forever iff ``expr`` evaluates to zero."""
         return (
             f"LET x:={expr}\n"
             f"LET d:=x-{zero_when}\n"
@@ -206,12 +169,12 @@ class TestArithmetic:
         assert_loops(self.loop_iff("-5+3", -2))
 
     def test_signed_literal_in_process(self) -> None:
-        """A signed literal is also exercised by an in-process halting run."""
+        r"""A signed literal is also exercised by an in-process halting run."""
         program = "LET x:=-5+3\nPOINT loop\nIF x BREAK loop\nEND loop"
         assert_halts(program)
 
     def test_floor_division_in_process(self) -> None:
-        """Floor division is also exercised by an in-process halting run."""
+        r"""Floor division is also exercised by an in-process halting run."""
         program = "LET x:=9/2\nPOINT loop\nIF x BREAK loop\nEND loop"
         assert_halts(program)
 
@@ -225,66 +188,30 @@ class TestArithmetic:
 
 
 class TestTokens:
-    """Where one token stops and the next begins.
-
-    Every scan in the tokenizer is a character range, and a range whose
-    endpoint moves by one letter or digit is not a wrong answer but a
-    differently-shaped token stream -- a name that becomes an unexpected
-    character, a keyword that swallows the name after it, a signed literal
-    that splits into a stray operator and a number.  Those endpoints are
-    what these programs stand on.
-    """
+    r"""Where one token stops and the next begins."""
 
     @staticmethod
     def loop_on(program: str) -> str:
-        """Append a loop that runs forever iff ``x`` is zero."""
+        r"""Append a loop that runs forever iff ``x`` is zero."""
         return f"{program}\nPOINT loop\nIF x BREAK loop\nEND loop"
 
     @pytest.mark.parametrize("literal", ["+0", "+9", "-50", "-59", "-1", "-123"])
     def test_signed_literal_digit_ends(self, literal: str) -> None:
-        """A signed literal scans every digit, ``0`` and ``9`` included.
-
-        Two separate ranges are involved -- the one deciding a sign
-        *starts* a literal, and the one consuming the digits after it -- so
-        each endpoint appears both as a first digit and as a later one.  A
-        bound that excludes one splits the literal into a stray operator
-        and a number, which is a malformed expression rather than a wrong
-        value.
-        """
+        r"""A signed literal scans every digit, ``0`` and ``9`` included."""
         value = int(literal)
         assert_loops(self.loop_on(f"LET x:={literal}\nLET x:=x-{value}"))
 
     def test_keyword_run_stops_at_the_first_lowercase_letter(self) -> None:
-        """A keyword needs no space before the name that follows it.
-
-        The uppercase scan is bounded above by ``Z``; raised to ``z`` it
-        swallows the name too, and ``LETx`` becomes one unknown keyword
-        rather than ``LET`` followed by ``x``.
-        """
+        r"""A keyword needs no space before the name that follows it."""
         assert_halts(self.loop_on("LETx:=1"))
 
     def test_variable_name_spans_the_whole_lowercase_range(self) -> None:
-        """``a`` and ``z`` are names, not unexpected characters.
-
-        The name scan is bounded at both ends, and either bound moving in
-        by one letter turns a name into a character the tokenizer has no
-        rule for -- so the endpoints are used as whole names here rather
-        than only in the middle of one.
-        """
+        r"""``a`` and ``z`` are names, not unexpected characters."""
         assert_halts(self.loop_on("LET a:=1\nLET z:=1\nLET x:=a*z"))
 
 
 class TestErrors:
-    """Rejections, asserted by their exact text.
-
-    ``pytest.raises(match=...)`` is a substring search, which is too weak
-    for a language whose rejections differ only in *which* one fires: a
-    tokenizer whose uppercase range stops one letter short turns "unknown
-    keyword 'Z'" into "unexpected character 'Z'", and a structure check
-    that loses its label set turns "duplicate loop label 'a'" into "no open
-    loop 'a'".  Both still match a regex naming every message, so the
-    programs below pin the whole string instead.
-    """
+    r"""Rejections, asserted by their exact text."""
 
     def test_undefined_variable_in_let(self) -> None:
         with pytest.raises(HaltError) as caught:
@@ -370,10 +297,7 @@ class TestProgramShape:
         assert_halts("\n\nLET zero:=0\n\n")
 
     def test_program_as_string_and_lines(self) -> None:
-        """A program is accepted as one string or as a list of lines, and
-        the two forms reach the same final state -- otherwise the split is
-        doing something the joined form is not.
-        """
+        r"""A program is accepted as one string or as a list of lines, and the."""
         joined = _Machine("LET zero:=0\nLET one:=1", ScriptedIO())
         split = _Machine(["LET zero:=0", "LET one:=1"], ScriptedIO())
 

@@ -1,37 +1,4 @@
-"""Interpreter for Circlefuck.
-
-The tape is the program itself: cells wrap, + and - adjust the current cell,
-, reads input, . outputs, [ and ] jump to matching brackets reading the cell,
-@ halts, { and } insert and remove cells, and the pointer moves around the
-circular tape.
-
-A program with no instructions is malformed and is rejected with
-:class:`ValueError`, as is one with unmatched ``[``/``]`` brackets; deleting
-the last cell (``}``) is an invalid operation and halts the program with
-:class:`~esolangs.exceptions.HaltError`.
-
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
-
-The execution model splits the rules from the writing.  :func:`_advance` is
-pure: it reads the tape and *reports* what one cell does -- the new cursors
-and the single edit -- without touching anything.  It takes no ``io``
-argument at all, so it is total and side-effect free by construction rather
-than by inspection.
-
-The tape is the program, so ``{`` and ``}`` move the code out from under the
-cursor and the tape's length -- which every wrap is taken modulo -- is
-something a step decides.  :func:`_advance` therefore wraps the cursors
-against the length its own edit will produce, not the one it was handed.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It owns the tape as a list and applies each reported edit in place, so a
-write costs one assignment.  Returning a rewritten tape instead meant
-copying every cell to record one, which made a program that writes ``n``
-times cost O(n**2); naming the edit made the same walk linear (22x at 96
-characters of generated text).  Every observer -- ``cells``, ``memory``,
-``state``, ``snapshot`` -- copies the list, so nothing outside the class can
-reach it and one logical state keeps one spelling.
-"""
+r"""Interpreter for Circlefuck."""
 
 from __future__ import annotations
 
@@ -68,7 +35,7 @@ type _Move = tuple[int, int, bool, _Edit]
 
 
 def parse(code: str) -> list[int]:
-    """Decode Circlefuck's escape sequences and keep printable commands only."""
+    r"""Decode Circlefuck's escape sequences and keep printable commands."""
     reg = r"\\(?:\d\d\d|" r"[\dA-F](?:$|[^\d]))"
     exp = r"((^|[^\\]) |\\( )|(\\)o)"
 
@@ -88,15 +55,7 @@ def parse(code: str) -> list[int]:
 
 
 def find(code: Sequence[int], ind: int, ptr: int) -> int:
-    """Return the matching bracket for ``ind``.
-
-    Raises :class:`ValueError` if the brackets are unbalanced: the wiki
-    defines ``[``/``]`` only for matched pairs, so an unmatched bracket is a
-    malformed program.
-
-    Takes any read-only sequence, so the caller passes the tape it already
-    holds rather than copying it into a list on every bracket.
-    """
+    r"""Return the matching bracket for ``ind``."""
     char = chr(code[ind])
     if char == "[":
         if code[ptr]:
@@ -128,32 +87,7 @@ def find(code: Sequence[int], ind: int, ptr: int) -> int:
 def _advance(
     cells: Sequence[int], ind: int, ptr: int, byte: int | None = None
 ) -> _Move:
-    """Return what executing one cell does, without doing it.
-
-    Pure: it reads the tape and reports the change as a :data:`_Move` --
-    the new cursors, whether the run stopped, and the one edit the cell
-    makes.  It takes no ``io`` argument, so ``,`` and ``.`` are the
-    caller's business -- ``.`` changes no state at all, and ``,``'s byte
-    arrives already read.
-
-    The edit is *named*, not applied, because the tape is also the program:
-    rewriting it to record one changed cell copied the whole thing, so a
-    program that writes ``n`` times cost O(n**2).  Naming the cell makes a
-    write O(1) and leaves :meth:`_Machine.step` to apply it to the list it
-    owns.  Self-modification still works exactly: the edit is applied
-    before the next fetch, so a write onto the cursor's own cell is read
-    back as the next instruction, and a write that lands ahead of the
-    cursor is seen when the cursor arrives.
-
-    ``{`` and ``}`` change the tape's *length*, and the wrap at the end is
-    taken modulo the new one -- so they report the length their edit will
-    produce rather than the one they were handed.  An insert at or before
-    the cursor shifts the code under it, which is the language working as
-    intended.
-
-    ``#`` and ``{`` advance the cursor an extra cell, so they skip past
-    what follows them; every other cell takes only the shared wrap.
-    """
+    r"""Return what executing one cell does, without doing it."""
     char = chr(cells[ind])
     size = len(cells)
     edit: _Edit = None
@@ -191,17 +125,10 @@ def _advance(
 
 
 class _Machine:
-    """Per-run Circlefuck state: the tape (which is the program), and pointers.
-
-    ``step()`` executes one cell and wraps the instruction pointer around the
-    circular tape; ``halted`` is true once the pointer hits ``@``.  The tape
-    and both pointers fully determine the next step, so a program that never
-    halts is a finite-state cycle the hang detector can prove.  The VM and
-    the hang detector expose this object.
-    """
+    r"""Per-run Circlefuck state: the tape (which is the program), and."""
 
     def __init__(self, code: str, io: IO) -> None:
-        """Parse ``code``; an empty program is malformed."""
+        r"""Parse ``code``; an empty program is malformed."""
         self.io = io
         cells = parse(code)
         if not cells:
@@ -220,12 +147,12 @@ class _Machine:
 
     @property
     def state(self) -> _State:
-        """The machine's fields as the value the old transition took."""
+        r"""The machine's fields as the value the old transition took."""
         return (self._ind, self._ptr, tuple(self._cells), self._done)
 
     @property
     def cells(self) -> tuple[int, ...]:
-        """The tape, which is also the program."""
+        r"""The tape, which is also the program."""
         return tuple(self._cells)
 
     @property
@@ -238,7 +165,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        """Whether the pointer hit ``@``."""
+        r"""Whether the pointer hit ``@``."""
         return self._done
 
     # The VM's language-shaped.
@@ -246,21 +173,21 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        """The current instruction position."""
+        r"""The current instruction position."""
         return self._ind
 
     @property
     def memory(self) -> list[int]:
-        """The addressable cells."""
+        r"""The addressable cells."""
         return list(self._cells)
 
     @property
     def stack(self) -> list[object]:
-        """No stack in this language."""
+        r"""No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        r"""Return the complete internal state, hashable for cycle detection."""
         # A tuple copy of the tape, not.
         # snapshots across steps, and a.
         # it and make a real repeat.
@@ -268,12 +195,7 @@ class _Machine:
         return (tuple(self._cells), self._ind, self._ptr, self.io.position())
 
     def step(self) -> None:
-        """Execute one cell, advancing the pointers.
-
-        The two I/O cells and the last-cell rejection live here rather than
-        in the transition: this is the shell, so it is where an effect or a
-        raise belongs, and it leaves :func:`_advance` total.
-        """
+        r"""Execute one cell, advancing the pointers."""
         if self._done:
             return
         cells = self._cells
@@ -303,7 +225,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    """Run a Circlefuck program."""
+    r"""Run a Circlefuck program."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

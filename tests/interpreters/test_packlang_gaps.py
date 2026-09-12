@@ -1,9 +1,4 @@
-"""Packlang paths the wiki examples never take.
-
-Every case here is a malformed or edge-shaped program run through the
-real parser and machine: the error paths, the parameterized datatypes,
-and the clamping and array-indexing arms the five examples never reach.
-"""
+r"""Packlang paths the wiki examples never take."""
 
 import pytest
 
@@ -35,7 +30,7 @@ def _wrap(body: str, decls: str = "") -> str:
 
 
 class TestTypeClamp:
-    """``_Type.clamp`` folds out-of-range values to the wrap targets."""
+    r"""``_Type.clamp`` folds out-of-range values to the wrap targets."""
 
     def test_below_low_takes_the_under_value(self) -> None:
         assert _Type(0, 255).clamp(-1) == 255
@@ -53,7 +48,7 @@ class TestTypeClamp:
 
 
 class TestParameterizedTypes:
-    """``Integer(...)``, ``Array(...)`` and ``Pointer(...)`` declarations."""
+    r"""``Integer(...)``, ``Array(...)`` and ``Pointer(...)`` declarations."""
 
     def test_a_pointer_declares_the_type_it_points_at(self) -> None:
         program = _wrap(
@@ -140,11 +135,7 @@ class TestArrayRuntime:
 
 
 class TestInternalGuards:
-    """Malformed-tree guards, which no source program can trip.
-
-    They defend an internal invariant rather than validate input, so the
-    node is built here directly -- the parser never emits one.
-    """
+    r"""Malformed-tree guards, which no source program can trip."""
 
     def test_a_non_tuple_child_slot_is_refused(self) -> None:
         with pytest.raises(HaltError, match="malformed expression node"):
@@ -188,7 +179,7 @@ class TestInternalGuards:
 
 
 class TestParserScanAhead:
-    """``is_declaration`` scans ahead and rewinds, swallowing the error."""
+    r"""``is_declaration`` scans ahead and rewinds, swallowing the error."""
 
     def test_a_bad_type_is_not_a_declaration(self) -> None:
         parser = _Parser(["Widget", "name", ";"])
@@ -224,7 +215,7 @@ Package : lib, IO {
 
 
 class TestPendingCallAndSubstitute:
-    """``not`` and array-index arms of the two expression walkers."""
+    r"""``not`` and array-index arms of the two expression walkers."""
 
     def test_not_is_searched_for_a_pending_call(self) -> None:
         node = ("not", ("apply", "f", ()))
@@ -258,12 +249,7 @@ class TestPendingCallAndSubstitute:
 
 class TestTransitiveDependencies:
     def test_a_diamond_dependency_is_walked_once(self) -> None:
-        """Two paths reach the same package; the second is skipped.
-
-        ``top`` depends on ``left`` and ``right``, both of which depend on
-        ``base`` -- so the walk meets ``base`` twice and must not requeue
-        it.  The call succeeds, which is what shows the walk terminated.
-        """
+        r"""Two paths reach the same package; the second is skipped."""
         program = """
 Dependency {
   Integer helper : Integer a {
@@ -290,12 +276,7 @@ Package : left, right, IO {
         assert _run(program) == "A"
 
     def test_a_package_reached_twice_is_not_rewalked(self) -> None:
-        """The diamond's shared arm is dequeued a second time and skipped.
-
-        Built as a graph rather than a program because the walk returns as
-        soon as it meets the target: the re-visit only happens on a miss,
-        so the target is a package the graph does not reach at all.
-        """
+        r"""The diamond's shared arm is dequeued a second time and skipped."""
         program = _Program()
         program.dependencies = {
             "top": frozenset({"left", "right"}),

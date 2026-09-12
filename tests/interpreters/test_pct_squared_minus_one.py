@@ -1,4 +1,4 @@
-"""Unit tests for the %^2^-1 interpreter."""
+r"""Unit tests for the %^2^-1 interpreter."""
 
 import importlib
 
@@ -64,51 +64,23 @@ class TestPct:
         assert run_program("ip" + "m" * 9 + "l") == "1536"
 
     def test_unknown_characters_are_no_ops(self) -> None:
-        """Characters outside the command set do nothing at all.
-
-        Every other program here is built purely from commands, so the tail
-        of the dispatch chain was never reached by a character it does not
-        handle: inverting ``char == "'"`` or ``char == "t"`` there changed
-        nothing the suite could see.  A no-op between two commands has to
-        leave both the accumulator and the cursor alone -- ``ixe`` prints
-        exactly what ``ie`` does.
-        """
+        r"""Characters outside the command set do nothing at all."""
         assert run_program("ixe") == run_program("ie") == "\xfd"
         assert run_program("i.l") == "-3"
         # an uppercase T is not the.
         assert run_program("iTl") == "-3"
 
     def test_rewind_sends_the_cursor_back_to_the_start(self) -> None:
-        """``t`` restarts the program while the accumulator is nonzero.
-
-        The suite covers the characters that are *not* the rewind -- an
-        uppercase ``T`` above -- but never the one that is, so the branch
-        could stop matching entirely and every program would still finish.
-        Testing it needs a loop that ends: ``t`` rewinds to the start, so
-        the accumulator has to reach zero on its own.  It does, through the
-        cap -- ``s`` then ``p`` makes it positive and ``m`` doubles it
-        until it passes 3003, which the next step resets to 0.  Then ``t``
-        falls through and ``l`` prints the zero.  Without the rewind the
-        run is a single pass and prints 4 instead.
-        """
+        r"""``t`` restarts the program while the accumulator is nonzero."""
         assert run_program("sptml") == "0"
 
     def test_reset_clears_an_accumulated_value(self) -> None:
-        """' zeroes a magnitude that is already nonzero.
-
-        The reset was only ever run first, on the zero it starts at, where
-        setting the accumulator to 0 and leaving it alone look the same.
-        """
+        r"""' zeroes a magnitude that is already nonzero."""
         assert run_program("i'l") == "0"
         assert run_program("i'e") == "\x00"
 
     def test_reset_boundary_is_exclusive(self) -> None:
-        """3003 itself survives; the reset needs the magnitude to exceed it.
-
-        ``test_reset_above_3003`` jumps from 1536 to 3072, so every value in
-        between -- 3003 included -- went unchecked.  1001 subtractions of 3
-        then a negation land on the boundary exactly.
-        """
+        r"""3003 itself survives; the reset needs the magnitude to exceed it."""
         assert run_program("i" * 1001 + "pl") == "3003"
         assert run_program("i" * 1002 + "pl") == "0"
         # 3004 is the first magnitude.
@@ -146,12 +118,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(EmptyProgramContract, CycleContract, StateViewContract):
-    """The shared shapes.
-
-    ``mipt`` settles into a genuine 4-state cycle: (0,3) -> (1,6) -> (2,3)
-    -> (3,-3) -> back to (0,3), so the accumulator never grows without
-    bound and the state repeats exactly.
-    """
+    r"""The shared shapes."""
 
     run = staticmethod(run_program)
     machine = staticmethod(_machine)

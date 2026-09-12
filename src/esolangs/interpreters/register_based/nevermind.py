@@ -1,41 +1,4 @@
-"""Interpreter for Nevermind.
-
-Line-based commands: ``print`` joins its arguments and writes them with no
-separator or trailing newline (the wiki says only "Outputs *text* to the
-screen", and its Hello-World example shows none), ``input`` stores a line in
-the answer variable, ``make`` computes arithmetic (``+ - * /`` on numbers,
-``++`` concatenating strings), and ``if``/``loop``/``endloop`` branch on
-comparisons.  ``$name`` references a variable.
-
-The wiki never states operand types: its only arithmetic example is a
-calculator whose operands come from ``input``, so any of them can be
-text.  Since the language has ``++`` for joining strings, ``+ - * /`` and
-the ordered comparisons ``<``/``>`` are read as numeric, and a string
-reaching one of them halts with :class:`~esolangs.exceptions.HaltError`
-rather than falling through to Python's meaning for it (which would
-concatenate, repeat, or order the operands instead).  ``=`` is not an
-ordering, so it still compares strings.
-
-A number is written in ASCII, either as digits or as digits around a
-single ``.``; a decimal is only read as one when the spelling matches how
-it prints back, so ``02.5`` stays the text the program wrote.
-
-An ``if``/``loop``/``endloop`` with no matching partner, or a command
-short of the operands its form requires (``make`` without a value,
-``if`` without both sides of its comparison, ``loop`` without a count),
-is a structurally malformed program and is rejected with
-:class:`ValueError`; dividing by zero,
-referencing an undefined ``$name``, or ``input`` with no prompt are invalid
-operations that halt the program with :class:`~esolangs.exceptions.HaltError`
-(or, for the missing prompt, :class:`ValueError`).
-
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
-
-The interpreter runs on a :class:`_Machine` (the parsed program, the
-variables, and the loop/skip cursor state), so it is step-capable:
-``step()`` executes one line and ``halted`` is true once the cursor
-reaches the end of the program.
-"""
+r"""Interpreter for Nevermind."""
 
 import sys
 from collections.abc import Mapping, Sequence
@@ -45,12 +8,7 @@ from esolangs.interpreters.io import IO
 
 
 def find(code: Sequence[Sequence[str | int | float]], ind: int) -> int:
-    """Return the index of the matching ``if``/``loop`` partner for ``ind``.
-
-    Raises :class:`ValueError` when the partner is missing: the wiki defines
-    ``if``/``endif`` and ``loop``/``endloop`` only for matched pairs, so an
-    unmatched marker is a malformed program.
-    """
+    r"""Return the index of the matching ``if``/``loop`` partner for."""
     if "end" in (op := str(code[ind][0])):
         match = op[3:]
         move = -1
@@ -77,12 +35,7 @@ def find(code: Sequence[Sequence[str | int | float]], ind: int) -> int:
 
 
 def _as_number(value: str) -> int | float | None:
-    """Return ``value`` as a number, or ``None`` if it does not spell one.
-
-    Only ASCII spellings count: :meth:`str.isdigit` is also true for
-    superscript and Arabic-Indic digits, which :func:`int` either rejects
-    or reads as a value the program never wrote, so those stay strings.
-    """
+    r"""Return ``value`` as a number, or ``None`` if it does not spell one."""
     if not value.isascii():
         return None
     if value.isdigit():
@@ -99,14 +52,7 @@ def _as_number(value: str) -> int | float | None:
 
 
 def _number(value: str | int | float, op: str) -> int | float:
-    """Return ``value`` as a number, halting if it is not one.
-
-    ``+ - * /`` and the ``<``/``>`` comparisons are arithmetic: the wiki
-    gives Nevermind ``++`` for joining strings, so a string reaching one of
-    the numeric operators has no defined result and the program halts
-    rather than falling through to Python's own meaning for it (which would
-    concatenate, repeat, or order the operands instead).
-    """
+    r"""Return ``value`` as a number, halting if it is not one."""
     if isinstance(value, str):
         raise HaltError(f"{op} needs a number, got {value!r}")
     return value
@@ -131,14 +77,7 @@ type _State = tuple[_Code, int, _Vars, bool]
 
 
 def _resolve(line: _Line, var: _Vars) -> _Line:
-    """Return ``line`` with ``$name`` references replaced by their values.
-
-    The replacement is written back into the line, so a name is looked up
-    once however often the line runs again -- which is the language's own
-    behaviour, not an optimisation.  A number spelled as text is converted
-    at the same time.  An unknown name is a halt: there is no value to put
-    in its place.
-    """
+    r"""Return ``line`` with ``$name`` references replaced by their values."""
     out = list(line)
     for i, val in enumerate(out[1:]):
         if isinstance(val, str):
@@ -155,7 +94,7 @@ def _resolve(line: _Line, var: _Vars) -> _Line:
 
 
 def _arith(c: _Line) -> int | float | str:
-    """Return the value of a five-token ``make``: two operands and an op."""
+    r"""Return the value of a five-token ``make``: two operands and an op."""
     if (o := c[3]) == "++":
         return str(c[2]) + str(c[4])
     name = str(o)
@@ -172,20 +111,7 @@ def _arith(c: _Line) -> int | float | str:
 
 
 def _advance(state: _State, answer: str | None = None) -> _State:
-    """Return the state after executing the line under the cursor.
-
-    Pure: it reads ``state`` and returns a new one.  ``print`` writes
-    nothing here -- the caller does that from the resolved line -- and
-    ``input``'s reply arrives as ``answer``.
-
-    The line arrives already resolved, and the state already carries that
-    rewrite.  That ordering is the original's: it replaced every ``$name``
-    first and only then checked the command had the operands its form
-    needs, so a line rejected as malformed still kept its resolved values.
-
-    A blank line and a suppressed one both fall straight through to the
-    cursor advance, which is what makes a blank line legal anywhere.
-    """
+    r"""Return the state after executing the line under the cursor."""
     code, ind, var, skip = state
     c = code[ind]
 
@@ -233,10 +159,10 @@ def _advance(state: _State, answer: str | None = None) -> _State:
 
 
 class _Machine:
-    """Per-run Nevermind state: the parsed program, variables, and cursor."""
+    r"""Per-run Nevermind state: the parsed program, variables, and cursor."""
 
     def __init__(self, lines: list[str], io: IO) -> None:
-        """Parse ``lines`` into comma-separated command tokens."""
+        r"""Parse ``lines`` into comma-separated command tokens."""
         self.io = io
         self.ind = 0
         self.var: dict[str, int | float | str] = {}
@@ -249,7 +175,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        """Whether the cursor has reached the end of the program."""
+        r"""Whether the cursor has reached the end of the program."""
         return self.ind >= len(self.code)
 
     # The VM's language-shaped.
@@ -257,12 +183,12 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        """The current instruction position."""
+        r"""The current instruction position."""
         return self.ind
 
     @property
     def memory(self) -> list[int]:
-        """The addressable cells."""
+        r"""The addressable cells."""
         return [
             int(v)
             for v in (self.var[k] for k in sorted(self.var))
@@ -271,11 +197,11 @@ class _Machine:
 
     @property
     def stack(self) -> list[object]:
-        """No stack in this language."""
+        r"""No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        r"""Return the complete internal state, hashable for cycle detection."""
         return (
             self.ind,
             self.skip,
@@ -285,7 +211,7 @@ class _Machine:
 
     @property
     def _state(self) -> _State:
-        """The machine's fields as the value the transition works on."""
+        r"""The machine's fields as the value the transition works on."""
         return (
             tuple(tuple(line) for line in self.code),
             self.ind,
@@ -294,25 +220,13 @@ class _Machine:
         )
 
     def _restore(self, state: _State) -> None:
-        """Write a transition's result back onto the machine's fields.
-
-        The fields are this class's published shape -- ``snapshot`` reads
-        all four -- so they stay; the one assignment a step makes is here
-        rather than in the rules above.
-        """
+        r"""Write a transition's result back onto the machine's fields."""
         code, self.ind, var, self.skip = state
         self.code = [list(line) for line in code]
         self.var = dict(var)
 
     def step(self) -> None:
-        """Execute one line, resolving ``$name`` references in place.
-
-        The two ports live here rather than in the transition: this is the
-        shell.  ``print`` writes the resolved line, and ``input`` asks with
-        the line's own prompt and hands the reply over.  Both need the line
-        *after* its references are resolved, so the resolution runs here
-        too and the transition is given the state it produced.
-        """
+        r"""Execute one line, resolving ``$name`` references in place."""
         if self.halted:
             return
         state = self._state
@@ -340,7 +254,7 @@ class _Machine:
 
 
 def run(lines: list[str], io: IO) -> None:
-    """Run a Nevermind program given its comma-separated command lines."""
+    r"""Run a Nevermind program given its comma-separated command lines."""
     machine = _Machine(lines, io)
     while not machine.halted:
         machine.step()

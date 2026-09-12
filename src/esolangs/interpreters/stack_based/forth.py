@@ -1,42 +1,4 @@
-"""Interpreter for Forþ.
-
-A stack-based language with a dispatch table of named functions.  Digits
-0-9 and A-F push their value, ``:`` duplicates the top, ``+``/``-``/``*``/
-``/``/``%`` do arithmetic (the top goes on the right), ``~`` pushes the
-bitwise complement of the top, ``.`` prints the top as a character, ``,``
-reads a line pushing each byte (rightmost on top), ``(``/``[`` branch or
-loop while the top is nonzero, ``{`` stores a scope under the number atop
-the stack, ``;`` calls the stored scope, ``o`` reverses the stack, ``c``
-rotates the top three, and ``v`` swaps the top two.  Any other character is
-ignored.
-
-Semantics:
-- arithmetic wraps to signed 32-bit integers, and ``/``/``%`` truncate
-  toward zero (C++11 semantics), so negative operands match;
-- an empty-stack pop halts the whole program with :class:`HaltError`, while
-  the other invalid operations (a binary operator with fewer than two
-  values, ``c`` with fewer than three, a division by zero, or an unterminated
-  bracket) abort only the innermost scope and are otherwise ignored -- the
-  cross-check returns an error code that nested calls discard;
-- ``,`` reads a whole line and raises :class:`EOFError` when input runs out
-  (like the other stack interpreters), where the cross-check exits with
-  status 3;
-- ``,`` pushes each character's byte value (the cross-check's signed ``char``
-  would push negative values for bytes above 127);
-- ``.`` prints the top's low byte (``& 0xFF``),
-  rather than the wiki's "print as a unicode character" -- the byte model is
-  baked into the arithmetic (``~`` complements, so ``.`` on ``-1`` prints the
-  byte 0xFF).
-
-The interpreter runs on a :class:`_Machine` with an explicit call stack (one
-frame per active scope), so it is step-capable: ``step()`` executes one
-command of the active frame, ``halted`` is true once no frame remains, and a
-repeated :meth:`_Machine.snapshot` proves a loop (e.g. a ``[`` loop whose top
-never reaches zero).  A scope that aborts on an invalid operation pops back
-to its caller, whose ``;``/``(``/``[`` discards the status; a top-level abort
-sets ``_Machine.error`` so :func:`run` raises :class:`HaltError`, matching
-the original status-returning ``_execute``.
-"""
+r"""Interpreter for Forþ."""
 
 import sys
 from dataclasses import dataclass
@@ -46,27 +8,23 @@ from esolangs.interpreters.io import IO
 
 
 def _wrap32(value: int) -> int:
-    """Wrap ``value`` to a signed 32-bit integer (C++ ``int`` arithmetic)."""
+    r"""Wrap ``value`` to a signed 32-bit integer (C++ ``int`` arithmetic)."""
     return (value + 2**31) % 2**32 - 2**31
 
 
 def _trunc_div(a: int, b: int) -> int:
-    """C++-style integer division, truncating toward zero."""
+    r"""C++-style integer division, truncating toward zero."""
     return int(a / b)
 
 
 def _trunc_mod(a: int, b: int) -> int:
-    """C++-style remainder (the sign of the dividend)."""
+    r"""C++-style remainder (the sign of the dividend)."""
     return a - _trunc_div(a, b) * b
 
 
 @dataclass(frozen=True)
 class _Frame:
-    """One active scope: its code, cursor, and whether it is a ``[`` loop body.
-
-    Frozen: a frame is part of the state a step maps forward, so advancing
-    a cursor makes a new frame rather than editing one in place.
-    """
+    r"""One active scope: its code, cursor, and whether it is a ``[`` loop."""
 
     code: str
     pc: int = 0
@@ -90,24 +48,19 @@ type _State = tuple[tuple[int, ...], dict[int, str], _Frames, bool]
 
 
 def _top(stack: tuple[int, ...]) -> int:
-    """Return the top of ``stack``, halting when there is none."""
+    r"""Return the top of ``stack``, halting when there is none."""
     if not stack:
         raise HaltError("the stack is empty, so there is no top value to read")
     return stack[-1]
 
 
 def _at(frame: _Frame, pc: int) -> _Frame:
-    """Return ``frame`` with its cursor moved to ``pc``."""
+    r"""Return ``frame`` with its cursor moved to ``pc``."""
     return _Frame(frame.code, pc, frame.loop)
 
 
 def _finalize(state: _State) -> _State:
-    """Pop completed frames, re-running a ``[`` body while its top holds.
-
-    Only the top frame can be finished at a time; a loop body that still
-    has a nonzero top starts a fresh pass, which a later step finalizes --
-    so an empty body is a no-op step whose repeated snapshot proves a hang.
-    """
+    r"""Pop completed frames, re-running a ``[`` body while its top holds."""
     stack, table, frames, error = state
     while frames and frames[-1].pc >= len(frames[-1].code):
         frame = frames[-1]
@@ -123,12 +76,7 @@ def _finalize(state: _State) -> _State:
 
 
 def _abort(state: _State) -> _State:
-    """End the innermost scope on an invalid operation (status 3).
-
-    The abort behaves like the scope completing: a loop body re-checks its
-    condition, a nested scope pops back to its caller (which discards the
-    status), and a top-level scope halts with ``error`` set.
-    """
+    r"""End the innermost scope on an invalid operation (status 3)."""
     stack, table, frames, error = state
     top_level = len(frames) == 1
     frame = frames[-1]
@@ -138,11 +86,7 @@ def _abort(state: _State) -> _State:
 
 
 def _scan(frame: _Frame, add: str, sub: str) -> tuple[str, int] | None:
-    """Return a bracket's body and the cursor past it, or ``None`` if open.
-
-    ``frame.pc`` is already one past the opening bracket.  ``None`` means
-    the bracket is never closed, which aborts the scope.
-    """
+    r"""Return a bracket's body and the cursor past it, or ``None`` if open."""
     start = frame.pc - 1
     pc = frame.pc
     match = 1
@@ -163,17 +107,7 @@ def _scan(frame: _Frame, add: str, sub: str) -> tuple[str, int] | None:
 
 
 def _advance(state: _State, line: str | None = None) -> _State:
-    """Return the state after executing one command of the active frame.
-
-    Pure: it reads ``state`` and returns a new one.  ``.``'s printing is
-    the caller's business -- the value it prints is popped here and the
-    caller reads it from the stack first -- and ``,``'s whole input line
-    arrives as ``line``.
-
-    An abort is a value, not a raise: ``_abort`` ends the innermost scope,
-    which is why an invalid operation inside a called scope is swallowed by
-    its caller while the same operation at the top level fails the run.
-    """
+    r"""Return the state after executing one command of the active frame."""
     state = _finalize(state)
     stack, table, frames, error = state
     if not frames:
@@ -260,17 +194,10 @@ def _advance(state: _State, line: str | None = None) -> _State:
 
 
 class _Machine:
-    """Per-run Forþ state: the shared stack, scope table, and call stack.
-
-    ``step()`` executes one command of the active frame; ``halted`` is true
-    once no frame remains.  A ``[`` loop body re-starts while the stack top is
-    nonzero, so a loop that never exhausts its top is a finite-state cycle
-    the state-cycle hang detector can prove.  The VM and the hang detector
-    expose this object.
-    """
+    r"""Per-run Forþ state: the shared stack, scope table, and call stack."""
 
     def __init__(self, code: str, io: IO) -> None:
-        """Start with the top-level ``code`` as the only frame."""
+        r"""Start with the top-level ``code`` as the only frame."""
         self.io = io
         self.stack: tuple[int, ...] = ()
         self.table: dict[int, str] = {}
@@ -282,7 +209,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        """Whether every scope has completed."""
+        r"""Whether every scope has completed."""
         return not self.frames
 
     # The VM's language-shaped.
@@ -296,23 +223,17 @@ class _Machine:
 
     @property
     def ip(self) -> tuple[int, ...]:
-        """Each live frame's pc, outermost first.
-
-        A frame is only ever popped once its own pc reaches the end of its
-        code, so no frames at all means the top-level one finished at the
-        end of the program -- which is what is reported then, rather than an
-        empty tuple that would lose the position.
-        """
+        r"""Each live frame's pc, outermost first."""
         frames = self.frames
         return tuple(f.pc for f in frames) if frames else (self._length,)
 
     @property
     def memory(self) -> list[int]:
-        """No addressable cells; the store is the stack."""
+        r"""No addressable cells; the store is the stack."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        r"""Return the complete internal state, hashable for cycle detection."""
         return (
             self.stack,
             frozenset(self.table.items()),
@@ -321,14 +242,7 @@ class _Machine:
         )
 
     def frame_entry_key(self, frame: _Frame) -> tuple[object, ...]:
-        """Return the state a called scope needs to replay an ancestor.
-
-        Scope text is the callee identity, while the shared operand stack
-        and scope table are its bindings: either can make a later call take
-        a different route.  The ``loop`` flag distinguishes a stored scope
-        from a bracket body with the same text.  See
-        :func:`esolangs.vm.run_until_halt_or_ancestor`.
-        """
+        r"""Return the state a called scope needs to replay an ancestor."""
         return (
             frame.code,
             frame.loop,
@@ -339,30 +253,18 @@ class _Machine:
 
     @property
     def _state(self) -> _State:
-        """The machine's fields as the value the transition works on."""
+        r"""The machine's fields as the value the transition works on."""
         return (self.stack, self.table, self.frames, self.error)
 
     def _restore(self, state: _State) -> None:
-        """Write a transition's result back onto the machine's fields.
-
-        The fields are this class's published shape -- ``ip`` and
-        ``snapshot`` read all four -- so they stay; the one assignment a
-        step makes is here rather than in the rules above.
-        """
+        r"""Write a transition's result back onto the machine's fields."""
         stack, table, frames, self.error = state
         self.stack = stack
         self.table = table
         self.frames = frames
 
     def step(self) -> None:
-        """Execute one command of the active frame.
-
-        The two ports live here rather than in the transition: this is the
-        shell.  ``.`` prints the stack top the transition then pops, and
-        ``,``'s whole input line is read here and handed over.  Both look
-        at the frame the transition is about to run, which means finalizing
-        finished frames first -- the same order the original used.
-        """
+        r"""Execute one command of the active frame."""
         if self.halted:
             return
         state = _finalize(self._state)
@@ -399,7 +301,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    """Run a Forþ program."""
+    r"""Run a Forþ program."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

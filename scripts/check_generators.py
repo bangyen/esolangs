@@ -1,27 +1,4 @@
-"""Check that the generators keep to their documented signature.
-
-The boolean generators are already uniform -- of the names the package
-exports, 67 take ``(truth_table)`` or are allowlisted below.  This check
-exists to keep them that way, because a convention nothing enforces is not
-a convention: this repo has been bitten before by a documented class that
-turned out not to hold.
-
-Two shapes are legal on the boolean side, and the second is deliberate
-rather than drift:
-
-* *table-in, program-out* -- ``f(truth_table) -> str``, the common case.
-* *template-in, instantiated-per-row* -- the parameterized family, for
-  languages with no input command, which emit a template the harness fills
-  in per input combination.
-
-Three boolean generators depart from both, each for a reason recorded in
-its docstring, so they are named in ``_ALLOWED`` below rather than being
-waved through by a blanket rule.  Listing them keeps the exemption visible
-in source: a fourth one appearing is then a decision someone makes on
-purpose, not something that slips in unnoticed.
-
-Exits nonzero on any violation.
-"""
+r"""Check that the generators keep to their documented signature."""
 
 import inspect
 import sys
@@ -42,7 +19,7 @@ _ALLOWED = {
 
 
 def _public(module: object) -> list[tuple[str, Callable[..., Any]]]:
-    """Return the generator functions a package re-exports."""
+    r"""Return the generator functions a package re-exports."""
     return [
         (name, getattr(module, name))
         for name in getattr(module, "__all__", [])
@@ -53,7 +30,7 @@ def _public(module: object) -> list[tuple[str, Callable[..., Any]]]:
 
 
 def _check_boolean(name: str, fn: Callable[..., Any]) -> list[str]:
-    """Return the ways a boolean generator departs from ``(truth_table)``."""
+    r"""Return the ways a boolean generator departs from ``(truth_table)``."""
     if name in _ALLOWED:
         return []
     params = list(inspect.signature(fn).parameters.values())
@@ -71,7 +48,7 @@ def _check_boolean(name: str, fn: Callable[..., Any]) -> list[str]:
 
 
 def main() -> int:
-    """Check the generators; return a nonzero exit on violations."""
+    r"""Check the generators; return a nonzero exit on violations."""
     from esolangs.tools import boolean as boolean_pkg
 
     failures = 0

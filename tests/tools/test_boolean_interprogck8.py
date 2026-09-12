@@ -1,9 +1,4 @@
-"""Unit tests for the Interprogck8 boolean generator.
-
-Every claim here is made by running the emitted program: the tree is
-routed by ``DownAccLines``, whose off-by-one is the whole construction, so
-reading the source proves nothing about where a branch lands.
-"""
+r"""Unit tests for the Interprogck8 boolean generator."""
 
 import hashlib
 import importlib
@@ -29,7 +24,7 @@ from tests.tools.boolean_runners import run_interprogck8
 
 
 def _dense_table(n: int) -> str:
-    """The contract suite's dense pseudo-random table, the worst to fold."""
+    r"""The contract suite's dense pseudo-random table, the worst to fold."""
     digest = hashlib.sha256(f"dense:{n}".encode()).digest()
     bits: list[str] = []
     block = 0
@@ -47,12 +42,7 @@ def _tables(n: int) -> list[str]:
 class TestExhaustive:
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_every_table_of_every_arity(self, n: int) -> None:
-        """All 4, 16 and 256 tables, every row, executed.
-
-        This is the phase-1 gate answered by construction rather than by
-        argument: a full decision tree routes through ``DownAccLines``
-        alone, and the current-function slot is never touched.
-        """
+        r"""All 4, 16 and 256 tables, every row, executed."""
         for table in _tables(n):
             program = interprogck8(table)
             assert "<" not in program, "routing must not use the function slot"
@@ -66,11 +56,7 @@ class TestExhaustive:
 class TestReads:
     @pytest.mark.parametrize("table", ["00000000", "11111111", "01101001"])
     def test_a_folded_table_still_consumes_its_inputs(self, table: str) -> None:
-        """A constant subtree drops its branch, not its reads.
-
-        The reads are the interface: leaving a bit unread desynchronises
-        whatever runs on the same stream next.
-        """
+        r"""A constant subtree drops its branch, not its reads."""
         program = interprogck8(table)
         io = ScriptedIO("0\n1\n1\n")
         machine = _Machine(program.splitlines(), io)
@@ -80,19 +66,11 @@ class TestReads:
 
 
 class TestExpress:
-    """Past n=3 the tree outgrows one hop, so hops ride the express."""
+    r"""Past n=3 the tree outgrows one hop, so hops ride the express."""
 
     @pytest.mark.parametrize("n", [4, 5, 6])
     def test_a_tree_past_one_hop_still_computes_its_table(self, n: int) -> None:
-        """Every row of a table too long to route in single hops.
-
-        This is what the arity cap used to refuse.  The n=5 parity tree is
-        ~2900 lines with crossings of over 1000 against a reach of 255, so
-        it only works if the express relays -- and a rung that carries a
-        chain to the wrong place is a *wrong answer* rather than a
-        refusal, which is why the assertion is on the output and not on
-        the program building.
-        """
+        r"""Every row of a table too long to route in single hops."""
         table = "".join(str(bin(row).count("1") & 1) for row in range(2**n))
         program = interprogck8(table)
         assert "<" not in program, "routing must not use the function slot"
@@ -102,14 +80,7 @@ class TestExpress:
 
     @pytest.mark.parametrize("n", [8, pytest.param(10, marks=pytest.mark.slow)])
     def test_a_high_arity_table_is_computed_row_by_row(self, n: int) -> None:
-        """The lifted ceiling, held by execution on hash-picked rows.
-
-        n=10 dense is ~92k lines and a few seconds to build; running all
-        1024 rows again on every suite run buys nothing over a fixed
-        sample once the full sweep has passed, so the rows are drawn
-        deterministically from the table's own digest -- plus the two
-        ends, where an off-by-one in the ladder would land.
-        """
+        r"""The lifted ceiling, held by execution on hash-picked rows."""
         table = _dense_table(n)
         program = interprogck8(table)
         lines = program.splitlines()
@@ -125,13 +96,7 @@ class TestExpress:
     def test_a_table_the_meadows_cannot_carry_is_refused(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Starved of rung space, routing refuses rather than mis-lands.
-
-        Meadows two lines wide hold no usable rung, and a repair budget of
-        zero may not add more -- so the only correct outcome is the
-        refusal that names the stranded window.  What must not happen is
-        a program that routes through the wrong place, or a hang.
-        """
+        r"""Starved of rung space, routing refuses rather than mis-lands."""
         table = _dense_table(6)
         # By name: the package.
         # own name, so a plain import.
@@ -152,12 +117,7 @@ class TestExpress:
         assert interprogck8(table)
 
     def test_every_hop_in_a_routed_program_is_inside_the_reach(self) -> None:
-        """The routing leaves no jump the gadget cannot spell.
-
-        The emission pass would raise on one, so this pins the property the
-        raise defends rather than re-testing the raise: after routing, every
-        distance is within a single ``DownAccLines``.
-        """
+        r"""The routing leaves no jump the gadget cannot spell."""
         parity = "".join(str(bin(row).count("1") & 1) for row in range(32))
         items = _emit(parity, 5)
         _settle(items)
@@ -173,14 +133,14 @@ class TestExpress:
 
 
 class TestJumpChecks:
-    """The two guards that keep an over-long jump from being emitted."""
+    r"""The two guards that keep an over-long jump from being emitted."""
 
     def test_a_jump_past_the_reach_is_refused(self) -> None:
         with pytest.raises(ValueError, match="spans 300 lines"):
             _check("X", 300, 40)
 
     def test_a_jump_too_wide_for_its_slot_is_refused(self) -> None:
-        """The fixed window is what this protects: it cannot grow."""
+        r"""The fixed window is what this protects: it cannot grow."""
         with pytest.raises(ValueError, match="needs 10 lines, has 9"):
             _check("X", 36, 9)
 
@@ -188,10 +148,10 @@ class TestJumpChecks:
 class TestLoader:
     @pytest.mark.parametrize("value", [0, 1, 8, 10, 48, 49, 99, 255])
     def test_set_acc_lands_on_its_target(self, value: int) -> None:
-        """Executed, not counted: the loader may count up or overshoot."""
+        r"""Executed, not counted: the loader may count up or overshoot."""
         program = "\n".join([*_set_acc(value), "div"])
         assert run_interprogck8(program, []) == chr(value)
 
     def test_overshooting_is_taken_when_it_is_shorter(self) -> None:
-        """8 costs four lines counting back, nine counting up."""
+        r"""8 costs four lines counting back, nine counting up."""
         assert len(_set_acc(8)) == 4

@@ -1,9 +1,4 @@
-"""Unit tests for Qoibl interpreter.
-
-Tests cover all Qoibl operations including printing, assignment, conditionals,
-math operations, loops, and binary number parsing. Includes timeout protection
-to prevent hanging tests from infinite loops.
-"""
+r"""Unit tests for Qoibl interpreter."""
 
 import inspect
 import io
@@ -22,28 +17,16 @@ from esolangs.interpreters.register_based.qoibl import run, tokenize
 
 
 class _TestTimeoutError(Exception):
-    """Custom timeout exception for test protection."""
+    r"""Custom timeout exception for test protection."""
 
 
 def timeout_handler(_signum: int, _frame: Any) -> None:
-    """Signal handler for timeout protection."""
+    r"""Signal handler for timeout protection."""
     raise _TestTimeoutError("Test timed out")
 
 
 def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 2) -> Any:
-    """Run a function with timeout protection.
-
-    Args:
-        func: Function to execute
-        timeout_seconds: Maximum execution time in seconds
-
-    Returns:
-        Result of function execution
-
-    Raises:
-        _TestTimeoutError: If function exceeds timeout
-
-    """
+    r"""Run a function with timeout protection."""
     old_handler = signal.signal(signal.SIGALRM, timeout_handler)
     signal.alarm(timeout_seconds)
     try:
@@ -57,17 +40,17 @@ def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 2) -> Any:
 
 
 class TestQoiblBasicOperations:
-    """Test basic Qoibl operations."""
+    r"""Test basic Qoibl operations."""
 
     def test_print_character(self) -> None:
-        """Test tt instruction for printing characters."""
+        r"""Test tt instruction for printing characters."""
         code: list[str] = ["tt yeeyeee tt"]  # 'H' in binary.
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
         assert f.getvalue() == "H"
 
     def test_print_hello_world(self) -> None:
-        """Test printing 'Hello, worl' using multiple print statements."""
+        r"""Test printing 'Hello, worl' using multiple print statements."""
         hello_world_code: list[str] = [
             "tt yeeyeee tt",  # H.
             "tt yyeeyey tt",  # e.
@@ -86,7 +69,7 @@ class TestQoiblBasicOperations:
         assert f.getvalue() == "Hello, worl"
 
     def test_assignment_and_access(self) -> None:
-        """Test we (assignment) and qe (access) instructions."""
+        r"""Test we (assignment) and qe (access) instructions."""
         code: list[str] = [
             "we y we yyeeee we",  # var[1] = 48.
             "tt qe y qe tt",  # print var[1].
@@ -96,7 +79,7 @@ class TestQoiblBasicOperations:
         assert f.getvalue() == chr(48)  # '0'.
 
     def test_input_operation(self) -> None:
-        """Test et (input) instruction."""
+        r"""Test et (input) instruction."""
         code: list[str] = [
             "we y we et we",
             "tt qe y qe tt",
@@ -110,24 +93,24 @@ class TestQoiblBasicOperations:
 
 
 class TestQoiblBinaryNumbers:
-    """Test binary number parsing."""
+    r"""Test binary number parsing."""
 
     def test_binary_zero(self) -> None:
-        """Test binary number 'e' (0)."""
+        r"""Test binary number 'e' (0)."""
         code: list[str] = ["tt e tt"]
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
         assert f.getvalue() == chr(0)
 
     def test_binary_one(self) -> None:
-        """Test binary number 'y' (1)."""
+        r"""Test binary number 'y' (1)."""
         code: list[str] = ["tt y tt"]
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
         assert f.getvalue() == chr(1)
 
     def test_binary_numbers(self) -> None:
-        """Test various binary numbers."""
+        r"""Test various binary numbers."""
         test_cases = [
             ("ee", 0),
             ("ey", 1),
@@ -151,10 +134,10 @@ class TestQoiblBinaryNumbers:
 
 
 class TestQoiblConditionals:
-    """Test conditional operations (yr instruction)."""
+    r"""Test conditional operations (yr instruction)."""
 
     def test_equality_condition(self) -> None:
-        """Test ee (equality) operator."""
+        r"""Test ee (equality) operator."""
         code: list[str] = [
             "we y we yy we",  # var[1] = 3.
             "we ye we yy we",  # var[2] = 3.
@@ -165,7 +148,7 @@ class TestQoiblConditionals:
         assert f.getvalue() == chr(1)  # True.
 
     def test_greater_than_condition(self) -> None:
-        """Test ey (greater than) operator."""
+        r"""Test ey (greater than) operator."""
         code: list[str] = [
             "we y we yyy we",  # var[1] = 7.
             "we ye we yy we",  # var[2] = 3.
@@ -176,7 +159,7 @@ class TestQoiblConditionals:
         assert f.getvalue() == chr(1)  # True.
 
     def test_less_than_condition(self) -> None:
-        """Test ye (less than) operator."""
+        r"""Test ye (less than) operator."""
         code: list[str] = [
             "we y we y we",  # var[1] = 1.
             "we ye we yy we",  # var[2] = 3.
@@ -187,12 +170,7 @@ class TestQoiblConditionals:
         assert f.getvalue() == chr(1)  # True.
 
     def test_the_orderings_are_strict(self) -> None:
-        """``ye`` and ``ey`` are false when the two operands are equal.
-
-        Every case above compares a smaller value with a larger one, so
-        both orderings could be non-strict without a test noticing.
-        Equal operands are what separates ``<`` from ``<=``.
-        """
+        r"""``ye`` and ``ey`` are false when the two operands are equal."""
         for op in ("ye", "ey"):
             code: list[str] = [
                 "we y we yy we",  # var[1] = 3.
@@ -204,7 +182,7 @@ class TestQoiblConditionals:
             assert f.getvalue() == chr(0), op
 
     def test_not_equal_condition(self) -> None:
-        """Test yy (not equal) operator."""
+        r"""Test yy (not equal) operator."""
         code: list[str] = [
             "we y we y we",  # var[1] = 1.
             "we ye we yy we",  # var[2] = 3.
@@ -216,10 +194,10 @@ class TestQoiblConditionals:
 
 
 class TestQoiblMathOperations:
-    """Test math operations (ry instruction)."""
+    r"""Test math operations (ry instruction)."""
 
     def test_addition(self) -> None:
-        """Test ee (addition) operator."""
+        r"""Test ee (addition) operator."""
         code: list[str] = [
             "we y we yy we",  # var[1] = 3.
             "we ye we yy we",  # var[2] = 3.
@@ -230,7 +208,7 @@ class TestQoiblMathOperations:
         assert f.getvalue() == chr(6)
 
     def test_subtraction(self) -> None:
-        """Test ey (subtraction) operator."""
+        r"""Test ey (subtraction) operator."""
         code: list[str] = [
             "we y we yyy we",  # var[1] = 7.
             "we ye we yy we",  # var[2] = 3.
@@ -241,7 +219,7 @@ class TestQoiblMathOperations:
         assert f.getvalue() == chr(4)
 
     def test_multiplication(self) -> None:
-        """Test ye (multiplication) operator."""
+        r"""Test ye (multiplication) operator."""
         code: list[str] = [
             "we y we yy we",  # var[1] = 3.
             "we ye we yy we",  # var[2] = 3.
@@ -252,7 +230,7 @@ class TestQoiblMathOperations:
         assert f.getvalue() == chr(9)
 
     def test_division(self) -> None:
-        """Test yy (division) operator."""
+        r"""Test yy (division) operator."""
         code: list[str] = [
             "we y we yyy we",  # var[1] = 7.
             "we ye we yy we",  # var[2] = 3.
@@ -264,10 +242,10 @@ class TestQoiblMathOperations:
 
 
 class TestQoiblExamples:
-    """Test example programs from the esolangs wiki."""
+    r"""Test example programs from the esolangs wiki."""
 
     def test_one_digit_adder(self) -> None:
-        """Test the one digit adder example (up to 4+5)."""
+        r"""Test the one digit adder example (up to 4+5)."""
         code: list[str] = [
             "we e we yyeeee we",  # var[0] = 2.
             "we y we et ry ey ry qe e qe we",  # var[1] = input - 2.
@@ -290,7 +268,7 @@ class TestQoiblExamples:
         assert result == "5"  # Should print 5.
 
     def test_while_loop(self) -> None:
-        """Test the rr while loop: decrement var[1] until it is not > 1."""
+        r"""Test the rr while loop: decrement var[1] until it is not > 1."""
         code: list[str] = [
             "we y we yy we",  # var[1] = 3.
             "rr qe y qe yr ey yr y rr we y we qe y qe ry ey ry y we rr",
@@ -302,30 +280,30 @@ class TestQoiblExamples:
 
 
 class TestQoiblEdgeCases:
-    """Test edge cases and error conditions."""
+    r"""Test edge cases and error conditions."""
 
     def test_empty_program(self) -> None:
-        """Test running an empty program."""
+        r"""Test running an empty program."""
         code: list[str] = []
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
         assert f.getvalue() == ""
 
     def test_blank_lines_are_ignored(self) -> None:
-        """Blank and whitespace-only lines are skipped, not crashed on."""
+        r"""Blank and whitespace-only lines are skipped, not crashed on."""
         with redirect_stdout(io.StringIO()) as f:
             run(["\n", "\t \t", ""], IO())
         assert f.getvalue() == ""
 
     def test_undefined_variable_access(self) -> None:
-        """Test accessing undefined variables (should return 0)."""
+        r"""Test accessing undefined variables (should return 0)."""
         code: list[str] = ["tt qe yyy qe tt"]  # print var[7] (undefined).
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
         assert f.getvalue() == chr(0)
 
     def test_division_by_zero(self) -> None:
-        """Test division by zero behavior."""
+        r"""Test division by zero behavior."""
         from esolangs.exceptions import HaltError
 
         code: list[str] = [
@@ -337,19 +315,19 @@ class TestQoiblEdgeCases:
             run(code, IO())
 
     def test_unrecognized_operator_rejected(self) -> None:
-        """An unrecognized arithmetic operator is a malformed program."""
+        r"""An unrecognized arithmetic operator is a malformed program."""
         code: list[str] = ["tt y ry qe y y tt"]
         with pytest.raises(ValueError, match="operator"):
             run(code, IO())
 
     def test_unrecognized_comparison_rejected(self) -> None:
-        """An unrecognized comparison operator is a malformed program."""
+        r"""An unrecognized comparison operator is a malformed program."""
         code: list[str] = ["tt y yr qe y y tt"]
         with pytest.raises(ValueError, match="operator"):
             run(code, IO())
 
     def test_truncated_operator_rejected(self) -> None:
-        """A comparison or arithmetic operator with no operand is malformed."""
+        r"""A comparison or arithmetic operator with no operand is malformed."""
         with pytest.raises(ValueError, match="comparison"):
             run(["yr"], IO())
         with pytest.raises(ValueError, match="arithmetic"):
@@ -360,7 +338,7 @@ class TestQoiblEdgeCases:
             run(["tt  "], IO())
 
     def test_nested_expressions(self) -> None:
-        """Test nested expressions and complex operations."""
+        r"""Test nested expressions and complex operations."""
         code: list[str] = [
             "we y we yy we",  # var[1] = 3.
             "we ye we yy we",  # var[2] = 3.
@@ -395,11 +373,11 @@ WIKI_PROGRAMS = {
 
 
 class TestQoiblTokenizer:
-    """The wiki calls spaces ignorable, so a program may omit them entirely."""
+    r"""The wiki calls spaces ignorable, so a program may omit them."""
 
     @pytest.mark.parametrize("name", sorted(WIKI_PROGRAMS))
     def test_spacing_does_not_change_statements(self, name: str) -> None:
-        """Spaced, space-free, and single-stream sources tokenize alike."""
+        r"""Spaced, space-free, and single-stream sources tokenize alike."""
         source = WIKI_PROGRAMS[name]
         expected = [line.split() for line in source.splitlines()]
         squeezed = source.replace(" ", "")
@@ -408,7 +386,7 @@ class TestQoiblTokenizer:
         assert tokenize(squeezed.replace("\n", "")) == expected
 
     def test_output_matches_without_spaces(self) -> None:
-        """A program run as one unbroken string prints what the spaced one does."""
+        r"""A program run as one unbroken string prints what the spaced one."""
         source = WIKI_PROGRAMS["hello"]
         stream = source.replace(" ", "").replace("\n", "")
         with redirect_stdout(io.StringIO()) as spaced:
@@ -418,11 +396,11 @@ class TestQoiblTokenizer:
         assert spaced.getvalue() == fused.getvalue() == "Hello, world!\n"
 
     def test_input_instruction_reclaims_its_character(self) -> None:
-        """An odd run of `t` spells `et`, which claims the preceding `e`."""
+        r"""An odd run of `t` spells `et`, which claims the preceding `e`."""
         assert tokenize("rrttetttrr")[0] == ["rr", "tt", "et", "tt", "rr"]
 
     def test_comparison_marker_closes_its_pair(self) -> None:
-        """`yr ee yr` must not read as `yr eey ry`, which strands the operand."""
+        r"""`yr ee yr` must not read as `yr eey ry`, which strands the operand."""
         assert tokenize("qeeqeyreeyryyeeey")[0] == [
             "qe",
             "e",
@@ -434,11 +412,11 @@ class TestQoiblTokenizer:
         ]
 
     def test_ignores_characters_outside_the_alphabet(self) -> None:
-        """The spec ignores anything that is not part of an instruction."""
+        r"""The spec ignores anything that is not part of an instruction."""
         assert tokenize("tt! yeeyeee? tt") == [["tt", "yeeyeee", "tt"]]
 
     def test_statements_need_no_line_breaks(self) -> None:
-        """Two complete statements on one line stay two statements."""
+        r"""Two complete statements on one line stay two statements."""
         assert tokenize("tt yeeyeee tt tt yyeeyey tt") == [
             ["tt", "yeeyeee", "tt"],
             ["tt", "yyeeyey", "tt"],
@@ -447,13 +425,7 @@ class TestQoiblTokenizer:
 
 class TestQoiblCycleDetection:
     def test_a_terminating_program_is_reported_as_halting(self) -> None:
-        """``snapshot`` is the cycle detector's hook into the interpreter.
-
-        It reports the whole of what a step can change -- the cursor, the
-        variables, and how far input has been read -- so two identical
-        snapshots really do mean the program is going nowhere.  Nothing
-        exercised it before, because ``run`` drives the machine itself.
-        """
+        r"""``snapshot`` is the cycle detector's hook into the interpreter."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.qoibl import _Machine
         from esolangs.vm import run_until_halt_or_cycle
@@ -462,7 +434,7 @@ class TestQoiblCycleDetection:
         assert run_until_halt_or_cycle(state) is True
 
     def test_the_snapshot_moves_when_a_statement_runs(self) -> None:
-        """A step that assigns changes the snapshot, so it is not a cycle."""
+        r"""A step that assigns changes the snapshot, so it is not a cycle."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.qoibl import _Machine
 
@@ -474,17 +446,12 @@ class TestQoiblCycleDetection:
 
 class TestQoiblIncompleteTokens:
     def test_a_lone_prefix_yields_an_empty_statement(self) -> None:
-        """``w`` and ``q`` only mean something before ``e``.
-
-        A prefix with nothing to pair with contributes no token, so the
-        statement it sits in comes out empty -- which ``step`` then has to
-        skip rather than try to evaluate.
-        """
+        r"""``w`` and ``q`` only mean something before ``e``."""
         assert tokenize("w") == [[]]
         assert tokenize("q") == [[]]
 
     def test_stepping_an_empty_statement_advances_the_cursor(self) -> None:
-        """An empty statement is a no-op, not a parse of nothing."""
+        r"""An empty statement is a no-op, not a parse of nothing."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.qoibl import _Machine
 
@@ -495,22 +462,10 @@ class TestQoiblIncompleteTokens:
 
 
 class TestQoiblParserGuards:
-    """The three conditions a mutation survived, each pinned by behaviour.
-
-    Mutation testing (mutmut against a ``bundle_one`` build of this module)
-    reported these as changeable without any test noticing: the tokenizer's
-    give-back guard, its empty-input guard, and the closing-marker check in
-    ``_wellformed``.  Each is a rejection, and a rejection that stops
-    rejecting is invisible until something malformed is accepted.
-    """
+    r"""The three conditions a mutation survived, each pinned by behaviour."""
 
     def test_steal_declines_a_literal_without_the_character(self) -> None:
-        """Nothing is given back unless the literal actually ends in it.
-
-        The mutant that reads this guard with ``and`` instead of ``or``
-        returned the literal shortened anyway, inventing a token split the
-        source never spelled.
-        """
+        r"""Nothing is given back unless the literal actually ends in it."""
         from esolangs.interpreters.register_based.qoibl import _steal
 
         assert _steal(["yy"], "e") is None  # no trailing 'e' to give back.
@@ -518,23 +473,13 @@ class TestQoiblParserGuards:
         assert _steal(["ye"], "e") == ["y"]  # a longer one is shortened.
 
     def test_steal_declines_an_empty_token_list(self) -> None:
-        """The emptiness check has to come first, or indexing raises.
-
-        ``tokens[-1]`` is evaluated the moment the guard stops short-
-        circuiting, so a mutant that reorders it crashes with IndexError
-        rather than returning None.
-        """
+        r"""The emptiness check has to come first, or indexing raises."""
         from esolangs.interpreters.register_based.qoibl import _steal
 
         assert _steal([], "e") is None
 
     def test_a_binary_operator_needs_its_closing_marker(self) -> None:
-        """``yr``/``ry`` wrap an operator, and both ends must be the same one.
-
-        Only the matched form parses; a mismatched closing marker or none at
-        all is malformed.  Without this check both were accepted, so a
-        program that never spelled a complete operation would still run.
-        """
+        r"""``yr``/``ry`` wrap an operator, and both ends must be the same one."""
         from esolangs.interpreters.register_based.qoibl import _wellformed
 
         assert _wellformed(["e", "yr", "ee", "yr", "y"]) is True
@@ -542,13 +487,7 @@ class TestQoiblParserGuards:
         assert _wellformed(["e", "yr", "ee"]) is False  # no close at all.
 
     def test_an_unrecognised_token_evaluates_to_zero(self) -> None:
-        """The evaluator's last arm answers a token no keyword claims.
-
-        ``tokenize`` only accepts a split under which every statement
-        parses, so this is unreachable from source; it is the fallback for
-        a hand-built expression list, and it must leave the variables it
-        was handed alone rather than inventing an entry.
-        """
+        r"""The evaluator's last arm answers a token no keyword claims."""
         from esolangs.interpreters.register_based.qoibl import _eval
 
         value, var = _eval(["zz"], {"e": 1}, lambda: 0, lambda _s: None)
@@ -559,34 +498,20 @@ class TestQoiblParserGuards:
 # 1.9s over 51 tests: runs the.
 @pytest.mark.medium
 class TestTheTokenizerCarriesItsOwnStack:
-    """The search used to spend one Python frame per character.
-
-    A 3972-character program reached 1315 live frames, 1241 of them in the
-    tokenizer's own walk, so CPython's default limit of 1000 capped the
-    *language* near 2800 characters -- and a six-input majority table came
-    back as ``InterpreterLimitError`` saying the interpreter "cannot carry
-    one that large", while ``sys.setrecursionlimit`` made the very same
-    program run.  The search carries an explicit stack now, which removes
-    the limit rather than raising it: the same program peaks at 74 frames.
-    """
+    r"""The search used to spend one Python frame per character."""
 
     @staticmethod
     def _majority(n: int) -> str:
         return "".join(str(int(bin(r).count("1") * 2 > n)) for r in range(2**n))
 
     def test_a_program_past_the_old_wall_tokenizes(self) -> None:
-        """3972 characters, against a default limit of 1000."""
+        r"""3972 characters, against a default limit of 1000."""
         program = esolangs.generate("Qoibl", self._majority(6))
         assert len(program) > 3000
         assert tokenize(program)
 
     def test_it_runs_under_a_limit_far_below_the_old_need(self) -> None:
-        """The direct measure of shallowness, and it needed 1375 before.
-
-        The ceiling is set relative to the stack this test is already
-        standing on -- lowering the limit below the live depth kills the
-        interpreter outright, and pytest's own frames are not a constant.
-        """
+        r"""The direct measure of shallowness, and it needed 1375 before."""
         program = esolangs.generate("Qoibl", self._majority(6))
         stdin = esolangs.encode_inputs("Qoibl", [0] * 6, self._majority(6))
         live = len(inspect.stack())
@@ -624,16 +549,9 @@ class TestTheTokenizerCarriesItsOwnStack:
     def test_the_reading_order_is_unchanged(
         self, source: str, expected: list[list[str]]
     ) -> None:
-        """A backtracking search is only equal to another in the same order.
-
-        ``_scan`` returns the *first* reading its grammar accepts, so "it
-        still parses" would not have caught a stack rewrite that explored
-        the branches the other way round -- it would quietly return a
-        different valid tokenization.  These are the readings the recursive
-        walk produced, captured before it was replaced.
-        """
+        r"""A backtracking search is only equal to another in the same order."""
         assert tokenize(source) == expected
 
     def test_an_unparseable_program_is_still_empty(self) -> None:
-        """The failure path has an order too, and it returns no statements."""
+        r"""The failure path has an order too, and it returns no statements."""
         assert tokenize("qt y\nqrt\nrt") == [[]]

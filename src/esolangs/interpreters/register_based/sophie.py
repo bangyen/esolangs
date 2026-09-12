@@ -1,22 +1,4 @@
-"""Sophie interpreter implementation.
-
-Esoteric language equivalent to a Finite State Automaton.
-Single accumulator with basic control flow operations.
-
-`*` breaks out of the whole enclosing loop nest (and later loops run
-normally); a single-branch `@c{}` skips its block cleanly when the condition
-fails.  `&` halts.  Unbalanced brackets are a malformed program and are
-rejected with :class:`ValueError`; a `*` break with no enclosing loop is an
-invalid operation and halts the program with
-:class:`~esolangs.exceptions.HaltError`.
-
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
-
-The interpreter runs on a :class:`_Machine` (the code, accumulator, loop
-stack, and skip flag), so it is step-capable: ``step()`` executes one
-command and ``halted`` is true once ``&`` fires or the cursor reaches the
-end of the code.
-"""
+r"""Sophie interpreter implementation."""
 
 import re
 import sys
@@ -26,15 +8,7 @@ from esolangs.interpreters.io import IO
 
 
 def matches(code: str) -> None:
-    """Raise :class:`ValueError` if ``[]`` or ``{}`` brackets are unbalanced.
-
-    The wiki defines ``[``/``]`` loops and ``{``/``}`` blocks (conditionals
-    and comments) only for matched pairs; a program with unbalanced brackets
-    is malformed, so the interpreter rejects it rather than inventing a halt.
-    A ``#`` load consumes one data character (``#$`` an optional marker plus
-    digits or a character), so a bracket loaded that way is data, not
-    structure.
-    """
+    r"""Raise :class:`ValueError` if ``[]`` or ``{}`` brackets are."""
     for opr, end in (("[", "]"), ("{", "}")):
         depth = 0
         i = 0
@@ -64,7 +38,7 @@ def matches(code: str) -> None:
 
 
 def find(code: str, ind: int) -> int:
-    """Find the matching closing bracket for a given opening bracket."""
+    r"""Find the matching closing bracket for a given opening bracket."""
     opr = code[ind]
     end = chr(ord(opr) + 2)
     match = 1
@@ -96,19 +70,7 @@ type _State = tuple[int, int, bool, tuple[int, ...], bool]
 
 
 def _advance(state: _State, code: str, value: int | None = None) -> _State:
-    """Return the state after executing the command under the cursor.
-
-    Pure: it reads ``state`` and returns a new one.  The four I/O commands
-    are the caller's -- ``.`` and ``,`` print the accumulator this carries
-    forward unchanged, and ``:``/``;`` arrive as ``value``, already read
-    and already rejected if the input did not qualify, in which case it is
-    ``None`` and the accumulator stands.
-
-    Two jumps land deliberately short.  ``]`` and ``*`` return to one
-    before the loop's ``[`` so the trailing advance re-reads it, and a
-    conditional that fails jumps to its block's ``}`` -- or to the ``{`` of
-    an else-block if one follows, so the trailing advance enters it.
-    """
+    r"""Return the state after executing the command under the cursor."""
     acc, ind, skp, stk, halted = state
 
     if (c := code[ind]) == "[":
@@ -151,12 +113,7 @@ def _advance(state: _State, code: str, value: int | None = None) -> _State:
 
 
 def _branch(code: str, ind: int, width: int, *, taken: bool) -> int:
-    """Return the cursor for a conditional, entered or skipped.
-
-    A taken branch steps over the ``@c`` header onto its block.  A failed
-    one jumps to the block's close, and one place further when an
-    else-block starts there, so the trailing advance lands inside it.
-    """
+    r"""Return the cursor for a conditional, entered or skipped."""
     if taken:
         return ind + width
     end = find(code, ind + width)
@@ -166,14 +123,10 @@ def _branch(code: str, ind: int, width: int, *, taken: bool) -> int:
 
 
 class _Machine:
-    """Per-run Sophie state: the code, accumulator, loop stack, and cursor."""
+    r"""Per-run Sophie state: the code, accumulator, loop stack, and cursor."""
 
     def __init__(self, code: str, io: IO) -> None:
-        """Validate ``code``'s brackets and start with a zero accumulator.
-
-        Unbalanced brackets are a malformed program, raised eagerly before
-        any command runs.
-        """
+        r"""Validate ``code``'s brackets and start with a zero accumulator."""
         matches(code)
         self.io = io
         self.code = code
@@ -184,7 +137,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        """Whether ``&`` fired or the cursor reached the end of the code."""
+        r"""Whether ``&`` fired or the cursor reached the end of the code."""
         return self._halted_by_command or self.ind >= len(self.code)
 
     # The VM's language-shaped.
@@ -192,21 +145,21 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        """The current instruction position."""
+        r"""The current instruction position."""
         return self.ind
 
     @property
     def memory(self) -> list[int]:
-        """The addressable cells."""
+        r"""The addressable cells."""
         return [self.acc]
 
     @property
     def stack(self) -> list[object]:
-        """The stack."""
+        r"""The stack."""
         return list(self.stk)
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        r"""Return the complete internal state, hashable for cycle detection."""
         return (
             self.ind,
             self.acc,
@@ -217,28 +170,15 @@ class _Machine:
 
     @property
     def _state(self) -> _State:
-        """The machine's fields as the value the transition works on."""
+        r"""The machine's fields as the value the transition works on."""
         return (self.acc, self.ind, self.skp, self.stk, self._halted_by_command)
 
     def _restore(self, state: _State) -> None:
-        """Write a transition's result back onto the machine's fields.
-
-        The fields are this class's published shape -- the VM's views and
-        the tests read them -- so they stay; the one assignment a step
-        makes is here rather than scattered through the rules above.
-        """
+        r"""Write a transition's result back onto the machine's fields."""
         self.acc, self.ind, self.skp, self.stk, self._halted_by_command = state
 
     def step(self) -> None:
-        """Execute one command, advancing (or jumping) the cursor.
-
-        The four I/O commands live here rather than in the transition: this
-        is the shell.  ``.`` and ``,`` print the accumulator the transition
-        carries forward unchanged, and ``:``/``;`` read here -- including
-        the test that decides whether the input counts, since an input that
-        does not qualify must leave the accumulator alone rather than
-        writing a zero over it.
-        """
+        r"""Execute one command, advancing (or jumping) the cursor."""
         if self.halted:
             return
         c = self.code[self.ind]
@@ -261,7 +201,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    """Execute Sophie program code."""
+    r"""Execute Sophie program code."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

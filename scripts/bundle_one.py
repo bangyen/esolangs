@@ -1,28 +1,4 @@
-"""Bundle one interpreter into a single self-contained file.
-
-Every interpreter imports two shared modules, ``esolangs.exceptions`` and
-``esolangs.interpreters.io``, which means a raw ``curl`` of a single source
-file cannot run standalone.  This script inlines those modules (and any
-interpreter the target imports, e.g. Factor's brainfuck) into one file that
-runs exactly like ``python -m esolangs.interpreters.<category>.<lang>``:
-
-    python scripts/bundle_one.py <language>
-
-The output file is ``esolangs_<lang>.py`` in the current directory and is
-run with ``python esolangs_<lang>.py program.txt``.
-
-``scripts/install_one.sh`` wraps this script in a one-line pipe that fetches
-everything from GitHub, so someone can grab a single interpreter without
-cloning the repository or installing the package:
-
-    curl -fsSL https://raw.githubusercontent.com/bangyen/esolangs/main/scripts/install_one.sh
-        | sh -s brainfuck
-
-Source files are read from the local checkout by default, or from a ``--base``
-URL (as the installer does).  Interpreter-to-interpreter imports are resolved
-recursively and aliased, so bundled languages behave identically to their
-package versions.
-"""
+r"""Bundle one interpreter into a single self-contained file."""
 
 import argparse
 import ast
@@ -37,14 +13,14 @@ _SYMPY = re.compile(r"^\s*(?:import sympy|from sympy)", re.M)
 
 
 class Source:
-    """Read source files from the repo or from a raw GitHub base URL."""
+    r"""Read source files from the repo or from a raw GitHub base URL."""
 
     def __init__(self, base: str | None) -> None:
-        """Use the local checkout unless a ``base`` URL is given."""
+        r"""Use the local checkout unless a ``base`` URL is given."""
         self._base = base
 
     def get(self, rel: str) -> str:
-        """Return the text of the file at ``rel`` under ``src/esolangs``."""
+        r"""Return the text of the file at ``rel`` under ``src/esolangs``."""
         if self._base is None:
             return (SRC / rel).read_text()
         import urllib.request
@@ -56,18 +32,13 @@ class Source:
 
 
 def _line_span(node: ast.stmt) -> range:
-    """Return the 1-based line numbers ``node`` occupies, end inclusive.
-
-    ``end_lineno`` is ``int | None`` because synthesised nodes carry no
-    position, but every node here comes from ``ast.parse``, which always
-    sets it.
-    """
+    r"""Return the 1-based line numbers ``node`` occupies, end inclusive."""
     assert node.end_lineno is not None
     return range(node.lineno, node.end_lineno + 1)
 
 
 def _is_main(node: ast.stmt) -> bool:
-    """Return whether ``node`` is an ``if __name__ == "__main__":`` block."""
+    r"""Return whether ``node`` is an ``if __name__ == "__main__":`` block."""
     return (
         isinstance(node, ast.If)
         and isinstance(node.test, ast.Compare)
@@ -77,20 +48,14 @@ def _is_main(node: ast.stmt) -> bool:
 
 
 def _drop_lines(src: str, drop: set[int]) -> str:
-    """Return ``src`` with the given 1-based line numbers removed."""
+    r"""Return ``src`` with the given 1-based line numbers removed."""
     return "".join(
         line for i, line in enumerate(src.splitlines(keepends=True), 1) if i not in drop
     )
 
 
 def _parse_registry(source: Source) -> dict[str, str]:
-    """Map each display name to its interpreter module path.
-
-    ``registry.py`` is parsed with ``ast`` (never executed), so the mapping
-    works against a raw download where the ``esolangs`` package cannot be
-    imported.  The interpreter argument is either the ``interpreter=`` keyword
-    or the second positional ``Language(name, interpreter, ...)`` slot.
-    """
+    r"""Map each display name to its interpreter module path."""
     tree = ast.parse(source.get("registry.py"))
     langs: dict[str, str] = {}
     for node in tree.body:
@@ -132,7 +97,7 @@ def _parse_registry(source: Source) -> dict[str, str]:
 
 
 def _top_level_names(src: str) -> list[str]:
-    """Return the top-level function and class names in a module's source."""
+    r"""Return the top-level function and class names in a module's source."""
     tree = ast.parse(src)
     return [
         node.name
@@ -142,7 +107,7 @@ def _top_level_names(src: str) -> list[str]:
 
 
 class _ModuleInfo:
-    """What a module needs from, and contributes to, the bundle."""
+    r"""What a module needs from, and contributes to, the bundle."""
 
     def __init__(self) -> None:
         self.doc = ""
@@ -154,7 +119,7 @@ class _ModuleInfo:
 
 
 def _process_module(src: str, *, keep_main: bool) -> _ModuleInfo:
-    """Split a module into a bundle-able body and its esolangs dependencies."""
+    r"""Split a module into a bundle-able body and its esolangs."""
     info = _ModuleInfo()
     info.requires_sympy = _SYMPY.search(src) is not None
     tree = ast.parse(src)
@@ -196,12 +161,7 @@ def _inline_deps(
     *,
     keep_main: bool,
 ) -> _ModuleInfo:
-    """Inline ``rel`` and its esolangs dependencies into ``parts``.
-
-    Dependencies are emitted first (their bodies feed the module that imports
-    them), then the alias bindings that let the importing module reach the
-    inlined names, then the module's own body.
-    """
+    r"""Inline ``rel`` and its esolangs dependencies into ``parts``."""
     if rel in seen:
         return _ModuleInfo()
     seen.add(rel)
@@ -248,7 +208,7 @@ def _inline_deps(
 
 
 def _resolve(language: str, langs: dict[str, str]) -> str:
-    """Return the interpreter module path, matching case-insensitively."""
+    r"""Return the interpreter module path, matching case-insensitively."""
     if language in langs:
         return langs[language]
     for name, module in langs.items():
@@ -258,7 +218,7 @@ def _resolve(language: str, langs: dict[str, str]) -> str:
 
 
 def bundle(language: str, source: Source, out: Path | None) -> Path:
-    """Write the self-contained interpreter bundle and return its path."""
+    r"""Write the self-contained interpreter bundle and return its path."""
     langs = _parse_registry(source)
     module = _resolve(language, langs)
     stem = module.rsplit(".", 1)[-1]
@@ -312,7 +272,7 @@ def bundle(language: str, source: Source, out: Path | None) -> Path:
 
 
 def main() -> int:
-    """Run the bundler from the command line."""
+    r"""Run the bundler from the command line."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("language", help="display name of the language to bundle")
     parser.add_argument(

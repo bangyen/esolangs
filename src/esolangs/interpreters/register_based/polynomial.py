@@ -1,68 +1,4 @@
-"""Polynomial interpreter implementation.
-
-Polynomial is an esoteric programming language in which each program
-is a polynomial function. Language statements are executed based on the zeroes of the
-function, with both real and complex zeroes allowed. The language operates on a single
-integer register with operations determined by the mathematical properties of the roots.
-
-The language features:
-- Programs as polynomial functions in the form f(x) = ...
-- Real zeroes for control flow (if/while statements)
-- Complex zeroes for register operations (arithmetic, I/O)
-- Special encoding using ascending primes for execution order
-- Single integer register for all operations
-
-The wiki's cat program notes that output ignores negative register values;
-this interpreter clamps them to zero (printing a NUL) instead, and it raises
-:class:`EOFError` on exhausted input rather than halting with -1.
-
-There is no per-run instruction cap here.  The machine is step-capable, so
-``run_until_halt_or_cycle`` proves a hang immediately for the ordinary case
--- a fixed instruction list and a register cycling through a bounded set of
-values revisits a state -- but a loop that keeps growing the register
-without bound never does, and the state-cycle detector cannot terminate on
-that class by construction.  ``esolangs.run``'s wall-clock ``timeout`` is
-the uniform guard for it, rather than a step count local to this
-interpreter.
-
-Root recovery: every instruction contributes a factor of a known shape to the
-program's monic integer polynomial -- a complex instruction ``[a, b]`` is the
-quadratic ``(x-a)^2 + p**(2*b)`` (so the linear coefficient gives ``a`` and the
-constant term minus ``a^2`` is an exact square ``p**(2*b)``), and a real
-instruction ``[v]`` is the linear factor ``x - p**v``.  The interpreter
-therefore factors the polynomial over the integers with ``sympy`` and reads the
-instruction values straight off the factors, exactly -- no floating point, so
-the wide root spreads that defeated float64 root-finding are irrelevant.
-Roots stay exact integer pairs (:class:`_Root`) end to end for the same
-reason: a real root ``p**v`` passes 2**53 at ``p**8`` for ``p >= 100``, where
-``complex`` would round it and ``convert`` would silently drop the
-instruction.
-
-Past :data:`_NTT_MIN_DEGREE` the candidate search runs through the roots of
-the polynomial modulo two fixed small prime fields, found by evaluating it at
-*every* field point with a number-theoretic transform; see
-:func:`_roots_mod`.  Acceptance is exact integer division on either path, so
-the split changes cost only, never the answer.
-
-Malformed programs raise :class:`ValueError`.
-
-The interpreter runs on a :class:`_Machine` (the recovered instructions, the
-integer register, and the instruction cursor), so it is step-capable:
-``step()`` executes one instruction and ``halted`` is true once the cursor
-reaches the end of the instructions.
-
-The execution model is a pure function over an immutable ``_State``: the
-register and the cursor, as a plain pair.  :func:`_advance` maps a state and
-the instruction table to the next state and never mutates what it is given;
-:meth:`_Machine.step` rebinds the two fields from what it returned, so the
-mutation lives in exactly one place.
-
-The instructions stay out of the state -- Polynomial never rewrites its own
-program, and recovering them means factoring the polynomial, which is done
-once when the machine is built.  The two ports stay in the shell: an
-instruction prints or reads at most once, so the byte can be read before
-the transition and the printed value handed back after it.
-"""
+r"""Polynomial interpreter implementation."""
 
 import functools
 import math
@@ -77,31 +13,21 @@ from esolangs.interpreters.io import IO
 
 
 class _Root(NamedTuple):
-    """A recovered root, exact: ``real + imag*i`` with integer parts.
-
-    Mirrors ``complex``'s ``real``/``imag`` attributes so :func:`convert`
-    takes either, but never rounds -- a real root ``p**v`` overflows
-    float64's exact-integer range at ``p**8`` for ``p >= 100``.
-    """
+    r"""A recovered root, exact: ``real + imag*i`` with integer parts."""
 
     real: int
     imag: int
 
 
 def prime(number: int) -> bool:
-    """Check if a number is prime."""
+    r"""Check if a number is prime."""
     if number < 2:
         return False
     return all(number % val for val in range(2, math.isqrt(number) + 1))
 
 
 def brackets(string: list[list[int]], pointer: int) -> int:
-    """Find matching bracket for control flow statements.
-
-    Raises :class:`ValueError` if the bracket has no partner: the wiki defines
-    control-flow brackets only for matched pairs, so an unmatched one is a
-    malformed program.
-    """
+    r"""Find matching bracket for control flow statements."""
     length = len(string[pointer]) == 1
     end = string[pointer][0] in [2, 6]
     direct = (1, -1)[length and end]
@@ -119,12 +45,7 @@ def brackets(string: list[list[int]], pointer: int) -> int:
 
 
 def convert(pre: Sequence[complex | _Root]) -> list[list[int]]:
-    """Convert polynomial roots to instruction codes using prime encoding.
-
-    Roots arrive as :class:`_Root` (exact) or ``complex``/``int`` (rounded);
-    the matching below compares plain integers, so an exact root matches
-    exactly however wide it is.
-    """
+    r"""Convert polynomial roots to instruction codes using prime encoding."""
     rounded_roots = [(round(k.real), round(k.imag)) for k in pre]
     # Sort by imaginary part, then.
     sorted_roots = sorted(rounded_roots, key=lambda x: (x[1], x[0]))
@@ -161,16 +82,7 @@ def convert(pre: Sequence[complex | _Root]) -> list[list[int]]:
 
 
 def sanitize(code: str) -> list[int]:
-    """Parse polynomial string into coefficient list.
-
-    CPython's ``int``/``str`` digit cap (4300 by default) is a DoS guard
-    against quadratic conversions rather than anything Polynomial says, and a
-    program's coefficients grow with its instruction count -- so the cap is
-    raised to fit the widest number in this source text and put straight
-    back, the way the generator's ``format_coeffs`` does on the way out.
-    Without it a program the generator can write is one the interpreter
-    refuses to read.
-    """
+    r"""Parse polynomial string into coefficient list."""
     longest = max((len(run) for run in re.findall(r"\d+", code)), default=0)
     limit = sys.get_int_max_str_digits()
     if longest <= limit:
@@ -183,7 +95,7 @@ def sanitize(code: str) -> list[int]:
 
 
 def _sanitize(code: str) -> list[int]:
-    """Parse polynomial string into coefficient list."""
+    r"""Parse polynomial string into coefficient list."""
     # Remove "f(x) = " prefix (with.
     match = re.match(r"f\(x\)\s*=\s*(.*)", code)
     if not match:
@@ -305,11 +217,7 @@ _NONZERO_BYTE = re.compile(rb"[^\x00]")
 
 
 def _ntt_radix2(vec: list[int], modulus: int, root: int) -> list[int]:
-    """Transform ``vec`` in place: ``out[t] = sum_j vec[j] * root**(j*t)``.
-
-    Iterative radix-2 NTT; ``len(vec)`` must be a power of two and
-    ``root`` a unity root of exactly that order mod ``modulus``.
-    """
+    r"""Transform ``vec`` in place: ``out[t] = sum_j vec[j] * root**(j*t)``."""
     size = len(vec)
     j = 0
     for i in range(1, size):
@@ -338,17 +246,7 @@ def _ntt_radix2(vec: list[int], modulus: int, root: int) -> list[int]:
 
 
 def _roots_mod(coefficients: list[int], field: tuple[int, int, int, int]) -> set[int]:
-    """Return every root of the polynomial in the prime field, exactly.
-
-    Evaluates the polynomial at *all* field points rather than solving for
-    roots: the multiplicative group has order ``c * 2**k``, so ``f(g**t)``
-    over all ``t`` is a size-``c * 2**k`` DFT of the coefficient sequence
-    (exponents folded mod the group order, which also admits any degree),
-    computed as ``c`` radix-2 NTTs plus a combining pass.  Exhaustive
-    evaluation sees repeated roots and irreducible factors the same as
-    simple ones, so no squarefree or splitting machinery exists to be
-    wrong.
-    """
+    r"""Return every root of the polynomial in the prime field, exactly."""
     modulus, cofactor, log_size, generator = field
     group = modulus - 1
     size = 1 << log_size
@@ -385,12 +283,7 @@ def _roots_mod(coefficients: list[int], field: tuple[int, int, int, int]) -> set
 
 
 def _iter_bits(mask: int, size: int) -> Iterator[int]:
-    """Yield the set bit positions of ``mask``, a ``size``-bit integer.
-
-    ``mask & -mask`` extraction copies the whole integer per bit, so a
-    20KB mask with 40 hits would move megabytes; scanning the bytes with a
-    compiled pattern finds the nonzero ones at C speed instead.
-    """
+    r"""Yield the set bit positions of ``mask``, a ``size``-bit integer."""
     raw = mask.to_bytes((size + 7) >> 3, "little")
     for match in _NONZERO_BYTE.finditer(raw):
         index = match.start()
@@ -405,19 +298,7 @@ def _iter_bits(mask: int, size: int) -> Iterator[int]:
 def _quadratic_candidates_ntt(
     prime_count: int, root_sets: tuple[set[int], set[int]]
 ) -> set[tuple[int, int]]:
-    """Propose ``(a, p**(2*b))`` pairs from the two fields' root sets.
-
-    A factor ``(x - a)**2 + p**(2*b)`` puts ``a ± i*p**b`` in every field's
-    root set, so for each ``(p, b)`` the roots pairing at distance
-    ``2*i*p**b`` in the first field propose an ``a``, read off by rotating
-    the root set's bitmask against itself; the lift ``|a| <= m0 // 2`` is
-    this path's real-part window, and the second field then checks the
-    same pair independently.  Spurious pairs survive at the product of the
-    two fields' densities (~0.2% on the dense n=10 table's 1.5M
-    extractions) and die in the trial division; a real part past the lift
-    window stays for ``factor_list``, exactly like the enumerated path
-    past :data:`_PEEL_MAX_REAL_PART`.
-    """
+    r"""Propose ``(a, p**(2*b))`` pairs from the two fields' root sets."""
     (m0, _, _, g0), (m1, _, _, g1) = _NTT_FIELDS
     roots0, roots1 = root_sets
     i0 = pow(g0, (m0 - 1) // 4, m0)
@@ -460,13 +341,7 @@ def _quadratic_candidates_ntt(
 def _divide_quadratic_mod(
     coefficients: list[int], real: int, square: int
 ) -> list[int] | None:
-    """:func:`_divide_quadratic` over GF(:data:`_TRIAL_MODULUS`).
-
-    The screen half of the candidate check: same long division, single-word
-    arithmetic.  ``None`` means the quadratic cannot divide the integer
-    polynomial either; a quotient only means the exact division is worth
-    running.
-    """
+    r""":func:`_divide_quadratic` over GF(:data:`_TRIAL_MODULUS`)."""
     modulus = _TRIAL_MODULUS
     b1 = -2 * real % modulus
     b0 = (real * real + square) % modulus
@@ -495,14 +370,7 @@ def _divide_quadratic_mod(
 def _divide_out_quadratics(
     coefficients: list[int], candidates: set[tuple[int, int]]
 ) -> tuple[list[tuple[int, int]], list[int]]:
-    """Divide the candidate quadratics out of the polynomial, exactly.
-
-    The acceptance shared by both candidate sources: a pair joins the
-    result only because ``(x - a)**2 + q`` divides the remainder exactly,
-    re-tried until it stops dividing so multiplicities come out.  The
-    single-word division screens each attempt first; both remainders
-    advance together on success, so the screen stays aligned.
-    """
+    r"""Divide the candidate quadratics out of the polynomial, exactly."""
     found: list[tuple[int, int]] = []
     remainder = coefficients
     remainder_mod = [k % _TRIAL_MODULUS for k in coefficients]
@@ -523,17 +391,7 @@ def _divide_out_quadratics(
 def _divide_quadratic(
     coefficients: list[int], real: int, square: int
 ) -> list[int] | None:
-    """Divide by ``(x - real)**2 + square`` exactly, or report that it does not.
-
-    Long division by the monic quadratic ``x**2 + b1*x + b0``, on the integer
-    coefficient list rather than a ``Poly``: each quotient coefficient is the
-    dividend's minus what the two previous quotient coefficients contribute
-    at that position.  Staying with plain integers is the whole point -- the
-    same reason :func:`_peel_prime_power_roots` is cheap -- since a ``Poly``
-    division at this degree costs orders of magnitude more.
-
-    ``None`` means a nonzero remainder, so the caller must not take it.
-    """
+    r"""Divide by ``(x - real)**2 + square`` exactly, or report that it."""
     b1 = -2 * real
     b0 = real * real + square
     size = len(coefficients)
@@ -563,35 +421,7 @@ def _divide_quadratic(
 def _peel_instruction_quadratics(
     coefficients: list[int],
 ) -> tuple[list[tuple[int, int]], list[int]]:
-    """Divide out the complex instructions' quadratics, exactly.
-
-    A complex instruction contributes ``(x - a)**2 + p**(2*b)``, and unlike a
-    real one its root needs *two* parameters: ``b`` is small (at most
-    :data:`_PEEL_MAX_IMAGINARY_EXPONENT`) but ``a`` is a data operand with no
-    encoding bound, so enumerating pairs is hopeless -- a dense n=6 table
-    would need ~158000 trial divisions against a degree-254 polynomial.
-
-    So ``a`` is *solved for* rather than guessed.  Modulo
-    :data:`_PEEL_MODULUS` the factor's roots are ``a ± sqrt(-q)``, so one
-    root-finding pass over the field yields every root, and for each
-    candidate ``q`` a root ``r`` proposes ``a = r - sqrt(-q)`` -- confirmed
-    only when the partner root is present too.  That search is integer
-    arithmetic and set lookups; no polynomial is touched until a candidate
-    survives it.
-
-    Soundness is the same bargain the real peel strikes: a pair is accepted
-    only because ``(x - a)**2 + q`` divides the polynomial *exactly*, which
-    makes it a genuine factor whatever wrote the program.  Everything the
-    search cannot see -- a ``q`` that is not ``p**(2*b)``, an ``a`` past
-    :data:`_PEEL_MAX_REAL_PART`, a factor of degree other than two, roots
-    that do not pair -- stays in the returned remainder for ``factor_list``.
-    Incomplete, never wrong.
-
-    Measured on the dense n=6 table's degree-254 remainder: 3.16s to find
-    the roots, 0.26s to build candidates (1524 residue tests yielding
-    exactly 127 candidates for 127 quadratics), 0.02s to verify, against
-    35.55s for ``factor_list`` on the same input.
-    """
+    r"""Divide out the complex instructions' quadratics, exactly."""
     if len(coefficients) < 3:
         return [], coefficients
 
@@ -654,36 +484,7 @@ def _peel_prime_power_roots(
     coefficients: list[int],
     screen: Callable[[int], bool] | None = None,
 ) -> tuple[list[int], list[int]]:
-    """Divide out the real roots that are prime powers, exactly.
-
-    A real instruction contributes ``x - p**v``, so its root is a prime
-    power -- and finding those needs no factorization at all.  Evaluating
-    the polynomial at a candidate (Horner, one pass) proves the factor when
-    the result is zero, and synthetic division then deflates the degree by
-    one.  Both are exact integer arithmetic.
-
-    This is only ever a *head start*: a candidate is accepted solely because
-    the polynomial vanishes there, which makes ``x - candidate`` a genuine
-    factor whatever wrote the program.  Anything the enumeration misses -- a
-    root that is not a prime power, a prime past the window, an exponent past
-    :data:`_PEEL_MAX_EXPONENT`, a negative root -- simply stays in the
-    returned remainder, which its caller still hands to ``factor_list``.  So
-    the peel can be incomplete but never wrong, and the recovered root
-    multiset is what factoring alone would have produced.
-
-    Worth it because factoring is superlinear in the degree while a peel is
-    linear: on the dense n=6 table (degree 314, a 1677-digit constant term)
-    it removes 60 roots in 0.66s, and the 82.65s factorization of the whole
-    becomes 35.27s on the degree-254 remainder.
-
-    The exact Horner pass at a wide candidate is itself the expensive step
-    once the degree grows -- its accumulator reaches ``candidate**degree``
-    -- so the large-degree caller passes a ``screen`` that answers "is this
-    candidate a root of the *original* polynomial mod the NTT fields"
-    (every root of a deflated quotient is one), and only survivors pay the
-    Horner: 14.6K probes collapse to the ~170 real roots on the dense n=8
-    table, 48.7s to under a second.
-    """
+    r"""Divide out the real roots that are prime powers, exactly."""
     found: list[int] = []
     limit = max(1, (len(coefficients) - 1) * _PEEL_PRIME_SLACK)
     # As above: the range always.
@@ -716,28 +517,7 @@ def _peel_prime_power_roots(
 
 @functools.lru_cache(maxsize=256)
 def _factor_roots(coefficients: tuple[int, ...]) -> tuple[_Root, ...]:
-    """Recover the instruction roots by factoring the monic integer polynomial.
-
-    A valid program is a product of linear factors ``x - p**v`` (real
-    instructions) and quadratics ``(x-a)**2 + p**(2*b)`` (complex
-    instructions).  ``sympy.factor_list`` returns exactly those factors, so
-    the instruction values come out exactly.  A factor of any other shape
-    encodes no instruction and is ignored.
-
-    Both instruction shapes are divided out first, by
-    :func:`_peel_prime_power_roots` and then
-    :func:`_peel_instruction_quadratics`, so ``factor_list`` sees only what
-    neither recognised.  Both are pure head starts -- each accepts a factor
-    only on an exact division, and leaves what it cannot see in the
-    remainder -- so see those functions for why they cannot change the
-    answer.  On a generated program they usually account for everything and
-    ``factor_list`` is never called at all.
-
-    Past :data:`_NTT_MIN_DEGREE` the same two peels run with candidates
-    screened through the fields' root sets instead -- same acceptance,
-    same remainders, so only the search cost moves; see
-    :data:`_NTT_MIN_DEGREE` for the crossover measurements.
-    """
+    r"""Recover the instruction roots by factoring the monic integer."""
     if len(coefficients) - 1 > _NTT_MIN_DEGREE:
         root_sets = tuple(_roots_mod(list(coefficients), f) for f in _NTT_FIELDS)
 
@@ -797,20 +577,13 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[_Root, ...]:
 
 
 def _find_roots(coefficients: list[int]) -> list[_Root]:
-    """Find the roots of an exact-integer polynomial."""
+    r"""Find the roots of an exact-integer polynomial."""
     return list(_factor_roots(tuple(coefficients)))
 
 
 @functools.lru_cache(maxsize=4)
 def _parse_program(code: str) -> tuple[tuple[int, ...], ...]:
-    """Recover the instruction list from a program's source, once.
-
-    Every row of a truth-table check runs the same program, and before
-    this cache each run re-cleaned, re-parsed, and re-decoded a source
-    that reaches tens of megabytes at high arities -- 0.9s per row on the
-    dense n=8 table even with the factoring itself cached.  Keyed on the
-    source string; a machine copies the tuples into fresh lists.
-    """
+    r"""Recover the instruction list from a program's source, once."""
     cleaned_code = re.sub(r"[^\df(x)=+-^]", "", code)
     if cleaned_code[:5] != "f(x)=":
         raise ValueError("Polynomial program must start with 'f(x) = '")
@@ -862,18 +635,7 @@ def _advance(
     instructions: list[list[int]],
     byte: int | None = None,
 ) -> tuple[_State, str | None]:
-    """Return the state after one instruction, and anything it prints.
-
-    Pure: it reads ``state`` and returns a new one, and reaches no ``IO``.
-    The character an output instruction would write is reported to the
-    caller rather than printed here, and an input instruction's byte
-    arrives as ``byte``.
-
-    The cursor always advances by one at the end, including after a branch
-    has moved it to its partner -- a taken jump lands *on* the bracket and
-    steps past it, which is what makes the body run rather than the bracket
-    re-test itself.
-    """
+    r"""Return the state after one instruction, and anything it prints."""
     reg, ind = state
     instruction = instructions[ind]
     one = instruction[0]
@@ -900,16 +662,10 @@ def _advance(
 
 
 class _Machine:
-    """Per-run Polynomial state: the instructions, the register, and the cursor.
-
-    ``step()`` executes one instruction; ``halted`` is true once the cursor
-    reaches the end of the instructions.  The VM and the state-cycle hang
-    detector expose this object (the instruction list is fixed, so the
-    register and cursor are the complete state).
-    """
+    r"""Per-run Polynomial state: the instructions, the register, and the."""
 
     def __init__(self, code: str, io: IO) -> None:
-        """Recover ``code``'s instructions and start with a zero register."""
+        r"""Recover ``code``'s instructions and start with a zero register."""
         self.io = io
         self.instructions = [list(instr) for instr in _parse_program(code)]
         self.ind = 0
@@ -917,7 +673,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        """Whether the cursor has reached the end of the instructions."""
+        r"""Whether the cursor has reached the end of the instructions."""
         return self.ind >= len(self.instructions)
 
     # The VM's language-shaped.
@@ -925,31 +681,25 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        """The current instruction position."""
+        r"""The current instruction position."""
         return self.ind
 
     @property
     def memory(self) -> list[int]:
-        """The addressable cells."""
+        r"""The addressable cells."""
         return [self.reg]
 
     @property
     def stack(self) -> list[object]:
-        """No stack in this language."""
+        r"""No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        r"""Return the complete internal state, hashable for cycle detection."""
         return (self.ind, self.reg, self.io.position())
 
     def step(self) -> None:
-        """Execute one instruction, advancing the cursor.
-
-        The two ports live here rather than in the transition: this is the
-        shell.  An instruction reads or prints at most once, so the byte can
-        be read before the transition runs and the character it reports
-        printed after.
-        """
+        r"""Execute one instruction, advancing the cursor."""
         if self.halted:
             return
         instruction = self.instructions[self.ind]
@@ -972,7 +722,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    """Execute a Polynomial program to completion."""
+    r"""Execute a Polynomial program to completion."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

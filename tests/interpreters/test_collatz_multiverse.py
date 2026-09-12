@@ -1,9 +1,4 @@
-"""Unit tests for the Collatz Multiverse interpreter.
-
-Tests cover the Collatz rule (odd/even branches, 0 treated as odd), DO/NOT
-printing, variables, arrays, the special variables (negativeOne, lineNumber,
-input), and the documented error cases.
-"""
+r"""Unit tests for the Collatz Multiverse interpreter."""
 
 import re
 
@@ -74,7 +69,7 @@ class TestCollatzRule:
         assert run_program(CONSTANTS + "\nx = negativeOne x + one, DO PRINT.") == "\x01"
 
     def test_sparse_register_and_array_lookups_return_zero(self) -> None:
-        """Absent names and cells are semantic zeroes, not stored entries."""
+        r"""Absent names and cells are semantic zeroes, not stored entries."""
         from esolangs.interpreters.register_based.collatz_multiverse import (
             _arr_get,
             _arr_set,
@@ -153,13 +148,7 @@ class TestArrays:
         assert run_program(program) == "\x01"
 
     def test_input_cannot_be_assigned(self) -> None:
-        """``input`` is read-only; assigning to it is a malformed program.
-
-        Nothing else in the suite reaches this branch, so the message went
-        unasserted.  It is compared whole, and by identity rather than
-        ``match=``: a substring search still passes a message that has been
-        widened around the original text.
-        """
+        r"""``input`` is read-only; assigning to it is a malformed program."""
         message = "input cannot be redefined"
         program = "input = negativeOne x + negativeOne, NOT PRINT."
         with pytest.raises(ValueError, match=re.escape(message)) as caught:
@@ -167,14 +156,7 @@ class TestArrays:
         assert str(caught.value) == message
 
     def test_unreachable_input_assignment_is_still_malformed(self) -> None:
-        """The check is on the program text, not on the lines that run.
-
-        Assigning to ``lineNumber`` jumps, so line 2 here never executes.
-        While the check lived in ``step()`` this program ran to completion
-        and printed, which made a *malformed* program legal whenever the
-        offending line was skipped -- unlike the two sibling malformed
-        cases, both rejected at construction.
-        """
+        r"""The check is on the program text, not on the lines that run."""
         program = "\n".join(
             [
                 "lineNumber = x x + arr, DO PRINT.",
@@ -185,12 +167,7 @@ class TestArrays:
             run(program, ScriptedIO("5"))
 
     def test_acceptance_does_not_depend_on_input(self) -> None:
-        """The same program text is malformed whatever is on stdin.
-
-        A ``lineNumber`` jump target can be *read from input*, so while the
-        check was made at execution time this program's validity varied
-        with stdin: it ran on ``2`` and raised on ``3``.
-        """
+        r"""The same program text is malformed whatever is on stdin."""
         program = "\n".join(
             [
                 "lineNumber = input x + negativeOne, NOT PRINT.",
@@ -203,13 +180,7 @@ class TestArrays:
                 run(program, ScriptedIO(stdin))
 
     def test_malformed_cases_agree_on_unreachable_lines(self) -> None:
-        """All three documented malformed cases are rejected alike.
-
-        The docstring lists a malformed line, a numeric literal, and an
-        ``input`` target as equally malformed; each is checked over the
-        whole program, so an unreachable offending line is rejected
-        whichever kind it is.
-        """
+        r"""All three documented malformed cases are rejected alike."""
         jump = "lineNumber = x x + arr, DO PRINT."
         # Each malformed kind has its.
         # assertion specific rather.
@@ -270,13 +241,7 @@ class TestInput:
             run_program("input = negativeOne x + zero, NOT PRINT.")
 
     def test_an_array_index_can_be_read_from_input(self) -> None:
-        """``arr[input]`` takes the subscript from stdin, not just the value.
-
-        Which cell is read has to depend on what was typed: storing 3 at
-        index 2 and then reading ``arr[input]`` gives 3 for an input of 2
-        and the empty default for an input of 0.  A shell that pre-read
-        only the *bare* ``input`` operands would leave the index unread.
-        """
+        r"""``arr[input]`` takes the subscript from stdin, not just the value."""
         program = "\n".join(
             [
                 CONSTANTS,
@@ -288,13 +253,7 @@ class TestInput:
         assert run_program(program, "0") == chr(0)
 
     def test_an_index_is_read_before_the_operand_it_subscripts(self) -> None:
-        """One line can name ``input`` twice, and the order is fixed.
-
-        The operands are read left to right, so the bare ``input`` in the
-        ``var2`` slot consumes the first line and the index in ``var3``
-        consumes the second: ``0 * 5 + arr[2]`` is 3, where swapping the
-        two reads would index with 5 and find an empty cell.
-        """
+        r"""One line can name ``input`` twice, and the order is fixed."""
         program = "\n".join(
             [
                 CONSTANTS,
@@ -344,14 +303,7 @@ class TestStepMachine:
         assert machine.ip == 2
 
     def test_snapshot_carries_the_array_cells(self) -> None:
-        """A populated array reaches the snapshot, and distinguishes states.
-
-        The program above holds no arrays, so the arrays half of the tuple
-        was always empty and its contents went unread -- hashable either
-        way.  Running a machine that writes two cells pins it: the snapshot
-        has to change as the cells do, so a snapshot that dropped or
-        constant-folded them would collide with the state before the write.
-        """
+        r"""A populated array reaches the snapshot, and distinguishes states."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.collatz_multiverse import _Machine
 
@@ -382,7 +334,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
-    """The shared empty-program shape, with this language's data."""
+    r"""The shared empty-program shape, with this language's data."""
 
     run = staticmethod(run_program)
     machine = staticmethod(_machine)

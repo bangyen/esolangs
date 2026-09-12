@@ -1,51 +1,4 @@
-"""Run the full local verification stack.
-
-Everything that can be checked on a dev machine without a Linux host:
-
-1. pre-commit (lint, format, types) and pytest (the test suite)
-2. bandit (via uv) and the ``extra/line`` suites (via uv, which supplies the
-   image libraries the package itself does not depend on)
-
-``.githooks/pre-push`` and ``just test`` both run this script.
-
-By default the run is *scoped*: each step declares the paths it guards (see
-``STEP_SCOPE``), and a step whose paths this branch never touched is skipped,
-because nothing the branch did could have broken it.  Two steps take a file
-list instead, so they are narrowed rather than skipped -- pre-commit to the
-changed files, and pytest to the matching test modules.
-
-Scoping only ever subtracts work that provably could not have broken.  When
-the branch's diff cannot be read, or it touches the shared interpreter
-machinery or the verification tooling itself, the run widens back to
-everything (see ``scripts/_scope.py``).  ``--full`` forces that too, and CI
-still runs the complete suite on every push regardless.
-
-A default run also leaves work to CI where CI already covers it: the steps in
-``FULL_ONLY`` (the ZTOALC anchor table, which CI's lint job re-derives) and
-the ``slow`` marker in both test suites -- pytest's (the fuzzers' divergence-detection
-tests, which CI runs by that same marker and errors on if they skip) and
-extra/line's (its two 5.2s render round trips, which CI's ``line`` job runs
-unfiltered).  ``--full``, ``just test-full``, and an explicit ``--only`` all
-still run them.
-
-The steps do not all run one after another.  ``pytest`` is the longest, so it
-is launched first and the one-core steps run while it goes; ``pre-commit``
-runs to completion before anything else starts, because its fix hooks rewrite
-the very files the other steps read; and the steps that are parallel in their
-own right wait until pytest has joined, because beside it they were not
-overlapping work but fighting it for cores.  That makes the timing table's
-two totals differ: the sum is how much work ran, the wall is how long the
-push waited.
-
-Output is replayed only for the steps that failed.  A run of one step streams
-it live instead (``--verbose`` forces that, ``--quiet`` forbids it).
-
-Usage:
-    python scripts/verify.py [--only STEPS] [--skip STEPS] [--full] [--list]
-    python scripts/verify.py --full                       # every step, whole tree
-    python scripts/verify.py --only pytest,bandit         # comma-separated STEPS names
-    python scripts/verify.py --only pre-commit,pytest --skip bandit
-"""
+r"""Run the full local verification stack."""
 
 import argparse
 import functools
@@ -70,14 +23,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 
 def python_cmd() -> list[str]:
-    """Return the project's Python command.
-
-    ``verify.py`` may be run with the system interpreter (e.g. plain
-    ``python scripts/verify.py``), which does not have the project's dev
-    dependencies.  Prefer the local venv, then ``uv run python`` (the uv
-    workflow the justfile uses), and only fall back to the running
-    interpreter.
-    """
+    r"""Return the project's Python command."""
     venv = ROOT / ".venv" / "bin" / "python"
     if venv.exists():
         return [str(venv)]
@@ -116,17 +62,7 @@ DIFF_COVERAGE_STEP = "touched-file coverage"
 
 
 def _line_addopts(env: dict[str, str]) -> str:
-    """``PYTEST_ADDOPTS`` for the line step, deselecting the slow tests.
-
-    Composed with whatever the caller already set rather than replacing it,
-    so `PYTEST_ADDOPTS=-x just test` keeps its own flag.  A caller who has
-    already chosen a `-m` expression is left alone: two `-m` flags would let
-    the last one win, silently discarding theirs.
-
-    Both spellings count as a choice -- pytest takes the marker attached
-    (`-mslow`) as readily as separated (`-m slow`), and only the separated
-    form survives a plain membership test.
-    """
+    r"""``PYTEST_ADDOPTS`` for the line step, deselecting the slow tests."""
     existing = env.get("PYTEST_ADDOPTS", "")
     if any(word.startswith("-m") for word in existing.split()):
         return existing
@@ -278,7 +214,7 @@ STEPS = [
 
 @functools.lru_cache(maxsize=1)
 def _scope_changed_files() -> tuple[str, ...]:
-    """Return this branch's changed paths, queried once per run."""
+    r"""Return this branch's changed paths, queried once per run."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from _scope import changed_files
 
@@ -286,13 +222,7 @@ def _scope_changed_files() -> tuple[str, ...]:
 
 
 def _scope_plan(*, full: bool) -> tuple[set[str] | None, str]:
-    """Return the step names to skip as unaffected, and why.
-
-    ``None`` means "run everything".  That is the answer whenever the branch's
-    diff cannot be read or something shared moved, so scoping can only ever
-    remove work that provably could not have broken -- never work whose status
-    is unknown.
-    """
+    r"""Return the step names to skip as unaffected, and why."""
     if full:
         return None, "--full requested"
     if os.environ.get("VERIFY_FULL", "0") not in ("", "0"):
@@ -323,21 +253,13 @@ COLLECTED_PATTERNS = ("test_*.py", "*_test.py")
 
 
 def _is_collected(path: str) -> bool:
-    """Whether pytest would collect tests from *path*."""
+    r"""Whether pytest would collect tests from *path*."""
     name = Path(path).name
     return any(fnmatch(name, pattern) for pattern in COLLECTED_PATTERNS)
 
 
 def _pytest_scope(changed: list[str]) -> list[str] | str:
-    """Return the pytest paths covering *changed*.
-
-    An interpreter is covered by its own test module; anything touched under
-    ``tests/`` is run directly.  ``WHOLE_SUITE`` means the coverage is not
-    localisable -- a new interpreter with no test module yet, or a source file
-    whose tests live somewhere this cannot predict -- so everything runs rather
-    than guessing.  An empty list means the branch touched nothing the Python
-    tests cover (docs, assembly, CI config), so there is nothing to run.
-    """
+    r"""Return the pytest paths covering *changed*."""
     paths: set[str] = set()
     for f in changed:
         if f.startswith("tests/"):
@@ -371,11 +293,7 @@ def _pytest_scope(changed: list[str]) -> list[str] | str:
 
 
 def _scoped_cmd(name: str, cmd: list[str], changed: list[str]) -> list[str] | None:
-    """Narrow *cmd* to the branch's files, or ``None`` if it has nothing to do.
-
-    Three steps take a file list rather than being all-or-nothing, so instead
-    of skipping them wholesale they are re-aimed at what actually moved.
-    """
+    r"""Narrow *cmd* to the branch's files, or ``None`` if it has nothing."""
     if name == "pre-commit":
         files = [f for f in changed if (ROOT / f).is_file()]
         if not files:
@@ -472,19 +390,7 @@ LEAKSWEEP_JOBS = "6"
 
 
 def _should_stream(steps: int, *, quiet: bool, verbose: bool) -> bool:
-    """Whether the steps write to the terminal directly rather than be replayed.
-
-    A stack's worth of streamed output is a wall of text nobody reads: every
-    pre-commit hook line, mypy's tally, uv's resolution, two suites' progress
-    dots, all to say what the ``[ok]`` lines already say -- and the one thing
-    worth reading, a failure, is buried in it.  So the default replays only
-    the steps that failed, which is the whole of what a passing run has to
-    say plus the whole of what a failing one does.
-
-    A run of one step is the other case: `just test-py` is asking to watch
-    pytest run.  Nothing else is writing to the terminal then, so the output
-    cannot interleave with another step's into nonsense.
-    """
+    r"""Whether the steps write to the terminal directly rather than be."""
     if verbose:
         return True
     return steps == 1 and not quiet
@@ -493,14 +399,7 @@ def _should_stream(steps: int, *, quiet: bool, verbose: bool) -> bool:
 def _wait_with_heartbeat(
     proc: subprocess.Popen[str], name: str, start: float
 ) -> tuple[str, int]:
-    """Collect *proc*'s output, saying every ``HEARTBEAT_SECONDS`` it is alive.
-
-    Waiting in one blocking call left the push silent for the minutes the
-    stack takes, which reads as a hang -- long enough to invite the Ctrl-C
-    that skips the checks.  Waiting in slices costs nothing, and it is what
-    lets the output be captured at all: a captured step prints nothing until
-    it ends, so without this the silence would get worse, not better.
-    """
+    r"""Collect *proc*'s output, saying every ``HEARTBEAT_SECONDS`` it is."""
     while True:
         try:
             output, _ = proc.communicate(timeout=HEARTBEAT_SECONDS)
@@ -510,7 +409,7 @@ def _wait_with_heartbeat(
 
 
 def _report(name: str, elapsed: float, returncode: int, output: str | None) -> bool:
-    """Print one step's result, its captured output on failure.  Return ok."""
+    r"""Print one step's result, its captured output on failure."""
     if returncode != 0 and output:
         print(output, end="")
     ok = returncode == 0
@@ -524,24 +423,7 @@ def _run_steps(
     stream: bool,
     gate: tuple[str, list[str], dict[str, str]] | None = None,
 ) -> tuple[int, list[tuple[str, float]], float]:
-    """Run the planned steps, overlapping the long one with the cheap ones.
-
-    Four phases.  ``pre-commit`` rewrites files, so it runs to completion
-    before anything reads the tree it edits.  Then ``pytest`` is launched and
-    the one-core steps go by in its shadow, which is free.  Then the
-    ``HEAVY_STEPS`` -- parallel in their own right, so the shadow was never
-    free for them -- run with the machine to themselves.  *gate* is the
-    touched-file coverage check, which reads the data file ``pytest`` writes,
-    so it goes between the two: as soon as the data is complete, before the
-    heavy steps make it wait.
-
-    Output is captured and replayed only on failure unless *stream*.  A step
-    that is holding the terminal alone can stream it live instead; two can
-    not, since concurrent writers interleave into nonsense.
-
-    Returns the failure count, per-step CPU timings, and the wall time, which
-    concurrency makes smaller than the timings' sum.
-    """
+    r"""Run the planned steps, overlapping the long one with the cheap ones."""
     failed: list[str] = []
     timings: list[tuple[str, float]] = []
     wall_start = time.time()
@@ -630,7 +512,7 @@ def _run_steps(
 
 
 def main() -> int:
-    """Compile and run every example, reporting failures."""
+    r"""Compile and run every example, reporting failures."""
     only, skip, full, quiet, verbose = _parse_only_skip()
 
     # An explicit --only is already.

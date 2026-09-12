@@ -1,4 +1,4 @@
-"""Run the esolangs command-line interface."""
+r"""Run the esolangs command-line interface."""
 
 from esolangs.cli import main
 
