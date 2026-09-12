@@ -386,6 +386,8 @@ def test_every_wrapper_fires_on_a_template_too(name: str) -> None:
 
 
 @pytest.mark.parametrize("name", WRAPPED)
+# part of 6.7s: runs the wrapped program.
+@pytest.mark.medium
 def test_no_width_breaks_a_placeholder(name: str) -> None:
     """No width may put a line break through the middle of a ``{Xi}``.
 
@@ -556,6 +558,8 @@ def test_width_honouring_layout_meets_any_width_it_can(name: str) -> None:
 
 
 @pytest.mark.parametrize("name", WIDTH_HONOURING)
+# part of 6.7s: runs the wrapped program.
+@pytest.mark.medium
 def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
     """Laying the program out to a width does not change what it computes.
 

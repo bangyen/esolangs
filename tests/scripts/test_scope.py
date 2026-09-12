@@ -11,6 +11,8 @@ silently turns a correctness gate off.
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "_scope.py"
 
@@ -25,6 +27,8 @@ def load_script() -> object:
     return module
 
 
+# 2.9s over 6 tests: shells out to git.
+@pytest.mark.medium
 class TestChangedFiles:
     """The list handed to a checker has to be one a checker can accept."""
 

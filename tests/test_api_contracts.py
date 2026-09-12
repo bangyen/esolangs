@@ -618,6 +618,12 @@ class TestAMistypedPathIsNotRunAsAProgram:
             esolangs.run("brainfuck", tmp_path / "absent.txt", "", 5)
 
 
+# 2.2s over 12 tests: runs a diverging program to its bound.
+@pytest.mark.medium
+# 2.2s over 12 tests: runs a diverging program to its bound.
+@pytest.mark.medium
+# 2.2s over 12 tests: runs a diverging program to its bound.
+@pytest.mark.medium
 class TestTheThreadRefusalNamesAWayThrough:
     """A worker thread had two options and no third.
 
@@ -686,6 +692,12 @@ class TestTheThreadRefusalNamesAWayThrough:
         assert esolangs.run("brainfuck", "+++.", "", 5) == "\x03"
 
 
+# 7.8s over 21 tests: each spawns the CLI to read the version.
+@pytest.mark.medium
+# 7.8s over 21 tests: each spawns the CLI to read the version.
+@pytest.mark.medium
+# 7.8s over 21 tests: each spawns the CLI to read the version.
+@pytest.mark.medium
 class TestTheVersionIsResolvedWhenAsked:
     """``importlib.metadata`` was two fifths of the import for a string.
 

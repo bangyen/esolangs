@@ -159,19 +159,29 @@ addopts = [
     "--strict-config",
     "--verbose",
     "--tb=short",
-    # Four workers.  Re-measured on the fast run ("-m 'not slow'") on a
-    # 10-core machine (8 performance): 33.4s serial, 23.3s at 2, 13.8s at 4,
-    # 13.1s at 6, 15.4s at 8.  The suite has grown broader and shorter-tailed
-    # than when this was set to 2 -- no single test dominates, so the work
-    # divides -- and the curve is flat past 4 and turns back up at 8, where
-    # the workers outnumber the performance cores.  Four takes nearly all the
-    # available speedup while leaving cores free.
-    # Override per-run with "-n auto", "-n 2", or "-n 0" on the command line.
+    # Two workers.  Not a throughput choice -- a higher count saturates a
+    # 10-core machine and makes the desktop unusable while the suite runs,
+    # which is the cost that actually gets paid on an interactive box.  What
+    # makes two tolerable is the tier split below: the inner loop is the
+    # `fast` band, 48.7s of test time rather than the 193.8s it was when
+    # every execution sweep and subprocess ran on every invocation, so two
+    # workers clear it in roughly the time four used to need for eight times
+    # the work.
+    # CI passes "-n auto" explicitly, so it is unaffected by this default.
+    # Override per-run with "-n auto", "-n 8", or "-n 0" on the command line.
     "-n",
-    "4",
+    "2",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    # The middle tier.  The rule is behavioural, not a stopwatch reading: a
+    # test is `medium` if it runs a generated program through an interpreter
+    # or drives the CLI (or git) as a subprocess.  That is what costs whole
+    # seconds -- the inner loop keeps every generator's structural assertion
+    # and every interpreter's own unit tests, and pays for execution once a
+    # commit is in sight.  `just test-quick` deselects it; `just test` and CI
+    # do not.
+    "medium: runs a generated program or a subprocess (deselect for the inner loop)",
     "integration: marks tests as integration tests",
     "interpreter: marks tests for specific interpreters",
 ]

@@ -212,6 +212,12 @@ class TestRoundThreeFixes:
         assert "esolangs.instantiate" not in err
 
 
+# 1.8s over 45 tests: drives the CLI as a subprocess.
+@pytest.mark.medium
+# 1.8s over 45 tests: drives the CLI as a subprocess.
+@pytest.mark.medium
+# 1.8s over 45 tests: drives the CLI as a subprocess.
+@pytest.mark.medium
 class TestRoundSixQol:
     """The CLI no longer sends its users to the Python API for basics."""
 
@@ -374,6 +380,12 @@ class TestRoundSixQol:
         assert "stopped: timeout" in capsys.readouterr().out
 
 
+# 5.2s over 33 tests: drives the CLI as a subprocess.
+@pytest.mark.medium
+# 5.2s over 33 tests: drives the CLI as a subprocess.
+@pytest.mark.medium
+# 5.2s over 33 tests: drives the CLI as a subprocess.
+@pytest.mark.medium
 class TestTheShellCanJudgeAnAnswer:
     """Nine languages could be run from the CLI and not judged from it.
 
@@ -490,6 +502,12 @@ class TestTheShellCanJudgeAnAnswer:
         assert "--judge needs --timeout" in capsys.readouterr().err
 
 
+# 3.0s over 12 tests: waits out a real timeout.
+@pytest.mark.medium
+# 3.0s over 12 tests: waits out a real timeout.
+@pytest.mark.medium
+# 3.0s over 12 tests: waits out a real timeout.
+@pytest.mark.medium
 class TestATimeoutIsNotAProgramError:
     """They shared exit 1, so a script could not tell them apart."""
 
@@ -664,6 +682,8 @@ class TestTheHintsStayQuietWhenTheyDoNotApply:
         assert "looks like a truth table" not in capsys.readouterr().err
 
 
+# 6.0s over 12 tests: drives the CLI as a subprocess.
+@pytest.mark.medium
 class TestNonTextInputIsRefusedNotCrashed:
     """Pointing `run` at a PNG dumped a traceback with internal paths in it.
 
@@ -1406,6 +1426,8 @@ class TestTheAdvisoryNotesAreRenderedOnce:
         assert "run --judge" in cli.HELP["verify"]
 
 
+# waits out real stdin timeouts: drives the CLI as a subprocess.
+@pytest.mark.medium
 class TestStdinCannotHangTheCommandForever:
     """`run` read stdin to EOF before doing anything, and --timeout missed it."""
 
@@ -1891,6 +1913,8 @@ class TestDebugReportsALoadFailure:
         assert "looks like a path" in capsys.readouterr().err
 
 
+# 8.5s over 9 tests: drives the CLI as a subprocess.
+@pytest.mark.medium
 class TestReadingTheProgramFileIsBounded:
     """It was the one unguarded blocking call left in the command."""
 
@@ -1988,6 +2012,8 @@ class TestTimeoutValuesAreCheckedOnce:
         assert out.strip() == "1"
 
 
+# 2.2s over 6 tests: drives the CLI as a subprocess.
+@pytest.mark.medium
 class TestAClosedPipeIsNotAnError:
     """`esolangs generate ... | head` is an ordinary thing to type."""
 
@@ -2339,6 +2365,12 @@ class TestVerifyAndEvaluateTakeAWidth:
         assert "--width" in HELP["evaluate"]
 
 
+# 2.0s over 21 tests: drives the CLI as a subprocess.
+@pytest.mark.medium
+# 2.0s over 21 tests: drives the CLI as a subprocess.
+@pytest.mark.medium
+# 2.0s over 21 tests: drives the CLI as a subprocess.
+@pytest.mark.medium
 class TestOutputSurvivesAFailure:
     """A run that failed emitted nothing at all, and it had the bytes.
 
@@ -2563,6 +2595,12 @@ class TestTheSpecIsReachable:
         assert "nosuchlang" in capsys.readouterr().err
 
 
+# 6.5s over 12 tests: drives the CLI as a subprocess.
+@pytest.mark.medium
+# 6.5s over 12 tests: drives the CLI as a subprocess.
+@pytest.mark.medium
+# 6.5s over 12 tests: drives the CLI as a subprocess.
+@pytest.mark.medium
 class TestOutputPythonCannotEncode:
     """A legal WII2D program crashed the CLI with a nineteen-line traceback.
 

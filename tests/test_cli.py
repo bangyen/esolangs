@@ -52,6 +52,8 @@ def call_main(
     return str(capsys.readouterr().out)
 
 
+# Every test here spawns `python -m esolangs.cli`; 2.8s over nine tests.
+@pytest.mark.medium
 class TestSubprocess:
     def test_list(self) -> None:
         result = run_cli("list")
@@ -719,6 +721,9 @@ class TestCapabilityListing:
         assert "brainfuck" in names
 
 
+# Each case generates a program and runs it through a real subprocess --
+# 22.3s over nine tests, the fast band's single largest class.
+@pytest.mark.medium
 class TestProgramFailuresAreReported:
     """An interpreter's failure is a message and an exit code, not a stack."""
 

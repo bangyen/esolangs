@@ -518,6 +518,8 @@ def test_minifuck_five_input_plans_are_derived_per_table() -> None:
     assert set(plans) <= {table, complement}
 
 
+# 3.2s over 129 tests: runs the generated program.
+@pytest.mark.medium
 class TestParameterizedMinifuck:
     """Input-by-substitution boolean generator for Minifuck.
 
