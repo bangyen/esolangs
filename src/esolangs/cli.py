@@ -189,7 +189,7 @@ examples:
   esolangs generate brainfuck 0110
   esolangs generate --bits 10 Minifuck 0110
 """,
-    "run": """usage: esolangs run [--timeout S] [--judge] [--seed N]
+    "run": """usage: esolangs run [--timeout S] [--judge] [--table T] [--seed N]
                     <language> <program-file>
 
 Run a program through its interpreter and print what it writes.
@@ -198,58 +198,42 @@ The program is read from <program-file>; its input is this command's stdin.
 Most languages read one line per input bit, but four do not: Grapheme reads
 %/A rather than 0/1, Clockwise takes every bit on one line, Fargo takes the
 row index as one decimal number, and Taglate pads an odd input count with a
-leading zero line, so its 3-input programs read four.  Stdin is checked
-against that shape: this command warns, and `--judge` refuses outright.  A
-shape indistinguishable from a legitimate one still answers the wrong row,
-so check `esolangs describe <language>` -- or have `esolangs encode` spell
-it for you:
+leading zero.  Stdin is checked against that shape -- this command warns,
+`--judge` refuses -- but a wrong shape that still looks legitimate answers
+the wrong row, so let `esolangs encode` spell it:
 
     esolangs encode Taglate 101 | esolangs run Taglate prog.txt
 
-A program that reads more than it is given fails with an input-exhausted
-error rather than hanging.
+Output is written verbatim, so it can be piped byte for byte; a trailing
+newline is added only when stdout is a terminal.  Whatever the program
+printed before a failure is written too, then the error on stderr.
 
-Output is written verbatim, with no trailing newline added, so it can be
-compared or piped byte for byte.  One is added when stdout is a terminal,
-where the alternative is the result running into the next prompt.
+exit codes: 0 ran, 1 the program broke while running, 2 the ask was wrong
+(unknown language, malformed program, unreadable file), 124 the bound ran
+out, 130 interrupted.
 
 options:
-  --timeout SECONDS  stop the run after this long and fail, rather than
-                     hanging.  There is no bound by default, and three
-                     languages answer a 1 by *not* terminating -- 123,
-                     ArrowQueue and Point Break halt for a 0 and loop
-                     forever for a 1, so a timeout there is the answer.
-                     A timeout exits 124, distinct from every other
-                     failure.  The full set: 0 ran, 1 the program broke
-                     while running (it read past the end of its input, or
-                     halted on an operation with no defined result), 2 the
-                     ask was wrong (an unknown language, a malformed
-                     program, a file that will not read), 124 the bound ran
-                     out, 130 interrupted.  This line used to say a program
-                     error exits 1, which is the code for the *runtime*
-                     half only -- a malformed program is 2, and that is the
-                     commoner of the two.
-  --seed N           fix the random draws, so the run repeats.  Seven
-                     languages draw -- COD, Interprogck8, LaserFuck,
-                     Modulous, Painfuck, Super SNUSP and WII2D -- and
-                     without one they use the system's randomness, so ten
-                     identical LaserFuck runs gave two different answers.
-                     A seed for a language that draws nothing is refused
-                     rather than ignored, since passing one means expecting
-                     a repeat this run was never going to give.
+  --timeout SECONDS  stop the run after this long rather than hanging.
+                     Unbounded by default.  Three languages answer 1 by
+                     *not* terminating -- 123, ArrowQueue and Point Break
+                     -- so a timeout there is the answer, not a failure.
+  --seed N           fix the random draws so the run repeats.  Seven
+                     languages draw: COD, Interprogck8, LaserFuck,
+                     Modulous, Painfuck, Super SNUSP and WII2D.  A seed
+                     for a language that draws nothing is refused rather
+                     than ignored.
   --table TABLE      the truth table the program was generated from.  Adds
-                     the bit *count* to the stdin check, which is the one
-                     thing a shape check cannot do on its own: three lines
-                     fed to a two-input program, or a row index out of
-                     range, are only wrong relative to an arity.
-  --judge            print the answer bit -- 0 or 1 -- instead of the raw
-                     output.  Nine languages do not simply print their
-                     answer: six dump their whole final state with the
-                     answer at a fixed place in it (RAM0's is its `z`
-                     register; A Painter Ant marks the ant's cell `o` or
-                     `@`), and three answer by terminating or not.  Judging
-                     needs `--timeout` for those three, since not
-                     terminating is what the 1 looks like.
+                     the bit *count* to the stdin check, which a shape
+                     check cannot do alone: three lines fed to a two-input
+                     program is only wrong relative to an arity.
+  --judge            print the answer bit instead of the raw output.  Nine
+                     languages do not simply print it -- six dump their
+                     whole final state, three answer by terminating -- and
+                     those three need `--timeout`.
+
+examples:
+  printf '1\n0\n' | esolangs run brainfuck prog.txt
+  printf '1\n0\n' | esolangs run --judge --timeout 5 brainfuck prog.txt
 """,
     "answer": """usage: esolangs answer [--timeout S] <language> <truth-table> <bits>
 
@@ -280,39 +264,26 @@ options:
                         <language> <truth-table>
 
 Generate a program for <truth-table>, run it on every row of its input
-space, and report whether it computes that table.
+space, and report whether it computes that table.  Prints `ok`, or the
+table it computed and which rows disagree.
 
-Prints `ok` and exits 0 on a match.  On a mismatch it prints the table the
-program actually computed beside the one you asked for, and exits 1.
-
-**It checks the generator, not a file of yours.**  The program it runs is
-the one it just generated, so `ok` means "this language's generator builds
-a correct program for this table" -- it cannot tell you anything about a
-program you wrote.  For that, run yours and judge the output:
-`esolangs run --judge <language> <your-file>`.
-
-This is the whole round trip in one command: generate, encode each row's
-bits in whatever shape the language wants, run, and read the answer out of
-whatever the program printed.  Doing it by hand means a shell loop over
-2**n rows -- which is what the Python API's `esolangs.verify` was already
-for, and what a CLI-only user had to write out.
+This checks the generator, not a program you wrote: the program is built
+here from <truth-table>.  To judge a file of your own, use `esolangs
+run --judge`.
 
 A generator may refuse a table as too big for it; that is reported and
 exits 2, since nothing ran.
 
 options:
   --timeout SECONDS  bound each row.  The three languages that answer 1 by
-                     not terminating do *not* pay it on every 1-row: those
-                     rows are settled by a repeated machine state, which
-                     proves the loop in microseconds, so the bound is only
-                     the backstop for a program that diverges by growing.
-                     A sixteen-row 123 table at --timeout 30 takes under a
-                     second, not eight minutes.
-  --width [N]        build the program wrapped to N columns and check *that*,
-                     which is the round trip worth running after a --width:
-                     a wrap that broke a token would compute a different
-                     table, or none.  `esolangs describe <language>` reports
-                     which of three things a width does, as `width_effect`.
+                     not terminating do *not* pay it per 1-row: those rows
+                     are settled by a repeated machine state, which proves
+                     the loop in microseconds, so the bound is only the
+                     backstop for a program that diverges by growing.
+  --width [N]        build the program wrapped to N columns and check
+                     *that*, which is the round trip worth running after a
+                     --width: a wrap that broke a token would compute a
+                     different table, or none.
 
 examples:
   esolangs verify brainfuck 0110
