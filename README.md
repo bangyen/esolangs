@@ -41,6 +41,18 @@ by laying themselves out rather than being reflowed -- `describe(language)
 ["width_effect"]` says which of the three you have, and names the 22 that
 ignore a width because their newlines are part of the program.
 
+Two exported tuples spell vocabularies you would otherwise hand-copy, and
+they are not the same kind of thing despite sitting together in `dir()`.
+`STOP_REASONS` is `("halted", "breakpoint", "max_steps", "timeout")` --
+what `make_debugger(...).run()` returns.  A program that *faults* raises
+out of `run` instead, so it has no reason of its own; `esolangs debug`
+catches that and prints a fifth word, `stopped: raised`, which means this
+tuple is not what that CLI line ranges over.  `TERMINATION_OUTCOMES` is
+`("halts", "diverges")` and has nothing to do with debugging: it is the
+`answer_encoding` of the three languages that answer by *running*, in the
+order `describe(...)` gives them, so index 0 is the answer 0 and
+`encoding.index("diverges")` is the polarity.
+
 **How a language reads its input bits is not universal.**  Most take one
 `0`/`1` line each, but Grapheme reads `%`/`A`, Clockwise wants every bit on
 one line, Fargo wants the row index as a single decimal number (`1111` is
