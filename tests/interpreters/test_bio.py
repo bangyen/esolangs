@@ -15,7 +15,6 @@ from tests.raises import raises_message
 
 
 class TestBIOBasicCommands:
-
     def test_increment_commands(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
             run("0ox;1ix;", io=IO())
@@ -67,7 +66,6 @@ class TestBIOBasicCommands:
 
 
 class TestBIOWhileLoops:
-
     def test_simple_while_loop(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
             run("0ox;0ix{0oy;1ox;};1iy;", io=IO())
@@ -90,7 +88,6 @@ class TestBIOWhileLoops:
 
 
 class TestBIOMathematicalOperations:
-
     def test_addition(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
             run("0ox;0oy;0ix{1ox;0oy;};1iy;", io=IO())
@@ -118,7 +115,6 @@ class TestBIOMathematicalOperations:
 
 
 class TestBIOHelloWorld:
-
     def test_hello_world_program(self) -> None:
         # This is a simplified version of the Hello World program
         # The full program is very long, so we test the pattern for generating 'H'
@@ -150,7 +146,6 @@ class TestBIOHelloWorld:
 
 
 class TestBIOEdgeCases:
-
     def test_empty_program(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
             run("", io=IO())

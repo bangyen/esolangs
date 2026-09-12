@@ -175,8 +175,6 @@ class _State:
         return tuple(tuple(row) if row is not None else None for row in self._rows)
 
 
-
-
 def _tokenize(line: str) -> list[_Token]:
     """Split one statement line into tokens."""
     tokens: list[_Token] = []
@@ -449,8 +447,6 @@ def _parse(
     if stack:
         raise ValueError(f"function {stack[-1][0]!r} is missing its fi")
     return functions, top
-
-
 
 
 def _lookup(

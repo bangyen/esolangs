@@ -35,7 +35,6 @@ _PRECISION_PROGRAMS: dict[str, str] = json.loads(
 
 
 class TestPolynomialHelperFunctions:
-
     def test_prime_function(self) -> None:
         assert prime(2) is True
         assert prime(3) is True
@@ -112,7 +111,6 @@ class TestPolynomialHelperFunctions:
 
 
 class TestPolynomialValidation:
-
     def test_empty_program_validation(self) -> None:
         from esolangs.interpreters.register_based.polynomial import run
 
@@ -131,7 +129,6 @@ class TestPolynomialValidation:
 
 
 class TestPolynomialParsing:
-
     def test_constant_polynomial_parsing(self) -> None:
         result = sanitize("f(x) = 5")
         assert result == [5]
@@ -154,7 +151,6 @@ class TestPolynomialParsing:
 
 
 class TestPolynomialMathematicalProperties:
-
     def test_convert_empty_list(self) -> None:
         """An empty root list converts to an empty instruction list."""
         result = convert([])
@@ -162,7 +158,6 @@ class TestPolynomialMathematicalProperties:
 
 
 class TestPolynomialEdgeCases:
-
     def test_zero_polynomial_parsing(self) -> None:
         result = sanitize("f(x) = 0")
         assert result == [0]
@@ -201,7 +196,6 @@ class TestPolynomialSafety:
 
 
 class TestPolynomialExecution:
-
     def test_output_instruction(self) -> None:
         """A root of 2i encodes an output instruction (reg starts at 0)."""
         buffer = io.StringIO()

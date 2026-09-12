@@ -20,7 +20,6 @@ from tests.raises import raises_message
 
 
 class TestMinskySwapBasicCommands:
-
     def test_increment_command(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
             run("+", io=IO())
@@ -80,7 +79,6 @@ class TestMinskySwapBasicCommands:
 
 
 class TestMinskySwapReadableNotation:
-
     def test_inc_command(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
             run("inc();", io=IO())
@@ -165,7 +163,6 @@ class TestMinskySwapReadableNotation:
 
 
 class TestMinskySwapProgramFlow:
-
     def test_simple_loop(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
             run("+++~\n1", io=IO())
@@ -188,7 +185,6 @@ class TestMinskySwapProgramFlow:
 
 
 class TestMinskySwapEdgeCases:
-
     def test_empty_jump_line(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
             run("+\n", io=IO())
@@ -221,7 +217,6 @@ class TestMinskySwapEdgeCases:
 
 
 class TestMinskySwapExamples:
-
     def test_hello_world_pattern(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
             run("+++*+++", io=IO())

@@ -57,7 +57,6 @@ def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 2) -> Any:
 
 
 class TestQoiblBasicOperations:
-
     def test_print_character(self) -> None:
         code: list[str] = ["tt yeeyeee tt"]  # 'H' in binary
         with redirect_stdout(io.StringIO()) as f:
@@ -105,7 +104,6 @@ class TestQoiblBasicOperations:
 
 
 class TestQoiblBinaryNumbers:
-
     def test_binary_zero(self) -> None:
         code: list[str] = ["tt e tt"]
         with redirect_stdout(io.StringIO()) as f:
@@ -142,7 +140,6 @@ class TestQoiblBinaryNumbers:
 
 
 class TestQoiblConditionals:
-
     def test_equality_condition(self) -> None:
         code: list[str] = [
             "we y we yy we",  # var[1] = 3
@@ -202,7 +199,6 @@ class TestQoiblConditionals:
 
 
 class TestQoiblMathOperations:
-
     def test_addition(self) -> None:
         code: list[str] = [
             "we y we yy we",  # var[1] = 3
@@ -245,7 +241,6 @@ class TestQoiblMathOperations:
 
 
 class TestQoiblExamples:
-
     def test_one_digit_adder(self) -> None:
         code: list[str] = [
             "we e we yyeeee we",  # var[0] = 2
@@ -280,7 +275,6 @@ class TestQoiblExamples:
 
 
 class TestQoiblEdgeCases:
-
     def test_empty_program(self) -> None:
         code: list[str] = []
         with redirect_stdout(io.StringIO()) as f:
