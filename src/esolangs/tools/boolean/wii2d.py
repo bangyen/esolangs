@@ -77,7 +77,7 @@ __all__ = ["wii2d"]
 # That this suffices is not an assumption: it is exhaustive over every 0/1
 # pattern through ``D == 16``, the widest domain the general path asks for,
 # verified by applying the emitted op string back over the domain.  See
-# ``docs/wii2d_generator.md``.
+# ``docs/generators/wii2d_generator.md``.
 
 # The widest fold centre worth emitting.  A centre costs ``abs(c)`` cells --
 # ``'-' * c`` is spelled out in the grid -- so this is a bound on program
@@ -156,7 +156,8 @@ _WII2D_SHIFT_SAMPLES = 40
 #
 # What the constant buys is bounded *width*, which still grows as the domain
 # doubles.  Symmetric tables never reach this check: they decode over ``n``
-# points via the popcount chain.  ``docs/wii2d_generator.md`` has the measured
+# points via the popcount chain.  ``docs/generators/wii2d_generator.md`` has the
+# measured
 # width and time tables this value was chosen against.
 #
 # 256 admits dense ``n == 9`` *usually*: the deterministic witness table
@@ -165,7 +166,7 @@ _WII2D_SHIFT_SAMPLES = 40
 # *returns* -- an aborted ratchet or a fold dead-end -- so a refusal is
 # prompt rather than a hang, which is what made this raise from 128 safe;
 # :data:`_WII2D_MAX_MAGNITUDE` makes that promptness a guarantee instead of
-# a sample.  ``docs/wii2d_generator.md`` carries the resampled build and
+# a sample.  ``docs/generators/wii2d_generator.md`` carries the resampled build and
 # refusal curves.
 #
 # Dense ``n == 10`` (domain 512) stays refused, and *not* because the number
@@ -175,7 +176,7 @@ _WII2D_SHIFT_SAMPLES = 40
 # step, 9 -> 1089888 bits, the 19th step alone 144s.  Full enumeration is no
 # better -- 512 -> 373 over 19 steps past 670000 bits.  So the next doubling
 # is a wall of the fold algebra under the exactly-once embed convention, not
-# a budget choice -- see ``docs/wii2d_generator.md``.
+# a budget choice -- see ``docs/generators/wii2d_generator.md``.
 _WII2D_MAX_INDEX_DOMAIN = 256
 
 # The widest *real* chain domain any table may decode over, whatever the
@@ -191,7 +192,7 @@ _WII2D_MAX_INDEX_DOMAIN = 256
 # Measured, that overshoot is rare but unbounded, so this is the same policy
 # as :data:`_WII2D_MAX_CENTRE` one level up: correct, but too wide to be worth
 # emitting.  256 sits above every overshoot measured to decode and below the
-# one that does not.  ``docs/wii2d_generator.md`` has both figures and why
+# one that does not.  ``docs/generators/wii2d_generator.md`` has both figures and why
 # refusing the latter is not a regression.
 _WII2D_MAX_REAL_DOMAIN = 256
 
@@ -293,7 +294,7 @@ def _wii2d_compress(
     what makes compression the engine's *merging* half -- the fold only
     reshapes the values so that same-bit values can land in one block --
     and it is what carries dense domains past the squaring blow-up that a
-    greedy one-level halving walks into (see ``docs/wii2d_generator.md``).
+    greedy one-level halving walks into (see ``docs/generators/wii2d_generator.md``).
     Each applied run strictly shrinks the span, so this terminates.
     """
     while True:

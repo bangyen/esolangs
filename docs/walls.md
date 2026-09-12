@@ -50,7 +50,7 @@ claim is accepted.
   invariant in `tests/tools/test_boolean_parameterized.py` forbids and why
   Dotlang and 2dFish were removed rather than exempted.  So this is a
   *deliberate* wall, and the thing to re-examine if it ever matters is the
-  convention, not the fold algebra.  `docs/wii2d_generator.md` has the
+  convention, not the fold algebra.  `docs/generators/wii2d_generator.md` has the
   audit.
 - **Termination convention:** use only where a specification supplies a
   reliable halt/loop verdict and the runtime can decide it soundly.

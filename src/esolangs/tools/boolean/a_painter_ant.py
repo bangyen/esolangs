@@ -45,7 +45,7 @@ __all__ = ["a_painter_ant"]
 # The head is built generically: for one and two inputs the leaves sit on
 # the axes (the final input on ``x = +-2``, the first on ``y = +-2`` or
 # ``0``) and the cycle-2 ant dances on the pre-painted stars (see
-# ``docs/a_painter_ant_generator.md`` for the ring rule).  For three inputs
+# ``docs/generators/a_painter_ant_generator.md`` for the ring rule).  For three inputs
 # the leaves sit on one row ``y = -2`` at ``x = +-2 +-4 +-8``, four cells
 # apart so adjacent stars share their axis cells and symmetric across the
 # y-axis.  The row generalises: this one ``_head`` serves every arity, not

@@ -328,7 +328,7 @@ at n=11, above the ceiling.
   (512 -> 373, past 670000 bits). A per-node re-embed tree — which the
   convention forbids
   — does dense n=10 in 14432 characters and n=13 in 146540, every row
-  executed. `docs/wii2d_generator.md` has the audit. Structured n=10 is
+  executed. `docs/generators/wii2d_generator.md` has the audit. Structured n=10 is
   unaffected: parity, majority, AND, OR, an xor-of-a-subset and a
   threshold all build and execute all 1024 rows; the 3-to-8 mux builds in
   only 3 of its 1680 spellings (0.18%), all with the selects read last.

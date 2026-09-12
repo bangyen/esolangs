@@ -1382,7 +1382,7 @@ class TestParameterizedArrowQueue:
         the down-entry would silently turn every constant-``1`` table into
         a halt -- reporting ``0`` for every entry.
 
-        See ``docs/arrowqueue_generator.md`` (lemmas L2/L2'/L4).
+        See ``docs/generators/arrowqueue_generator.md`` (lemmas L2/L2'/L4).
         """
         from esolangs.interpreters.grid_based.arrowqueue import _Machine
         from esolangs.tools.boolean.parameterized import _TREE_1

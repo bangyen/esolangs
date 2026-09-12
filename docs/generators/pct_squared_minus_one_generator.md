@@ -10,5 +10,5 @@ refusal is the ladder workspace limit, not a language wall.
 
 The remaining research path is to interleave embedding and folding so rows do
 not all need to be separated at once. A verified ten-input route exists, but
-it is an experiment rather than a total planner. See [the roadmap](roadmap.md)
-and [walls](walls.md) for the live boundary.
+it is an experiment rather than a total planner. See [the roadmap](../roadmap.md)
+and [walls](../walls.md) for the live boundary.
