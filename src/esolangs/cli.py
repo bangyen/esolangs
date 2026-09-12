@@ -105,9 +105,9 @@ commands:
                               run under the debugger and report where it
                               stopped, plus any watched cell's history;
                               --tui steps interactively instead, showing the
-                              program with the current op highlighted, where
-                              "hjkl" move a selector, "t" marks a breakpoint
-                              under it and "c" continues to the next one
+                              program with the current op highlighted; its
+                              own footer lists the keys, and `esolangs debug
+                              --help` names them
 
 Language names are case-insensitive.  `esolangs <command> --help` describes
 one command in full; `--version` prints the version.
@@ -421,9 +421,11 @@ options:
   --table T            check the stdin against the shape and alphabet T's
                        arity implies, before running.
   --tui                step through the program in an interactive
-                       full-screen view: hjkl moves the selector, t sets a
-                       breakpoint under it, c continues.  Needs a terminal
-                       to read keys from.
+                       full-screen view.  hjkl move the selector, t marks
+                       a breakpoint under it, space steps, b steps back, c
+                       continues to the next breakpoint or the halt, r runs
+                       to the end, q leaves.  Needs a terminal to read keys
+                       from.
 
 Every flag above is also listed by `esolangs --help`.  This text used to
 name four of the nine, which made the summary more informative than the
