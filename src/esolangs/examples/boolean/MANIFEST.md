@@ -24,7 +24,6 @@ that row is actually spelled for the language.
 | `alight.txt` | Alight | `0001` | `01` | 0 1 | '0' |
 | `arrowqueue.txt` | ArrowQueue | `0001` | `01` | embedded 01 | '1 0 1 2 3' |
 | `back.txt` | Back | `0001` | `01` | embedded 01 | '1 0 0' |
-| `basicfuck.txt` | Basicfuck | `0001` | `01` | 0 1 | '0' |
 | `between.txt` | Between | `0001` | `01` | 0 1 | '0' |
 | `bf-pda.txt` | BF-PDA | `0001` | `01` | embedded 01 | '0' |
 | `bfstack.txt` | BFStack | `0001` | `01` | 0 1 | '0' |
@@ -43,7 +42,6 @@ that row is actually spelled for the language.
 | `decleq.txt` | Decleq | `0001` | `01` | 0 1 | '0' |
 | `dig.txt` | Dig | `0001` | `01` | 0 1 | '0' |
 | `dimensional.txt` | Dimensional | `0001` | `01` | 0 1 | '0' |
-| `dinac.txt` | DINAC | `0001` | `01` | 0 1 | '0' |
 | `eval.txt` | Eval | `0001` | `01` | embedded 01 | '0' |
 | `factor.txt` | Factor | `0001` | `01` | 0 1 | '0' |
 | `fargo.txt` | Fargo | `0001` | `01` | 1 | '0' |
@@ -61,8 +59,6 @@ that row is actually spelled for the language.
 | `minifuck.txt` | Minifuck | `0001` | `01` | embedded 01 | '0' |
 | `minsky-swap.txt` | Minsky Swap | `0001` | `01` | embedded 01 | '0 0' |
 | `modulous.txt` | Modulous | `0001` | `01` | 0 1 | '0' |
-| `myscript.txt` | MyScript | `0001` | `01` | 0 1 | '0' |
-| `nevermind.txt` | Nevermind | `0001` | `01` | 0 1 | '0' |
 | `nocomment.txt` | NoComment | `0001` | `01` | embedded 01 | '0' |
 | `packlang.txt` | Packlang | `0001` | `01` | 0 1 | '0' |
 | `painfuck.txt` | Painfuck | `0001` | `01` | 0 1 | '0' |

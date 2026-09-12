@@ -49,12 +49,11 @@ _IO_OWNER = "run"
 # ``run``/``_Machine`` shells.  Each is a documented decision rather than a
 # lapse, and the reason differs:
 #
-# * ``forbin._call`` and MyScript's ``_parse_expr``/``_apply_builtin`` are
-#   documented, nonconforming recursive evaluators.  The template does not
-#   exempt them: a read or write happens part-way down a recursive descent,
-#   so making either pure would require an explicit continuation stack and
-#   ordered I/O effects.  The exceptions stay narrow and visible here until
-#   that architecture earns its risk.
+# * ``forbin._call`` is a documented, nonconforming recursive evaluator.
+#   The template does not exempt it: a read or write happens part-way down
+#   a recursive descent, so making it pure would require an explicit
+#   continuation stack and ordered I/O effects.  The exception stays narrow
+#   and visible here until that architecture earns its risk.
 # * ``_BitReader.read`` and Suptiftam's ``_State._read_cell`` are the same
 #   recursive-evaluation boundary under their owning helper types.
 #
@@ -65,8 +64,6 @@ _MAY_REACH_IO = frozenset(
         ("other/forbin.py", "_BitReader.read"),
         ("other/forbin.py", "_call"),
         ("other/suptiftam.py", "_State._read_cell"),
-        ("register_based/myscript.py", "_schedule_expr"),
-        ("register_based/myscript.py", "_apply_builtin"),
     }
 )
 
@@ -76,8 +73,8 @@ def _io_surface() -> frozenset[str]:
 
     Derived rather than listed.  A hand-written list is a second thing to
     keep in step with ``io.py``, and the first draft of this sweep proved
-    the cost: it omitted ``print_value``, so MyScript's ``_apply_builtin``
-    -- which prints through exactly that -- looked pure.  A detector with a
+    the cost: it omitted ``print_value``, so an evaluator that prints
+    through exactly that looked pure.  A detector with a
     hole in it reports a clean tree because it is not looking, which is the
     failure this whole file exists to prevent.
     """

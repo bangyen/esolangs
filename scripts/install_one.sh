@@ -9,7 +9,7 @@
 #
 #   python esolangs_brainfuck.py program.txt
 #
-# The language name matches `esolangs list` (e.g. "brainfuck", "Nevermind",
+# The language name matches `esolangs list` (e.g. "brainfuck", "Modulous",
 # "Forþ").  Override the repository base with $ESOLANGS_BASE to install from
 # a fork or a tag.
 set -eu
