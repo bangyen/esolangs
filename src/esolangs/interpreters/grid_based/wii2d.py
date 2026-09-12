@@ -7,6 +7,13 @@ The wiki requires exactly one ``!`` start marker; this interpreter rejects
 programs that violate that constraint instead of silently tolerating them.
 
 Malformed programs raise :class:`ValueError`.
+
+``~`` prints the accumulator as a character and the accumulator has no
+bound, so a value outside 0..0x10FFFF has no character to print and raises
+:class:`~esolangs.exceptions.HaltError`.  It used to reach ``chr`` and come
+back as ``ValueError: chr() arg not in range(0x110000)``, naming neither
+the language nor the accumulator; a value inside the surrogate range is
+printable here and is what the CLI has to write as bytes.
 """
 
 import copy
@@ -14,6 +21,7 @@ import sys
 from collections.abc import Callable, Sequence
 from typing import cast
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
 
@@ -253,6 +261,16 @@ class _Machine:
         op = self.code[self.row][self.col]
 
         if op == "~":
+            # ``chr`` raises ``ValueError: chr() arg not in range(0x110000)``,
+            # which names neither the language nor the accumulator that got
+            # there -- and is the message a reader saw for a program of
+            # eleven characters.
+            if not 0 <= self.acc <= 0x10FFFF:
+                raise HaltError(
+                    f"'~' at row {self.row}, column {self.col} prints the "
+                    f"accumulator as a character and it holds {self.acc}, "
+                    f"outside 0..0x10FFFF"
+                )
             self.io.print_char(chr(self.acc))
         turn = draw(self._rng, 4) if op == "?" else None
 

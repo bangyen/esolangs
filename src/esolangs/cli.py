@@ -215,7 +215,16 @@ options:
                      languages answer a 1 by *not* terminating -- 123,
                      ArrowQueue and Point Break halt for a 0 and loop
                      forever for a 1, so a timeout there is the answer.
-                     A timeout exits 124, distinct from a program error's 1.
+                     A timeout exits 124, distinct from every other
+                     failure.  The full set: 0 ran, 1 the program broke
+                     while running (it read past the end of its input, or
+                     halted on an operation with no defined result), 2 the
+                     ask was wrong (an unknown language, a malformed
+                     program, a file that will not read), 124 the bound ran
+                     out, 130 interrupted.  This line used to say a program
+                     error exits 1, which is the code for the *runtime*
+                     half only -- a malformed program is 2, and that is the
+                     commoner of the two.
   --table TABLE      the truth table the program was generated from.  Adds
                      the bit *count* to the stdin check, which is the one
                      thing a shape check cannot do on its own: three lines
@@ -1529,6 +1538,36 @@ def _judge(language: str, output: str, mode: object) -> str:
         raise  # pragma: no cover - unreachable; _fail exits
 
 
+def _write_output(text: str) -> None:
+    """Write program output to stdout, whatever bytes it turned out to be.
+
+    A program's output is whatever the program produced, and not all of it
+    is encodable text.  WII2D's ``~`` prints the accumulator as a character
+    with no bound, so a program can legitimately produce a lone surrogate
+    -- and ``sys.stdout.write`` on one of those raises
+    ``UnicodeEncodeError`` from inside the CLI, which reached the user as a
+    nineteen-line traceback.  That is the one thing this CLI is built not
+    to do.
+
+    Written through the byte stream with ``surrogatepass`` when the text
+    stream refuses, which keeps the promise ``run --help`` makes -- output
+    goes out verbatim, so it can be compared or piped byte for byte -- for
+    output that has no valid UTF-8 spelling.  A stream with no ``buffer``
+    (a captured one, mainly) falls back to an escaped form, which is not
+    byte-exact and is better than an exception.
+    """
+    try:
+        sys.stdout.write(text)
+    except UnicodeEncodeError:
+        stream = getattr(sys.stdout, "buffer", None)
+        if stream is None:
+            sys.stdout.write(text.encode("utf-8", "backslashreplace").decode("utf-8"))
+            return
+        sys.stdout.flush()
+        stream.write(text.encode(sys.stdout.encoding or "utf-8", "surrogatepass"))
+        stream.flush()
+
+
 def _emit_partial(exc: EsolangError) -> None:
     """Write whatever the program printed before ``exc`` to stdout.
 
@@ -1543,7 +1582,7 @@ def _emit_partial(exc: EsolangError) -> None:
     """
     if not exc.partial_output:
         return
-    sys.stdout.write(exc.partial_output)
+    _write_output(exc.partial_output)
     if not exc.partial_output.endswith("\n"):
         sys.stdout.write("\n")
     sys.stdout.flush()
@@ -1705,7 +1744,7 @@ def _run(rest: list[str]) -> None:
     if judge:
         print(_judge(language, output, mode))
         return
-    sys.stdout.write(output)
+    _write_output(output)
     # Piped output stays byte-exact -- it gets compared and diffed -- but a
     # result with no trailing newline runs into the next shell prompt.
     if output and not output.endswith("\n") and sys.stdout.isatty():
