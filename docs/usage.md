@@ -15,7 +15,7 @@ you asked for.
 import esolangs
 
 esolangs.evaluate("A Painter Ant", "0110")  # -> '0110'
-esolangs.verify("Fargo", "10010110")        # -> True
+esolangs.verify("Fargo", "10010110")  # -> True
 ```
 
 Both work for all 69 — the four odd input shapes, the seventeen template

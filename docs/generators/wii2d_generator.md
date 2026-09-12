@@ -3,6 +3,8 @@
 The implementation in `src/esolangs/tools/boolean/wii2d.py` is authoritative.
 These limits are source-size and runtime policies, not language walls.
 
+## Guards
+
 - `_WII2D_SHORTLIST = 8` compresses the eight lowest-magnitude candidate
   folds. It is the measured quality/time balance; do not assume an
   uncompressed magnitude predicts a compressed result. It is tied to the
@@ -31,6 +33,8 @@ These limits are source-size and runtime policies, not language walls.
   rather than the candidates, so it cannot change which candidate a
   succeeding table takes.
 
+## Selection and compression
+
 The single-candidate rule is exhaustive through domain 16. Ranking by emitted
 width or live-count was measured worse; retain magnitude-first selection.
 Live-count-first was re-tested against the steered compression, where bulk
@@ -46,7 +50,9 @@ takes the `(k, S)` merging the most values. This makes compression the
 merging half and the fold merely reshaping, which is what carries width:
 dense domain 256 decodes 18 of 20 sampled patterns against 3 of 10 before.
 
-Domain 256 (dense n=9) is reachable but **not total** — about 1 pattern in
+## Domain 256: reachable, not total
+
+Domain 256 (dense n=9) is reachable but **not total** -- about 1 pattern in
 10 ratchets into the doubling trap or dead-ends. Those failures return only
 because `_WII2D_MAX_MAGNITUDE` aborts them; a ratchet left unbounded does
 not stop. So the guard sits at 256 and a bad table costs a prompt
@@ -66,11 +72,13 @@ every emitted program is byte-identical, at `O(P**2)`: dense n=9 goes
 shapes 7.4s -> 1.4s. Compression is now the expensive half at 0.87s of
 the 1.1s.
 
+## Domain 512: the embed-convention wall
+
 Domain 512 (dense n=10) is a wall of the **exactly-once embed convention**,
 not of the machine and not a guard choice. Raising
 `_WII2D_MAX_INDEX_DOMAIN` to 512 does not build the sweep's dense n=10
 witness: both branch decodes refuse in 0.22s. Lifting
-`_WII2D_MAX_MAGNITUDE` on top shows why — the decode ratchets, live count
+`_WII2D_MAX_MAGNITUDE` on top shows why -- the decode ratchets, live count
 crawling 512 -> 475 over 19 steps while the bit length doubles every step
 (9 -> 1089888 bits, the 19th step alone 144s), so reaching two live values
 would take ~250 more steps at a magnitude no threshold could spell.
@@ -78,14 +86,16 @@ Drop the convention and it goes:
 a per-node re-embed (a grid decision tree, one row per level, leaves as
 literal digits so the accumulator decodes nothing) builds dense n=10 in
 14432 characters and dense n=13 in 146540, every row executed. It embeds
-input `i` `2**i` times — 512 copies of `{X9}` at n=10 — which
+input `i` `2**i` times -- 512 copies of `{X9}` at n=10 -- which
 `tests/tools/test_boolean_parameterized.py` forbids and for which Dotlang
 and 2dFish were removed rather than exempted.
+
+## The closure audit
 
 Under the convention the construction *is* closed, and the audit below is
 what closes it. The load-bearing step is that `^v<>` fills set the heading
 absolutely, so every prefix leaves a junction at an identical position and
-heading with only the accumulator differing — position cannot serve as a
+heading with only the accumulator differing -- position cannot serve as a
 second register, and a revisited junction cell always loops rather than
 terminating.
 
@@ -103,7 +113,7 @@ terminating.
   junction cell can be revisited (a single `{X0}` can execute 6+ times)
   but only in a loop. So any single-embed construction is ops interleaved
   with the n branch pairs, and its merging power is exactly the fold
-  algebra's. This is *not* a claim about the machine — see the tree above.
+  algebra's. This is *not* a claim about the machine -- see the tree above.
 - **No op removes high bits** (`/` discards low bits, digits discard
   everything), so a table constant shifted by the accumulated index can
   never be read out: the answer digit always sits under unbounded
@@ -116,7 +126,7 @@ terminating.
   reproduced on four seeds).
 
   Two corrections to an earlier version of this entry. Its positive
-  control (`v >> 7`, `v >> 4`) was **vacuous** — those labels collapse in
+  control (`v >> 7`, `v >> 4`) was **vacuous** -- those labels collapse in
   the *initial compression* with zero legal folds, so they never exercised
   `_wii2d_folds`, the machinery whose stall was the evidence. Controls
   that do use folds (uneven-block 3- and 4-class labels) collapse in 1-11
@@ -127,19 +137,23 @@ terminating.
   about `k**-(D/2)`. 16 classes have no legal fold at D=64 either. It says
   nothing about mid-chain collapse and should not be cited for it.
 
-What would change the verdict: an accumulator-conditional op or a second
+## What would change the verdict
+
+ an accumulator-conditional op or a second
 register in the language (there is none), or paying for a non-greedy fold
 *schedule* search over states whose steps already cost minutes at the
 ratcheted magnitudes.
 
+## Structured tables, and the mux edge case
+
 Structured n=10 is unaffected and builds through the popcount and
-merging-chain paths — parity, majority, AND, OR, a 3-input xor-subset and
+merging-chain paths -- parity, majority, AND, OR, a 3-input xor-subset and
 a threshold all build and execute all 1024 rows correctly.
 
 The 3-to-8 mux is the honest edge case, and "a mux builds" overstates it:
 of the 1680 n=10 spellings (choice of 3 select bits x which data line
 repeats x MSB/LSB indexing) only **3 build, 0.18%**, all with the selects
-at positions 6-8/6-9 — that is, read *last*, so the chain merges the data
+at positions 6-8/6-9 -- that is, read *last*, so the chain merges the data
 inputs away before the selects arrive. The other 1677 leave a real domain
 of 512 against the 256 guard. The 3 that build do execute all 1024 rows
 correctly. Whether a table builds depends on input *order*, not only on

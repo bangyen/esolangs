@@ -45,8 +45,8 @@ every ``t`` run one emits follows a ``p`` or an ``s``.
 A repeated ``y`` is the same kind of gap.  Each repeat is its own flip, so a
 run of ``rep`` drops ``heads`` applications of the bound command and ``cyp``
 spans ``{0, 2, ..., 14}``, weighted by ``Binomial(7, 1/2)``.  All the
-candidate readings agree at ``rep`` 1, the only case the wiki describes;
-``docs/painfuck.md`` argues the choice and records the two rejected.
+candidate readings agree at ``rep`` 1, the only case the wiki describes.  A
+run of ``c`` or ``t`` is by contrast one counted operator, not a repeat.
 
 Documented divergences from the cross-check:
 
