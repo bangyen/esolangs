@@ -153,3 +153,48 @@ def test_the_documents_really_do_contain_commands() -> None:
     # And at least one example states the output it produces, or the
     # arrow-checking half of the test above is dead code.
     assert [c for c in parsed if c[1] is not None]
+
+
+#: A ``\`\`test_name\`\`\`` citation in the source.
+_CITATION = re.compile(r"``(test_[a-z_0-9]+)``")
+
+#: A test definition.
+_DEFINITION = re.compile(r"^\s*def (test_[a-z_0-9]+)", re.M)
+
+_ROOT = pathlib.Path(__file__).parents[1]
+
+
+def test_every_test_a_docstring_names_still_exists() -> None:
+    """A citation to a renamed or deleted test is worse than none.
+
+    Twenty docstrings in ``src/`` back a claim by naming the test that
+    proves it -- that a constant is derived rather than frozen, that a
+    selection rule is pinned, that two structures cannot drift apart.  A
+    reader who goes looking and finds nothing cannot tell whether the test
+    moved or the claim stopped being true, and the *writer* gets no signal
+    at all: renaming a test is a one-file change and the prose citing it
+    lives somewhere else entirely.
+
+    Three had already gone stale when this was written.  One was a rename
+    the citation had not followed (``test_separation_law_is_least_mean``,
+    backing the claim that Streetcode's separation laws are re-derived
+    rather than frozen -- the most load-bearing of the three).  One named a
+    test that is simply gone.  The third described a *deleted* test in the
+    past tense, correctly, but spelled its name the same way a live
+    citation is spelled, so it read like the other two.
+    """
+    cited: dict[str, list[str]] = {}
+    for path in sorted((_ROOT / "src").rglob("*.py")):
+        for name in _CITATION.findall(path.read_text()):
+            cited.setdefault(name, []).append(str(path.relative_to(_ROOT)))
+    defined = {
+        name
+        for path in (_ROOT / "tests").rglob("*.py")
+        for name in _DEFINITION.findall(path.read_text())
+    }
+    missing = {name: where for name, where in cited.items() if name not in defined}
+    assert not missing, "docstrings name tests that do not exist: " + "; ".join(
+        f"{name} (in {', '.join(where)})" for name, where in sorted(missing.items())
+    )
+    # A regex that stopped matching would make the check above vacuous.
+    assert len(cited) >= 15, f"only {len(cited)} citations found"

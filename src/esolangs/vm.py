@@ -1129,9 +1129,9 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
 # so every one gets a derived adapter and an unregistered name is the only
 # thing that raises UnknownLanguageError.  The set is read off ``RUNNERS``
 # rather than listed again here: a second copy of every name is a
-# second thing to keep in step, and
-# ``test_every_registry_language_has_a_vm_adapter`` existed only to catch
-# the two drifting apart.  Building an adapter imports nothing -- the
+# second thing to keep in step, and the test that used to guard the pair
+# existed only to catch the two drifting apart, so deriving the dict
+# retired it.  Building an adapter imports nothing -- the
 # interpreter is imported inside the adapter's ``__init__`` -- so this
 # stays as lazy as the hand-written table was.
 _VM_ADAPTERS: dict[str, type[_DelegatingVM]] = {

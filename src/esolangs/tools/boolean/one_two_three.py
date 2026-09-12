@@ -139,7 +139,7 @@ type _Law = tuple[int, tuple[int, ...]]
 #: These are *derived* constants, not a frozen search log: over constant
 #: seeds and alternating displacement vectors, each is the law with the
 #: least mean template length, which is one selection rule applied
-#: identically at every arity.  ``test_separation_law_is_least_mean``
+#: identically at every arity.  ``test_the_separation_law_is_the_least_mean``
 #: re-derives all three by that sweep rather than trusting them.  At
 #: ``n == 3`` the domain is genuinely tight -- 13 laws cover all 256
 #: tables and the winner leads the runner-up by 18% -- which is why one
