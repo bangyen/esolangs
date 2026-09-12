@@ -23,177 +23,177 @@ from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 __all__ = ["wii2d"]
 
 
-# --- WII2D (no-input grid.
-# .
-# WII2D's only I/O is the ``~``.
-# boolean generator follows the.
-# ``{Xi}`` placeholders are.
-# program per input combination.
-# 0, the pointer continues.
-# .
-# A full decision tree would.
-# level (2**n - 1 junctions),.
-# once, but WII2D has no memory.
-# way the tape/register.
-# do.
-# junctions form a *merging.
-# accumulator and the branches.
-# input is embedded exactly.
+# --- WII2D (no-input grid language; parameterized convention) ---
+#
+# WII2D's only I/O is the ``~`` output; it has no input command, so the
+# boolean generator follows the parameterized convention: the template's
+# ``{Xi}`` placeholders are junction cells, and the harness instantiates one
+# program per input combination by filling each placeholder with ``>`` (bit
+# 0, the pointer continues east) or ``v`` (bit 1, the pointer turns south).
+#
+# A full decision tree would need each input re-embedded at every node of its
+# level (2**n - 1 junctions), since the pointer visits each junction at most
+# once, but WII2D has no memory to store each input once and re-read it the
+# way the tape/register parameterized generators (``bio``/``back``/``ram0``)
+# do.  Instead :func:`wii2d` exploits the accumulator arithmetic: the
+# junctions form a *merging chain* (each branch's op cells transform the
+# accumulator and the branches re-merge before the next junction), so each
+# input is embedded exactly once and the final accumulator decodes to the
 # table entry.
-# .
-# Nothing here searches.
-# -- ``^v<>`` are static cells.
-# strings are shared by every.
-# construction down to one.
-# a single number, and a final.
-# table entry.
+#
+# Nothing here searches.  WII2D has no accumulator-conditional control flow
+# -- ``^v<>`` are static cells the harness fills -- so a junction's two op
+# strings are shared by every prefix that reaches it.  That pins the
+# construction down to one shape: the chain can only accumulate the bits into
+# a single number, and a final op string has to turn that number into the
+# table entry.  :func:`_wii2d_routes` does exactly that, in two constructed
 # halves.
-# .
-# The chain accumulates the.
-# index.
-# accumulator value, and.
-# them: merging keeps the.
-# decode a narrower domain than.
-# ``('*', '*+')`` is the last.
-# the walk total -- see.
+#
+# The chain accumulates the table's *decision diagram node*, not simply an
+# index.  Two prefixes that leave the same residual function may share an
+# accumulator value, and :data:`_WII2D_JUNCTIONS` prefers the pairs that make
+# them: merging keeps the surviving value set small, which hands the final
+# decode a narrower domain than the ``2 ** (n - 1)`` index would.  Horner's
+# ``('*', '*+')`` is the last entry and merges nothing, which is what makes
+# the walk total -- see :data:`_WII2D_JUNCTIONS` for why it is always legal.
 
-# The op alphabet the.
-# ``+ - * / s`` are arithmetic.
-# and a space is a no-op.
-# the decode below is built out.
+# The op alphabet the construction draws on: digits set the accumulator,
+# ``+ - * / s`` are arithmetic (increment, decrement, double, halve, square),
+# and a space is a no-op.  Only ``s`` is not order-preserving, which is why
+# the decode below is built out of folds around it.
 
-# The fold rule is.
-# the single best candidate.
-# ranking (smallest magnitude,.
-# string).
-# candidate is taken at each.
+# The fold rule is deterministic: at every step :func:`_wii2d_decode` takes
+# the single best candidate :func:`_wii2d_folds` offers, under a fixed
+# ranking (smallest magnitude, then fewest live values, then shortest op
+# string).  There is no beam, no width ladder, and no retry pass -- one
+# candidate is taken at each step and the decode is whatever that chain of
 # choices produces.
-# .
-# The fold only *reshapes*;.
-# steering an add-then-halve.
-# what carries the wide.
-# sampled patterns where the.
-# .
-# That this suffices is not an.
-# pattern through ``D == 16``,.
-# verified by applying the.
-# ``docs/generators/wii2d_genera.
+#
+# The fold only *reshapes*; :func:`_wii2d_compress` is what merges, by
+# steering an add-then-halve run's shift onto collisions.  That split is
+# what carries the wide domains: dense ``D == 256`` decodes 18 of 20
+# sampled patterns where the one-level halving it replaced managed 3 of 10.
+#
+# That this suffices is not an assumption: it is exhaustive over every 0/1
+# pattern through ``D == 16``, the widest domain the general path asks for,
+# verified by applying the emitted op string back over the domain.  See
+# ``docs/generators/wii2d_generator.md``.
 
-# The widest fold centre worth.
-# ``'-' * c`` is spelled out in.
-# width, not on the arithmetic:.
-# utterly useless, since the.
-# .
-# Compression normally keeps.
-# come out of it), and this.
-# has drifted somewhere it.
-# nothing: the ranking promotes.
-# ``D == 16`` still decodes.
-# :func:`_wii2d_folds`) means.
+# The widest fold centre worth emitting.  A centre costs ``abs(c)`` cells --
+# ``'-' * c`` is spelled out in the grid -- so this is a bound on program
+# width, not on the arithmetic: a fold at 10**6 is perfectly correct and
+# utterly useless, since the row it lands on is a million columns long.
+#
+# Compression normally keeps the centres tiny (the medians below 100 columns
+# come out of it), and this only rejects the outliers where a fold sequence
+# has drifted somewhere it cannot come back from.  Rejecting them costs
+# nothing: the ranking promotes the next candidate, and every pattern through
+# ``D == 16`` still decodes.  Ranking by magnitude first (see
+# :func:`_wii2d_folds`) means the rejected outliers are the ones the rule was
 # already avoiding.
 _WII2D_MAX_CENTRE = 4096
 
-# The largest live-value.
-# as diverging.
-# every table that builds, the.
-# live values small -- max 1922.
-# eight sampled domain-256.
-# roughly doubling its bit.
-# climbed 14 -> 670597 bits.
-# past this bound never comes.
+# The largest live-value magnitude a decode may reach before it is aborted
+# as diverging.  This is a divergence certificate, not a step budget: on
+# every table that builds, the fold's spread-then-recoup cycle holds the
+# live values small -- max 1922 over the 532-table corpus, max 13499 over
+# eight sampled domain-256 patterns -- while a failing decode *ratchets*,
+# roughly doubling its bit length every step (a sampled domain-512 run
+# climbed 14 -> 670597 bits with every candidate enumerated), so a state
+# past this bound never comes back.  2**20 sits 78x above the largest
 # success.
-# .
-# **This bound is.
-# centre cap would reach.
-# patterns do not stop at all.
-# 0.45-1.59s ran 136s, 183s and.
-# 299526, 1173459 and 644663.
-# 256 guard would ship hangs,.
-# than a property of the sample.
-# candidates, so it cannot.
-# and it is deterministic where.
+#
+# **This bound is load-bearing.**  It does not merely anticipate a stop the
+# centre cap would reach anyway: with it lifted, ratcheting domain-256
+# patterns do not stop at all.  Three sampled tables that abort here in
+# 0.45-1.59s ran 136s, 183s and 214s unbounded, reaching bit lengths of
+# 299526, 1173459 and 644663 and still climbing.  Without this check the
+# 256 guard would ship hangs, so it is what makes a refusal prompt rather
+# than a property of the sample.  The check is on the state, not the
+# candidates, so it cannot change which candidate a succeeding table takes;
+# and it is deterministic where a wall-clock budget would make the program
 # depend on the machine.
 _WII2D_MAX_MAGNITUDE = 1 << 20
 
-# How many candidate folds are.
-# .
-# Compression is the expensive.
-# over every close pair -- and.
-# compressing every candidate.
-# .
-# The screen cannot be a.
-# uncompressed magnitude says.
-# early exit justified that way.
-# approximation: the shortlist.
+# How many candidate folds are compressed before the true ranking is applied.
+#
+# Compression is the expensive half of a candidate -- a per-depth arc scan
+# over every close pair -- and the decode takes only the head, so
+# compressing every candidate is work thrown away.
+#
+# The screen cannot be a *bound*.  Compression is a contraction, so the
+# uncompressed magnitude says almost nothing about the compressed one, and no
+# early exit justified that way preserves the answer.  This is an admitted
+# approximation: the shortlist is ranked on the uncompressed state, and only
 # its members get the real key.
-# .
-# Eight, raised from four when.
-# are measured together: the.
-# 286669 characters over the.
-# 285903 the one-level walk.
-# turns it into a win at 261019.
-# compressed magnitude much.
-# the screen has to keep more.
+#
+# Eight, raised from four when the steered compression landed.  The two
+# are measured together: the compression rewrite at shortlist 4 emits
+# 286669 characters over the 532-table corpus, marginally *worse* than the
+# 285903 the one-level walk emitted, and only widening the shortlist to 8
+# turns it into a win at 261019 (-8.7%).  Steering makes a candidate's
+# compressed magnitude much less predictable from its uncompressed one, so
+# the screen has to keep more of them to find the good ones.
 _WII2D_SHORTLIST = 8
 
-# How many legal shifts a.
-# set is exact (the arc-union.
-# members are scored for.
-# so the smallest legal shift.
-# approximation with the same.
+# How many legal shifts a compression run examines per depth.  The legal
+# set is exact (the arc-union complement); this only caps how many of its
+# members are scored for merges, taking the first few values of each gap
+# so the smallest legal shift is always among them.  An admitted
+# approximation with the same status as the shortlist above.
 _WII2D_SHIFT_SAMPLES = 40
 
-# The widest decode domain the.
-# that path is used up to ``n.
-# .
-# **This is a cost policy, not.
-# against :func:`_wii2d_cost`.
-# domain the chain actually.
-# alone.
-# arity: an ``n == 8``.
-# builds in 217 characters,.
+# The widest decode domain the general (non-symmetric) path will attempt, so
+# that path is used up to ``n == 9`` by default.
+#
+# **This is a cost policy, not a capability bound**, and it is charged
+# against :func:`_wii2d_cost` -- the smaller of ``2 ** (n - 1)`` and the
+# domain the chain actually leaves -- rather than against the worst case
+# alone.  That distinction is what makes structured tables reachable at any
+# arity: an ``n == 8`` xor-of-a-subset collapses to a 4-point decode and
+# builds in 217 characters, which the old worst-case-only check refused
 # without ever looking at it.
-# .
-# What the constant buys is.
-# doubles.
-# points via the popcount chain.
-# measured.
-# width and time tables this.
-# .
-# 256 admits dense ``n == 9``.
-# (sha256-derived, see the grid.
-# with all 512 rows executed.
-# *returns* -- an aborted.
-# prompt rather than a hang,.
-# :data:`_WII2D_MAX_MAGNITUDE`.
-# a sample.
+#
+# What the constant buys is bounded *width*, which still grows as the domain
+# doubles.  Symmetric tables never reach this check: they decode over ``n``
+# points via the popcount chain.  ``docs/generators/wii2d_generator.md`` has the
+# measured
+# width and time tables this value was chosen against.
+#
+# 256 admits dense ``n == 9`` *usually*: the deterministic witness table
+# (sha256-derived, see the grid tests) builds in 1.1s at 78362 characters
+# with all 512 rows executed against the interpreter.  Every sampled failure
+# *returns* -- an aborted ratchet or a fold dead-end -- so a refusal is
+# prompt rather than a hang, which is what made this raise from 128 safe;
+# :data:`_WII2D_MAX_MAGNITUDE` makes that promptness a guarantee instead of
+# a sample.  ``docs/generators/wii2d_generator.md`` carries the resampled build and
 # refusal curves.
-# .
-# Dense ``n == 10`` (domain.
-# is 256.
-# branch: with the magnitude.
-# count crawling 512 -> 475.
-# step, 9 -> 1089888 bits, the.
-# better -- 512 -> 373 over 19.
-# is a wall of the fold algebra.
-# a budget choice -- see.
+#
+# Dense ``n == 10`` (domain 512) stays refused, and *not* because the number
+# is 256.  Raised to 512 the witness table still refuses, in 0.8s per
+# branch: with the magnitude bound lifted its decode ratchets, the live
+# count crawling 512 -> 475 over 19 steps while the bit length doubles every
+# step, 9 -> 1089888 bits, the 19th step alone 144s.  Full enumeration is no
+# better -- 512 -> 373 over 19 steps past 670000 bits.  So the next doubling
+# is a wall of the fold algebra under the exactly-once embed convention, not
+# a budget choice -- see ``docs/generators/wii2d_generator.md``.
 _WII2D_MAX_INDEX_DOMAIN = 256
 
-# The widest *real* chain.
-# arity-scale guard above.
-# .
-# These two bound different.
-# the *minimum* of the worst.
-# collapses is judged on what.
-# a table can be admitted on.
-# with no merge available the.
-# pair can leave a domain far.
-# .
-# Measured, that overshoot is.
-# as :data:`_WII2D_MAX_CENTRE`.
-# emitting.
-# one that does not.
-# refusing the latter is not a.
+# The widest *real* chain domain any table may decode over, whatever the
+# arity-scale guard above allows.
+#
+# These two bound different things.  ``_WII2D_MAX_INDEX_DOMAIN`` is charged
+# the *minimum* of the worst case and the real domain, so a table whose chain
+# collapses is judged on what it actually costs.  But the minimum also means
+# a table can be admitted on its worst case while its real domain runs away:
+# with no merge available the walk falls through to Horner, and a non-merging
+# pair can leave a domain far *above* ``2 ** (n - 1)``.
+#
+# Measured, that overshoot is rare but unbounded, so this is the same policy
+# as :data:`_WII2D_MAX_CENTRE` one level up: correct, but too wide to be worth
+# emitting.  256 sits above every overshoot measured to decode and below the
+# one that does not.  ``docs/generators/wii2d_generator.md`` has both figures and why
+# refusing the latter is not a regression.
 _WII2D_MAX_REAL_DOMAIN = 256
 
 
@@ -251,7 +251,7 @@ def _wii2d_legal_shifts(arcs: list[tuple[int, int]], block: int) -> list[int]:
         end = start + length
         if end <= block:
             flat.append((start, end))
-        else:  # pragma: no cover - Horner is legal at every level
+        else:  # wraps: split at the block boundary
             flat.append((start, block))
             flat.append((0, end - block))
     flat.sort()
@@ -303,10 +303,10 @@ def _wii2d_compress(
             return values, ops
         points = sorted(live)
         span = points[-1] - points[0]
-        # ``max(abs(v)) <= 1`` is the.
-        # small span at a large.
-        # strictly lowers the maximum.
-        # span alone would hand the.
+        # ``max(abs(v)) <= 1`` is the old one-level walk's stop, kept: a
+        # small span at a large magnitude still shrinks (every applied run
+        # strictly lowers the maximum for values past 1), and stopping on
+        # span alone would hand the threshold thousand-character offsets.
         if max(abs(p) for p in (points[0], points[-1])) <= 1:
             return values, ops
         best: tuple[tuple[int, int, int], int, int] | None = None
@@ -352,12 +352,12 @@ def _wii2d_threshold(live: dict[int, int]) -> str:
         return str(live[points[0]])
     low, high = points
     if live[low] == live[high]:
-        # Two values, one answer: a.
-        # compression stops at ``{0,.
-        # below would answer (0, 1) or.
+        # Two values, one answer: a digit resets both.  Reachable when
+        # compression stops at ``{0, 1}`` under one label; the indicator
+        # below would answer (0, 1) or (1, 0), never (c, c).
         return str(live[low])
-    # after the subtraction the.
-    # halving run only has to be.
+    # after the subtraction the values are ``low - high`` and 0, so the
+    # halving run only has to be long enough to bottom that span out at -1.
     runs = max(abs(low - high).bit_length() + 1, 1)
     indicator = _wii2d_offset(high) + "/" * runs + "+"
     if live[low] == 0 and live[high] == 1:
@@ -384,23 +384,23 @@ def _wii2d_folds(
     an approximation rather than a bound -- see the constant -- and it is
     what keeps the per-step cost flat as the domain grows.
     """
-    # Enumerate the legal folds.
-    # than by centre.
-    # symmetric about ``c``, so a.
-    # ``2c`` needs two different.
-    # less the number of pairs.
-    # one ``abs(p - c)``, so those.
-    # off once therefore replaces.
-    # dropping the step from ``O(P.
-    # 6.3s dense ``n == 9`` build.
-    # unchanged: a centre whose.
-    # one the rescan rejected, so.
+    # Enumerate the legal folds first, *uncompressed*, and by pair rather
+    # than by centre.  ``(p - c) ** 2`` collides for exactly the pairs
+    # symmetric about ``c``, so a centre is illegal iff some pair summing to
+    # ``2c`` needs two different bits, and the merged count is the live count
+    # less the number of pairs summing to ``2c`` (at most two points share
+    # one ``abs(p - c)``, so those pairs are disjoint).  Reading the pair sums
+    # off once therefore replaces the per-centre rescan of the whole domain,
+    # dropping the step from ``O(P ** 3)`` to ``O(P ** 2)`` -- 5.6s of the
+    # 6.3s dense ``n == 9`` build was this loop.  The candidate set is
+    # unchanged: a centre whose only even-sum pairs cross the bits is exactly
+    # one the rescan rejected, so legal centres always come from a same-bit
     # pair.
-    # .
-    # Compression stays the.
-    # domain, each step rebuilding.
-    # takes the head, so only the.
-    # members' folded values are.
+    #
+    # Compression stays the expensive half -- a halving loop over the whole
+    # domain, each step rebuilding the live map -- and the caller only ever
+    # takes the head, so only the shortlist is compressed and only its
+    # members' folded values are materialized.
     pending: list[tuple[tuple[int, int, int], int, int, int]] = []
     for scale in (0, 1):
         scaled = [v * 2 for v in values] if scale else list(values)
@@ -411,31 +411,31 @@ def _wii2d_folds(
         span_low, span_high = points[0], points[-1]
         zeros = [p for p in points if live[p] == 0]
         ones = [p for p in points if live[p] == 1]
-        # ``2c`` for every pair that.
+        # ``2c`` for every pair that would fold two different bits together
         crossing: set[int] = set()
         for point in zeros:
             crossing.update([point + other for other in ones])
-        # ``2c -> how many same-bit.
+        # ``2c -> how many same-bit pairs that centre merges``
         merging: dict[int, int] = {}
         for group in (zeros, ones):
             for index, point in enumerate(group):
                 for double in [point + other for other in group[index + 1 :]]:
                     merging[double] = merging.get(double, 0) + 1
-        # sorted, not raw dict order:.
-        # the order candidates were.
-        # the emitted program depend on.
+        # sorted, not raw dict order: ties in the ranking below are broken by
+        # the order candidates were appended, so iterating unordered would let
+        # the emitted program depend on hash order rather than on the table.
         for double in sorted(merging):
             if double % 2 or double in crossing:
                 continue
             centre = double >> 1
             if abs(centre) > _WII2D_MAX_CENTRE:
-                continue  # correct but too wide to spell.
-            # The shortlist key, on the.
-            # *screen*, not the ranking:.
-            # an order of magnitude (529 to.
-            # predict the true order and is.
-            # monotone in the distance from.
-            # value is always one of the.
+                continue  # correct but too wide to spell out in the grid
+            # The shortlist key, on the uncompressed state.  It is a
+            # *screen*, not the ranking: compression can lower a magnitude by
+            # an order of magnitude (529 to 17 is real), so this cannot
+            # predict the true order and is not used as it.  The squares are
+            # monotone in the distance from the centre, so the widest folded
+            # value is always one of the two span ends.
             pending.append(
                 (
                     (
@@ -443,13 +443,13 @@ def _wii2d_folds(
                         len(points) - merging[double],
                         scale + abs(centre) + 1,
                     ),
-                    len(pending),  # stable-sort tie-break, made.
+                    len(pending),  # stable-sort tie-break, made explicit
                     scale,
                     centre,
                 )
             )
 
-    # Compress only the shortlist,.
+    # Compress only the shortlist, then rank those on their true keys.
     out: list[tuple[int, int, int, str, list[int]]] = []
     for _screen, _index, scale, centre in heapq.nsmallest(_WII2D_SHORTLIST, pending):
         scaled = [v * 2 for v in values] if scale else values
@@ -465,13 +465,13 @@ def _wii2d_folds(
                 compressed,
             )
         )
-    # Magnitude first.
-    # live values *are* the.
-    # keeps the emitted grid small.
-    # the same two-value state.
-    # characters against 285903.
-    # -- which holds against the.
-    # against the one-level halving.
+    # Magnitude first.  A fold centre is spelled out as ``'-' * c``, so the
+    # live values *are* the program's width: keeping them small is what
+    # keeps the emitted grid small.  Ranking survivors first instead reaches
+    # the same two-value state through much larger numbers -- 396131
+    # characters against 285903 over the 532-table corpus, a 39% regression
+    # -- which holds against the steered compression below just as it held
+    # against the one-level halving it replaced.
     out.sort(key=lambda cand: (cand[1], cand[0], cand[2]))
     return out
 
@@ -499,19 +499,19 @@ def _wii2d_decode(pattern: list[int]) -> str | None:
     """
     bits = list(pattern)
     if all(bit == bits[0] for bit in bits):
-        return str(bits[0])  # constant: a digit is the.
+        return str(bits[0])  # constant: a digit is the whole decode
     values, ops = _wii2d_compress(list(range(len(bits))), bits, "")
-    # A fold strictly reduces the.
-    # than there are values to.
+    # A fold strictly reduces the live-value count, so this cannot run longer
+    # than there are values to merge; the bound is a guard, not a budget.
     for _ in range(len(bits) + 1):
         live = _wii2d_points(values, bits)
         if live is None:
             return None
-        # The ratchet abort: a state.
-        # so give up rather than let.
-        # See.
-        # sits ahead of the two-live.
-        # spelling is bounded too, not.
+        # The ratchet abort: a state past the bound is diverging, not slow,
+        # so give up rather than let the fold double its bit length forever.
+        # See :data:`_WII2D_MAX_MAGNITUDE` for the measured separation.  It
+        # sits ahead of the two-live exit so the threshold's ``'-' * c``
+        # spelling is bounded too, not just the fold chain.
         if max(abs(v) for v in values) > _WII2D_MAX_MAGNITUDE:
             return None
         if len(live) <= 2:
@@ -519,64 +519,64 @@ def _wii2d_decode(pattern: list[int]) -> str | None:
         candidates = _wii2d_folds(values, bits)
         if not candidates:
             return None
-        # _wii2d_folds returns.
-        # so taking the head is the.
+        # _wii2d_folds returns candidates best-first under the fixed ranking,
+        # so taking the head is the whole choice -- no width to widen.
         *_rank, fragment, folded = candidates[0]
         values, ops = folded, ops + fragment
     return None
 
 
-# The op-string pairs the chain.
-# the arithmetic offsets, then.
+# The op-string pairs the chain draws its junctions from, in merge order:
+# the arithmetic offsets, then the digit and square merges, then the halving
 # ones, with Horner last.
-# .
-# The order is *semantic*, not.
-# holds 42 total-character.
-# one character sitting behind.
-# reproduces it -- a sweep of.
-# lengths, per-character.
-# lexicographic compositions,.
-# shipped sequence, against a.
-# deliberately sorted list.
-# than a failed search: index.
-# length, so no key monotone in.
-# .
-# What the order buys is size,.
-# permuting the merge entries.
-# emitted programs with zero.
-# random permutations on total.
-# measured preference over a.
-# costs characters, never.
-# .
-# A chain junction is a pair.
-# when the input is 0, ``B``.
-# reaching that junction --.
-# flow, so a junction cannot.
-# constraint the whole.
-# .
-# Horner ``('*', '*+')`` sits.
-# every level unconditionally.
-# cofactors never share an.
-# but would be.
-# ``2w + 1``, which differ in.
-# which the invariant already.
-# there is always at least one.
-# .
-# The earlier entries are the.
-# same residual function they.
-# set small and handing the.
-# in a fixed order and the.
-# pass with no backtracking and.
-# .
-# That order is semantic, not.
-# still sits after three.
-# characters -- with or without.
-# reproduces none of it.
-# which is correct, so.
-# permuting the twenty merge.
-# emitted programs with zero.
-# random permutations on total.
-# that tuning, not just.
+#
+# The order is *semantic*, not by cost, and the difference is measurable: it
+# holds 42 total-character inversions, the plainest being ``('', '0')`` at
+# one character sitting behind six two-character entries.  No sort key
+# reproduces it -- a sweep of 1.9M candidates over 63 features (field
+# lengths, per-character counts, weighted op costs, and their 1-to-3-deep
+# lexicographic compositions, both directions) found none monotone along the
+# shipped sequence, against a positive control that recovers 172 keys for a
+# deliberately sorted list.  Two adjacent pairs make that a proof rather
+# than a failed search: index 10 to 11 and index 17 to 18 both *descend* in
+# length, so no key monotone in total length can order this table.
+#
+# What the order buys is size, and it was tuned rather than derived:
+# permuting the merge entries (Horner pinned last) changes 360 of 392
+# emitted programs with zero errors, and the shipped order beats 7 of 8
+# random permutations on total size (57708 against up to 59557).  So it is a
+# measured preference over a structure that is already total -- reordering
+# costs characters, never correctness.
+#
+# A chain junction is a pair ``(A, B)``: ``A`` transforms the accumulator
+# when the input is 0, ``B`` when it is 1.  The pair is shared by every path
+# reaching that junction -- WII2D has no accumulator-conditional control
+# flow, so a junction cannot act on the bits already read -- which is the
+# constraint the whole construction lives under.
+#
+# Horner ``('*', '*+')`` sits last as the *total* fallback: it is legal at
+# every level unconditionally.  The chain's invariant is that two distinct
+# cofactors never share an accumulator value (they need different futures
+# but would be indistinguishable).  Under Horner the children are ``2v`` and
+# ``2w + 1``, which differ in parity, and ``2v == 2w`` forces ``v == w``,
+# which the invariant already forbids -- so the invariant is preserved and
+# there is always at least one legal pair.  Nothing here can dead-end.
+#
+# The earlier entries are the ones that *merge*: when two paths reach the
+# same residual function they can share a value, keeping the surviving value
+# set small and handing the final decode a narrower domain.  They are tried
+# in a fixed order and the first legal one is taken, so the chain is a single
+# pass with no backtracking and the program depends only on the table.
+#
+# That order is semantic, not by cost: ``('', '0')`` is one character and
+# still sits after three two-character entries, and sorting by total
+# characters -- with or without reset/star tiering, or a weighted op cost --
+# reproduces none of it.  It is a tuned preference over a set every member of
+# which is correct, so permuting it is a size regression rather than a bug:
+# permuting the twenty merge entries (Horner pinned last) changes 360 of 392
+# emitted programs with zero errors, and the shipped order beats 7 of 8
+# random permutations on total size.  Reordering therefore means re-running
+# that tuning, not just re-checking the tests.
 _WII2D_JUNCTIONS: tuple[tuple[str, str], ...] = (
     ("", ""),
     ("", "+"),
@@ -624,14 +624,14 @@ def _wii2d_advance(
         half = len(cofactor) // 2
         out.append((cofactor[:half], _wii2d_apply(low, value)))
         out.append((cofactor[half:], _wii2d_apply(high, value)))
-    out = list(dict.fromkeys(out))  # identical (cofactor, value).
+    out = list(dict.fromkeys(out))  # identical (cofactor, value) is one state
     seen: dict[int, str] = {}
     for cofactor, value in out:
         if value < 0:
-            # The decode indexes its.
-            # negative has no slot.
-            # keeps the chain's values in.
-            # :func:`_wii2d_columns` be.
+            # The decode indexes its pattern by accumulator value, so a
+            # negative has no slot.  Rejecting it here rather than at the end
+            # keeps the chain's values in ``0 .. 2 ** n``, which is what lets
+            # :func:`_wii2d_columns` be total.
             return None
         if seen.setdefault(value, cofactor) != cofactor:
             return None
@@ -671,11 +671,11 @@ def _wii2d_columns(states: list[tuple[str, int]]) -> tuple[list[int], list[int]]
     zero only under Horner, so the caller decodes over ``0 .. max``.
     """
     width = max(value for _, value in states) + 1
-    # Values are non-negative --.
-    # would make one -- so every.
-    # zero they are filled with: no.
-    # is a don't-care the decode.
-    # little size and no.
+    # Values are non-negative -- :func:`_wii2d_advance` refuses a pair that
+    # would make one -- so every state has a slot.  Unreached slots keep the
+    # zero they are filled with: no state carries those values, so the entry
+    # is a don't-care the decode may satisfy however it likes.  It costs a
+    # little size and no correctness.
     low = [0] * width
     high = [0] * width
     for cofactor, value in states:
@@ -776,19 +776,19 @@ def _wii2d_routes(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
         parity_result = _wii2d_parity_routes(n, popcount_map)
         if parity_result is not None:
             return parity_result
-        # branch b of the last junction.
-        # bits and must answer for a.
+        # branch b of the last junction sees popcount p of the first n - 1
+        # bits and must answer for a total popcount of p + b.
         low = _wii2d_decode(popcount_map[:n])
         high = _wii2d_decode(popcount_map[1:])
         if low is not None and high is not None:
             return 0, [("", "+")] * (n - 1) + [(low, high)]
-    # Walk the chain *before* the.
-    # fixed catalogue scan per.
-    # actually leaves costs nothing.
+    # Walk the chain *before* the cost guard: the walk is microseconds (a
+    # fixed catalogue scan per level, no search), so charging the domain it
+    # actually leaves costs nothing.  See :func:`_wii2d_cost`.
     chain, states = _wii2d_chain(n, table)
-    # Refused on cost, not on.
-    # either width.
-    # the constants for what each.
+    # Refused on cost, not on capability: the decode is never attempted at
+    # either width.  Sampled decodes past the first bound do succeed -- see
+    # the constants for what each one charges and why.
     if _wii2d_cost(n, states) > _WII2D_MAX_INDEX_DOMAIN:
         return None
     if _wii2d_real_domain(states) > _WII2D_MAX_REAL_DOMAIN:
@@ -801,11 +801,11 @@ def _wii2d_routes(n: int, table: str) -> tuple[int, list[tuple[str, str]]] | Non
     return 0, [*chain, (branch0, branch1)]
 
 
-# For n == 2 a closed form.
-# bit) or 0 (a one bit), and.
-# the table's two columns from.
-# column pattern maps to a.
-# ``+``, 1 then 0 -> ``s``.
+# For n == 2 a closed form exists: ``R0 = (-, *)`` packs bit 0 as -1 (a zero
+# bit) or 0 (a one bit), and each branch of the last junction decodes one of
+# the table's two columns from that packed value.  On the pair (-1, 0) the
+# column pattern maps to a single op: both zero -> the digit 0, 0 then 1 ->
+# ``+``, 1 then 0 -> ``s`` (squaring sends -1 to 1), both one -> the digit 1.
 _WII2D_N2_DECODE = {(0, 0): "0", (0, 1): "+", (1, 0): "s", (1, 1): "1"}
 
 
@@ -815,8 +815,8 @@ def _wii2d_n2_closed_form(table: str) -> list[tuple[str, str]]:
     return [
         ("-", "*"),
         (
-            _WII2D_N2_DECODE[(t[0], t[2])],  # column for a zero last bit.
-            _WII2D_N2_DECODE[(t[1], t[3])],  # column for a one last bit.
+            _WII2D_N2_DECODE[(t[0], t[2])],  # column for a zero last bit
+            _WII2D_N2_DECODE[(t[1], t[3])],  # column for a one last bit
         ),
     ]
 
@@ -837,7 +837,7 @@ def _wii2d_symmetric_popcount_map(n: int, table: str) -> list[int] | None:
             result[p] = v
         elif result[p] != v:
             return None
-    return [v for v in result if v is not None]  # every p in 0..n is reachable.
+    return [v for v in result if v is not None]  # every p in 0..n is reachable
 
 
 def _wii2d_parity_routes(
@@ -862,9 +862,9 @@ def _wii2d_parity_routes(
     return 0, routes
 
 
-# The narrowest fold that makes.
-# op column between them.
-# refused, matching the width.
+# The narrowest fold that makes progress: a turn column at each end and one
+# op column between them.  A width below this is raised to it rather than
+# refused, matching the width plumbing everywhere else.
 _WII2D_MIN_FOLD_SPAN = 3
 
 
@@ -891,8 +891,8 @@ def _wii2d_fold_decode(
     """
     cells: dict[tuple[int, int], str] = {}
     row = first_row
-    # The entry turn sits at the.
-    # or east of the span, so it.
+    # The entry turn sits at the column the pointer falls down, which is at
+    # or east of the span, so it never lands on an op column.
     cells[(row, decode_start)] = "<"
     step = -1
     col = span - 2
@@ -924,53 +924,53 @@ def _wii2d_layout(
     way -- so it bought template legibility at the cost of width in every
     emitted program.
     """
-    # A junction is a single cell:.
-    # or '>' to continue east, and.
-    # it.
-    # the placeholder is written,.
+    # A junction is a single cell: the fill writes 'v' to take the 1-branch
+    # or '>' to continue east, and nothing on row 0 occupies the column after
+    # it.  The '{Xi}' spelling is four characters only because that is how
+    # the placeholder is written, and instantiation gives the rest back.
     placeholder_width = 1
 
     placeholder_col = [0] * n
-    # column 0 is always '>'; a.
-    # returns a single digit 0-9).
-    # at column 2.
-    # (No table found at n <= 3.
-    # untravelled branch -- but the.
-    # junction's.).
+    # column 0 is always '>'; a start digit (the construction only ever
+    # returns a single digit 0-9) sits at column 1 with the first placeholder
+    # at column 2.  With no digit the placeholder starts right after the '>'.
+    # (No table found at n <= 3 needs a nonzero start, so this is the
+    # untravelled branch -- but the digit's column is its own, not the
+    # junction's.)
     placeholder_col[0] = 2 if start != 0 else 1
     merge_col = [0] * n
     for i in range(n):
         r0, r1 = routes[i]
-        # row 0 runs placeholder, then.
-        # placeholder_width + len(r0);.
-        # placeholder_col[i] + 1 +.
-        # column past whichever row.
-        # the first column past the.
+        # row 0 runs placeholder, then r0, ending at placeholder_col[i] +
+        # placeholder_width + len(r0); row i+1 runs '>', then r1, ending at
+        # placeholder_col[i] + 1 + len(r1).  The merge sits on the first
+        # column past whichever row runs longer, and the next junction on
+        # the first column past the merge.
         row0_end = placeholder_width + len(r0)
         row1_end = 1 + len(r1)
         merge_col[i] = placeholder_col[i] + max(row0_end, row1_end)
         if i + 1 < n:
             placeholder_col[i + 1] = merge_col[i] + 1
 
-    decode_start = merge_col[n - 1] + 1  # the column past the last.
+    decode_start = merge_col[n - 1] + 1  # the column past the last merge
     shift_to_ascii_digit = _ASCII_ZERO
     print_op = "~."
     flat_cols = decode_start + shift_to_ascii_digit + len(print_op)
 
-    # The chain cannot fold -- each.
-    # and each detour row hangs.
-    # program this builds is the.
+    # The chain cannot fold -- each junction is where one input is embedded
+    # and each detour row hangs beneath its own junction -- so the narrowest
+    # program this builds is the chain plus the one column the 'v' leaves
     # on.
-    # .
-    # Whether to fold at all is.
-    # ``flat_cols`` counts grid.
-    # in characters -- and a.
-    # which is four characters wide.
-    # requested width against the.
-    # rendered well past it: parity.
-    # characters, so a request for.
-    # measures the rendered flat.
-    # too wide, so this folds.
+    #
+    # Whether to fold at all is *not* decided here, and that is the point.
+    # ``flat_cols`` counts grid cells, while the program's width is counted
+    # in characters -- and a junction cell holds a ``{Xi}`` placeholder,
+    # which is four characters wide in the template.  Comparing the
+    # requested width against the cell count declined to fold programs that
+    # rendered well past it: parity at ``n == 6`` is 80 cells and 92
+    # characters, so a request for 80 came back at 92.  :func:`wii2d`
+    # measures the rendered flat form and only asks for a fold when that is
+    # too wide, so this folds whenever it is given a width.
     folded: dict[tuple[int, int], str] = {}
     total_cols = flat_cols
     if width is not None:
@@ -986,14 +986,14 @@ def _wii2d_layout(
     if start:
         grid[0][1] = str(start)
     for i in range(n):
-        # The junction's one cell,.
-        # the placeholder's four.
-        # room the junction needs, and.
+        # The junction's one cell, spelled out once the layout is finished:
+        # the placeholder's four characters are how it is written, not the
+        # room the junction needs, and the fill gives the difference back.
         grid[0][placeholder_col[i]] = "\x00" + str(i) + "\x00"
         r0, r1 = routes[i]
         for k, ch in enumerate(r0):
             grid[0][placeholder_col[i] + placeholder_width + k] = ch
-        # 1-branch: descend to row i+1,.
+        # 1-branch: descend to row i+1, travel east, ascend to the merge
         grid[i + 1][placeholder_col[i]] = ">"
         for k, ch in enumerate(r1):
             grid[i + 1][placeholder_col[i] + 1 + k] = ch
@@ -1072,10 +1072,10 @@ def wii2d(truth_table: str, width: int | None = None) -> str:
     n = _validate_truth_table(truth_table)
     result = _wii2d_routes(n, truth_table)
     if result is None:
-        # Report the width the guard.
-        # for a table whose chain.
-        # table never reached.
-        # and say so separately, so a.
+        # Report the width the guard actually charged, not ``2 ** (n - 1)``:
+        # for a table whose chain collapsed, that would name a width this
+        # table never reached.  The two bounds refuse for different reasons
+        # and say so separately, so a refusal never has to be guessed at.
         _chain, states = _wii2d_chain(n, truth_table)
         charged = _wii2d_cost(n, states)
         if charged > _WII2D_MAX_INDEX_DOMAIN:
@@ -1112,7 +1112,7 @@ def wii2d(truth_table: str, width: int | None = None) -> str:
     flat = "\n".join(_wii2d_layout(n, start, routes, None))
     if width is None or max(len(line) for line in flat.split("\n")) <= width:
         return flat
-    # Measured on the rendered text.
-    # junction cell is a.
-    # differ by more than the.
+    # Measured on the rendered text rather than on the grid's cell count: a
+    # junction cell is a four-character ``{Xi}`` in the template, so the two
+    # differ by more than the fold's own margin.
     return "\n".join(_wii2d_layout(n, start, routes, width))

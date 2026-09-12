@@ -37,7 +37,7 @@ class TestForth:
         assert run_program("0~.") == "\xff"
 
     def test_division_truncates_toward_zero(self) -> None:
-        # 0 9 / is 0, then ~0 is -1,.
+        # 0 9 / is 0, then ~0 is -1, printed as byte 0xff
         assert run_program("09/~.") == "\xff"
 
     def test_swap(self) -> None:
@@ -54,12 +54,12 @@ class TestForth:
         assert run_program("0(F4*5+.)") == ""
 
     def test_loop(self) -> None:
-        # push the seed 0 and the bytes.
-        # [.] loop prints both and.
+        # push the seed 0 and the bytes for 'H' (72) and 'i' (105); the
+        # [.] loop prints both and stops at the 0 seed
         assert run_program("0F7*0+F4*C+[.]") == "Hi"
 
     def test_nested_brackets(self) -> None:
-        # a nested loop is matched to.
+        # a nested loop is matched to its own closing bracket, not the outer one
         assert run_program("0[[.]]") == ""
 
     def test_store_and_call(self) -> None:
@@ -70,13 +70,13 @@ class TestForth:
         assert run_program(",..", "hi") == "ih"
 
     def test_read_and_normalize(self) -> None:
-        # , reads '0' (48), 6 8 * is.
+        # , reads '0' (48), 6 8 * is 48, - leaves 0
         assert run_program(",68*-.", "0") == "\x00"
 
     def test_unknown_char_is_ignored(self) -> None:
-        # an unknown char does nothing,.
+        # an unknown char does nothing, even with a near-empty stack
         assert run_program("a5.") == "\x05"
-        # with two elements it leaves.
+        # with two elements it leaves the stack untouched (no-op)
         assert run_program("65a.") == "\x05"
 
     def test_uppercase_past_f_is_not_a_digit(self) -> None:
@@ -186,8 +186,8 @@ class TestStepMachine:
         from esolangs.interpreters.stack_based.forth import _Machine
 
         machine = _Machine("1;", ScriptedIO())
-        machine.step()  # 1 pushes the key.
-        machine.step()  # ; pops it and pushes the.
+        machine.step()  # 1 pushes the key
+        machine.step()  # ; pops it and pushes the stored scope
         assert [frame.code for frame in machine.frames] == ["1;", ""]
 
     def test_a_loop_reenters_its_frame_each_pass(self) -> None:
@@ -209,27 +209,27 @@ class TestStepMachine:
 
         machine = _Machine("65.", ScriptedIO())
         assert (list(machine.stack), machine.frames[0].pc) == ([], 0)
-        machine.step()  # 6 pushes.
+        machine.step()  # 6 pushes
         assert (list(machine.stack), machine.frames[0].pc) == ([6], 1)
-        machine.step()  # 5 pushes.
+        machine.step()  # 5 pushes
         assert list(machine.stack) == [6, 5]
-        machine.step()  # .
+        machine.step()  # . pops and prints the low byte
         assert machine.io.getvalue() == "\x05"
-        machine.step()  # finalizing the finished frame.
+        machine.step()  # finalizing the finished frame halts the machine
         assert machine.halted
-        machine.step()  # stepping a halted machine is.
+        machine.step()  # stepping a halted machine is a no-op
         assert list(machine.frames) == []
 
     def test_nested_scope_pushes_a_frame_and_aborts_discard_the_error(self) -> None:
         from esolangs.interpreters.stack_based.forth import _Machine
 
         machine = _Machine("1{/}1;", ScriptedIO())
-        for _ in range(4):  # 1 {/} 1 ; -> the ; pushes the.
+        for _ in range(4):  # 1 {/} 1 ; -> the ; pushes the "/" scope
             machine.step()
         assert len(machine.frames) == 2
-        machine.step()  # the "/" underflow aborts the.
+        machine.step()  # the "/" underflow aborts the scope (and ends the run)
         assert machine.halted
-        assert machine.error is False  # the nested error is discarded.
+        assert machine.error is False  # the nested error is discarded
 
     def test_the_read_pushes_every_byte_of_the_line(self) -> None:
         """``,`` pushes the whole line, one byte per cell.

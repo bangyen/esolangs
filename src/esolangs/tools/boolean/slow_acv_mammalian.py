@@ -74,48 +74,48 @@ from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 
 __all__ = ["slow_acv_mammalian"]
 
-# The byte a stash chunk.
-# what puts a distant token.
-# the most reach per token by.
+# The byte a stash chunk appends.  It is what raises the sum, and the sum is
+# what puts a distant token index within a jump's reach, so the chunk buys
+# the most reach per token by appending the largest byte there is.
 _STASH_BYTE = 255
 
-# The read node's second seed.
-# and XORing bits 4-5 from.
-# lands the accumulator on the.
+# The read node's second seed run.  The aim class fixes ``first & 48 == 16``,
+# and XORing bits 4-5 from ``01`` to ``10`` is ``+16``, so this run is what
+# lands the accumulator on the clean digit 48 -- it is not a free knob.
 _J2 = 16
 
-# The least a trampoline can.
-# ``LEAPFROG`` to fire, and the.
-# ``landing + 15`` exactly, so.
-# the landing even when the.
+# The least a trampoline can hop.  Its byte ``b`` must be nonzero for the
+# ``LEAPFROG`` to fire, and the non-head sum entering the trampoline is
+# ``landing + 15`` exactly, so a 0-subtree is placed at least 16 tokens past
+# the landing even when the 1-subtree is shorter than that -- the gap is
 # dead code, reached by nothing.
 _MIN_HOP = 16
 
-# ``DIGEST PRONOUNCE EXCRETE.
-# with, on top of at most 255.
+# ``DIGEST PRONOUNCE EXCRETE LEAPFROG``: the fixed tail every leaf ends
+# with, on top of at most 255 normalizing ``SEED``s.
 _LEAF_TAIL = 4
 
-# Slack :func:`_widths` adds.
-# and ``b`` solves are exact.
-# for ``u``) are hard, so this.
-# tokens somewhere -- the.
-# out.
+# Slack :func:`_widths` adds over the arithmetic maxima.  The chunk-count
+# and ``b`` solves are exact and the token maxima (257 per early chunk, 255
+# for ``u``) are hard, so this only covers the formulas being off by a few
+# tokens somewhere -- the asserts below would name the node if it ever ran
+# out.  Measured over every build through ``n == 3``, the tightest slot had
 # 22 tokens spare.
 _SLOT_MARGIN = 8
 
-# What a read node can cost.
-# worst ``j1`` of 49 (the aim.
-# even with bits 4-5 ``01``),.
+# What a read node can cost beyond its prefix: a full 255-token wrap, the
+# worst ``j1`` of 49 (the aim class repeats every 64 residues, 16 of them
+# even with bits 4-5 ``01``), the fixed ``_J2`` run, and 7 one-token ops.
 _NODE_MAX = 255 + 49 + _J2 + 7
 
-# How far past its threshold a.
-# landing by at most 510 (a.
-# threshold moves by at most.
-# rebound of 255, a ``j1``.
-# step never opens more than.
+# How far past its threshold a stop can land.  The last chunk moves the
+# landing by at most 510 (a first chunk's count plus its append) while the
+# threshold moves by at most 562 the other way (257 of prefix, a wrap
+# rebound of 255, a ``j1`` swing of 49, and the ``EXCRETE`` byte), so one
+# step never opens more than 1072 of dead pad.
 _PAD_MAX = 1072
 
-# : A machine state as the.
+#: A machine state as the generator tracks it: array 0 and the accumulator.
 type _State = tuple[list[int], int]
 
 
@@ -153,7 +153,7 @@ def _aim(start: int) -> int:
     """
     offset = (start - _J2) % 64
     if offset <= 14:
-        # Inside a class block; an odd.
+        # Inside a class block; an odd ``start`` steps to the next even.
         return start % 2
     return 64 - offset
 
@@ -241,15 +241,15 @@ def _widths(n: int) -> list[int]:
     widths = [0]
     for d in range(1, n + 1):
         child = caps[d - 1]
-        # The trampoline's shortfall is.
-        # past an entering non-head sum.
-        # exactly 255 each and ``b``.
+        # The trampoline's shortfall is ``max(len(one), _MIN_HOP) - 15``
+        # past an entering non-head sum of ``landing + 15``; chunks close
+        # exactly 255 each and ``b`` closes the rest.
         span = max(child, _MIN_HOP) - 15
         hops = max(0, -(-(span - 255) // 255))
         slot = _chunk_run(hops) + 255 + _LEAF_TAIL + _SLOT_MARGIN
         widths.append(slot)
-        # The node's own chunks: gains.
-        # gain 0, hence the ``m - 3``).
+        # The node's own chunks: gains of 256 per chunk (one wrap chunk may
+        # gain 0, hence the ``m - 3``) against a threshold growing 3 per
         # chunk once the counts settle.
         chunks = -(-(255 + 15 + 514 + _NODE_MAX + slot + 768) // 253)
         caps.append(
@@ -309,11 +309,11 @@ def _subtree(
         tokens, fell, taken, landing = _node(cur, val)
         if landing >= base + len(prefix) + len(tokens) + slot:
             break
-        # Not enough sum to clear the.
-        # ends -- a chunk moves the.
-        # by 0) while the threshold.
-        # and every entering sum is at.
-        # stays a handful rather than.
+        # Not enough sum to clear the slot: stash another 255.  This always
+        # ends -- a chunk moves the landing by 256 (a rare head-wrap chunk
+        # by 0) while the threshold moves by 3 plus a bounded sawtooth --
+        # and every entering sum is at least ``base``, so the chunk count
+        # stays a handful rather than tracking the program's size.
         chunk, cur, val = _stash_chunk(cur, val)
         prefix.extend(chunk)
 
@@ -347,7 +347,7 @@ def slow_acv_mammalian(truth_table: str) -> str:
     for the combination it was given.  It is a decision tree of uniform depth
     ``n``, so a constant table still reads all ``n`` inputs.
     """
-    # ``_validate_truth_table``.
-    # always has at least one level.
+    # ``_validate_truth_table`` refuses a one-entry table, so the tree
+    # always has at least one level to read.
     n = _validate_truth_table(truth_table)
     return " ".join(_subtree(truth_table, n, 0, "", [0], 0, 0, _widths(n)))

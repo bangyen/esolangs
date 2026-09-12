@@ -28,11 +28,11 @@ class TestTaglate:
         assert run_and_capture(["Hi", "ii"]) == "Hi"
 
     def test_add(self) -> None:
-        # ord('1') + ord('2') = 99 =.
+        # ord('1') + ord('2') = 99 = 'c'
         assert run_and_capture(["12", "ai"]) == "c"
 
     def test_subtract_wraps(self) -> None:
-        # ord('1') - ord('2') = -1,.
+        # ord('1') - ord('2') = -1, wrapping to 65535
         assert run_and_capture(["12", "bi"]) == chr(65535)
 
     def test_multiply(self) -> None:
@@ -201,10 +201,10 @@ class TestStepMachine:
 
         machine = _Machine(["abc", "i"], ScriptedIO())
         assert (machine.ind, list(machine.queue)) == (0, [97, 98, 99])
-        machine.step()  # i pops the front and prints.
+        machine.step()  # i pops the front and prints it
         assert machine.io.getvalue() == "a"
         assert machine.halted
-        machine.step()  # stepping a halted machine is.
+        machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 1
 
 

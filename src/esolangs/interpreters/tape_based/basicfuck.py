@@ -232,22 +232,22 @@ def _parser(tokens: list[str], var: list[tuple[str, int]]) -> tuple[int, ...]:
     return tuple(result)
 
 
-# : One active scope: ``(prog,.
-# :.
-# : A frame whose ``loop`` is.
-# : (the body itself is a.
-# : completes, the owner.
+#: One active scope: ``(prog, ptr, loop, cond_pos, neg, body)``.
+#:
+#: A frame whose ``loop`` is True is the owner of a running ``while`` body
+#: (the body itself is a separate frame on top of it); when that body
+#: completes, the owner re-checks its condition and re-runs the body or
 #: continues past the loop.
-# :.
-# : A tuple rather than a.
-# : can hash without unpacking.
+#:
+#: A tuple rather than a class, so the whole stack is a value ``snapshot``
+#: can hash without unpacking each frame's fields.
 type _Frame = tuple[tuple[int, ...], int, bool, int, bool, tuple[int, ...] | None]
 
-# : The tape, as a value.
-# : first instruction runs, so.
+#: The tape, as a value.  Fixed size: ``#allocate`` sets it before the
+#: first instruction runs, so rebuilding it per step is a constant.
 type _Cells = tuple[int, ...]
 
-# : One instant of a run: the.
+#: One instant of a run: the tape and the frame stack.
 type _State = tuple[_Cells, tuple[_Frame, ...]]
 
 
@@ -287,7 +287,7 @@ def _finalize(state: _State) -> _State:
     while frames:
         prog, ptr, _, _, _, _ = frames[-1]
         if ptr < len(prog):
-            return (cells, frames)  # an active frame is still.
+            return (cells, frames)  # an active frame is still running
         frames = frames[:-1]
         if frames and frames[-1][2]:
             parent = frames[-1]
@@ -346,18 +346,18 @@ def _advance(
 
     prog, ptr, loop, cond_pos_f, neg_f, body_f = frames[-1]
     if ptr >= len(prog):
-        return (cells, frames), None  # a finished empty loop body.
+        return (cells, frames), None  # a finished empty loop body
 
     op = prog[ptr]
     ptr += 1
     output: str | None = None
 
-    if op > -3:  # += / -=.
+    if op > -3:  # += / -=
         num = prog[ptr + 1]
-        if num < 0:  # a constant, encoded below -10.
+        if num < 0:  # a constant, encoded below -10
             num += 10
             num = (num - 1) // -2 if num % 2 else num // 2
-        else:  # a variable: read its current.
+        else:  # a variable: read its current value
             num = _read_cell(cells, num)
         if op == -2:
             num = -num
@@ -369,13 +369,13 @@ def _advance(
         top_frame: _Frame = (prog, ptr, loop, cond_pos_f, neg_f, body_f)
         return (cells, (*frames[:-1], top_frame)), output
 
-    if op > -5:  # if / while.
-        cond_pos = ptr  # the position of the condition.
+    if op > -5:  # if / while
+        cond_pos = ptr  # the position of the condition variable
         neg = False
         if prog[ptr] == -7:
             neg = True
             ptr += 1
-        ptr += 1  # past the condition variable,.
+        ptr += 1  # past the condition variable, at the body start
         end = _scan_body(prog, ptr)
         body = prog[ptr + 1 : end]
         cond = _cond_of(
@@ -384,23 +384,23 @@ def _advance(
             cond_pos + (1 if neg else 0),
             neg=neg,
         )
-        if op == -3:  # if.
+        if op == -3:  # if
             owner: _Frame = (prog, end + 1, loop, cond_pos_f, neg_f, body_f)
             grown = (*frames[:-1], owner)
             if cond:
                 grown = (*grown, _frame(body))
             return (cells, grown), output
-        # while: the owner keeps the.
+        # while: the owner keeps the loop's condition and body
         owner = (prog, end + 1, True, cond_pos + (1 if neg else 0), neg, body)
         grown = (*frames[:-1], owner)
         if cond:
             grown = (*grown, _frame(body))
         return (cells, grown), output
 
-    if op == -5:  # write.
+    if op == -5:  # write
         output = chr(_read_cell(cells, prog[ptr]))
         ptr += 1
-    else:  # read.
+    else:  # read
         cells = _write_cell(cells, prog[ptr], byte if byte is not None else 0)
         ptr += 1
 
@@ -440,7 +440,7 @@ class _Machine:
         var, tape = _parse_allocate(allocate)
 
         body = re.sub(r"//[^\n]*", "", body)
-        # the cross-check reserves a.
+        # the cross-check reserves a cell for variable-variable arithmetic
         if _ASSIGN.search(body) and lim != -1:
             lim -= 1
         if lim != -1 and lim < len(tape):
@@ -458,7 +458,7 @@ class _Machine:
         """Whether every scope has completed."""
         return not self.frames
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: Compiled code + frame stack; ip the top frame's
     # cursor, memory tape.
 
     @property
@@ -478,8 +478,8 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # A frame is already a tuple of.
-        # in as it stands rather than.
+        # A frame is already a tuple of its six fields, so the stack goes
+        # in as it stands rather than being unpacked field by field.
         return (self.cells, self.frames, self.io.position())
 
     def step(self) -> None:

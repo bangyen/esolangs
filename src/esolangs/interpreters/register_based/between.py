@@ -60,26 +60,26 @@ from typing import Literal, get_args
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# The parse tree, as tuples.
-# families: an argument, which.
-# instruction, which _exec runs.
-# aliases quote their forward.
+# The parse tree, as tuples discriminated by their first element.  Two
+# families: an argument, which _eval reduces to a value, and an
+# instruction, which _exec runs.  A group holds an instruction, so the
+# aliases quote their forward references.
 _Str = tuple[Literal["str"], str]
 _Int = tuple[Literal["int"], int]
 _Var = tuple[Literal["var"], str]
 _Cond = tuple[Literal["cond"], bool]
 
-# ``.`` -- the absent second.
-# off one is a type error.
+# ``.`` -- the absent second argument.  A bare one-tuple, so reading [1]
+# off one is a type error rather than an IndexError.
 _None = tuple[Literal["none"]]
 
-# ``|expr|`` and ``(expr)``:.
+# ``|expr|`` and ``(expr)``: the kind names which of the two the group is
 # required to produce.
 _Group = tuple[Literal["group"], Literal["int", "cond"], "_Instr"]
 _Arg = _Str | _Int | _Var | _Cond | _None | _Group
 
-# The thirteen operations,.
-# the parser validates against,.
+# The thirteen operations, spelled once here and derived into the set
+# the parser validates against, so the two cannot drift apart.
 _Op = Literal["p", "v", "s", "c", "+", "*", "=", ">", "r", "n", "f", "i", "x"]
 _Instr = tuple[_Op, _Arg, _Arg]
 
@@ -159,7 +159,7 @@ def _parse_arg(line: str, i: int) -> tuple[_Arg, int]:
                 line.startswith(literal, i + 1)
                 and line[i + 1 + len(literal) : i + 2 + len(literal)] == ")"
             ):
-                # "True"/"False" are condition.
+                # "True"/"False" are condition literals, not hardcoded secrets.
                 return ("cond", literal == "True"), i + 2 + len(literal)
         return _parse_group(line, i)
     if c == ".":
@@ -177,23 +177,23 @@ def _parse_line(line: str) -> _Instr:
     return node
 
 
-# : The variable store.
-# : returns a new mapping.
-# : instruction that assigns.
+#: The variable store.  A value, not a record: every function below
+#: returns a new mapping rather than editing the one it was handed, so an
+#: instruction that assigns and then raises leaves the caller's copy alone.
 type _Vars = Mapping[str, ValueT]
 
-# : What an instruction decided.
-# : to go to, or ``None`` to.
-# : rather than written into a.
+#: What an instruction decided about control: ``(jump, exit)`` -- the line
+#: to go to, or ``None`` to fall through, and whether ``x`` fired.  Returned
+#: rather than written into a dictionary handed down the recursion.
 type _Control = tuple[int | None, bool]
 
-# : Every value a Between.
-# : counter, and whether ``x``.
-# : temporary :data:`_Control`;.
+#: Every value a Between instruction can change: variable bindings, program
+#: counter, and whether ``x`` has exited.  A nested instruction returns its
+#: temporary :data:`_Control`; the shell folds that into this complete state.
 type _State = tuple[_Vars, int, bool]
 
-# : The two ports.
-# : print several times, at.
+#: The two ports.  Callbacks, because arguments nest: one line can read and
+#: print several times, at points that depend on values computed part-way
 #: through evaluating it.
 type _Read = Callable[[], str]
 type _Emit = Callable[[ValueT], None]
@@ -316,7 +316,7 @@ def _exec(
         if arg1[0] != "var":
             raise HaltError("i needs a variable on the left")
         return None, {**state, arg1[1]: read()}, control
-    # The twelve arms above are the.
+    # The twelve arms above are the other operations, so what is left is
     # ``x``.
     return None, state, (control[0], True)
 
@@ -342,7 +342,7 @@ class _Machine:
         """Whether ``x`` fired or the counter ran off the program."""
         return self._exited or not 0 <= self.pc < len(self.program)
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: Goto-based variables; ip the program counter,
     # memory the ints.
 
     @property

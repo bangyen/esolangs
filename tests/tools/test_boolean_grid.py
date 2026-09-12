@@ -40,7 +40,7 @@ def _render_after_passes(program: str, passes: int) -> str:
     return machine.render()
 
 
-# 2.0s over 45 tests: runs the.
+# 2.0s over 45 tests: runs the generated program.
 @pytest.mark.medium
 class TestAPainterAnt:
     """The A Painter Ant generator (a no-I/O grid language, parameterized convention).
@@ -108,7 +108,7 @@ class TestAPainterAnt:
         assert cls._cycle_stable(program), f"{table} {bits}: not cycle-stable"
         return cls._landing_after(program)
 
-    @pytest.mark.slow  # 1.2s: builds and runs all.
+    @pytest.mark.slow  # 1.2s: builds and runs all sixteen tables on four rows
     def test_all_two_input_functions(self) -> None:
         """Every two-input table is exact and cycle-stable for every input.
 
@@ -156,9 +156,9 @@ class TestAPainterAnt:
         keeps every instantiated program a monotone, cycle-stable fixed
         point.
         """
-        template = a_painter_ant("0110")  # f(1,1)=0, f(0,0)=0, f(1,0)=1,.
-        assert " " in template  # zero leaves are spaces.
-        # no paint-black anywhere in.
+        template = a_painter_ant("0110")  # f(1,1)=0, f(0,0)=0, f(1,0)=1, f(0,1)=1
+        assert " " in template  # zero leaves are spaces
+        # no paint-black anywhere in any instantiated program
         program = _instantiate_apa(template, [1, 1])
         assert "p" not in program
 
@@ -178,7 +178,7 @@ class TestAPainterAnt:
 
     def test_instantiate_one_bit_fills_single_placeholder(self) -> None:
         """An n == 1 template carries only {X0}, filled per bit."""
-        template = a_painter_ant("01")  # f(0)=0, f(1)=1.
+        template = a_painter_ant("01")  # f(0)=0, f(1)=1
         assert "{X0}" in template
         assert "{X1}" not in template
         assert _instantiate_apa(template, [1]) == template.replace("{X0}", "WWwWWEEe")
@@ -200,7 +200,7 @@ class TestAPainterAnt:
 
         positions = _leaf_positions(4)
         assert len(positions) == 16
-        assert len({(x, y) for x, y, _ in positions}) == 16  # all distinct.
+        assert len({(x, y) for x, y, _ in positions}) == 16  # all distinct
 
     def test_leaf_coordinates_agree_with_the_moves_that_walk_them(self) -> None:
         """``_leaf_positions`` is the mirror of what ``_bit_move`` emits.
@@ -333,7 +333,7 @@ class TestAPainterAntTrace:
         assert outcome.steps[3].position == (0, -1)
         assert outcome.steps[0].command == "n"
         assert outcome.steps[0].index == 0
-        assert outcome.grid[(0, -1)] == 0  # p repaints the white cell.
+        assert outcome.grid[(0, -1)] == 0  # p repaints the white cell black
         assert outcome.visited == {(0, 0), (0, -1)}
         assert outcome.position == (0, -1)
 
@@ -356,8 +356,8 @@ class TestAPainterAntTrace:
     def test_landing_colour(self) -> None:
         from tests.tools.a_painter_ant_trace import run
 
-        assert run("nP", 1).landing_colour() == 1  # (0,-1) was painted white.
-        assert run("n", 1).landing_colour() == 0  # (0,-1) is still black.
+        assert run("nP", 1).landing_colour() == 1  # (0,-1) was painted white
+        assert run("n", 1).landing_colour() == 0  # (0,-1) is still black
 
     def test_box_matches_the_interpreter(self) -> None:
         from itertools import product
@@ -398,7 +398,7 @@ class TestAPainterAntTrace:
     def test_cycle_stable_detects_a_divergence(self) -> None:
         from tests.tools.a_painter_ant_trace import cycle_stable
 
-        assert not cycle_stable("nPn")  # each cycle paints one cell.
+        assert not cycle_stable("nPn")  # each cycle paints one cell further
 
     def test_landing_after(self) -> None:
         from tests.tools.a_painter_ant_trace import landing_after
@@ -418,7 +418,7 @@ class TestAPainterAntTrace:
     def test_first_divergence_pins_a_box_escape(self) -> None:
         from tests.tools.a_painter_ant_trace import first_divergence
 
-        divergence = first_divergence("nPn")  # cycle 2 moves to (0,-3),.
+        divergence = first_divergence("nPn")  # cycle 2 moves to (0,-3), outside
         assert divergence is not None
         assert divergence.index == 0
         assert divergence.command == "n"
@@ -429,7 +429,7 @@ class TestAPainterAntTrace:
     def test_first_divergence_pins_a_paint_break(self) -> None:
         from tests.tools.a_painter_ant_trace import first_divergence
 
-        divergence = first_divergence("Pn")  # cycle 2 paints the black.
+        divergence = first_divergence("Pn")  # cycle 2 paints the black (0,-1)
         assert divergence is not None
         assert divergence.index == 0
         assert divergence.command == "P"
@@ -439,7 +439,7 @@ class TestAPainterAntTrace:
     def test_first_divergence_pins_a_changed_answer(self) -> None:
         from tests.tools.a_painter_ant_trace import first_divergence
 
-        # cycle 1 lands white on.
+        # cycle 1 lands white on (0,-1); cycle 2 slides onto the black (0,0)
         divergence = first_divergence("nPnPsS")
         assert divergence is not None
         assert divergence.index == 5
@@ -450,8 +450,8 @@ class TestAPainterAntTrace:
     def test_first_divergence_pins_a_drifting_dance(self) -> None:
         from tests.tools.a_painter_ant_trace import first_divergence
 
-        # cycle 2 lands on (0,0).
-        # is not a fixed point and.
+        # cycle 2 lands on (0,0) instead of (0,1): same colour, but the dance
+        # is not a fixed point and cycle 3 differs from cycle 2
         divergence = first_divergence("NPsP")
         assert divergence is not None
         assert divergence.index == 0
@@ -477,17 +477,17 @@ class TestWII2D:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("01", 1),  # identity.
-            ("10", 1),  # NOT.
-            ("00", 1),  # constant zero.
-            ("11", 1),  # constant one.
-            ("0110", 2),  # XOR.
-            ("0001", 2),  # AND.
-            ("1110", 2),  # NAND.
-            ("11111110", 3),  # NAND3.
-            ("01101001", 3),  # XOR3.
-            ("0000000000000001", 4),  # AND4.
-            ("1111111100000000", 4),  # top half.
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("0000000000000001", 4),  # AND4
+            ("1111111100000000", 4),  # top half
         ],
     )
     def test_chain_truth_table(self, table: str, n: int) -> None:
@@ -513,11 +513,11 @@ class TestWII2D:
     def test_chain_sample_tables(self, n: int) -> None:
         """Sampled dense and structured tables at n = 3 and n = 4."""
         for table in (
-            "01101001",  # XOR3.
-            "11101110",  # NOT-b0.
-            "10010110",  # XNOR3.
-            "1111111111111111",  # constant one.
-            "0000000100000010",  # a two-1 table.
+            "01101001",  # XOR3
+            "11101110",  # NOT-b0
+            "10010110",  # XNOR3
+            "1111111111111111",  # constant one
+            "0000000100000010",  # a two-1 table
         ):
             if len(table) != 2**n:
                 continue
@@ -563,16 +563,16 @@ class TestWII2D:
         for table_int in range(16):
             table = format(table_int, "04b")
             routes = _wii2d_n2_closed_form(table)
-            # bit 0 is packed as -1 (zero).
-            # with a single op.
+            # bit 0 is packed as -1 (zero) or 0 (one); each column decodes
+            # with a single op
             assert routes[0] == ("-", "*"), table
             t = [int(c) for c in table]
             for b0 in (0, 1):
                 for b1 in (0, 1):
                     value = _wii2d_apply(routes[1][b1], _wii2d_apply(routes[0][b0], 0))
                     assert value == t[b0 * 2 + b1], table
-            # and the generated template.
-            # out with no blank column.
+            # and the generated template uses the closed-form routes, laid
+            # out with no blank column between the merge and what follows
             template = boolean.wii2d(table)
             assert template.startswith(">{X0}->{X1}"), table
 
@@ -636,7 +636,7 @@ class TestWII2D:
             got = [_wii2d_apply(ops, x) for x in range(16)]
             assert got == pattern, (pattern, ops, got)
 
-    @pytest.mark.slow  # ~21s at n == 9: a 1.1s build,.
+    @pytest.mark.slow  # ~21s at n == 9: a 1.1s build, then 512 interpreted rows
     def test_a_dense_table_at_the_widest_admitted_domain_runs(self) -> None:
         """The arity the guard now admits is executed, not just rendered.
 
@@ -650,7 +650,7 @@ class TestWII2D:
         """
         from esolangs.tools.boolean.wii2d import _WII2D_MAX_INDEX_DOMAIN
 
-        # The widest arity the guard.
+        # The widest arity the guard still admits on its worst case.
         n = (_WII2D_MAX_INDEX_DOMAIN).bit_length()
         assert 2 ** (n - 1) <= _WII2D_MAX_INDEX_DOMAIN
         digest = hashlib.sha256(f"dense:{n}".encode()).digest()
@@ -689,22 +689,22 @@ class TestWII2D:
             _wii2d_symmetric_popcount_map,
         )
 
-        # the first arity whose decode.
+        # the first arity whose decode domain 2**(n-1) passes the guard
         n = (_WII2D_MAX_INDEX_DOMAIN).bit_length() + 1
         assert 2 ** (n - 1) > _WII2D_MAX_INDEX_DOMAIN
         assert 2 ** (n - 2) <= _WII2D_MAX_INDEX_DOMAIN
 
-        # A dense non-symmetric table.
-        # than patterned: a table with.
-        # which collapses the real.
-        # builds instead of being.
+        # A dense non-symmetric table at that arity.  Pseudo-random rather
+        # than patterned: a table with structure in it lets the chain merge,
+        # which collapses the real domain below the guard and (correctly)
+        # builds instead of being refused.
         rng = random.Random(20260904)
         while True:
             table = "".join(rng.choice("01") for _ in range(2**n))
             if _wii2d_symmetric_popcount_map(n, table) is None:
                 break
 
-        # the chain finds no merge, so.
+        # the chain finds no merge, so the real domain is the worst case
         _chain, states = _wii2d_chain(n, table)
         assert _wii2d_cost(n, states) == 2 ** (n - 1)
         assert _wii2d_routes(n, table) is None
@@ -730,7 +730,7 @@ class TestWII2D:
 
         n = (_WII2D_MAX_INDEX_DOMAIN).bit_length() + 1
 
-        # depends on three of the n.
+        # depends on three of the n inputs, so the chain merges the rest away
         table = "".join(
             str(((combo >> (n - 1)) ^ (combo >> (n - 3)) ^ (combo >> (n - 5))) & 1)
             for combo in range(2**n)
@@ -774,14 +774,14 @@ class TestWII2D:
         _chain, states = _wii2d_chain(n, table)
         assert _wii2d_real_domain(states) > _WII2D_MAX_REAL_DOMAIN
 
-        # Matched on the numbers, not.
-        # the domain it measured and.
-        # a substring match on "width.
-        # The constant's *name* used to.
-        # so in this pattern; a reader.
-        # identifier leaking at them,.
-        # 1025 is n == 7's worst case,.
-        # need to merge, so an.
+        # Matched on the numbers, not just the phrase: the message reports
+        # the domain it measured and the limit it was compared against, and
+        # a substring match on "width guard" passes however those drift.
+        # The constant's *name* used to appear here too, in the message and
+        # so in this pattern; a reader reported it as an internal
+        # identifier leaking at them, so the message names the value only.
+        # 1025 is n == 7's worst case, one past the 2**10 the chain would
+        # need to merge, so an off-by-one in the domain count shows here.
         with pytest.raises(
             ValueError, match=r"domain of 1025 points, past the 256-point width guard"
         ):
@@ -924,7 +924,7 @@ class TestWII2D:
         monkeypatch.setattr(module, "_WII2D_MAX_MAGNITUDE", 1)
         assert _wii2d_decode(list(pattern)) is None
 
-    @pytest.mark.slow  # ~2s: a real doubling-trap.
+    @pytest.mark.slow  # ~2s: a real doubling-trap pattern at domain 256
     def test_a_doubling_trap_pattern_is_refused_not_hung(self) -> None:
         """A domain-256 pattern that ratchets returns ``None`` in seconds.
 
@@ -1004,9 +1004,9 @@ class TestWII2D:
         from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_compress
 
         values, ops = _wii2d_compress([2, 3], [0, 1], "")
-        # the two inputs stay on.
+        # the two inputs stay on distinct values ...
         assert values[0] != values[1]
-        # .
+        # ... and the ops actually produce those values
         assert [_wii2d_apply(ops, v) for v in (2, 3)] == values
         assert "+" in ops
 
@@ -1034,8 +1034,8 @@ class TestWII2D:
         from esolangs.tools.boolean.wii2d import _wii2d_folds
 
         assert _wii2d_folds([0, 1], [0, 1]) == []
-        # A state that already collides.
-        # the plain nor the doubled.
+        # A state that already collides has no live map at all, so neither
+        # the plain nor the doubled scaling offers a fold.
         assert _wii2d_folds([2, 2], [0, 1]) == []
 
     def test_a_centre_too_far_out_to_spell_is_skipped(self) -> None:
@@ -1067,8 +1067,8 @@ class TestWII2D:
         """
         import importlib
 
-        # The package re-exports the.
-        # name, so import the module.
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
         module = importlib.import_module("esolangs.tools.boolean.wii2d")
         from esolangs.tools.boolean.wii2d import _wii2d_decode
 
@@ -1086,8 +1086,8 @@ class TestWII2D:
         """
         import importlib
 
-        # The package re-exports the.
-        # name, so import the module.
+        # The package re-exports the generator under the submodule's own
+        # name, so import the module explicitly rather than by attribute.
         module = importlib.import_module("esolangs.tools.boolean.wii2d")
         from esolangs.tools.boolean.wii2d import _wii2d_decode
 
@@ -1098,11 +1098,11 @@ class TestWII2D:
 
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_wii2d_folds", stuck)
-            # four distinct live values, so.
+            # four distinct live values, so the two-value exit never fires
             assert _wii2d_decode([0, 1, 1, 0, 1, 0, 0, 1]) is None
 
-        # A fold that collides two.
-        # state with no live map at.
+        # A fold that collides two inputs needing different bits leaves a
+        # state with no live map at all; that is a dead end, not a decode.
         def collides(
             _values: list[int], _bits: list[int]
         ) -> list[tuple[int, int, int, str, list[int]]]:
@@ -1128,17 +1128,17 @@ class TestWII2D:
         )
 
         n = 4
-        # not parity and not symmetric,.
+        # not parity and not symmetric, so neither closed form intercepts it
         table = "0001011001101011"
         result = _wii2d_routes(n, table)
         assert result is not None
         start, routes = result
         assert start == 0
         assert len(routes) == n
-        # every junction but the last.
+        # every junction but the last comes from the catalogue
         for pair in routes[:-1]:
             assert pair in _WII2D_JUNCTIONS
-        # and the chain plus decode.
+        # and the chain plus decode reproduces the table
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             value = start
@@ -1167,7 +1167,7 @@ class TestWII2D:
             patch.setattr(module, "_WII2D_JUNCTIONS", (("*", "*+"),))
             routes, states = _wii2d_chain(n, table)
         assert routes == [("*", "*+")] * (n - 1)
-        # Horner merges nothing, so the.
+        # Horner merges nothing, so the values are the dense index range
         assert sorted(value for _, value in states) == list(range(2 ** (n - 1)))
 
     def test_symmetric_tables_use_a_popcount_chain(self) -> None:
@@ -1250,12 +1250,12 @@ class TestWII2D:
             "0011001100111000100001011111101000101111111010101001100110101001"
             "1100011100100000111001110111101101111101101001111110001111101011"
         )
-        assert len(table) == 128  # n == 7.
+        assert len(table) == 128  # n == 7
 
         from esolangs.tools.boolean.wii2d import _wii2d_symmetric_popcount_map
 
-        # not symmetric, so this is the.
-        # chain that lets symmetric.
+        # not symmetric, so this is the general path rather than the popcount
+        # chain that lets symmetric tables off cheaply
         assert _wii2d_symmetric_popcount_map(7, table) is None
 
         template = boolean.wii2d(table)
@@ -1274,9 +1274,9 @@ class TestWII2D:
         module = importlib.import_module("esolangs.tools.boolean.wii2d")
         from esolangs.tools.boolean.wii2d import _wii2d_routes
 
-        # n == 2 has a closed form and.
-        # chain, neither of which.
-        # takes a non-symmetric table.
+        # n == 2 has a closed form and a symmetric table has the popcount
+        # chain, neither of which consults the branch decoder -- so this
+        # takes a non-symmetric table at the smallest arity that does.
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_wii2d_decode", lambda *_a, **_k: None)
             assert _wii2d_routes(3, "00010111") is None
@@ -1306,8 +1306,8 @@ class TestWII2D:
         template = "\n".join(_wii2d_layout(1, 5, [("", "+")]))
         for bit, expected in ((0, "5"), (1, "6")):
             assert self.run_chain(template, [bit]) == expected
-        # The digit's own column is.
-        # template cannot see it: a.
+        # The digit's own column is part of the layout, and running the
+        # template cannot see it: a start written one column over still
         # computes the same answer.
         assert template == (">5{X0} >" + "+" * 48 + "~.\n! >+^")
 
@@ -1434,10 +1434,10 @@ class TestCircuitDiagram:
     @pytest.mark.parametrize(
         ("table", "tildes"),
         [
-            ("0001", 0),  # AND: every minterm bit is 1,.
-            ("01", 0),  # identity: likewise.
-            ("10", 1),  # NOT: its one minterm selects.
-            ("0110", 2),  # XOR: both inputs appear.
+            ("0001", 0),  # AND: every minterm bit is 1, so no complement
+            ("01", 0),  # identity: likewise
+            ("10", 1),  # NOT: its one minterm selects the complement
+            ("0110", 2),  # XOR: both inputs appear negated and plain
         ],
     )
     def test_only_needed_complements_are_built(self, table: str, tildes: int) -> None:
@@ -1460,10 +1460,10 @@ class TestCircuitDiagram:
         """
         from esolangs.tools.boolean.circuit_diagram import circuit_diagram
 
-        dense = circuit_diagram("11111110")  # NAND3: seven ones.
-        sparse = circuit_diagram("00000001")  # its complement: one.
+        dense = circuit_diagram("11111110")  # NAND3: seven ones
+        sparse = circuit_diagram("00000001")  # its complement: one
         assert len(dense) < 2 * len(sparse)
-        # both compute their own table,.
+        # both compute their own table, whichever way they were drawn
         assert self.run_table("11111110") == "11111110"
         assert self.run_table("00000001") == "00000001"
 
@@ -1526,7 +1526,7 @@ class TestCircuitDiagram:
             circuit_diagram("012x")
 
 
-# 6.2s over 99 tests: builds.
+# 6.2s over 99 tests: builds and runs banded drawings.
 @pytest.mark.medium
 class TestCircuitDiagramLayoutGuards:
     """The layout's collision checks, reached by constructing the state.
@@ -1641,8 +1641,8 @@ class TestCircuitDiagramLayoutGuards:
         layout.run_vertical(3, 4, 4, 1)
         layout.run_vertical(3, 4, 5, 1)
         assert layout.render() == ""
-        # A real span through the same.
-        # above rejected the empty.
+        # A real span through the same cells still records, so the guard
+        # above rejected the empty interval rather than the coordinates.
         layout.run_vertical(3, 2, 6, 1)
         assert layout.render() != ""
 
@@ -1709,13 +1709,13 @@ class TestCircuitDiagramLayoutGuards:
             ("01", 1, 4),
             ("0001", 7, 11),
             ("0110", 23, 35),
-            # 91 columns before gate groups.
-            # what moves when they stop.
-            # reuse gives back columns and.
+            # 91 columns before gate groups were recycled, and the width is
+            # what moves when they stop being: the rows are untouched, since
+            # reuse gives back columns and never a band.
             ("00010111", 61, 61),
-            # Four inputs, where the two.
-            # left fold with no reuse, 99.
-            # once the folds were balanced.
+            # Four inputs, where the two savings compound: 219 columns as a
+            # left fold with no reuse, 99 once groups were recycled, and 87
+            # once the folds were balanced.  The rows never move -- neither
             # change gives back a band.
             ("0110100110010110", 147, 87),
         ],
@@ -1770,8 +1770,8 @@ class TestCircuitDiagramLayoutGuards:
         result per level alive, which is why the width falls rather than
         merely moving.
         """
-        # Sixteen minterms at n=5:.
-        # buses, which at two columns.
+        # Sixteen minterms at n=5: all-up-front would need sixteen live
+        # buses, which at two columns each could not fit in this width.
         table = "".join(str(bin(i).count("1") % 2) for i in range(32))
         drawing = boolean.circuit_diagram(table)
         assert max(len(row) for row in drawing.splitlines()) == 113
@@ -1833,10 +1833,10 @@ class TestCircuitDiagramLayoutGuards:
         """
         from esolangs.tools.boolean.circuit_diagram import circuit_diagram
 
-        # ``00101111`` at 30 is the.
-        # dense table is drawn from its.
-        # gate sits past the whole.
-        # width because only ``gate``.
+        # ``00101111`` at 30 is the case that bands on the final ``~``: a
+        # dense table is drawn from its zero rows and inverted, and that one
+        # gate sits past the whole network, where it used to run over the
+        # width because only ``gate`` checked.
         for table in ("01101001", "0110100110010110", "00010111", "00101111"):
             flat = circuit_diagram(table)
             wide = max(len(row) for row in flat.splitlines())
@@ -1864,7 +1864,7 @@ class TestCircuitDiagramLayoutGuards:
             banded = circuit_diagram(table, 80)
             assert max(len(row) for row in flat.splitlines()) > 80, n
             assert max(len(row) for row in banded.splitlines()) <= 80, n
-            # and it costs rows, which is.
+            # and it costs rows, which is the trade
             assert len(banded.splitlines()) > len(flat.splitlines()), n
 
     def test_a_band_must_re_carry_what_an_earlier_one_moved(
@@ -1893,7 +1893,7 @@ class TestCircuitDiagramLayoutGuards:
         with pytest.raises(AssertionError, match="two signals run vertical"):
             module.circuit_diagram(table, 40)
         monkeypatch.undo()
-        # and with the carry kept, the.
+        # and with the carry kept, the same drawing builds and computes
         assert self._run_at(table, 40) == table
 
 
@@ -1974,10 +1974,10 @@ class TestSuperSNUSP:
     @pytest.mark.parametrize(
         "table",
         [
-            "01101001",  # parity: every ANF coefficient.
-            "00010111",  # majority.
-            "11101000",  # its complement, so the.
-            "10000000",  # AND3: one minterm, the.
+            "01101001",  # parity: every ANF coefficient is set
+            "00010111",  # majority
+            "11101000",  # its complement, so the constant term is set
+            "10000000",  # AND3: one minterm, the longest product chain
             "00000000",
             "11111111",
         ],
@@ -2068,10 +2068,10 @@ class TestSuperSNUSP:
     @pytest.mark.parametrize(
         ("table", "length"),
         [
-            ("1010", 28),  # one dependency at two inputs.
-            ("1111", 17),  # constant: the reduction drops.
-            ("00000000", 18),  # constant at three.
-            ("00000011", 39),  # depends on the last two of.
+            ("1010", 28),  # one dependency at two inputs
+            ("1111", 17),  # constant: the reduction drops both inputs
+            ("00000000", 18),  # constant at three
+            ("00000011", 39),  # depends on the last two of three
         ],
     )
     def test_the_reduced_build_is_the_one_emitted(
@@ -2146,7 +2146,7 @@ class TestAlightWidth:
             table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
             narrow = boolean.alight(table, 1)
             floors[n] = max(len(row) for row in narrow.splitlines())
-            # the unsplit literal alone.
+            # the unsplit literal alone would have been wider than this
             literal = len(f'set r at{{"{table}", i+0.5}};')
             assert floors[n] < literal or n == 4, (n, floors[n], literal)
         assert max(floors.values()) - min(floors.values()) <= 4, floors

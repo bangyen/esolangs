@@ -31,12 +31,12 @@ from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 
 __all__ = ["alight"]
 
-# : The two turns a fold spends.
-# : cell* and the next command.
-# : so a fold is two of them:.
-# : downward to face along the.
-# : right of east is south and.
-# : lefts to get from west back.
+#: The two turns a fold spends.  ``turn`` pivots *at its own semicolon's
+#: cell* and the next command begins one cell beyond it in the new heading,
+#: so a fold is two of them: one along the row to face south, one written
+#: downward to face along the next row.  Which one depends on the heading --
+#: right of east is south and right of south is west, while it takes two
+#: lefts to get from west back to east.
 _ALIGHT_EAST_TURN = "turn right;"
 _ALIGHT_WEST_TURN = "turn left;"
 
@@ -51,15 +51,15 @@ def _alight_chunk(rows: int, width: int) -> int:
     search.
     """
     index = len(f"{rows - 0.5}")
-    # ``skip i < I;`` is 10 + I,.
+    # ``skip i < I;`` is 10 + I, ``set r at{"", i-I};`` is 18 + I.
     overhead = 28 + 2 * index
     chunk = max(1, width - overhead - len(_ALIGHT_EAST_TURN))
-    # Chunking is not free: it buys.
-    # a short table the guard costs.
-    # the whole table in one lookup.
-    # make the widest unit narrower.
-    # otherwise asking for 1 came.
-    # not what "the narrowest it.
+    # Chunking is not free: it buys a shorter literal with a guard, and for
+    # a short table the guard costs more than the literal saves.  Keeping
+    # the whole table in one lookup whenever splitting would not actually
+    # make the widest unit narrower is also what keeps this monotone --
+    # otherwise asking for 1 came back *wider* than asking for 40, which is
+    # not what "the narrowest it can build" should mean.
     if len('set r at{"", i+0.5};') + rows <= overhead + chunk:
         return rows
     return chunk
@@ -94,7 +94,7 @@ def _alight_units(truth_table: str, n: int, chunk: int) -> list[list[str]]:
         )
     rows = len(truth_table)
     if chunk >= rows:
-        # Indices run 0.5, 1.5, .
+        # Indices run 0.5, 1.5, ... so the row number is offset by a half.
         units.append([f'set r at{{"{truth_table}", i+0.5}}'])
     else:
         for start in range(0, rows, chunk):
@@ -144,14 +144,14 @@ def _alight_folded(units: list[list[str]], width: int) -> str:
     command.  A width under the floor is raised to it.
     """
     longest = max(len(";".join(unit)) for unit in units) + 1
-    # Every row runs the full span,.
-    # row has to hold; a narrower.
+    # Every row runs the full span, so one command plus its turn is what a
+    # row has to hold; a narrower request cannot be met by folding.
     limit = max(width, longest + len(_ALIGHT_EAST_TURN) + 1)
     cells: dict[tuple[int, int], str] = {}
     row, col, step = 0, 0, 1
     pending = list(units)
-    # Every pass places at least.
-    # ``pending`` leaves through.
+    # Every pass places at least one command and the pass that empties
+    # ``pending`` leaves through the break below, so the loop has no other
     # way out and says so.
     while True:
         turn = _ALIGHT_EAST_TURN if step == 1 else _ALIGHT_WEST_TURN
@@ -189,9 +189,9 @@ def _alight_folded(units: list[list[str]], width: int) -> str:
     ends: dict[int, int] = {}
     for r, c in cells:
         ends[r] = max(ends.get(r, 0), c)
-    # A row is trimmed to its last.
-    # ``turn right`` has a space in.
-    # blank that is part of a.
+    # A row is trimmed to its last *written* cell rather than stripped:
+    # ``turn right`` has a space in the middle, so a vertical turn writes a
+    # blank that is part of a command and has to survive.
     return "\n".join(
         "".join(cells.get((r, c), " ") for c in range(ends.get(r, -1) + 1))
         for r in range(height)

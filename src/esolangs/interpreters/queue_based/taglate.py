@@ -97,12 +97,12 @@ def _google_url(queue: list[int]) -> str:
     return "".join(parts)
 
 
-# : One instant of a run:.
-# : the token cursor.
-# : queue as a ``tuple`` for.
-# :.
-# : The tokens and their.
-# : during a run, so a step is.
+#: One instant of a run: ``(queue, ind)`` -- the queue of 16-bit values and
+#: the token cursor.  A value the transitions below map forward, with the
+#: queue as a ``tuple`` for the same reason.
+#:
+#: The tokens and their ``gy``/``gz`` pairing are not here: neither changes
+#: during a run, so a step is given them rather than carrying them.
 type _State = tuple[tuple[int, ...], int]
 
 
@@ -178,12 +178,12 @@ def _advance(
     elif tok == "h":
         state = _push(state, byte if byte is not None else 0)
     elif tok == "i":
-        # The pop happens here; the.
+        # The pop happens here; the caller prints what it finds missing.
         _x, state = _pop(state)
     elif tok == "j":
         value, state = _pop(state)
         state = _push(state, (value - 1) % 65536 if value else 1)
-    else:  # "t".
+    else:  # "t"
         state = (tuple(ord(c) for c in _google_url(list(queue))), ind)
 
     return (state[0], state[1] + 1)
@@ -193,14 +193,14 @@ def _partner(match: dict[int, int], ind: int, tok: str) -> int:
     """Return the token index ``ind`` jumps to, rejecting an unmatched one."""
     partner = match.get(ind)
     if partner is None:
-        # The position is the *token*.
-        # its program is a token list,.
+        # The position is the *token* index, which is what Taglate counts:
+        # its program is a token list, not a character string.
         raise unmatched(tok, ind)
     return partner
 
 
-# : How many values a token.
-# : its operands before testing.
+#: How many values a token pops before it can fail.  ``d`` takes both of
+#: its operands before testing the divisor, so a halt on division by zero
 #: has still consumed two.
 _POPS = {"a": 2, "b": 2, "c": 2, "d": 2, "e": 1, "f": 1, "i": 1, "j": 1}
 
@@ -239,7 +239,7 @@ class _Machine:
         """Whether the cursor has passed the last token."""
         return self.ind >= len(self.tokens)
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: Queue + token cursor; ip the cursor, memory the
     # queue.
 
     @property
@@ -300,7 +300,7 @@ class _Machine:
         try:
             self._restore(_advance(state, tok, self.match, byte))
         except HaltError:
-            # The pops that succeeded.
+            # The pops that succeeded before the halt still happened.
             self._restore(_consumed(state, tok))
             raise
 

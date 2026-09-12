@@ -1,4 +1,17 @@
-r"""The API carries enough to use a language it has never heard of."""
+"""The API carries enough to use a language it has never heard of.
+
+This is the whole point of ``describe``, ``encode_inputs``, ``instantiate``
+and ``read_answer``: a caller should be able to generate a program, feed it,
+and judge its answer **without a single per-language branch**.  Five rounds
+of blind usability testing kept finding the same failure -- a fact that
+existed only in this test suite, so a reader outside it got a confident
+wrong answer -- and each fix moved one more fact into the package.
+
+The verifier below is the measure of that.  It knows no language names, no
+alphabets, no dump layouts, no halting conventions.  It reached 67 of 69
+when ``answer_mode`` said only *that* a language dumps its state; the last
+two needed ``read_answer`` to say *where* in the dump the answer sits.
+"""
 
 from __future__ import annotations
 
@@ -6,19 +19,23 @@ import pytest
 
 import esolangs
 
-# : One two-input table, one.
-# : ones.
-# : can still pass a.
+#: One two-input table, one asymmetric two-input table, and two three-input
+#: ones.  The asymmetry matters: a verifier that reads the wrong position
+#: can still pass a palindromic table by luck.
 _TABLES = ("0110", "0001", "10010110", "00010111")
 
-# : A termination-answering.
-# : paid once per such row.
+#: A termination-answering language proves a 1 by *not* halting, so this is
+#: paid once per such row.  Three languages, so the floor is real but small.
 _TERMINATION_TIMEOUT = 5.0
 _RUN_TIMEOUT = 30.0
 
 
 def _verify(name: str, table: str) -> str:
-    r"""Return what ``name``'s program answers on every row of ``table``."""
+    """Return what ``name``'s program answers on every row of ``table``.
+
+    Deliberately free of per-language knowledge: every branch below is on a
+    value :func:`esolangs.describe` reports, never on a language name.
+    """
     facts = esolangs.describe(name)
     inputs = len(table).bit_length() - 1
     program = esolangs.generate(name, table)
@@ -44,7 +61,7 @@ def _verify(name: str, table: str) -> str:
 @pytest.mark.slow
 @pytest.mark.parametrize("table", _TABLES)
 def test_every_language_verifies_with_no_per_language_knowledge(table: str) -> None:
-    r"""All 69, driven only by what the API reports about each."""
+    """All 69, driven only by what the API reports about each."""
     wrong = {}
     for name in esolangs.list_languages():
         got = _verify(name, table)
@@ -57,10 +74,10 @@ def test_every_language_verifies_with_no_per_language_knowledge(table: str) -> N
 
 
 class TestTheFactsThatMakeItPossible:
-    r"""Each of these was a wrong answer a blind reader hit."""
+    """Each of these was a wrong answer a blind reader hit."""
 
     def test_a_dump_says_where_its_answer_is(self) -> None:
-        r"""``answer_mode`` said a language dumps, never where to look."""
+        """``answer_mode`` said a language dumps, never where to look."""
         assert esolangs.describe("RAM0")["answer_pattern"] == r"z: (\d+)"
         assert esolangs.describe("A Painter Ant")["answer_encoding"] == ("o", "@")
 
@@ -70,7 +87,7 @@ class TestTheFactsThatMakeItPossible:
         assert esolangs.read_answer("RAM0", ram0.replace("z: 1", "z: 0")) == "0"
 
     def test_a_termination_language_refuses_to_be_read(self) -> None:
-        r"""Its output is not the answer, so inventing one would be a lie."""
+        """Its output is not the answer, so inventing one would be a lie."""
         with pytest.raises(esolangs.ArgumentError, match="answers by terminating"):
             esolangs.read_answer("123", "VO")
 
@@ -79,7 +96,7 @@ class TestTheFactsThatMakeItPossible:
             esolangs.read_answer("brainfuck", "no digits here!")
 
     def test_a_timeout_is_distinguishable_from_a_faulting_halt(self) -> None:
-        r"""``except HaltError`` would score an invalid-op halt as a 1."""
+        """``except HaltError`` would score an invalid-op halt as a 1."""
         with pytest.raises(esolangs.ExecutionTimeoutError) as exc:
             esolangs.run("brainfuck", "+[]", timeout=1)
         assert isinstance(exc.value, esolangs.HaltError)

@@ -77,7 +77,7 @@ class TestClockwise:
         the condition is read the other way round.
         """
         assert run_and_capture(["  !", "! !"]) == ""
-        # mixed with R corners, the.
+        # mixed with R corners, the ring still closes
         assert run_and_capture(["  !", "R R"]) == ""
 
     def test_unclosed_ring_rejected(self) -> None:
@@ -204,11 +204,11 @@ class TestStepMachine:
 
         machine = _Machine(["+;S;S;S;S;S;+;R", "R             R"], IO())
         assert (machine.row, machine.col, machine.r, machine.acc) == (0, 0, 0, 0)
-        machine.step()  # + at the origin: acc 1, head.
+        machine.step()  # + at the origin: acc 1, head right
         assert (machine.row, machine.col, machine.r, machine.acc) == (0, 1, 0, 1)
-        machine.step()  # ; at row 0, col 1: parity bit.
+        machine.step()  # ; at row 0, col 1: parity bit queued
         assert (machine.row, machine.col, machine.r) == (0, 2, 0)
-        machine.step()  # S at row 0, col 2: acc zeroed.
+        machine.step()  # S at row 0, col 2: acc zeroed
         assert (machine.row, machine.col, machine.r, machine.acc) == (0, 3, 0, 0)
 
     def test_a_read_keeps_the_counts_above_the_low_bit(self) -> None:
@@ -234,11 +234,11 @@ class TestStepMachine:
             ["+-?.;.;.;.;.;.;.;?R", "  R              R", "R                 R"],
             ScriptedIO("0"),
         )
-        assert machine.io.position() == 1  # the whole input line was read.
+        assert machine.io.position() == 1  # the whole input line was read up front
         for _ in range(3):
-            machine.step()  # no '.' yet: the input is.
+            machine.step()  # no '.' yet: the input is untouched
         before = machine.snapshot()
-        machine.step()  # the '.' at (4,0) consumes the.
+        machine.step()  # the '.' at (4,0) consumes the first bit and rotates it
         assert machine.snapshot() != before
         assert "".join(machine.inp) == "1100000"
 
@@ -270,12 +270,12 @@ class TestContract(EmptyProgramContract, CycleContract, StateViewContract):
     empty_program: ClassVar[list[str]] = []
     empty_raises = "Clockwise program cannot be empty"
     halting_program: ClassVar[list[str]] = ["+;S;S;S;S;S;+;R", "R             R"]
-    # `out` holds the parity bits.
-    # the ring runs rather than.
+    # `out` holds the parity bits not yet flushed as a byte, so it fills as
+    # the ring runs rather than only at the end.
     state_views: ClassVar[tuple[str, ...]] = ("out", "inp", "ip", "memory")
     viewing_program: ClassVar[list[str]] = ["+;S;S;S;S;S;+;R", "R             R"]
-    # The machine hook supplies no.
-    # nothing to consume and cannot.
+    # The machine hook supplies no stdin, so the input cursor has
+    # nothing to consume and cannot move.
     constant_views: ClassVar[frozenset[str]] = frozenset({"inp"})
     looping_program: ClassVar[list[str]] = ["SS?R ", "+?+S-", "R!!RS"]
 

@@ -1,4 +1,11 @@
-r"""Tests for the step-through screen."""
+"""Tests for the step-through screen.
+
+Everything here drives :func:`~esolangs.tui.render`, the position adapter
+under it, the retained history, and the key loop -- which takes its input
+and output as arguments, so it can be run with scripted keys in process.
+Only ``run_tui``'s raw-mode wrapper around the terminal is left out, and one
+test drives even that through a pty.
+"""
 
 import re
 import sys
@@ -22,7 +29,7 @@ from esolangs.tui import (
     replay,
 )
 
-# : Any styled run: its SGR.
+#: Any styled run: its SGR parameters, and the text they cover.
 _STYLED = re.compile("\x1b\\[([0-9;]+)m(.*?)\x1b\\[0m")
 
 
@@ -40,7 +47,7 @@ def _frame(
     ip_shape: str = "offset",
     views: tuple[tuple[str, str], ...] = (),
 ) -> Frame:
-    r"""Build a frame from the few fields a screen test actually varies."""
+    """Build a frame from the few fields a screen test actually varies."""
     return Frame(
         language=language,
         program=program,
@@ -56,15 +63,15 @@ def _frame(
     )
 
 
-# : Reverse video is the.
-# : underline the selector;.
-# : reverse over red is another.
-# : described by which.
+#: Reverse video is the running position, red a breakpoint, and an
+#: underline the selector; bold is added where the first two meet, since
+#: reverse over red is another mostly-red cell.  They compose, so a run is
+#: described by which parameters it carries rather than by a fixed code.
 _RUN, _BREAK, _PICK = "7", "41", "4"
 
 
 def _runs(screen: str, *want: str, without: str = "") -> list[str]:
-    r"""The text of every run whose style carries all of ``want``."""
+    """The text of every run whose style carries all of ``want``."""
     return [
         text
         for code, text in _STYLED.findall(screen)
@@ -74,41 +81,41 @@ def _runs(screen: str, *want: str, without: str = "") -> list[str]:
 
 
 def _sgr(screen: str) -> frozenset[str]:
-    r"""The distinct styles the screen uses."""
+    """The distinct styles the screen uses."""
     return frozenset(code for code, _ in _STYLED.findall(screen))
 
 
 def _marked_break(screen: str) -> list[str]:
-    r"""Runs painted as a breakpoint the run is not standing on."""
+    """Runs painted as a breakpoint the run is not standing on."""
     return _runs(screen, _BREAK, without=_RUN)
 
 
 def _marked_both(screen: str) -> list[str]:
-    r"""Runs that are the running position *and* a breakpoint."""
+    """Runs that are the running position *and* a breakpoint."""
     return _runs(screen, _BREAK, _RUN)
 
 
 def _selected(screen: str) -> list[str]:
-    r"""Runs under the selector."""
+    """Runs under the selector."""
     return _runs(screen, _PICK)
 
 
 def _highlighted(screen: str) -> str | None:
-    r"""The one character marked as the running position, or ``None``."""
+    """The one character marked as the running position, or ``None``."""
     found = _runs(screen, _RUN, without=_BREAK)
     assert len(found) <= 1, f"expected at most one highlight, got {found}"
     return found[0] if found else None
 
 
 def _plain(screen: str) -> str:
-    r"""``screen`` with every marking removed, leaving the characters."""
+    """``screen`` with every marking removed, leaving the characters."""
     return _STYLED.sub(r"\2", screen)
 
 
 class TestGrid:
     def test_ragged_lines_are_padded_to_a_rectangle(self) -> None:
-        # The trailing blanks are not.
-        # over them, so the rows have.
+        # The trailing blanks are not in the file, but a grid language steps
+        # over them, so the rows have to be equal width before a column can
         # be bounds-checked.
         assert grid("ab\nc\n") == ["ab", "c "]
 
@@ -117,7 +124,7 @@ class TestGrid:
 
 
 class TestLocateOffset:
-    r"""The default: ``ip`` counts characters into the program text."""
+    """The default: ``ip`` counts characters into the program text."""
 
     def test_int_is_an_offset(self) -> None:
         assert locate("abc", 2) == Mark(0, 2)
@@ -141,21 +148,21 @@ class TestLocateOffset:
         assert locate("abc", None) is None
 
     def test_a_bool_is_not_a_position(self) -> None:
-        # bool is an int subclass, and.
+        # bool is an int subclass, and True would otherwise read as offset 1.
         flag = True
         assert locate("abc", flag) is None
 
     def test_a_tuple_under_the_default_is_not_located(self) -> None:
-        # This is the whole safety of.
-        # tuple without saying what it.
-        # frame stack and a cell are.
+        # This is the whole safety of the trait: a language that reports a
+        # tuple without saying what it counts gets no highlight, because a
+        # frame stack and a cell are indistinguishable by value.
         assert locate("abcdef", (1, 2)) is None
         assert locate("abcdef", (2,)) is None
         assert locate("abcdef", (0, 0, 0, 1, 0, 0)) is None
 
 
 class TestLocateGrid:
-    r"""``ip`` is a cell of the rectangle, with any rest a heading."""
+    """``ip`` is a cell of the rectangle, with any rest a heading."""
 
     def test_it_uses_the_first_two_parts(self) -> None:
         assert locate("ab\ncd", (1, 0, 3), "grid") == Mark(1, 0)
@@ -164,13 +171,13 @@ class TestLocateGrid:
         "ip", [(1, 1), (1, 1, 2), (1, 1, 2, 0), (1, 1, 0, 0, 1, 1)]
     )
     def test_any_width_of_heading_is_accepted(self, ip: tuple[int, ...]) -> None:
-        # COD flattens one four-tuple.
-        # not a fixed width; the first.
+        # COD flattens one four-tuple per live cod, so a grid position is
+        # not a fixed width; the first two parts are what matters.
         assert locate("ab\ncd", ip, "grid") == Mark(1, 1)
 
     def test_it_may_sit_past_its_own_ragged_line(self) -> None:
-        # Row 1 is one character long.
-        # and column 1 is a real.
+        # Row 1 is one character long in the file; the rectangle is two wide,
+        # and column 1 is a real position the interpreter can occupy.
         assert locate("ab\nc", (1, 1), "grid") == Mark(1, 1)
 
     def test_outside_the_rectangle_is_not_located(self) -> None:
@@ -188,19 +195,19 @@ class TestLocateGrid:
 
 
 class TestLocateLine:
-    r"""``ip`` starts with a line number, so the whole line is marked."""
+    """``ip`` starts with a line number, so the whole line is marked."""
 
     def test_it_marks_the_named_line(self) -> None:
         assert locate("ab\ncdef", (1,), "line") == Mark(1, 0, 4)
 
     def test_the_frame_indices_after_it_are_ignored(self) -> None:
-        # Interprogck8 appends one.
+        # Interprogck8 appends one index per open frame; the line is still
         # the first part.
         assert locate("ab\ncdef", (1, 7, 2), "line") == Mark(1, 0, 4)
 
     def test_the_span_covers_the_padded_rectangle(self) -> None:
-        # Row 0 is padded out to the.
-        # a short line still reads as a.
+        # Row 0 is padded out to the widest row, and the mark covers it, so
+        # a short line still reads as a whole line.
         assert locate("ab\ncdef", (0,), "line") == Mark(0, 0, 4)
 
     def test_a_bare_int_is_taken_as_the_line(self) -> None:
@@ -228,8 +235,8 @@ class TestRender:
         assert _highlighted(render(frame)) == "f"
 
     def test_a_grid_tuple_from_a_language_that_says_nothing_is_not_marked(self) -> None:
-        # Grapheme's (2, 5) is pc 5 one.
-        # fits the rectangle, which is.
+        # Grapheme's (2, 5) is pc 5 one call deep, not row 2 column 5.  It
+        # fits the rectangle, which is exactly why it must not be read.
         frame = _frame("abc\ndef", (1, 2), language="Grapheme")
         assert _highlighted(render(frame)) is None
 
@@ -240,8 +247,8 @@ class TestRender:
     def test_an_unlocatable_ip_leaves_the_program_unmarked(self) -> None:
         screen = render(_frame("abc", None, language="Circuit Diagram"))
         assert _highlighted(screen) is None
-        # The raw value is still on the.
-        # missing highlight readable.
+        # The raw value is still on the header, which is what makes the
+        # missing highlight readable rather than a silent failure.
         assert "ip None" in screen
 
     def test_header_reports_the_step_and_state(self) -> None:
@@ -289,8 +296,8 @@ class TestRender:
         assert all(len(line) <= 80 for line in render(frame).splitlines())
 
     def test_the_views_row_costs_the_program_pane_one_line(self) -> None:
-        # The pane shrinks by exactly.
-        # growing past the height it.
+        # The pane shrinks by exactly the row added, rather than the screen
+        # growing past the height it was given.
         program = "\n".join("x" for _ in range(40))
         without = render(_frame(program, 0), height=20)
         with_views = render(_frame(program, 0, views=(("acc", "1"),)), height=20)
@@ -303,8 +310,8 @@ class TestWindowing:
         program = "\n".join(f"line{i}" for i in range(200))
         screen = render(_frame(program, program.index("line150")), height=24)
         assert _highlighted(screen) == "l"
-        # The highlight splits the word.
-        # against the screen with the.
+        # The highlight splits the word with escapes, so the check is made
+        # against the screen with the marking removed.
         assert "line150" in _plain(screen)
         assert "line0 " not in _plain(screen)
 
@@ -321,8 +328,8 @@ class TestWindowing:
         assert all(len(line) <= 70 for line in _plain(screen).splitlines())
 
     def test_grid_rows_share_one_column_window(self) -> None:
-        # A grid language's rows have.
-        # the horizontal window cannot.
+        # A grid language's rows have to stay aligned under each other, so
+        # the horizontal window cannot be chosen per line.
         program = "\n".join(f"{i:03d}" + "." * 100 for i in range(5))
         screen = _plain(render(_frame(program, (2, 60)), width=40))
         body = [
@@ -333,8 +340,8 @@ class TestWindowing:
 
 class TestReplay:
     def test_counts_the_steps_actually_executed(self) -> None:
-        # Asking past the halt reports.
-        # which is what lets the back.
+        # Asking past the halt reports where the program really stopped,
+        # which is what lets the back key land on the last real step.
         frame = replay("brainfuck", "++", "", 1_000)
         assert frame.halted
         assert frame.step == 2
@@ -360,8 +367,8 @@ class TestReplay:
     def test_a_raising_program_reports_the_fault_instead_of_propagating(self) -> None:
         frame = replay("brainfuck", ",", "", 5)
         assert frame.fault is not None
-        # The VM translates what the.
-        # the package's own exception.
+        # The VM translates what the interpreter raises, so the fault names
+        # the package's own exception rather than the bare EOFError.
         assert "InputExhaustedError" in frame.fault
 
     def test_an_unknown_language_still_raises(self) -> None:
@@ -370,13 +377,13 @@ class TestReplay:
 
 
 class TestHistory:
-    r"""That keeping the frames agrees with re-deriving them, and stays."""
+    """That keeping the frames agrees with re-deriving them, and stays bounded."""
 
     @pytest.mark.parametrize("program", ["+++>++[<->]<.", "++++[>++<-]>.", ",.", "+"])
     def test_every_step_matches_a_replay(self, program: str) -> None:
-        # The whole point of keeping.
-        # frames, so the cached path is.
-        # every step rather than only.
+        # The whole point of keeping frames is that they are the same
+        # frames, so the cached path is checked against the derived one at
+        # every step rather than only at the ends.
         history = History("brainfuck", program, "")
         for step in range(12):
             assert history.at(step) == replay("brainfuck", program, "", step)
@@ -387,8 +394,8 @@ class TestHistory:
             history.at(step)
         for step in reversed(range(10)):
             history.at(step)
-        # ``top`` only moves when the.
-        # is the count of commands.
+        # ``top`` only moves when the machine is actually stepped, so this
+        # is the count of commands executed for twenty lookups.
         assert history.top == 9
 
     def test_going_back_within_the_window_does_not_replay(self) -> None:
@@ -410,9 +417,9 @@ class TestHistory:
 
     def test_a_step_older_than_the_window_still_gives_the_right_frame(self) -> None:
         history = History("brainfuck", "++++[>++<-]>.", "")
-        history.budget = 1  # forces a trim on the very.
+        history.budget = 1  # forces a trim on the very next frame kept
         history.at(9)
-        # The oldest frames are gone,.
+        # The oldest frames are gone, but the answer has to be identical.
         assert history.at(0) == replay("brainfuck", "++++[>++<-]>.", "", 0)
         assert history.at(1) == replay("brainfuck", "++++[>++<-]>.", "", 1)
 
@@ -420,8 +427,8 @@ class TestHistory:
         history = History("brainfuck", "+" * 200, "")
         history.budget = 1
         history.at(150)
-        # Without a bound this would.
-        # small tail, which is what.
+        # Without a bound this would hold every step; the trim keeps it to a
+        # small tail, which is what stops a long run exhausting memory.
         assert history.retained < 20
 
     def test_a_fault_matches_what_replay_reports(self) -> None:
@@ -445,15 +452,15 @@ class TestHistory:
 
 
 class _Keys:
-    r"""A scripted keyboard, and the screens the loop painted into it."""
+    """A scripted keyboard, and the screens the loop painted into it."""
 
     def __init__(self, keys: str) -> None:
         self.pending = list(keys)
         self.screens: list[str] = []
 
     def read(self) -> str:
-        # Running out of keys ends the.
-        # does too -- otherwise a test.
+        # Running out of keys ends the loop, which is what a closed stream
+        # does too -- otherwise a test that forgets to quit would hang.
         return self.pending.pop(0) if self.pending else ""
 
     def write(self, text: str) -> None:
@@ -475,7 +482,7 @@ def _drive(program: str, keys: str, **kwargs: object) -> _Keys:
 
 
 class TestDrive:
-    r"""The key loop, run in process over a scripted keyboard."""
+    """The key loop, run in process over a scripted keyboard."""
 
     def test_it_paints_before_reading_the_first_key(self) -> None:
         keyboard = _drive("+++", "q")
@@ -501,8 +508,8 @@ class TestDrive:
         assert "halted" in header
 
     def test_back_after_run_lands_on_the_last_real_step(self) -> None:
-        # The run key asks for its.
-        # guard for reporting a step.
+        # The run key asks for its whole bound, so this is the regression
+        # guard for reporting a step the program never reached.
         assert "step 2" in _drive("+++", "rbq").headers()[-1]
 
     def test_an_unknown_key_repaints_without_moving(self) -> None:
@@ -514,7 +521,7 @@ class TestDrive:
         assert len(_drive("+++", key + "   ").screens) == 1
 
     def test_running_out_of_input_stops_the_loop(self) -> None:
-        # No quit key at all; the loop.
+        # No quit key at all; the loop has to end rather than spin.
         assert len(_drive("+++", " ").screens) == 2
 
     def test_it_paints_at_the_size_it_is_given(self) -> None:
@@ -524,14 +531,14 @@ class TestDrive:
         assert all(len(line) <= 40 for line in painted)
 
     def test_the_run_bound_is_respected(self) -> None:
-        # An endless program must stop.
+        # An endless program must stop at the bound rather than run away.
         header = _drive("+[]", "rq", max_steps=50).headers()[-1]
         assert "step 50" in header
         assert "halted" not in header
 
 
 class TestBreakpoints:
-    r"""The conditions the debugger already had, reachable from the screen."""
+    """The conditions the debugger already had, reachable from the screen."""
 
     def test_no_breakpoint_asked_for_is_no_predicate(self) -> None:
         assert breakpoint_for() is None
@@ -568,8 +575,8 @@ class TestBreakpoints:
         assert History("brainfuck", "+++", "").find(0, None, 100).step == 3
 
     def test_it_searches_forward_from_where_it_is_told(self) -> None:
-        # The same cell value is passed.
-        # first has to find the second.
+        # The same cell value is passed twice; continuing from after the
+        # first has to find the second rather than stopping where it is.
         history = History("brainfuck", "+>+<+", "")
         stop = breakpoint_for(cell=(0, 1))
         first = history.find(0, stop, 100)
@@ -581,9 +588,9 @@ class TestBreakpoints:
         assert history.find(0, breakpoint_for(at=99), 40).step == 40
 
     def test_it_agrees_with_the_debugger_it_mirrors(self) -> None:
-        # The screen's breakpoints are.
-        # command line's run a live.
-        # place, or `--break-on-output`.
+        # The screen's breakpoints are predicates over kept frames while the
+        # command line's run a live machine; both must stop in the same
+        # place, or `--break-on-output` would mean two things.
         program = "++++++++[>++++++++<-]>+.+."
         dbg = esolangs.make_debugger("brainfuck", program)
         dbg.break_on_output("A")
@@ -608,8 +615,8 @@ class TestContinueKey:
         assert "step 3" in keyboard.headers()[-1]
 
     def test_c_without_a_breakpoint_runs_to_the_halt(self) -> None:
-        # Continue means "to the next.
-        # set it is the run key rather.
+        # Continue means "to the next breakpoint, or the halt", so with none
+        # set it is the run key rather than a key that does nothing.
         assert "halted" in _drive("+++", "cq").headers()[-1]
 
     def test_c_continues_past_a_breakpoint_already_reached(self) -> None:
@@ -629,27 +636,27 @@ class TestContinueKey:
 
 
 class TestBreakpointMarks:
-    r"""A place the run will stop, told apart from the place it is now."""
+    """A place the run will stop, told apart from the place it is now."""
 
     def test_a_breakpoint_is_painted_in_its_own_colour(self) -> None:
         screen = render(_frame("+>-<", 0), breaks=(Mark(0, 2),))
         assert _marked_break(screen) == ["-"]
-        # And the cursor keeps its own.
+        # And the cursor keeps its own marking, elsewhere.
         assert _highlighted(screen) == "+"
 
     def test_a_breakpoint_under_the_cursor_shows_as_both(self) -> None:
-        # Neither may hide the other:.
-        # make it look like the.
+        # Neither may hide the other: stepping onto a breakpoint must not
+        # make it look like the breakpoint is gone.
         screen = render(_frame("+>-<", 2), breaks=(Mark(0, 2),))
         assert _marked_both(screen) == ["-"]
         assert _highlighted(screen) is None
         assert _marked_break(screen) == []
 
     def test_every_combination_of_states_looks_different(self) -> None:
-        # Red and reverse-video-red are.
-        # states carry shape cues as.
-        # breakpoint, an underline for.
-        # separate the colours still.
+        # Red and reverse-video-red are two shades of the same thing, so the
+        # states carry shape cues as well: bold where the run meets a
+        # breakpoint, an underline for the selector.  A reader who cannot
+        # separate the colours still has a cue, and so does an odd palette.
         seen = [
             _sgr(render(_frame("+>-<", 2))),
             _sgr(render(_frame("+>-<", 0), breaks=(Mark(0, 2),))),
@@ -668,8 +675,8 @@ class TestBreakpointMarks:
         assert _marked_break(screen) == ["b", "d"]
 
     def test_a_position_that_does_not_locate_is_not_painted(self) -> None:
-        # A breakpoint past the end of.
-        # must not be drawn at some.
+        # A breakpoint past the end of the program has nowhere to go, and
+        # must not be drawn at some other character instead.
         assert _marked_break(render(_frame("abc", 0), breaks=(Mark(9, 0),))) == []
 
     def test_a_grid_breakpoint_is_painted_at_its_cell(self) -> None:
@@ -705,14 +712,14 @@ class TestToggleKey:
         assert "break" not in keyboard.headers()[-1]
 
     def test_a_toggled_breakpoint_stops_a_continue(self) -> None:
-        # Step to 1, mark it, run to.
-        # back round to the marked.
+        # Step to 1, mark it, run to the halt, then continue: the run comes
+        # back round to the marked position rather than stopping only at the
         # end.
         keyboard = _drive("+>+<+", " tbcq")
         assert "step 1" in keyboard.headers()[-1]
 
     def test_continue_does_not_stop_where_it_already_is(self) -> None:
-        # Marking the current position.
+        # Marking the current position and continuing has to move, or the
         # key would appear dead.
         keyboard = _drive("+++", "tcq")
         assert "step 0" not in keyboard.headers()[-1]
@@ -740,15 +747,15 @@ class TestToggleKey:
 
 
 class TestAtCell:
-    r"""Turning a place on the screen into the mark a position there makes."""
+    """Turning a place on the screen into the mark a position there makes."""
 
     def test_a_cell_is_itself(self) -> None:
         assert at_cell("abc\ndef", "offset", 1, 2) == Mark(1, 2)
         assert at_cell("abc\ndef", "grid", 1, 2) == Mark(1, 2)
 
     def test_a_line_language_takes_the_whole_line(self) -> None:
-        # A line counter cannot tell.
-        # breakpoint anywhere on the.
+        # A line counter cannot tell one column from another, so a
+        # breakpoint anywhere on the row means the row.
         assert at_cell("ab\ncdef", "line", 1, 3) == Mark(1, 0, 4)
         assert at_cell("ab\ncdef", "line", 1, 0) == at_cell("ab\ncdef", "line", 1, 3)
 
@@ -760,8 +767,8 @@ class TestAtCell:
         assert at_cell("abc", "offset", 0, 9) is None
 
     def test_it_agrees_with_locate(self) -> None:
-        # The two have to meet, or a.
-        # recognised when the run.
+        # The two have to meet, or a breakpoint set by hand would never be
+        # recognised when the run arrived at it.
         program = "abc\ndef"
         assert at_cell(program, "offset", 1, 1) == locate(program, 5)
         assert at_cell(program, "grid", 1, 1) == locate(program, (1, 1, 3), "grid")
@@ -769,7 +776,7 @@ class TestAtCell:
 
 
 class TestSelector:
-    r"""A selector that can reach where the run has not."""
+    """A selector that can reach where the run has not."""
 
     def test_it_starts_on_the_running_position(self) -> None:
         assert _selected(_drive("+++", "q").screens[0]) == ["+"]
@@ -777,18 +784,18 @@ class TestSelector:
     @pytest.mark.parametrize(
         ("keys", "expected"),
         [
-            ("", "+"),  # starts on the run.
+            ("", "+"),  # starts on the run
             ("l", ">"),
             ("j", "<"),
             ("lj", "-"),
-            ("h", "+"),  # already at the left edge.
-            ("k", "+"),  # already at the top.
-            ("ljhk", "+"),  # there and back.
+            ("h", "+"),  # already at the left edge
+            ("k", "+"),  # already at the top
+            ("ljhk", "+"),  # there and back
         ],
     )
     def test_the_movement_keys_move_it(self, keys: str, expected: str) -> None:
-        # Four distinct commands on a.
-        # direction lands somewhere it.
+        # Four distinct commands on a two-by-two rectangle, so every
+        # direction lands somewhere it can be told apart from the others.
         keyboard = _drive("+>\n<-", keys + "q")
         assert _selected(keyboard.screens[-1]) == [expected]
 
@@ -796,17 +803,17 @@ class TestSelector:
         assert "step 0" in _drive("+++", "lllq").headers()[-1]
 
     def test_it_stops_at_the_edges(self) -> None:
-        # Walking off the rectangle.
+        # Walking off the rectangle would either crash or wrap; it holds.
         keyboard = _drive("+++", "hhhhkkkkq")
         assert _selected(keyboard.screens[-1]) == ["+"]
 
     def test_stepping_snaps_it_back_to_the_run(self) -> None:
-        # Otherwise "where am I" and.
+        # Otherwise "where am I" and "where am I pointing" drift apart.
         keyboard = _drive("+>-<", "ll q")
         assert _selected(keyboard.screens[-1]) == [">"]
 
     def test_a_breakpoint_can_be_set_where_the_run_has_not_reached(self) -> None:
-        # The whole point: mark the.
+        # The whole point: mark the third command while standing on the
         # first, then continue to it.
         keyboard = _drive("+>-<", "lltcq")
         assert "step 2" in keyboard.headers()[-1]
@@ -817,7 +824,7 @@ class TestSelector:
         assert _highlighted(keyboard.screens[-1]) == "+"
 
     def test_the_pane_follows_the_selector(self) -> None:
-        # A selector that can leave the.
+        # A selector that can leave the window is a selector you lose.
         program = "." * 400 + "@" + "." * 400
         screen = render(_frame(program, 0), width=60, picked=Mark(0, 400))
         assert _selected(screen) == ["@"]
@@ -832,7 +839,13 @@ class TestSelector:
 
 
 class TestBoundaries:
-    r"""The off-by-ones, each pinned at the exact edge it turns on."""
+    """The off-by-ones, each pinned at the exact edge it turns on.
+
+    A mutation sweep over this module found the tests below missing: every
+    bound here was asserted somewhere far outside it -- a row 5 past a
+    2-row program -- which a widened comparison passes just as happily.
+    The edge is the only place the two readings differ.
+    """
 
     def test_a_grid_row_one_past_the_last_is_outside(self) -> None:
         assert locate("ab\ncd", (2, 0), "grid") is None
@@ -844,7 +857,7 @@ class TestBoundaries:
         assert locate("ab\ncd", (2,), "line") is None
 
     def test_an_offset_one_past_the_text_is_outside(self) -> None:
-        # The halt boundary lands here,.
+        # The halt boundary lands here, so this is the common case rather
         # than an exotic one.
         assert locate("abc", 3) is None
         assert locate("abc", 2) == Mark(0, 2)
@@ -854,9 +867,9 @@ class TestBoundaries:
         assert at_cell("abc", "offset", 0, 2) == Mark(0, 2)
 
     def test_the_program_pane_is_filled_when_there_is_enough_program(self) -> None:
-        # Scrolling that runs past the.
-        # showing the focus somewhere.
-        # screen at the bottom of a.
+        # Scrolling that runs past the end leaves the pane short rather than
+        # showing the focus somewhere wrong, so the symptom is a half-empty
+        # screen at the bottom of a long program.
         program = "\n".join(f"L{i}" for i in range(100))
         tall = render(_frame(program, program.index("L99")), height=24)
         short = render(_frame(program, 0), height=24)
@@ -864,34 +877,34 @@ class TestBoundaries:
         assert len([ln for ln in _plain(tall).splitlines() if "|" in ln]) == len(body)
 
     def test_a_value_that_exactly_fits_is_kept(self) -> None:
-        # ``1 2 3`` is six characters.
+        # ``1 2 3`` is six characters of budget for five of text; at exactly
         # six nothing has to be dropped.
         assert _cells((1, 2, 3), 6) == "1 2 3"
 
     def test_the_dropped_count_may_fill_the_budget_exactly(self) -> None:
-        # Ten values and " +9 more".
-        # test would give up a value it.
+        # Ten values and " +9 more" come to precisely thirty; a stricter
+        # test would give up a value it did not need to.
         row = _cells(tuple(range(20)), 30)
         assert len(row) == 30
         assert row.endswith("+9 more")
 
     def test_a_mark_wider_than_the_window_is_cut_to_it(self) -> None:
-        # A line-shape mark spans a.
-        # pane; padding it to its full.
+        # A line-shape mark spans a whole row, which can be wider than the
+        # pane; padding it to its full span would overrun the screen.
         frame = _frame("abcdefghij", (0,), ip_shape="line")
         screen = render(frame, width=10)
         assert all(len(line) <= 10 for line in _plain(screen).splitlines())
 
     def test_a_mark_just_past_the_window_is_not_painted_at_all(self) -> None:
-        # One column past the right.
-        # empty run -- which is what a.
+        # One column past the right edge must be skipped, not painted as an
+        # empty run -- which is what a widened bound produces.
         screen = render(_frame("." * 200, 0), width=60, breaks=(Mark(0, 56),))
         assert _marked_break(screen) == []
 
     def test_the_run_on_a_breakpoint_is_more_than_a_colour(self) -> None:
-        # Bold is what makes it differ.
-        # reverse video puts the red on.
-        # same hue and only a shape.
+        # Bold is what makes it differ from the breakpoint alone to look at:
+        # reverse video puts the red on the foreground, so the two are the
+        # same hue and only a shape separates them.
         (code,) = [
             c
             for c, _ in _STYLED.findall(render(_frame("+>-<", 2), breaks=(Mark(0, 2),)))
@@ -899,15 +912,15 @@ class TestBoundaries:
         assert {"1", "4"} & set(code.split(";")), code
 
     def test_the_limit_is_not_overrun_by_one(self) -> None:
-        # A breakpoint one step past.
-        # bound is what stops an.
+        # A breakpoint one step past the bound must not be reported: the
+        # bound is what stops an endless program dead.
         history = History("brainfuck", "+" * 10, "")
         frame = history.find(0, breakpoint_for(cell=(0, 6)), 5)
         assert frame.step == 5
 
     def test_a_marked_position_and_a_condition_stop_at_either(self) -> None:
-        # The two sources of breakpoint.
-        # requiring both would make.
+        # The two sources of breakpoint are alternatives, not a conjunction;
+        # requiring both would make each one silently inert.
         keyboard = _Keys("cq")
         drive(
             History("brainfuck", "+++", ""),
@@ -920,7 +933,7 @@ class TestBoundaries:
 
 
 class TestWatch:
-    r"""One cell's value over time, read off the frames already kept."""
+    """One cell's value over time, read off the frames already kept."""
 
     def test_it_traces_a_cell_step_by_step(self) -> None:
         history = History("brainfuck", "+++", "")
@@ -933,8 +946,8 @@ class TestWatch:
         assert history.trace(0, 3, 2) == (2, 3)
 
     def test_it_ends_where_the_run_is_standing(self) -> None:
-        # Stepping back shortens the.
-        # run rather than a log that.
+        # Stepping back shortens the trace, because it is a view over the
+        # run rather than a log that only grows.
         history = History("brainfuck", "+++", "")
         history.at(3)
         assert history.trace(0, 1, 10) == (0, 1)
@@ -945,8 +958,8 @@ class TestWatch:
         assert history.trace(9, 3, 10) == (None,) * 4
 
     def test_it_stops_at_the_retained_window(self) -> None:
-        # The budget bounds what is.
-        # answer is short rather than.
+        # The budget bounds what is kept, so it bounds the trace too; the
+        # answer is short rather than wrong.
         history = History("brainfuck", "+" * 100, "")
         history.budget = 1
         history.at(100)
@@ -967,8 +980,8 @@ class TestWatch:
         assert "- - 1" in render(_frame("+", 0), watch=(0, (None, None, 1)))
 
     def test_the_newest_values_survive_a_narrow_row(self) -> None:
-        # A tape is read from cell zero.
-        # now backwards, so the *end*.
+        # A tape is read from cell zero outwards, but a trace is read from
+        # now backwards, so the *end* is what must not be dropped.
         screen = render(_frame("+", 0), watch=(0, tuple(range(100))), width=40)
         assert "99" in screen
         assert all(len(line) <= 40 for line in _plain(screen).splitlines())
@@ -1000,7 +1013,13 @@ class TestWatch:
 
 
 class TestRawTerminal:
-    r"""``run_tui`` itself, driven through a pty."""
+    """``run_tui`` itself, driven through a pty.
+
+    This is the part :func:`drive` cannot cover: putting a real terminal in
+    raw mode, reading from it, and restoring it afterwards.  One program,
+    a few keys, and a hard deadline -- a loop that never returns has to fail
+    here rather than hang the suite.
+    """
 
     @pytest.mark.skipif(sys.platform == "win32", reason="no pty on Windows")
     def test_it_paints_and_quits_on_a_real_terminal(self) -> None:
@@ -1022,7 +1041,7 @@ class TestRawTerminal:
         deadline = time.time() + 20
 
         def drain() -> str:
-            r"""Wait for this key's repaint, then read while it keeps coming."""
+            """Wait for this key's repaint, then read while it keeps coming."""
             out = ""
             quiet = time.time() + 5
             while time.time() < min(quiet, deadline):
@@ -1040,8 +1059,8 @@ class TestRawTerminal:
             return out
 
         try:
-            # The child is a fresh.
-            # waited for before any key.
+            # The child is a fresh interpreter, so the first paint has to be
+            # waited for before any key means anything.
             painted += drain()
             for key in "  q":
                 os.write(fd, key.encode())
@@ -1055,13 +1074,18 @@ class TestRawTerminal:
 
         assert "brainfuck" in painted
         assert "step 2" in painted
-        # Raw mode is what makes a bare.
-        # absence would mean the.
+        # Raw mode is what makes a bare newline a carriage return too; its
+        # absence would mean the terminal was never switched over.
         assert "\r\n" in painted
 
 
 class TestAgainstTheInterpreter:
-    r"""That the highlighted character is the op the VM is about to run."""
+    """That the highlighted character is the op the VM is about to run.
+
+    The screen's whole claim is this correspondence, and it is the one thing
+    a pure-function test cannot assert by itself -- it needs the interpreter
+    to say where it is.
+    """
 
     @pytest.mark.parametrize("step", range(12))
     def test_brainfuck_highlight_is_the_next_command(self, step: int) -> None:

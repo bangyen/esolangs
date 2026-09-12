@@ -340,7 +340,7 @@ def run_taglate(program: str, inputs: list[str]) -> str:
 def run_clockwise(program: str, inputs: list[str]) -> str:
     import esolangs
 
-    # Clockwise reads the whole.
+    # Clockwise reads the whole input as one line (7 bits per char)
     return esolangs.run("Clockwise", program, stdin="".join(inputs))
 
 
@@ -375,9 +375,9 @@ def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
 
     with redirect_stdout(buffer):
         run(program.splitlines(), FakeIO(inputs), rng=FirstDraw(heading))
-    # The generator runs in decimal.
-    # negative, which dump() skips,.
-    # -- no filtering needed, and.
+    # The generator runs in decimal output mode and drives the input cells
+    # negative, which dump() skips, so the tape prints as exactly the answer
+    # -- no filtering needed, and asserting on the raw output is stricter.
     return buffer.getvalue()
 
 
@@ -430,17 +430,17 @@ def one_two_three_result(program: str) -> str:
 
 
 _PB_TABLES = {
-    "10": 1,  # NOT.
-    "0110": 2,  # XOR.
-    "0001": 2,  # AND.
-    "1110": 2,  # NAND.
-    "10100101": 3,  # mixed.
+    "10": 1,  # NOT
+    "0110": 2,  # XOR
+    "0001": 2,  # AND
+    "1110": 2,  # NAND
+    "10100101": 3,  # mixed
 }
 
 
-# The nullary tables ("0"/"1").
-# constant rather than a.
-# generator refuses it.
+# The nullary tables ("0"/"1") are not here: a one-entry table is a
+# constant rather than a function of any input, and every boolean
+# generator refuses it (``test_a_one_entry_table_is_refused``).
 _PB_CONSTANTS = ("00", "11", "0000", "1111")
 
 

@@ -132,7 +132,7 @@ class TestCommandExpression:
         assert _command_expr("f{}", "f") == ("call", "f", [])
 
     def test_a_word_that_is_neither_evaluates_nothing(self) -> None:
-        # No brace, so it is not a.
+        # No brace, so it is not a call; not a keyword, so it carries no
         # expression either.
         assert _command_expr("out c", "out") is None
 

@@ -10,24 +10,24 @@ Their cost functions are *not* kept: those existed to choose between the
 constructions without building them, and there is no longer a choice to make.
 """
 
-# pylint: disable=duplicate-code
+# These independent construction oracles deliberately mirror generated programs.
 # pylint: disable=duplicate-code
 
 from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 from esolangs.tools.boolean.register import _polynomial_states
 
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
+#: Label bands for the *pure* DAG below, which the shipped generator no
+#: longer shares.
+#:
+#: Two bands by level parity are enough here and were not enough there, and
+#: the difference is inlining.  This emits one block per state at every
+#: level, in level order, so every jump goes from level k to level k + 1 and
+#: the accumulator only ever holds a next-level label while control is
+#: passing the current level's blocks -- which draw from the other band.
+#: The shipped generator inlines unshared states, so one top-level block
+#: carries jumps originating at many depths, two same-parity levels are both
+#: targets from inside it, and the earlier one fires first.  See
+#: :func:`~esolangs.tools.boolean.register.sophie_labels`.
 _SOPHIE_BANDS = ((1, 20), (21, 40))
 
 
@@ -48,9 +48,9 @@ def _polynomial_tree(truth_table: str) -> list[list[int]]:
     def emit_delta(delta: int) -> None:
         if delta > 0:
             instrs.append([delta, 1])
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
+        # The tree walks the accumulator up from zero and every answer is 0
+        # or 1, so the deltas the builder emits are never negative; the
+        # subtract instruction is here for a builder that needs one.
         elif delta < 0:  # pragma: no cover - the tree only ever steps upward
             instrs.append([-delta, 2])
 
@@ -59,23 +59,23 @@ def _polynomial_tree(truth_table: str) -> list[list[int]]:
         if len(vals) == 1:
             v = int(vals.pop())
             emit_delta(_ASCII_ZERO + v - last)
-            instrs.append([0, 1])  # output.
-            # pylint: disable=duplicate-code
-            # pylint: disable=duplicate-code
-            # pylint: disable=duplicate-code
-            # pylint: disable=duplicate-code
-            # pylint: disable=duplicate-code
+            instrs.append([0, 1])  # output
+            # Drain the reads the untaken siblings would have made, *after*
+            # printing so they cannot disturb the value being output: an
+            # input-capable language reads each of its n inputs exactly once
+            # per run whatever the table says, or the caller's remaining bits
+            # are left on the input stream.
             for _ in range(bit, n):
-                instrs.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48.
-            emit_delta(1)  # reg back to nonzero so the.
+                instrs.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48
+            emit_delta(1)  # reg back to nonzero so the enclosing else skips
             return
-        instrs.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48.
+        instrs.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48
         g1 = [r for r in rows if ((r >> (n - 1 - bit)) & 1) == 1]
         g0 = [r for r in rows if ((r >> (n - 1 - bit)) & 1) == 0]
-        instrs.append([1])  # if reg > 0 -> the one-bit.
+        instrs.append([1])  # if reg > 0 -> the one-bit subtree
         build(g1, bit + 1, 1)
         instrs.append([2])
-        instrs.append([4])  # if reg == 0 -> the zero-bit.
+        instrs.append([4])  # if reg == 0 -> the zero-bit subtree
         build(g0, bit + 1, 0)
         instrs.append([2])
 
@@ -92,14 +92,14 @@ def _sophie_tree(truth_table: str) -> str:
         row = 0
         for bit in path:
             row = row * 2 + bit
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
+        # A short path has its unconsumed bits still to come, so it names
+        # the start of the run they span rather than a row outright.
         row <<= n - depth
         if depth == n or len(set(truth_table[row : row + 2 ** (n - depth)])) == 1:
-            # pylint: disable=duplicate-code
-            # pylint: disable=duplicate-code
-            # pylint: disable=duplicate-code
-            # pylint: disable=duplicate-code
+            # Sophie reads inside the tree -- a node is ``;`` then its
+            # branch -- so a folded leaf still spends the reads it skipped.
+            # A program whose input count depended on its table would
+            # desync a caller feeding several programs from one stream.
             reads = ";" * (n - depth)
             return f"{reads}#${_ASCII_ZERO + int(truth_table[row])},&"
         return ";" + "@$48{" + build([*path, 0]) + "}" + "{" + build([*path, 1]) + "}"
@@ -139,14 +139,14 @@ def _sophie_dag(truth_table: str) -> str:
         for state in levels[k]:
             zero, one = state[:width], state[width:]
             if k + 1 == n:
-                # pylint: disable=duplicate-code
+                # The children are single characters -- the answers.
                 body = (
                     f";@$48{{#${_ASCII_ZERO + int(zero)},&}}"
                     f"{{#${_ASCII_ZERO + int(one)},&}}"
                 )
             elif zero == one:
-                # pylint: disable=duplicate-code
-                # pylint: disable=duplicate-code
+                # Merged children: this bit cannot change the answer, so the
+                # read still happens and the label is set unconditionally.
                 body = f";#${label(k + 1, zero)}"
             else:
                 body = f";@$48{{#${label(k + 1, zero)}}}{{#${label(k + 1, one)}}}"

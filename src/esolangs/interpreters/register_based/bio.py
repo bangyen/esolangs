@@ -52,17 +52,17 @@ import sys
 
 from esolangs.interpreters.io import IO
 
-# : One instant of a run:.
-# : three registers, and the.
-# : every transition below.
-# : place, and both stores are.
-# :.
-# : The commands are.
-# : run, so carrying them would.
-# : detector stores.
-# :.
-# : The field order starts.
-# : series, but ``snapshot``.
+#: One instant of a run: ``(ind, reg, stk)`` -- the command cursor, the
+#: three registers, and the loop-return stack.  A value, not a record:
+#: every transition below returns a new one rather than editing one in
+#: place, and both stores are tuples for the same reason.
+#:
+#: The commands are deliberately not in here.  They do not change during a
+#: run, so carrying them would put constant data in every value the cycle
+#: detector stores.  They are a parameter to the transition instead.
+#:
+#: The field order starts ``ind`` for consistency with the rest of the
+#: series, but ``snapshot`` still returns ``(reg, stk, ind, ...)`` -- the
 #: order it always returned.
 type _State = tuple[int, tuple[int, int, int], tuple[int, ...]]
 
@@ -91,24 +91,24 @@ def _skip(commands: list[str], ind: int) -> int:
     return ind
 
 
-# A BIO command: an.
-# loop-open triple carrying the.
-# that closes one.
-# says every command is ended.
-# rather than being.
-# either is not a command at.
-# .
-# The terminator is bound to.
-# ``0i`` takes ``{``, and every.
-# ``(?:\{|;)`` accepted the two.
-# walked off the end at run.
-# ``};`` that brace matching.
-# nothing had pushed, so its.
-# rejected at load, which is.
+# A BIO command: an increment/decrement/output triple ended by its ``;``, a
+# loop-open triple carrying the ``{`` that opens its body, or the ``};``
+# that closes one.  The wiki writes the loop as ``0i{ do something };`` and
+# says every command is ended by a ``;``, so both belong to the command
+# rather than being free-standing punctuation -- and a triple missing
+# either is not a command at all.
+#
+# The terminator is bound to the opcode rather than alternated freely: only
+# ``0i`` takes ``{``, and every other opcode takes ``;``.  A blind
+# ``(?:\{|;)`` accepted the two mismatched shapes as commands, and both then
+# walked off the end at run time -- ``0ix;`` reached ``_skip`` looking for a
+# ``};`` that brace matching never required, and ``0ox{`` opened a body
+# nothing had pushed, so its ``};`` popped an empty stack.  Both are
+# rejected at load, which is the reading this matches.
 _COMMAND = re.compile(r"0[iI][xXyYzZ]\{|(?:0[oO]|1[oOiI])[xXyYzZ];|\};")
 
-# Comments run from ``//`` to.
-# they are removed before the.
+# Comments run from ``//`` to the end of the line and carry no meaning, so
+# they are removed before the program is tokenized.
 _COMMENT = re.compile(r"//[^\n]*")
 
 
@@ -152,13 +152,13 @@ class _Machine:
         """Parse ``code`` into commands and reset the registers."""
         self.io = io
         self.commands = parse(code)
-        # ``halted`` is read twice per.
-        # once by ``step``'s guard --.
+        # ``halted`` is read twice per command -- once by ``run``'s loop and
+        # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.commands)
         self.state: _State = (0, (0, 0, 0), ())
 
-    # The language's own names.
-    # than fields of their own, so.
+    # The language's own names.  They are views on the current state rather
+    # than fields of their own, so there is one place a step can change.
 
     @property
     def ind(self) -> int:
@@ -179,7 +179,7 @@ class _Machine:
         """Whether the cursor has reached the end of the command list."""
         return self.state[0] >= self.size
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: Registers + loop stack + cursor; ip the cursor,
     # memory the regs.
 
     @property
@@ -199,8 +199,8 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # Both stores are already.
-        # the fields moved into a state.
+        # Both stores are already tuples, in the order this returned before
+        # the fields moved into a state value.
         ind, reg, stk = self.state
         return (reg, stk, ind, self.io.position())
 
@@ -217,7 +217,7 @@ class _Machine:
             return
         command = self.commands[ind]
         if command[:2] == "1i":
-            # Handle negative values by.
+            # Handle negative values by converting to unsigned 8-bit
             self.io.print_char(chr(reg["xyz".find(command[2])] % 256))
         self.state = _advance(self.state, self.commands)
 
@@ -235,8 +235,8 @@ def _advance(state: _State, commands: list[str]) -> _State:
     """
     ind, reg, stk = state
     command = commands[ind]
-    # A loop-open command carries.
-    # register is the triple's own.
+    # A loop-open command carries the ``{`` that opens its body, so the
+    # register is the triple's own last letter rather than the token's.
     r = "xyz".find(command[2]) if command != "};" else -1
     code = command[:2]
 
@@ -245,7 +245,7 @@ def _advance(state: _State, commands: list[str]) -> _State:
     elif code == "1o":
         reg = _bumped(reg, r, -1)
     elif code == "1i":
-        pass  # the print already happened in.
+        pass  # the print already happened in the shell
     elif command == "};":
         ind, stk = stk[-1] - 1, stk[:-1]
     elif reg[r]:

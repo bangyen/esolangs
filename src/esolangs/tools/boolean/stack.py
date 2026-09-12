@@ -15,7 +15,7 @@ from esolangs.tools.boolean.helpers import (
     read_at,
 )
 
-# : One sink choice: how far a.
+#: One sink choice: how far a freshly-read bit drops, and the ops that do it.
 Sinks = tuple[tuple[int, str], ...]
 
 
@@ -51,15 +51,15 @@ def stack_programs(n: int, sinks: Sinks, read: str) -> dict[tuple[int, ...], str
             stack = (*stack, read_index)
             text += read
             if places >= len(stack):
-                break  # nothing below to sink under.
+                break  # nothing below to sink under
             stack = _sink_top(stack, places)
             text += ops
         else:
-            # Every surviving sink.
-            # shape -- 162 completions at n.
-            # shorter-text tie-break never.
-            # table is keyed by shape, and.
-            # repeated would need it to.
+            # Every surviving sink combination lands on a distinct stack
+            # shape -- 162 completions at n == 6, no repeat -- so the
+            # shorter-text tie-break never fires.  It stays because the
+            # table is keyed by shape, and a future sink whose shape
+            # repeated would need it to keep the cheaper spelling.
             if (  # pragma: no branch - no two combinations share a shape
                 stack not in reached or len(text) < len(reached[stack])
             ):
@@ -79,35 +79,35 @@ def _grapheme_push1() -> str:
 
 def _grapheme_push65() -> str:
     """Grapheme code pushing 65 (``ord('A')``, the input normalization constant)."""
-    return "FGF" + "FEF" + "FAF" + "R" + "B"  # 70 - (50 / 10).
+    return "FGF" + "FEF" + "FAF" + "R" + "B"  # 70 - (50 / 10)
 
 
-# : The reserved variable key,.
+#: The reserved variable key, holding the 65 that normalizes an input bit.
 _GRAPHEME_CONST_KEY = 90
 
-# : Digit letters a variable.
-# :.
-# : A key is written.
-# : ``F``s delimit int mode --.
-# : ``chr(key // 10 + 64)``.
-# : encoded as ``FFF``: three.
-# : collapsed for the rest of.
-# : then executed as a command.
-# : deaths: six essential.
-# : answer this could read``,.
+#: Digit letters a variable key may use, in slot order.
+#:
+#: A key is written ``F<letter>F``, where the letter is the digit and the
+#: ``F``s delimit int mode -- so the letter ``F`` cannot be a digit, and
+#: ``chr(key // 10 + 64)`` walked straight into it.  Slot 5's key of 60
+#: encoded as ``FFF``: three delimiters and no number.  The framing then
+#: collapsed for the rest of the program, and the *next* slot's letter was
+#: then executed as a command.  Restoring the old alphabet reproduces both
+#: deaths: six essential inputs raised ``ProgramError: Grapheme produced no
+#: answer this could read``, and seven raised ``HaltError: G needs a string
 #: or a function``.
-# :.
-# : ``I`` is skipped for a.
-# : normalizing constant.
-# : stores its input bit over.
-# : essential inputs still come.
-# : nothing reads the constant.
-# : wrong table.
-# : two, and it is the reason.
-# :.
-# : Both walls stood at.
-# : that reduces to five or.
-# : build sweep -- which never.
+#:
+#: ``I`` is skipped for a second, quieter collision.  It is 90, the key the
+#: normalizing constant already lives in, so with only ``F`` removed slot 7
+#: stores its input bit over the 65.  That one does not raise -- eight
+#: essential inputs still come out right, because slot 7 is read last and
+#: nothing reads the constant afterwards, and it is *nine* that returns a
+#: wrong table.  A wrong answer that arrives quietly is the worse of the
+#: two, and it is the reason this list is filtered rather than shortened.
+#:
+#: Both walls stood at *essential* inputs, not arity: a table of any size
+#: that reduces to five or fewer inputs always worked, which is why the
+#: build sweep -- which never runs what it builds -- saw nothing.
 _GRAPHEME_KEY_LETTERS = [
     letter
     for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -118,8 +118,8 @@ _GRAPHEME_KEY_LETTERS = [
 def _grapheme_slot_key(slot: int) -> int:
     """Return the variable key holding input ``slot``."""
     if slot >= len(_GRAPHEME_KEY_LETTERS):  # pragma: no cover - see below
-        # Twenty-four usable keys.
-        # rows to reach them;.
+        # Twenty-four usable keys against a table that would need 2**24
+        # rows to reach them; unreachable, and refused rather than aliased.
         raise GeneratorCapError(
             f"Grapheme has {len(_GRAPHEME_KEY_LETTERS)} variable keys, "
             f"and slot {slot} needs one past them"
@@ -155,36 +155,36 @@ def grapheme(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
-    # A table that ignores some of.
-    # minterm here spends one.
-    # each of the (now fewer).
-    # the interface -- but an.
-    # pushes the line it read and.
-    # pops what it consumes and.
-    # left below the accumulator is.
-    # That makes it cheaper than.
-    # queue's positional arithmetic.
+    # A table that ignores some of its inputs is a smaller table, and every
+    # minterm here spends one factor per input, so dropping an input shortens
+    # each of the (now fewer) minterms as well.  The reads stay -- they are
+    # the interface -- but an ignored one costs a *single* character: ``W``
+    # pushes the line it read and nothing pops it, since every operator here
+    # pops what it consumes and ``Y`` prints the top of the stack, so a value
+    # left below the accumulator is unreachable rather than merely unused.
+    # That makes it cheaper than taglate's rotate-and-drop, which has a
+    # queue's positional arithmetic to keep undisturbed.
     head, table, width = _grapheme_head(truth_table, n)
 
-    # Evaluate over one side of the.
-    # are built and the shorter.
-    # rule went by is only a proxy.
-    # .
-    # The sides do not cost the.
-    # characters more than a plain.
-    # popcount (47 characters at.
-    # sides with equal counts can.
-    # same: the zero side seeds the.
-    # (7 characters) against the.
-    # a count comparison cannot see.
-    # every tie to the expensive.
-    # .
-    # Measured against the count.
-    # longer, by up to 52.
-    # 100.
-    # -- there is no assembly step.
-    # minterm per row of the table.
-    # the other side does not.
+    # Evaluate over one side of the table and fold its minterms.  Both sides
+    # are built and the shorter kept, because the row *count* the sparser
+    # rule went by is only a proxy for length and gets it wrong two ways.
+    #
+    # The sides do not cost the same per row: a negated literal spends eight
+    # characters more than a plain one, so a row's cost falls with its
+    # popcount (47 characters at row 0 against 23 at row 7, width 3) and two
+    # sides with equal counts can differ by a lot.  Nor do they start the
+    # same: the zero side seeds the accumulator with ``_grapheme_push1()``
+    # (7 characters) against the one side's ``_grapheme_push0()`` (3), which
+    # a count comparison cannot see at all -- and the old rule's ``<=`` gave
+    # every tie to the expensive seed, so a balanced table always lost.
+    #
+    # Measured against the count rule: 45 of 256 tables at n == 3 came out
+    # longer, by up to 52 characters, and 7654 of 65536 at n == 4 by up to
+    # 100.  Building both is cheap here because the program *is* the string
+    # -- there is no assembly step -- and the two sides together spend one
+    # minterm per row of the table.  The comparison is strict, so a table
+    # the other side does not shorten emits exactly what it emitted before.
     zero_side = _grapheme_side(table, width, head, zero_rows=True)
     one_side = _grapheme_side(table, width, head, zero_rows=False)
     return one_side if len(one_side) < len(zero_side) else zero_side
@@ -199,18 +199,18 @@ def _grapheme_head(truth_table: str, n: int) -> tuple[str, str, int]:
     """
     used = essential_inputs(truth_table, n) or [0]
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
-    # Slot ``s`` holds original.
-    # written over the reduced.
+    # Slot ``s`` holds original input ``used[s]``; the minterm body is
+    # written over the reduced table's slots, so it never names a dropped one.
     slot_of = {i: s for s, i in enumerate(used)}
 
     prog = [
         _grapheme_push65() + _grapheme_push_key(_GRAPHEME_CONST_KEY) + "C"
-    ]  # the normalization constant.
+    ]  # the normalization constant
     for i in range(n):
         if i not in slot_of:
-            prog.append("W")  # read the ignored input and.
+            prog.append("W")  # read the ignored input and abandon it
             continue
-        # W reads the bit; normalize to.
+        # W reads the bit; normalize to 0/1; store under key 10*(slot+1).
         prog.append(
             "W"
             + _grapheme_push_key(_GRAPHEME_CONST_KEY)
@@ -235,10 +235,10 @@ def _grapheme_side(table: str, width: int, head: str, *, zero_rows: bool) -> str
     acc, op = (_grapheme_push1(), "B") if zero_rows else (_grapheme_push0(), "A")
     body = [acc]
     for row in rows:
-        body.append(_grapheme_push1())  # start this minterm at 1.
+        body.append(_grapheme_push1())  # start this minterm at 1
         for i, negated in minterm_literals(row, width):
             if negated:
-                # factor = 1 - b_i.
+                # factor = 1 - b_i
                 body.append(
                     _grapheme_push1()
                     + _grapheme_push_key(_grapheme_slot_key(i))
@@ -246,10 +246,10 @@ def _grapheme_side(table: str, width: int, head: str, *, zero_rows: bool) -> str
                     + "B"
                 )
             else:
-                # factor = b_i.
+                # factor = b_i
                 body.append(_grapheme_push_key(_grapheme_slot_key(i)) + "D")
             body.append("S")
-        body.append(op)  # fold the minterm into the.
+        body.append(op)  # fold the minterm into the accumulator
     return head + "".join(body) + "Y"
 
 
@@ -320,19 +320,19 @@ def forth(truth_table: str) -> str:
     n == 4 and n == 5.
     """
     n = _validate_truth_table(truth_table)
-    # ``;`` pops, so the tree tests.
-    # this generator has always.
-    # It goes first and ties keep.
-    # exactly what it emitted.
+    # ``;`` pops, so the tree tests the *last* input at the root: the order
+    # this generator has always emitted is the reversal, not the identity.
+    # It goes first and ties keep it, so a table no reorder helps emits
+    # exactly what it emitted before.
     natural = tuple(reversed(range(n)))
-    # Score the *reachable*.
-    # the keys of.
-    # checked equal through ``n ==.
-    # accepts -- and build only the.
-    # 13,122 full programs at n ==.
-    # byte-identical at every n <=.
-    # arrangement is the input.
-    bits = int(truth_table[::-1], 2)  # bit ``r`` mirrors.
+    # Score the *reachable* arrangements rather than all ``n!`` orders --
+    # the keys of ``_forth_stack_programs``, ``2 * 3**(n - 2)`` of them,
+    # checked equal through ``n == 6`` to the orders ``_forth_ordered``
+    # accepts -- and build only the winner.  The contest that used to build
+    # 13,122 full programs at n == 10 (61-68s) now builds one (0.2s),
+    # byte-identical at every n <= 10, both benchmark shapes.  An
+    # arrangement is the input order reversed.
+    bits = int(truth_table[::-1], 2)  # bit ``r`` mirrors ``truth_table[r]``
     programs = _forth_stack_programs(n)
     best_perm = natural
     best_len = _forth_order_length(
@@ -348,14 +348,14 @@ def forth(truth_table: str) -> str:
     return _forth_ordered(permute_truth_table(truth_table, best_perm), best_perm)
 
 
-# The read that pushes one.
+# The read that pushes one normalized input bit.
 _FORTH_READ = ",68*-"
 
 
-# How far a freshly-read bit.
-# swaps the top two and ``c``.
-# new bit under the two below.
-# it reverses the *whole*.
+# How far a freshly-read bit can sink, and the ops that put it there.  ``v``
+# swaps the top two and ``c`` rotates the third up, so two ``c``s bury the
+# new bit under the two below it.  ``o`` is unusable and absent deliberately:
+# it reverses the *whole* stack, which would drag the scope indices sitting
 # under the bits up with them.
 _FORTH_SINKS = ((0, ""), (1, "v"), (2, "cc"))
 
@@ -392,10 +392,10 @@ def _forth_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     return stack_programs(n, _FORTH_SINKS, _FORTH_READ)
 
 
-# : Per internal depth, root.
-# : the packed table, the.
-# : per-node savings).
-# : index in it or below it.
+#: Per internal depth, root children first: (subtree rows, stride mask over
+#: the packed table, the saving shared by the whole level or ``None``, the
+#: per-node savings).  A level's savings share one value whenever no heap
+#: index in it or below it crosses a base-15 digit boundary.
 _ForthLevels = tuple[tuple[int, int, int | None, tuple[int, ...]], ...]
 
 
@@ -421,11 +421,11 @@ def _forth_metrics(n: int) -> tuple[int, int, _ForthLevels, tuple[int, ...]]:
     """
     size = 2**n
     last_internal = size - 2
-    top = 2 ** (n + 1) - 1  # heap indices run 1 .
+    top = 2 ** (n + 1) - 1  # heap indices run 1 .. top - 1
     length = [_forth_const_len(m) for m in range(2 * top)]
-    # No-fold cost of the subtree.
-    # ``m { const }`` (the body is.
-    # cost depends on the table),.
+    # No-fold cost of the subtree at heap index ``m``: a leaf emits
+    # ``m { const }`` (the body is 5 characters for 48 and 49 alike, so no
+    # cost depends on the table), an internal node ``m { 2m+1 +; }`` plus
     # both children.
     subtree = [0] * top
     for m in range(top - 1, 0, -1):
@@ -444,7 +444,7 @@ def _forth_metrics(n: int) -> tuple[int, int, _ForthLevels, tuple[int, ...]]:
         rows = 2 ** (n - d)
         stride = sum(1 << (j * rows) for j in range(2**d))
         base = 2**d - 1
-        # Folding node ``m`` trades its.
+        # Folding node ``m`` trades its whole subtree for one answer node.
         saves = tuple(subtree[base + j] - (length[base + j] + 7) for j in range(2**d))
         scalar = saves[0] if all(v == saves[0] for v in saves) else None
         levels.append((rows, stride, scalar, saves))
@@ -497,9 +497,9 @@ def _forth_order_length(bits: int, n: int, reads_len: int) -> int:
     n == 6.
     """
     all_mask, full, levels, _ = _forth_metrics(n)
-    # All-ones/all-zeros run.
-    # subtree is constant when.
-    # climb: a constant run of ``2.
+    # All-ones/all-zeros run ladders, doubling the run once per level; a
+    # subtree is constant when either survives.  An empty level ends the
+    # climb: a constant run of ``2 * rows`` needs constant runs of ``rows``.
     const_at: dict[int, int] = {}
     ones = bits
     zeros = bits ^ all_mask
@@ -565,36 +565,36 @@ def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     folded: set[int] = set()
     for m in range(1, 2 ** (n + 1) - 1):
         if m in folded:
-            # An ancestor already answered.
-            # never called.
-            # pushed number and looks them.
-            # the numbering costs nothing.
+            # An ancestor already answered for this subtree, so its scope is
+            # never called.  Forþ stores scopes in a dict keyed by the
+            # pushed number and looks them up with a default, so a gap in
+            # the numbering costs nothing -- the node simply never exists.
             continue
         if m <= last_internal:
             rows = rows_under(m)
             if len({truth_table[row] for row in rows}) == 1:
-                # Every row under this node.
-                # branch on cannot change the.
-                # the whole subtree.
-                # the tree, so a folded program.
-                # exactly as an unfolded one.
+                # Every row under this node agrees, so the bits it would
+                # branch on cannot change the answer: answer here and drop
+                # the whole subtree.  The inputs are read up front, outside
+                # the tree, so a folded program still consumes its input
+                # exactly as an unfolded one does.
                 body = _forth_const(_ASCII_ZERO + int(truth_table[rows[0]]))
-                # Drop the *whole* subtree, not.
-                # grandchild is just as.
-                # leaves the deeper nodes.
+                # Drop the *whole* subtree, not just the two children: a
+                # grandchild is just as unreachable, and marking one level
+                # leaves the deeper nodes emitted but never called.
                 below = [2 * m + 1, 2 * m + 2]
                 while below:
                     child = below.pop()
                     folded.add(child)
                     if child <= last_internal:
                         below += [2 * child + 1, 2 * child + 2]
-            else:  # internal node: dispatch on.
+            else:  # internal node: dispatch on the top bit
                 body = _forth_const(2 * m + 1) + "+;"
-        else:  # leaf: push the result byte.
+        else:  # leaf: push the result byte
             body = _forth_const(_ASCII_ZERO + int(truth_table[m - last_internal - 1]))
         prog.append(_forth_const(m) + "{" + body + "}")
-    prog.append(reads)  # the reads, with this order's.
-    prog.append("1+;.")  # root dispatch, then print the.
+    prog.append(reads)  # the reads, with this order's rotations woven in
+    prog.append("1+;.")  # root dispatch, then print the result
     return "".join(prog)
 
 
@@ -632,7 +632,7 @@ def _bfstack_encoder(n: int) -> str:
     The ``+1`` offset keeps the result nonzero so the decoder's outer ``[``
     always runs (a ``0`` result would be ambiguous with a skipped loop).
     """
-    prog = ">>+"  # result cell (0) below the.
+    prog = ">>+"  # result cell (0) below the accumulator (1)
     for k in range(n):
         weight = 2 ** (n - 1 - k)
         prog += "," + "-" * _ASCII_ZERO + "[" + "<" + "+" * weight + ">" + "]" + "<"
@@ -651,7 +651,7 @@ def _bfstack_decoder(truth_table: str) -> str:
     """
     zeros = [k + 1 for k, ch in enumerate(truth_table) if ch == "0"]
     if not zeros:
-        return "[<+>]"  # always 1.
+        return "[<+>]"  # always 1
     prog = "["
     prev = 0
     for z in zeros:
@@ -722,39 +722,39 @@ def unsquare(truth_table: str) -> str:
     samples at n == 4 and n == 5.
     """
     n = _validate_truth_table(truth_table)
-    # ``A`` pops, so the tree tests.
-    # this generator has always.
-    # sinks), which is the reversal.
-    # keep it, so a table no.
+    # ``A`` pops, so the tree tests the *last* input at the root: the order
+    # this generator has always emitted is the identity *arrangement* (no
+    # sinks), which is the reversal as an input order.  It goes first and ties
+    # keep it, so a table no reorder helps emits exactly what it emitted
     # before.
     arrangements = _unsquare_stack_programs(n)
 
     def candidate_from(arrangement: tuple[int, ...]) -> tuple[int, str, str]:
         """Price the program whose stack ends in ``arrangement``."""
-        # The tree pops LIFO, so an.
-        # ``permute_truth_table`` puts.
-        # table's ``k``-th *most*.
-        # ``row >> k`` -- least.
-        # the pops arrive in.
-        # the two frames; without it a.
-        # and the program computes a.
+        # The tree pops LIFO, so an arrangement tests its inputs in reverse.
+        # ``permute_truth_table`` puts the input tested at level ``k`` in the
+        # table's ``k``-th *most* significant bit, but this tree splits on
+        # ``row >> k`` -- least significant first, because that is the order
+        # the pops arrive in.  Passing the arrangement itself converts between
+        # the two frames; without it a table is read against the wrong axis
+        # and the program computes a different function.
         table = permute_truth_table(truth_table, arrangement)
         prefix = arrangements[arrangement]
         return _unsquare_cost(table, n, prefix), table, prefix
 
-    # The natural order is the.
-    # reaches (every sink can be.
+    # The natural order is the identity arrangement, which the product always
+    # reaches (every sink can be zero), so this needs no reachability check.
     best: tuple[int, str, str] | None = None
-    # Iterate the *reachable*.
-    # only ``2 * 3**(n - 2)`` of.
-    # set rather than a filter over.
-    # orders are exactly the ones.
-    # .
-    # Still capped, because.
-    # same cost shape the shared.
-    # n == 10 is 18 seconds of a.
-    # the cap only the natural.
-    # produced before reordering.
+    # Iterate the *reachable* arrangements rather than all ``n!`` orders:
+    # only ``2 * 3**(n - 2)`` of them can be built, so this is the candidate
+    # set rather than a filter over a much larger one.  (The unreachable
+    # orders are exactly the ones ``candidate`` would return ``None`` for.)
+    #
+    # Still capped, because ``3**n`` builds of an ``O(2**n)`` program is the
+    # same cost shape the shared helper caps for, just with a smaller base:
+    # n == 10 is 18 seconds of a call that is milliseconds at n == 6.  Above
+    # the cap only the natural order is emitted, which is what this generator
+    # produced before reordering existed -- never worse, just unimproved.
     for arrangement in arrangements:
         if n > _ORDER_SEARCH_MAX and arrangement != tuple(range(n)):
             continue
@@ -767,16 +767,16 @@ def unsquare(truth_table: str) -> str:
     return prefix + _unsquare_tree(table, n)
 
 
-# The read that pushes one.
+# The read that pushes one normalized input bit.
 _UNSQUARE_READ = "iA>-<P"
 
-# How far a freshly-read bit.
-# swaps the top two.
-# lifts the *top* out and ``S``.
-# reorders those two and puts.
-# ``S`` is what moves the bit.
-# above it.
-# the accumulator holds one.
+# How far a freshly-read bit can sink, and the ops that put it there.  ``S``
+# swaps the top two.  Sinking two places is ``SASP``, not ``ASP``: ``A``
+# lifts the *top* out and ``S`` then swaps the pair beneath it, so ``ASP``
+# reorders those two and puts the bit back where it started.  The leading
+# ``S`` is what moves the bit down first, so the pair it must cross ends up
+# above it.  Nothing reaches three places: ``S`` sees only the top two and
+# the accumulator holds one value, so a third would need somewhere to put
 # the bit already in it.
 _UNSQUARE_SINKS = ((0, ""), (1, "S"), (2, "SASP"))
 

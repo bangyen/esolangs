@@ -56,24 +56,24 @@ from typing import cast
 
 from esolangs.interpreters.io import IO
 
-# : The registers, as an.
+#: The registers, as an immutable name->value mapping.
 type _Regs = tuple[tuple[str, int], ...]
 
-# : The arrays, as an immutable.
+#: The arrays, as an immutable name->(index->value) mapping.
 type _Arrays = tuple[tuple[str, tuple[tuple[int, int], ...]], ...]
 
-# : One instant of a run:.
-# : the two stores.
-# : new one rather than editing.
-# :.
-# : Both stores are sorted by.
-# : one logical store has.
-# : frozensets from these, as.
-# : same cells in different.
-# :.
-# : The parsed program is.
-# : during a run, so carrying.
-# : cycle detector stores.
+#: One instant of a run: ``(ip, registers, arrays)`` -- the line pointer and
+#: the two stores.  A value, not a record: every transition below returns a
+#: new one rather than editing one in place.
+#:
+#: Both stores are sorted by name (and arrays by index within a name), so
+#: one logical store has exactly one spelling.  ``snapshot`` builds
+#: frozensets from these, as it always did, and two runs that wrote the
+#: same cells in different orders must hash alike.
+#:
+#: The parsed program is deliberately not in here.  It does not change
+#: during a run, so carrying it would put constant data in every value the
+#: cycle detector stores.  The current line is a parameter to the
 #: transition instead.
 type _State = tuple[int, _Regs, _Arrays]
 
@@ -146,21 +146,21 @@ class _Machine:
             m = _LINE.fullmatch(ln)
             if not m:
                 raise ValueError(f"malformed line: {ln!r}")
-            # Redefining ``input`` is.
-            # property of the program text.
-            # the other two malformed cases.
-            # happens to run.
-            # unreachable ``input =`` line.
-            # legal, and made acceptance.
+            # Redefining ``input`` is malformed, and malformedness is a
+            # property of the program text -- so it is rejected here with
+            # the other two malformed cases rather than when the line
+            # happens to run.  Checking it in ``step()`` made an
+            # unreachable ``input =`` line (one a ``lineNumber`` jump skips)
+            # legal, and made acceptance depend on stdin, since a jump
             # target can be read from input.
             if m.group(1) == "input":
                 raise ValueError("input cannot be redefined")
             self.parsed.append(cast("_Line", m.groups()))
-        # ``negativeOne`` starts at -1;.
+        # ``negativeOne`` starts at -1; every other name starts at 0.
         self.state: _State = (1, (("negativeOne", -1),), ())
 
-    # The language's own names.
-    # than fields of their own, so.
+    # The language's own names.  They are views on the current state rather
+    # than fields of their own, so there is one place a step can change.
 
     @property
     def ip(self) -> int:
@@ -182,13 +182,13 @@ class _Machine:
         """Whether the pointer has left the program."""
         return not (1 <= self.state[0] <= self.n)
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: Named registers + line pointer; ip the line,
     # memory the regs.
 
     @property
     def memory(self) -> list[int]:
         """The addressable cells."""
-        # The registers are kept in.
+        # The registers are kept in name order, so this is already sorted.
         return [value for _name, value in self.state[1]]
 
     @property
@@ -198,7 +198,7 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # Frozensets, as this always.
+        # Frozensets, as this always returned, built from stores that are
         # already canonically ordered.
         ip, regs, arrays = self.state
         return (
@@ -220,8 +220,8 @@ class _Machine:
             return
         line = self.parsed[self.state[0] - 1]
         var1, idx1, var2, idx2, var3, idx3, do_print = line
-        # The three operand slots are.
-        # read before the array it.
+        # The three operand slots are read left to right, and an index is
+        # read before the array it indexes -- the order the old _read
         # recursion produced.
         reads = []
         for name, index in ((var1, idx1), (var2, idx2), (var3, idx3)):
@@ -234,13 +234,13 @@ class _Machine:
             self.io.print_char(chr(value & 0xFF))
 
 
-# : One operand as parsed: a.
-# : subscript.
-# : numeric literals -- so an.
+#: One operand as parsed: a name, and the index name when it is an array
+#: subscript.  Both halves are plain identifiers -- the language rejects
+#: numeric literals -- so an index is always another variable to look up.
 type _Operand = tuple[str, str | None]
 
-# : One parsed line: the three.
-# : in the order the regex.
+#: One parsed line: the three operand name/index pairs and the print flag,
+#: in the order the regex captures them.
 type _Line = tuple[str, str | None, str, str | None, str, str | None, str]
 
 

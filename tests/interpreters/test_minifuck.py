@@ -76,7 +76,7 @@ class TestMinifuck:
         bit says which neighbour the skip flipped: 0b01111011 if it was the
         one after the pointer, 0b01110001 if it was the one before.
         """
-        assert run_and_capture("[[[[[[[<<<[<.") == "{"  # 0b01111011.
+        assert run_and_capture("[[[[[[[<<<[<.") == "{"  # 0b01111011
 
     def test_the_skip_passes_exactly_one_instruction(self) -> None:
         """``[`` that flips a cell to 0 skips one instruction, not two.
@@ -89,7 +89,7 @@ class TestMinifuck:
         leaves it at the origin, so the ``.`` flips cell 1 and prints
         0b01100000; passing two would leave it a cell further right.
         """
-        assert run_and_capture("[<[<<.") == "`"  # 0b01100000.
+        assert run_and_capture("[<[<<.") == "`"  # 0b01100000
 
     def test_a_read_keeps_the_cell_past_the_print_window(self) -> None:
         """A read replaces cells 0-7 and leaves cell 8 alone, shown in output.
@@ -123,10 +123,10 @@ class TestStepMachine:
 
         machine = _Machine(".", ScriptedIO())
         assert (machine.ind, machine.ptr) == (0, 0)
-        machine.step()  # .
+        machine.step()  # . advances, flips the second cell, prints the byte
         assert machine.io.getvalue() == "@"
         assert machine.halted
-        machine.step()  # stepping a halted machine is.
+        machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 1
 
     def test_tape_state_when_the_pointer_runs_deep(self) -> None:
@@ -217,23 +217,23 @@ class TestVMViews:
 @pytest.mark.parametrize(
     ("ins", "tape", "ptr", "expected"),
     [
-        # `<` moves and does nothing.
+        # `<` moves and does nothing else, and stops at the origin.
         ("<", 0, 3, (0, 8, 2, False, None, False)),
         ("<", 0, 0, (0, 8, 0, False, None, False)),
-        # A comment leaves every scalar.
+        # A comment leaves every scalar alone.
         ("x", 0b10, 1, (0b10, 8, 1, False, None, False)),
-        # `.` prints its window, or.
-        # printing arm's `reads` is.
-        # interpreter can see --.
+        # `.` prints its window, or reads when the flip empties it.  The
+        # printing arm's `reads` is False, which nothing driving the
+        # interpreter can see -- `_advance` tests `char is not None` first --
         # so only this table pins it.
         (".", 0, 0, (0b10, 8, 1, False, "@", False)),
         (".", 0b10, 0, (0, 8, 1, False, None, True)),
-        # .
+        # ... and the window is masked, so a lone cell 8 reads as empty.
         (".", 0, 7, (1 << 8, 9, 8, False, None, True)),
-        # `[` flips and stays, or flips.
+        # `[` flips and stays, or flips to zero and collapses.
         ("[", 0, 0, (0b10, 8, 1, False, None, False)),
         ("[", 0b10, 0, (0b100, 8, 1, True, None, False)),
-        # The tape grows one cell.
+        # The tape grows one cell before the pointer needs it.
         ("[", 0, 7, (1 << 8, 9, 8, False, None, False)),
     ],
 )

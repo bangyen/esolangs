@@ -36,13 +36,13 @@ class TestGrapheme:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("01", 1),  # identity.
-            ("10", 1),  # NOT.
-            ("0001", 2),  # AND.
-            ("0110", 2),  # XOR.
-            ("1110", 2),  # NAND.
-            ("11111110", 3),  # NAND3.
-            ("1000000000000000", 4),  # AND4.
+            ("01", 1),  # identity
+            ("10", 1),  # NOT
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("1000000000000000", 4),  # AND4
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -80,7 +80,7 @@ class TestGrapheme:
         for value in range(256):
             table = format(value, "08b")
             shipped = len(boolean.grapheme(table))
-            # What the count rule would.
+            # What the count rule would have picked, built directly.
             counted = len(_grapheme_counted_side(table, 3))
             assert shipped <= counted, table
             improved += shipped < counted
@@ -111,17 +111,17 @@ class TestForth:
         program = boolean.forth("0001")
         assert program.endswith("1+;.")
         assert program.count("{") == program.count("}") == 4
-        assert program.count(",68*-") == 2  # read and normalize 2 inputs.
+        assert program.count(",68*-") == 2  # read and normalize 2 inputs
 
     def test_leaf_results_are_the_byte(self) -> None:
         """Each leaf pushes 48 + its table entry."""
         program = boolean.forth("0001")
-        assert "3F*3+" in program  # '0' leaves push 48 = 3*15+3.
-        assert "3F*4+" in program  # the '1' leaf pushes 49 =.
+        assert "3F*3+" in program  # '0' leaves push 48 = 3*15+3
+        assert "3F*4+" in program  # the '1' leaf pushes 49 = 3*15+4
 
     def test_scales(self) -> None:
         """More inputs mean more tree functions, and every input is read."""
-        # Parity folds nothing under.
+        # Parity folds nothing under any order, so it spends the full tree.
         parity = "".join(str(bin(row).count("1") % 2) for row in range(32))
         program = boolean.forth(parity)
         assert program.count("{") == 2 ** (5 + 1) - 2
@@ -175,7 +175,7 @@ class TestForth:
         from esolangs.tools.boolean.stack import _forth_const
 
         program = boolean.forth("1" * 8)
-        for m in range(3, 15):  # every node below the two root.
+        for m in range(3, 15):  # every node below the two root children
             assert _forth_const(m) + "{" not in program
 
     def test_reordering_only_shrinks(self) -> None:
@@ -212,17 +212,17 @@ class TestForth:
         """
         from esolangs.tools.boolean.stack import _forth_stack_programs
 
-        # The reachable *set* has a.
-        # search: after each read the.
-        # lasting freedom is how far it.
-        # independent choice per read.
+        # The reachable *set* has a closed form, which is what pins the
+        # search: after each read the new bit is on top, and the only
+        # lasting freedom is how far it sinks -- 0, 1 or 2 places, one
+        # independent choice per read past the first.
         for n in range(2, 7):
             assert len(_forth_stack_programs(n)) == 2 * 3 ** (n - 2)
-        assert len(_forth_stack_programs(3)) == 6  # all of 3.
-        assert len(_forth_stack_programs(4)) == 18  # of 24.
-        assert len(_forth_stack_programs(5)) == 54  # of 120.
+        assert len(_forth_stack_programs(3)) == 6  # all of 3!
+        assert len(_forth_stack_programs(4)) == 18  # of 24
+        assert len(_forth_stack_programs(5)) == 54  # of 120
 
-        # The reads themselves are.
+        # The reads themselves are still one per input, whatever the weave.
         for n in (3, 4, 5):
             for program in _forth_stack_programs(n).values():
                 assert program.count(",68*-") == n
@@ -237,10 +237,10 @@ class TestForth:
         """
         from esolangs.tools.boolean.stack import _forth_stack_programs, _sink_top
 
-        assert len(_forth_stack_programs(1)) == 1  # nothing to rearrange.
-        assert len(_forth_stack_programs(2)) == 2  # the second bit may swap.
+        assert len(_forth_stack_programs(1)) == 1  # nothing to rearrange
+        assert len(_forth_stack_programs(2)) == 2  # the second bit may swap
 
-        # The sink itself keeps.
+        # The sink itself keeps everything but the moved bit in order.
         assert _sink_top((0, 1, 2), 0) == (0, 1, 2)
         assert _sink_top((0, 1, 2), 1) == (0, 2, 1)
         assert _sink_top((0, 1, 2), 2) == (2, 0, 1)
@@ -267,8 +267,8 @@ class TestForth:
         assert tuple(reversed(unreachable)) not in reachable
         assert _forth_ordered(table, unreachable) == ""
 
-        # The same table on an order.
-        # the empty answer above is the.
+        # The same table on an order the reads *can* stack still builds, so
+        # the empty answer above is the order's doing and not the table's.
         buildable = (0, 1, 3, 2)
         assert tuple(reversed(buildable)) in reachable
         assert _forth_ordered(table, buildable) != ""
@@ -335,7 +335,6 @@ class TestForth:
 
     def test_the_program_is_only_forth_commands(self) -> None:
         """Only the characters Forþ reads are emitted."""
-
         for table in ("10", "0110", "0001", "11111110"):
             assert set(boolean.forth(table)) <= set("*+,-.123456789;ABCDEFcv{}"), table
 
@@ -344,11 +343,11 @@ class TestModulous:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT.
-            ("0110", 2),  # XOR.
-            ("0001", 2),  # AND.
-            ("11111110", 3),  # NAND3.
-            ("1000000000000000", 4),  # AND4.
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1000000000000000", 4),  # AND4
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -382,12 +381,12 @@ class TestBfstack:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT.
-            ("0110", 2),  # XOR.
-            ("0001", 2),  # AND.
-            ("11111110", 3),  # NAND3.
-            ("1000000000000000", 4),  # AND4.
-            ("1111111111111111", 4),  # constant one.
+            ("10", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("1000000000000000", 4),  # AND4
+            ("1111111111111111", 4),  # constant one
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -401,9 +400,9 @@ class TestBfstack:
     def test_encode_decode_structure(self) -> None:
         """The program encodes the inputs then tests the zero rows."""
         program = boolean.bfstack("0110")
-        assert program.startswith(">>+,")  # result cell, accumulator,.
-        assert program.count(",") == 2  # one read per input.
-        assert program.endswith("+" * 48 + ".")  # print 48 + result.
+        assert program.startswith(">>+,")  # result cell, accumulator, first input
+        assert program.count(",") == 2  # one read per input
+        assert program.endswith("+" * 48 + ".")  # print 48 + result
 
     def test_the_program_is_only_bfstack_commands(self) -> None:
         """No character outside the eight commands is emitted.
@@ -430,10 +429,10 @@ class TestUnsquare:
         """
         program = boolean.unsquare("0110")
         assert program.startswith("iA>-<P")
-        assert program.count("iA>-<P") == 2  # one read per input.
+        assert program.count("iA>-<P") == 2  # one read per input
         assert program.endswith("o")
 
-        # A table whose best order.
+        # A table whose best order needs a sink still reads once per input.
         for value in range(256):
             assert boolean.unsquare(format(value, "08b")).count("iA>-<P") == 3
 
@@ -452,7 +451,7 @@ class TestUnsquare:
         table = "01" * (2 ** (n - 1))
         program = boolean.unsquare(table)
 
-        assert program.count("iA>-<P") == n  # one read per input.
+        assert program.count("iA>-<P") == n  # one read per input
         assert program.endswith("o")
 
     def test_reordering_never_grows_a_program(self) -> None:
@@ -522,11 +521,11 @@ class TestUnsquare:
 
         for n in range(2, 7):
             assert len(_unsquare_stack_programs(n)) == 2 * 3 ** (n - 2)
-        assert len(_unsquare_stack_programs(3)) == 6  # all of 3.
-        assert len(_unsquare_stack_programs(4)) == 18  # of 24.
-        assert len(_unsquare_stack_programs(5)) == 54  # of 120.
+        assert len(_unsquare_stack_programs(3)) == 6  # all of 3!
+        assert len(_unsquare_stack_programs(4)) == 18  # of 24
+        assert len(_unsquare_stack_programs(5)) == 54  # of 120
 
-        # The reads themselves are.
+        # The reads themselves are still one per input, whatever the weave.
         for n in (3, 4, 5):
             for program in _unsquare_stack_programs(n).values():
                 assert program.count("iA>-<P") == n
@@ -554,14 +553,14 @@ class TestUnsquare:
                 machine.step()
             return machine.stack
 
-        assert apply("SASP") == (30, 10, 20)  # the top sank two places.
-        assert apply("ASP") == (20, 10, 30)  # the top never moved.
+        assert apply("SASP") == (30, 10, 20)  # the top sank two places
+        assert apply("ASP") == (20, 10, 30)  # the top never moved
 
     def test_decision_tree(self) -> None:
         """Each internal node branches on a bit with the flip primitive."""
         program = boolean.unsquare("0110")
-        assert "x->IA<" in program  # the stack-clean flip.
-        assert program.count("x>") >= 3  # one guard per branch.
+        assert "x->IA<" in program  # the stack-clean flip
+        assert program.count("x>") >= 3  # one guard per branch
 
     def test_constant_subtrees_fold(self) -> None:
         """A constant slice prints its answer instead of branching further.
@@ -570,7 +569,7 @@ class TestUnsquare:
         subtrees are strided and a table such as ``11110000`` folds
         nothing; a table that agrees outright collapses to one leaf.
         """
-        assert boolean.unsquare("11111111").count("P") == 3 + 1  # 3 reads, 1 leaf.
+        assert boolean.unsquare("11111111").count("P") == 3 + 1  # 3 reads, 1 leaf
         assert boolean.unsquare("10010110").count("P") == 3 + 8
 
     def test_the_program_is_only_unsquare_commands(self) -> None:

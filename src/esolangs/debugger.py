@@ -23,19 +23,19 @@ from esolangs._validate import check_timeout, check_whole
 from esolangs.exceptions import ArgumentError
 from esolangs.vm import VM, make_vm, run_until_halt
 
-# : Why a :meth:`Debugger.run`.
+#: Why a :meth:`Debugger.run` returned.
 StopReason = Literal["halted", "breakpoint", "max_steps", "timeout"]
 
-# : The four values.
-# : be iterated or.
-# : by reading a docstring;.
+#: The four values :data:`StopReason` allows, as data.  A ``Literal`` cannot
+#: be iterated or attribute-accessed, so its members were discoverable only
+#: by reading a docstring; this is the same list a caller can loop over or
 #: assert against.
-# :.
-# : These are what.
-# : one more -- ``stopped:.
-# : catches what ``run`` lets.
-# : traceback.
-# : parsed ``stopped:`` against.
+#:
+#: These are what :meth:`Debugger.run` *returns*.  The CLI's ``debug`` prints
+#: one more -- ``stopped: raised``, when the program faulted -- because it
+#: catches what ``run`` lets through and reports it rather than showing a
+#: traceback.  So this is not the vocabulary of that line, and asserting a
+#: parsed ``stopped:`` against this tuple fails on the fifth.
 STOP_REASONS: tuple[StopReason, ...] = ("halted", "breakpoint", "max_steps", "timeout")
 
 
@@ -74,7 +74,7 @@ class Debugger:
         self._warned = False
         self._dumped = False
 
-    # -- passthrough to the wrapped.
+    # -- passthrough to the wrapped VM --------------------------------
 
     @property
     def halted(self) -> bool:
@@ -188,7 +188,7 @@ class Debugger:
         """
         return self.vm.snapshot()
 
-    # -- breakpoints.
+    # -- breakpoints --------------------------------------------------
 
     def break_at(self, ip: int | tuple[int, ...]) -> None:
         """Stop when the program counter reaches ``ip``.
@@ -326,7 +326,7 @@ class Debugger:
         self._suppressed.clear()
         self._hits.clear()
 
-    # -- watches.
+    # -- watches ------------------------------------------------------
 
     def watch_cell(self, index: int) -> list[int | None]:
         """Record ``memory[index]`` each step, returning the history.
@@ -381,7 +381,7 @@ class Debugger:
         for slot, stack_history in self._stack_history.items():
             stack_history.append(stack[-1 - slot] if slot < len(stack) else None)
 
-    # -- execution.
+    # -- execution ----------------------------------------------------
 
     def step(self) -> None:
         """Execute one command, recording any watches.
@@ -501,44 +501,44 @@ class Debugger:
         halted = run_until_halt(self, max_steps, stop=lambda: self._stop(deadline))
         if halted:
             self._warn_about_stdin_once()
-            # Checked *before* the dump.
-            # .
-            # A breakpoint is checked.
-            # condition the final step.
-            # ``run_until_halt`` returned.
-            # watch that had fired.
-            # since a program whose last.
-            # ordinary case -- the.
-            # .
-            # Two checks rather than one,.
-            # step and it changes.
-            # swallowed every predicate.
-            # ``vm.halted and vm.output ==.
-            # languages was true at the.
-            # reported as "halted".
-            # answer out of reach of a.
+            # Checked *before* the dump step as well as after it.
+            #
+            # A breakpoint is checked before each step, so one whose
+            # condition the final step makes true was never looked at:
+            # ``run_until_halt`` returned and "halted" was reported over a
+            # watch that had fired.  ``break_on_output`` is where that bites,
+            # since a program whose last instruction is its output is the
+            # ordinary case -- the generated brainfuck XOR ends in ``.``.
+            #
+            # Two checks rather than one, because the dump below is itself a
+            # step and it changes ``output``.  Checking only afterwards
+            # swallowed every predicate that reads the *pre-dump* state --
+            # ``vm.halted and vm.output == ""`` on the seven dumping
+            # languages was true at the halt, false one step later, and
+            # reported as "halted".  Checking only before would put the
+            # answer out of reach of a watch on the dumped text.  So: once
             # here, and once after.
             if self._at_breakpoint():
                 self._suppressed = set(self._hits)
                 return "breakpoint"
             if self.dumps_on_the_post_halt_step and not self._dumped:
-                # :meth:`step` learned to cross.
-                # so seven languages finished a.
-                # ``output`` and the answer one.
-                # it back meant knowing to call.
-                # method that had already.
-                # not a thing a caller can be.
-                # ``debug`` did not, and.
-                # program that had run.
-                # .
-                # Only for the seven, and only.
-                # no-op everywhere else, but it.
-                # watch history, and a bound.
-                # be spent.
-                # debugger meant an idle.
-                # machine spent another one:.
-                # Swap grew a ``watch_cell``.
-                # promise that it grows one per.
+                # :meth:`step` learned to cross the halt and this did not,
+                # so seven languages finished a *run* with an empty
+                # ``output`` and the answer one un-taken step away.  Reading
+                # it back meant knowing to call ``step()`` again after a
+                # method that had already reported ``"halted"``, which is
+                # not a thing a caller can be expected to guess -- the CLI's
+                # ``debug`` did not, and printed ``output: ''`` for a
+                # program that had run correctly.
+                #
+                # Only for the seven, and only once.  The extra step is a
+                # no-op everywhere else, but it would still land in every
+                # watch history, and a bound that is not needed should not
+                # be spent.  Taking it once per *run* rather than once per
+                # debugger meant an idle ``run()`` on an already-dumped
+                # machine spent another one: three calls on a halted Minsky
+                # Swap grew a ``watch_cell`` history by three, against a
+                # promise that it grows one per ``step()``.
                 self._dumped = True
                 self.step()
                 if self._at_breakpoint():
@@ -576,28 +576,28 @@ class Debugger:
         io_obj = getattr(self.vm, "_io", None)
         if name is None or io_obj is None:  # pragma: no cover - every adapter has both
             return
-        # Two conditions, and only one.
-        # .
-        # Reading *past* the end is.
-        # is when it has to be said:.
-        # exhausted read as a value.
-        # before they halt -- DINAC at.
-        # 5 -- so warning at the halt.
-        # breakpoint stop and every.
-        # way to drive a debugger, and.
-        # bound the run.
-        # stdin Suptiftam returns.
-        # merely deferred elsewhere is.
-        # .
-        # A *surplus* -- lines the.
-        # was there but unusable -- is.
-        # and cannot be known until the.
-        # half still waits for the halt.
-        # uncovered: a bounded run that.
-        # and the halt, on a program.
-        # than an over-read.
-        # one; a debugger bounded short.
-        # fact it needs does not exist.
+        # Two conditions, and only one of them can be known early.
+        #
+        # Reading *past* the end is knowable the moment it happens, and that
+        # is when it has to be said: the six languages that take the
+        # exhausted read as a value have the wrong answer in ``output``
+        # before they halt -- DINAC at step 7 of 10, Circuit Diagram at 4 of
+        # 5 -- so warning at the halt left every bounded run, every
+        # breakpoint stop and every timeout silent.  Which is the ordinary
+        # way to drive a debugger, and the class docstring tells you to
+        # bound the run.  Worse for a program that never halts: with empty
+        # stdin Suptiftam returns ``"max_steps"`` and the warning that was
+        # merely deferred elsewhere is never emitted at all.
+        #
+        # A *surplus* -- lines the program never asked for, or a line that
+        # was there but unusable -- is the other half of the same warning
+        # and cannot be known until the program has stopped asking, so that
+        # half still waits for the halt.  Which leaves one case genuinely
+        # uncovered: a bounded run that stops between the answer appearing
+        # and the halt, on a program whose fault is a malformed line rather
+        # than an over-read.  ``run`` and ``check_stdin`` both catch that
+        # one; a debugger bounded short of the halt cannot, because the
+        # fact it needs does not exist yet.
         if not (getattr(io_obj, "past_end", False) or self.vm.halted):
             return
         self._warned = True

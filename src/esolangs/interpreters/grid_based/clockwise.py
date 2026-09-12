@@ -39,22 +39,22 @@ from collections.abc import Sequence
 from esolangs.exceptions import InputExhaustedError
 from esolangs.interpreters.io import IO
 
-# : How many parity bits make.
+#: How many parity bits make one printed byte.
 _BYTE_BITS = 7
 
-# : One instant of a run:.
-# : pointer's position and.
-# : flushed, the rotating input.
-# : value, not a record: every.
-# : than editing one in place,.
+#: One instant of a run: ``(row, col, r, acc, out, inp, done)`` -- the
+#: pointer's position and heading, the accumulator, the parity bits not yet
+#: flushed, the rotating input bits, and whether the ring has closed.  A
+#: value, not a record: every transition below returns a new one rather
+#: than editing one in place, and both bit queues are tuples for the same
 #: reason.
-# :.
-# : ``done`` is state because.
-# : pointer returning to the.
-# : so the position alone does.
-# :.
-# : ``done`` stays out of.
-# : plus the input cursor, in.
+#:
+#: ``done`` is state because halting here is a property of the *move*: the
+#: pointer returning to the origin ends the run, except on a ``0`` heading,
+#: so the position alone does not say whether the ring has closed.
+#:
+#: ``done`` stays out of ``snapshot``, which reports the six live fields
+#: plus the input cursor, in the order it always returned them.
 type _State = tuple[int, int, int, int, tuple[str, ...], tuple[str, ...], bool]
 
 COL = [1, 0, -1, 0]
@@ -110,8 +110,8 @@ def _advance(state: _State, code: Sequence[str]) -> tuple[_State, int | None]:
     elif ins == "-":
         acc -= 1
     elif ins == ".":
-        # The queue rotates rather than.
-        # more than seven bits re-reads.
+        # The queue rotates rather than draining, so a program that reads
+        # more than seven bits re-reads them.
         acc = (acc | 1) - 1 + int(inp[0])
         inp = (*inp[1:], inp[0])
     elif ins == ";":
@@ -119,9 +119,9 @@ def _advance(state: _State, code: Sequence[str]) -> tuple[_State, int | None]:
     elif ins == "S":
         acc = 0
 
-    # The byte is reported whole.
-    # seventh bit is appended by.
-    # beforehand would miss it, and.
+    # The byte is reported whole rather than left in the state, because the
+    # seventh bit is appended by *this* step -- a caller that read ``out``
+    # beforehand would miss it, and one that read it afterwards would find
     # it already cleared.
     byte = None
     if len(out) == _BYTE_BITS:
@@ -157,8 +157,8 @@ class _Machine:
                 bits += list(val.zfill(_BYTE_BITS))
         self.state: _State = (0, 0, 0, 0, (), tuple(bits), False)
 
-    # The language's own names.
-    # than fields of their own, so.
+    # The language's own names.  They are views on the current state rather
+    # than fields of their own, so there is one place a step can change.
 
     @property
     def row(self) -> int:
@@ -191,13 +191,13 @@ class _Machine:
         """Whether the pointer has returned to the origin."""
         return self.state[6]
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: 2D ring; ip is the pointer's (row, col, heading),
     # memory the acc.
 
-    # : ``ip`` is a cell of the.
-    # : parts are a row and a.
-    # : this a caller cannot tell.
-    # : stack, which look identical.
+    #: ``ip`` is a cell of the program's own rectangle: the first two
+    #: parts are a row and a column, and the rest is a heading.  Without
+    #: this a caller cannot tell the pair from a call depth or a frame
+    #: stack, which look identical and mean somewhere else entirely.
     ip_shape = "grid"
 
     @property
@@ -218,8 +218,8 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The six live fields plus the.
-        # returned before ``done``.
+        # The six live fields plus the input cursor, in the order this
+        # returned before ``done`` joined the state.
         row, col, r, acc, out, inp, _done = self.state
         return (row, col, r, acc, out, inp, self.io.position())
 
@@ -234,22 +234,22 @@ class _Machine:
         """
         if self.state[6]:
             return
-        # Bits are read up front, so an.
-        # given none: reading one is.
-        # documents as EOFError.
-        # pointer leaves, so the check.
+        # Bits are read up front, so an empty queue means the program was
+        # given none: reading one is exhausted input, which this module
+        # documents as EOFError.  The cell about to run is the one the
+        # pointer leaves, so the check has to look ahead the same way.
         if not self.state[5]:
             row, col, r, _acc, _out, _inp, _done = self.state
             if move(row, col, r, self.code, self.state[3])[3] == ".":
-                # ``InputExhaustedError``, not.
-                # one (that is the class's.
-                # carried no message and was.
-                # sweep written to the.
-                # crashed on this one language.
-                # *empty* stdin has always.
-                # ``ScriptedIO``; only this.
-                # The counts come off the io by.
-                # runs against the base ``IO``.
+                # ``InputExhaustedError``, not a bare ``EOFError``: it *is*
+                # one (that is the class's second base), but the bare form
+                # carried no message and was not an ``EsolangError``, so a
+                # sweep written to the documented ``except EsolangError``
+                # crashed on this one language.  The same program with
+                # *empty* stdin has always raised the typed one, from
+                # ``ScriptedIO``; only this look-ahead raised its own.
+                # The counts come off the io by ``getattr``: this look-ahead
+                # runs against the base ``IO`` too, which does not keep them.
                 raise InputExhaustedError(
                     getattr(self.io, "reads", 0), getattr(self.io, "supplied", 0)
                 )

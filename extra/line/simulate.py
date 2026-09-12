@@ -137,11 +137,11 @@ class _Compiled:
     end: tuple[int, int]
     zero: _Compiled | None
     nonzero: _Compiled | None
-    # Set only on a leaf whose.
-    # (see _compile).
-    # either another stroke's own.
-    # remaining ops -- deliberately.
-    # first time that point was.
+    # Set only on a leaf whose drawn path reconnects to an earlier point
+    # (see _compile).  Points directly at whatever should run next --
+    # either another stroke's own node, or a resume point covering just its
+    # remaining ops -- deliberately bypassing any ops that already ran the
+    # first time that point was reached, since a real loop-back must not
     # replay them every iteration.
     goto: _Compiled | None = None
 
@@ -188,10 +188,10 @@ def _compile(stroke: Stroke, unit: int) -> _Compiled:
     ``zero`` arm looping back to the fork itself, which is built before
     ``walk_tree`` ever recurses into ``zero``.
     """
-    # Every real (non-resume-point).
-    # kept alongside its compiled.
-    # point can be tested against.
-    # vertex hits and a point.
+    # Every real (non-resume-point) stroke's own vertex/segment geometry,
+    # kept alongside its compiled node and full ops list so a leaf's end
+    # point can be tested against it (see find_merge below) -- both exact
+    # vertex hits and a point landing partway along a segment.
     strokes: list[tuple[_Compiled, list[Vertex], list[OpCall]]] = []
     leaves: list[_Compiled] = []
     resume_cache: dict[tuple[int, int], _Compiled] = {}
@@ -229,39 +229,39 @@ def _compile(stroke: Stroke, unit: int) -> _Compiled:
         py, px = point
         for target, vertices, ops in strokes:
             if target is exclude:
-                # A leaf's own final.
-                # itself (it is where point.
-                # entirely rather than checking.
-                # fact, so the search keeps.
-                # *different* stroke instead of.
+                # A leaf's own final vertex/segment trivially "matches"
+                # itself (it is where point came from); skip its own stroke
+                # entirely rather than checking `target is leaf` after the
+                # fact, so the search keeps going to find a real match on a
+                # *different* stroke instead of stopping here.
                 continue
             last = vertices[-1]
             if (last.y, last.x) == point:
-                # This stroke's own final.
-                # point (a fork) or a genuine.
-                # shared corner, so matching it.
-                # common case: a loop-back.
+                # This stroke's own final vertex -- always a real decision
+                # point (a fork) or a genuine dead end, never an arbitrary
+                # shared corner, so matching it exactly is safe and is the
+                # common case: a loop-back reconnecting right at a `?`.
                 return target, []
             for i in range(len(vertices) - 1):
                 v0, v1 = vertices[i], vertices[i + 1]
-                # Strictly interior to this.
-                # both ends.
-                # (a corner within the stroke,.
-                # deliberately excluded too,.
-                # segment being tested: every.
-                # exactly the fork's own end.
-                # a vertex-equality test alone.
-                # sharing that corner, not just.
-                # confirmed to misfire on a.
-                # matched an unrelated.
-                # start at the same point.
-                # A genuine drawn merge, by.
-                # a real leg's own ink.
-                # merge point, which sits.
-                # straight run, not on any of.
-                # requiring strict interior.
-                # than a stroke's own final.
-                # it is what a real merge.
+                # Strictly interior to this segment -- (v0, v1) exclusive on
+                # both ends.  Landing exactly on an interior *vertex*
+                # (a corner within the stroke, not its own final one) is
+                # deliberately excluded too, not just v0/v1 of the specific
+                # segment being tested: every fork's two children start at
+                # exactly the fork's own end coordinate by construction, so
+                # a vertex-equality test alone matches *every* sibling arm
+                # sharing that corner, not just a real continuation --
+                # confirmed to misfire on a synthetic loop test, where it
+                # matched an unrelated 1-segment sibling arm that happened to
+                # start at the same point instead of the real ancestor fork.
+                # A genuine drawn merge, by contrast, touches down *inside*
+                # a real leg's own ink (confirmed on fixtures/addition.png's
+                # merge point, which sits partway along the incoming stem's
+                # straight run, not on any of its recorded vertices) -- so
+                # requiring strict interior containment for anything other
+                # than a stroke's own final vertex is not just a tiebreak,
+                # it is what a real merge actually looks like geometrically.
                 dy, dx = v1.y - v0.y, v1.x - v0.x
                 oy, ox = py - v0.y, px - v0.x
                 if dy * ox - dx * oy != 0:

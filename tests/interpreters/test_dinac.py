@@ -13,9 +13,9 @@ from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.runner import run_program
 from tests.raises import raises_message
 
-# The wiki's programs, byte for.
-# both matter: ``OUT ' `` *is*.
-# has one the parser must.
+# The wiki's programs, byte for byte.  Two lines carry a trailing space and
+# both matter: ``OUT ' `` *is* the space of "Hello, World!", and ``OUT 'r ``
+# has one the parser must tolerate rather than choke on.
 HELLO_WORLD = (
     "OUT 'H\nOUT 'e\nOUT 'l\nOUT 'l\nOUT 'o\nOUT ',\nOUT ' \n"
     "OUT 'W\nOUT 'o\nOUT 'r \nOUT 'l\nOUT 'd\nOUT '!\nOUT \\n"
@@ -60,7 +60,7 @@ PLUS_OR_MINUS = "\n".join(
     ]
 )
 
-# The wiki's STDLIB add, the.
+# The wiki's STDLIB add, the one subpage program small enough to pin here.
 STDLIB_ADD = "\n".join(
     [
         "DEF/00 add a:00 b:00",
@@ -341,7 +341,7 @@ class TestFunctions:
         machine = _Machine("DEF/00 f n:00\n    GIVE f(n)\nOUT f(01)", ScriptedIO())
         for _ in range(4000):
             machine.step()
-        # Far past Python's own.
+        # Far past Python's own recursion limit, and still going.
         assert len(machine.frames) > 1000
         assert not machine.halted
 

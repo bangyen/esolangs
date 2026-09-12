@@ -111,22 +111,22 @@ from esolangs.interpreters.io import IO
 
 __all__ = ["run"]
 
-# U+030A COMBINING RING ABOVE,.
-# into ``ɰ̊``.
-# joins exactly this pair and.
+# U+030A COMBINING RING ABOVE, the voicelessness diacritic that turns ``ɰ``
+# into ``ɰ̊``.  It is the only multi-codepoint command, so the tokenizer
+# joins exactly this pair and rejects the ring anywhere else.
 _RING = "̊"
 _WHILE_ZERO = "ɰ" + _RING
 
-# The consonant classes.
-# structure treats them as a.
-# third position, so ``ŋ`` can.
+# The consonant classes.  Nasals are separate because the syllable
+# structure treats them as a distinct slot: CV(N)(C) admits a nasal only in
+# third position, so ``ŋ`` can never be an onset and ``s`` can never be the
 # N of a syllable.
 _FRICATIVES = frozenset("θfsʒ")
-# ``ɡ`` is U+0261 LATIN SMALL.
-# table spells the.
-# world.
-# Both are accepted, and the.
-# tokenization so nothing.
+# ``ɡ`` is U+0261 LATIN SMALL LETTER SCRIPT G, which is how the command
+# table spells the multiplication plosive -- but the page's own Hello,
+# world! writes it as the ASCII ``g`` seven times and never uses U+0261.
+# Both are accepted, and the ASCII form is folded to the IPA one at
+# tokenization so nothing downstream has to know there were two spellings.
 _SCRIPT_G = "ɡ"
 _PLOSIVES = frozenset("pkdbt" + _SCRIPT_G + "qʔʡc")
 _APPROXIMANTS = frozenset({"ɹ", "j", _WHILE_ZERO, "ɰ", "ʋ"})
@@ -134,8 +134,8 @@ _CONSONANTS = _FRICATIVES | _PLOSIVES | _APPROXIMANTS
 _NASALS = frozenset("mnŋɲ")
 _VOWELS = frozenset("iəæou")
 
-# The function's own alphabet,.
-# ``p`` and ``k`` are absent:.
+# The function's own alphabet, keyed by the plosive that appends each one.
+# ``p`` and ``k`` are absent: they append a *number* popped from the deque,
 # not a fixed symbol.
 _FUNCTION_SYMBOLS = {
     "d": "a",
@@ -150,10 +150,10 @@ _FUNCTION_SYMBOLS = {
 _ADDITIVE = frozenset("+-")
 _MULTIPLICATIVE = frozenset("*/")
 
-# The individual commands the.
-# reads as the operation it.
-# bare IPA character.
-# directly: they are membership.
+# The individual commands the dispatch tests by name, so each branch body
+# reads as the operation it performs rather than as a comparison against a
+# bare IPA character.  The class frozensets above still spell their members
+# directly: they are membership tests over a whole class, not the per-command
 # dispatch these name.
 _PRINT_NUM = "θ"
 _PRINT_CHAR = "f"
@@ -232,7 +232,7 @@ def _syllabify(tokens: list[str]) -> list[int]:
         index += 1
         if index < len(tokens) and tokens[index] in _NASALS:
             index += 1
-        # A consonant here closes this.
+        # A consonant here closes this syllable only if it has no vowel to
         # open the next one with.
         if (
             index < len(tokens)
@@ -297,7 +297,7 @@ class _Parser:
         while (symbol := self._peek()) in _ADDITIVE:
             self.index += 1
             right = self._term()
-            # The accumulator is unsigned,.
+            # The accumulator is unsigned, so a subtraction floors at zero
             # rather than going negative.
             value = value + right if symbol == "+" else max(value - right, 0)
         return value
@@ -339,16 +339,16 @@ class _InvalidFunctionError(Exception):
     """The built function does not parse, so ``u`` leaves the accumulator."""
 
 
-# : One instant of a run:.
-# :.
-# : A value, not a record:.
-# : than editing the one it was.
-# : tuples for the same reason.
-# : has pushed, which no loop.
-# :.
-# : The tokens, the syllable.
-# : stay out: CV(N)(C) never.
-# : once and handed to the.
+#: One instant of a run: ``(accumulator, deque, function, pointer)``.
+#:
+#: A value, not a record: every handler below returns a new state rather
+#: than editing the one it was handed.  The deque and the function are
+#: tuples for the same reason -- and both are bounded by what the program
+#: has pushed, which no loop grows without also growing the accumulator.
+#:
+#: The tokens, the syllable starts, the loop pairs and the offset table
+#: stay out: CV(N)(C) never rewrites its own source, so they are computed
+#: once and handed to the transition.
 type _State = tuple[int, tuple[int, ...], tuple[str, ...], int]
 
 
@@ -377,10 +377,10 @@ def _fricative(
     if token == _PRINT_CHAR:
         return state, chr(accumulator % 256)
     if token == _READ_NUM:
-        # The accumulator is unsigned,.
-        # and an empty line (a bare.
+        # The accumulator is unsigned, so a negative line floors at zero,
+        # and an empty line (a bare Enter) reads as 0 rather than raising.
         return (max(_as_int((line or "").strip()), 0), deque, function, pointer), None
-    # what is left is ``ʒ``, the.
+    # what is left is ``ʒ``, the character read
     return ((byte or 0) % 256, deque, function, pointer), None
 
 
@@ -433,20 +433,20 @@ def _approximant(
     """Jump: a goto, a loop test, or a loop end."""
     accumulator, deque, function, pointer = state
     if token == _GOTO:
-        # Past the end is a halt, which.
+        # Past the end is a halt, which running off the end already is.
         pointer = offsets.get(accumulator, end)
     elif token == _GOTO_LINE:
         pointer = starts[accumulator] if accumulator < len(starts) else end
     elif token == _WHILE_ZERO:
-        # Jumping *past* the ``ʋ``.
-        # end would run it and bounce.
+        # Jumping *past* the ``ʋ`` rather than onto it: landing on the loop
+        # end would run it and bounce straight back to the test.
         if accumulator == 0:
             pointer = pairs[pointer - 1] + 1
     elif token == _WHILE_NONZERO:
         if accumulator != 0:
             pointer = pairs[pointer - 1] + 1
     else:
-        # ``ʋ`` jumps back *to* its.
+        # ``ʋ`` jumps back *to* its opener, which re-tests the condition.
         pointer = pairs[pointer - 1]
     return (accumulator, deque, function, pointer)
 
@@ -494,9 +494,9 @@ class _Machine:
             raise ValueError("program is empty")
         self.starts = _syllabify(self.tokens)
         self.pairs = _match_loops(self.tokens)
-        # ``ɹ`` indexes the source by.
-        # codepoint offset begins at is.
-        # two offsets and both map to.
+        # ``ɹ`` indexes the source by codepoint, so the token that each
+        # codepoint offset begins at is precomputed once.  A ``ɰ̊`` occupies
+        # two offsets and both map to it: there is no command to resume at
         # in the middle of one.
         self.offsets: dict[int, int] = {}
         offset = 0
@@ -515,7 +515,7 @@ class _Machine:
         """Whether the instruction pointer has run off the end."""
         return self.pointer >= len(self.tokens)
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: Accumulator and deque; ip is the command cursor.
 
     @property
     def ip(self) -> int:

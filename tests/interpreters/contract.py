@@ -38,8 +38,8 @@ from typing import Any, ClassVar
 
 import pytest
 
-# Every halting_program in the.
-# turns a mistaken entry into a.
+# Every halting_program in the suite halts in well under this; the bound
+# turns a mistaken entry into a readable failure rather than a hang.
 _HALT_BUDGET = 100_000
 
 
@@ -53,31 +53,31 @@ class EmptyProgramContract:
     second branch and everything else defaults to the first.
     """
 
-    # The file's own helper --.
-    # already knows whether the.
-    # and carries any limit the.
+    # The file's own helper -- run_and_capture, _run, run_program.  It
+    # already knows whether the language wants a string or a list of lines,
+    # and carries any limit the language needs, so the contract does not
     # have to model either.
     run: ClassVar[Any]
 
-    # The empty program in this.
+    # The empty program in this language's shape: "" or [].
     empty_program: ClassVar[Any] = ""
 
-    # What running it prints, for.
-    # always "", so that is the.
+    # What running it prints, for the languages that accept it.  Almost
+    # always "", so that is the default and only the exceptions say so.
     empty_output: ClassVar[str] = ""
 
-    # Set instead by the languages.
-    # message, which is what.
+    # Set instead by the languages that refuse an empty program: the exact
+    # message, which is what decides between the two branches below.
     empty_raises: ClassVar[str | None] = None
 
     def test_empty_program(self) -> None:
         """An empty program either produces its output or is refused."""
         if self.empty_raises is not None:
-            # The message is matched in.
-            # substring, which would also.
-            # wider or wrong claim around.
-            # gets the escaped message,.
-            # `pytest.raises(ValueError)`.
+            # The message is matched in full rather than as a `match=`
+            # substring, which would also accept a message that had grown a
+            # wider or wrong claim around the expected text.  `match=` still
+            # gets the escaped message, since the lint rule wants
+            # `pytest.raises(ValueError)` narrowed by something.
             expected = re.escape(self.empty_raises)
             with pytest.raises(ValueError, match=expected) as caught:
                 type(self).run(self.empty_program)
@@ -99,7 +99,7 @@ class SnapshotContract:
 
     machine: ClassVar[Any]
 
-    # A program with at least one.
+    # A program with at least one step left in it, so the "changes" half
     # has something to observe.
     stepping_program: ClassVar[Any]
 
@@ -133,22 +133,22 @@ class InputCursorContract:
     that as its own test.
     """
 
-    # : Builds the machine from a.
-    # : ``machine`` hook elsewhere.
-    # : other contracts never need.
+    #: Builds the machine from a program *and* its stdin, which the
+    #: ``machine`` hook elsewhere in this module does not take -- the
+    #: other contracts never need a machine that reads anything.
     reader: ClassVar[Any]
 
-    # : A program that reads from.
+    #: A program that reads from its input, and the stdin it reads.
     reading_program: ClassVar[Any]
     reading_stdin: ClassVar[str]
 
-    # : Steps run *before* the.
-    # : to walk somewhere before it.
-    # : after them: a warm-up moves.
-    # : satisfy the "changed" half.
+    #: Steps run *before* the snapshot is taken, for a language that has
+    #: to walk somewhere before it can read.  The comparison has to start
+    #: after them: a warm-up moves the snapshot by itself, which would
+    #: satisfy the "changed" half without the read doing anything.
     steps_before_read: ClassVar[int] = 0
 
-    # : How many steps reach the.
+    #: How many steps reach the read, and where the cursor stands after.
     steps_to_read: ClassVar[int] = 1
     position_after_read: ClassVar[int] = 1
 
@@ -179,17 +179,17 @@ class CycleContract:
     someone who knows it, rather than derived from the registry.
     """
 
-    # The language's steppable.
-    # ``machine(program)`` -- a.
-    # since which of IO/ScriptedIO.
+    # The language's steppable class and the IO it takes, as
+    # ``machine(program)`` -- a small function in the file supplies the IO,
+    # since which of IO/ScriptedIO a language wants is its own business.
     machine: ClassVar[Any]
 
     halting_program: ClassVar[Any]
 
-    # None where no existing test.
-    # Writing one takes knowing.
-    # than growing its state.
-    # instead of being filled with.
+    # None where no existing test had a looping program for this language.
+    # Writing one takes knowing which of its loops repeats a snapshot rather
+    # than growing its state forever, so the gap is left visible as a skip
+    # instead of being filled with a guess that would hang the suite.
     looping_program: ClassVar[Any] = None
 
     def test_halting_program_is_detected(self) -> None:
@@ -227,7 +227,7 @@ class CycleContract:
             machine.step()
         else:
             raise AssertionError("halting_program did not halt")
-        machine.step()  # must not raise.
+        machine.step()  # must not raise
         assert machine.halted
 
 
@@ -271,20 +271,20 @@ class StateViewContract:
 
     machine: ClassVar[Any]
 
-    # : The names to read off the.
-    # : spells its own state --.
-    # : RAM0 -- and a name absent.
+    #: The names to read off the machine.  Per file, because each language
+    #: spells its own state -- ``acc``/``jumps`` in Unsquare, ``z``/``n`` in
+    #: RAM0 -- and a name absent here is simply not part of that view.
     state_views: ClassVar[tuple[str, ...]]
 
-    # : A program that moves every.
-    # : listed in.
+    #: A program that moves every name in :attr:`state_views` except those
+    #: listed in :attr:`constant_views`.
     viewing_program: ClassVar[Any]
 
-    # : Views this language's.
-    # : that only flips past the.
-    # : Naming them is the point:.
-    # : exercised", which is what.
-    # : listed here that *does*.
+    #: Views this language's program genuinely cannot move -- a dump flag
+    #: that only flips past the halt, a store the program never writes.
+    #: Naming them is the point: it separates "inert by nature" from "never
+    #: exercised", which is what the old shape could not tell apart.  A view
+    #: listed here that *does* move is an error too, so the list cannot rot
     #: into a blanket exemption.
     constant_views: ClassVar[frozenset[str]] = frozenset()
 

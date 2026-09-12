@@ -40,14 +40,14 @@ def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 5) -> Any:
         _TestTimeoutError: If function exceeds timeout
 
     """
-    # Set up signal handler for.
+    # Set up signal handler for timeout
     old_handler = signal.signal(signal.SIGALRM, timeout_handler)
     signal.alarm(timeout_seconds)
 
     try:
         return func()
     finally:
-        # Restore original signal.
+        # Restore original signal handler and cancel alarm
         signal.alarm(0)
         signal.signal(signal.SIGALRM, old_handler)
 
@@ -57,7 +57,7 @@ class TestWII2DBasicCommands:
 
     def test_movement_commands(self) -> None:
         """Test directional movement commands (^v<>)."""
-        # Simple program that moves.
+        # Simple program that moves right and outputs the accumulator (0)
         code = [">~.", "!"]
 
         with redirect_stdout(io.StringIO()) as f:
@@ -85,30 +85,32 @@ class TestWII2DBasicCommands:
 
     def test_arithmetic_operations(self) -> None:
         """Test arithmetic operations (+-*/s)."""
-        # Test increment - move right,.
+        # Test increment - move right, increment, output, halt
         code = [">+~.", "!"]
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == "\x01"  # 0 + 1 = 1.
+        assert f.getvalue() == "\x01"  # 0 + 1 = 1
 
     def test_digit_commands(self) -> None:
         """Test digit commands (0-9) that set accumulator."""
-        # Test setting accumulator to 5.
+        # Test setting accumulator to 5 and outputting
         code = [">5~.", "!"]
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == "\x05"  # ASCII 5.
+        assert f.getvalue() == "\x05"  # ASCII 5
 
     def test_output_command(self) -> None:
         """Test output command (~) that prints accumulator as ASCII."""
-        # Test outputting 'A' (ASCII.
+        # Test outputting 'A' (ASCII 65)
         code = [">65~.", "!"]
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == "\x05"  # The program outputs 65 as a.
+        assert (
+            f.getvalue() == "\x05"
+        )  # The program outputs 65 as a character, but 65 is processed as 6 then 5
 
     def test_halt_command(self) -> None:
         """Test halt command (.) that ends program execution."""
@@ -125,7 +127,7 @@ class TestWII2DBasicCommands:
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == "\x00"  # Accumulator unchanged.
+        assert f.getvalue() == "\x00"  # Accumulator unchanged
 
 
 class TestWII2DArithmetic:
@@ -137,7 +139,7 @@ class TestWII2DArithmetic:
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == "\x03"  # 0 + 1 + 1 + 1 = 3.
+        assert f.getvalue() == "\x03"  # 0 + 1 + 1 + 1 = 3
 
     def test_decrement_operation(self) -> None:
         """Test - operation that decrements accumulator."""
@@ -145,7 +147,7 @@ class TestWII2DArithmetic:
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == "\x02"  # 5 - 1 - 1 - 1 = 2.
+        assert f.getvalue() == "\x02"  # 5 - 1 - 1 - 1 = 2
 
     def test_double_operation(self) -> None:
         """Test * operation that doubles accumulator."""
@@ -153,7 +155,7 @@ class TestWII2DArithmetic:
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == "\x06"  # 3 * 2 = 6.
+        assert f.getvalue() == "\x06"  # 3 * 2 = 6
 
     def test_halve_operation(self) -> None:
         """Test / operation that halves accumulator."""
@@ -161,7 +163,7 @@ class TestWII2DArithmetic:
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == "\x04"  # 8 / 2 = 4.
+        assert f.getvalue() == "\x04"  # 8 / 2 = 4
 
     def test_square_operation(self) -> None:
         """Test s operation that squares accumulator."""
@@ -169,15 +171,15 @@ class TestWII2DArithmetic:
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == "\x09"  # 3^2 = 9.
+        assert f.getvalue() == "\x09"  # 3^2 = 9
 
     def test_complex_arithmetic(self) -> None:
         """Test complex arithmetic expression."""
-        code = [">2+*s~.", "!"]  # (2+1)*2 = 6, then 6^2 = 36.
+        code = [">2+*s~.", "!"]  # (2+1)*2 = 6, then 6^2 = 36
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == chr(36)  # ASCII 36 = '$'.
+        assert f.getvalue() == chr(36)  # ASCII 36 = '$'
 
 
 class TestJumpTargets:
@@ -220,7 +222,7 @@ class TestWII2DControlFlow:
 
     def test_reverse_direction(self) -> None:
         """Test | command that reverses the direction of travel."""
-        # Pointer starts north of .
+        # Pointer starts north of ! moving north; | reverses it south to the halt
         code = ["|", "!", "."]
 
         with redirect_stdout(io.StringIO()) as f:
@@ -240,8 +242,8 @@ class TestWII2DControlFlow:
                 assert upper > 0
                 return self._draws.pop(0)
 
-        # .
-        # north wraps the pointer down.
+        # ? forced east runs the pointer into | (reverses it west); then ? forced
+        # north wraps the pointer down to the halt.
         code = [" ?|.", " !  ", " .  "]
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO(), rng=_Scripted([3, 0]))
@@ -253,7 +255,7 @@ class TestWII2DHelloWorld:
 
     def test_hello_world_program(self) -> None:
         """Test the complete Hello World program from esolangs.org."""
-        # The Hello World program from.
+        # The Hello World program from esolangs.org
         hello_world_code = [
             ">8s++++++++~9+s+~+++++++~~+++~9+**++++~8**~*9+s-------------~9+s+++++++++++~+++~9+s++++++++~9+s~4s*+~.",
             "!",
@@ -265,21 +267,23 @@ class TestWII2DHelloWorld:
 
     def test_character_generation_pattern(self) -> None:
         """Test pattern for generating specific ASCII characters."""
-        # Generate 'H' (ASCII 72).
+        # Generate 'H' (ASCII 72)
         code = [">72~.", "!"]
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == "\x02"  # The program outputs 72 as a.
+        assert (
+            f.getvalue() == "\x02"
+        )  # The program outputs 72 as a character, but 72 is processed as 7 then 2
 
     def test_simple_hello_pattern(self) -> None:
         """Test a simplified hello pattern."""
-        # Generate "Hi" using.
-        code = [">72~105~.", "!"]  # H (72) then i (105) then halt.
+        # Generate "Hi" using arithmetic - use a single line approach
+        code = [">72~105~.", "!"]  # H (72) then i (105) then halt
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == "\x02\x05"  # 72 becomes 7,2 and 105.
+        assert f.getvalue() == "\x02\x05"  # 72 becomes 7,2 and 105 becomes 1,0,5
 
 
 class TestWII2DEdgeCases:
@@ -316,15 +320,17 @@ class TestWII2DEdgeCases:
 
     def test_large_accumulator_values(self) -> None:
         """Test handling of large accumulator values."""
-        code = [">255~.", "!"]  # Maximum byte value.
+        code = [">255~.", "!"]  # Maximum byte value
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == "\x05"  # 255 outputs as 2 then 5 then.
+        assert (
+            f.getvalue() == "\x05"
+        )  # 255 outputs as 2 then 5 then 5, so the character is 0x05
 
     def test_division_by_zero_equivalent(self) -> None:
         """Test division when accumulator is 1 (results in 0)."""
-        code = [">1/~.", "!"]  # 1 / 2 = 0 (integer division).
+        code = [">1/~.", "!"]  # 1 / 2 = 0 (integer division)
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
@@ -332,7 +338,7 @@ class TestWII2DEdgeCases:
 
     def test_no_at_commands_for_jump(self) -> None:
         """Test @ command when no other @ commands exist."""
-        code = [">@~.", "!"]  # Try to jump but no other @.
+        code = [">@~.", "!"]  # Try to jump but no other @ exists
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
@@ -344,20 +350,20 @@ class TestWII2DIntegration:
 
     def test_complex_program_with_multiple_operations(self) -> None:
         """Test a complex program with multiple operations."""
-        code = [">5+*s/~.", "!"]  # (5+1)*2 = 12, 12^2 = 144,.
+        code = [">5+*s/~.", "!"]  # (5+1)*2 = 12, 12^2 = 144, 144/2 = 72
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == "H"  # ASCII 72.
+        assert f.getvalue() == "H"  # ASCII 72
 
     def test_character_arithmetic_chain(self) -> None:
         """Test a chain of character arithmetic operations."""
-        # Test multiple character.
-        code = [">65~66~67~.", "!"]  # A (65), B (66), C (67) then.
+        # Test multiple character outputs in a single line
+        code = [">65~66~67~.", "!"]  # A (65), B (66), C (67) then halt
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == "\x05\x06\x07"  # 65->6,5, 66->6,6, 67->6,7.
+        assert f.getvalue() == "\x05\x06\x07"  # 65->6,5, 66->6,6, 67->6,7
 
 
 class TestWII2DMathematicalOperations:
@@ -365,7 +371,7 @@ class TestWII2DMathematicalOperations:
 
     def test_addition_simulation(self) -> None:
         """Test addition using increment operations."""
-        code = [">3++++~.", "!"]  # 3 + 4 = 7.
+        code = [">3++++~.", "!"]  # 3 + 4 = 7
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
@@ -373,7 +379,7 @@ class TestWII2DMathematicalOperations:
 
     def test_multiplication_simulation(self) -> None:
         """Test multiplication using doubling operations."""
-        code = [">4**~.", "!"]  # 4 * 2 * 2 = 16.
+        code = [">4**~.", "!"]  # 4 * 2 * 2 = 16
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
@@ -381,11 +387,13 @@ class TestWII2DMathematicalOperations:
 
     def test_division_simulation(self) -> None:
         """Test division using halving operations."""
-        code = [">16//~.", "!"]  # 16 / 2 / 2 = 4.
+        code = [">16//~.", "!"]  # 16 / 2 / 2 = 4
 
         with redirect_stdout(io.StringIO()) as f:
             run_with_timeout(lambda: run(code, IO()))
-        assert f.getvalue() == "\x01"  # The program outputs 16 as a.
+        assert (
+            f.getvalue() == "\x01"
+        )  # The program outputs 16 as a character, but 16 is processed as 1 then 6
 
 
 class TestShellEffects:
@@ -412,11 +420,11 @@ class TestStepMachine:
 
         machine = _Machine([">~.", "!"], IO())
         assert (machine.row, machine.col, machine.vel, machine.acc) == (0, 0, 0, 0)
-        machine.step()  # > sets the heading east, then.
+        machine.step()  # > sets the heading east, then moves one cell
         assert (machine.row, machine.col, machine.vel) == (0, 1, 3)
-        machine.step()  # ~ prints the accumulator (0).
+        machine.step()  # ~ prints the accumulator (0)
         assert (machine.row, machine.col) == (0, 2)
-        machine.step()  # .
+        machine.step()  # . halts
         assert machine.halted
         assert machine.acc == 0
 
@@ -433,11 +441,11 @@ class TestStepMachine:
         machine = _Machine([">+~.", "!"], IO())
         assert machine.ip == (0, 0, 0)
         assert machine.memory == [0]
-        machine.step()  # > heads east and moves.
+        machine.step()  # > heads east and moves
         assert machine.ip == (0, 1, 3)
-        machine.step()  # + raises the accumulator,.
+        machine.step()  # + raises the accumulator, which `memory` reports
         assert machine.memory == [1]
-        assert machine.stack == []  # WII2D has no stack, and says.
+        assert machine.stack == []  # WII2D has no stack, and says so
 
     def test_step_after_halt_is_a_noop(self) -> None:
         from esolangs.interpreters.grid_based.wii2d import _Machine
@@ -449,7 +457,7 @@ class TestStepMachine:
             machine.step()
         assert machine.halted
         state = machine.snapshot()
-        machine.step()  # stepping a halted machine.
+        machine.step()  # stepping a halted machine must not raise
         assert machine.snapshot() == state
 
 

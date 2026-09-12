@@ -33,13 +33,13 @@ class Test3DBrainfuck:
         assert run_program("--.") == "\xfe"
 
     def test_array_moves(self) -> None:
-        # n/e/u move the array pointer.
+        # n/e/u move the array pointer along the X/Z/Y axes
         assert run_program("n+.") == "\x01"
         assert run_program("ne+.") == "\x01"
         assert run_program("neu+.") == "\x01"
 
     def test_three_dimensional_cells_are_distinct(self) -> None:
-        # n, e, u point at three.
+        # n, e, u point at three distinct array cells; each + sets that cell
         assert run_program("n+.e+.u+.") == "\x01\x01\x01"
 
     def test_each_axis_has_an_inverse(self) -> None:
@@ -55,8 +55,8 @@ class Test3DBrainfuck:
         assert run_program("+ns.") == "\x01"
         assert run_program("+ew.") == "\x01"
         assert run_program("+ud.") == "\x01"
-        # the cell stepped onto is not.
-        # origin alone.
+        # the cell stepped onto is not the origin: marking it leaves the
+        # origin alone
         assert run_program("n+s.") == "\x00"
         assert run_program("e+w.") == "\x00"
         assert run_program("u+d.") == "\x00"
@@ -103,10 +103,10 @@ class Test3DBrainfuck:
             ("W", (0, 0, -1)),
         ):
             machine = _Machine(block + "+", ScriptedIO())
-            machine.step()  # the heading block, then one.
+            machine.step()  # the heading block, then one move along it
             assert machine.heading == heading, block
-            # the block at the origin is.
-            # the pointer steps straight.
+            # the block at the origin is replaced as the advance vector, so
+            # the pointer steps straight off the +X line and stops
             assert machine.pos == heading, block
             assert machine.halted, block
 
@@ -124,10 +124,10 @@ class Test3DBrainfuck:
         """
         assert run_program("[+].") == "\x00"
         assert run_program("[.]") == ""
-        # The jump reads the bracket.
-        # index.
-        # into it happens to give the.
-        # tested from further along the.
+        # The jump reads the bracket table at the *instruction pointer's*
+        # index.  A `[` at index 0 is the one case where any other index
+        # into it happens to give the same answer, so the skip is also
+        # tested from further along the line.
         assert run_program("n[+].") == "\x00"
         assert run_program("+-[+].") == "\x00"
 
@@ -161,19 +161,19 @@ class Test3DBrainfuck:
         assert run_program("N+.") == "\x01"
 
     def test_heading_off_line_halts(self) -> None:
-        # U sets heading +Y; the.
+        # U sets heading +Y; the pointer walks off the source line and halts
         assert run_program("U+.") == ""
 
     def test_generation_blocks_are_noops(self) -> None:
-        # ^/V/>/</"/' set the.
+        # ^/V/>/</"/' set the generation heading only
         assert run_program("^+.") == "\x01"
         assert run_program("'n+.") == "\x01"
 
     def test_comment_characters_are_noops(self) -> None:
         assert run_program("a+b.c") == "\x01"
-        # An X is a comment too.
-        # set however it is spelled, so.
-        # include one -- and as a.
+        # An X is a comment too.  The letters above are outside the command
+        # set however it is spelled, so they do not catch a set widened to
+        # include one -- and as a command X would read input and raise.
         assert run_program("X+X.X") == "\x01"
 
     def test_malformed_brackets(self) -> None:
@@ -197,12 +197,12 @@ class TestStepMachine:
             (0, 0, 0),
             (1, 0, 0),
         )
-        machine.step()  # + sets the origin cell to 1.
+        machine.step()  # + sets the origin cell to 1
         assert machine.cells == {(0, 0, 0): 1}
-        machine.step()  # .
+        machine.step()  # . prints it
         assert machine.io.getvalue() == "\x01"
         assert machine.halted
-        machine.step()  # stepping a halted machine is.
+        machine.step()  # stepping a halted machine is a no-op
         assert machine.pos == (2, 0, 0)
 
 

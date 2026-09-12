@@ -40,7 +40,7 @@ def _parameterized_generators():
     ]
 
 
-@pytest.mark.slow  # ~3s: builds every generator,.
+@pytest.mark.slow  # ~3s: builds every generator, up to n=4
 def test_parameterized_generators_embed_each_input_once() -> None:
     """Every no-input generator embeds each input exactly once.
 
@@ -61,11 +61,11 @@ def test_parameterized_generators_embed_each_input_once() -> None:
             try:
                 template = gen(table)
             except ValueError:
-                # pylint: disable=duplicate-code
-                # pylint: disable=duplicate-code
-                # pylint: disable=duplicate-code
-                # pylint: disable=duplicate-code
-                # pylint: disable=duplicate-code
+                # A generator need not cover every arity -- %^2^-1 derives
+                # one- and two-input tables only.  The invariant here is about
+                # the templates a generator *does* emit, so an uncovered arity
+                # is skipped rather than failed; the count below keeps that
+                # from quietly emptying the sweep.
                 continue
             checked += 1
             xs = re.findall(r"\{X(\d+)\}", template)
@@ -73,57 +73,57 @@ def test_parameterized_generators_embed_each_input_once() -> None:
             assert sorted(xs) == [str(i) for i in range(n)], (name, n, xs)
             assert len(xs) == n, (name, n, xs)
             assert not cs, (name, n, cs)
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
+    # Guard the skip above: every generator covers at least n == 2, so a run
+    # that checked far fewer templates than that means the sweep stopped
+    # exercising the generators rather than the generators getting stricter.
     assert checked >= len(_parameterized_generators()), checked
 
 
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
-# pylint: disable=duplicate-code
+# Slot order is not needed for correctness -- :func:`instantiate` substitutes
+# each ``{Xi}`` by name, replacing a unique token wherever it sits -- but it
+# is worth holding to, because an out-of-order load is a restructured load.
+#
+# Every generator emits its slots in name order.  A generator whose order
+# carried information would also have to emit a different *drawing* for a
+# different order, or the permutation is a relabelling and its saving is
+# fictitious -- the pairing below, which now covers ``back`` alone.
+#
+# There is no "reversed" category.  Bitdeque and BF-PDA used to push
+# back-to-front so the first pop was the most significant bit; that only
+# fixes which input the root tests, and testing the last input first costs
+# nothing, so both now load in name order (verified byte-identical totals).
+# Minifuck used to be the exception, carried as a strict xfail.  It no longer
+# is, and how it was closed is worth keeping, because the obvious fix is the
+# one that does not work.
+#
+# Its ignored inputs trailed the ``.``, which left name order whenever an
+# ignored index sat below an essential one -- 24 of the 38 degenerate n=3
+# tables.  *Relocating* an ignored fill does not fix that, measured rather
+# than argued: a fill writes the live tape (``[<`` flips a cell), so moving
+# one in front of the essential embeddings shifts every later one and the
+# program stops computing -- 2 wrong rows at n == 2 and 6 at n == 3.
+#
+# Two routes closed it instead, neither of them a relocation:
+#
+# * Decline to project.  ``_embed`` lays every slot down in ascending order,
+#   so a table solved at its *full* arity is in name order by construction.
+#   That covers most of them.
+# * Emit the ignored inputs first, then erase them.  The setters still have
+#   to appear -- the harness has a bit for every input -- but a reconverging
+#   suffix drives every row to one identical state, after which nothing
+#   downstream can tell which bits they were, and the table is a one-input
+#   problem in its single essential input.  That covers ``01010101`` and
+#   ``10101010``, the projections onto the *last* input, which the first
+#   route cannot reach: x2 stands in no cell after the embed under either
+#   separator.  Note the reconvergence is to a common *non-blank* state --
+#   a blank tape is unreachable, since the all-ones row ends a cell right of
+#   the others and ``<`` clamps without writing.
+#
+# The two-essential tables keep projecting deliberately.  Full-arity solving
+# is not merely unnecessary there, it is worse: ``00000101`` and
+# ``00001010`` fail after about 130 seconds each against seconds to project,
+# and a cheap scan-only attempt hits 1 table in 8 while costing ~9s per miss.
+# Coverage and build cost both come before slot order.
 
 _SLOT_ORDER_TABLES = ("0110", "01101001", "10101010", "11110000", "00111100")
 
@@ -149,11 +149,11 @@ def _slot_order(gen: object, table: str) -> list[int] | None:
     try:
         template = gen(table)
     except ValueError:
-        return None  # a generator need not cover.
+        return None  # a generator need not cover every arity
     return [int(s[2:-1]) for s in re.findall(r"\{X\d+\}", template)]
 
 
-@pytest.mark.slow  # builds every generator over.
+@pytest.mark.slow  # builds every generator over several tables
 def test_slots_run_in_name_order() -> None:
     """Every template emits ``{X0}``..``{Xn-1}`` in ascending order.
 
@@ -188,7 +188,7 @@ def _drawing(template: str) -> str:
     return re.sub(r"\{X\d+\}", "{X}", template)
 
 
-@pytest.mark.slow  # builds every permuting.
+@pytest.mark.slow  # builds every permuting generator over several tables
 def test_a_permuting_generator_changes_its_drawing() -> None:
     """A generator that permutes its slots must emit a different *drawing*.
 
@@ -226,16 +226,16 @@ def test_a_permuting_generator_changes_its_drawing() -> None:
                 built = build(permute_truth_table(table, perm), perm)
                 builds.setdefault(_drawing(built), set()).add(len(built))
             checked += 1
-            # pylint: disable=duplicate-code
-            # pylint: disable=duplicate-code
+            # The orders must not all collapse onto one drawing, or the
+            # reorder is a relabelling.
             assert len(builds) > 1, (
                 name,
                 table,
                 "every input order draws the same program, so permuting the "
                 "slots emits an identical program and books a fake saving",
             )
-            # pylint: disable=duplicate-code
-            # pylint: disable=duplicate-code
+            # And size must be a function of the drawing, not of the labels:
+            # orders sharing a drawing are the same program.
             for drawing, sizes in builds.items():
                 assert len(sizes) == 1, (name, table, len(drawing), sorted(sizes))
     assert checked >= 3, checked
@@ -259,12 +259,12 @@ class TestParameterizedBIO:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT.
+            ("10", 1),  # NOT
             ("01", 1),
-            ("0110", 2),  # XOR.
-            ("0001", 2),  # AND.
-            ("11111110", 3),  # NAND3.
-            ("01101001", 3),  # XOR3.
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -323,10 +323,10 @@ class TestParameterizedBack:
     """Input-by-substitution generators for the no-input language Back."""
 
     def run_back(self, prog: str, n: int) -> str:
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
+        # Back has no output instruction: it dumps the whole tape at halt.
+        # The generator puts the answer in cell n, so the dump's (n+1)th
+        # field is the result -- no need to track the head, which the dump
+        # does not report.
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.back import run
 
@@ -356,16 +356,16 @@ class TestParameterizedBack:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT.
+            ("10", 1),  # NOT
             ("01", 1),
-            ("00", 1),  # constant zero.
-            ("11", 1),  # constant one.
-            ("0110", 2),  # XOR.
-            ("0001", 2),  # AND.
-            ("1110", 2),  # NAND.
-            ("11111110", 3),  # NAND3.
-            ("01101001", 3),  # XOR3.
-            ("1111111100000000", 4),  # top half.
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1111111100000000", 4),  # top half
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -414,8 +414,8 @@ class TestParameterizedBack:
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.back("0110")
-        assert "+\\" in template  # a decision node.
-        assert "*" in template  # leaves halt.
+        assert "+\\" in template  # a decision node
+        assert "*" in template  # leaves halt
 
     def test_input_reordering_folds_a_scattered_table(self) -> None:
         """The tree splits in whichever order folds most, not load order.
@@ -506,8 +506,8 @@ class TestParameterizedBack:
                 assert names == sorted(names), (table, perm, names)
                 column = [ln[0] for ln in built.split("\n") if ln[:1].strip()]
                 walked += column.count("<")
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
+        # A non-identity order has to step the pointer back at some point;
+        # a build with no leftward step is not reordering anything.
         assert walked > 0
 
     def test_placeholders_run_in_name_order_while_still_reordering(self) -> None:
@@ -534,13 +534,13 @@ class TestParameterizedBack:
             names = re.findall(r"\{X(\d+)\}", template)
             assert names == sorted(names), f"{table} slots {names}"
             assert sorted(names) == ["0", "1", "2"], f"{table} embeds each once"
-            # pylint: disable=duplicate-code
-            # pylint: disable=duplicate-code
-            # pylint: disable=duplicate-code
+            # The load column carries the walk; a table whose best order is
+            # not the identity spends more than the n-1 steps a plain load
+            # would.
             column = [line[0] for line in template.split("\n") if line[:1].strip()]
             walked += column.count("<")
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
+        # At least one of these tables reorders, so at least one leftward
+        # step is emitted -- a plain ascending load never steps back.
         assert walked > 0
 
     def test_reordering_keeps_the_equal_width_embedding(self) -> None:
@@ -586,15 +586,15 @@ class TestParameterizedNoComment:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT.
+            ("10", 1),  # NOT
             ("01", 1),
-            ("00", 1),  # constant zero.
-            ("11", 1),  # constant one.
-            ("0110", 2),  # XOR.
-            ("0001", 2),  # AND.
-            ("1110", 2),  # NAND.
-            ("11111110", 3),  # NAND3.
-            ("01101001", 3),  # XOR3.
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -634,9 +634,9 @@ class TestParameterizedNoComment:
 
         template = parameterized.nocomment("10")
         assert template.startswith("{X0}")
-        assert "{C0}" not in template  # the complement is computed at.
-        assert template.endswith("o")  # a single final output.
-        assert template.count("s") == 3  # NOT gate + guarded increment.
+        assert "{C0}" not in template  # the complement is computed at runtime
+        assert template.endswith("o")  # a single final output
+        assert template.count("s") == 3  # NOT gate + guarded increment + index skip
         assert template.count("o") == 1
 
     def test_four_input_works(self) -> None:
@@ -649,32 +649,32 @@ class TestParameterizedNoComment:
             got = self.run_nocomment(self.instantiate(template, bits))
             assert got == str(int("1010101010101010"[combo])), f"inputs {bits}"
 
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
-    # pylint: disable=duplicate-code
+    # The decode is exponential in the arity, so the swept cases cost
+    # seconds: measured 9.3s at n=9 and 29.0s at n=10 (n=11 swept was 99.4s,
+    # now sampled below).  n=9 used to stay in the fast run as the case
+    # exercising the composed skip past a byte-sized index, but it is four
+    # times the one-second budget every other case is held to.  The
+    # mechanism is still proved on every push, just not at push time: CI's
+    # `test` matrix job runs pytest unfiltered, so a slow-marked case runs
+    # there like any other.  (The separate `-m slow` job is scoped to the
+    # differential fuzzer's file and never selects these.)
+    #
+    # These are ~2x the figures first recorded here (4.1/13.0/43.5s), which
+    # were measured before NoComment's tape became immutable.  The write
+    # buffer that made that change affordable collapses *runs* of writes,
+    # and this decode has none -- it writes a cell and moves -- so it pays a
+    # tape rebuild on ~66% of steps.  Storing the tape as `bytes` rather
+    # than a tuple of ints took the rebuild back to a memcpy and these cases
+    # from 45.7/139.7/561.6s to what they are now; the residue over the
+    # original is the immutable state the purity refactor bought.
+    # n=11 is sampled rather than swept: the summand plan introduces no new
+    # stage shape above n=10.  Measured plan sizes are q=2/4/6/10 at
+    # n=8/9/10/11; n=9 first splits one bit's weight across stages, n=10
+    # first carries both a repeated full stage and a mixed-cell stage, and
+    # n=11 only repeats those same two shapes more often.  The emitter is a
+    # uniform loop over plan entries with no branch keyed on stage index or
+    # cell, so every shape is already swept exhaustively at the smallest
+    # arity where it appears.  Sweeping n=11 cost 99.4s to re-prove that.
     @pytest.mark.parametrize(
         "n",
         [
@@ -693,7 +693,7 @@ class TestParameterizedNoComment:
         """
         self._check_wide_arity(n, range(2**n))
 
-    @pytest.mark.slow  # ~3s: the same decode at n=11,.
+    @pytest.mark.slow  # ~3s: the same decode at n=11, sampled
     def test_the_widest_arity_is_exact_on_sampled_rows(self) -> None:
         """The n=11 decode is checked where a stage boundary can go wrong.
 
@@ -763,8 +763,8 @@ class TestParameterizedNoComment:
                 break
             widest = n
 
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
+        # The cap is past the byte-sized-index bound the narrow path has,
+        # which is the whole point of the composed-skip decode.
         assert widest > _NOCOMMENT_NARROW_MAX
         with pytest.raises(ValueError, match=str(_TAPE)) as caught:
             parameterized.nocomment("0" * (2 ** (widest + 1)))
@@ -810,7 +810,7 @@ class TestParameterizedLamfunc:
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         from esolangs.tools.boolean import parameterized
 
-        # pylint: disable=duplicate-code
+        # each {Xi} fills a `vs v{i}` store with the binary literal
         return parameterized.instantiate(
             tpl,
             bits,
@@ -820,15 +820,15 @@ class TestParameterizedLamfunc:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT.
+            ("10", 1),  # NOT
             ("01", 1),
-            ("00", 1),  # constant zero.
-            ("11", 1),  # constant one.
-            ("0110", 2),  # XOR.
-            ("0001", 2),  # AND.
-            ("1110", 2),  # NAND.
-            ("11111110", 3),  # NAND3.
-            ("01101001", 3),  # XOR3.
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -892,10 +892,10 @@ class TestParameterizedBitdeque:
         return io.getvalue().strip()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
+        # Deliberately the shipped fill rather than a copy of its rule: an
+        # earlier duplicate here kept passing after the load order changed
+        # under it, so the suite disagreed with the harness it is meant to
+        # mirror.
         from esolangs.tools.boolean.examples import _fill_bitdeque
 
         return _fill_bitdeque(tpl, bits)
@@ -903,17 +903,17 @@ class TestParameterizedBitdeque:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT.
-            ("01", 1),  # identity.
-            ("00", 1),  # constant zero.
-            ("11", 1),  # constant one.
-            ("0001", 2),  # AND.
-            ("0110", 2),  # XOR.
-            ("0111", 2),  # OR.
-            ("1110", 2),  # NAND.
-            ("11111110", 3),  # NAND3.
-            ("01101001", 3),  # majority.
-            ("1111111100000000", 4),  # top half.
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # majority
+            ("1111111100000000", 4),  # top half
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -977,8 +977,8 @@ class TestParameterizedRam0:
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         from esolangs.tools.boolean import parameterized
 
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
+        # Z resets absolutely, so the setter is the same at every position:
+        # "Z A" for a one, "Z Z" for a zero, each exactly two commands.
         return parameterized.instantiate(
             tpl,
             bits,
@@ -988,17 +988,17 @@ class TestParameterizedRam0:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT.
-            ("01", 1),  # identity.
-            ("00", 1),  # constant zero.
-            ("11", 1),  # constant one.
-            ("0001", 2),  # AND.
-            ("0110", 2),  # XOR.
-            ("0111", 2),  # OR.
-            ("1110", 2),  # NAND.
-            ("11111110", 3),  # NAND3.
-            ("01101001", 3),  # majority.
-            ("1111111100000000", 4),  # top half.
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # majority
+            ("1111111100000000", 4),  # top half
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1062,9 +1062,9 @@ class TestParameterizedMinskySwap:
         n = len(bits)
 
         def set_bit(i: int, b: int) -> str:
-            if i == n - 1:  # LSB: length-4 block, no "~".
+            if i == n - 1:  # LSB: length-4 block, no "~"
                 return "+*+*" if b else "****"
-            w = 2 ** (n - 1 - i)  # this bit's weight.
+            w = 2 ** (n - 1 - i)  # this bit's weight
             if b:
                 return "+" * w + "*" * (2**n - w)
             return "*" * 2**n
@@ -1078,17 +1078,17 @@ class TestParameterizedMinskySwap:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT.
-            ("01", 1),  # identity.
-            ("00", 1),  # constant zero.
-            ("11", 1),  # constant one.
-            ("0001", 2),  # AND.
-            ("0110", 2),  # XOR.
-            ("0111", 2),  # OR.
-            ("1110", 2),  # NAND.
-            ("11111110", 3),  # NAND3.
-            ("01101001", 3),  # majority.
-            ("1111111100000000", 4),  # top half.
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # majority
+            ("1111111100000000", 4),  # top half
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1176,17 +1176,17 @@ class TestParameterizedArrowQueue:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT.
-            ("01", 1),  # identity.
-            ("00", 1),  # constant zero.
-            ("11", 1),  # constant one.
-            ("0001", 2),  # AND.
-            ("0110", 2),  # XOR.
-            ("0111", 2),  # OR.
-            ("1110", 2),  # NAND.
-            ("11111110", 3),  # NAND3.
-            ("01101001", 3),  # majority.
-            ("1111111100000000", 4),  # top half.
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # majority
+            ("1111111100000000", 4),  # top half
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1287,27 +1287,27 @@ class TestParameterizedArrowQueue:
         """
         from esolangs.tools.boolean.parameterized import _TREE_1, _drained_leaf
 
-        undrained = _drained_leaf("1", 0)  # no drains at all.
+        undrained = _drained_leaf("1", 0)  # no drains at all
         assert [row.strip() for row in undrained if row.strip()] == [
             row.strip() for row in _TREE_1
         ]
 
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
+        # With two levels skipped the drained leaf is strictly taller than
+        # the bare ring, and that extra height is the drain chain.
         drained = _drained_leaf("1", 2)
         assert len(drained) == len(_TREE_1) + 2
-        assert sum(row.count("+") for row in drained) == 4 + 2  # ring + drains.
+        assert sum(row.count("+") for row in drained) == 4 + 2  # ring + drains
 
     def test_folded_zero_leaf_needs_no_drain(self) -> None:
         """A ``0`` leaf halts by leaving the grid, which the queue cannot stop."""
         from esolangs.tools.boolean import parameterized
         from esolangs.tools.boolean.parameterized import _TREE_0, _drained_leaf
 
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
+        # It carries no drain at all.  Paying for one is not free: the
+        # staircase sits a column right of the branches it replaces, so
+        # ``_compact`` finds fewer all-blank columns and the instantiated
+        # program grows -- which is what made AND-2 larger than before the
+        # fold until this case was carved out.
         assert _drained_leaf("0", 3) == list(_TREE_0)
         for table, n in (("0000", 2), ("0" * 8, 3)):
             template = parameterized.arrowqueue(table)
@@ -1395,8 +1395,8 @@ class TestParameterizedArrowQueue:
             machine.state = (*state, not machine.grid)
             return "0" if run_until_halt_or_cycle(machine) else "1"
 
-        assert verdict((0, 0, 0, rdlu)) == "1"  # right-entry: the ring closes.
-        assert verdict((0, 1, 1, rdlu)) == "0"  # down-entry: it does not.
+        assert verdict((0, 0, 0, rdlu)) == "1"  # right-entry: the ring closes
+        assert verdict((0, 1, 1, rdlu)) == "0"  # down-entry: it does not
 
     def test_constant_one_never_tops_out_as_a_bare_ring(self) -> None:
         """The top-level tree always carries a drain, so down-entry is safe.
@@ -1456,17 +1456,17 @@ class TestParameterizedBfpda:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT.
-            ("01", 1),  # identity.
-            ("00", 1),  # constant zero.
-            ("11", 1),  # constant one.
-            ("0001", 2),  # AND.
-            ("0110", 2),  # XOR.
-            ("0111", 2),  # OR.
-            ("1110", 2),  # NAND.
-            ("11111110", 3),  # NAND3.
-            ("01101001", 3),  # majority.
-            ("1111111100000000", 4),  # top half.
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # majority
+            ("1111111100000000", 4),  # top half
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1508,15 +1508,15 @@ class TestParameterizedBfpda:
         template = parameterized.bfpda("0110")
         assert template.count("{X0}") == 1
         assert template.count("{X1}") == 1
-        assert "{C0}" not in template  # the marker is a constant, not.
+        assert "{C0}" not in template  # the marker is a constant, not a complement
         assert "{C1}" not in template
-        assert len(re.findall(r"\{X\d+\}", template)) == 2  # n embeds.
+        assert len(re.findall(r"\{X\d+\}", template)) == 2  # n embeds
 
     def test_leaf_print_is_balanced(self) -> None:
         """A leaf pops the remaining bits, prints the answer, and pops it."""
         from esolangs.tools.boolean import parameterized
 
-        template = parameterized.bfpda("10")  # NOT: one-leaf prints 1.
+        template = parameterized.bfpda("10")  # NOT: one-leaf prints 1
         assert "<@.>" in template
         assert "<.>" in template
 
@@ -1555,17 +1555,17 @@ class TestParameterizedHomeRow:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT.
-            ("01", 1),  # identity.
-            ("00", 1),  # constant zero.
-            ("11", 1),  # constant one.
-            ("0001", 2),  # AND.
-            ("0110", 2),  # XOR.
-            ("0111", 2),  # OR.
-            ("1110", 2),  # NAND.
-            ("11111110", 3),  # NAND3.
-            ("01101001", 3),  # majority.
-            ("1111111100000000", 4),  # top half.
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # majority
+            ("1111111100000000", 4),  # top half
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1641,8 +1641,8 @@ class TestParameterizedCOD:
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         from esolangs.tools.boolean import parameterized
 
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
+        # each {Xi} sets the cod's value to the bit: ')' for one, space
+        # for zero, read at the start of that input's '+' fork
         return parameterized.instantiate(
             tpl,
             bits,
@@ -1652,16 +1652,16 @@ class TestParameterizedCOD:
     @pytest.mark.parametrize(
         "table",
         [
-            "0000",  # constant zero.
-            "1111",  # constant one.
-            "0001",  # AND.
-            "0111",  # OR.
-            "0110",  # XOR.
-            "1001",  # XNOR.
-            "1110",  # NAND.
-            "1000",  # NOR.
-            "0100",  # A and not B.
-            "1101",  # A or not B.
+            "0000",  # constant zero
+            "1111",  # constant one
+            "0001",  # AND
+            "0111",  # OR
+            "0110",  # XOR
+            "1001",  # XNOR
+            "1110",  # NAND
+            "1000",  # NOR
+            "0100",  # A and not B
+            "1101",  # A or not B
         ],
     )
     def test_truth_table(self, table: str) -> None:
@@ -1686,7 +1686,7 @@ class TestParameterizedCOD:
                 got = self.run_cod(self.instantiate(template, bits))
                 assert got == f"{table[combo]}", f"table {table} inputs {bits}"
 
-    @pytest.mark.slow  # 1.1s: all 256 three-input.
+    @pytest.mark.slow  # 1.1s: all 256 three-input tables through COD
     def test_all_three_input_tables(self) -> None:
         """Every one of the 256 three-input tables produces the right result.
 
@@ -1726,7 +1726,7 @@ class TestParameterizedCOD:
                     break
                 machine.step()
             assert machine.halted
-            # pylint: disable=duplicate-code
+            # one print, so one character: the answer, no separator
             assert len(io_.getvalue()) == 1
 
     def test_three_input_program_always_terminates_with_one_value(self) -> None:
@@ -1746,7 +1746,7 @@ class TestParameterizedCOD:
                     break
                 machine.step()
             assert machine.halted
-            # pylint: disable=duplicate-code
+            # one print, so one character: the answer, no separator
             assert len(io_.getvalue()) == 1
 
     def test_template_is_input_independent(self) -> None:
@@ -1969,18 +1969,18 @@ class TestEvalBoolean:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT.
-            ("01", 1),  # identity.
-            ("00", 1),  # constant zero.
-            ("11", 1),  # constant one.
-            ("0001", 2),  # AND.
-            ("0110", 2),  # XOR.
-            ("0111", 2),  # OR.
-            ("1110", 2),  # NAND.
-            ("11111110", 3),  # NAND3.
-            ("01101001", 3),  # XOR3.
-            ("1000000000000000", 4),  # AND4.
-            ("1111111100000000", 4),  # top half.
+            ("10", 1),  # NOT
+            ("01", 1),  # identity
+            ("00", 1),  # constant zero
+            ("11", 1),  # constant one
+            ("0001", 2),  # AND
+            ("0110", 2),  # XOR
+            ("0111", 2),  # OR
+            ("1110", 2),  # NAND
+            ("11111110", 3),  # NAND3
+            ("01101001", 3),  # XOR3
+            ("1000000000000000", 4),  # AND4
+            ("1111111100000000", 4),  # top half
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -2020,7 +2020,7 @@ class TestEvalBoolean:
         full = parameterized.eval("10010110")
         folded = parameterized.eval("11111111")
         assert len(folded) < len(full)
-        # pylint: disable=duplicate-code
+        # every heap slot is still present, just empty
         assert folded.count('"') == full.count('"')
         assert '""' in folded
 
@@ -2059,17 +2059,17 @@ class TestEvalBoolean:
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.eval("0110")
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
+        # Staged forward, like every other parameterized generator: each
+        # block pushes its bit on the tree stack and `=` moves it across.
+        # Which order they are staged in only decides *which* arrangement
+        # costs no reorder ops, since `*` reverses either way.
         assert template.startswith("{X0}{X1}")
         assert template.endswith("*!")
-        assert '"~=~?;!"' in template  # root node: one discard.
-        assert '"~=~?;;!"' in template  # BFS index 1: two discards.
-        assert template.count('"~=~?') == 3  # 2**2 - 1 internal nodes.
-        assert template.count('"0+.') + template.count('"0.') == 4  # leaves.
-        # pylint: disable=duplicate-code
+        assert '"~=~?;!"' in template  # root node: one discard
+        assert '"~=~?;;!"' in template  # BFS index 1: two discards
+        assert template.count('"~=~?') == 3  # 2**2 - 1 internal nodes
+        assert template.count('"0+.') + template.count('"0.') == 4  # leaves
+        # leaves are the XOR table in heap order: 0 1 1 0
         assert template.endswith('"0.""0+.""0+.""0."*!')
 
     def test_reordering_only_shrinks(self) -> None:
@@ -2083,8 +2083,8 @@ class TestEvalBoolean:
         from esolangs.tools.boolean.helpers import permute_truth_table
         from esolangs.tools.boolean.parameterized import _eval_ordered
 
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
+        # Staging pushes X0 first, so the free arrangement's split order is
+        # the reversal -- the no-ops build is not the identity permutation.
         free = tuple(reversed(range(3)))
         improved = 0
         for value in range(256):
@@ -2129,15 +2129,15 @@ class TestEvalBoolean:
         from esolangs.tools.boolean import parameterized
         from esolangs.tools.boolean.examples import _fill_eval
 
-        # pylint: disable=duplicate-code
+        # A table whose cheapest order is not the free one.
         table = "00001101"
         template = parameterized.eval(table)
-        assert template.startswith("{X0}{X1}{X2}")  # slots unmoved.
+        assert template.startswith("{X0}{X1}{X2}")  # slots unmoved
         widths = {
             len(_fill_eval(template, [(c >> (2 - i)) & 1 for i in range(3)]))
             for c in range(8)
         }
-        assert len(widths) == 1  # every fill the same length.
+        assert len(widths) == 1  # every fill the same length
 
     def test_stack_ops_reach_every_arrangement(self) -> None:
         """Two stacks with a reverse and a cross-move permute the bits.
@@ -2153,7 +2153,7 @@ class TestEvalBoolean:
 
         for n in (2, 3, 4):
             assert len(_eval_stack_programs(n)) == factorial(n)
-        # pylint: disable=duplicate-code
+        # The free arrangement is the one staging produces, and costs nothing.
         assert _eval_stack_programs(3)[(0, 1, 2)] == ""
 
     def test_reorder_catalog_invariants(self) -> None:
@@ -2266,7 +2266,7 @@ class TestEvalBoolean:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
 
-@pytest.mark.slow  # 2.6s: every fill of every.
+@pytest.mark.slow  # 2.6s: every fill of every parameterized generator
 def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
     """No fill may spell a 0 shorter than a 1, or the length leaks the input.
 
@@ -2310,7 +2310,7 @@ def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
             )
 
 
-# pylint: disable=duplicate-code
+# 2.3s over 132 tests: runs the generated program.
 @pytest.mark.medium
 class TestParameterizedOneTwoThree:
     """Input-by-substitution boolean generator for the no-input language 123.
@@ -2505,7 +2505,7 @@ class TestParameterizedOneTwoThree:
             try:
                 got = _replay_verdict(code)
             except ValueError:
-                continue  # the executor's own guards;.
+                continue  # the executor's own guards; not a verdict to compare
             compared += 1
             assert got == expected, code
         assert compared == 177
@@ -2647,12 +2647,12 @@ class TestParameterizedOneTwoThree:
             raise is caught rather than propagated.
             """
             # pylint: disable=duplicate-code
-            # pylint: disable=duplicate-code
-            # pylint: disable=duplicate-code
-            # pylint: disable=duplicate-code
-            # pylint: disable=duplicate-code
-            # pylint: disable=duplicate-code
-            # pylint: disable=duplicate-code
+            # The overlap with ``_separated``'s replay is the point, not
+            # an oversight: this test re-derives the shipped constants,
+            # so it has to replay the law independently.  Sharing a
+            # helper would check the generator against itself and a bug
+            # in the replay would pass here, so the copy stays and the
+            # similarity check is told so rather than left to fail in CI.
             _work[0] = _WORK_BUDGET
             try:
                 b = _Builder(n)
@@ -2796,7 +2796,7 @@ class TestParameterizedOneTwoThree:
 
         _work[0] = _WORK_BUDGET
         builder = _separated(1).clone()
-        # pylint: disable=duplicate-code
+        # Nudge one row onto an even cell; the law itself never does.
         builder.live()[0].pos += 1
         assert any(r.pos % 2 == 0 for r in builder.live())
         with pytest.raises(ConstructError) as caught:
@@ -2832,8 +2832,8 @@ class TestParameterizedOneTwoThree:
         for name, fn in originals.items():
             setattr(construct_mod, name, watch(name, fn))
         try:
-            # pylint: disable=duplicate-code
-            # pylint: disable=duplicate-code
+            # construct() emits without replaying; every row is run on
+            # the real interpreter below, which is the execution gate.
             template = construct_mod.construct("00111000")
         finally:
             for name, fn in originals.items():
@@ -2858,14 +2858,14 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.boolean.one_two_three_construct import construct
 
         for table in ("1000110011010101", "0100000011001001"):
-            # pylint: disable=duplicate-code
+            # construct() emits without replaying; the rows below are the gate.
             template = construct(table)
             for combo in range(16):
                 bits = [(combo >> (3 - i)) & 1 for i in range(4)]
                 program = self.instantiate(template, bits)
                 assert self.run(program) == table[combo], (table, bits)
 
-    @pytest.mark.slow  # one four-input template, all.
+    @pytest.mark.slow  # one four-input template, all rows on the interpreter
     def test_a_dense_four_input_sweep_witness_stays_exact(self) -> None:
         """Pin one mixed table from the exhaustive constructor sweep.
 
@@ -2943,7 +2943,7 @@ class TestParameterizedOneTwoThree:
 
         all_zero = _Builder(1)
         all_zero.rows[0].pos, all_zero.rows[1].pos = 2, 5
-        _verdict(all_zero, "00")  # no 1-rows: nothing to prove,.
+        _verdict(all_zero, "00")  # no 1-rows: nothing to prove, no check
 
     def test_an_exhausted_work_budget_is_declined(self) -> None:
         """A table that would build still raises once the work runs out.
@@ -2992,7 +2992,7 @@ class TestParameterizedOneTwoThree:
         b.chunks = []
         b.seg = []
         b.rows = rows
-        _work[0] = 100_000  # _normalize is called outside.
+        _work[0] = 100_000  # _normalize is called outside construct() here
         with pytest.raises(ConstructError, match="live-locked"):
             _normalize(b)
 
@@ -3021,7 +3021,7 @@ class TestParameterizedOneTwoThree:
         b.chunks = []
         b.seg = []
         b.rows = [row]
-        _work[0] = 10_000_000  # _close is called outside.
+        _work[0] = 10_000_000  # _close is called outside construct() here
         with pytest.raises(ConstructError, match="no clean closing cell"):
             _close(b)
 
@@ -3049,7 +3049,7 @@ class TestParameterizedOneTwoThree:
         b.chunks = []
         b.seg = ["2"]
         b.rows = [row]
-        _work[0] = 10_000  # fixpoint is called outside.
+        _work[0] = 10_000  # fixpoint is called outside construct() here
         with pytest.raises(ConstructError, match="fixpoint cap"):
             b.fixpoint(row)
 
@@ -3069,9 +3069,9 @@ class TestParameterizedOneTwoThree:
         b = _Builder.__new__(_Builder)
         b.n = 1
         b.chunks = []
-        b.seg = ["2"]  # pos 0 -> 1, leaves the tape:.
+        b.seg = ["2"]  # pos 0 -> 1, leaves the tape: escapes, not a kill
         b.rows = [row]
-        _work[0] = 10_000  # test() is called outside.
+        _work[0] = 10_000  # test() is called outside construct() here
         with pytest.raises(ConstructError, match="kill escaped"):
             b.test(kills=frozenset({(0,)}))
 
@@ -3092,13 +3092,13 @@ class TestParameterizedOneTwoThree:
 
         row = _Row((0,))
         row.pos = 0
-        row.tape = 0  # nothing marked: the victim.
+        row.tape = 0  # nothing marked: the victim tests FALSE everywhere
         b = _Builder.__new__(_Builder)
         b.n = 1
         b.chunks = []
         b.seg = ["2"]
         b.rows = [row]
-        _work[0] = 10_000  # test() is called outside.
+        _work[0] = 10_000  # test() is called outside construct() here
         with pytest.raises(ConstructError, match="kill missed"):
             b.test(kills=frozenset({(0,)}))
 
@@ -3115,15 +3115,15 @@ class TestParameterizedOneTwoThree:
         row = _Row((0,))
         row.pos = 0
         row.tape = _mask({0})
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
+        # eight '1's flip cells 0,-1,-2,-3 twice each: pos and tape both
+        # return to the start, a proven revisit where a plain test wants
+        # an escape instead
         b = _Builder.__new__(_Builder)
         b.n = 1
         b.chunks = []
         b.seg = ["1"] * 8
         b.rows = [row]
-        _work[0] = 10_000  # test() is called outside.
+        _work[0] = 10_000  # test() is called outside construct() here
         with pytest.raises(ConstructError, match="unintended loop"):
             b.test()
 
@@ -3138,8 +3138,8 @@ class TestParameterizedOneTwoThree:
         """
         from esolangs.tools.boolean import parameterized
 
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
+        # ``match`` is a substring search, so the equality below is what
+        # actually pins the message.
         with pytest.raises(ValueError, match="at least one input") as caught:
             parameterized.one_two_three("1")
         assert str(caught.value) == (
@@ -3200,20 +3200,20 @@ class TestParameterizedOneTwoThree:
             _work[0] = budget
             _exec_run(row, ch, w)
 
-        # pylint: disable=duplicate-code
+        # The per-character fallback, reached directly.
         _work[0] = 0
         with pytest.raises(_WorkExhaustedError):
             _exec_char(_Row((0,)), "1")
-        # pylint: disable=duplicate-code
+        # `2` from pos >= 0: a plain right-walk.
         with pytest.raises(_WorkExhaustedError):
             drained(3, "2", 0, 10)
-        # pylint: disable=duplicate-code
+        # `1` from pos >= 0 stopping at -1 or above: one contiguous XOR.
         with pytest.raises(_WorkExhaustedError):
             drained(3, "1", 8, 5)
-        # pylint: disable=duplicate-code
+        # `1` descending past -1: the head above the ring boundary.
         with pytest.raises(_WorkExhaustedError):
             drained(2, "1", 5, 20)
-        # pylint: disable=duplicate-code
+        # `1` inside the ring: whole laps reduced to a parity.
         with pytest.raises(_WorkExhaustedError):
             drained(3, "1", -1, 12)
 
@@ -3244,7 +3244,7 @@ class TestParameterizedOneTwoThree:
         no_survivors = _Builder(1)
         for row in no_survivors.rows:
             row.dead = True
-        _endgame(no_survivors)  # returns rather than dividing.
+        _endgame(no_survivors)  # returns rather than dividing by no rows
 
         crowded = _Builder(2)
         for i, row in enumerate(crowded.rows):
@@ -3254,7 +3254,7 @@ class TestParameterizedOneTwoThree:
         assert {row.pos for row in crowded.live()} == {-1}
 
         stranded = _Builder.__new__(_Builder)
-        stranded.n = 1  # an allowance of 192 passes.
+        stranded.n = 1  # an allowance of 192 passes
         stranded.chunks, stranded.seg = [], []
         stranded.rows = []
         for i in range(12):
@@ -3403,11 +3403,11 @@ class TestParameterizedOneTwoThree:
 
         _work[0] = _WORK_BUDGET
         needs_a_walk = _Builder(1)
-        needs_a_walk.run("1")  # flips cell 0 TRUE and steps.
+        needs_a_walk.run("1")  # flips cell 0 TRUE and steps into the ring
         _close(needs_a_walk)
         emitted = "".join(needs_a_walk.chunks)
         assert "2" in emitted
-        # pylint: disable=duplicate-code
+        # Every row ends on a cell that is FALSE, which is what "closed" means.
         assert all(
             row.pos >= 0 and not row.tape >> (row.pos + _RING) & 1
             for row in needs_a_walk.live()
@@ -3426,9 +3426,9 @@ class TestParameterizedOneTwoThree:
             _replay_twos,
         )
 
-        # pylint: disable=duplicate-code
+        # Nothing to walk: the state is handed straight back.
         assert _replay_twos(5, 0b1011, 0) == (5, 0b1011)
-        assert _replay_twos(-3, 0, -2) == (-3, 0)  # a negative width is empty too.
+        assert _replay_twos(-3, 0, -2) == (-3, 0)  # a negative width is empty too
 
         with pytest.raises(ConstructError, match="reads stdin"):
             _replay_twos(-3, 0, 1)
@@ -3446,8 +3446,8 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.boolean.one_two_three_construct import _replay_verdict
 
         assert _replay_verdict("") == "0"
-        assert _replay_verdict("xyz") == "0"  # no command: nothing to run.
-        # pylint: disable=duplicate-code
+        assert _replay_verdict("xyz") == "0"  # no command: nothing to run
+        # The NOPs are skipped, so padding a program cannot change its verdict.
         assert _replay_verdict("1x1") == _replay_verdict("11")
         assert _replay_verdict("x1y1z") == _replay_verdict("11")
 
@@ -3530,11 +3530,11 @@ class TestConstructorWorkBudget:
         b.chunks = []
         b.seg = []
         b.rows = [row]
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
-        # pylint: disable=duplicate-code
-        _work[0] = 1  # _paint_all is called outside.
+        # Two offsets, so the paint is priced over both before any is
+        # written -- one would leave the second offset's cost uncounted.
+        # One of them is exactly 1, which has no shrunk ``k - 1`` pair to
+        # paint: the guard that skips it is the only thing keeping a pair
+        # of empty strings out of the price.
+        _work[0] = 1  # _paint_all is called outside construct() here
         with pytest.raises(_WorkExhaustedError):
             _paint_all(b, (1, 3))

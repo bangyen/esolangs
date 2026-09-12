@@ -65,21 +65,21 @@ from esolangs.interpreters.io import IO
 _OPERATORS = "+-/"
 _LITERAL_DIGITS = {ch: i for i, ch in enumerate("0123456789ABCD")}
 
-# A tape cell and a scalar.
-# unbounded integer, or a byte.
+# A tape cell and a scalar carry their type alongside their value: an
+# unbounded integer, or a byte that wraps at 8 bits.
 _CellKind = Literal["int", "byte"]
 
-# Tokens and statements are.
-# first element.
-# passes: ``_tokenize`` and the.
-# ``_parse_*`` helpers fold a.
-# .
-# ``_Punct`` is the bare.
-# reading ``[1]`` off one is a.
-# ``_Math`` and ``_If`` nest.
+# Tokens and statements are heterogeneous tuples discriminated by their
+# first element.  Two alphabets, because they are produced by different
+# passes: ``_tokenize`` and the ``_scan_*`` helpers build tokens, and the
+# ``_parse_*`` helpers fold a token line into one statement.
+#
+# ``_Punct`` is the bare punctuation a line is cut on -- a one-tuple, so
+# reading ``[1]`` off one is a type error rather than an IndexError.
+# ``_Math`` and ``_If`` nest tokens, which is why the alias is recursive.
 _PunctChar = Literal["(", ")", ":", "~", "="]
 _Punct = tuple[_PunctChar]
-# Typed so the tokenizer's.
+# Typed so the tokenizer's membership test narrows the character.
 _PUNCT: frozenset[_PunctChar] = frozenset(("(", ")", ":", "~", "="))
 _Ident = tuple[Literal["ident"], str]
 _Num = tuple[Literal["num"], int]
@@ -89,8 +89,8 @@ _If = tuple[Literal["if"], "_Token"]
 _TapeTok = tuple[Literal["tape"], str, _CellKind]
 _Token = _Punct | _Ident | _Num | _Byte | _Math | _If | _TapeTok
 
-# A value is the subset of.
-# right-hand side of a.
+# A value is the subset of tokens that can stand as a call argument or the
+# right-hand side of a declaration; the parsers check for exactly these.
 _Value = _Ident | _Num | _Byte | _Math
 
 _Call = tuple[Literal["call"], str, _Value, "_Token | None"]
@@ -175,7 +175,7 @@ class _State:
         return tuple(tuple(row) if row is not None else None for row in self._rows)
 
 
-# -- parsing.
+# -- parsing ---------------------------------------------------------------
 
 
 def _tokenize(line: str) -> list[_Token]:
@@ -200,7 +200,7 @@ def _tokenize(line: str) -> list[_Token]:
             tokens.append(math_token)
         elif c == "[":
             tape_token, i = _scan_tape_decl(line, i, tokens)
-            tokens[-1] = tape_token  # replace the trailing.
+            tokens[-1] = tape_token  # replace the trailing identifier
         elif c.isalpha():
             j = i
             while j < n and line[j].isalpha():
@@ -452,7 +452,7 @@ def _parse(
     return functions, top
 
 
-# -- runtime.
+# -- runtime ---------------------------------------------------------------
 
 
 def _lookup(
@@ -503,8 +503,8 @@ def _eval_value(
                 raise HaltError("division by zero")
             sign = -1 if (left < 0) != (right < 0) else 1
             result = sign * (abs(left) // abs(right))
-        # math on two bytes stays a.
-        # so byte results render as.
+        # math on two bytes stays a byte (e.g. the wiki's ``'a' - 'A'`` space),
+        # so byte results render as characters; any integer operand widens.
         if left_kind == "byte" and right_kind == "byte":
             return _Var("byte", result & 0xFF)
         return _Var("int", result)
@@ -585,7 +585,9 @@ class _CallFrame:
     """
 
     name: str
-    blocks: list[tuple[str, list[_Statement]]]  # never empty (checked before.
+    blocks: list[
+        tuple[str, list[_Statement]]
+    ]  # never empty (checked before construction)
     value: _Var | _Tape
     block_ind: int = 0
     stmt_ind: int = 0
@@ -593,8 +595,8 @@ class _CallFrame:
 
     def __post_init__(self) -> None:
         if not self.local:
-            # A frame built without one.
-            # ``replace`` passes the scope.
+            # A frame built without one binds its first block's parameter;
+            # ``replace`` passes the scope it already has.
             object.__setattr__(self, "local", {self.blocks[0][0]: self.value})
 
 
@@ -613,7 +615,7 @@ def _dispatch(
         _, name, value = statement
         _assign(name, _eval_value(value, state, frame), state, frame)
         return None
-    # The two arms above are the.
+    # The two arms above are the other statement kinds, so what is left is
     # a tape declaration.
     _, name, tape_kind = statement
     if _lookup(name, state, frame) is None:
@@ -689,20 +691,20 @@ def _scope_key(scope: dict[str, object]) -> tuple[tuple[str, tuple[object, ...]]
 class _Machine:
     """One Suptiftam run: the parsed program, state, cursor, and call stack."""
 
-    # : Whether a read past the end.
-    # : rather than raising.
-    # :.
-    # : package norm and what.
-    # : not, so an underfed program.
-    # : instead of refusing, and a.
+    #: Whether a read past the end of the input yields a *value* here
+    #: rather than raising.  Forty-five of the sixty-nine raise
+    #: :class:`~esolangs.exceptions.InputExhaustedError`, which is the
+    #: package norm and what :func:`esolangs.run` documents; this one does
+    #: not, so an underfed program answers a different row of its table
+    #: instead of refusing, and a caller has no way to tell from the output
     #: that it happened.
-    # :.
-    # : Declared rather than.
-    # : audited against every wiki.
-    # : (``docs/limitations.md``,.
-    # : would be a decision about.
-    # : What was wrong was that.
-    # : was false for seven.
+    #:
+    #: Declared rather than changed.  The zero-beyond-input convention was
+    #: audited against every wiki page and settled deliberately
+    #: (``docs/limitations.md``, Interpreter conventions); rewriting it
+    #: would be a decision about what these languages *mean*, not a fix.
+    #: What was wrong was that nothing said so, so the promise ``run`` made
+    #: was false for seven languages and a generic caller could not find
     #: out which.
     eof_is_a_value = True
 
@@ -720,8 +722,8 @@ class _Machine:
         """Whether the cursor has run off the top-level statements."""
         return self.ind >= len(self.top) and not self.frames
 
-    # The VM's language-shaped.
-    # tapes and non-integer globals.
+    # The VM's language-shaped view: the global scope's integers, since the
+    # tapes and non-integer globals are not addressable cells.
 
     @property
     def ip(self) -> int:
@@ -803,8 +805,8 @@ class _Machine:
             pushed = _dispatch(statement, self.state, None)
             if pushed is not None:
                 self.frames.append(pushed)
-        # mypy narrows `self.halted` to.
-        # and won't re-widen it across.
+        # mypy narrows `self.halted` to Literal[False] from the guard above
+        # and won't re-widen it across the mutations just made; the explicit
         # local defeats that.
         halted: bool = self.halted
         if halted and not self._rendered:

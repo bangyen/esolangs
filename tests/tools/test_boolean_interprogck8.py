@@ -133,8 +133,8 @@ class TestExpress:
         a program that routes through the wrong place, or a hang.
         """
         table = _dense_table(6)
-        # By name: the package.
-        # own name, so a plain import.
+        # By name: the package re-exports the generator under the module's
+        # own name, so a plain import binds the function, not the module.
         module = importlib.import_module("esolangs.tools.boolean.interprogck8")
         with monkeypatch.context() as patch:
             patch.setattr(module, "_MEADOW_LEAST", 2)
@@ -142,13 +142,13 @@ class TestExpress:
             patch.setattr(module, "_REPAIRS", -1)
             with pytest.raises(ValueError, match="no rung slot") as caught:
                 interprogck8(table)
-        # The user-facing half.
-        # debug from and stay; on their.
-        # arity, nor that anything was.
-        # is what the three sibling.
+        # The user-facing half.  The window and the label are the thing to
+        # debug from and stay; on their own they told a caller neither the
+        # arity, nor that anything was capped, nor where the cap is -- which
+        # is what the three sibling caps lead with.
         assert "10 inputs" in str(caught.value)
         assert "this table has 6" in str(caught.value)
-        # ...and the real meadows still.
+        # ...and the real meadows still build the same table.
         assert interprogck8(table)
 
     def test_every_hop_in_a_routed_program_is_inside_the_reach(self) -> None:

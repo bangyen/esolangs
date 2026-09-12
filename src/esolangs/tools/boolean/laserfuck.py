@@ -23,11 +23,11 @@ from esolangs.tools.boolean.helpers import (
 __all__ = ["laserfuck"]
 
 
-# The two loops that normalize.
-# ``'0'``/``'1'`` arrive as.
-# Writing that straight costs.
-# costs a counter instead, and.
-# rather than by 48 ``+`` --.
+# The two loops that normalize the input cells.  ``,`` reads a character, so
+# ``'0'``/``'1'`` arrive as 48/49 and every input needs 48 subtracted.
+# Writing that straight costs 49 columns per input; running it as a loop
+# costs a counter instead, and the counter itself is built by a second loop
+# rather than by 48 ``+`` -- ``_LASER_OUTER * _LASER_INNER`` is 48.
 _LASER_OUTER = 8
 _LASER_INNER = 6
 
@@ -109,10 +109,10 @@ def _laserfuck_ring_reader(
     """
     preload = ">" + "+" * _LASER_OUTER
     multiply = "<" + "+" * _LASER_INNER + ">" + "-#/)"
-    # The reads land the inputs in.
-    # Which input goes in which.
+    # The reads land the inputs in cells 1..n and end back on the counter.
+    # Which input goes in which cell is the reorder (see _laserfuck_reads).
     reads = _laserfuck_reads(n, tuple(range(n)) if perm is None else perm)
-    # one '-' for the counter and.
+    # one '-' for the counter and one for each input, then home again
     retire = "".join("->" for _ in range(n)) + "-" + "<" * n + "#/)"
 
     body = "}" + preload + "}" + multiply + reads + "}" + retire
@@ -120,7 +120,7 @@ def _laserfuck_ring_reader(
     ret = [" "] * (len(body) + 2)
     for i, char in enumerate(body):
         top[i] = char
-    # each ring's return leg: '^'.
+    # each ring's return leg: '^' under its own '}', '{' under its '/'
     first = 1 + len(preload)
     ret[first] = "^"
     ret[first + 1 + multiply.index("/")] = "{"
@@ -130,10 +130,10 @@ def _laserfuck_ring_reader(
     return ["".join(top).rstrip(), "".join(ret).rstrip()], len(body)
 
 
-# Rotating or mirroring a.
-# ops are direction-agnostic.
-# an orientation.
-# into a downward one, which is.
+# Rotating or mirroring a LaserFuck block is a character substitution: the
+# ops are direction-agnostic and only the mirrors and heading-setters carry
+# an orientation.  Rotating a quarter turn clockwise turns a rightward beam
+# into a downward one, which is how a block too wide for a width is made
 # tall instead.
 _LASER_ROTATE = str.maketrans(
     {
@@ -252,7 +252,7 @@ def _laserfuck_place(block: list[str], upright: str) -> _LaserBlock:
     turned = _laserfuck_rotate(block)
     entry = turned[0].index("v")
     below = 1 + len(turned)
-    # drop in from above, and turn.
+    # drop in from above, and turn right again once the beam is through
     connectors = [(0, entry, "v"), (below, entry, "\\")]
     return _LaserBlock(turned, 1, connectors, below, entry + 1)
 
@@ -303,13 +303,13 @@ def _laserfuck_assemble_reader(
         row += placed.exit_row
         col += placed.exit_col
 
-    # Render row by row from the.
-    # the bounding rectangle.
-    # for a grid that is mostly.
-    # the generator's hot path --.
-    # fraction of that.
-    # columns actually present.
-    # in time proportional to the.
+    # Render row by row from the cells that exist.  Probing every cell of
+    # the bounding rectangle instead costs ``height x span`` dict lookups
+    # for a grid that is mostly blank -- 5.8M of them on a six-input build,
+    # the generator's hot path -- where the occupied cells are a small
+    # fraction of that.  Bucketing by row and filling the gaps between the
+    # columns actually present builds the same lines, ``rstrip`` included,
+    # in time proportional to the marks rather than the area.
     height = max(r for r, _ in cells) + 1
     rows: list[list[tuple[int, str]]] = [[] for _ in range(height)]
     for (r, c), char in cells.items():
@@ -355,7 +355,7 @@ def _laserfuck_reader_candidates(
         )
         span = max(len(line) for line in rows_of)
         candidates.append((len(rows_of), span, tuple(rows_of), exit_row, exit_col))
-    # Stable, so ties still break.
+    # Stable, so ties still break on the orientation word's own order.
     candidates.sort(key=lambda item: (item[0], item[1]))
     return tuple(candidates)
 
@@ -429,9 +429,9 @@ def _laserfuck_build(
     the tree.
     """
     n = _validate_truth_table(truth_table)
-    # The tree adds only a column.
-    # what a width has to bargain.
-    # and forty-odd columns,.
+    # The tree adds only a column or two past the reader, so the reader is
+    # what a width has to bargain with: side by side the rings are one row
+    # and forty-odd columns, stacked they are seven rows and under twenty.
     candidates = _laserfuck_reader_candidates(n, perm)
     fitting = [
         item
@@ -457,8 +457,8 @@ def _laserfuck_build(
         if len(grid) <= row:
             grid.extend([] for _ in range(row + 1 - len(grid)))
         line = grid[row]
-        # The layout fills each row.
-        # already in range and this.
+        # The layout fills each row left to right, so a column is never
+        # already in range and this always extends.
         if len(line) <= col:  # pragma: no branch
             line.extend(" " * (col + 1 - len(line)))
         line[col] = char
@@ -478,8 +478,8 @@ def _laserfuck_build(
             line.extend(" " * (col - len(line)))
         line[col : col + len(text)] = text
 
-    # The funnel: every start.
-    # (0, 0) stays blank so the.
+    # The funnel: every start heading ends up on row 0 moving right.  Cell
+    # (0, 0) stays blank so the tape dumps in decimal rather than byte mode.
     put(0, 1, "}")
     put(0, 2, "}")
     put(1, 0, "|")
@@ -487,45 +487,45 @@ def _laserfuck_build(
     put(1, 2, "^")
     put(2, 1, "_")
 
-    # The rings go on rows 0 and 1;.
+    # The rings go on rows 0 and 1; the beam leaves them still moving right
     # with the pointer on cell 0.
     for offset, text in enumerate(reader_rows):
         for index, char in enumerate(text):
             if char != " ":
                 put(offset, margin + index, char)
-    # The beam leaves the reader.
-    # its own for the tree.
-    # block left beneath it: a.
-    # on the row below, which the.
-    # at its own foot with nothing.
-    # The tree is built as a block.
-    # the reader.
-    # beam leaves the reader at its.
-    # would be needed to carry it.
-    # start.
-    # is, so that whole row.
-    # reader's end and a '/' faces.
-    # .
-    # Within the tree a node writes.
-    # way in, so ')' tests the cell.
-    # straight through and the next.
-    # one turns the beam back onto.
-    # faces it right again on a.
-    # number of *one* edges rather.
-    # all-zeros path is a single.
-    # The tree as ``(column,.
-    # character.
-    # from ``><-+`` and the rest.
-    # ``\`` -- and every row is.
-    # the whole of what a cell dict.
-    # The order search rebuilds.
-    # 1.7M single-cell writes going.
-    # out over the bounding.
+    # The beam leaves the reader moving right, and turns down onto a row of
+    # its own for the tree.  How far it has to fall depends on what the last
+    # block left beneath it: a block laid flat keeps its ring's return leg
+    # on the row below, which the beam must clear, while a rotated one ends
+    # at its own foot with nothing under it.
+    # The tree is built as a block of its own, then mirrored and hung under
+    # the reader.  Laid out rightward it would have to be *reached*: the
+    # beam leaves the reader at its far right, and a leftward return leg
+    # would be needed to carry it back to the margin before the tree could
+    # start.  Mirrored, the tree runs leftward from where the beam already
+    # is, so that whole row disappears -- the beam simply turns down at the
+    # reader's end and a '/' faces it into the tree.
+    #
+    # Within the tree a node writes ``>#v)``: the '#' skips the 'v' on the
+    # way in, so ')' tests the cell under the pointer.  A zero passes
+    # straight through and the next node continues on the same row; only a
+    # one turns the beam back onto the 'v' and drops it, to a '\' that
+    # faces it right again on a fresh row.  Rows therefore scale with the
+    # number of *one* edges rather than with the node count, and the
+    # all-zeros path is a single straight line.
+    # The tree as ``(column, text)`` runs per row rather than a cell per
+    # character.  Nothing it lays contains a blank -- the runs are built
+    # from ``><-+`` and the rest are the literals ``x``, ``>#v)`` and
+    # ``\`` -- and every row is filled strictly left to right, so a run is
+    # the whole of what a cell dict was storing one character at a time.
+    # The order search rebuilds this n! times, and the dict cost it twice:
+    # 1.7M single-cell writes going in and 3.1M ``get`` probes coming back
+    # out over the bounding rectangle, which is mostly blank because the
     # tree is a staircase.
-    # .
-    # A row is appended exactly.
-    # counter that names it is.
-    # is the next row index and the.
+    #
+    # A row is appended exactly when a ``one`` edge creates it, and the
+    # counter that names it is bumped in the same breath, so ``len(rows)``
+    # is the next row index and the two stay in step.
     rows: list[list[tuple[int, str]]] = [[]]
 
     def emit(path: list[int], row: int, col: int) -> None:
@@ -534,18 +534,18 @@ def _laserfuck_build(
         first = int("".join(map(str, path)), 2) << (n - depth) if path else 0
         if depth == n or len(set(truth_table[first : first + 2 ** (n - depth)])) == 1:
             index = first
-            # The rings leave the inputs in.
-            # touched at zero, so the sweep.
-            # answer needs no code at all.
-            # cells however deep the leaf.
-            # 1 and would print beside the.
-            # ``depth``, so step out to.
-            # .
-            # Cells above ``depth`` were.
-            # unknown here and two ``-``.
-            # -1).
-            # sized run of one ``-`` more.
-            # table that folds nothing.
+            # The rings leave the inputs in cells 1..n and cell 0 already
+            # touched at zero, so the sweep walks down to it and a zero
+            # answer needs no code at all.  The sweep must cover all ``n``
+            # cells however deep the leaf is: an unconsumed one sits at 0 or
+            # 1 and would print beside the answer.  The pointer is on cell
+            # ``depth``, so step out to cell ``n`` before sweeping back.
+            #
+            # Cells above ``depth`` were never branched on, so their value is
+            # unknown here and two ``-`` retire either one (0 -> -2, 1 ->
+            # -1).  The cells the path *did* consume are known and keep the
+            # sized run of one ``-`` more than the bit -- which is why a
+            # table that folds nothing comes out exactly as it always did.
             run = ">" * (n - depth)
             run += "--<" * (n - depth)
             for level in range(depth, 0, -1):
@@ -554,9 +554,9 @@ def _laserfuck_build(
             rows[row].append((col, run + "x"))
             return
         rows[row].append((col, ">#v)"))
-        emit([*path, 0], row, col + 4)  # a zero carries on along this.
+        emit([*path, 0], row, col + 4)  # a zero carries on along this row
         drop = len(rows)
-        rows.append([(col + 2, "\\")])  # a one comes down the 'v'.
+        rows.append([(col + 2, "\\")])  # a one comes down the 'v' column
         emit([*path, 1], drop, col + 3)
 
     emit([], 0, 0)
@@ -573,24 +573,24 @@ def _laserfuck_build(
         parts.append(" " * (span - cursor))
         upright.append("".join(parts))
 
-    # Where the tree goes depends.
-    # .
-    # The beam leaves the reader.
-    # is to carry straight on: the.
-    # the reader's own rows, and.
-    # tree itself needs.
-    # reader and the tree laid end.
-    # .
-    # Otherwise the tree is.
-    # down at the reader's end and.
-    # left into a tree that runs.
-    # *reached*, unlike a rightward.
-    # carry the beam back to the.
+    # Where the tree goes depends on whether the width can afford it.
+    #
+    # The beam leaves the reader still moving right, so the cheapest thing
+    # is to carry straight on: the tree starts in the next column along, on
+    # the reader's own rows, and costs no rows at all beyond the ones the
+    # tree itself needs.  That only works if the grid may be as wide as the
+    # reader and the tree laid end to end.
+    #
+    # Otherwise the tree is mirrored and hung underneath.  The beam turns
+    # down at the reader's end and a '/' on the tree's first row faces it
+    # left into a tree that runs backwards -- needing no row to be
+    # *reached*, unlike a rightward tree below, which would need one to
+    # carry the beam back to the margin first.
     straight = margin + reader_exit_col + max(len(line) for line in upright)
     if width is None or straight + 1 <= width:
-        # Laid from the runs, not from.
-        # staircase, so ``upright`` is.
-        # re-padded by the next run on.
+        # Laid from the runs, not from the padded rows: the tree is a
+        # staircase, so ``upright`` is mostly blanks, and a blank is
+        # re-padded by the next run on its row (or ``rstrip``ed off the
         # end) rather than written.
         for offset, marks in enumerate(rows):
             for col, text in marks:
@@ -598,17 +598,17 @@ def _laserfuck_build(
     else:
         flipped = _laserfuck_flip(upright)
         entry = len(flipped[0].rstrip()) - 1
-        # A narrow reader can leave the.
-        # wide, and the tree would run.
-        # further to the right costs.
-        # so the fall column is pushed.
+        # A narrow reader can leave the beam further left than the tree is
+        # wide, and the tree would run off the western edge.  Turning down
+        # further to the right costs nothing but the blank cells it crosses,
+        # so the fall column is pushed out to wherever the tree needs it.
         fall = max(margin + reader_exit_col, margin + entry + 1)
-        # The tree hangs on the first.
-        # falls to reach it depends on.
-        # exit -- a flat block keeps.
-        # rotated one ends at its own.
-        # own last occupied row either.
-        # height, and the orientation.
+        # The tree hangs on the first row below the reader.  How far the beam
+        # falls to reach it depends on what the last block left under the
+        # exit -- a flat block keeps its ring's return leg one row down, a
+        # rotated one ends at its own foot -- but the reader is sized to its
+        # own last occupied row either way, so that clearance is just its
+        # height, and the orientation does not have to be consulted at all.
         top = len(reader_rows)
         put(reader_exit_row, fall, "v")
         for offset, line in enumerate(flipped):

@@ -48,9 +48,9 @@ def matches(code: str) -> None:
                         while i < len(code) and code[i].isdigit():
                             i += 1
                     elif i < len(code):
-                        i += 1  # #$<char>: the optional marker.
+                        i += 1  # #$<char>: the optional marker plus one char
                 elif i < len(code):
-                    i += 1  # the loaded character.
+                    i += 1  # the loaded character
                 continue
             if char == opr:
                 depth += 1
@@ -80,18 +80,18 @@ def find(code: str, ind: int) -> int:
     return ind
 
 
-# : One instant of a run:.
-# : accumulator, the cursor,.
-# : positions, and whether.
-# : forward, with the stack as.
-# :.
-# : ``skp`` is state, not a.
-# : *later* ``[`` reads it to.
-# : it, so the flag outlives.
-# : makes a break escape a.
-# :.
-# : The code is not here:.
-# : the program rather than.
+#: One instant of a run: ``(acc, ind, skp, stk, halted)`` -- the
+#: accumulator, the cursor, the break flag, the stack of loop-entry
+#: positions, and whether ``&`` fired.  A value :func:`_advance` maps
+#: forward, with the stack as a ``tuple`` for the same reason.
+#:
+#: ``skp`` is state, not a detail of one command.  ``*`` sets it and a
+#: *later* ``[`` reads it to decide whether to enter its loop or jump past
+#: it, so the flag outlives the command that raised it -- which is what
+#: makes a break escape a whole nest rather than one level.
+#:
+#: The code is not here: Sophie never rewrites itself, so a step is handed
+#: the program rather than carrying it.
 type _State = tuple[int, int, bool, tuple[int, ...], bool]
 
 
@@ -126,7 +126,7 @@ def _advance(state: _State, code: str, value: int | None = None) -> _State:
         if c == "*":
             skp = True
     elif c in ".,":
-        pass  # printed by the caller; the.
+        pass  # printed by the caller; the accumulator is unchanged
     elif c in ":;":
         if value is not None:
             acc = value
@@ -187,7 +187,7 @@ class _Machine:
         """Whether ``&`` fired or the cursor reached the end of the code."""
         return self._halted_by_command or self.ind >= len(self.code)
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: Accumulator + loop stack; ip the cursor, memory
     # the acc.
 
     @property

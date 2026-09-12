@@ -29,8 +29,8 @@ class TestExpressionErrors:
             _run("OUT '")
 
     def test_a_quote_before_a_delimiter_takes_it_raw(self) -> None:
-        # ``' `` is a space literal:.
-        # the character after the quote.
+        # ``' `` is a space literal: the scan stops on the delimiter, so
+        # the character after the quote is read directly.
         assert _run("OUT ' ") == " "
 
     def test_a_non_name_before_a_paren_is_refused(self) -> None:

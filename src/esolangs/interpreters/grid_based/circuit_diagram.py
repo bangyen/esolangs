@@ -178,9 +178,9 @@ from typing import Final, Literal
 
 from esolangs.interpreters.io import IO
 
-# Wire characters, and the.
-# A direction is (d_row, d_col).
-# downward, so "up" is a.
+# Wire characters, and the directions each one accepts a connection from.
+# A direction is (d_row, d_col) pointing *out* of the cell, rows growing
+# downward, so "up" is a negative row step.
 _UP = (-1, 0)
 _DOWN = (1, 0)
 _LEFT = (0, -1)
@@ -194,10 +194,10 @@ _DIAGONALS = (_UP_LEFT, _UP_RIGHT, _DOWN_LEFT, _DOWN_RIGHT)
 _ORTHOGONALS = (_UP, _DOWN, _LEFT, _RIGHT)
 _ALL_DIRECTIONS = _ORTHOGONALS + _DIAGONALS
 
-# Which directions each wire.
-# neighbour; the rest reach.
-# because it is not a wiring.
-# through to the far side (see.
+# Which directions each wire character reaches in.  ``.`` reaches every
+# neighbour; the rest reach only along their own shape.  ``=`` is absent
+# because it is not a wiring member at all -- it passes a connection
+# through to the far side (see ``_through``).
 _WIRE_DIRECTIONS = {
     "-": (_LEFT, _RIGHT),
     "|": (_UP, _DOWN),
@@ -209,34 +209,34 @@ _WIRE_DIRECTIONS = {
 _WIRES = frozenset(_WIRE_DIRECTIONS)
 _CROSSOVER = "="
 
-# Gates, mapped to the number.
-# gates are a closed alphabet.
-# so naming them lets the.
+# Gates, mapped to the number of input wirings each takes.  The logic
+# gates are a closed alphabet -- the six binary ones and the inverter --
+# so naming them lets the checker see _apply_gate handles every one.
 _LogicGate = Literal["a", "A", "o", "O", "x", "X", "~"]
 
-# Typed rather than bare.
-# character for membership.
-# constructor and _apply_gate.
+# Typed rather than bare frozensets of str, so that testing a grid
+# character for membership narrows it to the gate alphabet the _Gate
+# constructor and _apply_gate expect.
 _BINARY_GATES: frozenset[_LogicGate] = frozenset(("a", "A", "o", "O", "x", "X"))
 _GATES: frozenset[_LogicGate] = _BINARY_GATES | frozenset(("~",))
 
-# The splitter and combiner.
-# drive on the right, but they.
+# The splitter and combiner.  Both are gate-like: they read on the left and
+# drive on the right, but they rearrange wire counts rather than compute.
 _SPLIT: Final = "<"
 _COMBINE: Final = ">"
 
 _OUTPUT: Final = ":"
 
-# What a _Gate's ``kind`` may.
-# gate-like characters that.
+# What a _Gate's ``kind`` may be: a logic gate, or one of the three
+# gate-like characters that move wires around rather than compute.
 _GateKind = _LogicGate | Literal["<", ">", ":"]
 
-# The gate-like trio as a typed.
-# constants above cannot narrow.
+# The gate-like trio as a typed set: comparing against the three Final
+# constants above cannot narrow a str, but membership here does.
 _MOVERS: frozenset[Literal["<", ">", ":"]] = frozenset(("<", ">", ":"))
 
-# Specified by the page but.
-# module docstring's scope.
+# Specified by the page but exercised by none of its examples; see the
+# module docstring's scope section.
 _OUT_OF_SCOPE = {
     "{": "user-defined functions",
     "}": "user-defined functions",
@@ -326,10 +326,10 @@ class _Connections:
         """
         d_row, d_col = direction
         n_row, n_col = row + d_row, col + d_col
-        # The loop needs no bounds.
-        # a space, which is never the.
-        # ends it.
-        # on -- one guard covering both.
+        # The loop needs no bounds check of its own: ``at`` reads off-grid as
+        # a space, which is never the crossover, so walking past the edge
+        # ends it.  The check below then rejects the off-grid cell it landed
+        # on -- one guard covering both the stepped and the hopped case.
         while self.grid.at(n_row, n_col) == _CROSSOVER:
             n_row, n_col = n_row + d_row, n_col + d_col
         if not (0 <= n_row < self.grid.height and 0 <= n_col < self.grid.width):
@@ -395,8 +395,8 @@ class _Parser:
     def _check_characters(self) -> None:
         """Reject characters that are unknown or out of scope."""
         for row, col, char in self.grid.cells():
-            # ``+`` only ever joins the.
-            # (``-1+2-``), which.
+            # ``+`` only ever joins the parts of a summed wire label
+            # (``-1+2-``), which ``_label_widths`` reads as a whole.
             if char == " " or char.isdigit() or char == "+":
                 continue
             if char in _WIRES or char == _CROSSOVER:
@@ -536,8 +536,8 @@ class _Parser:
             if not self.links.reaches(cell[0], cell[1], (-d_row, -side)):
                 continue
             wiring = self._wiring_at(cell)
-            # A cell that both links to and.
-            # wiring by construction, so.
+            # A cell that both links to and back from here is part of a
+            # wiring by construction, so this always takes.
             if wiring is not None:  # pragma: no branch
                 seen.add(cell)
                 found.append(wiring)
@@ -576,9 +576,9 @@ class _Parser:
                 outputs = self._ports(row, col, 1)
             incoming = self._ports(row, col, -1)
             if char == "~" and len(incoming) > 1:
-                # NOT takes exactly one input,.
-                # spec's sample is ``.~.``), so.
-                # some other wiring routed past.
+                # NOT takes exactly one input, drawn level with it (the
+                # spec's sample is ``.~.``), so a diagonal neighbour is
+                # some other wiring routed past the gate, not an input.
                 level = self._ports(row, col, -1, offsets=(0,))
                 if len(level) == 1:
                     incoming = level
@@ -597,9 +597,9 @@ class _Parser:
                 f"{gate.kind!r} at ({gate.col}, {gate.row}) takes {wanted_in} "
                 f"input(s), found {len(gate.inputs)}"
             )
-        # An output sinks its wire and.
-        # below does not apply to it.
-        # included, so the return is.
+        # An output sinks its wire and drives nothing, so the out-port count
+        # below does not apply to it.  Parsing checks every gate, this one
+        # included, so the return is taken by any program with an output.
         if gate.kind == _OUTPUT:
             return
         wanted_out = 2 if gate.kind == _SPLIT else 1
@@ -633,9 +633,9 @@ class _Parser:
                     changed = True
             if not changed:
                 return
-        # Each pass fixes at least one.
-        # fixpoint is reached within.
-        # flow that somehow cycles.
+        # Each pass fixes at least one wiring's width or stops, so the
+        # fixpoint is reached within one pass per wiring; this catches a
+        # flow that somehow cycles rather than letting it spin.
         raise ValueError(  # pragma: no cover - the width flow always settles
             "multi-wire widths do not settle"
         )
@@ -681,7 +681,7 @@ def _apply_gate(kind: _LogicGate, inputs: list[tuple[int, ...]]) -> tuple[int, .
         result = int(ones == 0)
     elif kind == "x":
         result = int(ones == 1)
-    else:  # "X".
+    else:  # "X"
         result = int(ones != 1)
     return (result,)
 
@@ -700,9 +700,9 @@ def _drive(
     if gate.kind == _COMBINE:
         return [(gate.outputs[0], inputs[0] + inputs[1])]
     if gate.kind == _OUTPUT:
-        # An output gate drives nothing.
-        # skips them before firing, so.
-        # path: it is what lets.
+        # An output gate drives nothing by definition, and ``step``
+        # skips them before firing, so this is a shape rather than a
+        # path: it is what lets _apply_gate take only logic gates.
         return []  # pragma: no cover - step() skips these before firing
     return [(gate.outputs[0], _apply_gate(gate.kind, inputs))]
 
@@ -719,12 +719,12 @@ def _merge(driven: list[tuple[int, ...]]) -> tuple[int, ...]:
     return tuple(merged)
 
 
-# : One instant of a run: the.
-# : inputs, both indexed by.
-# : returns a new pair rather.
-# :.
-# : The wirings and gates.
-# : never rewrites itself, so.
+#: One instant of a run: the value on each wiring and each gate's latched
+#: inputs, both indexed by position.  A value, not a record: a generation
+#: returns a new pair rather than editing the wirings in place.
+#:
+#: The wirings and gates themselves stay out: a diagram is parsed once and
+#: never rewrites itself, so they are handed to the transition.
 type _Values = tuple[tuple[int, ...] | None, ...]
 type _Latches = tuple[tuple[tuple[int, ...] | None, ...], ...]
 type _State = tuple[_Values, _Latches]
@@ -818,20 +818,20 @@ class _Machine:
     wiring values but different latches are not the same state.
     """
 
-    # : Whether a read past the end.
-    # : rather than raising.
-    # :.
-    # : package norm and what.
-    # : not, so an underfed program.
-    # : instead of refusing, and a.
+    #: Whether a read past the end of the input yields a *value* here
+    #: rather than raising.  Forty-five of the sixty-nine raise
+    #: :class:`~esolangs.exceptions.InputExhaustedError`, which is the
+    #: package norm and what :func:`esolangs.run` documents; this one does
+    #: not, so an underfed program answers a different row of its table
+    #: instead of refusing, and a caller has no way to tell from the output
     #: that it happened.
-    # :.
-    # : Declared rather than.
-    # : audited against every wiki.
-    # : (``docs/limitations.md``,.
-    # : would be a decision about.
-    # : What was wrong was that.
-    # : was false for seven.
+    #:
+    #: Declared rather than changed.  The zero-beyond-input convention was
+    #: audited against every wiki page and settled deliberately
+    #: (``docs/limitations.md``, Interpreter conventions); rewriting it
+    #: would be a decision about what these languages *mean*, not a fix.
+    #: What was wrong was that nothing said so, so the promise ``run`` made
+    #: was false for seven languages and a generic caller could not find
     #: out which.
     eof_is_a_value = True
 
@@ -844,9 +844,9 @@ class _Machine:
         self.wirings = parsed.wirings
         self.gates = parsed.gates
         self.halted = False
-        # The value on each wiring and.
-        # indexed by position rather.
-        # are fixed once parsed, so a.
+        # The value on each wiring and each gate's remembered inputs, both
+        # indexed by position rather than by ``id``: the wirings and gates
+        # are fixed once parsed, so a position is a stable name and the
         # whole state is two tuples.
         self.index = {id(w): i for i, w in enumerate(self.wirings)}
         self.values: tuple[tuple[int, ...] | None, ...] = (None,) * len(self.wirings)
@@ -871,8 +871,8 @@ class _Machine:
                 continue
             col = len(line) - len(stripped)
             wiring = self._wiring_at((row, col))
-            # A row opening on "-" always.
-            # wirings are built from those.
+            # A row opening on "-" always has its own unvalued wiring: the
+            # wirings are built from those very cells, and each input row is
             # read once.
             if wiring is None:  # pragma: no cover - see above
                 continue
@@ -891,8 +891,8 @@ class _Machine:
         for wiring in self.wirings:
             if cell in wiring.cells:
                 return wiring
-        # The machine only looks up.
-        # place, so the miss is a guard.
+        # The machine only looks up cells it took from a wiring in the first
+        # place, so the miss is a guard rather than a path.
         return None  # pragma: no cover - every cell asked for is covered
 
     def _read_bit(self) -> int:
@@ -918,7 +918,7 @@ class _Machine:
         """
         return None
 
-    # : Never a place in the.
+    #: Never a place in the source, because it is never anything at all.
     ip_shape = "opaque"
 
     @property
@@ -955,8 +955,8 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the machine's state, hashable for cycle detection."""
-        # The two halves of the state.
-        # which is what freezing them.
+        # The two halves of the state are already the tuples this wants,
+        # which is what freezing them bought: no per-call rebuild.
         return (self.values, self.latches, self.halted)
 
 

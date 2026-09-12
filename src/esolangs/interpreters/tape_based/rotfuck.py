@@ -49,22 +49,22 @@ _CYCLE = "+-><,.[]"
 _COMMANDS = frozenset(_CYCLE)
 
 
-# : One instant of a run:.
-# : pointer, the cursor, and.
-# : :func:`_advance` maps.
-# :.
-# : ``rot`` is the language.
-# : *effective* command at a.
-# : steps along the cycle, so.
-# : reading -- which is why it.
+#: One instant of a run: ``(tape, ptr, ind, rot)`` -- the cells, the cell
+#: pointer, the cursor, and how many commands have executed.  A value
+#: :func:`_advance` maps forward, with the tape as a ``tuple``.
+#:
+#: ``rot`` is the language.  The source text never changes, but the
+#: *effective* command at a position is its character advanced ``rot``
+#: steps along the cycle, so the rotation count is what a step is really
+#: reading -- which is why it belongs in the state and the characters do
 #: not.
 type _State = tuple[tuple[int, ...], int, int, int]
 
 
-# : Each command's index in.
-# : than a ``str.index`` scan.
-# : steps is.
-# : membership test, since a.
+#: Each command's index in ``_CYCLE``, so the rotation is an addition rather
+#: than a ``str.index`` scan.  A command's effective character after ``rot``
+#: steps is ``_CYCLE[(_OPCODE[ch] + rot) % 8]``; the dict doubles as the
+#: membership test, since a comment is exactly a character it does not hold.
 _OPCODE = {ch: i for i, ch in enumerate(_CYCLE)}
 
 
@@ -126,10 +126,10 @@ class _Program:
 
     def __init__(self, code: str) -> None:
         """Store ``code`` with a zero rotation count."""
-        # The source never changes --.
-        # tuple every caller wants is.
-        # lookup.
-        # to read one character, which.
+        # The source never changes -- only the rotation count does -- so the
+        # tuple every caller wants is built once here rather than per
+        # lookup.  It was rebuilt on each ``at`` call, an O(len(code)) copy
+        # to read one character, which alone was 15% of a run.
         self._chars = tuple(code)
         self._rot = 0
 
@@ -185,11 +185,11 @@ def _advance(state: _State, chars: tuple[str, ...], byte: int | None = None) -> 
     elif char == "-":
         tape = (*tape[:ptr], (tape[ptr] - 1) % 256, *tape[ptr + 1 :])
     elif char == ",":
-        # Reduced like ``+`` and ``-``.
-        # whole code point, so an input.
-        # otherwise put that code point.
-        # docstring describes, and left.
-        # the next ``+`` reduced what.
+        # Reduced like ``+`` and ``-`` above.  ``input_char`` returns a
+        # whole code point, so an input line starting above U+00FF
+        # otherwise put that code point on the 8-bit tape this module's
+        # docstring describes, and left the cell disagreeing with itself:
+        # the next ``+`` reduced what ``,`` had not.
         tape = (
             *tape[:ptr],
             (byte if byte is not None else 0) % 256,
@@ -238,7 +238,7 @@ class _Machine:
         """Whether the cursor has reached the end of the source."""
         return self.ind >= self._size
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: Rotating tape + cursor; ip the cursor, memory the
     # tape.
 
     @property
@@ -309,10 +309,10 @@ class _Machine:
         try:
             self._restore(_advance(self._state, chars, byte))
         except HaltError:
-            # A jumping bracket rotates.
-            # one leaves the rotation.
-            # The original mutated the.
-            # keeping that means recording.
+            # A jumping bracket rotates before it seeks, so a partnerless
+            # one leaves the rotation advanced even though it never moved.
+            # The original mutated the program first and raised second;
+            # keeping that means recording the rotation on the way out.
             self.prog.rotate()
             raise
 

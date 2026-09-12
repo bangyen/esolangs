@@ -48,9 +48,9 @@ class TestBrainfuck:
         assert run_and_capture("+" * 256 + ".") == "\x00"
 
     def test_cell_wraps_below_zero(self) -> None:
-        # The upward wrap above lands.
-        # neither the wrap's direction.
-        # zero does: it is 255 only.
+        # The upward wrap above lands on zero for any modulus, so it pins
+        # neither the wrap's direction nor its width.  Decrementing from
+        # zero does: it is 255 only under a modulus of exactly 256.
         assert run_and_capture("-.") == "\xff"
 
     def test_comments_ignored(self) -> None:
@@ -125,7 +125,7 @@ class TestBrainfuck:
         machine = _Machine(">+>++", ScriptedIO())
         assert (machine.ind, machine.ptr, machine.tape) == (0, 0, (0,))
 
-        for _ in range(3):  # ">+>" -- grow, write, grow.
+        for _ in range(3):  # ">+>" -- grow, write, grow again
             machine.step()
         assert (machine.ind, machine.ptr, machine.tape) == (3, 2, (0, 1, 0))
 

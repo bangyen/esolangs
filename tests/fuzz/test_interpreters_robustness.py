@@ -26,14 +26,14 @@ from esolangs.vm import run_until_halt_or_cycle
 
 INTERPRETER_DIR = Path(__file__).parents[2] / "src" / "esolangs" / "interpreters"
 
-# Globbed rather than listed by.
-# categories in a tuple that.
-# -- every grid language --.
-# claims to cover "every.
-# ``scripts/check_docstrings.py`.
-# twelve of sixty-three.
-# it.
-# is why.
+# Globbed rather than listed by category.  This sweep used to name its five
+# categories in a tuple that omitted ``grid_based``, so eleven interpreters
+# -- every grid language -- were silently exempt from a file whose docstring
+# claims to cover "every interpreter".  It is the same hole
+# ``scripts/check_docstrings.py`` had, where a stale category tuple exempted
+# twelve of sixty-three interpreters and three real violations sat behind
+# it.  A walk that discovers the tree cannot acquire that hole again, which
+# is why ``tests/test_interpreter_conventions.py`` already reads the tree
 # this way.
 MODULES = [
     f"esolangs.interpreters.{path.parent.name}.{path.stem}"
@@ -242,8 +242,8 @@ def _empty_machine(module: str, io: IO) -> object:
     if module == "esolangs.interpreters.other.cvnc":
         from esolangs.interpreters.other.cvnc import _Machine
 
-        # An empty program is malformed.
-        # shortest legal one: a single.
+        # An empty program is malformed in CV(N)(C), so the stand-in is the
+        # shortest legal one: a single syllable that does nothing observable.
         return _Machine("ci", io)
     if module == "esolangs.interpreters.other.fargo":
         from esolangs.interpreters.other.fargo import _Machine
@@ -260,8 +260,8 @@ def _empty_machine(module: str, io: IO) -> object:
     raise KeyError(module)
 
 
-# The interpreter modules whose.
-# can therefore be checked by.
+# The interpreter modules whose machine exposes step()/halted/snapshot() and
+# can therefore be checked by state-cycle detection.
 _STEP_MACHINES = {
     "esolangs.interpreters.tape_based.brainfuck",
     "esolangs.interpreters.tape_based.sbleq",
@@ -340,7 +340,7 @@ def _assert_step_machine_halts(module: str) -> None:
         machine = _empty_machine(module, IO())
         halted = run_until_halt_or_cycle(machine)
     except Exception:
-        return  # rejecting the empty program.
+        return  # rejecting the empty program is a valid termination
     assert halted is True, f"{module} loops on the empty program"
 
 
@@ -354,7 +354,7 @@ def _assert_wall_clock_terminates(module: str) -> None:
     except _TimeoutError:
         pytest.fail(f"{module} hangs on the empty program")
     except Exception:
-        pass  # rejecting the empty program.
+        pass  # rejecting the empty program is a valid termination
     finally:
         signal.alarm(0)
         signal.signal(signal.SIGALRM, old_handler)

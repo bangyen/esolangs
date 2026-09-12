@@ -25,9 +25,9 @@ OUT = Path(__file__).resolve().parent.parent / "src/esolangs/tools/ztoalc_starts
 
 SIEVE_LIMIT = 10_000_000
 
-# Known record-holders beyond.
-# ascending order.
-# documented Collatz records.
+# Known record-holders beyond the sieve, as (total stopping time, start), in
+# ascending order.  Their trajectories are verified below; they are the
+# documented Collatz records below 10**10 (9780657630 reaches 1132 steps).
 HIGH = [(949, 63728127), (986, 670617279), (1132, 9780657630)]
 
 
@@ -91,7 +91,7 @@ def anchors() -> list[tuple[int, int]]:
     max_stop = max(lengths[r] for r in records)
     peaks = {r: prefix_peaks(r, lengths[r]) for r in records}
 
-    # the best record-holder for.
+    # the best record-holder for each length, then cover 1..max_stop greedily
     true_min = {}
     for n in range(1, max_stop + 1):
         true_min[n] = min(peaks[r][n - 1] for r in records if lengths[r] >= n)
@@ -110,7 +110,7 @@ def anchors() -> list[tuple[int, int]]:
                 n += 1
             if ext > best_ext:
                 best_ext, best_start = ext, r
-        assert best_start is not None  # the last segment always.
+        assert best_start is not None  # the last segment always extends
         segments.append((best_ext, best_start))
         pos = best_ext
 

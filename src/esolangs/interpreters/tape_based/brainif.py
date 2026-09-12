@@ -44,24 +44,24 @@ import sys
 
 from esolangs.interpreters.io import IO
 
-# : One instant of a run:.
-# : pointer, and the cells.
-# : returns a new one rather.
-# : ``tuple`` for the same.
-# :.
-# : The code is deliberately.
-# : so carrying it would put.
-# : stores.
-# :.
-# : A plain tuple rather than a.
-# : unpacking in the functions.
-# : ``NamedTuple.__new__`` is.
+#: One instant of a run: ``(ind, ptr, cells)`` -- the line cursor, the tape
+#: pointer, and the cells.  A value, not a record: every transition below
+#: returns a new one rather than editing one in place, and the cells are a
+#: ``tuple`` for the same reason.
+#:
+#: The code is deliberately *not* in here.  It does not change during a run,
+#: so carrying it would put constant data in every value the cycle detector
+#: stores.  The parsed line is a parameter to the transition instead.
+#:
+#: A plain tuple rather than a ``NamedTuple``: the fields are read by
+#: unpacking in the functions that use them, so the names bought little, and
+#: ``NamedTuple.__new__`` is Python-level where the tuple constructor is
 #: C-level.
 type _State = tuple[int, int, tuple[int, ...]]
 
-# : A line the transition can.
-# : stands for a blank line,.
-# : ``target`` is meaningful.
+#: A line the transition can act on: ``(value, command, target)``.  ``None``
+#: stands for a blank line, which advances the cursor and nothing else.
+#: ``target`` is meaningful only for ``goto`` and is zero otherwise.
 type _Line = tuple[int, str, int] | None
 
 
@@ -90,8 +90,8 @@ def _parse(line: str) -> _Line:
                     raise ValueError("goto requires a target line")
                 return (value, "goto", int(arr[3]))
             return (value, name, 0)
-    # A guarded line naming no.
-    # the cell, does nothing, and.
+    # A guarded line naming no command is inert but well-formed: it tests
+    # the cell, does nothing, and falls through like any other line.
     return (value, "", 0)
 
 
@@ -122,11 +122,11 @@ def _advance(state: _State, line: _Line, byte: int | None = None) -> _State:
             cells = (*cells[:ptr], cells[ptr] + 1, *cells[ptr + 1 :])
         elif command == "right":
             ptr += 1
-            # A move past the right end.
+            # A move past the right end grows the tape by one zero cell.
             if ptr == len(cells):
                 cells = (*cells, 0)
         elif command == "left":
-            # ``left`` at the origin is.
+            # ``left`` at the origin is clamped rather than an error.
             ptr = max(0, ptr - 1)
         elif command == "goto":
             ind = target - 2
@@ -154,18 +154,18 @@ class _Machine:
         """Start with a single zero cell at the origin."""
         self.io = io
         self.code = code
-        # ``halted`` is read twice per.
-        # once by ``step``'s guard --.
+        # ``halted`` is read twice per line -- once by ``run``'s loop and
+        # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(code)
         self.state: _State = (0, 0, (0,))
 
-    # The language's own names.
-    # than fields of their own, so.
+    # The language's own names.  They are views on the current state rather
+    # than fields of their own, so there is one place a step can change.
 
     @property
     def cells(self) -> tuple[int, ...]:
-        # The state's own tuple, handed.
-        # ``tape`` reads the same way,.
+        # The state's own tuple, handed back as it stands.  Brainfuck's
+        # ``tape`` reads the same way, so the two tape languages agree.
         return self.state[2]
 
     @property
@@ -176,14 +176,14 @@ class _Machine:
     def ptr(self) -> int:
         return self.state[1]
 
-    # The growth detector's view.
-    # -- there is no write buffer.
-    # tuple under the name.
-    # ``ip`` (below) is the line.
-    # protocol: ``right`` appends.
-    # at cell 0 (``ptr = max(0, ptr.
-    # or writes only ``cells[ptr]``.
-    # cell under the pointer and.
+    # The growth detector's view.  ``cells`` is already the committed tape
+    # -- there is no write buffer here -- so ``tape`` is the language's own
+    # tuple under the name ``esolangs.vm._TapeMachine`` asks for, and
+    # ``ip`` (below) is the line cursor.  BrainIf qualifies for that
+    # protocol: ``right`` appends exactly one fresh zero, ``left`` clamps
+    # at cell 0 (``ptr = max(0, ptr - 1)``), and every other command reads
+    # or writes only ``cells[ptr]`` -- including the guard, which tests the
+    # cell under the pointer and nothing else.
 
     @property
     def tape(self) -> tuple[int, ...]:
@@ -199,7 +199,7 @@ class _Machine:
         """Whether the cursor has passed the last line."""
         return self.state[0] >= self.size
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: Cell tape + line cursor; ip the cursor, memory the
     # cells.
 
     @property
@@ -219,8 +219,8 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The cells are already a.
-        # input cursor joins them.
+        # The cells are already a tuple, so they go in as they stand.  The
+        # input cursor joins them because a repeat that ignores consumed
         # input is not a real cycle.
         ind, ptr, cells = self.state
         return (cells, ind, ptr, self.io.position())
@@ -250,8 +250,8 @@ class _Machine:
                 if command == "output":
                     self.io.print_char(chr(cells[ptr]))
                 elif command == "input":
-                    # The original skips empty.
-                    # one, so a blank input line is.
+                    # The original skips empty reads rather than storing
+                    # one, so a blank input line is not a zero byte.
                     while not (s := self.io.input_str()):
                         pass
                     byte = ord(s[0])

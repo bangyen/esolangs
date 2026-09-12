@@ -30,9 +30,9 @@ def machine(code: str) -> _Machine:
     return _Machine(code, ScriptedIO(""))
 
 
-# -- the wiki's own examples.
+# -- the wiki's own examples -------------------------------------------
 
-# Reproduced from.
+# Reproduced from https://esolangs.org/wiki/Function_x(y) verbatim, except
 # where a note says otherwise.
 HELLO = 'function helloWorld()\n["Hello, World!"]'
 CAT = "function cat()\n[[~]]"
@@ -40,11 +40,11 @@ ABS = "function abs(n)\n-> (n < 0)<0 - n, n>"
 FACTORIAL = "function factorial(n)\n-> (n < 2)<1, n * {n - 1}>"
 FIB = "function fib(acc | 0, num | 1)\n[num]\n-> fib(num, num + acc)"
 
-# The wiki's FizzBuzz line 2 is.
-# printAndRecurse(n)>`` -- two.
-# ternary has no false arm.
-# ``test_the_wiki_fizzbuzz_line_.
-# adding the missing ``>`` and.
+# The wiki's FizzBuzz line 2 is ``(n != 100)<((fizz(n) + buzz(n)) == "")<[n],
+# printAndRecurse(n)>`` -- two ``<`` openers against one ``>``, and the outer
+# ternary has no false arm.  It cannot be parsed as written (pinned below by
+# ``test_the_wiki_fizzbuzz_line_is_unbalanced``); this is the minimal repair,
+# adding the missing ``>`` and a ``, 0`` false arm.
 FIZZBUZZ = """function fizzbuzz(n | 0)
 (n != 100)<((fizz(n) + buzz(n)) == "")<[n], printAndRecurse(n)>, 0>
 
@@ -115,7 +115,7 @@ class TestWikiExamples:
             run(verbatim, ScriptedIO(""))
 
 
-# -- expressions.
+# -- expressions --------------------------------------------------------
 
 
 class TestExpressions:
@@ -124,11 +124,11 @@ class TestExpressions:
         [
             ("1 + 2", "3"),
             ("2 * 3 + 1", "7"),
-            ("1 + 2 * 3", "7"),  # BDMAS: * binds tighter than +.
+            ("1 + 2 * 3", "7"),  # BDMAS: * binds tighter than +
             ("(1 + 2) * 3", "9"),
-            ("7 - 2 - 1", "4"),  # left associative.
-            ("7 / 2", "3"),  # integer division.
-            ("7 // 2", "3"),  # the FizzBuzz spelling of the.
+            ("7 - 2 - 1", "4"),  # left associative
+            ("7 / 2", "3"),  # integer division
+            ("7 // 2", "3"),  # the FizzBuzz spelling of the same op
             ("-6 / 2", "-3"),
             ("0 - 7 / 2", "-3"),
         ],
@@ -143,7 +143,7 @@ class TestExpressions:
             ("2 < 1", "0"),
             ("2 > 1", "1"),
             ("1 <= 1", "1"),
-            ("1 => 1", "1"),  # the wiki spells it ``=>``,.
+            ("1 => 1", "1"),  # the wiki spells it ``=>``, not ``>=``
             ("2 => 3", "0"),
             ("1 == 1", "1"),
             ("1 != 1", "0"),
@@ -320,9 +320,9 @@ class TestRunawayRecursion:
     @pytest.mark.parametrize(
         "code",
         [
-            # The guard counts the wrong.
+            # The guard counts the wrong way, so it never fires.
             "function f(n | 3)\n-> (n < 2)<1, n * {n + 1}>",
-            # Mutual recursion through.
+            # Mutual recursion through named calls.
             "function a(n | 0)\n-> b(n)\n\nfunction b(n)\n-> a(n)",
         ],
     )
@@ -335,7 +335,7 @@ class TestRunawayRecursion:
                 break
             m.step()
         assert not m.halted, "this program does not terminate"
-        # Far past Python's own limit:.
+        # Far past Python's own limit: the frames are the machine's, not
         # the interpreter's C stack.
         assert len(m.frames) > sys.getrecursionlimit()
 
@@ -369,9 +369,9 @@ class TestEmptyProgram(EmptyProgramContract):
 class TestCycle(CycleContract):
     machine = staticmethod(machine)
     halting_program = HELLO
-    # ``fib`` and the runaway.
-    # none of them ever repeats a.
-    # *repeated* state needs a.
-    # write recurses with a.
-    # documented skip rather than.
+    # ``fib`` and the runaway programs above all grow their state forever, so
+    # none of them ever repeats a snapshot; a program that loops on a
+    # *repeated* state needs a fixed point, and every loop this language can
+    # write recurses with a changing frame stack.  Left as the contract's
+    # documented skip rather than filled with a guess.
     looping_program = None

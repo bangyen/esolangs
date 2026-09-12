@@ -116,36 +116,36 @@ from esolangs.tools.boolean.one_two_three_construct import (
 
 __all__ = ["one_two_three"]
 
-# : ``{Xi}`` fills.
+#: ``{Xi}`` fills.  One character each, so instantiations are equal length.
 ONE, ZERO = "1", "2"
 
-# : One separation law: the.
+#: One separation law: the constant pre-fill walk, then the alternating
 #: test displacements.
-# :.
-# : Both parts are one *shape*,.
-# : same distance before every.
-# : is then a sequence of pure.
-# : ``"2"``-runs, one.
-# : at all.
-# : tested cell is marked.
-# : is clear skip, and that.
-# : their *marks* after a bare.
-# : alone can never split them.
-# : synchronized pipeline's.
+#:
+#: Both parts are one *shape*, not a set of answers.  The seed walks the
+#: same distance before every fill, so it is a single number; separation
+#: is then a sequence of pure tests alternating ``"1"``-runs and
+#: ``"2"``-runs, one displacement each, with no raw repositioning part
+#: at all.  Every displacement is closed by its own ``33``: rows whose
+#: tested cell is marked re-run the segment and escape, rows whose cell
+#: is clear skip, and that split is what separates -- the rows differ in
+#: their *marks* after a bare fill, not in their positions, so a walk
+#: alone can never split them (a halving-gap law of the retired
+#: synchronized pipeline's shape fails here for exactly that reason).
 type _Law = tuple[int, tuple[int, ...]]
 
-# : The separation law per.
-# :.
-# : These are *derived*.
-# : seeds and alternating.
-# : least mean template length,.
-# : identically at every arity.
-# : re-derives all three by.
-# : ``n == 3`` the domain is.
-# : tables and the winner leads.
-# : law replaces what were ten.
-# : table could only raise,.
-# : ``n <= 3`` sweep re-proves.
+#: The separation law per small arity.
+#:
+#: These are *derived* constants, not a frozen search log: over constant
+#: seeds and alternating displacement vectors, each is the law with the
+#: least mean template length, which is one selection rule applied
+#: identically at every arity.  ``test_the_separation_law_is_the_least_mean``
+#: re-derives all three by that sweep rather than trusting them.  At
+#: ``n == 3`` the domain is genuinely tight -- 13 laws cover all 256
+#: tables and the winner leads the runner-up by 18% -- which is why one
+#: law replaces what were ten hand-swept schedules.  A law that failed a
+#: table could only raise, never mis-emit, and the suite's exhaustive
+#: ``n <= 3`` sweep re-proves coverage and correctness every run.
 _LAWS: dict[int, _Law] = {
     1: (0, ()),
     2: (2, (3, 2, 4)),
@@ -185,7 +185,7 @@ def _separated(n: int) -> _Builder:
             break
     else:  # pragma: no cover - the derived seeds all close within range
         raise ConstructError("no clean close for the seed")
-    # Pure tests, alternating.
+    # Pure tests, alternating ``1``-runs and ``2``-runs by position.
     for i, d in enumerate(disps):
         b.run(("1" if i % 2 == 0 else "2") * d)
         b.test()

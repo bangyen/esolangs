@@ -52,21 +52,21 @@ from fractions import Fraction
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# : The value ``^`` yields for.
+#: The value ``^`` yields for a key never assigned.
 _UNSET = 3
 
-# : One instant of a run:.
-# : the operand stack, the.
-# : not a record: every.
-# : editing one in place, and.
+#: One instant of a run: ``(ind, stack, jumps, variables)`` -- the cursor,
+#: the operand stack, the loop-return stack, and the variables.  A value,
+#: not a record: every transition below returns a new one rather than
+#: editing one in place, and all three stores are tuples for the same
 #: reason.
-# :.
-# : The variables are kept.
-# : reported them, so one.
-# :.
-# : The code is deliberately.
-# : so carrying it would put.
-# : stores.
+#:
+#: The variables are kept sorted by key, which is how ``snapshot`` already
+#: reported them, so one logical set of bindings has one spelling.
+#:
+#: The code is deliberately not in here.  It does not change during a run,
+#: so carrying it would put constant data in every value the cycle detector
+#: stores.  It is a parameter to the transition instead.
 type _State = tuple[
     int,
     tuple[Fraction, ...],
@@ -74,9 +74,9 @@ type _State = tuple[
     tuple[tuple[Fraction, Fraction], ...],
 ]
 
-# : How many stack items each.
-# : two-item commands take two,.
-# : one.
+#: How many stack items each command needs.  ``x`` takes three, the two
+#: two-item commands take two, and the rest of the popping commands take
+#: one.  A command absent from this mapping needs none.
 _NEEDS = {"x": 3, "v": 2, "#": 2, "!": 1, "^": 1, "(": 1, ")": 1}
 
 
@@ -125,8 +125,8 @@ def _loaded(
     return Fraction(_UNSET)
 
 
-# Ruby's Rational() string.
-# not decimals; the interpreter.
+# Ruby's Rational() string parser accepts integers and "a/b" fractions only,
+# not decimals; the interpreter rejects the same inputs.
 _RATIONAL = re.compile(r"^[+-]?\d+(?:/[+-]?\d+)?$")
 
 
@@ -137,13 +137,13 @@ class _Machine:
         """Store ``code`` and start with an empty stack and no variables."""
         self.io = io
         self.code = code
-        # ``halted`` is read twice per.
-        # once by ``step``'s guard --.
+        # ``halted`` is read twice per command -- once by ``run``'s loop and
+        # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(code)
         self.state: _State = (0, (), (), ())
 
-    # The language's own names.
-    # than fields of their own, so.
+    # The language's own names.  They are views on the current state rather
+    # than fields of their own, so there is one place a step can change.
 
     @property
     def ind(self) -> int:
@@ -169,8 +169,8 @@ class _Machine:
         """Whether the cursor has reached the end of the code."""
         return self.state[0] >= self.size
 
-    # The VM's language-shaped.
-    # is empty.
+    # The VM's language-shaped view: the store *is* the stack, so ``memory``
+    # is empty.  ``stack`` above is the view.
 
     @property
     def ip(self) -> int:
@@ -184,8 +184,8 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # All three stores are already.
-        # in key order, so the state.
+        # All three stores are already tuples, and the variables are kept
+        # in key order, so the state goes in as it stands.
         return self.state
 
     def step(self) -> None:
@@ -202,7 +202,7 @@ class _Machine:
         if len(stack) < _needs(char):
             raise HaltError("empty stack")
         if char == "x" and stack[-3] == 0:
-            # ``x`` divides by the third.
+            # ``x`` divides by the third item, so a zero there faults before
             # anything is popped.
             raise HaltError("division by zero")
         if char == ")" and stack[-1] != 0 and not jumps:
@@ -212,8 +212,8 @@ class _Machine:
         if char == "(" and stack[-1] == 0:
             target = _forward(self.code, ind)
             if target is None:
-                # The original's scan walked.
-                # noticing, so a caller.
+                # The original's scan walked the cursor to the end before
+                # noticing, so a caller catching the error sees that.
                 self.state = (len(self.code), stack, jumps, variables)
                 raise HaltError("unmatched (")
         elif char == "?":

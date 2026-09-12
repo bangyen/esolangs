@@ -45,20 +45,20 @@ import sys
 
 from esolangs.interpreters.io import IO
 
-# : One instant of a run:.
-# : the register, the deque,.
-# : printed.
-# : rather than editing one in.
+#: One instant of a run: ``(ind, reg, deq, rendered)`` -- the token cursor,
+#: the register, the deque, and whether the end-of-run dump has been
+#: printed.  A value, not a record: every transition below returns a new one
+#: rather than editing one in place, and the deque is a ``tuple`` for the
 #: same reason.
-# :.
-# : ``rendered`` is state.
-# : happens *after* the cursor.
-# : alone cannot tell "about to.
-# : of ``snapshot``, which.
-# :.
-# : The tokens are deliberately.
-# : but they *are* in.
-# : removing them would change.
+#:
+#: ``rendered`` is state because the dump is a once-per-run effect that
+#: happens *after* the cursor has passed the last token, so the position
+#: alone cannot tell "about to print" from "already printed".  It stays out
+#: of ``snapshot``, which reports the fields it always reported.
+#:
+#: The tokens are deliberately not in the transition's view of the world,
+#: but they *are* in ``snapshot`` -- which is where they already were, and
+#: removing them would change every hash the cycle detector has stored.
 type _State = tuple[int, int, tuple[int, ...], bool]
 
 
@@ -130,10 +130,10 @@ class _Machine:
     object.
     """
 
-    # : Whether the tape/registers.
-    # : It belongs to the language,.
-    # : ends its loop with one more.
-    # : ``halted`` has driven the.
+    #: Whether the tape/registers are written on the step *after* the halt.
+    #: It belongs to the language, not to whoever is stepping it: ``run``
+    #: ends its loop with one more ``step()``, so a caller who stops at
+    #: ``halted`` has driven the program correctly and still holds none of
     #: its output.
     dumps_on_the_post_halt_step = True
 
@@ -144,13 +144,13 @@ class _Machine:
         join = f"({'|'.join(lst)})"
         _reject_stray_text(code, re.compile(join))
         self.tokens = re.findall(join, code)
-        # ``halted`` is read twice per.
-        # once by ``step``'s guard --.
+        # ``halted`` is read twice per token -- once by ``run``'s loop and
+        # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.tokens)
         self.state: _State = (0, 0, (), False)
 
-    # The language's own names.
-    # than fields of their own, so.
+    # The language's own names.  They are views on the current state rather
+    # than fields of their own, so there is one place a step can change.
 
     @property
     def ind(self) -> int:
@@ -174,8 +174,8 @@ class _Machine:
         """Whether the cursor has passed the last token."""
         return self.state[0] >= self.size
 
-    # The VM's language-shaped.
-    # register reads as a stack of.
+    # The VM's language-shaped view: the deque is the store, and the one
+    # register reads as a stack of one.
 
     @property
     def ip(self) -> int:
@@ -194,8 +194,8 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The fields this returned.
-        # the same order.
+        # The fields this returned before ``rendered`` joined the state, in
+        # the same order.  ``rendered`` stays out: the detector compares
         # states of a running machine.
         ind, reg, deq, _rendered = self.state
         return (tuple(self.tokens), ind, reg, deq, self.io.position())
@@ -232,7 +232,7 @@ def run(code: str, io: IO) -> None:
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
-    machine.step()  # the post-halt step prints the.
+    machine.step()  # the post-halt step prints the deque
 
 
 if __name__ == "__main__":

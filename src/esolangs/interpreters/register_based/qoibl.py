@@ -104,7 +104,7 @@ def _scan(line: str, accept: Callable[[list[str]], bool]) -> list[str]:
     while stack:
         i, tokens, fused = stack.pop()
         while i < n and line[i].isspace():
-            # A break stops `et`/`yr` from.
+            # A break stops `et`/`yr` from reaching back into the last run.
             i, fused = i + 1, False
         if i >= n:
             if accept(tokens):
@@ -116,7 +116,7 @@ def _scan(line: str, accept: Callable[[list[str]], bool]) -> list[str]:
         branches: list[tuple[list[str], int]] = []
 
         if char == "y" and nxt == "r" and not fused:
-            # A marker with no literal.
+            # A marker with no literal behind it to lend the `y`.
             branches.append(([*tokens, "yr"], i + 2))
 
         if char in "wq":
@@ -133,9 +133,9 @@ def _scan(line: str, accept: Callable[[list[str]], bool]) -> list[str]:
             if fused and (head := _steal(tokens, "y")) is not None:
                 branches.append(([*head, "yr"], i + 1))
         else:
-            # The source is filtered to.
-            # loop above skipped the.
-            # arms above is an ``e`` or a.
+            # The source is filtered to ``ewqtry`` and whitespace, and the
+            # loop above skipped the whitespace, so what is left after the
+            # arms above is an ``e`` or a ``y`` opening a binary literal.
             j = i
             while j < n and line[j] in "ey":
                 j += 1
@@ -213,8 +213,8 @@ def tokenize(source: str) -> list[list[str]]:
     if _scan(cleaned, accept):
         return list(statements)
 
-    # Nothing parses; hand the.
-    # program still fails there.
+    # Nothing parses; hand the greedy reading to `_parse` so a malformed
+    # program still fails there with its usual diagnostics.
     return [_scan(cleaned, lambda _: True)]
 
 
@@ -232,22 +232,22 @@ def _split(tokens: list[str], out: list[list[str]]) -> bool:
     return False
 
 
-# : The part of a run the pure.
-# : from number to value.
-# : one rather than editing the.
-# : assigns half-way through.
+#: The part of a run the pure layer owns: the variable list, as a mapping
+#: from number to value.  A value, not a record: :func:`_eval` returns a new
+#: one rather than editing the one it was handed, so an expression that
+#: assigns half-way through and then raises leaves the caller's copy intact.
 type _Vars = Mapping[int, int]
 
-# : Every value a Qoibl.
-# : expression evaluation.
-# : tokenized program is fixed.
+#: Every value a Qoibl statement can change: the variable mapping that
+#: expression evaluation returns and the top-level statement cursor.  The
+#: tokenized program is fixed for a run, while ports stay in the shell.
 type _State = tuple[_Vars, int]
 
-# : What ``et`` and ``tt``.
-# : statement is the unit of.
-# : number of times inside one.
-# : part-way through, so.
-# : evaluation the way a.
+#: What ``et`` and ``tt`` reach.  The ports stay callbacks because a
+#: statement is the unit of execution: an ``rr`` body can read and print any
+#: number of times inside one step, at points that depend on values computed
+#: part-way through, so neither can be hoisted into the shell ahead of the
+#: evaluation the way a one-command step hoists them.
 type _Read = Callable[[], int]
 type _Emit = Callable[[str], None]
 
@@ -291,10 +291,10 @@ def _eval(expr: list[str], var: _Vars, read: _Read, emit: _Emit) -> tuple[int, _
         return var.get(key, 0), var
     if op == "et":
         return read(), var
-    # ``tokenize`` only accepts a.
-    # so the tokens that reach here.
-    # ``[ey]+`` literal, or.
-    # ``in expr`` arms before the.
+    # ``tokenize`` only accepts a split under which every statement parses,
+    # so the tokens that reach here are the keywords above, a binary
+    # ``[ey]+`` literal, or ``yr``/``ry`` -- and those two are taken by the
+    # ``in expr`` arms before the keyword tests run.  The fallback stays for
     # a hand-built expression list.
     if re.fullmatch("[ey]+", op):  # pragma: no branch - see above
         return int(op.replace("e", "0").replace("y", "1"), 2), var
@@ -374,9 +374,9 @@ class _Machine:
         """Whether the expression pointer has run off the program."""
         return self.ind >= len(self.code)
 
-    # The VM's language-shaped.
-    # number, so ``memory`` is that.
-    # zero, which is what the.
+    # The VM's language-shaped view: a 256-entry variable list addressed by
+    # number, so ``memory`` is that list densified -- absent keys read as
+    # zero, which is what the language says an unset variable holds.
 
     @property
     def ip(self) -> int:

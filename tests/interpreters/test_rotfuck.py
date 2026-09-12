@@ -48,8 +48,8 @@ def run_program(code: str, stdin: str = "") -> str:
 
 class TestRotation:
     def test_program_rotates_after_every_command(self) -> None:
-        # two raw ','s: the first reads.
-        # second ',' is now '.', which.
+        # two raw ','s: the first reads 'A', then the program rotates so the
+        # second ',' is now '.', which prints the cell.
         assert run_program(",,", "A") == "A"
 
     def test_single_command(self) -> None:
@@ -93,7 +93,7 @@ class TestTape:
         assert run_program(build("--.")) == "\xfe"
 
     def test_comments_ignored(self) -> None:
-        # trailing comments are skipped.
+        # trailing comments are skipped by the pointer and never rotate
         assert run_program(build("+.") + "abc") == "\x01"
         assert run_program("xyz") == ""
 
@@ -227,13 +227,13 @@ class TestStepMachine:
 
         machine = _Machine(build("+."), ScriptedIO())
         assert (machine.ind, machine.ptr, list(machine.tape)) == (0, 0, [0])
-        machine.step()  # + increments the cell and.
+        machine.step()  # + increments the cell and rotates the program
         assert list(machine.tape) == [1]
         assert machine.prog.rotation() == 1
-        machine.step()  # .
+        machine.step()  # . prints the cell and rotates again
         assert machine.io.getvalue() == "\x01"
         assert machine.halted
-        machine.step()  # stepping a halted machine is.
+        machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 2
 
 
