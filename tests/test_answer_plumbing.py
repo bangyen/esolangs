@@ -18,6 +18,7 @@ instead of being read and believed.
 from __future__ import annotations
 
 import contextlib
+import difflib
 import pathlib
 import re
 
@@ -26,6 +27,7 @@ import pytest
 import esolangs
 from esolangs import cli
 from esolangs.cli import HELP
+from esolangs.registry import _BY_ID, SUGGESTION_CUTOFF, canonical_id
 
 README = (pathlib.Path(__file__).parents[1] / "README.md").read_text()
 
@@ -1519,8 +1521,59 @@ class TestASuggestionIsWorthLessThanSilence:
     language they never meant.  0.65 is the lowest cutoff that suggests
     nothing for any of the junk below, and it rescues exactly as many real
     typos as 0.6 did -- 291 of 298 single-edit slips across the 69 names.
-    0.7 starts costing rescues.  ``notes/cutoff.py`` is the measurement.
+    0.7 starts costing rescues.
+
+    The numbers are recomputed below rather than quoted, so the constant
+    cannot drift away from the reason it has its value.
     """
+
+    #: Single-edit slips of a real name, as a person makes them.
+    @staticmethod
+    def _typos(name: str) -> list[str]:
+        """Dropped and transposed characters, keeping only real misses."""
+        out = [name[:-1], name[0] + name[2:], name[1:]]
+        if len(name) > 4:
+            out.append(name[:2] + name[3:])
+            out.append(name[:2] + name[3] + name[2] + name[4:])
+        return [
+            typo
+            for typo in dict.fromkeys(out)
+            if typo and canonical_id(typo) not in _BY_ID
+        ]
+
+    _JUNK = ("nope", "zzzz", "xyz", "qqqqqq", "hello", "python", "asdf", "foo")
+
+    def _score(self, cutoff: float) -> tuple[int, int, int]:
+        """Return (typos rescued, typos tried, junk words given a guess)."""
+        rescued = tried = 0
+        for name in esolangs.list_languages():
+            for typo in self._typos(name):
+                tried += 1
+                close = difflib.get_close_matches(
+                    canonical_id(typo), _BY_ID, n=2, cutoff=cutoff
+                )
+                rescued += name in [_BY_ID[c] for c in close]
+        junk = sum(
+            bool(difflib.get_close_matches(canonical_id(w), _BY_ID, n=2, cutoff=cutoff))
+            for w in self._JUNK
+        )
+        return rescued, tried, junk
+
+    def test_the_cutoff_is_the_best_available_number(self) -> None:
+        """The trade, recomputed: 0.6 costs junk and 0.7 costs rescues.
+
+        Without this the constant is a number somebody once measured, and
+        the next person to nudge it has nothing to nudge it against.
+        """
+        shipped = self._score(SUGGESTION_CUTOFF)
+        assert shipped[2] == 0, "the shipped cutoff offers a guess for junk"
+        # Lower: the same rescues, but junk comes back.  This is the
+        # positive control -- without it the cutoff could be doing nothing.
+        lower = self._score(0.6)
+        assert lower[0] == shipped[0]
+        assert lower[2] > 0
+        # Higher: no junk either, but it starts costing real rescues.
+        assert self._score(0.7)[0] < shipped[0]
 
     @pytest.mark.parametrize(
         "word", ["nope", "zzzz", "xyz", "qqqqqq", "hello", "python", "asdf", "foo"]

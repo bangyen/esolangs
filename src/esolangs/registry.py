@@ -53,7 +53,9 @@ _DIGIT_WORDS = {
 #: names, 0.6 and 0.65 both rescue 291, while 0.65 is the lowest value that
 #: suggests nothing for any of ``nope``, ``zzzz``, ``xyz``, ``qqqqqq``,
 #: ``hello``, ``python``, ``asdf``, ``test`` and ``foo``.  0.7 starts
-#: costing real rescues.  ``notes/cutoff.py`` is the measurement.
+#: costing real rescues.  ``TestASuggestionIsWorthLessThanSilence`` is the
+#: measurement, re-run rather than quoted -- it recomputes both halves of
+#: that trade and fails if this number stops being the best one.
 #:
 #: Shared with the CLI's option-name suggester, which had drifted to its
 #: own copy of the number under a docstring promising they were the same.
