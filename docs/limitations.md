@@ -342,6 +342,61 @@ at n=11, above the ceiling.
   1.09x at n=4. The screen's slack is arity-dependent and measured, not
   derived — 6 at n<=3 but 9 at n=4 — so the counts are lower bounds.
 
+## Expensive but uncapped
+
+The caps above are the generators that *refuse*. The trap is the ones that
+do not: a reader asking "can I afford n=11 on Circuit Diagram?" gets no
+answer from a cap table, because Circuit Diagram has no cap. It builds, and
+the artifact is 1.5GB.
+
+Generation is not the cost and gives no warning. Dense n=10 Circuit Diagram
+is **306,424,058 characters produced in 0.33 seconds at 674MB RSS** -- fast
+enough to feel free, large enough to be the whole of a small machine, with
+nothing between the call and the string.
+
+Program size against arity, on the dense pseudo-random table the caps are
+stated against, and the growth per input that sets the rest:
+
+| Generator | n=8 | n=9 | growth per input |
+| --- | --- | --- | --- |
+| Circuit Diagram | 11,870,366 | 60,381,584 | ~5.1x |
+| COD | 3,458,156 | 15,840,376 | ~4.7x |
+| ROTfuck | 1,158,946 | 4,811,236 | ~4.1x |
+| Polynomial | 3,383,048 | 10,896,883 | ~3.0x |
+| SLOW ACV MAMMALIAN | 1,672,368 | 3,380,418 | ~2.0x |
+| bit~ | 507,740 | 2,220,956 | ~4.3x |
+| 123 | 219,937 | 752,570 | ~3.1x |
+| Factor | 74,472 | 155,273 | ~2.0x |
+
+Every other generator is under 600KB at n=9; the largest of them is A
+Painter Ant at 517,452. The two-megabyte pair above is why the cut is
+measured rather than guessed -- the first draft of this section said "under
+a megabyte" and both of them were over it.
+
+Two consequences worth having before you start:
+
+- **Extrapolate with the ratio, not with hope.** 306MB at n=10 and ~5.1x
+  puts Circuit Diagram's dense n=11 near 1.5GB, which an independent
+  measurement of a different n=11 table put at 1,526,274,340 characters.
+- **Run time is the real wall, and it does not track generation.** Circuit
+  Diagram n=8 generates in under a tenth of a second and takes roughly 22
+  seconds *per row*, so a full 256-row table is about an hour and a half.
+  Nothing warns about that either, and `evaluate` runs every row.
+
+`test_the_expensive_generators_grow_as_documented` re-derives the sizes and
+the ratios rather than trusting this table -- sizes only, since a program's
+length is deterministic for a fixed generator and table while a timing on a
+shared machine is not. The timings here are approximate and were taken idle.
+
+There is deliberately no `estimate()` API. The suggestion that prompted this
+section assumed "the cap logic already exists -- it's what raises
+`GeneratorCapError`", and that is false for exactly the generators the
+problem is about: Circuit Diagram, COD and ROTfuck have no cap arithmetic to
+run, so an estimator for them would be a per-language size model fitted to
+measurements -- a frozen table, kept by hand, drifting behind the
+generators it claims to describe. The growth laws above answer the same
+question and a test keeps them true.
+
 ## Assessed and rejected
 
 - **Lowering to Streetcode** — retired, and recoverable. A compiler from
