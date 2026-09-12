@@ -161,7 +161,6 @@ class TestStepMachine:
         wraps all the way round and returns to it, so the one it started
         on is the one with no partner.
         """
-
         with raises_message(ValueError, "unmatched '[' at position 1"):
             run_and_capture("\\0[.@")
 
@@ -173,7 +172,6 @@ class TestStepMachine:
 
     def test_the_empty_program_message_reads_exactly(self) -> None:
         """``match=`` only looks for a substring, so pin the whole message."""
-
         with raises_message(ValueError, "Circlefuck program cannot be empty"):
             run_and_capture("")
 

@@ -7,10 +7,30 @@ line being wrong.  A generator is a good target for it, because the thing
 it emits is a program -- a test that only checks the program *runs* cannot
 see a change that leaves it running and computing something else.
 
-Two kinds of target share this harness, differing only in where their
+Three kinds of target share this harness, differing only in where their
 source and tests live (see ``_KINDS``): the ``boolean`` generator family
-under ``esolangs.tools``, and the modules directly under
-``esolangs.tools``.
+under ``esolangs.tools``, the modules directly under ``esolangs.tools``,
+and ``core`` -- the package root, where ``vm``, ``debug``, ``tui`` and
+``cli`` sit.
+
+One blind spot belongs to the harness rather than to any suite, and the
+``core`` kind is where it shows: **a function called only while its module
+is imported cannot be mutated**.  mutmut switches variants through a
+trampoline that reads its config at call time, and an import has already
+happened by then, so the original ran.  ``vm.py``'s ``_derived_adapter`` is
+the case -- ``_VM_ADAPTERS`` is a module-level comprehension over all 69
+languages -- and all 43 of its mutants survive, including ones that would
+raise on any call.  They are not a gap in the tests, which construct VMs
+for every language; they are unreachable by the tool.  Read a ``core``
+score with that subtracted, and do not restructure a module to suit it.
+
+That third kind is here rather than in ``mutate_one`` because
+``mutate_one`` cannot reach it.  It mutates a *bundle*, an interpreter
+inlined with its shared modules into one dependency-closed file, and its
+own docstring says tests reaching past the interpreter into the VM or the
+registry cannot run against one.  The core modules are the top of that
+stack rather than a leaf, so bundling one would mean inlining the package
+-- and not bundling is precisely what this harness already does.
 
 Where this differs from ``mutate_one`` is that it does not bundle.
 ``mutate_one`` inlines the interpreter into one dependency-closed file
@@ -58,6 +78,7 @@ Requires: mutmut==3.7.0, the same pin ``mutate_one`` documents.
 """
 
 import argparse
+import ast
 import json
 import os
 import re
@@ -92,6 +113,18 @@ _TOOLS_SUPPORT = (
     Path("tests/interpreters/runner.py"),
 )
 
+# The root suites' own reach outside ``tests/``.  ``tests/*.py`` is copied
+# wholesale by the layout, so ``samples``, ``raises`` and ``conftest`` come
+# along on their own; what does not is the subpackage they reach into --
+# ``samples`` imports a truth machine out of an interpreter's *test* file,
+# which is why one of those is here rather than only its helpers.
+_CORE_SUPPORT = (
+    Path("tests/interpreters/__init__.py"),
+    Path("tests/interpreters/runner.py"),
+    Path("tests/interpreters/test_inject.py"),
+    Path("tests/interpreters/contract.py"),
+)
+
 
 class _Kind:
     """Where one mutable family's source, tests and support files live.
@@ -117,6 +150,7 @@ class _Kind:
         support: tuple[Path, ...],
         *,
         needs_scripts: bool = False,
+        skip_tests: frozenset[str] = frozenset(),
     ) -> None:
         self.name = name
         self.pkg_rel = pkg_rel  # under src/esolangs, e.g. "tools/boolean"
@@ -124,11 +158,17 @@ class _Kind:
         self.support = support
         # Whether the suite reaches scripts/.
         self.needs_scripts = needs_scripts
+        # Suites that cannot run against a *copy* of the package, because
+        # they anchor to the repository's own layout rather than to what is
+        # importable.  Kept as small and as named as possible: a glob with
+        # no exceptions is the goal, and every name here owes a reason.
+        self.skip_tests = skip_tests
 
     @property
     def pkg_dir(self) -> Path:
         """Return where this kind's modules sit on disk."""
-        return ROOT / "src" / "esolangs" / self.pkg_rel
+        base = ROOT / "src" / "esolangs"
+        return base / self.pkg_rel if self.pkg_rel else base
 
     @property
     def tests_dir(self) -> Path:
@@ -137,11 +177,16 @@ class _Kind:
 
     def dotted(self, module: str) -> str:
         """Return the dotted module name a target resolves to."""
-        return f"esolangs.{self.pkg_rel.replace('/', '.')}.{module}"
+        # An empty ``pkg_rel`` is the package root itself, where ``vm`` and
+        # the rest of the top-of-stack modules live; joining it blindly
+        # would ask for ``esolangs..vm``.
+        parts = ["esolangs", *self.pkg_rel.split("/"), module]
+        return ".".join(part for part in parts if part)
 
     def rel_target(self, module: str) -> str:
         """Return the path mutmut mutates, relative to the work directory."""
-        return f"esolangs/{self.pkg_rel}/{module}.py"
+        parts = ["esolangs", *self.pkg_rel.split("/"), f"{module}.py"]
+        return "/".join(part for part in parts if part)
 
 
 # Keyed by the name the CLI takes.
@@ -151,6 +196,61 @@ _KINDS = {
     # package -- ``wrap`` and the layout helpers.  The glob picks up only
     # files, so the ``boolean`` subpackage is not swept in twice.
     "tools": _Kind("tools", "tools", "tests/tools", _TOOLS_SUPPORT),
+    # The package root: ``vm``, ``debug``, ``tui``, ``cli``, ``registry``.
+    #
+    # These are the modules ``mutate_one`` cannot reach.  It mutates a
+    # *bundle* -- an interpreter inlined with its shared modules into one
+    # dependency-closed file -- and says so: tests that reach past the
+    # interpreter into the VM or the registry cannot run against one.  These
+    # sit at the top of that stack rather than at a leaf, so bundling one
+    # would mean inlining the package.  Not bundling is exactly what this
+    # harness already does.
+    #
+    # They satisfy the same two preconditions as the other kinds: each
+    # imports cleanly on its own, and the import-time trampoline the
+    # docstring warns about fires only for a module named in
+    # ``paths_to_mutate``, which is one target at a time.
+    "core": _Kind(
+        "core",
+        "",
+        "tests",
+        _CORE_SUPPORT,
+        # One suite reads the *repository* rather than the package:
+        # ``test_interpreter_conventions`` walks ``src/esolangs/interpreters``
+        # as a directory to ask a question about source shape, which the
+        # copied tree does not have and which covers no ``core`` module.
+        #
+        # The README-reading suites are *not* here.  They are given the file
+        # instead -- see the symlink in ``_prepare`` -- because several of
+        # them check that the README documents the CLI, and ``cli`` is a
+        # target of this kind.  Skipping them would have quietly stopped
+        # measuring the thing they cover.
+        # These are the root suite's *repository* meta-tests, and they are
+        # a class rather than a list of accidents: each asserts something
+        # about the checkout -- the shape of the interpreter tree, how the
+        # package is declared, that every test a docstring cites exists --
+        # and a copied work directory is none of those things.  They cover
+        # no ``core`` module, and linking a file or two cannot make a
+        # temporary directory into a repository.
+        #
+        # The suites that merely *read* a repository file are not here;
+        # those are given the file, above.  The difference is whether the
+        # subject is the file or the checkout.
+        # ``test_answer_plumbing`` is here for a different reason and it is
+        # worth keeping separate: it times a termination proof against a
+        # millisecond bound, and this harness runs its suite under tracing
+        # for the stats pass and alongside three other mutants after it.
+        # A wall-clock margin measured on an idle machine does not survive
+        # that, and a timing flake would be scored as a kill.
+        skip_tests=frozenset(
+            {
+                "test_interpreter_conventions.py",
+                "test_cli_conventions.py",
+                "test_documented_commands.py",
+                "test_answer_plumbing.py",
+            }
+        ),
+    ),
 }
 
 _FAMILIES = tuple(_KINDS)
@@ -271,7 +371,11 @@ def _test_files(kind: _Kind) -> list[str]:
     9 mutants at 24 mutations/second.  A suite that never touches the
     target costs one stats-pass run, not one run per mutant.
     """
-    return sorted(path.name for path in kind.tests_dir.glob("test_*.py"))
+    return sorted(
+        path.name
+        for path in kind.tests_dir.glob("test_*.py")
+        if path.name not in kind.skip_tests
+    )
 
 
 # A decorator line on a class, and the class statement it applies to.
@@ -312,6 +416,32 @@ def _undecorate_classes(target: Path) -> list[str]:
     new = _DECORATED_CLASS.sub(rewrite, text)
     if not moved:
         return []
+
+    # The rewrite only works for a class the module does not *use* while it
+    # is still importing.  The calls below go at the end, so a module body
+    # that constructs one has already run against the undecorated class --
+    # ``registry.py`` builds ``LANGUAGES`` out of ``Language(...)`` and
+    # fails with "Language() takes no arguments", which says nothing about
+    # what went wrong.  Refuse with the reason instead.
+    #
+    # Moving the calls up to each class body would trade this for a worse
+    # problem: a decorator naming another class in the same module would
+    # then run before that class exists.
+    built = {entry.split(" to ")[1] for entry in moved}
+    for node in ast.parse(text).body:
+        for inner in ast.walk(node):
+            if (
+                isinstance(inner, ast.Call)
+                and isinstance(inner.func, ast.Name)
+                and inner.func.id in built
+                and not isinstance(node, (ast.FunctionDef, ast.ClassDef))
+            ):
+                raise SystemExit(
+                    f"{target.name} constructs {inner.func.id}() in its module "
+                    "body, so its decorator cannot be moved below the class -- "
+                    "the construction would run against the undecorated one.  "
+                    "This module's classes cannot be mutated by this harness."
+                )
 
     # The calls go at the end of the module, after every class body has been
     # defined, innermost decorator first -- the order the syntax applies them.
@@ -469,6 +599,13 @@ def _prepare(
     # import (``boolean_runners``, the APA trace and proof checkers), and a
     # missing one fails collection rather than a mutant.
     for path in kind.tests_dir.glob("*.py"):
+        # A skipped suite is left out of the tree entirely rather than
+        # merely unselected.  mutmut's stats pass is configured with the
+        # *directory*, so a file that cannot run here would be collected by
+        # it however carefully the runner command names the others -- and a
+        # failed stats pass scores every mutant zero.
+        if path.name in kind.skip_tests:
+            continue
         shutil.copy(path, tools / path.name)
     (tools / "conftest.py").write_text(_CONFTEST)
 
@@ -486,6 +623,19 @@ def _prepare(
         # copied: nothing under scripts/ is mutated.
         if kind.needs_scripts and not (base / "scripts").exists():
             (base / "scripts").symlink_to(ROOT / "scripts")
+        # Several root suites check that the README documents what the CLI
+        # does, resolving it from the test file's parents the same way.
+        # Linking it is better than skipping those suites: they run, and
+        # they cover ``cli``, which is a target of this kind.
+        #
+        # ``pyproject.toml`` is deliberately *not* linked, and the reason is
+        # worth keeping: this harness writes its mutmut configuration to
+        # ``proj/pyproject.toml``, so a symlink there is a write straight
+        # through into the repository's own file.  Linking it once replaced
+        # the real ``pyproject.toml`` with a mutmut config.  The suite that
+        # wanted it is skipped below instead.
+        if not (base / "README.md").exists():
+            (base / "README.md").symlink_to(ROOT / "README.md")
     (proj / "tests" / "fixtures").symlink_to(ROOT / "tests" / "fixtures")
 
     rel_target = kind.rel_target(module)

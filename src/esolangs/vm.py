@@ -575,10 +575,20 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
             waves[ip] = (current, ptr, 1, 0)
         else:
             before, low, power, length = checkpoint
-            # The backstop for a drifting baseline, and live: ablating the
-            # origins arm above leaves `+[>+]` proved by this one instead.
-            # With that arm in place it always proves the hang first, so
-            # nothing reaches this return.
+            # The backstop for a drifting baseline.  Nothing reaches this
+            # return, and the reason is stronger than the old comment here
+            # claimed: measured by ablation, each of the three arms proves
+            # every growth program in the suite *on its own*, and with all
+            # three disabled every one goes undecided.  They are not a
+            # pipeline but three independent certificates.
+            #
+            # That is also why a mutation sweep leaves this whole block
+            # alive: mutating one arm's bookkeeping cannot change a verdict
+            # the other two reach anyway.  Those survivors are the
+            # redundancy, not a missing test, and the redundancy is kept --
+            # the corpus is a handful of brainfuck programs, and an arm
+            # idle on all of them may still be the only one that decides a
+            # shape nobody has written down yet.
             if _grows_forever(before, current, low):  # pragma: no cover - see above
                 return False
             length += 1
@@ -945,6 +955,47 @@ class VM(Protocol):
         """The stack, or ``[]`` where the language has none."""
 
     @property
+    def ip_shape(self) -> str:
+        """How to read :attr:`ip` as a place in the source, if at all.
+
+        ``"offset"``, the default, means a plain int counting characters
+        into the program text, which is what most of the registry reports
+        and why they declare nothing.  ``"grid"`` means the first two parts
+        are a row and a column, with any rest a heading.  ``"line"`` means
+        the first part is a line number.  ``"opaque"`` means the position
+        is real but is not a place in the source.
+
+        Every machine reporting a *tuple* declares one of the last three,
+        and ``test_a_positional_ip_says_what_it_counts`` enforces it.  The
+        shapes that are neither a cell nor a line -- a frame stack whose
+        parts are one position each (Forth, Grapheme, Forbin), a depth
+        paired with a cursor (MyScript, Eval), a 3-D point and heading (3D
+        Brainfuck) -- all look exactly like a ``(row, col)`` and cannot be
+        told from one by their values.  Reading them as a cell names a real
+        character that is not the one running, so saying ``"opaque"`` is a
+        deliberate answer rather than an omission, and an undeclared tuple
+        stays a question nobody has answered.
+        """
+
+    @property
+    def views(self) -> tuple[tuple[str, str], ...]:
+        """The machine's own named state, as ``(name, text)`` pairs.
+
+        Every interpreter here re-exposes its private ``_State`` slots as
+        named properties -- ``acc``, ``ptr``, ``ind``, and the rest -- and
+        those names are the language's own vocabulary for what it is doing.
+        They are found rather than listed: the views *are* the property
+        descriptors on the machine's class, so reading them off it cannot
+        fall out of step with the interpreters the way a table here would.
+
+        Excluded are the five views every language already offers and the
+        machinery around them; what is left is what this language chose to
+        name.  Two names reading one slot -- ``ind`` and ``ip`` usually do --
+        are both shown, because which pair share a slot on purpose is the
+        language's business and hiding one would be a guess.
+        """
+
+    @property
     def self_halts(self) -> bool:
         """Whether the program can reach a halt of its own.
 
@@ -1022,6 +1073,68 @@ class VM(Protocol):
         """
 
 
+#: The names a caller already has by other means, so they are not repeated
+#: as "the machine's own".  Five are the views every language offers and the
+#: rest are machinery -- the snapshot hooks the cycle provers use, and the
+#: traits below.  Everything else a machine exposes as a property is state
+#: it chose to name, which is exactly what a reader wants to see.
+_NOT_A_VIEW = frozenset(
+    {
+        "ip",
+        "memory",
+        "stack",
+        "output",
+        "halted",
+        "snapshot",
+        "branching_snapshot",
+        "branching_halted",
+        "branching_successors",
+        "frame_entry_key",
+        "self_halts",
+        "steppable_to_answer",
+        "dumps_on_the_post_halt_step",
+        "eof_is_a_value",
+        "ip_shape",
+        "reproducible_seed",
+    }
+)
+
+#: How many items of a sequence view to show before counting the rest.  A
+#: tape can be thousands of cells, and rendering one to text per step would
+#: cost more than running the program.
+_VIEW_ITEMS = 8
+
+
+def _read_view(machine: object, name: str) -> str | None:
+    """Return ``machine.name`` as short text, or ``None`` if it cannot be read.
+
+    A property that raises is not a view of anything -- several describe
+    state that only exists once a run has begun -- and one broken name must
+    not take the whole set down with it.  The failure is answered with
+    ``None`` rather than a bare ``continue`` at the call site so that
+    skipping is a value the caller tests, not control flow hidden in a
+    handler.
+    """
+    try:
+        value = getattr(machine, name)
+    except Exception:
+        return None
+    return _abbreviate(value)
+
+
+def _abbreviate(value: object) -> str:
+    """Render ``value`` short enough to sit on one row.
+
+    A long sequence is cut *before* it is turned into text rather than
+    after: a four-thousand-cell tape formatted in full and then truncated
+    would be the most expensive thing the stepper does.
+    """
+    if isinstance(value, (list, tuple)) and len(value) > _VIEW_ITEMS:
+        return f"{type(value)(value[:_VIEW_ITEMS])!r} +{len(value) - _VIEW_ITEMS} more"
+    text = repr(value)
+    return text if len(text) <= 60 else text[:57] + "..."
+
+
 class _DelegatingVM:
     """A VM for an interpreter that describes its own shape.
 
@@ -1043,10 +1156,16 @@ class _DelegatingVM:
 
     _machine: _StepMachineWithShape
 
-    def __init__(self, program: str | list[str], stdin: str = "") -> None:
-        """Create a VM for ``program`` reading input from ``stdin``."""
+    def __init__(self, stdin: str = "") -> None:
+        """Create the input stream every subclass's machine reads from.
+
+        The program is deliberately not taken here.  Each subclass builds
+        its own machine and hands the source straight to it, in the shape
+        that language wants -- text or lines -- so a copy kept at this level
+        was written and never read by anything.  A mutation sweep is what
+        found it: replacing the argument with ``None`` changed no test.
+        """
         self._io = ScriptedIO(stdin)
-        self._program = program
 
     @property
     def output(self) -> str:
@@ -1117,6 +1236,24 @@ class _DelegatingVM:
         return bool(getattr(self._machine, "self_halts", True))
 
     @property
+    def ip_shape(self) -> str:
+        return str(getattr(self._machine, "ip_shape", "offset"))
+
+    @property
+    def views(self) -> tuple[tuple[str, str], ...]:
+        machine = self._machine
+        found = []
+        for name, attribute in sorted(vars(type(machine)).items()):
+            if name.startswith("_") or name in _NOT_A_VIEW:
+                continue
+            if not isinstance(attribute, property):
+                continue
+            text = _read_view(machine, name)
+            if text is not None:
+                found.append((name, text))
+        return tuple(found)
+
+    @property
     def dumps_on_the_post_halt_step(self) -> bool:
         return bool(getattr(self._machine, "dumps_on_the_post_halt_step", False))
 
@@ -1129,7 +1266,7 @@ class _DelegatingVM:
         return bool(getattr(self._machine, "eof_is_a_value", False))
 
 
-def _derived_adapter(language: str) -> type[_DelegatingVM]:
+def _derived_adapter(language: str) -> Callable[[str, str], _DelegatingVM]:
     """Build the adapter for a language whose wrapper is pure boilerplate.
 
     Once an interpreter describes its own shape, most adapters differ only
@@ -1161,7 +1298,7 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
         language = display_name
 
         def __init__(self, program: str, stdin: str = "") -> None:
-            super().__init__(program, stdin)
+            super().__init__(stdin)
             import importlib
             import inspect
 
@@ -1203,7 +1340,12 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
 # retired it.  Building an adapter imports nothing -- the
 # interpreter is imported inside the adapter's ``__init__`` -- so this
 # stays as lazy as the hand-written table was.
-_VM_ADAPTERS: dict[str, type[_DelegatingVM]] = {
+# Typed as what it is used as -- a factory taking the program and the input
+# -- rather than as the base class.  A derived adapter takes both, while
+# ``_DelegatingVM`` itself takes only the input: the program never belonged
+# at that level, since each subclass hands the source straight to its own
+# machine in the shape that language wants.
+_VM_ADAPTERS: dict[str, Callable[[str, str], _DelegatingVM]] = {
     name: _derived_adapter(name) for name in RUNNERS
 }
 

@@ -40,6 +40,49 @@ structural arguments are in [walls](walls.md).
   stays the spec of record and the implementation's behaviour is the
   definition.
 
+## Where a run can be shown on its source
+
+`esolangs debug --tui` marks the command about to run. Which languages it
+can mark is a boundary, not a bug list, and it follows from what `ip`
+*is* rather than from effort spent on the screen.
+
+A machine declares `ip_shape`, read by `getattr` like `self_halts`. The
+census over the committed examples, at the current page:
+
+- **`offset` (48).** A plain int counting characters. The default, which is
+  why these declare nothing.
+- **`grid` (11).** The first two parts are a row and a column, any rest a
+  heading. COD flattens one four-tuple per live cod, so the width varies
+  and only the first cursor is drawn.
+- **`line` (2).** Algebraic Programming Language and Interprogck8 start
+  their position with a line number. The **whole line** is marked, because a
+  line is all they distinguish — no column is available to be right about.
+- **`opaque` (8).** 3D Brainfuck, Circuit Diagram, Eval, Forbin, Forþ,
+  Grapheme, MyScript, function x(y). These have a position that is not a
+  place in the source: a frame stack of one cursor per frame, a call depth
+  paired with a cursor, a 3-D point and heading, or — Circuit Diagram —
+  nothing at all, since a generation advances the whole drawing. **Nothing
+  is marked**, and the header's raw `ip` is what makes the absence legible.
+
+Six of those eight were marked in the *wrong* place until the trait existed:
+a frame stack and a cell are both tuples of small ints landing inside the
+rectangle, so a fit-probe cannot separate them and the classification came
+from reading all twenty `ip` implementations. **Being in range is not being
+right.** An undeclared tuple is therefore refused rather than guessed at,
+and `"opaque"` is a declaration so that "nobody has classified this" stays
+distinct from "somebody did, and the answer is nowhere".
+
+`test_a_positional_ip_says_what_it_counts` is the living enforcement: a new
+machine reporting a tuple must declare a shape, and the shape must be one
+the reader knows. Without it the breach is silent — forget `self_halts` and
+a driving loop hangs, but forget this and a language just stops being
+drawable.
+
+A **breakpoint** is drawn only where it names a position. `--break-at` and
+the screen's own `t` do; `--break-on-cell` and `--break-on-output` are facts
+about state with nowhere to put a mark, so they stop a run without appearing
+on the program. An `opaque` language can hold no drawn breakpoint at all.
+
 ## Generator boundaries
 
 Boolean construction is parameterized for seventeen languages, listed and

@@ -669,6 +669,10 @@ class _Machine:
         """Whether every line has been executed and no frame is live."""
         return self.line >= len(self.lines) and not self.frames
 
+    #: ``ip`` starts with a line number rather than a cell or an offset,
+    #: with each open frame's index after it.
+    ip_shape = "line"
+
     @property
     def ip(self) -> tuple[int, ...]:
         """The line cursor followed by each live frame's statement index."""

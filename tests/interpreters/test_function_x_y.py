@@ -280,7 +280,8 @@ class TestErrors:
         self, code: str, reason: str
     ) -> None:
         """The reason is pinned: "any ValueError" would also pass a parser
-        that had started refusing every program."""
+        that had started refusing every program.
+        """
         with pytest.raises(ValueError, match=reason):
             run(code, ScriptedIO(""))
 

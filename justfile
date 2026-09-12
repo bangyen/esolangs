@@ -105,6 +105,11 @@ mutate language *args:
 # module name, so in practice every bare name resolves.  Every suite in
 # tests/tools runs; slow tests are deselected unless --slow is passed, since
 # a mutation run pays the suite's cost once per mutant.
+#
+# The `core` family is the package root -- `just mutate-gen core/tui`,
+# `core/vm`, `core/debug`, `core/cli`.  Those are the modules mutate_one
+# cannot reach: it mutates a dependency-closed bundle, and they sit at the
+# top of the stack rather than at a leaf.
 mutate-gen module *args:
     {{PYTHON}} scripts/mutate_generator.py {{module}} {{args}}
 

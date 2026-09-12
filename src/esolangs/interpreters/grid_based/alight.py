@@ -631,6 +631,12 @@ class _Machine:
             self.io.position(),
         )
 
+    #: ``ip`` is a cell of the program's own rectangle: the first two
+    #: parts are a row and a column, and the rest is a heading.  Without
+    #: this a caller cannot tell the pair from a call depth or a frame
+    #: stack, which look identical and mean somewhere else entirely.
+    ip_shape = "grid"
+
     @property
     def ip(self) -> tuple[int, ...]:
         """The current instruction position: the cell and the heading.

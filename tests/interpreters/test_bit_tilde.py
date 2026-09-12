@@ -51,7 +51,8 @@ class TestBitTilde:
 
     def test_right_grows_the_pool(self) -> None:
         """After seven ``>`` the pool holds 14 cells; a toggle at the 8th
-        cell and a print at the same spot use only the available window."""
+        cell and a print at the same spot use only the available window.
+        """
         assert run_and_capture(">>>>>>>~(") == "@"
 
     def test_unknown_characters_are_ignored(self) -> None:
@@ -66,7 +67,8 @@ class TestBitTilde:
 
     def test_input_writes_at_the_pointer(self) -> None:
         """``)`` writes the 8 bits starting at the pointer, so reading at
-        cell 1 and printing there echoes the character."""
+        cell 1 and printing there echoes the character.
+        """
         assert run_scripted(">)(<", "A") == "A"
 
     def test_two_inputs_and_outputs(self) -> None:
@@ -117,14 +119,16 @@ class TestBitTilde:
 
     def test_loop_runs_while_the_bit_is_nonzero(self) -> None:
         """A body that builds and prints 'A' leaves bit 0 at zero so ``}``
-        falls through; the loop runs exactly once."""
+        falls through; the loop runs exactly once.
+        """
         assert run_and_capture("~{~>~>>>>>>~<<<<<<<(}") == "A"
 
     def test_loop_repeats_until_the_bit_clears(self) -> None:
         """A counter in cell 1 lets the outer loop's body run twice: the
         first pass skips the sentinel flip (bit 1 was 0) and loops, the
         second clears bit 0 and falls through.  Both passes print, and the
-        second print sees the counter bit set, so it is 192."""
+        second print sees the counter bit set, so it is 192.
+        """
         assert run_and_capture("~><{(>{<~>~}~<}") == "\x80\xc0"
 
     def test_nested_loops_match_by_depth(self) -> None:
@@ -134,7 +138,8 @@ class TestBitTilde:
 
     def test_output_bytes_round_trip_under_latin1(self) -> None:
         """The interpreter emits ``chr(byte)``, so each byte round-trips
-        under latin1 (the cross-checks write raw bytes 0x00-0xFF)."""
+        under latin1 (the cross-checks write raw bytes 0x00-0xFF).
+        """
         assert run_scripted(")(", "\x80").encode("latin1") == b"\x80"
         assert run_scripted(")(", "\xe9").encode("latin1") == b"\xe9"
 

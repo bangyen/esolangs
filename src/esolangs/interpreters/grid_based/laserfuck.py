@@ -233,6 +233,12 @@ class _Machine:
     # dies is *not* here -- that is what ``run()`` does after the final
     # step, so the VM's adapter drives it rather than ``step()``.
 
+    #: ``ip`` is a cell of the program's own rectangle: the first two
+    #: parts are a row and a column, and the rest is a heading.  Without
+    #: this a caller cannot tell the pair from a call depth or a frame
+    #: stack, which look identical and mean somewhere else entirely.
+    ip_shape = "grid"
+
     @property
     def ip(self) -> tuple[int, ...]:
         """The active laser's ``(row, col, heading)``."""

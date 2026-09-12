@@ -292,7 +292,8 @@ class TestErrors:
     def test_unknown_line_is_a_runtime_error(self) -> None:
         """Refused when *executed*, not at parse time: ``DownAccLines`` and
         ``z`` make lines legally unreachable, so an upfront scan would
-        reject working programs."""
+        reject working programs.
+        """
         with pytest.raises(HaltError):
             go("nonsense")
         assert go("NnNn\n@nd\nDownAccLines\nnonsense\nnNnN\ndiv") == "A"

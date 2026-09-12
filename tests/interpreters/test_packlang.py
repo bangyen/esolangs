@@ -502,7 +502,8 @@ Package : IO {
 
     def test_a_dependency_of_a_dependency_is_reachable(self) -> None:
         """The wiki says dependencies may have dependencies; resolution
-        follows the chain rather than stopping one level down."""
+        follows the chain rather than stopping one level down.
+        """
         code = """
 Dependency {
   Integer deep : Integer a {

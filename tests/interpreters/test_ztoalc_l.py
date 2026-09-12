@@ -249,7 +249,7 @@ class TestArraysOfArrays:
             run_and_capture(["3", "jump y 0", "x = [[2]]", "print 65"])
 
     def test_print_of_array_halts(self) -> None:
-        """print requires a number; printing an array is invalid."""
+        """Print requires a number; printing an array is invalid."""
         import pytest
 
         from esolangs.exceptions import HaltError
@@ -258,7 +258,7 @@ class TestArraysOfArrays:
             run_and_capture(["3", "jump y 0", "x = [2]", "print x"])
 
     def test_jump_condition_must_be_number(self) -> None:
-        """jump requires a number; an array condition is invalid."""
+        """Jump requires a number; an array condition is invalid."""
         import pytest
 
         from esolangs.exceptions import HaltError
