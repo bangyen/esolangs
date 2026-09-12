@@ -65,6 +65,7 @@ class Debugger:
         self._suppressed: set[int] = set()
         self._hits: set[int] = set()
         self._timed_out = False
+        self._warned = False
 
     # -- passthrough to the wrapped VM --------------------------------
 
@@ -291,17 +292,25 @@ class Debugger:
         """Execute one command, recording any watches.
 
         Past the halt this delegates like any other step, because that is
-        where six languages keep their answer.  It used to return early on
-        ``halted``, which looks like a kindness and cost those six their
-        output: ``dumps_on_the_post_halt_step`` means the dump *is* the step
-        after the halt, so refusing to take it left ``output`` empty with
-        the machine finished, and the only way through was to reach past
-        this class and call ``self.vm.step()``.  A debugger-driven verifier
-        scored 62/69 on that alone.
+        where the ``dumps_on_the_post_halt_step`` languages keep their
+        answer.  It used to return early on ``halted``, which looks like a
+        kindness and cost them their output: for those the dump *is* the
+        step after the halt, so refusing to take it left ``output`` empty
+        with the machine finished, and the only way through was to reach
+        past this class and call ``self.vm.step()``.  A debugger-driven
+        verifier scored 62/69 on that alone.
+
+        No count here.  This said "six languages", and six is the size of a
+        *different* set -- the one ``answer_mode == "dump"`` picks out,
+        which includes A Painter Ant and leaves out ArrowQueue and Point
+        Break.  Seven languages dump on the post-halt step.  Two sets that
+        overlap in four places are exactly the pair a number in prose gets
+        wrong, and :attr:`VM.self_halts` argues against writing one down at
+        all.
 
         The guard was not protecting anything either: an interpreter's
         ``step`` past its halt is a no-op by construction, so the delegation
-        is safe for the other sixty-three as well.
+        is safe for every other language too.
         """
         self.vm.step()
         self._record()
@@ -348,6 +357,21 @@ class Debugger:
         self._timed_out = False
         halted = run_until_halt(self, max_steps, stop=lambda: self._stop(deadline))
         if halted:
+            self._warn_about_stdin_once()
+            if self.dumps_on_the_post_halt_step:
+                # :meth:`step` learned to cross the halt and this did not,
+                # so seven languages finished a *run* with an empty
+                # ``output`` and the answer one un-taken step away.  Reading
+                # it back meant knowing to call ``step()`` again after a
+                # method that had already reported ``"halted"``, which is
+                # not a thing a caller can be expected to guess -- the CLI's
+                # ``debug`` did not, and printed ``output: ''`` for a
+                # program that had run correctly.
+                #
+                # Only for the seven.  The extra step is a no-op everywhere
+                # else, but it would still land in every watch history, and
+                # a bound that is not needed should not be spent.
+                self.step()
             return "halted"
         if self._timed_out:
             return "timeout"
@@ -355,6 +379,35 @@ class Debugger:
             self._suppressed = set(self._hits)
             return "breakpoint"
         return "max_steps"
+
+    def _warn_about_stdin_once(self) -> None:
+        """Say what :func:`esolangs.run` says about a stdin that did not fit.
+
+        ``run`` warns when a program read fewer lines than it was given, and
+        -- the one that matters -- when it read *past* the end on one of the
+        languages where the end of input is a value rather than an error.
+        That second case is a wrong answer produced in silence: an underfed
+        program answers a different row.
+
+        The debugger never said any of it, so the tool you reach for
+        *because* you suspect a wrong answer was the one that would not
+        mention the commonest cause of one.  Warned at the halt, which is
+        where ``run`` warns and the earliest point the counts are final.
+
+        Once per debugger.  ``run`` can be called again on a halted machine
+        and returns immediately, and a warning that repeats every time a
+        caller re-checks its stop reason is noise.
+        """
+        if self._warned:
+            return
+        self._warned = True
+        name = getattr(self.vm, "language", None)
+        io_obj = getattr(self.vm, "_io", None)
+        if name is None or io_obj is None:  # pragma: no cover - every adapter has both
+            return
+        from esolangs import _warn_about_surplus
+
+        _warn_about_surplus(str(name), io_obj)
 
     def _stop(self, deadline: float | None) -> bool:
         """Whether to stop before the next step: a breakpoint, or the clock."""
