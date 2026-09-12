@@ -60,7 +60,11 @@ include = ["esolangs*"]
 exclude = ["tests*", "examples*", "docs*"]
 
 [tool.setuptools.package-data]
-esolangs = ["py.typed"]
+# The example programs ship with the package.  They lived at the repository
+# root, which left them out of the wheel, so `describe(...)["examples"]` was
+# populated from a checkout and empty from an install, with nothing to say
+# which you had.
+esolangs = ["py.typed", "examples/*.md", "examples/*/*.txt", "examples/*/*.md"]
 
 [tool.ruff]
 target-version = "py312"

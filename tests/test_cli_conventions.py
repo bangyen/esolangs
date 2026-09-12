@@ -2958,18 +2958,18 @@ class TestCheckStdinSaysWhatItCanActuallyCheck:
         assert "only --table knows how many bits the program wanted" in text
 
 
-class TestExamplesIsACheckoutOnlyField:
-    """``describe(...)["examples"]`` is populated here and ``[]`` installed.
+class TestExamplesShipWithThePackage:
+    """They lived at the repository root, which left them out of the wheel.
 
-    The wheel does not carry ``examples/``, and the path it resolves --
-    ``parents[2]`` -- is the repository root from a checkout and the
-    directory above ``site-packages`` from an install.  Present-and-empty
-    with no signal was the worst of the three options, so the docstring
-    says which you have.
+    ``describe(...)["examples"]`` was populated from a checkout and empty
+    from an install, with nothing to say which you had -- and the README
+    pointed every reader at a ``MANIFEST.md`` no installed copy carried.
+    They live inside the package now, with a symlink at the root so the
+    repository still reads the way it did.
     """
 
-    def test_this_checkout_populates_it(self) -> None:
-        """The guard must not have turned the working case off."""
+    def test_every_language_reports_one(self) -> None:
+        """Sixty-nine languages, sixty-nine committed programs."""
         populated = [
             name
             for name in esolangs.list_languages()
@@ -2978,23 +2978,56 @@ class TestExamplesIsACheckoutOnlyField:
         assert len(populated) == 69
 
     def test_every_reported_path_exists(self) -> None:
-        """A path that is reported and absent is worse than none reported."""
+        """A path reported and absent is worse than none reported."""
         for name in esolangs.list_languages():
             for path in esolangs.describe(name)["examples"]:
                 assert pathlib.Path(path).is_file(), (name, path)
 
-    def test_the_manifest_guard_is_what_decides(self) -> None:
-        """Without it an unrelated ``examples/`` above site-packages globs in.
+    def test_they_live_inside_the_package(self) -> None:
+        """Which is the property that puts them in the wheel.
 
-        A wrong answer rather than a missing one, which is the distinction
-        the guard exists for.
+        Not a proxy for it -- setuptools ships ``package-data`` from
+        inside the package directory and cannot reach outside it, so a
+        path under here is a path that gets built in.
         """
-        assert esolangs._HAS_EXAMPLES is True  # noqa: SLF001
+        root = pathlib.Path(esolangs.__file__).resolve().parent
+        for name in esolangs.list_languages():
+            for path in esolangs.describe(name)["examples"]:
+                assert pathlib.Path(path).resolve().is_relative_to(root), (name, path)
 
-    def test_the_docstring_says_so(self) -> None:
-        """The signal, since the field itself cannot carry one."""
-        doc = " ".join((esolangs.describe.__doc__ or "").split())
-        assert "empty unless you are running from a source checkout" in doc
+    def test_the_packaging_declares_them(self) -> None:
+        """The other half: inside the package *and* listed as data.
+
+        Being in the directory is not enough -- setuptools ships only what
+        ``package-data`` names, so a glob that stopped matching would
+        silently empty the wheel again.
+        """
+        config = (pathlib.Path(__file__).parents[1] / "pyproject.toml").read_text()
+        declared = re.search(r"^esolangs = \[(.+?)\]", config, re.M)
+        assert declared, "no package-data entry for esolangs"
+        patterns = declared.group(1)
+        assert "examples/*/*.txt" in patterns
+        assert "examples/*/*.md" in patterns
+
+    def test_the_manifest_is_beside_them(self) -> None:
+        """It is what says which table each program computes."""
+        root = pathlib.Path(esolangs.__file__).resolve().parent
+        assert (root / "examples" / "boolean" / "MANIFEST.md").is_file()
+
+    def test_the_root_symlink_still_resolves(self) -> None:
+        """The repository reads the way it always did.
+
+        The README links to ``examples/`` and a reader browsing the repo
+        expects it there; the symlink keeps that true without a second
+        copy to drift.
+        """
+        link = pathlib.Path(__file__).parents[1] / "examples"
+        assert link.is_dir()
+        assert (link / "boolean" / "brainfuck.txt").is_file()
+        assert (
+            link.resolve()
+            == pathlib.Path(esolangs.__file__).resolve().parent / "examples"
+        )
 
 
 class TestEvaluateNeedsNoSeed:
