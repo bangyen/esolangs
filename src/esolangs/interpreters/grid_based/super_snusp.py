@@ -40,7 +40,11 @@ _EQUAL_FANOUT = 256
 
 def _floor_root(value: int, degree: int) -> int:
     if degree <= 0 or (value < 0 and degree % 2 == 0):
-        raise HaltError
+        raise HaltError(
+            f"';' takes the {degree}-th root of {value}, which has no integer "
+            f"value: the degree must be positive, and an even root needs a "
+            f"non-negative value"
+        )
     if value < 0:
         positive = _floor_root(-value, degree)
         return -positive if positive**degree == -value else -positive - 1
@@ -73,7 +77,7 @@ def _write(
 
 def _top(values: tuple[int, ...]) -> int:
     if not values:
-        raise HaltError
+        raise HaltError("the value stack is empty, so there is no top to read")
     return values[-1]
 
 
@@ -106,7 +110,7 @@ def _advance(
         elif command == "%":
             divisor = _top(values)
             if not divisor:
-                raise HaltError
+                raise HaltError("'%' takes the remainder by the stacked 0")
             rem = abs(value) % abs(divisor)
             cells = _write(cells, pointer, -rem if value < 0 else rem)
         elif command in "&*+-:;[]^|":
@@ -121,17 +125,17 @@ def _advance(
                 value -= operand
             elif command == ":":
                 if not operand:
-                    raise HaltError
+                    raise HaltError(f"':' divides {value} by zero")
                 value //= operand
             elif command == ";":
                 value = _floor_root(value, operand)
             elif command == "[":
                 if operand < 0:
-                    raise HaltError
+                    raise HaltError(f"'[' shifts left by {operand}, which is negative")
                 value <<= operand
             elif command == "]":
                 if operand < 0:
-                    raise HaltError
+                    raise HaltError(f"']' shifts right by {operand}, which is negative")
                 value >>= operand
             elif command == "^":
                 value ^= operand
@@ -140,7 +144,7 @@ def _advance(
             cells = _write(cells, pointer, value)
         elif command == ",":
             if char_input is None:
-                raise HaltError
+                raise HaltError("',' reads a character and there is no input left")
             cells = _write(cells, pointer, char_input)
         elif command == ".":
             try:
@@ -155,10 +159,13 @@ def _advance(
         elif command == "=":
             other = _top(values)
             if random_offset is None:
-                raise HaltError
+                raise HaltError("'=' needs a random draw and none was supplied")
             low, high = sorted((value, other))
             if not 0 <= random_offset <= high - low:
-                raise HaltError
+                raise HaltError(
+                    f"'=' was given the draw {random_offset}, outside the "
+                    f"0..{high - low} its range {low}..{high} allows"
+                )
             cells = _write(cells, pointer, low + random_offset)
             values = values[:-1]
         elif command == "(":
@@ -173,7 +180,7 @@ def _advance(
             steps = 2 if value == 0 else 1
         elif command == "@":
             if number_input is None:
-                raise HaltError
+                raise HaltError("'@' reads a number and there is no input left")
             cells = _write(cells, pointer, number_input)
         elif command == "_":
             cells = _write(cells, pointer, -value)
