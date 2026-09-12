@@ -204,7 +204,8 @@ class TestLoops:
         self,
     ) -> None:
         """Same as above, but the pattern has no wildcard (the plain
-        value-row branch of ``_exec_stmt``'s own ``for`` handling)."""
+        value-row branch of ``_exec_stmt``'s own ``for`` handling).
+        """
         code = """
             f {
               s = 0;

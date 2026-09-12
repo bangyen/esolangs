@@ -226,7 +226,6 @@ class TestMinskySwapEdgeCases:
         here: it is the only thing a caller sees when a program is
         rejected, and nothing else pins its wording.
         """
-
         with raises_message(ValueError, "unmatched '~' with no jump target"):
             run("~~\n1", io=IO())
 

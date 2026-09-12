@@ -909,10 +909,17 @@ class _Machine:
     def ip(self) -> None:
         """Always ``None``: nothing moves through a Circuit Diagram.
 
+        The machine declares ``ip_shape = "opaque"`` below for the same
+        reason: there is no position, so there is nowhere on the drawing a
+        breakpoint could name, and a caller must not be offered one.
+
         ``step()`` advances one generation of the whole drawing at once, so
         there is no instruction position to report.
         """
         return None
+
+    #: Never a place in the source, because it is never anything at all.
+    ip_shape = "opaque"
 
     @property
     def memory(self) -> list[int]:

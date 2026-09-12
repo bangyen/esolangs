@@ -200,6 +200,12 @@ class _Machine:
     # ``stack`` is whichever one ``ptr`` selects and there are no
     # addressable cells.
 
+    #: ``ip`` is a position, but not one on the source text: a call depth paired with
+    #: the innermost cursor.
+    #: Declared rather than left to the default so that a tuple nobody has
+    #: classified is a missing answer instead of this one.
+    ip_shape = "opaque"
+
     @property
     def ip(self) -> tuple[int, int]:
         """The call depth and the innermost frame's cursor.

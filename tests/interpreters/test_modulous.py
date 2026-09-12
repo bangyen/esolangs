@@ -103,7 +103,8 @@ class TestModulous:
     def test_jump_compares_zero_on_an_empty_stack(self) -> None:
         """With nothing pushed the compared value is 0, not some other
         default: ``NIF 1`` therefore jumps, skipping the push it would
-        otherwise print."""
+        otherwise print.
+        """
         program = "[JMP F 2 NIF 1][PSH INT 3][PRT INT][PSH INT 8][PRT INT][END]"
         with pytest.raises(HaltError):
             run_and_capture(program)
