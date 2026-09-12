@@ -11,8 +11,6 @@ import pytest
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.grid_based.a_painter_ant import _Machine as _AntMachine
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.dinac import _parse_aschar
-from esolangs.interpreters.other.dinac import run as dinac_run
 from esolangs.interpreters.other.lamfunc import run as lamfunc_run
 from esolangs.interpreters.other.packlang import _Parser
 from esolangs.interpreters.stack_based.three_x import run as three_x_run
@@ -54,28 +52,6 @@ class TestLamfuncStepWithoutPops:
     def test_a_step_that_pops_nothing_leaves_the_frames_alone(self) -> None:
         """Most steps push without popping; the delete must not run then."""
         assert run_program(lamfunc_run, "x", "") == ""
-
-
-class TestDinacRawCharAfterQuote:
-    def test_a_non_ascii_character_is_not_an_aschar(self) -> None:
-        # The quote takes the next character raw, and this one is not in
-        # the aschar range, so the literal is malformed rather than parsed.
-        assert _parse_aschar("È") is None
-        # The scan does not stop on it, so the whole token is read and
-        # rejected as a value rather than as a bare quote.
-        with pytest.raises(ValueError, match="malformed value"):
-            run_program(dinac_run, "OUT 'È", "")
-
-    def test_an_ascii_character_after_a_quote_parses(self) -> None:
-        """The positive control: the same shape with a legal character."""
-        assert run_program(dinac_run, "OUT '(", "") == "("
-
-
-class TestDinacBareParenthesisedStatement:
-    def test_a_parenthesised_expression_is_not_a_bare_call(self) -> None:
-        """A statement ending in ``)`` is only a call if it parses as one."""
-        with pytest.raises(ValueError, match="malformed statement"):
-            run_program(dinac_run, "(41)", "")
 
 
 class TestPacklangDeclarationScan:

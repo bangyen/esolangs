@@ -235,8 +235,6 @@ def _reordering_generators() -> list[object]:
     from esolangs.tools.boolean.other import (
         _between_ordered,
         _forbin_ordered,
-        _myscript_ordered,
-        _nevermind_ordered,
     )
     from esolangs.tools.boolean.parameterized import (
         _bitdeque_ordered,
@@ -245,7 +243,6 @@ def _reordering_generators() -> list[object]:
     )
     from esolangs.tools.boolean.tape import (
         _ASCII_ZERO,
-        _basicfuck_ordered,
         _circlefuck_ordered,
         _jaune_ordered,
     )
@@ -265,9 +262,6 @@ def _reordering_generators() -> list[object]:
         ("between", boolean.between, _between_ordered),
         ("lamfunc", boolean.lamfunc, _lamfunc_ordered),
         ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
-        ("myscript", boolean.myscript, _myscript_ordered),
-        ("nevermind", boolean.nevermind, _nevermind_ordered),
-        ("basicfuck", boolean.basicfuck, _basicfuck_ordered),
         (
             "circlefuck",
             boolean.circlefuck,

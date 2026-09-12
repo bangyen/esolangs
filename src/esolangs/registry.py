@@ -169,12 +169,6 @@ LANGUAGES: dict[str, Language] = {
         id="bf_pda",
         interpreter="stack_based.bf_pda",
     ),
-    "Basicfuck": Language(
-        "Basicfuck",
-        "tape_based.basicfuck",
-        boolean=_boolean.basicfuck,
-        id="basicfuck",
-    ),
     "Between": Language(
         "Between",
         "register_based.between",
@@ -282,12 +276,6 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.dimensional",
         boolean=_boolean.dimensional,
         id="dimensional",
-    ),
-    "DINAC": Language(
-        "DINAC",
-        "other.dinac",
-        boolean=_boolean.dinac,
-        id="dinac",
     ),
     "Eval": Language(
         "Eval",
@@ -399,19 +387,6 @@ LANGUAGES: dict[str, Language] = {
         "stack_based.modulous",
         boolean=_boolean.modulous,
         id="modulous",
-    ),
-    "MyScript": Language(
-        "MyScript",
-        "register_based.myscript",
-        boolean=_boolean.myscript,
-        id="myscript",
-    ),
-    "Nevermind": Language(
-        "Nevermind",
-        "register_based.nevermind",
-        boolean=_boolean.nevermind,
-        id="nevermind",
-        split=True,
     ),
     "NoComment": Language(
         "NoComment",

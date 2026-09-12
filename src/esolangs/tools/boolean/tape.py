@@ -29,7 +29,6 @@ from esolangs.tools.boolean.six_five import six_five
 from esolangs.tools.boolean.slow_acv_mammalian import slow_acv_mammalian
 
 __all__ = [
-    "basicfuck",
     "bf_tree",
     "brainfuck",
     "brainif",
@@ -667,79 +666,6 @@ def bf_tree(truth_table: str) -> str:
     1.4K..33M the minterm measured before it was removed.
     """
     return decision_tree_program(truth_table, ">", "<")
-
-
-def basicfuck(truth_table: str) -> str:
-    """Build a Basicfuck program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Basicfuck's named variables behave like BF cells with an explicit
-    arithmetic, so the program is a decision tree: each input is read with
-    ``read -> a_i ;`` and normalized to 0/1 with ``a_i -= 48 ;``, then every
-    internal node emits ``if (a_k) { ... }`` next to ``if !(a_k) { ... }``
-    (the wiki spells negation ``!(<X>)``, with the bang before the parens).  A
-    failed ``if`` falls through to its neighbour, so exactly one subtree runs
-    per input combination.  Each leaf adds ``48 + entry`` to the ``out``
-    variable (which starts at 0 and is touched by exactly one leaf) and
-    prints it with ``write <- out ;``.
-
-    A subtree whose rows all agree becomes a leaf instead of branching on
-    bits that cannot change the answer, which is what makes a table like
-    ``11110000`` two leaves rather than eight.  This is safe because a leaf
-    here is self-contained -- it names ``out`` and writes it, with nothing
-    but cosmetic indentation depending on how deep it sits -- so the
-    "exactly one leaf runs" invariant holds at any depth.  Generators whose
-    leaf depends on the path that reached it cannot do this: BrainIf's
-    leaves jump to a shared output routine that assumes the pointer has
-    passed every level's marker, and Streetcode's hall geometry is sized
-    from its subtree's height.
-
-    **The tree splits on its inputs in whichever order emits the shortest
-    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
-    The ``read -> a_i`` block stays in input order, so only the variable an
-    ``if`` names moves.
-    """
-    return best_input_order(truth_table, _basicfuck_ordered)
-
-
-def _basicfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order's Basicfuck program; see :func:`basicfuck`.
-
-    The variables are 1-based (``a1``..``an``) while ``perm`` indexes from
-    zero, so the level's variable is ``a{perm[level] + 1}``.
-    """
-    n = _validate_truth_table(truth_table)
-
-    lines = ["#basicfuck t=unbounded r=0~255 o=wrap"]
-    lines.append("#allocate " + ", ".join(f"a{i}" for i in range(1, n + 1)) + ", out")
-    for i in range(1, n + 1):
-        lines.append(f"read -> a{i} ;")
-        lines.append(f"a{i} -= 48 ;")
-
-    def leaf(level: int, row: int) -> list[str]:
-        indent = "  " * level
-        value = int(truth_table[row])
-        return [f"{indent}out += {_ASCII_ZERO + value} ;\n{indent}write <- out ;\n"]
-
-    def node(level: int, zero: list[str], one: list[str], _at: int) -> list[str]:
-        # The one-side is emitted first: a failed ``if`` falls through to its
-        # neighbour, so the two arms are independent and their order is free.
-        indent = "  " * level
-        var = f"a{perm[level] + 1}"
-        return [
-            f"{indent}if ({var}) {{\n",
-            *one,
-            f"{indent}}}\n",
-            f"{indent}if !({var}) {{\n",
-            *zero,
-            f"{indent}}}\n",
-        ]
-
-    tree = decision_tree_tokens(truth_table, leaf, node, collapse=True)
-    lines.append("".join(tree).rstrip("\n"))
-    return "\n".join(lines)
 
 
 def sbleq(truth_table: str) -> str:

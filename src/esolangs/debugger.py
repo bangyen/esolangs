@@ -573,7 +573,7 @@ class Debugger:
         # Reading *past* the end is knowable the moment it happens, and that
         # is when it has to be said: the six languages that take the
         # exhausted read as a value have the wrong answer in ``output``
-        # before they halt -- DINAC at step 7 of 10, Circuit Diagram at 4 of
+        # before they halt -- Circuit Diagram at step 4 of
         # 5 -- so warning at the halt left every bounded run, every
         # breakpoint stop and every timeout silent.  Which is the ordinary
         # way to drive a debugger, and the class docstring tells you to
