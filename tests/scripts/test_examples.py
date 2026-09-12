@@ -12,6 +12,7 @@ plain test fixtures rather than examples, and live inline in the matching
 ``tests/interpreters/test_*.py`` instead.
 """
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -83,6 +84,26 @@ def test_boolean_example_matches_generator(name: str) -> None:
     path = BASE_DIR / "examples" / "boolean" / f"{name}.txt"
     expected = BOOLEAN_GENERATED[name].build().rstrip("\n") + "\n"
     assert path.read_text(encoding="utf-8") == expected
+
+
+def test_the_manifest_matches_what_the_script_would_write() -> None:
+    """The committed table is what ``write_examples.py`` produces today.
+
+    The programs beside it have had this check all along and the table
+    describing them had none, so a note added to one language left the
+    committed manifest describing the registry as it was before -- which is
+    the one file in ``examples/`` a reader consults precisely because the
+    fact is *not* recoverable from the program.  Bitdeque's note was added
+    without it and the gate stayed green.
+    """
+    sys.path.insert(0, str(BASE_DIR / "scripts"))
+    from write_examples import boolean_manifest_text
+
+    path = BASE_DIR / "examples" / "boolean" / "MANIFEST.md"
+    assert path.read_text(encoding="utf-8") == boolean_manifest_text(), (
+        "examples/boolean/MANIFEST.md is stale; "
+        "run `python scripts/write_examples.py boolean`"
+    )
 
 
 def test_boolean_examples_cover_every_committed_file() -> None:
