@@ -337,31 +337,36 @@ def instantiate(
 
 
 #: Characters a filename is made of, and a program mostly is not.
-_PATH_CHARS = re.compile(r"^[\w./\\-]+$")
+_PATH_CHARS = re.compile(r"^[\w./\\~-]+$")
+
+#: A short extension, which is what makes a bare name look like a file.
+_PATH_EXTENSION = re.compile(r"\.[A-Za-z0-9]{1,5}$")
 
 
 def _looks_like_a_path(program: str) -> bool:
     """Whether ``program`` is a filename someone meant to open.
 
-    The check used to end in ``os.path.exists(program)``, which fires on
-    the mistake you would have noticed anyway and misses the one you would
-    not: ``run("brainfuck", "/tmp/nope.txt")`` ran the *path* as a program
-    and returned a null byte -- the ``.`` in ``.txt`` is brainfuck's print.
-    A wrong answer, from a typo, on the exact route a CLI user takes when
-    they move to the API.
+    A program is source; a filename handed over as a plain ``str`` is a
+    mistake that *runs*, because a path is legal text in most of these
+    languages -- ``run("brainfuck", "prog.bf")`` returns a null byte,
+    since the ``.`` is brainfuck's print.
 
-    So it keys on shape.  One line, ending ``.txt``, and made only of the
-    characters a path is made of -- letters, digits, dots, dashes,
-    underscores and separators.  A program has to be all three to be
-    mistaken for a filename, and none of the 69 committed examples nor 207
-    generated programs is: the suffix alone already excludes every one of
-    them, and the character rule is the margin.
+    The rule keys on shape: one line, only the characters a path is made
+    of, and either rooted (``/``, ``./``, ``../``, ``~``) or ending in a
+    short extension.  It checked for a literal ``.txt`` before, which
+    caught ``prog.txt`` and let ``prog.bf`` -- the natural extension for
+    this package's flagship language -- and ``/etc/hosts`` straight
+    through.
+
+    ``.`` and ``..`` are accepted, and so is a bare ``~``: they are legal
+    programs -- ``~~`` is two ArrowQueue commands -- and a rule that
+    refuses a real program is worse than the bug it prevents.  Only
+    ``~/`` counts as rooted for that reason.
     """
-    return (
-        "\n" not in program
-        and program.endswith(".txt")
-        and bool(_PATH_CHARS.match(program))
-    )
+    if "\n" in program or not _PATH_CHARS.match(program):
+        return False
+    rooted = program.startswith(("/", "./", "../", "~/"))
+    return rooted or bool(_PATH_EXTENSION.search(program))
 
 
 def check_runnable(language: str, program: str) -> None:

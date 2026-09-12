@@ -56,7 +56,11 @@ from collections.abc import Callable, Hashable, Sequence
 from functools import cache
 from typing import Any, Protocol, cast, runtime_checkable
 
-from esolangs.exceptions import UnknownLanguageError
+from esolangs.exceptions import (
+    InterpreterLimitError,
+    ProgramError,
+    UnknownLanguageError,
+)
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import RUNNERS, resolve
 
@@ -1053,7 +1057,33 @@ class _DelegatingVM:
         return self._machine.halted
 
     def step(self) -> None:
-        self._machine.step()
+        """Execute one instruction, translating what the interpreter raises.
+
+        :func:`esolangs.run` turns an interpreter's bare ``ValueError``
+        into a :class:`~esolangs.exceptions.ProgramError` and its
+        ``RecursionError`` into an
+        :class:`~esolangs.exceptions.InterpreterLimitError`, and the VM
+        path did neither -- so the package's one promise, that every
+        deliberate failure derives from ``EsolangError``, held on one of
+        the two ways to execute a program and not the other.  Ninety open
+        parens in Algebraic Programming Language raised a bare
+        ``RecursionError`` here and a clean ``InterpreterLimitError``
+        through ``run``.
+
+        A ``try`` costs nothing when nothing is raised, so the hot loop is
+        unaffected.
+        """
+        try:
+            self._machine.step()
+        except RecursionError as exc:
+            raise InterpreterLimitError(
+                f"the {type(self).__name__} interpreter recursed deeper than "
+                f"CPython's stack limit allows on this program"
+            ) from exc
+        except ProgramError:
+            raise
+        except ValueError as exc:
+            raise ProgramError(str(exc)) from exc
 
     def snapshot(self) -> Hashable:
         """Return the underlying machine's complete state."""
@@ -1242,4 +1272,20 @@ def make_vm(language: str, program: str | os.PathLike[str], stdin: str = "") -> 
     name = resolve(language)
     if name not in _VM_ADAPTERS:
         raise UnknownLanguageError(language)
-    return _VM_ADAPTERS[name](check_program(name, program, stdin), stdin)
+    source = check_program(name, program, stdin)
+    try:
+        return _VM_ADAPTERS[name](source, stdin)
+    except RecursionError as exc:
+        raise InterpreterLimitError(
+            f"the {name} interpreter recursed deeper than CPython's stack "
+            f"limit allows while loading this program "
+            f"({len(source)} characters)"
+        ) from exc
+    except ProgramError:
+        raise
+    except ValueError as exc:
+        # Most interpreters parse in their constructor and signal a
+        # malformed program with a plain ``ValueError``.  ``run``
+        # re-raises those as ``ProgramError``; this did not, so
+        # ``make_vm("brainfuck", "]")`` leaked one -- for 48 of the 69.
+        raise ProgramError(str(exc)) from exc
