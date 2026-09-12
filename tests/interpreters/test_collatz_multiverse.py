@@ -24,7 +24,7 @@ def run_program(code: str, stdin: str = "") -> str:
     return io.getvalue()
 
 
-# Sets up one=1, two=2, three=3 from the auto-initialized 0 and negativeOne=-1.
+# Sets up one=1, two=2, three=3.
 CONSTANTS = "\n".join(
     [
         "one = negativeOne x + negativeOne, NOT PRINT.",
@@ -39,7 +39,7 @@ CONSTANTS = "\n".join(
 
 class TestCollatzRule:
     def test_odd_rule_multiplies_and_adds(self) -> None:
-        # n: 0 -> 3 (copy) -> 7 (3*2+1), then 7 is odd -> 7*3+1 = 22
+        # n: 0 -> 3 (copy) -> 7.
         program = CONSTANTS + "\n".join(
             [
                 "",
@@ -49,12 +49,12 @@ class TestCollatzRule:
                 "n = three x + one, DO PRINT.",
             ]
         )
-        # 22 (odd branch), then 22 is even -> halved to 11
+        # 22 (odd branch), then 22 is.
         assert run_program(program) == "\x16\x0b"
 
     def test_even_rule_halves(self) -> None:
-        # x: 0 -> -1, then -1 is odd -> (-1)*(-1)+1 = 2
-        # then 2 is even -> halved to 1
+        # x: 0 -> -1, then -1 is odd ->.
+        # then 2 is even -> halved to 1.
         program = CONSTANTS + "\n".join(
             [
                 "",
@@ -66,11 +66,11 @@ class TestCollatzRule:
         assert run_program(program) == "\x01"
 
     def test_zero_is_treated_as_odd(self) -> None:
-        # x starts 0, treated as odd: 0*(-1)+(-1) = -1
+        # x starts 0, treated as odd:.
         assert run_program("x = negativeOne x + negativeOne, DO PRINT.") == "\xff"
 
     def test_copy_from_a_variable(self) -> None:
-        # x starts 0, treated as odd: 0*(-1)+one = 1
+        # x starts 0, treated as odd:.
         assert run_program(CONSTANTS + "\nx = negativeOne x + one, DO PRINT.") == "\x01"
 
     def test_sparse_register_and_array_lookups_return_zero(self) -> None:
@@ -97,24 +97,24 @@ class TestPrinting:
                 "x = one x + zero, DO PRINT.",
             ]
         )
-        # x = 1, then 1 is odd -> 1*1+0 = 1
+        # x = 1, then 1 is odd -> 1*1+0.
         assert run_program(program) == "\x01"
 
     def test_print_wraps_to_byte(self) -> None:
-        # x = 0*(-1)+(-1) = -1 -> low byte is 255
+        # x = 0*(-1)+(-1) = -1 -> low.
         assert run_program("x = negativeOne x + negativeOne, DO PRINT.") == "\xff"
         assert run_program("x = negativeOne x + negativeOne, NOT PRINT.") == ""
 
 
 class TestVariables:
     def test_variables_auto_init_to_zero(self) -> None:
-        # y and z start 0, x starts 0 (odd) -> 0*0+0 = 0
+        # y and z start 0, x starts 0.
         assert run_program("x = y x + z, DO PRINT.") == "\x00"
 
 
 class TestArrays:
     def test_bare_array_is_element_zero(self) -> None:
-        # arr acts as arr[0]: 0 (odd) -> 0*(-1)+one = 1
+        # arr acts as arr[0]: 0 (odd).
         program = CONSTANTS + "\narr = negativeOne x + one, DO PRINT."
         assert run_program(program) == "\x01"
 
@@ -126,7 +126,7 @@ class TestArrays:
                 "arr = negativeOne x + zero, DO PRINT.",
             ]
         )
-        # arr[-1] = 1, arr[0] = 0
+        # arr[-1] = 1, arr[0] = 0.
         assert run_program(program) == "\x01\x00"
 
     def test_index_uses_variable_value(self) -> None:
@@ -138,7 +138,7 @@ class TestArrays:
                 "arr = negativeOne x + zero, DO PRINT.",
             ]
         )
-        # arr[1] = 1, arr[0] = 0 (different cells)
+        # arr[1] = 1, arr[0] = 0.
         assert run_program(program) == "\x01\x00"
 
     def test_read_from_array(self) -> None:
@@ -149,7 +149,7 @@ class TestArrays:
                 "x = negativeOne x + arr[negativeOne], DO PRINT.",
             ]
         )
-        # x = 0*(-1)+1 = 1
+        # x = 0*(-1)+1 = 1.
         assert run_program(program) == "\x01"
 
     def test_input_cannot_be_assigned(self) -> None:
@@ -211,8 +211,8 @@ class TestArrays:
         whichever kind it is.
         """
         jump = "lineNumber = x x + arr, DO PRINT."
-        # Each malformed kind has its own message; pairing them keeps the
-        # assertion specific rather than accepting any ValueError.
+        # Each malformed kind has its.
+        # assertion specific rather.
         for bad, message in (
             ("this is not a valid line at all", "malformed line"),
             ("foo = 3 x + one, NOT PRINT.", "malformed line"),
@@ -230,7 +230,7 @@ class TestLineNumber:
                 "b = negativeOne x + lineNumber, DO PRINT.",
             ]
         )
-        # line 1 -> a = 1, line 2 -> b = 2
+        # line 1 -> a = 1, line 2 -> b.
         assert run_program(program) == "\x01\x02"
 
     def test_assignment_jumps(self) -> None:
@@ -242,7 +242,7 @@ class TestLineNumber:
                 "x = negativeOne x + one, DO PRINT.",
             ]
         )
-        # line 7 (odd) -> 7*1+2 = 9, jumping over line 8
+        # line 7 (odd) -> 7*1+2 = 9,.
         assert run_program(program) == "\x01"
 
     def test_jump_off_program_halts(self) -> None:
@@ -252,13 +252,13 @@ class TestLineNumber:
                 "x = negativeOne x + one, DO PRINT.",
             ]
         )
-        # line 1 (odd) -> 1*(-1)+(-1) = -2, out of range, halts
+        # line 1 (odd) -> 1*(-1)+(-1) =.
         assert run_program(program) == ""
 
 
 class TestInput:
     def test_input_reads_an_integer(self) -> None:
-        # x = 0*(-1)+input = 65 -> 'A'
+        # x = 0*(-1)+input = 65 -> 'A'.
         assert run_program("x = negativeOne x + input, DO PRINT.", "65") == "A"
 
     def test_input_running_out_raises_eof(self) -> None:
@@ -336,11 +336,11 @@ class TestStepMachine:
 
         machine = _Machine("x = negativeOne x + negativeOne, DO PRINT.", ScriptedIO())
         assert (machine.ip, machine.registers) == (1, {"negativeOne": -1})
-        machine.step()  # x = 0*(-1)+(-1) = -1, printed as a byte
+        machine.step()  # x = 0*(-1)+(-1) = -1, printed.
         assert machine.io.getvalue() == "\xff"
         assert machine.registers == {"negativeOne": -1, "x": -1}
         assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
+        machine.step()  # stepping a halted machine is.
         assert machine.ip == 2
 
     def test_snapshot_carries_the_array_cells(self) -> None:
@@ -388,7 +388,7 @@ class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
     machine = staticmethod(_machine)
     stepping_program = "x = y x + z, DO PRINT."
     halting_program = "x = y x + z, DO PRINT."
-    # A line that jumps to itself, so the state repeats rather than advancing.
+    # A line that jumps to itself,.
     looping_program = (
         "z = z x + z, NOT PRINT.\nlineNumber = lineNumber x + z, NOT PRINT."
     )

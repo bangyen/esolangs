@@ -23,7 +23,7 @@ class TestBrainIfBasicCommands:
         assert run_and_capture(["if 0 output"]) == "\x00"
 
     def test_conditional_execution(self) -> None:
-        # The output line is only executed when the cell holds 1
+        # The output line is only.
         assert run_and_capture(["if 1 output"]) == ""
 
     def test_input(self) -> None:
@@ -59,14 +59,14 @@ class TestBrainIfBasicCommands:
         writing cell 0, makes the neighbour's survival visible.
         """
         code = [
-            "if 0 increment",  # cell 0 -> 1
-            "if 1 right",  # to cell 1
-            "if 0 increment",  # cell 1 -> 1
-            "if 1 increment",  # cell 1 -> 2
-            "if 2 left",  # back to cell 0
-            "if 1 increment",  # cell 0 -> 2, rebuilding the tape around it
+            "if 0 increment",  # cell 0 -> 1.
+            "if 1 right",  # to cell 1.
+            "if 0 increment",  # cell 1 -> 1.
+            "if 1 increment",  # cell 1 -> 2.
+            "if 2 left",  # back to cell 0.
+            "if 1 increment",  # cell 0 -> 2, rebuilding the.
             "if 2 right",
-            "if 2 output",  # cell 1 must still hold 2
+            "if 2 output",  # cell 1 must still hold 2.
         ]
         assert run_and_capture(code) == "\x02"
 
@@ -81,17 +81,17 @@ class TestBrainIfBasicCommands:
         actually landed rather than only that it moved.
         """
         code = [
-            "if 0 right",  # cell 1
-            "if 0 right",  # cell 2
-            "if 0 right",  # cell 3
-            "if 0 increment",  # cell 3 = 1
-            "if 1 left",  # cell 2
-            "if 0 increment",  # cell 2 = 1
-            "if 1 left",  # cell 1
-            "if 0 increment",  # cell 1 = 1
-            "if 1 left",  # cell 0, untouched
+            "if 0 right",  # cell 1.
+            "if 0 right",  # cell 2.
+            "if 0 right",  # cell 3.
+            "if 0 increment",  # cell 3 = 1.
+            "if 1 left",  # cell 2.
+            "if 0 increment",  # cell 2 = 1.
+            "if 1 left",  # cell 1.
+            "if 0 increment",  # cell 1 = 1.
+            "if 1 left",  # cell 0, untouched.
             "if 0 output",
-            "if 0 right",  # cell 1 again
+            "if 0 right",  # cell 1 again.
             "if 1 output",
         ]
         assert run_and_capture(code) == "\x00\x01"
@@ -173,12 +173,12 @@ class TestStepMachine:
 
         machine = _Machine(["if 0 increment", "if 1 output"], ScriptedIO())
         assert (machine.ind, machine.cells) == (0, (0,))
-        machine.step()  # cell 0 is 0: increment
+        machine.step()  # cell 0 is 0: increment.
         assert machine.cells == (1,)
-        machine.step()  # cell 1 is 1: output
+        machine.step()  # cell 1 is 1: output.
         assert machine.io.getvalue() == "\x01"
         assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
+        machine.step()  # stepping a halted machine is.
         assert machine.ind == 2
 
     def test_the_read_lands_in_the_cell(self) -> None:

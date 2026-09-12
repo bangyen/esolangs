@@ -34,17 +34,17 @@ from esolangs.registry import LANGUAGES, RUNNERS
 from esolangs.vm import make_vm, run_until_halt, run_until_halt_or_cycle
 from tests.samples import SAMPLES
 
-# interpreter module -> instruction alphabet; input is mocked below.
+# interpreter module ->.
 FUZZ = {
     "queue_based.bitdeque": "PUSHINJECTEJECTPOPINVERT",
     "register_based.minsky_swap": "+~*",
     "other.lamfunc": "p eq i cb lb fb vs vg F . x 0 1",
 }
 
-# ArrowQueue, back, Between, Jaune, Point Break, and RAM0 are
-# not fuzzed here: they have unconditional, goto, or directional loops
-# (Jaune's ?/! jumps, Point Break's POINT/END), so a random program may
-# legitimately never terminate and the "terminates" invariant does not
+# ArrowQueue, back, Between,.
+# not fuzzed here: they have.
+# (Jaune's ?/.
+# legitimately never terminate.
 # apply to them.
 
 
@@ -102,16 +102,16 @@ def _expired_at(deadline: float) -> Callable[[], bool]:
     return lambda: time.monotonic() > deadline
 
 
-#: Longest integer a mutated program may contain before the fuzzer skips it.
-#:
-#: Factor's program *is* an integer and ``make_vm`` factors it with sympy
-#: before any step runs, so a mutation that turns a 60-digit factorable
-#: number into a 62-digit semiprime costs unbounded, uninterruptible C time.
-#: Bounding that wedge at all needs a subprocess with a hard kill, which a
-#: fuzz test cannot pay; the cheap half of the remedy is this one, guarding
-#: the digit length instead.  Twelve digits factor instantly and still
-#: exercise every path that a longer number would, since the interpreter's
-#: behaviour does not depend on the operand's size.
+# : Longest integer a mutated.
+# :.
+# : Factor's program *is* an.
+# : before any step runs, so a.
+# : number into a 62-digit.
+# : Bounding that wedge at all.
+# : fuzz test cannot pay; the.
+# : the digit length instead.
+# : exercise every path that a.
+# : behaviour does not depend.
 _MAX_OPERAND_DIGITS = 12
 
 
@@ -157,7 +157,7 @@ def _drives_cheaply(language: str, seed: str) -> bool:
     except (EsolangError, ValueError, EOFError, SystemExit):
         return False
     if time.monotonic() > deadline:
-        return False  # construction alone blew the budget (Factor, Polynomial)
+        return False  # construction alone blew the.
     with suppress(EsolangError, ValueError, EOFError, SystemExit):
         run_until_halt(vm, limit=8, stop=lambda: time.monotonic() > deadline)
     return time.monotonic() <= deadline
@@ -185,7 +185,7 @@ def _mutated_sources(language: str) -> list[tuple[str, str]]:
     variants = [(program, stdin)]
     variants += _mutate(program, stdin, rng, _HOSTILE)
 
-    # Some generators draw from the global RNG; seed it so xdist workers and
+    # Some generators draw from the.
     # reruns build the same corpus.
     random.seed(sum(map(ord, language)))
     seed = _generated_seed(language)
@@ -208,36 +208,36 @@ def fuzz_cases(request: pytest.FixtureRequest) -> tuple[str, list[tuple[str, str
 def _fuzz_mutated_source(language: str, program: str, stdin: str) -> None:
     """Drive one hostile variant through the bounded VM checks."""
     if not _affordable_variant(program):
-        return  # a numeral too long to factor; see _MAX_OPERAND_DIGITS
+        return  # a numeral too long to factor;.
     try:
         vm = make_vm(language, program, stdin)
-        # A step is not a unit of time.  Factor's generated seed is a
-        # 67-digit number and Polynomial's an 8th-degree polynomial, so
-        # a hundred *steps* of either is minutes of arithmetic.  The
-        # budget is what bounds the fuzzer, so it is spent in seconds
-        # as well as steps, and a variant that runs out of either is
-        # simply one the fuzzer stops driving -- not a failure.
+        # A step is not a unit of time.
+        # 67-digit number and.
+        # a hundred *steps* of either.
+        # budget is what bounds the.
+        # as well as steps, and a.
+        # simply one the fuzzer stops.
         deadline = time.monotonic() + 0.5
         if run_until_halt(vm, limit=100, stop=_expired_at(deadline)):
             return
         if time.monotonic() > deadline:
-            return  # out of time, not proven stuck: nothing to decide
+            return  # out of time, not proven.
         if os.name != "posix":
-            return  # signal.alarm is POSIX-only; the cap stands alone
-        # Still going at the cap: try to decide it on a fresh machine.
-        # Brent's detector is unbounded, so a quarter-second alarm keeps
-        # this individual regression below a second.
+            return  # signal.alarm is POSIX-only;.
+        # Still going at the cap: try.
+        # Brent's detector is.
+        # this individual regression.
         old_handler = signal.signal(signal.SIGALRM, _on_alarm)
         signal.setitimer(signal.ITIMER_REAL, 0.25)
         try:
             run_until_halt_or_cycle(make_vm(language, program, stdin))
         except _TimeoutError:
-            pass  # undecided: the growth class, not a failure
+            pass  # undecided: the growth class,.
         finally:
             signal.setitimer(signal.ITIMER_REAL, 0)
             signal.signal(signal.SIGALRM, old_handler)
     except (EsolangError, ValueError, EOFError, SystemExit):
-        pass  # rejection and exhausted input are documented outcomes
+        pass  # rejection and exhausted input.
 
 
 @pytest.mark.parametrize("case_index", range(11))
@@ -299,7 +299,7 @@ def test_random_programs_terminate(module: str) -> None:
             except _TimeoutError:
                 pytest.fail(f"{module} hung on a random program")
             except Exception:
-                pass  # rejecting a random program is a valid termination
+                pass  # rejecting a random program is.
             finally:
                 signal.alarm(0)
     finally:

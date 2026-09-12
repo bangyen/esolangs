@@ -13,7 +13,7 @@ from esolangs.tools.boolean.register import (
 
 class TestDrainedDag:
     def test_a_table_using_its_first_input_is_declined(self) -> None:
-        # XOR: both inputs are essential, so no lead is drained.
+        # XOR: both inputs are.
         assert _polynomial_drained_dag("0110") is None
         assert _polynomial_drained_dag_cost("0110") is None
 
@@ -29,5 +29,5 @@ class TestDrainedDag:
         plain = _polynomial_drained_dag("0101")
         assert built is not None
         assert plain is not None
-        # One more ignored input than the two-input table: two instructions.
+        # One more ignored input than.
         assert len(built) == len(plain) + 2

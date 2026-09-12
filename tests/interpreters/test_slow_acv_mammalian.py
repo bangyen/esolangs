@@ -48,8 +48,8 @@ class TestMammalian:
 
         assert accepted("\n") == [0], "a blank line appends nothing"
         assert accepted("A\n") == [0, 65], "a byte is folded in and appended"
-        # A character past U+00FF is the only way the fold exceeds a byte,
-        # so it is what pins the wrap: 321 % 256 is 65, where 257 gives 64.
+        # A character past U+00FF is.
+        # so it is what pins the wrap:.
         assert accepted("Ł\n") == [0, 65], "the fold wraps at 256"
 
     def test_values_wrap_at_a_byte(self) -> None:
@@ -64,8 +64,8 @@ class TestMammalian:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
 
-        # SEED puts 1 in lst[0]; ACCEPT folds 0xff against acc 0 and appends
-        # it; DIGEST xors the accumulator with the sum, giving 256.
+        # SEED puts 1 in lst[0]; ACCEPT.
+        # it; DIGEST xors the.
         machine = _Machine("SEED ACCEPT DIGEST PRONOUNCE", ScriptedIO("\xff\n"))
         while not machine.halted:
             machine.step()
@@ -108,7 +108,7 @@ class TestStepMachine:
 
         machine = _Machine("", IO())
         assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
+        machine.step()  # stepping a halted machine is.
         assert machine.lst == tuple((0,) for _ in range(23))
 
     def test_the_command_halt_flag_starts_false(self) -> None:
@@ -251,21 +251,21 @@ class TestLeapfrog:
     def test_a_negative_target_halts(self) -> None:
         from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
 
-        # acc 0 and a head of 0 give target -1, which halts instead of jumping.
+        # acc 0 and a head of 0 give.
         machine = _Machine("LEAPFROG PRONOUNCE", IO())
         machine.lst = (
             *machine.lst[:0],
             (0, 5),
             *machine.lst[0 + 1 :],
-        )  # non-empty with a truthy tail: the branch fires
+        )  # non-empty with a truthy tail:.
         machine.step()
         assert machine.halted
 
     def test_a_non_negative_target_moves_the_cursor(self) -> None:
         from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
 
-        # acc 2, head 0 -> target 1; the step's trailing advance then makes
-        # it 2, so the jump is what puts the cursor there rather than at 1.
+        # acc 2, head 0 -> target 1;.
+        # it 2, so the jump is what.
         machine = _Machine("LEAPFROG PRONOUNCE PRONOUNCE", IO())
         machine.lst = (
             *machine.lst[:0],
@@ -337,7 +337,7 @@ class TestLeapfrog:
         machine.acc = 9
         machine.step()
         assert not machine.halted
-        assert machine.ind == 1  # fell through rather than jumping to 8
+        assert machine.ind == 1  # fell through rather than.
 
 
 def _machine(code: object) -> object:

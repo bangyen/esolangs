@@ -30,13 +30,13 @@ def timeout_handler(_signum: int, _frame: object) -> None:
 @pytest.fixture
 def timeout_protection() -> Generator[None, None, None]:
     """Fixture to add timeout protection to tests."""
-    # Set up timeout handler
+    # Set up timeout handler.
     old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-    signal.alarm(5)  # 5 second timeout
+    signal.alarm(5)  # 5 second timeout.
 
     yield
 
-    # Clean up
+    # Clean up.
     signal.alarm(0)
     signal.signal(signal.SIGALRM, old_handler)
 
@@ -97,7 +97,7 @@ class TestSophieBasicCommands:
         """Test & command halts the program."""
         with redirect_stdout(io.StringIO()) as f:
             run("&.", io=IO())
-        # Program halts before reaching output
+        # Program halts before reaching.
         assert f.getvalue() == ""
 
 
@@ -155,7 +155,7 @@ class TestSophieLoops:
         """Test basic loop structure."""
         with redirect_stdout(io.StringIO()) as f:
             run("#$3[.*]&", io=IO())
-        # Should print 3 then break
+        # Should print 3 then break.
         assert f.getvalue() == "3"
 
     @pytest.mark.usefixtures("timeout_protection")
@@ -163,7 +163,7 @@ class TestSophieLoops:
         """Test loop with break statement."""
         with redirect_stdout(io.StringIO()) as f:
             run("#$1[.*]&", io=IO())
-        # Should print 1 then break
+        # Should print 1 then break.
         assert f.getvalue() == "1"
 
     @pytest.mark.usefixtures("timeout_protection")
@@ -171,7 +171,7 @@ class TestSophieLoops:
         """Test nested loop structures."""
         with redirect_stdout(io.StringIO()) as f:
             run("#A[#B[.*]]&", io=IO())
-        # Should print A, then B's ASCII value (66), then break
+        # Should print A, then B's.
         assert f.getvalue() == "66"
 
     @pytest.mark.usefixtures("timeout_protection")
@@ -216,7 +216,7 @@ class TestSophieInputHandling:
             redirect_stdout(io.StringIO()) as f,
         ):
             run("#$42:.&", io=IO())
-        # Accumulator should remain 42
+        # Accumulator should remain 42.
         assert f.getvalue() == "42"
 
     @pytest.mark.usefixtures("timeout_protection")
@@ -227,7 +227,7 @@ class TestSophieInputHandling:
             redirect_stdout(io.StringIO()) as f,
         ):
             run("#$42;.&", io=IO())
-        # Accumulator should remain 42
+        # Accumulator should remain 42.
         assert f.getvalue() == "42"
 
     @pytest.mark.usefixtures("timeout_protection")
@@ -371,7 +371,7 @@ class TestMiscCommands:
         """Test that invalid commands are ignored."""
         with redirect_stdout(io.StringIO()) as f:
             run("xyz#A,&", io=IO())
-        # Only valid commands should execute
+        # Only valid commands should.
         assert f.getvalue() == "A"
 
 
@@ -464,7 +464,7 @@ class TestSophieComplexPrograms:
         """Test a simple counter program."""
         with redirect_stdout(io.StringIO()) as f:
             run("#$5[.*]&", io=IO())
-        # Should print 5 then break
+        # Should print 5 then break.
         assert f.getvalue() == "5"
 
     @pytest.mark.usefixtures("timeout_protection")
@@ -472,7 +472,7 @@ class TestSophieComplexPrograms:
         """Test loop with conditional break."""
         with redirect_stdout(io.StringIO()) as f:
             run("#$3[.@$3{*}{}]&", io=IO())
-        # Should print 3 then break
+        # Should print 3 then break.
         assert f.getvalue() == "3"
 
     @pytest.mark.usefixtures("timeout_protection")
@@ -480,7 +480,7 @@ class TestSophieComplexPrograms:
         """Test character operations."""
         with redirect_stdout(io.StringIO()) as f:
             run("#A,#B,&", io=IO())
-        # Should print A then B
+        # Should print A then B.
         assert f.getvalue() == "AB"
 
 
@@ -515,7 +515,7 @@ class TestSophieFindFunction:
         """Test finding with unmatched brackets."""
         code = "{unmatched"
         result = find(code, 0)
-        # Should return end of string
+        # Should return end of string.
         assert result == len(code)
 
 
@@ -533,7 +533,7 @@ class TestStepMachine:
 
         machine = _Machine("", IO())
         assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
+        machine.step()  # stepping a halted machine is.
         assert machine.halted
 
 

@@ -57,9 +57,9 @@ from typing import Literal, get_args
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# The builtin prefix functions _apply_builtin dispatches on.  ``ask`` is
-# not among them: it is answered in _parse_expr before the arity lookup,
-# so naming the eleven that do arrive lets the checker see the dispatch is
+# The builtin prefix functions.
+# not among them: it is.
+# so naming the eleven that do.
 # exhaustive.
 _Builtin = Literal[
     "add",
@@ -76,7 +76,7 @@ _Builtin = Literal[
 ]
 _BuiltinArity = Literal[1, 2]
 
-# The builtin prefix functions and their fixed arities.
+# The builtin prefix functions.
 _ARITY: dict[_Builtin, _BuiltinArity] = {
     "add": 2,
     "subtract": 2,
@@ -91,20 +91,20 @@ _ARITY: dict[_Builtin, _BuiltinArity] = {
     "say": 1,
 }
 
-# The arity table minus ``ask``, typed: _parse_expr answers ``ask`` before
-# the lookup, so membership here is exactly "is a _Builtin" and narrows the
-# token to the type _apply_builtin dispatches on.
+# The arity table minus.
+# the lookup, so membership.
+# token to the type.
 _BUILTINS: frozenset[_Builtin] = frozenset(get_args(_Builtin))
 
 _TOKEN = re.compile(
-    r'"[^"\\]*(?:\\.[^"\\]*)*"'  # string literal with escapes
-    r"|\d+\.\d+|\d+"  # float, then int
+    r'"[^"\\]*(?:\\.[^"\\]*)*"'  # string literal with escapes.
+    r"|\d+\.\d+|\d+"  # float, then int.
     r"|[A-Za-z_][A-Za-z0-9_]*"
     r"|[,\?\[\]]"
 )
 _ESCAPES = {"0": "\0", "n": "\n", "\\": "\\", "t": "\t", "f": "\f", '"': '"'}
 
-# An indentation block: a list of ``(tokens, children)`` statement nodes.
+# An indentation block: a list.
 Node = tuple[list[str], list["Node"]]
 
 
@@ -227,13 +227,13 @@ class Scope:
         raise HaltError(f"assignment to undefined variable: {name}")
 
 
-#: A todo item's fields are ``object`` to the checker, since one tuple type
-#: covers every continuation shape.  :func:`_typed` narrows a field back to
-#: what the shape guarantees and raises if the machine ever built one wrong.
-#:
-#: A raise rather than an ``assert``: these hold up the whole transition, and
-#: an ``assert`` disappears under ``python -O``, which would turn a broken
-#: frame into a silent wrong answer instead of a stack trace.
+# : A todo item's fields are.
+# : covers every continuation.
+# : what the shape guarantees.
+# :.
+# : A raise rather than an.
+# : an ``assert`` disappears.
+# : frame into a silent wrong.
 def _typed[T](value: object, kind: type[T]) -> T:
     """Return ``value`` narrowed to ``kind``, raising if it is not one."""
     if not isinstance(value, kind):
@@ -241,40 +241,40 @@ def _typed[T](value: object, kind: type[T]) -> T:
     return value
 
 
-#: A pending evaluation step, or a continuation waiting on operands.
-#:
-#: ``("expr", tokens, pos)`` evaluates one prefix expression starting at
-#: ``pos``; ``("apply", name, wanted, tokens)`` and ``("ucall", function,
-#: wanted, tokens)`` wait until ``wanted`` operands have landed and then
-#: combine them; ``("arr", wanted, tokens, closed)`` gathers an array
-#: display; ``("stmt", kind, tokens, children)`` finishes a statement once
+# : A pending evaluation step,.
+# :.
+# : ``("expr", tokens, pos)``.
+# : ``pos``; ``("apply", name,.
+# : wanted, tokens)`` wait.
+# : combine them; ``("arr",.
+# : display; ``("stmt", kind,.
 #: its expression has a value.
-#:
-#: Argument *N*'s start position is known only once argument *N-1* has
-#: finished, because a bare name's arity comes from the value it is bound
-#: to -- ``add f 3`` shapes differently when ``f`` holds a function than
-#: when it holds a number.  Operands therefore carry the position they ended
-#: at, and a continuation schedules the next operand from there.  That
-#: binding-dependent grammar is why the tokens are scheduled directly rather
+# :.
+# : Argument *N*'s start.
+# : finished, because a bare.
+# : to -- ``add f 3`` shapes.
+# : when it holds a number.
+# : at, and a continuation.
+# : binding-dependent grammar.
 #: than pre-parsed into a tree.
 type _Todo = tuple[object, ...]
 
-#: A finished operand and the token position it ended at.
+# : A finished operand and the.
 type _Operand = tuple[object, int]
 
-#: One block on the machine's explicit frame stack.
-#:
-#: ``nodes``/``pos`` is the statement list and cursor a block is executing;
-#: ``scope`` is the variables in effect; ``todo`` is the pending evaluation
-#: steps of the statement in progress and ``operands`` the finished values
-#: they have produced; ``kind`` says what finishing the block means --
-#: ``None`` for a plain block, ``("while", tokens)`` to re-check a
-#: condition, or ``("call",)`` for a function body whose return value lands
-#: on the caller's operand stack.
-#:
-#: A tuple rather than a class, so the frame stack is a value the transition
-#: returns rather than a list it edits.  The ``scope`` it holds is
-#: deliberately *not* a value -- see :func:`_advance`.
+# : One block on the machine's.
+# :.
+# : ``nodes``/``pos`` is the.
+# : ``scope`` is the variables.
+# : steps of the statement in.
+# : they have produced;.
+# : ``None`` for a plain block,.
+# : condition, or ``("call",)``.
+# : on the caller's operand.
+# :.
+# : A tuple rather than a.
+# : returns rather than a list.
+# : deliberately *not* a value.
 type _Frame = tuple[
     list[Node], int, "Scope", tuple[_Todo, ...], tuple[_Operand, ...], object
 ]
@@ -412,9 +412,9 @@ def _resume(frames: _Frames, io: IO, scope: Scope) -> _Frames:
         wanted = _typed(item[3], int)
         tokens = _typed(item[4], list)
         start = _typed(item[5], int)
-        # ``base`` is where this call's own operands start.  Counting the
-        # whole stack instead would fold in an enclosing call's finished
-        # operands and satisfy the arity early.
+        # ``base`` is where this call's.
+        # whole stack instead would.
+        # operands and satisfy the.
         if len(operands) - base < wanted:
             pos = operands[-1][1] if len(operands) > base else start
             return _with(frames, (("expr", tokens, pos), item, *rest), operands)
@@ -446,8 +446,8 @@ def _resume(frames: _Frames, io: IO, scope: Scope) -> _Frames:
         base = _typed(item[1], int)
         tokens = _typed(item[2], list)
         pos = _typed(item[3], int)
-        # ``base`` is where this display's items start on the operand stack,
-        # so enclosing calls' operands below it are never miscounted.
+        # ``base`` is where this.
+        # so enclosing calls' operands.
         if len(operands) > base:
             pos = operands[-1][1]
             if pos < len(tokens) and tokens[pos] == ",":
@@ -488,14 +488,14 @@ def _finish_statement(frames: _Frames, item: _Todo, scope: Scope) -> _Frames:
         rearm = item[4]
         if _truthy(value):
             if rearm:
-                # Re-entering from the body frame's own re-check: restart it
-                # in place rather than stacking a second body frame.
+                # Re-entering from the body.
+                # in place rather than stacking.
                 nodes, _, scope_, _, _, kind_ = base[-1]
                 return (*base[:-1], (nodes, 0, scope_, (), (), kind_))
             return (*base, _frame(children, scope, ("while", tokens)))
-        # The loop is over.  A re-check runs on the body frame itself, so
-        # leaving means popping it; a first check runs on the enclosing
-        # frame, which simply carries on.
+        # The loop is over.
+        # leaving means popping it; a.
+        # frame, which simply carries.
         return base[:-1] if rearm else base
     if kind == "check":
         cases = _typed(item[2], list)
@@ -507,7 +507,7 @@ def _finish_statement(frames: _Frames, item: _Todo, scope: Scope) -> _Frames:
         if subject == value:
             return (*base, _frame(body, scope))
         return _check_case(base, subject, cases, scope)
-    return base  # a bare expression statement: the value is discarded
+    return base  # a bare expression statement:.
 
 
 def _check_case(
@@ -593,11 +593,11 @@ def _advance(frames: _Frames, io: IO) -> _Frames:
         rest = frames[:-1]
         if isinstance(kind, tuple) and kind and kind[0] == "while":
             tokens = _typed(kind[1], list)
-            # Re-check the condition on the frame the body just finished on,
-            # so a call inside the condition is stepped like any other.
+            # Re-check the condition on the.
+            # so a call inside the.
             return (*rest, (nodes, 0, scope, _while_todo(tokens, nodes), (), kind))
         if isinstance(kind, tuple) and kind and kind[0] == "call":
-            # A function body that fell off its end returns None.
+            # A function body that fell off.
             return _return_value(frames, None)
         return rest
 
@@ -640,14 +640,14 @@ class _Machine:
         """Whether the frame stack has emptied (or a top-level return fired)."""
         return not self.frames
 
-    # The VM's language-shaped view.  The call frames are held in
-    # ``frames`` rather than ``stack``: MyScript has no operand stack for
-    # the VM to show, and the old name collided with the one the VM wants.
+    # The VM's language-shaped view.
+    # ``frames`` rather than.
+    # the VM to show, and the old.
 
-    #: ``ip`` is a position, but not one on the source text: a call depth paired with
+    # : ``ip`` is a position, but.
     #: the innermost cursor.
-    #: Declared rather than left to the default so that a tuple nobody has
-    #: classified is a missing answer instead of this one.
+    # : Declared rather than left.
+    # : classified is a missing.
     ip_shape = "opaque"
 
     @property

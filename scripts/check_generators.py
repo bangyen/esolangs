@@ -28,14 +28,14 @@ import sys
 from collections.abc import Callable
 from typing import Any
 
-# Boolean generators that legitimately take something other than a plain
-# truth-table string, with the reason each one does.
+# Boolean generators that.
+# truth-table string, with the.
 _ALLOWED = {
-    # A byte-valued generalization: leaves print chr(value), not chr(48+bit),
-    # so its table is a sequence of byte values rather than a bit string.
+    # A byte-valued generalization:.
+    # so its table is a sequence of.
     "circlefuck_byte",
-    # One construction multiplies any two decimal operands, so operand length
-    # is a property of the input rather than of the function; there is no
+    # One construction multiplies.
+    # is a property of the input.
     # truth table to take.
     "jaune_multiply",
 }
@@ -81,8 +81,8 @@ def main() -> int:
             failures += 1
             print(f"boolean.{name}: " + "; ".join(issues))
 
-    # An allowlist entry for a generator that no longer exists is stale, and
-    # would silently keep exempting a name someone later reuses.
+    # An allowlist entry for a.
+    # would silently keep exempting.
     exported = {name for name, _ in _public(boolean_pkg)}
     for stale in sorted(_ALLOWED - exported):
         failures += 1

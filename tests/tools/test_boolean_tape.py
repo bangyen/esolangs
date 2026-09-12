@@ -76,11 +76,11 @@ class TestSixFive:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1000000000000000", 4),  # AND4
+            ("10", 1),  # NOT.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("11111110", 3),  # NAND3.
+            ("1000000000000000", 4),  # AND4.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -128,8 +128,8 @@ class TestSixFive:
             5: "10010110" * 4,
         }[n]
         assert len(boolean.six_five(table)) < len(boolean.six_five(mixed))
-        # One ``A`` per emitted leaf: the fold collapses the leaf count to
-        # the number of distinct constant regions, not ``2**n``.
+        # One ``A`` per emitted leaf:.
+        # the number of distinct.
         assert boolean.six_five(table).count("A") == _leaves(table)
 
     @pytest.mark.parametrize(
@@ -158,10 +158,10 @@ class TestSixFive:
             got = run_six_five(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-        # Walk the emitted tree: a branch spends one read, then its two
-        # halves follow; a leaf carries the reads its fold skipped.
+        # Walk the emitted tree: a.
+        # halves follow; a leaf carries.
         def reads_on_each_path(code: str) -> set[int]:
-            if not code.startswith("B" + "2" * 8):  # a leaf
+            if not code.startswith("B" + "2" * 8):  # a leaf.
                 return {code.count("B")}
             body = code[len("B" + "2" * 8) + len("78") + 2 :]
             depth = 0
@@ -182,11 +182,11 @@ class TestSixFive:
     @pytest.mark.parametrize(
         ("table", "n", "labels"),
         [
-            ("0" * 63 + "1", 6, 6),  # AND6: was refused by both paths
-            ("1" * 32 + "0" * 32, 6, 1),  # one split
-            ("1" * 48 + "0" * 16, 6, 2),  # two regions
-            ("1" * 64, 6, 0),  # constant
-            ("0" * 255 + "1", 8, 8),  # AND8
+            ("0" * 63 + "1", 6, 6),  # AND6: was refused by both.
+            ("1" * 32 + "0" * 32, 6, 1),  # one split.
+            ("1" * 48 + "0" * 16, 6, 2),  # two regions.
+            ("1" * 64, 6, 0),  # constant.
+            ("0" * 255 + "1", 8, 8),  # AND8.
         ],
     )
     def test_tree_past_five_inputs(self, table: str, n: int, labels: int) -> None:
@@ -228,9 +228,9 @@ class TestSixFive:
         ):
             assert _six_five_markers(table) == _markers(boolean.six_five(table))
 
-        # And the bound itself, over every n == 3 table: reordering can only
-        # fold more subtrees, never fewer, so the emission never allocates
-        # more labels than the stream-order count.
+        # And the bound itself, over.
+        # fold more subtrees, never.
+        # more labels than the.
         for value in range(256):
             table = format(value, "08b")
             assert _markers(boolean.six_five(table)) <= _six_five_markers(table)
@@ -264,14 +264,14 @@ class TestSixFive:
         each well inside the budget.  Both still compute their function.
         """
         for table, folded in (("10010110" * 8, 7), (("10" * 64)[:64], 1)):
-            assert _six_five_markers(table) == 63 > 35  # refused in stream order
+            assert _six_five_markers(table) == 63 > 35  # refused in stream order.
             best = min(
                 _six_five_markers(permute_truth_table(table, perm))
                 for perm in permutations(range(6))
             )
             assert best == folded <= 35
             program = boolean.six_five(table)
-            # At most the folded count: the winning order may also share.
+            # At most the folded count: the.
             assert _markers(program) <= folded
             for combo in range(64):
                 bits = [(combo >> (5 - i)) & 1 for i in range(6)]
@@ -294,13 +294,13 @@ class TestSixFive:
         assert _six_five_markers(alternating) == 2**n - 1 > 35
         with pytest.raises(ValueError, match="35 branch labels"):
             _six_five_stream_ordered(alternating)
-        # The identity order no longer returns "": its tree overflows, so
-        # the shared build takes it -- this table is NOT of the last input,
-        # whose distinct subtrees are a handful whatever the order.
+        # The identity order no longer.
+        # the shared build takes it --.
+        # whose distinct subtrees are a.
         assert _six_five_hoisted(alternating, tuple(range(n)))
 
         program = boolean.six_five(alternating)
-        assert _markers(program) == 1  # greedy tests the last input first
+        assert _markers(program) == 1  # greedy tests the last input.
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             feed = iter([str(b) for b in bits])
@@ -317,7 +317,7 @@ class TestSixFive:
         """
         alternating = ("10" * 2**n)[: 2**n]
         assert _six_five_markers(alternating) == 2**n - 1 <= 35
-        boolean.six_five(alternating)  # renders rather than raising
+        boolean.six_five(alternating)  # renders rather than raising.
 
     def test_parity_is_the_easy_case_once_subtrees_are_shared(self) -> None:
         """Sharing inverts which table is the worst case.
@@ -396,10 +396,10 @@ class TestSixFive:
             identity = len(_six_five_stream_ordered(table))
             assert dispatched <= identity, table
             improved += dispatched < identity
-        # 186 before the leaves gained ``_six_five_const``'s ``r == 5``
-        # shortcut: a shorter leaf changes which orders pay for themselves,
-        # so more tables now beat the identity rather than tying it.
-        assert improved == 208  # the rest tie, keeping the old emission
+        # 186 before the leaves gained.
+        # shortcut: a shorter leaf.
+        # so more tables now beat the.
+        assert improved == 208  # the rest tie, keeping the old.
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -435,13 +435,13 @@ class TestSixFive:
         """
         import importlib
 
-        # The package re-exports the generator under the submodule's own
-        # name, so import the module explicitly rather than by attribute.
+        # The package re-exports the.
+        # name, so import the module.
         module = importlib.import_module("esolangs.tools.boolean.six_five")
 
-        # AND-n is symmetric, so its greedy pick *is* the identity and the
-        # two dedupe to a single build -- the point being that neither is
-        # 40320.  An alternating table, whose greedy pick differs, is the
+        # AND-n is symmetric, so its.
+        # two dedupe to a single build.
+        # 40320.
         # two-candidate case.
         for n, table, orders in (
             (6, "0" * 63 + "1", 720),
@@ -468,18 +468,18 @@ class TestSixFive:
         """Retired construction helpers do not return as dispatch candidates."""
         import importlib
 
-        # The package re-exports the generator under the submodule's own
-        # name, so import the module explicitly rather than by attribute.
+        # The package re-exports the.
+        # name, so import the module.
         module = importlib.import_module("esolangs.tools.boolean.six_five")
 
         assert not hasattr(boolean, "six_five_arithmetic")
         assert module.__all__ == ["six_five"]
-        assert not hasattr(module, "_SixFiveAsm")  # the assembler went too
+        assert not hasattr(module, "_SixFiveAsm")  # the assembler went too.
         assert not hasattr(module, "_six_five_nav")
         assert not hasattr(module, "_six_five_node_read")
 
 
-# 2.3s over 84 tests: runs the generated program.
+# 2.3s over 84 tests: runs the.
 @pytest.mark.medium
 class TestStreetcode:
     def test_default_uses_only_shared_layouts(self) -> None:
@@ -499,11 +499,11 @@ class TestStreetcode:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1000000000000000", 4),  # AND4
+            ("10", 1),  # NOT.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("11111110", 3),  # NAND3.
+            ("1000000000000000", 4),  # AND4.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -526,7 +526,7 @@ class TestStreetcode:
         scattered = len(boolean.streetcode("10101010"))
         assert constant < scattered
         assert halves < scattered
-        # a folded leaf still prints the right digit for every input
+        # a folded leaf still prints.
         for table in ("11111111", "11110000", "11001100"):
             program = boolean.streetcode(table)
             for combo in range(8):
@@ -558,11 +558,11 @@ class TestStreetcode:
         scattered = len(boolean.streetcode("10101010"))
         aligned = len(boolean.streetcode("11110000"))
         parity = len(boolean.streetcode("01101001"))
-        # Both are one-dependency tables, so reordering brings the scattered
-        # one down to the aligned one's shape.  It stays a few characters
-        # longer, and those characters are the walk that puts its bit in the
-        # cell the root's hall tests -- the price of the reorder, paid once
-        # in the prefix rather than per hall.
+        # Both are one-dependency.
+        # one down to the aligned one's.
+        # longer, and those characters.
+        # cell the root's hall tests --.
+        # in the prefix rather than per.
         assert aligned < scattered < parity
         assert scattered - aligned < 0.05 * aligned
 
@@ -574,8 +574,8 @@ class TestStreetcode:
         is parity, which folds under no order at all.
         """
         parity = boolean.streetcode("01101001")
-        # Parity is the table where every order is equally bad, so the
-        # program is the identity one and carries no reordering walks.
+        # Parity is the table where.
+        # program is the identity one.
         assert "_I" not in parity
 
     @pytest.mark.parametrize(
@@ -749,11 +749,11 @@ class TestDimensional:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1111111111111111", 4),  # constant one
+            ("10", 1),  # NOT.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("11111110", 3),  # NAND3.
+            ("1111111111111111", 4),  # constant one.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -782,10 +782,10 @@ class TestDimensionalTree:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
+            ("10", 1),  # NOT.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("11111110", 3),  # NAND3.
             ("1111111100000000", 4),
         ],
     )
@@ -809,7 +809,7 @@ class TestDimensionalTree:
         shorter.  Folding constant subtrees put the tree ahead on every
         table at n <= 4, so the survivor was unreachable and was removed.
         """
-        sparse = "0" * 15 + "1"  # AND4
+        sparse = "0" * 15 + "1"  # AND4.
         assert boolean.dimensional(sparse) == boolean.dimensional_tree(sparse)
         xor = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
         assert boolean.dimensional(xor) == boolean.dimensional_tree(xor)
@@ -819,11 +819,11 @@ class TestCirclefuck:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1111111111111111", 4),  # constant one
+            ("10", 1),  # NOT.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("11111110", 3),  # NAND3.
+            ("1111111111111111", 4),  # constant one.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -866,12 +866,12 @@ class TestCirclefuck:
         """
         import importlib
 
-        # The package re-exports the generator under the submodule's own
-        # name, so import the module explicitly rather than by attribute.
+        # The package re-exports the.
+        # name, so import the module.
         module = importlib.import_module("esolangs.tools.boolean.tape")
         from esolangs.tools.boolean.tape import _circlefuck_ordered
 
-        table = "01" * 64  # alternating: the greedy pick is not the identity
+        table = "01" * 64  # alternating: the greedy pick.
         built = 0
         ordered = _circlefuck_ordered
 
@@ -942,12 +942,12 @@ class TestBf:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1111111111111111", 4),  # constant one
-            ("1000000000000000", 4),  # single one (AND4)
+            ("10", 1),  # NOT.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("11111110", 3),  # NAND3.
+            ("1111111111111111", 4),  # constant one.
+            ("1000000000000000", 4),  # single one (AND4).
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -968,7 +968,7 @@ class TestBf:
         the constant tables go to the tree with everything else.
         """
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
-        for table in ("0" * 16, "0" * 15 + "1", xor6):  # constant, AND4, dense
+        for table in ("0" * 16, "0" * 15 + "1", xor6):  # constant, AND4, dense.
             assert boolean.brainfuck(table) == boolean.bf_tree(table)
 
 
@@ -976,13 +976,13 @@ class TestBfTree:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
+            ("10", 1),  # NOT.
+            ("01", 1),  # identity.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("1110", 2),  # NAND.
+            ("11111110", 3),  # NAND3.
+            ("01101001", 3),  # XOR3.
             ("1111111100000000", 4),
         ],
     )
@@ -1033,12 +1033,12 @@ class TestThreeDBf:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1111111111111111", 4),  # constant one
-            ("1000000000000000", 4),  # single one (AND4)
+            ("10", 1),  # NOT.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("11111110", 3),  # NAND3.
+            ("1111111111111111", 4),  # constant one.
+            ("1000000000000000", 4),  # single one (AND4).
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1062,12 +1062,12 @@ class TestFactor:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
+            ("10", 1),  # NOT.
+            ("01", 1),  # identity.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("1110", 2),  # NAND.
+            ("11111110", 3),  # NAND3.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1149,20 +1149,20 @@ class TestSlowAcvMammalian:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            # These carried ``slow`` while the generator searched: 3.5s at
-            # worst, 1.68s after the landings were first solved.  The whole
-            # construction is closed-form now -- a build is 0.3ms and this
-            # case is dominated by the eight interpreter runs, measured
-            # 2026-09-05 at 0.07s -- so they rejoin the fast run.
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
+            ("10", 1),  # NOT.
+            ("01", 1),  # identity.
+            ("00", 1),  # constant zero.
+            ("11", 1),  # constant one.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("1110", 2),  # NAND.
+            # These carried ``slow`` while.
+            # worst, 1.68s after the.
+            # construction is closed-form.
+            # case is dominated by the.
+            # 2026-09-05 at 0.07s -- so.
+            ("11111110", 3),  # NAND3.
+            ("01101001", 3),  # XOR3.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1189,7 +1189,7 @@ class TestSlowAcvMammalian:
 
         for table in ("0000", "1111", "0110"):
             program = boolean.slow_acv_mammalian(table)
-            assert program.split().count("ACCEPT") == 3  # 2**2 - 1 nodes
+            assert program.split().count("ACCEPT") == 3  # 2**2 - 1 nodes.
             io_obj = ScriptedIO("0\n" * 8)
             run_until_halt_or_cycle(_Machine(program, io_obj))
             assert io_obj.position() == 2
@@ -1338,9 +1338,9 @@ class TestSlowAcvMammalian:
         """
         import importlib
 
-        # The package re-exports the generator under its own module's
-        # name, so the package attribute is the *function*; only
-        # import_module reaches the module.
+        # The package re-exports the.
+        # name, so the package.
+        # import_module reaches the.
         module = importlib.import_module("esolangs.tools.boolean.slow_acv_mammalian")
 
         with pytest.MonkeyPatch.context() as patch:
@@ -1397,9 +1397,9 @@ class TestSlowAcvMammalian:
         """
         import importlib
 
-        # The package re-exports the generator under its own module's
-        # name, so the package attribute is the *function*; only
-        # import_module reaches the module.
+        # The package re-exports the.
+        # name, so the package.
+        # import_module reaches the.
         module = importlib.import_module("esolangs.tools.boolean.slow_acv_mammalian")
 
         hops: list[int] = []
@@ -1416,10 +1416,10 @@ class TestSlowAcvMammalian:
                 module.slow_acv_mammalian(table)
         assert hops, "no trampoline was built"
         assert max(hops) == 306
-        # Each slot is checked against its own level as the emitter runs
-        # (``_subtree`` raises on an overflow), so what is asserted here is
-        # that the deepest slot -- the one every hop could in principle
-        # need -- still clears the largest hop with room to spare.
+        # Each slot is checked against.
+        # (``_subtree`` raises on an.
+        # that the deepest slot -- the.
+        # need -- still clears the.
         assert max(hops) < max(module._widths(3)[1:])  # noqa: SLF001
 
 
@@ -1440,17 +1440,17 @@ class TestSuffolk:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("1111111100000000", 4),  # top half
-            ("1000000000000000", 4),  # single one (AND4)
+            ("10", 1),  # NOT.
+            ("01", 1),  # identity.
+            ("00", 1),  # constant zero.
+            ("11", 1),  # constant one.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("1110", 2),  # NAND.
+            ("11111110", 3),  # NAND3.
+            ("01101001", 3),  # XOR3.
+            ("1111111100000000", 4),  # top half.
+            ("1000000000000000", 4),  # single one (AND4).
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1469,7 +1469,7 @@ class TestSuffolk:
         the input stream for whatever runs next.
         """
         for table in ("00", "11"):
-            assert boolean.suffolk(table).count(",") == 1  # n == 1
+            assert boolean.suffolk(table).count(",") == 1  # n == 1.
 
     def test_dense_tables_evaluate_the_complement(self) -> None:
         """A table with more ones than zeros is evaluated from its zero rows.
@@ -1488,18 +1488,18 @@ class TestSuffolk:
         complement, which is what this test is about.
         """
         tables = (
-            "10000000",  # 1 one
-            "10010000",  # 2
-            "11100000",  # 3
-            "11101000",  # 4
-            "11111000",  # 5
-            "11111001",  # 6
-            "11111110",  # 7
+            "10000000",  # 1 one.
+            "10010000",  # 2.
+            "11100000",  # 3.
+            "11101000",  # 4.
+            "11111000",  # 5.
+            "11111001",  # 6.
+            "11111110",  # 7.
         )
         lengths = [len(boolean.suffolk(table)) for table in tables]
-        assert lengths[3] == max(lengths)  # four ones is the worst case
-        assert lengths[6] < lengths[3]  # seven ones is cheaper than four
-        # and roughly as cheap as its one-one mirror image
+        assert lengths[3] == max(lengths)  # four ones is the worst case.
+        assert lengths[6] < lengths[3]  # seven ones is cheaper than.
+        # and roughly as cheap as its.
         assert abs(lengths[6] - lengths[0]) < lengths[0] // 4
 
     @pytest.mark.parametrize(
@@ -1526,17 +1526,17 @@ class TestPainfuck:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("1111111100000000", 4),  # top half
-            ("1000000000000000", 4),  # single one (AND4)
+            ("10", 1),  # NOT.
+            ("01", 1),  # identity.
+            ("00", 1),  # constant zero.
+            ("11", 1),  # constant one.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("1110", 2),  # NAND.
+            ("11111110", 3),  # NAND3.
+            ("01101001", 3),  # XOR3.
+            ("1111111100000000", 4),  # top half.
+            ("1000000000000000", 4),  # single one (AND4).
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1554,26 +1554,26 @@ class TestPainfuck:
 
         program = boolean.painfuck("0110")
         translated = _translate(program)
-        assert "a" in translated  # [ loops
-        assert "b" in translated  # ] loops
+        assert "a" in translated  # [ loops.
+        assert "b" in translated  # ] loops.
         assert translated.count("a") == translated.count("b")
-        assert "rl" in translated or "l" in translated  # pointer moves
+        assert "rl" in translated or "l" in translated  # pointer moves.
 
 
 class TestBitTilde:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("1000000000000000", 4),  # single one (AND4)
+            ("10", 1),  # NOT.
+            ("01", 1),  # identity.
+            ("00", 1),  # constant zero.
+            ("11", 1),  # constant one.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("1110", 2),  # NAND.
+            ("11111110", 3),  # NAND3.
+            ("01101001", 3),  # XOR3.
+            ("1000000000000000", 4),  # single one (AND4).
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1597,15 +1597,15 @@ class TestJaune:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("00", 1),  # constant zero
-            ("01", 1),  # identity
-            ("10", 1),  # NOT
-            ("11", 1),  # constant one
-            ("0001", 2),  # AND
-            ("0110", 2),  # XOR
-            ("0111", 2),  # OR
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
+            ("00", 1),  # constant zero.
+            ("01", 1),  # identity.
+            ("10", 1),  # NOT.
+            ("11", 1),  # constant one.
+            ("0001", 2),  # AND.
+            ("0110", 2),  # XOR.
+            ("0111", 2),  # OR.
+            ("11111110", 3),  # NAND3.
+            ("01101001", 3),  # XOR3.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1659,7 +1659,7 @@ class TestJaune:
         one-cell block instead of a three-cell one.
         """
         assert boolean.jaune("10101010").startswith("vvv")
-        # every input matters here, so every read keeps its cell
+        # every input matters here, so.
         assert boolean.jaune("10010110").startswith("v>v>v>")
 
     @pytest.mark.parametrize(
@@ -1676,7 +1676,7 @@ class TestJaune:
             (7, 123),
             (123, 456),
             (12345, 6789),
-            pytest.param(99999, 99999, marks=pytest.mark.slow),  # 1.3s
+            pytest.param(99999, 99999, marks=pytest.mark.slow),  # 1.3s.
         ],
     )
     def test_multiply(self, a: int, b: int) -> None:
@@ -1700,11 +1700,11 @@ class TestBasicfuck:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("01", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1111111111111111", 4),  # constant one
+            ("01", 1),  # NOT.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("11111110", 3),  # NAND3.
+            ("1111111111111111", 4),  # constant one.
         ],
     )
     def test_program_shape(self, table: str, n: int) -> None:
@@ -1715,10 +1715,10 @@ class TestBasicfuck:
             program.splitlines()[1]
             == "#allocate " + ", ".join(f"a{i}" for i in range(1, n + 1)) + ", out"
         )
-        assert program.count("read ->") == n  # one read per input
-        # One leaf per *constant slice*, not per row: the tree folds a
-        # subtree whose rows agree, so a table with no constant slice above
-        # a single row (parity) still spends 2**n leaves while a constant
+        assert program.count("read ->") == n  # one read per input.
+        # One leaf per *constant.
+        # subtree whose rows agree, so.
+        # a single row (parity) still.
         # table spends one.
         assert program.count("write <- out ;") == _leaves(table)
 
@@ -1726,7 +1726,7 @@ class TestBasicfuck:
         """A constant slice emits one leaf instead of branching further."""
         assert boolean.basicfuck("1" * 16).count("write <- out ;") == 1
         assert boolean.basicfuck("11110000").count("write <- out ;") == 2
-        # parity has no constant slice above one row, so nothing folds
+        # parity has no constant slice.
         assert boolean.basicfuck("10010110").count("write <- out ;") == 8
 
     def test_decision_tree(self) -> None:
@@ -1742,11 +1742,11 @@ class TestSbleq:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("0000000000000000", 4),  # constant zero
+            ("10", 1),  # NOT.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("11111110", 3),  # NAND3.
+            ("0000000000000000", 4),  # constant zero.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1762,18 +1762,16 @@ class TestSbleq:
         program = boolean.sbleq("0110")
         cells = [int(tok) for tok in program.split()]
         data_base = len(cells) - 11
-        assert cells[:3] == [data_base + 4, -2, data_base + 6]  # root read
-        assert cells[6:9] == [  # root branch and normalization
+        assert cells[:3] == [data_base + 4, -2, data_base + 6]  # root read.
+        assert cells[6:9] == [  # root branch and normalization.
             data_base + 4,
             data_base,
             data_base + 8,
         ]
-        assert cells[-11:-7] == [-49, 48, 49, -1]  # NEG49, D48, D49, HALT
+        assert cells[-11:-7] == [-49, 48, 49, -1]  # NEG49, D48, D49, HALT.
         code = cells[:data_base]
         triples = [tuple(code[i : i + 3]) for i in range(0, len(code), 3)]
-        outputs = [
-            t for t in triples if t[0] == -3
-        ]  # one output per leaf, in combo order
+        outputs = [t for t in triples if t[0] == -3]  # one output per leaf, in combo.
         assert outputs == [
             (-3, data_base + 1, 0),
             (-3, data_base + 2, 0),
@@ -1782,7 +1780,7 @@ class TestSbleq:
         ]
         assert [t for t in triples if t == (0, 0, data_base + 3)] == 4 * [
             (0, 0, data_base + 3)
-        ]  # one halt per leaf
+        ]  # one halt per leaf.
 
     def test_only_the_hoisted_route_remains(self) -> None:
         """The former node-read builder is gone, not merely bypassed."""
@@ -1798,8 +1796,8 @@ class TestSbleq:
         cells = [int(tok) for tok in program.split()]
         triples = [tuple(cells[i : i + 3]) for i in range(0, len(cells), 3)]
         reads = [t for t in triples[:6] if t[1] == -2]
-        assert len(reads) == 3  # one read per input, all in the first 6 instrs
-        assert [t[0] for t in reads] == sorted({t[0] for t in reads})  # input order
+        assert len(reads) == 3  # one read per input, all in.
+        assert [t[0] for t in reads] == sorted({t[0] for t in reads})  # input order.
 
     def test_mismatched_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="power-of-two"):
@@ -1814,11 +1812,11 @@ class TestBrainIf:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1000000000000000", 4),  # AND4
+            ("10", 1),  # NOT.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("11111110", 3),  # NAND3.
+            ("1000000000000000", 4),  # AND4.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1876,17 +1874,17 @@ class TestRotfuck:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("01", 1),  # identity
-            ("10", 1),  # NOT
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0001", 2),  # AND
-            ("0111", 2),  # OR
-            ("0110", 2),  # XOR
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("1111111100000000", 4),  # high half
+            ("01", 1),  # identity.
+            ("10", 1),  # NOT.
+            ("00", 1),  # constant zero.
+            ("11", 1),  # constant one.
+            ("0001", 2),  # AND.
+            ("0111", 2),  # OR.
+            ("0110", 2),  # XOR.
+            ("1110", 2),  # NAND.
+            ("11111110", 3),  # NAND3.
+            ("01101001", 3),  # XOR3.
+            ("1111111100000000", 4),  # high half.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1965,7 +1963,7 @@ class TestRotfuck:
             assert set(pad) in ({"+", "-"}, {"<", ">"}), offset
             for i, char in enumerate(pad):
                 assert char in _rotfuck_allowed((offset + i) % 8), (offset, char)
-        # Forced where only one candidate is legal, so these are the pad.
+        # Forced where only one.
         assert _rotfuck_neutral(2) == "><"
         assert _rotfuck_neutral(3) == "+-"
 

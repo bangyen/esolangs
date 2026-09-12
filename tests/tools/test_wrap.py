@@ -46,59 +46,59 @@ from esolangs.tools.wrap import (
     wrap_tokens,
 )
 
-# A 2-input table (XOR), which every boolean generator can build.  Used
-# where a test needs *a* program rather than the language's own example.
+# A 2-input table (XOR), which.
+# where a test needs *a*.
 TABLE = "0110"
 
-# A third width, narrower than any a reader would ask for, because a broken
-# wrapper is not broken at every width.  Whether a break lands inside a
-# multi-character token depends on where the width happens to put it, so a
-# wrapper can be wrong and still pass at both conventional widths: Bitdeque
-# answered 1 instead of 0 at 12 and 13 while 11, 14, 40 and 80 were all
-# correct, and the three registered since (Lamfunc, RAM0, Jaune) each broke
-# under wrap_chars at some width between 10 and 50 while passing at 80.
-# Sweeping a dozen widths per language belongs in a scratch harness; one odd
-# width in the suite is what keeps the class from coming back.
+# A third width, narrower than.
+# wrapper is not broken at.
+# multi-character token depends.
+# wrapper can be wrong and.
+# answered 1 instead of 0 at 12.
+# correct, and the three.
+# under wrap_chars at some.
+# Sweeping a dozen widths per.
+# width in the suite is what.
 NARROW_WIDTH = 13
 
-# Languages that must never be *reflowed*, and why.  Not a restatement of
-# the implementation: each was verified to break (or to be meaningless) when
-# newlines are inserted, so the table is the record of that finding.
-#
-# The eight below NoComment were found the same way, by inserting a newline
-# at every position of the language's own boolean program and running each
-# one.  Grapheme, CV(N)(C), Fargo and Super SNUSP have no safe position at
-# all; Alight has only the very end, where the newline adds an empty row
-# rather than splitting anything.  Minsky Swap has six, but none a wrapper
-# could use: five sit inside its leading ``****`` run and the sixth is the
-# end of the program, so there is nowhere between two statements to break.
-# Either way there is no token rule to find and no narrower width that
-# would help.  They are recorded because "we tried and it cannot be done"
-# is worth as much as a wrapper, and because each is a long line that
-# otherwise looks like an oversight -- CV(N)(C) reaches 1162 columns at
+# Languages that must never be.
+# the implementation: each was.
+# newlines are inserted, so the.
+# .
+# The eight below NoComment.
+# at every position of the.
+# one.
+# all; Alight has only the very.
+# rather than splitting.
+# could use: five sit inside.
+# end of the program, so there.
+# Either way there is no token.
+# would help.
+# is worth as much as a.
+# otherwise looks like an.
 # n == 4 and Super SNUSP 286.
-#
-# Four of them are already covered by a general rule and named anyway,
-# because each has a *specific* reason worth keeping rather than deriving
-# again.  Alight and Super SNUSP are 2D, where a newline is a row: Alight's
-# commands are words walked out cell by cell, so a row end cuts one in
-# half, and Super SNUSP's pointer walks a grid, so a break relocates code
-# rather than reflowing it.  (The older reason given here -- that with no
-# start marker it enters at the bottom right -- is true of the language but
-# not of these programs, which all begin with an explicit ``"``.)  Both now
-# take a width themselves, by folding on their own turns and mirrors; that
-# is the independence the paragraph below is about.  function x(y) and the
-# Algebraic Programming Language are line-structured source rather than
-# grids -- the first takes one indented statement per line, the second
-# decides a line's *meaning* by whether it contains an ``=``, so a break
-# does not reflow a line but turns one line into two with different jobs.
-#
-# Unwrappable is not the same as unbounded, and the two memberships are
-# independent: a language here may still take a width by *emitting* a
-# narrower program, which is what function x(y) does by naming its
-# subtrees.  What this table says is only that :func:`wrap_program` must
-# not touch the finished text -- the reasons above are why a break is
-# destructive, and those hold whatever the generator learns to do.
+# .
+# Four of them are already.
+# because each has a *specific*.
+# again.
+# commands are words walked out.
+# half, and Super SNUSP's.
+# rather than reflowing it.
+# start marker it enters at the.
+# not of these programs, which.
+# take a width themselves, by.
+# is the independence the.
+# Algebraic Programming.
+# grids -- the first takes one.
+# decides a line's *meaning* by.
+# does not reflow a line but.
+# .
+# Unwrappable is not the same.
+# independent: a language here.
+# narrower program, which is.
+# subtrees.
+# not touch the finished text.
+# destructive, and those hold.
 UNWRAPPABLE = {
     "nocomment": "a newline is an unrecognized command, a load error",
     "grapheme": "every character must be A-Z, so a newline is a load error",
@@ -111,31 +111,31 @@ UNWRAPPABLE = {
     "algebraic_programming_language": "a line with '=' defines, one without runs",
 }
 
-# These are 2D too, and wrap_program must not touch them either -- but each
-# honours a width itself by *laying its program out* to fit rather than by
-# ignoring it, so they belong here rather than in UNWRAPPABLE.  LaserFuck's
-# loop layout is tied to the beam's track and cannot fold, so a loop program
-# wider than the width is re-emitted as the (foldable) linear form.
-#
-# Derived from :func:`takes_width` rather than written out, for the reason
-# ``esolangs.tools.boolean.BOOLEAN`` is derived from the registry: the
-# hand-written table had drifted both ways.  It omitted Streetcode, which
-# really does take a width.  And it named Dig, which at the time took only
-# a truth table and returned the same program whatever width was asked for
-# -- the 2-input table below was inside 80 columns either way, which is
-# what let it pass.  Dig has since grown a real one, so that entry would be
-# right today for a reason the table never had; a derived table cannot make
-# either mistake in the first place.
+# These are 2D too, and.
+# honours a width itself by.
+# ignoring it, so they belong.
+# loop layout is tied to the.
+# wider than the width is.
+# .
+# Derived from.
+# ``esolangs.tools.boolean.BOOLE.
+# hand-written table had.
+# really does take a width.
+# a truth table and returned.
+# -- the 2-input table below.
+# what let it pass.
+# right today for a reason the.
+# either mistake in the first.
 WIDTH_HONOURING = sorted(
     lang.id
     for lang in LANGUAGES.values()
     if lang.boolean is not None and takes_width(lang.boolean)
 )
 
-# The boolean example for each language, keyed by the language id rather
-# than the example's stem.  The two differ ("6-5" against ``six_five``), and
-# a lookup by id against a stem-keyed table silently misses -- which is a
-# skip, not a failure, so the sweep below would thin out without saying so.
+# The boolean example for each.
+# than the example's stem.
+# a lookup by id against a.
+# skip, not a failure, so the.
 EXAMPLE_BY_ID = {
     canonical_id(stem.replace("-", " ")): example
     for stem, example in BOOLEAN_GENERATED.items()
@@ -239,56 +239,56 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
     plain = example.build(width=None)
     wrapped = example.build(width)
     if wrapped == plain:
-        # A program short enough to need no break is left alone; there is
+        # A program short enough to.
         # nothing to undo.
         return
-    # The grid pads each token into a right-aligned cell, so the original is
-    # not recoverable character for character -- the padding is new
-    # whitespace.  What must survive is the token sequence, which is the
-    # guarantee the character-for-character check stands in for everywhere
-    # else: no command dropped, reordered, or split.  The interpreters split
-    # on whitespace runs, so a program with the same token sequence is the
+    # The grid pads each token into.
+    # not recoverable character for.
+    # whitespace.
+    # guarantee the.
+    # else: no command dropped,.
+    # on whitespace runs, so a.
     # same program.
     if _is_grid(name):
         assert wrapped.split() == plain.split()
         return
-    # BIO indents by nesting depth, and its commands carry no separator at
-    # all -- the whole program is one whitespace-delimited token, so the
-    # token check above says nothing about it.  What must survive is the
-    # command text; BIO's own parse rejoins across whitespace before reading
-    # it, so a program the wrapper breaks where a space already stood is the
-    # same program even though the space is gone.  Comparing with all
-    # whitespace removed says exactly that, where stripping only the indent
-    # asserted the spacing too and failed at a width that happened to break
+    # BIO indents by nesting depth,.
+    # all -- the whole program is.
+    # token check above says.
+    # command text; BIO's own parse.
+    # it, so a program the wrapper.
+    # same program even though the.
+    # whitespace removed says.
+    # asserted the spacing too and.
     # on one.
     if WRAPPERS[LANGUAGES[name].id] is _bio:
         assert "".join(wrapped.split()) == "".join(plain.split())
         return
-    # Qoibl is multi-line with no structural first line: every line is a
-    # statement and every one folds, so what must survive is the token
-    # sequence across the whole program, exactly as for the grid wrappers.
-    # Its newlines replace spaces, so splitting on whitespace recovers it.
+    # Qoibl is multi-line with no.
+    # statement and every one.
+    # sequence across the whole.
+    # Its newlines replace spaces,.
     if WRAPPERS[LANGUAGES[name].id] is _qoibl:
         assert wrapped.split() == plain.split()
         return
-    # Taglate's first line is a structural queue seed the wrapper must leave
-    # alone; only the commands below it are reflowed.
+    # Taglate's first line is a.
+    # alone; only the commands.
     if LANGUAGES[name].id in MULTILINE:
         seed, _, rest = wrapped.partition("\n")
         plain_seed, _, plain_rest = plain.partition("\n")
         assert seed == plain_seed
         assert rest.replace("\n", "") == plain_rest.replace("\n", "")
         return
-    # Deleting the inserted newlines must recover the original exactly.
-    # The space-delimited wrappers put the newline *where a space was*, so
-    # there the newline turns back into that space; every other wrapper
-    # inserts the newline between two adjacent commands, so it just goes
-    # away.  Either way no command may be dropped, reordered, or split.
-    # Polynomial now breaks in both places -- between two terms, where a
-    # space was, and *inside* a coefficient, where nothing was -- so no
-    # single substitution restores it.  Its parser deletes whitespace
-    # before reading, so the invariant that means anything there is that
-    # the two agree once whitespace is gone.
+    # Deleting the inserted.
+    # The space-delimited wrappers.
+    # there the newline turns back.
+    # inserts the newline between.
+    # away.
+    # Polynomial now breaks in both.
+    # space was, and *inside* a.
+    # single substitution restores.
+    # before reading, so the.
+    # the two agree once whitespace.
     if WRAPPERS[LANGUAGES[name].id] is _polynomial:
         assert re.sub(r"\s", "", wrapped) == re.sub(r"\s", "", plain)
         return
@@ -339,14 +339,14 @@ def test_every_wrapper_actually_fires(name: str) -> None:
     structural = LANGUAGES[name].id in MULTILINE
     for arity in range(1, 5):
         grown = generate(name, _table(arity))
-        # A newline disqualifies a grown program only where it means layout.
-        # A :data:`MULTILINE` language starts with a structural row its
-        # wrapper keeps and folds the rest, so the question there is whether
-        # wrapping adds *more* rows, not whether any exist -- and whether the
-        # part it may fold is itself long enough to need a break.  Measuring
-        # the whole program instead stops the search at the first arity whose
-        # *header* pushes it past the width, which for %^2^-1 is an arity
-        # whose body is still thirteen characters.
+        # A newline disqualifies a.
+        # A :data:`MULTILINE` language.
+        # wrapper keeps and folds the.
+        # wrapping adds *more* rows,.
+        # part it may fold is itself.
+        # the whole program instead.
+        # *header* pushes it past the.
+        # whose body is still thirteen.
         foldable = grown.split("\n", 1)[1] if structural else grown
         if ("\n" in grown and not structural) or len(foldable) <= 40:
             continue
@@ -386,7 +386,7 @@ def test_every_wrapper_fires_on_a_template_too(name: str) -> None:
 
 
 @pytest.mark.parametrize("name", WRAPPED)
-# part of 6.7s: runs the wrapped program.
+# part of 6.7s: runs the.
 @pytest.mark.medium
 def test_no_width_breaks_a_placeholder(name: str) -> None:
     """No width may put a line break through the middle of a ``{Xi}``.
@@ -422,18 +422,18 @@ def test_no_width_breaks_a_placeholder(name: str) -> None:
                 )
 
 
-# Tables the generators take a *different path* on than parity.  The
-# committed examples are all AND2, and the sweeps above grow parity, so
-# between them they exercise two shapes -- and a wrapper is exercised by the
-# shape of the program, not by the table directly.  Sophie's else-block bug
-# needed a table that puts an if-block beside an else-block, which neither
-# AND2 nor parity produces at three inputs; majority does.
+# Tables the generators take a.
+# committed examples are all.
+# between them they exercise.
+# shape of the program, not by.
+# needed a table that puts an.
+# AND2 nor parity produces at.
 _OTHER_TABLES = {"majority": "00010111", "mixed": "11111001"}
 
-# Long enough that a run which has not finished is looping, short enough
-# that eight of them are not a wait.  123 answers by *looping forever* for a
-# one, so a timeout is one of the behaviours being compared rather than a
-# failure -- what must match is that the wrapped program loops exactly where
+# Long enough that a run which.
+# that eight of them are not a.
+# one, so a timeout is one of.
+# failure -- what must match is.
 # the unwrapped one does.
 _RUN_TIMEOUT = 5.0
 
@@ -486,11 +486,11 @@ def test_wrapping_holds_on_a_table_the_examples_do_not_cover(
         )
 
 
-# Tables and widths for the two generators that lay themselves out.  The
-# widths reach well below what either can build, which is the point: the
-# narrow end is where a layout generator has to decide what to do when the
-# width cannot be met, and the test above this comment only ever asked for
-# widths every program already fitted.
+# Tables and widths for the two.
+# widths reach well below what.
+# narrow end is where a layout.
+# width cannot be met, and the.
+# widths every program already.
 _HONOUR_TABLES = {
     "parity1": "01",
     "parity2": "0110",
@@ -558,7 +558,7 @@ def test_width_honouring_layout_meets_any_width_it_can(name: str) -> None:
 
 
 @pytest.mark.parametrize("name", WIDTH_HONOURING)
-# part of 6.7s: runs the wrapped program.
+# part of 6.7s: runs the.
 @pytest.mark.medium
 def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
     """Laying the program out to a width does not change what it computes.
@@ -580,7 +580,7 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
         arity = len(table).bit_length() - 1
         for combo in range(2**arity):
             bits = format(combo, f"0{arity}b")
-            # A parameterized generator embeds its inputs and reads nothing.
+            # A parameterized generator.
             stdin = "" if example.fill else "".join(f"{bit}\n" for bit in bits)
             compact = _laid_out(language.name, table, bits, None)
             expected = _behaviour(language.name, compact, stdin)
@@ -591,8 +591,8 @@ def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
                     f"{name}: laying {label} out to width {width} changed the "
                     f"answer for inputs {bits}"
                 )
-    # A generator that stopped laying anything out would pass every
-    # assertion above by comparing the compact form against itself.
+    # A generator that stopped.
+    # assertion above by comparing.
     assert relaid, f"{name}: no width produced a different layout"
 
 
@@ -625,7 +625,7 @@ def test_width_honouring_languages_respect_the_width(name: str) -> None:
     for width in (40, 80, 94):
         program = generate(language.name, TABLE, width)
         assert max(map(len, program.split("\n"))) <= width
-    # omitting the width is still the compact one-shot form
+    # omitting the width is still.
     assert generate(language.name, TABLE) == language.boolean(TABLE)
 
 
@@ -724,12 +724,12 @@ def test_polynomial_starts_a_term_only_on_a_line_of_its_own() -> None:
     """
     program = generate("Polynomial", TABLE, DEFAULT_WIDTH)
     lines = program.split("\n")
-    # Line 1 is ``f(x) = <term>``: ``f(x)``, ``=`` and the unsigned term.
+    # Line 1 is ``f(x) = <term>``:.
     assert lines[0].startswith("f(x) = ")
     assert len(lines[0].split()) == 3
     for line in lines[1:]:
-        # Either a line that starts a term -- ``<sign> <term>`` -- or a row
-        # carrying the previous one over, which is one unbroken run.
+        # Either a line that starts a.
+        # carrying the previous one.
         assert len(line.split()) == (2 if line.startswith(("+ ", "- ")) else 1)
 
 
@@ -873,15 +873,15 @@ def test_pct_fill_is_unchanged_by_where_the_header_folded() -> None:
 
 def test_wrap_grid_right_aligns_into_columns() -> None:
     """Every token is right-aligned in a cell as wide as the widest one."""
-    # Cell width 3, so 80 // 4 == 20 cells to a row at the default width.
+    # Cell width 3, so 80 // 4 ==.
     wrapped = wrap_grid("1 22 333 4", 80)
     assert wrapped == "  1  22 333   4"
 
 
 def test_wrap_grid_columns_line_up_across_rows() -> None:
     """The point of the grid: column k starts at the same offset every row."""
-    # Six 3-character tokens with room for three cells a row (11 columns
-    # holds "aaa bbb ccc") puts two rows under each other.
+    # Six 3-character tokens with.
+    # holds "aaa bbb ccc") puts two.
     wrapped = wrap_grid("111 222 333 444 555 666", 11)
     rows = wrapped.split("\n")
     assert rows == ["111 222 333", "444 555 666"]
@@ -911,7 +911,7 @@ def test_wrap_grid_sizes_cells_to_the_bulk_not_the_outlier() -> None:
     """
     tokens = ["321"] * 20 + ["1000000000"]
     assert _cell_width(tokens) == 3
-    # Without the outlier rule this would be 21 cells of width 10.
+    # Without the outlier rule this.
     wrapped = wrap_grid(" ".join(tokens), 80)
     assert wrapped.split("\n")[0] == " ".join(["321"] * 20)
 
@@ -927,20 +927,20 @@ def test_wrap_grid_spans_an_outlier_across_whole_cells() -> None:
     assert _span(10, 3) == 3
     wrapped = wrap_grid("111 222 1000000000 333 444", 80)
     assert wrapped == "111 222  1000000000 333 444"
-    # "111 222 " is 8 columns, the span covers the next 11, so the token
-    # after it starts at column 20 -- a multiple of the 4-column cell.
+    # "111 222 " is 8 columns, the.
+    # after it starts at column 20.
     assert wrapped.index("333") == 20
     assert wrapped.index("333") % 4 == 0
 
 
 def test_wrap_grid_never_straddles_a_row_boundary() -> None:
     """A spanning token starts a new row rather than breaking across two."""
-    # Cell width 2, so three cells (11 columns) to a row.  The 7-character
-    # token needs three of them, which the first row cannot spare after
-    # "11 22", so it opens the second row rather than breaking across both.
+    # Cell width 2, so three cells.
+    # token needs three of them,.
+    # "11 22", so it opens the.
     wrapped = wrap_grid("11 22 1234567 33", 11)
     assert wrapped.split("\n") == ["11 22", " 1234567 33"]
-    # The token stayed whole -- that is the guarantee being made here.
+    # The token stayed whole --.
     assert "1234567" in wrapped.split("\n")[1]
 
 
@@ -949,8 +949,8 @@ def test_wrap_chars_breaks_anywhere() -> None:
     assert wrap_chars("abcdef", 2) == "ab\ncd\nef"
 
 
-# A three-level nest around a short ramp, in the shape the boolean BIO
-# generator emits: each level decrements ``x`` and the innermost tops ``y``
+# A three-level nest around a.
+# generator emits: each level.
 # up before the closers unwind.
 _NESTED_BIO = "0ox; 0ix{1ox;0ix{1ox;0oy;};};0oy;0oy;1iy;"
 
@@ -1001,8 +1001,8 @@ def test_bio_packs_a_ramp_to_the_width_at_its_own_indent() -> None:
     program = "0ox;0ix{" + "0oy;" * 40 + "0ix{1ox;};};"
     lines = _bio(program, 20).split("\n")
     assert max(len(line) for line in lines) <= 20
-    # The ramp sits inside the outer loop, so every one of its rows is
-    # indented rather than only the first.
+    # The ramp sits inside the.
+    # indented rather than only the.
     ramp = [line for line in lines if "0oy" in line]
     assert len(ramp) > 1
     assert all(line.startswith("  ") for line in ramp)
@@ -1031,13 +1031,13 @@ def test_wrappers_refuse_input_they_do_not_recognize() -> None:
     half-transforming a program it does not understand, and a half-wrapped
     program is the failure mode the whole module exists to prevent.
     """
-    # An empty program has no tokens to pack, in either packer.
+    # An empty program has no.
     assert wrap_space_delimited("", 40) == ""
     assert wrap_grid("", 40) == ""
-    # BIO's tokens have to tile the program exactly; a stray character means
-    # the regex did not account for something, so the program is left alone.
+    # BIO's tokens have to tile the.
+    # the regex did not account for.
     assert _bio("0ox;!!!", 40) == "0ox;!!!"
-    # Taglate needs a queue seed *and* commands below it.
+    # Taglate needs a queue seed.
     assert _taglate("seed-only", 40) == "seed-only"
 
 

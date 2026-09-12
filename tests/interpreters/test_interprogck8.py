@@ -25,7 +25,7 @@ from esolangs.interpreters.register_based.interprogck8 import (
 )
 from esolangs.vm import run_until_halt_or_cycle
 
-# The wiki's Hello World, verbatim.
+# The wiki's Hello World,.
 HELLO = """nNnN
 @id
 @nt
@@ -87,10 +87,10 @@ div"""
 
 CAT = "<\nu\ndiv\nEXE\n>\nEXE"
 
-# The wiki's truth machine.  Its literal is 49 *colons*, which the dice
-# rule makes 98, so neither input ever equals it and both branches print
-# "T".  ``TRUTH_FIXED`` is the same program with the literal the example
-# needed (49 pips: 24 colons and a dot).
+# The wiki's truth machine.
+# rule makes 98, so neither.
+# "T".
+# needed (49 pips: 24 colons.
 _WIKI_LITERAL = ":" * 49
 TRUTH_WIKI = (
     f"u\n{{values/=/=/=[{_WIKI_LITERAL} {_WIKI_LITERAL}]}}\n<\ndiv\nEXE\n>\nIFQ\ndiv"
@@ -196,9 +196,9 @@ class TestCommands:
         is the only thing this path exercises: ``:`` is 2 as a literal and
         58 as a byte, so the two arms disagree unless each is read right.
         """
-        # $py reads ":" as 2; u reads "\x02" as 2; the third is the acc (2).
+        # $py reads ":" as 2; u reads.
         assert go("NnNn\n@nd\n@nd\n{values/=$py/=u/=}\ndiv", ":\n\x02\n") == "Q"
-        # Same inputs, but the first arg is now a byte read: 58 != 2.
+        # Same inputs, but the first.
         assert go("NnNn\n@nd\n@nd\n{values/=u/=u/=}\ndiv", ":\n\x02\n") == "T"
 
     def test_instruction26(self) -> None:
@@ -322,7 +322,7 @@ class TestBranchingSearch:
         assert not machine.branching_halted(start)
         successors = machine.branching_successors(start, 100)
         assert successors is not None
-        # Distinct only in the accumulator: 1 and 2 pips.
+        # Distinct only in the.
         assert {s[2] for s in successors} == {1, 2}
 
     def test_tilde_has_one_outcome_the_state_can_see(self) -> None:

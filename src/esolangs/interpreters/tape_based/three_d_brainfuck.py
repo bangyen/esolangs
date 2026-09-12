@@ -77,17 +77,17 @@ def _moved(point: _Point, delta: _Point) -> _Point:
     return (x + dx, y + dy, z + dz)
 
 
-#: One instant of a run: ``(cells, ap, pos, heading)`` -- the sparse cell
-#: map, the array pointer, the instruction pointer, and the direction the
-#: instruction pointer is travelling.
-#:
-#: The heading is state because a turn outlives the command that made it:
-#: an uppercase ``N``/``E``/``U`` sets it and every later step follows it,
-#: which is what makes the program a path through the grid rather than a
+# : One instant of a run:.
+# : map, the array pointer, the.
+# : instruction pointer is.
+# :.
+# : The heading is state.
+# : an uppercase.
+# : which is what makes the.
 #: line of text.
-#:
-#: The grid and its bracket table stay out -- 3D Brainfuck never rewrites
-#: its own source -- so a step is handed them.
+# :.
+# : The grid and its bracket.
+# : its own source -- so a step.
 type _Cells = dict[_Point, int]
 type _State = tuple[_Cells, _Point, _Point, _Point]
 
@@ -120,7 +120,7 @@ def _advance(
     elif char == "-":
         cells = {**cells, ap: (cells.get(ap, 0) - 1) % 256}
     elif char == ".":
-        pass  # printed by the caller; the cell is unchanged
+        pass  # printed by the caller; the.
     elif char == ",":
         cells = {**cells, ap: byte if byte is not None else 0}
     elif char == "[":
@@ -155,15 +155,15 @@ class _Machine:
         """Whether the instruction pointer has left the source line."""
         return self.pos not in self.grid
 
-    # The VM's language-shaped view.  The instruction pointer is held as
-    # ``pos`` -- the name LaserFuck gives the same thing -- because ``ip``
-    # here is the position *and* the heading, and one name cannot be both.
-    # ``ap`` keeps its own name: it is the array pointer, not this.
+    # The VM's language-shaped view.
+    # ``pos`` -- the name LaserFuck.
+    # here is the position *and*.
+    # ``ap`` keeps its own name: it.
 
-    #: ``ip`` is a position, but not one on the source text: a 3-D point and a 3-D
+    # : ``ip`` is a position, but.
     #: heading.
-    #: Declared rather than left to the default so that a tuple nobody has
-    #: classified is a missing answer instead of this one.
+    # : Declared rather than left.
+    # : classified is a missing.
     ip_shape = "opaque"
 
     @property

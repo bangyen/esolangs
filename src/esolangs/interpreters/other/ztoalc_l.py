@@ -57,13 +57,13 @@ def _freeze(value: Value) -> object:
     return value
 
 
-#: What a step decides to do, for the shell to carry out.  ``Print`` holds
-#: the codepoint to write; ``Store`` names the variable, the index
-#: expressions that walk into it, and the value to put there.
-#:
-#: The effects exist because a store has to reach the *live* list.  Two
-#: names can share one array, so writing through a copy would lose the
-#: other name's view of it -- and a value can even contain itself, which no
+# : What a step decides to do,.
+# : the codepoint to write;.
+# : expressions that walk into.
+# :.
+# : The effects exist because a.
+# : names can share one array,.
+# : other name's view of it --.
 #: frozen form survives.
 @dataclass(frozen=True)
 class _Print:
@@ -97,11 +97,11 @@ class _State:
     var: dict[str, Value]
 
 
-#: The input port, injected by the shell.  ``input`` is an atom, so a line
-#: may read several times partway through an expression, and the bytes are
-#: taken *as the evaluation reaches them* -- a line that faults after one
-#: read has consumed that byte, exactly as the original did.  Point Break
-#: and Qoibl carry the same callback for the same reason.
+# : The input port, injected by.
+# : may read several times.
+# : taken *as the evaluation.
+# : read has consumed that.
+# : and Qoibl carry the same.
 type _Read = Callable[[], int]
 
 
@@ -121,9 +121,9 @@ def _atom(
     if not exp:
         raise ValueError("missing expression")
     if pos >= len(exp):
-        # ``x[`` reaches here with ``pos`` past the end, and ``exp[pos]``
-        # below raised a bare ``IndexError`` -- the one exception in this
-        # interpreter that escaped the package's hierarchy entirely.
+        # ``x[`` reaches here with.
+        # below raised a bare.
+        # interpreter that escaped the.
         raise ValueError(f"{exp!r} ends where an expression was expected")
     if exp[pos] == "[":
         size, pos = _eval(exp, pos + 1, var, read)
@@ -142,9 +142,9 @@ def _atom(
     if tok in var:
         return var[tok], j
     if not tok:
-        # ``x[]``.  Empty is a *malformed program* rather than a lookup
-        # that failed, and the module docstring says so -- it used to be
-        # reported as an undefined variable named ``''``.
+        # ``x[]``.
+        # that failed, and the module.
+        # reported as an undefined.
         raise ValueError(f"{exp!r} has an empty index at position {pos}")
     raise HaltError(
         f"{exp!r} uses {tok!r} at position {pos}, which is not 'input', "
@@ -327,8 +327,8 @@ class _Machine:
         try:
             pointer = int(code[0])
         except ValueError:
-            # ``int`` said "invalid literal for int() with base 10: 'hello'",
-            # which names neither the language nor what line 1 is for.
+            # ``int`` said "invalid literal.
+            # which names neither the.
             raise ValueError(
                 f"line 1 holds the initial pointer and must be a number, "
                 f"got {code[0]!r}"
@@ -354,7 +354,7 @@ class _Machine:
         """Whether the Collatz trajectory has reached 1."""
         return self.ptr == 1
 
-    # The VM's language-shaped view: Collatz-trajectory pointer; memory is the sorted
+    # The VM's language-shaped.
     # variable values.
 
     @property
@@ -392,8 +392,8 @@ class _Machine:
         if not effect.indexes:
             self.var[effect.name] = effect.value
             return
-        # A store target names a variable, never ``input``, so the port
-        # here can only be reached by a program shape that does not exist.
+        # A store target names a.
+        # here can only be reached by a.
         target, _ = _atom(effect.name, 0, self.var, _no_read)
         for i in effect.indexes[:-1]:
             if not isinstance(target, list):

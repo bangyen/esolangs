@@ -1,1 +1,1 @@
-"""Test suite for the esolangs package."""
+r"""Test suite for the esolangs package."""

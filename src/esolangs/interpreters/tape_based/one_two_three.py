@@ -47,32 +47,32 @@ _READ = -3
 _WRITE = -2
 _START = 0
 
-#: The set bits of the tape, as a frozenset of locations.  The tape is
-#: unbounded and starts all-FALSE, so the set of TRUE locations *is* the
-#: tape -- there is nothing to preallocate and nothing to grow.
-#:
-#: A frozenset rather than a sorted tuple because a location is only ever
-#: tested, set, or cleared; order is never read.  ``snapshot`` sorts on the
-#: way out, as it always did, so one logical tape still has one hash.
+# : The set bits of the tape,.
+# : unbounded and starts.
+# : tape -- there is nothing to.
+# :.
+# : A frozenset rather than a.
+# : tested, set, or cleared;.
+# : way out, as it always did,.
 type _Bits = frozenset[int]
 
-#: One instant of a run: ``(ip, pos, bits, done)`` -- the code cursor, the
-#: tape pointer, the set bits, and whether the run has ended.  A value, not
-#: a record: every transition below returns a new one rather than editing
+# : One instant of a run:.
+# : tape pointer, the set bits,.
+# : a record: every transition.
 #: one in place.
-#:
-#: ``done`` is state because halting here is a decision the end-of-program
-#: check makes, and it depends on the *pointer*, not the cursor: reaching
-#: the end with the pointer below 0 halts, and with it at 0 or above loops
-#: back to the start.  The same cursor means either, so the position cannot
+# :.
+# : ``done`` is state because.
+# : check makes, and it depends.
+# : the end with the pointer.
+# : back to the start.
 #: carry it.
-#:
-#: ``done`` stays out of ``snapshot``, which reports the four fields it
+# :.
+# : ``done`` stays out of.
 #: always reported.
-#:
-#: The code is deliberately not in here.  It does not change during a run,
-#: so carrying it would put constant data in every value the cycle detector
-#: stores.  It is a parameter to the transition instead.
+# :.
+# : The code is deliberately.
+# : so carrying it would put.
+# : stores.
 type _State = tuple[int, int, _Bits, bool]
 
 
@@ -125,13 +125,13 @@ def _advance(state: _State, code: str, byte: int | None = None) -> _State:
     """
     ip, pos, bits, done = state
     if ip >= len(code):
-        # End of the program: halt below location 0, else loop from the top.
+        # End of the program: halt.
         return (ip, pos, bits, True) if pos < 0 else (_START, pos, bits, done)
     char = code[ip]
     if char == "1":
         bits = bits ^ frozenset((pos,))
         pos -= 1
-        # The pointer wraps from -4 back to 0.
+        # The pointer wraps from -4.
         if pos == -4:
             pos = _START
     elif char == "2":
@@ -143,8 +143,8 @@ def _advance(state: _State, code: str, byte: int | None = None) -> _State:
         else:
             pos += 1
     elif char == "3" and pos >= 0:
-        # Below location 0 a ``3`` is a NOP; at or above it jumps, and the
-        # jump has already positioned the cursor.
+        # Below location 0 a ``3`` is a.
+        # jump has already positioned.
         return (_jump(code, ip, back=pos in bits), pos, bits, done)
     return (ip + 1, pos, bits, done)
 
@@ -168,12 +168,12 @@ class _Machine:
         self.code = code
         self.io = io
         self.n = len(code)
-        # A program with no commands can never move, so it is done already.
+        # A program with no commands.
         idle = not any(c in "123" for c in code)
         self.state: _State = (0, _START, frozenset(), idle)
 
-    # The language's own names.  They are views on the current state rather
-    # than fields of their own, so there is one place a step can change.
+    # The language's own names.
+    # than fields of their own, so.
 
     @property
     def ip(self) -> int:
@@ -204,7 +204,7 @@ class _Machine:
         """Whether the run has ended (or has no commands to run)."""
         return self.state[3]
 
-    # The VM's language-shaped view: Unbounded bit tape + pointer; ip is the code
+    # The VM's language-shaped.
     # cursor.
 
     @property
@@ -219,9 +219,9 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The set locations, sorted, as this always reported them -- one
-        # logical tape must have exactly one hash.  ``done`` stays out: the
-        # detector compares states of a running machine.
+        # The set locations, sorted, as.
+        # logical tape must have.
+        # detector compares states of a.
         ip, pos, bits, _done = self.state
         return (ip, pos, tuple(sorted(bits)), self.io.position())
 

@@ -59,17 +59,17 @@ class TestCoreInstruction:
 
     def test_conditional_jump_on_zero(self) -> None:
         """A zero result jumps to the address stored in ``c``."""
-        # ip0: 0 - 0 = 0 -> jump to mem[2]=9, past the end.
+        # ip0: 0 - 0 = 0 -> jump to.
         assert run_bounded("0 0 2 9 0") == ""
 
     def test_conditional_jump_on_negative(self) -> None:
         """A negative result also jumps."""
-        # ip0: 0 - 5 = -5 -> jump to mem[2]=9, past the end.
+        # ip0: 0 - 5 = -5 -> jump to.
         assert run_bounded("0 5 2 9 0") == ""
 
     def test_negative_target_halts(self) -> None:
         """A ``c`` address holding a negative value stops execution."""
-        # ip0: 0 - 0 = 0 -> jump to mem[2]; mem[2] holds -1, a negative
+        # ip0: 0 - 0 = 0 -> jump to.
         # target, so execution stops.
         assert run_bounded("0 0 2 -1") == ""
 
@@ -94,37 +94,37 @@ class TestSpecialAddresses:
 
     def test_output_via_a_negative_three(self) -> None:
         """``-3`` in ``a`` outputs the value at ``b``."""
-        # ip0: a=-3, b=6 -> output mem[6]=65 'A'; ip3: 0-0=0 -> jump to
-        # mem[5]=9 (mem[5] is 9, past the end) -> halt.
+        # ip0: a=-3, b=6 -> output.
+        # mem[5]=9 (mem[5] is 9, past.
         assert run_bounded("-3 6 3 0 0 7 65 9") == "A"
 
     def test_output_via_b_negative_three(self) -> None:
         """``-3`` in ``b`` outputs the value at ``a``."""
-        # ip0: a=6, b=-3 -> output mem[6]=66 'B'; ip3: 0-0=0 -> jump to
+        # ip0: a=6, b=-3 -> output.
         # mem[5]=9 -> halt.
         assert run_bounded("6 -3 3 0 0 7 66 9") == "B"
 
     def test_input_reads_byte(self) -> None:
         """``-2`` as ``a`` supplies the next input byte in the subtraction."""
-        # ip0: a=-2 (input 'A'=65), b=0 (mem[0] is -2): 65 - (-2) = 67 (>0,
-        # no jump) -> ip3.  ip3: 0-0=0 -> jump to mem[5]=9 -> halt.
+        # ip0: a=-2 (input 'A'=65), b=0.
+        # no jump) -> ip3.
         assert run_bounded("-2 0 3 0 0 5 9", stdin="A") == ""
 
     def test_input_eof_reads_zero(self) -> None:
         """``-2`` on exhausted input reads as zero."""
-        # Same program with no input: the subtraction uses 0 in place of EOF.
+        # Same program with no input:.
         assert run_bounded("-2 0 3 0 0 5 9", stdin="") == ""
 
     def test_read_instruction_pointer(self) -> None:
         """``-1`` as an operand reads the current instruction pointer."""
-        # ip0: a=2, b=-1 (the ip, currently 0): 2 - 0 = 2 > 0, falls through;
-        # ip3: 0-0=0 -> jump to mem[5]=9, past the end.
+        # ip0: a=2, b=-1 (the ip,.
+        # ip3: 0-0=0 -> jump to.
         assert run_bounded("2 -1 3 0 0 5 9") == ""
 
     def test_write_instruction_pointer(self) -> None:
         """Storing to ``-1`` moves the instruction pointer."""
-        # ip0: a=-1: diff = ip(0) - mem[0](-1) = 1, written back to the ip;
-        # the positive result falls through and the program ends off the end.
+        # ip0: a=-1: diff = ip(0) -.
+        # the positive result falls.
         assert run_bounded("-1 0 3 6 0 0 0") == ""
 
     def test_write_past_end_extends_memory_and_breaks(self) -> None:
@@ -246,14 +246,14 @@ class TestVariants:
 
     def test_sblq_stores_in_both(self) -> None:
         """``store="ab"`` writes the difference to both a and b."""
-        # ip0: a=6, b=7: mem[6]=5 - mem[7]=3 = 2, stored in both mem[6] and
-        # mem[7]; a positive result falls through to ip3 where 0-0=0 jumps to
+        # ip0: a=6, b=7: mem[6]=5 -.
+        # mem[7]; a positive result.
         # mem[5]=9 -> halt.
         assert run_bounded("6 7 3 0 0 5 9 5 3", store="ab") == ""
 
     def test_subleq_store_in_b(self) -> None:
         """``store="b"`` writes the difference to b only."""
-        # Same program; store="b" writes only to mem[7], leaving mem[6]=5.
+        # Same program; store="b".
         assert run_bounded("6 7 3 0 0 5 9 5 3", store="b") == ""
 
     def test_each_variant_writes_where_it_says(self) -> None:
@@ -375,7 +375,7 @@ class TestSnapshot:
 
         machine = _Machine("3 4 6 1 1 0 0 0 0", ScriptedIO(""))
         before = machine.snapshot()
-        hash(before)  # must not raise
+        hash(before)  # must not raise.
         machine.step()
         assert machine.snapshot() != before
 

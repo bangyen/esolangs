@@ -137,12 +137,12 @@ def _max_between_stroke_adjacency(program: str) -> int:
     def spy(self) -> None:  # type: ignore[no-untyped-def]
         before = len(self.strokes)
         original(self)
-        # Only real drawing cursors, never `_subtree_extent`'s dry-run scratch
-        # ones: measuring lays every subtree out from (0, 0) heading `_FORWARD`
-        # in its own local frame, so those strokes pile up in a coordinate
-        # space unrelated to the drawing and abut each other meaninglessly.
-        # The shared `occupied` set is exactly what marks a cursor as part of
-        # the real render (scratch cursors are built without one).
+        # Only real drawing cursors,.
+        # ones: measuring lays every.
+        # in its own local frame, so.
+        # space unrelated to the.
+        # The shared `occupied` set is.
+        # the real render (scratch.
         if self.occupied is not None:
             captured.extend(self.strokes[before:])
 
@@ -280,7 +280,7 @@ class TestNestingDepth:
             "+[>+[>+[>+[>+[>+<-]<-]<-]<-]<-]>>>>>.", tmp_path / "depth5.png"
         ) == [1]
 
-    @pytest.mark.slow  # 5.2s: the deepest nesting the renderer draws
+    @pytest.mark.slow  # 5.2s: the deepest nesting the.
     def test_eight_levels_round_trip(self, tmp_path: Path) -> None:
         """Depth 8 renders, extracts and executes correctly.
 

@@ -14,9 +14,9 @@ from tests.interpreters.contract import (
 
 run = importlib.import_module("esolangs.interpreters.tape_based.painfuck").run
 
-# The source text is translated through a position-dependent shift per cycle
-# before execution.  _encode builds a source program whose translation is
-# exactly ``targets`` (the inverse of the module's _translate), so the tests
+# The source text is translated.
+# before execution.
+# exactly ``targets`` (the.
 # can express commands directly.
 _CYCLES = ("pevkjzwr", "yuctsobqihald")
 
@@ -64,17 +64,17 @@ class TestPainfuck:
         assert run_program("ppue") == "\x04"
 
     def test_decrement(self) -> None:
-        assert run_program("sue") == "\xff"  # -1 as a byte
+        assert run_program("sue") == "\xff"  # -1 as a byte.
 
     def test_zero(self) -> None:
         assert run_program("pzue") == "\x00"
 
     def test_square(self) -> None:
-        assert run_program("pkue") == "\x04"  # 2*2
-        assert run_program("ppkue") == "\x10"  # 4*4
+        assert run_program("pkue") == "\x04"  # 2*2.
+        assert run_program("ppkue") == "\x10"  # 4*4.
 
     def test_half(self) -> None:
-        assert run_program("pphue") == "\x02"  # 4 // 2 = 2
+        assert run_program("pphue") == "\x02"  # 4 // 2 = 2.
 
     def test_half_truncates_a_negative_toward_zero(self) -> None:
         """Halving rounds toward zero, which only shows below it.
@@ -86,7 +86,7 @@ class TestPainfuck:
         value is essential, since an even one halves the same either way.
         """
         assert run_program("ssssssshoe") == "-3"
-        assert run_program("ssshoe") == "-1"  # -3 -> -1, not -2
+        assert run_program("ssshoe") == "-1"  # -3 -> -1, not -2.
 
     def test_the_pointer_moves_by_two_right_and_one_left(self) -> None:
         """``r`` and ``l`` move by their own distances, from where they are.
@@ -112,11 +112,11 @@ class TestPainfuck:
         assert run_program("prroe") == "0"
 
     def test_copy_neighbor(self) -> None:
-        assert run_program("ppwue") == "\x00"  # copy 0 from the right neighbor
-        assert run_program("ppwque") == "\x00"  # copy back
+        assert run_program("ppwue") == "\x00"  # copy 0 from the right.
+        assert run_program("ppwque") == "\x00"  # copy back.
 
     def test_pointer_reset(self) -> None:
-        # p at cell 0, r moves right, pp, then d resets and p adds again
+        # p at cell 0, r moves right,.
         assert run_program("prppdpue") == "\x04"
 
     def test_read_byte(self) -> None:
@@ -130,17 +130,17 @@ class TestPainfuck:
             run_program("ip", "12x\n")
 
     def test_loop(self) -> None:
-        # pp a (cell 2 nonzero, open), s b (0 -> close), u prints 0
+        # pp a (cell 2 nonzero, open),.
         assert run_program("ppas b ue".replace(" ", "")) == "\x00"
 
     def test_repeat_next(self) -> None:
-        # c repeats the next command 7 times; s subtracts 1 each -> -5
+        # c repeats the next command 7.
         assert run_program("pcsu") == "\xfb"
-        # c repeating u prints 7 times
+        # c repeating u prints 7 times.
         assert run_program("pcue") == "\x02\x02\x02\x02\x02\x02\x02"
 
     def test_repeat_previous(self) -> None:
-        # t repeats the previous command 3 times
+        # t repeats the previous.
         assert run_program("ptpue") == "\n"
 
     def test_repeat_previous_with_nothing_before_it(self) -> None:
@@ -162,11 +162,11 @@ class TestPainfuck:
         assert run_program("ppoe") == "4"
 
     def test_copy_from_left_neighbor(self) -> None:
-        # q copies the left neighbor into the current cell when ptr > 0
+        # q copies the left neighbor.
         assert run_program("pprpplque") == "\x04"
 
     def test_conditional_skip(self) -> None:
-        # v skips the next command when the cell is nonzero
+        # v skips the next command when.
         assert run_program("pvpu") == "\x02"
 
     def test_random_skip(self) -> None:
@@ -195,16 +195,16 @@ class TestPainfuck:
         command for the repeats left after the first heads, so all heads
         gave 12 rather than 0.
         """
-        assert run_program("cypoe", coin=0) == "14"  # every repeat survives
-        assert run_program("cypoe", coin=1) == "0"  # every repeat dropped
-        assert run_program("cpoe", coin=0) == "14"  # a y-free run matches
-        # Unrepeated, every reading agrees: this is the case the wiki states.
+        assert run_program("cypoe", coin=0) == "14"  # every repeat survives.
+        assert run_program("cypoe", coin=1) == "0"  # every repeat dropped.
+        assert run_program("cpoe", coin=0) == "14"  # a y-free run matches.
+        # Unrepeated, every reading.
         assert run_program("ypoe", coin=0) == "2"
         assert run_program("ypoe", coin=1) == "0"
 
     def test_error(self) -> None:
         with pytest.raises(HaltError):
-            run_program("b")  # loop close with an empty stack
+            run_program("b")  # loop close with an empty.
 
 
 class TestStepMachine:
@@ -214,11 +214,11 @@ class TestStepMachine:
 
         machine = _Machine("pp", ScriptedIO())
         assert (machine.ind, list(machine.tape)) == (0, [0])
-        machine.step()  # p adds 2
+        machine.step()  # p adds 2.
         assert list(machine.tape) == [2]
-        machine.step()  # e halts
+        machine.step()  # e halts.
         assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
+        machine.step()  # stepping a halted machine is.
         assert machine.ind == 2
 
     def test_the_vm_view_reports_the_tape_and_the_loop_stack(self) -> None:
@@ -235,11 +235,11 @@ class TestStepMachine:
 
         machine = _Machine(_encode("pabe"), ScriptedIO())
         assert (machine.ip, machine.memory, machine.stack) == (0, [0], [])
-        machine.step()  # p adds 2, so the loop is entered rather than skipped
+        machine.step()  # p adds 2, so the loop is.
         assert machine.memory == [2]
-        machine.step()  # a pushes the loop's return point
+        machine.step()  # a pushes the loop's return.
         assert (machine.ip, machine.stack) == (2, [1])
-        machine.step()  # b jumps back to it, draining the stack
+        machine.step()  # b jumps back to it, draining.
         assert (machine.ip, machine.stack) == (1, [])
 
     def test_an_eof_read_still_writes_back_what_the_step_spent(self) -> None:
@@ -260,11 +260,11 @@ class TestStepMachine:
         from esolangs.interpreters.tape_based.painfuck import _Machine
 
         for prog in ("i", "j"):
-            machine = _Machine(_encode(prog), ScriptedIO(""))  # nothing to read
+            machine = _Machine(_encode(prog), ScriptedIO(""))  # nothing to read.
             assert machine.ind == 0
             with pytest.raises(EOFError):
                 machine.step()
-            assert machine.ind == 1, prog  # advanced past the read, not parked
+            assert machine.ind == 1, prog  # advanced past the read, not.
 
     def test_a_fault_keeps_what_the_step_already_did(self) -> None:
         """A ``_Halted`` fault writes its effects and state back before raising.
@@ -285,7 +285,7 @@ class TestStepMachine:
         machine = _Machine(_encode("i"), ScriptedIO("hello\n"))
         with pytest.raises(HaltError):
             machine.step()
-        assert machine.ind == 1  # the cursor the faulting step moved is kept
+        assert machine.ind == 1  # the cursor the faulting step.
 
         loose = _Machine(_encode("b"), ScriptedIO(""))
         with pytest.raises(HaltError, match="unmatched 'b'"):
@@ -303,14 +303,14 @@ class TestStepMachine:
         from esolangs.interpreters.tape_based.painfuck import _grow
 
         tape = (1, 2, 3)
-        assert _grow(tape, 0) is tape  # in range, so the same object comes back
-        assert _grow(tape, 2) is tape  # the last addressable cell
-        assert _grow(tape, 4) == (1, 2, 3, 0, 0)  # past the end, so extended
+        assert _grow(tape, 0) is tape  # in range, so the same object.
+        assert _grow(tape, 2) is tape  # the last addressable cell.
+        assert _grow(tape, 4) == (1, 2, 3, 0, 0)  # past the end, so extended.
 
     def test_skipping_a_loop_steps_over_a_nested_one(self) -> None:
         """A zero cell skips to the loop's own 'b', not to a nested one."""
-        # cell 0 is zero, so the outer 'a' skips forward; the inner 'a...b'
-        # pair must be consumed as a unit, leaving 'u' to print cell 0.
+        # cell 0 is zero, so the outer.
+        # pair must be consumed as a.
         assert run_program("aabbue") == "\x00"
 
 
@@ -357,11 +357,11 @@ class TestRepeatCollapsing:
 
     @pytest.mark.parametrize("op", "psrlzwqdhk")
     @pytest.mark.parametrize("rep", [1, 2, 3, 5, 13, 40])
-    # ``[2]`` is the cell just above the squaring fast path's bound.  The
-    # bound is ``-1 <= x <= 1``, and every other value here is either well
-    # inside it or well outside: widening it by one admits exactly 2 and
-    # nothing else (-2 still fails the *lower* bound, so ``[-2, 6]`` cannot
-    # see it), which collapses 2 to 4 where repeating squares it to 16.
+    # ``[2]`` is the cell just.
+    # bound is ``-1 <= x <= 1``,.
+    # inside it or well outside:.
+    # nothing else (-2 still fails.
+    # see it), which collapses 2 to.
     @pytest.mark.parametrize("cells", [[0], [5], [-7], [1], [-1], [2], [3, 9], [-2, 6]])
     def test_a_collapsed_op_equals_repeating_it(
         self, op: str, rep: int, cells: list[int]
@@ -371,7 +371,7 @@ class TestRepeatCollapsing:
         for ptr in range(len(cells)):
             tape = tuple(cells)
             if op == "k" and abs(tape[ptr]) > 1 and rep > 5:
-                continue  # squaring explodes by design; nothing to collapse
+                continue  # squaring explodes by design;.
             state = (tape, (), ptr, 0, rep)
             (got_tape, _loop, got_ptr, _ind, _r), _fx = _advance(state, op, 1, (), ())
             assert (got_tape, got_ptr) == self._iterate(op, tape, ptr, rep), (
@@ -393,7 +393,7 @@ class TestRepeatCollapsing:
 
         entered = None
         for rep in (1, 2, 7, 1000):
-            state = ((5,), (), 0, 0, rep)  # nonzero cell: the loop is entered
+            state = ((5,), (), 0, 0, rep)  # nonzero cell: the loop is.
             (_tape, loop, _ptr, ind, _r), _fx = _advance(state, "ab", 2, (), ())
             assert len(loop) == 1, f"rep={rep} pushed {len(loop)} entries"
             entered = (loop, ind) if entered is None else entered
@@ -412,8 +412,8 @@ class TestRepeatCollapsing:
             ("cp", 7),
             ("ccp", 49),
             ("cccp", 343),
-            # A t run after a c run repeats the *c*, which already applied
-            # once, so it adds 3**len more applications of it.
+            # A t run after a c run repeats.
+            # once, so it adds 3**len more.
             ("ctp", 7**4),
             ("cctp", 49**4),
             ("ctttp", 7 ** (1 + 27)),

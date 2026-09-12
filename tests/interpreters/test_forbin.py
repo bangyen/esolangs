@@ -45,10 +45,10 @@ def walk_until_halt_or_ancestor(machine: object, limit: int = 64) -> bool:
     such a mutant spins until the harness alarm rather than failing fast.
     """
     # pylint: disable=duplicate-code
-    # The overlap with the shared module's walk is the point, not an
-    # oversight: see the docstring above.  Importing it instead would cut
-    # this file from the mutation bundle whole, so the copy stays and the
-    # similarity check is told so here rather than left to fail in CI.
+    # pylint: disable=duplicate-code
+    # pylint: disable=duplicate-code
+    # pylint: disable=duplicate-code
+    # pylint: disable=duplicate-code
     keys: dict[int, object] = {}
     pushes, steps = 0, 0
     while pushes < limit:
@@ -63,8 +63,8 @@ def walk_until_halt_or_ancestor(machine: object, limit: int = 64) -> bool:
             continue
         pushes += 1
         depth = len(machine.frames) - 1
-        # A shallower frame at this index belongs to a call that has since
-        # returned, so drop it rather than compare against a dead ancestor.
+        # pylint: disable=duplicate-code
+        # pylint: disable=duplicate-code
         keys = {d: k for d, k in keys.items() if d < depth}
         keys[depth] = machine.frame_entry_key(machine.frames[-1])
         if keys[depth] in [k for d, k in keys.items() if d < depth]:
@@ -95,7 +95,7 @@ class TestOutput:
 
 class TestInput:
     def test_in_reads_a_byte_msb_first(self) -> None:
-        # 'A' is 0b01000001
+        # pylint: disable=duplicate-code
         code = "main { a,b,c,d,e,f,g,h = (in 0); out a,b,c,d,e,f,g,h; }"
         assert run_program(code, "A") == "A"
 
@@ -132,7 +132,7 @@ class TestInput:
 
 class TestLoops:
     def test_range_loops_once_and_twice(self) -> None:
-        # 0..0 runs once (i=0), 0..1 runs twice (i=0,1)
+        # pylint: disable=duplicate-code
         code = """
             main {
               n = 0;
@@ -146,7 +146,7 @@ class TestLoops:
         assert run_program(code) == "\x01\x00"
 
     def test_range_as_if_statement(self) -> None:
-        # for _:!c..c runs the body iff c is 1 (twice, since 0..1 iterates)
+        # pylint: disable=duplicate-code
         code = """
             main {
               c = 0;
@@ -256,7 +256,7 @@ class TestFunctions:
         assert run_program(code) == "\x01"
 
     def test_forward_reference(self) -> None:
-        # loop is defined after main but still callable
+        # pylint: disable=duplicate-code
         code = """
             main {
               h = 0;
@@ -275,11 +275,11 @@ class TestFunctions:
             }
             again { out 0,0,1,1,0,0,0,1; }
         """
-        # input '0' (h=0): no recursion
+        # pylint: disable=duplicate-code
         assert run_program(code, "0") == "0"
 
     def test_function_as_argument(self) -> None:
-        # the wiki's eq helper, called via a passed function
+        # pylint: disable=duplicate-code
         code = """
             eq a, b {
               equal = 0;
@@ -481,14 +481,14 @@ class TestDiscardTarget:
         the only route to the recursive binder.
         """
         for code in (
-            # broadcast assignment
+            # pylint: disable=duplicate-code
             "main { _ = 1; out 0,0,0,0,0,0,0,_; }",
-            # paired assignment, where the value comes by position
+            # pylint: disable=duplicate-code
             "main { _, x = 1, 0; out 0,0,0,0,0,0,0,_; }",
-            # the step machine's row binder, range and iteration spellings
+            # pylint: disable=duplicate-code
             "main { for _:0..1 { } out 0,0,0,0,0,0,0,_; }",
             "main { for _:(0, 1) { } out 0,0,0,0,0,0,0,_; }",
-            # the recursive binder, reached through an expression-position call
+            # pylint: disable=duplicate-code
             "g { for _:0..1 { } return _; }\nmain { x = (g 0); }\n",
             "g { for _:(0, 1) { } return _; }\nmain { x = (g 0); }\n",
         ):
@@ -555,7 +555,7 @@ class TestParserErrors:
             run_program("main { for i:0 1 { } }")
 
     def test_trailing_comma_header(self) -> None:
-        # f a, { is a header whose parameter list ends after the comma
+        # pylint: disable=duplicate-code
         assert run_program("main { f a, { out 0,0,0,0,0,0,0,0; } }") == ""
 
     def test_unterminated_block(self) -> None:
@@ -657,8 +657,8 @@ class TestParserErrors:
 
 class TestStepMachine:
     def test_main_with_parameters_defaults_to_zero(self) -> None:
-        # main's own parameters are set to 0 (per the wiki), same as any
-        # other function's unpassed arguments
+        # pylint: disable=duplicate-code
+        # pylint: disable=duplicate-code
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.other.forbin import _Machine
 
@@ -674,12 +674,12 @@ class TestStepMachine:
         machine = _Machine("main { }", ScriptedIO())
         while not machine.halted:
             machine.step()
-        machine.step()  # stepping a halted machine is a no-op
+        machine.step()  # stepping a halted machine is.
         assert machine.halted
 
     def test_statement_call_inside_a_for_loop_body_pushes_a_frame(self) -> None:
-        # a statement-position call inside a for-loop body is stepped
-        # through _step_for's own frame-push, not _exec_stmt's
+        # pylint: disable=duplicate-code
+        # pylint: disable=duplicate-code
         code = """
             helper { out 0,1,0,0,1,0,0,0; }
             main { for _:0..0 { helper 0; } }
@@ -687,21 +687,21 @@ class TestStepMachine:
         assert run_program(code) == "H"
 
     def test_bare_return_at_top_level_pops_the_frame(self) -> None:
-        # a return statement run directly by step() (not through a pushed
-        # frame) still pops the current frame via its own got-is-not-None path
+        # pylint: disable=duplicate-code
+        # pylint: disable=duplicate-code
         code = "main { return 1; out 0,0,0,0,0,0,0,1; }"
         assert run_program(code) == ""
 
     def test_return_inside_a_for_loop_body_pops_the_frame(self) -> None:
-        # a return statement inside a for-loop body, run through
-        # _step_for's own statement handling, also pops the frame
+        # pylint: disable=duplicate-code
+        # pylint: disable=duplicate-code
         code = "main { for _:0..0 { return 1; } out 0,0,0,0,0,0,0,1; }"
         assert run_program(code) == ""
 
     def test_return_inside_a_non_range_for_loop_in_a_nested_call(self) -> None:
-        # a return inside a for-loop body, reached through the recursive
-        # _run/_exec_stmt/_exec_block path (an expression-position call),
-        # propagates out through _exec_block's own got-is-not-None return
+        # pylint: disable=duplicate-code
+        # pylint: disable=duplicate-code
+        # pylint: disable=duplicate-code
         code = """
             f {
               for i:(1, 0) { return i; }
@@ -766,10 +766,10 @@ class TestForbinMutationSurvivors:
 
         machine = _Machine(code, ScriptedIO(stdin))
         steps, deepest = 0, 0
-        # The programs here settle in fifteen steps or fewer.  The cap is
-        # headroom, not a timeout: a mutant that stops one halting should
-        # fail this in microseconds, and at 20000 it burnt 5.7 seconds
-        # apiece instead -- once per such mutant, over eleven hundred.
+        # pylint: disable=duplicate-code
+        # pylint: disable=duplicate-code
+        # pylint: disable=duplicate-code
+        # pylint: disable=duplicate-code
         while not machine.halted and steps < 200:
             machine.step()
             steps += 1
@@ -789,7 +789,7 @@ class TestForbinMutationSurvivors:
         steps, out, deepest = self._drive(code)
         assert out == "A@"
         assert steps == 7
-        assert deepest == 2  # main, plus the frame each call pushes
+        assert deepest == 2  # main, plus the frame each.
 
     def test_a_for_loop_steps_once_per_row(self) -> None:
         """The loop yields between rows instead of running to completion.
@@ -828,22 +828,22 @@ class TestForbinMutationSurvivors:
         path shows up as a different step count, a different byte string,
         or a program that stops halting.
         """
-        # A call first, then a statement: the pushing path's cursor.
+        # pylint: disable=duplicate-code
         steps, out, deepest = self._drive(
             "g { out 0,1,0,0,0,0,0,1; }\nh { out 0,1,0,0,0,1,0,0; }\n"
             "main { for i:0..0 { g 0; h 0; } }\n"
         )
         assert (steps, out, deepest) == (10, "AD", 2)
 
-        # A statement first, then a call: the in-place path's cursor.
+        # pylint: disable=duplicate-code
         steps, out, deepest = self._drive(
             "g { out 0,1,0,0,0,0,0,1; }\n"
             "main { for i:0..1 { out 0,1,0,0,0,1,0,i; g 0; } }\n"
         )
         assert (steps, out, deepest) == (13, "DAEA", 2)
 
-        # Two plain statements over two rows: the in-place path again, with
-        # the row change in between.
+        # pylint: disable=duplicate-code
+        # pylint: disable=duplicate-code
         steps, out, deepest = self._drive(
             "main { for i:0..1 { out 0,1,0,0,0,0,0,i; out 0,1,0,0,0,0,1,i; } }"
         )
@@ -1209,7 +1209,7 @@ class TestThreadedResources:
             run_program("main { for i:((in 0)) { out 0,1,0,0,0,0,0,i; } }", "\xff")
             == "A"
         )
-        # inside an expression-position call, which runs recursively
+        # pylint: disable=duplicate-code
         assert (
             run_program(
                 "g { x = (in 0); return x; }\n"
@@ -1263,7 +1263,7 @@ class TestThreadedResources:
         expression-position call so the recursive evaluator is what runs
         them.
         """
-        # an argument that is a call: needs the function table
+        # pylint: disable=duplicate-code
         assert (
             run_program(
                 "k { return 1; }\nh a { return a; }\n"
@@ -1272,7 +1272,7 @@ class TestThreadedResources:
             )
             == "A"
         )
-        # an argument that reads input: needs the reader
+        # pylint: disable=duplicate-code
         assert (
             run_program(
                 "h a { return a; }\ng { x = (h (in 0)); return x; }\n"
@@ -1349,8 +1349,8 @@ class TestWildcardExpansion:
             )
             == "@"
         )
-        # a fixed column either side of the wildcard: the cursor must not
-        # consume one of them
+        # pylint: disable=duplicate-code
+        # pylint: disable=duplicate-code
         assert (
             run_program(
                 "g { for (i,j,k):((1,*,0)) { return j; } return 1; }\n"
@@ -1392,10 +1392,10 @@ class TestPairedLengthsAreNotChecked:
 
     def test_arity_mismatch_is_tolerated_on_both_call_paths(self) -> None:
         """A statement call and an expression call bind arguments separately."""
-        # statement-position call: too few arguments, then too many
+        # pylint: disable=duplicate-code
         assert run_program("g a, b { out 0,1,0,0,0,0,0,a; }\nmain { g 1; }\n") == "A"
         assert run_program("g a { out 0,1,0,0,0,0,0,a; }\nmain { g 1, 0; }\n") == "A"
-        # expression-position call, which binds through the other zip
+        # pylint: disable=duplicate-code
         assert (
             run_program(
                 "g a { return a; }\nmain { x = (g 1, 0); out 0,1,0,0,0,0,0,x; }\n"
@@ -1413,7 +1413,7 @@ class TestPairedLengthsAreNotChecked:
         assert (
             run_program("main { for (i,j):((0),(1)) { out 0,1,0,0,0,0,0,i; } }") == "@A"
         )
-        # and again through the recursive evaluator
+        # pylint: disable=duplicate-code
         assert (
             run_program(
                 "g { for (i,j):((0),(1)) { return 0; } return 0; }\n"
@@ -1488,8 +1488,8 @@ class TestErrorMessages:
                 run(code, ScriptedIO(""))
             assert str(caught.value) == message
 
-        # These two interpolate the offending value, whose repr carries an
-        # address; the wording up to it is still pinned exactly.
+        # pylint: disable=duplicate-code
+        # pylint: disable=duplicate-code
         for code, prefix in (
             (
                 "f { return 0; }\nmain {\n for i:0..f { f 0; }\n}\n",
@@ -1593,8 +1593,8 @@ class TestErrorMessages:
         """
         with pytest.raises(ValueError, match="expected an identifier") as caught:
             run("main { out 0,1,0,0,1,0,0,0; }\n/", ScriptedIO(""))
-        # Position 30 is the ``/`` itself: the bound held, so the scanner
-        # stopped there rather than reading past the end of the input.
+        # pylint: disable=duplicate-code
+        # pylint: disable=duplicate-code
         assert str(caught.value) == "expected an identifier at position 30"
         assert run_program("main { out 0,1,0,0,1,0,0,0; }\n//") == "H"
         with pytest.raises(ValueError, match="no main function"):
@@ -1638,16 +1638,16 @@ class TestSnapshotWithoutTheCycleDetector:
             "g x { out 0,1,0,0,0,0,0,x; }\nmain {\n a = 0;\n for i:0..1 { g i; }\n}\n"
         )
 
-        # the statement cursor advances
+        # pylint: disable=duplicate-code
         assert at(prog, 1) != at(prog, 2)
-        # a different binding is a different state, at the same cursor
+        # pylint: disable=duplicate-code
         assert at("main {\n a = 0;\n}\n", 1) != at("main {\n a = 1;\n}\n", 1)
-        # so is a different loop row, and a different position within a body
+        # pylint: disable=duplicate-code
         assert at(prog, 3) != at(prog, 4)
-        # frames are part of it: inside a call is not the same as before it
+        # pylint: disable=duplicate-code
         nested = "f { out 0,1,0,0,0,0,0,1; }\nmain {\n f 0;\n}\n"
         assert at(nested, 1) != at(nested, 2)
-        # and so is the input cursor, with everything else equal
+        # pylint: disable=duplicate-code
         read = "main {\n a,b,c,d,e,f,g,h = (in 0);\n}\n"
         assert at(read, 0, "HH") != at(read, 1, "HH")
 
@@ -1679,7 +1679,7 @@ class TestSnapshotWithoutTheCycleDetector:
             depth = len(machine.frames)
         assert machine.halted
         assert machine.io.getvalue() == "H"
-        # one frame pushed, for the anonymous function, named ""
+        # pylint: disable=duplicate-code
         assert keys == [("", (), 0)]
 
     def test_a_frame_outside_a_loop_reports_a_sentinel(self) -> None:
@@ -1707,15 +1707,15 @@ class TestSnapshotWithoutTheCycleDetector:
         looping = "g x { out 0,1,0,0,0,0,0,x; }\nmain {\n for i:0..1 { g i; }\n}\n"
         flat = "g x { out 0,1,0,0,0,0,0,x; }\nmain {\n g 0;\n g 1;\n}\n"
 
-        # a frame that has not entered its loop yet reports the sentinel
+        # pylint: disable=duplicate-code
         assert frames(looping, 0) == (("main", 0, (), -1, -1),)
-        # once iterating, both counters are real and start at zero
+        # pylint: disable=duplicate-code
         assert frames(looping, 1) == (("main", 0, (), 0, 0),)
-        # the row index counts up, so it takes the values a sentinel must avoid
+        # pylint: disable=duplicate-code
         assert frames(looping, 2) == (("main", 0, (("i", "0"),), 1, 0),)
         assert frames(looping, 6) == (("main", 0, (("i", "1"),), 2, 0),)
-        # a called frame is not looping, so it carries the sentinel
+        # pylint: disable=duplicate-code
         assert frames(looping, 3)[1] == ("g", 0, (("x", "0"),), -1, -1)
-        # and a program with no loop at all reports it for every step
+        # pylint: disable=duplicate-code
         for step in range(4):
             assert all(f[3] == -1 and f[4] == -1 for f in frames(flat, step))

@@ -120,7 +120,7 @@ class TestAlarmBudget:
         """
         script = load_script()
         assert script._MIN_ALARM < script._MAX_ALARM  # noqa: SLF001
-        # 20s against a measured worst single test of 2.98s.
+        # 20s against a measured worst.
         assert script._MAX_ALARM >= 3 * 2.98  # noqa: SLF001
 
     def test_the_conftest_skips_the_alarm_during_the_stats_pass(self) -> None:
@@ -238,8 +238,8 @@ class TestParseTarget:
         assert not set(script._modules("boolean")) & set(script._modules("tools"))  # noqa: SLF001
         kinds = script._KINDS  # noqa: SLF001
         kinds["mirror"] = kinds["boolean"]
-        # ``_FAMILIES`` is a snapshot taken at import, so the new kind has to
-        # be added to both or the lookup never sees it.
+        # ``_FAMILIES`` is a snapshot.
+        # be added to both or the.
         script._FAMILIES = (*script._FAMILIES, "mirror")  # noqa: SLF001
         try:
             with pytest.raises(SystemExit) as excinfo:
@@ -342,6 +342,6 @@ class TestPrepare:
         proj, _ = script._prepare("boolean", "tape", tmp_path, slow=False)  # noqa: SLF001
         config = (proj / "pyproject.toml").read_text()
         mutated = config.split('paths_to_mutate = ["')[1].split('"]')[0]
-        # The same expression ``_score`` uses to find mutmut's result file.
+        # The same expression.
         scored = proj / "mutants" / "esolangs" / "tools" / "boolean" / "tape.py.meta"
         assert scored == proj / "mutants" / f"{mutated}.meta"

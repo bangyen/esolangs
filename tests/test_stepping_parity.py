@@ -1,17 +1,4 @@
-"""The step path and :func:`esolangs.run` must agree, or say why they cannot.
-
-A third blind pass drove the languages through the debugger instead of
-through ``run`` and scored 62 of 69, which is the interesting number: the
-seven it lost were not wrong answers but *unreachable* ones.  Six kept their
-answer on the step after the halt and :meth:`Debugger.step` refused to take
-it; the seventh, Suffolk, returned the right answer from ``run`` and raised
-from the debugger for the same program and the same input.
-
-So the contract these pin is: for every language that claims to be
-steppable, stepping reaches the same answer running does.  A language that
-cannot make that claim declares it -- A Painter Ant does -- and the sweep
-reads the declaration rather than carrying a name.
-"""
+r"""The step path and :func:`esolangs.run` must agree, or say why they."""
 
 from __future__ import annotations
 
@@ -23,20 +10,20 @@ import pytest
 import esolangs
 from esolangs.vm import machine_traits, run_until_halt
 
-#: Enough for every generated boolean program in the suite to finish; the
-#: slowest needs a few hundred thousand.
+# : Enough for every generated.
+# : slowest needs a few hundred.
 _STEP_BUDGET = 2_000_000
 
 
 def _row(name: str, table: str, bits: list[int]) -> tuple[str, str]:
-    """Return the ``(program, stdin)`` for one row, without naming a language."""
+    r"""Return the ``(program, stdin)`` for one row, without naming a."""
     if esolangs.describe(name)["parameterized"]:
         return esolangs.instantiate(name, esolangs.generate(name, table), bits), ""
     return esolangs.generate(name, table), esolangs.encode_inputs(name, bits, table)
 
 
 def _drive(vm: esolangs.VM) -> str:
-    """Step ``vm`` to its answer, honouring the two traits that say how."""
+    r"""Step ``vm`` to its answer, honouring the two traits that say how."""
     run_until_halt(vm, _STEP_BUDGET)
     if vm.dumps_on_the_post_halt_step:
         vm.step()
@@ -44,24 +31,24 @@ def _drive(vm: esolangs.VM) -> str:
 
 
 class TestTheTraitsAreReportedBeforeAMachineExists:
-    """A caller deciding *how* to drive should not have to build one first."""
+    r"""A caller deciding *how* to drive should not have to build one first."""
 
     @pytest.mark.parametrize(
         "key", ["self_halts", "dumps_on_the_post_halt_step", "steppable_to_answer"]
     )
     def test_describe_carries_each_trait(self, key: str) -> None:
-        """They were VM properties only, so seventeen needed bits to read one."""
+        r"""They were VM properties only, so seventeen needed bits to read one."""
         assert all(key in esolangs.describe(n) for n in esolangs.list_languages())
 
     def test_describe_agrees_with_the_machine(self) -> None:
-        """The class attribute and the live wrapper must not drift apart."""
+        r"""The class attribute and the live wrapper must not drift apart."""
         for name in ("brainfuck", "Suffolk", "RAM0", "A Painter Ant", "LaserFuck"):
             facts = esolangs.describe(name)
             for key, value in machine_traits(name).items():
                 assert facts[key] == value, (name, key)
 
     def test_a_painter_ant_is_the_one_that_cannot_be_stepped(self) -> None:
-        """Stated as data: three million steps leave it with no output."""
+        r"""Stated as data: three million steps leave it with no output."""
         unsteppable = [
             n
             for n in esolangs.list_languages()
@@ -70,7 +57,7 @@ class TestTheTraitsAreReportedBeforeAMachineExists:
         assert unsteppable == ["A Painter Ant"]
 
     def test_the_debugger_mirrors_them_too(self) -> None:
-        """Reading them meant reaching through ``.vm``, which decides nothing."""
+        r"""Reading them meant reaching through ``.vm``, which decides nothing."""
         d = esolangs.make_debugger("RAM0", _row("RAM0", "0110", [0, 1])[0])
         assert d.dumps_on_the_post_halt_step is True
         assert d.self_halts is True
@@ -78,21 +65,21 @@ class TestTheTraitsAreReportedBeforeAMachineExists:
 
 
 class TestSteppingReachesTheSameAnswer:
-    """The sweep that would have caught all seven at once."""
+    r"""The sweep that would have caught all seven at once."""
 
     @pytest.mark.slow
     def test_every_steppable_language_agrees_with_run(self) -> None:
-        """62/69 was six refused dump steps and one raise, not seven wrong bits."""
+        r"""62/69 was six refused dump steps and one raise, not seven wrong."""
         table = "0110"
         disagreed = []
-        # Counted, because a filter that quietly excluded everything would
-        # leave this passing on nothing at all.
+        # Counted, because a filter.
+        # leave this passing on nothing.
         checked = 0
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
-            # The three that answer by diverging have no output either way,
-            # so there is nothing for the two paths to agree *about*; both
-            # run forever on half the rows, which is the correct answer.
+            # The three that answer by.
+            # so there is nothing for the.
+            # run forever on half the rows,.
             if not facts["steppable_to_answer"]:
                 continue
             if facts["answer_mode"] == "termination":
@@ -109,12 +96,12 @@ class TestSteppingReachesTheSameAnswer:
                 if got != want:
                     disagreed.append(f"{name} row {row}: stepped {got!r} ran {want!r}")
         assert not disagreed, "\n".join(disagreed)
-        # 69 languages, less A Painter Ant and the three that answer by
+        # 69 languages, less A Painter.
         # diverging, times four rows.
         assert checked == 65 * 4, checked
 
     def test_suffolk_no_longer_disagrees_with_itself(self) -> None:
-        """``run`` answered and the debugger raised, for the same call."""
+        r"""``run`` answered and the debugger raised, for the same call."""
         table = "0110"
         for bits, want in (([0, 0], "0"), ([0, 1], "1"), ([1, 0], "1"), ([1, 1], "0")):
             program, stdin = _row("Suffolk", table, bits)
@@ -124,34 +111,24 @@ class TestSteppingReachesTheSameAnswer:
             assert debugger.output == want
 
     def test_a_dump_is_reachable_without_touching_the_wrapped_vm(self) -> None:
-        """``Debugger.step`` returned early on ``halted``; the dump *is* that step.
-
-        This used to assert the intermediate state -- ``run`` leaving an
-        empty ``output``, and one further ``step`` filling it -- which
-        recorded a bug as a contract.  ``step`` could cross the halt and
-        ``run`` could not, so a caller had to know to step again after a
-        method that had already reported ``"halted"``; the CLI's ``debug``
-        did not know, and printed nothing for a program that ran correctly.
-        ``run`` finishes the dump now, so the answer is there when it
-        returns.
-        """
+        r"""``Debugger.step`` returned early on ``halted``; the dump *is* that."""
         program, _ = _row("RAM0", "0110", [0, 1])
         debugger = esolangs.make_debugger("RAM0", program)
         assert debugger.run(max_steps=_STEP_BUDGET) == "halted"
         assert esolangs.read_answer("RAM0", debugger.output) == "1"
-        # And the step after the dump is the no-op the docstring promises,
-        # so a caller who does step again is not punished for it.
+        # And the step after the dump.
+        # so a caller who does step.
         before = debugger.output
         debugger.step()
         assert debugger.output == before
 
 
 class TestStepPastHaltIsSafeEverywhere:
-    """The claim that made the unconditional delegation defensible."""
+    r"""The claim that made the unconditional delegation defensible."""
 
     @pytest.mark.slow
     def test_no_language_faults_when_stepped_past_its_halt(self) -> None:
-        """``Debugger.step`` now delegates always, so this must hold for all."""
+        r"""``Debugger.step`` now delegates always, so this must hold for all."""
         broke = []
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
@@ -177,19 +154,19 @@ class TestStepPastHaltIsSafeEverywhere:
 
 
 class TestTheConstructorsTakeWhatRunTakes:
-    """``check_program`` was called and its *return value* thrown away."""
+    r"""``check_program`` was called and its *return value* thrown away."""
 
     @pytest.mark.parametrize("build", [esolangs.make_vm, esolangs.make_debugger])
     def test_a_path_is_read_rather_than_handed_to_the_interpreter(
         self, build: object
     ) -> None:
-        """It validated the file's contents, then passed the Path itself on."""
+        r"""It validated the file's contents, then passed the Path itself on."""
         example = pathlib.Path(str(esolangs.describe("brainfuck")["examples"][0]))
         machine = build("brainfuck", example, "1\n0\n")  # type: ignore[operator]
         assert machine.halted is False
 
     def test_the_path_and_the_source_build_the_same_machine(self) -> None:
-        """Reading it here must match what a caller reading it gets."""
+        r"""Reading it here must match what a caller reading it gets."""
         example = pathlib.Path(str(esolangs.describe("brainfuck")["examples"][0]))
         source = example.read_text().rstrip("\n")
         from_path = _drive(esolangs.make_vm("brainfuck", example, "1\n0\n"))
@@ -198,10 +175,10 @@ class TestTheConstructorsTakeWhatRunTakes:
 
 
 class TestTheEofTraitIsOnTheVmToo:
-    """``describe`` reads the class; a driving caller holds the wrapper."""
+    r"""``describe`` reads the class; a driving caller holds the wrapper."""
 
     def test_the_wrapper_reports_it(self) -> None:
-        """Same value from both, or one of them is lying."""
+        r"""Same value from both, or one of them is lying."""
         for name in ("DINAC", "brainfuck"):
             program = esolangs.generate(name, "0110")
             stdin = esolangs.encode_inputs(name, [0, 1], "0110")
@@ -209,23 +186,23 @@ class TestTheEofTraitIsOnTheVmToo:
             assert vm.eof_is_a_value == esolangs.describe(name)["eof_is_a_value"]
 
 
-#: The arity and shapes the *execution* sweep uses, so the two agree.
+# : The arity and shapes the.
 _WIDER_ARITY = 6
 
-#: Four rows rather than all 64.  A step/run divergence is a property of
-#: the program, not of the row -- Grapheme's and Sophie's showed on every
-#: row that reached the broken construct -- so sampling buys the arity and
-#: the second shape for a sixteenth of the cost.
+# : Four rows rather than all.
+# : the program, not of the row.
+# : row that reached the broken.
+# : the second shape for a.
 _WIDER_ROWS = (0, 1, 32, 63)
 
 
 def _one_hot(n: int) -> str:
-    """1 exactly where one input is set."""
+    r"""1 exactly where one input is set."""
     return "".join(str(int(bin(row).count("1") == 1)) for row in range(2**n))
 
 
 def _one_minterm(n: int) -> str:
-    """A single 1, which makes every input essential at minimum size."""
+    r"""A single 1, which makes every input essential at minimum size."""
     return "1" + "0" * (2**n - 1)
 
 
@@ -236,18 +213,7 @@ def _one_minterm(n: int) -> str:
 def test_stepping_agrees_at_a_wider_arity_and_shape(
     make: Callable[[int], str],
 ) -> None:
-    """The sweep above uses ``0110`` -- two inputs, one shape.
-
-    That is the coordinate this package's generator bugs kept hiding in:
-    Grapheme was invisible because execution stopped at four inputs while
-    building went to ten, and Sophie survived the fix because the new
-    execution sweep varied a single table *shape*.  Stepping parity is the
-    same kind of claim -- the two paths *can* disagree, which is why this
-    file exists -- and it was checked at one arity on one table.
-
-    260 comparisons in 3.7s, so the blind spot cost less to close than to
-    argue about.
-    """
+    r"""The sweep above uses ``0110`` -- two inputs, one shape."""
     table = make(_WIDER_ARITY)
     disagreed = []
     checked = 0
@@ -274,5 +240,5 @@ def test_stepping_agrees_at_a_wider_arity_and_shape(
             if got != want:
                 disagreed.append(f"{name} row {row}: stepped {got!r} ran {want!r}")
     assert not disagreed, "\n".join(disagreed)
-    # A filter that quietly excluded everything would leave this vacuous.
+    # A filter that quietly.
     assert checked == 65 * len(_WIDER_ROWS), checked

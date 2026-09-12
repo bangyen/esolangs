@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# !/usr/bin/env python3.
 """Executed lemma checks behind ``docs/generators/arrowqueue_generator.md``.
 
 The proof there is total over every arity, so nothing in this file
@@ -40,12 +40,12 @@ from esolangs.tools.boolean.parameterized import (
 )
 from esolangs.vm import run_until_halt_or_cycle
 
-#: The four loop components the ring's corners must pop, in queue order.
+# : The four loop components.
 RDLU = (0, 1, 2, 3)
 
-#: Composed trees the geometry checks run against.  Shapes, not a sample of
-#: tables: G1-G3 are facts about ``_connect``'s three writes, and these
-#: exercise a balanced tree, a lopsided one, and two folded halves.
+# : Composed trees the geometry.
+# : tables: G1-G3 are facts.
+# : exercise a balanced tree, a.
 _GEOMETRY_SHAPES = [
     "0110",
     "01101001",
@@ -178,19 +178,19 @@ def check_g_geometry() -> None:
         yb = len(t0)
         width = len(grid[0])
 
-        # G1: the rows the two subtrees actually occupy must not intersect.
+        # G1: the rows the two subtrees.
         rows_t0 = _glyph_rows(t0)
         rows_t1 = {yb + r for r in _glyph_rows(t1)}
         overlaps += len(rows_t0 & rows_t1)
 
-        # G2: within t0's rows nothing is written right of t0.
+        # G2: within t0's rows nothing.
         for r in range(len(t0)):
             for c in range(3 + len(t0[0]), width):
                 if grid[r][c] != " ":
                     right_blockers += 1
 
-        # G3 (second half): column 1 between the two branch blocks is blank,
-        # so the 0-branch's downward exit falls through to the 1-branch.
+        # G3 (second half): column 1.
+        # so the 0-branch's downward.
         for r in range(3, yb):
             if grid[r][1] != " ":
                 column_blockers += 1
@@ -438,7 +438,7 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    # Seeded so the sampled arities and random tables are reproducible.
+    # Seeded so the sampled arities.
     random.seed(20240904)
 
     check_h1_pitch()

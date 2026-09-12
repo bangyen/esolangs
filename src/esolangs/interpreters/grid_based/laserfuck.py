@@ -26,28 +26,28 @@ from typing import cast
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
 
-#: One instant of a run: ``(tape, ptr, lsrs, ind, jmp, pos)`` -- the cells
-#: with their touched flags, the cell pointer, the live beams as
-#: ``(row, col, heading)`` triples, which beam moves next, whether the
-#: previous cell was a ``#``, and where the active beam now sits.
-#:
-#: The beams are the reason this is a list rather than a position: ``*``
-#: appends one and ``x`` removes one, so the round-robin index has to
-#: survive a store that grows and shrinks under it.
-#:
-#: The grid is not here -- LaserFuck never writes to its own text -- so a
-#: step is handed it rather than carrying it.
+# : One instant of a run:.
+# : with their touched flags,.
+# : ``(row, col, heading)``.
+# : previous cell was a ``#``,.
+# :.
+# : The beams are the reason.
+# : appends one and ``x``.
+# : survive a store that grows.
+# :.
+# : The grid is not here --.
+# : step is handed it rather.
 type _Beams = tuple[tuple[int, int, int], ...]
 type _Tape = tuple[tuple[int, int], ...]
 type _State = tuple[_Tape, int, _Beams, int, bool, tuple[int, int, int]]
 
-#: One instant as the all-outcomes search sees it: ``_State`` without the
-#: reported position, and with ``None`` beams standing for a laser whose
-#: heading has not been drawn yet.
+# : One instant as the.
+# : reported position, and with.
+# : heading has not been drawn.
 type _BranchState = tuple[_Tape, int, _Beams | None, int, bool]
 
-#: The position handed to a transition during a branching search.  Every
-#: caller strips the result's copy, so the value only has to be constant.
+# : The position handed to a.
+# : caller strips the result's.
 _NO_POS = (0, 0, 0)
 
 
@@ -149,21 +149,21 @@ def _advance(
 class _Machine:
     """A LaserFuck run: the grid, the live lasers, and the tape."""
 
-    #: Whether the tape is written on the step *after* the halt.  It
-    #: belongs to the language, not to whoever is stepping it: ``run`` ends
-    #: its loop with one more ``step()``, so a caller who stops at
-    #: ``halted`` has driven the program correctly and still holds none of
+    # : Whether the tape is written.
+    # : belongs to the language,.
+    # : its loop with one more.
+    # : ``halted`` has driven the.
     #: its output.
-    #:
-    #: The dump lives on the machine rather than in ``run`` because the VM
-    #: adapter used to replicate it and drifted: its copy fired on ``not
-    #: lsrs`` where ``run`` fires on ``halted``, so a program stopped by a
-    #: second start marker printed under one and not the other.
+    # :.
+    # : The dump lives on the.
+    # : adapter used to replicate.
+    # : lsrs`` where ``run`` fires.
+    # : second start marker printed.
     dumps_on_the_post_halt_step = True
 
-    #: The seed a reproducible run starts from.  It belongs to the
-    #: language, not to whoever is stepping it: 2 draws the initial
-    #: heading 0, up, which is the direction this language's examples
+    # : The seed a reproducible run.
+    # : language, not to whoever is.
+    # : heading 0, up, which is the.
     #: are written for.
     reproducible_seed = 2
 
@@ -193,32 +193,32 @@ class _Machine:
         self.rows = len(text)
 
         self.ptr = 0
-        self.tape: _Tape = ((0, 0),)  # value, touched
+        self.tape: _Tape = ((0, 0),)  # value, touched.
         self.jmp = False
         self.ind = 0
         self.pos = (0, 0, 0)
         self._second_start = False
         self._dumped = False
-        #: Where the ``o`` marker sits, kept so a branching search can place
-        #: the beam itself under each of the four headings.
+        # : Where the ``o`` marker.
+        # : the beam itself under each.
         self.start = (0, 0)
 
-        # Beams are held as the tuples ``_Beams`` is made of, not as
-        # lists.  The list store meant ``_state`` rebuilt every beam as a
-        # tuple and ``_restore`` rebuilt every one back as a list, once
-        # per step each -- a measured 46% of a run over a long generated
-        # program -- to hold a value nothing mutates in place: ``*`` and
-        # ``x`` add and drop whole beams, and a moved beam is assigned
-        # over, never edited.  The list around them stays, since the
-        # round-robin index has to survive that growing and shrinking.
+        # Beams are held as the tuples.
+        # lists.
+        # tuple and ``_restore``.
+        # per step each -- a measured.
+        # program -- to hold a value.
+        # ``x`` add and drop whole.
+        # over, never edited.
+        # round-robin index has to.
         self.lsrs: list[tuple[int, int, int]] = []
         for row, line in enumerate(self.text):
             for col, c in enumerate(line):
                 if c == "o":
                     if self.lsrs:
-                        self._second_start = True  # a second marker halts
+                        self._second_start = True  # a second marker halts.
                         return
-                    # The random heading is part of LaserFuck's spec, not a
+                    # The random heading is part of.
                     # secret.
                     d = draw(rng, 4)
                     self.start = (row, col)
@@ -229,14 +229,14 @@ class _Machine:
     def halted(self) -> bool:
         return self._second_start or not self.lsrs
 
-    # The VM's language-shaped view.  Dumping the tape once the last laser
-    # dies is *not* here -- that is what ``run()`` does after the final
-    # step, so the VM's adapter drives it rather than ``step()``.
+    # The VM's language-shaped view.
+    # dies is *not* here -- that is.
+    # step, so the VM's adapter.
 
-    #: ``ip`` is a cell of the program's own rectangle: the first two
-    #: parts are a row and a column, and the rest is a heading.  Without
-    #: this a caller cannot tell the pair from a call depth or a frame
-    #: stack, which look identical and mean somewhere else entirely.
+    # : ``ip`` is a cell of the.
+    # : parts are a row and a.
+    # : this a caller cannot tell.
+    # : stack, which look identical.
     ip_shape = "grid"
 
     @property
@@ -265,10 +265,10 @@ class _Machine:
             self.io.position(),
         )
 
-    # The all-random-outcomes search.  Its state deliberately drops ``pos``
-    # and the input cursor that ``snapshot`` carries: ``pos`` is what the VM
-    # reports for a step and no transition ever reads it, so keeping it would
-    # split behaviourally identical states, and input is declined below.
+    # The all-random-outcomes.
+    # and the input cursor that.
+    # reports for a step and no.
+    # split behaviourally identical.
 
     def branching_snapshot(self) -> _BranchState:
         """Return the pre-heading start state for a branching search.
@@ -419,9 +419,9 @@ class _Machine:
 
         byte = None
         if op == ",":
-            # An empty (or blank) input line reads a zero -- the package
-            # convention, not the language's.  The wiki says nothing about
-            # input at all, and the cross-check is this repo's own harness,
+            # An empty (or blank) input.
+            # convention, not the.
+            # input at all, and the.
             # so neither sources this value.
             line_val = self.io.input_str()
             byte = ord(line_val[0]) if line_val else 0
@@ -448,7 +448,7 @@ class _Machine:
                 self.io.print_char(chr(val))
                 continue
             if index:
-                self.io.print_str("\n")  # between values, never trailing
+                self.io.print_str("\n")  # between values, never.
             self.io.print_num(val)
 
 
@@ -467,7 +467,7 @@ def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
     machine = _Machine(code, io, rng)
     while not machine.halted:
         machine.step()
-    machine.step()  # the post-halt step dumps the tape
+    machine.step()  # the post-halt step dumps the.
 
 
 if __name__ == "__main__":

@@ -26,8 +26,8 @@ from lattice import _DIRS, Stroke, Vertex
 from render import Node, chain, render
 from simulate import IO, run
 
-# Anchored to this file rather than the working directory, so the wiki
-# fixtures resolve no matter where pytest is invoked from.
+# Anchored to this file rather.
+# fixtures resolve no matter.
 FIXTURES = str(Path(__file__).parent / "fixtures")
 
 
@@ -208,11 +208,11 @@ def _build_decrement_loop() -> Stroke:
     )
 
     root = Stroke(vertices=[root_v0, root_v1, root_v2, root_v3])
-    # The loop body is the *nonzero* arm: a loop repeats while the cell is
-    # nonzero and falls through to the halt arm once it reads zero.  (These
-    # two were reversed while `lattice._classify` named its fork arms off
-    # `back` rather than the heading, which inverted every label and made
-    # `simulate.run` swap the children to compensate.)
+    # The loop body is the.
+    # nonzero and falls through to.
+    # two were reversed while.
+    # `back` rather than the.
+    # `simulate.run` swap the.
     root.nonzero = loop_arm
     root.zero = halt_arm
     return root
@@ -244,11 +244,11 @@ def _build_growing_loop() -> Stroke:
     s2 = Vertex(-unit + dy * unit, dx * unit, heading)
     s3 = Vertex(fork_y, fork_x, None)
     root = Stroke(vertices=[s0, s1, s2, s3])
-    # The loop body is the *nonzero* arm: a loop repeats while the cell is
-    # nonzero and falls through to the halt arm once it reads zero.  (These
-    # two were reversed while `lattice._classify` named its fork arms off
-    # `back` rather than the heading, which inverted every label and made
-    # `simulate.run` swap the children to compensate.)
+    # The loop body is the.
+    # nonzero and falls through to.
+    # two were reversed while.
+    # `back` rather than the.
+    # `simulate.run` swap the.
     root.nonzero = loop_arm
     root.zero = halt_arm
     return root
@@ -263,7 +263,7 @@ class TestSyntheticLoopMechanism:
         tape = run(_build_decrement_loop(), io=io)
         assert tape.get(0, 0) == 0
 
-    @pytest.mark.slow  # 1.0s: it runs the interpreter into its step ceiling
+    @pytest.mark.slow  # 1.0s: it runs the interpreter.
     def test_non_halting_loop_hangs_rather_than_returning(self) -> None:
         """A loop with no reachable dead end hangs, per run()'s own docstring."""
 
