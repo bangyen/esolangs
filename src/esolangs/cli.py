@@ -42,9 +42,9 @@ import warnings
 from collections.abc import Iterable, Sequence
 from contextlib import AbstractContextManager, nullcontext
 from difflib import get_close_matches
-from typing import cast
 
 from esolangs import (
+    LanguageInfo,
     __version__,
     check_runnable,
     check_stdin,
@@ -854,9 +854,7 @@ def _read_program(path: str, timeout: float | None = None) -> str:
     return _bounded_read(path, timeout).rstrip("\n")
 
 
-def _shape_warning(
-    facts: dict[str, object], stdin: str, table: str | None = None
-) -> str:
+def _shape_warning(facts: LanguageInfo, stdin: str, table: str | None = None) -> str:
     """Return the library's complaint about ``stdin``, or ``''``.
 
     The checks themselves live in :func:`esolangs.check_stdin` now.  They
@@ -993,7 +991,7 @@ def _read_stdin(timeout: float | None = None, hint: str = "") -> str:
     return result
 
 
-def _stdin_hint(facts: dict[str, object]) -> str:
+def _stdin_hint(facts: LanguageInfo) -> str:
     """Return a clause naming what this language wants on stdin, if anything.
 
     A language whose generator embeds its inputs usually wants nothing, and
@@ -1371,13 +1369,13 @@ def _check_stdin(rest: list[str]) -> None:
     # rounds removing.  ``check-stdin --help`` says what the flag adds.
 
 
-def _input_sentence(facts: dict[str, object]) -> str:
+def _input_sentence(facts: LanguageInfo) -> str:
     """Describe this language's stdin in one line, with an example.
 
     Composed from ``input_shape`` and ``input_encoding`` rather than stored,
     so a language that declares a new shape is described by declaring it.
     """
-    zero, one = cast("tuple[str, str]", facts["input_encoding"])
+    zero, one = facts["input_encoding"]
     shape = str(facts["input_shape"])
     example = f"{one}{zero}"
     if shape == "row_index":
@@ -1404,7 +1402,7 @@ def _read_answer(rest: list[str]) -> None:
         _fail(str(exc))
         raise  # pragma: no cover - unreachable; _fail exits
     if facts["answer_mode"] == "termination":
-        polarity = cast("tuple[str, str]", facts["answer_encoding"])
+        polarity = facts["answer_encoding"]
         zero, one = polarity
         _fail(
             f"{facts['name']} answers by {zero} for a 0 and {one} for a 1, so "
@@ -1458,10 +1456,10 @@ def _answer(rest: list[str]) -> None:
 
 
 def _diverging_answer(
-    name: str, source: str, stdin: str, bound: float, facts: dict[str, object]
+    name: str, source: str, stdin: str, bound: float, facts: LanguageInfo
 ) -> str:
     """Return the answer bit for a language that answers by terminating."""
-    encoding = cast("tuple[str, str]", facts["answer_encoding"])
+    encoding = facts["answer_encoding"]
     try:
         run(name, source, stdin, bound)
     except ExecutionTimeoutError:
