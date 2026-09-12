@@ -123,13 +123,26 @@ class TestSteppingReachesTheSameAnswer:
             assert debugger.output == want
 
     def test_a_dump_is_reachable_without_touching_the_wrapped_vm(self) -> None:
-        """``Debugger.step`` returned early on ``halted``; the dump *is* that step."""
+        """``Debugger.step`` returned early on ``halted``; the dump *is* that step.
+
+        This used to assert the intermediate state -- ``run`` leaving an
+        empty ``output``, and one further ``step`` filling it -- which
+        recorded a bug as a contract.  ``step`` could cross the halt and
+        ``run`` could not, so a caller had to know to step again after a
+        method that had already reported ``"halted"``; the CLI's ``debug``
+        did not know, and printed nothing for a program that ran correctly.
+        ``run`` finishes the dump now, so the answer is there when it
+        returns.
+        """
         program, _ = _row("RAM0", "0110", [0, 1])
         debugger = esolangs.make_debugger("RAM0", program)
         assert debugger.run(max_steps=_STEP_BUDGET) == "halted"
-        assert debugger.output == ""
-        debugger.step()
         assert esolangs.read_answer("RAM0", debugger.output) == "1"
+        # And the step after the dump is the no-op the docstring promises,
+        # so a caller who does step again is not punished for it.
+        before = debugger.output
+        debugger.step()
+        assert debugger.output == before
 
 
 class TestStepPastHaltIsSafeEverywhere:
