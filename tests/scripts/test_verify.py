@@ -16,6 +16,8 @@ import sys
 import tomllib
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "verify.py"
 
@@ -206,6 +208,10 @@ class TestCiRedoesEveryLocalStep:
             assert _signature(by_name[name]) in workflow, name
 
 
+# 6.2s over 9 tests: spawns real subprocesses to time the steps.
+@pytest.mark.medium
+# 6.2s over 9 tests: spawns real subprocesses to time the steps.
+@pytest.mark.medium
 class TestHeavyStepsAreNotRunInPytestsShadow:
     """The shadow is only free for steps that use one core.
 
