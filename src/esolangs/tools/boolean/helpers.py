@@ -180,7 +180,7 @@ def instantiate(template: str, bits: list[int], set_bit: SetBit) -> str:
     So pad the shorter side to equal width, and prefer padding with characters
     the language *executes* to a no-op over characters it merely ignores: the
     ignored kind is what a later cleanup pass strips, reintroducing the leak.
-    :func:`~esolangs.tools.boolean.examples.bio` (``0oz;``) and
+    :func:`~esolangs.tools.boolean.bio` (``0oz;``) and
     ``bfstack`` (a four-character run proved minimal by exhaustive search over
     ``<>@[]``) are the worked examples.
 

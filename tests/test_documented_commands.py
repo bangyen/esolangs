@@ -14,6 +14,7 @@ is anything that is not a command at all.
 
 from __future__ import annotations
 
+import importlib
 import pathlib
 import re
 import shutil
@@ -198,3 +199,52 @@ def test_every_test_a_docstring_names_still_exists() -> None:
     )
     # A regex that stopped matching would make the check above vacuous.
     assert len(cited) >= 15, f"only {len(cited)} citations found"
+
+
+#: A fully-qualified reference into this package.
+_QUALIFIED_REF = re.compile(
+    r":(?:func|class|data|meth|attr|exc):`~?(esolangs\.[\w.]+)`"
+)
+
+
+def test_every_qualified_reference_resolves() -> None:
+    """A ``:func:`esolangs.a.b.c`` pointing at nothing.
+
+    Only the *fully qualified* references are checked.  A bare
+    ``:class:`ScriptedIO`` is resolved by Sphinx against whatever the citing
+    module imported, and reimplementing that here produced 460 accusations
+    out of 510 -- a guard that cries wolf is worse than no guard, so it
+    checks the subset it can judge exactly.  That subset is also the one
+    most likely to rot, because it names a path that moves when code does.
+
+    One was broken when this was written:
+    ``esolangs.tools.boolean.examples.bio``, for a generator that lives at
+    ``esolangs.tools.boolean.bio`` -- the reader is sent to the module that
+    registers the examples rather than the one with the function in it.
+    """
+    targets: dict[str, set[str]] = {}
+    for path in sorted((_ROOT / "src").rglob("*.py")):
+        for target in _QUALIFIED_REF.findall(path.read_text()):
+            targets.setdefault(target, set()).add(str(path.relative_to(_ROOT)))
+
+    def resolves(target: str) -> bool:
+        parts = target.split(".")
+        for split in range(len(parts) - 1, 0, -1):
+            try:
+                obj: object = importlib.import_module(".".join(parts[:split]))
+            except ImportError:
+                continue
+            for name in parts[split:]:
+                obj = getattr(obj, name, None)
+                if obj is None:
+                    break
+            else:
+                return True
+        return False
+
+    broken = {t: w for t, w in targets.items() if not resolves(t)}
+    assert not broken, "references that resolve to nothing: " + "; ".join(
+        f"{t} (in {', '.join(sorted(w))})" for t, w in sorted(broken.items())
+    )
+    # A regex that stopped matching would make the check above vacuous.
+    assert len(targets) >= 40, f"only {len(targets)} qualified references found"
