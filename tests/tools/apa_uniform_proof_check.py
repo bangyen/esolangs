@@ -2,7 +2,7 @@
 
 Run:  just apa-proof   (or python tests/tools/apa_uniform_proof_check.py)
 
-Each check corresponds to a lemma in docs/a_painter_ant_uniform_proof.md.
+Each check corresponds to a lemma in docs/generators/a_painter_ant_uniform_proof.md.
 
 **Run it by hand when A Painter Ant's head, body, or routing changes** --
 that is what invalidates the motif table, and re-running this is how it is

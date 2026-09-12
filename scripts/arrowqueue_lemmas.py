@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Executed lemma checks behind ``docs/arrowqueue_generator.md``.
+"""Executed lemma checks behind ``docs/generators/arrowqueue_generator.md``.
 
 The proof there is total over every arity, so nothing in this file
 enumerates truth tables to establish the claim -- each check pins one

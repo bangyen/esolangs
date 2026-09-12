@@ -8,17 +8,17 @@ structural impossibility claims, each falsifiable and several already fallen;
 
 ## Generators, languages, and proofs
 
-- [a_painter_ant_generator](a_painter_ant_generator.md) — the invariants that make the
+- [a_painter_ant_generator](generators/a_painter_ant_generator.md) — the invariants that make the
   construction valid: distinct separated leaves, collapse before the cycle-2 dance.
-- [a_painter_ant_uniform_proof](a_painter_ant_uniform_proof.md) — why those invariants
+- [a_painter_ant_uniform_proof](generators/a_painter_ant_uniform_proof.md) — why those invariants
   hold at every arity. Lemmas are checked by `tests/tools/apa_uniform_proof_check.py`.
-- [arrowqueue_generator](arrowqueue_generator.md) — `arrowqueue(t)` is total at every
+- [arrowqueue_generator](generators/arrowqueue_generator.md) — `arrowqueue(t)` is total at every
   arity; halts iff the selected bit is `0`. Lemmas run executably in 0.8s.
-- [minifuck_generator](minifuck_generator.md) — staged and sculpted constructions, both
+- [minifuck_generator](generators/minifuck_generator.md) — staged and sculpted constructions, both
   verified against the joint simulator before a template returns.
-- [pct_squared_minus_one_generator](pct_squared_minus_one_generator.md) — six
+- [pct_squared_minus_one_generator](generators/pct_squared_minus_one_generator.md) — six
   constructions; the packed ladder covers all tables through four inputs.
-- [wii2d_generator](wii2d_generator.md) — source-size and runtime policies, not
+- [wii2d_generator](generators/wii2d_generator.md) — source-size and runtime policies, not
   language walls; the source is authoritative.
 - [painfuck](painfuck.md) — a run of `c` or `t` is one counted operator, not one per
   character.

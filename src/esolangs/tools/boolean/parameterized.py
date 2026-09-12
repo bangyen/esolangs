@@ -1566,7 +1566,7 @@ _TREE_BRANCH_1 = ["*  ", "** ", "   "]  # reflects the down-route back to the ri
 # emitted program's length counts the one bits, breaking the equal-width rule.
 # A wall is only inert where the IP cannot reach it, which is why the first
 # block's row 0 is left exactly as it was.  See
-# ``docs/arrowqueue_generator.md`` for the leak that forced this and why one
+# ``docs/generators/arrowqueue_generator.md`` for the leak that forced this and why one
 # wall per row suffices.
 _FIRST_ONE = ["   *", "   ~*", "  *", "  *", "  *"]
 _FIRST_ZERO = ["   *", "*~* ", "*  *", "*  *", "* * "]
