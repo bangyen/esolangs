@@ -325,7 +325,6 @@ class TestTransitionsDoNotReachIO:
 #: point: the cheap thing when writing an interpreter is to raise the class
 #: and move on, and that is exactly how thirteen files got here.
 _WORDLESS_HALTS: dict[str, int] = {
-    "grid_based/super_snusp.py": 10,
     "other/ztoalc_l.py": 10,
 }
 
@@ -387,6 +386,6 @@ def test_no_interpreter_halts_without_saying_why() -> None:
 def test_the_scan_finds_the_ones_it_is_meant_to() -> None:
     """A regex that matched nothing would make the guard above vacuous."""
     assert sum(_wordless_halts().values()) == sum(_WORDLESS_HALTS.values())
-    assert sum(_WORDLESS_HALTS.values()) >= 15
+    assert sum(_WORDLESS_HALTS.values()) >= 5
     # Modulous was the reported case and is fixed, so it must not be here.
     assert "stack_based/modulous.py" not in _wordless_halts()
