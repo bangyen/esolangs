@@ -133,14 +133,24 @@ class TestTheChecksAreSymmetric:
             _debugger().run(timeout=timeout)  # type: ignore[arg-type]
 
     @pytest.mark.parametrize(
-        ("program", "stdin"), [(None, ""), (42, ""), ("+", None), ("+", ["0"])]
+        ("program", "stdin", "expected"),
+        [
+            (None, "", esolangs.ProgramError),
+            (42, "", esolangs.ProgramError),
+            # The stdin is not the program, so a bad one is an argument
+            # fault.  The class is parameterized rather than shared because
+            # what this asserts is that the *pair* agrees -- and it has to
+            # agree on which fault it is, not merely that there was one.
+            ("+", None, esolangs.ArgumentError),
+            ("+", ["0"], esolangs.ArgumentError),
+        ],
     )
     def test_both_entry_points_refuse_the_same_program(
-        self, program: object, stdin: object
+        self, program: object, stdin: object, expected: type[Exception]
     ) -> None:
-        with pytest.raises(esolangs.ProgramError):
+        with pytest.raises(expected):
             esolangs.run("brainfuck", program, stdin)  # type: ignore[arg-type]
-        with pytest.raises(esolangs.ProgramError):
+        with pytest.raises(expected):
             esolangs.make_debugger("brainfuck", program, stdin)  # type: ignore[arg-type]
 
     @pytest.mark.parametrize("text", [None, 5, b"x"])
