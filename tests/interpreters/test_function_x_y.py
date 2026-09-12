@@ -30,7 +30,6 @@ def machine(code: str) -> _Machine:
     return _Machine(code, ScriptedIO(""))
 
 
-
 # Reproduced from https://esolangs.org/wiki/Function_x(y) verbatim, except
 # where a note says otherwise.
 HELLO = 'function helloWorld()\n["Hello, World!"]'
@@ -112,8 +111,6 @@ class TestWikiExamples:
         )
         with pytest.raises(ValueError, match="ternary"):
             run(verbatim, ScriptedIO(""))
-
-
 
 
 class TestExpressions:

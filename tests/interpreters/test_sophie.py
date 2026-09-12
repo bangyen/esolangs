@@ -42,7 +42,6 @@ def timeout_protection() -> Generator[None, None, None]:
 
 
 class TestSophieBasicCommands:
-
     @pytest.mark.usefixtures("timeout_protection")
     def test_output_number(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
@@ -94,7 +93,6 @@ class TestSophieBasicCommands:
 
 
 class TestSophieConditionals:
-
     @pytest.mark.usefixtures("timeout_protection")
     def test_char_conditional_true(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
@@ -133,7 +131,6 @@ class TestSophieConditionals:
 
 
 class TestSophieLoops:
-
     @pytest.mark.usefixtures("timeout_protection")
     def test_simple_loop(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
@@ -169,7 +166,6 @@ class TestSophieLoops:
 
 
 class TestSophieComments:
-
     @pytest.mark.usefixtures("timeout_protection")
     def test_comment_block(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
@@ -184,7 +180,6 @@ class TestSophieComments:
 
 
 class TestSophieInputHandling:
-
     @pytest.mark.usefixtures("timeout_protection")
     def test_invalid_number_input(self) -> None:
         with (
@@ -216,7 +211,6 @@ class TestSophieInputHandling:
 
 
 class TestSophieEdgeCases:
-
     @pytest.mark.usefixtures("timeout_protection")
     def test_empty_program(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
@@ -343,7 +337,6 @@ class TestMiscCommands:
 
 
 class TestSophieExamples:
-
     @pytest.mark.usefixtures("timeout_protection")
     def test_hello_world(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
@@ -415,7 +408,6 @@ class TestSophieExamples:
 
 
 class TestSophieComplexPrograms:
-
     @pytest.mark.usefixtures("timeout_protection")
     def test_counter_program(self) -> None:
         with redirect_stdout(io.StringIO()) as f:
@@ -439,7 +431,6 @@ class TestSophieComplexPrograms:
 
 
 class TestSophieFindFunction:
-
     def test_find_simple_brackets(self) -> None:
         code = "{hello}"
         result = find(code, 0)

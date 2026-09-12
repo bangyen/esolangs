@@ -351,8 +351,6 @@ class _Parser:
             funcs[fn.name] = fn
 
 
-
-
 class _BitReader:
     """Serves the input one bit at a time, most significant first."""
 

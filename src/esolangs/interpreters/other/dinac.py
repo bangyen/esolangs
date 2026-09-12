@@ -108,7 +108,6 @@ class _Value:
 _SNUVAL = _Value("snuval")
 
 
-
 # Discriminated by the first element, like the statement tuples below.
 _Lit = tuple[Literal["lit"], _Value]
 _Name = tuple[Literal["name"], str]
@@ -293,7 +292,6 @@ def _parse_whole(text: str) -> _Expr:
     if not reader.done():
         raise ValueError(f"trailing text in expression {text!r}")
     return expr
-
 
 
 _Out = tuple[Literal["out"], _Expr]
@@ -539,8 +537,6 @@ def _parse(code: str) -> tuple[_Overloads, tuple[_Stmt, ...]]:
     return parser.functions, top
 
 
-
-
 def _step_value(value: _Value, op: str) -> _Value:
     """Apply postfix ``+``/``-``, wrapping at 256 (wubyte) or 128 (aschar)."""
     if value.kind == "snuval":
@@ -558,8 +554,6 @@ def _compare(left: _Value, right: _Value) -> bool:
 def _bit(*, flag: bool) -> _Value:
     """Return the wubyte ``01``/``00`` a comparison or ``~`` yields."""
     return _Value("wubyte", 1 if flag else 0)
-
-
 
 
 @dataclass
@@ -687,7 +681,6 @@ class _Machine:
         """The frame stack's depth exposed as the VM's stack view."""
         return [frame.ind for frame in self.frames]
 
-
     def _eval(self, expr: _Expr, scope: dict[str, _Value]) -> _Value:
         """Evaluate an expression in ``scope``, running any calls inline."""
         if expr[0] == "lit":
@@ -790,7 +783,6 @@ class _Machine:
             tuple(self._substitute(arg, target, value) for arg in expr[2]),
         )
 
-
     def _simple(self, stmt: _Stmt, scope: dict[str, _Value]) -> None:
         """Execute a statement with no body: OUT, IN, SET, or an assignment."""
         if stmt[0] == "out":
@@ -849,7 +841,6 @@ class _Machine:
             scope[name] = _Value("aschar", code if code < 128 else 0)
             return
         scope[name] = _Value("wubyte", _wubyte_of(line))
-
 
     def _finish(self, frame: _Frame) -> None:
         """Pop an exhausted frame, delivering a call's value if it was one."""
