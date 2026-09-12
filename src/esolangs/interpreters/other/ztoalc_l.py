@@ -28,6 +28,7 @@ import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
+from esolangs._validate import check_address
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
@@ -127,7 +128,9 @@ def _atom(
     if exp[pos] == "[":
         size, pos = _eval(exp, pos + 1, var, read)
         pos = _closing(exp, pos)
-        return [0] * _as_int(size), pos
+        cells = _as_int(size)
+        check_address(cells, "ZTOALC L")
+        return [0] * cells, pos
     j = pos
     while j < len(exp) and exp[j] not in "[]":
         j += 1

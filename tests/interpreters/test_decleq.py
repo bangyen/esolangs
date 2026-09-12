@@ -12,6 +12,7 @@ test_api.py's test_run_timeout_halts_runaway_program.
 
 import pytest
 
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.decleq import run
 from tests.interpreters.contract import (
@@ -244,7 +245,7 @@ class TestNegativeWriteIndex:
     def test_negative_addr_past_the_left_end_raises(self) -> None:
         from esolangs.interpreters.register_based.decleq import _written
 
-        with pytest.raises(IndexError):
+        with pytest.raises(HaltError, match="past the left end"):
             _written((1, 2, 3), -4, 9)
-        with pytest.raises(IndexError):
+        with pytest.raises(HaltError, match="past the left end"):
             _written((), -1, 9)
