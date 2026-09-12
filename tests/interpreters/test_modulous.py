@@ -322,7 +322,41 @@ class TestModulous:
     def test_empty_block_is_a_noop(self) -> None:
         """An empty ``[]`` block has no command and is skipped, not crashed on."""
         run("[]", IO())
-        run("[ ]\n[p 5]", IO())
+        run("[ ]\n[]", IO())
+
+    def test_an_unknown_command_is_refused(self) -> None:
+        """This test used to run ``[p 5]`` and assert it was a no-op.
+
+        Its docstring is about the *empty* block, and ``[p 5]`` is not
+        empty -- the case rode along without one.  Silently doing nothing is
+        the worst answer to a typo: ``[PRTINT]``, a plausible slip for
+        ``[PRT INT]``, exited 0 having printed nothing.
+
+        The wiki does not settle it.  It says only that "a module is a
+        command surrounded by square brackets" and never says what to do
+        with anything else, so this is a choice, and the choice is to say
+        so.  ``[]`` remains the way to write nothing.
+        """
+        with pytest.raises(ValueError, match="is not a Modulous command"):
+            run("[p 5]", IO())
+        with pytest.raises(ValueError, match="PRTINT"):
+            run('[PSH STR "x"][PRTINT][END]', IO())
+
+    def test_text_outside_a_command_is_refused(self) -> None:
+        """``findall`` dropped it, so an unbalanced bracket ran half a program.
+
+        ``[PSH INT 1[END]`` lost its first half -- the regex cannot match
+        the unbalanced ``[`` -- and ran ``END``, exiting 0 with nothing
+        printed and nothing said.
+        """
+        with pytest.raises(ValueError, match="outside any"):
+            run("[PSH INT 1[END]", IO())
+        with pytest.raises(ValueError, match="outside any"):
+            run("[END] trailing junk", IO())
+
+    def test_whitespace_between_commands_is_still_fine(self) -> None:
+        """The refusal must not reject the layout every program uses."""
+        run("[PSH INT 1]\n\n  [POP]\t[END]", IO())
 
     def test_missing_add_operand_rejected(self) -> None:
         with pytest.raises(ValueError, match="missing operand"):

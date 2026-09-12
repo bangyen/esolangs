@@ -61,6 +61,7 @@ from esolangs.registry import (
     example_stems,
     parameterized_ids,
     resolve,
+    wiki_url,
 )
 
 # Imported private: it takes a *generator function*, not a language name, so
@@ -564,7 +565,15 @@ def run(
         # a ProgramError keeps those words and makes the package's promise
         # true: `except EsolangError` around user-supplied source now holds,
         # which is the handler an embedder actually writes.
-        raise ProgramError(str(exc)) from exc
+        raise _keeping_output(ProgramError(str(exc)), io_obj) from exc
+    except EsolangError as exc:
+        # A halt, a timeout, an exhausted input: the program ran and stopped
+        # badly, which is exactly the case where what it printed first is
+        # worth keeping.  Re-raised as itself, so the class and everything
+        # hanging off it are untouched, and a bare ``raise`` keeps the
+        # traceback rather than starting a new one from here.
+        _keeping_output(exc, io_obj)
+        raise
     _warn_about_surplus(name, io_obj)
     return io_obj.getvalue()
 
@@ -601,6 +610,20 @@ def _warn_about_stdin(name: str, stdin: str) -> None:
         check_stdin(name, stdin)
     except EsolangError as exc:
         warnings.warn(str(exc), InputMismatchWarning, stacklevel=3)
+
+
+def _keeping_output[E: EsolangError](exc: E, io_obj: ScriptedIO) -> E:
+    """Attach what the program printed before ``exc``, and return it.
+
+    A note as well as the attribute: the attribute is what the CLI prints,
+    and the note is for anyone reading a traceback who would otherwise
+    conclude the program produced nothing at all.
+    """
+    written = io_obj.getvalue()
+    if written:
+        exc.partial_output = written
+        exc.add_note(f"the program printed {written[:200]!r} before this")
+    return exc
 
 
 def _warn_about_surplus(name: str, io_obj: ScriptedIO) -> None:
@@ -845,7 +868,7 @@ def describe(language: str) -> dict[str, object]:
         "answer_convention": (example.note or None) if example else None,
         **machine_traits(name),
         "examples": examples,
-        "wiki_url": f"https://esolangs.org/wiki/{name.replace(' ', '_')}",
+        "wiki_url": wiki_url(name),
     }
 
 

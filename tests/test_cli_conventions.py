@@ -7,6 +7,7 @@ languages left unreachable by a fix that pointed a CLI user at a Python call.
 """
 
 import json
+import re
 import subprocess
 import sys
 import time
@@ -2330,3 +2331,158 @@ class TestVerifyAndEvaluateTakeAWidth:
         """A flag nobody can find is a flag nobody has."""
         assert "--width" in HELP["verify"]
         assert "--width" in HELP["evaluate"]
+
+
+class TestOutputSurvivesAFailure:
+    """A run that failed emitted nothing at all, and it had the bytes.
+
+    A Modulous program that prints ``Hi`` and then pops an empty stack gave
+    an empty stdout, an empty stderr and exit 1, while ``debug`` on the same
+    file showed ``output: 'Hi'``.  When the program is one you are still
+    writing, what it printed before it broke is most of the diagnosis.
+    """
+
+    PRINTS_THEN_FAILS = '[PSH STR "Hi"][PRT STR][PRT STR][POP][END]'
+    LOOPS_PRINTING = "[PSH INT 9][PRT INT][JMP B 2][END]"
+
+    def test_a_halt_carries_what_was_printed(self) -> None:
+        """The attribute, which is what the CLI reads."""
+        with pytest.raises(esolangs.HaltError) as caught:
+            esolangs.run("Modulous", self.PRINTS_THEN_FAILS, "")
+        assert caught.value.partial_output == "Hi"
+
+    def test_it_is_in_the_traceback_too(self) -> None:
+        """The note, for anyone who only sees the traceback."""
+        with pytest.raises(esolangs.HaltError) as caught:
+            esolangs.run("Modulous", self.PRINTS_THEN_FAILS, "")
+        assert "printed 'Hi'" in "\n".join(getattr(caught.value, "__notes__", []))
+
+    def test_a_timeout_carries_it(self) -> None:
+        """The case that matters most: a loop you meant to be finite."""
+        with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
+            esolangs.run("Modulous", self.LOOPS_PRINTING, "", 2)
+        assert caught.value.partial_output.startswith("999")
+
+    def test_an_error_before_the_run_carries_nothing(self) -> None:
+        """Empty is the honest answer when the program never started."""
+        with pytest.raises(esolangs.UnknownLanguageError) as unknown:
+            esolangs.run("nosuchlang", "+", "")
+        assert unknown.value.partial_output == ""
+        with pytest.raises(esolangs.ProgramError) as bad:
+            esolangs.run("brainfuck", "[[[", "")
+        assert bad.value.partial_output == ""
+
+    def test_a_successful_run_is_unchanged(self) -> None:
+        """The attribute is for failures; success returns as it always did."""
+        assert esolangs.run("brainfuck", "+++.", "") == "\x03"
+
+    def test_the_cli_prints_it_before_the_error(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        """On stdout, where a successful run puts it, so a pipe sees the same."""
+        path = tmp_path / "m.txt"
+        path.write_text(self.PRINTS_THEN_FAILS)
+        with pytest.raises(SystemExit) as exit_code:
+            call_main(["run", "--timeout", "5", "Modulous", str(path)], capsys)
+        captured = capsys.readouterr()
+        assert captured.out.startswith("Hi")
+        assert "stack is empty" in captured.err
+        assert exit_code.value.code == 1
+
+    def test_the_cli_says_nothing_extra_when_there_was_nothing(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        """A program that printed nothing must not gain a blank line."""
+        path = tmp_path / "m.txt"
+        path.write_text("[POP][END]")
+        with pytest.raises(SystemExit):
+            call_main(["run", "--timeout", "5", "Modulous", str(path)], capsys)
+        assert capsys.readouterr().out == ""
+
+
+class TestModulousSaysWhatWentWrong:
+    """Four halts raised ``HaltError`` with the empty string as a message.
+
+    Exit 1 with nothing on stderr is indistinguishable from a crash, and
+    the CLI printed literally nothing because the message it forwards was
+    ``""``.
+    """
+
+    @pytest.mark.parametrize(
+        ("program", "expected"),
+        [
+            ("[POP][END]", "stack is empty"),
+            ('[PSH STR "x"][SWP][END]', "SWP needs two values"),
+            ("[PRT VAR9][END]", "not a defined variable"),
+            ("[RND 0][END]", "at least 1"),
+        ],
+    )
+    def test_each_halt_names_its_cause(self, program: str, expected: str) -> None:
+        """Not the class, the sentence: an empty message helps nobody."""
+        with pytest.raises(esolangs.HaltError, match=expected):
+            esolangs.run("Modulous", program, "")
+
+    def test_no_halt_is_wordless(self) -> None:
+        """The general claim, since a fifth site would repeat the bug."""
+        for program in ("[POP][END]", '[PSH STR "x"][SWP][END]', "[PRT VAR9][END]"):
+            with pytest.raises(esolangs.HaltError) as caught:
+                esolangs.run("Modulous", program, "")
+            assert str(caught.value).strip(), program
+
+
+class TestWikiUrlsAreUsable:
+    """``describe('%^2^-1')`` handed back a URL that answers 400.
+
+    ``%^2`` is not a percent-escape, so the link was broken for the one
+    language whose name starts with the escape character.  The same URL was
+    a markdown link in README.md, built by a *second* copy of the slug
+    logic in ``scripts/make_languages_doc.py`` -- so fixing either alone
+    would have left the other wrong.
+    """
+
+    def test_the_broken_one_is_escaped(self) -> None:
+        """Escaped, and specifically the two characters a path cannot carry."""
+        assert esolangs.describe("%^2^-1")["wiki_url"] == (
+            "https://esolangs.org/wiki/%25%5E2%5E-1"
+        )
+
+    def test_non_ascii_is_escaped(self) -> None:
+        """Raw bytes work in a browser and are refused by a strict client."""
+        assert esolangs.describe("Forþ")["wiki_url"] == (
+            "https://esolangs.org/wiki/For%C3%BE"
+        )
+
+    @pytest.mark.parametrize(
+        ("name", "expected"),
+        [
+            ("CV(N)(C)", "CV(N)(C)"),
+            ("S*bleq", "S*bleq"),
+            ("bit~", "bit~"),
+            ("function x(y)", "function_x(y)"),
+            ("SLOW ACV MAMMALIAN", "SLOW_ACV_MAMMALIAN"),
+        ],
+    )
+    def test_the_readable_ones_stay_readable(self, name: str, expected: str) -> None:
+        """Parentheses and ``*`` are legal in a path and all answer 200.
+
+        Escaping them too would have been easier and would have turned five
+        working links into unreadable ones for no gain.
+        """
+        assert esolangs.describe(name)["wiki_url"] == (
+            f"https://esolangs.org/wiki/{expected}"
+        )
+
+    def test_every_url_is_a_valid_path(self) -> None:
+        """No unescaped ``%`` or ``^`` anywhere in the 69, which is the rule."""
+        for name in esolangs.list_languages():
+            url = str(esolangs.describe(name)["wiki_url"])
+            slug = url.removeprefix("https://esolangs.org/wiki/")
+            assert "^" not in slug, name
+            assert re.fullmatch(r"[^%]*(%[0-9A-Fa-f]{2}[^%]*)*", slug), (name, slug)
+            assert slug.isascii(), name
+
+    def test_the_readme_uses_the_same_builder(self) -> None:
+        """The second copy of the slug logic is what made this ship twice."""
+        readme = (Path(__file__).parents[1] / "README.md").read_text()
+        assert "https://esolangs.org/wiki/%25%5E2%5E-1" in readme
+        assert "https://esolangs.org/wiki/%^2^-1" not in readme
