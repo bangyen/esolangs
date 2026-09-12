@@ -327,17 +327,6 @@ class TestTransitionsDoNotReachIO:
 _WORDLESS_HALTS: dict[str, int] = {
     "grid_based/super_snusp.py": 10,
     "other/ztoalc_l.py": 10,
-    "grid_based/dig.py": 2,
-    "queue_based/taglate.py": 2,
-    "register_based/nevermind.py": 2,
-    "stack_based/bfstack.py": 2,
-    "stack_based/forth.py": 2,
-    "tape_based/nocomment.py": 2,
-    "grid_based/streetcode.py": 1,
-    "register_based/qoibl.py": 1,
-    "register_based/sophie.py": 1,
-    "tape_based/circlefuck.py": 1,
-    "tape_based/six_five.py": 1,
 }
 
 #: A ``raise`` of a bare exception class, or one with no arguments at all.
@@ -398,6 +387,6 @@ def test_no_interpreter_halts_without_saying_why() -> None:
 def test_the_scan_finds_the_ones_it_is_meant_to() -> None:
     """A regex that matched nothing would make the guard above vacuous."""
     assert sum(_wordless_halts().values()) == sum(_WORDLESS_HALTS.values())
-    assert sum(_WORDLESS_HALTS.values()) >= 30
+    assert sum(_WORDLESS_HALTS.values()) >= 15
     # Modulous was the reported case and is fixed, so it must not be here.
     assert "stack_based/modulous.py" not in _wordless_halts()

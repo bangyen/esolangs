@@ -92,7 +92,7 @@ type _State = tuple[tuple[int, ...], dict[int, str], _Frames, bool]
 def _top(stack: tuple[int, ...]) -> int:
     """Return the top of ``stack``, halting when there is none."""
     if not stack:
-        raise HaltError
+        raise HaltError("the stack is empty, so there is no top value to read")
     return stack[-1]
 
 
@@ -398,7 +398,7 @@ def run(code: str, io: IO) -> None:
     while not machine.halted:
         machine.step()
     if machine.error:
-        raise HaltError
+        raise HaltError("the top-level scope aborted, which Forþ reports as status 3")
 
 
 if __name__ == "__main__":
