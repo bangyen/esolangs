@@ -905,7 +905,18 @@ class VM(Protocol):
         """Execute one command, advancing the machine."""
 
     def snapshot(self) -> Hashable:
-        """Return the complete state used by cycle detection."""
+        """Return the internal state cycle detection compares, hashable.
+
+        Internal, not everything: ``output`` is excluded, so two snapshots
+        can compare equal across a step that wrote something -- which the
+        post-halt dump step does on seven languages.  That is what the loop
+        proof needs and is sound for it, since equal internal state means
+        the same future; it is not a full state diff.
+
+        Said here as well as on :meth:`~esolangs.debugger.Debugger.snapshot`
+        because this is the copy a caller holding a VM reads, and "complete
+        state" on its own invites the other reading.
+        """
 
     @property
     def halted(self) -> bool:
