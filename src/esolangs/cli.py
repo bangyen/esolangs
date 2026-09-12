@@ -186,7 +186,8 @@ examples:
   esolangs generate brainfuck 0110
   esolangs generate --bits 10 Minifuck 0110
 """,
-    "run": """usage: esolangs run [--timeout S] [--judge] <language> <program-file>
+    "run": """usage: esolangs run [--timeout S] [--judge] [--seed N]
+                    <language> <program-file>
 
 Run a program through its interpreter and print what it writes.
 
@@ -225,6 +226,14 @@ options:
                      error exits 1, which is the code for the *runtime*
                      half only -- a malformed program is 2, and that is the
                      commoner of the two.
+  --seed N           fix the random draws, so the run repeats.  Seven
+                     languages draw -- COD, Interprogck8, LaserFuck,
+                     Modulous, Painfuck, Super SNUSP and WII2D -- and
+                     without one they use the system's randomness, so ten
+                     identical LaserFuck runs gave two different answers.
+                     A seed for a language that draws nothing is refused
+                     rather than ignored, since passing one means expecting
+                     a repeat this run was never going to give.
   --table TABLE      the truth table the program was generated from.  Adds
                      the bit *count* to the stdin check, which is the one
                      thing a shape check cannot do on its own: three lines
@@ -1568,6 +1577,22 @@ def _write_output(text: str) -> None:
         stream.flush()
 
 
+def _seed_of(options: dict[str, str]) -> int | None:
+    """Read ``--seed``, refusing anything that is not a whole number.
+
+    Checked here rather than left to :func:`esolangs.run`, so a mistyped
+    seed is a usage error naming the flag rather than a ``ValueError`` from
+    somewhere further in.
+    """
+    if "--seed" not in options:
+        return None
+    try:
+        return int(options["--seed"])
+    except ValueError:
+        _fail(f"--seed must be a whole number, got {options['--seed']!r}")
+        raise  # pragma: no cover - unreachable; _fail exits
+
+
 def _emit_partial(exc: EsolangError) -> None:
     """Write whatever the program printed before ``exc`` to stdout.
 
@@ -1590,14 +1615,17 @@ def _emit_partial(exc: EsolangError) -> None:
 
 def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
-    rest, options = _pop_options(rest, {"--timeout", "--table"})
+    rest, options = _pop_options(rest, {"--timeout", "--table", "--seed"})
     # The value is checked here, before the positionals are counted.  It ran
     # after, so `run --timeout brainfuck prog.txt` -- a forgotten number --
     # swallowed the language as the timeout's value and then reported
     # "missing <program-file>", sending the reader to look at the one
     # argument that was not the problem.
     timeout = _timeout_of(options)
-    rest = _split_positional(rest, {"--judge"}, {"--timeout", "--judge", "--table"})
+    rest = _split_positional(
+        rest, {"--judge"}, {"--timeout", "--judge", "--table", "--seed"}
+    )
+    seed = _seed_of(options)
     judge = "--judge" in rest
     # Refused like every value-taking option is.  `--judge --judge` was
     # accepted in silence while `--timeout 5 --timeout 9` was refused, and
@@ -1687,7 +1715,7 @@ def _run(rest: list[str]) -> None:
             warnings.catch_warnings(record=True) as caught,
         ):
             warnings.simplefilter("always")
-            output = run(language, program, stdin, timeout)
+            output = run(language, program, stdin, timeout, seed)
         surplus = next(
             (str(e.message) for e in caught if "lines supplied" in str(e.message)),
             None,
