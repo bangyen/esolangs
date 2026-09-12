@@ -1096,12 +1096,18 @@ class VM(Protocol):
 
         Everything else is exactly what the flag says: of the fifty-two
         languages that read stdin, forty-four of the forty-five ``False``
-        ones raise, and five of the six ``True`` ones answer a different row
-        and warn with
+        ones raise, and six of the seven ``True`` ones answer a different
+        row and warn with
         :class:`~esolangs.exceptions.InputMismatchWarning`.  Swept, not
         sampled -- and swept with an input one line short rather than an
         empty one, which is a different question: several languages diverge
         on empty stdin instead of reaching the read at all.
+
+        (45 + 7 = 52.  This said six and five, which does not add up to the
+        fifty-two in the same sentence -- the kind of claim that refutes
+        itself without needing to be measured, and the third count in this
+        file to go wrong.  :attr:`self_halts` argues against writing one
+        down at all, and it is not wrong.)
         """
 
     @property

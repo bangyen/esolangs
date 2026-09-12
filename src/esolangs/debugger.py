@@ -218,6 +218,15 @@ class Debugger:
         A machine whose ``ip`` is already ``None`` or empty has no shape to
         compare against, and anything is accepted.
 
+        ``None`` is refused too, and that one is a gap rather than a guard.
+        :attr:`~esolangs.vm.VM.ip` reports ``None`` as a real position --
+        five languages reach it, and Circuit Diagram *starts* there -- so
+        the documented idiom of breaking on the initial position cannot be
+        written for it.  ``break_when(lambda vm: vm.ip is None)`` says the
+        same thing and works; this method stays typed to a position because
+        the kind check above is what makes a mistyped breakpoint an error
+        instead of one that silently never fires.
+
         An in-kind position that the program never *reaches* -- ``break_at``
         on index a million, in a program a hundred long -- is accepted and
         will not fire.  That is the same silently-dead breakpoint this
@@ -409,8 +418,7 @@ class Debugger:
         """
         self.vm.step()
         self._record()
-        if self.vm.halted:
-            self._warn_about_stdin_once()
+        self._warn_about_stdin_once()
 
     def run(
         self, max_steps: int | None = None, timeout: float | None = None
@@ -564,11 +572,35 @@ class Debugger:
         """
         if self._warned:
             return
-        self._warned = True
         name = getattr(self.vm, "language", None)
         io_obj = getattr(self.vm, "_io", None)
         if name is None or io_obj is None:  # pragma: no cover - every adapter has both
             return
+        # Two conditions, and only one of them can be known early.
+        #
+        # Reading *past* the end is knowable the moment it happens, and that
+        # is when it has to be said: the six languages that take the
+        # exhausted read as a value have the wrong answer in ``output``
+        # before they halt -- DINAC at step 7 of 10, Circuit Diagram at 4 of
+        # 5 -- so warning at the halt left every bounded run, every
+        # breakpoint stop and every timeout silent.  Which is the ordinary
+        # way to drive a debugger, and the class docstring tells you to
+        # bound the run.  Worse for a program that never halts: with empty
+        # stdin Suptiftam returns ``"max_steps"`` and the warning that was
+        # merely deferred elsewhere is never emitted at all.
+        #
+        # A *surplus* -- lines the program never asked for, or a line that
+        # was there but unusable -- is the other half of the same warning
+        # and cannot be known until the program has stopped asking, so that
+        # half still waits for the halt.  Which leaves one case genuinely
+        # uncovered: a bounded run that stops between the answer appearing
+        # and the halt, on a program whose fault is a malformed line rather
+        # than an over-read.  ``run`` and ``check_stdin`` both catch that
+        # one; a debugger bounded short of the halt cannot, because the
+        # fact it needs does not exist yet.
+        if not (getattr(io_obj, "past_end", False) or self.vm.halted):
+            return
+        self._warned = True
         from esolangs import _warn_about_surplus
 
         _warn_about_surplus(str(name), io_obj)

@@ -407,10 +407,27 @@ options:
                        it exactly.
   --break-on-output S  stop once S has been written, with S still the last
                        thing written.
+  --break-at N         stop when the instruction position reaches N,
+                       before executing it.
+  --break-on-cell I=V  stop while memory cell I still holds V.
   --timeout SECONDS    stop the run after this long, reporting
                        `stopped: timeout`.  Like --steps this bounds a
                        program that never halts, which is what the three
                        terminate-as-answer languages are.
+  --stdin TEXT         feed TEXT to the program as its input, one line per
+                       newline.  The only way to give a debugged program
+                       input, since the Python API cannot feed a live
+                       debugger either.
+  --table T            check the stdin against the shape and alphabet T's
+                       arity implies, before running.
+  --tui                step through the program in an interactive
+                       full-screen view: hjkl moves the selector, t sets a
+                       breakpoint under it, c continues.  Needs a terminal
+                       to read keys from.
+
+Every flag above is also listed by `esolangs --help`.  This text used to
+name four of the nine, which made the summary more informative than the
+page that is supposed to expand it.
 """,
 }
 
@@ -1221,6 +1238,13 @@ def _debug(rest: list[str]) -> None:
     # unbounded, which is the one thing --steps exists to prevent.
     if "--steps" in options and int(options["--steps"]) < 0:
         _fail(f"--steps must not be negative, got {options['--steps']}")
+    # And the third one, which was the only integer flag here without a
+    # negative guard.  It passed the is-an-integer check above, reached
+    # ``Debugger.break_at``'s own validation, and came back out of ``main``'s
+    # catch-all as "internal error ... this is a bug in esolangs" at exit
+    # 70 -- inviting a bug report for a typo.
+    if "--break-at" in options and int(options["--break-at"]) < 0:
+        _fail(f"--break-at must not be negative, got {options['--break-at']}")
     program = _read_program(path, limit)
     try:
         facts = describe(language)
@@ -1230,8 +1254,22 @@ def _debug(rest: list[str]) -> None:
     # The key loop owns the terminal's stdin, so a piped stream cannot also
     # be the program's input: the two would race for the same descriptor.
     # ``--stdin`` is how a TUI run feeds its program instead.
-    if tui and "--stdin" not in options and not sys.stdin.isatty():
-        _fail("--tui reads keys from the terminal; pass program input with --stdin")
+    if tui and not sys.stdin.isatty():
+        # Not exempted by ``--stdin``.  The exemption was the bug: this
+        # guard's own message told you to pass ``--stdin``, and doing so
+        # turned the clean refusal into curses failing with ``(19,
+        # 'Operation not supported by device')`` through the catch-all, at
+        # exit 70.  Following the advice was the way to reach the crash.
+        #
+        # ``--stdin`` settles where the *program's* input comes from; it
+        # cannot conjure a terminal to read keys from, which is what the
+        # TUI needs and what a pipe or a CI job does not have.
+        _fail(
+            "--tui reads keys from a terminal, and this stdin is not one. "
+            "--stdin says where the program's input comes from and does not "
+            "substitute; run the TUI from a terminal, or drop --tui and use "
+            "--break-at/--break-on-cell/--break-on-output"
+        )
     stdin = (
         options["--stdin"]
         if "--stdin" in options
