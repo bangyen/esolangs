@@ -5,8 +5,10 @@ math operations, loops, and binary number parsing. Includes timeout protection
 to prevent hanging tests from infinite loops.
 """
 
+import inspect
 import io
 import signal
+import sys
 from collections.abc import Callable
 from contextlib import redirect_stdout
 from typing import Any
@@ -14,6 +16,7 @@ from unittest.mock import patch
 
 import pytest
 
+import esolangs
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.register_based.qoibl import run, tokenize
 
@@ -551,3 +554,84 @@ class TestQoiblParserGuards:
         value, var = _eval(["zz"], {"e": 1}, lambda: 0, lambda _s: None)
         assert value == 0
         assert var == {"e": 1}
+
+
+class TestTheTokenizerCarriesItsOwnStack:
+    """The search used to spend one Python frame per character.
+
+    A 3972-character program reached 1315 live frames, 1241 of them in the
+    tokenizer's own walk, so CPython's default limit of 1000 capped the
+    *language* near 2800 characters -- and a six-input majority table came
+    back as ``InterpreterLimitError`` saying the interpreter "cannot carry
+    one that large", while ``sys.setrecursionlimit`` made the very same
+    program run.  The search carries an explicit stack now, which removes
+    the limit rather than raising it: the same program peaks at 74 frames.
+    """
+
+    @staticmethod
+    def _majority(n: int) -> str:
+        return "".join(str(int(bin(r).count("1") * 2 > n)) for r in range(2**n))
+
+    def test_a_program_past_the_old_wall_tokenizes(self) -> None:
+        """3972 characters, against a default limit of 1000."""
+        program = esolangs.generate("Qoibl", self._majority(6))
+        assert len(program) > 3000
+        assert tokenize(program)
+
+    def test_it_runs_under_a_limit_far_below_the_old_need(self) -> None:
+        """The direct measure of shallowness, and it needed 1375 before.
+
+        The ceiling is set relative to the stack this test is already
+        standing on -- lowering the limit below the live depth kills the
+        interpreter outright, and pytest's own frames are not a constant.
+        """
+        program = esolangs.generate("Qoibl", self._majority(6))
+        stdin = esolangs.encode_inputs("Qoibl", [0] * 6, self._majority(6))
+        live = len(inspect.stack())
+        previous = sys.getrecursionlimit()
+        try:
+            sys.setrecursionlimit(live + 200)
+            assert esolangs.run("Qoibl", program, stdin, timeout=120).endswith("0")
+        finally:
+            sys.setrecursionlimit(previous)
+
+    @pytest.mark.parametrize(
+        ("source", "expected"),
+        [
+            ("yr", [["yr"]]),
+            ("et", [["et"]]),
+            ("eet", [["e"], ["et"]]),
+            # The `et`/`yr` ambiguity: a reading that consumes the next
+            # character is tried before one that reaches backwards, so `eyr`
+            # is a literal `ey` then `ry`, not `e` then `yr`.
+            ("eyr ", [["ey", "ry"]]),
+            ("eeyr", [["eey", "ry"]]),
+            ("yyr", [["yy", "ry"]]),
+            # Whitespace is a boundary, so the backwards reach cannot cross
+            # it and the same characters read differently.
+            ("e yr", [["e", "yr"]]),
+            ("ey et", [["ey"], ["et"]]),
+            ("y ttyytt", [["y"], ["tt", "yy", "tt"]]),
+            ("tt", [["tt"]]),
+            ("we", [["we"]]),
+            ("qe", [["qe"]]),
+            ("\nrr", [["rr"]]),
+            ("e\n\nr\n", [["e", "ry"]]),
+        ],
+    )
+    def test_the_reading_order_is_unchanged(
+        self, source: str, expected: list[list[str]]
+    ) -> None:
+        """A backtracking search is only equal to another in the same order.
+
+        ``_scan`` returns the *first* reading its grammar accepts, so "it
+        still parses" would not have caught a stack rewrite that explored
+        the branches the other way round -- it would quietly return a
+        different valid tokenization.  These are the readings the recursive
+        walk produced, captured before it was replaced.
+        """
+        assert tokenize(source) == expected
+
+    def test_an_unparseable_program_is_still_empty(self) -> None:
+        """The failure path has an order too, and it returns no statements."""
+        assert tokenize("qt y\nqrt\nrt") == [[]]

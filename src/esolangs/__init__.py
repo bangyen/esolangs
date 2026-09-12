@@ -540,15 +540,23 @@ def run(
     try:
         _run(run_fn, program_args, io_obj, timeout)
     except RecursionError as exc:
-        # An interpreter that recurses -- Qoibl's does -- runs out of
-        # Python stack on a large enough program, and the bare
-        # ``RecursionError`` was the only exception in the package that
-        # escaped ``EsolangError``.  A sweep written to the documented
-        # handler crashed on it.
+        # An interpreter that recurses runs out of Python stack on a large
+        # enough program, and the bare ``RecursionError`` was the only
+        # exception in the package that escaped ``EsolangError``.  A sweep
+        # written to the documented handler crashed on it.
+        #
+        # The message used to end "this interpreter cannot carry one that
+        # large", which was not true: the limit is CPython's, and a caller
+        # raising it made the same program run.  Qoibl was the language this
+        # fired for and its tokenizer carries its own stack now, so the
+        # remaining reach of this handler is any interpreter that recurses
+        # per construct -- and the honest thing to tell that caller is where
+        # the limit actually lives.
         raise InterpreterLimitError(
-            f"the {name} interpreter recursed deeper than Python allows on "
-            f"this program ({len(program)} characters); the program is well "
-            f"formed, but this interpreter cannot carry one that large"
+            f"the {name} interpreter recursed deeper than CPython's stack "
+            f"limit allows on this program ({len(program)} characters); the "
+            f"program is well formed, and sys.setrecursionlimit can raise "
+            f"the limit if this interpreter's depth grows with program size"
         ) from exc
     except ValueError as exc:
         # The interpreters signal a malformed program with a plain

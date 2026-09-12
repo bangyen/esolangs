@@ -1186,18 +1186,43 @@ class TestAnInterpreterLimitIsStillAnEsolangError:
         """Return the parity table of arity ``n`` -- reliably a hard one."""
         return "".join(str(bin(i).count("1") % 2) for i in range(2**n))
 
-    @pytest.mark.slow
-    def test_a_recursion_error_does_not_escape(self) -> None:
+    def test_a_recursion_error_does_not_escape(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """It was the one exception in the package that was not ours.
 
         The package makes exactly one promise about errors -- that every
         deliberate failure derives from ``EsolangError`` -- and a sweep
         written to it crashed here.
+
+        Driven through a stand-in rather than through a real language.  It
+        used to be driven by Qoibl on a six-input table, which no longer
+        recurses anywhere near the limit, and the alternative was a program
+        big enough to still blow the stack -- roughly 90000 characters now
+        -- which prices a promise about error *types* at minutes of
+        execution.  What is under test is the wrapping.
         """
+
+        def explode(*_args: object, **_kwargs: object) -> None:
+            raise RecursionError("maximum recursion depth exceeded")
+
+        monkeypatch.setattr(esolangs, "_run", explode)
         with pytest.raises(esolangs.EsolangError) as caught:
-            esolangs.verify("Qoibl", self._parity(6))
+            esolangs.run("brainfuck", "+.", "")
         assert isinstance(caught.value, esolangs.InterpreterLimitError)
         assert "recursed deeper" in str(caught.value)
+        assert "setrecursionlimit" in str(caught.value)
+
+    @pytest.mark.slow
+    def test_qoibl_no_longer_hits_the_wall(self) -> None:
+        """The six-input table this class was built around now computes.
+
+        Qoibl's tokenizer searched tokenizations with one Python frame per
+        character -- 1241 of the 1315 frames a 3972-character program
+        reached -- so the language was capped near 2800 characters by
+        CPython rather than by anything Qoibl says.
+        """
+        assert esolangs.verify("Qoibl", self._parity(6), timeout=300)
 
     def test_it_is_a_halt_error(self) -> None:
         """The run ended abnormally, which is what that base means."""

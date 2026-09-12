@@ -279,8 +279,12 @@ exits 2, since nothing ran.
 
 options:
   --timeout SECONDS  bound each row.  The three languages that answer 1 by
-                     not terminating pay this on every 1-row, so a low
-                     value is worth setting for them.
+                     not terminating do *not* pay it on every 1-row: those
+                     rows are settled by a repeated machine state, which
+                     proves the loop in microseconds, so the bound is only
+                     the backstop for a program that diverges by growing.
+                     A sixteen-row 123 table at --timeout 30 takes under a
+                     second, not eight minutes.
 
 examples:
   esolangs verify brainfuck 0110
