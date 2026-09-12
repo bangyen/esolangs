@@ -978,7 +978,9 @@ def spec(language: str) -> str:
 
 
 def encode_inputs(
-    language: str, bits: Sequence[int], truth_table: str | None = None
+    language: str,
+    bits: list[int] | tuple[int, ...],
+    truth_table: str | None = None,
 ) -> str:
     r"""Return the stdin that feeds ``bits`` to a ``language`` program.
 
@@ -1286,6 +1288,16 @@ class _Default:
     thread.  Now omitting the argument takes the defaults and passing
     ``None`` means what it means everywhere else.
     """
+
+    def __repr__(self) -> str:
+        """Render as ``<default>`` in a signature rather than as an address.
+
+        ``help(esolangs.evaluate)`` showed ``timeout: float |
+        esolangs._Default | None = <esolangs._Default object at
+        0x105fa12b0>`` -- an address, in the documentation, changing every
+        run.  A reader has to work out that the sentinel means "omit it".
+        """
+        return "<default>"
 
 
 _DEFAULT = _Default()
