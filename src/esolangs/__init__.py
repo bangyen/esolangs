@@ -241,14 +241,36 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
     if width is not None and _takes_width(fn):
         return str(fn(truth_table, width))
     if lang.id in parameterized_ids():
-        # A template is not wrapped.  No wrapper names ``{Xi}`` as a token,
-        # so a narrow width breaks a slot in half -- ``{X`` ending one line
-        # and ``1}`` starting the next -- and the template silently stops
-        # being instantiable: ``generate --width 10 "Home Row" 0110`` then
-        # reported one input slot where the table has two.  Wrapping belongs
-        # after the slots are gone, so :func:`instantiate` takes the width.
-        return _Template(str(fn(truth_table)), resolved)
+        # A template wraps like anything else.  It did not use to: a narrow
+        # width broke a slot in half -- ``{X`` ending one line and ``1}``
+        # starting the next -- and the template silently stopped being
+        # instantiable, so ``generate --width 10 "Home Row" 0110`` reported
+        # one input slot where the table has two.  The fix is in the token
+        # rules rather than here: ``{Xi}`` is one token in every wrapper
+        # (:data:`~esolangs.tools.wrap._PLACEHOLDER`), so no width can land
+        # inside one.  Skipping the wrap instead would leave the eleven
+        # parameterized languages with a ``width`` that quietly did nothing.
+        return _Template(wrap_program(str(fn(truth_table)), lang.id, width), resolved)
     return wrap_program(str(fn(truth_table)), lang.id, width)
+
+
+def _is_template_for(template: str, name: str, truth_table: str) -> bool:
+    """Return whether ``template`` is what ``name`` generates for the table.
+
+    Compared against the *unwrapped* template, then again with the newlines
+    taken out of both.  The second pass is what lets a wrapped template
+    through: ``generate(name, table, 40)`` is the same program with line
+    breaks added between tokens, and refusing it would make the width and
+    the provenance check mutually exclusive.
+
+    Only for a language whose unwrapped template is a single line, since
+    for the rest a newline is layout and dropping it compares two different
+    programs.
+    """
+    plain = generate(name, truth_table)
+    if template == plain:
+        return True
+    return "\n" not in plain and template.replace("\n", "") == plain
 
 
 def instantiate(
@@ -271,13 +293,14 @@ def instantiate(
     template from a *different* language -- which would otherwise run and
     answer the wrong row.
 
-    ``width`` belongs here rather than on :func:`generate`, because a slot
-    is not a token any wrapper knows and a break inside one destroys the
-    template.
+    ``width`` is taken here as well as on :func:`generate`, and this is the
+    one that a caller filling a template wants: a slot is four columns and
+    the setter code that replaces it is not, so a template wrapped to a
+    width no longer meets it once the slots are gone.
     """
     check_width(width)
     name = resolve(language)
-    if truth_table is not None and template != generate(name, truth_table):
+    if truth_table is not None and not _is_template_for(template, name, truth_table):
         # The provenance check a tag cannot make.  A template carries its
         # language, so filling one language's as another is refused -- but a
         # *hand-written* string is untagged by design (a tag cannot survive

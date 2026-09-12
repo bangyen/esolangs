@@ -335,6 +335,11 @@ class Debugger:
         ``break_at(ip)`` on the initial position still stops before the
         first step executes.
 
+        It is checked once more after the machine halts, because otherwise
+        a condition the *last* step made true is never looked at and the
+        run reports ``"halted"`` over a watch that fired.  The run after
+        that one returns ``"halted"``, since the hit is then suppressed.
+
         ``max_steps`` bounds the run in steps and ``timeout`` in wall-clock
         seconds; the default of ``None`` for both is unbounded, which is
         right for a machine known to halt and a hang for one that is not.
@@ -372,6 +377,23 @@ class Debugger:
                 # else, but it would still land in every watch history, and
                 # a bound that is not needed should not be spent.
                 self.step()
+            if self._at_breakpoint():
+                # A breakpoint is checked *before* a step, so one whose
+                # condition the final step makes true was never looked at:
+                # ``run_until_halt`` returned, and "halted" was reported
+                # over a watch that had fired.  ``break_on_output`` is where
+                # that bites, because a program whose last instruction is
+                # its output is the ordinary case rather than a corner --
+                # the generated brainfuck XOR ends in ``.``, so watching for
+                # its answer reported a miss.
+                #
+                # Checked after the post-halt step, so the seven languages
+                # that dump there can be watched for what they dump.  The
+                # machine really has halted, which is why the *next* run
+                # says so: the hit is suppressed, nothing else fires, and
+                # ``halted`` is already true for a caller that asks.
+                self._suppressed = set(self._hits)
+                return "breakpoint"
             return "halted"
         if self._timed_out:
             return "timeout"

@@ -253,31 +253,45 @@ class TestADeliberateRefusalIsAnEsolangError:
     first of them.
     """
 
-    #: The five that stop rather than build.  Only these are built here: the
-    #: other sixty-four succeed at n=11 and several take minutes to do it.
-    _REFUSERS = ("Factor", "Interprogck8", "Polynomial", "WII2D", "ZTOALC L")
+    #: The five that stop rather than build, and the arity that trips each.
+    #: Only these are built here: the other sixty-four succeed at n=11 and
+    #: several take minutes to do it.
+    #:
+    #: Factor's is 13 rather than 11 because its cap is on the *encoded
+    #: integer's* digit count and not on ``n`` -- shrinking the decision
+    #: tree moved the trip point two arities up, and it now builds a dense
+    #: n=12 table in under three seconds.  Carried per language rather than
+    #: as one table, because a shared n=11 quietly stopped testing Factor at
+    #: all: the ``pytest.raises`` simply saw the program get built.
+    _REFUSERS = {
+        "Factor": 13,
+        "Interprogck8": 11,
+        "Polynomial": 11,
+        "WII2D": 11,
+        "ZTOALC L": 11,
+    }
 
     @staticmethod
-    def _big_table() -> str:
-        """Return a dense n=11 table, past every cap below."""
+    def _big_table(arity: int = 11) -> str:
+        """Return a dense table at ``arity``, past the cap it is used for."""
         import random
 
         rng = random.Random(7)
-        return "".join(rng.choice("01") for _ in range(2048))
+        return "".join(rng.choice("01") for _ in range(2**arity))
 
     @pytest.mark.slow
     @pytest.mark.parametrize("name", _REFUSERS)
     def test_the_refusal_is_catchable(self, name: str) -> None:
         """And by the documented base class, not only the specific one."""
         with pytest.raises(esolangs.GeneratorCapError):
-            esolangs.generate(name, self._big_table())
+            esolangs.generate(name, self._big_table(self._REFUSERS[name]))
 
     @pytest.mark.slow
     @pytest.mark.parametrize("name", _REFUSERS)
     def test_the_documented_idiom_catches_it(self, name: str) -> None:
         """``except EsolangError`` is what the package docstring promises."""
         with pytest.raises(esolangs.EsolangError):
-            esolangs.generate(name, self._big_table())
+            esolangs.generate(name, self._big_table(self._REFUSERS[name]))
 
     def test_it_is_still_a_value_error(self) -> None:
         """Callers catching ValueError must not be broken by the new class."""
@@ -550,11 +564,17 @@ class TestCapMessagesNameOnlyReachableRemedies:
 
     @pytest.mark.slow
     def test_factor_does_not_name_a_private_knob(self) -> None:
-        """`generate(language, truth_table, width)` has no `max_digits`."""
+        """`generate(language, truth_table, width)` has no `max_digits`.
+
+        n=13, not the n=11 this used to use: Factor's cap counts digits in
+        the encoded integer rather than inputs, and the decision tree got
+        small enough that n=11 and n=12 now build.  At n=11 this passed by
+        never reaching the message it is about.
+        """
         import random
 
         rng = random.Random(7)
-        table = "".join(rng.choice("01") for _ in range(2048))
+        table = "".join(rng.choice("01") for _ in range(2**13))
         with pytest.raises(esolangs.GeneratorCapError) as exc:
             esolangs.generate("Factor", table)
         assert "max_digits" not in str(exc.value)
@@ -1236,8 +1256,13 @@ class TestAnInterpreterLimitIsStillAnEsolangError:
         )
 
 
-class TestBothWidthAwareGeneratorsCanOverrun:
-    """The docstring named LaserFuck; Streetcode is the worse of the two."""
+class TestAWidthAwareGeneratorCanStillOverrun:
+    """The docstring named LaserFuck; Streetcode is the worse of the two.
+
+    Both take the width themselves rather than being reflowed afterwards,
+    which reads as a guarantee and is not one -- a token wider than the
+    width has to go somewhere.  These two are the measured witnesses.
+    """
 
     @staticmethod
     def _overruns(name: str, table: str) -> tuple[int, int]:
@@ -1264,14 +1289,21 @@ class TestBothWidthAwareGeneratorsCanOverrun:
         assert street_widths > laser_widths
         assert street_worst > laser_worst
 
-    def test_they_are_exactly_the_width_aware_pair(self) -> None:
-        """So a third one appearing makes the sentence above wrong loudly."""
+    def test_the_pair_is_still_width_aware(self) -> None:
+        """The two this class measures must stay in the group it measures.
+
+        It used to assert the group was *only* these two, which stopped
+        being true the moment another generator learned to lay itself out
+        -- and that is a good change failing a test, not a regression.  The
+        claim worth keeping is narrower: if either of these drops out of
+        the group, the overrun numbers above are measuring nothing.
+        """
         aware = {
             name
             for name in esolangs.list_languages()
             if esolangs.describe(name)["width_aware"]
         }
-        assert aware == {"LaserFuck", "Streetcode"}
+        assert {"LaserFuck", "Streetcode"} <= aware
 
 
 class TestTheCheckProgramExampleRuns:
@@ -1355,15 +1387,21 @@ class TestTheTwoWidthKeysCannotDrift:
     def test_all_three_effects_are_represented(self) -> None:
         """A guard over a field with one value in practice guards nothing.
 
-        The counts are here because they are the reason ``width_aware``
-        was not enough on its own: it is ``False`` for both of the two
-        large groups, which is what a reader ran into.
+        The split itself is not pinned.  It was ``{none: 38, wrap: 29,
+        layout: 2}`` and one campaign of teaching generators to lay
+        themselves out made it ``{none: 22, wrap: 35, layout: 12}`` -- so a
+        pinned split tests how far that campaign has got, not the property
+        this class is about.  What has to hold is that all three stay
+        populated, since ``width_aware`` is ``False`` for two of them and
+        that is what a reader ran into.
         """
         counts: dict[str, int] = {}
         for name in esolangs.list_languages():
             effect = str(esolangs.describe(name)["width_effect"])
             counts[effect] = counts.get(effect, 0) + 1
-        assert counts == {"none": 38, "wrap": 29, "layout": 2}
+        assert set(counts) == {"none", "wrap", "layout"}
+        assert min(counts.values()) > 1, counts
+        assert sum(counts.values()) == len(esolangs.list_languages())
 
 
 class TestEveryDumpSaysWhereTheAnswerIs:
@@ -1719,10 +1757,19 @@ class TestAFailedRowSaysWhichRow:
         assert "01101" in note  # the answers that did come back
 
     def test_a_real_timeout_carries_one_too(self) -> None:
-        """Not only the stand-in: the path a caller actually hits."""
+        """Not only the stand-in: the path a caller actually hits.
+
+        The bound is a twentieth of a second, not the one second this used
+        to pass with.  A dense n=7 Circuit Diagram row ran for well over a
+        second when that number was chosen and now takes 0.306, so the
+        timeout stopped biting and the test passed on nothing: no timeout,
+        no note, and ``pytest.raises`` would have said so -- which it did,
+        eventually, which is why the bound is now set from the measurement
+        rather than from what used to be slow.
+        """
         table = "".join(str(bin(r).count("1") & 1) for r in range(128))
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-            esolangs.evaluate("Circuit Diagram", table, timeout=1)
+            esolangs.evaluate("Circuit Diagram", table, timeout=0.05)
         note = "\n".join(getattr(caught.value, "__notes__", []))
         assert "row 0 of 128" in note
 
@@ -1783,7 +1830,12 @@ class TestEvaluateTakesAWidth:
 
     @pytest.mark.parametrize(
         ("name", "effect"),
-        [("brainfuck", "wrap"), ("LaserFuck", "layout"), ("Clockwise", "none")],
+        # Clockwise used to stand for "none" and now stacks its tree to a
+        # width, which is what pinning the effect against ``describe`` is
+        # for: it failed here rather than turning this into a test of
+        # "wrap" twice.  CV(N)(C) rejects newlines outright, so it cannot
+        # migrate the same way.
+        [("brainfuck", "wrap"), ("LaserFuck", "layout"), ("CV(N)(C)", "none")],
     )
     def test_it_works_for_each_width_effect(self, name: str, effect: str) -> None:
         """The three things a width can do, one language each.
@@ -1796,12 +1848,13 @@ class TestEvaluateTakesAWidth:
         assert esolangs.evaluate(name, "0110", timeout=30, width=25) == "0110"
 
     def test_a_template_language_gets_the_width_too(self) -> None:
-        """The width lands on ``instantiate``, not on ``generate``.
+        """The width has to land after the bits are in, on ``instantiate``.
 
-        A ``{Xi}`` slot is not a token any wrapper knows and a break inside
-        one destroys the template, so a parameterized language has to be
-        wrapped after its bits are in -- which is a place a caller writing
-        the loop by hand would plausibly get wrong.
+        A slot is four columns and the setter code that replaces it is
+        not, so a template wrapped to a width stops meeting it once it is
+        filled -- which is a place a caller writing the loop by hand would
+        plausibly get wrong.  (The template itself does wrap: ``{Xi}`` is
+        one token in every rule, so no break lands inside one.)
         """
         assert esolangs.describe("Minifuck")["parameterized"] is True
         assert esolangs.evaluate("Minifuck", "0110", timeout=30, width=40) == "0110"
