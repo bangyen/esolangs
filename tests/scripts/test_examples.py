@@ -1,4 +1,16 @@
-r"""Run every committed example program and check its output."""
+"""Run every committed example program and check its output.
+
+``examples/`` holds only programs sampled from a *parameterized* generator:
+the boolean programs from ``esolangs.tools.boolean``, which take a truth
+table and an input combination.  Each committed file is one point sampled
+from that space, so a companion test keeps it in sync with whatever the
+generator produces today -- the check has teeth precisely because the
+generator could produce something else.
+
+Fixed programs with no such space -- cat, truth-machine, and multiply -- are
+plain test fixtures rather than examples, and live inline in the matching
+``tests/interpreters/test_*.py`` instead.
+"""
 
 import sys
 from pathlib import Path
@@ -62,14 +74,28 @@ _NO_EXAMPLE: set[str] = set()
 
 @pytest.mark.parametrize("name", sorted(BOOLEAN_GENERATED))
 def test_boolean_example_matches_generator(name: str) -> None:
-    r"""Each committed boolean program is what its generator produces today."""
+    """Each committed boolean program is what its generator produces today.
+
+    The counterpart of :func:`test_example_files_match_generator` for the
+    boolean examples; refresh them with
+    ``python scripts/write_examples.py boolean``. The file ends with a
+    single POSIX newline.
+    """
     path = BASE_DIR / "examples" / "boolean" / f"{name}.txt"
     expected = BOOLEAN_GENERATED[name].build().rstrip("\n") + "\n"
     assert path.read_text(encoding="utf-8") == expected
 
 
 def test_the_manifest_matches_what_the_script_would_write() -> None:
-    r"""The committed table is what ``write_examples.py`` produces today."""
+    """The committed table is what ``write_examples.py`` produces today.
+
+    The programs beside it have had this check all along and the table
+    describing them had none, so a note added to one language left the
+    committed manifest describing the registry as it was before -- which is
+    the one file in ``examples/`` a reader consults precisely because the
+    fact is *not* recoverable from the program.  Bitdeque's note was added
+    without it and the gate stayed green.
+    """
     sys.path.insert(0, str(BASE_DIR / "scripts"))
     from write_examples import boolean_manifest_text
 
@@ -81,14 +107,27 @@ def test_the_manifest_matches_what_the_script_would_write() -> None:
 
 
 def test_boolean_examples_cover_every_committed_file() -> None:
-    r"""Every file in examples/boolean is accounted for, and vice versa."""
+    """Every file in examples/boolean is accounted for, and vice versa."""
     on_disk = {p.stem for p in (BASE_DIR / "examples" / "boolean").glob("*.txt")}
     assert on_disk == set(BOOLEAN_GENERATED) | set(HAND_WRITTEN)
 
 
 @pytest.mark.parametrize("name", sorted(HALT_CONVENTION))
 def test_halt_convention_examples_halt(name: str) -> None:
-    r"""The committed program of a halt-convention language terminates."""
+    """The committed program of a halt-convention language terminates.
+
+    These three answer with termination rather than output, so the
+    committed file is the halting (0) branch; ArrowQueue and Point Break
+    print nothing on it, and 123's junk write-bytes are ignored.
+    :func:`test_boolean_example` then runs it with no step cap -- which
+    turns a file holding the *looping* branch into a hung suite rather
+    than a failure, with nothing to say which file did it.
+
+    The bound is state-cycle detection, not a step budget: these
+    interpreters are step-capable, and a deterministic run that revisits
+    its whole internal state has looped forever, so the repeated state
+    proves divergence immediately instead of after an arbitrary wait.
+    """
     program = (
         (BASE_DIR / "examples" / "boolean" / f"{name}.txt")
         .read_text(encoding="utf-8")
@@ -101,7 +140,13 @@ def test_halt_convention_examples_halt(name: str) -> None:
 
 
 def _halts(name: str, program: str, inputs: list[str]) -> bool:
-    r"""Whether ``name``'s committed program terminates, by cycle detection."""
+    """Whether ``name``'s committed program terminates, by cycle detection.
+
+    ``inputs`` are the example's own stdin lines: 123 and ArrowQueue embed
+    their bits and read nothing, but Point Break reads its two with ``?``,
+    so running it on an empty stdin raises ``EOFError`` instead of
+    answering the question this test asks.
+    """
     from esolangs.vm import run_until_halt_or_cycle
 
     if name == "arrowqueue":
@@ -114,7 +159,20 @@ def _halts(name: str, program: str, inputs: list[str]) -> bool:
 
 
 def test_every_boolean_generator_has_an_example() -> None:
-    r"""Every registered boolean generator has a committed example."""
+    """Every registered boolean generator has a committed example.
+
+    The check above compares the files on disk against
+    :data:`BOOLEAN_EXAMPLES`, which is the hand-maintained table in
+    ``esolangs.tools.boolean.examples``.  A generator absent from *both* --
+    no entry and so no file -- cancels out of that comparison and is
+    invisible to it, which is how seven generators (%^2^-1, 123, CV(N)(C),
+    Fargo, Minifuck, SLOW ACV MAMMALIAN and Super SNUSP) went uncovered.
+
+    The registry is the only source that knows a generator exists, so it is
+    what this test compares against.  A language whose answer no program can
+    report belongs in :data:`_NO_EXAMPLE` with the reason, not silently
+    missing -- an empty exemption set is the assertion that none exist.
+    """
     registered = {
         canonical_id(lang.name) for lang in LANGUAGES.values() if lang.boolean
     }
@@ -150,7 +208,32 @@ BOOLEAN_EXAMPLES = {
 
 
 def _prove_halt(vm: object) -> bool:
-    r"""Drive ``vm`` to its halt with the prover its machine supports."""
+    """Drive ``vm`` to its halt with the prover its machine supports.
+
+    Every example here is expected to halt, so any of the three provers
+    answers ``True`` on a correct file.  Which one runs matters for the
+    *incorrect* file, which is what this test exists to catch: the three
+    disagree on what they can conclude, and only about non-halting.
+
+    ``run_until_halt_or_cycle`` decides exact state repeats and nothing
+    else.  A machine whose state grows every step -- a recursion that
+    pushes a frame per call, a tape that gains a cell per lap -- never
+    repeats one, so on those the exact-state prover does not run long, it
+    *cannot terminate*, and a broken example would hang the suite instead
+    of failing it.  ``docs/walls.md`` carries the measured instance: a
+    Suptiftam program short of its input grows the snapshot about 32 bytes
+    per step, and holding those states OOM-killed the probe, while the
+    ancestor prover answered in under a second.
+
+    So dispatch on what the machine actually implements.  The protocols
+    are ``runtime_checkable`` and opting into one is a claim about the
+    language's semantics, not merely about having the attributes -- five
+    tape-shaped languages here define ``tape`` and ``ptr`` yet are
+    deliberately not ``_TapeMachine``, and ``isinstance`` is what tells
+    them apart.  The provers raise ``TypeError`` on a machine outside
+    their protocol, so a wrong branch here fails loudly rather than
+    reporting a verdict about state the machine does not have.
+    """
     machine = getattr(vm, "_machine", vm)
     if isinstance(machine, _FramedMachine):
         return run_until_halt_or_ancestor(vm)

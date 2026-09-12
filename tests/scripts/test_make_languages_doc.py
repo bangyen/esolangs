@@ -1,4 +1,10 @@
-r"""The generated language docs stay in sync with the registry."""
+"""The generated language docs stay in sync with the registry.
+
+``scripts/make_languages_doc.py`` derives both docs/languages.md and the
+README's Implemented Languages section from the registry, so neither is
+hand-maintained.  These tests pin that contract: running the generator must
+leave both committed files unchanged.
+"""
 
 import importlib.util
 from pathlib import Path
@@ -26,7 +32,7 @@ def load_script() -> object:
 
 
 def test_readme_languages_section_is_in_sync() -> None:
-    r"""Regenerating the README section leaves it unchanged."""
+    """Regenerating the README section leaves it unchanged."""
     module = load_script()
     text = README.read_text()
     start = text.index(_README_START)
@@ -38,12 +44,11 @@ def test_readme_languages_section_is_in_sync() -> None:
         + "\n\n"
         + _README_END
     )
-    assert expected
-    assert text[start:end]
+    assert text[start:end] == expected
 
 
 def test_readme_examples_section_is_in_sync() -> None:
-    r"""Regenerating the Examples paragraph leaves it unchanged."""
+    """Regenerating the Examples paragraph leaves it unchanged."""
     module = load_script()
     text = README.read_text()
     start = text.index(_EXAMPLES_START)
@@ -55,12 +60,11 @@ def test_readme_examples_section_is_in_sync() -> None:
         + "\n\n"
         + _EXAMPLES_END
     )
-    assert expected
-    assert text[start:end]
+    assert text[start:end] == expected
 
 
 def test_readme_boolean_count_section_is_in_sync() -> None:
-    r"""Regenerating the boolean-generator count leaves it unchanged."""
+    """Regenerating the boolean-generator count leaves it unchanged."""
     module = load_script()
     text = README.read_text()
     start = text.index(_BOOLEAN_COUNT_START)
@@ -72,12 +76,17 @@ def test_readme_boolean_count_section_is_in_sync() -> None:
         + "\n\n"
         + _BOOLEAN_COUNT_END
     )
-    assert expected
-    assert text[start:end]
+    assert text[start:end] == expected
 
 
 def test_readme_counts_match_the_registry() -> None:
-    r"""The rendered counts are the registry's, not a hand-typed number."""
+    """The rendered counts are the registry's, not a hand-typed number.
+
+    The counts drifted while they sat as prose (46/58/63 against an actual
+    47/64/64), which is what moving them inside the markers fixes.  Assert the
+    rendered text carries the registry's figures so a wrong-but-in-sync
+    number cannot pass the sync tests above.
+    """
     module = load_script()
     examples = module.render_examples_section()
     assert f"each of the {len(module.BOOLEAN)}\nlanguages with a boolean" in examples
@@ -85,13 +94,12 @@ def test_readme_counts_match_the_registry() -> None:
 
 
 def test_boolean_set_names_are_registered() -> None:
-    r"""Every language marked boolean in the matrix is a registered."""
+    """Every language marked boolean in the matrix is a registered language."""
     module = load_script()
     assert set(module.LANGUAGES) >= module.BOOLEAN
 
 
 def test_languages_doc_is_in_sync() -> None:
-    r"""Regenerating the capability matrix leaves it unchanged."""
+    """Regenerating the capability matrix leaves it unchanged."""
     module = load_script()
-    assert module
-    assert LANGUAGES_DOC.exists()
+    assert LANGUAGES_DOC.read_text() == module.render()

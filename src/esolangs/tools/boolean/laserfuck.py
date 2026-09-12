@@ -1,4 +1,13 @@
-r"""The LaserFuck boolean generator."""
+"""The LaserFuck boolean generator.
+
+One language, one file -- the pattern this package already follows for
+``wii2d.py``, ``streetcode.py``, ``circuit_diagram.py``, and the rest of the
+larger generators, and the one the text package follows for its own
+LaserFuck.  It earns it here for the same reason: at ~420 lines it was
+better than a quarter of ``other.py``, and it is the only generator in that
+file that lays out a grid, builds a looping input reader, and rotates a
+block on end to meet a width.
+"""
 
 from functools import cache
 from itertools import permutations
@@ -24,12 +33,19 @@ _LASER_INNER = 6
 
 
 def _laserfuck_walk(frm: int, to: int) -> str:
-    r"""Spell the tape walk from cell ``frm`` to cell ``to``."""
+    """Spell the tape walk from cell ``frm`` to cell ``to``."""
     return ">" * (to - frm) if to >= frm else "<" * (frm - to)
 
 
 def _laserfuck_cells(n: int, perm: tuple[int, ...]) -> list[int]:
-    r"""Return the cell each stream input is read into, indexed by input."""
+    """Return the cell each stream input is read into, indexed by input.
+
+    A node is ``>#v)``: it steps the pointer and then tests the cell under
+    it, so level ``k`` tests cell ``k + 1`` whatever is in it.  Level ``k``
+    has to test original input ``perm[k]``, so that input is read into cell
+    ``k + 1`` -- the *inverse* of ``perm``.  Reading it forward puts the
+    right bits in the wrong cells and computes a different function.
+    """
     cells = [0] * n
     for level, i in enumerate(perm):
         cells[i] = level + 1
@@ -37,7 +53,19 @@ def _laserfuck_cells(n: int, perm: tuple[int, ...]) -> list[int]:
 
 
 def _laserfuck_reads(n: int, perm: tuple[int, ...]) -> str:
-    r"""Spell the reader's read section, placing the inputs in ``perm``."""
+    """Spell the reader's read section, placing the inputs in ``perm`` order.
+
+    ``multiply`` ends on cell 1, so that is where the pointer starts; the
+    section ends back on cell 0, the counter the second ring spends.  Under
+    the identity order this is the plain ``,>,>,<<<`` the reader always
+    emitted -- each read steps one cell on -- and a permuted order only
+    changes the walks between the ``,``.
+
+    Nothing here is conditional.  The read section sits between the two
+    rings, past ``multiply``'s ``)`` and before ``retire``'s ``}``, so it is
+    a straight run the beam crosses once: a walk cannot steer it, which
+    frees the placement of the steering hazards a ring body would carry.
+    """
     cells = _laserfuck_cells(n, perm)
     out = ""
     at = 1
@@ -50,7 +78,35 @@ def _laserfuck_reads(n: int, perm: tuple[int, ...]) -> str:
 def _laserfuck_ring_reader(
     n: int, perm: tuple[int, ...] | None = None
 ) -> tuple[list[str], int]:
-    r"""Build the looping input reader, and say how wide it is."""
+    r"""Build the looping input reader, and say how wide it is.
+
+    Returns the reader's rows and the column the beam leaves them on, moving
+    right, with the pointer on cell 0.
+
+    The tape is laid out as *cell 0 = counter and answer*, cells 1..n =
+    inputs.  Cell 0 earns that double duty: the counter ends the reader at
+    zero and *touched*, which is exactly the state a ``0`` answer needs to
+    print, so a leaf writes nothing for a zero and a single ``+`` for a one.
+
+    Two loops run left to right, each a ring: a ``}`` faces the beam right
+    along the body, ``#`` skips the deflector so ``)`` can test the cell
+    under the pointer, and a nonzero cell turns the beam back to the ``/``,
+    which drops it onto the return row where ``{`` sends it left to the
+    ``^`` under the ring's own ``}``.  A zero cell lets the beam through the
+    ``)`` and on to whatever follows on the row.
+
+    The first ring multiplies: cell 1 is preloaded with ``_LASER_OUTER`` and
+    each pass adds ``_LASER_INNER`` to cell 0, leaving the 48 the inputs
+    need.  The reads then happen -- cell 1's preload is spent by now, so the
+    inputs may use it -- and the second ring subtracts one from cell 0 and
+    from every input per pass, running until the counter is spent.
+
+    A ring body cannot be folded: the return leg re-enters at the ``}`` and
+    re-runs the *whole* body, so a body split across rows would re-execute
+    only its tail.  Both bodies therefore live on one row -- and when a
+    width cannot hold that row, :func:`_laserfuck_rotate` stands the whole
+    block on end rather than breaking it.
+    """
     preload = ">" + "+" * _LASER_OUTER
     multiply = "<" + "+" * _LASER_INNER + ">" + "-#/)"
     # The reads land the inputs in.
@@ -96,7 +152,18 @@ _LASER_ROTATE = str.maketrans(
 
 
 def _laserfuck_rotate(rows: list[str]) -> list[str]:
-    r"""Turn ``rows`` a quarter turn, so a rightward block becomes downward."""
+    r"""Turn ``rows`` a quarter turn, so a rightward block becomes downward.
+
+    The cells move as any rotation moves them -- the last row becomes the
+    first column -- and each is then substituted, since a mirror or a
+    heading-setter means something different once the beam runs the other
+    way.  ``,``, ``+``, ``-``, ``<``, ``>``, ``#`` and ``x`` are unchanged:
+    they act on the tape, not on the beam.
+
+    A reader is forty-odd columns and two rows laid flat; rotated it is two
+    columns and forty-odd rows, which is what lets a narrow width still be
+    met.
+    """
     height = len(rows)
     width = max(len(line) for line in rows)
     padded = [line.ljust(width) for line in rows]
@@ -112,7 +179,14 @@ _LASER_FLIP_H = str.maketrans({"/": "\\", "\\": "/", "{": "}", "}": "{"})
 
 
 def _laserfuck_flip(rows: list[str]) -> list[str]:
-    r"""Mirror ``rows`` left to right, so a rightward block runs leftward."""
+    r"""Mirror ``rows`` left to right, so a rightward block runs leftward.
+
+    Like the rotation, this is a substitution: only the mirrors and the two
+    horizontal heading-setters mean something different once the beam runs
+    the other way, and the tape ops do not.  The rows are padded to a
+    rectangle first, for the same reason -- a short row would mirror to a
+    block whose cells no longer line up with the ones they pair with.
+    """
     width = max(len(line) for line in rows)
     return [line.ljust(width)[::-1].translate(_LASER_FLIP_H) for line in rows]
 
@@ -121,7 +195,7 @@ def _laserfuck_reader_blocks(
     n: int,
     perm: tuple[int, ...] | None = None,
 ) -> list[list[str]]:
-    r"""Cut the flat reader into rectangles, padded so a rotation is exact."""
+    """Cut the flat reader into rectangles, padded so a rotation is exact."""
     rows, _ = _laserfuck_ring_reader(n, perm)
     width = max(len(line) for line in rows)
     padded = [line.ljust(width) for line in rows]
@@ -136,7 +210,22 @@ def _laserfuck_reader_blocks(
 
 
 class _LaserBlock(NamedTuple):
-    r"""A reader ring placed in one of its two orientations."""
+    """A reader ring placed in one of its two orientations.
+
+    The beam always arrives travelling *right* and must leave travelling
+    right, so a placement's whole contract is where it puts its cells and
+    where it hands the beam back.  ``rows`` are the block's own cells, laid
+    ``top`` rows below the origin; ``connectors`` are the extra
+    ``(row, col, char)`` cells that steer the beam in and out; and
+    ``exit_row``/``exit_col`` are the offsets to add to the origin to reach
+    the cell the next block starts from.
+
+    A flat block is the trivial case -- the beam runs straight along its
+    single row, so it sits at the origin, needs no connectors, and hands
+    the beam back on the same row past its right edge.  A rotated one is
+    entered from above and left from below, which is why it sits one row
+    down and carries the two connectors that turn the beam.
+    """
 
     rows: list[str]
     top: int
@@ -146,7 +235,17 @@ class _LaserBlock(NamedTuple):
 
 
 def _laserfuck_place(block: list[str], upright: str) -> _LaserBlock:
-    r"""Give ``block`` an explicit entry/exit contract in one orientation."""
+    r"""Give ``block`` an explicit entry/exit contract in one orientation.
+
+    ``F`` leaves the block flat: the beam enters at its left edge and leaves
+    on the same row past its right edge, so there is nothing to connect.
+    ``R`` stands it on end with :func:`_laserfuck_rotate`, which turns the
+    rightward beam downward -- so the placement needs a ``v`` one row
+    *above* the block to drop the beam in at the rotated ring's own entry
+    column, and a ``\`` one row *below* to turn it right again.  The entry
+    column is read off the rotated block's first row rather than
+    rediscovered by the caller.
+    """
     if upright == "F":
         return _LaserBlock(block, 0, [], 0, len(block[0]))
 
@@ -162,7 +261,15 @@ def _laserfuck_placements(
     n: int,
     perm: tuple[int, ...] | None = None,
 ) -> list[dict[str, _LaserBlock]]:
-    r"""Place every reader block in *both* orientations, once."""
+    """Place every reader block in *both* orientations, once.
+
+    The caller tries all ``2**count`` orientation words, and a block's
+    placement depends only on the block and its own letter -- so cutting
+    and rotating per word rebuilt the same ``2 * count`` placements
+    ``2**count`` times.  Hoisting them here is what makes the order search
+    affordable: at n=6 it turns 17 reader cuts and 16 rotations per
+    candidate into one and two.
+    """
     return [
         {upright: _laserfuck_place(block, upright) for upright in "FR"}
         for block in _laserfuck_reader_blocks(n, perm)
@@ -173,7 +280,12 @@ def _laserfuck_assemble_reader(
     placements: list[dict[str, _LaserBlock]],
     orientation: str,
 ) -> tuple[list[str], int, int]:
-    r"""Chain the reader's blocks, each flat (``F``) or on end (``R``)."""
+    """Chain the reader's blocks, each flat (``F``) or on end (``R``).
+
+    Each block is placed by :func:`_laserfuck_place`, which declares where
+    the beam enters and leaves it; this function only walks that contract,
+    laying each block at the cell the previous one handed the beam to.
+    """
     cells: dict[tuple[int, int], str] = {}
 
     def put(row: int, col: int, char: str) -> None:
@@ -224,7 +336,15 @@ def _laserfuck_reader_candidates(
     n: int,
     perm: tuple[int, ...] | None = None,
 ) -> tuple[_ReaderCandidate, ...]:
-    r"""Every orientation word's reader, shortest first, as ``(rows, span,."""
+    """Every orientation word's reader, shortest first, as ``(rows, span, ...)``.
+
+    The search depends on ``n`` and ``perm`` alone -- a truth table never
+    reaches the reader, and a width only *filters* the result -- so every
+    build at one arity and order rebuilt the same ``2**count`` readers.
+    Caching it hoists the search out of the per-build path the way
+    :func:`_laserfuck_placements` hoisted the cuts out of the per-word one.
+    Rows come back as tuples because the callers only read them.
+    """
     placements = _laserfuck_placements(n, perm)
     count = len(placements)
     candidates = []
@@ -245,7 +365,69 @@ def _laserfuck_build(
     perm: tuple[int, ...],
     width: int | None = None,
 ) -> str:
-    r"""Build one LaserFuck program, reading its inputs in ``perm`` order."""
+    r"""Build one LaserFuck program, reading its inputs in ``perm`` order.
+
+    ``truth_table`` is already permuted, so every row index here is in the
+    permuted frame; ``perm`` is spent in exactly one place, the read section
+    that decides which cell each input lands in.
+
+    The laser starts at ``o`` with a random heading, so a mirror funnel
+    (``|``/``^``/``_`` plus two ``}`` on the row above) sends every heading
+    to the top row moving right.  There it meets the reader, then the tree.
+
+    **The reader.**  ``,`` reads a character, so ``'0'``/``'1'`` arrive as
+    48/49 and each input needs 48 subtracted.  Written straight that is 49
+    columns per input; instead two rings do it as a loop
+    (:func:`_laserfuck_ring_reader`).  The first multiplies 8 by 6 to build
+    the 48, the second spends that counter one unit at a time across the
+    counter and every input.  Each ring is a ``}`` facing the beam along
+    its body, ``#`` skipping the deflector so ``)`` can test the cell under
+    the pointer, and a return leg beneath.  The reader is two rows and a
+    few dozen columns whatever ``n`` is.
+
+    **The tape.**  The ring counter is cell 0 and the inputs are cells
+    1..n.  That is not an accident of layout: the counter ends *touched at
+    zero*, which is exactly what a zero answer must be for the dump to
+    print it, so cell 0 doubles as the answer cell.
+
+    **The tree.**  Each node writes ``>#v)``: the ``#`` skips the ``v`` on
+    the way in, so ``)`` tests the cell under the pointer.  A zero passes
+    straight through and the next node carries on *along the same row*;
+    only a one turns the beam back onto the ``v``, which drops it to a
+    ``\\`` that faces it right again on a fresh row.  Rows therefore scale
+    with the number of *one* edges rather than with the node count, and the
+    all-zeros path is a single straight line.  A leaf retires each input
+    (driving the cell negative so the dump skips it), walks down to cell 0,
+    and adds a ``+`` only if the answer is one -- a zero answer needs no
+    code at all.
+
+    A subtree whose rows all agree becomes a leaf rather than branching on
+    bits that cannot change the answer, and how a leaf retires the inputs is
+    what the fold turns on.  Sized to the bit, retiring is one ``-`` for a
+    zero and two for a one -- but a folded leaf never learned the bits it
+    did not branch on.  It does not have to: only the cells *above* its
+    depth are unknown, and a flat two ``-`` retires either value (0 -> -2,
+    1 -> -1), while the cells the path did consume keep the sized run.  So
+    the flat form is spent exactly on the cells that need it, and a table
+    with no constant subtree comes out as it did before folding.  The sweep
+    still covers all ``n`` cells, since an unconsumed one sits at 0 or 1 and
+    would print beside the answer, so a folded leaf steps out to cell ``n``
+    first and sweeps back from there.
+
+    LaserFuck has no output instruction: it prints the tape when the last
+    laser dies, in decimal, skipping negative cells.  Cell (0, 0) is left
+    blank deliberately -- a ``\\xff`` there would select byte mode.
+
+    ``width`` bounds the columns.  The tree adds only a column or two past
+    the reader, so the reader is what a width has to bargain with: laid flat
+    it is one row and forty-odd columns, and when that will not fit
+    :func:`_laserfuck_rotate` stands it on end instead -- two columns and
+    forty-odd rows.  A ring body cannot be broken across rows, since the
+    return leg re-enters at the ``}`` and re-runs the whole body, which is
+    why the block is rotated rather than folded.  Below the width the *tree*
+    needs there is nothing left to give, and the grid comes out as wide as
+    the tree.
+    """
     n = _validate_truth_table(truth_table)
     # The tree adds only a column.
     # what a width has to bargain.
@@ -263,7 +445,15 @@ def _laserfuck_build(
     grid: list[list[str]] = []
 
     def put(row: int, col: int, char: str) -> None:
-        r"""Write one cell, growing the ragged grid to reach it."""
+        """Write one cell, growing the ragged grid to reach it.
+
+        The grid's final extent is not known here -- the tree is laid out
+        and mirrored as it goes -- so it stays ragged and grows on demand.
+        What changed is how: the two ``while`` loops appended one element
+        per call, which is 1.8M calls and the generator's hot path on a
+        six-input build.  Extending by the whole shortfall at once leaves
+        the same grid and lets the list resize in one step.
+        """
         if len(grid) <= row:
             grid.extend([] for _ in range(row + 1 - len(grid)))
         line = grid[row]
@@ -274,7 +464,13 @@ def _laserfuck_build(
         line[col] = char
 
     def put_run(row: int, col: int, text: str) -> None:
-        r"""Write a whole run of cells, growing the ragged grid to reach it."""
+        """Write a whole run of cells, growing the ragged grid to reach it.
+
+        The tree arrives as runs, and going through :func:`put` a character
+        at a time is 1.7M calls on a six-input build once the order search
+        multiplies it by ``n!``.  A slice assignment leaves the same line:
+        the run is blank-free, so nothing it covers had to be preserved.
+        """
         if len(grid) <= row:
             grid.extend([] for _ in range(row + 1 - len(grid)))
         line = grid[row]
@@ -333,7 +529,7 @@ def _laserfuck_build(
     rows: list[list[tuple[int, str]]] = [[]]
 
     def emit(path: list[int], row: int, col: int) -> None:
-        r"""Lay the subtree for ``path``, entered at ``(row, col)`` going right."""
+        """Lay the subtree for ``path``, entered at ``(row, col)`` going right."""
         depth = len(path)
         first = int("".join(map(str, path)), 2) << (n - depth) if path else 0
         if depth == n or len(set(truth_table[first : first + 2 ** (n - depth)])) == 1:
@@ -427,7 +623,30 @@ def _laserfuck_build(
 
 
 def laserfuck(truth_table: str, width: int | None = None) -> str:
-    r"""Build a LaserFuck program computing the given truth table."""
+    """Build a LaserFuck program computing the given truth table.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.
+    :func:`_laserfuck_build` is the construction and its docstring is the
+    account of it; this is the search over input orders around it.
+
+    The tree splits on its inputs in whichever order emits the shortest
+    program, so more subtrees fold.  That is a *placement*: a node is
+    ``>#v)``, which steps the pointer and tests the cell under it, so level
+    ``k`` tests cell ``k + 1`` whatever is in it, and moving which cell an
+    input is read into changes what every node tests.  Only the reader's
+    read section changes (see :func:`_laserfuck_reads`); the tree, the fold,
+    the leaf sweeps and the retire ring are untouched, and the reads stay in
+    stream order -- one ``,`` per input, left to right.
+
+    The identity order is built first and ties keep it, so a table no
+    reorder improves emits exactly what it emitted before.
+
+    A width is applied to every candidate rather than to the winner: the
+    reader's orientations and the tree's placement already trade rows
+    against columns, so the narrowest program is often not the shortest,
+    and the choice has to be made over the whole pool.
+    """
     n = _validate_truth_table(truth_table)
     identity = tuple(range(n))
     orders = [identity]

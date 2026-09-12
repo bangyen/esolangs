@@ -1,4 +1,11 @@
-r"""Boolean-function generator for A Painter Ant (parameterized."""
+"""Boolean-function generator for A Painter Ant (parameterized convention).
+
+A Painter Ant is a no-input grid language, so this follows the
+parameterized convention described in
+:mod:`esolangs.tools.boolean.parameterized`: the template's ``{Xi}``
+placeholders are movement runs that the harness fills per input
+combination, and the ant's final cell colour encodes the table entry.
+"""
 
 from esolangs.tools.boolean.helpers import _validate_truth_table, instantiate
 
@@ -70,12 +77,23 @@ _OPP = {
 
 
 def _bit_is_horizontal(n: int, k: int) -> bool:
-    r"""Return whether bit ``k`` (of ``n``, most-significant first) moves."""
+    """Return whether bit ``k`` (of ``n``, most-significant first) moves.
+
+    Moves on the x axis rather than y -- the same index-parity rule the
+    head, the leaf coordinates, and the routing all agree on.
+    """
     return k % 2 != n % 2
 
 
 def _bit_move(n: int, k: int, bit: int) -> str:
-    r"""Return the moves that input bit ``k`` contributes."""
+    """Return the moves that input bit ``k`` contributes.
+
+    ``bits`` are most-significant first, so bit ``k`` carries weight
+    ``2 ** (n - k)`` and moves on the axis chosen by index parity
+    (:func:`_bit_is_horizontal`); a set bit moves west/north, a cleared bit
+    east/south.  The head walks these moves out to each leaf and the
+    routing walks them to read it, so the two always agree.
+    """
     mag: int = 2 ** (n - k)
     if _bit_is_horizontal(n, k):
         return ("w" if bit else "e") * mag
@@ -83,12 +101,16 @@ def _bit_move(n: int, k: int, bit: int) -> str:
 
 
 def _reverse_moves(moves: str) -> str:
-    r"""Return ``moves`` reversed with every direction inverted."""
+    """Return ``moves`` reversed with every direction inverted."""
     return "".join(_OPP[c] for c in reversed(moves))
 
 
 def _leaf_color(truth_table: str, bits: list[int]) -> bool:
-    r"""Return whether to paint the leaf for the input ``bits``."""
+    """Return whether to paint the leaf for the input ``bits``.
+
+    ``bits`` is listed most-significant first, so the table index is the
+    packed binary value ``sum(bit << (n-1-i))``.
+    """
     index = 0
     for n, b in enumerate(bits):
         index += b << (len(bits) - n - 1)
@@ -96,7 +118,14 @@ def _leaf_color(truth_table: str, bits: list[int]) -> bool:
 
 
 def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
-    r"""Return ``(x, y, bits)`` for every leaf in head-visit order."""
+    """Return ``(x, y, bits)`` for every leaf in head-visit order.
+
+    The coordinates come from the same weighted rule the head walks and the
+    routing reads: each bit ``k`` contributes ``+-2 ** (n-k)`` on the axis
+    chosen by index parity, with a cleared bit negative.  The head uses only
+    the ``bits``, reaching each leaf by walking those weights, so ``(x, y)``
+    is the mirror position the routing reads.
+    """
     out: list[tuple[int, int, tuple[int, ...]]] = []
 
     for i in range(2**n):
@@ -117,7 +146,18 @@ def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
 
 
 def _head(truth_table: str, bits: list[int]) -> str:
-    r"""Build the A Painter Ant head for an ``n``-input table."""
+    """Build the A Painter Ant head for an ``n``-input table.
+
+    The head paints every white leaf and returns to the origin.  It walks
+    each leaf out and back piecewise -- one weighted move per input bit
+    (:func:`_bit_move`), in the same order and direction the routing uses --
+    so the outbound path never crosses a previously painted leaf (the
+    intermediate cells are never leaf positions) and the reverse path
+    retraces it cleanly.  The ``N`` prefix and ``Ssn`` ending are no-ops on
+    the empty first cycle; from cycle 2 on the ``WS``/``NE`` anchors launch
+    the ant off the leaf onto the painted ring, making the whole program a
+    cycle-stable fixed point.
+    """
     n = len(bits)
     out = ["N"]
 
@@ -144,7 +184,20 @@ def _head(truth_table: str, bits: list[int]) -> str:
 
 
 def _body() -> str:
-    r"""Generate the routing body."""
+    """Generate the routing body.
+
+    The body paints two two-layer stars -- one around the output leaf and one
+    around its y-mirror -- so the final input never has to be re-embedded: it
+    only routes to whichever star is already painted.  Each star is walked as
+    a clockwise spiral of ``P`` paints (the ring cells at distance 1 and the
+    axis cells at distance 2), and the two stars are connected by the black
+    gap between their rings: the centres are four cells apart and each ring
+    reaches one cell toward the other, so the gap is ``4 - 2`` east moves on
+    the row above.  The body starts and ends on the shared cell at
+    ``(0, +-2)`` -- the canonical point the final input's east/west routing
+    leaves from -- and its blocked-uppercase returns are the anchors of the
+    cycle-2 dance.
+    """
     # West star, entered from the.
     # clockwise spiral (single ring.
     # cells, and blocked-uppercase.
@@ -158,7 +211,21 @@ def _body() -> str:
 
 
 def a_painter_ant(truth_table: str) -> str:
-    r"""Build an A Painter Ant template for an ``n``-input Boolean function."""
+    """Build an A Painter Ant template for an ``n``-input Boolean function.
+
+    ``truth_table`` is a binary string of length ``2**n`` indexed by the
+    inputs (most significant first); the table length implies ``n``.  The
+    returned template contains ``{X0}``..``{Xn-1}`` placeholders that
+    :func:`~esolangs.tools.boolean.parameterized.instantiate` fills with
+    the per-bit routing.  The answer is the colour of the cell the ant lands
+    on after a cycle (white is one, black is zero).
+
+    Every table is supported for any ``n``, and every instantiated program
+    is a cycle-stable fixed point.  The first ``n-1`` inputs route by their
+    weight (west/north for a one bit, east/south for a zero) before the
+    body; the final (least-significant) input routes east/west onto its
+    leaf after it.
+    """
     n = _validate_truth_table(truth_table)
 
     # The head paints every leaf,.
@@ -172,7 +239,15 @@ def a_painter_ant(truth_table: str) -> str:
 
 
 def _instantiate_apa(template: str, bits: list[int]) -> str:
-    r"""Fill an A Painter Ant template's ``{Xi}`` placeholders."""
+    """Fill an A Painter Ant template's ``{Xi}`` placeholders.
+
+    Every input except the final one routes piecewise by its weight
+    (``2 ** (n - i)`` cells along the index-parity axis, west/north for a
+    one bit, east/south for a zero -- :func:`_bit_move`), and the final
+    (least-significant) input routes east/west with the ``WWwWWEEe`` /
+    ``NENEESWw`` landing dance onto its leaf.  ``bits`` must match the
+    template built by :func:`a_painter_ant`.
+    """
     n = len(bits)
 
     def replace(i: int, bit: int) -> str:

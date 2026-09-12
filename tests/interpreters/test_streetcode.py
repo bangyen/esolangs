@@ -1,4 +1,12 @@
-r"""Unit tests for the Streetcode interpreter."""
+"""Unit tests for the Streetcode interpreter.
+
+Streetcode is a 2D esolang where a car drives along two-way streets,
+executing the instruction it passes over.  ``^``/``~`` increment/decrement
+the CPth cell, ``=``/``_`` move CP right/left, ``I``/``O`` read/write the
+CPth cell as a character, ``U`` turns the car around, ``;`` halts, and
+space is a no-op. These tests pin the implementation's choices for initial
+heading, numbered registers, and drive-on-the-right geometry.
+"""
 
 import io
 import re
@@ -47,29 +55,46 @@ from tests.raises import raises_message
 
 
 def street(instructions: str) -> list[str]:
-    r"""Box a one-line program into a street, the way the wiki draws one."""
+    """Box a one-line program into a street, the way the wiki draws one.
+
+    The spec's streets are two characters wide, so a bare instruction row
+    is not a street: the instructions become the southern lane (the wall
+    below them on the car's right is what sends it East) with a blank
+    oncoming lane above, inside a wall.  This is exactly the shape of the
+    wiki's own "simple example", ``+----+`` / ``|    |`` / ``|CIO;|`` /
+    ``+----+``, and it lets these tests pin instruction semantics on
+    conformant geometry rather than on a one-wide corridor.
+    """
     wall = "+" + "-" * len(instructions) + "+"
     return [wall, "|" + " " * len(instructions) + "|", f"|{instructions}|", wall]
 
 
 def machine_unvalidated(code: list[str]) -> _Machine:
-    r"""Build a ``_Machine`` from a wall-shape fixture, skipping validation."""
+    """Build a ``_Machine`` from a wall-shape fixture, skipping validation.
+
+    The junction and lane-merge tests probe ``_junction_kind`` and the merge
+    latches directly, on deliberately skeletal geometry -- bare wall arms and
+    gaps, with assertions keyed to exact coordinates.  Such a fixture is not a
+    legal street and is not meant to be one, so it is constructed with
+    ``_validate`` disabled rather than redrawn, which would change what the
+    test measures.  Whole-program tests use the real constructor.
+    """
     with patch.object(_Machine, "_validate", lambda *_: None):
         return _Machine(code, IO())
 
 
 def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
-    r"""Run a Streetcode program and return its stdout."""
+    """Run a Streetcode program and return its stdout."""
     return run_program(run, code, "".join(f"{line}\n" for line in inputs or []))
 
 
 def run_street(instructions: str, inputs: list[str] | None = None) -> str:
-    r"""Run a one-line program inside a proper two-lane street."""
+    """Run a one-line program inside a proper two-lane street."""
     return run_and_capture(street(instructions), inputs)
 
 
 class TestStreetcodeSingleCommands:
-    r"""Each instruction in isolation."""
+    """Each instruction in isolation."""
 
     def test_halt_immediately(self) -> None:
         assert run_street("C;") == ""
@@ -78,24 +103,28 @@ class TestStreetcodeSingleCommands:
         assert run_street("C^O;") == chr(1)
 
     def test_decrement_below_zero_then_output_is_invalid(self) -> None:
-        r"""A cell of -1 is a valid signed int, but not a valid code point."""
+        """A cell of -1 is a valid signed int, but not a valid code point."""
         with pytest.raises(HaltError):
             run(["C~O;"], io=IO())
 
     def test_decrement_then_increment_then_output(self) -> None:
-        r"""~ and ^ both touch the same CPth cell, unbounded and signed."""
+        """~ and ^ both touch the same CPth cell, unbounded and signed."""
         assert run_street("C~^O;") == chr(0)
 
     def test_space_is_a_nop(self) -> None:
-        r"""A space between C and O is skipped over; the cell is still 0."""
+        """A space between C and O is skipped over; the cell is still 0."""
         assert run_street("C O;") == chr(0)
 
     def test_undefined_character_is_a_nop(self) -> None:
-        r"""Box-drawing and other undefined characters act like space."""
+        """Box-drawing and other undefined characters act like space."""
         assert run_street("C#O;") == chr(0)
 
     def test_u_without_an_opposite_lane_is_invalid(self) -> None:
-        r"""A one-wide corridor is narrower than the spec's two-character."""
+        """A one-wide corridor is narrower than the spec's two-character
+        streets, so a 'U' there has nowhere legal to end its turn: that is
+        a malformed street met at run time, not a manoeuvre with a
+        fallback.
+        """
         # Two rows so the car has room.
         machine = _Machine(["C", "U"], IO())
         assert machine.heading == "S"
@@ -105,7 +134,10 @@ class TestStreetcodeSingleCommands:
             machine.step()  # 'U' with no lane to the new.
 
     def test_u_on_a_two_way_street_ends_in_the_opposite_lane(self) -> None:
-        r"""Streets are two wide and the car drives on the right, so after."""
+        """Streets are two wide and the car drives on the right, so after
+        turning around it belongs in the lane now on its right: the U-turn
+        ends there, and that lane cell is executed on the next step.
+        """
         code = [
             "|  |",
             "|C |",
@@ -126,7 +158,13 @@ class TestStreetcodeSingleCommands:
         assert (machine.row, machine.col, machine.heading) == (2, 2, "N")
 
     def test_u_in_place_would_leave_the_car_driving_on_the_left(self) -> None:
-        r"""The reason the lane change is not optional: turned around in place,."""
+        """The reason the lane change is not optional: turned around in
+        place, the car sits in the oncoming lane, and the right-hand hug
+        then takes two right turns to get out of it -- ending up on the
+        *original* heading one lane over, the U-turn cancelled.  Drive the
+        same street to the U and confirm the car really is northbound in
+        the east lane two steps later, not westbound and then southbound.
+        """
         code = [
             "|  |",
             "|C |",
@@ -146,7 +184,7 @@ class TestStreetcodeSingleCommands:
         assert machine.col == 2
 
     def test_cp_increment_and_decrement(self) -> None:
-        r"""Move CP right onto a fresh cell, increment it, then move back."""
+        """Move CP right onto a fresh cell, increment it, then move back."""
         assert run_street("C=^O_O;") == chr(1) + chr(0)
 
 
@@ -155,20 +193,25 @@ class TestStreetcodeHalt:
         assert run_street("C;^O") == ""
 
     def test_program_without_semicolon_runs_until_dead_end(self) -> None:
-        r"""No halt instruction: a dead-end corridor still stops."""
+        """No halt instruction: a dead-end corridor still stops.
+
+        A *street* with no halt does not -- the car circles it forever --
+        so the dead end has to be a genuine cul-de-sac, which is what this
+        pins: the single-cell program with nowhere to drive at all.
+        """
         assert run_and_capture(["C"]) == ""
 
 
 class TestStreetcodeDeadEndsAndTurns:
     def test_single_cell_program_is_an_immediate_dead_end(self) -> None:
-        r"""A lone C with nowhere to go halts without executing twice."""
+        """A lone C with nowhere to go halts without executing twice."""
         machine = _Machine(["C"], IO())
         assert not machine.halted
         machine.step()
         assert machine.halted
 
     def test_corridor_bends_naturally_without_a_u(self) -> None:
-        r"""A single non-backward neighbor is just driven onto (rule 8)."""
+        """A single non-backward neighbor is just driven onto (rule 8)."""
         # Heading East with only one.
         # cell behind (West) out of.
         # so the car simply continues.
@@ -178,7 +221,7 @@ class TestStreetcodeDeadEndsAndTurns:
         assert (machine.row, machine.col, machine.heading) == (0, 1, "E")
 
     def test_dead_end_forces_a_u_turn(self) -> None:
-        r"""A true cul-de-sac (no non-backward neighbor) reverses heading."""
+        """A true cul-de-sac (no non-backward neighbor) reverses heading."""
         # C moves south onto 'X' (its.
         # orthogonal neighbor except.
         # bounds, so it must reverse.
@@ -192,7 +235,7 @@ class TestStreetcodeDeadEndsAndTurns:
 
 
 class TestStreetcodeAmbiguousTurns:
-    r"""A real junction: ``_junction_kind`` fires and offers >= 2 options."""
+    """A real junction: ``_junction_kind`` fires and offers >= 2 options."""
 
     def _junction_code(self) -> list[str]:
         # A north-south corridor.
@@ -229,43 +272,69 @@ class TestStreetcodeAmbiguousTurns:
         assert (machine.row, machine.col, machine.heading) == (2, 1, "S")
 
     def test_plus_pair_with_a_wall_in_the_gap_is_not_a_mouth(self) -> None:
-        r"""A `+` pair whose floor is not all open between them bounds no road:."""
+        """A `+` pair whose floor is not all open between them bounds no
+        road: the far `+` is found, the gap check fails, and the scan
+        stops rather than reporting a mouth through solid wall.
+        """
         grid = _Grid(["C       ", "-+ |+   ", "        "])
         assert _road_mouth(grid, _Car(0, 0, "E"), "S") is None
 
     def test_four_way_junction_detects_4(self) -> None:
-        r"""Mouths on both sides at once, road continuing ahead: 4 ways."""
+        """Mouths on both sides at once, road continuing ahead: 4 ways.
+
+        ``_junction_shape`` reads the wall shape alone; ``_junction_kind``
+        additionally requires two roads the car could drive down, which
+        this narrow fixture's one-cell arms are not (see
+        :func:`_road_deep`).
+        """
         grid = _Grid([" C ", "+ +", "   ", "+ +", " | "])
         assert _junction_shape(grid, _Car(0, 1, "S")) == 4
 
     def test_t_junction_detects_3(self) -> None:
-        r"""Mouths on both sides with straight ahead blocked: a T whose."""
+        """Mouths on both sides with straight ahead blocked: a T whose
+        crossbar the car is driving into, still three ways.
+        """
         grid = _Grid([" C ", "+|+", "   ", "+ +", " | "])
         assert _junction_shape(grid, _Car(0, 1, "S")) == 3
 
     def test_one_mouth_with_road_ahead_detects_3(self) -> None:
-        r"""A branch to *one* side, road continuing ahead: three ways."""
+        """A branch to *one* side, road continuing ahead: three ways.
+
+        The two tests above both have mouths on either side, so they
+        only ever reach the first arm of ``_junction_shape``.  Nothing
+        asked what a single mouth classifies as, which left the ``and``
+        joining the two sides free to be an ``or``.
+        """
         left_only = _Grid([" C ", "+ +", "  |", "+ +", " | "])
         right_only = _Grid([" C ", "+ +", "|  ", "+ +", " | "])
         assert _junction_shape(left_only, _Car(0, 1, "S")) == 3
         assert _junction_shape(right_only, _Car(0, 1, "S")) == 3
 
     def test_one_mouth_with_the_road_ahead_blocked_is_no_junction(self) -> None:
-        r"""One branch and nowhere to go straight is not a junction at all."""
+        """One branch and nowhere to go straight is not a junction at all.
+
+        Counting the road behind, that leaves two ways -- a bend, which
+        the driving rules handle without a junction choice.  This is the
+        ``0`` the one-sided arm returns, and the case that separates it
+        from the T above.
+        """
         left_only = _Grid([" C ", "+|+", "  |", "+ +", " | "])
         right_only = _Grid([" C ", "+|+", "|  ", "+ +", " | "])
         assert _junction_shape(left_only, _Car(0, 1, "S")) == 0
         assert _junction_shape(right_only, _Car(0, 1, "S")) == 0
 
     def test_a_plain_corridor_is_no_junction(self) -> None:
-        r"""No mouth on either side, and not driving out through one."""
+        """No mouth on either side, and not driving out through one."""
         grid = _Grid([" C ", "| |", "| |", "| |", " | "])
         car = _Car(0, 1, "S")
         assert not _crossing_mouth(grid, car)
         assert _junction_shape(grid, car) == 0
 
     def test_turn_into_the_oncoming_lane_is_not_a_road(self) -> None:
-        r"""A turn whose destination has the wall on its left and open road on."""
+        """A turn whose destination has the wall on its left and open road
+        on its right would leave the car driving on the left, so it is not
+        a road the junction may offer, however open it looks.
+        """
         grid = _Grid(self._counting_loop_code())
         car = _Car(5, 9, "E")
         # South from (5,9) enters the.
@@ -274,14 +343,25 @@ class TestStreetcodeAmbiguousTurns:
         assert _lawful_turn(grid, car, "N")
 
     def test_narrow_arms_are_not_roads(self) -> None:
-        r"""The same shape is not a junction when its arms are one cell:."""
+        """The same shape is not a junction when its arms are one cell:
+        streets are two wide, so a single open cell before a wall is the
+        width of the road, not a road leading off it.
+        """
         grid = _Grid([" C ", "+ +", "   ", "+ +", " | "])
         assert _junction_kind(grid, _Car(0, 1, "S")) == 0
 
     def test_a_side_road_with_walls_past_its_plus_pair_is_lane_bounded(
         self,
     ) -> None:
-        r"""``_lane_bounded`` reads one cell *past* each ``+``, further out."""
+        """``_lane_bounded`` reads one cell *past* each ``+``, further out.
+
+        Both grids below present the identical mouth, so the verdict
+        turns only on what lies beyond the two ``+``: wall arms
+        continuing the side road's own bounding walls, or open ground.
+        Only a pair like this separates that read from the neighbouring
+        cells a perturbed offset would reach instead -- the counting-loop
+        program exercises the function but never contrasts the two.
+        """
         bounded = _Grid(["        ", "C       ", "-+  +---", " |  |   ", " |  |   "])
         bare = _Grid(["        ", "C       ", "-+  +---", "        ", "        "])
         car = _Car(1, 0, "E")
@@ -292,7 +372,18 @@ class TestStreetcodeAmbiguousTurns:
         assert not _lane_bounded(bare, car, "S", mouth)
 
     def test_every_road_a_junction_offers_is_open_ahead(self) -> None:
-        r"""A junction never offers a road the car cannot step onto."""
+        """A junction never offers a road the car cannot step onto.
+
+        This is what retired the deferral guard ``701de45`` added at the
+        turn (see :func:`_heading_from_junction`).  ``_road_deep``'s first
+        test is the very cell that turn would step onto, and the crossing
+        branch tests ``_open_toward`` directly, so an offered road is open
+        by construction and the "sighted too early" case cannot arise.
+        Weakening either check brings the bug back with nothing to catch
+        it, so the invariant is asserted rather than left implied: over
+        every reachable drive state of the committed examples, every road
+        offered is open ahead.
+        """
         root = Path(__file__).resolve().parents[2]
         for path in (
             "tests/fixtures/streetcode_hello.txt",
@@ -309,7 +400,30 @@ class TestStreetcodeAmbiguousTurns:
                     assert _open_toward(machine.grid, car, road), (path, state, road)
 
     def test_the_examples_reach_exactly_these_drive_states(self) -> None:
-        r"""The size of each example's drive graph is pinned."""
+        """The size of each example's drive graph is pinned.
+
+        The junction, merge and heading helpers decide which states are
+        reachable, and *no program's output distinguishes them* -- the car
+        still reaches its ``;`` and prints the same bytes whichever way a
+        turn is resolved.  The graph is what those helpers actually build,
+        so it is the observable that can tell them apart: a rule that turns
+        one cell early, hugs the wrong wall, or reads a junction's shape
+        from the wrong neighbour opens or closes states and moves the
+        count.
+
+        The numbers are properties of the committed examples.  If an
+        example is redrawn they change with it, and the fix is to re-derive
+        them rather than to loosen the assertion.
+
+        They fell from 469 and 316 when the search stopped walking into
+        *wrong-side* states -- the oncoming lane travelled backwards, which
+        the geometry admits but the car can never occupy (see
+        :func:`_drives_on_the_right`).  Those states have no successor of
+        their own, so they used to look like wedged streets and made
+        ``_validate_total`` reject correct programs.  Every state the car
+        actually visits in these examples is right-hand-side, so nothing
+        the run needs was pruned.
+        """
         root = Path(__file__).resolve().parents[2]
         for path, expected in (
             ("tests/fixtures/streetcode_hello.txt", 384),
@@ -331,7 +445,16 @@ class TestStreetcodeAmbiguousTurns:
     # drove *inside* the wall, and.
     # lower room forever.
     def _counting_loop_code(self) -> list[str]:
-        r"""A hand-written counting loop: nine laps of an island, then out."""
+        """A hand-written counting loop: nine laps of an island, then out.
+
+        The car counts cell 0 up to nine on the way in, U-turns onto the
+        island, and laps it; each lap adds eight to cell 1 and takes one
+        off cell 0.  At the island's top-right corner the roads are north
+        (out through the gap in the outer wall) and south (on around the
+        island), so the countdown steers the loop: nonzero laps again,
+        zero leaves.  Nine laps put 72 in cell 1, and the ``=`` on the way
+        out moves CP onto it so the ``O`` at the top prints ``H``.
+        """
         return [
             "+------------+",
             "|            |",
@@ -388,10 +511,35 @@ class TestStreetcodeAmbiguousTurns:
 
 
 class TestStreetcodeCrossingMouthDecision:
-    r"""A head-on junction decides at the mouth, not at the far lane."""
+    """A head-on junction decides at the mouth, not at the far lane.
+
+    Driving out through a mouth the car is level with both ``+`` when it
+    chooses; the run across to the far lane is only lane positioning for a
+    road already taken.  Re-reading the cell on arrival there lets an
+    instruction *on that positioning run* overturn the choice -- the same
+    "preparation must not double as the decision" the arrival read exists
+    to prevent (see ``TestStreetcodeAmbiguousTurns``).
+
+    A side mouth keeps the re-read: the car drives its approach as
+    ordinary road, so the cell at the turning square is the one the spec's
+    choice is about.  The counting loop's nine laps depend on that.
+    """
 
     def _code(self) -> list[str]:
-        r"""Two rooms of a folded corridor, the shape a width-6 fold draws."""
+        """Two rooms of a folded corridor, the shape a width-6 fold draws.
+
+        The car drives East out of ``C`` into the mouth bounded by the
+        divider tips at ``(3,2)`` and ``(6,2)``.  The CPth cell is zero --
+        it starts that way, no ``=`` is needed -- so the junction chooses
+        the leftmost road, North.  The single ``^`` at ``(5,3)`` lies on
+        the run out to that road's lane and makes the cell nonzero before
+        the car gets there.
+
+        Everything else is blank, so the geometry alone drives the car:
+        remove that one ``^`` and the grid behaves identically either way,
+        because there is then nothing to change the cell between choosing
+        the road and reaching it.
+        """
         return [
             "+----+",
             "|    |",
@@ -408,7 +556,13 @@ class TestStreetcodeCrossingMouthDecision:
     def test_the_instruction_on_the_way_out_does_not_change_the_road(
         self,
     ) -> None:
-        r"""The car climbs the road it chose instead of orbiting the tip."""
+        """The car climbs the road it chose instead of orbiting the tip.
+
+        Re-reading the cell at the far lane made the ``^`` overturn the
+        choice, and the car circled the four cells around the divider tip
+        forever, re-running that ``^`` on every lap -- never reaching the
+        corridor it had turned into.
+        """
         machine = _Machine(self._code(), IO())
         seen: set[tuple[int, int]] = set()
         for _ in range(400):
@@ -423,7 +577,24 @@ class TestStreetcodeCrossingMouthDecision:
         assert machine.halted
 
     def test_a_detected_but_unreachable_road_defers_the_crossing(self) -> None:
-        r"""A crossing does not offer the oncoming lane in a closed road's."""
+        """A crossing does not offer the oncoming lane in a closed road's place.
+
+        Driving out through a mouth, ``_junction_choices`` takes whichever
+        way is open, because a perpendicular road's extent cannot be probed
+        from inside the mouth.  That is sound only while the open sides are
+        the road being joined.  ``_road_mouth`` anchors a mouth up to one
+        cell ahead, so a junction fires as the car *arrives* -- and one
+        cell short of the gap the road it found is detected but not yet
+        drivable.  Taking whatever is open there fills that road's slot
+        with the oncoming lane of the two-wide street the car is already
+        on, and the car decides a junction the drawing never offered.
+
+        Below, the car drives East along the southern lane.  The gap in the
+        wall beneath it at ``(3,4)``/``(3,5)`` is the road; one cell short
+        of it, at ``(2,3)``, the mouth is already detected while South is
+        still the ``+``.  The choice there must be deferred rather than
+        made between North (the blank oncoming lane) and East.
+        """
         # A generated boolean program.
         # street whose leaf row carries.
         # sights the next fork while.
@@ -457,7 +628,10 @@ class TestStreetcodeCrossingMouthDecision:
 
 
 class TestStreetcodeLaneMerge:
-    r"""A genuinely multi-cell-wide junction: turning must land in the new."""
+    """A genuinely multi-cell-wide junction: turning must land in the new
+    road's right-hand lane, not just the first open cell (see
+    the interpreter tests for this trace).
+    """
 
     def _lane_merge_code(self) -> list[str]:
         # A vertical 2-wide corridor.
@@ -495,7 +669,13 @@ class TestStreetcodeLaneMerge:
         ]
 
     def test_diverting_before_the_target_abandons_the_merge_latch(self) -> None:
-        r"""A 'U' during the phase-1 approach must not wedge the latch open."""
+        """A 'U' during the phase-1 approach must not wedge the latch open.
+
+        Without invalidating ``_merge`` on a heading change, the
+        latch would wait forever for a (row, col) the car no longer visits
+        (it U-turned away), permanently disabling junction detection for
+        the rest of the run.
+        """
         code = [
             "|C  |",
             "|   |",
@@ -514,7 +694,10 @@ class TestStreetcodeLaneMerge:
         assert machine._state.latches.merge is None  # noqa: SLF001
 
     def test_wall_at_the_turn_destination_falls_back_to_plain_rules(self) -> None:
-        r"""The phase-1 turn must not step onto a wall that appears at the."""
+        """The phase-1 turn must not step onto a wall that appears at the
+        latched target's chosen heading -- it should fall back to ordinary
+        wall-following instead of blindly trusting the stale latch.
+        """
         grid = _Grid(self._lane_merge_code())
         row = grid[3]
         grid[3] = row[:2] + "+" + row[3:]  # wall directly East.
@@ -525,7 +708,9 @@ class TestStreetcodeLaneMerge:
         assert steer.latches.merge is None
 
     def test_wall_after_merge_turn_falls_back_to_plain_rules(self) -> None:
-        r"""The phase-2 straight-through suppression must not drive through a."""
+        """The phase-2 straight-through suppression must not drive through
+        a wall that appears directly ahead while merging out.
+        """
         grid = _Grid(self._lane_merge_code())
         row = grid[3]
         grid[3] = row[:3] + "+" + row[4:]  # wall directly ahead.
@@ -535,7 +720,14 @@ class TestStreetcodeLaneMerge:
         assert steer.heading != "E"
 
     def test_merge_target_reread_can_carry_straight_on(self) -> None:
-        r"""The branch is re-read at the latched turn cell, not trusted from."""
+        """The branch is re-read at the latched turn cell, not trusted from
+        latch time: a cell that went nonzero while approaching reverses the
+        decision and the car carries straight on, abandoning the merge.
+
+        The re-read is of the cell as the car *arrives* at that square (see
+        ``arrival_cell``), which is what a real approach would have left
+        behind it.
+        """
         grid = _Grid(self._lane_merge_code())
         latches = _NO_LATCHES._replace(merge=_Merge(3, 1, "left", "S", crossing=False))
         # 1 = the cell as the approach.
@@ -546,7 +738,10 @@ class TestStreetcodeLaneMerge:
         assert steer.latches.merging_heading is None
 
     def test_wall_mid_approach_abandons_the_merge_latch(self) -> None:
-        r"""A wall appearing straight ahead while still approaching the latched."""
+        """A wall appearing straight ahead while still approaching the
+        latched lane drops the latch, like a heading change does: the
+        latch must not wait forever for a target it can no longer reach.
+        """
         grid = _Grid(self._lane_merge_code())
         row = grid[2]
         grid[2] = row[:1] + "+" + row[2:]  # wall directly ahead.
@@ -557,7 +752,13 @@ class TestStreetcodeLaneMerge:
         assert steer.heading == "E"  # falls back to plain.
 
     def test_a_merge_recovers_the_heading_it_turns_to(self) -> None:
-        r"""``_Merge`` stores the turn; the destination is derived from it."""
+        """``_Merge`` stores the turn; the destination is derived from it.
+
+        The latch holds a :data:`_Turn` rather than a second
+        :data:`_Heading` so the two direction fields cannot be swapped
+        (see the class docstring).  That only works if ``new_heading``
+        recovers exactly what the old field held, for every heading.
+        """
         for heading in ("N", "E", "S", "W"):
             left = _Merge(0, 0, "left", heading, crossing=False)
             right = _Merge(0, 0, "right", heading, crossing=False)
@@ -565,7 +766,13 @@ class TestStreetcodeLaneMerge:
             assert right.new_heading == _right(heading)
 
     def test_a_merge_turn_is_only_ever_a_left_or_a_right(self) -> None:
-        r"""``_turn_of`` refuses a straight-ahead or reversing "turn"."""
+        """``_turn_of`` refuses a straight-ahead or reversing "turn".
+
+        A merge latch is only set for a turn onto a detected side road,
+        so those two are unreachable; classifying one silently as a
+        right turn would latch a road the junction never offered and
+        steer the car into a wall several steps later.
+        """
         assert _turn_of("S", "E") == "left"
         assert _turn_of("S", "W") == "right"
         for impossible in ("S", "N"):  # straight ahead, and the.
@@ -573,7 +780,10 @@ class TestStreetcodeLaneMerge:
                 _turn_of("S", impossible)
 
     def test_turn_lands_in_the_lane_without_an_approach(self) -> None:
-        r"""When the junction fires while the car already sits in the new."""
+        """When the junction fires while the car already sits in the new
+        road's right-hand lane (a mouth whose near ``+`` is one cell
+        behind, near == -1), there is nothing to drive to: turn now.
+        """
         grid = _Grid(["|+  ", "  C ", "    ", "|+  "])
         # current cell nonzero ->.
         steer = _choose_heading(grid, _Car(1, 2, "S"), _NO_LATCHES, 0, 1)
@@ -582,7 +792,20 @@ class TestStreetcodeLaneMerge:
         assert steer.latches.merge is None
 
     def test_four_way_junction_also_merges(self) -> None:
-        r"""A four-way junction (``+`` at all four detection-window corners,."""
+        """A four-way junction (``+`` at all four detection-window corners,
+        each with genuine wall arms) exercises ``_junction_kind``'s other
+        branch through the same lane-merge machinery. This pins current
+        behavior on the four-way corner pattern -- unlike the three-way
+        case in ``test_merge_lands_in_the_right_hand_lane``, no hand-drawn,
+        user-confirmed trace exists for a four-way junction, and none can
+        be taken from the page: neither of the wiki's junction-bearing
+        examples contains a four-way at any cell or heading, so this
+        fixture is the definition rather than a check against one.
+
+        The arms are two characters wide, per the spec: with one-cell arms
+        the shape is drawn but there are no roads to drive down, so
+        ``_junction_kind`` reports no junction (see :meth:`_road_deep`).
+        """
         code = [
             " |C  |",
             " |   |",
@@ -611,7 +834,15 @@ class TestStreetcodeLaneMerge:
 
 
 class TestStreetcodeCountingLoop:
-    r"""A counting loop: a ring the car laps under the control of a cell."""
+    """A counting loop: a ring the car laps under the control of a cell.
+
+    Such a geometry is easy to get wrong: a junction on the ring can offer
+    the wrong roads and steer the car off it, leaking out of the lap.  This
+    one works, and the rules that make it work (a road must be two cells
+    deep, a turn may not enter the oncoming lane, a junction reads the cell
+    as the car arrives) are pinned individually above; this is the
+    end-to-end program.
+    """
 
     def _code(self) -> list[str]:
         return TestStreetcodeAmbiguousTurns()._counting_loop_code()  # noqa: SLF001
@@ -628,7 +859,10 @@ class TestStreetcodeCountingLoop:
         assert machine.halted
 
     def test_counting_loop_laps_nine_times(self) -> None:
-        r"""The counter is nine on entry and falls by one per lap, so the car."""
+        """The counter is nine on entry and falls by one per lap, so the
+        car passes the island's corner nine times: eight laps that carry
+        on around, and the ninth that leaves.
+        """
         machine = _Machine(self._code(), IO())
         counters = []
         for _ in range(500):
@@ -640,7 +874,7 @@ class TestStreetcodeCountingLoop:
         assert counters == [8, 7, 6, 5, 4, 3, 2, 1, 0]
 
     def test_counting_loop_accumulates_seventy_two(self) -> None:
-        r"""Eight per lap into cell 1, which is what makes the 'H'."""
+        """Eight per lap into cell 1, which is what makes the 'H'."""
         machine = _Machine(self._code(), IO())
         for _ in range(500):
             machine.step()
@@ -668,7 +902,15 @@ class TestStreetcodeIO:
 
 class TestStreetcodeCPBounds:
     def test_cp_decrement_below_zero_is_clamped(self) -> None:
-        r"""``_`` at CP 0 moves nothing rather than raising."""
+        """``_`` at CP 0 moves nothing rather than raising.
+
+        The wiki bounds CP on the left ("The CP is unsigned and
+        right-unbounded") but never says what a below-zero ``_`` does -- no
+        example uses ``_``, and the page has no error-handling text.  An
+        unsigned quantity that cannot go lower saturates, which is also how
+        brainfuck's ``<`` and CVNC's accumulator behave.  This used to
+        raise ``HaltError``.
+        """
         assert run_street("C_^O;") == chr(1)
         # repeated clamping stays on.
         assert run_street("C___^O;") == chr(1)
@@ -677,7 +919,7 @@ class TestStreetcodeCPBounds:
         assert run_street("C=_^O;") == chr(1)
 
     def test_output_of_out_of_range_cell_halts(self) -> None:
-        r"""A cell value that isn't a valid code point is invalid, not a crash."""
+        """A cell value that isn't a valid code point is invalid, not a crash."""
         with pytest.raises(HaltError):
             run(["C~~~~~~~~~~~~~O;"], io=IO())  # cell reaches a large negative.
 
@@ -701,7 +943,19 @@ class TestStreetcodeMalformedPrograms:
 
 
 class TestStreetcodeRejectionMessages:
-    r"""Every rejection paired with the message it must raise."""
+    """Every rejection paired with the message it must raise.
+
+    The tests elsewhere use ``pytest.raises(match=...)``, a *substring*
+    search, so a rejection firing in the wrong place still passes: all
+    four width failures share the prefix ``not two-wide``, and the shape
+    label in parentheses is the only part that says which arm fired.  The
+    coordinates each message quotes were never asserted at all.
+
+    One case shows the hazard directly.  The wall-hole program is asserted
+    against ``not two-wide|malformed wall``, and it resolves to the width
+    check -- so the second half of that alternation has never fired, and a
+    mutant moving the rejection between the two would not be noticed.
+    """
 
     REJECTIONS: ClassVar[list[tuple[str, list[str], str]]] = [
         ("empty", [], "Streetcode program cannot be empty"),
@@ -813,20 +1067,30 @@ class TestStreetcodeRejectionMessages:
 
 
 class TestStreetcodeStreetWidth:
-    r"""Construction-time rejection of one-wide streets."""
+    """Construction-time rejection of one-wide streets (``_validate_width``).
+
+    The spec's streets are two-way and two characters wide, so a one-wide
+    corridor has no opposite lane for ``U`` to end its turn in.  The
+    geometry is static, so the check runs before the car moves.  Remember
+    that a blank row or column is a lane -- space is a drivable no-op --
+    so an instruction row paired with a blank row is a legal street, not a
+    one-wide one.
+    """
 
     def test_one_wide_dead_end_is_rejected(self) -> None:
-        r"""A single instruction row between two walls has no second lane."""
+        """A single instruction row between two walls has no second lane."""
         with pytest.raises(ValueError, match="not two-wide"):
             run(["+----+", "|C^O;|", "+----+"], io=IO())
 
     def test_one_wide_against_grid_edge_is_rejected(self) -> None:
-        r"""Off-grid counts as closed, so an edge row is still one-wide."""
+        """Off-grid counts as closed, so an edge row is still one-wide."""
         with pytest.raises(ValueError, match="not two-wide"):
             run(["C^O;", "+---+"], io=IO())
 
     def test_one_wide_staircase_is_rejected(self) -> None:
-        r"""Every cell is a corner, so no cell has an opposite-pair of."""
+        """Every cell is a corner, so no cell has an opposite-pair of
+        neighbours -- the dead-end and vertical arms still catch it.
+        """
         with pytest.raises(ValueError, match="not two-wide"):
             run(
                 [
@@ -842,11 +1106,16 @@ class TestStreetcodeStreetWidth:
             )
 
     def test_two_wide_street_is_accepted(self) -> None:
-        r"""An instruction lane with an oncoming lane beside it is legal."""
+        """An instruction lane with an oncoming lane beside it is legal."""
         assert run_street("C^O;") == chr(1)
 
     def test_wider_than_two_is_rejected(self) -> None:
-        r"""Streets are two wide, so a three-lane corridor is malformed."""
+        """Streets are two wide, so a three-lane corridor is malformed.
+
+        Cross-section runs cannot measure this -- through an intersection a
+        run reports the crossing street's *length* -- so the rule is a fully
+        open three-by-three block, which a two-wide network never contains.
+        """
         with pytest.raises(ValueError, match="wider than two"):
             run(
                 ["+------+", "|C^^^O;|", "|      |", "|      |", "+------+"],
@@ -854,11 +1123,16 @@ class TestStreetcodeStreetWidth:
             )
 
     def test_three_by_two_room_is_accepted(self) -> None:
-        r"""The deliberate boundary of the three-by-three rule: a three-by-two."""
+        """The deliberate boundary of the three-by-three rule: a three-by-two
+        room is a two-wide street of length three seen sideways.
+        """
         _Machine(["+---+", "|C^;|", "|~~~|", "+---+"], IO())
 
     def test_crossing_of_two_streets_is_accepted(self) -> None:
-        r"""The critical case: where two legal two-wide streets cross, the open."""
+        """The critical case: where two legal two-wide streets cross, the
+        open centre is two-by-two with walls at the diagonals, so no fully
+        open three-by-three block exists.
+        """
         _Machine(
             [
                 "+--+  +--+",
@@ -874,21 +1148,31 @@ class TestStreetcodeStreetWidth:
         )
 
     def test_wall_fragment_without_instructions_is_rejected(self) -> None:
-        r"""The content-sniffing exemption is closed: a one-wide grid is."""
+        """The content-sniffing exemption is closed: a one-wide grid is
+        malformed whether or not it happens to contain an instruction.
+        """
         with pytest.raises(ValueError, match="not two-wide"):
             _Machine(["+---+", "|C  |", "+---+"], IO())
 
     def test_grid_without_walls_is_exempt(self) -> None:
-        r"""With no walls there is no street network to measure."""
+        """With no walls there is no street network to measure."""
         _Machine(["CU"], IO())
 
     def test_wall_hole_is_rejected(self) -> None:
-        r"""A wall that stops and resumes one cell later leaves a gap too."""
+        """A wall that stops and resumes one cell later leaves a gap too
+        narrow to drive.  The width check happens to catch this shape
+        first, since the hole is a reachable one-wide stub; the wall forms
+        reject it independently.
+        """
         with pytest.raises(ValueError, match=r"not two-wide|malformed wall"):
             _Machine(["+----+", "|C   |", "|    |", "+- --+"], IO())
 
     def test_uncapped_divider_end_is_accepted(self) -> None:
-        r"""Whether a divider must end in a '+' is a spec question the wiki."""
+        """Whether a divider must end in a '+' is a spec question the wiki
+        does not settle, and the forms deliberately leave it open: the
+        ring program in tests/fixtures/streetcode_hello.txt draws bare ends
+        and runs correctly.
+        """
         _Machine(
             [
                 "+------+",
@@ -903,7 +1187,9 @@ class TestStreetcodeStreetWidth:
         )
 
     def test_road_mouth_is_accepted(self) -> None:
-        r"""A mouth is at least two cells across, so its '+' markers never."""
+        """A mouth is at least two cells across, so its '+' markers never
+        sandwich a single open cell the way a hole does.
+        """
         _Machine(
             [
                 "+--------+",
@@ -918,7 +1204,7 @@ class TestStreetcodeStreetWidth:
         )
 
     def test_detached_geometry_is_rejected(self) -> None:
-        r"""A second box the car can never reach belongs to no street."""
+        """A second box the car can never reach belongs to no street."""
         with pytest.raises(ValueError, match="not connected"):
             _Machine(
                 ["+----+   +--+", "|C   |   |  |", "|    |   |  |", "+----+   +--+"],
@@ -926,12 +1212,14 @@ class TestStreetcodeStreetWidth:
             )
 
     def test_stray_wall_fragment_is_rejected(self) -> None:
-        r"""A scribble of wall outside the program bounds no road."""
+        """A scribble of wall outside the program bounds no road."""
         with pytest.raises(ValueError, match="not connected"):
             _Machine(["+----+", "|C   |", "|    |", "+----+", "   -- "], IO())
 
     def test_island_inside_a_ring_is_accepted(self) -> None:
-        r"""An island is legal geometry -- a block the car drives around -- so."""
+        """An island is legal geometry -- a block the car drives around --
+        so neither its wall nor the pocket it seals is a leftover.
+        """
         _Machine(
             [
                 "+-------+",
@@ -948,7 +1236,11 @@ class TestStreetcodeStreetWidth:
         )
 
     def test_solid_island_is_rejected(self) -> None:
-        r"""A block thick enough to have an interior: its outer ring bounds the."""
+        """A block thick enough to have an interior: its outer ring bounds
+        the road, but the cells inside bound nothing.  Permitting this
+        would cost a second flood-fill to tell an enclosed hole from the
+        outside, and nothing the repo draws needs it.
+        """
         with pytest.raises(ValueError, match="not connected"):
             _Machine(
                 [
@@ -966,27 +1258,39 @@ class TestStreetcodeStreetWidth:
             )
 
     def test_two_wide_hole_in_a_wall_is_rejected(self) -> None:
-        r"""A hole two cells across is a legal-width passage, so the width."""
+        """A hole two cells across is a legal-width passage, so the width
+        check has no reason to fire: what marks it as a gap is that the
+        road escapes through it to the edge of the grid.
+        """
         with pytest.raises(ValueError, match="reaches the edge"):
             _Machine(["+------+", "|C     |", "|      |", "+--  --+"], IO())
 
     def test_street_open_to_the_grid_edge_is_rejected(self) -> None:
-        r"""A street is bounded by walls, so the road never touches the border:."""
+        """A street is bounded by walls, so the road never touches the
+        border: there is always a wall between it and the outside.
+        """
         with pytest.raises(ValueError, match="reaches the edge"):
             _Machine(["+-----", "|C    ", "|     ", "+-----"], IO())
 
     def test_horizontal_wall_beside_a_vertical_one_is_rejected(self) -> None:
-        r"""Where a wall changes direction it turns a corner, and a corner is."""
+        """Where a wall changes direction it turns a corner, and a corner
+        is drawn '+'.  A '-' next to a '|' is that turn without the mark.
+        """
         with pytest.raises(ValueError, match="turns without a corner"):
             _Machine(["+----+", "|C   |", "|    |", "+--|-+"], IO())
 
     def test_vertical_wall_above_a_horizontal_one_is_rejected(self) -> None:
-        r"""The same slip a quarter turn round."""
+        """The same slip a quarter turn round."""
         with pytest.raises(ValueError, match="turns without a corner"):
             _Machine(["+--+", "|C |", "|  |", "-  |", "|  |", "+--+"], IO())
 
     def test_instruction_sealed_inside_an_island_is_rejected(self) -> None:
-        r"""Code the car can never drive is not part of the program."""
+        """Code the car can never drive is not part of the program.
+
+        The check is strict: anything off the street is rejected, not
+        only walls.  Allowing the rest to stand as comments would cost no
+        detection, but is left unimplemented -- see ``_validate_connected``.
+        """
         with pytest.raises(ValueError, match="not connected"):
             _Machine(
                 [
@@ -1004,12 +1308,17 @@ class TestStreetcodeStreetWidth:
             )
 
     def test_text_beside_the_program_is_rejected(self) -> None:
-        r"""Strictness means prose beside a program is malformed too, not a."""
+        """Strictness means prose beside a program is malformed too, not
+        a comment.
+        """
         with pytest.raises(ValueError, match="not connected"):
             _Machine(["+----+  counts up", "|C   |", "|    |", "+----+"], IO())
 
     def test_blank_padding_is_not_geometry(self) -> None:
-        r"""A ragged program squared off by ``ljust``, and the background."""
+        """A ragged program squared off by ``ljust``, and the background
+        around an L-shaped layout, are blank rather than drawn, so they do
+        not count as disconnected geometry.
+        """
         _Machine(["+----+", "|C   |", "|    |", "+----+", "      "], IO())
 
     @pytest.mark.parametrize(
@@ -1017,7 +1326,7 @@ class TestStreetcodeStreetWidth:
         ["tests/fixtures/streetcode_hello.txt", "examples/boolean/streetcode.txt"],
     )
     def test_shipped_examples_are_accepted(self, path: str) -> None:
-        r"""The repo's own programs must survive the check."""
+        """The repo's own programs must survive the check."""
         root = Path(__file__).resolve().parents[2]
         code = (root / path).read_text().split("\n")
         if code and code[-1] == "":
@@ -1026,7 +1335,7 @@ class TestStreetcodeStreetWidth:
 
 
 class TestStreetcodeGrid:
-    r"""The drawing as a total map from coordinates to characters."""
+    """The drawing as a total map from coordinates to characters."""
 
     def _grid(self) -> _Grid:
         return _Grid(["+--+", "|C;|", "+--+"])
@@ -1035,38 +1344,47 @@ class TestStreetcodeGrid:
         "where", [(-1, 0), (0, -1), (3, 0), (0, 4), (-5, -5), (99, 99)]
     )
     def test_a_read_off_the_drawing_is_void(self, where: tuple[int, int]) -> None:
-        r"""Any coordinate at all answers, so no caller range-checks first."""
+        """Any coordinate at all answers, so no caller range-checks first."""
         assert self._grid()[where] == _VOID
 
     def test_void_is_neither_a_wall_nor_a_glyph(self) -> None:
-        r"""The property the mouth scans depend on."""
+        """The property the mouth scans depend on.
+
+        A border of real wall characters would have them sight junctions
+        that were never drawn, so what lies off the drawing has to match
+        no rule rather than look like a wall.
+        """
         assert _VOID not in _WALLS
         for glyph in "+-|C;^~=_IOU":
             assert glyph != _VOID
 
     def test_off_the_grid_is_not_drivable(self) -> None:
-        r"""``open_at`` reads the bounds, not the character."""
+        """``open_at`` reads the bounds, not the character.
+
+        ``_VOID`` is not a wall, so asking "is this a wall?" would call
+        the void open road; there is no road out there at all.
+        """
         grid = self._grid()
         assert not grid.open_at(-1, 0)
         assert not grid.open_at(0, 0)  # a real wall.
         assert grid.open_at(1, 1)  # the 'C'.
 
     def test_a_ragged_program_is_squared_off(self) -> None:
-        r"""Short rows are padded, so every row is ``width`` long."""
+        """Short rows are padded, so every row is ``width`` long."""
         grid = _Grid(["+---+", "|C;"])
         assert grid.width == 5
         assert grid[1] == "|C;  "
         assert grid[1, 4] == " "
 
     def test_a_row_can_be_redrawn(self) -> None:
-        r"""The fixtures build geometry by assigning whole rows."""
+        """The fixtures build geometry by assigning whole rows."""
         grid = self._grid()
         grid[1] = "|CX|"
         assert grid[1, 2] == "X"
 
 
 class TestStreetcodeOps:
-    r"""What a square does, as a closed set rather than a character."""
+    """What a square does, as a closed set rather than a character."""
 
     def _grid(self) -> _Grid:
         return _Grid(["+----+", "|C^~=|", "|_IOU|", "+--;#+"])
@@ -1089,29 +1407,51 @@ class TestStreetcodeOps:
 
     @pytest.mark.parametrize("where", [(1, 1), (3, 4), (0, 0), (-1, -1)])
     def test_everything_undefined_is_a_nop(self, where: tuple[int, int]) -> None:
-        r"""``C``, a stray ``#``, a wall and the void all do nothing."""
+        """``C``, a stray ``#``, a wall and the void all do nothing.
+
+        The fold is what closes the set: ``step`` has no arm for "some
+        other character", because there is no such case left.
+        """
         assert self._grid().op_at(*where) == "NOP"
 
     def test_an_undefined_glyph_is_a_nop_but_still_drawn(self) -> None:
-        r"""The op is folded; the character is not."""
+        """The op is folded; the character is not.
+
+        ``_validate_connected`` rejects ink off the street and names the
+        glyph it found, so a ``#`` has to stay a ``#`` even though it
+        executes as nothing.  Folding the character too would lose that.
+        """
         grid = self._grid()
         assert grid.op_at(3, 4) == "NOP"
         assert grid[3, 4] == "#"
 
     def test_stray_ink_is_still_rejected_by_its_glyph(self) -> None:
-        r"""The end-to-end version: a '#' off the street fails validation."""
+        """The end-to-end version: a '#' off the street fails validation."""
         with pytest.raises(ValueError, match=re.escape("('#')")):
             _Machine(["+---+", "|C  |", "|   |", "+---+", "  #  "], IO())
 
 
 class TestStreetcodeStatedInvariants:
-    r"""The invariants the interpreter relies on, as executable checks."""
+    """The invariants the interpreter relies on, as executable checks.
+
+    Each validator's rule is a ``_*_violation`` method returning the
+    offending cell, and the validator raises on whatever it returns; the
+    tests below pin that the two cannot drift apart, and that ``_block``'s
+    precondition really fires rather than being decoration.
+    """
 
     def _street(self) -> list[str]:
         return ["+----+", "|C  ;|", "|    |", "+----+"]
 
     def test_a_border_cell_trips_the_block_precondition(self) -> None:
-        r"""``_block`` states what it needs rather than trusting the caller."""
+        """``_block`` states what it needs rather than trusting the caller.
+
+        ``_ReachableCell`` records that a cell came from the flood fill;
+        it cannot record that the fill never yields a border cell, which
+        is the property the unchecked read actually depends on.  Forging
+        one (the type is erased at run time) must raise rather than read
+        off the grid.
+        """
         machine = _Machine(self._street(), IO())
         with pytest.raises(AssertionError, match="on the border"):
             machine._block(_ReachableCell((0, 0)))  # noqa: SLF001
@@ -1120,12 +1460,12 @@ class TestStreetcodeStatedInvariants:
     def test_an_interior_cell_reads_its_neighbourhood(
         self, cell: tuple[int, int]
     ) -> None:
-        r"""The precondition admits every cell the enclosure check allows."""
+        """The precondition admits every cell the enclosure check allows."""
         machine = _Machine(self._street(), IO())
         assert len(machine._block(_ReachableCell(cell))) == 9  # noqa: SLF001
 
     def test_a_valid_street_violates_nothing(self) -> None:
-        r"""Every stated rule holds of a program the validator accepted."""
+        """Every stated rule holds of a program the validator accepted."""
         machine = _Machine(self._street(), IO())
         reachable = machine._validate_width((machine.row, machine.col))  # noqa: SLF001
         assert reachable is not None
@@ -1135,7 +1475,11 @@ class TestStreetcodeStatedInvariants:
         assert machine._connection_violation(reachable) is None  # noqa: SLF001
 
     def test_a_violation_is_what_the_validator_raises(self) -> None:
-        r"""The rule and the rejection are one statement, not two."""
+        """The rule and the rejection are one statement, not two.
+
+        A grid whose road runs off the edge: the finder names the cell,
+        and the message it returns is the one construction fails with.
+        """
         code = ["+---", "|C  ", "|   ", "+---"]
         machine = machine_unvalidated(code)
         reachable = machine._validate_width((machine.row, machine.col))  # noqa: SLF001
@@ -1147,14 +1491,21 @@ class TestStreetcodeStatedInvariants:
 
 
 class TestStreetcodeWikiExamples:
-    r"""The wiki's own worked examples (interior grid, borders stripped)."""
+    """The wiki's own worked examples (interior grid, borders stripped)."""
 
     def test_whole_right_hand_side_example(self) -> None:
-        r"""``CIO;`` echoes one input character then halts."""
+        """``CIO;`` echoes one input character then halts."""
         assert run_street("CIO;", inputs=["Q"]) == "Q"
 
     def test_infinite_cat_example(self) -> None:
-        r"""The U-turn cat echoes input characters in order, then hangs on EOF."""
+        """The U-turn cat echoes input characters in order, then hangs on EOF.
+
+        The program never halts on its own (it is a genuine infinite cat),
+        so exhausting the scripted input is what stops the run, via
+        :class:`EOFError` on the next ``I``.  Output collected before that
+        point must be exactly the input, echoed in order with nothing
+        dropped, garbled, or reordered.
+        """
         code = ["UOI ", "CIOU"]
         scripted = ScriptedIO("A\nB\nC")
         with pytest.raises(EOFError):
@@ -1162,7 +1513,7 @@ class TestStreetcodeWikiExamples:
         assert scripted.getvalue() == "ABC"
 
     def test_infinite_loop_example_hangs(self) -> None:
-        r"""The ambiguous-turn infinite loop is a genuine cycle, not a halt."""
+        """The ambiguous-turn infinite loop is a genuine cycle, not a halt."""
         code = [
             "+-------+",
             "|       |",
@@ -1198,7 +1549,18 @@ class TestStreetcodeWikiExamples:
         assert not machine.halted  # confirmed a genuine cycle.
 
     def test_infinite_loop_example_traces_its_17_cell_lap(self) -> None:
-        r"""The loop's lap, pinned cell by cell against a hand-checked trace."""
+        """The loop's lap, pinned cell by cell against a hand-checked trace.
+
+        The car's cell is 0 for the whole run (nothing in this program ever
+        increments), so at every junction it takes the leftmost road.  From
+        ``C`` it declines the side road opening south, runs the top corridor
+        east, follows the wall down and back west along row 5, turns north up
+        column 3 -- and meets that same junction again head-on, driving out
+        through the gap between the two ``+`` at ``(3,1)`` and ``(3,4)``.
+        There it merges across to the far lane of the corridor it is joining
+        before turning left, reaching ``(1,3)`` and running west along row 1
+        back to ``C``, where it corners south-then-east and repeats.
+        """
         code = [
             "+-------+",
             "|       |",
@@ -1239,7 +1601,14 @@ class TestStreetcodeWikiExamples:
         assert len(set(lap)) == 17  # (2, 3) is driven through.
 
     def test_infinite_cat_for_single_characters_example(self) -> None:
-        r"""The wiki's rhetorical "Why wouldn't this be a cat?" -- it is one."""
+        """The wiki's rhetorical "Why wouldn't this be a cat?" -- it is one.
+
+        This diagram's outer ring loops back through the same ``I``/``O``
+        pair (never reaching the inner ``+-+IO++``/``|OI++`` branch under
+        plain wall-following), but it still echoes input characters in
+        order with nothing dropped or garbled, hanging on exhausted input
+        like the other infinite-cat example rather than halting cleanly.
+        """
         code = [
             "+--------+",
             "|        |",
@@ -1275,11 +1644,24 @@ class TestStreetcodeStepMachine:
         assert machine.io.position() == 1
 
     def test_the_machine_satisfies_the_vm_step_protocol(self) -> None:
-        r"""``run_until_halt_or_cycle`` steps this, so it must conform."""
+        """``run_until_halt_or_cycle`` steps this, so it must conform.
+
+        ``_StepMachine`` is ``runtime_checkable``, so the structural
+        check is the contract itself rather than a restatement of it.
+        """
         assert isinstance(_Machine(["C;"], IO()), _StepMachine)
 
     def test_snapshot_separates_every_state_the_machine_carries(self) -> None:
-        r"""No two distinct states may share a snapshot, and it must hash."""
+        """No two distinct states may share a snapshot, and it must hash.
+
+        The hang detector's verdict is only sound if a repeat is a real
+        repeat: two states that differ anywhere must differ here, or a
+        program that is still making progress looks like a proven cycle.
+        The state is one :class:`_State` record beside the tape, CP, I/O
+        and halted flag, so this walks every field of it -- including
+        each latch separately, which a snapshot that dropped the record
+        or flattened it carelessly would be the way to get wrong.
+        """
         code = ["+----+", "|C  ;|", "|    |", "+----+"]
         merge = _Merge(1, 1, "left", "S", crossing=False)
         # The fixture starts heading.
@@ -1330,7 +1712,12 @@ class TestStreetcodeStepMachine:
 
 
 def test_an_isolated_cell_is_not_a_street() -> None:
-    r"""One open cell with no neighbour is not a street to drive on."""
+    """One open cell with no neighbour is not a street to drive on.
+
+    The network is built by flooding outward from each open cell; a cell
+    that reaches nothing else is a hole in the walls rather than a lane,
+    so it is not registered as a street at all.
+    """
     _Machine([" + ", "+C+", " + "], IO())
 
 
@@ -1353,18 +1740,25 @@ _RING_PROGRAM = [
 
 
 def test_a_counting_ring_program_drives_its_whole_lap() -> None:
-    r"""The lap follows the latched merge through to the turn."""
+    """The lap follows the latched merge through to the turn."""
     assert run_and_capture(_RING_PROGRAM) == "Hi"
 
 
 class TestStreetcodeDriveStates:
-    r"""The drive-state graph (``_drive_states``) and its two uses."""
+    """The drive-state graph (``_drive_states``) and its two uses.
+
+    The graph is the movement half of ``snapshot`` enumerated over the
+    whole grid, built by driving the real helpers.  It backs the
+    construction-time totality check and ``step`` itself, and in tests it
+    pins the mouth-depth bound to the behaviour it produces rather than
+    to the cells it scans.
+    """
 
     def _corridor(self) -> list[str]:
         return ["+----+", "|C  ;|", "|    |", "+----+"]
 
     def test_every_state_has_a_successor(self) -> None:
-        r"""A validated street is total: no reachable state wedges the car."""
+        """A validated street is total: no reachable state wedges the car."""
         machine = _Machine(self._corridor(), IO())
         graph = machine._drive_states((1, 1))  # noqa: SLF001
         # ``None`` means only "ran out.
@@ -1378,14 +1772,14 @@ class TestStreetcodeDriveStates:
         assert wedged == []
 
     def test_exploring_leaves_the_machine_untouched(self) -> None:
-        r"""``_drive_states`` drives the live machine, so it must restore it."""
+        """``_drive_states`` drives the live machine, so it must restore it."""
         machine = _Machine(self._corridor(), IO())
         before = machine.snapshot()
         machine._drive_states((1, 1))  # noqa: SLF001
         assert machine.snapshot() == before
 
     def test_each_state_is_keyed_by_both_branch_bits(self) -> None:
-        r"""Both tape reads a step can make are probed, so all four pairs."""
+        """Both tape reads a step can make are probed, so all four pairs."""
         machine = _Machine(self._corridor(), IO())
         graph = machine._drive_states((1, 1))  # noqa: SLF001
         assert graph
@@ -1393,7 +1787,23 @@ class TestStreetcodeDriveStates:
             assert set(edges) == {(0, 0), (0, 1), (1, 0), (1, 1)}
 
     def test_a_wedging_phase_is_rejected_at_construction(self) -> None:
-        r"""The check fires when the movement rules do run out of road."""
+        """The check fires when the movement rules do run out of road.
+
+        Ordinary wall-following cannot wedge on a validated street (see
+        ``_validate_total``), so the state this rejects is reached by
+        breaking a phase rather than by drawing one: the check is a
+        regression net over the phases, and this is what tripping it
+        looks like.
+
+        The phase is patched through the imported module object rather
+        than by its dotted string path: ``scripts/mutate_one.py`` bundles
+        the interpreter into a single module to mutate it, and a string
+        target naming the package still resolves to the *unbundled*
+        interpreter there, so the patch lands on a function the bundled
+        machine never calls and the wedge never happens.  Patching the
+        module object works either way, because the bundler rewrites the
+        import that produced it.
+        """
         from esolangs.interpreters.grid_based import streetcode as module
 
         with (
@@ -1411,7 +1821,15 @@ class TestStreetcodeDriveStates:
         ["tests/fixtures/streetcode_hello.txt", "examples/boolean/streetcode.txt"],
     )
     def test_mouth_depth_bound_does_not_change_the_driving(self, path: str) -> None:
-        r"""``_MOUTH_MAX_DEPTH`` is pinned by behaviour, not by its scans."""
+        """``_MOUTH_MAX_DEPTH`` is pinned by behaviour, not by its scans.
+
+        The bound is two-sided -- raising it makes the scan run past the
+        box it is reading and pair up two ``+`` that bound nothing, which
+        is what happens in the 1-arity boolean programs -- so the check
+        that matters is not "the same mouths are found" but "the car
+        drives the same way".  Comparing the whole drive-state graph at
+        the shipped bound against a generous one says exactly that.
+        """
         from esolangs.interpreters.grid_based import streetcode as module
 
         root = Path(__file__).resolve().parents[2]
@@ -1432,10 +1850,19 @@ class TestStreetcodeDriveStates:
 
 
 class TestStreetcodeDriveInvariants:
-    r"""What holds of a drive state under every reading of the spec."""
+    """What holds of a drive state under every reading of the spec.
+
+    The geometry rules are reverse-engineered and several remain
+    judgement calls; these are not.  A car inside a wall, or one that
+    teleports rather than driving a cell at a time, is wrong however the
+    spec is read, so ``_check_state_invariants`` asserts them over the
+    whole drive-state graph at construction.  Each test drives the
+    checker with a state the enumeration cannot currently produce --
+    that is the point, since a reachable breach would be a live bug.
+    """
 
     def _machine(self) -> _Machine:
-        r"""The grid from ``701de45``, whose lower room the car drove into."""
+        """The grid from ``701de45``, whose lower room the car drove into."""
         return _Machine(
             [
                 "+---------+",
@@ -1450,7 +1877,14 @@ class TestStreetcodeDriveInvariants:
         )
 
     def test_a_car_inside_a_wall_is_caught(self) -> None:
-        r"""The regression from ``701de45``, as a construction-time failure."""
+        """The regression from ``701de45``, as a construction-time failure.
+
+        A junction fired while its gap still opened a cell ahead, and the
+        turn drove the car inside the wall the mouth opens through --
+        ``(3, 2)`` on this very grid, which is the ``-`` of the lower
+        room's top wall.  That was found by hand-drawing a program and
+        watching the car misbehave; the invariant names the square.
+        """
         machine = self._machine()
         assert not machine.grid.open_at(3, 2)
         with pytest.raises(AssertionError, match="not open floor"):
@@ -1459,7 +1893,7 @@ class TestStreetcodeDriveInvariants:
             )
 
     def test_a_teleporting_step_is_caught(self) -> None:
-        r"""A successor two cells away is the car skipping a square."""
+        """A successor two cells away is the car skipping a square."""
         machine = self._machine()
         state = _State(2, 1, "E", _NO_LATCHES)
         edges = {(0, 0): _State(2, 3, "E", _NO_LATCHES)}
@@ -1467,7 +1901,7 @@ class TestStreetcodeDriveInvariants:
             machine._check_state_invariants(state, edges)  # noqa: SLF001
 
     def test_a_step_into_a_wall_is_caught(self) -> None:
-        r"""A successor on a wall cell, one step away or not."""
+        """A successor on a wall cell, one step away or not."""
         machine = self._machine()
         state = _State(2, 2, "S", _NO_LATCHES)
         edges = {(0, 0): _State(3, 2, "S", _NO_LATCHES)}
@@ -1475,7 +1909,7 @@ class TestStreetcodeDriveInvariants:
             machine._check_state_invariants(state, edges)  # noqa: SLF001
 
     def test_a_merge_target_off_the_travel_axis_is_caught(self) -> None:
-        r"""The approach holds its lane, so the target is straight ahead."""
+        """The approach holds its lane, so the target is straight ahead."""
         machine = self._machine()
         # Heading East from (2, 1), so.
         merge = _Merge(1, 4, "right", "E", crossing=False)
@@ -1484,7 +1918,7 @@ class TestStreetcodeDriveInvariants:
             machine._check_state_invariants(state, {})  # noqa: SLF001
 
     def test_a_merge_target_behind_the_car_is_caught(self) -> None:
-        r"""The car drives forwards onto the target; it cannot reverse to it."""
+        """The car drives forwards onto the target; it cannot reverse to it."""
         machine = self._machine()
         merge = _Merge(2, 1, "right", "E", crossing=False)
         state = _State(2, 3, "E", _Latches(merge, None, 0))
@@ -1492,7 +1926,14 @@ class TestStreetcodeDriveInvariants:
             machine._check_state_invariants(state, {})  # noqa: SLF001
 
     def test_a_stale_latch_is_not_checked(self) -> None:
-        r"""A latch the next step abandons describes no geometry."""
+        """A latch the next step abandons describes no geometry.
+
+        Once the heading no longer matches the one the latch was taken
+        under, ``_heading_from_merge_target`` drops it; its target is
+        stale by construction, and holding it to the axis rule would
+        reject states the enumeration really does reach (1,116 of them
+        across the example and generated programs).
+        """
         machine = self._machine()
         # Off-axis and behind -- but.
         # longer holds, so neither rule.
@@ -1501,7 +1942,12 @@ class TestStreetcodeDriveInvariants:
         machine._check_state_invariants(state, {})  # noqa: SLF001
 
     def test_every_shipped_program_satisfies_them(self) -> None:
-        r"""The invariants hold over every program the repo ships."""
+        """The invariants hold over every program the repo ships.
+
+        Construction runs the check, so this passing means the whole
+        drive-state graph of each example is clean -- not just the paths
+        a particular input drives.
+        """
         root = Path(__file__).resolve().parents[2]
         paths = sorted((root / "examples").glob("**/streetcode.txt"))
         # A relative glob silently.
@@ -1512,10 +1958,18 @@ class TestStreetcodeDriveInvariants:
 
 
 class TestStreetcodeGraphBackedStepping:
-    r"""Graph-backed stepping must agree with the movement rules exactly."""
+    """Graph-backed stepping must agree with the movement rules exactly.
+
+    ``step`` looks the next state up in the graph enumerated at
+    construction, falling back to calling the phases when there is no
+    graph or the state is outside it.  Those two paths are two ways of
+    computing the same thing, so the test that matters is that they
+    never disagree: drive both in lockstep and compare the whole
+    ``snapshot`` after every step.
+    """
 
     def _lockstep(self, code: list[str], stdin: str = "", limit: int = 20000) -> int:
-        r"""Run one machine on the graph and one on the phases, in step."""
+        """Run one machine on the graph and one on the phases, in step."""
         fast = _Machine(code, ScriptedIO(stdin))
         slow = _Machine(code, ScriptedIO(stdin))
         # Emptying the graph forces.
@@ -1545,7 +1999,7 @@ class TestStreetcodeGraphBackedStepping:
         assert self._lockstep(["+----+", "|C^O;|", "|    |", "+----+"]) > 1
 
     def test_a_junction_agrees(self) -> None:
-        r"""The early-sighted mouth fixture, which defers a turn to the gap."""
+        """The early-sighted mouth fixture, which defers a turn to the gap."""
         code = [
             "+---------+",
             "|         |",
@@ -1569,11 +2023,16 @@ class TestStreetcodeGraphBackedStepping:
         assert self._lockstep(code, stdin="1\n") > 1
 
     def test_a_ring_program_agrees(self) -> None:
-        r"""The ring program latches a merge, so it drives the latch path."""
+        """The ring program latches a merge, so it drives the latch path."""
         assert self._lockstep(_RING_PROGRAM) > 1
 
     def test_an_off_graph_state_falls_back(self) -> None:
-        r"""A state the search never reached still drives, via the phases."""
+        """A state the search never reached still drives, via the phases.
+
+        Setting the heading by hand is how the interpreter's own tests
+        reach such a state; the graph has no entry for it, and ``step``
+        must not fail looking for one.
+        """
         machine = _Machine(["+----+", "|C  ;|", "|    |", "+----+"], IO())
         assert machine._graph is not None  # noqa: SLF001
         state = _State(
@@ -1588,7 +2047,14 @@ class TestStreetcodeGraphBackedStepping:
         assert not machine.halted
 
     def test_a_halt_edge_stops_the_car(self) -> None:
-        r"""A ``"halt"`` edge stops the car rather than driving it nowhere."""
+        """A ``"halt"`` edge stops the car rather than driving it nowhere.
+
+        Every edge without a successor in a real program sits on ``;``,
+        and ``;`` halts before the lookup is reached, so this arm is the
+        graph's own guard rather than a path a validated street takes.
+        Blanking the ``;`` after construction leaves the recorded
+        ``"halt"`` in place and lets the lookup answer for it.
+        """
         machine = _Machine(["+----+", "|C  ;|", "|    |", "+----+"], IO())
         assert machine._graph is not None  # noqa: SLF001
         state = _State(1, 4, "N", _NO_LATCHES)
@@ -1600,7 +2066,14 @@ class TestStreetcodeGraphBackedStepping:
         assert machine.halted
 
     def test_a_wedged_edge_raises_rather_than_halting(self) -> None:
-        r"""A ``None`` edge is a validator bug, and must not pass for a stop."""
+        """A ``None`` edge is a validator bug, and must not pass for a stop.
+
+        ``_validate_total`` rejects a street with a wedged state, so a
+        ``None`` surviving into the lookup means the graph and the check
+        disagree.  Halting on it would hand back a truncated run as though
+        the program had finished; the two are told apart precisely so this
+        can raise instead.  Only forging the edge reaches it.
+        """
         machine = _Machine(["+----+", "|C  ;|", "|    |", "+----+"], IO())
         assert machine._graph is not None  # noqa: SLF001
         state = _State(1, 1, "E", _NO_LATCHES)
@@ -1614,7 +2087,12 @@ class TestStreetcodeGraphBackedStepping:
         assert not machine.halted
 
     def test_a_u_turn_without_an_opposite_lane_has_no_successor(self) -> None:
-        r"""``U`` needs a lane to turn into; without one the state is a dead."""
+        """``U`` needs a lane to turn into; without one the state is a dead end.
+
+        A one-row grid has nothing north or south of the ``U``, so heading
+        East the reversed lane is off the grid.  ``step`` reports that as a
+        width violation at run time; the search just declines to drive on.
+        """
         grid = _Grid(["CU;"])
         assert _drive(grid, _State(0, 1, "E", _NO_LATCHES), 0, 0) is None
         assert _drive(grid, _State(0, 1, "W", _NO_LATCHES), 0, 0) is None
@@ -1623,20 +2101,44 @@ class TestStreetcodeGraphBackedStepping:
 
 
 class TestStreetcodeMutationSurvivors:
-    r"""Four conditions a mutation survived, each pinned by behaviour."""
+    """Four conditions a mutation survived, each pinned by behaviour.
+
+    Mutation testing (mutmut against a ``bundle_one`` build of this module)
+    reported these as changeable without any test noticing.  Two are the
+    bounds of the isolated-cell exemption in :meth:`_Machine._validate_width`,
+    one is the halt the shipped example reaches, and one is the ``+`` search
+    the junction rules steer by.  Each was confirmed by loading the mutant
+    and the original side by side and diffing their behaviour.
+    """
 
     def test_a_single_walled_cell_is_not_a_street(self) -> None:
-        r"""One reachable cell is exempt: there is no street to measure."""
+        """One reachable cell is exempt: there is no street to measure.
+
+        The exemption reads ``len(visited) <= 1``.  A mutant that tightened
+        it to ``< 1`` stopped exempting the one-cell case, and the wall
+        check behind it then rejected a grid the interpreter accepts.
+        """
         machine = _Machine(["+-+", "|C|", "+-+"], IO())
         assert (machine.row, machine.col) == (1, 1)
 
     def test_a_one_wide_corridor_is_still_rejected(self) -> None:
-        r"""The exemption covers one cell, not two: a corridor is a street."""
+        """The exemption covers one cell, not two: a corridor is a street.
+
+        A mutant that loosened the bound to ``len(visited) <= 2`` exempted
+        this grid instead of measuring it, and a one-wide street -- which
+        has no opposite lane for ``U`` to end in -- was accepted.
+        """
         with pytest.raises(ValueError, match="not two-wide"):
             _Machine(["+-+", "|C|", "|U|", "+-+"], IO())
 
     def test_the_hello_world_example_halts(self) -> None:
-        r"""The example halts, and in a bounded number of steps."""
+        """The example halts, and in a bounded number of steps.
+
+        Asserting only on the output leaves the halt untested: a mutant of
+        ``step`` printed ``Hello, World!`` in full and then drove on for
+        ever, parked on one cell.  The step count pins the termination the
+        output alone does not.
+        """
         root = Path(__file__).resolve().parents[2]
         code = (root / "tests/fixtures/streetcode_hello.txt").read_text().split("\n")
         if code and code[-1] == "":
@@ -1654,7 +2156,13 @@ class TestStreetcodeMutationSurvivors:
         assert scripted.getvalue() == "Hello, World!"
 
     def test_plus_dist_measures_the_nearest_plus_on_a_side(self) -> None:
-        r"""The scan reports the distance, and ``None`` when there is no ``+``."""
+        """The scan reports the distance, and ``None`` when there is no ``+``.
+
+        ``_crossing_mouth`` reads this to find the two ``+`` bounding a
+        mouth, so a mutant that always returned ``None`` unpacked nothing
+        and crashed both shipped examples.  Pinning one hit and the misses
+        keeps the search itself under test.
+        """
         root = Path(__file__).resolve().parents[2]
         code = (root / "tests/fixtures/streetcode_hello.txt").read_text().split("\n")
         if code and code[-1] == "":
@@ -1669,10 +2177,24 @@ class TestStreetcodeMutationSurvivors:
 
 
 class TestStreetcodeWallForms:
-    r"""The wall-form machinery, asserted directly rather than through a."""
+    """The wall-form machinery, asserted directly rather than through a run.
+
+    Mutation testing left 17 survivors in :func:`_rotate`,
+    :func:`_rotations` and :func:`_matches` -- the densest cluster in the
+    module -- and 14 of them provably change how the car drives or crash
+    the drive-state search outright.  They survived because nothing tested
+    the forms directly: they are only ever exercised through whole-program
+    validation, where a broken rotation still happens to accept every
+    committed program.  These pin the pieces themselves.
+    """
 
     def test_a_rotation_is_a_quarter_turn_clockwise(self) -> None:
-        r"""``_rotate`` permutes a 3x3 form, and which permutation matters."""
+        """``_rotate`` permutes a 3x3 form, and which permutation matters.
+
+        Ten mutants perturbing a single index of that permutation
+        survived.  Labelling the cells makes the mapping checkable, which
+        pins all nine indices at once.
+        """
         form = tuple("012345678")
         # Clockwise: the bottom-left.
         # top-left becomes the.
@@ -1685,7 +2207,13 @@ class TestStreetcodeWallForms:
         assert turned == form
 
     def test_rotations_returns_all_four_and_validates_the_alphabet(self) -> None:
-        r"""``_rotations`` is four turns of one written form, no more."""
+        """``_rotations`` is four turns of one written form, no more.
+
+        Seven mutants here survived: the loop count, the accumulation, and
+        the alphabet lookup.  A wall form is written as a string and must
+        come back as :data:`_Pattern` characters, four distinct ways
+        round, so ``_matches`` sees every orientation of a corner.
+        """
         rots = _rotations("?W?W..?..")
         assert len(rots) == 4
         assert len(set(rots)) == 4  # a corner is not symmetric.
@@ -1696,7 +2224,12 @@ class TestStreetcodeWallForms:
         assert rots[-1] == tuple("?W?W..?..")
 
     def test_matches_honours_each_letter_of_the_form_alphabet(self) -> None:
-        r"""``?`` matches anything, ``W`` a wall, ``.`` a non-wall."""
+        """``?`` matches anything, ``W`` a wall, ``.`` a non-wall.
+
+        Six ``_matches`` mutants survived by flipping one of those three
+        rules, which whole-program validation absorbs.  Checking each
+        letter against both a wall and a non-wall pins the alphabet.
+        """
         wall, floor = "+", " "
         # '?' accepts either.
         assert _matches((wall,), ("?",))
@@ -1714,7 +2247,15 @@ class TestStreetcodeWallForms:
         assert not _matches((_VOID,), ("W",))
 
     def test_a_form_and_a_block_of_different_lengths_is_a_bug(self) -> None:
-        r"""``_matches`` zips strictly, so a size mismatch raises."""
+        """``_matches`` zips strictly, so a size mismatch raises.
+
+        Three mutants relaxing that ``strict=True`` survived, because
+        every real call passes a 3x3 block against a nine-cell form and a
+        relaxed zip is then identical.  It stops being identical the
+        moment a form is written with the wrong number of cells -- which
+        is the mistake ``strict`` exists to catch, and it would otherwise
+        be silently truncated into a rule that matches on a prefix.
+        """
         with pytest.raises(ValueError, match="argument"):
             _matches(("+", " "), ("W",))
         with pytest.raises(ValueError, match="argument"):

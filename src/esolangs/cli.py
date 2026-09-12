@@ -1,4 +1,37 @@
-r"""Command-line interface for the esolangs package."""
+"""Command-line interface for the esolangs package.
+
+Subcommands:
+    esolangs list                         list the supported languages
+    esolangs describe <language>          print its input shape and where
+                                          the answer lands
+    esolangs encode <language> <bits>     print the stdin those bits need
+    esolangs generate <language> <table>  print a program computing a table
+                                          (``--width N`` wraps it to N columns)
+    esolangs run <language> <file>        run a program through its interpreter
+                                          (``--judge`` prints the answer bit)
+    esolangs read-answer <language>       print the answer bit in a program's
+                                          output, read from stdin
+    esolangs debug <language> <file>      run under the breakpoint/watch VM
+
+Every subcommand takes ``--help``.  For anything else, invoke the module
+directly with ``python -m``.
+
+``describe`` and ``read-answer`` are here because the two facts that decided
+every wrong answer this tool ever handed out -- how a language wants its
+input bits, and where in the output its answer sits -- were readable from
+Python and from nowhere else.  A shell user could run all nine of the
+languages that do not simply print their answer, and could not judge one of
+them: A Painter Ant's answer is a mark on one cell of an eleven-line grid.
+
+Exit codes separate the failures a caller handles differently: **2** is a
+usage error (an unknown command, option, or language -- nothing ran), **1**
+is the program's own failure (it read past its input, halted on an invalid
+operation, was a template), and **124** is a run stopped by ``--timeout``,
+after timeout(1).  That last one used to be 1 as well, which left the three
+languages whose answer *is* a timeout indistinguishable from a crash.  Only
+an unexpected error still reaches the terminal as a traceback, which is what
+a traceback should mean.
+"""
 
 from __future__ import annotations
 
@@ -409,7 +442,7 @@ _GLOBAL_FLAGS = {"--help", "--version"}
 
 
 def _null_context() -> AbstractContextManager[None]:
-    r"""Return a do-nothing ``with`` target, for an already-bounded run."""
+    """Return a do-nothing ``with`` target, for an already-bounded run."""
     return nullcontext()
 
 
@@ -432,10 +465,22 @@ _UNBOUNDED_NOTICE_AFTER = 10.0
 
 
 class _UnboundedNotice:
-    r"""Print one line if an unbounded run is still going after a while."""
+    """Print one line if an unbounded run is still going after a while.
+
+    ``run`` and ``debug`` take no bound by default, which is right -- most
+    of these programs halt, and imposing a budget nobody chose would be
+    worse.  But several languages loop forever *by design*, and the
+    unbounded path on one of those is an indefinite spin with no output and
+    nothing on screen to suggest a cause; one reader killed it after eight
+    CPU-minutes.
+
+    So the default is unchanged and the silence is not: a timer fires once,
+    names the flag, and is cancelled the moment the run finishes.  Nothing
+    is printed for the ordinary case of a program that halts promptly.
+    """
 
     def __init__(self, command: str) -> None:
-        r"""Arm the notice for ``command``, which names the flag to pass."""
+        """Arm the notice for ``command``, which names the flag to pass."""
         self._timer = threading.Timer(
             _UNBOUNDED_NOTICE_AFTER, self._say, args=(command,)
         )
@@ -443,7 +488,7 @@ class _UnboundedNotice:
 
     @staticmethod
     def _say(command: str) -> None:
-        r"""Write the one line, from the timer thread."""
+        """Write the one line, from the timer thread."""
         sys.stderr.write(
             f"still running after {_UNBOUNDED_NOTICE_AFTER:.0f}s with no bound; "
             f"several of these languages loop forever by design -- "
@@ -451,12 +496,12 @@ class _UnboundedNotice:
         )
 
     def __enter__(self) -> _UnboundedNotice:
-        r"""Start the timer."""
+        """Start the timer."""
         self._timer.start()
         return self
 
     def __exit__(self, *_exc: object) -> None:
-        r"""Cancel it, whether the run finished or raised."""
+        """Cancel it, whether the run finished or raised."""
         self._timer.cancel()
 
 
@@ -490,7 +535,12 @@ _ARGUMENTS = {
 
 
 def _template_hint(exc: TemplateError, language: str) -> str:
-    r"""Re-point a template refusal at the CLI flag that fills the slots."""
+    """Re-point a template refusal at the CLI flag that fills the slots.
+
+    The library's message names ``esolangs.instantiate(...)``, which is the
+    right answer for a Python caller and a dead end for someone who has
+    only ever typed ``esolangs``.
+    """
     message = str(exc)
     pointer = "fill them with esolangs.instantiate("
     if pointer not in message:
@@ -503,7 +553,13 @@ def _template_hint(exc: TemplateError, language: str) -> str:
 
 
 def _shell_hint(message: str, language: str) -> str:
-    r"""Re-point ``encode``'s refusal at the flag that does the same job."""
+    """Re-point ``encode``'s refusal at the flag that does the same job.
+
+    Same problem as :func:`_template_hint` and the sibling it was written
+    for: ``encode Minifuck 10`` was answered with "pass the bits to
+    instantiate() instead", and ``instantiate()`` is not a thing you can
+    type at a shell.  The flag that embeds bits is ``generate --bits``.
+    """
     pointer = "pass the bits to instantiate() instead"
     if pointer not in message:
         return message
@@ -515,7 +571,7 @@ def _shell_hint(message: str, language: str) -> str:
 
 
 def _looks_like_a_table(value: str) -> bool:
-    r"""Whether ``value`` is a power-of-two run of 0s and 1s."""
+    """Whether ``value`` is a power-of-two run of 0s and 1s."""
     if not value or set(value) - {"0", "1"}:
         return False
     n = len(value).bit_length() - 1
@@ -523,7 +579,12 @@ def _looks_like_a_table(value: str) -> bool:
 
 
 def _swapped_hint(language: str, table: str) -> str:
-    r"""Return a hint when the language and truth-table arguments look."""
+    """Return a hint when the language and truth-table arguments look swapped.
+
+    ``generate 0110 brainfuck`` was answered with "unknown language: 0110",
+    which is true and unhelpful: a power-of-two run of 0s and 1s in the
+    language slot is a swap, not a language nobody has implemented.
+    """
     looks_like_table = bool(language) and not set(language) - {"0", "1"}
     if not looks_like_table:
         return ""
@@ -537,7 +598,12 @@ def _swapped_hint(language: str, table: str) -> str:
 
 
 def _did_you_mean(word: str, known: Iterable[str]) -> str:
-    r"""Return a ``did you mean`` clause for ``word``, or an empty string."""
+    """Return a ``did you mean`` clause for ``word``, or an empty string.
+
+    Language names have had suggestions for a while and option names had
+    none, so ``--wdith 40`` was a flat "unknown option" while ``Brainfck``
+    got helped.  Same cutoff as :func:`esolangs.registry.resolve` uses.
+    """
     close = get_close_matches(word, sorted(known), n=2, cutoff=SUGGESTION_CUTOFF)
     if not close:
         return ""
@@ -550,7 +616,7 @@ def _fail(message: str, code: int = 2) -> None:
 
 
 def _is_int(value: str) -> bool:
-    r"""Whether ``value`` parses as an integer."""
+    """Whether ``value`` parses as an integer."""
     try:
         int(value)
     except ValueError:
@@ -563,7 +629,22 @@ def _split_positional(
     known: set[str],
     vocabulary: set[str] = frozenset(),  # type: ignore[assignment]
 ) -> list[str]:
-    r"""Return ``rest``'s positionals, refusing any unrecognized option."""
+    """Return ``rest``'s positionals, refusing any unrecognized option.
+
+    ``vocabulary`` is only for the did-you-mean: the value-taking options
+    have already been consumed by the time this runs, so ``known`` no
+    longer contains them and a misspelling of one had nothing to match
+    against -- ``--wdith`` was a flat "unknown option" while ``Brainfck``
+    got a suggestion.  The caller names its full option set here.
+
+    An unknown ``--option`` used to be kept as a positional, on the reasoning
+    that a program file named ``--x`` should stay reachable.  It did, but a
+    mistyped option went the same way: ``debug --frobnicate brainfuck p.txt``
+    reported ``cannot read brainfuck``, blaming the language name for a typo
+    three words earlier.  The file is still reachable, now by the convention
+    that says so -- everything after a bare ``--`` is positional whatever it
+    looks like.
+    """
     args: list[str] = []
     for i, arg in enumerate(rest):
         if arg == "--":
@@ -589,7 +670,16 @@ def _check_count(
     bare_width: bool = False,
     eaten: str = "",
 ) -> None:
-    r"""Refuse a call with the wrong number of positional arguments."""
+    """Refuse a call with the wrong number of positional arguments.
+
+    Extra arguments used to be dropped in silence, which turned a wrong
+    command into a confident wrong answer.  It also made the bare-``--width``
+    rule unreadable: ``generate --width abc Sophie 0110`` consumed nothing as
+    a width, read ``abc`` as the language, and reported *that* as unknown --
+    a message pointing at the wrong word entirely.  Saying which argument was
+    unexpected, and why the count came out that way, is what turns it back
+    into a fixable mistake.
+    """
     if len(args) < wanted:
         # The whole synopsis, not its.
         # a second, so a missing truth.
@@ -629,7 +719,16 @@ def _check_count(
 
 
 def _pop_width(rest: list[str]) -> tuple[list[str], int | None, bool]:
-    r"""Split a ``--width N`` (or ``--width=N``) option out of ``rest``."""
+    """Split a ``--width N`` (or ``--width=N``) option out of ``rest``.
+
+    Returns the remaining arguments, the width (``None`` when the option is
+    absent -- which leaves the program on one line, the output ``generate``
+    has always produced), and whether a bare ``--width`` was taken.  A bare
+    ``--width`` uses the conventional :data:`DEFAULT_WIDTH`, so the common
+    case needs no number; an explicit value must be an integer, since
+    silently reading the language name as a width would generate the wrong
+    thing.
+    """
     args: list[str] = []
     width: int | None = None
     bare = False
@@ -676,13 +775,25 @@ def _pop_width(rest: list[str]) -> tuple[list[str], int | None, bool]:
 
 
 def _refuse_repeat(found: dict[str, str], name: str) -> None:
-    r"""Refuse a second copy of an option that takes a value."""
+    """Refuse a second copy of an option that takes a value.
+
+    Last-wins is the common convention, but this CLI refuses nearly every
+    other ambiguity, so silently dropping the first of two ``--bits`` was
+    the outlier -- and the one that quietly emits a program for the wrong
+    input row.
+    """
     if name in found:
         _fail(f"{name} given more than once (first was {found[name]!r})")
 
 
 def _pop_options(rest: list[str], names: set[str]) -> tuple[list[str], dict[str, str]]:
-    r"""Split ``--name V`` and ``--name=V`` options out of ``rest``."""
+    """Split ``--name V`` and ``--name=V`` options out of ``rest``.
+
+    Only the names given are recognized; :func:`_split_positional` refuses
+    anything else, so what stays here is positional.  Every option in
+    ``names`` takes a value, which is what lets a missing one be an error
+    instead of silently consuming the next positional.
+    """
     args: list[str] = []
     found: dict[str, str] = {}
     i = 0
@@ -706,7 +817,7 @@ def _pop_options(rest: list[str], names: set[str]) -> tuple[list[str], dict[str,
 
 
 def _abridge(history: Sequence[object]) -> str:
-    r"""Render a watch history, eliding the middle of a long one."""
+    """Render a watch history, eliding the middle of a long one."""
     if len(history) <= _HISTORY_SHOWN:
         return str(history)
     head = ", ".join(str(v) for v in history[: _HISTORY_SHOWN // 2])
@@ -715,7 +826,15 @@ def _abridge(history: Sequence[object]) -> str:
 
 
 def _timeout_of(options: dict[str, str]) -> float | None:
-    r"""Return the ``--timeout`` seconds, or None, refusing a bad value."""
+    """Return the ``--timeout`` seconds, or None, refusing a bad value.
+
+    The *value* checks are :func:`esolangs.check_stdin`'s neighbour
+    :func:`esolangs._validate.check_timeout`, not a second copy: this had
+    its own rules for zero, negatives and non-finite values, and the
+    library then grew a floor and a ceiling that this did not know about.
+    A ``--timeout 1e10`` therefore got past here and overflowed the C
+    timer three calls later, as a raw ``OverflowError``.
+    """
     if "--timeout" not in options:
         return None
     try:
@@ -732,7 +851,14 @@ def _timeout_of(options: dict[str, str]) -> float | None:
 
 
 def _read_program(path: str, timeout: float | None = None) -> str:
-    r"""Return the program in ``path``, or exit with a usage error."""
+    """Return the program in ``path``, or exit with a usage error.
+
+    The trailing newline is the *file's*, not the program's, and three
+    interpreters (CV(N)(C), Grapheme, NoComment) reject one as an unknown
+    command.  Since ``esolangs generate ... > prog.txt`` writes that newline,
+    keeping it meant this tool produced programs its own ``run`` refused,
+    and the three committed examples could not be run at all.
+    """
     # The *open* is on the thread.
     # blocks until a writer.
     # command hanging one line.
@@ -741,7 +867,15 @@ def _read_program(path: str, timeout: float | None = None) -> str:
 
 
 def _shape_warning(facts: LanguageInfo, stdin: str, table: str | None = None) -> str:
-    r"""Return the library's complaint about ``stdin``, or ``''``."""
+    """Return the library's complaint about ``stdin``, or ``''``.
+
+    The checks themselves live in :func:`esolangs.check_stdin` now.  They
+    were written here, and a Python caller had no way to reach them -- the
+    one place the API was weaker than this command line, and the guards in
+    question are the ones every reader of this package trips over.  Two
+    copies would have drifted, as two copies of a check in this repository
+    have twice before.
+    """
     if not facts["reads_input"]:
         return ""
     try:
@@ -759,12 +893,24 @@ def _shape_warning(facts: LanguageInfo, stdin: str, table: str | None = None) ->
 
 
 def _note(message: str) -> None:
-    r"""Write one advisory line to stderr, without Python's warning framing."""
+    """Write one advisory line to stderr, without Python's warning framing."""
     sys.stderr.write(f"{message}\n")
 
 
 def _bounded_read(path: str, timeout: float | None) -> str:
-    r"""Open and read ``path``, with a size cap and a deadline."""
+    """Open and read ``path``, with a size cap and a deadline.
+
+    Both halves on a daemon thread, because both can block forever and
+    neither can be interrupted from Python: ``open`` on a FIFO waits for a
+    writer, and a read of a character device never ends -- ``/dev/zero``
+    reached 3.9 GB of resident memory, ignored ``--timeout``, and ignored
+    SIGINT, because the interpreter sat inside one C-level call throughout.
+
+    The size cap is two orders of magnitude above the largest program any
+    generator here produces.  The deadline is the caller's ``--timeout``
+    when there is one, so the bound they asked for covers the whole
+    command rather than only the part after the file is in memory.
+    """
     box: list[str | BaseException] = []
 
     def _slurp() -> None:
@@ -804,12 +950,28 @@ def _bounded_read(path: str, timeout: float | None) -> str:
 
 
 def _decode_note(exc: UnicodeDecodeError) -> str:
-    r"""Describe where a decode failed, without the codec's full sentence."""
+    """Describe where a decode failed, without the codec's full sentence."""
     return f"invalid UTF-8 at byte {exc.start}"
 
 
 def _smuggled_bytes(text: str) -> UnicodeDecodeError | None:
-    r"""Return the decode error ``surrogateescape`` hid in *text*, if any."""
+    """Return the decode error ``surrogateescape`` hid in *text*, if any.
+
+    ``sys.stdin`` decodes strictly only some of the time.  Under UTF-8
+    mode -- which Python enables by itself when the locale is ``C``, as it
+    is on a bare CI runner -- the standard streams decode with
+    ``surrogateescape`` instead, so a binary stdin never raises: its bytes
+    arrive as lone surrogates and flow on into a reader, which then
+    complains about a U+DC80 rather than refusing the input.
+
+    This adds no refusal.  It gives UTF-8 mode the behaviour strict mode
+    already had at the call below -- same message, same exit code, same
+    byte offset -- by encoding the escapes back to the bytes they stand
+    for and decoding those strictly, which raises what the stream did not.
+
+    Lone surrogates are the only characters UTF-8 cannot encode, so that
+    failure is the test for whether the round trip is worth making.
+    """
     try:
         text.encode("utf-8")
     except UnicodeEncodeError:
@@ -829,7 +991,26 @@ def _smuggled_bytes(text: str) -> UnicodeDecodeError | None:
 
 
 def _read_stdin(timeout: float | None = None, hint: str = "") -> str:
-    r"""Return this command's stdin, or exit if it is not text or never."""
+    """Return this command's stdin, or exit if it is not text or never comes.
+
+    Shared by the commands that read it.  Each called ``sys.stdin.read()``
+    directly and each therefore had the same hole: a program's binary output
+    piped into ``read-answer`` crashed with a traceback rather than being
+    refused.
+
+    **The read is bounded and announced.**  ``sys.stdin.read()`` blocks
+    until end-of-file, so a pipe that is open and never written -- which is
+    what a terminal looks like, and what a parent process that forgot to
+    close stdin gives you -- hung this command forever with nothing on
+    screen.  ``--timeout`` did not help, because it bounds *execution* and
+    this happens before any program runs.
+
+    So: the read happens on a daemon thread, ``--timeout`` bounds it as
+    well, and an unbounded read that is still waiting says so.  A thread
+    rather than :func:`select.select` because stdin here is not always a
+    real file -- the tests supply an object with no ``fileno`` -- and this
+    works for anything with a ``read``.
+    """
     if sys.stdin.isatty():
         return ""
     box: list[str | BaseException] = []
@@ -862,7 +1043,18 @@ def _read_stdin(timeout: float | None = None, hint: str = "") -> str:
 
 
 def _stdin_hint(facts: LanguageInfo) -> str:
-    r"""Return a clause naming what this language wants on stdin, if."""
+    """Return a clause naming what this language wants on stdin, if anything.
+
+    A language whose generator embeds its inputs usually wants nothing, and
+    saying so is most of the help: the reader who typed `esolangs run RAM0
+    prog.txt` and watched it wait was waiting for input the program was
+    never going to ask for.
+
+    *Usually*, not always -- the flag says the generated program reads no
+    stdin, and three of those seventeen languages have an input command a
+    hand-written program may still use.  So this suggests and does not
+    skip.
+    """
     if not facts["reads_input"] and facts["parameterized"]:
         return (
             f"; {facts['name']}'s generated programs embed their inputs and "
@@ -872,33 +1064,37 @@ def _stdin_hint(facts: LanguageInfo) -> str:
 
 
 class _WaitingNotice:
-    r"""Say, once, that this command is waiting for input that is not."""
+    """Say, once, that this command is waiting for input that is not coming.
+
+    The same shape as :class:`_UnboundedNotice` and for the same reason: the
+    default is unchanged and the silence is not.
+    """
 
     def __init__(self, hint: str = "") -> None:
-        r"""Arm the notice, mentioning ``hint`` if there is one."""
+        """Arm the notice, mentioning ``hint`` if there is one."""
         self._timer = threading.Timer(_WAITING_NOTICE_AFTER, self._say, args=(hint,))
         self._timer.daemon = True
 
     @staticmethod
     def _say(hint: str) -> None:
-        r"""Write the one line, from the timer thread."""
+        """Write the one line, from the timer thread."""
         sys.stderr.write(
             f"still waiting for input on stdin after "
             f"{_WAITING_NOTICE_AFTER:.0f}s; nothing has closed it{hint}\n"
         )
 
     def __enter__(self) -> _WaitingNotice:
-        r"""Start the timer."""
+        """Start the timer."""
         self._timer.start()
         return self
 
     def __exit__(self, *_exc: object) -> None:
-        r"""Cancel it."""
+        """Cancel it."""
         self._timer.cancel()
 
 
 def _encode(rest: list[str]) -> None:
-    r"""Print the stdin that feeds a language its input bits."""
+    """Print the stdin that feeds a language its input bits."""
     rest = _split_positional(rest, set())
     _check_count("encode", rest, 2)
     language, bits = rest[0], rest[1]
@@ -911,7 +1107,7 @@ def _encode(rest: list[str]) -> None:
 
 
 def _list(rest: list[str]) -> None:
-    r"""Print the supported languages, optionally with capability markers."""
+    """Print the supported languages, optionally with capability markers."""
     rest = _split_positional(rest, {"--details", "--json"})
     details = "--details" in rest
     as_json = "--json" in rest
@@ -962,7 +1158,12 @@ def _list(rest: list[str]) -> None:
 
 
 def _pop_cell(options: dict[str, str]) -> tuple[int, int] | None:
-    r"""Read ``--break-on-cell I=V`` into a pair, or ``None`` if absent."""
+    """Read ``--break-on-cell I=V`` into a pair, or ``None`` if absent.
+
+    A cell breakpoint needs two numbers where every other option takes one,
+    and ``I=V`` keeps that one token rather than making this the only option
+    that consumes two arguments.
+    """
     raw = options.get("--break-on-cell")
     if raw is None:
         return None
@@ -979,7 +1180,14 @@ def _run_tui_session(
     options: dict[str, str],
     cell: tuple[int, int] | None,
 ) -> None:
-    r"""Hand the run to the step-through screen, with what it can draw."""
+    """Hand the run to the step-through screen, with what it can draw.
+
+    A *position* goes to the screen as well as to the condition, since it is
+    the one kind of breakpoint that can be marked on the program; a cell or
+    an output breakpoint is a fact about state with nowhere to put a mark.
+    ``--watch-cell`` means the same thing on both sides -- one cell's value
+    over time -- and the screen shows it as a row that grows as you step.
+    """
     at = (int(options["--break-at"]),) if "--break-at" in options else ()
     stop = breakpoint_for(cell=cell, output=options.get("--break-on-output"))
     watch = int(options["--watch-cell"]) if "--watch-cell" in options else None
@@ -990,7 +1198,7 @@ def _run_tui_session(
 
 
 def _debug(rest: list[str]) -> None:
-    r"""Run a program under the debugger and report where it stopped."""
+    """Run a program under the debugger and report where it stopped."""
     # ``--tui`` is the one bare.
     # name a value, so it comes out.
     # about a second kind of option.
@@ -1179,7 +1387,7 @@ def _debug(rest: list[str]) -> None:
 
 
 def _generate(rest: list[str]) -> None:
-    r"""Print a program computing a truth table."""
+    """Print a program computing a truth table."""
     rest, options = _pop_options(rest, {"--bits"})
     before = list(rest)
     rest, width, bare = _pop_width(rest)
@@ -1228,7 +1436,7 @@ def _generate(rest: list[str]) -> None:
 
 
 def _describe(rest: list[str]) -> None:
-    r"""Print a language's input shape, answer location and capabilities."""
+    """Print a language's input shape, answer location and capabilities."""
     rest = _split_positional(rest, {"--json", "--spec"})
     as_json = "--json" in rest
     as_spec = "--spec" in rest
@@ -1292,7 +1500,7 @@ def _describe(rest: list[str]) -> None:
 
 
 def _check_stdin(rest: list[str]) -> None:
-    r"""Judge stdin against a language's declared shape, running nothing."""
+    """Judge stdin against a language's declared shape, running nothing."""
     rest, options = _pop_options(rest, {"--table"})
     rest = _split_positional(rest, set(), {"--table"})
     _check_count("check-stdin", rest, 1)
@@ -1315,7 +1523,11 @@ def _check_stdin(rest: list[str]) -> None:
 
 
 def _input_sentence(facts: LanguageInfo) -> str:
-    r"""Describe this language's stdin in one line, with an example."""
+    """Describe this language's stdin in one line, with an example.
+
+    Composed from ``input_shape`` and ``input_encoding`` rather than stored,
+    so a language that declares a new shape is described by declaring it.
+    """
     zero, one = facts["input_encoding"]
     shape = str(facts["input_shape"])
     example = f"{one}{zero}"
@@ -1333,7 +1545,7 @@ def _input_sentence(facts: LanguageInfo) -> str:
 
 
 def _read_answer(rest: list[str]) -> None:
-    r"""Read a program's output on stdin and print the answer bit in it."""
+    """Read a program's output on stdin and print the answer bit in it."""
     rest = _split_positional(rest, set())
     _check_count("read-answer", rest, 1)
     language = rest[0]
@@ -1364,7 +1576,7 @@ def _read_answer(rest: list[str]) -> None:
 
 
 def _answer(rest: list[str]) -> None:
-    r"""Generate, feed one row's bits, run, and print the answer bit."""
+    """Generate, feed one row's bits, run, and print the answer bit."""
     rest, options = _pop_options(rest, {"--timeout"})
     timeout = _timeout_of(options)
     rest = _split_positional(rest, set(), {"--timeout"})
@@ -1399,7 +1611,21 @@ def _answer(rest: list[str]) -> None:
 def _diverging_answer(
     name: str, source: str, stdin: str, bound: float, facts: LanguageInfo
 ) -> str:
-    r"""Return the answer bit for a language that answers by terminating."""
+    """Return the answer bit for a language that answers by terminating.
+
+    By *proof* rather than by waiting.  This used to run the row under the
+    bound and read a timeout as the 1 -- so ``answer --timeout 20`` on a
+    1-row took twenty seconds, and raising the bound made it strictly
+    slower, which is the opposite of what a bound should mean.  ``verify``
+    settles four rows of the same language in a fifth of a second because
+    it uses the repeated-state proof; ``answer --help`` calls itself
+    "``verify`` for one row" and was the one place the proof had not
+    reached.
+
+    The clock stays as the backstop it was always meant to be: a loop that
+    grows without bound never repeats a state, so it still has to be timed
+    out.
+    """
     encoding = facts["answer_encoding"]
     return _terminates(
         name,
@@ -1412,17 +1638,22 @@ def _diverging_answer(
 
 
 def _evaluate(rest: list[str]) -> None:
-    r"""Print the table a generated program actually computes."""
+    """Print the table a generated program actually computes."""
     _run_round_trip(rest, "evaluate")
 
 
 def _verify(rest: list[str]) -> None:
-    r"""Report whether a generated program computes the table asked for."""
+    """Report whether a generated program computes the table asked for."""
     _run_round_trip(rest, "verify")
 
 
 def _run_round_trip(rest: list[str], command: str) -> None:
-    r"""Shared body of ``verify`` and ``evaluate``."""
+    """Shared body of ``verify`` and ``evaluate``.
+
+    One function because they differ only in what they print: the work --
+    generate, walk every row, encode, run, read the answer -- is the same,
+    and is the thing a CLI-only user had to write a shell loop for.
+    """
     rest, options = _pop_options(rest, {"--timeout"})
     timeout = _timeout_of(options)
     before = list(rest)
@@ -1472,7 +1703,7 @@ def _run_round_trip(rest: list[str], command: str) -> None:
 
 
 def _judge(language: str, output: str, mode: object) -> str:
-    r"""Return the answer bit for a finished run, or exit explaining why."""
+    """Return the answer bit for a finished run, or exit explaining why not."""
     if mode == "termination":
         # It halted, and halting is.
         # which never reaches here --.
@@ -1485,7 +1716,23 @@ def _judge(language: str, output: str, mode: object) -> str:
 
 
 def _write_output(text: str) -> None:
-    r"""Write program output to stdout, whatever bytes it turned out to be."""
+    """Write program output to stdout, whatever bytes it turned out to be.
+
+    A program's output is whatever the program produced, and not all of it
+    is encodable text.  WII2D's ``~`` prints the accumulator as a character
+    with no bound, so a program can legitimately produce a lone surrogate
+    -- and ``sys.stdout.write`` on one of those raises
+    ``UnicodeEncodeError`` from inside the CLI, which reached the user as a
+    nineteen-line traceback.  That is the one thing this CLI is built not
+    to do.
+
+    Written through the byte stream with ``surrogatepass`` when the text
+    stream refuses, which keeps the promise ``run --help`` makes -- output
+    goes out verbatim, so it can be compared or piped byte for byte -- for
+    output that has no valid UTF-8 spelling.  A stream with no ``buffer``
+    (a captured one, mainly) falls back to an escaped form, which is not
+    byte-exact and is better than an exception.
+    """
     try:
         sys.stdout.write(text)
     except UnicodeEncodeError:
@@ -1499,7 +1746,12 @@ def _write_output(text: str) -> None:
 
 
 def _seed_of(options: dict[str, str]) -> int | None:
-    r"""Read ``--seed``, refusing anything that is not a whole number."""
+    """Read ``--seed``, refusing anything that is not a whole number.
+
+    Checked here rather than left to :func:`esolangs.run`, so a mistyped
+    seed is a usage error naming the flag rather than a ``ValueError`` from
+    somewhere further in.
+    """
     if "--seed" not in options:
         return None
     try:
@@ -1510,12 +1762,30 @@ def _seed_of(options: dict[str, str]) -> int | None:
 
 
 def _as_argument(language: str) -> str:
-    r"""Return ``language`` spelled the way a shell needs it."""
+    """Return ``language`` spelled the way a shell needs it.
+
+    Twelve of the 69 names contain a space, and the package prints
+    commands containing them -- ``describe`` ends with ``esolangs describe
+    --spec A Painter Ant``, and the template hint offers ``esolangs
+    generate --bits <bits> A Painter Ant <table>``.  Copy-pasting either
+    gives ``unexpected argument: 'Painter'``, so the tool was emitting
+    commands it cannot itself parse.
+    """
     return f'"{language}"' if " " in language else language
 
 
 def _emit_partial(exc: EsolangError) -> None:
-    r"""Write whatever the program printed before ``exc`` to stdout."""
+    """Write whatever the program printed before ``exc`` to stdout.
+
+    A run that failed used to emit nothing at all -- a Modulous program
+    printing ``Hi`` and then popping an empty stack gave an empty stdout,
+    an empty stderr and exit 1, while ``debug`` on the same file showed
+    ``output: 'Hi'``.  The bytes before the failure are most of the
+    diagnosis when the program is one you are still writing.
+
+    On stdout, where the successful run puts them, so a pipe sees the same
+    prefix either way and the error stays on stderr.
+    """
     if not exc.partial_output:
         return
     _write_output(exc.partial_output)
@@ -1525,7 +1795,7 @@ def _emit_partial(exc: EsolangError) -> None:
 
 
 def _run(rest: list[str]) -> None:
-    r"""Run a program through its interpreter and write its output."""
+    """Run a program through its interpreter and write its output."""
     rest, options = _pop_options(rest, {"--timeout", "--table", "--seed"})
     # The value is checked here,.
     # after, so `run --timeout.
@@ -1705,7 +1975,22 @@ def _run(rest: list[str]) -> None:
 
 
 def main() -> None:
-    r"""Dispatch the ``esolangs`` subcommands, and handle an interrupt."""
+    """Dispatch the ``esolangs`` subcommands, and handle an interrupt.
+
+    ``KeyboardInterrupt`` is caught here because this tool *invites* it:
+    on a language that answers by not terminating it prints "will run until
+    you stop it", and then dumped a traceback when the reader did. 130 is
+    the shell convention for a command killed by SIGINT.
+
+    ``BrokenPipeError`` likewise: ``esolangs generate ... | head`` is an
+    ordinary thing to type, and closing the pipe before the first write
+    left ``Exception ignored while flushing sys.stdout`` on the terminal
+    and exit 120.
+
+    Anything else is a bug in this package rather than in the program
+    being run, and exits 70 with a one-line report instead of a
+    traceback.
+    """
     try:
         _dispatch()
         # Flushed here, where the.
@@ -1742,7 +2027,7 @@ def main() -> None:
 
 
 def _dispatch() -> None:
-    r"""Dispatch the ``esolangs`` subcommands."""
+    """Dispatch the ``esolangs`` subcommands."""
     argv = sys.argv[1:]
     if not argv:
         sys.stderr.write(USAGE)

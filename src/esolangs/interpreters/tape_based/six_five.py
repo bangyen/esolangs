@@ -1,4 +1,36 @@
-r"""Interpreter for 6-5."""
+"""Interpreter for 6-5.
+
+The wiki spec is authoritative: ``7n`` skips the *next instruction* when the
+cell equals ``n`` (the value is a parameter, never executed), and ``8n`` is a
+two-character token that jumps to the n-th ``4`` marker.  To get this right
+the program is tokenized first, merging each ``7``/``8`` with its operand,
+rather than reading the next character on the fly.
+
+Outputting a cell value outside the valid character range is an invalid
+operation and halts the program with
+:class:`~esolangs.exceptions.HaltError`.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
+
+The interpreter runs on a :class:`_Machine` (the token list, the cell, the
+tape, and the cursor), so it is step-capable: ``step()`` executes one token
+and ``halted`` is true once the cursor reaches the end of the program,
+making a ``8n`` jump back to a ``4`` marker a finite-state cycle the state
+cycle detector can prove.
+
+The execution model is a pure function over an immutable ``_State``:
+:func:`_advance` maps a state and the token list to the next state, and
+never mutates what it is given.  It takes no ``io`` argument at all, so it
+is total and side-effect free by construction rather than by inspection.
+The tape is a tuple, so a state is a value that can be stored, compared,
+and hashed as it stands.
+
+:class:`_Machine` is the mutable shell the interpreter protocol requires.
+It holds one ``_State`` and rebinds it each step, so the mutation lives in
+exactly one assignment and every rule about what 6-5 *does* stays in the
+pure layer.  The two I/O tokens, and the out-of-range check that ``A``
+halts on, stay in the shell -- which is what leaves the transition total.
+"""
 
 from __future__ import annotations
 
@@ -29,14 +61,18 @@ type _State = tuple[int, int, tuple[int, ...]]
 
 
 def num(char: str) -> int:
-    r"""Decode a 6-5 operand digit: 0-9 literal, A-F hexadecimal."""
+    """Decode a 6-5 operand digit: 0-9 literal, A-F hexadecimal."""
     if char.isdigit():
         return int(char)
     return ord(char.upper()) - 55
 
 
 def _tokens(code: str) -> list[str]:
-    r"""Split a program into instructions, merging each 7/8 with its."""
+    """Split a program into instructions, merging each 7/8 with its operand.
+
+    Comments start at a ``C`` that is not the operand of a ``7``/``8`` (a
+    ``C`` after ``7``/``8`` is a value 12) and run to the end of the line.
+    """
     code = re.sub(r"([^78])C[^\n]*", r"\1", code)
     toks: list[str] = []
     i = 0
@@ -51,12 +87,17 @@ def _tokens(code: str) -> list[str]:
 
 
 def _written(tape: tuple[int, ...], cell: int, value: int) -> tuple[int, ...]:
-    r"""Return ``tape`` with ``cell`` set to ``value``."""
+    """Return ``tape`` with ``cell`` set to ``value``."""
     return (*tape[:cell], value, *tape[cell + 1 :])
 
 
 def _marker(toks: list[str], nth: int) -> int | None:
-    r"""Return the index of the ``nth`` ``4`` marker, or None if absent."""
+    """Return the index of the ``nth`` ``4`` marker, or None if absent.
+
+    ``8n`` naming a marker the program does not have leaves the cursor
+    where it is, so the miss is returned rather than raised -- which keeps
+    the transition free of error cases.
+    """
     count = 0
     for j, tok in enumerate(toks):
         if tok == "4":
@@ -67,7 +108,22 @@ def _marker(toks: list[str], nth: int) -> int | None:
 
 
 def _advance(state: _State, toks: list[str], byte: int | None = None) -> _State:
-    r"""Return the state after executing one token."""
+    """Return the state after executing one token.
+
+    Pure: it reads ``state`` and returns a new one.  It takes no ``io``
+    argument, so ``A``'s print and ``B``'s read are the caller's business
+    -- the print changes no state at all, and the read's byte arrives as
+    ``byte``.
+
+    ``1`` moves the pointer right by two and grows the tape to meet it;
+    ``3`` moves back one and is clamped at the origin.  ``7n`` skips the
+    next token when the cell equals ``n``, and ``8n`` jumps to the n-th
+    ``4`` marker -- both operands are parameters, never executed, which is
+    why the program was tokenized with them merged.
+
+    ``0`` halts by putting the cursor past the last token, and returns
+    early so the shared increment does not carry it further.
+    """
     ind, cell, tape = state
     tok = toks[ind]
     if tok == "1":
@@ -95,10 +151,16 @@ def _advance(state: _State, toks: list[str], byte: int | None = None) -> _State:
 
 
 class _Machine:
-    r"""Per-run 6-5 state: the tokens, cell, tape, and cursor."""
+    """Per-run 6-5 state: the tokens, cell, tape, and cursor.
+
+    ``step()`` executes one token; ``halted`` is true once the cursor passes
+    the last token.  A ``8n`` jump back to a ``4`` marker whose skip test
+    never fires is a finite-state cycle the hang detector can prove.  The VM
+    and the hang detector expose this object.
+    """
 
     def __init__(self, code: str, io: IO) -> None:
-        r"""Tokenize ``code`` and reset the cell, tape, and cursor."""
+        """Tokenize ``code`` and reset the cell, tape, and cursor."""
         self.io = io
         self.toks = _tokens(code)
         # ``halted`` is read twice per.
@@ -133,16 +195,16 @@ class _Machine:
 
     @property
     def ptr(self) -> int:
-        r"""The cell pointer, under the name the growth detector reads."""
+        """The cell pointer, under the name the growth detector reads."""
         return self.state[1]
 
     def input_position(self) -> int:
-        r"""Report the input cursor for the growth detector."""
+        """Report the input cursor for the growth detector."""
         return self.io.position()
 
     @property
     def halted(self) -> bool:
-        r"""Whether the cursor has passed the last token."""
+        """Whether the cursor has passed the last token."""
         return self.state[0] >= self.size
 
     # The VM's language-shaped.
@@ -150,28 +212,35 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        r"""The current instruction position."""
+        """The current instruction position."""
         return self.state[0]
 
     @property
     def memory(self) -> list[int]:
-        r"""The addressable cells."""
+        """The addressable cells."""
         return list(self.state[2])
 
     @property
     def stack(self) -> list[object]:
-        r"""No stack in this language."""
+        """No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        r"""Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection."""
         # The tape is already a tuple,.
         # order this returned before.
         ind, cell, tape = self.state
         return (cell, tape, ind, self.io.position())
 
     def step(self) -> None:
-        r"""Execute one token, advancing the cursor."""
+        """Execute one token, advancing the cursor.
+
+        The two I/O tokens live here rather than in the transition: this is
+        the shell, so it is where an effect belongs.  ``A``'s range check
+        comes with the print, because it is what decides whether the effect
+        can happen at all -- a cell outside the character range is an
+        invalid operation, not a value to truncate.
+        """
         if self.halted:
             return
         ind, cell, tape = self.state
@@ -190,7 +259,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    r"""Run a 6-5 program."""
+    """Run a 6-5 program."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

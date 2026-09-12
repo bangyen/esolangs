@@ -1,4 +1,4 @@
-r"""Unit tests for the BFStack interpreter."""
+"""Unit tests for the BFStack interpreter."""
 
 import pytest
 
@@ -24,44 +24,67 @@ class TestBFStack:
         assert run_and_capture(">++.") == "\x02"
 
     def test_pop(self) -> None:
-        r"""< pops the top of the stack."""
+        """< pops the top of the stack."""
         assert run_and_capture(">+>+<.") == "\x01"
 
     def test_a_pop_leaves_everything_below_it(self) -> None:
-        r"""Popping removes one cell, not all but the bottom one."""
+        """Popping removes one cell, not all but the bottom one.
+
+        ``test_pop`` uses two cells, where dropping the top and keeping
+        only the bottom are the same stack.  Three cells with distinct
+        values separate them, and popping twice reads each in turn.
+        """
         three = ">+" + ">++" + ">+++"
         assert run_and_capture(three + ".") == "\x03"
         assert run_and_capture(three + "<.") == "\x02"
         assert run_and_capture(three + "<<.") == "\x01"
 
     def test_a_decrement_rebuilds_the_stack_below_the_top(self) -> None:
-        r"""``-`` replaces the top and leaves the rest where they were."""
+        """``-`` replaces the top and leaves the rest where they were.
+
+        The arm is written as a rebuild, so the slice it keeps has to be
+        everything but the top -- which one cell cannot show.  Popping
+        after the decrement reads what the rebuild preserved.
+        """
         three = ">+" + ">++" + ">+++"
         assert run_and_capture(three + "-.") == "\x02"
         assert run_and_capture(three + "-<.") == "\x02"
 
     def test_input(self) -> None:
-        r""", pushes ASCII input onto the stack."""
+        """, pushes ASCII input onto the stack."""
         assert run_and_capture(">,.", inputs=["Z"]) == "Z"
 
     def test_input_adds_a_cell_rather_than_overwriting_one(self) -> None:
-        r"""``,`` pushes, so what was on top before is still underneath."""
+        """``,`` pushes, so what was on top before is still underneath.
+
+        ``test_input`` prints the byte immediately, which reads the same
+        whether ``,`` pushed a cell or overwrote the one ``>`` made -- and
+        the InputCursorContract's ``">,"`` reads as though a cell has to
+        exist first, so the file pointed both ways at once.  Popping the
+        read byte settles it: pushing leaves the 1 below it to print, while
+        overwriting would have consumed it and left the stack empty.
+        """
         assert run_and_capture(">+,<.", inputs=["Z"]) == "\x01"
 
     def test_loop(self) -> None:
-        r"""A loop that zeroes its cell executes exactly once."""
+        """A loop that zeroes its cell executes exactly once."""
         assert run_and_capture(">+[>+<-]>+.") == "\x01"
 
     def test_loop_skipped_when_zero(self) -> None:
-        r"""[ jumps past its matching ] when the top is zero."""
+        """[ jumps past its matching ] when the top is zero."""
         assert run_and_capture(">[>]") == ""
 
     def test_loop_skip_nested(self) -> None:
-        r"""A skipped loop with nested [ brackets counts both."""
+        """A skipped loop with nested [ brackets counts both."""
         assert run_and_capture(">[[-]]") == ""
 
     def test_loop_skip_unmatched(self) -> None:
-        r"""A skipped [ with no closing ] is a malformed program."""
+        """A skipped [ with no closing ] is a malformed program.
+
+        The message is matched whole rather than by the substring
+        ``unmatched``, which any rewording keeping that one word would
+        still satisfy.
+        """
         with pytest.raises(ValueError, match=r"^unmatched '\['$"):
             run_and_capture(">[")
 
@@ -70,33 +93,43 @@ class TestBFStack:
             run_and_capture(".")
 
     def test_loop_on_empty_stack_raises(self) -> None:
-        r"""[ on an empty stack is an invalid operation."""
+        """[ on an empty stack is an invalid operation."""
         with pytest.raises(HaltError):
             run_and_capture("[")
 
     def test_unmatched_closing_bracket_raises(self) -> None:
-        r"""] with no matching [ is an invalid operation."""
+        """] with no matching [ is an invalid operation."""
         with pytest.raises(HaltError):
             run_and_capture(">]")
 
     def test_decrement(self) -> None:
-        r"""- subtracts one from the top of the stack."""
+        """- subtracts one from the top of the stack.
+
+        Nothing in the suite used ``-`` outside a loop body whose output it
+        never reached, so the whole line was unconstrained: subtracting,
+        adding, or storing None to the top all passed.
+        """
         assert run_and_capture(">+-.") == "\x00"
         assert run_and_capture(">++-.") == "\x01"
 
     def test_cells_wrap_at_a_byte(self) -> None:
-        r"""+ and - wrap modulo 256, in both directions."""
+        """+ and - wrap modulo 256, in both directions.
+
+        ``test_increment_twice`` reaches 2, so the modulus was never
+        approached from either side: one below zero and one above 255 are
+        where a wrap at any other width would show.
+        """
         assert run_and_capture(">-.") == "\xff"
         assert run_and_capture(">" + "+" * 256 + ".") == "\x00"
         assert run_and_capture(">" + "+" * 255 + ".") == "\xff"
 
     def test_pop_on_empty_stack_raises(self) -> None:
-        r"""< on an empty stack is an invalid operation."""
+        """< on an empty stack is an invalid operation."""
         with pytest.raises(HaltError):
             run_and_capture("<")
 
     def test_arithmetic_on_empty_stack_raises(self) -> None:
-        r"""+ and - need a value to act on."""
+        """+ and - need a value to act on."""
         with pytest.raises(HaltError):
             run_and_capture("+")
         with pytest.raises(HaltError):
@@ -121,7 +154,17 @@ class TestStepMachine:
         assert machine.ind == 3
 
     def test_lst_holds_the_positions_of_entered_loops(self) -> None:
-        r"""``lst`` is the loop stack: a ``[`` that is entered records itself."""
+        """``lst`` is the loop stack: a ``[`` that is entered records itself.
+
+        This is the piece of the machine nothing else names.  ``]`` does not
+        scan backwards for its partner -- it pops the position the matching
+        ``[`` pushed -- so the loop stack is what decides where a jump goes,
+        and two runs on the same command with different loop stacks go
+        different places.  ``state_views`` lists ``lst`` but the shared
+        contract only checks that the name resolves and that *some* view
+        moves, which ``ip`` alone satisfies, so a property returning a
+        constant passed.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.stack_based.bfstack import _Machine
 
@@ -131,7 +174,14 @@ class TestStepMachine:
         assert machine.lst == (2,)  # the [ at index 2, entered.
 
     def test_memory_is_empty_because_the_store_is_the_stack(self) -> None:
-        r"""``memory`` and ``stack`` are different views, not one field twice."""
+        """``memory`` and ``stack`` are different views, not one field twice.
+
+        BFStack addresses no cells, so the VM's ``memory`` is deliberately
+        empty and ``stack`` carries the data.  The contract's non-aliasing
+        check compares the views before and after a run and passes as soon
+        as any one of them moves, so ``memory`` quietly returning the data
+        stack -- the exact aliasing that check is named for -- went unseen.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.stack_based.bfstack import _Machine
 
@@ -142,7 +192,16 @@ class TestStepMachine:
         assert machine.stack == [1]
 
     def test_an_unmatched_bracket_leaves_the_machine_halted(self) -> None:
-        r"""The cursor is moved to the end before the error is raised."""
+        """The cursor is moved to the end before the error is raised.
+
+        ``test_loop_skip_unmatched`` checks the message, and the message is
+        all it checks -- the machine it was raised from is thrown away by
+        ``run_and_capture``.  But where the cursor is left is deliberate:
+        the scan that fails runs to the end of the code, and a caller that
+        catches the ValueError should find a halted machine rather than one
+        still sitting on the bracket, which is what stepping it again would
+        otherwise re-raise from.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.stack_based.bfstack import _Machine
 
@@ -169,7 +228,7 @@ def _reader(code: object, stdin: str) -> object:
 
 
 class TestContract(CycleContract, InputCursorContract, StateViewContract):
-    r"""The shared shapes, with this language's own programs."""
+    """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     halting_program = ">+."

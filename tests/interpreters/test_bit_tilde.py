@@ -1,4 +1,4 @@
-r"""Unit tests for the bit~ interpreter."""
+"""Unit tests for the bit~ interpreter."""
 
 import io
 from contextlib import redirect_stdout
@@ -16,7 +16,7 @@ from tests.raises import raises_message
 
 
 def run_and_capture(code: str) -> str:
-    r"""Run ``code`` and return its output through a bare ``IO()``."""
+    """Run ``code`` and return its output through a bare ``IO()``."""
     buffer = io.StringIO()
     with redirect_stdout(buffer):
         run(code, IO())
@@ -24,7 +24,7 @@ def run_and_capture(code: str) -> str:
 
 
 def run_scripted(code: str, stdin: str = "") -> str:
-    r"""Run ``code`` with ``stdin`` as input, returning the captured output."""
+    """Run ``code`` with ``stdin`` as input, returning the captured output."""
     io_obj = ScriptedIO(stdin)
     run(code, io_obj)
     return io_obj.getvalue()
@@ -32,11 +32,11 @@ def run_scripted(code: str, stdin: str = "") -> str:
 
 class TestBitTilde:
     def test_single_toggle_prints_most_significant_bit(self) -> None:
-        r"""Cell 0 is the MSB, so one toggle prints 0x80."""
+        """Cell 0 is the MSB, so one toggle prints 0x80."""
         assert run_and_capture("~(") == "\x80"
 
     def test_least_significant_bit(self) -> None:
-        r"""Moving to the 8th cell and back sets the LSB."""
+        """Moving to the 8th cell and back sets the LSB."""
         assert run_and_capture(">>>>>>>~<<<<<<<(") == "\x01"
 
     def test_two_bits(self) -> None:
@@ -46,11 +46,13 @@ class TestBitTilde:
         assert run_and_capture("~>~>~>~>~>~>~>~<<<<<<<(") == "\xff"
 
     def test_left_pointer_clamps_at_cell_zero(self) -> None:
-        r"""``<`` at cell 0 is a no-op, so the toggle hits the MSB."""
+        """``<`` at cell 0 is a no-op, so the toggle hits the MSB."""
         assert run_and_capture("<<~(") == "\x80"
 
     def test_right_grows_the_pool(self) -> None:
-        r"""After seven ``>`` the pool holds 14 cells; a toggle at the 8th cell."""
+        """After seven ``>`` the pool holds 14 cells; a toggle at the 8th
+        cell and a print at the same spot use only the available window.
+        """
         assert run_and_capture(">>>>>>>~(") == "@"
 
     def test_unknown_characters_are_ignored(self) -> None:
@@ -64,19 +66,32 @@ class TestBitTilde:
         assert run_scripted(")(", "hello") == "h"
 
     def test_input_writes_at_the_pointer(self) -> None:
-        r"""``)`` writes the 8 bits starting at the pointer, so reading at cell."""
+        """``)`` writes the 8 bits starting at the pointer, so reading at
+        cell 1 and printing there echoes the character.
+        """
         assert run_scripted(">)(<", "A") == "A"
 
     def test_two_inputs_and_outputs(self) -> None:
         assert run_scripted(")()(", "hi\n!") == "h!"
 
     def test_input_grows_the_pool_to_fit_its_window(self) -> None:
-        r"""``)`` past the first cell extends the pool to hold all eight bits."""
+        """``)`` past the first cell extends the pool to hold all eight bits.
+
+        Input was only ever read at cells 0 and 1, where the window already
+        fits inside the eight cells the pool starts with -- so the growth
+        the read has to do, and how far, went unexercised.  Reading further
+        right still round-trips the byte, which it cannot do unless the
+        window was made to fit.
+        """
         assert run_scripted(">>)(", "A") == "A"
         assert run_scripted(">>>>)(", "A") == "A"
 
     def test_input_extends_the_pool_by_exactly_the_shortfall(self) -> None:
-        r"""The pool grows to the end of the window and no further."""
+        """The pool grows to the end of the window and no further.
+
+        The byte prints the same however much slack is added past it, so
+        the amount is only visible in the pool itself.
+        """
         from esolangs.interpreters.tape_based.bit_tilde import _Machine
 
         machine = _Machine(">>)(", ScriptedIO("A"))
@@ -85,7 +100,12 @@ class TestBitTilde:
         assert len(machine.tape) == 10  # two moves right, eight bits.
 
     def test_input_replaces_exactly_eight_cells(self) -> None:
-        r"""``)`` overwrites the eight bits of its window and no more."""
+        """``)`` overwrites the eight bits of its window and no more.
+
+        Coming back left leaves the pool longer than the window, so a
+        wider write would swallow the spare cell instead of leaving it --
+        which the printed byte, being the first eight bits, cannot show.
+        """
         from esolangs.interpreters.tape_based.bit_tilde import _Machine
 
         machine = _Machine(">><<)", ScriptedIO("A"))
@@ -94,15 +114,21 @@ class TestBitTilde:
         assert machine.tape == (0, 1, 0, 0, 0, 0, 0, 1, 0)
 
     def test_loop_skips_when_the_bit_is_zero(self) -> None:
-        r"""``{`` jumps past its body when the current bit is zero."""
+        """``{`` jumps past its body when the current bit is zero."""
         assert run_and_capture("{(~}(") == "\x00"
 
     def test_loop_runs_while_the_bit_is_nonzero(self) -> None:
-        r"""A body that builds and prints 'A' leaves bit 0 at zero so ``}``."""
+        """A body that builds and prints 'A' leaves bit 0 at zero so ``}``
+        falls through; the loop runs exactly once.
+        """
         assert run_and_capture("~{~>~>>>>>>~<<<<<<<(}") == "A"
 
     def test_loop_repeats_until_the_bit_clears(self) -> None:
-        r"""A counter in cell 1 lets the outer loop's body run twice: the first."""
+        """A counter in cell 1 lets the outer loop's body run twice: the
+        first pass skips the sentinel flip (bit 1 was 0) and loops, the
+        second clears bit 0 and falls through.  Both passes print, and the
+        second print sees the counter bit set, so it is 192.
+        """
         assert run_and_capture("~><{(>{<~>~}~<}") == "\x80\xc0"
 
     def test_nested_loops_match_by_depth(self) -> None:
@@ -111,12 +137,14 @@ class TestBitTilde:
         assert run_and_capture("{{~~}~}(~") == "\x00"
 
     def test_output_bytes_round_trip_under_latin1(self) -> None:
-        r"""The interpreter emits ``chr(byte)``, so each byte round-trips under."""
+        """The interpreter emits ``chr(byte)``, so each byte round-trips
+        under latin1 (the cross-checks write raw bytes 0x00-0xFF).
+        """
         assert run_scripted(")(", "\x80").encode("latin1") == b"\x80"
         assert run_scripted(")(", "\xe9").encode("latin1") == b"\xe9"
 
     def test_bit_flips_then_output_print_two_characters(self) -> None:
-        r"""Set the bits of 'H', print, flip to 'i', print."""
+        """Set the bits of 'H', print, flip to 'i', print."""
         program = ">~>>>~>>><<<<<<<(>>~>>>>>~<<<<<<<("
         assert run_scripted(program) == "Hi"
 
@@ -125,7 +153,19 @@ class TestBitTilde:
             run_scripted(")(")
 
     def test_unmatched_bracket_message_is_exact(self) -> None:
-        r"""The message itself is pinned, not just a substring of it."""
+        """The message itself is pinned, not just a substring of it.
+
+        Both cases above use ``match=``, which is a substring search, so
+        the text could be rewritten around the word "unmatched" and still
+        pass.  One scan raises for both directions, so asserting it once
+        from each side covers the message wherever it comes from.
+
+        The two sides now read differently, which is the point of the
+        shared rejection in :mod:`~esolangs.interpreters.brackets`: the
+        message names the loose bracket and where it stands, so the ``{``
+        case and the ``}`` case are told apart by it.  The position is the
+        bracket the scan set out from, not where the walk ran off the code.
+        """
         for code, message in (
             ("{~", "unmatched '{' at position 0"),
             ("~}", "unmatched '}' at position 1"),
@@ -158,7 +198,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(SnapshotContract, CycleContract, StateViewContract):
-    r"""The shared shapes, with this language's own programs."""
+    """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program = "~("
@@ -171,10 +211,16 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
 
 
 class TestStateViewValues:
-    r"""The named views read the slots they claim, not one another."""
+    """The named views read the slots they claim, not one another.
+
+    The shared contract checks that each view *moves*; which slot it moves
+    with is this file's business, because only this file knows which of its
+    names could be confused for each other.  A value pinned at a step where
+    they hold different things is what a rewiring would change.
+    """
 
     def test_cell_is_the_data_pointer_not_the_code_cursor(self) -> None:
-        r"""Nine steps in, the pointer has turned back and the cursor has not."""
+        """Nine steps in, the pointer has turned back and the cursor has not."""
         machine = _machine(">>>>>>>~<<<<<<<(")
         for _ in range(9):
             machine.step()

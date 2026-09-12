@@ -1,1 +1,1 @@
-r"""Program generators, boolean-function generators, and layout helpers."""
+"""Program generators, boolean-function generators, and layout helpers."""

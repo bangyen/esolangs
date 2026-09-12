@@ -1,4 +1,10 @@
-r"""%^2^-1 fold helpers, called on constructed states."""
+"""%^2^-1 fold helpers, called on constructed states.
+
+The fold's planner reaches these only at the arities where a staged
+prefix is laid, and building such a table through the public generator
+costs minutes per row.  The states are the shapes ``_fold_norm``
+produces, so each helper is asked the question it answers in the plan.
+"""
 
 import importlib
 from typing import ClassVar
@@ -26,7 +32,7 @@ def _state(*items: tuple[int, int, str, frozenset[int]]) -> tuple[object, ...]:
 
 
 class TestSolution:
-    r"""A candidate parameter set is rejected when no tail can print it."""
+    """A candidate parameter set is rejected when no tail can print it."""
 
     ROWS: ClassVar[dict[tuple[int, int], int]] = {
         (0, 0): 0,
@@ -36,17 +42,25 @@ class TestSolution:
     }
 
     def test_classes_too_far_apart_have_no_tail(self) -> None:
-        r"""``l`` moves both classes at once, so they must differ by one."""
+        """``l`` moves both classes at once, so they must differ by one."""
         assert _solution(self.ROWS, ("p", "p"), (0, 0), [1, 1], (0, 5)) is None
 
     def test_adjacent_classes_are_rejected_earlier(self) -> None:
-        r"""The positive control: a different arm refuses this one."""
+        """The positive control: a different arm refuses this one.
+
+        Classes one apart *do* have a tail, so reaching None here means
+        the padding rejected the pair -- not the tail check above.
+        """
         assert _solution(self.ROWS, ("p", "p"), (0, 0), [1, 1], (0, 1)) is None
 
 
 class TestPreshift:
     def test_a_zero_shift_emits_nothing(self) -> None:
-        r"""Neither arm fires: no move is spelled for a move of nothing."""
+        """Neither arm fires: no move is spelled for a move of nothing.
+
+        Every shipped caller computes a nonzero delta, so this is the one
+        place the no-op is exercised.
+        """
         emitter = _FoldEmitter.__new__(_FoldEmitter)
         emitter.body = []
         emitter.preshift(0)
@@ -54,7 +68,7 @@ class TestPreshift:
 
 
 class TestFoldSpan:
-    r"""The occupied extent: the top point down to the lowest footprint."""
+    """The occupied extent: the top point down to the lowest footprint."""
 
     def test_two_points_span_their_separation_plus_the_lower_extent(self) -> None:
         state = _state((10, 2, "0", frozenset({0})), (4, 1, "1", frozenset({1})))
@@ -69,7 +83,7 @@ class TestFoldSpan:
 
 
 class TestSetters:
-    r"""A setter pair splits a total into an up and a down move."""
+    """A setter pair splits a total into an up and a down move."""
 
     def test_a_spellable_total_gives_a_pair_that_sums_to_it(self) -> None:
         got = _split_setter(12)
@@ -90,7 +104,7 @@ class TestSetters:
 
 
 class TestFoldCofactorBridge:
-    r"""The bridge search is capped at the point count it was measured on."""
+    """The bridge search is capped at the point count it was measured on."""
 
     def test_a_state_past_the_cap_is_refused(self) -> None:
         wide = _state(
@@ -102,7 +116,7 @@ class TestFoldCofactorBridge:
         assert _fold_to_cofactors(wide) is None
 
     def test_a_state_inside_the_cap_is_searched(self) -> None:
-        r"""The positive control: the same shape, one point fewer."""
+        """The positive control: the same shape, one point fewer."""
         narrow = _state(
             *(
                 (row * 4, 0, str(row % 2), frozenset({row}))
@@ -117,33 +131,50 @@ class TestFoldCofactorBridge:
 
 
 class TestInterleavedFinalPair:
-    r"""The two-stage final pair, which the dispatcher tries before the."""
+    """The two-stage final pair, which the dispatcher tries before the fold."""
 
     def test_an_alternating_table_is_refused_at_every_arity(self) -> None:
-        r"""The pair cannot separate a table whose rows alternate."""
+        """The pair cannot separate a table whose rows alternate.
+
+        Its setter search walks the distances between points and finds no
+        collision-free total, so it declines rather than mis-separating.
+        """
         for n in (3, 6, 12):
             table = "01" * (2 ** (n - 1))
             assert _interleaved_final_pair(table, n) is None
 
     def test_a_table_whose_every_even_total_collides_is_refused(self) -> None:
-        r"""The packed search runs out of totals to try."""
+        """The packed search runs out of totals to try.
+
+        Found by sweeping random four-input tables: this one's points sit
+        at every even distance the loop walks, so no split is free.
+        """
         assert _interleaved_final_pair("1111100011100101", 4) is None
 
     def test_the_packed_ladder_skips_a_colliding_total(self) -> None:
-        r"""Past twelve inputs the narrow ladder no longer fits."""
+        """Past twelve inputs the narrow ladder no longer fits.
+
+        The packed ladder's own setter search walks even totals and steps
+        over any that is already a distance between two points.
+        """
         assert _interleaved_final_pair("0011" * (2**13 // 4), 13) is not None
 
     def test_an_uncompactable_packed_state_refuses(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        r"""The packed route compacts before splitting, and may fail there."""
+        """The packed route compacts before splitting, and may fail there.
+
+        Only the packed ladder compacts, so this needs the thirteen-input
+        route; the first reduce is the compaction, and failing it is what
+        the guard answers.
+        """
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
         with monkeypatch.context() as patch:
             patch.setattr(module, "_fold_reduce", lambda *_a, **_k: None)
             assert _interleaved_final_pair("0011" * (2**13 // 4), 13) is None
 
     def test_a_separable_table_builds(self) -> None:
-        r"""The positive control for the three refusals below."""
+        """The positive control for the three refusals below."""
         assert _interleaved_final_pair("0011" * 4, 4) is not None
 
     @pytest.mark.parametrize(
@@ -153,7 +184,11 @@ class TestInterleavedFinalPair:
     def test_a_failing_planner_refuses_the_pair(
         self, planner: str, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        r"""Each stage propagates its planner's failure instead of guessing."""
+        """Each stage propagates its planner's failure instead of guessing.
+
+        The same table builds when every planner answers (above), so the
+        None here is the guard firing rather than the table being hard.
+        """
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
         with monkeypatch.context() as patch:
             patch.setattr(module, planner, lambda *_a, **_k: None)
@@ -162,7 +197,13 @@ class TestInterleavedFinalPair:
     def test_a_point_driven_outside_the_workspace_refuses(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        r"""A setter that would move a row past +/-3003 is refused."""
+        """A setter that would move a row past +/-3003 is refused.
+
+        ``_apply`` runs in the setter and emit passes too, so replacing it
+        outright fails before the layout starts; the 21st call is the
+        first one inside the row loop, and poisoning that one lands the
+        point outside the workspace.
+        """
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
         original = module._apply  # noqa: SLF001
         calls = [0]
@@ -178,7 +219,12 @@ class TestInterleavedFinalPair:
     def test_two_classes_landing_on_one_point_refuse(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        r"""Rows of different classes may not share a point."""
+        """Rows of different classes may not share a point.
+
+        Same poisoned call as above, but landing every later row on the
+        same value: the second one to arrive carries a different class and
+        the collision check refuses it.
+        """
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
         original = module._apply  # noqa: SLF001
         calls = [0]
@@ -194,7 +240,7 @@ class TestInterleavedFinalPair:
     def test_an_unspellable_prefix_ladder_refuses(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        r"""No ladder lays the prefix inside the workspace footprint."""
+        """No ladder lays the prefix inside the workspace footprint."""
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
         with monkeypatch.context() as patch:
             # A narrow ladder too wide for.
@@ -205,12 +251,18 @@ class TestInterleavedFinalPair:
 
 
 class TestInterleavedFoldRefusals:
-    r"""Every stage of the staged fold propagates its planner's failure."""
+    """Every stage of the staged fold propagates its planner's failure.
+
+    The guards exist so a stage that cannot be planned aborts the whole
+    build rather than emitting a program for the wrong function.  Each is
+    reached by failing one sub-planner, since no table the generator
+    ships defeats them.
+    """
 
     TABLE = "01" * 8
 
     def test_the_fold_builds_when_every_stage_plans(self) -> None:
-        r"""The positive control the refusals below are measured against."""
+        """The positive control the refusals below are measured against."""
         assert _interleaved_fold(self.TABLE, 4) is not None
 
     def test_an_unplannable_final_stage_refuses(
@@ -224,7 +276,7 @@ class TestInterleavedFoldRefusals:
     def test_an_unbridgeable_cofactor_stage_refuses(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        r"""The cofactor bridge is what releases equal suffixes early."""
+        """The cofactor bridge is what releases equal suffixes early."""
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
         with monkeypatch.context() as patch:
             patch.setattr(module, "_fold_to_cofactors", lambda *_a, **_k: None)
@@ -232,12 +284,16 @@ class TestInterleavedFoldRefusals:
 
 
 class TestNoLadderServed:
-    r"""The generator aborts rather than emitting the wrong function."""
+    """The generator aborts rather than emitting the wrong function."""
 
     def test_both_fold_routes_giving_up_raises(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        r"""No table defeats both routes, so both are failed here."""
+        """No table defeats both routes, so both are failed here.
+
+        Emitting nothing beats emitting a program for another function,
+        which is what this last-resort guard is for.
+        """
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
         with monkeypatch.context() as patch:
             patch.setattr(module, "_fold", lambda *_a, **_k: None)
@@ -246,7 +302,7 @@ class TestNoLadderServed:
                 pct_squared_minus_one("01101001" * 4)
 
     def test_the_shipped_routes_build_the_same_table(self) -> None:
-        r"""The positive control: nothing is wrong with the table itself."""
+        """The positive control: nothing is wrong with the table itself."""
         assert pct_squared_minus_one("01101001" * 4)
 
 

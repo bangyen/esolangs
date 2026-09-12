@@ -1,4 +1,79 @@
-r"""Interpreter for Alight."""
+"""Interpreter for Alight.
+
+A two-dimensional language whose commands are words, not single characters.
+The pointer starts at ``begin`` -- which may be written forwards, backwards,
+up, or down, and that spelling picks the heading -- and walks the grid one
+cell at a time, accumulating characters into a command until a ``;``
+terminates it.  ``turn`` pivots *at that semicolon's cell* and the next
+command begins one cell beyond it in the new heading; the program stops when
+it reaches ``end`` travelling in its current direction.
+
+Commands: ``var x``, ``set x <expr>``, ``skip <expr>`` (skip the next command
+if true), ``turn <expr>`` (left if true, else right), ``inp x``, ``out x``,
+``wait <expr>``, and the empty command as a nop.  Values are numbers, lists,
+and the four specials ``nil``/``eof``/``left``/``right`` (``left`` is true).
+Lists index from 0.5: ``at{l, 0.5}`` is the first element.  Functions are
+defined with ``func name{a, b}`` in place of ``begin`` and return via
+``end <value>``, each call getting its own variable namespace.
+
+Input is one line per ``inp``, taking the line's first character; output is
+one character per ``out``.  Run a program with ``python -m
+esolangs.interpreters.grid_based.alight prog.al``.
+
+The wiki leaves several points open; this interpreter decides them as
+follows, and raises :class:`ValueError` for a structurally malformed program
+and :class:`~esolangs.exceptions.HaltError` for an invalid runtime
+operation.
+
+* **Operator order.**  The prose says operators are postfix, but every
+  example on the page is infix -- ``turn c = eof``, ``set x len{l}-0.5``,
+  ``skip sign{x} > 0``.  Examples are ground truth, so expressions parse as
+  infix applied strictly left to right with no precedence and no grouping:
+  ``a+b*c`` is ``(a+b)*c``.  Unary ``!`` appears in no example and is taken
+  as prefix, the only reading that does not need an operand it lacks.
+* **Three-argument ``at`` sets in place** and returns the same list, where
+  the prose says it returns a copy.  The reversed-cat example runs
+  ``at{l, len{l}-0.5, c}`` as a bare command, discarding the result: under
+  copy semantics that is a no-op, ``l`` stays all ``nil``, and the example
+  crashes on its own first ``out``.  In place it reverses its input.  A bare
+  *call* is therefore a command too, evaluated for its effect.  Lists are
+  consequently references: ``set m l`` aliases, and a function can mutate a
+  list argument.
+* **EOF.**  ``inp`` past the end of input stores ``eof``, which is what the
+  cat examples' ``c = eof`` guard tests.  An empty line is a real line and
+  reads as 0, following the repo's ``input_char`` convention.
+* **Off-grid walking.**  Walking off the grid mid-command is a ``HaltError``.
+  Walking off it having just completed ``end`` is a *halt*: both cat
+  examples end their program at a grid edge with no trailing ``;``, so an
+  edge terminates a command the way a semicolon does.
+* **Malformed programs** -- no ``begin``, an unparsable command, an
+  unterminated string or bracket -- raise ``ValueError``.  A program is
+  scanned only as it walks, so an unreachable cell is never parsed.
+* **Invalid runtime operations** -- an undeclared variable, a redeclared
+  one, division by zero, a non-integral or out-of-range list index, a type
+  mismatch, ``out`` of a value that is not a character number, a guard that
+  is not ``left``/``right``, and an unknown function -- raise
+  ``HaltError``.  There is no call-depth cap: a call pushes a walker, so
+  runaway recursion grows the heap rather than Python's stack, and that
+  class is the wall-clock ``timeout``'s to catch.
+* **``wait`` is a nop.**  Its argument is evaluated (so an error in it still
+  fires) and discarded: a real sleep is unobservable through this repo's I/O
+  and would hang the suite.
+* **Multiple ``begin``s.**  The first in row-major order wins; the rest are
+  ordinary grid text, which is what the Evil Hack already makes of any
+  overlap.
+* **No step cap.**  A walk runs until it halts.  A program that loops over
+  a fixed grid revisits its whole state, so
+  :func:`esolangs.vm.run_until_halt_or_cycle` *proves* the hang instead of
+  a counter guessing at one; a walk that never repeats a state is what
+  ``esolangs.run``'s wall-clock ``timeout`` is for.  ``grapheme.py``
+  documents removing exactly such a budget, as duplicating that timeout.
+
+  That holds inside a called function too: a call *pushes* a walker rather
+  than running the callee in the caller's step, so a callee that rings
+  forever reaches ``snapshot`` on every command and is proved the same
+  way.  ``lamfunc.py`` and ``dinac.py`` frame calls for the same reason.
+"""
 
 import sys
 from typing import Literal, TypeGuard, cast
@@ -66,7 +141,19 @@ _BUILTINS = ("at", "len", "trunc", "sign")
 
 
 class _Walker:
-    r"""One walk in progress: where it is, what it can see, and its call."""
+    """One walk in progress: where it is, what it can see, and its call.
+
+    A call is a *separate walk* with its own pointer and namespace, which
+    is what makes the Evil Hack -- a function's code sharing cells with
+    the caller's -- need nothing special: whoever is walking reads the
+    cell in their own direction.
+
+    ``pending`` is the current command's expression with the calls that
+    have already returned rewritten into it as literals, and ``returned``
+    the value a just-finished callee is handing back.  Both are what let a
+    call inside an expression suspend: the command is re-entered once per
+    call it contains, each time with one more resolved.
+    """
 
     __slots__ = ("col", "heading", "pending", "returned", "row", "vars")
 
@@ -85,7 +172,7 @@ class _Walker:
         self.returned: _Value | None = None
 
     def key(self) -> tuple[object, ...]:
-        r"""Return the walker as a hashable value for :meth:`snapshot`."""
+        """Return the walker as a hashable value for :meth:`snapshot`."""
         return (
             self.row,
             self.col,
@@ -97,13 +184,25 @@ class _Walker:
 
 
 def _grid(code: list[str]) -> list[str]:
-    r"""Pad ``code`` to a rectangle, so every in-bounds cell is a character."""
+    """Pad ``code`` to a rectangle, so every in-bounds cell is a character.
+
+    Ragged lines are the norm -- the wiki's examples have a row whose only
+    content is a trailing space, and one that is short of the widest -- and
+    padding once here is what lets the walker index a cell without a length
+    test at every read.
+    """
     width = max((len(line) for line in code), default=0)
     return [line.ljust(width) for line in code]
 
 
 def _find(grid: list[str], word: str) -> tuple[int, int, _Heading] | None:
-    r"""Return where ``word`` is spelled on the grid, and the heading it."""
+    """Return where ``word`` is spelled on the grid, and the heading it runs in.
+
+    Row-major over start cells, and for each cell the four headings in a
+    fixed order, so a grid spelling the word twice picks the first
+    deterministically.  The cell returned is the word's *first* character;
+    the walk continues from just past its last.
+    """
     for row, line in enumerate(grid):
         for col in range(len(line)):
             for heading in (_EAST, _SOUTH, _WEST, _NORTH):
@@ -113,7 +212,11 @@ def _find(grid: list[str], word: str) -> tuple[int, int, _Heading] | None:
 
 
 def _read_word(grid: list[str], row: int, col: int, heading: _Heading) -> str:
-    r"""Return ``len(word)`` characters from ``(row, col)`` along."""
+    """Return ``len(word)`` characters from ``(row, col)`` along ``heading``.
+
+    Returns ``""`` when the run would leave the grid, so a word cannot be
+    matched half off the edge.
+    """
     drow, dcol = heading
     out: list[str] = []
     for _ in range(5):  # ``begin`` is the longest word.
@@ -128,7 +231,23 @@ def _read_word(grid: list[str], row: int, col: int, heading: _Heading) -> str:
 def _scan(
     grid: list[str], row: int, col: int, heading: _Heading
 ) -> tuple[str, int, int]:
-    r"""Read one command from ``(row, col)`` along ``heading``."""
+    """Read one command from ``(row, col)`` along ``heading``.
+
+    Returns the command's text and the cell the terminating ``;`` sat on --
+    the *pivot*, since a ``turn`` turns as if the semicolon were the command
+    and the next one starts one cell beyond it.  That rule is what closes
+    the wiki's cat loop: the ``;`` ending ``var c`` is the same cell the
+    vertical ``turn right`` ends on, read from the other direction.
+
+    A run that reaches the grid edge without a ``;`` ends there, with the
+    last cell as the pivot.  Both cat examples finish on an edge-terminated
+    ``end``, so the edge has to close a command; whether *walking on* from
+    there is legal is the caller's, and only ``end`` survives it.
+
+    Quotes shield their contents: a ``;`` inside ``"..."`` is a character of
+    the string (the wiki says so explicitly), and ``'`` shields the single
+    character after it, so ``';`` is a semicolon literal.
+    """
     drow, dcol = heading
     height, width = len(grid), len(grid[0])
     text: list[str] = []
@@ -155,7 +274,14 @@ def _scan(
 
 
 class _Parser:
-    r"""A recursive-descent reader for one Alight expression."""
+    """A recursive-descent reader for one Alight expression.
+
+    Infix, strictly left to right, no precedence: the examples are all
+    infix (``len{l}-0.5``, ``sign{x} > 0``) though the prose says postfix,
+    and examples are ground truth.  So an expression is one operand
+    followed by any number of ``<operator> <operand>`` pairs, each folded
+    into the accumulated left-hand side as it is read.
+    """
 
     def __init__(self, text: str) -> None:
         self.text = text
@@ -173,7 +299,7 @@ class _Parser:
         return self.peek() == ""
 
     def word(self) -> str:
-        r"""Read one alphanumeric identifier, or ``""`` if none is here."""
+        """Read one alphanumeric identifier, or ``""`` if none is here."""
         self.skip_space()
         start = self.pos
         while self.pos < len(self.text) and self.text[self.pos].isalnum():
@@ -188,7 +314,7 @@ _BINARY = frozenset("+-*/=<>&|^")
 
 
 def _parse_expr(p: _Parser) -> "_Expr":
-    r"""Parse an expression: an operand, then ``op operand`` pairs, left to."""
+    """Parse an expression: an operand, then ``op operand`` pairs, left to right."""
     node = _parse_operand(p)
     while True:
         c = p.peek()
@@ -203,7 +329,7 @@ def _parse_expr(p: _Parser) -> "_Expr":
 
 
 def _parse_operand(p: _Parser) -> "_Expr":
-    r"""Parse one operand: a literal, a list, a ``!``, a call, or a."""
+    """Parse one operand: a literal, a list, a ``!``, a call, or a variable."""
     c = p.peek()
     if c == "":
         raise ValueError("expression ends early")
@@ -253,7 +379,7 @@ def _parse_operand(p: _Parser) -> "_Expr":
 
 
 def _parse_number(p: _Parser) -> float:
-    r"""Read a decimal literal, which may be fractional (indices are."""
+    """Read a decimal literal, which may be fractional (indices are ``k+0.5``)."""
     p.skip_space()
     start = p.pos
     while p.pos < len(p.text) and (p.text[p.pos].isdigit() or p.text[p.pos] == "."):
@@ -265,7 +391,7 @@ def _parse_number(p: _Parser) -> float:
 
 
 def _parse_args(p: _Parser, close: str) -> list["_Expr"]:
-    r"""Read a comma-separated argument or element list up to ``close``."""
+    """Read a comma-separated argument or element list up to ``close``."""
     args: list[_Expr] = []
     if p.peek() == close:
         p.pos += 1
@@ -300,7 +426,12 @@ type _State = tuple[int, int, _Heading, tuple[object, ...]]
 
 
 def _truth(value: _Value) -> bool:
-    r"""Return a guard's boolean, which only ``left``/``right`` may be."""
+    """Return a guard's boolean, which only ``left``/``right`` may be.
+
+    The wiki gives booleans exactly two values and no truthiness rule for
+    anything else, so a number or a list in a guard is an invalid operation
+    rather than a silent coercion.
+    """
     if value == "left":
         return True
     if value == "right":
@@ -309,17 +440,35 @@ def _truth(value: _Value) -> bool:
 
 
 def _boolean(flag: bool) -> _Special:  # noqa: FBT001 - a conversion, not a mode
-    r"""Return the special value for a Python boolean: ``left`` or."""
+    """Return the special value for a Python boolean: ``left`` or ``right``.
+
+    The boolean trap the lint guards against is a *mode selector* -- an
+    argument the caller has to look up to read.  Here the argument is the
+    datum being converted, so naming it at each call site would only repeat
+    the function's own name.
+    """
     return "left" if flag else "right"
 
 
 def _is_num(value: _Value) -> TypeGuard[float]:
-    r"""Whether a value is a number."""
+    """Whether a value is a number.
+
+    A ``TypeGuard`` rather than a plain ``bool`` so that a caller's branch
+    narrows: every arithmetic path below tests this first, and without the
+    narrowing each one needed an ``assert isinstance`` afterwards purely to
+    restate what the test had already established.
+    """
     return isinstance(value, float | int) and not isinstance(value, bool)
 
 
 def _compare(op: str, left: _Value, right: _Value) -> _Special:
-    r"""Compare two values, returning ``left``/``right``."""
+    """Compare two values, returning ``left``/``right``.
+
+    ``=`` compares any two values -- objects of different types are unequal
+    rather than an error, which is what lets ``c = eof`` be asked of a
+    character.  ``<`` and ``>`` are false on anything but two numbers, per
+    the wiki.
+    """
     if op == "=":
         if _is_num(left) != _is_num(right):
             return "right"
@@ -330,7 +479,12 @@ def _compare(op: str, left: _Value, right: _Value) -> _Special:
 
 
 def _arith(op: str, left: _Value, right: _Value) -> _Value:
-    r"""Apply an arithmetic operator, including the list forms."""
+    """Apply an arithmetic operator, including the list forms.
+
+    ``+`` concatenates two lists and ``*`` repeats one by a count, which is
+    how the wiki defines them; every other combination of a list with a
+    number is a type error.
+    """
     if isinstance(left, list) and isinstance(right, list):
         if op != "+":
             raise HaltError(f"cannot apply {op!r} to two lists")
@@ -355,7 +509,7 @@ def _arith(op: str, left: _Value, right: _Value) -> _Value:
 
 
 def _repeat(op: str, seq: list[_Value], count: _Value) -> _Value:
-    r"""Repeat a list by a count, the only list-and-number operation there."""
+    """Repeat a list by a count, the only list-and-number operation there is."""
     if op != "*" or not _is_num(count):
         raise HaltError(f"cannot apply {op!r} to a list and {count!r}")
     if count != int(count) or count < 0:
@@ -364,7 +518,7 @@ def _repeat(op: str, seq: list[_Value], count: _Value) -> _Value:
 
 
 def _logic(op: str, left: _Value, right: _Value) -> _Special:
-    r"""Apply a logic operator to two booleans."""
+    """Apply a logic operator to two booleans."""
     a, b = _truth(left), _truth(right)
     if op == "&":
         return _boolean(a and b)
@@ -374,7 +528,12 @@ def _logic(op: str, left: _Value, right: _Value) -> _Special:
 
 
 def _index(value: _Value) -> int:
-    r"""Turn an Alight list index into a Python one."""
+    """Turn an Alight list index into a Python one.
+
+    Indices are ``0.5 + k``; anything else is an error, which is the
+    language's one genuinely strange rule and the reason this is a function
+    rather than an inline ``int(i)``.
+    """
     if not _is_num(value):
         raise HaltError(f"list index is not a number: {value!r}")
     slot = value - 0.5
@@ -384,7 +543,15 @@ def _index(value: _Value) -> int:
 
 
 class _Machine:
-    r"""Per-run Alight state: the grid and a stack of walks in progress."""
+    """Per-run Alight state: the grid and a stack of walks in progress.
+
+    ``step()`` reads and executes exactly one command of the innermost
+    walk, leaving its pointer on the cell the next command starts at.  A
+    function call *pushes* a walker rather than running the callee inside
+    the step that made it, so every command of every function reaches
+    ``snapshot`` and a loop inside a called function is provable by
+    :func:`esolangs.vm.run_until_halt_or_cycle`.
+    """
 
     # : Whether a read past the end.
     # : rather than raising.
@@ -421,7 +588,7 @@ class _Machine:
 
     @property
     def walker(self) -> _Walker:
-        r"""The innermost walk: the one ``step`` advances."""
+        """The innermost walk: the one ``step`` advances."""
         return self.walkers[-1]
 
     @property
@@ -450,11 +617,11 @@ class _Machine:
 
     @property
     def vars(self) -> dict[str, _Value]:
-        r"""The innermost walk's namespace, which a call does not share."""
+        """The innermost walk's namespace, which a call does not share."""
         return self.walker.vars
 
     def snapshot(self) -> tuple[object, ...]:
-        r"""Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection."""
         # Every walker, not only the.
         # caller standing somewhere.
         # that consumed a line is not a.
@@ -472,12 +639,17 @@ class _Machine:
 
     @property
     def ip(self) -> tuple[int, ...]:
-        r"""The current instruction position: the cell and the heading."""
+        """The current instruction position: the cell and the heading.
+
+        The heading is part of it because the same cell means a different
+        command in each direction -- ``end`` read backwards is ``dne``, which
+        the wiki says is not a halt -- so a position without it is ambiguous.
+        """
         return (self.row, self.col, *self.heading)
 
     @property
     def memory(self) -> list[int]:
-        r"""The VM's addressable view: the numeric variables, by name."""
+        """The VM's addressable view: the numeric variables, by name."""
         return [
             int(v)
             for _, v in sorted(self.vars.items())
@@ -486,11 +658,30 @@ class _Machine:
 
     @property
     def stack(self) -> list[object]:
-        r"""The suspended callers, outermost first."""
+        """The suspended callers, outermost first.
+
+        Alight has no *operand* stack, but a call is a walker now, so
+        there is something to observe: each entry is the cell its caller
+        is waiting on.
+        """
         return [(w.row, w.col) for w in self.walkers[:-1]]
 
     def _reduce(self, expr: _Expr) -> tuple[_Expr, str | None]:
-        r"""Resolve calls left to right, stopping at the first user one."""
+        """Resolve calls left to right, stopping at the first user one.
+
+        Returns the rewritten expression and the name of the user call to
+        push, or None when nothing is left to run.  Every call it passes
+        -- **builtins included** -- is replaced by its value, so an
+        effectful ``at{l, i, v}`` runs exactly once no matter how many
+        times the command is re-entered.  Re-evaluating the whole
+        expression instead would fire it once per contained call:
+        measured, ``set v at{l,0.5,67}+f{1}+g{2}`` would write three
+        times.
+
+        Left to right, innermost first, which is ``_eval``'s own order --
+        so which ``HaltError`` fires first, and the order of any output a
+        callee prints, are both unchanged.
+        """
         tag = expr[0]
         if tag in ("num", "special", "var", "val"):
             return expr, None
@@ -527,7 +718,11 @@ class _Machine:
         return ("val", _builtin(name, [self._eval(a) for a in args])), None
 
     def _resolve(self, text: str, word: str) -> bool:
-        r"""Push a walker for the command's next unresolved call, if any."""
+        """Push a walker for the command's next unresolved call, if any.
+
+        Returns whether this step was spent starting a call, in which case
+        the command stays put and is re-entered once the value is in.
+        """
         walker = self.walker
         if word not in ("turn", "skip", "wait", "set", "end") and not _is_call(
             text, word
@@ -549,7 +744,14 @@ class _Machine:
         return True
 
     def step(self) -> None:
-        r"""Execute one command, leaving the pointer at the next one's start."""
+        """Execute one command, leaving the pointer at the next one's start.
+
+        A command holding calls takes more than one step: each step runs
+        the leftmost-innermost user call by *pushing* a walker for it, and
+        the value comes back rewritten into ``pending`` as a literal.  The
+        command itself runs on the step where none is left, so no part of
+        an Alight program executes inside another command's step.
+        """
         if self.halted:
             return
         text, row, col = _scan(self.grid, self.row, self.col, self.heading)
@@ -580,7 +782,7 @@ class _Machine:
             raise HaltError("walked off the grid")
 
     def _finish(self, text: str) -> None:
-        r"""Run an ``end``: halt the program, or return from a call."""
+        """Run an ``end``: halt the program, or return from a call."""
         value = self._return_value(text)
         if len(self.walkers) == 1:
             self.halted = True
@@ -592,7 +794,12 @@ class _Machine:
         return 0 <= row < len(self.grid) and 0 <= col < len(self.grid[0])
 
     def _eval_rest(self, text: str, word: str) -> _Value:
-        r"""Evaluate the expression following a keyword."""
+        """Evaluate the expression following a keyword.
+
+        The parse still happens, so a trailing-text error is raised where
+        it always was; the *value* comes from ``pending``, which holds the
+        same expression with its calls already resolved.
+        """
         p = _Parser(text)
         p.word()
         expr = _parse_expr(p)
@@ -601,7 +808,7 @@ class _Machine:
         return self._eval(self.walker.pending or expr)
 
     def _exec(self, text: str, word: str) -> None:
-        r"""Run one non-control command."""
+        """Run one non-control command."""
         if word == "":
             # A command of nothing but.
             # cell between two semicolons.
@@ -658,7 +865,7 @@ class _Machine:
         raise ValueError(f"unknown command {word!r} in {text!r}")
 
     def _name(self, text: str) -> str:
-        r"""Read the single variable name a ``var``/``inp``/``out`` names."""
+        """Read the single variable name a ``var``/``inp``/``out`` names."""
         p = _Parser(text)
         p.word()
         name = p.word()
@@ -678,7 +885,7 @@ class _Machine:
         return name
 
     def _read(self) -> _Value:
-        r"""Read one character, or ``eof`` when the input is exhausted."""
+        """Read one character, or ``eof`` when the input is exhausted."""
         try:
             line = self.io.input_str()
         except EOFError:
@@ -695,7 +902,13 @@ class _Machine:
         self.io.print_char(chr(int(value)))
 
     def _eval(self, expr: _Expr) -> _Value:
-        r"""Evaluate a parsed expression in this frame's namespace."""
+        """Evaluate a parsed expression in this frame's namespace.
+
+        The ``cast``s restate what the parser guarantees about each tag's
+        payload.  ``_Expr`` is a plain tuple -- immutable and hashable, so a
+        snapshot can hold one -- which costs the element types; the tag is
+        what recovers them, and only the parser above ever builds one.
+        """
         tag = expr[0]
         if tag == "num":
             return cast(float, expr[1])
@@ -727,7 +940,12 @@ class _Machine:
         return self._call(cast(str, expr[1]), args)
 
     def _call(self, name: str, args: list[_Value]) -> _Value:
-        r"""Apply a builtin."""
+        """Apply a builtin.  A user call never reaches here.
+
+        ``step`` resolves every user call by pushing a walker for it and
+        rewriting its value into the expression, so what survives to
+        evaluation is builtins alone.
+        """
         if name in _BUILTINS:
             return _builtin(name, args)
         raise HaltError(  # pragma: no cover - step resolves every user call
@@ -735,7 +953,13 @@ class _Machine:
         )
 
     def _push_call(self, name: str, args: list[_Value]) -> None:
-        r"""Start a user call by pushing a walker for its body."""
+        """Start a user call by pushing a walker for its body.
+
+        The callee is a separate walk with its own pointer and variables, so
+        the Evil Hack -- a function's code sharing cells with the caller's --
+        needs nothing special: whoever is walking reads the cell in their own
+        direction and keeps their own frame until they hit an ``end``.
+        """
         found = _find_func(self.grid, name)
         if found is None:
             raise HaltError(f"no such function: {name!r}")
@@ -749,7 +973,12 @@ class _Machine:
         )
 
     def _return_value(self, text: str) -> _Value:
-        r"""Evaluate the expression an ``end <value>`` returns, or ``nil``."""
+        """Evaluate the expression an ``end <value>`` returns, or ``nil``.
+
+        Like the other commands, the value comes from ``pending`` when
+        there is one -- ``end inner{n}+1`` holds a call, and that call is
+        resolved by a pushed walker before this runs.
+        """
         p = _Parser(text)
         p.word()
         if p.at_end():
@@ -761,7 +990,7 @@ class _Machine:
 
 
 def _builtin(name: str, args: list[_Value]) -> _Value:
-    r"""Apply one of the four builtin functions."""
+    """Apply one of the four builtin functions."""
     if name in ("trunc", "sign"):
         if len(args) != 1 or not _is_num(args[0]):
             raise HaltError(f"{name} takes one number")
@@ -806,7 +1035,11 @@ def _builtin(name: str, args: list[_Value]) -> _Value:
 def _find_func(
     grid: list[str], name: str
 ) -> tuple[int, int, _Heading, list[str]] | None:
-    r"""Locate ``func <name>{...}`` on the grid; return its entry and."""
+    """Locate ``func <name>{...}`` on the grid; return its entry and parameters.
+
+    Returns the cell and heading the body starts at -- just past the ``}`` --
+    with the parameter names, or ``None`` when no such function is written.
+    """
     for row, line in enumerate(grid):
         for col in range(len(line)):
             for heading in (_EAST, _SOUTH, _WEST, _NORTH):
@@ -830,7 +1063,7 @@ def _find_func(
 
 
 def _func_params(p: _Parser) -> list[str] | None:
-    r"""Read a ``func`` header's parameter names, or ``None`` if malformed."""
+    """Read a ``func`` header's parameter names, or ``None`` if malformed."""
     params: list[str] = []
     if p.peek() == "}":
         p.pos += 1
@@ -849,20 +1082,30 @@ def _func_params(p: _Parser) -> list[str] | None:
 
 
 def _turned(heading: _Heading, *, left: bool) -> _Heading:
-    r"""Return the heading after a quarter turn."""
+    """Return the heading after a quarter turn.
+
+    ``left`` is counter-clockwise on the page.  The wiki's cat pins this:
+    the true branch of ``turn c = eof`` travelling east reads ``end``
+    *upward*, so a left turn from east is north.
+    """
     i = _CLOCKWISE.index(heading)
     return _CLOCKWISE[(i - 1) % 4] if left else _CLOCKWISE[(i + 1) % 4]
 
 
 def _is_call(text: str, word: str) -> bool:
-    r"""Whether a command is a bare call, run for its effect."""
+    """Whether a command is a bare call, run for its effect."""
     p = _Parser(text)
     p.word()
     return bool(word) and word not in _RESERVED and p.peek() == "{"
 
 
 def _command_expr(text: str, word: str) -> "_Expr | None":
-    r"""Return the expression a command evaluates, or None if it has none."""
+    """Return the expression a command evaluates, or None if it has none.
+
+    ``var``/``inp``/``out`` name a variable and evaluate nothing; ``set``
+    names one and then evaluates; the rest are a keyword and an
+    expression, or a bare call which is itself the expression.
+    """
     p = _Parser(text)
     p.word()
     if word == "set":
@@ -877,13 +1120,18 @@ def _command_expr(text: str, word: str) -> "_Expr | None":
 
 
 def _substitute_first(expr: "_Expr", value: "_Value") -> "_Expr":
-    r"""Replace the leftmost unresolved ``call`` node with ``value``."""
+    """Replace the leftmost unresolved ``call`` node with ``value``.
+
+    The leftmost remaining call *is* the one that just returned: a walker
+    is pushed for it and nothing else runs until it does, so no identity
+    tracking is needed.
+    """
     replaced, _ = _replace_first(expr, value)
     return replaced
 
 
 def _replace_first(expr: "_Expr", value: "_Value") -> tuple["_Expr", bool]:
-    r"""Return ``expr`` with its first call replaced, and whether one was."""
+    """Return ``expr`` with its first call replaced, and whether one was."""
     tag = expr[0]
     if tag in ("num", "special", "var", "val"):
         return expr, False
@@ -912,7 +1160,11 @@ def _replace_first(expr: "_Expr", value: "_Value") -> tuple["_Expr", bool]:
 
 
 def _first_call(expr: "_Expr", name: str) -> "_Expr":
-    r"""Return the leftmost ``call`` node to ``name`` in ``expr``."""
+    """Return the leftmost ``call`` node to ``name`` in ``expr``.
+
+    ``_reduce`` has already replaced every call to its left, so this is
+    the one it stopped at.
+    """
     found = _first_call_or_none(expr, name)
     if found is None:  # pragma: no cover - _reduce just found one
         raise HaltError(f"lost the pending call to {name!r}")
@@ -920,7 +1172,7 @@ def _first_call(expr: "_Expr", name: str) -> "_Expr":
 
 
 def _first_call_or_none(expr: "_Expr", name: str) -> "_Expr | None":
-    r"""Return the leftmost ``call`` to ``name``, or None if there is none."""
+    """Return the leftmost ``call`` to ``name``, or None if there is none."""
     tag = expr[0]
     if tag in ("num", "special", "var", "val"):
         return None
@@ -944,7 +1196,12 @@ def _first_call_or_none(expr: "_Expr", name: str) -> "_Expr | None":
 
 
 def _freeze(value: object) -> object:
-    r"""Return a hashable copy of a value, for :meth:`_Machine.snapshot`."""
+    """Return a hashable copy of a value, for :meth:`_Machine.snapshot`.
+
+    Variables hold lists, which are not hashable, and a snapshot that
+    dropped them would call two different states equal -- so the freeze is
+    recursive rather than a ``str()``.
+    """
     if isinstance(value, dict):
         return tuple(sorted((k, _freeze(v)) for k, v in value.items()))
     if isinstance(value, list):
@@ -959,7 +1216,7 @@ def _freeze(value: object) -> object:
 
 
 def run(code: list[str] | str, io: IO) -> None:
-    r"""Run an Alight program to its ``end``."""
+    """Run an Alight program to its ``end``."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

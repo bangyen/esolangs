@@ -1,4 +1,24 @@
-r"""Dig interpreter implementation."""
+"""Dig interpreter implementation.
+
+2D esoteric language with a mole that moves on a grid and can dig underground.
+Movement commands work overground, work commands function underground.
+
+The wiki only lists ``@`` as a halt; this interpreter also stops the program
+(without error) when the mole walks off the grid.  A work command that needs a
+digit from an adjacent cell but finds none, or divides by an adjacent zero, is
+an invalid runtime operation and halts the program with
+:class:`~esolangs.exceptions.HaltError`; an empty program is malformed and
+rejected with :class:`ValueError`.
+
+``#`` reads its steer from an adjacent digit and the wiki covers every case
+("Rotates Mole to left when value beside it is 0, and right when 1.  When
+it's neither of those, keep straight.").  ``%`` is specified only for 0 and
+1 ("Overrides current value with space when 0, and newline when 1"); the
+other eight digits leave the mole unchanged here rather than being assigned
+a meaning the wiki does not give them.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
+"""
 
 import sys
 
@@ -27,7 +47,11 @@ type _State = tuple[tuple[str, ...], int, int, int, int, int, bool]
 
 
 def _value(code: tuple[str, ...], row: int, col: int, size: int) -> int:
-    r"""Return the first digit adjacent to ``(row, col)``."""
+    """Return the first digit adjacent to ``(row, col)``.
+
+    A work command that needs a digit and finds none is an invalid runtime
+    operation, so this halts rather than inventing a default.
+    """
     for d_row, d_col in _DIRECT:
         if 0 <= row + d_row < len(code) and 0 <= col + d_col < size:
             val = code[row + d_row][col + d_col]
@@ -40,7 +64,7 @@ def _value(code: tuple[str, ...], row: int, col: int, size: int) -> int:
 
 
 def _write(code: tuple[str, ...], row: int, col: int, text: str) -> tuple[str, ...]:
-    r"""Return ``code`` with the cell at ``(row, col)`` replaced by."""
+    """Return ``code`` with the cell at ``(row, col)`` replaced by ``text``."""
     line = code[row]
     return (*code[:row], line[:col] + text + line[col + 1 :], *code[row + 1 :])
 
@@ -50,7 +74,17 @@ def _advance(
     size: int,
     value: int | None = None,
 ) -> _State:
-    r"""Return the state after executing the cell under the mole."""
+    """Return the state after executing the cell under the mole.
+
+    Pure: it reads ``state`` and returns a new one.  Two effects stay with
+    the caller.  ``:`` prints the mole -- this only clears it -- and the
+    reads ``=``/``~`` arrive as ``value``, already taken from the port,
+    with ``None`` standing for the empty read that zeroes the mole.
+
+    A work command fires only while ``num`` is positive, and every one that
+    fires spends one.  Outside that, a cell is scenery the mole walks over
+    -- which is what lets a Dig grid carry its data in plain sight.
+    """
     code, row, col, move, mole, num, done = state
     char = code[row][col]
 
@@ -114,14 +148,20 @@ def _advance(
 
 
 class _Machine:
-    r"""Per-run Dig state: the mole, its heading, and the underground."""
+    """Per-run Dig state: the mole, its heading, and the underground counter.
+
+    ``step()`` executes the cell under the mole and advances it one cell in
+    the current heading; ``halted`` is true once the mole hits ``@`` or
+    walks off the grid.  The VM and the state-cycle hang detector expose
+    this object.
+    """
 
     def __init__(
         self,
         code: list[str],
         io: IO,
     ) -> None:
-        r"""Pad ``code`` to a square grid, like :func:`run`."""
+        """Pad ``code`` to a square grid, like :func:`run`."""
         if not code or not any(line.strip() for line in code):
             raise ValueError("Dig program cannot be empty")
         self.io = io
@@ -133,7 +173,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        r"""Whether the mole has halted or left the grid."""
+        """Whether the mole has halted or left the grid."""
         return self._done
 
     # The VM's language-shaped view.
@@ -149,21 +189,24 @@ class _Machine:
 
     @property
     def ip(self) -> tuple[int, ...]:
-        r"""The mole's ``(row, col, heading)``."""
+        """The mole's ``(row, col, heading)``."""
         return (self.row, self.col, self.move)
 
     @property
     def memory(self) -> list[int]:
-        r"""The value the mole is carrying."""
+        """The value the mole is carrying."""
         return [self.mole]
 
     @property
     def stack(self) -> list[object]:
-        r"""Dig has no stack."""
+        """Dig has no stack."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        r"""Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection.
+
+        The grid is included because ``;`` writes the mole back into it.
+        """
         return (
             self.row,
             self.col,
@@ -176,7 +219,7 @@ class _Machine:
 
     @property
     def _state(self) -> _State:
-        r"""The machine's fields as the value the transition works on."""
+        """The machine's fields as the value the transition works on."""
         return (
             self.code,
             self.row,
@@ -188,7 +231,12 @@ class _Machine:
         )
 
     def _restore(self, state: _State) -> None:
-        r"""Write a transition's result back onto the machine's fields."""
+        """Write a transition's result back onto the machine's fields.
+
+        The fields are this class's published shape -- the VM's views and
+        the tests read them -- so they stay; the one assignment a step
+        makes is here rather than scattered through the rules above.
+        """
         (
             self.code,
             self.row,
@@ -200,7 +248,15 @@ class _Machine:
         ) = state
 
     def step(self) -> None:
-        r"""Execute the cell under the mole, then move it one cell."""
+        """Execute the cell under the mole, then move it one cell.
+
+        The two effects live here rather than in the transition: this is
+        the shell.  ``:`` prints the mole the transition then clears, and
+        the reads ``=`` and ``~`` take a byte here -- ``=`` as a character
+        and ``~`` as a digit.  Both are consulted only when they would
+        actually fire, which for a work command means the underground
+        counter is armed.
+        """
         if self._done:
             return
         char = self.code[self.row][self.col]
@@ -223,7 +279,7 @@ def run(
     code: list[str],
     io: IO,
 ) -> None:
-    r"""Execute a Dig program with mole movement and underground work."""
+    """Execute a Dig program with mole movement and underground work commands."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

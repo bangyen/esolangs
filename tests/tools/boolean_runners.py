@@ -1,4 +1,18 @@
-r"""Interpreter runners shared by the boolean-generator test modules."""
+"""Interpreter runners shared by the boolean-generator test modules.
+
+Each ``run_*`` helper feeds ``inputs`` to one language's interpreter and
+returns everything it wrote to stdout, so the test modules can assert on a
+generated program's output without repeating the capture plumbing.
+
+The plain ``run_*`` helpers delegate to
+:func:`tests.interpreters.runner.run_program`, which drives the interpreter
+through :class:`ScriptedIO`.  The ``*_from`` family deliberately does not:
+its shared iterator is the *read-count probe* rather than plumbing, since
+the caller asserts the feed came back empty to prove a program consumed
+exactly ``n`` inputs.  ``ScriptedIO`` owns its input privately and reports
+only a count, so routing those through it would rewrite what the boolean
+contract checks instead of how it is spelled.
+"""
 
 import importlib
 import io
@@ -13,7 +27,12 @@ from tests.interpreters.runner import run_program
 
 
 def _stdin(inputs: list[str]) -> str:
-    r"""Join input lines into the single stdin string the runner takes."""
+    """Join input lines into the single stdin string the runner takes.
+
+    An empty list has to stay the empty string rather than a lone newline:
+    a language that reads nothing and one that reads a blank line are
+    different, and several boolean programs are in the first group.
+    """
     return "".join(f"{line}\n" for line in inputs)
 
 
@@ -30,7 +49,14 @@ def run_six_five(program: str, inputs: list[str]) -> str:
 
 
 def _run_from(module: str, program: str, feed: Iterator[str]) -> str:
-    r"""Run ``program`` against an iterator, leaving what it did not read."""
+    """Run ``program`` against an iterator, leaving what it did not read.
+
+    The plain ``run_*`` helpers take a list, so a caller cannot tell an
+    exact read from an under-read.  Draining a shared iterator instead lets
+    the caller assert it came back empty, which is how the "every path
+    consumes exactly ``n`` inputs" contract is checked without parsing the
+    emission -- an over-read already raises, so the two together pin it.
+    """
     run = importlib.import_module(module).run
     buffer = io.StringIO()
     with (
@@ -42,17 +68,17 @@ def _run_from(module: str, program: str, feed: Iterator[str]) -> str:
 
 
 def run_six_five_from(program: str, feed: Iterator[str]) -> str:
-    r"""Run a 6-5 program against an iterator; see :func:`_run_from`."""
+    """Run a 6-5 program against an iterator; see :func:`_run_from`."""
     return _run_from("esolangs.interpreters.tape_based.six_five", program, feed)
 
 
 def run_addsubjump_from(program: str, feed: Iterator[str]) -> str:
-    r"""Run an AddSubJump program against an iterator; see."""
+    """Run an AddSubJump program against an iterator; see :func:`_run_from`."""
     return _run_from("esolangs.interpreters.register_based.addsubjump", program, feed)
 
 
 def run_sophie_from(program: str, feed: Iterator[str]) -> str:
-    r"""Run a Sophie program against an iterator; see :func:`_run_from`."""
+    """Run a Sophie program against an iterator; see :func:`_run_from`."""
     return _run_from("esolangs.interpreters.register_based.sophie", program, feed)
 
 
@@ -156,14 +182,25 @@ def run_decleq(program: str, inputs: list[str]) -> str:
 
 
 def run_cvnc(program: str, inputs: list[str]) -> str:
-    r"""Run a CV(N)(C) program, feeding one input line per bit."""
+    """Run a CV(N)(C) program, feeding one input line per bit.
+
+    ``s`` reads a whole line as an integer, so the boolean convention here
+    is the ordinary one: each bit is its own line, in the order the tree
+    reads them.
+    """
     from esolangs.interpreters.other.cvnc import run
 
     return run_program(run, program, _stdin(inputs))
 
 
 def run_fargo(program: str, inputs: list[str]) -> str:
-    r"""Run a Fargo program, packing ``inputs`` into its one input number."""
+    """Run a Fargo program, packing ``inputs`` into its one input number.
+
+    Fargo reads a single *number* before the program starts rather than a
+    stream of bits, so the boolean convention is to feed the row index:
+    the bits most-significant-first are the number's binary digits, which
+    is what makes input ``i`` the generator's ``@ (n - 1 - i)``.
+    """
     from esolangs.interpreters.other.fargo import run
 
     number = int("".join(inputs), 2) if inputs else 0
@@ -204,7 +241,7 @@ def run_polynomial(program: str, inputs: list[str]) -> str:
 
 
 def run_polynomial_from(program: str, feed: Iterator[str]) -> str:
-    r"""Run a Polynomial program against an iterator; see :func:`_run_from`."""
+    """Run a Polynomial program against an iterator; see :func:`_run_from`."""
     return _run_from("esolangs.interpreters.register_based.polynomial", program, feed)
 
 
@@ -263,7 +300,13 @@ def run_modulous(program: str, inputs: list[str]) -> str:
 
 
 def run_grapheme(program: str, inputs: list[str]) -> str:
-    r"""Run a Grapheme boolean program on the ``%``/``A`` input alphabet."""
+    """Run a Grapheme boolean program on the ``%``/``A`` input alphabet.
+
+    Grapheme reads a whole line with ``W`` and every non-empty string is
+    truthy, so the generator's input alphabet is ``%`` (0) and ``A`` (1)
+    rather than ``0``/``1``.  This helper maps each ``0``/``1`` bit to the
+    matching ``%``/``A`` line.
+    """
     from esolangs.interpreters.stack_based.grapheme import run
 
     alphabet = {"0": "%", "1": "A"}
@@ -351,7 +394,15 @@ def run_function_x_y(program: str, inputs: list[str]) -> str:
 
 
 def point_break_result(program: str, inputs: list[str]) -> str:
-    r"""Run a Point Break program; return "0" if it halts and "1" if it."""
+    """Run a Point Break program; return "0" if it halts and "1" if it loops.
+
+    Point Break has no output, so the boolean generator's result is read
+    from the termination convention (halt for 0, loop for 1).  The run is
+    bounded by state-cycle detection instead of a wall-clock timeout: the
+    interpreter is step-capable, and a deterministic run that revisits its
+    complete internal state has looped forever, so the repeated state is a
+    proof of the "1" output and is reported immediately.
+    """
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.register_based.point_break import _Machine
     from esolangs.vm import run_until_halt_or_cycle
@@ -361,7 +412,15 @@ def point_break_result(program: str, inputs: list[str]) -> str:
 
 
 def one_two_three_result(program: str) -> str:
-    r"""Run a 123 program; return "0" if it halts and "1" if it loops."""
+    """Run a 123 program; return "0" if it halts and "1" if it loops.
+
+    123's boolean generator answers with the termination convention, the
+    same one Point Break uses, so the verdict is a state revisit rather than
+    a fuel cap.  There are no ``inputs``: the generator is parameterized, so
+    the bits are already substituted into ``program`` and reaching the read
+    command would mean the template was wrong.  ``ScriptedIO`` with an empty
+    script supplies that -- a read raises instead of consuming real stdin.
+    """
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.one_two_three import _Machine
     from esolangs.vm import run_until_halt_or_cycle
@@ -386,7 +445,7 @@ _PB_CONSTANTS = ("00", "11", "0000", "1111")
 
 
 def _pb_random_tables() -> list[str]:
-    r"""The seeded random tables shared by the halting and loop checks."""
+    """The seeded random tables shared by the halting and loop checks."""
     random.seed(7)
     return [
         "".join(random.choice("01") for _ in range(2**n))

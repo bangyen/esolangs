@@ -1,4 +1,14 @@
-r"""Unit tests for the Packlang interpreter and its generator."""
+"""Unit tests for the Packlang interpreter and its generator.
+
+The wiki's five examples are the ground truth here, and two of them
+disagree with the other three about what base a numeric literal is in.
+:class:`TestLiteralBase` pins the resolution from both directions: the
+three examples decimal keeps are asserted byte-exact, and the two it
+declares wrong are asserted to produce the *wrong* output as shipped and
+the wiki's stated output once their literals are converted binary to
+decimal -- which is what shows the defect is the base the author wrote,
+not the interpreter's arithmetic.
+"""
 
 import contextlib
 from typing import Any, ClassVar
@@ -150,7 +160,7 @@ def _machine(code: str) -> _Machine:
 
 
 class TestWikiExamples:
-    r"""Every example on the wiki page, run rather than read."""
+    """Every example on the wiki page, run rather than read."""
 
     def test_hello_world(self) -> None:
         assert _run(HELLO) == "Hello, World!\r\n"
@@ -159,7 +169,7 @@ class TestWikiExamples:
         assert _run(TRUTH_MACHINE, "0\n") == "0"
 
     def test_truth_machine_one_loops_printing_ones(self) -> None:
-        r"""``While 1 Do`` never exits, so this is checked by stepping."""
+        """``While 1 Do`` never exits, so this is checked by stepping."""
         machine = _Machine(TRUTH_MACHINE, io := ScriptedIO("1\n"))
         for _ in range(60):
             machine.step()
@@ -169,25 +179,53 @@ class TestWikiExamples:
     def test_cat_parses_and_accumulates_but_cannot_reach_its_terminator(
         self,
     ) -> None:
-        r"""The wiki cat assumes a byte stream; this package reads lines."""
+        """The wiki cat assumes a byte stream; this package reads lines.
+
+        Its inner loop ends on ``c ^ 10``, a literal newline *byte* from
+        ``charGet``.  Input here arrives through ``splitlines``, so a line
+        never begins with byte 10 -- a blank line is ``""`` and reads as
+        the package-wide 0 -- and the terminator is unreachable by
+        construction rather than by a bug.  What is checked is that the
+        program runs and consumes its input; the echo phase it never
+        reaches is asserted by the rewritten cat below.
+        """
         io = ScriptedIO("h\ni\n\n")
         with pytest.raises(EOFError):
             run(CAT, io)
         assert io.position() == 3
 
     def test_a_line_terminated_cat_echoes(self) -> None:
-        r"""The same construction with the terminator this IO can deliver."""
+        """The same construction with the terminator this IO can deliver.
+
+        Only the guard changes -- ``c ^ 10`` becomes ``c``, so the loop
+        ends on the 0 a blank line reads as. The copy-by-countdown body,
+        the array indexing and the echo loop are the wiki's unchanged,
+        which is what makes this evidence that the cat's *mechanism* runs.
+        """
         assert (
             _run(CAT.replace("While c ^ 10 Do", "While c Do"), "h\ni\n\n") == "hi\r\n"
         )
 
     def test_plus_or_minus_runs(self) -> None:
-        r"""Its ``: code`` names a package variable, not a parameter."""
+        """Its ``: code`` names a package variable, not a parameter.
+
+        ``String code`` has no literal syntax on the wiki to fill it, so
+        the array is empty and the interpreter loop body never runs. What
+        this pins is that the program *parses and executes* -- the entry
+        rule reaches a function whose colon clause is a bare name.
+        """
         assert _run(PLUS_OR_MINUS) == ""
 
 
 class TestLiteralBase:
-    r"""The wiki's conflicting literal-base examples, pinned both ways."""
+    """The wiki's conflicting literal-base examples, pinned both ways.
+
+    Three examples only work read as decimal and two only as binary; a
+    pure binary reading is refused outright, since four of the five
+    contain literals with digits outside 0-1 (PlusOrMinus's own
+    ``Integer(0, 255, 255, 0)`` among them).  Decimal wins the remaining
+    tie, so these two examples are declared wrong.
+    """
 
     def test_the_decimal_examples_are_byte_exact(self) -> None:
         assert _run(HELLO) == "Hello, World!\r\n"
@@ -200,20 +238,30 @@ class TestLiteralBase:
         )
 
     def test_the_binary_authored_example_is_declared_wrong(self) -> None:
-        r"""As written it prints mojibake, not the ``0110`` its comments claim."""
+        """As written it prints mojibake, not the ``0110`` its comments claim.
+
+        ``110000`` read as decimal is 110000, and ``charPut`` prints
+        ``value % 256`` -- 176, not the 48 the author meant.
+        """
         assert _run(DEPENDENCY) == "°±±°"
 
     def test_rebasing_that_example_gives_the_wikis_stated_output(self) -> None:
-        r"""Its *logic* is right; only the base its literals were written in."""
+        """Its *logic* is right; only the base its literals were written in.
+
+        Converting the literals binary -> decimal and changing nothing
+        else yields exactly the ``0``/``1``/``1``/``0`` the wiki's inline
+        comments claim, which is what makes this an author-side base error
+        rather than an interpreter bug.
+        """
         assert _run(DEPENDENCY_REBASED) == "0110"
 
     def test_a_pure_binary_reading_cannot_lex_four_examples(self) -> None:
-        r"""The literals that refute reading every number as binary."""
+        """The literals that refute reading every number as binary."""
         for literal in ("72", "108", "44", "255", "13", "48", "49"):
             assert any(c not in "01" for c in literal), literal
 
     def test_the_wikis_own_binary_for_48_is_a_typo(self) -> None:
-        r"""The comment says ``48 (1100000)``; 48 is ``110000``, six digits."""
+        """The comment says ``48 (1100000)``; 48 is ``110000``, six digits."""
         assert format(48, "b") == "110000"
         assert int("1100000", 2) == 96
 
@@ -261,7 +309,7 @@ Package : IO {
         assert _run(code) == "\x07"
 
     def test_bounded_integer_wraps_to_its_named_values(self) -> None:
-        r"""``Integer(0, 1, 1, 0)``: incrementing past 1 gives the overflow 0."""
+        """``Integer(0, 1, 1, 0)``: incrementing past 1 gives the overflow 0."""
         code = """
 Package : IO {
   Integer(0, 1, 1, 0) b;
@@ -326,7 +374,13 @@ Package : IO {
         assert _run(code) == "A"
 
     def test_empty_input_line_reads_as_zero(self) -> None:
-        r"""The package-wide blank-line convention, which beats the wiki."""
+        """The package-wide blank-line convention, which beats the wiki.
+
+        The wiki says empty input returns a newline; every interpreter
+        here reads a blank line as 0 instead, and
+        ``tests/interpreters/test_input_convention.py`` pins that across
+        the whole package, so the shared convention wins.
+        """
         code = """
 Package : IO {
   Char c;
@@ -342,7 +396,13 @@ Package : IO {
 
 class TestErrors:
     def test_unbalanced_block_is_malformed(self) -> None:
-        r"""A block that is never closed runs the parser off the end."""
+        """A block that is never closed runs the parser off the end.
+
+        The message is whichever check the parser reaches first -- an
+        unbalanced ``{`` here, a bad token where a partial close leaves the
+        cursor mid-declaration -- so both cases are pinned as ValueError
+        rather than by one wording.
+        """
         with pytest.raises(ValueError, match="unbalanced"):
             _run("Package : IO {\n  Integer main {\n    charPut(65);\n")
         # A partial close leaves the.
@@ -355,7 +415,17 @@ class TestErrors:
             _run("Dependency {\n  Integer f : Integer a {\n    a;\n  }\n} d;")
 
     def test_unbounded_recursion_grows_frames_without_crashing(self) -> None:
-        r"""No depth ceiling: frames grow on the heap, not Python's stack."""
+        """No depth ceiling: frames grow on the heap, not Python's stack.
+
+        There was a ceiling here, and it never fired -- the count restarted
+        at every call and the value stood above the ~198 language depth 5
+        Python frames per call allowed, so a self-calling program raised
+        ``RecursionError``.  Framing calls removes the cause rather than
+        retuning the number: recursion no longer touches Python's stack at
+        all.  Such a program revisits no state, so nothing can prove it
+        halts and the wall-clock ``timeout`` is the backstop, as in
+        ``grapheme.py``.  What is asserted is that it stays *steppable*.
+        """
         program = (
             "Package : IO {\n"
             "  Integer f {\n    f();\n    0;\n  }\n"
@@ -370,7 +440,17 @@ class TestErrors:
         assert not machine.halted
 
     def test_a_loop_inside_a_called_function_is_provable(self) -> None:
-        r"""The reason calls are framed rather than evaluated inline."""
+        """The reason calls are framed rather than evaluated inline.
+
+        A ``While`` in a called function used to run to completion inside
+        the caller's single ``step()``, so an endless one hung with the
+        frame stack never observed growing and nothing for the cycle
+        detector to see.  Framed, every lap reaches ``snapshot`` and the
+        repeat proves the hang.
+
+        The loop holds its state fixed -- no read, no counter -- because a
+        state that grows is the separate class only the timeout covers.
+        """
         program = (
             "Package : IO {\n"
             "  Integer spin {\n    While 1 Do {\n      charPut(65);\n    }\n"
@@ -395,7 +475,12 @@ class TestErrors:
             _run("Package : IO {\n  Integer main {\n    nope(1);\n    0;\n  }\n} p;")
 
     def test_calling_an_undeclared_dependency_halts(self) -> None:
-        r"""The wiki grants access only to a package's declared dependencies."""
+        """The wiki grants access only to a package's declared dependencies.
+
+        The function exists and is callable -- the positive control below
+        is the same program with the dependency declared -- so this pins
+        the visibility rule rather than a name lookup.
+        """
         undeclared = """
 Dependency {
   Integer helper : Integer a {
@@ -416,7 +501,9 @@ Package : IO {
         assert _run(declared) == "1"
 
     def test_a_dependency_of_a_dependency_is_reachable(self) -> None:
-        r"""The wiki says dependencies may have dependencies; resolution."""
+        """The wiki says dependencies may have dependencies; resolution
+        follows the chain rather than stopping one level down.
+        """
         code = """
 Dependency {
   Integer deep : Integer a {
@@ -438,7 +525,15 @@ Package : IO, outer {
         assert _run(code) == "1"
 
     def test_io_inside_a_called_function_works(self) -> None:
-        r"""A callee's ``charPut`` reaches the shell, in call order."""
+        """A callee's ``charPut`` reaches the shell, in call order.
+
+        This was refused, on the rationale that a call was evaluated
+        inside a statement and so had no point at which the shell could
+        perform its ports.  Framing calls removed that rationale: a
+        callee's statements are stepped like any other, so the same shell
+        performs its IO.  ``A`` precedes the caller's own output because
+        the argument is evaluated before ``charPut`` runs.
+        """
         code = """
 Dependency {
   Integer shout : Integer a {
@@ -456,7 +551,7 @@ Package : IO, d {
         assert _run(code) == "A1"
 
     def test_input_inside_a_called_function_works(self) -> None:
-        r"""The read port reaches a callee too, not only the entry function."""
+        """The read port reaches a callee too, not only the entry function."""
         code = """
 Dependency {
   Integer echo : Integer a {
@@ -514,7 +609,7 @@ Package : IO {
         ],
     )
     def test_robustness_never_crashes_unexpectedly(self, program: str) -> None:
-        r"""Malformed input raises ValueError/HaltError, never anything else."""
+        """Malformed input raises ValueError/HaltError, never anything else."""
         with contextlib.suppress(ValueError, HaltError, EOFError):
             _run(program)
 
@@ -526,7 +621,7 @@ class TestRegistry:
 
 class TestCharPut:
     def test_successive_charput_calls_print_their_code_points(self) -> None:
-        r"""A minimal package: two ``charPut`` calls and a 0 return."""
+        """A minimal package: two ``charPut`` calls and a 0 return."""
         program = (
             "Package : IO {\n"
             "  Integer main {\n"
@@ -540,7 +635,7 @@ class TestCharPut:
 
 
 def _boolean_rows(table: str, n: int) -> list[str]:
-    r"""Run the generated program on every row and collect what it printed."""
+    """Run the generated program on every row and collect what it printed."""
     program = packlang(table)
     out = []
     for row in range(2**n):
@@ -550,11 +645,11 @@ def _boolean_rows(table: str, n: int) -> list[str]:
 
 
 class TestBooleanGenerator:
-    r"""Executed over complete truth tables, not inspected as source."""
+    """Executed over complete truth tables, not inspected as source."""
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_every_table_at_this_arity(self, n: int) -> None:
-        r"""Exhaustive: all ``2**(2**n)`` tables, each over all ``2**n`` rows."""
+        """Exhaustive: all ``2**(2**n)`` tables, each over all ``2**n`` rows."""
         for value in range(2 ** (2**n)):
             table = bin(value)[2:].zfill(2**n)
             assert _boolean_rows(table, n) == list(table), table
@@ -579,14 +674,26 @@ class TestBooleanGenerator:
 
     @pytest.mark.parametrize("n", [1, 2, 3, 4])
     def test_a_constant_table_still_reads_every_input(self, n: int) -> None:
-        r"""The read-count contract: the reads are the interface."""
+        """The read-count contract: the reads are the interface.
+
+        A constant table has no ANF terms at all, so this is the case
+        where skipping the reads would be tempting and wrong.
+        """
         for table in ("0" * 2**n, "1" * 2**n):
             io = ScriptedIO("0\n" * 8)
             run(packlang(table), io)
             assert io.position() == n, table
 
     def test_the_construction_is_the_anf(self) -> None:
-        r"""The term count is the ANF's, and each term's depth its degree."""
+        """The term count is the ANF's, and each term's depth its degree.
+
+        ``INCR acc`` appears once per nonzero coefficient, so it counts
+        *terms*; ``If`` counts the guards, which is the sum of the terms'
+        degrees.  The two separate the shapes: AND is one term of degree
+        n, parity is n terms of degree 1, and both have the same number of
+        rows -- so a construction that had collapsed into a minterm sum
+        would show here even though every output stayed correct.
+        """
         # x0 & x1: one term, degree 2.
         assert packlang("0001").count("INCR acc") == 1
         assert packlang("0001").count("If ") == 2

@@ -1,4 +1,14 @@
-r"""Interpreter for Super SNUSP."""
+r"""Interpreter for Super SNUSP.
+
+Super SNUSP is a grid language with a signed sparse tape and value stack.
+``\"`` starts rightward; absent a marker, this interpreter enters the bottom
+right moving left. EOF propagates. Invalid stack/arithmetic operations raise
+:class:`~esolangs.exceptions.HaltError`; an empty program raises
+:class:`ValueError`.
+
+The execution model is a pure transition over immutable ``_State``. The shell
+alone handles I/O and random draws, then rebinds the returned state.
+"""
 
 from __future__ import annotations
 
@@ -78,7 +88,7 @@ def _advance(
     number_input: int | None = None,
     random_offset: int | None = None,
 ) -> tuple[_State, _Effect]:
-    r"""Return the pure next state and an output effect, if this cell emits."""
+    """Return the pure next state and an output effect, if this cell emits."""
     row, col, heading, pointer, cells, values, last_digit, done = state
     if done:
         return state, None
@@ -192,7 +202,7 @@ def _advance(
 
 
 class _Machine:
-    r"""Protocol shell holding one immutable Super SNUSP state value."""
+    """Protocol shell holding one immutable Super SNUSP state value."""
 
     def __init__(
         self, code: Sequence[str], io: IO, rng: Randomness | None = None
@@ -243,17 +253,35 @@ class _Machine:
     # below rather than forked, and.
 
     def branching_snapshot(self) -> _State:
-        r"""Return the current state as the search's starting point."""
+        """Return the current state as the search's starting point."""
         return self.state
 
     def branching_halted(self, state: object) -> bool:
-        r"""Report whether ``state`` has left the grid."""
+        """Report whether ``state`` has left the grid."""
         return cast(_State, state)[7]
 
     def branching_successors(
         self, state: object, _limit: int
     ) -> tuple[_State, ...] | None:
-        r"""Return the state for every value ``=`` could store."""
+        """Return the state for every value ``=`` could store.
+
+        Mirrors :meth:`step`'s draw *condition*, not just its command: an
+        ``=`` with nothing on the stack draws nothing and raises inside the
+        transition, so it is left to the single deterministic call rather
+        than forked over an empty range.
+
+        The range is the inclusive span between the current cell and the
+        stack top, so unlike a coin or a heading it is unbounded in
+        principle -- a program can make one command fan out as wide as it
+        likes.  That is charged against ``limit`` here rather than
+        materialized first.
+
+        A :class:`~esolangs.exceptions.HaltError` from the transition is
+        left to propagate, exactly as it does out of :meth:`step`.  It says
+        the program halted on an invalid operation, so catching it here
+        would hide a *terminating* branch and let the search report a
+        universal hang for a program that stops.
+        """
         current = cast(_State, state)
         row, col, _heading, pointer, cells, values, _digit, _done = current
         command = self.code[row][col]
@@ -297,7 +325,7 @@ class _Machine:
 
 
 def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
-    r"""Execute a Super SNUSP grid."""
+    """Execute a Super SNUSP grid."""
     machine = _Machine(code, io, rng)
     while not machine.halted:
         machine.step()

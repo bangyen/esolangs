@@ -1,4 +1,96 @@
-r"""Execute a Line program's walked path tree against a Brainfuck-style."""
+"""Execute a Line program's walked path tree against a Brainfuck-style tape.
+
+Counterpart to :mod:`extract`, which only traces a drawing's structure once
+(see its module docstring and ``WIP.md``'s "deliberately out of scope"
+section): a real run needs to walk the *same* tree repeatedly, since a loop
+(built from ``?`` turning back on itself) revisits the same branch pixel many
+times, taking a different arm each time depending on current tape state.
+This module adds that repeated walk on top of :mod:`extract`'s one-time
+structural trace, without changing it.
+
+Line's own wiki page (https://esolangs.org/wiki/Line, tagged
+"Unimplemented", no reference implementation) documents each opcode only
+loosely and leaves several details unspecified entirely -- this module's
+choices, and why, where the wiki is silent:
+
+* **Tape**: "its own memory tape (like in Brainfuck)", unbounded in both
+  directions, of cells holding arbitrary-precision integers -- no wraparound
+  or bit width is documented anywhere on the page, so cells are plain Python
+  ints rather than being masked to a byte the way most Brainfuck derivatives
+  are.  Implemented as a ``defaultdict(int)`` keyed by an integer pointer
+  that can go negative, matching a tape with no documented left bound either.
+* **Initial state**: every cell starts at 0, pointer starts at cell 0 --
+  the universal Brainfuck-family default the wiki gives no reason to depart
+  from.
+* **`+`/`-`**: increment/decrement the current cell by 1 each, per the
+  wiki's own wording ("going through this diagonal line will increment the
+  selected cell" / "...decrement it") -- run ``count`` times for a merged
+  run of repeats (see :mod:`render`'s module docstring for why those merge
+  into one stroke; :func:`extract.classify_ops` already recovers the count
+  from the merged run's length).
+* **`<`/`>`**: move the pointer left/right by one cell, per the wiki's own
+  wording ("move the pointer to the left"/"...right").
+* **`i`/`o`**: read a number into the current cell / print the current
+  cell as a number, per the wiki's own wording -- hence the letters (input/
+  output), matching :mod:`render`'s and :mod:`extract`'s existing opcode
+  names for these two curves.
+* **`?`**: "turn right if the current cell is 0, otherwise...turn left",
+  quoted directly from the wiki -- taken literally, so a zero cell walks
+  :class:`lattice.Stroke`'s ``zero`` child.  That only reads correctly
+  because ``lattice._classify`` names its fork arms in the cursor's own
+  travelling frame; see :func:`run`'s docstring for the 180-degree
+  rotation bug this used to compensate for instead.
+* **Termination**: the wiki does not describe a halt condition at all.  The
+  natural reading of "cursor follows a drawn curve" is that execution ends
+  wherever the drawn path itself ends -- a stroke tree leaf (no ``zero``/
+  ``nonzero`` children) in :mod:`lattice`'s terms -- rather than some
+  separate halt opcode the wiki never mentions.  A program whose only path
+  is a cycle with no reachable leaf then genuinely never halts, and
+  :func:`run` does not impose any step limit to paper over that --
+  matching every other interpreter's plain ``run(code, io)`` in this repo
+  (e.g. ``brainfuck.py``'s own ``run`` is a bare
+  ``while not machine.halted: machine.step()``, with no cap; cycle
+  detection exists only in ``src/esolangs/vm.py``, an opt-in debugger
+  wrapper no language's main run path uses).  A non-halting Line program
+  hangs, same as an infinite Brainfuck ``[]`` loop would.
+
+Real loops (``?`` turning back on itself so the same fork is reached again
+later, the only way Line can express repetition at all -- there is no other
+control-flow opcode) are drawn, not encoded structurally: a stroke's path
+physically reconnects to a pixel it already passed through earlier in the
+same drawing.  :mod:`lattice`'s walker (see its own module docstring)
+already stops a stroke the moment it walks onto any vertex already visited
+elsewhere in the tree -- but only as an unlinked dead end, recording just
+that vertex's coordinates and nothing pointing back to the earlier node they
+match, since :func:`extract.extract_tree` only ever needed a one-time
+structural trace (see above).  :func:`_compile` recovers that missing link
+itself, entirely within this module and without changing ``lattice.py`` or
+``extract.py``.
+
+Confirmed on a real wiki fixture, not just reasoned about: ``addition.png``'s
+loop-body arm (the walked stroke ending at ``(42, 159)``) merges back into
+the *middle* of the incoming stem's own path -- ``(42, 159)`` sits exactly on
+the straight run between two of that stem's own vertices, ``(62, 159)`` and
+``(22, 159)``, rather than landing on any recorded vertex at all.  A first
+version of this module only matched a fork's own *final* vertex exactly, so
+it missed this case entirely and reported ``addition.png`` as loop-free --
+wrong, caught by inspecting the actual image rather than trusting the
+coordinate check's silence.  :func:`_compile`'s ``find_merge`` now checks a
+leaf's final vertex two ways against every other stroke: an exact match on
+that stroke's own *final* vertex (a real fork or dead end -- the original,
+still-correct case), or a point landing *strictly inside* one of its
+straight legs (exact integer collinearity + betweenness, since every Line
+segment runs along one of 8 compass directions -- no tolerance needed).
+Landing on any *other* vertex is deliberately never treated as a match: a
+fork's two children always start exactly at the fork's own end coordinate
+by construction, so testing bare vertex equality matches every sibling arm
+sharing that corner, not just a real continuation (confirmed to misfire
+this way on a synthetic test).  Either matching case resumes execution from
+exactly that point, running only the ops that had not yet run there (via
+:func:`extract.OpCall`'s own ``index``) rather than replaying the whole
+stroke, then continuing normally into that stroke's own fork or further
+``goto``.
+"""
 
 from __future__ import annotations
 
@@ -11,7 +103,13 @@ from extract import DEFAULT_UNIT, OpCall, Stroke, Vertex, classify_ops
 
 @dataclass
 class IO:
-    r"""Pluggable input/output for :func:`run`, mirroring `i`/`o`'s wiki."""
+    """Pluggable input/output for :func:`run`, mirroring `i`/`o`'s wiki wording.
+
+    The default reads from and writes to the real terminal; tests and other
+    callers can swap in their own ``read``/``write`` to drive a program from
+    a fixed input list and capture its output, without monkeypatching
+    ``input``/``print``.
+    """
 
     read: Callable[[], int] = field(default=lambda: int(input("Input: ")))
     write: Callable[[int], None] = field(default=lambda value: print(value))
@@ -19,7 +117,21 @@ class IO:
 
 @dataclass
 class _Compiled:
-    r"""One stroke's classified ops plus its two possible next strokes."""
+    """One stroke's classified ops plus its two possible next strokes.
+
+    :func:`_compile` builds one of these per :class:`extract.Stroke` up
+    front so :func:`run`'s hot loop never re-classifies the same stroke's
+    ops on a later visit -- required for a looping program, which by
+    construction revisits the same stroke many times (see module
+    docstring).  ``goto`` is set only for a leaf (``zero``/``nonzero`` both
+    ``None``) whose drawn path reconnects to an earlier point -- see
+    :func:`_compile`'s own docstring for how that is recovered.  A ``goto``
+    target may itself be a synthetic *resume point* built by
+    :func:`_compile` (only the tail of some other stroke's ``ops``, sharing
+    that stroke's ``zero``/``nonzero``/``goto``) rather than a node that
+    corresponds 1:1 to a real :class:`extract.Stroke` -- see
+    :func:`_compile`'s ``by_vertex`` index for why.
+    """
 
     ops: list[OpCall]
     end: tuple[int, int]
@@ -35,7 +147,47 @@ class _Compiled:
 
 
 def _compile(stroke: Stroke, unit: int) -> _Compiled:
-    r"""Classify every stroke in ``stroke``'s tree exactly once,."""
+    """Classify every stroke in ``stroke``'s tree exactly once, recursively.
+
+    Also recovers the loop-back link :mod:`lattice`'s walker discards (see
+    module docstring): every leaf's *final* vertex is tested, via
+    :func:`find_merge`, against every other stroke's own vertex/segment
+    geometry -- either an exact match on that *other* stroke's own final
+    vertex (always a real fork or dead end), or a point landing strictly
+    inside one of its straight legs (collinear with, and strictly between,
+    two consecutive vertices; every Line segment runs along one of 8 compass
+    directions -- see ``render.py``'s module docstring -- so an exact
+    integer cross-product/dot-product check is enough, no tolerance needed).
+    A match means the drawing's ink physically reconnects there, and the
+    leaf's ``goto`` is wired to a jump that skips whatever ops (by
+    :class:`extract.OpCall`'s own ``index``, the run a kink starts at)
+    already ran up to that point.
+
+    Checking mid-segment points, not just exact vertex matches, matters: a
+    real wiki fixture (``addition.png``, confirmed by inspecting the image
+    directly after an exact-vertex-only version of this function reported it
+    as loop-free, which was wrong) merges its loop-body arm back into the
+    *middle* of the incoming stem's path -- a point between two of that
+    stem's own vertices, not on any recorded vertex at all.  When the match
+    falls exactly on a stroke's *own* final vertex, the resume point *is*
+    that stroke's node (no ops to skip -- the whole stroke already ran).
+    Otherwise a synthetic resume node is built, holding only that stroke's
+    ops from the merge point onward and sharing its
+    ``zero``/``nonzero``/``goto`` -- so a merge partway through a stroke
+    with real opcodes still remaining (not the case in ``addition.png``'s
+    own merge, but not excluded either) still runs exactly those remaining
+    ops once per pass, not the whole stroke from its own start.
+
+    A vertex's *own* stroke is excluded from matching itself at that same
+    vertex (a stroke's own final vertex trivially "matches" itself, which
+    would make every leaf loop back to itself instead of a real halt).
+
+    Building the whole tree before linking (rather than linking as each
+    node is built) matters because a loop-back target can be defined
+    *after* the leaf that jumps to it in build order -- e.g. a fork's
+    ``zero`` arm looping back to the fork itself, which is built before
+    ``walk_tree`` ever recurses into ``zero``.
+    """
     # Every real (non-resume-point).
     # kept alongside its compiled.
     # point can be tested against.
@@ -131,12 +283,12 @@ def _compile(stroke: Stroke, unit: int) -> _Compiled:
 
 
 def compile_program(stroke: Stroke, unit: int = DEFAULT_UNIT) -> _Compiled:
-    r"""Compile ``stroke`` once for repeated :func:`run_compiled` calls."""
+    """Compile ``stroke`` once for repeated :func:`run_compiled` calls."""
     return _compile(stroke, unit)
 
 
 def run_compiled(program: _Compiled, io: IO | None = None) -> dict[int, int]:
-    r"""Run a program returned by :func:`compile_program`."""
+    """Run a program returned by :func:`compile_program`."""
     if io is None:
         io = IO()
     tape: dict[int, int] = defaultdict(int)
@@ -175,7 +327,34 @@ def run(
     io: IO | None = None,
     unit: int = DEFAULT_UNIT,
 ) -> dict[int, int]:
-    r"""Execute ``stroke``'s full walked tree, returning the final tape."""
+    """Execute ``stroke``'s full walked tree, returning the final tape.
+
+    ``stroke`` is normally :func:`extract.extract`'s return value.  Each
+    stroke's ops run in order; reaching a stroke with no ``zero``/``nonzero``
+    children halts the program, unless its path reconnects to an earlier
+    node (a real drawn loop -- see :func:`_compile`'s ``goto``), in which
+    case execution jumps back there instead.  A stroke with children is a
+    ``?``: after its own ops run, the *next* stroke is chosen by the current
+    cell's value.
+
+    A zero cell takes the walked ``Stroke.zero`` child and a nonzero cell
+    takes ``Stroke.nonzero``, directly matching the wiki's "turn right if
+    the current cell is 0, otherwise...turn left".  That plain reading is
+    only correct because :func:`lattice._classify` names its fork arms
+    relative to the *heading* (the direction arrived in), the same frame
+    ``render.py``'s ``_turn_right``/``_turn_left`` use.  An earlier version
+    rotated off ``back`` (arrived *from*) instead -- 180 degrees away, so
+    every physical arm carried the opposite name and this function had to
+    swap the two children to compensate.  The rotation is fixed at the
+    source now, so no swap happens here; see ``lattice._classify``'s own
+    comment for the frame argument.
+
+    Does not guard against non-termination: a program whose only path is a
+    cycle with no reachable dead end genuinely never halts, and this
+    function hangs right along with it -- the wiki does not document a halt
+    condition at all (see module docstring), and no other interpreter in
+    this repo's plain ``run(code, io)`` imposes a step limit either.
+    """
     return run_compiled(compile_program(stroke, unit), io)
 
 

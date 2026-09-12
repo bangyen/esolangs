@@ -1,4 +1,23 @@
-r"""A minimal PNG reader and writer, so Line's tooling needs no image."""
+"""A minimal PNG reader and writer, so Line's tooling needs no image library.
+
+Images are passed as one ``bytearray`` of greyscale levels per row -- the
+same shape ``render.Canvas`` keeps its pixels in, and what
+``mask.from_grey`` thresholds into an ink mask.
+
+Reading accepts any PNG the spec defines -- every colour type, every bit
+depth from 1 to 16, interlaced or not -- and reduces it to greyscale on the
+way in; writing always emits plain 8-bit greyscale.  Reading broadly matters
+because a Line drawing that has been through an image editor comes back in
+whatever that editor prefers (commonly RGB, sometimes 16-bit) while still
+being visually the same black-and-white drawing.
+
+The point is not to be a general codec.  PNG's container is a handful of
+length-tagged chunks and its compression is plain zlib, both in the standard
+library; the only real work is undoing the per-row filters, which is the
+loop in :func:`_unfilter`.  That is small enough to be worth owning outright
+rather than depending on Pillow to do -- see the dependency notes in
+``extract.py``.
+"""
 
 from __future__ import annotations
 
@@ -31,12 +50,18 @@ _COLOUR_NAMES = {
 
 
 def _luma(red: int, green: int, blue: int) -> int:
-    r"""Reduce a colour to grey with ITU-R 601-2 weights, as Pillow does."""
+    """Reduce a colour to grey with ITU-R 601-2 weights, as Pillow does.
+
+    Pillow's ``convert("L")`` uses this exact fixed-point form rather than a
+    float or a floor-divided decimal; the ``+ 0x8000`` rounds to nearest.
+    Cheaper formulas agree on pure black and white but differ by one level on
+    mid-greys, which is enough to flip a pixel across the ink threshold.
+    """
     return (red * 19595 + green * 38470 + blue * 7471 + 0x8000) >> 16
 
 
 def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
-    r"""Yield ``(type, body)`` for each chunk, checking the signature first."""
+    """Yield ``(type, body)`` for each chunk, checking the signature first."""
     if data[:8] != _SIGNATURE:
         raise ValueError("not a PNG file (bad signature)")
     pos = 8
@@ -51,7 +76,10 @@ def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
 
 
 def _paeth(a: int, b: int, c: int) -> int:
-    r"""Predict a byte the way the PNG spec's Paeth filter does."""
+    """Predict a byte the way the PNG spec's Paeth filter does.
+
+    Returns whichever of left/up/up-left is closest to ``a + b - c``.
+    """
     p = a + b - c
     pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
     if pa <= pb and pa <= pc:
@@ -62,7 +90,15 @@ def _paeth(a: int, b: int, c: int) -> int:
 
 
 def _unfilter(raw: bytes, height: int, stride: int, step: int) -> bytearray:
-    r"""Reverse the per-row filters, returning ``height * stride`` raw."""
+    """Reverse the per-row filters, returning ``height * stride`` raw bytes.
+
+    Each row in ``raw`` is prefixed with a filter-type byte and is decoded
+    against the row above it, and filters 1/3/4 also depend on earlier bytes
+    *within* the same row, so this is inherently sequential.  ``step`` is the
+    byte distance to the pixel on the left: one whole pixel, which is
+    ``channels * depth // 8`` bytes, floored at 1 because sub-byte pixels
+    predict from the neighbouring byte.
+    """
     out = bytearray(height * stride)
     prev = bytearray(stride)
     pos = 0
@@ -110,7 +146,7 @@ _ADAM7 = (
 
 
 def _unpack_row(raw: bytes, width: int, channels: int, depth: int) -> list[int]:
-    r"""Expand one filtered-and-restored row to one integer per sample."""
+    """Expand one filtered-and-restored row to one integer per sample."""
     count = width * channels
     if depth == 8:
         return list(raw[:count])
@@ -130,7 +166,11 @@ def _unpack_row(raw: bytes, width: int, channels: int, depth: int) -> list[int]:
 def _read_pass(
     stream: bytes, width: int, height: int, channels: int, depth: int, offset: int = 0
 ) -> list[list[int]]:
-    r"""Decode one non-interlaced image (or one Adam7 pass) from ``stream``."""
+    """Decode one non-interlaced image (or one Adam7 pass) from ``stream``.
+
+    ``offset`` is where this pass's filtered rows start; a whole
+    non-interlaced image is just the single pass beginning at zero.
+    """
     if width == 0 or height == 0:
         return []
     stride = (width * channels * depth + 7) // 8
@@ -146,7 +186,7 @@ def _read_pass(
 
 
 def _pass_size(width: int, height: int, index: int) -> tuple[int, int]:
-    r"""How many columns and rows Adam7 pass ``index`` holds."""
+    """How many columns and rows Adam7 pass ``index`` holds."""
     row0, col0, row_step, col_step = _ADAM7[index]
     if width <= col0 or height <= row0:
         return 0, 0
@@ -159,7 +199,13 @@ def _pass_size(width: int, height: int, index: int) -> tuple[int, int]:
 def _deinterlace(
     stream: bytes, width: int, height: int, channels: int, depth: int
 ) -> list[list[int]]:
-    r"""Reassemble the seven Adam7 passes into ordinary scanlines."""
+    """Reassemble the seven Adam7 passes into ordinary scanlines.
+
+    Each pass is a complete little image with its own dimensions, its own row
+    filters and its own row padding, laid end to end in the same zlib stream,
+    so each is decoded exactly like a non-interlaced one and its pixels are
+    then scattered onto the lattice it came from.
+    """
     rows = [[0] * (width * channels) for _ in range(height)]
     offset = 0
     for index, (row0, col0, row_step, col_step) in enumerate(_ADAM7):
@@ -178,7 +224,12 @@ def _deinterlace(
 
 
 def read_grey(data: bytes) -> list[bytearray]:
-    r"""Decode PNG bytes to one ``bytearray`` of greyscale levels per row."""
+    """Decode PNG bytes to one ``bytearray`` of greyscale levels per row.
+
+    Colour is reduced with the same ITU-R 601-2 luma weights Pillow's
+    ``convert("L")`` uses -- palette entries included -- so an ink threshold
+    means the same thing whichever format a drawing arrives in.
+    """
     header = None
     palette = None
     idat = bytearray()
@@ -231,7 +282,11 @@ def _to_grey(
     colour: int,
     palette: bytes | None,
 ) -> list[bytearray]:
-    r"""Reduce decoded samples to one greyscale byte per pixel."""
+    """Reduce decoded samples to one greyscale byte per pixel.
+
+    ``samples`` holds one row per scanline, already unpacked to one integer
+    per sample and with any row padding dropped.
+    """
     if colour == _PALETTE:
         if palette is None:
             raise ValueError("palette PNG has no PLTE chunk")
@@ -281,7 +336,13 @@ def _to_grey(
 
 
 def write_grey(pixels: list[bytearray]) -> bytes:
-    r"""Encode one ``bytearray`` of greyscale levels per row as 8-bit PNG."""
+    """Encode one ``bytearray`` of greyscale levels per row as 8-bit PNG bytes.
+
+    Every row is written with filter type 0 (None).  Filtering exists to help
+    the compressor, and these drawings are near-empty white canvases that zlib
+    already collapses; picking a filter per row would add a heuristic for no
+    benefit anyone here can see.
+    """
     height = len(pixels)
     width = len(pixels[0]) if height else 0
     if any(len(row) != width for row in pixels):
@@ -310,12 +371,12 @@ def write_grey(pixels: list[bytearray]) -> bytes:
 
 
 def read_grey_file(path: str) -> list[bytearray]:
-    r"""Read a PNG file from ``path`` as one ``bytearray`` of levels per."""
+    """Read a PNG file from ``path`` as one ``bytearray`` of levels per row."""
     with open(path, "rb") as handle:
         return read_grey(handle.read())
 
 
 def write_grey_file(path: str, pixels: list[bytearray]) -> None:
-    r"""Write greyscale rows to ``path`` as a PNG."""
+    """Write greyscale rows to ``path`` as a PNG."""
     with open(path, "wb") as handle:
         handle.write(write_grey(pixels))

@@ -1,4 +1,18 @@
-r"""Robustness properties shared by every interpreter."""
+"""Robustness properties shared by every interpreter.
+
+The one invariant that holds across all the languages is that an
+interpreter terminates on the empty program: it either halts (possibly
+with no output) or rejects the input, but it never spins forever.
+
+Where the interpreter exposes a step-capable machine, termination is
+decided deterministically by state-cycle detection
+(:func:`esolangs.vm.run_until_halt_or_cycle`): a deterministic machine
+that revisits an exact internal state has looped forever, so the check
+needs no wall-clock bound and is not POSIX-only.  Languages without a
+step-capable machine keep the SIGALRM backstop, which stays for the
+unbounded-growth hang class that cycle detection cannot catch (e.g. a
+Grapheme program that keeps pushing to the stack).
+"""
 
 import importlib
 import os
@@ -29,7 +43,10 @@ MODULES = [
 
 
 def _empty_machine(module: str, io: IO) -> object:
-    r"""Build ``module``'s step-capable machine for the empty program."""
+    """Build ``module``'s step-capable machine for the empty program.
+
+    The constructions mirror the VM adapters in :mod:`esolangs.vm`.
+    """
     if module == "esolangs.interpreters.tape_based.brainfuck":
         from esolangs.interpreters.tape_based.brainfuck import _Machine
 
@@ -300,7 +317,7 @@ _STEP_MACHINES = {
 
 
 class _TimeoutError(Exception):
-    r"""Raised by the alarm handler when an interpreter does not terminate."""
+    """Raised by the alarm handler when an interpreter does not terminate."""
 
 
 def _on_alarm(_signum: int, _frame: object) -> None:
@@ -318,7 +335,7 @@ def test_empty_program_terminates(module: str) -> None:
 
 
 def _assert_step_machine_halts(module: str) -> None:
-    r"""Prove the empty program terminates via state-cycle detection."""
+    """Prove the empty program terminates via state-cycle detection."""
     try:
         machine = _empty_machine(module, IO())
         halted = run_until_halt_or_cycle(machine)
@@ -328,7 +345,7 @@ def _assert_step_machine_halts(module: str) -> None:
 
 
 def _assert_wall_clock_terminates(module: str) -> None:
-    r"""Bound the whole-program run with a wall-clock alarm (backstop)."""
+    """Bound the whole-program run with a wall-clock alarm (backstop)."""
     run = importlib.import_module(module).run
     old_handler = signal.signal(signal.SIGALRM, _on_alarm)
     signal.alarm(3)

@@ -1,4 +1,14 @@
-r"""Retired constructions, kept as oracles for the generators that."""
+"""Retired constructions, kept as oracles for the generators that replaced them.
+
+These emitted production programs once.  The generators now reach the same
+output through one construction each -- Polynomial's family at ``k == n``,
+Sophie's hybrid -- and the tests assert that identity.  Deriving the oracle
+from the code it is meant to justify would check that code against itself, so
+the retired builds live here, where nothing ships them.
+
+Their cost functions are *not* kept: those existed to choose between the
+constructions without building them, and there is no longer a choice to make.
+"""
 
 # pylint: disable=duplicate-code
 # pylint: disable=duplicate-code
@@ -22,7 +32,16 @@ _SOPHIE_BANDS = ((1, 20), (21, 40))
 
 
 def _polynomial_tree(truth_table: str) -> list[list[int]]:
-    r"""Emit the decision-tree instructions; see :func:`polynomial`."""
+    """Emit the decision-tree instructions; see :func:`polynomial`.
+
+    The generator emits this as ``_polynomial_hybrid`` at ``k == n``; this
+    is the independent build that claim is checked against.
+
+    A subtree whose rows are all the same value collapses to its single
+    output, so constant and near-constant tables skip the tree that would
+    otherwise isolate every leaf.  A collapsed leaf still drains the reads
+    its untaken siblings would have made, so every path consumes ``n``.
+    """
     n = _validate_truth_table(truth_table)
     instrs: list[list[int]] = []
 
@@ -65,7 +84,7 @@ def _polynomial_tree(truth_table: str) -> list[list[int]]:
 
 
 def _sophie_tree(truth_table: str) -> str:
-    r"""Emit the nested-branch Sophie program; see :func:`sophie`."""
+    """Emit the nested-branch Sophie program; see :func:`sophie`."""
     n = _validate_truth_table(truth_table)
 
     def build(path: list[int]) -> str:
@@ -89,7 +108,24 @@ def _sophie_tree(truth_table: str) -> str:
 
 
 def _sophie_dag(truth_table: str) -> str:
-    r"""Emit the state-machine Sophie program; see :func:`sophie`."""
+    """Emit the state-machine Sophie program; see :func:`sophie`.
+
+    Each level is a *flat chain* of ``@$L{...}`` blocks, one per live state,
+    and the read happens inside whichever block fires.  Nesting the blocks
+    would restate the tree -- what makes this a DAG is that two prefixes
+    leaving the same residual subfunction get the same label and so the same
+    block.
+
+    Re-fire needs no arithmetic here, unlike :func:`_polynomial_dag`: Sophie
+    tests equality against an arbitrary literal, so consecutive levels
+    drawing labels from disjoint bands is enough.  A fired block leaves the
+    accumulator holding a *next*-level label, which no remaining test in the
+    current chain can match.
+
+    Level 0 has one state and the accumulator starts at 0, so its dispatch is
+    skipped.  Leaves halt inside their block, so the last level cannot
+    re-fire whatever the labels.
+    """
     n = _validate_truth_table(truth_table)
     levels = _polynomial_states(truth_table, n)
 

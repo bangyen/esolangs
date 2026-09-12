@@ -1,4 +1,45 @@
-r"""Interpreter for Eval."""
+r"""Interpreter for Eval.
+
+Commands manipulate two stacks: 0 pushes 0, ` pushes the index of the stack
+that is *not* current, ^ duplicates, + and - adjust the top, = moves a value
+to the other stack, ; pops, ~ switches stacks, * reverses, ? skips the next
+command on a zero pop, and ! evaluates the popped string as a program.
+
+Arithmetic on a non-numeric top, or ``!`` on a non-string value, is an invalid
+operation and halts the program with :class:`~esolangs.exceptions.HaltError`.
+
+The execution model is a pure function over an immutable ``_Core``: the two
+stacks and the active index.  :func:`_iterate` maps a core and a command to
+the next core, and never mutates what it is given.
+
+``!`` evaluates a string as a program.  That nested program runs on an
+explicit *frame stack* rather than through Python recursion: ``!`` pushes a
+frame and returns, and the next ``step()`` continues inside it.  MyScript's
+machine is built the same way, and for the same reasons.
+
+Doing it this way is what makes nesting visible to the rest of the library.
+One command is one ``step()`` however deep it sits, so the VM's step budget
+counts honestly; every intermediate state reaches ``snapshot()``, so the
+state-cycle detector can prove a nested loop; and nesting depth is data
+rather than Python stack, so a self-referential program no longer dies with
+``RecursionError``.  Running a nested program to completion inside its
+caller's step hid all three.
+
+A frame stack is also what lets the *ancestor* check apply.  Endless
+recursion pushes a frame per call and pops none, so the whole-state
+snapshot grows forever and never repeats -- the unbounded-growth class
+:func:`esolangs.vm.run_until_halt_or_cycle` cannot decide.
+:func:`esolangs.vm.run_until_halt_or_ancestor` decides it instead, by
+comparing each pushed frame against the ones beneath it, and
+:meth:`_Machine.frame_entry_key` is what it compares.
+
+Because a step is one command again, it prints at most once, so the effects
+stay in the shell the way every other interpreter here does it.
+
+:class:`_Machine` accepts the program in its constructor, as the other
+interpreters do.  It stores the text in the first frame rather than parsing
+it, because Eval's commands are one character wide.
+"""
 
 from __future__ import annotations
 
@@ -31,18 +72,27 @@ type _State = tuple[_Core, tuple[_Frame, ...]]
 
 
 class _Fault(Exception):  # noqa: N818 - an internal signal, not an error type
-    r"""Raised inside the pure layer for an invalid operation."""
+    """Raised inside the pure layer for an invalid operation.
+
+    The shell turns it into the :class:`HaltError` the language documents.
+    It carries nothing: a step is one command now, so anything printed
+    before the fault was printed by an earlier step and is already out.
+    A caller never sees this type.
+    """
 
 
 def _pushed(core: _Core, value: _Val) -> _Core:
-    r"""Return ``core`` with ``value`` pushed on the active stack."""
+    """Return ``core`` with ``value`` pushed on the active stack."""
     ptr, stacks = core
     active = (*stacks[ptr], value)
     return (ptr, (active, stacks[1]) if ptr == 0 else (stacks[0], active))
 
 
 def _popped(core: _Core) -> tuple[_Core, _Val]:
-    r"""Return ``core`` without its top, and the value that was on top."""
+    """Return ``core`` without its top, and the value that was on top.
+
+    An empty stack is an invalid operation.
+    """
     ptr, stacks = core
     if not stacks[ptr]:
         raise _Fault
@@ -53,7 +103,17 @@ def _popped(core: _Core) -> tuple[_Core, _Val]:
 def _iterate(
     core: _Core, sym: str, ind: int
 ) -> tuple[_Core, int, _Val | None, str | None]:
-    r"""Execute one command, returning core, index, any output, any call."""
+    """Execute one command, returning core, index, any output, any call.
+
+    Pure: it reads ``core`` and returns a new one, and reaches no ``IO``.
+    A ``.`` reports the value it would print and a ``!`` reports the
+    program it would enter; the shell prints the one and pushes a frame for
+    the other.  Both are ``None`` for every other command.
+
+    ``!`` deliberately does *not* run the nested program here.  Returning
+    it to the caller is what puts it on the frame stack, and that is what
+    makes each of its commands a step of its own.
+    """
     ptr, stacks = core
     char = sym[ind]
     output: _Val | None = None
@@ -105,7 +165,7 @@ def _iterate(
 
 
 class _Machine:
-    r"""Two stacks with an index choosing the active one, and a frame stack."""
+    """Two stacks with an index choosing the active one, and a frame stack."""
 
     ptr: int
     stk: tuple[tuple[_Val, ...], tuple[_Val, ...]]
@@ -114,7 +174,7 @@ class _Machine:
     frames: tuple[_Frame, ...]
 
     def __init__(self, code: str, io: IO) -> None:
-        r"""Build a state running ``code``."""
+        """Build a state running ``code``."""
         self.ptr = 0
         self.stk = ((), ())
         self.io = io
@@ -123,12 +183,17 @@ class _Machine:
 
     @property
     def ind(self) -> int:
-        r"""The innermost frame's cursor."""
+        """The innermost frame's cursor.
+
+        The outermost frame's cursor when nothing is nested, which is what
+        this meant before the frame stack existed.  Past the end once every
+        frame has returned, so ``halted`` still reads as it did.
+        """
         return self.frames[-1][1] if self.frames else len(self.sym)
 
     @property
     def halted(self) -> bool:
-        r"""Whether every frame has returned."""
+        """Whether every frame has returned."""
         return not self.frames
 
     # The VM's language-shaped.
@@ -143,21 +208,36 @@ class _Machine:
 
     @property
     def ip(self) -> tuple[int, int]:
-        r"""The call depth and the innermost frame's cursor."""
+        """The call depth and the innermost frame's cursor.
+
+        A pair rather than a bare cursor, because a cursor alone no longer
+        says where a run is: the same position means different things in
+        the top-level program and in a nested one.
+        """
         return (len(self.frames), self.ind)
 
     @property
     def memory(self) -> list[int]:
-        r"""No addressable cells; the store is the active stack."""
+        """No addressable cells; the store is the active stack."""
         return []
 
     @property
     def stack(self) -> list[int | str]:
-        r"""The active stack, the one ``ptr`` currently selects."""
+        """The active stack, the one ``ptr`` currently selects.
+
+        Eval's stacks hold strings as well as ints, which the VM's
+        ``Sequence[object]`` accepts as it stands.
+        """
         return list(self.stk[self.ptr])
 
     def snapshot(self) -> tuple[object, ...]:
-        r"""Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection.
+
+        The whole frame stack goes in, not just the innermost cursor: two
+        runs sitting at the same position in the same nested program go on
+        to different places if their callers differ.  That is what lets a
+        nested loop be proved rather than merely time out.
+        """
         return (
             self.ptr,
             self.stk,
@@ -167,15 +247,27 @@ class _Machine:
 
     @property
     def _state(self) -> _State:
-        r"""The complete changing state at the command boundary."""
+        """The complete changing state at the command boundary."""
         return ((self.ptr, self.stk), self.frames)
 
     def _restore(self, state: _State) -> None:
-        r"""Write a pure command transition back onto the machine shell."""
+        """Write a pure command transition back onto the machine shell."""
         (self.ptr, self.stk), self.frames = state
 
     def frame_entry_key(self, frame: _Frame) -> Hashable:
-        r"""Return what ``frame`` is about to run, for the ancestor check."""
+        """Return what ``frame`` is about to run, for the ancestor check.
+
+        Two frames with equal keys replay each other.  For Eval that is the
+        program text and the cursor into it -- but also *both stacks*,
+        because frames here share one store rather than carrying their own
+        bindings: the same program run twice does different things if the
+        values beneath it differ, and only the stacks say so.
+
+        The input cursor joins them for the reason Fargo and Forbin include
+        it, though Eval never reads input at all, so it never varies.
+
+        See :func:`esolangs.vm.run_until_halt_or_ancestor`.
+        """
         sym, ind = frame
         return (
             sym,
@@ -186,7 +278,17 @@ class _Machine:
         )
 
     def step(self) -> None:
-        r"""Execute one command of the innermost frame."""
+        """Execute one command of the innermost frame.
+
+        One command, however deep -- so a nested program's commands are
+        steps in their own right.  An exhausted frame pops, which is a step
+        too; that is what returning from a call costs.
+
+        The print and the :class:`HaltError` live here because this is the
+        shell.  A step prints at most once now, so there is nothing to
+        collect: the fault carries no outputs, since anything printed
+        before it was printed by an earlier step and is already out.
+        """
         core, frames = self._state
         if not frames:
             return
@@ -209,7 +311,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    r"""Run an Eval program."""
+    """Run an Eval program."""
     state = _Machine(code, io)
     while not state.halted:
         state.step()

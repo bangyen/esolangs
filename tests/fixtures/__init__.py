@@ -1,1 +1,1 @@
-r"""Shared fixtures for the test suite."""
+"""Shared fixtures for the test suite."""

@@ -1,4 +1,30 @@
-r"""Every interpreter must read a blank input line the same way."""
+"""Every interpreter must read a blank input line the same way.
+
+The package used to answer this question twice.  ``io.input_char``
+returned ``ord("\\n")`` for a line the user ended immediately, while every
+interpreter calling ``io.input_str`` directly guarded the same case at its
+own call site -- and each of those chose ``0``.  So ``,`` on a blank line
+was 10 in brainfuck and 0 in Streetcode, and a brainfuck -> Streetcode
+translation could not be correct on a program that read one.
+
+The split was an artifact rather than a decision.  ``input_char`` was once
+``ord(self.input_str(prompt)[0])``, an ``IndexError`` on a blank line that
+leaked under 21 languages; the fix had to pick a value and picked the
+newline, then verified six languages -- every one an ``input_char`` user.
+The ``input_str`` callers never had the bug, so nothing prompted a look.
+
+``input_char`` now returns 0, matching them.  These tests pin the
+convention so the next interpreter cannot quietly reopen the split:
+the source scan enumerates the **registry**, not a hand-written list, so
+a language added later is covered without anyone remembering to add it.
+
+The scan parses the source rather than matching it.  A regex did this
+until an interpreter spelled its fallback ``ord("\\n")`` -- a call, where
+the pattern wanted a digit -- and so read a blank line as 10 while this
+file passed green.  A pattern has to enumerate the spellings; the AST
+sees the shape, and the fallback is folded to the byte it actually
+yields.
+"""
 
 import ast
 import importlib
@@ -16,13 +42,18 @@ BLANK_LINE = 0
 
 
 def test_input_char_reads_a_blank_line_as_the_convention() -> None:
-    r"""The shared primitive answers with the convention."""
+    """The shared primitive answers with the convention."""
     io_obj = ScriptedIO("\n")
     assert io_obj.input_char() == BLANK_LINE
 
 
 def test_exhausted_input_is_still_distinct_from_a_blank_line() -> None:
-    r"""Only running out of input is EOF; a blank line is a value."""
+    """Only running out of input is EOF; a blank line is a value.
+
+    This is the distinction the original fix was protecting, and it
+    survives the change: ``"".splitlines()`` is ``[]`` (no line at all)
+    while ``"\\n".splitlines()`` is ``[""]`` (one line, which is empty).
+    """
     io_obj = ScriptedIO("\n")
     assert io_obj.input_char() == BLANK_LINE
     with pytest.raises(EOFError):
@@ -30,7 +61,12 @@ def test_exhausted_input_is_still_distinct_from_a_blank_line() -> None:
 
 
 def _reads_first_character(node: ast.expr, line: str) -> bool:
-    r"""Whether ``node`` takes ``ord(line[0])`` anywhere inside it."""
+    """Whether ``node`` takes ``ord(line[0])`` anywhere inside it.
+
+    Searched rather than matched at the root: the guards convert the byte
+    they read (``ord(ch[0]) - 48``, ``acc + ord(inp[0])``), so the call is
+    a subexpression of the branch rather than the branch itself.
+    """
     return any(
         isinstance(sub, ast.Call)
         and isinstance(sub.func, ast.Name)
@@ -46,7 +82,13 @@ def _reads_first_character(node: ast.expr, line: str) -> bool:
 
 
 def _constant_byte(node: ast.expr) -> int | None:
-    r"""Return the byte a fallback expression yields, or None if it is not."""
+    """Return the byte a fallback expression yields, or None if it is not one.
+
+    ``ord("\\n")`` is folded rather than skipped: that is the spelling the
+    divergent guard used, and reading it as "not a literal" is how it went
+    unnoticed.  A fallback that is not a byte at all -- ``None``, where
+    there is no cell to write -- returns None and is not a disagreement.
+    """
     if (
         isinstance(node, ast.Call)
         and isinstance(node.func, ast.Name)
@@ -64,7 +106,15 @@ def _constant_byte(node: ast.expr) -> int | None:
 
 
 def _blank_line_guards(source: str) -> list[tuple[ast.expr, str]]:
-    r"""Return every ``<reads line[0]> if line else <fallback>`` and its."""
+    """Return every ``<reads line[0]> if line else <fallback>`` and its text.
+
+    Parsed rather than pattern-matched on the source.  A regex has to
+    enumerate the spellings a fallback can take, and the one that reopened
+    the split was spelled ``ord("\\n")`` -- a call, where the pattern
+    wanted a digit -- so it matched nothing and the test passed green.
+    The shape is what identifies a guard: a conditional whose test is the
+    bare line and whose true branch reads that line's first character.
+    """
     found = []
     for node in ast.walk(ast.parse(source)):
         if not isinstance(node, ast.IfExp) or not isinstance(node.test, ast.Name):
@@ -75,7 +125,7 @@ def _blank_line_guards(source: str) -> list[tuple[ast.expr, str]]:
 
 
 def _interpreter_sources() -> list[tuple[str, str]]:
-    r"""(language name, module source) for every registered interpreter."""
+    """(language name, module source) for every registered interpreter."""
     out = []
     for name, spec in sorted(LANGUAGES.items()):
         if spec.interpreter is None:
@@ -86,7 +136,18 @@ def _interpreter_sources() -> list[tuple[str, str]]:
 
 
 def test_the_scan_finds_the_guards_that_are_really_there() -> None:
-    r"""The detector fires on live code, not only on constructed input."""
+    """The detector fires on live code, not only on constructed input.
+
+    A lint that matches nothing passes for the same reason a clean repo
+    does.  These six are the guards actually in the tree -- two of them
+    converting the byte they read, and Alight's falling back to a float --
+    so a change that stops the walker seeing a real spelling fails here
+    rather than going quiet.
+
+    Named in full rather than as a sample: the set was assumed to be four
+    while it was six, and an audit of where the blank-line 0 comes from
+    took its population from this assertion.
+    """
     found = {name for name, src in _interpreter_sources() if _blank_line_guards(src)}
     assert {
         "Alight",
@@ -109,21 +170,36 @@ def test_the_scan_finds_the_guards_that_are_really_there() -> None:
     ],
 )
 def test_a_guard_is_read_by_shape_not_by_spelling(guard: str, expected: int) -> None:
-    r"""Every way of writing the fallback resolves to the byte it yields."""
+    """Every way of writing the fallback resolves to the byte it yields.
+
+    The first case is the one that reopened the split: ``ord("\\n")`` is a
+    call where the old pattern wanted a digit, so it matched nothing and
+    the offending interpreter passed.  Folding it is the whole point of
+    parsing instead of matching text.
+    """
     guards = _blank_line_guards(guard)
     assert len(guards) == 1, guard
     assert _constant_byte(guards[0][0]) == expected
 
 
 def test_a_guard_with_no_byte_to_yield_is_not_a_disagreement() -> None:
-    r"""``None`` is not a value that can differ from the convention."""
+    """``None`` is not a value that can differ from the convention.
+
+    The template guards this way where there is no cell to write to, and
+    flagging it would make the lint cry wolf on correct code.
+    """
     guards = _blank_line_guards("byte = ord(val[0]) if val else None")
     assert len(guards) == 1
     assert _constant_byte(guards[0][0]) is None
 
 
 def test_registry_covers_the_interpreters_scanned() -> None:
-    r"""The scan is registry-driven, so a new language is covered for free."""
+    """The scan is registry-driven, so a new language is covered for free.
+
+    A hand-written list would cancel out -- the thing it checks and the
+    thing it is checked against would be the same edit -- so this asserts
+    the scan actually sees a substantial set.
+    """
     sources = _interpreter_sources()
     assert len(sources) >= 50, f"only {len(sources)} interpreters scanned"
     names = {n for n, _ in sources}
@@ -131,7 +207,18 @@ def test_registry_covers_the_interpreters_scanned() -> None:
 
 
 def test_no_interpreter_hand_rolls_a_divergent_blank_line_guard() -> None:
-    r"""A call-site guard must not disagree with the shared convention."""
+    """A call-site guard must not disagree with the shared convention.
+
+    Guarding locally is fine -- some languages convert the byte, or have
+    no cell to write -- but the *value* for a blank line has to be the
+    one :data:`BLANK_LINE` names.  A guard yielding anything else is the
+    split coming back.
+
+    The fallback is evaluated rather than read off the source text, so a
+    guard spelling it ``ord("\\n")`` is caught the same as one spelling it
+    ``10``.  A non-constant fallback (``None``, where there is no cell to
+    write) is not a value that can disagree, so it is left alone.
+    """
     offenders: list[str] = []
     for name, src in _interpreter_sources():
         for fallback, text in _blank_line_guards(src):
@@ -154,12 +241,18 @@ def test_no_interpreter_hand_rolls_a_divergent_blank_line_guard() -> None:
 def test_reading_a_blank_line_agrees_across_languages(
     language: str, program: str
 ) -> None:
-    r"""Executed, not merely read: a blank line is the same byte everywhere."""
+    """Executed, not merely read: a blank line is the same byte everywhere.
+
+    These three are ``input_char`` users whose ``,`` echoes through ``.``
+    and which halt on this program -- not every brainfuck-alike does, so
+    the set is the ones actually checked rather than the ones assumed.
+    Streetcode is checked separately because its program is a grid.
+    """
     assert esolangs.run(language, program, stdin="\n") == chr(BLANK_LINE)
 
 
 def test_streetcode_agrees_with_the_tape_languages() -> None:
-    r"""The language that exposed the split now matches the rest."""
+    """The language that exposed the split now matches the rest."""
     grid = "\n".join(
         [
             "+------+",
@@ -173,7 +266,7 @@ def test_streetcode_agrees_with_the_tape_languages() -> None:
 
 
 def test_the_convention_is_reachable_through_the_base_class() -> None:
-    r"""``IO`` itself, not only ``ScriptedIO``, applies the convention."""
+    """``IO`` itself, not only ``ScriptedIO``, applies the convention."""
     from unittest.mock import patch
 
     with patch("builtins.input", return_value=""):
@@ -205,14 +298,19 @@ _EOF_IS_A_HALT: dict[str, str] = {
 
 @pytest.mark.parametrize("name", sorted(_EOF_IS_A_HALT))
 def test_every_eof_exemption_names_a_real_language(name: str) -> None:
-    r"""An exemption whose language is gone must not linger unnoticed."""
+    """An exemption whose language is gone must not linger unnoticed.
+
+    The roster is hard-coded, which is exactly the shape that silently
+    deselects; comparing it against the registry is what stops an entry
+    outliving the language it describes.
+    """
     from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
 
     assert name in BOOLEAN_EXAMPLES
 
 
 def _reading_languages() -> list[str]:
-    r"""The examples whose programs read their inputs from the stream."""
+    """The examples whose programs read their inputs from the stream."""
     from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
 
     return sorted(
@@ -232,7 +330,12 @@ def _reading_languages() -> list[str]:
 
 @pytest.mark.parametrize("name", _reading_languages())
 def test_running_out_of_input_reaches_the_caller(name: str) -> None:
-    r"""A program that reads, handed nothing, raises rather than inventing."""
+    """A program that reads, handed nothing, raises rather than inventing.
+
+    This is what makes the blank-line convention above meaningful: a
+    language that swallowed the EOF would answer a missing line with the
+    same byte as an empty one, and the two would stop being distinct.
+    """
     from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
 
     example = BOOLEAN_EXAMPLES[name]

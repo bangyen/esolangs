@@ -1,4 +1,19 @@
-r"""Work out which files a branch touched, so checks can skip what it."""
+"""Work out which files a branch touched, so checks can skip what it did not.
+
+The full local stack takes ~97s, and most of that is spent re-proving things
+the current branch cannot have broken: a change to one tape interpreter does
+not need the checks for the other languages re-run.  This module
+supplies the shared "what changed?" query that ``verify.py`` scopes itself
+with.
+
+The rule is deliberately conservative.  Scoping is only ever an optimisation:
+when the answer is unclear -- no diff available, a detached HEAD, no
+``origin/main`` -- the caller is told to run *everything*, because a check that
+is skipped by accident is a check that silently stops guarding.  Touching the
+shared machinery in ``_SHARED`` (or the checking machinery itself) also widens
+the sweep back to the full set, since either can change how every interpreter
+reads, steps, or reports.
+"""
 
 import subprocess
 from pathlib import Path
@@ -29,7 +44,14 @@ SHARED_TOOLING = (
 
 
 def changed_files() -> list[str]:
-    r"""Return the repo-relative paths this branch changed, or [] if."""
+    """Return the repo-relative paths this branch changed, or [] if unknown.
+
+    Prefers the branch's own diff against ``origin/main``; falls back to the
+    last commit when there is no such ref (a fresh clone, a detached HEAD).
+    Uncommitted work counts too -- the point is to check the tree in hand, not
+    only what has been committed.  An empty list means "could not tell", which
+    callers must read as "run everything".
+    """
     names: list[str] = []
     for args in (
         ["diff", "--name-only", "origin/main...HEAD"],
@@ -67,7 +89,7 @@ def changed_files() -> list[str]:
 
 
 def widens_to_everything(changed: list[str]) -> str | None:
-    r"""Return why *changed* forces a full run, or ``None`` if scoping is."""
+    """Return why *changed* forces a full run, or ``None`` if scoping is safe."""
     if not changed:
         return "no diff available"
     if any(f.endswith(SHARED_INTERPRETER) for f in changed):

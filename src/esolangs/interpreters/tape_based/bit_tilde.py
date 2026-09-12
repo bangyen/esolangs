@@ -1,4 +1,52 @@
-r"""Interpreter for bit~."""
+"""Interpreter for bit~.
+
+An 8-cell bit pool with a pointer: ``~`` flips the current bit, ``>`` moves
+the pointer right (extending the pool when the 8-cell window would run past
+the end), ``<`` moves it left (a no-op at the first cell), ``)`` reads a
+byte of input into the pool as 8 bits (MSB first, starting at the current
+cell, extending the pool to hold the full window), ``(`` prints the 8-bit
+window at the pointer as a byte, and ``{``/``}`` are a loop bracket pair:
+``{`` jumps forward to the matching ``}`` when the current bit is zero and
+``}`` jumps back to the matching ``{`` when it is nonzero.  Any other
+character is ignored.
+
+The pool is a single array that only ever grows: ``>`` appends a cell
+whenever ``cell + 8`` would exceed the pool's length, and ``)`` pads the
+pool to fit its window.  A ``(`` at a pointer with fewer than 8 cells left
+prints just the available bits.
+
+Semantics:
+- ``)`` raises :class:`EOFError` when input runs out, where the cross-check
+  exits with status 3 (the wiki leaves EOF undefined);
+- a ``{``/``}`` whose match is missing raises :class:`ValueError` when it
+  would have jumped (the former Ruby port
+  looped forever);
+- an empty input line is one the user ended immediately, so
+  :meth:`esolangs.interpreters.io.IO.input_char` delivers the newline that
+  ended it and ``)`` reads 10, matching what the cross-check reads.
+
+The interpreter runs on a :class:`_Machine` (the bit pool, the pointer, and
+the code cursor), so it is step-capable: ``step()`` executes one character
+and ``halted`` is true once the cursor reaches the end of the code.  A
+bracket loop that returns to an exact state is a cycle the state-cycle hang
+detector proves; the ``run()`` backstop stays for the unbounded-growth class
+(a loop whose body keeps extending the pool).
+
+The execution model is a pure function over an immutable ``_State``:
+:func:`_advance` maps a state and the code to the next state, and never
+mutates what it is given.  It takes no ``io`` argument at all, so it is
+total and side-effect free by construction rather than by inspection.  The
+pool is a tuple, so a state is a value that can be stored, compared, and
+hashed as it stands.
+
+:class:`_Machine` is the mutable shell the interpreter protocol requires.
+It holds one ``_State`` and rebinds it each step, so the mutation lives in
+exactly one assignment and every rule about what bit~ *does* stays in the
+pure layer.  The two I/O characters are done by ``step`` before it calls the
+pure transition, and the unmatched-bracket error is raised there too --
+:func:`_match` is what can fail, so the shell resolves the jump first and
+the transition receives a target it can simply take.
+"""
 
 from __future__ import annotations
 
@@ -23,12 +71,26 @@ type _State = tuple[int, int, tuple[int, ...]]
 
 
 def _grown(tape: tuple[int, ...], need: int) -> tuple[int, ...]:
-    r"""Return ``tape`` extended with zeros to at least ``need`` cells."""
+    """Return ``tape`` extended with zeros to at least ``need`` cells.
+
+    The pool only ever grows, and two commands grow it: ``>`` by one cell
+    when the eight-cell window would run past the end, and ``)`` by however
+    much its window needs.  Both come through here.
+    """
     return tape if need <= len(tape) else (*tape, *([0] * (need - len(tape))))
 
 
 def _match(code: str, ind: int, step: int) -> int:
-    r"""Return the index of the bracket matching ``code[ind]``."""
+    """Return the index of the bracket matching ``code[ind]``.
+
+    ``step`` is 1 to find the forward ``}`` for a ``{`` and -1 to find the
+    backward ``{`` for a ``}``; a bracket with no match is a malformed
+    program (``ValueError``) — the cross-check loops forever instead.
+
+    This is the one part of the language that can fail, which is why the
+    shell calls it rather than the transition: :func:`_advance` is handed
+    the resolved target and has no error case of its own.
+    """
     start = ind
     depth = step
     while depth:
@@ -51,7 +113,22 @@ def _advance(
     byte: int | None = None,
     target: int | None = None,
 ) -> _State:
-    r"""Return the state after executing the character at the cursor."""
+    """Return the state after executing the character at the cursor.
+
+    Pure, and total: the shell has already read any input byte and resolved
+    any bracket jump, so every character it can be handed has a defined
+    successor.  It takes no ``io`` argument, so ``)`` and ``(`` are the
+    caller's business -- ``(`` changes no state at all, and ``)``'s byte
+    arrives as ``byte``.
+
+    ``target`` is the resolved bracket destination, already checked to
+    exist.  It lands on the match because the shared increment below steps
+    past it.
+
+    Anything that is not a command is ignored and falls through to that
+    same increment, which is what makes the cursor advance exactly once
+    per call.
+    """
     ind, cell, tape = state
     char = code[ind]
     if char == "~":
@@ -76,10 +153,15 @@ def _advance(
 
 
 class _Machine:
-    r"""Per-run bit~ state: the bit pool, the pointer, and the cursor."""
+    """Per-run bit~ state: the bit pool, the pointer, and the cursor.
+
+    ``step()`` executes one character; ``halted`` is true once the cursor
+    reaches the end of the code.  The VM and the state-cycle hang detector
+    expose this object.
+    """
 
     def __init__(self, code: str, io: IO) -> None:
-        r"""Start with an eight-cell pool at the origin."""
+        """Start with an eight-cell pool at the origin."""
         self.io = io
         self.code = code
         # ``halted`` is read twice per.
@@ -104,35 +186,44 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        r"""Whether the cursor has reached the end of the code."""
+        """Whether the cursor has reached the end of the code."""
         return self.state[0] >= self.size
 
     # The VM's language-shaped.
 
     @property
     def ip(self) -> int:
-        r"""The current instruction position."""
+        """The current instruction position."""
         return self.ind
 
     @property
     def memory(self) -> list[int]:
-        r"""The addressable cells."""
+        """The addressable cells."""
         return list(self.state[2])
 
     @property
     def stack(self) -> list[object]:
-        r"""No stack in this language."""
+        """No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        r"""Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection."""
         # The pool is already a tuple,.
         # order this returned before.
         ind, cell, tape = self.state
         return (tape, cell, ind, self.io.position())
 
     def step(self) -> None:
-        r"""Execute one character, advancing the cursor."""
+        """Execute one character, advancing the cursor.
+
+        The two I/O characters and the unmatched-bracket error live here
+        rather than in the transition: this is the shell, so it is where an
+        effect or a raise belongs, and it leaves :func:`_advance` total.
+
+        A bracket only searches for its match when it would actually jump,
+        which is why the test is repeated here -- an unmatched bracket the
+        program never jumps from is not an error.
+        """
         if self.halted:
             return
         ind, cell, tape = self.state
@@ -151,7 +242,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    r"""Run a bit~ program."""
+    """Run a bit~ program."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

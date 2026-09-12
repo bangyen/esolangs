@@ -1,4 +1,4 @@
-r"""Unit tests for the Nevermind interpreter."""
+"""Unit tests for the Nevermind interpreter."""
 
 from typing import ClassVar
 
@@ -13,7 +13,11 @@ def run_and_capture(code: list[str], inputs: list[str] | None = None) -> str:
 
 
 class _PromptRecordingIO(ScriptedIO):
-    r"""A :class:`ScriptedIO` that remembers the prompts it was asked with."""
+    """A :class:`ScriptedIO` that remembers the prompts it was asked with.
+
+    ``_read`` ignores its prompt, so what ``input`` passes down is
+    invisible in a program's output.
+    """
 
     def __init__(self, stdin: str = "") -> None:
         super().__init__(stdin)
@@ -32,17 +36,26 @@ class TestNevermind:
         assert run_and_capture(["print,Hello*44 World!"]) == "Hello, World!"
 
     def test_print_joins_its_arguments_with_nothing(self) -> None:
-        r"""Several arguments run together; ``print`` adds no separator."""
+        """Several arguments run together; ``print`` adds no separator.
+
+        Every ``print`` in the suite takes a single argument, where any
+        separator at all would sit between nothing.
+        """
         assert run_and_capture(["print,a,b,c"]) == "abc"
 
     def test_a_line_keeps_its_spaces_but_loses_its_newline(self) -> None:
-        r"""Only the leading indent and the line terminator are trimmed."""
+        """Only the leading indent and the line terminator are trimmed.
+
+        Programs are written here as bare strings with neither, so the
+        three trims the parser applies were never told apart -- and a
+        space *inside* an argument is text the program wrote.
+        """
         assert run_and_capture(["print,a "]) == "a "
         assert run_and_capture(["print,a\n"]) == "a"
         assert run_and_capture(["  print,a"]) == "a"
 
     def test_print_unicode_digits(self) -> None:
-        r"""Non-ASCII digits stay strings instead of being converted to int."""
+        """Non-ASCII digits stay strings instead of being converted to int."""
         assert run_and_capture(["print,²"]) == "²"
         assert run_and_capture(["print,١٢٣"]) == "١٢٣"
 
@@ -65,22 +78,22 @@ class TestNevermind:
         assert run_and_capture(["loop,3", "print,x", "endloop"]) == "xxx"
 
     def test_loop_exit_resumes_after_body(self) -> None:
-        r"""Code after a finished loop still runs (skip flag must reset)."""
+        """Code after a finished loop still runs (skip flag must reset)."""
         code = ["loop,1", "print,inside", "endloop", "print,after"]
         assert run_and_capture(code) == "insideafter"
 
     def test_zero_loop_skips_body(self) -> None:
-        r"""A loop of zero iterations runs nothing but continues after it."""
+        """A loop of zero iterations runs nothing but continues after it."""
         code = ["loop,0", "print,x", "endloop", "print,after"]
         assert run_and_capture(code) == "after"
 
     def test_make_string_concatenation(self) -> None:
-        r"""The ++ operator concatenates strings."""
+        """The ++ operator concatenates strings."""
         code = ["make,x,hello", "make,y,world", "make,z,$x,++,$y", "print,$z"]
         assert run_and_capture(code) == "helloworld"
 
     def test_calculator_addition(self) -> None:
-        r"""The calculator example from esolangs.org."""
+        """The calculator example from esolangs.org."""
         code = [
             "make,a,10",
             "make,b,5",
@@ -93,7 +106,7 @@ class TestNevermind:
         assert run_and_capture(code) == "15"
 
     def test_input_command(self) -> None:
-        r"""Input stores a value in the answer variable."""
+        """Input stores a value in the answer variable."""
         assert run_and_capture(["input,prompt", "print,$answer"], inputs=["hi"]) == "hi"
 
     def test_make_subtract(self) -> None:
@@ -113,12 +126,12 @@ class TestNevermind:
         assert run_and_capture(code) == "deepdone"
 
     def test_false_if_skips_nested_block(self) -> None:
-        r"""A false outer if scans past a nested if to the matching endif."""
+        """A false outer if scans past a nested if to the matching endif."""
         code = ["if,5,<,3", "if,2,>,1", "print,deep", "endif", "endif", "print,done"]
         assert run_and_capture(code) == "done"
 
     def test_unmatched_if_scans_off_end(self) -> None:
-        r"""A false if with no matching endif is a malformed program."""
+        """A false if with no matching endif is a malformed program."""
         import pytest
 
         with pytest.raises(ValueError, match="unmatched"):
@@ -129,14 +142,14 @@ class TestNevermind:
         assert run_and_capture(code) == "xx"
 
     def test_unmatched_endloop_rejected(self) -> None:
-        r"""An endloop with no matching loop is a malformed program."""
+        """An endloop with no matching loop is a malformed program."""
         import pytest
 
         with pytest.raises(ValueError, match="unmatched"):
             run_and_capture(["endloop"])
 
     def test_divide_by_zero_halts(self) -> None:
-        r"""Division by zero is an invalid operation."""
+        """Division by zero is an invalid operation."""
         import pytest
 
         from esolangs.exceptions import HaltError
@@ -145,7 +158,7 @@ class TestNevermind:
             run_and_capture(["make,x,1", "make,y,0", "make,z,$x,/,$y"])
 
     def test_undefined_variable_halts(self) -> None:
-        r"""Referencing an undefined $name is an invalid operation."""
+        """Referencing an undefined $name is an invalid operation."""
         import pytest
 
         from esolangs.exceptions import HaltError
@@ -169,7 +182,7 @@ class TestStepMachine:
         assert machine.halted
 
     def test_arithmetic_on_a_string_halts(self) -> None:
-        r"""``+ - * /`` are numeric; ``++`` is the operator that joins text."""
+        """``+ - * /`` are numeric; ``++`` is the operator that joins text."""
         import pytest
 
         from esolangs.exceptions import HaltError
@@ -181,7 +194,7 @@ class TestStepMachine:
                 )
 
     def test_mixed_operands_halt(self) -> None:
-        r"""A number and a string have no defined sum (the wiki's calculator)."""
+        """A number and a string have no defined sum (the wiki's calculator)."""
         import pytest
 
         from esolangs.exceptions import HaltError
@@ -190,7 +203,7 @@ class TestStepMachine:
             run_and_capture(["make,x,3", "make,y,cd", "make,z,$x,+,$y", "print,$z"])
 
     def test_ordered_comparison_on_a_string_halts(self) -> None:
-        r"""``>``/``<`` order numbers; they do not compare text."""
+        """``>``/``<`` order numbers; they do not compare text."""
         import pytest
 
         from esolangs.exceptions import HaltError
@@ -202,7 +215,7 @@ class TestStepMachine:
                 )
 
     def test_equality_still_compares_strings(self) -> None:
-        r"""``=`` is not ordering, so it keeps working on text."""
+        """``=`` is not ordering, so it keeps working on text."""
         code = ["make,x,ab", "make,y,ab", "if,$x,=,$y", "print,Y", "endif"]
         assert run_and_capture(code) == "Y"
 
@@ -215,7 +228,7 @@ class TestStepMachine:
             run_and_capture(["make,x,ab", "loop,$x", "print,h", "endloop"])
 
     def test_decimal_arithmetic(self) -> None:
-        r"""A decimal spelling is a number: it adds rather than concatenating."""
+        """A decimal spelling is a number: it adds rather than concatenating."""
         assert (
             run_and_capture(["make,x,2.5", "make,y,4", "make,z,$x,+,$y", "print,$z"])
             == "6.5"
@@ -232,34 +245,51 @@ class TestStepMachine:
         )
 
     def test_non_canonical_decimals_stay_strings(self) -> None:
-        r"""``02.5`` is not a number spelling, so ``++`` keeps what was written."""
+        """``02.5`` is not a number spelling, so ``++`` keeps what was written."""
         code = ["make,x,0", "make,y,2.5", "make,z,$x,++,$y", "print,$z"]
         assert run_and_capture(code) == "02.5"
         assert run_and_capture(["print,02.5"]) == "02.5"
 
     def test_a_dot_alone_does_not_spell_a_decimal(self) -> None:
-        r"""Both sides of the dot must be digits, and there must be a dot."""
+        """Both sides of the dot must be digits, and there must be a dot.
+
+        The rejected spellings the suite carries are all rejected by the
+        round-trip check further down, which is only reached once the
+        three conditions above already agree -- so the conditions
+        themselves were never separated.  Each of these fails exactly one
+        of them, and would reach ``float`` on a text that has no value.
+        """
         assert run_and_capture(["print,a.5"]) == "a.5"
         assert run_and_capture(["print,."]) == "."
         assert run_and_capture(["print,5."]) == "5."
 
     def test_an_ordering_is_strict(self) -> None:
-        r"""``>`` and ``<`` are false on equal operands."""
+        """``>`` and ``<`` are false on equal operands.
+
+        Every comparison in the suite is between operands that differ, so
+        an ordering that also admitted equality would answer the same on
+        all of them.
+        """
         for cmp_op in (">", "<"):
             code = [f"if,5,{cmp_op},5", "print,Y", "endif", "print,after"]
             assert run_and_capture(code) == "after"
 
     def test_an_if_reads_only_its_first_three_operands(self) -> None:
-        r"""A comparison is three tokens wide, whatever follows them."""
+        """A comparison is three tokens wide, whatever follows them.
+
+        Nothing in the suite writes a fourth, so the width the ``if``
+        takes was pinned only from below, by the check that rejects too
+        few.
+        """
         assert run_and_capture(["if,5,>,3,x", "print,Y", "endif"]) == "Y"
 
     def test_string_concatenation_still_works(self) -> None:
-        r"""``++`` is unaffected by the numeric guards."""
+        """``++`` is unaffected by the numeric guards."""
         code = ["make,x,ab", "make,y,cd", "make,z,$x,++,$y", "print,$z"]
         assert run_and_capture(code) == "abcd"
 
     def test_missing_operands_are_rejected(self) -> None:
-        r"""A command short of its operands is malformed program text."""
+        """A command short of its operands is malformed program text."""
         import pytest
 
         for code, message in (
@@ -274,7 +304,12 @@ class TestStepMachine:
                 run_and_capture(code)
 
     def test_the_numeric_halt_names_the_operator_and_the_value(self) -> None:
-        r"""Each arithmetic site says which operator refused, and on what."""
+        """Each arithmetic site says which operator refused, and on what.
+
+        The suite only asks that these halt, so the label every call site
+        hands the check -- and the value it quotes back -- goes unread.
+        The two operands are separate calls, so each side needs asking.
+        """
         import pytest
 
         from esolangs.exceptions import HaltError
@@ -293,7 +328,11 @@ class TestStepMachine:
             assert str(caught.value) == message
 
     def test_the_malformed_messages_read_in_full(self) -> None:
-        r"""Each message entire, not the fragment the tests match on."""
+        """Each message entire, not the fragment the tests match on.
+
+        ``match=`` is a substring search, so the assertions above pass on
+        a message padded or reworded around the phrase they look for.
+        """
         import re
 
         import pytest
@@ -309,14 +348,25 @@ class TestStepMachine:
             assert str(caught.value) == message
 
     def test_input_passes_its_own_prompt_down(self) -> None:
-        r"""The prompt written in the program is the one the reader is asked."""
+        """The prompt written in the program is the one the reader is asked
+        with.
+
+        ``ScriptedIO`` ignores its prompt, so a program's output says
+        nothing about what reached the read; only the reader can.
+        """
         io = _PromptRecordingIO("hi\n")
         run(["input,name?", "print,$answer"], io)
         assert io.prompts == ["name?"]
         assert io.getvalue() == "hi"
 
     def test_the_partner_scan_counts_every_nested_marker(self) -> None:
-        r"""A false ``if`` clears its whole block, nesting included."""
+        """A false ``if`` clears its whole block, nesting included.
+
+        The suite's nested case puts the two ``endif`` lines back to back,
+        where landing on the inner one and landing past the outer one look
+        alike -- ``endif`` executes as nothing.  A line between them makes
+        the depth the scan tracked visible.
+        """
         code = [
             "if,1,<,0",
             "if,1,>,0",
@@ -329,7 +379,7 @@ class TestStepMachine:
         assert run_and_capture(code) == "done"
 
     def test_blank_lines_are_skipped_by_the_partner_scan(self) -> None:
-        r"""A blank line has no command, so ``find`` must step over it."""
+        """A blank line has no command, so ``find`` must step over it."""
         assert run_and_capture(["if,1,==,1", "  ", "print,X", "endif"]) == "X"
         assert (
             run_and_capture(["if,1,==,0", "  ", "print,X", "endif", "print,Y"]) == "Y"
@@ -346,7 +396,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(SnapshotContract, CycleContract):
-    r"""The shared shapes, with this language's own programs."""
+    """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program: ClassVar[list[str]] = ["make,x,5"]

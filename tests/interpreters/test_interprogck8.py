@@ -1,4 +1,11 @@
-r"""Unit tests for the Interprogck8 interpreter."""
+"""Unit tests for the Interprogck8 interpreter.
+
+Every wiki example is executed here, including the truth-machine's, which
+the wiki writes with 49 colons where its own dice rule needs 24 colons and
+a dot.  Both spellings are run: the verbatim one to pin what the example
+actually does, and the corrected one to pin the loop/halt structure the
+example was reaching for.
+"""
 
 import pytest
 
@@ -104,14 +111,19 @@ class TestWikiExamples:
         assert go(HELLO) == "Hello World\n"
 
     def test_cat_echoes_then_runs_out(self) -> None:
-        r"""``EXE`` inside the body recurses, so the cat reads until EOF."""
+        """``EXE`` inside the body recurses, so the cat reads until EOF."""
         io = ScriptedIO("ab\ncd\n")
         with pytest.raises(EOFError):
             run(CAT, io)
         assert io.getvalue() == "ac"
 
     def test_wiki_truth_machine_is_degenerate(self) -> None:
-        r"""49 colons is 98 pips, so both inputs take the ``T`` branch."""
+        """49 colons is 98 pips, so both inputs take the ``T`` branch.
+
+        This is the example's own arithmetic, not a reading of it: under
+        any rule where ``:`` is two pips the literal cannot be 49, and the
+        dice-roll example (``[. :::]``, a 1-6 roll) needs that rule.
+        """
         assert _pips(_WIKI_LITERAL) == 98
         assert go(TRUTH_WIKI, "0\n") == "T"
         assert go(TRUTH_WIKI, "1\n") == "T"
@@ -122,14 +134,19 @@ class TestWikiExamples:
     def test_corrected_truth_machine_loops_on_one(
         self, bit: str, output: str, *, halts: bool
     ) -> None:
-        r"""With a 49-pip literal the structure is a truth machine."""
+        """With a 49-pip literal the structure is a truth machine.
+
+        ``0`` prints once and halts; ``1`` never halts, which is *proved*
+        by a repeated state rather than waited out -- the frame stack pops
+        an exhausted body, so the tail call runs at constant depth.
+        """
         io = ScriptedIO(bit + "\n")
         machine = _Machine(TRUTH_FIXED, io)
         assert bool(run_until_halt_or_cycle(machine)) is halts
         assert set(io.getvalue()) == {output}
 
     def test_dice_roll_stays_in_range(self) -> None:
-        r"""``[."""
+        """``[. :::]`` rolls 1-6, and ``$ay`` writes a readable literal."""
         for seed in range(20):
             io = ScriptedIO("")
             run(DICE, io, Seeded(seed))
@@ -141,16 +158,16 @@ class TestDiceLiterals:
         ("literal", "value"), [(".", 1), (":", 2), (":.", 3), ("::", 4)]
     )
     def test_pips(self, literal: str, value: int) -> None:
-        r"""The wiki's worked examples: ``.`` is 1, ``:`` 2, ``:.`` 3."""
+        """The wiki's worked examples: ``.`` is 1, ``:`` 2, ``:.`` 3."""
         assert _pips(literal) == value
 
     def test_round_trip(self) -> None:
-        r"""``$ay``'s spelling reads back as the value it was written for."""
+        """``$ay``'s spelling reads back as the value it was written for."""
         for value in range(1, 256):
             assert _pips(_dice(value)) == value
 
     def test_zero_has_no_literal(self) -> None:
-        r"""No dice face is blank, so 0 prints nothing and is not readable."""
+        """No dice face is blank, so 0 prints nothing and is not readable."""
         assert _dice(0) == ""
         assert go("NnNn\n$ay") == ""
 
@@ -161,19 +178,24 @@ class TestDiceLiterals:
 
 class TestCommands:
     def test_arithmetic_wraps(self) -> None:
-        r"""The accumulator is mod 256, so one ``@nt`` from 0 is 255."""
+        """The accumulator is mod 256, so one ``@nt`` from 0 is 255."""
         assert go("@nt\ndiv") == chr(255)
 
     def test_loaders(self) -> None:
         assert go("nNnN\ndiv\nEmpty_\ndiv\nNnNn\n@id\ndiv") == "A \n"
 
     def test_values_compares_three(self) -> None:
-        r"""84 when at least two differ, 81 when all three agree."""
+        """84 when at least two differ, 81 when all three agree."""
         assert go("nNnN\n{values/=/=/=}\ndiv") == "Q"
         assert go("nNnN\n{values/=/=/=.}\ndiv") == "T"
 
     def test_values_reads_each_argument_by_its_own_kind(self) -> None:
-        r"""A nested ``$py`` parses pips; a nested ``u`` takes a byte."""
+        """A nested ``$py`` parses pips; a nested ``u`` takes a byte.
+
+        Typing the read by the *line* would apply one rule to both, which
+        is the only thing this path exercises: ``:`` is 2 as a literal and
+        58 as a byte, so the two arms disagree unless each is read right.
+        """
         # $py reads ":" as 2; u reads.
         assert go("NnNn\n@nd\n@nd\n{values/=$py/=u/=}\ndiv", ":\n\x02\n") == "Q"
         # Same inputs, but the first.
@@ -189,7 +211,7 @@ class TestCommands:
         assert go("nNnN\nX\nx\nmathroundtofloor\ndiv") == "A"
 
     def test_tilde_is_usually_silent(self) -> None:
-        r"""One run in ten prints; a seeded source makes that checkable."""
+        """One run in ten prints; a seeded source makes that checkable."""
         outputs = {go("~", "") for _ in range(1)}
         assert outputs <= {"", "Interprogck8\n"}
 
@@ -199,11 +221,11 @@ class TestDownAccLines:
         assert go("NnNn\nDownAccLines\nnNnN\ndiv") == "A"
 
     def test_skips_the_accumulator_in_lines(self) -> None:
-        r"""acc=2 skips two lines, so the two ``div``s in between go unrun."""
+        """acc=2 skips two lines, so the two ``div``s in between go unrun."""
         assert go("NnNn\n@nd\n@nd\nDownAccLines\nEmpty_\ndiv\nnNnN\ndiv") == "A"
 
     def test_landing_past_the_end_halts(self) -> None:
-        r"""Landing exactly one past the last line ends the run, not errors."""
+        """Landing exactly one past the last line ends the run, not errors."""
         assert go("nNnN\ndiv\nNnNn\nDownAccLines") == "A"
 
     def test_running_off_the_end_is_a_runtime_error(self) -> None:
@@ -211,14 +233,14 @@ class TestDownAccLines:
             go("NnNn\n@id\nDownAccLines\nx")
 
     def test_inside_a_function_is_refused(self) -> None:
-        r"""A frame index is not a program line, so the jump names nothing."""
+        """A frame index is not a program line, so the jump names nothing."""
         with pytest.raises(HaltError):
             go("<\nNnNn\nDownAccLines\n>\nEXE")
 
 
 class TestFunctions:
     def test_definition_is_skipped_not_executed(self) -> None:
-        r"""``<`` captures the body and jumps past it; only ``EXE`` runs it."""
+        """``<`` captures the body and jumps past it; only ``EXE`` runs it."""
         assert go("<\nnNnN\ndiv\n>\nEXE\nEXE") == "AA"
 
     def test_ift_and_ifq(self) -> None:
@@ -231,7 +253,7 @@ class TestFunctions:
             go("EXE")
 
     def test_redefining_replaces_the_slot(self) -> None:
-        r"""There is one slot, so a second ``<`` overwrites the first body."""
+        """There is one slot, so a second ``<`` overwrites the first body."""
         assert go("<\nnNnN\ndiv\n>\n<\nEmpty_\ndiv\n>\nEXE") == " "
 
     def test_unclosed_function_is_refused(self) -> None:
@@ -245,7 +267,12 @@ class TestFunctions:
 
 class TestRestart:
     def test_z_deletes_the_previous_line_and_starts_over(self) -> None:
-        r"""``z`` drops itself and the line above, then reruns from the top."""
+        """``z`` drops itself and the line above, then reruns from the top.
+
+        First pass prints ``A`` and reaches ``z``; the program becomes
+        ``nNnN div @id div`` and reruns, printing ``A`` then 75 (``K``).
+        The second pass has no ``z``, so the restart is not a loop.
+        """
         assert go("nNnN\ndiv\nEmpty_\nz\n@id\ndiv") == "AAK"
 
     def test_z_on_the_first_line_is_refused(self) -> None:
@@ -263,7 +290,10 @@ class TestErrors:
             run("", ScriptedIO(""))
 
     def test_unknown_line_is_a_runtime_error(self) -> None:
-        r"""Refused when *executed*, not at parse time: ``DownAccLines`` and."""
+        """Refused when *executed*, not at parse time: ``DownAccLines`` and
+        ``z`` make lines legally unreachable, so an upfront scan would
+        reject working programs.
+        """
         with pytest.raises(HaltError):
             go("nonsense")
         assert go("NnNn\n@nd\nDownAccLines\nnonsense\nnNnN\ndiv") == "A"
@@ -273,7 +303,7 @@ class TestErrors:
             go("\nx")
 
     def test_empty_input_line_is_refused(self) -> None:
-        r"""The spec's EmptyInputError, overriding the repo's read-as-0."""
+        """The spec's EmptyInputError, overriding the repo's read-as-0."""
         with pytest.raises(HaltError):
             go("u", "\n")
 
@@ -283,10 +313,10 @@ class TestErrors:
 
 
 class TestBranchingSearch:
-    r"""``[a b]`` and ``~`` draw, so a hang proof must hold over every draw."""
+    """``[a b]`` and ``~`` draw, so a hang proof must hold over every draw."""
 
     def test_a_draw_forks_into_every_outcome(self) -> None:
-        r"""``[."""
+        """``[. :]`` rolls 1 or 2, so its line has two successor states."""
         machine = _Machine("[. :]\ndiv", ScriptedIO(""))
         start = machine.branching_snapshot()
         assert not machine.branching_halted(start)
@@ -296,19 +326,19 @@ class TestBranchingSearch:
         assert {s[2] for s in successors} == {1, 2}
 
     def test_tilde_has_one_outcome_the_state_can_see(self) -> None:
-        r"""``~``'s ten draws differ only in output, which is left out."""
+        """``~``'s ten draws differ only in output, which is left out."""
         machine = _Machine("~\nx", ScriptedIO(""))
         successors = machine.branching_successors(machine.branching_snapshot(), 100)
         assert successors is not None
         assert len(successors) == 1
 
     def test_a_reading_line_declines_to_fork(self) -> None:
-        r"""Siblings cannot share one input cursor, so the search declines."""
+        """Siblings cannot share one input cursor, so the search declines."""
         machine = _Machine("u\ndiv", ScriptedIO("a\n"))
         assert machine.branching_successors(machine.branching_snapshot(), 100) is None
 
     def test_an_unexecutable_line_ends_its_branch(self) -> None:
-        r"""A line that raises is a dead end, not a failed search."""
+        """A line that raises is a dead end, not a failed search."""
         machine = _Machine("nonsense", ScriptedIO(""))
         assert machine.branching_successors(machine.branching_snapshot(), 100) == ()
 
@@ -320,7 +350,7 @@ class TestBranchingSearch:
 
 class TestNestedArguments:
     def test_an_omitted_range_bound_is_the_accumulator(self) -> None:
-        r"""``[ ]`` with both bounds empty can only roll the accumulator."""
+        """``[ ]`` with both bounds empty can only roll the accumulator."""
         assert go("nNnN\n[ ]\ndiv") == "A"
 
     def test_a_nested_py_supplies_a_range_bound(self) -> None:
@@ -331,11 +361,11 @@ class TestNestedArguments:
             go("[. : .]")
 
     def test_a_nested_range_supplies_a_comparison_argument(self) -> None:
-        r"""``[."""
+        """``[. .]`` can only be 1, so it agrees with an accumulator of 1."""
         assert go("NnNn\n@nd\n{values/=/=/=[. .]}\ndiv") == "Q"
 
     def test_a_stray_closer_is_a_no_op(self) -> None:
-        r"""A ``>`` reached outside a captured body does nothing."""
+        """A ``>`` reached outside a captured body does nothing."""
         assert go("nNnN\n>\ndiv") == "A"
 
     def test_an_empty_function_body_returns_at_once(self) -> None:
@@ -343,7 +373,12 @@ class TestNestedArguments:
 
 
 class TestConstructedGuards:
-    r"""Guards no whole program reaches, driven on hand-built states."""
+    """Guards no whole program reaches, driven on hand-built states.
+
+    Each is a real refusal the transition owes its caller; none is
+    reachable from source text, because ``_capture`` skips a body before
+    it can run and the shell always supplies the reads a line asks for.
+    """
 
     def test_an_opener_inside_a_body_is_refused(self) -> None:
         inside = _State(("<", "x"), 0, 0, ("<",), ((("<",), 0),))
@@ -354,7 +389,7 @@ class TestConstructedGuards:
         "line", ["{values/=a/=b}", "{valuesX/=a/=b/=c}", "{values/=a/=b/=c/=d}"]
     )
     def test_a_misshapen_comparison_is_not_a_comparison(self, line: str) -> None:
-        r"""Refused as *unknown*, not as a comparison, so the caller can tell."""
+        """Refused as *unknown*, not as a comparison, so the caller can tell."""
         with pytest.raises(ValueError, match=r"\{values"):
             _split_args(line)
 
@@ -369,7 +404,7 @@ class TestConstructedGuards:
 
 class TestMachine:
     def test_snapshot_covers_the_slot_and_the_cursor(self) -> None:
-        r"""Two states differing only in the slot must not compare equal."""
+        """Two states differing only in the slot must not compare equal."""
         first = _Machine("x\nx", ScriptedIO(""))
         second = _Machine("x\nx", ScriptedIO(""))
         assert first.snapshot() == second.snapshot()
@@ -377,7 +412,7 @@ class TestMachine:
         assert first.snapshot() != second.snapshot()
 
     def test_accepts_a_line_list(self) -> None:
-        r"""The registry sets ``split=True``, so ``run`` takes lines."""
+        """The registry sets ``split=True``, so ``run`` takes lines."""
         io = ScriptedIO("")
         run(["nNnN", "div"], io)
         assert io.getvalue() == "A"

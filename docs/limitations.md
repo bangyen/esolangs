@@ -40,9 +40,9 @@ The ten is now a cost call rather than an open question.
 
 ## Boolean generator caps
 
-Current caps are deliberate:.
+Current caps are deliberate:
 
-Measured ceilings, from a sweep of all 69 boolean generators over n=1..10 against a dense pseudo-random table and parity (both shapes, since several generators cover one and refuse the other at the same arity):.
+Measured ceilings, from a sweep of all 69 boolean generators over n=1..10 against a dense pseudo-random table and parity (both shapes, since several generators cover one and refuse the other at the same arity):
 
 | Generator | dense | parity | what stops it |
 | --- | --- | --- | --- |
@@ -104,7 +104,7 @@ So the numbers below are no longer a wall.
 
 Every other generator is under 600KB at n=9; the largest of them is A Painter Ant at 517,452 -- which is now bigger than the bottom three rows above, so the table is a list of the fastest *growing* generators and not of the largest ones.
 
-Two consequences worth having before you start:.
+Two consequences worth having before you start:
 
 - **Extrapolate with the ratio, not with hope.** COD is the one to watch now: 3.7MB at n=9 and ~3.9x puts its dense n=11 near 56MB, and nothing stops it.
 - **Run time is the real wall, and it does not track generation.** It is a smaller wall than it was -- one dense n=8 Circuit Diagram row now takes 0.81 seconds where it took roughly 22, so a full 256-row table is about three and a half minutes rather than an hour and a half.
@@ -125,7 +125,7 @@ There is deliberately no `estimate()` API.
 
   It does not fix the programs.
 
-  | Example | Runs | Reproductions | Best | | --- | --- | --- | --- | | Truth machine, input 1 | 384 | **0** | 39/40 — `110111…`, a stray `0` third | | Truth machine, input 0 | 384 | 192 | exact | | Cat | 384 | 64 | exact, only where EOF halts |.
+  | Example | Runs | Reproductions | Best | | --- | --- | --- | --- | | Truth machine, input 1 | 384 | **0** | 39/40 — `110111…`, a stray `0` third | | Truth machine, input 0 | 384 | 192 | exact | | Cat | 384 | 64 | exact, only where EOF halts |
 
   Input 1 is the falsifier, and it is exhaustive: the half that makes a truth machine a truth machine is one output character wrong under every one of its 384 readings, and no spec-gap choice moves it.
 

@@ -1,1 +1,1 @@
-r"""Tests for the repository scripts in scripts/."""
+"""Tests for the repository scripts in scripts/."""

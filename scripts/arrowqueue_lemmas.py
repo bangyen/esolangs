@@ -1,5 +1,17 @@
 # !/usr/bin/env python3.
-r"""Executed lemma checks behind."""
+"""Executed lemma checks behind ``docs/generators/arrowqueue_generator.md``.
+
+The proof there is total over every arity, so nothing in this file
+enumerates truth tables to establish the claim -- each check pins one
+*finite* lemma the induction rests on.  One named lemma per output line.
+
+Default run is a few seconds.  ``--deep`` adds the high-arity composition
+runs (``n = 12`` alone is ~96s), and ``--tree-sweep`` adds the exhaustive
+65536-table tree-only sweep (~3 minutes) that certifies leaf-index
+routing rather than merely the verdict.
+
+Exit status is non-zero if any lemma fails.
+"""
 
 from __future__ import annotations
 
@@ -46,7 +58,7 @@ failures: list[str] = []
 
 
 def report(lemma: str, *, ok: bool, detail: str) -> None:
-    r"""Print one lemma line and record a failure."""
+    """Print one lemma line and record a failure."""
     status = "ok  " if ok else "FAIL"
     print(f"[{status}] {lemma:28s} {detail}", flush=True)
     if not ok:
@@ -56,7 +68,7 @@ def report(lemma: str, *, ok: bool, detail: str) -> None:
 def _run_block(
     rows: list[str], state: tuple[int, int, int, tuple[int, ...]], cap: int = 100_000
 ) -> tuple[int, int, int, tuple[int, ...], bool]:
-    r"""Step a bare block from ``state`` until it leaves the block's."""
+    """Step a bare block from ``state`` until it leaves the block's rectangle."""
     width = max(map(len, rows), default=0)
     grid = tuple(row.ljust(width) for row in rows)
     current = (*state, False)
@@ -69,19 +81,19 @@ def _run_block(
 
 
 def _verdict_from(rows: list[str], state: tuple[int, int, int, tuple[int, ...]]) -> str:
-    r"""Halt-or-cycle verdict from an arbitrary entry state."""
+    """Halt-or-cycle verdict from an arbitrary entry state."""
     machine = _Machine(list(rows))
     machine.state = (*state, not machine.grid)
     return "0" if run_until_halt_or_cycle(machine) else "1"
 
 
 def _glyph_rows(block: list[str]) -> set[int]:
-    r"""Row indices of ``block`` that hold at least one glyph."""
+    """Row indices of ``block`` that hold at least one glyph."""
     return {r for r, row in enumerate(block) if row.strip()}
 
 
 def check_h1_pitch() -> None:
-    r"""H1: the header is exactly 4n+1 rows for every arity and pattern."""
+    """H1: the header is exactly 4n+1 rows for every arity and pattern."""
     bad = 0
     total = 0
     for n in range(1, 13):
@@ -103,7 +115,7 @@ def check_h1_pitch() -> None:
 
 
 def check_h2_h3_handoff() -> None:
-    r"""H2/H3: header exits down col 3 with the bits; +middle enters the."""
+    """H2/H3: header exits down col 3 with the bits; +middle enters the tree."""
     bad_h2 = bad_h3 = 0
     total = 0
     for n in range(1, 13):
@@ -141,7 +153,13 @@ def check_h2_h3_handoff() -> None:
 
 
 def check_g_geometry() -> None:
-    r"""G1/G2/G3: row disjointness, blank right corridor, and the entry."""
+    """G1/G2/G3: row disjointness, blank right corridor, and the entry column.
+
+    G1 compares the *actual* glyph rows of the two placed subtrees in the
+    composed grid rather than restating ``_connect``'s own arithmetic --
+    an assertion built from ``yb = len(t0)`` would be true by definition
+    and would check nothing.
+    """
     plus = [
         (r, c)
         for r, row in enumerate(_TREE_BRANCH_0)
@@ -195,7 +213,13 @@ def check_g_geometry() -> None:
 
 
 def check_b_branches() -> None:
-    r"""B2/B3/B3': branch routing, reflection, and entry-column sensitivity."""
+    """B2/B3/B3': branch routing, reflection, and entry-column sensitivity.
+
+    B2 is checked under *both* entry styles: the top-level tree is entered
+    heading down at (0, 1), while every recursive subtree is entered
+    heading right at its own (0, 0).  The induction uses both, so both are
+    executed here.
+    """
     down_exits = {}
     right_exits = {}
     for bit in (0, 1):
@@ -244,7 +268,7 @@ def check_b_branches() -> None:
 
 
 def check_l_leaves() -> None:
-    r"""L1/L2/L2'/L3/L4: leaf behaviour, drains, and the bare ring's entry."""
+    """L1/L2/L2'/L3/L4: leaf behaviour, drains, and the bare ring's entry."""
     right = _verdict_from(_TREE_1, (0, 0, 0, RDLU))
     down = _verdict_from(_TREE_1, (0, 1, 1, RDLU))
     report(
@@ -311,7 +335,7 @@ def check_l_leaves() -> None:
 
 
 def check_c1_compaction(*, deep: bool) -> None:
-    r"""C1: _compact preserves the halt-or-cycle verdict."""
+    """C1: _compact preserves the halt-or-cycle verdict."""
     mismatch = 0
     pairs = 0
     arities = (1, 2, 3, 4) if deep else (1, 2, 3)
@@ -341,7 +365,7 @@ def check_c1_compaction(*, deep: bool) -> None:
 
 
 def check_tree_sweep() -> None:
-    r"""T: leaf-index routing, certified by an exhaustive tree-only sweep."""
+    """T: leaf-index routing, certified by an exhaustive tree-only sweep."""
     bad = 0
     for n in (1, 2, 3, 4):
         for i in range(2 ** (2**n)):
@@ -359,7 +383,7 @@ def check_tree_sweep() -> None:
 
 
 def check_deep_composition() -> None:
-    r"""Composition past every swept arity: whole programs at n = 6..12."""
+    """Composition past every swept arity: whole programs at n = 6..12."""
     bad = 0
     detail = []
     for n in (6, 8, 10, 12):
@@ -400,7 +424,7 @@ def check_deep_composition() -> None:
 
 
 def main() -> int:
-    r"""Run the lemma checks and return a process exit status."""
+    """Run the lemma checks and return a process exit status."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--deep",

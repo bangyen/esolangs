@@ -1,4 +1,9 @@
-r"""Unit tests for the tape-based boolean generators."""
+"""Unit tests for the tape-based boolean generators.
+
+Covers the generators in :mod:`esolangs.tools.boolean.tape` plus the
+single-language modules that share its tape-machine shape: ``rotfuck``,
+``six_five``, ``dimensional``, and ``streetcode``.
+"""
 
 import contextlib
 import hashlib
@@ -39,19 +44,28 @@ from tests.tools.boolean_runners import (
 
 
 def _columns(program: str) -> int:
-    r"""The widest row of a grid program, which is what a width bounds."""
+    """The widest row of a grid program, which is what a width bounds."""
     return max(len(line) for line in program.split("\n"))
 
 
 def _markers(program: str) -> int:
-    r"""How many ``4`` markers a 6-5 program really has."""
+    """How many ``4`` markers a 6-5 program really has.
+
+    Counting ``4`` characters overcounts: a ``8n`` jump whose operand is
+    ``4`` contributes one, so this tokenizes the way the interpreter does.
+    """
     from esolangs.interpreters.tape_based.six_five import _tokens
 
     return sum(1 for token in _tokens(program) if token == "4")
 
 
 def _leaves(table: str) -> int:
-    r"""How many leaves a tree that folds constant subtrees spends on."""
+    """How many leaves a tree that folds constant subtrees spends on ``table``.
+
+    One per maximal constant slice: the walk stops as soon as the rows it
+    covers agree, so this is ``2**n`` only when no slice above a single row
+    is constant.
+    """
     if len(set(table)) == 1:
         return 1
     half = len(table) // 2
@@ -70,7 +84,7 @@ class TestSixFive:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result."""
         program = boolean.six_five(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -78,7 +92,12 @@ class TestSixFive:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_branch_structure(self) -> None:
-        r"""Both builds read, normalize to 8/9, branch on ``78``, and halt."""
+        """Both builds read, normalize to 8/9, branch on ``78``, and halt.
+
+        The two constructions differ in where the reads sit, not in the
+        branch: each starts by reading a bit and subtracting 40, tests it
+        with ``78``, and ends every path on ``A0``.
+        """
 
         for program in (boolean.six_five("0110"), _six_five_stream_ordered("0110")):
             assert program.startswith("B" + "2" * 8)
@@ -96,7 +115,11 @@ class TestSixFive:
         ],
     )
     def test_constant_subtrees_fold(self, table: str, n: int) -> None:
-        r"""A constant subtree emits one leaf instead of a full branch set."""
+        """A constant subtree emits one leaf instead of a full branch set.
+
+        The comparison table has the same ones-count, so a shorter program
+        means the tree folded rather than that some other count shrank.
+        """
         mixed = {
             1: "10",
             2: "1010",
@@ -114,7 +137,20 @@ class TestSixFive:
         [("11", 1), ("1111", 2), ("11110000", 3), ("1000000000000000", 4)],
     )
     def test_folded_leaf_still_reads_every_input(self, table: str, n: int) -> None:
-        r"""Every path through a folded node-read tree reads all ``n`` inputs."""
+        """Every path through a folded node-read tree reads all ``n`` inputs.
+
+        A folded leaf skips branches but not reads: a caller feeding several
+        programs from one stream would desync if a short path left bits
+        unconsumed.  The interpreter raises ``EOFError`` on an over-read, so
+        supplying exactly ``n`` bits proves no path reads too many, and
+        counting the ``B``s down each path proves none reads too few.
+
+        The walker below parses the node-read emission specifically, so it
+        asks for that build rather than whichever one the dispatch picks;
+        the same contract over the *dispatched* program is checked by
+        :meth:`test_every_path_consumes_exactly_n_inputs`, which counts what
+        the program consumes instead of reading its shape.
+        """
 
         program = _six_five_stream_ordered(table)
         for combo in range(2**n):
@@ -154,7 +190,13 @@ class TestSixFive:
         ],
     )
     def test_tree_past_five_inputs(self, table: str, n: int, labels: int) -> None:
-        r"""A folded tree that fits the label budget is used at any ``n``."""
+        """A folded tree that fits the label budget is used at any ``n``.
+
+        The old gate was ``n <= 5`` on the *unfolded* node count, so these
+        tables fell through to the arithmetic kernel -- which refuses most of
+        them, since a table with ones at high indices has a huge ``T``.
+        Folding is what spends the labels, so the choice counts them instead.
+        """
         program = boolean.six_five(table)
         assert _markers(program) == labels <= 35
         for combo in range(2**n):
@@ -163,7 +205,19 @@ class TestSixFive:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_marker_precheck_matches_emitted_tree(self) -> None:
-        r"""The label count is what the emitted tree actually allocates."""
+        """The label count is what the emitted tree actually allocates.
+
+        The gate decides before building, so a miscount would either refuse a
+        renderable table or emit one past the 35-label budget.  Counting
+        ``4`` *characters* is not the same thing -- an ``8n`` jump whose
+        operand is ``4`` contributes one -- so this compares against the
+        interpreter's own tokenizer.
+
+        The count is per *order*, so ``_six_five_markers`` on the unpermuted
+        table bounds the emission rather than equalling it in general.  These
+        tables are the ones where the bound is tight: each is a constant, a
+        single prefix run, or an AND, whose folding no renaming improves.
+        """
         for table in (
             "0" * 63 + "1",
             "1" + "0" * 63,
@@ -182,7 +236,18 @@ class TestSixFive:
             assert _markers(boolean.six_five(table)) <= _six_five_markers(table)
 
     def test_folding_is_still_per_order_even_though_sharing_is_not(self) -> None:
-        r"""Parity resists folding under every order, and is built anyway."""
+        """Parity resists folding under every order, and is built anyway.
+
+        Any permutation of parity is parity, so no renaming folds a single
+        one of its 63 internal nodes -- which is what made it the refusal
+        witness.  Sharing does not care: the nodes are duplicates of each
+        other, so the distinct count is 11 whatever the order.
+
+        The arithmetic kernel that used to be the other candidate was
+        retired: it needs ``T`` (or its complement) small enough to build,
+        which confines the ones to low indices, which leaves the rest of the
+        table constant -- the shape that folds well inside the budget.
+        """
         parity = "".join(str(bin(row).count("1") % 2) for row in range(64))
         for perm in permutations(range(6)):
             assert _six_five_markers(permute_truth_table(parity, perm)) == 63
@@ -190,7 +255,14 @@ class TestSixFive:
         assert boolean.six_five(parity)
 
     def test_reordering_widens_what_renders(self) -> None:
-        r"""A table that overflows in stream order can fold under another."""
+        """A table that overflows in stream order can fold under another.
+
+        These two were the refusal witnesses before the tree could split in
+        any input order, and neither is one any more: the scattered table is
+        an XNOR of the last three inputs, and the alternating table is NOT
+        of the last input, so the order that tests those inputs first folds
+        each well inside the budget.  Both still compute their function.
+        """
         for table, folded in (("10010110" * 8, 7), (("10" * 64)[:64], 1)):
             assert _six_five_markers(table) == 63 > 35  # refused in stream order.
             best = min(
@@ -207,7 +279,16 @@ class TestSixFive:
                 assert got == table[combo], f"inputs {bits}"
 
     def test_greedy_order_can_be_the_only_renderable_one(self) -> None:
-        r"""Past the search cap, the greedy pick alone can carry a table."""
+        """Past the search cap, the greedy pick alone can carry a table.
+
+        This is the one path where nothing else can render: at n == 7 an
+        alternating table spends 127 labels in stream order, so the
+        node-read build raises *and* the hoisted identity order returns
+        ``""``, leaving the greedy order as the sole candidate.  Every
+        smaller case is covered by the exhaustive search and every larger
+        table the tests render (AND-8) comes out of the node-read build, so
+        without this the fallback is never exercised as the only survivor.
+        """
         n = 7
         alternating = ("10" * 128)[: 2**n]
         assert _six_five_markers(alternating) == 2**n - 1 > 35
@@ -228,13 +309,25 @@ class TestSixFive:
 
     @pytest.mark.parametrize("n", [1, 2, 3, 4, 5])
     def test_total_through_five_inputs(self, n: int) -> None:
-        r"""Every table up to five inputs renders: the worst case still fits."""
+        """Every table up to five inputs renders: the worst case still fits.
+
+        An alternating table folds nothing, so it spends the full ``2**n - 1``
+        internal nodes -- 31 at n == 5, inside the 35-label budget.  The
+        refusals therefore begin at n == 6, where that worst case is 63.
+        """
         alternating = ("10" * 2**n)[: 2**n]
         assert _six_five_markers(alternating) == 2**n - 1 <= 35
         boolean.six_five(alternating)  # renders rather than raising.
 
     def test_parity_is_the_easy_case_once_subtrees_are_shared(self) -> None:
-        r"""Sharing inverts which table is the worst case."""
+        """Sharing inverts which table is the worst case.
+
+        An unshared tree spends a marker per internal node, so parity --
+        which folds nothing -- was the witness that fixed the cap at five.
+        Its *distinct* subtrees are two per level, so shared it is the
+        cheapest wide table there is: n == 10 spends 20 markers where the
+        tree would spend 1023.
+        """
         parity6 = "".join(str(bin(row).count("1") % 2) for row in range(64))
         assert _six_five_markers(parity6) == 63 > 35
         assert _six_five_dag_cost(parity6) == 12 <= 35
@@ -246,7 +339,7 @@ class TestSixFive:
 
     @staticmethod
     def _dense(n: int) -> str:
-        r"""A hash-derived table with no structure for the trees to exploit."""
+        """A hash-derived table with no structure for the trees to exploit."""
         digest = hashlib.sha256(f"dense:{n}".encode()).digest()
         bits: list[str] = []
         block = 0
@@ -257,7 +350,14 @@ class TestSixFive:
         return "".join(bits[: 2**n])
 
     def test_a_table_whose_distinct_subtrees_overflow_takes_the_walk(self) -> None:
-        r"""A table past the shared budget goes on the tape instead."""
+        """A table past the shared budget goes on the tape instead.
+
+        Dense n == 7 has 47 distinct subtrees against 35 labels, so every
+        tree-shaped emission overflows under every order -- this used to be
+        the refusal witness.  The walk spends one label per *input*: the
+        reads steer the pointer to the row the inputs index, so 7 labels
+        carry the whole 128-row table.
+        """
         dense7 = self._dense(7)
         assert _six_five_dag_cost(dense7) > 35
         program = boolean.six_five(dense7)
@@ -269,7 +369,13 @@ class TestSixFive:
             assert got == dense7[combo], f"inputs {bits}"
 
     def test_dense_ten_inputs_render_and_run(self) -> None:
-        r"""The generator clears n == 10 on a table with nothing to fold."""
+        """The generator clears n == 10 on a table with nothing to fold.
+
+        Dense n == 10 renders at 10 labels and 5319 chars (all 1024 rows
+        were run exhaustively once, in 12s; this samples).  The feed check
+        proves the walk reads exactly ``n`` lines -- its ``B``s sit inside
+        the pointer walk, so a desync would misroute as well as misread.
+        """
         dense10 = self._dense(10)
         program = boolean.six_five(dense10)
         assert _markers(program) == 10
@@ -281,7 +387,7 @@ class TestSixFive:
             assert not list(feed), f"inputs {bits} left input unread"
 
     def test_reordering_only_shrinks(self) -> None:
-        r"""No table comes out longer than its identity-order program."""
+        """No table comes out longer than its identity-order program."""
 
         improved = 0
         for value in range(256):
@@ -300,7 +406,16 @@ class TestSixFive:
         [("0110", 2), ("10010110", 3), ("1001011001101001", 4)],
     )
     def test_every_path_consumes_exactly_n_inputs(self, table: str, n: int) -> None:
-        r"""Each run reads all ``n`` inputs and no more, whichever build won."""
+        """Each run reads all ``n`` inputs and no more, whichever build won.
+
+        The reads are the interface: a caller feeding several programs from
+        one stream desyncs if a path leaves bits unconsumed.  Supplying
+        exactly ``n`` proves no path over-reads (the interpreter raises
+        ``EOFError``), and checking the feed is exhausted proves none
+        under-reads -- which execution alone does not catch.  This replaces
+        a walker that parsed the node-read emission, since the winning
+        construction now varies per table.
+        """
         program = boolean.six_five(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -310,7 +425,14 @@ class TestSixFive:
             assert not list(feed), f"inputs {bits} left input unread"
 
     def test_wide_tables_do_not_search_every_order(self) -> None:
-        r"""Past the cap only the identity and a greedy order are built."""
+        """Past the cap only the identity and a greedy order are built.
+
+        This generator renders past n == 6 whenever a table folds hard, so
+        the ``n!`` search is reachable rather than theoretical: AND-8 has
+        40320 orders and searching them takes about 17 seconds against
+        milliseconds for the greedy pick.  Timing is not the assertion --
+        the build count is, since that is what a future change would break.
+        """
         import importlib
 
         # The package re-exports the.
@@ -343,7 +465,7 @@ class TestSixFive:
             assert built == orders, f"n={n} built {built} candidates"
 
     def test_retired_arithmetic_kernel_is_gone(self) -> None:
-        r"""Retired construction helpers do not return as dispatch candidates."""
+        """Retired construction helpers do not return as dispatch candidates."""
         import importlib
 
         # The package re-exports the.
@@ -361,7 +483,7 @@ class TestSixFive:
 @pytest.mark.medium
 class TestStreetcode:
     def test_default_uses_only_shared_layouts(self) -> None:
-        r"""Per-input loops are width fallbacks, never default candidates."""
+        """Per-input loops are width fallbacks, never default candidates."""
         module = import_module("esolangs.tools.boolean.streetcode")
 
         for n in range(1, 4):
@@ -385,7 +507,7 @@ class TestStreetcode:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result."""
         program = boolean.streetcode(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -393,7 +515,12 @@ class TestStreetcode:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_constant_subtrees_fold(self) -> None:
-        r"""A subtree whose rows agree prints instead of driving down halls."""
+        """A subtree whose rows agree prints instead of driving down halls.
+
+        Streetcode splits most-significant-first, so a subtree is a
+        contiguous run: ``11110000`` is two constant halves and collapses,
+        while ``10101010`` is constant over no run and keeps every hall.
+        """
         constant = len(boolean.streetcode("11111111"))
         halves = len(boolean.streetcode("11110000"))
         scattered = len(boolean.streetcode("10101010"))
@@ -408,14 +535,26 @@ class TestStreetcode:
                 assert got == table[combo], f"{table} inputs {bits}"
 
     def test_folded_leaf_keeps_the_cell_pointer_advances(self) -> None:
-        r"""A folded leaf spends the ``=`` its skipped halls would have."""
+        """A folded leaf spends the ``=`` its skipped halls would have.
+
+        Each hall advances CP by one on the way down, so a leaf reached
+        without them prints from the wrong cell -- an all-zeros table came
+        out as ``'\\x00'`` before this was threaded through.
+        """
         program = boolean.streetcode("00000000")
         for combo in range(8):
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
             assert run_streetcode(program, [str(b) for b in bits]) == "0"
 
     def test_input_reordering_folds_a_scattered_table(self) -> None:
-        r"""The tree splits in whichever order folds most, not input order."""
+        """The tree splits in whichever order folds most, not input order.
+
+        ``10101010`` depends on the last input alone, so it folds nothing
+        splitting most-significant-first and everything once that input is
+        tested at the root.  Reordering is what lets it be emitted as the
+        cheap shape, and it costs only the walk that puts the bit in the
+        cell the root's hall tests.
+        """
         scattered = len(boolean.streetcode("10101010"))
         aligned = len(boolean.streetcode("11110000"))
         parity = len(boolean.streetcode("01101001"))
@@ -428,7 +567,12 @@ class TestStreetcode:
         assert scattered - aligned < 0.05 * aligned
 
     def test_input_reordering_never_grows_a_program(self) -> None:
-        r"""The identity order is built first and ties keep it."""
+        """The identity order is built first and ties keep it.
+
+        A table no reorder improves has to emit exactly what it emitted
+        before, so reordering can only ever shrink a program.  ``01101001``
+        is parity, which folds under no order at all.
+        """
         parity = boolean.streetcode("01101001")
         # Parity is the table where.
         # program is the identity one.
@@ -439,7 +583,13 @@ class TestStreetcode:
         ["10101010", "11001100", "01011010", "00111100", "10010110"],
     )
     def test_reordered_programs_compute_the_table(self, table: str) -> None:
-        r"""A reordered program still computes its function."""
+        """A reordered program still computes its function.
+
+        The cell an input is read into is the *inverse* of the split order --
+        level ``k`` tests cell ``k + 1`` and must test input ``perm[k]`` -- so
+        reading it forward stores the right bits in the wrong cells and
+        computes a different function.  Only running it catches that.
+        """
         program = boolean.streetcode(table)
         for combo in range(8):
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
@@ -447,12 +597,23 @@ class TestStreetcode:
             assert got == table[combo], f"{table} inputs {bits}"
 
     def test_reordering_keeps_the_reads_in_stream_order(self) -> None:
-        r"""Reordering moves where a bit is stored, never when it is read."""
+        """Reordering moves where a bit is stored, never when it is read.
+
+        The program consumes its input stream exactly as it did before: one
+        ``I`` per input, in input order.  What moves is the cell each lands
+        in, so the count of reads is what pins this down.
+        """
         for table in ("10101010", "11110000", "01101001"):
             assert boolean.streetcode(table).count("I") == 3
 
     def test_width_is_a_shape_choice(self) -> None:
-        r"""A width picks a narrower shape, and that shape still computes."""
+        """A width picks a narrower shape, and that shape still computes.
+
+        The hallway trades columns for rows, so a width the default overruns
+        is met by a shape that was built anyway, at the cost of rows. A
+        Streetcode program cannot
+        be reflowed after the fact, so this is the only way a width is met.
+        """
         table = "10"
         default = boolean.streetcode(table)
         narrow = boolean.streetcode(table, 25)
@@ -462,7 +623,12 @@ class TestStreetcode:
             assert run_streetcode(narrow, [bit]) == table[int(bit)]
 
     def test_width_takes_the_narrowest_when_none_fits(self) -> None:
-        r"""Below every shape's width the narrowest one is returned."""
+        """Below every shape's width the narrowest one is returned.
+
+        The generator has no shape narrower than its own decision tree, so
+        an impossible width is a preference it cannot honour rather than an
+        error; returning the best available beats returning nothing.
+        """
         table = "10"
         program = boolean.streetcode(table, 1)
         assert _columns(program) == min(
@@ -472,18 +638,33 @@ class TestStreetcode:
             assert run_streetcode(program, [bit]) == table[int(bit)]
 
     def test_width_none_is_unchanged(self) -> None:
-        r"""Passing no width builds exactly what the generator always built."""
+        """Passing no width builds exactly what the generator always built."""
         for table in ("10", "0110", "11111110"):
             assert boolean.streetcode(table, None) == boolean.streetcode(table)
 
     def test_a_requested_width_is_never_overrun(self) -> None:
-        r"""A width that *can* be met is met, measured on the emitted columns."""
+        """A width that *can* be met is met, measured on the emitted columns.
+
+        The width is a promise about the widest row, and the only way to
+        keep it is to pick a shape that already fits, so measuring the
+        wrong thing -- splitting the program on whitespace rather than on
+        newlines, say -- selects a shape that overruns while every
+        truth-table check still passes.  ``0001`` at 33 is the tight case:
+        the winning shape is exactly 33 columns, so a column count that
+        drifts either way changes which shape is returned.
+        """
         for table, width in (("0001", 33), ("0110", 33), ("01", 29)):
             program = boolean.streetcode(table, width)
             assert _columns(program) <= width, (table, width)
 
     def test_the_narrowest_fallback_is_really_the_narrowest(self) -> None:
-        r"""Below every shape's width, the narrowest shape comes back."""
+        """Below every shape's width, the narrowest shape comes back.
+
+        ``10`` cannot witness this: its candidates happen to agree, so a
+        fallback that returned the first or the lexicographically smallest
+        program would pass.  ``0100`` separates them -- the narrowest is 33
+        columns where the wrong pick is 36.
+        """
         program = boolean.streetcode("0100", 1)
         assert _columns(program) == 33
         for combo in range(4):
@@ -491,7 +672,14 @@ class TestStreetcode:
             assert run_streetcode(program, bits) == "0100"[combo]
 
     def test_a_width_equal_to_a_shape_is_wide_enough(self) -> None:
-        r"""The fit test is inclusive: exactly the shape's width fits it."""
+        """The fit test is inclusive: exactly the shape's width fits it.
+
+        At its own column count the default shape still fits, so asking for
+        exactly that many columns must return it rather than falling
+        through to a narrower, longer one.  One column more is the same
+        program; the suite otherwise only asks for 1, 25 and 100, none of
+        which lands on a boundary.
+        """
         default = boolean.streetcode("01")
         assert _columns(default) == 29
         assert boolean.streetcode("01", 29) == default
@@ -504,18 +692,34 @@ class TestStreetcode:
     def test_the_emitted_program_has_an_exact_length(
         self, table: str, length: int
     ) -> None:
-        r"""The layout is deterministic down to the character."""
+        """The layout is deterministic down to the character.
+
+        Streetcode's rows are built from fixed templates and padded runs,
+        so a run one wide, a lap one column longer, or a trailing blank row
+        all leave a *working* program of a different size -- and nothing
+        else here measures size at all.
+        """
         assert len(boolean.streetcode(table)) == length
 
     def test_no_trailing_blank_row(self) -> None:
-        r"""The grid ends on its last real row."""
+        """The grid ends on its last real row.
+
+        The row count is one plus the deepest row written, and an off-by-one
+        there appends an empty row that the interpreter walks over
+        harmlessly -- invisible to every behavioural check.
+        """
         for table in ("01", "0101", "0110", "11111110"):
             program = boolean.streetcode(table)
             assert not program.endswith("\n"), table
             assert program.split("\n")[-1].strip(), table
 
     def test_the_program_is_only_streetcode_characters(self) -> None:
-        r"""Only the glyphs Streetcode reads, plus layout space."""
+        """Only the glyphs Streetcode reads, plus layout space.
+
+        Measured over every table through three inputs and a spread of
+        widths rather than read off the spec: the generator uses a subset,
+        and asserting the spec's full set would pass vacuously.
+        """
         allowed = set(" +-;=CIOU^_|~\n")
         for table in ("01", "0000", "0110", "11111110"):
             assert set(boolean.streetcode(table)) <= allowed, table
@@ -523,7 +727,13 @@ class TestStreetcode:
             assert set(boolean.streetcode("0110", width)) <= allowed, width
 
     def test_order_search_stops_at_the_cap(self) -> None:
-        r"""Past the cap only the identity order is offered."""
+        """Past the cap only the identity order is offered.
+
+        Above ``_ORDER_SEARCH_MAX`` the exhaustive search is ``n!`` builds of
+        an ``O(2**n)`` drawing, so the enumeration collapses to the one order
+        that needs no search.  Tested on the helper: reaching this through
+        ``streetcode`` would mean building a seven-input program.
+        """
         from esolangs.tools.boolean.helpers import _ORDER_SEARCH_MAX
         from esolangs.tools.boolean.streetcode import _streetcode_orders
 
@@ -547,7 +757,7 @@ class TestDimensional:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result."""
         program = boolean.dimensional(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -555,14 +765,14 @@ class TestDimensional:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_moves_are_pinned_to_dimension_zero(self) -> None:
-        r"""A bare >/< would take its dimension from the cell's value."""
+        """A bare >/< would take its dimension from the cell's value."""
         program = boolean.dimensional("0110")
         rest = program.replace(">0", "").replace("<0", "")
         assert ">" not in rest
         assert "<" not in rest
 
     def test_scales_beyond_the_old_reference_cap(self) -> None:
-        r"""The v3.0 interpreter's unbounded cells lift the old n <= 12 cap."""
+        """The v3.0 interpreter's unbounded cells lift the old n <= 12 cap."""
         program = boolean.dimensional("0" * 4095 + "1")
         got = run_dimensional(program, ["1"] * 12)
         assert got == "1"
@@ -580,7 +790,7 @@ class TestDimensionalTree:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result."""
         program = boolean.dimensional_tree(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -588,12 +798,17 @@ class TestDimensionalTree:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_tree_small_on_dense_tables(self) -> None:
-        r"""The tree shares bit tests, so dense tables stay small."""
+        """The tree shares bit tests, so dense tables stay small."""
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
         assert len(boolean.dimensional_tree(xor6)) < 10_000
 
     def test_dimensional_is_the_tree(self) -> None:
-        r"""dimensional is the tree, sparse or dense."""
+        """dimensional is the tree, sparse or dense.
+
+        A survivor evaluator used to sit beside it, chosen when it came out
+        shorter.  Folding constant subtrees put the tree ahead on every
+        table at n <= 4, so the survivor was unreachable and was removed.
+        """
         sparse = "0" * 15 + "1"  # AND4.
         assert boolean.dimensional(sparse) == boolean.dimensional_tree(sparse)
         xor = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
@@ -612,7 +827,7 @@ class TestCirclefuck:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result."""
         program = boolean.circlefuck(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -627,7 +842,7 @@ class TestCirclefuck:
         ],
     )
     def test_byte_values(self, values: list[int], n: int) -> None:
-        r"""circlefuck_byte outputs the given byte per input combination."""
+        """circlefuck_byte outputs the given byte per input combination."""
         program = boolean.circlefuck_byte(values)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -639,7 +854,16 @@ class TestCirclefuck:
             boolean.circlefuck_byte([1, 2, 3])
 
     def test_past_the_cap_the_greedy_order_replaces_the_search(self) -> None:
-        r"""Above ``_ORDER_SEARCH_MAX`` one greedy pick stands in for ``n!``."""
+        """Above ``_ORDER_SEARCH_MAX`` one greedy pick stands in for ``n!``.
+
+        The exhaustive reorder is capped because it builds a program per
+        order; at n == 7 that is 5040 builds.  Past the cap the generator
+        scores each input by the constant subtrees choosing it next would
+        create and commits to that order, so exactly one extra candidate is
+        built.  The count is the assertion -- it is what a change to the cap
+        or to the fallback would break -- and the table still has to come
+        out right, so the program is run over all 128 combinations too.
+        """
         import importlib
 
         # The package re-exports the.
@@ -671,7 +895,22 @@ class TestCirclefuck:
             assert got == table[combo], f"inputs {bits}"
 
     def test_constant_subtrees_fold(self) -> None:
-        r"""A constant slice prints its answer instead of branching further."""
+        """A constant slice prints its answer instead of branching further.
+
+        Circlefuck branches on the cell the pointer is over, so the split
+        axis used to be fixed to the last input and only tables constant
+        along *that* axis folded -- ``11110000`` folded nothing and cost
+        the same as a scattered table.  The tree now picks its order, so
+        both single-dependency tables fold to one branch.
+
+        They do not come out *equal*, and the residue is the reorder's
+        price: a node tests the cell under the pointer, so ``11110000``
+        walks to cell 0 and pays two moves the already-aligned
+        ``10101010`` does not.  Pinning the gap as a small constant rather
+        than as equality is what keeps that cost visible -- if the walk
+        ever stopped being emitted, this would read as an improvement
+        instead of the correctness bug it would be.
+        """
         assert len(boolean.circlefuck("11111111")) < len(
             boolean.circlefuck("10101010"),
         )
@@ -684,7 +923,14 @@ class TestCirclefuck:
         assert walked < len(boolean.circlefuck("10010110"))
 
     def test_folded_leaf_clears_its_cell(self) -> None:
-        r"""A folded leaf builds its value on a cleared cell."""
+        """A folded leaf builds its value on a cleared cell.
+
+        The ``[-]`` a full-depth leaf relies on is emitted inside each
+        ``[`` on the way down, so a leaf that skips those levels has to
+        clear the cell itself.  Without it the cell still holds the input
+        bit and every one-valued input prints one too high -- which only
+        shows on an input of ``1``, so it is worth pinning per input.
+        """
         program = boolean.circlefuck("11111111")
         for combo in range(8):
             bits = [(combo >> (2 - i)) & 1 for i in range(3)]
@@ -705,7 +951,7 @@ class TestBf:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result."""
         program = boolean.brainfuck(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -713,7 +959,14 @@ class TestBf:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_bf_is_the_tree(self) -> None:
-        r"""bf is the folded tree, for constant and sparse tables alike."""
+        """bf is the folded tree, for constant and sparse tables alike.
+
+        There used to be a minterm construction here and ``bf`` returned
+        whichever was shorter.  Folding left the tree ahead on every table
+        but the two constant ones -- where it costs about 2.5x, a bounded
+        factor on two tables out of 65536 -- so the minterm went away and
+        the constant tables go to the tree with everything else.
+        """
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
         for table in ("0" * 16, "0" * 15 + "1", xor6):  # constant, AND4, dense.
             assert boolean.brainfuck(table) == boolean.bf_tree(table)
@@ -734,7 +987,7 @@ class TestBfTree:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result."""
         program = boolean.bf_tree(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -742,16 +995,35 @@ class TestBfTree:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_tree_small_on_dense_tables(self) -> None:
-        r"""The tree shares bit tests, so dense tables stay small."""
+        """The tree shares bit tests, so dense tables stay small."""
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
         assert len(boolean.bf_tree(xor6)) < 10_000
 
     def test_constant_subtrees_fold(self) -> None:
-        r"""A constant slice emits a leaf instead of branching on more bits."""
+        """A constant slice emits a leaf instead of branching on more bits.
+
+        Both tables have the same number of ones, so the difference is the
+        arrangement alone: ``11110000`` is two constant halves and folds to
+        one leaf each, while the parity table has no constant subtree above
+        a single row and emits the full tree.
+        """
         assert len(boolean.bf_tree("11110000")) < len(boolean.bf_tree("10010110"))
 
     def test_parity_table_is_unfolded(self) -> None:
-        r"""A table with no constant subtree still spends a leaf per row."""
+        """A table with no constant subtree still spends a leaf per row.
+
+        The guard against a fold that fires too eagerly: parity has no
+        constant slice above one row, so the tree keeps all ``2**n - 1``
+        nodes and every one of the ``2**n`` rows keeps its own leaf.
+
+        Counted through the arm-opening ``[-`` rather than through ``.``:
+        leaves no longer print, they record a bit for the single print below
+        the tree, so a ``'0'`` leaf emits nothing at all and counting leaves
+        directly is not possible.  Every loop in the tree opens by clearing
+        what it tested, and each of the 7 nodes opens two -- one for the bit
+        and one for the flag -- giving 14; the same table folded to a single
+        node (``11110000``) gives 2.
+        """
         xor3 = "10010110"
         assert boolean.bf_tree(xor3).count("[-") == 14
         assert boolean.bf_tree("11110000").count("[-") == 2
@@ -770,7 +1042,7 @@ class TestThreeDBf:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result."""
         program = boolean.three_d_brainfuck(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -778,7 +1050,7 @@ class TestThreeDBf:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_array_moves_use_the_3d_axes(self) -> None:
-        r"""3D Brainfuck's >/< are no-ops, so the array moves with e/w."""
+        """3D Brainfuck's >/< are no-ops, so the array moves with e/w."""
         program = boolean.three_d_brainfuck("0110")
         assert ">" not in program
         assert "<" not in program
@@ -799,7 +1071,7 @@ class TestFactor:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result."""
         program = boolean.factor(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -807,26 +1079,43 @@ class TestFactor:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_is_the_decimal_encoding_of_the_bf_program(self) -> None:
-        r"""factor delegates to the brainfuck generator, then encodes it."""
+        """factor delegates to the brainfuck generator, then encodes it."""
         from esolangs.tools.boolean.tape import _factor_encode
 
         table = "0110"
         assert boolean.factor(table) == str(_factor_encode(boolean.brainfuck(table)))
 
     def test_sparse_tables_stay_small_at_n_four(self) -> None:
-        r"""Sparse tables (few one-rows) encode a short brainfuck program, so."""
+        """Sparse tables (few one-rows) encode a short brainfuck program,
+        so they stay well under the digit cap even at n == 4."""
         assert boolean.factor("0" * 16).isdigit()
         assert boolean.factor("1" * 16).isdigit()
 
     def test_a_table_past_cpythons_own_limit_still_renders(self) -> None:
-        r"""XOR6 encodes to 5934 digits, past CPython's 4300-digit default."""
+        """XOR6 encodes to 5934 digits, past CPython's 4300-digit default.
+
+        That default is a DoS guard on quadratic int-to-str conversion, not
+        anything Factor says, so it is raised for the render rather than
+        reported as a property of the language -- which is what used to cap
+        this generator at n=3.
+
+        The table here keeps climbing as the tree gets smaller: XOR4 (6390
+        digits) until the print-once leaf took it to 2842, then XOR5 until
+        dropping the complement construction took that to 3107.  Both fell
+        back under the default, so the check moves up rather than losing the
+        raise it exists to exercise.
+        """
         xor6 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(64))
         program = boolean.factor(xor6)
         assert program.isdigit()
         assert len(program) > sys.get_int_max_str_digits()
 
     def test_the_render_leaves_the_global_limit_alone(self) -> None:
-        r"""The digit limit is process-global, so it is borrowed, not kept."""
+        """The digit limit is process-global, so it is borrowed, not kept.
+
+        A generator that raised it and walked away would silently disarm
+        the guard for everything else in the process.
+        """
         before = sys.get_int_max_str_digits()
         boolean.factor(
             "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
@@ -834,7 +1123,14 @@ class TestFactor:
         assert sys.get_int_max_str_digits() == before
 
     def test_max_digits_bounds_one_call(self) -> None:
-        r"""``max_digits`` is the cap, and it names the size it refused."""
+        """``max_digits`` is the cap, and it names the size it refused.
+
+        The count is a bit-length estimate, not a conversion: sizing it
+        exactly means doing the very thing the check exists to avoid.  It is
+        asserted as the "about" it reports -- it lands one over XOR4's real
+        1702 digits, which is the point: it is a bound, not a count.  The
+        limit has to stay restored on the refusing path too.
+        """
         before = sys.get_int_max_str_digits()
         xor4 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
         with pytest.raises(ValueError, match="about 1703 digits"):
@@ -843,7 +1139,12 @@ class TestFactor:
 
 
 class TestSlowAcvMammalian:
-    r"""The decision tree LEAPFROG makes possible."""
+    """The decision tree LEAPFROG makes possible.
+
+    ``ACCEPT`` appends the bit to array 0 whatever the pointer holds, and
+    ``LEAPFROG`` jumps exactly when the array's last element is nonzero, so
+    the bit just read is the branch condition and nothing has to be routed.
+    """
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -865,7 +1166,7 @@ class TestSlowAcvMammalian:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result."""
         program = boolean.slow_acv_mammalian(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -873,7 +1174,15 @@ class TestSlowAcvMammalian:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_constant_tables_still_read_every_input(self) -> None:
-        r"""A constant table consumes all ``n`` inputs."""
+        """A constant table consumes all ``n`` inputs.
+
+        The tree is uniform depth, so there is no folding to skip a read --
+        the reads are the language's interface, and leaving a caller's bits
+        on the input stream would break whatever runs next.  What counts is
+        the reads a *run* makes, not the ``ACCEPT`` tokens in the source:
+        preorder emits one per internal node, so a depth-``n`` tree carries
+        ``2**n - 1`` of them and executes ``n``.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
         from esolangs.vm import run_until_halt_or_cycle
@@ -886,13 +1195,29 @@ class TestSlowAcvMammalian:
             assert io_obj.position() == 2
 
     def test_pointer_never_leaves_array_zero(self) -> None:
-        r"""No ``SPRINT``: the tree lives in code space, not in array space."""
+        """No ``SPRINT``: the tree lives in code space, not in array space.
+
+        The wall this generator resolves argued that a bit could not be both
+        read and routed, since ``ACCEPT`` needs ``ptr == 0`` to consume one
+        while routing needs ``SPRINT`` to move away.  The construction never
+        routes at all, and this pins that.
+        """
         program = boolean.slow_acv_mammalian("01101001")
         assert "SPRINT" not in program
         assert "CONFLAGRATE" not in program
 
     def test_a_node_opens_the_accumulator_on_a_clean_digit(self) -> None:
-        r"""``ACCEPT`` is entered with ``acc % 256 == 48``, whatever the state."""
+        """``ACCEPT`` is entered with ``acc % 256 == 48``, whatever the state.
+
+        The whole construction rests on this: a node normalizes the
+        accumulator so ``'0'``/``'1'`` XORs down to a bare ``0``/``1``.
+        The aim class delivers it by arithmetic -- ``first`` even with bits
+        4-5 ``01``, so the fixed ``+16`` run flips exactly those bits --
+        and a state whose low byte drifted off 48 would append a junk byte
+        and branch on something other than the bit just read.  Recovered
+        here from either exit: XORing the exit accumulator against the exit
+        sum reproduces what ``ACCEPT`` saw.
+        """
         from esolangs.tools.boolean.slow_acv_mammalian import _node
 
         for array, acc in (
@@ -906,7 +1231,15 @@ class TestSlowAcvMammalian:
             assert (taken[1] ^ sum(taken[0])) % 256 == 48
 
     def test_the_landing_is_start_minus_15(self) -> None:
-        r"""A 1-bit resumes exactly 15 tokens short of the array sum."""
+        """A 1-bit resumes exactly 15 tokens short of the array sum.
+
+        This is the identity that replaced the 256-candidate sweep: on the
+        aim class the ``j1`` seeds cancel out of the jump arithmetic, so
+        the landing is a pure function of the sum and aiming is done by
+        stashing ballast, never by trying candidates.  Machine-backed
+        rather than re-derived, so a drift in either the generator's
+        algebra or the interpreter's ``LEAPFROG`` shows up here.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
         from esolangs.tools.boolean.slow_acv_mammalian import _node, _seeded
@@ -927,7 +1260,15 @@ class TestSlowAcvMammalian:
             assert machine.acc == taken[1]
 
     def test_the_trampoline_jump_ignores_the_head(self) -> None:
-        r"""The trampoline lands on its target from any head value."""
+        """The trampoline lands on its target from any head value.
+
+        ``LEAPFROG``'s target is ``acc - head - 1`` and the final
+        ``DIGEST`` folds the head into the accumulator, so the head cancels
+        and the landing is the non-head sum plus the appended byte.  That
+        cancellation is what makes the jump *solvable* -- no candidate ever
+        has to be tried -- and it holds through a ``SEED`` run that wraps
+        the head, which drops the array sum by 256 but not the target.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
         from esolangs.tools.boolean.slow_acv_mammalian import _trampoline
@@ -947,7 +1288,14 @@ class TestSlowAcvMammalian:
             assert machine.acc == out_acc
 
     def test_the_shortest_hop_still_fires(self) -> None:
-        r"""A hop of one token appends ``b == 1``, the least firing byte."""
+        """A hop of one token appends ``b == 1``, the least firing byte.
+
+        The trampoline's ``LEAPFROG`` fires because the appended byte is
+        the array's last element, so ``b == 0`` would fall through into the
+        dead pad and execute garbage.  ``_MIN_HOP`` exists to keep the
+        emitter's targets off that edge, and this pins the edge itself:
+        the shortest representable hop still jumps.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
         from esolangs.tools.boolean.slow_acv_mammalian import _trampoline
@@ -966,13 +1314,28 @@ class TestSlowAcvMammalian:
         assert machine.ind == target
 
     def test_ballast_is_spent_where_it_stands(self) -> None:
-        r"""No ``CONSUME``: the parent/child ballast lock never forms."""
+        """No ``CONSUME``: the parent/child ballast lock never forms.
+
+        The searching construction shed a 0-arm's inherited ballast with
+        ``CONSUME`` runs because a child re-aimed from scratch would
+        otherwise convert every stashed token into padding of its own.
+        Here the 1-subtree inherits the array whose sum *is* its position
+        and the 0-subtree enters through a trampoline carrying the same,
+        so nothing is ever dropped to be rebuilt -- and the program says
+        so: only the six ops the construction needs appear.
+        """
         program = boolean.slow_acv_mammalian("0110")
         used = set(program.split())
         assert used <= {"SEED", "EXCRETE", "DIGEST", "ACCEPT", "PRONOUNCE", "LEAPFROG"}
 
     def test_a_stale_width_table_is_caught_not_emitted(self) -> None:
-        r"""Slots too narrow for their trampolines raise, loudly."""
+        """Slots too narrow for their trampolines raise, loudly.
+
+        The slot widths are the one place the construction leans on a
+        bound rather than an exact solve, so a stale ``_widths`` must
+        surface as an error naming the overflow -- not as a program whose
+        trampoline spills into the dead pad and executes it.
+        """
         import importlib
 
         # The package re-exports the.
@@ -996,13 +1359,42 @@ class TestSlowAcvMammalian:
         ],
     )
     def test_the_width_recurrence_is_exact(self, n: int, widths: list[int]) -> None:
-        r"""The cap recurrence's own output, pinned per level."""
+        """The cap recurrence's own output, pinned per level.
+
+        ``_widths`` is an *upper bound*, and the slack it carries is large
+        -- 542 and 558 tokens at levels 2 and 3 -- so a term that drifts
+        upward changes nothing anywhere else: the emitted program is
+        byte-identical when every slot grows by 5, because the dead pad
+        absorbs the difference and the landing offsets move in steps of
+        255.  The companion test above covers the other direction, where a
+        too-*small* slot trips the alarm.  Between them the bound is only
+        pinned from below, which leaves every line of the recurrence free
+        to grow unobserved; these values close that.
+
+        A level is one entry, so the list also fixes the recurrence's
+        length and the ``widths[0] == 0`` seed (a leaf has no slot).
+
+        ``n == 8`` is not padding, and costs nothing -- this is integer
+        arithmetic, with no program built.  The ``caps`` seed feeds the
+        next level's slot only through a ceiling division, which swallows
+        a one-token change for seven levels; the first arity where a
+        wrong seed reaches ``widths`` at all is eight.  Nothing below it
+        can separate that term.
+        """
         from esolangs.tools.boolean.slow_acv_mammalian import _widths
 
         assert _widths(n) == widths
 
     def test_the_slots_actually_hold_their_trampolines(self) -> None:
-        r"""Every emitted hop fits, and level 1 is the tight one."""
+        """Every emitted hop fits, and level 1 is the tight one.
+
+        The bound is worth having only if it binds somewhere near the
+        truth: the level-1 slot is 267 tokens against a largest observed
+        hop of 245, while the deeper levels sit hundreds clear.  Recording
+        the real occupancy keeps the recurrence honest from above -- a term
+        that grew would push these numbers apart -- and documents which
+        level is the one to watch.
+        """
         import importlib
 
         # The package re-exports the.
@@ -1033,7 +1425,7 @@ class TestSlowAcvMammalian:
 
 class TestSuffolk:
     def test_candidate_costs_select_the_emitted_program(self) -> None:
-        r"""The selector's model is exact across every non-constant table to."""
+        """The selector's model is exact across every non-constant table to n=3."""
         from esolangs.tools.boolean.tape import _suffolk_candidate_cost
 
         for n in range(1, 4):
@@ -1062,7 +1454,7 @@ class TestSuffolk:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result."""
         program = boolean.suffolk(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -1070,12 +1462,31 @@ class TestSuffolk:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_constant_tables_collapse_but_still_read(self) -> None:
-        r"""A constant table skips the minterms but still reads its inputs."""
+        """A constant table skips the minterms but still reads its inputs.
+
+        Dropping the evaluation is the win; the reads are the language's
+        interface and have to stay, or the caller's bits are left unread on
+        the input stream for whatever runs next.
+        """
         for table in ("00", "11"):
             assert boolean.suffolk(table).count(",") == 1  # n == 1.
 
     def test_dense_tables_evaluate_the_complement(self) -> None:
-        r"""A table with more ones than zeros is evaluated from its zero rows."""
+        """A table with more ones than zeros is evaluated from its zero rows.
+
+        Cost is one minterm block per evaluated row, so before this the
+        length rose monotonically with the ones-count.  Now it peaks at half
+        and falls again -- the signature of picking whichever row-set is
+        smaller -- which is what this pins.
+
+        **Every table here depends on all three inputs**, which the prefix
+        family ``1^k 0^(8-k)`` does not: ``11110000`` ignores two of them,
+        and since dependency reduction (10) shipped it is the *cheapest*
+        table of the seven rather than the dearest, so the peak-at-half
+        signature reads as broken when it is only being measured through a
+        second optimization.  Holding the arity fixed isolates the
+        complement, which is what this test is about.
+        """
         tables = (
             "10000000",  # 1 one.
             "10010000",  # 2.
@@ -1096,7 +1507,13 @@ class TestSuffolk:
         ["11111110", "1111111111111110", "0111111111111111", "11111100"],
     )
     def test_complemented_tables_still_compute(self, table: str) -> None:
-        r"""The inverted print stage answers the original table, not its flip."""
+        """The inverted print stage answers the original table, not its flip.
+
+        ``.`` emits ``chr(acc - 1)`` and ``!`` computes
+        ``max(0, cell + 1 - acc)``, so the constant the flip cell carries has
+        to account for both; preloading it one low prints ``'/'`` instead of
+        ``'0'``, which is how an earlier attempt failed.
+        """
         n = (len(table) - 1).bit_length()
         program = boolean.suffolk(table)
         for combo in range(2**n):
@@ -1123,7 +1540,7 @@ class TestPainfuck:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result."""
         program = boolean.painfuck(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -1131,7 +1548,8 @@ class TestPainfuck:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_commands_are_preshifted_for_the_trans_table(self) -> None:
-        r"""The interpreter shifts commands through its cycles, so the source."""
+        """The interpreter shifts commands through its cycles, so the source
+        must be the inverse shift; the translated commands are the BF moves."""
         from esolangs.interpreters.tape_based.painfuck import _translate
 
         program = boolean.painfuck("0110")
@@ -1159,7 +1577,7 @@ class TestBitTilde:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result."""
         program = boolean.bit_tilde(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -1167,7 +1585,7 @@ class TestBitTilde:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_single_read_and_output(self) -> None:
-        r"""One read per input and a single final output."""
+        """One read per input and a single final output."""
         program = boolean.bit_tilde("0110")
         assert program.startswith(")")
         assert program.count(")") == 2
@@ -1191,7 +1609,7 @@ class TestJaune:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result."""
         program = boolean.jaune(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -1200,7 +1618,7 @@ class TestJaune:
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
-        r"""Every table up to three inputs produces the right result."""
+        """Every table up to three inputs produces the right result."""
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
             program = boolean.jaune(table)
@@ -1210,7 +1628,17 @@ class TestJaune:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_reads_every_input_whatever_the_table(self) -> None:
-        r"""Every table consumes exactly ``n`` inputs, folds included."""
+        """Every table consumes exactly ``n`` inputs, folds included.
+
+        This is the cross-cutting contract in
+        ``test_boolean_contract.py``, pinned here because that sweep
+        cannot see Jaune: it iterates the generators registered in
+        ``BY_FUNCTION``, and Jaune is not one of them.  The reads used to
+        sit *at* the tree's nodes, so a folded tree skipped them and a
+        constant table consumed no input at all -- making the program's
+        stream consumption a function of its truth table.  Without this
+        test nothing would catch that coming back.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.jaune import run
 
@@ -1224,7 +1652,12 @@ class TestJaune:
             )
 
     def test_unused_inputs_are_clobbered_not_stored(self) -> None:
-        r"""An input no node branches on is read without keeping a cell."""
+        """An input no node branches on is read without keeping a cell.
+
+        ``10101010`` depends only on its last input, so the first two
+        reads need no cell of their own and the tree navigates a
+        one-cell block instead of a three-cell one.
+        """
         assert boolean.jaune("10101010").startswith("vvv")
         # every input matters here, so.
         assert boolean.jaune("10010110").startswith("v>v>v>")
@@ -1247,14 +1680,14 @@ class TestJaune:
         ],
     )
     def test_multiply(self, a: int, b: int) -> None:
-        r"""The sentinel-delimited multiply reads any-length operands."""
+        """The sentinel-delimited multiply reads any-length operands."""
         program = boolean.jaune_multiply()
         lines = [*list(str(a)), "*", *list(str(b)), "#"]
         got = run_jaune(program, lines)
         assert got == str(a * b), f"{a} * {b}"
 
     def test_multiply_all_small_operands(self) -> None:
-        r"""Every single-digit pair produces the right product."""
+        """Every single-digit pair produces the right product."""
         program = boolean.jaune_multiply()
         for a in range(10):
             for b in range(10):
@@ -1275,7 +1708,7 @@ class TestBasicfuck:
         ],
     )
     def test_program_shape(self, table: str, n: int) -> None:
-        r"""The program declares its cells, reads n inputs, and prints once."""
+        """The program declares its cells, reads n inputs, and prints once."""
         program = boolean.basicfuck(table)
         assert program.startswith("#basicfuck t=unbounded r=0~255 o=wrap")
         assert (
@@ -1290,14 +1723,14 @@ class TestBasicfuck:
         assert program.count("write <- out ;") == _leaves(table)
 
     def test_constant_subtrees_fold(self) -> None:
-        r"""A constant slice emits one leaf instead of branching further."""
+        """A constant slice emits one leaf instead of branching further."""
         assert boolean.basicfuck("1" * 16).count("write <- out ;") == 1
         assert boolean.basicfuck("11110000").count("write <- out ;") == 2
         # parity has no constant slice.
         assert boolean.basicfuck("10010110").count("write <- out ;") == 8
 
     def test_decision_tree(self) -> None:
-        r"""Each internal node branches both ways with the wiki's if!(...)."""
+        """Each internal node branches both ways with the wiki's if!(...)."""
         program = boolean.basicfuck("0110")
         assert program.count("if (a1) {") == 1
         assert program.count("if !(a1) {") == 1
@@ -1317,7 +1750,7 @@ class TestSbleq:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result."""
         program = boolean.sbleq(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -1325,7 +1758,7 @@ class TestSbleq:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_program_structure(self) -> None:
-        r"""The root reads, then its branch normalizes and tests it."""
+        """The root reads, then its branch normalizes and tests it."""
         program = boolean.sbleq("0110")
         cells = [int(tok) for tok in program.split()]
         data_base = len(cells) - 11
@@ -1350,13 +1783,13 @@ class TestSbleq:
         ]  # one halt per leaf.
 
     def test_only_the_hoisted_route_remains(self) -> None:
-        r"""The former node-read builder is gone, not merely bypassed."""
+        """The former node-read builder is gone, not merely bypassed."""
         import esolangs.tools.boolean.tape as module
 
         assert not hasattr(module, "_sbleq_node_read")
 
     def test_hoisted_build_reads_every_input_once_up_front(self) -> None:
-        r"""The read block is 2n instructions and precedes every branch."""
+        """The read block is 2n instructions and precedes every branch."""
         from esolangs.tools.boolean.tape import _sbleq_hoisted
 
         program = _sbleq_hoisted("00010111", (0, 1, 2))
@@ -1387,7 +1820,7 @@ class TestBrainIf:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result."""
         program = boolean.brainif(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -1395,30 +1828,48 @@ class TestBrainIf:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_structure(self) -> None:
-        r"""The answer byte is built first, then an input is read and tested."""
+        """The answer byte is built first, then an input is read and tested."""
         program = boolean.brainif("10")
         assert program.startswith("if 0 increment")
         assert "if 0 input" in program
         assert "if 48 goto" in program
 
     def test_the_answer_byte_is_built_once(self) -> None:
-        r"""The climb to 48 is paid before the tree, not once per digit."""
+        """The climb to 48 is paid before the tree, not once per digit.
+
+        Two per-digit output routines cost 48 + 49 increments and dominated
+        the program; building the byte ahead of the branch leaves the tree
+        deciding only whether to add one, so the count is 48 plus one line
+        per ``1`` *leaf*.  Leaves, not rows: a constant slice folds to one
+        leaf, so ``11111110`` spends three rather than seven.
+        """
         for table, one_leaves in (("10", 1), ("0110", 2), ("11111110", 3)):
             assert boolean.brainif(table).count("increment") == 48 + one_leaves
 
     def test_one_shared_output_tail(self) -> None:
-        r"""Both answers print from the same two lines."""
+        """Both answers print from the same two lines."""
         program = boolean.brainif("0110")
         assert program.count("output") == 2
 
     def test_constant_subtrees_fold(self) -> None:
-        r"""A constant slice stops the branching, though not the reads."""
+        """A constant slice stops the branching, though not the reads.
+
+        Reads carry the pointer home, so a leaf spends no moves reaching
+        the answer and the fold is not handed back -- which is what an
+        earlier layout, with the answer past the inputs, did.
+        """
         assert len(boolean.brainif("11111111")) < len(boolean.brainif("11110000"))
         assert len(boolean.brainif("11110000")) < len(boolean.brainif("10010110"))
 
 
 class TestRotfuck:
-    r"""The ROTfuck boolean generator."""
+    """The ROTfuck boolean generator.
+
+    ROTfuck rotates the program after every command, so the generator lays
+    out ``[ body ]`` blocks whose ``]`` is a phantom encoded at the ``[``-fire
+    seek state; both the skip and body paths re-converge in the same rotation
+    state because every body length is 7 (mod 8).
+    """
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -1437,7 +1888,7 @@ class TestRotfuck:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every input combination produces the truth-table result."""
+        """Every input combination produces the truth-table result."""
         program = boolean.rotfuck(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -1445,7 +1896,7 @@ class TestRotfuck:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_program_round_trips_every_table_at_n_2(self) -> None:
-        r"""Every two-input table produces the right result."""
+        """Every two-input table produces the right result."""
         for table_int in range(2 ** (2**2)):
             table = format(table_int, "04b")
             program = boolean.rotfuck(table)
@@ -1455,7 +1906,14 @@ class TestRotfuck:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_the_rotation_cycle_is_the_documented_one(self) -> None:
-        r"""``+ -> - -> > -> < -> , -> ."""
+        """``+ -> - -> > -> < -> , -> . -> [ -> ] -> +``, and it is a cycle.
+
+        Everything else here is arithmetic on this order: which commands a
+        body may use at an offset, which character encodes a phantom ``]``,
+        and how far a pad shifts the rest of a block.  A rotation that is
+        off by one, or runs backwards, still emits a program -- one whose
+        every command means something else.
+        """
         from esolangs.tools.boolean.rotfuck import _ROTFUCK_CHAIN, _rotfuck_rot
 
         assert _ROTFUCK_CHAIN == "+-><,.[]"
@@ -1467,7 +1925,16 @@ class TestRotfuck:
             assert _rotfuck_rot(char, 0) == char, char
 
     def test_a_body_command_never_shows_as_a_bracket(self) -> None:
-        r"""The allowed set at each offset is exactly the non-bracket rotations."""
+        """The allowed set at each offset is exactly the non-bracket rotations.
+
+        A body command at relative offset ``j`` is read as
+        ``rot^-j(cmd)`` while the ``[`` seeks its partner, so a command
+        that shows as ``[`` or ``]`` there would move the seek's depth
+        count and the block would pair with the wrong bracket.  The two
+        offsets that matter most are 2 and 3, where only two of the four
+        commands survive -- and they exclude *different* ones, which is
+        what makes the padding necessary rather than cosmetic.
+        """
         from esolangs.tools.boolean.rotfuck import _rotfuck_allowed, _rotfuck_rot
 
         for offset in range(8):
@@ -1480,7 +1947,14 @@ class TestRotfuck:
         assert _rotfuck_allowed(4) == ["+", "-"]
 
     def test_a_neutral_pad_exists_and_is_net_zero_at_every_offset(self) -> None:
-        r"""Padding shifts the offset by two without moving the tape."""
+        """Padding shifts the offset by two without moving the tape.
+
+        Both characters have to be legal *at their own* offsets, and at
+        offsets 2 and 3 exactly one of the four candidate pairs qualifies,
+        so the choice is forced there rather than preferred.  The pair is
+        also net-neutral by construction -- ``+-`` and ``><`` undo
+        themselves -- which is what lets it be inserted anywhere.
+        """
         from esolangs.tools.boolean.rotfuck import _rotfuck_allowed, _rotfuck_neutral
 
         for offset in range(8):
@@ -1494,7 +1968,15 @@ class TestRotfuck:
         assert _rotfuck_neutral(3) == "+-"
 
     def test_every_body_is_seven_mod_eight_and_offset_legal(self) -> None:
-        r"""The two invariants the block layout rests on, over many bodies."""
+        """The two invariants the block layout rests on, over many bodies.
+
+        A body of length ``L`` with ``L + 1 == 0 (mod 8)`` puts the skip
+        path and the body path in the same rotation state after the block,
+        which is what lets the blocks be laid end to end.  Every command in
+        it must also sit at an offset where it does not read as a bracket.
+        Neither is visible in a truth-table check: a body that breaks
+        either still runs, it just re-converges in the wrong state.
+        """
         from esolangs.tools.boolean.rotfuck import _rotfuck_allowed, _rotfuck_body
 
         for guard in range(6):
@@ -1510,7 +1992,14 @@ class TestRotfuck:
                     assert op in body, (guard, target, op)
 
     def test_the_program_is_only_command_characters(self) -> None:
-        r"""Nothing but the eight commands is emitted."""
+        """Nothing but the eight commands is emitted.
+
+        ROTfuck treats a character outside its alphabet as a comment that
+        neither executes *nor advances the rotation*, so stray text is
+        invisible to any behavioural check -- a program with padding
+        between every command computes the same table.  The alphabet is
+        therefore asserted directly rather than inferred from the answer.
+        """
         for table in ("01", "0110", "11110000", "01101001"):
             assert set(boolean.rotfuck(table)) <= set("+-><,.[]"), table
 
@@ -1526,5 +2015,18 @@ class TestRotfuck:
         ],
     )
     def test_the_emitted_length_is_exact(self, table: str, length: int) -> None:
-        r"""The layout is deterministic down to the character."""
+        """The layout is deterministic down to the character.
+
+        Several ways of getting this wrong leave a *correct* program: a
+        move loop that emits a redundant ``><`` when the pointer is
+        already home, a pad count taken mod 9 rather than mod 8 (which
+        adds a whole 8-cycle and so preserves the length invariant), or a
+        stray separator the interpreter reads as a comment.  None of them
+        changes an answer, and a loose size bound only catches them by
+        luck, so the lengths are pinned exactly.
+
+        ``11110000`` also carries the dependency reduction: it depends on
+        one of its three inputs and so builds the one-input table, 370
+        characters against ``01101001``'s 935.
+        """
         assert len(boolean.rotfuck(table)) == length

@@ -1,4 +1,13 @@
-r"""Write the committed examples from their generators."""
+"""Write the committed examples from their generators.
+
+Every committed example is exactly what its generator produces today: the
+boolean programs under ``examples/boolean`` come from the boolean generators.
+``tests/scripts/test_examples.py`` asserts that; run this script to refresh
+the files after a generator changes.
+
+    python scripts/write_examples.py           # every set
+    python scripts/write_examples.py boolean   # just one set
+"""
 
 import argparse
 import pathlib
@@ -15,18 +24,31 @@ EXAMPLES = ROOT / "src" / "esolangs" / "examples"
 
 
 def boolean_programs() -> Iterator[tuple[str, str]]:
-    r"""Yield ``(stem, program)`` for every boolean example."""
+    """Yield ``(stem, program)`` for every boolean example."""
     for stem, example in sorted(BOOLEAN_EXAMPLES.items()):
         yield stem, example.build()
 
 
 def _display_name(stem: str) -> str:
-    r"""Return the registry display name for an example's filename stem."""
+    """Return the registry display name for an example's filename stem."""
     return _BY_ID.get(canonical_id(stem.replace("-", " ")), stem)
 
 
 def _logical_row(stem: str, example: object) -> str:
-    r"""Return the input row as plain bits, however the language spells it."""
+    """Return the input row as plain bits, however the language spells it.
+
+    The Input column shows the *encoded* stdin, which made this table
+    unusable for judging an example programmatically: a reader had to work
+    back from ``% A`` to ``10`` for Grapheme, and from the decimal ``1`` to
+    ``01`` for Fargo.  A template language already records its bits; a
+    reading one does not, so the row is recovered by encoding each candidate
+    and keeping the one that reproduces the stored input.
+
+    That search is also a check.  There are only ``2**n`` candidates and
+    exactly one can match, so a stored input that no row encodes to is a
+    disagreement between the committed example and ``encode_inputs`` -- and
+    it is reported here rather than written as a confident wrong row.
+    """
     import esolangs
 
     bits = getattr(example, "bits", ())
@@ -49,7 +71,15 @@ def _logical_row(stem: str, example: object) -> str:
 
 
 def boolean_manifest_text() -> str:
-    r"""Return the table saying what each committed boolean program."""
+    """Return the table saying what each committed boolean program computes.
+
+    A committed program is a *sample*: one truth table at one input row.
+    Neither fact is recoverable from the file -- these languages have no
+    comment syntax to carry them -- so without this table a reader can run
+    an example but cannot tell whether its output is right, which is the
+    only thing an example is for.  Generated from the same entries the
+    programs are, so the two cannot disagree.
+    """
     rows = [
         "# What each boolean example computes",
         "",
@@ -91,7 +121,13 @@ def boolean_manifest_text() -> str:
 
 
 def write_boolean_manifest() -> None:
-    r"""Write the manifest to disk."""
+    """Write the manifest to disk.
+
+    Split from the text so a test can compare the committed file against
+    what this would produce without regenerating all 69 programs to find
+    out.  Nothing checked the manifest at all until then, so a note added
+    to a language left the committed table describing the one before it.
+    """
     path = EXAMPLES / "boolean" / "MANIFEST.md"
     path.write_text(boolean_manifest_text(), encoding="utf-8")
     print(f"wrote     examples/boolean/{path.name}")
@@ -103,7 +139,7 @@ SETS = {
 
 
 def write_set(name: str) -> None:
-    r"""Write one example directory from its generators, reporting each."""
+    """Write one example directory from its generators, reporting each file."""
     directory = EXAMPLES / name
     directory.mkdir(parents=True, exist_ok=True)
     for stem, generated in SETS[name]():
@@ -121,7 +157,7 @@ def write_set(name: str) -> None:
 
 
 def main() -> int:
-    r"""Write every requested example set from its generators."""
+    """Write every requested example set from its generators."""
     parser = argparse.ArgumentParser(description="Write the committed examples")
     parser.add_argument(
         "sets",

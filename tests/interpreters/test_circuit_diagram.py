@@ -1,4 +1,18 @@
-r"""Unit tests for the Circuit Diagram interpreter."""
+r"""Unit tests for the Circuit Diagram interpreter.
+
+The wiki page carries three worked circuits -- a 4-bit prime tester, a
+flip-flop, and a constant-output loop -- and they are the ground truth here,
+because the spec leaves the execution cadence, the halting rule, the input
+ordering, and the exact gate port geometry unstated.  See the module
+docstring of ``esolangs.interpreters.grid_based.circuit_diagram`` for how
+each gap is resolved and which circuit pins it down.
+
+The prime tester is the strongest of the three: replaying it over all
+sixteen 4-bit inputs and comparing against the primes in 0-15 is a check no
+wrong signal model passes by accident.  It is also drawn with five
+characters missing, so both the repaired circuit and the page's own
+as-drawn silence are pinned below.
+"""
 
 import pytest
 
@@ -72,19 +86,19 @@ PRIMES = frozenset({2, 3, 5, 7, 11, 13})
 
 
 def output_for(code: list[str], stdin: str) -> str:
-    r"""Run ``code`` on ``stdin`` and return everything it printed."""
+    """Run ``code`` on ``stdin`` and return everything it printed."""
     io = ScriptedIO(stdin)
     run(code, io)
     return io.getvalue()
 
 
 def bits_of(value: int) -> str:
-    r"""Return ``value`` as four input lines, most significant bit first."""
+    """Return ``value`` as four input lines, most significant bit first."""
     return "\n".join(format(value, "04b")) + "\n"
 
 
 class TestPrimeTester:
-    r"""The page's only worked example, replayed over its whole input space."""
+    """The page's only worked example, replayed over its whole input space."""
 
     @pytest.mark.parametrize("value", range(16))
     def test_detects_exactly_the_primes(self, value: int) -> None:
@@ -92,7 +106,7 @@ class TestPrimeTester:
         assert output_for(PRIME_TESTER, bits_of(value)) == expected
 
     def test_the_whole_truth_table_is_primality(self) -> None:
-        r"""Guard the replay as a set, not just value by value."""
+        """Guard the replay as a set, not just value by value."""
         detected = {n for n in range(16) if output_for(PRIME_TESTER, bits_of(n)) == "1"}
         assert detected == PRIMES
 
@@ -101,24 +115,31 @@ class TestPrimeTester:
         assert run_until_halt_or_cycle(machine) is True
 
     def test_missing_input_bits_read_as_zero(self) -> None:
-        r"""An exhausted stdin fills the remaining wires with zero bits."""
+        """An exhausted stdin fills the remaining wires with zero bits."""
         assert output_for(PRIME_TESTER, "") == "0"
 
     def test_an_exhausted_one_bit_input_is_zero(self) -> None:
-        r"""A direct wire distinguishes the zero fallback from a one bit."""
+        """A direct wire distinguishes the zero fallback from a one bit."""
         assert output_for(["-:"], "") == "0"
 
     def test_as_drawn_the_page_prints_nothing(self) -> None:
-        r"""The unrepaired diagram is silent, for every input."""
+        """The unrepaired diagram is silent, for every input.
+
+        Two of its OR gates have an input no gate drives, so under the
+        spec's own "gates wait" rule they never fire and the output is
+        never reached.  This pins the page's own text as characterization,
+        so a later change to the connection rules cannot quietly turn the
+        broken diagram into a working one without this failing.
+        """
         for value in range(16):
             assert output_for(PRIME_TESTER_AS_DRAWN, bits_of(value)) == ""
 
 
 class TestFlipFlop:
-    r"""Feedback: the page states this alternates rather than settling."""
+    """Feedback: the page states this alternates rather than settling."""
 
     def test_it_alternates_one_and_null(self) -> None:
-        r"""The page gives this circuit's output as ``1N1N1N...``."""
+        """The page gives this circuit's output as ``1N1N1N...``."""
         machine = _Machine(FLIP_FLOP, ScriptedIO("1\n"))
         seen = []
         for _ in range(6):
@@ -142,14 +163,14 @@ class TestFlipFlop:
 
 
 class TestConstantOutput:
-    r"""The page's constant-output circuit holds a value indefinitely."""
+    """The page's constant-output circuit holds a value indefinitely."""
 
     def test_it_never_quiesces(self) -> None:
         machine = _Machine(CONSTANT, ScriptedIO("1\n"))
         assert run_until_halt_or_cycle(machine) is False
 
     def test_one_wiring_holds_a_steady_one(self) -> None:
-        r"""The circuit re-drives its own wiring every generation."""
+        """The circuit re-drives its own wiring every generation."""
         machine = _Machine(CONSTANT, ScriptedIO("1\n"))
         for _ in range(3):
             machine.step()
@@ -157,7 +178,7 @@ class TestConstantOutput:
         assert held, "no wiring is holding a 1"
 
     def test_a_wiring_may_feed_both_sides_of_a_gate(self) -> None:
-        r"""Its ``a`` takes both inputs from one wiring; ports are per cell."""
+        """Its ``a`` takes both inputs from one wiring; ports are per cell."""
         machine = _Machine(CONSTANT, ScriptedIO("1\n"))
         gate = next(g for g in machine.gates if g.kind == "a")
         assert len(gate.inputs) == 2
@@ -165,11 +186,11 @@ class TestConstantOutput:
 
 
 class TestGates:
-    r"""Each gate's truth table, driven through a two-input harness."""
+    """Each gate's truth table, driven through a two-input harness."""
 
     @staticmethod
     def circuit(kind: str) -> list[str]:
-        r"""Return a diagram feeding two input bits into ``kind``."""
+        """Return a diagram feeding two input bits into ``kind``."""
         return [
             "-.",
             f"  {kind}.-:",
@@ -201,7 +222,7 @@ class TestGates:
 
 
 class TestMultiWire:
-    r"""Widths, splitting, combining, and the multi-input gate readings."""
+    """Widths, splitting, combining, and the multi-input gate readings."""
 
     def test_a_label_widens_its_wiring(self) -> None:
         machine = _Machine(["-3-:"], ScriptedIO("1\n0\n1\n"))
@@ -215,7 +236,7 @@ class TestMultiWire:
         assert machine.wirings[0].width == 3
 
     def test_and_over_many_wires_needs_them_all(self) -> None:
-        r"""Multi-input AND is 1 iff every wire is 1."""
+        """Multi-input AND is 1 iff every wire is 1."""
         circuit = [
             "-2-.",
             "    a.-:",
@@ -246,7 +267,7 @@ class TestMultiWire:
         assert output_for(["-3-~.-:"], "1\n0\n1\n") == "010"
 
     def test_a_splitter_halves_rounding_down(self) -> None:
-        r"""``<`` sends floor(n/2) wires up and the rest down."""
+        """``<`` sends floor(n/2) wires up and the rest down."""
         circuit = [
             "    .-:",
             "-3-<",
@@ -257,7 +278,7 @@ class TestMultiWire:
         assert [w.width for w in split.outputs] == [1, 2]
 
     def test_a_splitter_sends_the_first_wires_up(self) -> None:
-        r"""The upper output takes the low-numbered wires, in order."""
+        """The upper output takes the low-numbered wires, in order."""
         circuit = [
             "    .-:",
             "-3-<",
@@ -266,7 +287,7 @@ class TestMultiWire:
         assert output_for(circuit, "1\n0\n1\n") == "101"
 
     def test_a_splitter_keeps_unequal_outputs_separate(self) -> None:
-        r"""The two output wires are independently 1 and 2 bits wide."""
+        """The two output wires are independently 1 and 2 bits wide."""
         circuit = [
             "    .-:",
             "-3-<",
@@ -279,7 +300,12 @@ class TestMultiWire:
         assert (upper, lower) == ((1,), (0, 1))
 
     def test_a_combine_totals_its_two_input_widths(self) -> None:
-        r"""``>`` is the splitter's inverse: its output is the sum."""
+        """``>`` is the splitter's inverse: its output is the sum.
+
+        The suite splits at length but never combined, and with two
+        one-wire inputs a sum, a difference, and a doubled second operand
+        all agree.  Unequal widths are what separate them.
+        """
         circuit = [
             "-1-.",
             "    >-:",
@@ -291,7 +317,11 @@ class TestMultiWire:
         assert combine.outputs[0].width == 3
 
     def test_a_combine_concatenates_upper_then_lower(self) -> None:
-        r"""The upper input's wires lead, in order, as ``<`` splits them."""
+        """The upper input's wires lead, in order, as ``<`` splits them.
+
+        Feeding the two inputs distinguishable patterns is what makes the
+        order visible rather than only the total width.
+        """
         circuit = [
             "-1-.",
             "    >-:",
@@ -303,10 +333,19 @@ class TestMultiWire:
 
 
 class TestWiring:
-    r"""The connection rules that turn ASCII into a graph."""
+    """The connection rules that turn ASCII into a graph."""
 
     def test_a_crossover_chain_off_any_edge_connects_to_nothing(self) -> None:
-        r"""``through`` rejects the cell it lands on, off *any* of the four."""
+        """``through`` rejects the cell it lands on, off *any* of the four.
+
+        The chain walks while it sees ``=``, so a chain at the border
+        walks straight off the grid.  The guard covers both axes and both
+        ends of each, and the existing crossover tests all land back on
+        the grid -- so the ``and`` joining the two axes, and each ``<``
+        in it, were free to change.  The east case lands with its row in
+        range and its column one past the last, which is what separates
+        the two halves.
+        """
         conn = _Connections(_Grid(["-=", "  "]))
         assert conn.through(0, 0, (0, 1)) is None, "off the right edge"
         assert conn.through(0, 0, (0, -1)) is None, "off the left edge"
@@ -319,11 +358,16 @@ class TestWiring:
         assert output_for(["-=-~.-:"], "1\n") == "0"
 
     def test_a_crossover_chain_is_walked_through(self) -> None:
-        r"""The prime tester's ``.===.`` spans three crossovers at once."""
+        """The prime tester's ``.===.`` spans three crossovers at once."""
         assert output_for(["-===-~.-:"], "1\n") == "0"
 
     def test_crossing_wires_do_not_mix(self) -> None:
-        r"""A ``=`` carries each direction through independently."""
+        """A ``=`` carries each direction through independently.
+
+        The vertical wire crossing the input's path is a separate wiring,
+        so it neither steals the input bit nor adds a driver to it: the
+        ``~`` still sees exactly the bit that was read.
+        """
         circuit = [
             "  |",
             "-=-~.-:",
@@ -333,7 +377,13 @@ class TestWiring:
         assert output_for(circuit, "0\n") == "1"
 
     def test_a_connection_must_be_mutual(self) -> None:
-        r"""``-`` and ``|`` never join: neither reaches toward the other."""
+        """``-`` and ``|`` never join: neither reaches toward the other.
+
+        The stray ``|`` sits directly right of the upper ``-``, and if that
+        counted as a connection the two rows would be one wiring and the
+        second input bit would XOR into the first.  Printing the first bit
+        unchanged shows they stayed apart.
+        """
         circuit = [
             "-|",
             "-.~.-:",
@@ -341,7 +391,7 @@ class TestWiring:
         assert output_for(circuit, "1\n0\n") == "1"
 
     def test_multiple_drivers_are_xored(self) -> None:
-        r"""One wiring driven twice takes the XOR of its drivers."""
+        """One wiring driven twice takes the XOR of its drivers."""
         circuit = [
             "-.~.",
             "    .-:",
@@ -351,12 +401,12 @@ class TestWiring:
         assert output_for(circuit, "1\n0\n") == "1"
 
     def test_overlapping_driver_vectors_are_xored_bit_by_bit(self) -> None:
-        r"""Each position merges independently, not by last driver wins."""
+        """Each position merges independently, not by last driver wins."""
         assert _merge([(1, 0), (1, 1)]) == (0, 1)
 
 
 class TestParseErrors:
-    r"""Malformed and out-of-scope programs are rejected, not guessed at."""
+    """Malformed and out-of-scope programs are rejected, not guessed at."""
 
     def test_unknown_character_is_rejected(self) -> None:
         with pytest.raises(ValueError, match="unknown character"):
@@ -366,12 +416,17 @@ class TestParseErrors:
     def test_a_bad_character_after_a_valid_one_is_still_rejected(
         self, prefix: str
     ) -> None:
-        r"""Validation scans the whole grid, not up to the first legal cell."""
+        """Validation scans the whole grid, not up to the first legal cell.
+
+        Every other malformed-grid test here puts the offending character
+        first, so a scan that stopped early would still pass them.  Leading
+        with a space, a wire and a gate covers the arms that skip a cell.
+        """
         with pytest.raises(ValueError, match="out of scope"):
             run([f"{prefix}%"], ScriptedIO(""))
 
     def test_a_bad_character_after_a_gate_is_still_rejected(self) -> None:
-        r"""Character validation cannot stop after seeing a gate."""
+        """Character validation cannot stop after seeing a gate."""
         with pytest.raises(ValueError, match="out of scope"):
             run(["~%"], ScriptedIO(""))
 
@@ -391,7 +446,12 @@ class TestParseErrors:
             run(code, ScriptedIO(""))
 
     def test_letter_labelled_wires_are_rejected(self) -> None:
-        r"""The whole message is asserted, not a substring of it."""
+        """The whole message is asserted, not a substring of it.
+
+        ``match=`` is a search, so it still passes against a message that has
+        grown extra text around the part being matched.  Comparing the string
+        outright is what pins the wording and the position it reports.
+        """
         with pytest.raises(ValueError, match="letter-labelled") as caught:
             run(["-width-:"], ScriptedIO(""))
         assert (
@@ -400,7 +460,9 @@ class TestParseErrors:
         )
 
     def test_a_gate_missing_an_input_is_rejected(self) -> None:
-        r"""The position is asserted too: it is the only reader of a gate's."""
+        """The position is asserted too: it is the only reader of a gate's
+        ``row`` and ``col``, which nothing else on a valid program looks at.
+        """
         with pytest.raises(ValueError, match="input") as caught:
             run(["-.a.-:"], ScriptedIO("1\n"))
         assert str(caught.value) == "'a' at (2, 0) takes 2 input(s), found 1"
@@ -409,7 +471,14 @@ class TestParseErrors:
         assert output_for([], "") == ""
 
     def test_an_output_is_exempt_from_the_out_port_count(self) -> None:
-        r"""An output sinks its wire and drives nothing, so arity skips its."""
+        """An output sinks its wire and drives nothing, so arity skips its ports.
+
+        ``_check_arity`` inspects every parsed gate, outputs included, and
+        returns early for them. The early return is required rather than
+        defensive: an output always parses with zero out-ports, so without it
+        the ``wanted_out = 1`` check below would reject every program that
+        prints.  This asserts the port counts the parser actually assigns.
+        """
         parser = _Parser(_Grid(["-.~.-:"]))
         outputs = [g for g in parser.gates if g.kind == _OUTPUT]
         assert outputs, "the program has an output gate"
@@ -418,10 +487,21 @@ class TestParseErrors:
 
 
 class TestGrid:
-    r"""The padded character grid the parser reads through."""
+    """The padded character grid the parser reads through.
+
+    Its three decisions -- what is stripped from a line, how wide an empty
+    program is, and what lies outside the grid -- are all reachable, and
+    none had a test: every program in the suite is non-empty, written
+    without trailing spaces, and read inside its own bounds.
+    """
 
     def test_only_the_newline_is_stripped(self) -> None:
-        r"""Trailing spaces are part of the row, since columns are positions."""
+        """Trailing spaces are part of the row, since columns are positions.
+
+        Stripping whitespace generally would shorten a row, and column
+        positions are what the parser navigates by -- so a diagram whose
+        wire ends in spaces would lose them.
+        """
         from esolangs.interpreters.grid_based.circuit_diagram import _Grid
 
         grid = _Grid(["ab   \n"])
@@ -429,14 +509,18 @@ class TestGrid:
         assert grid.width == 5
 
     def test_an_empty_program_has_zero_width(self) -> None:
-        r"""With no rows there is no width, and the maximum has no default."""
+        """With no rows there is no width, and the maximum has no default."""
         from esolangs.interpreters.grid_based.circuit_diagram import _Grid
 
         assert _Grid([]).width == 0
         assert _Grid([]).rows == []
 
     def test_outside_the_grid_reads_as_one_blank(self) -> None:
-        r"""A position off the grid is a single space, not a longer string."""
+        """A position off the grid is a single space, not a longer string.
+
+        The parser compares this against single characters, so a wider
+        filler would silently stop matching anything.
+        """
         from esolangs.interpreters.grid_based.circuit_diagram import _Grid
 
         grid = _Grid(["ab"])
@@ -445,55 +529,88 @@ class TestGrid:
 
 
 class TestWireLabelErrors:
-    r"""A wire label has to name a width, and the widths have to agree."""
+    """A wire label has to name a width, and the widths have to agree."""
 
     def test_a_non_numeric_label_is_rejected(self) -> None:
-        r"""``3+x`` is not a sum of widths, so the label means nothing."""
+        """``3+x`` is not a sum of widths, so the label means nothing.
+
+        The whole message is asserted because the position in it is the only
+        thing that reads ``_label_width``'s ``row`` and ``col``: they are
+        used nowhere else, so a substring match leaves both arguments free to
+        be anything.  The label reads ``3+`` rather than ``3+x`` -- the ``x``
+        is not a label character, so it ends the run.
+        """
         with pytest.raises(ValueError, match="malformed wire label") as caught:
             run(["-3+x-:"], ScriptedIO(""))
         assert str(caught.value) == "malformed wire label '3+' at (1, 0)"
 
     def test_a_zero_width_label_is_rejected(self) -> None:
-        r"""A wire carrying no bits cannot be read or driven."""
+        """A wire carrying no bits cannot be read or driven."""
         with pytest.raises(ValueError, match="must be positive") as caught:
             run(["-0-:"], ScriptedIO(""))
         assert str(caught.value) == "wire label '0' at (1, 0) must be positive"
 
     def test_a_label_touching_no_wire_is_rejected(self) -> None:
-        r"""A width written beside nothing annotates nothing."""
+        """A width written beside nothing annotates nothing."""
         with pytest.raises(ValueError, match="annotates no wire"):
             run([" 3 "], ScriptedIO(""))
 
     def test_two_labels_disagreeing_on_a_wire_are_rejected(self) -> None:
-        r"""One wire cannot be two widths at once."""
+        """One wire cannot be two widths at once."""
         with pytest.raises(ValueError, match="inconsistent wire labels"):
             run(["-2-3-:"], ScriptedIO(""))
 
     def test_a_splitter_needs_both_its_outputs(self) -> None:
-        r"""``<`` drives two wires; with one the circuit is malformed."""
+        """``<`` drives two wires; with one the circuit is malformed."""
         with pytest.raises(ValueError, match="output") as caught:
             run(["-2-<-:"], ScriptedIO(""))
         assert str(caught.value) == "'<' at (3, 0) drives 2 output(s), found 0"
 
 
 def test_a_crossover_running_off_the_grid_connects_nothing() -> None:
-    r"""A ``=`` chain walked to the edge has no cell on the far side."""
+    """A ``=`` chain walked to the edge has no cell on the far side.
+
+    The walk hops crossovers rather than stepping one cell, but it needs no
+    bounds check per hop: ``_Grid.at`` reads an off-grid cell as a space,
+    which is never a crossover, so walking past the border ends the loop and
+    the single check after it rejects where the walk landed.  A wire ending
+    in a crossover at the border simply connects to nothing.
+    """
     io = ScriptedIO("1\n")
     run(["-1-="], io)
     assert io.getvalue() == ""
 
 
 def test_a_gate_contradicting_an_explicit_label_is_rejected() -> None:
-    r"""``~`` preserves width, so the labels either side must agree."""
+    """``~`` preserves width, so the labels either side must agree.
+
+    Widths flow forward from wherever a label fixes them; where that flow
+    meets a *different* explicit label the circuit is contradictory, and
+    guessing which label wins would silently read the wrong number of bits.
+    """
     with pytest.raises(ValueError, match="implies 2 wire"):
         run(["-2-~-3-:"], ScriptedIO(""))
 
 
 class TestCircuitDiagramMutationSurvivors:
-    r"""Two conditions a mutation survived, both about *when* the machine."""
+    """Two conditions a mutation survived, both about *when* the machine stops.
+
+    Mutation testing (mutmut against a ``bundle_one`` build of this module)
+    reported these as changeable without any test noticing.  The suite
+    checks what each circuit computes and that it halts at all, so a mutant
+    that produced the right answer a generation early was invisible: the
+    output is the same string either way.  Each was confirmed by loading
+    the mutant and the original side by side and diffing their behaviour.
+    """
 
     def test_the_prime_tester_settles_in_ten_generations(self) -> None:
-        r"""Quiescence needs *both* halves: nothing fired and no wire is live."""
+        """Quiescence needs *both* halves: nothing fired and no wire is live.
+
+        The rule reads ``not fired and all(... is None ...)``.  A mutant
+        reading it with ``or`` halted as soon as either half held, one
+        generation early, and every input still printed the right answer --
+        so only the count says the halt moved.
+        """
         for value in range(16):
             machine = _Machine(PRIME_TESTER, ScriptedIO(bits_of(value)))
             generations = 0
@@ -504,7 +621,7 @@ class TestCircuitDiagramMutationSurvivors:
             assert generations == 10
 
     def test_a_not_gate_settles_in_three_generations(self) -> None:
-        r"""The smallest circuit pins the same rule without the replay."""
+        """The smallest circuit pins the same rule without the replay."""
         scripted = ScriptedIO("0\n")
         machine = _Machine(["-.~.-:"], scripted)
         generations = 0
@@ -515,12 +632,27 @@ class TestCircuitDiagramMutationSurvivors:
         assert scripted.getvalue() == "1"
 
     def test_halted_starts_as_the_boolean_false(self) -> None:
-        r"""``halted`` is a bool, not merely something falsy."""
+        """``halted`` is a bool, not merely something falsy.
+
+        The VM's cycle detector puts this in every snapshot it hashes, and
+        a mutant that initialised it to ``None`` compared equal to nothing
+        while still reading as false.  Pinning the type keeps the flag a
+        flag.
+        """
         machine = _Machine(["-.~.-:"], ScriptedIO("0\n"))
         assert machine.halted is False
 
 
 def test_a_not_fed_only_diagonally_is_still_rejected() -> None:
-    r"""The level-input rescue needs a level input to find."""
+    r"""The level-input rescue needs a level input to find.
+
+    A ``~`` with more than one incoming port is read as a gate some other
+    wiring is routed diagonally past, so the parser retries with the level
+    cell alone and keeps that when it is the only one.  Here both feeders are
+    diagonal -- ``\`` points down-right and ``/`` up-right, so each aims into
+    the gate -- and the cell level with it is blank, so the retry finds
+    nothing and the two diagonals stand.  A NOT takes one input, so the
+    circuit is malformed rather than quietly reading one of them.
+    """
     with pytest.raises(ValueError, match="takes 1 input"):
         run(["-\\  ", "  ~-:", "-/  "], ScriptedIO("1\n0\n"))
