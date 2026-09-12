@@ -35,6 +35,7 @@ import signal
 import threading
 import warnings
 from collections.abc import Callable, Sequence
+from functools import partial
 from typing import Any, cast
 
 from esolangs._validate import check_bits, check_timeout, check_width
@@ -461,6 +462,7 @@ def run(
     program: str | os.PathLike[str],
     stdin: str = "",
     timeout: float | None = None,
+    seed: int | None = None,
 ) -> str:
     """Execute ``program`` and return its output.
 
@@ -539,6 +541,8 @@ def run(
     io_obj = ScriptedIO(stdin)
     program_args: str | list[str] = program.splitlines() if split else program
     _warn_about_stdin(name, stdin)
+    if seed is not None:
+        run_fn = _seeded(name, run_fn, seed)
     try:
         _run(run_fn, program_args, io_obj, timeout)
     except RecursionError as exc:
@@ -611,6 +615,41 @@ def _warn_about_stdin(name: str, stdin: str) -> None:
         check_stdin(name, stdin)
     except EsolangError as exc:
         warnings.warn(str(exc), InputMismatchWarning, stacklevel=3)
+
+
+def _seeded(name: str, run_fn: Callable[..., Any], seed: int) -> Callable[..., Any]:
+    """Bind ``seed`` to ``run_fn``'s random source, refusing where there is none.
+
+    Seven languages draw -- COD, Interprogck8, LaserFuck, Modulous,
+    Painfuck, Super SNUSP and WII2D -- and their interpreters each take an
+    ``rng``.  Nothing public passed one.  So LaserFuck's docstring said "a
+    caller that needs a particular one passes an ``rng``" while ``run``,
+    ``make_vm``, ``make_debugger``, ``evaluate`` and ``verify`` all had no
+    parameter for it, and the only route was to import the private module
+    and hand-build an ``IO``.  Ten identical runs of ``o+++.`` gave ``3``
+    five times and nothing five times.
+
+    ``make_vm`` was never affected: it always seeds, from the interpreter's
+    own ``reproducible_seed``, which is why stepping was reproducible and
+    running was not -- an asymmetry with no reason behind it.
+
+    A seed for a language that draws nothing is refused rather than
+    ignored.  Passing one means expecting the run to repeat, and it will
+    repeat whatever happens here, so silence would be right by accident;
+    but it would also hide the likelier reading, which is that the caller
+    has the wrong language.
+    """
+    import inspect
+
+    if "rng" not in inspect.signature(run_fn).parameters:
+        raise ArgumentError(
+            f"{name} draws no random values, so a seed has nothing to fix; "
+            f"the languages that draw are COD, Interprogck8, LaserFuck, "
+            f"Modulous, Painfuck, Super SNUSP and WII2D"
+        )
+    from esolangs.interpreters.randomness import Seeded
+
+    return partial(run_fn, rng=Seeded(seed))
 
 
 def _keeping_output[E: EsolangError](exc: E, io_obj: ScriptedIO) -> E:
