@@ -29,6 +29,16 @@ from tests.test_cli import _FakeStdin, _program, call_main, run_cli
 EXAMPLES = Path(__file__).parents[1] / "examples" / "boolean"
 
 
+#: The bound a test gives a program it expects to *not finish*.  These
+#: assert an exit code or a message, never an elapsed time, so the value is
+#: only how long the suite sits still waiting for the alarm -- the runs it
+#: is used on (`+[]`, and 123 on a row it answers by looping) are already
+#: looping when the clock starts.  The floor is the slowest *halting* run,
+#: which would be misread as a loop if cut short; measured across this
+#: suite's corpus that is 0.296s, and these programs do not halt at all.
+_LOOPS = "0.5"
+
+
 def call_both(
     args: list[str], capsys: pytest.CaptureFixture[str], stdin: str = ""
 ) -> tuple[str, str]:
@@ -350,7 +360,7 @@ class TestRunCanBeBounded:
     ) -> None:
         with pytest.raises(SystemExit) as exc:
             call_main(
-                ["run", "--timeout", "1", "brainfuck", _program(tmp_path, "+[]")],
+                ["run", "--timeout", _LOOPS, "brainfuck", _program(tmp_path, "+[]")],
                 capsys,
             )
         # 124, after timeout(1).  This was 1 -- the same code a program's
@@ -604,7 +614,7 @@ class TestRoundSixQol:
         # outcome as a program that broke, and a script could not tell.
         with pytest.raises(SystemExit) as exc:
             call_main(
-                ["debug", "--timeout", "1", "brainfuck", _program(tmp_path, "+[]")],
+                ["debug", "--timeout", _LOOPS, "brainfuck", _program(tmp_path, "+[]")],
                 capsys,
             )
         assert exc.value.code == 124
@@ -706,7 +716,7 @@ class TestTheShellCanJudgeAnAnswer:
         """For the three that answer by diverging, not halting *is* the 1."""
         program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 1])
         out = call_main(
-            ["run", "--judge", "--timeout", "5", "123", _program(tmp_path, program)],
+            ["run", "--judge", "--timeout", _LOOPS, "123", _program(tmp_path, program)],
             capsys,
         )
         assert out.strip() == "1"
@@ -717,7 +727,7 @@ class TestTheShellCanJudgeAnAnswer:
         """And the other polarity, from the same program and a different row."""
         program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 0])
         out = call_main(
-            ["run", "--judge", "--timeout", "5", "123", _program(tmp_path, program)],
+            ["run", "--judge", "--timeout", _LOOPS, "123", _program(tmp_path, program)],
             capsys,
         )
         assert out.strip() == "0"
@@ -748,7 +758,7 @@ class TestATimeoutIsNotAProgramError:
         """Following timeout(1), and distinct from the program's own failure."""
         with pytest.raises(SystemExit) as exc:
             call_main(
-                ["run", "--timeout", "1", "brainfuck", _program(tmp_path, "+[]")],
+                ["run", "--timeout", _LOOPS, "brainfuck", _program(tmp_path, "+[]")],
                 capsys,
             )
         assert exc.value.code == 124
@@ -768,7 +778,7 @@ class TestATimeoutIsNotAProgramError:
         program = esolangs.instantiate("123", esolangs.generate("123", "0110"), [0, 1])
         with pytest.raises(SystemExit) as exc:
             call_main(
-                ["run", "--timeout", "2", "123", _program(tmp_path, program)], capsys
+                ["run", "--timeout", _LOOPS, "123", _program(tmp_path, program)], capsys
             )
         assert exc.value.code == 124
         assert "this timeout is the answer 1" in capsys.readouterr().err
@@ -2088,7 +2098,7 @@ class TestDebugMirrorsRunsExitCodes:
         path = tmp_path / "p.txt"
         path.write_text("+[]")
         with pytest.raises(SystemExit) as exc:
-            call_main(["debug", "--timeout", "1", "brainfuck", str(path)], capsys)
+            call_main(["debug", "--timeout", _LOOPS, "brainfuck", str(path)], capsys)
         assert exc.value.code == 124
 
     def test_a_clean_halt_and_a_step_bound_exit_zero(

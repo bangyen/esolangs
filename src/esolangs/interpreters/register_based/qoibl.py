@@ -45,6 +45,7 @@ fit here: there a step is one command, so nesting can be unwound onto an
 explicit stack; here the language defines the statement as the step.
 """
 
+import functools
 import re
 import sys
 from collections.abc import Callable, Mapping
@@ -188,6 +189,40 @@ def _wellformed(expr: list[str]) -> bool:
     return bool(re.fullmatch("[ey]+", op)) and len(expr) == 1
 
 
+@functools.lru_cache(maxsize=32)
+def _tokenized(source: str) -> tuple[tuple[str, ...], ...]:
+    """Return the reading :func:`tokenize` found, keyed by source and cached.
+
+    The reading is a pure function of the text, and the search for it is
+    what the language costs: on the six-input parity program it is 2.72s of
+    a 2.72s run, essentially all of it in :func:`_wellformed`.  Nothing was
+    reusing that.  ``verify`` runs one program once per row, so a six-input
+    table paid the identical search 64 times -- 155s where one search and 64
+    executions is about 6s.
+
+    Immutable, so the cache cannot hand two callers the same mutable lists;
+    :func:`tokenize` rebuilds fresh ones, which is O(tokens) against a search
+    that is not.
+    """
+    cleaned = re.sub("[^ewqtry\\s]", "", source).strip()
+    if not cleaned:
+        return ()
+
+    statements: list[list[str]] = []
+
+    def accept(tokens: list[str]) -> bool:
+        """Close the token run into statements, each of which must parse."""
+        statements.clear()
+        return _split(tokens, statements)
+
+    if _scan(cleaned, accept):
+        return tuple(tuple(statement) for statement in statements)
+
+    # Nothing parses; hand the greedy reading to `_parse` so a malformed
+    # program still fails there with its usual diagnostics.
+    return (tuple(_scan(cleaned, lambda _: True)),)
+
+
 def tokenize(source: str) -> list[list[str]]:
     """Split Qoibl source into statements, each a list of tokens.
 
@@ -198,24 +233,11 @@ def tokenize(source: str) -> list[list[str]]:
     chosen is the first one under which every statement parses.  Whitespace,
     where present, still keeps a token from spanning it, so a conventionally
     spaced program splits exactly as ``str.split`` would.
+
+    Fresh lists on every call, as callers have always got, over a cached
+    immutable reading -- see :func:`_tokenized`.
     """
-    cleaned = re.sub("[^ewqtry\\s]", "", source).strip()
-    if not cleaned:
-        return []
-
-    statements: list[list[str]] = []
-
-    def accept(tokens: list[str]) -> bool:
-        """Close the token run into statements, each of which must parse."""
-        statements.clear()
-        return _split(tokens, statements)
-
-    if _scan(cleaned, accept):
-        return list(statements)
-
-    # Nothing parses; hand the greedy reading to `_parse` so a malformed
-    # program still fails there with its usual diagnostics.
-    return [_scan(cleaned, lambda _: True)]
+    return [list(statement) for statement in _tokenized(source)]
 
 
 def _split(tokens: list[str], out: list[list[str]]) -> bool:

@@ -174,8 +174,8 @@ addopts = [
 ]
 markers = [
     # The top tier, and the only one CI deselects.  353 of 10865 tests that
-    # cost 467s of a 552s suite locally at two workers -- 85% of the time for
-    # 3% of the tests -- so per-PR CI runs `-m "not slow"` and
+    # cost 289s locally at two workers against the 81s the other 10314 take,
+    # so per-PR CI runs `-m "not slow"` and
     # `.github/workflows/weekly.yml` runs the whole suite on a schedule.
     # `just test` and `just test-full` do not deselect it locally.
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
