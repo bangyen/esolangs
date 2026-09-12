@@ -91,14 +91,14 @@ class TestSixFive:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.six_five import _Machine
 
-        # 1 lands on cell 2, growing the tape to three; 3 steps back to 1
+        # 1 lands on cell 2, growing.
         machine = _Machine("166666666A366666666A0", ScriptedIO())
         while not machine.halted:
             machine.step()
         assert machine.io.getvalue() == "00"
         assert (machine.cell, machine.tape) == (1, (0, 48, 48))
 
-        # two moves right compound rather than landing on a fixed cell
+        # two moves right compound.
         twice = _Machine("11", ScriptedIO())
         while not twice.halted:
             twice.step()
@@ -156,7 +156,7 @@ class TestSixFive:
 
         assert run_and_capture("BA0", inputs=["\U0010ffff"]) == "\U0010ffff"
         with pytest.raises(HaltError):
-            # 6 then 5 lands one past the last codepoint
+            # 6 then 5 lands one past the.
             run_and_capture("B62A", inputs=["\U0010ffff"])
 
     def test_the_left_move_is_relative_to_where_the_pointer_is(self) -> None:
@@ -199,7 +199,7 @@ class TestComments:
     """
 
     def test_a_comment_hides_the_rest_of_its_line(self) -> None:
-        # without the strip, the commented-out program would run and print
+        # without the strip, the.
         assert run_and_capture("6C66666666A0") == ""
         assert run_and_capture("66666666A0C66666666A0") == "0"
 
@@ -231,8 +231,8 @@ class TestComments:
         assert _tokens("8") == ["8"]
         assert _tokens("7C1") == ["7C", "1"]
         assert _tokens("6C hidden") == ["6"]
-        # Only 7 and 8 take an operand.  Any other character stands alone,
-        # however the pair is spelled -- a wider set would swallow the
+        # Only 7 and 8 take an operand.
+        # however the pair is spelled.
         # command after it.
         assert _tokens("X6") == ["X", "6"]
         assert run_and_capture("X66666666A0") == "0"
@@ -245,14 +245,14 @@ class TestStepMachine:
 
         machine = _Machine("55A", ScriptedIO())
         assert (machine.ind, machine.cell, machine.tape) == (0, 0, (0,))
-        machine.step()  # 5 adds 5 to the cell
+        machine.step()  # 5 adds 5 to the cell.
         assert machine.tape == (5,)
-        machine.step()  # 5 adds 5 more
+        machine.step()  # 5 adds 5 more.
         assert machine.tape == (10,)
-        machine.step()  # A prints the cell
+        machine.step()  # A prints the cell.
         assert machine.io.getvalue() == "\n"
         assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
+        machine.step()  # stepping a halted machine is.
         assert machine.ind == 3
 
     def test_an_operandless_skip_still_moves_the_cursor_past_one_token(
@@ -284,7 +284,7 @@ class TestStepMachine:
         from esolangs.interpreters.tape_based.six_five import _Machine
 
         machine = _Machine("81A4A0", ScriptedIO())
-        machine.step()  # 81 jumps to just after the first 4
+        machine.step()  # 81 jumps to just after the.
         assert machine.ind == 3
 
 

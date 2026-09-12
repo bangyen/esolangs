@@ -232,7 +232,7 @@ class TestTheGateRuns:
 
 
 class TestCoverageJsonShape:
-    # 1.6s: it shells out to a real coverage run to compare the shapes.
+    # 1.6s: it shells out to a real.
     @pytest.mark.slow
     def test_the_stub_matches_what_coverage_actually_emits(self) -> None:
         """The stubbed record above has to look like the real payload.

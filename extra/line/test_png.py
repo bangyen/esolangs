@@ -27,8 +27,8 @@ import pytest
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
-# Shape and ink count (pixels below the 128 threshold extract.py uses) for
-# each checked-in fixture, as decoded by Pillow's Image.open().convert("L")
+# Shape and ink count (pixels.
+# each checked-in fixture, as.
 # before png.py replaced it.
 FIXTURE_EXPECTATIONS = {
     "addition.png": ((300, 300), 926),
@@ -49,7 +49,7 @@ def test_reads_wiki_fixtures_as_pillow_did(
     assert len(grey) == height
     assert {len(row) for row in grey} == {width}
     assert sum(level < 128 for row in grey for level in row) == ink
-    # These are 1-bit black-and-white images: nothing in between.
+    # These are 1-bit.
     assert {level for row in grey for level in row} == {0, 255}
 
 
@@ -87,7 +87,7 @@ def _encode(
 
     ihdr = struct.pack(">IIBBBBB", width, height, depth, colour, 0, 0, 0)
     return (
-        png._SIGNATURE  # noqa: SLF001 - building a PNG by hand
+        png._SIGNATURE  # noqa: SLF001
         + chunk(b"IHDR", ihdr)
         + chunk(b"IDAT", zlib.compress(b"".join(rows)))
         + chunk(b"IEND", b"")
@@ -144,8 +144,8 @@ def test_every_row_filter_decodes(filter_type: int) -> None:
 @pytest.mark.parametrize(
     ("depth", "packed", "expected"),
     [
-        # Sub-byte samples are most-significant-bit first, and the row is
-        # padded out to a whole byte -- the padding must not leak into the
+        # Sub-byte samples are.
+        # padded out to a whole byte --.
         # decoded width.
         (1, 0b10100000, [255, 0, 255]),
         (2, 0b11000100, [255, 0, 85]),
@@ -172,9 +172,9 @@ def test_palette_is_resolved_through_plte() -> None:
             + struct.pack(">I", zlib.crc32(kind + body) & 0xFFFFFFFF)
         )
 
-    # Index 0 -> white, index 1 -> black: the fixtures' own palette.
+    # Index 0 -> white, index 1 ->.
     blob = (
-        png._SIGNATURE  # noqa: SLF001 - building a PNG by hand
+        png._SIGNATURE  # noqa: SLF001
         + chunk(
             b"IHDR",
             struct.pack(">IIBBBBB", 2, 1, 1, png._PALETTE, 0, 0, 0),  # noqa: SLF001
@@ -189,14 +189,14 @@ def test_palette_is_resolved_through_plte() -> None:
 @pytest.mark.parametrize(
     ("colour", "pixel", "expected"),
     [
-        # Luma weights are ITU-R 601-2, rounded to nearest as Pillow rounds:
-        # (r*19595 + g*38470 + b*7471 + 0x8000) >> 16.
+        # Luma weights are ITU-R 601-2,.
+        # (r*19595 + g*38470 + b*7471 +.
         (png._RGB, [255, 0, 0], 76),  # noqa: SLF001
         (png._RGB, [0, 255, 0], 150),  # noqa: SLF001
         (png._RGB, [0, 0, 255], 29),  # noqa: SLF001
         (png._RGB, [170, 85, 42], 106),  # noqa: SLF001
-        # Alpha is dropped, not composited -- the colour reads the same
-        # whatever the alpha channel says.
+        # Alpha is dropped, not.
+        # whatever the alpha channel.
         (png._RGBA, [255, 0, 0, 0], 76),  # noqa: SLF001
         (png._RGBA, [255, 0, 0, 255], 76),  # noqa: SLF001
         (png._GREY_ALPHA, [200, 0], 200),  # noqa: SLF001
@@ -225,7 +225,7 @@ def test_multi_channel_filters_step_by_a_whole_pixel() -> None:
     decode a plausible-looking but wrong image rather than failing loudly.
     """
     want = [(10, 20, 30), (40, 60, 90), (200, 130, 70)]
-    row = bytearray([1])  # filter type: Sub
+    row = bytearray([1])  # filter type: Sub.
     for i, (red, green, blue) in enumerate(want):
         prev = want[i - 1] if i else (0, 0, 0)
         row += bytes(
@@ -320,7 +320,7 @@ def test_sixteen_bit_scales_down_rather_than_clipping() -> None:
 def test_sixteen_bit_colour_reduces_through_luma() -> None:
     """A 16-bit RGB pixel scales per channel, then reduces like any colour."""
     row = bytearray([0])
-    for value in (65535, 0, 0):  # pure red at full depth
+    for value in (65535, 0, 0):  # pure red at full depth.
         row += struct.pack(">H", value)
     blob = _encode([bytes(row)], 1, 1, depth=16, colour=png._RGB)  # noqa: SLF001
     assert png.read_grey(blob) == [bytearray([76])]
@@ -342,7 +342,7 @@ def test_a_jpeg_is_refused_with_a_usable_message(tmp_path: Path) -> None:
     import extract
 
     path = tmp_path / "drawing.jpg"
-    # A JPEG start-of-image plus APP0, which is all the sniff looks at.
+    # A JPEG start-of-image plus.
     path.write_bytes(b"\xff\xd8\xff\xe0" + b"\x00" * 64)
     with pytest.raises(ValueError, match="is a JPEG") as caught:
         extract.load_binary(str(path))
@@ -352,7 +352,7 @@ def test_a_jpeg_is_refused_with_a_usable_message(tmp_path: Path) -> None:
 def test_rejects_an_unknown_interlace_method() -> None:
     """Only the spec's two interlace methods exist; anything else is corrupt."""
     blob = bytearray(_encode([bytes([0, 0])], 1, 1))
-    blob[8 + 8 + 12] = 7  # IHDR's interlace byte
+    blob[8 + 8 + 12] = 7  # IHDR's interlace byte.
     with pytest.raises(ValueError, match="interlace method"):
         png.read_grey(bytes(blob))
 

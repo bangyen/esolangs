@@ -27,17 +27,17 @@ from collections.abc import Iterator
 
 _SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
-# Colour type codes from the PNG spec (IHDR byte 9).  Only the two
-# single-channel ones are handled; the rest are named to make the rejection
-# message in :func:`read_grey` specific about what was found.
+# Colour type codes from the.
+# single-channel ones are.
+# message in :func:`read_grey`.
 _GREY = 0
 _RGB = 2
 _PALETTE = 3
 _GREY_ALPHA = 4
 _RGBA = 6
 
-# Samples per pixel for each colour type.  Palette images store one index per
-# pixel; the PLTE lookup turns that into colour later.
+# Samples per pixel for each.
+# pixel; the PLTE lookup turns.
 _CHANNELS = {_GREY: 1, _RGB: 3, _PALETTE: 1, _GREY_ALPHA: 2, _RGBA: 4}
 
 _COLOUR_NAMES = {
@@ -72,7 +72,7 @@ def _chunks(data: bytes) -> Iterator[tuple[bytes, bytes]]:
         if len(body) != length:
             raise ValueError(f"truncated {kind.decode('ascii', 'replace')} chunk")
         yield kind, body
-        pos += 12 + length  # length + type + body + CRC
+        pos += 12 + length  # length + type + body + CRC.
 
 
 def _paeth(a: int, b: int, c: int) -> int:
@@ -107,19 +107,19 @@ def _unfilter(raw: bytes, height: int, stride: int, step: int) -> bytearray:
         pos += 1
         row = bytearray(raw[pos : pos + stride])
         pos += stride
-        if filter_type == 0:  # None
+        if filter_type == 0:  # None.
             pass
-        elif filter_type == 1:  # Sub
+        elif filter_type == 1:  # Sub.
             for i in range(step, stride):
                 row[i] = (row[i] + row[i - step]) & 0xFF
-        elif filter_type == 2:  # Up
+        elif filter_type == 2:  # Up.
             for i in range(stride):
                 row[i] = (row[i] + prev[i]) & 0xFF
-        elif filter_type == 3:  # Average
+        elif filter_type == 3:  # Average.
             for i in range(stride):
                 left = row[i - step] if i >= step else 0
                 row[i] = (row[i] + ((left + prev[i]) >> 1)) & 0xFF
-        elif filter_type == 4:  # Paeth
+        elif filter_type == 4:  # Paeth.
             for i in range(stride):
                 left = row[i - step] if i >= step else 0
                 upleft = prev[i - step] if i >= step else 0
@@ -131,9 +131,9 @@ def _unfilter(raw: bytes, height: int, stride: int, step: int) -> bytearray:
     return out
 
 
-# Adam7's seven passes, each as (first row, first column, row step, column
-# step).  Pass k stores a subsampled grid; together the seven tile the image
-# exactly once, which is what lets a decoder show a coarse preview early.
+# Adam7's seven passes, each as.
+# step).
+# exactly once, which is what.
 _ADAM7 = (
     (0, 0, 8, 8),
     (0, 4, 8, 8),
@@ -157,10 +157,10 @@ def _unpack_row(raw: bytes, width: int, channels: int, depth: int) -> list[int]:
     mask = (1 << depth) - 1
     out: list[int] = []
     for byte in raw:
-        # Most-significant sample first, per the spec.
+        # Most-significant sample.
         for shift in range(per_byte - 1, -1, -1):
             out.append((byte >> (shift * depth)) & mask)
-    return out[:count]  # trailing samples are row padding
+    return out[:count]  # trailing samples are row.
 
 
 def _read_pass(
@@ -174,9 +174,9 @@ def _read_pass(
     if width == 0 or height == 0:
         return []
     stride = (width * channels * depth + 7) // 8
-    # The filter predictor looks one *pixel* to the left, which is the pixel's
-    # whole width in bytes -- never less than one, since sub-byte pixels
-    # predict from the adjacent byte.
+    # The filter predictor looks.
+    # whole width in bytes -- never.
+    # predict from the adjacent.
     step = max(1, channels * depth // 8)
     raw = _unfilter(stream[offset:], height, stride, step)
     return [
@@ -219,7 +219,7 @@ def _deinterlace(
                 base = (col0 + x * col_step) * channels
                 target[base : base + channels] = row[x * channels : (x + 1) * channels]
         stride = (pass_width * channels * depth + 7) // 8
-        offset += pass_height * (stride + 1)  # each row carries a filter byte
+        offset += pass_height * (stride + 1)  # each row carries a filter.
     return rows
 
 
@@ -260,7 +260,7 @@ def read_grey(data: bytes) -> list[bytearray]:
 
     channels = _CHANNELS[colour]
     if channels > 1 and depth < 8:
-        # Sub-byte samples only occur in single-channel images per the spec.
+        # Sub-byte samples only occur.
         raise ValueError(f"unsupported PNG bit depth {depth} for {channels} channels")
     if colour == _PALETTE and depth == 16:
         raise ValueError("palette PNGs cannot be 16-bit")
@@ -291,28 +291,28 @@ def _to_grey(
         if palette is None:
             raise ValueError("palette PNG has no PLTE chunk")
         entries = [palette[i : i + 3] for i in range(0, len(palette), 3)]
-        # Padded out to a full 256 entries because that is what bytes.translate
-        # wants; a sample indexing past the palette is a malformed file, and
-        # mapping it to black is as good as any other answer for one.
+        # Padded out to a full 256.
+        # wants; a sample indexing past.
+        # mapping it to black is as.
         table = bytes(_luma(*entry) for entry in entries).ljust(256, b"\x00")
         return [bytearray(row).translate(table) for row in samples]
 
-    # Bring every depth onto the same 0-255 scale before reducing colour, so
-    # the luma weights and the ink threshold mean one thing throughout.
+    # Bring every depth onto the.
+    # the luma weights and the ink.
     top = (1 << depth) - 1
     if depth == 8:
 
         def level(value: int) -> int:
             return value
     elif depth == 16:
-        # Take the high byte, i.e. scale 0-65535 down onto 0-255.  This is a
-        # deliberate departure from Pillow, whose I;16 -> L conversion *clips*
-        # rather than scaling: under Pillow every 16-bit value above 255 comes
-        # out white, so a drawing whose ink is stored as, say, 1000 decodes to
-        # a blank page with every stroke erased.  Scaling keeps the picture.
-        # The two agree on pure 0 and pure 65535, which is what a clean
-        # black-and-white drawing actually contains, so this only ever differs
-        # in Pillow's favour on files Pillow would have mangled.
+        # Take the high byte, i.e.
+        # deliberate departure from.
+        # rather than scaling: under.
+        # out white, so a drawing whose.
+        # a blank page with every.
+        # The two agree on pure 0 and.
+        # black-and-white drawing.
+        # in Pillow's favour on files.
         def level(value: int) -> int:
             return value >> 8
     else:
@@ -321,8 +321,8 @@ def _to_grey(
             return value * 255 // top
 
     if colour in (_RGB, _RGBA):
-        # Alpha is dropped rather than composited, matching Pillow's
-        # convert("L"): a Line drawing's transparency is not ink.
+        # Alpha is dropped rather than.
+        # convert("L"): a Line.
         return [
             bytearray(
                 _luma(level(row[i]), level(row[i + 1]), level(row[i + 2]))
@@ -350,7 +350,7 @@ def write_grey(pixels: list[bytearray]) -> bytes:
 
     raw = bytearray()
     for row in pixels:
-        raw.append(0)  # filter type: None
+        raw.append(0)  # filter type: None.
         raw += row
 
     def chunk(kind: bytes, body: bytes) -> bytes:

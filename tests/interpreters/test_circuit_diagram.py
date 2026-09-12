@@ -28,9 +28,9 @@ from esolangs.interpreters.grid_based.circuit_diagram import (
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 
-# The wiki's 4-bit prime tester, exactly as the page draws it.  Two of its
-# OR gates have an input no gate ever drives, so it prints nothing; see
-# ``PRIME_TESTER`` for the repaired circuit and the module docstring for
+# The wiki's 4-bit prime.
+# OR gates have an input no.
+# ``PRIME_TESTER`` for the.
 # how the repair is derived.
 PRIME_TESTER_AS_DRAWN = [
     "       .~..",
@@ -47,9 +47,9 @@ PRIME_TESTER_AS_DRAWN = [
     "      .-.     ..",
 ]
 
-# The same circuit with the two omissions repaired: four ``-`` closing the
-# gap on the third line, and the ``/`` whose two ``=`` crossings the page
-# already draws.  This computes primality of a 4-bit input, MSB first.
+# The same circuit with the two.
+# gap on the third line, and.
+# already draws.
 PRIME_TESTER = [
     "       .~..",
     "      /    ..         .-.",
@@ -65,15 +65,15 @@ PRIME_TESTER = [
     "      .-.     ..",
 ]
 
-# The wiki's flip-flop: two NOTs wired into each other through a crossover.
-# The page states its output as ``1N1N1N...``.
+# The wiki's flip-flop: two.
+# The page states its output as.
 FLIP_FLOP = [
     "--.~.",
     "   =",
     "  .~.--",
 ]
 
-# The wiki's "it is possible to produce a constant output" circuit.
+# The wiki's "it is possible to.
 CONSTANT = [
     "     .",
     "--.-. a.----.--.~.",
@@ -351,7 +351,7 @@ class TestWiring:
         assert conn.through(0, 0, (0, -1)) is None, "off the left edge"
         assert conn.through(0, 0, (-1, 0)) is None, "off the top"
         assert conn.through(1, 0, (1, 0)) is None, "off the bottom"
-        # A step that stays on the grid still returns the cell it reaches.
+        # A step that stays on the grid.
         assert conn.through(0, 0, (1, 0)) == (1, 0)
 
     def test_a_crossover_joins_opposite_sides(self) -> None:

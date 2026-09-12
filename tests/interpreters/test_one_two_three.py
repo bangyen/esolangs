@@ -9,8 +9,8 @@ from tests.interpreters.contract import EmptyProgramContract
 
 run = importlib.import_module("esolangs.interpreters.tape_based.one_two_three").run
 
-# The wiki's cat program: three 1s march the pointer to -3 (read), then the
-# trailing 12121 flips the byte back and marches to -2 (write).
+# The wiki's cat program: three.
+# trailing 12121 flips the byte.
 WIKI_CAT = "111212112"
 
 
@@ -43,7 +43,7 @@ class Test123:
 
     def test_false_jump_skips_forward(self) -> None:
         """A FALSE 3 skips to the next 3, then the 1 halts (pos below 0)."""
-        # 3 (FALSE, bit@0) -> next 3 -> 1 flips bit@0 and moves to pos -1.
+        # 3 (FALSE, bit@0) -> next 3 ->.
         assert run_program("3231") == ""
 
     def test_false_jump_starts_looking_at_the_next_command(self) -> None:
@@ -81,14 +81,14 @@ class Test123:
         from esolangs.interpreters.tape_based.one_two_three import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
-        # 2 (pos 0->1) 1 (flip bit@1, pos 1->0) 3 (bit@0 is FALSE, skip to
-        # end) then loop-or-halt sees pos=0 (not <0) and restarts at ip=0
-        # with bit@1 toggled back — a genuine bounded cycle (positions 0-1
-        # only), decided by the deterministic state-cycle detector with no
-        # wall-clock bound. A pointer that marches right forever instead
-        # (e.g. never turning back via a TRUE 3) grows the tape without
-        # repeating a state, which this detector cannot resolve — that
-        # class of hang is left to a caller's timeout.
+        # 2 (pos 0->1) 1 (flip bit@1,.
+        # end) then loop-or-halt sees.
+        # with bit@1 toggled back — a.
+        # only), decided by the.
+        # wall-clock bound.
+        # (e.g.
+        # repeating a state, which this.
+        # class of hang is left to a.
         machine = _Machine("2131", ScriptedIO())
         assert run_until_halt_or_cycle(machine) is False
 
@@ -102,7 +102,7 @@ class Test123:
         """
         from esolangs.interpreters.tape_based.one_two_three import _Machine
 
-        # code[0] is the only earlier '3'; landing there means ip == 1.
+        # code[0] is the only earlier.
         machine = _Machine("3xx3", ScriptedIO())
         machine.place(ip=3, pos=2, bits=frozenset((2,)))
         machine.step()
@@ -117,7 +117,7 @@ class Test123:
         """
         from esolangs.interpreters.tape_based.one_two_three import _Machine
 
-        # Nine 2s march 0 -> 9, then 1 flips bit@9 and moves to pos 8.
+        # Nine 2s march 0 -> 9, then 1.
         machine = _Machine("2" * 9 + "1", ScriptedIO())
         for _ in range(10):
             machine.step()
@@ -134,8 +134,8 @@ class Test123:
         """
         from esolangs.interpreters.tape_based.one_two_three import _Machine
 
-        # 9 2s march 0 -> 9; 16 1s march back through the -4 wraparound to
-        # 0 and on to -3; the final 2 reads 'Q' (0x51) into locations 0-7.
+        # 9 2s march 0 -> 9; 16 1s.
+        # 0 and on to -3; the final 2.
         machine = _Machine("2" * 9 + "1" * 16 + "2", ScriptedIO("Q"))
         for _ in range(26):
             machine.step()

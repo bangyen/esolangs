@@ -116,13 +116,13 @@ def _parse(program: str, pos: int) -> tuple[Node | None, int]:
     if ch == "[":
         body_head, pos = _parse(program, pos + 1)
         if body_head is None:
-            # An empty loop body ("[]") has no node to hang a `goto` off of
-            # -- `Node.goto` is only checked on a straight-through node's own
-            # step, after its op runs (see render.py's `_layout`), so a fork
-            # with nothing at all between visits has no way to express the
-            # reconnection.  Brainfuck's own "[]" is a real infinite spin on
-            # a nonzero cell to begin with (not a useful program), so this is
-            # rejected rather than forcing degenerate geometry to represent
+            # An empty loop body ("[]") has.
+            # -- `Node.goto` is only.
+            # step, after its op runs (see.
+            # with nothing at all between.
+            # reconnection.
+            # a nonzero cell to begin with.
+            # rejected rather than forcing.
             # it.
             raise ValueError(
                 "an empty loop body ('[]') cannot be compiled to Line: a "
@@ -138,8 +138,8 @@ def _parse(program: str, pos: int) -> tuple[Node | None, int]:
     op = _BF_TO_LINE.get(ch)
     rest, pos = _parse(program, pos + 1)
     if op is None:
-        # A comment character: not itself a node, but the rest of this
-        # level still needs parsing and returning.
+        # A comment character: not.
+        # level still needs parsing and.
         return rest, pos
     node = Node(op, next=rest)
     return node, pos

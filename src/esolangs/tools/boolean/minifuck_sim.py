@@ -61,15 +61,15 @@ about.
 from collections.abc import Callable
 from functools import lru_cache
 
-# How an emitted string decomposes: each entry is a law and its repeat
-# count.  ``dot`` carries no count -- prints are emitted singly -- and the
-# ``walk`` fast path keeps a pure ``[x`` run at one law call.
-#
-# The law is the *function*, not its name.  A parse is applied once per row
-# -- :meth:`_Joint.emit` runs it across ``2**n`` machines -- so a name would
-# be resolved by ``getattr`` once per row per run, 546195 times over an
-# 18-table build, where resolving it once at parse time costs nothing and
-# hands the loop a callable.  Measured on the real emission mix, that is 29%
+# How an emitted string.
+# count.
+# ``walk`` fast path keeps a.
+# .
+# The law is the *function*,.
+# -- :meth:`_Joint.emit` runs.
+# be resolved by ``getattr``.
+# 18-table build, where.
+# hands the loop a callable.
 # off the dispatch.
 _Runs = list[tuple["Callable[[_Sim, int], None]", int]]
 
@@ -238,7 +238,7 @@ class _Sim:
         if self.dead or pairs <= 0:
             return
         if self.skip:
-            # The pending skip eats the leading ``[``; its ``x`` is a comment.
+            # The pending skip eats the.
             self.skip = False
             pairs -= 1
             if pairs == 0:
@@ -246,17 +246,17 @@ class _Sim:
         tape, ptr = self.tape, self.ptr
         low = ptr + 1
         mask = (1 << pairs) - 1
-        # Prefix XOR of the window by doubling: after each step every bit
-        # holds the XOR of itself and the ``span`` bits below it, so the
-        # spans compose to cover the whole prefix in ``log2(pairs)`` steps.
+        # Prefix XOR of the window by.
+        # holds the XOR of itself and.
+        # spans compose to cover the.
         carries = (tape >> low) & mask
         span = 1
         while span < pairs:
             carries ^= (carries << span) & mask
             span <<= 1
         tape = (tape & ~(mask << low)) | ((carries ^ mask) << low)
-        # The window's total parity is the carry out of its top cell, which
-        # lands in the cell above -- the one the next emission steps onto.
+        # The window's total parity is.
+        # lands in the cell above --.
         tape ^= ((carries >> (pairs - 1)) & 1) << (low + pairs)
         ptr += pairs
         self.tape, self.ptr = tape, ptr
@@ -319,8 +319,8 @@ class _Sim:
             ptr = self.ptr + 1
             bit = 1 << ptr
             if self.tape & bit:
-                # The crossing lands on 0, so the cascade flips the cell
-                # above and owes a skip to whatever instruction follows.
+                # The crossing lands on 0, so.
+                # above and owes a skip to.
                 self.tape ^= bit | (bit << 1)
                 self.skip = True
             else:
@@ -331,15 +331,15 @@ class _Sim:
             return
         tape, ptr = self.tape, self.ptr
         low = ptr + 1
-        # e_j for j = 1..count: a run of k brackets crosses at most k cells,
-        # so the window never needs to be wider than the run.
+        # e_j for j = 1..count: a run.
+        # so the window never needs to.
         mask = (1 << count) - 1
         effective = (tape >> low) & mask
         span = 1
         while span < count:
             effective ^= (effective << span) & mask
             span <<= 1
-        # The staircase inverse: T is nondecreasing, so binary-search the
+        # The staircase inverse: T is.
         # largest m with T(m) <= count.
         lo, hi = 0, count
         while lo < hi:
@@ -350,21 +350,21 @@ class _Sim:
                 hi = mid - 1
         crossed = lo
         if crossed + (effective & ((1 << crossed) - 1)).bit_count() < count:
-            # Remainder 1: the next crossing starts, cascades, and leaves
-            # its skip pending for the instruction after the run.
+            # Remainder 1: the next.
+            # its skip pending for the.
             crossed += 1
             skip_out = True
         else:
             skip_out = False
-        # Exhausted over every effective vector at counts 2..11: the
-        # staircase inverse is never 0 there, and counts 0 and 1 are the
+        # Exhausted over every.
+        # staircase inverse is never 0.
         # two arms above.
         if crossed == 0:  # pragma: no cover - see above
             return
         window = (1 << crossed) - 1
         effective &= window
         tape = (tape & ~(window << low)) | ((effective ^ window) << low)
-        # The carry: the last crossing's cascade lands above the window.
+        # The carry: the last.
         tape ^= ((effective >> (crossed - 1)) & 1) << (low + crossed)
         self.tape = tape
         self.ptr = ptr + crossed

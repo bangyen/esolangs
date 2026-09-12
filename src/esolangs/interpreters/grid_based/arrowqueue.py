@@ -44,24 +44,24 @@ from collections.abc import Sequence
 
 from esolangs.interpreters.io import IO
 
-# (d_row, d_col) per heading, in the clockwise order right, down, left, up.
+# (d_row, d_col) per heading,.
 DELTA = [(0, 1), (1, 0), (0, -1), (-1, 0)]
 
-#: One instant of a run: ``(row, col, d, queue, done)`` -- the IP's position
-#: and heading, the direction queue, and whether the run has stopped.  A
-#: value, not a record: every transition below returns a new one rather than
-#: editing one in place, and the queue is a ``tuple`` for the same reason.
-#:
-#: ``done`` has to be carried because halting here is not a property of the
-#: position: ``+`` on an empty queue stops the run with the IP still inside
-#: the grid, so the same ``(row, col, d, queue)`` can be either live or
-#: stopped.  It is deliberately *not* in ``snapshot``, which reports only
-#: the four fields it always reported -- the cycle detector compares live
-#: states, and a stopped run is not something it is asked about.
-#:
-#: The grid is deliberately not in here.  It does not change during a run,
-#: so carrying it would put constant data in every value the cycle detector
-#: stores.  It is a parameter to the transition instead.
+# : One instant of a run:.
+# : and heading, the direction.
+# : value, not a record: every.
+# : editing one in place, and.
+# :.
+# : ``done`` has to be carried.
+# : position: ``+`` on an empty.
+# : the grid, so the same.
+# : stopped.
+# : the four fields it always.
+# : states, and a stopped run.
+# :.
+# : The grid is deliberately.
+# : so carrying it would put.
+# : stores.
 type _State = tuple[int, int, int, tuple[int, ...], bool]
 
 
@@ -101,7 +101,7 @@ def _advance(state: _State, grid: Sequence[str], width: int) -> _State:
         queue = (*queue, d)
     elif cell == "+":
         if not queue:
-            # An empty pop stops the run where it stands, without moving.
+            # An empty pop stops the run.
             return (row, col, d, queue, True)
         d, queue = queue[0], queue[1:]
     d_row, d_col = DELTA[d]
@@ -121,10 +121,10 @@ class _Machine:
     rings that sustain).
     """
 
-    #: Whether the queue is written on the step *after* the halt.  It
-    #: belongs to the language, not to whoever is stepping it: ``run`` ends
-    #: its loop with one more ``step()``, so a caller who stops at
-    #: ``halted`` has driven the program correctly and still holds none of
+    # : Whether the queue is.
+    # : belongs to the language,.
+    # : its loop with one more.
+    # : ``halted`` has driven the.
     #: its output.
     dumps_on_the_post_halt_step = True
 
@@ -138,14 +138,14 @@ class _Machine:
         self.io = io if io is not None else IO()
         self.width = max(map(len, code), default=0)
         self.grid = tuple(line.ljust(self.width) for line in code)
-        # An empty program has nowhere to start, so it is stopped already.
+        # An empty program has nowhere.
         self.state: _State = (0, 0, 0, (), not self.grid)
-        # Out of ``_State``: the dump is the shell's, and ``snapshot`` must
-        # keep hashing the four live fields it always has.
+        # Out of ``_State``: the dump.
+        # keep hashing the four live.
         self._dumped = False
 
-    # The language's own names.  They are views on the current state rather
-    # than fields of their own, so there is one place a step can change.
+    # The language's own names.
+    # than fields of their own, so.
 
     @property
     def row(self) -> int:
@@ -184,13 +184,13 @@ class _Machine:
         """Whether the end-of-run queue dump has already been printed."""
         return self._dumped
 
-    # The VM's language-shaped view: Direction queue; ip is the IP's (row, col,
+    # The VM's language-shaped.
     # heading).
 
-    #: ``ip`` is a cell of the program's own rectangle: the first two
-    #: parts are a row and a column, and the rest is a heading.  Without
-    #: this a caller cannot tell the pair from a call depth or a frame
-    #: stack, which look identical and mean somewhere else entirely.
+    # : ``ip`` is a cell of the.
+    # : parts are a row and a.
+    # : this a caller cannot tell.
+    # : stack, which look identical.
     ip_shape = "grid"
 
     @property
@@ -211,10 +211,10 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The four live fields, exactly as this returned before the halted
-        # flag joined the state.  ``done`` stays out: the detector compares
-        # states of a running machine, and folding it in would give the
-        # last live state and the stopped one two different hashes.
+        # The four live fields, exactly.
+        # flag joined the state.
+        # states of a running machine,.
+        # last live state and the.
         row, col, d, queue, _done = self.state
         return (row, col, d, queue)
 
@@ -261,7 +261,7 @@ def run(code: list[str], io: IO) -> None:
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
-    machine.step()  # the post-halt step prints the queue
+    machine.step()  # the post-halt step prints the.
 
 
 if __name__ == "__main__":

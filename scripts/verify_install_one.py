@@ -26,13 +26,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 INSTALLER = ROOT / "scripts" / "install_one.sh"
 
-# A language with no dependencies beyond io/exceptions, one with a transitive
-# interpreter import, and one that shares the bracket helper.
+# A language with no.
+# interpreter import, and one.
 _LANGUAGES = ("brainfuck", "Factor", "3D Brainfuck")
 
-# (program file contents, expected stdout) per language, run through the
-# bundled file.  The programs come from the interpreter unit tests so the
-# bundled file must reproduce exactly what the package produces.
+# (program file contents,.
+# bundled file.
+# bundled file must reproduce.
 _PROGRAMS = {
     "brainfuck": ("++++++++[>++++++++<-]>.", "@"),
     "Factor": ("21666143160021789415877957258569906604219402892572113", "A"),

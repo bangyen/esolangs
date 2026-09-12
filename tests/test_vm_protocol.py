@@ -1,46 +1,4 @@
-"""The VM protocol, swept over every language rather than per language.
-
-Each of these checks was written by hand in the per-language test files,
-between ten and thirty-odd times over, differing only in which ``_Machine``
-to import and which program to hand it.  None of them is about a language:
-they are the contract every adapter owes -- that a machine reports its own
-halt, that stepping past that halt changes nothing, that its snapshot can
-be hashed (the cycle detector's precondition), and that driving it a step
-at a time lands where :func:`esolangs.run` lands.
-
-Sweeping them from :data:`~tests.samples.SAMPLES` means a language added to
-the registry is covered the moment its sample lands, instead of when
-somebody remembers to copy the bodies into a new file.  The copies that
-remain in the per-language files are the ones asserting something
-language-specific on top of the shared invariant -- BF-PDA's stack after
-the no-op step, Container's tick -- which the sweep cannot know about.
-
-Three conventions keep the sweep honest rather than being papered over,
-and each is a named set in :mod:`tests.samples`:
-:data:`~tests.samples.DUMPS_ON_THE_POST_HALT_STEP` (the output arrives one
-step past the halt), :data:`~tests.samples.NEVER_SELF_HALTS` (``run`` stops
-the program from outside, so there is no halt to drive to), and
-:data:`~tests.samples.NONDETERMINISTIC_AGAINST_RUN` (``run`` draws a random
-heading, so the two sides are not comparable).  Absorbing any of them into
-the driver would make the sweep pass while hiding the distinction.
-
-Two of those three are not only the sweep's business.  A caller outside
-this suite writing ``while not vm.halted: vm.step()`` hangs on the
-never-halting languages and reads ``""`` from the dumping ones, with
-nothing in the protocol to warn them, so both are now declared on the
-interpreters and reported by :attr:`esolangs.vm.VM.self_halts` and
-:attr:`esolangs.vm.VM.dumps_on_the_post_halt_step`.  The sets stay -- the
-sweep needs the answer without building a machine -- and two tests below
-lock them against the traits in both directions.
-
-A fourth set, :data:`~tests.samples.RAISES_ON_THE_POST_HALT_STEP`, was not
-a convention but the sweep's first finding: nine adapters raised
-``IndexError`` when stepped past their halt instead of doing nothing, and
-none of the fifteen hand-written copies of that check covered any of them.
-All nine now carry the guard the rest already had, so the set is empty --
-kept, rather than deleted, because the companion test compares it against
-what actually raises and would fail if any of them regressed.
-"""
+r"""The VM protocol, swept over every language rather than per language."""
 
 import contextlib
 import io
@@ -61,9 +19,9 @@ from .samples import (
     SAMPLES,
 )
 
-# The sweep drives every machine to its halt, so a runaway sample would
-# hang the suite rather than fail it.  Every sample that halts at all does
-# so in well under a hundred steps; this is the bound that turns a hang
+# The sweep drives every.
+# hang the suite rather than.
+# so in well under a hundred.
 # into a readable failure.
 _STEP_BUDGET = 100_000
 
@@ -74,52 +32,37 @@ _PARAMS = [
 
 
 def _drive(vm: VM) -> str:
-    """Step ``vm`` to its halt and return everything it wrote.
-
-    The budget is shared with the other consumers through
-    :func:`~esolangs.vm.run_until_halt`; what stays here is the overrun
-    policy, which for a test is to fail loudly rather than to return a
-    partial run's output as if it were a halt's.
-    """
+    r"""Step ``vm`` to its halt and return everything it wrote."""
     if not run_until_halt(vm, _STEP_BUDGET):
         raise AssertionError(f"no halt within {_STEP_BUDGET} steps")
     return vm.output
 
 
-# The prefix the never-halting languages are compared over instead of a
-# halt.  They have no halt to drive to, so "the same run" has to mean "the
-# same state after the same number of steps".
-#
-# Output alone will not do it.  Suffolk's sample writes within this many
-# steps, but A Painter Ant's writes nothing at all -- not at a hundred
-# steps and not at ten thousand, because it paints rather than prints --
-# so comparing its output would be comparing "" against "" and passing no
-# matter what the interpreter did.  The comparison is therefore over the
-# observable state as well, which both of them do move.
+# The prefix the never-halting.
+# halt.
+# same state after the same.
+# .
+# Output alone will not do it.
+# steps, but A Painter Ant's.
+# steps and not at ten.
+# so comparing its output would.
+# matter what the interpreter.
+# observable state as well,.
 _PREFIX_STEPS = 100
 
-# What a run is compared on: everything the VM exposes about where it
-# ended up.  ``memory`` and ``stack`` are lists, so this is a tuple of
-# copies rather than views into the machine.
+# What a run is compared on:.
+# ended up.
+# copies rather than views into.
 _Observed = tuple[str, object, list[int], list[object]]
 
 
 def _observe(vm: VM) -> _Observed:
-    """Return everything ``vm`` exposes about its current state."""
+    r"""Return everything ``vm`` exposes about its current state."""
     return (vm.output, vm.ip, vm.memory, vm.stack)
 
 
 def _settle(vm: VM, language: str) -> _Observed:
-    """Drive ``vm`` as far as it goes and return its observable state.
-
-    Three of the file's conventions meet here.  A language with a halt is
-    driven to it; the never-halting two are stepped a fixed distance
-    instead, so all sixty-three are covered rather than two being skipped.
-    And the dumping languages are stepped once more, because that step is
-    where their output is written -- every one of them is still empty at
-    the halt itself, so a comparison that stopped there would be comparing
-    nothing.
-    """
+    r"""Drive ``vm`` as far as it goes and return its observable state."""
     if language in NEVER_SELF_HALTS:
         for _ in range(_PREFIX_STEPS):
             vm.step()
@@ -131,11 +74,7 @@ def _settle(vm: VM, language: str) -> _Observed:
 
 
 def _machine_of(vm: VM) -> object | None:
-    """Return the interpreter state object an adapter wraps, if it has one.
-
-    The adapters keep it under different names, so look for the attribute
-    carrying ``snapshot()`` rather than naming one.
-    """
+    r"""Return the interpreter state object an adapter wraps, if it has one."""
     for value in vars(vm).values():
         if hasattr(value, "snapshot"):
             return cast(object, value)
@@ -143,12 +82,7 @@ def _machine_of(vm: VM) -> object | None:
 
 
 class TestSamplesCoverEveryLanguage:
-    """The table is the sweep's coverage, so it is the thing to lock.
-
-    A language can be added to the registry with an adapter and no sample,
-    and every test below would still pass -- on the other fifty-nine.  The
-    set equality is what makes the omission fail.
-    """
+    r"""The table is the sweep's coverage, so it is the thing to lock."""
 
     def test_every_registry_language_has_a_sample(self) -> None:
         assert sorted(set(RUNNERS) - set(SAMPLES)) == []
@@ -169,28 +103,11 @@ class TestSamplesCoverEveryLanguage:
     def test_the_named_exceptions_are_real_languages(
         self, exceptions: frozenset[str]
     ) -> None:
-        """A renamed language must not leave an exception silently inert.
-
-        An exception set naming a language the registry no longer has would
-        stop excusing anything, and the sweep would start asserting the
-        wrong invariant on whichever language inherited the behaviour.
-        """
+        r"""A renamed language must not leave an exception silently inert."""
         assert sorted(exceptions - set(RUNNERS)) == []
 
     def test_most_samples_write_something(self) -> None:
-        """The output-comparing sweeps are not comparing nothing.
-
-        Eight samples write nothing at all -- they move memory, paint, or
-        push, and that is a fair thing for a sample to do -- so the sweeps
-        compare ``ip``/``memory``/``stack`` too rather than output alone.
-        This is what keeps that from quietly becoming the norm: if a
-        change left most samples silent, the purity and leakage sweeps
-        would still pass while checking almost nothing, and only this
-        would fail.
-
-        Deliberately a floor rather than an exact set, which would be a
-        ninth exception list to maintain for no gain.
-        """
+        r"""The output-comparing sweeps are not comparing nothing."""
         writes = sum(
             bool(_settle(make_vm(name, program, stdin), name)[0])
             for name, (program, stdin) in SAMPLES.items()
@@ -200,18 +117,12 @@ class TestSamplesCoverEveryLanguage:
 
 @pytest.mark.parametrize(("language", "program", "stdin"), _PARAMS)
 class TestEveryLanguageHonoursTheProtocol:
-    """The shared invariants, once each, for every registry language."""
+    r"""The shared invariants, once each, for every registry language."""
 
     def test_stepping_matches_running(
         self, language: str, program: str, stdin: str
     ) -> None:
-        """A VM stepped to completion writes exactly what ``run`` writes.
-
-        This is the invariant the per-file copies were really after: an
-        adapter that drops a command, or writes its output somewhere the
-        wrapper does not read, differs from the interpreter here and
-        nowhere else.
-        """
+        r"""A VM stepped to completion writes exactly what ``run`` writes."""
         if language in NEVER_SELF_HALTS:
             pytest.skip(f"{language} halts only on run's external limit")
         if language in NONDETERMINISTIC_AGAINST_RUN:
@@ -220,13 +131,13 @@ class TestEveryLanguageHonoursTheProtocol:
         vm = make_vm(language, program, stdin)
         _drive(vm)
         if language in DUMPS_ON_THE_POST_HALT_STEP:
-            vm.step()  # the dump, which run performs after its own loop
+            vm.step()  # the dump, which run performs.
         assert vm.output == expected
 
     def test_the_sample_reaches_a_halt(
         self, language: str, program: str, stdin: str
     ) -> None:
-        """Every sample halts, which the sweeps above depend on."""
+        r"""Every sample halts, which the sweeps above depend on."""
         if language in NEVER_SELF_HALTS:
             pytest.skip(f"{language} has no self-halt")
         vm = make_vm(language, program, stdin)
@@ -236,21 +147,7 @@ class TestEveryLanguageHonoursTheProtocol:
     def test_step_after_halt_is_a_noop(
         self, language: str, program: str, stdin: str
     ) -> None:
-        """Stepping a halted machine neither raises nor writes anything more.
-
-        A wrapper that kept executing past the halt would write its output
-        twice, which is what this pins.  For the dumping languages the
-        first post-halt step is the dump, so the no-op under test is the
-        step after that one -- and that the dump fires exactly once is
-        itself part of the contract.
-
-        The *state* is pinned alongside the output, because the two can
-        come apart: a machine that advances a cursor past its halt without
-        writing anything moves its snapshot while leaving the output
-        settled, and only the snapshot comparison sees it.  A dozen
-        per-language files used to assert exactly this, one copy each; the
-        claim is the protocol's, not any language's, so it is swept here.
-        """
+        r"""Stepping a halted machine neither raises nor writes anything more."""
         if language in NEVER_SELF_HALTS:
             pytest.skip(f"{language} has no self-halt")
         if language in RAISES_ON_THE_POST_HALT_STEP:
@@ -269,12 +166,7 @@ class TestEveryLanguageHonoursTheProtocol:
     def test_the_post_halt_step_raises_only_where_recorded(
         self, language: str, program: str, stdin: str
     ) -> None:
-        """The xfail set above is exact in both directions.
-
-        Without this, a language whose ``step()`` grew an early return
-        would keep its excuse forever, and the set would slowly become a
-        list of languages nobody had rechecked.
-        """
+        r"""The xfail set above is exact in both directions."""
         if language in NEVER_SELF_HALTS:
             pytest.skip(f"{language} has no self-halt")
         vm = make_vm(language, program, stdin)
@@ -292,28 +184,14 @@ class TestEveryLanguageHonoursTheProtocol:
     def test_the_halting_convention_matches_what_the_vm_reports(
         self, language: str, program: str, stdin: str
     ) -> None:
-        """``vm.self_halts`` is exact against the set above, both ways.
-
-        The trait is what a caller outside this suite reads, so the two
-        have to say the same thing.  Only a declaration check is possible
-        here: a language claiming it never halts cannot be *proved* not to
-        by stepping it, which is the whole reason the fact is declared.
-        """
+        r"""``vm.self_halts`` is exact against the set above, both ways."""
         vm = make_vm(language, program, stdin)
         assert vm.self_halts == (language not in NEVER_SELF_HALTS)
 
     def test_the_dump_convention_matches_what_the_vm_reports(
         self, language: str, program: str, stdin: str
     ) -> None:
-        """``vm.dumps_on_the_post_halt_step`` is exact, and is behavioural.
-
-        Unlike the halting trait this one is checkable against the machine
-        itself: driving to the halt writes everything ``run`` writes,
-        except on the seven, where the last step is still owed.  So the
-        declaration is compared against what the language actually does --
-        a machine whose dump moved back into ``run`` would fail here rather
-        than keeping a trait nobody rechecked.
-        """
+        r"""``vm.dumps_on_the_post_halt_step`` is exact, and is behavioural."""
         vm = make_vm(language, program, stdin)
         assert vm.dumps_on_the_post_halt_step == (
             language in DUMPS_ON_THE_POST_HALT_STEP
@@ -329,13 +207,7 @@ class TestEveryLanguageHonoursTheProtocol:
     def test_snapshot_is_hashable(
         self, language: str, program: str, stdin: str
     ) -> None:
-        """The state the cycle detector stores can go in a set.
-
-        ``run_until_halt_or_cycle`` proves a hang by seeing a snapshot
-        twice, so an unhashable snapshot -- a list of cells rather than a
-        tuple of them -- silently disables hang detection for that
-        language.
-        """
+        r"""The state the cycle detector stores can go in a set."""
         machine = _machine_of(make_vm(language, program, stdin))
         assert machine is not None, f"{language}'s adapter wraps no state object"
         hash(machine.snapshot())  # type: ignore[attr-defined]
@@ -343,41 +215,12 @@ class TestEveryLanguageHonoursTheProtocol:
 
 @pytest.mark.parametrize(("language", "program", "stdin"), _PARAMS)
 class TestEveryLanguageImplementsTheSameInterface:
-    """Structural conformance, as against the behavioural sweep above.
-
-    The tests before this one drive a machine and check what it does.
-    None of them would notice an adapter that satisfied the protocol only
-    for the sample it was handed -- a ``memory`` that exists because the
-    sample never asked for ``stack``, say.  These two ask the narrower
-    question directly: does every language expose the *same* surface?
-
-    ``_StepMachineWithShape`` is the interface ``_DelegatingVM`` forwards
-    to, so a machine failing it is one the shared adapter cannot wrap, and
-    the language would need per-language code back in ``vm.py`` -- which
-    is exactly what deriving every adapter from ``RUNNERS`` removed.
-
-    Both protocols are ``runtime_checkable``, so ``isinstance`` checks that
-    the members are *present*, not that their signatures or return types
-    match.  Types are mypy's half of this; the sweeps above are what pin
-    the behaviour behind the names.
-    """
+    r"""Structural conformance, as against the behavioural sweep above."""
 
     def test_a_positional_ip_says_what_it_counts(
         self, language: str, program: str, stdin: str
     ) -> None:
-        """A machine reporting a tuple ``ip`` declares how to read it.
-
-        This is the one convention here whose breach is *silent*.  Forget
-        ``self_halts`` and a driving loop hangs; forget ``ip_shape`` and a
-        tuple simply stops being drawable, so a new grid language would
-        quietly lose its highlight and nothing else would change.
-
-        The declaration exists because the value cannot be read without it.
-        A cell, a call depth paired with a cursor, and a stack of one
-        position per frame are all tuples of small ints, and six languages
-        were marked in the *wrong* place for exactly as long as the screen
-        tried to tell them apart by looking.
-        """
+        r"""A machine reporting a tuple ``ip`` declares how to read it."""
         vm = make_vm(language, program, stdin)
         shapes = set()
         for _ in range(10):
@@ -395,11 +238,7 @@ class TestEveryLanguageImplementsTheSameInterface:
     def test_a_declared_ip_shape_is_one_the_reader_knows(
         self, language: str, program: str, stdin: str
     ) -> None:
-        """A misspelled shape is the same silent failure one level up.
-
-        ``locate`` answers an unknown shape with "not located", so
-        ``ip_shape = "gird"`` would read exactly like declaring nothing.
-        """
+        r"""A misspelled shape is the same silent failure one level up."""
         shape = make_vm(language, program, stdin).ip_shape
         assert shape in {"offset", "grid", "line", "opaque"}, (
             f"{language} declares ip_shape={shape!r}, which nothing reads"
@@ -408,12 +247,7 @@ class TestEveryLanguageImplementsTheSameInterface:
     def test_the_wrapped_machine_implements_the_shape_protocol(
         self, language: str, program: str, stdin: str
     ) -> None:
-        """Every interpreter describes its own VM shape.
-
-        ``ip``/``memory``/``stack`` live on the interpreter rather than in
-        ``vm.py``; a machine missing one of them cannot be wrapped by the
-        derived adapter at all.
-        """
+        r"""Every interpreter describes its own VM shape."""
         machine = _machine_of(make_vm(language, program, stdin))
         assert machine is not None, f"{language}'s adapter wraps no state object"
         assert isinstance(machine, _StepMachineWithShape)
@@ -421,53 +255,18 @@ class TestEveryLanguageImplementsTheSameInterface:
     def test_the_vm_implements_the_public_protocol(
         self, language: str, program: str, stdin: str
     ) -> None:
-        """Every language's wrapper satisfies the published ``VM``.
-
-        ``test_vm.py`` asserted this for brainfuck.  One language passing
-        says nothing about the other sixty-two, which is the whole reason
-        the checks in this file are swept.
-        """
+        r"""Every language's wrapper satisfies the published ``VM``."""
         assert isinstance(make_vm(language, program, stdin), VM)
 
 
 @pytest.mark.parametrize(("language", "program", "stdin"), _PARAMS)
 class TestEveryLanguageIsPure:
-    """A run is a function of ``(program, stdin)`` and nothing else.
-
-    The interpreters are not pure in the literal sense -- ``step()``
-    mutates the machine in place and returns ``None``, by construction.
-    The claim worth pinning is about the whole run: the same program on the
-    same input lands in the same state, every time, no matter what else has
-    run before or is running alongside it, and whatever it writes goes
-    *only* through the ``ScriptedIO`` the VM handed it.
-
-    "The same state" is all four of ``output``/``ip``/``memory``/``stack``,
-    not output alone, because a language need not print to be running --
-    A Painter Ant's sample writes nothing whatever, so an output-only
-    comparison would pass on it for any interpreter at all.
-
-    That is what makes the generator suites and the differential fuzzers
-    mean anything.  A language holding state on its module or its class --
-    a memo, a cached parse, a tape allocated once -- would still pass every
-    test above, which builds one machine at a time and never asks whether
-    a second one is affected by the first.
-
-    None of the three is skipped for the never-halting languages: they are
-    compared over a fixed step prefix instead of at a halt, so all
-    sixty-three are covered.
-    """
+    r"""A run is a function of ``(program, stdin)`` and nothing else."""
 
     def test_two_runs_end_in_the_same_state(
         self, language: str, program: str, stdin: str
     ) -> None:
-        """Determinism, at the VM boundary.
-
-        ``LaserFuck`` is in :data:`NONDETERMINISTIC_AGAINST_RUN` because
-        ``run`` draws its heading at random -- but ``make_vm`` passes a
-        seeded source, so it is deterministic *here*, and is asserted to
-        be rather than excused.  A language that started drawing from
-        ``secrets`` behind the VM's back would fail this.
-        """
+        r"""Determinism, at the VM boundary."""
         first = _settle(make_vm(language, program, stdin), language)
         second = _settle(make_vm(language, program, stdin), language)
         assert first == second
@@ -475,14 +274,7 @@ class TestEveryLanguageIsPure:
     def test_interleaved_machines_do_not_disturb_each_other(
         self, language: str, program: str, stdin: str
     ) -> None:
-        """Two live machines of one language stay independent.
-
-        This is the check determinism cannot make.  Running one machine to
-        completion and then another would hide state shared on the class
-        or the module -- the second run may reset it on the way in.
-        Stepping both at once does not: whatever they share, they share
-        while both are using it.
-        """
+        r"""Two live machines of one language stay independent."""
         expected = _settle(make_vm(language, program, stdin), language)
         first = make_vm(language, program, stdin)
         second = make_vm(language, program, stdin)
@@ -509,25 +301,7 @@ class TestEveryLanguageIsPure:
     def test_a_run_writes_nothing_to_the_real_streams(
         self, language: str, program: str, stdin: str
     ) -> None:
-        """All output goes through the VM's ``ScriptedIO``, none past it.
-
-        An interpreter reaching for ``print`` or ``sys.stdout`` directly
-        would still show the right ``vm.output`` if it also wrote to the
-        io object, and the sweeps above would pass.  It would also corrupt
-        any caller's stdout -- the CLI's, a generator's -- so the absence
-        of the second write is part of the contract.
-
-        The redirect has to cover the dump step, which is where all four
-        dumping languages do their writing: every one of them is still
-        empty at the halt, so stopping there would run the check over a
-        machine that had not written anything yet.  :func:`_settle` takes
-        that step, which is why the whole call is inside the block.
-
-        Not every sample writes at all -- eight of them only move memory --
-        so what stops this sweep from being vacuous is the companion
-        ``test_most_samples_write_something`` above, rather than a
-        per-language assertion that would need a ninth exception set.
-        """
+        r"""All output goes through the VM's ``ScriptedIO``, none past it."""
         out, err = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             _settle(make_vm(language, program, stdin), language)
@@ -536,33 +310,17 @@ class TestEveryLanguageIsPure:
 
 
 class TestTheCoordinateOrderIsRowThenColumn:
-    """``VM.ip``'s arity is unstable and the *order* is not, and only one
-    of those was written down.
-
-    The paragraph above it correctly refuses to promise a shape -- the
-    registry has 1-, 2-, 3-, 4- and 6-tuples and six languages change
-    mid-run -- which reads as though the order were unknowable too.  A
-    reader worked it out by construction instead.
-    """
+    r"""``VM.ip``'s arity is unstable and the *order* is not, and only one."""
 
     def test_a_single_row_grid_moves_in_the_second_component(self) -> None:
-        """Alight and Super SNUSP lay their programs on one row.
-
-        The only move they can make is along the column, so whichever
-        component changes *is* the column -- no reasoning about headings
-        required.
-        """
+        r"""Alight and Super SNUSP lay their programs on one row."""
         for name in ("Alight", "Super SNUSP"):
             program, stdin = _row_for(name)
-            assert program.count("\n") == 0, name  # one row
+            assert program.count("\n") == 0, name  # one row.
             assert _first_move(name, program, stdin)[0] == 0, name
 
     def test_a_downward_start_moves_in_the_first_component(self) -> None:
-        """Dig, Flowchart, LaserFuck and Streetcode begin vertically.
-
-        The other half of the pincer: these cannot move along a row first,
-        so the component that changes is the row.
-        """
+        r"""Dig, Flowchart, LaserFuck and Streetcode begin vertically."""
         for name in ("Dig", "Flowchart", "LaserFuck", "Streetcode"):
             program, stdin = _row_for(name)
             before, after = _first_move_pair(name, program, stdin)
@@ -570,14 +328,14 @@ class TestTheCoordinateOrderIsRowThenColumn:
             assert before[1] == after[1], name
 
     def test_the_docstring_says_so(self) -> None:
-        """And says it without re-promising the arity that was retired."""
+        r"""And says it without re-promising the arity that was retired."""
         doc = esolangs.VM.ip.__doc__ or ""
         assert "row then column" in doc
-        assert "not stable within" in doc  # the older warning survives
+        assert "not stable within" in doc  # the older warning survives.
 
 
 def _row_for(name: str) -> tuple[str, str]:
-    """A runnable program and its stdin for a two-input table."""
+    r"""A runnable program and its stdin for a two-input table."""
     table = "0110"
     program = esolangs.generate(name, table)
     if esolangs.describe(name)["parameterized"]:
@@ -588,7 +346,7 @@ def _row_for(name: str) -> tuple[str, str]:
 def _first_move_pair(
     name: str, program: str, stdin: str
 ) -> tuple[tuple[int, ...], tuple[int, ...]]:
-    """The coordinate before and after the first move that changes it."""
+    r"""The coordinate before and after the first move that changes it."""
     vm = esolangs.make_vm(name, program, stdin)
     start = vm.ip
     assert isinstance(start, tuple)
@@ -603,21 +361,16 @@ def _first_move_pair(
 
 
 def _first_move(name: str, program: str, stdin: str) -> tuple[int, int]:
-    """Which components changed on the first move, as a (row, col) pair."""
+    r"""Which components changed on the first move, as a (row, col) pair."""
     before, after = _first_move_pair(name, program, stdin)
     return (before[0] != after[0], before[1] != after[1])
 
 
 class TestAPathAndItsTextDifferOnTheTrailingNewline:
-    """``run(lang, path)`` and ``run(lang, path.read_text())`` disagree.
-
-    Reading a file strips one trailing newline and passing a string does
-    not.  Both halves are deliberate; the docstring said only that a Path
-    "is read", which reads as equivalence.
-    """
+    r"""``run(lang, path)`` and ``run(lang, path.read_text())`` disagree."""
 
     def test_they_disagree_where_a_newline_is_not_legal(self, tmp_path: Path) -> None:
-        """CV(N)(C) has no newline in its alphabet, so it is the visible case."""
+        r"""CV(N)(C) has no newline in its alphabet, so it is the visible case."""
         path = tmp_path / "c.txt"
         path.write_text(esolangs.generate("CV(N)(C)", "0110") + "\n")
         stdin = esolangs.encode_inputs("CV(N)(C)", [0, 0], "0110")
@@ -626,7 +379,7 @@ class TestAPathAndItsTextDifferOnTheTrailingNewline:
             esolangs.run("CV(N)(C)", path.read_text(), stdin, 5)
 
     def test_they_agree_without_one(self, tmp_path: Path) -> None:
-        """The difference is the newline and nothing else."""
+        r"""The difference is the newline and nothing else."""
         path = tmp_path / "c.txt"
         path.write_text(esolangs.generate("CV(N)(C)", "0110"))
         stdin = esolangs.encode_inputs("CV(N)(C)", [0, 0], "0110")
@@ -635,5 +388,5 @@ class TestAPathAndItsTextDifferOnTheTrailingNewline:
         )
 
     def test_the_docstring_says_so(self) -> None:
-        """A surprise is only acceptable while it is written down."""
+        r"""A surprise is only acceptable while it is written down."""
         assert "not quite the same argument" in (esolangs.run.__doc__ or "")

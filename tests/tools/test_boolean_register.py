@@ -61,15 +61,15 @@ class TestAddSubJump:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
+            ("10", 1),  # NOT.
+            ("01", 1),  # identity.
+            ("00", 1),  # constant zero.
+            ("11", 1),  # constant one.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("1110", 2),  # NAND.
+            ("11111110", 3),  # NAND3.
+            ("01101001", 3),  # XOR3.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -83,7 +83,7 @@ class TestAddSubJump:
     def test_branch_normalizes_bits_to_zero_and_four(self) -> None:
         """Each bit is normalized to {0, 4} and added to a jump cell."""
         program = boolean.addsubjump("0110")
-        assert "-48" in program  # the normalization constant
+        assert "-48" in program  # the normalization constant.
         assert run_addsubjump(program, ["0", "1"]) == "1"
         assert run_addsubjump(program, ["1", "0"]) == "1"
 
@@ -96,7 +96,7 @@ class TestAddSubJump:
         normalization constant and appears once in the data section, so the
         instructions referencing its cell are what to count.
         """
-        # XOR-3 has 7 internal nodes but only 3 inputs.
+        # XOR-3 has 7 internal nodes.
         cells = _asj_normalize_sites(boolean.addsubjump("01101001"))
         assert cells == 3
 
@@ -132,18 +132,18 @@ class TestAddSubJump:
             identity = len(_addsubjump_ordered(table, (0, 1, 2)))
             assert dispatched <= identity, table
             improved += dispatched < identity
-        assert improved == 118  # the rest tie, keeping the identity order
+        assert improved == 118  # the rest tie, keeping the.
 
 
 class TestQoibl:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1000000000000000", 4),  # AND4
+            ("10", 1),  # NOT.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("11111110", 3),  # NAND3.
+            ("1000000000000000", 4),  # AND4.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -158,7 +158,7 @@ class TestQoibl:
         """An AND function stores the minterm product and prints 48 + sum."""
         program = boolean.qoibl("0001")
         assert program.startswith("we e we et")
-        assert "ry ye ry" in program  # a minterm product
+        assert "ry ye ry" in program  # a minterm product.
         assert program.endswith("tt")
 
     def test_empty_truth_table(self) -> None:
@@ -167,17 +167,17 @@ class TestQoibl:
         assert "ry ye ry" not in program
 
 
-# 4.2s over 72 tests: runs the generated program.
+# 4.2s over 72 tests: runs the.
 @pytest.mark.medium
 class TestPolynomial:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("00000001", 3),  # AND-3
-            ("10000000", 3),  # OR-3
+            ("10", 1),  # NOT.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("00000001", 3),  # AND-3.
+            ("10000000", 3),  # OR-3.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -225,7 +225,7 @@ class TestPolynomial:
         states = [min(2**k, 2 ** (2 ** (10 - k))) for k in range(11)]
         assert 7 * sum(states[:10]) + 5 * states[10] - 1 == _POLYNOMIAL_MAX_INSTRS
 
-    @pytest.mark.slow  # 4.5s: one NTT factorization, then 256 cached rows
+    @pytest.mark.slow  # 4.5s: one NTT factorization,.
     def test_a_dense_eight_input_table_runs_every_row(self) -> None:
         """The arity the old cap refused now builds, and every row answers.
 
@@ -245,7 +245,7 @@ class TestPolynomial:
             got = run_polynomial(program, [str(b) for b in bits])
             assert got == table[row], f"row {row}"
 
-    @pytest.mark.slow  # 2.3s
+    @pytest.mark.slow  # 2.3s.
     def test_state_machine_renders_past_the_old_input_gate(self) -> None:
         """Tables the ``n <= 4`` gate refused outright now render and run.
 
@@ -363,8 +363,8 @@ class TestPolynomial:
                 shortest = min(length for length, _ in rendered)
                 needed = min(cost for length, cost in rendered if length == shortest)
                 worst = max(worst, needed - min(cost for cost, _ in built))
-        # Pure-``k`` candidates only; the drained variants were measured
-        # separately and reach the same 6 here, so widening this sweep
+        # Pure-``k`` candidates only;.
+        # separately and reach the same.
         # would not raise the bound.
         assert worst == 6
         assert worst <= _POLYNOMIAL_SCREEN_SLACK
@@ -402,7 +402,7 @@ class TestPolynomial:
         """
         from esolangs.tools.boolean.register import _polynomial_drained_dag
 
-        table = "0000010100000101"  # ignores its first input
+        table = "0000010100000101"  # ignores its first input.
         assert _polynomial_drained_dag(table) is not None
         program = boolean.polynomial(table)
         for combo in range(16):
@@ -454,11 +454,11 @@ class TestDig:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1000000000000000", 4),  # AND4
+            ("10", 1),  # NOT.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("11111110", 3),  # NAND3.
+            ("1000000000000000", 4),  # AND4.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -518,9 +518,9 @@ class TestDig:
         at most nine cells -- six reads plus the three that print.  A
         constant table at n == 7 needs more than that, and must still run.
         """
-        table = "1" * 128  # n == 7, constant
+        table = "1" * 128  # n == 7, constant.
         program = boolean.dig(table)
-        assert program.count("$") > 1  # more than one window
+        assert program.count("$") > 1  # more than one window.
         assert esolangs.run("Dig", program, stdin="\n".join(["1"] * 7)).strip() == "1"
 
     def test_a_width_turns_the_tree_round_and_it_still_computes(self) -> None:
@@ -600,7 +600,7 @@ class TestDig:
             with pytest.raises(AssertionError):
                 boolean.dig(table, 1)
         monkeypatch.undo()
-        # and the stride the rule names still builds
+        # and the stride the rule names.
         assert boolean.dig("0110100110010110", 1)
 
 
@@ -625,11 +625,11 @@ class TestSophie:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1111111111111110", 4),  # NAND4
+            ("10", 1),  # NOT.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("11111110", 3),  # NAND3.
+            ("1111111111111110", 4),  # NAND4.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -693,7 +693,7 @@ class TestSophie:
             ratio = len(_sophie_dag(parity)) / len(_sophie_tree(parity))
             assert ratio < 1
             if previous is not None:
-                assert ratio < previous  # the gap widens with n
+                assert ratio < previous  # the gap widens with n.
             previous = ratio
 
     def test_every_path_reads_each_input_once(self) -> None:
@@ -724,23 +724,23 @@ class TestSophie:
         """
         assert boolean.sophie("1111") == ";;#$49,&"
         assert boolean.sophie("0000") == ";;#$48,&"
-        assert boolean.sophie("0110").count(";") == 3  # nothing folds
+        assert boolean.sophie("0110").count(";") == 3  # nothing folds.
 
 
 class TestCollatzMultiverse:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("1111111100000000", 4),  # top half
+            ("10", 1),  # NOT.
+            ("01", 1),  # identity.
+            ("00", 1),  # constant zero.
+            ("11", 1),  # constant one.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("1110", 2),  # NAND.
+            ("11111110", 3),  # NAND3.
+            ("01101001", 3),  # XOR3.
+            ("1111111100000000", 4),  # top half.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -765,8 +765,8 @@ class TestCollatzMultiverse:
         complemented table keeps the accumulator instead.  A dense table is
         therefore *shorter* than its sparse complement, not merely equal.
         """
-        dense = boolean.collatz_multiverse("11111110")  # one zero row
-        sparse = boolean.collatz_multiverse("00000001")  # one one row
+        dense = boolean.collatz_multiverse("11111110")  # one zero row.
+        sparse = boolean.collatz_multiverse("00000001")  # one one row.
         assert len(dense) < len(sparse)
         for table in ("11111110", "00000001"):
             program = boolean.collatz_multiverse(table)
@@ -784,22 +784,22 @@ class TestCollatzMultiverse:
         for table in ("0000", "1111"):
             program = boolean.collatz_multiverse(table)
             assert program.count("DO PRINT.") == 1
-            assert program.count("input") == 2  # n == 2, read once each
+            assert program.count("input") == 2  # n == 2, read once each.
 
 
 class TestDecleq:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
+            ("10", 1),  # NOT.
+            ("01", 1),  # identity.
+            ("00", 1),  # constant zero.
+            ("11", 1),  # constant one.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("1110", 2),  # NAND.
+            ("11111110", 3),  # NAND3.
+            ("01101001", 3),  # XOR3.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -815,11 +815,11 @@ class TestDecleq:
         program = boolean.decleq("0110")
         cells = [int(tok) for tok in program.split()]
         instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
-        # Count a==b>0 instructions: the 47 normalization steps per
-        # essential input plus the decision-tree branches (2**n - 1 here).
+        # Count a==b>0 instructions:.
+        # essential input plus the.
         decs = [ins for ins in instrs if ins[0] == ins[1] and ins[0] > 0]
         assert len(decs) == 47 * 2 + 3
-        assert sum(1 for ins in instrs if ins[0] == -1) == 2  # one read each
+        assert sum(1 for ins in instrs if ins[0] == -1) == 2  # one read each.
 
     def test_constant_subtrees_fold(self) -> None:
         """A constant subtree becomes a leaf instead of branching further.
@@ -833,8 +833,8 @@ class TestDecleq:
         cells = [int(tok) for tok in program.split()]
         instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
         decs = [ins for ins in instrs if ins[0] == ins[1] and ins[0] > 0]
-        # The table depends only on its first input.  Both other inputs are
-        # still read, but their folded branches never need normalizing.
+        # The table depends only on its.
+        # still read, but their folded.
         assert len(decs) == 47 + 1
         assert sum(1 for ins in instrs if ins[0] == -1) == 3
         assert len(boolean.decleq("11110000")) < len(boolean.decleq("10101010"))
@@ -858,7 +858,7 @@ class TestDecleq:
             n = len(table).bit_length() - 1
             cells = [int(tok) for tok in boolean.decleq(table).split()]
             zeros_at_end = 0
-            for value in reversed(cells[:-2]):  # the two output cells hold 48/49
+            for value in reversed(cells[:-2]):  # the two output cells hold.
                 if value:
                     break
                 zeros_at_end += 1
@@ -930,8 +930,8 @@ class TestPointBreak:
         program = boolean.point_break("0110").splitlines()
         assert program[:3] == ["LET a:=1", "LET b:=?", "LET c:=?"]
         assert program[3:5] == ["LET d:=a-b", "LET e:=a-c"]
-        assert sum(":=?" in line for line in program) == 2  # one read per input
-        assert program.count("LET f:=f+g") == 2  # one minterm per 1 row
+        assert sum(":=?" in line for line in program) == 2  # one read per input.
+        assert program.count("LET f:=f+g") == 2  # one minterm per 1 row.
         assert program[-3:] == ["POINT loop", "IF h BREAK loop", "END loop"]
 
     def test_a_dense_table_sums_its_zero_rows(self) -> None:
@@ -944,10 +944,10 @@ class TestPointBreak:
         """
         dense = boolean.point_break("11111110").splitlines()
         sparse = boolean.point_break("00000001").splitlines()
-        # one minterm each: summing the dense table's ones would be seven
+        # one minterm each: summing the.
         assert dense.count("LET h:=h+i") == 1
         assert sparse.count("LET h:=h+i") == 1
-        # the dense one aliases the guard instead of subtracting for it
+        # the dense one aliases the.
         assert "LET j:=h" in dense
         assert "LET j:=a-h" in sparse
         for table in ("11111110", "00000001"):
@@ -1012,12 +1012,12 @@ class TestSophieLabelsAreUnique:
     on 35% of random tables at n=7.
     """
 
-    #: The smallest table that collides, found by exhaustive search upward.
+    # : The smallest table that.
     MINIMAL = "00000000000000010000000100000100"
 
     def test_the_minimal_colliding_table_computes(self) -> None:
         """It raised ``read past the end of input: 5 lines supplied, read 6``."""
-        assert boolean.sophie(self.MINIMAL)  # builds, and always did
+        assert boolean.sophie(self.MINIMAL)  # builds, and always did.
         for combo in range(32):
             bits = [(combo >> (4 - i)) & 1 for i in range(5)]
             got = run_sophie(boolean.sophie(self.MINIMAL), [str(b) for b in bits])
@@ -1061,5 +1061,5 @@ class TestSophieLabelsAreUnique:
     def test_the_scan_can_actually_see_a_duplicate(self) -> None:
         """The positive control: a checker that never fires guards nothing."""
         assert _depth_zero_labels("@$1{;}@$1{;}") == [1, 1]
-        assert _depth_zero_labels("@$1{@$1{;}}") == [1]  # nested is not top level
-        assert _depth_zero_labels(";@$48{#$48,&}{#$49,&}") == []  # bit tests only
+        assert _depth_zero_labels("@$1{@$1{;}}") == [1]  # nested is not top level.
+        assert _depth_zero_labels(";@$48{#$48,&}{#$49,&}") == []  # bit tests only.

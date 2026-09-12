@@ -158,7 +158,7 @@ class TestInternalGuards:
             _int("x")
 
     def test_a_bool_is_not_a_number(self) -> None:
-        # ``bool`` is an ``int`` subclass, so it needs its own rejection.
+        # ``bool`` is an ``int``.
         flag: object = True
         with pytest.raises(HaltError, match="expected a number"):
             _int(flag)
@@ -193,7 +193,7 @@ class TestParserScanAhead:
     def test_a_bad_type_is_not_a_declaration(self) -> None:
         parser = _Parser(["Widget", "name", ";"])
         assert parser.is_declaration() is False
-        # The rewind is what lets the caller re-read the same tokens.
+        # The rewind is what lets the.
         assert parser.pos == 0
 
     def test_a_type_without_a_name_is_not_a_declaration(self) -> None:
@@ -318,7 +318,7 @@ class TestMachineMemory:
             machine.step()
             if machine.memory:
                 seen = machine.memory
-        # The row is flattened in place: three cells, the middle one written.
+        # The row is flattened in.
         assert seen == [0, 1, 0]
 
     def test_memory_is_empty_once_the_frames_are_gone(self) -> None:

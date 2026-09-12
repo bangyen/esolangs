@@ -24,17 +24,17 @@ import sys
 
 from esolangs.interpreters.io import IO
 
-#: One instant of a run: ``(arrays, ptr, acc, ind, halted)`` -- the 23
-#: arrays, the pointer that picks the current one, the accumulator, the
-#: token cursor, and whether a negative LEAPFROG stopped the run.  A value
-#: the transitions below map forward, never editing one in place, with the
-#: arrays as nested ``tuple``s for the same reason.
-#:
-#: ``halted`` is carried because a negative LEAPFROG stops the run with the
-#: cursor left where it was, so the position alone does not say.
-#:
-#: The token stream is not here: it is fixed for the whole run, so a step
-#: takes the opcode it is executing as an argument instead.
+# : One instant of a run:.
+# : arrays, the pointer that.
+# : token cursor, and whether a.
+# : the transitions below map.
+# : arrays as nested ``tuple``s.
+# :.
+# : ``halted`` is carried.
+# : cursor left where it was,.
+# :.
+# : The token stream is not.
+# : takes the opcode it is.
 type _Arrays = tuple[tuple[int, ...], ...]
 type _State = tuple[_Arrays, int, int, int, bool]
 
@@ -54,12 +54,12 @@ def _total(op: int, arrays: _Arrays) -> _Arrays:
     that way, and reproducing that is the point.
     """
     if not op:
-        # Spelled as a loop rather than the genexpr this reads as, because
-        # SEED is the whole cost of a run: the boolean example runs it 1317
-        # times, and a generator suspends and resumes once per array, so
-        # the comprehension spent 42% of the run in 31608 frame
-        # resumptions -- more than the arithmetic it was carrying.  The
-        # arrays are 23 short tuples, so building the list directly is the
+        # Spelled as a loop rather than.
+        # SEED is the whole cost of a.
+        # times, and a generator.
+        # the comprehension spent 42%.
+        # resumptions -- more than the.
+        # arrays are 23 short tuples,.
         # same work without the frames.
         seeded = []
         for num, arr in enumerate(arrays):
@@ -131,11 +131,11 @@ _INS = (
     "PRONOUNCE",
 )
 
-# Token -> opcode, so a step names its instruction by lookup.  ``step``
-# used ``_INS.index(...)``, which walks the tuple comparing strings, and
-# does it once per token executed: SEED is first and costs one compare,
-# but PRONOUNCE is last and costs ten, so the price depended on which
-# instruction was running rather than on the work it did.
+# Token -> opcode, so a step.
+# used ``_INS.index(...)``,.
+# does it once per token.
+# but PRONOUNCE is last and.
+# instruction was running.
 _OPCODE = {name: op for op, name in enumerate(_INS)}
 
 
@@ -168,9 +168,9 @@ def _advance(state: _State, n: int, byte: int | None = None) -> _State:
         arrays = (*arrays[:ptr], curr, *arrays[ptr + 1 :])
     elif n == 6 and acc < len(curr):
         if acc < -len(curr):
-            # The array is a tuple here, so its own subscript would say
-            # "tuple index out of range"; a run that walked off the end
-            # said "list" before and callers see the message, so keep it.
+            # The array is a tuple here, so.
+            # "tuple index out of range"; a.
+            # said "list" before and.
             raise IndexError("list index out of range")
         ptr = (ptr + curr[acc]) % 23
     elif n == 7 and curr and curr[-1]:
@@ -200,7 +200,7 @@ class _Machine:
         """Whether a negative LEAPFROG fired or the cursor reached the end."""
         return self._halted_by_command or self.ind >= len(self.tokens)
 
-    # The VM's language-shaped view: 23 arrays + pointer; memory is the current array,
+    # The VM's language-shaped.
     # stack all 23.
 
     @property

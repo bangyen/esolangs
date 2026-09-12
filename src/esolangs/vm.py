@@ -229,8 +229,8 @@ def run_until_halt_or_cycle(machine: _StepMachine | VM) -> bool:
     while not machine.halted:
         machine.step()
         length += 1
-        # mypy narrows `machine.halted` to Literal[False] from the loop guard
-        # and won't re-widen it across `step()`; the explicit local defeats that.
+        # mypy narrows `machine.halted`.
+        # and won't re-widen it across.
         halted: bool = machine.halted
         if halted:
             return True
@@ -383,8 +383,8 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
             continue
         pushes += 1
         depth = len(machine.frames) - 1
-        # A shallower frame at this index belongs to a call that has since
-        # returned, so drop it rather than compare against a dead ancestor.
+        # A shallower frame at this.
+        # returned, so drop it rather.
         keys = {d: k for d, k in keys.items() if d < depth}
         keys[depth] = machine.frame_entry_key(machine.frames[-1])
         if keys[depth] in [k for d, k in keys.items() if d < depth]:
@@ -535,11 +535,11 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
     nothing to grow and raises :class:`TypeError` rather than a verdict.
     """
     machine = cast(_TapeMachine, _unwrap(machine, _TapeMachine, "a tape machine"))
-    # The last visit keeps the broad, one-period certificate.  ``origins``
-    # proves a steady wave after its first full phase, while ``waves`` is
-    # Brent's O(1)-per-position checkpoint for a phase that begins after a
-    # transient.  Both minima are updated on every step because the proof
-    # is invalid if the period ever reached the clamped left edge.
+    # The last visit keeps the.
+    # proves a steady wave after.
+    # Brent's O(1)-per-position.
+    # transient.
+    # is invalid if the period ever.
     last: dict[Hashable, tuple[int, tuple[int, ...], int]] = {}
     lowest: dict[Hashable, int] = {}
     origins: dict[Hashable, tuple[tuple[int, tuple[int, ...], int], int]] = {}
@@ -575,20 +575,20 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
             waves[ip] = (current, ptr, 1, 0)
         else:
             before, low, power, length = checkpoint
-            # The backstop for a drifting baseline.  Nothing reaches this
-            # return, and the reason is stronger than the old comment here
-            # claimed: measured by ablation, each of the three arms proves
-            # every growth program in the suite *on its own*, and with all
-            # three disabled every one goes undecided.  They are not a
-            # pipeline but three independent certificates.
-            #
-            # That is also why a mutation sweep leaves this whole block
-            # alive: mutating one arm's bookkeeping cannot change a verdict
-            # the other two reach anyway.  Those survivors are the
-            # redundancy, not a missing test, and the redundancy is kept --
-            # the corpus is a handful of brainfuck programs, and an arm
-            # idle on all of them may still be the only one that decides a
-            # shape nobody has written down yet.
+            # The backstop for a drifting.
+            # return, and the reason is.
+            # claimed: measured by.
+            # every growth program in the.
+            # three disabled every one goes.
+            # pipeline but three.
+            # .
+            # That is also why a mutation.
+            # alive: mutating one arm's.
+            # the other two reach anyway.
+            # redundancy, not a missing.
+            # the corpus is a handful of.
+            # idle on all of them may still.
+            # shape nobody has written down.
             if _grows_forever(before, current, low):  # pragma: no cover - see above
                 return False
             length += 1
@@ -752,20 +752,20 @@ def run_until_halt_or_value_growth(
     machine = cast(
         _AffineMachine, _unwrap(machine, _AffineMachine, "an affine machine")
     )
-    # One slack per step, in a single log, and per key the last three steps
-    # that visited it.  A lap is then a slice of the log rather than a list
-    # of its own: collecting the slacks per waiting key instead would append
-    # once for every key still unrevisited, which is quadratic on a program
-    # whose key never repeats -- ``>`` alone mints a fresh one every step by
-    # widening the tape, and would spend the whole budget before reaching
-    # it.  The log costs one append a step, and only a key on its third
-    # visit is ever sliced out of it.
+    # One slack per step, in a.
+    # that visited it.
+    # of its own: collecting the.
+    # once for every key still.
+    # whose key never repeats --.
+    # widening the tape, and would.
+    # it.
+    # visit is ever sliced out of.
     slacks: list[int | None] = []
     visits: dict[Hashable, list[tuple[int, tuple[int, ...], int]]] = {}
     for index in range(limit):
-        # Suffolk is the only affine machine, and the wiki's rerun never
-        # halts -- its `halted` is a constant False -- so nothing reaches
-        # this return.  It stays for the next affine language.
+        # Suffolk is the only affine.
+        # halts -- its `halted` is a.
+        # this return.
         if machine.halted:  # pragma: no cover - see above
             return True
         slacks.append(machine.clamp_slack)
@@ -1127,11 +1127,11 @@ class VM(Protocol):
         """
 
 
-#: The names a caller already has by other means, so they are not repeated
-#: as "the machine's own".  Five are the views every language offers and the
-#: rest are machinery -- the snapshot hooks the cycle provers use, and the
-#: traits below.  Everything else a machine exposes as a property is state
-#: it chose to name, which is exactly what a reader wants to see.
+# : The names a caller already.
+# : as "the machine's own".
+# : rest are machinery -- the.
+# : traits below.
+# : it chose to name, which is.
 _NOT_A_VIEW = frozenset(
     {
         "ip",
@@ -1153,9 +1153,9 @@ _NOT_A_VIEW = frozenset(
     }
 )
 
-#: How many items of a sequence view to show before counting the rest.  A
-#: tape can be thousands of cells, and rendering one to text per step would
-#: cost more than running the program.
+# : How many items of a.
+# : tape can be thousands of.
+# : cost more than running the.
 _VIEW_ITEMS = 8
 
 
@@ -1274,16 +1274,16 @@ class _DelegatingVM:
     def stack(self) -> list[object]:
         return list(self._machine.stack)
 
-    # The two language conventions a stepping caller cannot discover for
-    # itself: that a language never halts, and that its output lands one
-    # step past the halt.  Both come off the machine by ``getattr``, the
-    # way ``reproducible_seed`` does, and for the same reason -- they are
-    # facts about the language, so the interpreter says so and the fifty-odd
-    # that follow the common shape declare nothing.
-    #
-    # The defaults are the common case, which is why the traits are spelled
-    # positively on the machines that carry them: a language that says
-    # nothing self-halts and writes before it does.
+    # The two language conventions.
+    # itself: that a language never.
+    # step past the halt.
+    # way ``reproducible_seed``.
+    # facts about the language, so.
+    # that follow the common shape.
+    # .
+    # The defaults are the common.
+    # positively on the machines.
+    # nothing self-halts and writes.
 
     @property
     def self_halts(self) -> bool:
@@ -1337,18 +1337,18 @@ def _derived_adapter(language: str) -> Callable[[str, str], _DelegatingVM]:
     is left.
     """
     module_path, split = RUNNERS[language]
-    # Bound to another name first: a class body cannot read the enclosing
-    # function's ``language`` while binding a class attribute of that name.
+    # Bound to another name first:.
+    # function's ``language`` while.
     display_name = language
 
     class _Derived(_DelegatingVM):
-        #: The registry's display name for this adapter's language.
-        #:
-        #: Only the derived class can know it -- ``_DelegatingVM`` is built
-        #: from a program and a stdin and never sees a name -- and the
-        #: debugger needs it to ask ``describe`` whether a read past the end
-        #: of input is a value for this language, which is the difference
-        #: between a wrong answer and an exception.
+        # : The registry's display name.
+        # :.
+        # : Only the derived class can.
+        # : from a program and a stdin.
+        # : debugger needs it to ask.
+        # : of input is a value for.
+        # : between a wrong answer and.
         language = display_name
 
         def __init__(self, program: str, stdin: str = "") -> None:
@@ -1360,20 +1360,20 @@ def _derived_adapter(language: str) -> Callable[[str, str], _DelegatingVM]:
 
             module = importlib.import_module(f"esolangs.interpreters.{module_path}")
             code = program.splitlines() if split else program
-            # ``_Machine`` is private to its module but is the state object
-            # this whole file is built around; the explicit adapters below
-            # import it by name for the same reason.
+            # ``_Machine`` is private to.
+            # this whole file is built.
+            # import it by name for the.
             state = getattr(module, "_Machine")  # noqa: B009
-            # A language with a random instruction takes a source for it,
-            # and a stepped VM has to be reproducible, so one is passed
-            # wherever it is accepted.  It is optional exactly like ``io``
-            # is: the interpreter falls back to ``secrets`` without it.
-            #
-            # The seed comes from the machine.  Which draw a language
-            # wants to start from is a fact about that language -- COD's
-            # own junction example goes East, LaserFuck's grids are
-            # written for a laser heading up -- so the interpreter says
-            # so, rather than every caller having to know.
+            # A language with a random.
+            # and a stepped VM has to be.
+            # wherever it is accepted.
+            # is: the interpreter falls.
+            # .
+            # The seed comes from the.
+            # wants to start from is a fact.
+            # own junction example goes.
+            # written for a laser heading.
+            # so, rather than every caller.
             if "rng" in inspect.signature(state).parameters:
                 seed = getattr(state, "reproducible_seed", 0)
                 self._machine = state(code, self._io, rng=Seeded(seed))
@@ -1385,20 +1385,20 @@ def _derived_adapter(language: str) -> Callable[[str, str], _DelegatingVM]:
     return _Derived
 
 
-# Language name -> VM adapter.  Every registered language is step-capable,
-# so every one gets a derived adapter and an unregistered name is the only
-# thing that raises UnknownLanguageError.  The set is read off ``RUNNERS``
-# rather than listed again here: a second copy of every name is a
-# second thing to keep in step, and the test that used to guard the pair
-# existed only to catch the two drifting apart, so deriving the dict
-# retired it.  Building an adapter imports nothing -- the
-# interpreter is imported inside the adapter's ``__init__`` -- so this
-# stays as lazy as the hand-written table was.
-# Typed as what it is used as -- a factory taking the program and the input
-# -- rather than as the base class.  A derived adapter takes both, while
-# ``_DelegatingVM`` itself takes only the input: the program never belonged
-# at that level, since each subclass hands the source straight to its own
-# machine in the shape that language wants.
+# Language name -> VM adapter.
+# so every one gets a derived.
+# thing that raises.
+# rather than listed again.
+# second thing to keep in step,.
+# existed only to catch the two.
+# retired it.
+# interpreter is imported.
+# stays as lazy as the.
+# Typed as what it is used as.
+# -- rather than as the base.
+# ``_DelegatingVM`` itself.
+# at that level, since each.
+# machine in the shape that.
 _VM_ADAPTERS: dict[str, Callable[[str, str], _DelegatingVM]] = {
     name: _derived_adapter(name) for name in RUNNERS
 }
@@ -1422,9 +1422,9 @@ def machine_traits(language: str) -> dict[str, bool]:
     """
     import importlib
 
-    # No membership check beyond ``resolve``: it only ever returns a name in
-    # the registry, and the registry and ``RUNNERS`` are the same 69 names,
-    # so a second guard here would be a line no input can reach.
+    # No membership check beyond.
+    # the registry, and the.
+    # so a second guard here would.
     name = resolve(language)
     module = importlib.import_module(f"esolangs.interpreters.{RUNNERS[name][0]}")
     state = getattr(module, "_Machine")  # noqa: B009
@@ -1480,8 +1480,8 @@ def make_vm(language: str, program: str | os.PathLike[str], stdin: str = "") -> 
     except ProgramError:
         raise
     except ValueError as exc:
-        # Most interpreters parse in their constructor and signal a
-        # malformed program with a plain ``ValueError``.  ``run``
-        # re-raises those as ``ProgramError``; this did not, so
-        # ``make_vm("brainfuck", "]")`` leaked one -- for 48 of the 69.
+        # Most interpreters parse in.
+        # malformed program with a.
+        # re-raises those as.
+        # ``make_vm("brainfuck", "]")``.
         raise ProgramError(str(exc)) from exc

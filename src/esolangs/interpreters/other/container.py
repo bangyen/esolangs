@@ -43,22 +43,22 @@ import sys
 
 from esolangs.interpreters.io import IO
 
-#: The container values, as an immutable name->value mapping in name order,
-#: so one logical set of values has exactly one spelling.
+# : The container values, as an.
+# : so one logical set of.
 type _Vars = tuple[tuple[str, int], ...]
 
-#: One instant of a run: ``(vars, queue, exit_code, tick)`` -- the container
-#: values, the pending input characters, the EXIT code once it fires, and
-#: the tick counter.  A value, not a record: every transition below returns
-#: a new one rather than editing one in place.
-#:
-#: ``exit_code`` is state because halting here is a value a tick produces,
-#: not a position: EXIT changing is what stops the run, and the code it
-#: changed to is what ``run`` returns.
-#:
-#: ``tick`` is deliberately excluded from ``snapshot``: it counts steps, not
-#: state, and including it would make every state unique by construction
-#: and reduce the cycle detector to a step budget.
+# : One instant of a run:.
+# : values, the pending input.
+# : the tick counter.
+# : a new one rather than.
+# :.
+# : ``exit_code`` is state.
+# : not a position: EXIT.
+# : changed to is what ``run``.
+# :.
+# : ``tick`` is deliberately.
+# : state, and including it.
+# : and reduce the cycle.
 type _State = tuple[_Vars, tuple[str, ...], int | None, int]
 
 
@@ -67,13 +67,13 @@ def _get(variables: _Vars, name: str) -> int:
     for key, value in variables:
         if key == name:
             return value
-    # Unreachable from this module's call sites, and kept as the contract
-    # rather than as a live path.  Every `_get` against the *old* variables
-    # is guarded by a matching `_has`, and every `_get` against the *new*
-    # ones is safe for a structural reason: `_tick` rebuilds its result from
-    # `obj` -- one entry per declared container -- so a tick cannot drop a
-    # name that was there before it.  Measured over a run of the input
-    # example: zero key-set differences between a tick's input and output.
+    # Unreachable from this.
+    # rather than as a live path.
+    # is guarded by a matching.
+    # ones is safe for a structural.
+    # `obj` -- one entry per.
+    # name that was there before it.
+    # example: zero key-set.
     raise KeyError(name)  # pragma: no cover - see above
 
 
@@ -155,8 +155,8 @@ class _Machine:
 
         self.state: _State = (tuple(sorted(start.items())), (), None, 0)
 
-    # The language's own names.  They are views on the current state rather
-    # than fields of their own, so there is one place a step can change.
+    # The language's own names.
+    # than fields of their own, so.
 
     @property
     def var(self) -> dict[str, int]:
@@ -183,7 +183,7 @@ class _Machine:
         """Whether EXIT has fired, or there was nothing to evaluate."""
         return self.state[2] is not None or not self.obj
 
-    # The VM's language-shaped view: Named containers + tick count; ip the tick, memory
+    # The VM's language-shaped.
     # the values.
 
     @property
@@ -194,7 +194,7 @@ class _Machine:
     @property
     def memory(self) -> list[int]:
         """The addressable cells."""
-        # The values are kept in name order, so this is already sorted.
+        # The values are kept in name.
         return [value for _name, value in self.state[0]]
 
     @property
@@ -206,7 +206,7 @@ class _Machine:
         """Return the complete internal state, hashable for cycle detection."""
         variables, queue, exit_code, _tick_count = self.state
         return (variables, queue, exit_code)
-        # tick is excluded: it counts steps, not state, and always differs
+        # tick is excluded: it counts.
 
     def step(self) -> None:
         """Execute one full tick, updating every container's value.
@@ -228,8 +228,8 @@ class _Machine:
 
         byte = None
         if reads:
-            # The read blocks until there is a character to take, which is
-            # an effect and so belongs here rather than in the transition.
+            # The read blocks until there.
+            # an effect and so belongs here.
             while not queue:
                 queue = tuple(self.io.input_str())
             byte = ord(queue[0])

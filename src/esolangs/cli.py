@@ -431,13 +431,13 @@ page that is supposed to expand it.
 """,
 }
 
-# A watched cell's history longer than this is printed abridged: the whole
-# thing was one line of 486 comma-separated values for a 486-step program,
-# which buries the ends that are actually read.
+# A watched cell's history.
+# thing was one line of 486.
+# which buries the ends that.
 _HISTORY_SHOWN = 40
 
-#: Flags every subcommand accepts, so a near miss on one of them is
-#: suggested by whichever subcommand it was typed after.
+# : Flags every subcommand.
+# : suggested by whichever.
 _GLOBAL_FLAGS = {"--help", "--version"}
 
 
@@ -446,21 +446,21 @@ def _null_context() -> AbstractContextManager[None]:
     return nullcontext()
 
 
-#: How long a blocking stdin read waits before it says that it is waiting.
-#: Shorter than the run notice: a read that has not finished is far more
-#: likely to be a mistake than a program that is still going.
+# : How long a blocking stdin.
+# : Shorter than the run.
+# : likely to be a mistake than.
 _WAITING_NOTICE_AFTER = 3.0
 
-#: The most a program file may hold.  Two orders of magnitude above the
-#: largest program any generator here produces.
+# : The most a program file may.
+# : largest program any.
 _MAX_PROGRAM_BYTES = 1024 * 1024
 
-#: How long to wait for a program file that is not delivering, when no
-#: ``--timeout`` was given to bound it instead.
+# : How long to wait for a.
+# : ``--timeout`` was given to.
 _READ_DEADLINE = 10.0
 
-#: How long an unbounded run goes before it says that it is unbounded.
-#: A constant so a test can shorten it rather than wait.
+# : How long an unbounded run.
+# : A constant so a test can.
 _UNBOUNDED_NOTICE_AFTER = 10.0
 
 
@@ -505,21 +505,21 @@ class _UnboundedNotice:
         self._timer.cancel()
 
 
-#: A run stopped by its ``--timeout``, following timeout(1).  Distinct from
-#: a program error's 1, which it shared: for the three languages that answer
-#: by not terminating, the timeout is the *answer*, and a script had no way
-#: to tell that from the program having broken.
+# : A run stopped by its.
+# : a program error's 1, which.
+# : by not terminating, the.
+# : to tell that from the.
 _TIMEOUT_EXIT = 124
 
-#: The two input shapes whose bit count cannot be recovered from stdin.
-#: Every other language reads a line per bit, so a run can compare what it
-#: took against what it was given; these two read a single line -- all the
-#: bits at once, or a row index -- and a wrong count is indistinguishable
-#: from a right one without knowing the arity.
+# : The two input shapes whose.
+# : Every other language reads.
+# : took against what it was.
+# : bits at once, or a row.
+# : from a right one without.
 _UNCOUNTABLE_SHAPES = ("one_line", "row_index")
 
-#: Each command's positional arguments, in order, so a missing one can be
-#: named rather than left to be inferred from the usage line.
+# : Each command's positional.
+# : named rather than left to.
 _ARGUMENTS = {
     "encode": ("<language>", "<bits>"),
     "generate": ("<language>", "<truth-table>"),
@@ -649,10 +649,10 @@ def _split_positional(
     for i, arg in enumerate(rest):
         if arg == "--":
             return args + rest[i + 1 :]
-        # Any leading dash is an option, not a positional.  A single-dash
-        # ``-w`` used to be kept as one, so the error named whichever word
-        # then landed in the wrong slot.  A leading digit is exempt so a
-        # negative number can still be an argument.
+        # Any leading dash is an.
+        # ``-w`` used to be kept as.
+        # then landed in the wrong slot.
+        # negative number can still be.
         looks_like_option = len(arg) > 1 and arg[0] == "-" and not arg[1].isdigit()
         if looks_like_option and arg.partition("=")[0] not in known:
             name = arg.partition("=")[0]
@@ -681,21 +681,21 @@ def _check_count(
     into a fixable mistake.
     """
     if len(args) < wanted:
-        # The whole synopsis, not its first line: ``generate``'s wraps onto
-        # a second, so a missing truth table was reported with a usage
-        # string that did not mention the truth table.
+        # The whole synopsis, not its.
+        # a second, so a missing truth.
+        # string that did not mention.
         synopsis = HELP[command].split("\n\n", 1)[0]
-        # And say which one is missing.  The synopsis alone left the reader
-        # to diff what they typed against a usage line -- easy for two
-        # arguments, and it is exactly the two-argument commands that get
-        # here.  ``_ARGUMENTS`` names them in order.
+        # And say which one is missing.
+        # to diff what they typed.
+        # arguments, and it is exactly.
+        # here.
         missing = _ARGUMENTS.get(command, ())[len(args) : wanted]
         named = f"\n\nmissing {', '.join(missing)}" if missing else ""
         _fail(f"{synopsis}{named}{eaten}")
     if len(args) > wanted:
-        # A name with spaces in it arrives as several positionals, and the
-        # complaint named whichever word landed past the count.  The
-        # resolver can match the joined words; it was never asked.
+        # A name with spaces in it.
+        # complaint named whichever.
+        # resolver can match the joined.
         joined = " ".join(args)
         try:
             from esolangs.registry import resolve
@@ -736,24 +736,24 @@ def _pop_width(rest: list[str]) -> tuple[list[str], int | None, bool]:
     i = 0
     while i < len(rest):
         arg = rest[i]
-        # No ``--`` case here: :func:`_split_positional` has already consumed
-        # the separator and passed on what followed it, so this only ever
-        # sees positionals and the one option it owns.
+        # No ``--`` case here:.
+        # the separator and passed on.
+        # sees positionals and the one.
         if arg == "--width":
             _refuse_repeat(seen, "--width")
             following = rest[i + 1] if i + 1 < len(rest) else None
             if following is None or not _is_int(following):
-                # A bare ``--width`` has no value to quote, so the option
-                # itself is what a repeat report names.
+                # A bare ``--width`` has no.
+                # itself is what a repeat.
                 seen["--width"] = arg
                 width = DEFAULT_WIDTH
                 bare = True
                 i += 1
                 continue
             value = following
-            # The *value*, like every other repeatable option reports.  This
-            # said ``first was '--width'``, which is the one thing the reader
-            # already knows and omits the number they have to go and find.
+            # The *value*, like every other.
+            # said ``first was '--width'``,.
+            # already knows and omits the.
             seen["--width"] = value
             i += 2
         elif arg.startswith("--width="):
@@ -844,8 +844,8 @@ def _timeout_of(options: dict[str, str]) -> float | None:
     try:
         check_timeout(seconds)
     except EsolangError as exc:
-        # Re-worded from ``timeout`` to ``--timeout``: the library names the
-        # parameter, and this names the flag the reader typed.
+        # Re-worded from ``timeout`` to.
+        # parameter, and this names the.
         _fail(str(exc).replace("timeout must", "--timeout must", 1))
     return seconds
 
@@ -859,10 +859,10 @@ def _read_program(path: str, timeout: float | None = None) -> str:
     keeping it meant this tool produced programs its own ``run`` refused,
     and the three committed examples could not be run at all.
     """
-    # The *open* is on the thread as well as the read.  Opening a FIFO
-    # blocks until a writer appears, so bounding only the read left the
-    # command hanging one line earlier -- which is what a reader saw when
-    # ``--timeout 2`` did not stop ``run`` on an unfed pipe.
+    # The *open* is on the thread.
+    # blocks until a writer.
+    # command hanging one line.
+    # ``--timeout 2`` did not stop.
     return _bounded_read(path, timeout).rstrip("\n")
 
 
@@ -881,8 +881,8 @@ def _shape_warning(facts: LanguageInfo, stdin: str, table: str | None = None) ->
     try:
         check_stdin(str(facts["name"]), stdin, table)
     except EsolangError as exc:
-        # Some of these already name the exact command; appending the
-        # generic pointer to those said "esolangs encode" twice in one line.
+        # Some of these already name.
+        # generic pointer to those said.
         tail = (
             ""
             if "esolangs encode" in str(exc)
@@ -934,9 +934,9 @@ def _bounded_read(path: str, timeout: float | None) -> str:
     if isinstance(result, OSError):
         _fail(f"cannot read {path}: {result}")
     if isinstance(result, UnicodeDecodeError):
-        # Its own clause: ``UnicodeDecodeError`` is a ``ValueError``, not an
-        # ``OSError``, so pointing ``run`` at a PNG used to dump a raw
-        # traceback where every other unreadable file gets one clean line.
+        # Its own clause:.
+        # ``OSError``, so pointing.
+        # traceback where every other.
         _fail(f"cannot read {path}: not text ({_decode_note(result)})")
     if isinstance(result, BaseException):
         raise result
@@ -984,8 +984,8 @@ def _smuggled_bytes(text: str) -> UnicodeDecodeError | None:
     except UnicodeDecodeError as exc:
         return exc
     except (UnicodeEncodeError, LookupError):
-        # A surrogate outside the escape range, so not a byte this stream
-        # smuggled in; leave it to the reader that asked for the text.
+        # A surrogate outside the.
+        # smuggled in; leave it to the.
         return None
     return None
 
@@ -1121,7 +1121,7 @@ def _list(rest: list[str]) -> None:
                 [
                     {
                         "name": name,
-                        # The three the marker column encodes, spelled out.
+                        # The three the marker column.
                         "boolean_generator": facts["boolean_generator"],
                         "parameterized": facts["parameterized"],
                         "has_example": bool(facts["examples"]),
@@ -1139,8 +1139,8 @@ def _list(rest: list[str]) -> None:
             print(name)
         return
     width = max(len(name) for name in LANGUAGES)
-    # The legend lived in `list --help` only, so the marker columns arrived
-    # unexplained for anyone who ran the thing before reading about it.
+    # The legend lived in `list.
+    # unexplained for anyone who.
     print(f"{'language'.ljust(width)}  gen=generator tmpl={{Xi}} ex=example")
     for name in list_languages():
         facts = describe(name)
@@ -1199,9 +1199,9 @@ def _run_tui_session(
 
 def _debug(rest: list[str]) -> None:
     """Run a program under the debugger and report where it stopped."""
-    # ``--tui`` is the one bare flag here, and ``_pop_options`` gives every
-    # name a value, so it comes out first rather than teaching that helper
-    # about a second kind of option for a single caller.
+    # ``--tui`` is the one bare.
+    # name a value, so it comes out.
+    # about a second kind of option.
     tui = "--tui" in rest
     rest = [arg for arg in rest if arg != "--tui"]
     options_taken = {
@@ -1214,13 +1214,13 @@ def _debug(rest: list[str]) -> None:
         "--timeout",
         "--table",
     }
-    # Options first, then the stray-flag check: a *value* can begin with a
-    # dash (``--timeout -inf``), and a check that runs before the pairs are
-    # consumed cannot tell one from a flag -- it answered that with
-    # "unknown option: -inf" instead of "must be finite".
+    # Options first, then the.
+    # dash (``--timeout -inf``),.
+    # consumed cannot tell one from.
+    # "unknown option: -inf".
     rest, options = _pop_options(rest, options_taken)
-    # Before the positional count, matching ``run``: a forgotten number made
-    # the language the timeout's value and the complaint landed on the file.
+    # Before the positional count,.
+    # the language the timeout's.
     limit = _timeout_of(options)
     rest = _split_positional(rest, set(), options_taken)
     _check_count("debug", rest, 2)
@@ -1229,20 +1229,20 @@ def _debug(rest: list[str]) -> None:
         if name in options and not _is_int(options[name]):
             _fail(f"{name} must be an integer, got {options[name]!r}")
     cell = _pop_cell(options)
-    # A negative cell index is Python list indexing leaking through: it
-    # printed cell 0's history under the name -1, which is a wrong answer
-    # rather than an empty one.  Every other negative here is refused.
+    # A negative cell index is.
+    # printed cell 0's history.
+    # rather than an empty one.
     if "--watch-cell" in options and int(options["--watch-cell"]) < 0:
         _fail(f"--watch-cell must not be negative, got {options['--watch-cell']}")
-    # A negative bound is not a smaller bound, it is no bound: the run went
-    # unbounded, which is the one thing --steps exists to prevent.
+    # A negative bound is not a.
+    # unbounded, which is the one.
     if "--steps" in options and int(options["--steps"]) < 0:
         _fail(f"--steps must not be negative, got {options['--steps']}")
-    # And the third one, which was the only integer flag here without a
-    # negative guard.  It passed the is-an-integer check above, reached
-    # ``Debugger.break_at``'s own validation, and came back out of ``main``'s
-    # catch-all as "internal error ... this is a bug in esolangs" at exit
-    # 70 -- inviting a bug report for a typo.
+    # And the third one, which was.
+    # negative guard.
+    # ``Debugger.break_at``'s own.
+    # catch-all as "internal error .
+    # 70 -- inviting a bug report.
     if "--break-at" in options and int(options["--break-at"]) < 0:
         _fail(f"--break-at must not be negative, got {options['--break-at']}")
     program = _read_program(path, limit)
@@ -1251,19 +1251,19 @@ def _debug(rest: list[str]) -> None:
     except EsolangError as exc:
         _fail(str(exc))
         raise  # pragma: no cover - unreachable; _fail exits
-    # The key loop owns the terminal's stdin, so a piped stream cannot also
-    # be the program's input: the two would race for the same descriptor.
-    # ``--stdin`` is how a TUI run feeds its program instead.
+    # The key loop owns the.
+    # be the program's input: the.
+    # ``--stdin`` is how a TUI run.
     if tui and not sys.stdin.isatty():
-        # Not exempted by ``--stdin``.  The exemption was the bug: this
-        # guard's own message told you to pass ``--stdin``, and doing so
-        # turned the clean refusal into curses failing with ``(19,
-        # 'Operation not supported by device')`` through the catch-all, at
-        # exit 70.  Following the advice was the way to reach the crash.
-        #
-        # ``--stdin`` settles where the *program's* input comes from; it
-        # cannot conjure a terminal to read keys from, which is what the
-        # TUI needs and what a pipe or a CI job does not have.
+        # Not exempted by ``--stdin``.
+        # guard's own message told you.
+        # turned the clean refusal into.
+        # 'Operation not supported by.
+        # exit 70.
+        # .
+        # ``--stdin`` settles where the.
+        # cannot conjure a terminal to.
+        # TUI needs and what a pipe or.
         _fail(
             "--tui reads keys from a terminal, and this stdin is not one. "
             "--stdin says where the program's input comes from and does not "
@@ -1275,16 +1275,16 @@ def _debug(rest: list[str]) -> None:
         if "--stdin" in options
         else ("" if tui else _read_stdin(limit, _stdin_hint(facts)))
     )
-    # The same two refusals ``run`` makes.  Debugging a program is no reason
-    # to skip them: an unfilled template stepped confidently to `output: '0'`
-    # and reported a wrong answer with no warning at all, and a load error
-    # escaped as a traceback from the one command whose whole promise is to
-    # report a fault rather than propagate it.
+    # The same two refusals ``run``.
+    # to skip them: an unfilled.
+    # and reported a wrong answer.
+    # escaped as a traceback from.
+    # report a fault rather than.
     try:
         check_runnable(language, program)
         if tui:
-            # Built through the same refusals, then handed to the screen --
-            # which owns the stepping from here, so nothing below runs.
+            # Built through the same.
+            # which owns the stepping from.
             _run_tui_session(language, program, stdin, options, cell)
             return
         dbg = make_debugger(language, program, stdin)
@@ -1300,10 +1300,10 @@ def _debug(rest: list[str]) -> None:
             _fail("--break-on-output needs some text; every output contains ''")
         dbg.break_on_output(options["--break-on-output"])
         breakpoints_set = True
-    # A position and a cell are the other two conditions ``Debugger`` has
-    # always had, and they are wired here as well as into the screen so the
-    # two agree about what can be asked for -- a flag that worked under
-    # ``--tui`` and nowhere else would be the stranger arrangement.
+    # A position and a cell are the.
+    # always had, and they are.
+    # two agree about what can be.
+    # ``--tui`` and nowhere else.
     if "--break-at" in options:
         dbg.break_at(int(options["--break-at"]))
         breakpoints_set = True
@@ -1313,18 +1313,18 @@ def _debug(rest: list[str]) -> None:
     watched = int(options["--watch-cell"]) if "--watch-cell" in options else None
     history = dbg.watch_cell(watched) if watched is not None else None
     steps = int(options["--steps"]) if "--steps" in options else None
-    # A debugged program is one the caller is already unsure of, so a raise
-    # here is a result to report rather than a crash to propagate: the
-    # state up to the fault is the thing they asked to see.
+    # A debugged program is one the.
+    # here is a result to report.
+    # state up to the fault is the.
     fault = None
     reason = None
     warning = _shape_warning(describe(language), stdin, options.get("--table"))
     if warning:
         sys.stderr.write(f"{warning}\n")
-    # ``run`` gained this last round and ``debug`` did not, so `debug 123
-    # prog.txt` -- the command you reach for precisely when something is
-    # not stopping -- still hung with nothing on screen.  ``--steps`` counts
-    # as a bound here as much as ``--timeout`` does, so a run that has one
+    # ``run`` gained this last.
+    # prog.txt` -- the command you.
+    # not stopping -- still hung.
+    # as a bound here as much as.
     # is not told to pass one.
     bounded = steps is not None or limit is not None
     if describe(language)["answer_mode"] == "termination" and not bounded:
@@ -1340,26 +1340,26 @@ def _debug(rest: list[str]) -> None:
         fault = f"{type(exc).__name__}: {exc}"
 
     if breakpoints_set and reason != "breakpoint":
-        # A breakpoint that never fires looks exactly like a program that
-        # never reached it, and the report said nothing either way.
+        # A breakpoint that never fires.
+        # never reached it, and the.
         sys.stderr.write("note: no breakpoint matched during this run\n")
     print(f"halted: {'yes' if dbg.halted else 'no'}")
-    # Exit codes below, after the report is printed: a script that cannot
-    # tell a clean halt from a crash has to parse prose, and `run` has had
-    # this taxonomy for several rounds.  The state up to the fault is still
-    # printed either way, which is the whole point of the command.
-    # Always printed, so a script reading fixed field positions does not
-    # break on the one case it most wants to parse.
+    # Exit codes below, after the.
+    # tell a clean halt from a.
+    # this taxonomy for several.
+    # printed either way, which is.
+    # Always printed, so a script.
+    # break on the one case it most.
     print(f"stopped: {reason if reason is not None else 'raised'}")
     print(f"ip: {dbg.ip}")
     print(f"output: {dbg.output!r}")
     if history is not None:
         values = list(history)
-        # A `None` means the cell did not exist yet at that step -- the tape
-        # had not grown that far, or the language has no such store.  The
-        # all-`None` case was annotated and the *mixed* case was not, which
-        # is the one where a reader actually needs telling: a row reading
-        # `[None, None, 0, 0, ...]` otherwise looks like a value.
+        # A `None` means the cell did.
+        # had not grown that far, or.
+        # all-`None` case was annotated.
+        # is the one where a reader.
+        # `[None, None, 0, 0, ...]`.
         if set(values) <= {None}:
             untouched = " (never written)"
         elif None in values:
@@ -1367,8 +1367,8 @@ def _debug(rest: list[str]) -> None:
         else:
             untouched = ""
         if set(values) <= {None}:
-            # Verdict first, and no wall of Nones: a never-written cell used
-            # to print four hundred of them and put "(never written)" at the
+            # Verdict first, and no wall of.
+            # to print four hundred of them.
             # far right of a wrapped line.
             print(
                 f"cell {options['--watch-cell']}: never written in "
@@ -1378,9 +1378,9 @@ def _debug(rest: list[str]) -> None:
             print(f"cell {options['--watch-cell']}: {_abridge(values)}{untouched}")
     if fault is not None:
         print(f"raised: {fault}")
-        # 1, like ``run``: the program itself failed.  This exited 0 for
-        # every outcome -- a clean halt, a timeout and a crash alike -- so a
-        # script could not tell them apart without parsing the report.
+        # 1, like ``run``: the program.
+        # every outcome -- a clean.
+        # script could not tell them.
         sys.exit(1)
     if reason == "timeout":
         sys.exit(_TIMEOUT_EXIT)
@@ -1392,9 +1392,9 @@ def _generate(rest: list[str]) -> None:
     before = list(rest)
     rest, width, bare = _pop_width(rest)
     rest = _split_positional(rest, set(), {"--bits", "--width"})
-    # `--width` takes an *optional* N, so a truth table typed straight after
-    # it is consumed as the width and the report lands on the table being
-    # missing -- which is baffling when you did type one.
+    # `--width` takes an *optional*.
+    # it is consumed as the width.
+    # missing -- which is baffling.
     eaten = ""
     if width is not None and not bare:
         for i, arg in enumerate(before[:-1]):
@@ -1406,12 +1406,12 @@ def _generate(rest: list[str]) -> None:
                 )
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten)
     try:
-        # Widthed at both ends, and that is not a mistake.  ``generate``
-        # lays the template out -- which is the only place a *layout*
-        # language like COD can honour a width at all -- and ``instantiate``
-        # reflows the filled program from the template's pre-width source,
-        # because the setter code replacing a slot is wider than the four
-        # columns the slot took.  Generating unwrapped here instead threw
+        # Widthed at both ends, and.
+        # lays the template out --.
+        # language like COD can honour.
+        # reflows the filled program.
+        # because the setter code.
+        # columns the slot took.
         # COD's and WII2D's layout away.
         program = generate(rest[0], rest[1], width)
         if "--bits" in options:
@@ -1422,10 +1422,10 @@ def _generate(rest: list[str]) -> None:
     except EsolangError as exc:
         _fail(f"{exc}{_swapped_hint(rest[0], rest[1])}")
     if (width is not None or bare) and describe(rest[0])["width_effect"] == "none":
-        # Silently ignoring the flag was the sharpest half of the width
-        # confusion: two identical programs, one of which was asked to be
-        # narrower.  The languages that ignore it have semantic newlines or
-        # reject them outright, so honouring it is not on the table --
+        # Silently ignoring the flag.
+        # confusion: two identical.
+        # narrower.
+        # reject them outright, so.
         # saying so is.
         sys.stderr.write(
             f"note: --width has no effect on {describe(rest[0])['name']} -- "
@@ -1448,23 +1448,23 @@ def _describe(rest: list[str]) -> None:
         _fail(str(exc))
         raise  # pragma: no cover - unreachable; _fail exits
     if as_spec:
-        # Printed rather than folded into the record, because it is prose
-        # of a few thousand characters and would swamp every other field.
+        # Printed rather than folded.
+        # of a few thousand characters.
         text = _spec(str(facts["name"]))
         print(json.dumps({**facts, "spec": text}, indent=2) if as_json else text)
         return
     if as_json:
-        # Verbatim, including the keys the reading layout hides: a caller
-        # asking for JSON is not reading it, and a field that vanishes when
-        # it is empty is the thing that makes a schema unusable.
+        # Verbatim, including the keys.
+        # asking for JSON is not.
+        # it is empty is the thing that.
         print(json.dumps(facts, indent=2))
         return
-    # A template language reads no stdin, so its input shape and alphabet
-    # are noise -- and ``input_shape`` is the field the README tells you to
-    # trust.  Hidden here rather than dropped from ``describe()``, whose
-    # keys stay uniform across all 69: a caller that iterates them without
-    # branching is the pattern this package spent four rounds proving, and
-    # a per-language schema would break it.
+    # A template language reads no.
+    # are noise -- and.
+    # trust.
+    # keys stay uniform across all.
+    # branching is the pattern this.
+    # a per-language schema would.
     hidden = set()
     if not facts["reads_input"] and facts["parameterized"]:
         hidden = {"input_shape", "input_encoding"}
@@ -1483,16 +1483,16 @@ def _describe(rest: list[str]) -> None:
             f"{_as_argument(str(facts['name']))} <table>"
         )
     else:
-        # The symmetric row.  A reader had ``input_encoding`` and
-        # ``input_shape`` and had to compose them, while the template
-        # languages got a sentence -- so the languages where getting it
-        # wrong is possible were the ones told least plainly.
+        # The symmetric row.
+        # ``input_shape`` and had to.
+        # languages got a sentence --.
+        # wrong is possible were the.
         print(f"{'input'.ljust(width)}  {_input_sentence(facts)}")
-    # Every field above is about driving a *generated* program.  Someone
-    # writing their own needs the language's command table, which this
-    # package ships as the interpreter's module docstring and used to name
-    # only as ``interpreter: stack_based.unsquare`` -- an import path, with
-    # no hint that importing it is the point.
+    # Every field above is about.
+    # writing their own needs the.
+    # package ships as the.
+    # only as ``interpreter:.
+    # no hint that importing it is.
     print(
         f"{'spec'.ljust(width)}  esolangs describe --spec "
         f"{_as_argument(str(facts['name']))}"
@@ -1516,10 +1516,10 @@ def _check_stdin(rest: list[str]) -> None:
         check_stdin(str(facts["name"]), stdin, table)
     except EsolangError as exc:
         _fail(str(exc))
-    # No note about ``--table`` here.  The first draft printed one whenever
-    # it was absent, which is every call that is simply checking a shape --
-    # advice on correct input, which is the thing this CLI has spent several
-    # rounds removing.  ``check-stdin --help`` says what the flag adds.
+    # No note about ``--table``.
+    # it was absent, which is every.
+    # advice on correct input,.
+    # rounds removing.
 
 
 def _input_sentence(facts: LanguageInfo) -> str:
@@ -1594,17 +1594,17 @@ def _answer(rest: list[str]) -> None:
         else:
             source, stdin = program, encode_inputs(name, row, table)
         if facts["answer_mode"] == "termination":
-            # A bound is the answer here rather than a safeguard, so one is
-            # supplied: this command exists to be a one-liner, and making a
-            # reader discover that three of the sixty-nine need a flag would
+            # A bound is the answer here.
+            # supplied: this command exists.
+            # reader discover that three of.
             # defeat that.
             print(_diverging_answer(name, source, stdin, timeout or 5.0, facts))
             return
         print(read_answer(name, run(name, source, stdin, timeout)))
     except EsolangError as exc:
-        # No ``TemplateError`` clause: this command generates the template
-        # and fills it in the same breath, so it never hands an unfilled one
-        # on -- the same reason ``evaluate`` has none.
+        # No ``TemplateError`` clause:.
+        # and fills it in the same.
+        # on -- the same reason.
         _fail(str(exc), 2 if isinstance(exc, ValueError) else 1)
 
 
@@ -1659,9 +1659,9 @@ def _run_round_trip(rest: list[str], command: str) -> None:
     before = list(rest)
     rest, width, bare = _pop_width(rest)
     rest = _split_positional(rest, set(), {"--timeout", "--width"})
-    # The same trap ``generate`` carries: ``--width`` takes an *optional* N,
-    # so a truth table typed straight after it is eaten as the width and the
-    # complaint lands on a missing table.
+    # The same trap ``generate``.
+    # so a truth table typed.
+    # complaint lands on a missing.
     eaten = ""
     if width is not None and not bare:
         for i, arg in enumerate(before[:-1]):
@@ -1676,12 +1676,12 @@ def _run_round_trip(rest: list[str], command: str) -> None:
     try:
         computed = evaluate(language, table, timeout, width)
     except GeneratorCapError as exc:
-        # Nothing ran, so this is the usage class: the generator refused the
-        # table rather than building a program that got the wrong answer.
+        # Nothing ran, so this is the.
+        # table rather than building a.
         _fail(str(exc))
     except EsolangError as exc:
-        # No ``TemplateError`` clause: this command never hands an unfilled
-        # template on, because ``evaluate`` reads ``parameterized`` and
+        # No ``TemplateError`` clause:.
+        # template on, because.
         # fills the slots itself.
         _fail(str(exc), 2 if isinstance(exc, ValueError) else 1)
     if command == "evaluate":
@@ -1690,8 +1690,8 @@ def _run_round_trip(rest: list[str], command: str) -> None:
     if computed == table:
         print("ok")
         return
-    # The computed table beside the wanted one, because which rows disagree
-    # is the whole content of a failure here.
+    # The computed table beside the.
+    # is the whole content of a.
     differing = [
         i for i, (a, b) in enumerate(zip(computed, table, strict=True)) if a != b
     ]
@@ -1705,8 +1705,8 @@ def _run_round_trip(rest: list[str], command: str) -> None:
 def _judge(language: str, output: str, mode: object) -> str:
     """Return the answer bit for a finished run, or exit explaining why not."""
     if mode == "termination":
-        # It halted, and halting is this group's 0.  The 1 is the timeout,
-        # which never reaches here -- ``_run`` reports it before judging.
+        # It halted, and halting is.
+        # which never reaches here --.
         return "0"
     try:
         return read_answer(language, output)
@@ -1797,30 +1797,30 @@ def _emit_partial(exc: EsolangError) -> None:
 def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
     rest, options = _pop_options(rest, {"--timeout", "--table", "--seed"})
-    # The value is checked here, before the positionals are counted.  It ran
-    # after, so `run --timeout brainfuck prog.txt` -- a forgotten number --
-    # swallowed the language as the timeout's value and then reported
-    # "missing <program-file>", sending the reader to look at the one
-    # argument that was not the problem.
+    # The value is checked here,.
+    # after, so `run --timeout.
+    # swallowed the language as the.
+    # "missing <program-file>",.
+    # argument that was not the.
     timeout = _timeout_of(options)
     rest = _split_positional(
         rest, {"--judge"}, {"--timeout", "--judge", "--table", "--seed"}
     )
     seed = _seed_of(options)
     judge = "--judge" in rest
-    # Refused like every value-taking option is.  `--judge --judge` was
-    # accepted in silence while `--timeout 5 --timeout 9` was refused, and
-    # the inconsistency is the finding rather than either policy.
+    # Refused like every.
+    # accepted in silence while.
+    # the inconsistency is the.
     if rest.count("--judge") > 1:
         _fail("--judge given more than once")
     rest = [arg for arg in rest if arg != "--judge"]
     _check_count("run", rest, 2)
     language, path = rest[0], rest[1]
     program = _read_program(path, timeout)
-    # Resolved *before* stdin is read.  It was after, so
-    # `esolangs run NotALang prog.txt` with stdin held open blocked forever
-    # without ever saying the language was unknown -- the one thing it could
-    # have answered without reading a byte.
+    # Resolved *before* stdin is.
+    # `esolangs run NotALang.
+    # without ever saying the.
+    # have answered without reading.
     try:
         facts = describe(language)
         mode = facts["answer_mode"]
@@ -1831,17 +1831,17 @@ def _run(rest: list[str]) -> None:
     stdin = _read_stdin(timeout, _stdin_hint(facts))
     if mode == "termination" and timeout is None:
         if judge:
-            # Judging needs the bound, so this is a refusal rather than the
-            # warning below -- and only one of the two is printed.
+            # Judging needs the bound, so.
+            # warning below -- and only one.
             _fail(
                 f"--judge needs --timeout for {name}: its answer for a 1 is "
                 f"that the program never stops, so there is nothing to wait "
                 f"for without a bound"
             )
-        # The default path for these three is an unbounded run of a program
-        # written to loop forever, which is a hang with no output and no
-        # explanation.  Not refused -- a program whose answer is 0 halts,
-        # and running one unbounded is perfectly sensible -- but said aloud.
+        # The default path for these.
+        # written to loop forever,.
+        # explanation.
+        # and running one unbounded is.
         sys.stderr.write(
             f"{name}: this language answers 1 by not terminating, so a "
             f"program with that answer will run until you stop it; pass "
@@ -1850,31 +1850,31 @@ def _run(rest: list[str]) -> None:
     table = options.get("--table")
     warning = _shape_warning(facts, stdin, table)
     if warning and judge:
-        # ``--judge`` is the caller saying "this is a truth-table program and
-        # I want its answer bit", so a stdin the language cannot read the way
-        # they meant is a usage error rather than advice: the whole output of
-        # this command would be one wrong digit.  Plain ``run`` only warns,
-        # because it executes arbitrary programs of the language and the
-        # shape this calls wrong may be exactly what one of them wants.
-        #
-        # That split is the answer to "warn or refuse?" -- the flag says
-        # which of the two situations you are in.
+        # ``--judge`` is the caller.
+        # I want its answer bit", so a.
+        # they meant is a usage error.
+        # this command would be one.
+        # because it executes arbitrary.
+        # shape this calls wrong may be.
+        # .
+        # That split is the answer to.
+        # which of the two situations.
         _fail(f"{warning}\n(refused because --judge asks for an answer bit)")
     if judge and table is None and facts["input_shape"] in _UNCOUNTABLE_SHAPES:
-        # Last, after the specific diagnoses above.  Put first, this swallowed
-        # them: `abc` fed to Fargo was answered with "pass --table" instead of
-        # "reads one decimal row index", which is the more useful of the two
-        # by a wide margin.  So this only speaks when nothing else has -- when
-        # the stdin is a perfectly good single line and the only thing that
-        # cannot be checked is how many bits it should hold.
-        #
-        # A refusal rather than advice, and only for these two shapes.  The
-        # first draft printed a note on every `--judge` call without a table,
-        # including the ones where nothing was wrong, and a warning that fires
-        # on correct input is worth less than no warning at all.  The other
-        # sixty-seven read a line at a time, so `run` counts what the program
-        # took against what it was given and catches a mismatch after the
-        # fact; these two read a single line and never run off an end to
+        # Last, after the specific.
+        # them: `abc` fed to Fargo was.
+        # "reads one decimal row.
+        # by a wide margin.
+        # the stdin is a perfectly good.
+        # cannot be checked is how many.
+        # .
+        # A refusal rather than advice,.
+        # first draft printed a note on.
+        # including the ones where.
+        # on correct input is worth.
+        # sixty-seven read a line at a.
+        # took against what it was.
+        # fact; these two read a single.
         # count.
         reads = (
             "one line of bits"
@@ -1886,10 +1886,10 @@ def _run(rest: list[str]) -> None:
             f"stdin alone -- pass --table <truth-table> with --judge, or use: "
             f"esolangs answer {_as_argument(name)} <truth-table> <bits>"
         )
-    # No copy of the warning here.  ``run`` emits the same judgement as a
-    # ``UserWarning`` now, so printing it as well said everything twice --
-    # and Python's default format would have put this file's path and a line
-    # of its source in front of it, which is nobody's idea of a CLI message.
+    # No copy of the warning here.
+    # ``UserWarning`` now, so.
+    # and Python's default format.
+    # of its source in front of it,.
     try:
         with (
             _UnboundedNotice("run") if timeout is None else _null_context(),
@@ -1902,22 +1902,22 @@ def _run(rest: list[str]) -> None:
             None,
         )
         if judge and surplus is not None:
-            # A surplus read under ``--judge`` is the arity mismatch the
-            # flag exists to catch: the answer bit would be for a different
-            # row.  Refused *instead of* being rendered as advice, so it is
+            # A surplus read under.
+            # flag exists to catch: the.
+            # row.
             # said once rather than twice.
             _fail(f"{surplus}\n(refused because --judge asks for an answer bit)")
         for entry in caught:
             _note(str(entry.message))
-        # The count and range checks `--table` buys.  ``run`` warns through
-        # the library, which is not given the table and so can only judge
-        # shape and alphabet -- so `run --table` computed this and used it
-        # for nothing, while `check-stdin --table` and `run --judge --table`
-        # both refused the same stdin.  Three routes, two answers.
-        #
-        # Only when the library did not already say it: a shape complaint
-        # comes back from both, and saying it twice is what the note-vs-
-        # warning split was cleaned up to stop.
+        # The count and range checks.
+        # the library, which is not.
+        # shape and alphabet -- so `run.
+        # for nothing, while.
+        # both refused the same stdin.
+        # .
+        # Only when the library did not.
+        # comes back from both, and.
+        # warning split was cleaned up.
         said = {str(entry.message) for entry in caught}
         if (
             warning
@@ -1929,7 +1929,7 @@ def _run(rest: list[str]) -> None:
         _fail(_template_hint(exc, language))
     except ExecutionTimeoutError as exc:
         if mode == "termination":
-            # The timeout *is* the answer here, so it is not a failure.
+            # The timeout *is* the answer.
             if judge:
                 print("1")
                 return
@@ -1939,33 +1939,33 @@ def _run(rest: list[str]) -> None:
                 f" -- `--judge` prints it as one\n"
             )
             sys.exit(_TIMEOUT_EXIT)
-        # Distinct from a program error's 1, following timeout(1), so a
-        # script can tell "ran out of time" from "the program broke".  Those
-        # shared exit 1, which made the three termination languages'
-        # answer indistinguishable from a crash.
+        # Distinct from a program.
+        # script can tell "ran out of.
+        # shared exit 1, which made the.
+        # answer indistinguishable from.
         _emit_partial(exc)
         _fail(str(exc), _TIMEOUT_EXIT)
     except EsolangError as exc:
-        # A usage error (an unknown language) is still 2; anything the
-        # program itself did is the program's failure, and exits 1.
+        # A usage error (an unknown.
+        # program itself did is the.
         _emit_partial(exc)
         _fail(str(exc), 2 if isinstance(exc, ValueError) else 1)
     if judge:
         print(_judge(language, output, mode))
         return
     _write_output(output)
-    # Piped output stays byte-exact -- it gets compared and diffed -- but a
-    # result with no trailing newline runs into the next shell prompt.
+    # Piped output stays byte-exact.
+    # result with no trailing.
     if output and not output.endswith("\n") and sys.stdout.isatty():
         sys.stdout.write("\n")
-    # A program that printed nothing is a legal program, and also what you
-    # get from an empty file or the wrong path.  Say so on a terminal, where
-    # the alternative is a blank line and no way to tell the two apart; a
-    # pipe still receives exactly the empty output.
+    # A program that printed.
+    # get from an empty file or the.
+    # the alternative is a blank.
+    # pipe still receives exactly.
     if not program.strip():
-        # Legal, and almost never what was meant: an empty file is what you
-        # get from a redirect that failed or a generate that was never run.
-        # Said on stderr, so a pipeline still receives the empty output.
+        # Legal, and almost never what.
+        # get from a redirect that.
+        # Said on stderr, so a pipeline.
         _note(f"note: {path} is empty, so there was no program to run")
     if not output and sys.stdout.isatty():
         sys.stderr.write(
@@ -1993,31 +1993,31 @@ def main() -> None:
     """
     try:
         _dispatch()
-        # Flushed here, where the failure is catchable.  Python flushes
-        # stdout again during interpreter shutdown, and a pipe closed
-        # before the first write made *that* print "Exception ignored
-        # while flushing sys.stdout" after the command had otherwise
+        # Flushed here, where the.
+        # stdout again during.
+        # before the first write made.
+        # while flushing sys.stdout".
         # finished.
         sys.stdout.flush()
     except KeyboardInterrupt:
         sys.stderr.write("interrupted\n")
         sys.exit(130)
     except BrokenPipeError:  # pragma: no cover - needs a closed pipe
-        # Python flushes stdout at exit and would report the same error
-        # again from the interpreter's own teardown; pointing it at
-        # ``devnull`` is the documented way to stop that.
+        # Python flushes stdout at exit.
+        # again from the interpreter's.
+        # ``devnull`` is the documented.
         import os
 
         os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
         sys.exit(120)
     except Exception as exc:
-        # Every *deliberate* failure is an ``EsolangError`` and is handled
-        # where it happens; anything reaching here is a bug in this
-        # package.  That used to mean the reader got a traceback -- an
-        # out-of-range address in three interpreters raised ``OverflowError``
-        # straight through ``main``.  A traceback is the right signal that
-        # something is broken and the wrong thing to hand a user, so it
-        # becomes a one-line report and an exit code nothing else uses.
+        # Every *deliberate* failure is.
+        # where it happens; anything.
+        # package.
+        # out-of-range address in three.
+        # straight through ``main``.
+        # something is broken and the.
+        # becomes a one-line report and.
         sys.stderr.write(
             f"internal error: {type(exc).__name__}: {exc}\n"
             f"This is a bug in esolangs, not in your program; please report "
@@ -2034,9 +2034,9 @@ def _dispatch() -> None:
         sys.exit(2)
 
     cmd, rest = argv[0], argv[1:]
-    # Accepted after a subcommand too.  The top-level help advertises it
-    # without saying where it goes, and `esolangs list --version` answering
-    # "unknown option" is a strange way to learn that.
+    # Accepted after a subcommand.
+    # without saying where it goes,.
+    # "unknown option" is a strange.
     if {"--version", "-V"} & set(argv):
         print(f"esolangs {__version__}")
         sys.exit(0)
@@ -2044,9 +2044,9 @@ def _dispatch() -> None:
         sys.stdout.write(HELP[rest[0]] if rest and rest[0] in HELP else USAGE)
         sys.exit(0)
     if cmd not in HELP:
-        # Languages and options both suggest a near miss; the subcommands
-        # they are typed after did not, so `esolangs lst` got the whole
-        # usage block and no hint that `list` was one letter away.
+        # Languages and options both.
+        # they are typed after did not,.
+        # usage block and no hint that.
         _fail(f"unknown command: {cmd}{_did_you_mean(cmd, set(HELP))}\n\n{USAGE}")
     if {"--help", "-h"} & set(rest):
         sys.stdout.write(HELP[cmd])

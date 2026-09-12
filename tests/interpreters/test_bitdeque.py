@@ -134,12 +134,12 @@ class TestStepMachine:
 
         machine = _Machine("INVERT PUSH", IO())
         assert (machine.ind, machine.reg, machine.deq) == (0, 0, ())
-        machine.step()  # INVERT flips the register
+        machine.step()  # INVERT flips the register.
         assert (machine.ind, machine.reg) == (1, 1)
-        machine.step()  # PUSH appends the register
+        machine.step()  # PUSH appends the register.
         assert machine.deq == (1,)
         assert machine.halted
-        machine.step()  # the post-halt step renders, and moves nothing
+        machine.step()  # the post-halt step renders,.
         assert machine.ind == 2
 
     def test_the_deque_renders_once_however_far_it_is_stepped(self) -> None:
@@ -157,7 +157,7 @@ class TestStepMachine:
         machine = _Machine("PUSH INVERT", io_obj)
         while not machine.halted:
             machine.step()
-        assert io_obj.getvalue() == ""  # nothing until the step past the halt
+        assert io_obj.getvalue() == ""  # nothing until the step past.
         machine.step()
         assert io_obj.getvalue() == "0"
         for _ in range(3):
@@ -179,11 +179,11 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     stepping_program = "PUSH"
     halting_program = "INVERT PUSH"
     looping_program = "INVERT GOTO 1"
-    # `rendered` guards the end-of-run deque dump, so it only flips on the
-    # step past the halt; it is read either side here, and `ip`/`memory` are
+    # `rendered` guards the.
+    # step past the halt; it is.
     # what the run moves.
     state_views = ("rendered", "ip", "memory")
     viewing_program = "INVERT PUSH"
-    # `rendered` latches on the step *past* the halt, and the check
-    # stops at the halt, so no program can move it here.
+    # `rendered` latches on the.
+    # stops at the halt, so no.
     constant_views = frozenset({"rendered"})

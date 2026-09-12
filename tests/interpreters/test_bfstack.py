@@ -143,14 +143,14 @@ class TestStepMachine:
 
         machine = _Machine(">+.", ScriptedIO())
         assert (machine.ind, machine.stk) == (0, ())
-        machine.step()  # > pushes 0
+        machine.step()  # > pushes 0.
         assert machine.stk == (0,)
-        machine.step()  # + increments the top
+        machine.step()  # + increments the top.
         assert machine.stk == (1,)
-        machine.step()  # . prints it
+        machine.step()  # .
         assert machine.io.getvalue() == "\x01"
         assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
+        machine.step()  # stepping a halted machine is.
         assert machine.ind == 3
 
     def test_lst_holds_the_positions_of_entered_loops(self) -> None:
@@ -171,7 +171,7 @@ class TestStepMachine:
         machine = _Machine(">+[", ScriptedIO())
         for _ in range(3):
             machine.step()
-        assert machine.lst == (2,)  # the [ at index 2, entered with a 1 on top
+        assert machine.lst == (2,)  # the [ at index 2, entered.
 
     def test_memory_is_empty_because_the_store_is_the_stack(self) -> None:
         """``memory`` and ``stack`` are different views, not one field twice.
@@ -206,9 +206,9 @@ class TestStepMachine:
         from esolangs.interpreters.stack_based.bfstack import _Machine
 
         machine = _Machine(">[", ScriptedIO())
-        machine.step()  # > pushes 0
+        machine.step()  # > pushes 0.
         with pytest.raises(ValueError, match=r"^unmatched '\['$"):
-            machine.step()  # [ scans for a partner and runs off the end
+            machine.step()  # [ scans for a partner and.
         assert machine.halted
         assert machine.ind == 2
 
@@ -234,12 +234,12 @@ class TestContract(CycleContract, InputCursorContract, StateViewContract):
     halting_program = ">+."
     looping_program = ">+[]"
     state_views = ("lst", "ip", "memory")
-    # The loop test's own program: it enters a loop, so the loop stack
-    # moves.  `memory` is empty by design here -- BFStack addresses no
-    # cells, its store is `stack` -- so it cannot move and says so.
+    # The loop test's own program:.
+    # moves.
+    # cells, its store is `stack`.
     viewing_program = ">+[>+<-]>+."
     constant_views = frozenset({"memory"})
     reader = staticmethod(_reader)
-    reading_program = ">,"  # > pushes 0, then , reads the first byte
+    reading_program = ">,"  # > pushes 0, then , reads the.
     reading_stdin = "A\nB"
     steps_to_read = 2

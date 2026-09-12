@@ -95,12 +95,12 @@ class TestTheVariableDump:
         machine = _Machine("LET a:=1\nLET b:=2", io)
         while not machine.halted:
             machine.step()
-        assert io.getvalue() == ""  # the dump is the next step's
+        assert io.getvalue() == ""  # the dump is the next step's.
         machine.step()
         assert io.getvalue() == "1 2"
         machine.step()
         machine.step()
-        assert io.getvalue() == "1 2"  # and not once more
+        assert io.getvalue() == "1 2"  # and not once more.
 
 
 class TestWikiExamples:
@@ -308,35 +308,35 @@ class TestErrors:
     @pytest.mark.parametrize(
         ("program", "message"),
         [
-            ("LET x=1", "unexpected character '='"),  # single = instead of :=
+            ("LET x=1", "unexpected character '='"),  # single = instead of :=.
             ("LET x:", "malformed assignment operator (expected ':=')"),
-            ("LET x:=", "malformed statement"),  # missing expression
-            ("LET x:=1+", "malformed expression"),  # trailing operator
-            ("LET x:=1 2", "malformed expression"),  # two operands in a row
-            ("LET x:=1**2", "malformed expression"),  # two operators in a row
-            ("LET x:=-", "malformed expression"),  # lone sign
-            ("LET 5:=1", "malformed statement"),  # numeric variable name
-            ("LET x:=5!", "unexpected character '!'"),  # stray character
-            ("LET X:=1", "unknown keyword 'X'"),  # uppercase variable
-            ("LET Z:=1", "unknown keyword 'Z'"),  # the last uppercase letter
-            ("A", "unknown keyword 'A'"),  # the first uppercase letter
-            ("LET x:=1A", "unknown keyword 'A'"),  # a letter glued to a number
-            ("LET aZ:=1", "unknown keyword 'Z'"),  # a letter glued to a name
-            ("LET x:=-1A", "unknown keyword 'A'"),  # a letter glued to a sign
-            ("LET x:=[", "unexpected character '['"),  # between 'Z' and 'a'
-            ("LET x:=_", "unexpected character '_'"),  # likewise
-            ("LET x:=`", "unexpected character '`'"),  # and just below 'a'
-            ("x y", "malformed statement"),  # two names, no keyword
-            ("POINT", "malformed statement"),  # missing label
-            ("POINT 5", "malformed statement"),  # numeric label
-            ("IF x BREAK", "malformed statement"),  # missing label
+            ("LET x:=", "malformed statement"),  # missing expression.
+            ("LET x:=1+", "malformed expression"),  # trailing operator.
+            ("LET x:=1 2", "malformed expression"),  # two operands in a row.
+            ("LET x:=1**2", "malformed expression"),  # two operators in a row.
+            ("LET x:=-", "malformed expression"),  # lone sign.
+            ("LET 5:=1", "malformed statement"),  # numeric variable name.
+            ("LET x:=5!", "unexpected character '!'"),  # stray character.
+            ("LET X:=1", "unknown keyword 'X'"),  # uppercase variable.
+            ("LET Z:=1", "unknown keyword 'Z'"),  # the last uppercase letter.
+            ("A", "unknown keyword 'A'"),  # the first uppercase letter.
+            ("LET x:=1A", "unknown keyword 'A'"),  # a letter glued to a number.
+            ("LET aZ:=1", "unknown keyword 'Z'"),  # a letter glued to a name.
+            ("LET x:=-1A", "unknown keyword 'A'"),  # a letter glued to a sign.
+            ("LET x:=[", "unexpected character '['"),  # between 'Z' and 'a'.
+            ("LET x:=_", "unexpected character '_'"),  # likewise.
+            ("LET x:=`", "unexpected character '`'"),  # and just below 'a'.
+            ("x y", "malformed statement"),  # two names, no keyword.
+            ("POINT", "malformed statement"),  # missing label.
+            ("POINT 5", "malformed statement"),  # numeric label.
+            ("IF x BREAK", "malformed statement"),  # missing label.
             ("IF x GOTO loop", "unknown keyword 'GOTO'"),
-            ("BREAK x", "malformed statement"),  # not a statement
-            ("END loop", "no open loop 'loop'"),  # END with no open loop
+            ("BREAK x", "malformed statement"),  # not a statement.
+            ("END loop", "no open loop 'loop'"),  # END with no open loop.
             ("POINT a\nPOINT a\nEND a\nEND a", "duplicate loop label 'a'"),
-            ("POINT a\nEND b", "no open loop 'b'"),  # END for an unopened loop
+            ("POINT a\nEND b", "no open loop 'b'"),  # END for an unopened loop.
             ("POINT a\nIF x BREAK b\nEND a", "BREAK b outside its loop"),
-            ("POINT a\nEND a\nPOINT b", "unclosed loop 'b'"),  # unclosed loop
+            ("POINT a\nEND a\nPOINT b", "unclosed loop 'b'"),  # unclosed loop.
         ],
     )
     def test_malformed_program(self, program: str, message: str) -> None:

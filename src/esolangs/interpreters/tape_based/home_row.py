@@ -56,17 +56,17 @@ import sys
 from esolangs.interpreters.brackets import unmatched
 from esolangs.interpreters.io import IO
 
-#: One instant of a run: ``(ind, ptr, grid)`` -- the code cursor, the
-#: pointer, and the 25 cells.  A value, not a record: every transition below
-#: returns a new one rather than editing one in place, and the grid is a
-#: ``tuple`` for the same reason.
-#:
-#: This is exactly what ``snapshot`` returns, and always has been, so the
-#: state and its hashable view are the same tuple.
-#:
-#: The code and its loop pairing are deliberately not in here.  Neither
-#: changes during a run, so carrying them would put constant data in every
-#: value the cycle detector stores.  They are parameters to the transition.
+# : One instant of a run:.
+# : pointer, and the 25 cells.
+# : returns a new one rather.
+# : ``tuple`` for the same.
+# :.
+# : This is exactly what.
+# : state and its hashable view.
+# :.
+# : The code and its loop.
+# : changes during a run, so.
+# : value the cycle detector.
 type _State = tuple[int, int, tuple[int, ...]]
 
 
@@ -86,8 +86,8 @@ def _matches(code: str) -> tuple[dict[int, int], set[int]]:
             match[i] = j
             match[j] = i
     if stack:
-        # One glyph both opens and closes here, so the pairing cannot come
-        # from `match_brackets`; the rejection is still the shared one.
+        # One glyph both opens and.
+        # from `match_brackets`; the.
         raise unmatched("l", stack[-1])
     return match, open_l
 
@@ -122,7 +122,7 @@ def _advance(
     if char == "a":
         grid = (*grid[:ptr], grid[ptr] + 1, *grid[ptr + 1 :])
     elif char == "s":
-        # Cells are unbounded, so ``s`` on a zero cell yields -1.
+        # Cells are unbounded, so ``s``.
         grid = (*grid[:ptr], grid[ptr] - 1, *grid[ptr + 1 :])
     elif char == "d":
         ptr = (ptr + 5) % 25
@@ -131,11 +131,11 @@ def _advance(
         if ptr % 5 == 0:
             ptr -= 5
     elif char == "j":
-        # Skip the next command when the current cell is zero.
+        # Skip the next command when.
         if grid[ptr] == 0:
             ind += 1
     elif char == "k":
-        # The print already happened in the shell; this is the clear.
+        # The print already happened in.
         grid = (*grid[:ptr], 0, *grid[ptr + 1 :])
     elif char == "l":
         partner = match[ind]
@@ -160,13 +160,13 @@ class _Machine:
         self.io = io
         self.code = code
         self.match, self.open_l = _matches(code)
-        # ``halted`` is read twice per command -- once by ``run``'s loop and
-        # once by ``step``'s guard -- so the length is taken once here.
+        # ``halted`` is read twice per.
+        # once by ``step``'s guard --.
         self.size = len(code)
         self.state: _State = (0, 0, (0,) * 25)
 
-    # The language's own names.  They are views on the current state rather
-    # than fields of their own, so there is one place a step can change.
+    # The language's own names.
+    # than fields of their own, so.
 
     @property
     def grid(self) -> tuple[int, ...]:
@@ -186,7 +186,7 @@ class _Machine:
         ind = self.state[0]
         return ind >= self.size or self.code[ind] == ";"
 
-    # The VM's language-shaped view: 5x5 torus grid + pointer; ip the cursor, memory
+    # The VM's language-shaped.
     # the 25 cells.
 
     @property
@@ -206,8 +206,8 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The state as it stands: it is already the (ind, ptr, grid) triple
-        # this returned before the split, and it is already hashable.
+        # The state as it stands: it is.
+        # this returned before the.
         return self.state
 
     def step(self) -> None:

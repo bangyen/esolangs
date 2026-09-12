@@ -66,11 +66,11 @@ from functools import cache
 from esolangs.exceptions import GeneratorCapError
 from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
 
-#: Lines between the two landing sites of the branch gadget, fixed by the
-#: ``@id`` spread: bit 1 lands at ``p+4`` and bit 0 at ``p+13``.
+# : Lines between the two.
+# : ``@id`` spread: bit 1 lands.
 _WINDOW = 9
 
-#: How far one ``DownAccLines`` reaches: the accumulator holds a byte.
+# : How far one.
 _REACH = 255
 
 
@@ -99,25 +99,25 @@ def _hop_width(distance: int) -> int:
     return len(_set_acc(distance)) + 1
 
 
-#: Sizing passes ``_resolve`` allows before giving up.  It is a cap, not a
-#: convergence argument: what it refuses is a layout whose widths are still
-#: moving, and the express keeps every width local, so the settles seen
-#: since it shipped are two-digit.
+# : Sizing passes ``_resolve``.
+# : convergence argument: what.
+# : moving, and the express.
+# : since it shipped are.
 _PASSES = 4096
 
-#: Longest distance the nine-line window can spell.  Not ``_REACH``: the
-#: slot is fixed, so what fits is what ``_set_acc`` spells in eight lines.
-#: Not monotonic in the distance either -- 70 costs nine lines where 69
-#: costs ten -- so this is a scan rather than an inverted formula.
+# : Longest distance the.
+# : slot is fixed, so what fits.
+# : Not monotonic in the.
+# : costs ten -- so this is a.
 _WINDOW_REACH = max(d for d in range(_REACH + 1) if _hop_width(d) <= _WINDOW)
 
-#: The widest slot any single hop can need, scanned rather than assumed:
-#: an express jump's slot is fixed at this width, so it can spell whatever
-#: first stride the routing later picks.
+# : The widest slot any single.
+# : an express jump's slot is.
+# : first stride the routing.
 _EXPRESS = max(_hop_width(d) for d in range(_REACH + 1))
 
-# The bit-0 jump sits one window behind its relay label, so when it is
-# promoted to an express slot the window must spell _EXPRESS itself.
+# The bit-0 jump sits one.
+# promoted to an express slot.
 if _hop_width(_EXPRESS) > _WINDOW:
     raise AssertionError("express slot outgrew the window")
 
@@ -193,15 +193,15 @@ def _emit(table: str, n: int) -> list[_Item]:
         out.append(_Safe())
         window = table[lo:hi]
         if len(set(window)) == 1:
-            # A constant subtree needs no more branching, but it still has
-            # to *read* the inputs below it: the reads are the interface,
-            # and a program that leaves them on the stream desynchronises
-            # whatever runs next.  ``u`` alone consumes one and is dropped.
+            # A constant subtree needs no.
+            # to *read* the inputs below.
+            # and a program that leaves.
+            # whatever runs next.
             out.extend(["u"] * (n - depth))
             out.extend(_set_acc(_ASCII_ZERO + int(window[0])))
             out.append("div")
-            # Out through this node's exit rather than straight to the end:
-            # one hop reaches 255 lines and the tree is longer than that.
+            # Out through this node's exit.
+            # one hop reaches 255 lines and.
             out.append(_Jump(exit_label, 2))
             return
         counter[0] += 1
@@ -210,15 +210,15 @@ def _emit(table: str, n: int) -> list[_Item]:
         half = (hi - lo) // 2
         out.extend(["u", *["@dd"] * 4, *["@nt"] * 8])
         out.extend(["DownAccLines", "@id", "DownAccLines"])
-        out.append("x")  # dead: bit 1 lands two on, bit 0 eleven on
-        # Both landing sites hold jumps, so neither subtree has to fit in
-        # the window: the window clears only the bit-0 jump to reach the
-        # relay, and the relay -- free to be any width -- enters `right`.
+        out.append("x")  # dead: bit 1 lands two on, bit.
+        # Both landing sites hold.
+        # the window: the window clears.
+        # relay, and the relay -- free.
         out.append(_Jump(relay, _WINDOW, fixed=True))
-        # The relay label must stay exactly here: bit 0 lands on this jump
-        # by the gadget's fixed nine-line offset.  Nothing is ever spliced
-        # between gadget lines -- meadows go only where ``_Safe`` says.
-        out.append(_Jump(left, 2))  # the bit-0 landing site
+        # The relay label must stay.
+        # by the gadget's fixed.
+        # between gadget lines --.
+        out.append(_Jump(left, 2))  # the bit-0 landing site.
         out.append(_Label(relay))
         out.append(_Jump(right, 2))
         out.append(_Label(right))
@@ -238,9 +238,9 @@ def _index(items: list[_Item]) -> tuple[list[int], dict[str, int]]:
     append = starts.append
     labels: dict[str, int] = {}
     line = 0
-    # Dispatched on the exact class, cheapest case first: all but a few
-    # thousand of the items are plain lines, and this walk runs once per
-    # sizing pass over the whole program.
+    # Dispatched on the exact.
+    # thousand of the items are.
+    # sizing pass over the whole.
     for item in items:
         append(line)
         kind = item.__class__
@@ -269,8 +269,8 @@ def _resolve(items: list[_Item]) -> tuple[list[int], dict[str, int]]:
     growable = [
         (position, item)
         for position, item in enumerate(items)
-        # A fixed slot cannot grow: the window is checked at emission,
-        # and an express slot spells any first stride.
+        # A fixed slot cannot grow: the.
+        # and an express slot spells.
         if isinstance(item, _Jump) and not item.fixed and not item.express
     ]
     moving = 0
@@ -311,37 +311,37 @@ def _settle(items: list[_Item]) -> None:
             return
 
 
-#: Lines between meadows, measured on settled coordinates at placement.
-#: The binding constraint is a hop between *cursors*: a chain may leave a
-#: meadow near its start and land in the next near its end, so the pitch
-#: between meadow starts plus a whole meadow of drift must stay inside one
-#: reach -- and the pitch seen at run time is this figure stretched by the
-#: guards and promotions that settle afterwards, so it sits well under
-#: that bound.  The router's own reach check refuses a layout that
+# : Lines between meadows,.
+# : The binding constraint is a.
+# : meadow near its start and.
+# : between meadow starts plus.
+# : reach -- and the pitch seen.
+# : guards and promotions that.
+# : that bound.
 #: stretched too far anyway.
 _MEADOW_SPACING = 80
 
-#: Dead lines per meadow: the floor, the ceiling, and the lines added per
-#: express chain crossing the placement point.  Demand is not uniform --
-#: a meadow under a busy subtree carries a rung and a few adjusters for
-#: every chain over it, plus the terminals of the label cluster behind it
-#: -- so capacity follows the measured crossings instead of one number.
-#: The ceiling is a reach constraint, not thrift: a hop may leave one
-#: meadow's start and land at the next one's end, so two meadows and the
-#: pitch between them must stay inside one reach.
+# : Dead lines per meadow: the.
+# : express chain crossing the.
+# : a meadow under a busy.
+# : every chain over it, plus.
+# : -- so capacity follows the.
+# : The ceiling is a reach.
+# : meadow's start and land at.
+# : pitch between them must.
 _MEADOW_LEAST = 24
 _MEADOW_MOST = 56
 _MEADOW_PER_CHAIN = 6
 
-#: Meadows the repair may add at shortfalls before a table is refused.
-#: A budget on additions, not a convergence argument: four n=10 dense
-#: seeds spend 95-126 across a handful of rounds, so this is the worst
-#: measured with room over, and the programs past it are ones this
-#: generator should refuse rather than chase.
-#:
-#: What it declines is measured, not assumed: dense n=11 closes at 4096,
-#: spending 1445 additions for a 1203786-character program, every one of
-#: its 2048 rows correct.  Left at 256 on that cost.
+# : Meadows the repair may add.
+# : A budget on additions, not.
+# : seeds spend 95-126 across a.
+# : measured with room over,.
+# : generator should refuse.
+# :.
+# : What it declines is.
+# : spending 1445 additions for.
+# : its 2048 rows correct.
 _REPAIRS = 256
 
 
@@ -562,11 +562,11 @@ def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_StuckError]:
         if item.__class__ is _Rung
     }
     banks = [_Bank(rungs, [rung_line[id(rung)] for rung in rungs]) for rungs in meadows]
-    # Meadows never overlap, so ordering banks by their first rung orders
-    # them by cursor line too, and the banks a hop could reach are one
-    # slice rather than a filter-and-sort over every meadow in the
-    # program.  That scan was the n=10 price: ~600 meadows re-examined at
-    # each of tens of thousands of hops, once per repair round.
+    # Meadows never overlap, so.
+    # them by cursor line too, and.
+    # slice rather than a.
+    # program.
+    # each of tens of thousands of.
     banks.sort(key=lambda bank: bank.lines[0])
     heads = [bank.lines[0] for bank in banks]
     widest = max((len(bank.rungs) for bank in banks), default=0)
@@ -617,15 +617,15 @@ def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_StuckError]:
 
     def route(item: _Jump, launch: int, target: int) -> None:
         if 0 <= target - launch <= _REACH:
-            item.to_line = target  # the span settled back under one reach
+            item.to_line = target  # the span settled back under.
             return
-        # The terminal bank -- the chain's last stop -- is chosen first,
-        # nearest the target with room for a worst-case finish, so the
-        # chain never discovers at its last stop that the room for the
-        # finish was already spent.  Its rung is *laid* last, though: the
-        # accumulator it inherits is only decided by the approach, and a
-        # known accumulator turns the finish from a respell into a few
-        # adjusters.  Excluding it from the approach keeps its room whole.
+        # The terminal bank -- the.
+        # nearest the target with room.
+        # chain never discovers at its.
+        # finish was already spent.
+        # accumulator it inherits is.
+        # known accumulator turns the.
+        # adjusters.
         terminal = next(
             (
                 bank
@@ -641,12 +641,12 @@ def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_StuckError]:
             None,
         )
         if terminal is None or terminal.line is None:
-            # The shortfall is in the terminal window before the target,
+            # The shortfall is in the.
             # wherever the launch was.
             raise refuse(max(launch, target - _REACH), target, item.label)
         stop = terminal.line
         if stop - launch <= _REACH:
-            item.to_line = stop  # the entry hop reaches the terminal alone
+            item.to_line = stop  # the entry hop reaches the.
             acc = stop - launch
         else:
             first = [b for b in onward(launch, stop) if b is not terminal]
@@ -657,9 +657,9 @@ def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_StuckError]:
             item.to_line = landing
             acc = landing - launch
             while True:
-                # ``landing`` is the cursor line of ``bank``, where this
-                # chain's next rung must be laid; ride until one of those
-                # rungs can land exactly on the terminal.
+                # ``landing`` is the cursor.
+                # chain's next rung must be.
+                # rungs can land exactly on the.
                 if stop - landing <= _REACH:
                     hop = _lay(bank, acc, landing, stop)
                     if hop is not None:
@@ -683,10 +683,10 @@ def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_StuckError]:
         try:
             route(item, launch, target)
         except _StuckError as shortfall:
-            # Collect rather than stop: every stranded chain names its
-            # window in one pass, so one repair round serves them all.
-            # Rungs a chain laid before stranding stay claimed, which is
-            # fine -- a repaired attempt starts from clean placeholders.
+            # Collect rather than stop:.
+            # window in one pass, so one.
+            # Rungs a chain laid before.
+            # fine -- a repaired attempt.
             stuck.append(shortfall)
     return stuck
 
@@ -708,32 +708,32 @@ def interprogck8(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     items = _emit(truth_table, n)
-    # Widths first, so meadows are placed on real coordinates; then widths
-    # again, since the meadows' guards and the jumps that now span a meadow
-    # move labels.  Both settles are fixed points, not searches, and the
-    # routing after them is a single pass against frozen coordinates.
+    # Widths first, so meadows are.
+    # again, since the meadows'.
+    # move labels.
+    # routing after them is a.
     _settle(items)
     meadows = _place(items)
     _settle(items)
-    # Routing is a single pass against frozen coordinates, but demand is
-    # measured, not derived: every stranded chain names the window whose
-    # reach held no usable rung slot, a meadow is added in each distinct
-    # window, and the whole route is retried from clean placeholders.
-    # Each round adds capacity at certificates, so the loop is a bounded
-    # repair, not a search; a table still short after the budget is
-    # refused with one of its remaining shortfalls.
+    # Routing is a single pass.
+    # measured, not derived: every.
+    # reach held no usable rung.
+    # window, and the whole route.
+    # Each round adds capacity at.
+    # repair, not a search; a table.
+    # refused with one of its.
     added = 0
     while True:
         stuck = _route(items, meadows)
         if not stuck:
             break
         if added > _REPAIRS:
-            # The shortfall alone is a maintainer's note -- it names a line
-            # window and a label, and a caller learns from it neither the
-            # arity nor the ceiling nor that anything is capped.  The three
-            # sibling caps read "caps at 1934, but this table needs 2862";
-            # this one now opens the same way and keeps the routing detail
-            # after the dash, where it is still the thing to debug from.
+            # The shortfall alone is a.
+            # window and a label, and a.
+            # arity nor the ceiling nor.
+            # sibling caps read "caps at.
+            # this one now opens the same.
+            # after the dash, where it is.
             raise GeneratorCapError(
                 f"Interprogck8 is routed and tested to 10 inputs and this "
                 f"table has {n}: after {_REPAIRS} repair rounds its express "
@@ -745,9 +745,9 @@ def interprogck8(truth_table: str) -> str:
         for item in items:
             if isinstance(item, _Jump):
                 item.to_line = None
-        # Highest window first, so the insertions this round leave the
-        # coordinates of the windows still waiting untouched; windows
-        # overlapping one already served this round share its meadow.
+        # Highest window first, so the.
+        # coordinates of the windows.
+        # overlapping one already.
         served: list[tuple[int, int]] = []
         for shortfall in sorted(stuck, key=lambda s: -s.low):
             if any(shortfall.low < hi and lo < shortfall.high for lo, hi in served):
@@ -769,7 +769,7 @@ def interprogck8(truth_table: str) -> str:
             distance = goal - (start + item.width)
             _check(item.label, distance, item.width)
             patch = [*_set_acc(distance), "DownAccLines"]
-            # Pad ahead of the hop so its jump stays at the slot's end.
+            # Pad ahead of the hop so its.
             out.extend(["x"] * (item.width - len(patch)) + patch)
         else:
             out.append(item)

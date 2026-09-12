@@ -14,24 +14,24 @@ from esolangs.registry import LANGUAGES, RUNNERS, parameterized_ids, wiki_url
 from esolangs.tools.boolean import BOOLEAN
 
 ROOT = pathlib.Path(__file__).parents[1]
-# Extra source files that are support modules, not implementations: they are
-# globbed alongside the languages but have no display name (an unknown
-# implementation file still fails loudly).
+# Extra source files that are.
+# globbed alongside the.
+# implementation file still.
 _EXTRA_SUPPORT_MODULES = {"common"}
 
-# Extra-implementation display name -> wiki slug, where the page name
-# differs from ``name.replace(" ", "_")`` (URL-encoded characters kept
-# literal as in the pre-existing hand-written list).
+# Extra-implementation display.
+# differs from ``name.replace(".
+# literal as in the.
 _EXTRA_WIKI = {
     "Forþ": "For%C3%BE",
     "%^2^-1": "%25%5E2%5E-1",
     "bit~": "Bit~",
 }
 
-# The README's Implemented Languages section, grouped by interpreter
-# category.  The list order is the classification priority (a language is
-# filed by its most distinctive data structure): grid (a beam/pointer moving
-# on a 2D surface) > stack > queue > tape > register (the imperative
+# The README's Implemented.
+# category.
+# filed by its most distinctive.
+# on a 2D surface) > stack >.
 # default) > other.
 _README_HEADINGS = [
     (

@@ -15,7 +15,7 @@ from tests.interpreters.contract import (
 from tests.interpreters.runner import run_program
 from tests.raises import raises_message
 
-# The wiki's own examples, which are the specification's ground truth.
+# The wiki's own examples,.
 HELLO_WORLD = "\n".join(
     [
         "72",
@@ -302,9 +302,9 @@ class TestCycles(CycleContract):
 
     machine: ClassVar = staticmethod(machine)
     halting_program: ClassVar = "1 + 1"
-    # APL's loop is recursion, which grows the frame stack rather than
-    # revisiting a state, so the cycle detector has no looping program to
-    # prove: that class is the ancestor check's, tested below.
+    # APL's loop is recursion,.
+    # revisiting a state, so the.
+    # prove: that class is the.
     looping_program: ClassVar = None
 
 
@@ -538,8 +538,8 @@ class TestMutationGaps:
         while not machine_.halted:
             seen.add(machine_.snapshot())
             machine_.step()
-        # Both lines print the same value from identical-looking state;
-        # only the input cursor separates them.
+        # Both lines print the same.
+        # only the input cursor.
         assert len(seen) == len([1 for _ in seen])
 
     def test_the_frame_key_carries_the_bindings(self) -> None:

@@ -108,9 +108,9 @@ from collections.abc import Mapping, Sequence
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# A label line is exactly a name and a semicolon; the semicolon is not part
-# of the name.  Surrounding whitespace is not significant -- the wiki's own
-# examples are written flush left, but nothing keys off the indentation.
+# A label line is exactly a.
+# of the name.
+# examples are written flush.
 _LABEL = re.compile(r"(\w+);")
 
 
@@ -139,16 +139,16 @@ def _spans(lines: list[str]) -> dict[str, tuple[int, int]]:
     return spans
 
 
-#: A label's two delimiter line numbers, by name.
+# : A label's two delimiter.
 type _Spans = Mapping[str, tuple[int, int]]
 
-#: One instant of a run: ``(lines, spans, ind, done)`` -- the program text,
-#: the label spans over it, the line cursor, and whether ``skip``'s third
-#: clause has exited.  A value, not a record: :func:`_advance` returns a new
-#: tuple rather than editing one in place.
-#:
-#: The lines are *in* here because they are the memory: ``readto`` and
-#: ``inject`` rewrite the running program, and the spans move with them.
+# : One instant of a run:.
+# : the label spans over it,.
+# : clause has exited.
+# : tuple rather than editing.
+# :.
+# : The lines are *in* here.
+# : ``inject`` rewrite the.
 type _State = tuple[Sequence[str], _Spans, int, bool]
 
 
@@ -184,9 +184,9 @@ def _replaced(state: _State, name: str, body: list[str]) -> _State:
         return (grown, spans, ind, done)
     if begin < ind:
         ind += shift
-    # Only positions strictly after the opening delimiter move: an
-    # overlapping block that begins earlier keeps its own start and has its
-    # end pushed along, which is what keeps the two nestings consistent
+    # Only positions strictly after.
+    # overlapping block that begins.
+    # end pushed along, which is.
     # after a rewrite.
     moved = {
         label: (b + shift * (b > begin), e + shift * (e > begin))
@@ -234,8 +234,8 @@ def _injected(state: _State, rest: str) -> _State:
     name, sep, expression = rest.partition("=")
     if not sep:
         raise ValueError(f"inject needs a label and a regex: {rest}")
-    # The pattern cannot contain a slash, so the *first* slash is the
-    # separator and everything after it is the replacement -- which may
+    # The pattern cannot contain a.
+    # separator and everything.
     # itself contain slashes.
     pattern, sep, replacement = expression.partition("/")
     if not sep:
@@ -259,7 +259,7 @@ def _advance(state: _State, line_in: str | None = None) -> tuple[_State, list[st
     lines, spans, ind, done = state
     line = lines[ind].strip()
 
-    # A blank line and a label line are both no-ops: control runs straight
+    # A blank line and a label line.
     # through a block's delimiters.
     if not line or _LABEL.fullmatch(line):
         return (lines, spans, ind + 1, done), []
@@ -271,9 +271,9 @@ def _advance(state: _State, line_in: str | None = None) -> tuple[_State, list[st
     if command == "send":
         output = [text + "\n" for text in _contents(state, rest)]
     elif command == "readto":
-        # An empty line stores an *empty* block rather than one empty line:
-        # the cat example loops on ``skipif`` ("at least one line") and
-        # terminates on empty input, which only happens if a blank line
+        # An empty line stores an.
+        # the cat example loops on.
+        # terminates on empty input,.
         # leaves nothing behind.
         value = line_in or ""
         state = _replaced(state, rest, [value] if value else [])
@@ -295,13 +295,13 @@ def _advance(state: _State, line_in: str | None = None) -> tuple[_State, list[st
             raise ValueError(f"skipq takes two labels: {line}")
         if _contents(state, left) == _contents(state, right):
             return _skipped(state), output
-    # Anything else is a *data* line and executes as a no-op.  This is
-    # forced by the wiki's truth machine: on the falling-through branch
-    # control jumps the ``data`` block, lands on the ``0`` block's
-    # delimiter, and flows through the bare ``0`` inside it.  It is also
-    # the language's namesake working as designed -- ``readto`` and
-    # ``inject`` write arbitrary text into blocks that control can later
-    # flow through, so the dispatch is "a command word runs, everything
+    # Anything else is a *data*.
+    # forced by the wiki's truth.
+    # control jumps the ``data``.
+    # delimiter, and flows through.
+    # the language's namesake.
+    # ``inject`` write arbitrary.
+    # flow through, so the dispatch.
     # else is text".
 
     return (lines, spans, ind + 1, done), output
@@ -363,12 +363,12 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The program text is the memory, so it has to go in whole: a loop
-        # that keeps rewriting a block is not a repeat.  The input cursor
-        # separates a re-read from a genuine cycle.
+        # The program text is the.
+        # that keeps rewriting a block.
+        # separates a re-read from a.
         return (self.ind, self.done, tuple(self.lines), self.io.position())
 
-    # -- one command --------------------------------------------------
+    # -- one command.
 
     @property
     def _state(self) -> _State:
@@ -388,7 +388,7 @@ class _Machine:
         shell.  ``readto``'s line is read before the transition runs, and
         the lines a ``send`` reports are written after it.
         """
-        # A halted machine ignores a further step, so a caller can drive it
+        # A halted machine ignores a.
         # without checking first.
         if self.halted:
             return
@@ -396,9 +396,9 @@ class _Machine:
         line = self.lines[self.ind].strip()
         command, _, _ = line.partition(" ")
 
-        # ``readto`` is the one command that needs its input before the
-        # transition can run, and it must be read even at EOF: the port
-        # raises there, which is the language's documented halt for it.
+        # ``readto`` is the one command.
+        # transition can run, and it.
+        # raises there, which is the.
         line_in = self.io.input_str() if command == "readto" else None
 
         state, output = _advance(self._state, line_in)

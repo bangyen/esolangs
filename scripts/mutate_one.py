@@ -42,40 +42,40 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-# Tests that reach past the interpreter -- into the VM or the registry --
-# cannot run against a bundle, which inlines neither.  They are dropped from
-# the copied test file, so the score is over the tests that can run.
-# :func:`_reaches_unbundled` decides that, reading each test's syntax rather
+# Tests that reach past the.
+# cannot run against a bundle,.
+# the copied test file, so the.
+# :func:`_reaches_unbundled`.
 # than its text.
 
-# Packages the bundle does not inline, whose imports must therefore keep
-# resolving against the installed package.  This is deliberately *not* the
-# set :func:`_reaches_unbundled` drops on: that judgement cuts a test, and a
-# test importing one of these is still perfectly runnable -- a suite that
-# reaches the registry or the generators only needs them left alone, not
-# cut.  Rewriting such an import to ``from bundled import ...`` asked the
-# bundle for a name it never inlines.
+# Packages the bundle does not.
+# resolving against the.
+# set.
+# test importing one of these.
+# reaches the registry or the.
+# cut.
+# bundle for a name it never.
 _NOT_REWRITTEN = ("vm", "registry", "tools")
 
-# The two modules ``bundle_one`` inlines alongside the interpreter.  Their
-# classes are the *only* ones a score may legitimately leave out, which
-# ``_score`` checks its exclusions against.
+# The two modules.
+# classes are the *only* ones a.
+# ``_score`` checks its.
 _INLINED = ("esolangs.exceptions", "esolangs.interpreters.io")
 
-# How far past the unmutated baseline a single test may run before the alarm
-# in ``_CONFTEST`` fails it.  Both numbers are deliberately generous: the only
-# job here is to come in under mutmut's ``(estimate + 1) * 30`` CPU-second
-# RLIMIT, and being too tight (a passing test failed, scored as a kill nothing
-# earned) is far worse than being too loose.
+# How far past the unmutated.
+# in ``_CONFTEST`` fails it.
+# job here is to come in under.
+# RLIMIT, and being too tight.
+# earned) is far worse than.
 _ALARM_FACTOR = 10.0
 _MIN_ALARM = 2.0
 
-# How long the unmutated suite may take before the run is called stuck.
+# How long the unmutated suite.
 _BASELINE_TIMEOUT = 120.0
 
-# Below this share of mutants killed, the run is treated as broken rather
-# than reported: the lowest score this harness has ever legitimately produced
-# is 76.7%, so a figure down here means the tests never ran.
+# Below this share of mutants.
+# than reported: the lowest.
+# is 76.7%, so a figure down.
 _MIN_KILL_RATE = 0.1
 
 
@@ -164,7 +164,7 @@ def _reaching_helpers(src: str) -> list[str]:
     """
     try:
         tree = ast.parse(src)
-    except SyntaxError:  # pragma: no cover - the suite is a valid module
+    except SyntaxError:  # pragma: no cover - bodies come from a valid module
         return []
 
     markers: list[str] = []
@@ -222,30 +222,30 @@ def _drop_unbundled_tests(src: str) -> tuple[str, int]:
     dropped = 0
     callers = _reaching_helpers(src)
     for name in re.findall(r"\n    def (test_\w+)\(", src):
-        # The lines above the ``def`` that belong to it: a decorator ``@``,
-        # any continuation of one (more indented than the ``def``), and the
-        # bracket that closes a multi-line decorator, which lines up with
-        # the ``@``.  Matching only 8-space continuations stopped early on a
-        # ``@pytest.mark.parametrize`` whose list closes at four -- Point
-        # Break's malformed-program table -- leaving the tail behind as an
-        # unindented fragment, and the copied file no longer parsed.
-        #
-        # These are one flat alternation rather than a repetition nested in
-        # another.  Nested, the two ``*`` can carve the same run of lines
-        # more ways than there are lines, and a ``def`` that fails to match
-        # then backtracks through all of them: Point Break's suite hung the
-        # run inside ``sre_search``, before any test had been collected.
+        # The lines above the ``def``.
+        # any continuation of one (more.
+        # bracket that closes a.
+        # the ``@``.
+        # ``@pytest.mark.parametrize``.
+        # Break's malformed-program.
+        # unindented fragment, and the.
+        # .
+        # These are one flat.
+        # another.
+        # more ways than there are.
+        # then backtracks through all.
+        # run inside ``sre_search``,.
         body = re.search(
             rf"\n(?:    @[^\n]*\n|     [^\n]*\n|    [)\]][^\n]*\n)*    def {name}\("
             rf".*?(?=\n    @|\n    def |\nclass |\n@|\ndef |\Z)",
             src,
             re.S,
         )
-        # The reach itself is judged on syntax, so that a module named in a
-        # comment or docstring no longer reads as an import.  A *call* to a
-        # reaching helper stays a text match: it is a bare name, which
-        # carries no such hazard, and the body has been carved out of its
-        # class, so it is re-parsed on its own before being walked.
+        # The reach itself is judged on.
+        # comment or docstring no.
+        # reaching helper stays a text.
+        # carries no such hazard, and.
+        # class, so it is re-parsed on.
         if body and (
             any(name in body.group(0) for name in callers)
             or _reaches_unbundled(_parse_body(body.group(0)))
@@ -253,10 +253,10 @@ def _drop_unbundled_tests(src: str) -> tuple[str, int]:
             src = src.replace(body.group(0), "\n")
             dropped += 1
 
-    # A class can lose every test it had -- Point Break's TestErrors is four
-    # assertions on what ``esolangs.run`` raises, and all four go -- which
-    # leaves a class statement with no body at all, and the copied file does
-    # not parse.  Give any such class a ``pass``.
+    # A class can lose every test.
+    # assertions on what.
+    # leaves a class statement with.
+    # not parse.
     src = re.sub(
         r"(\nclass \w+[^\n]*:\n)(?=\s*\n*(?:class |def |@|\Z))",
         r"\1    pass\n",
@@ -289,17 +289,17 @@ def _copy_test_helpers(src: str, tests_dir: Path, stem: str) -> str:
         )
     src = re.sub(r"from tests\.interpreters\.(\w+) import", r"from \1 import", src)
 
-    # ``tests/raises.py`` is the one *top-level* helper a suite imports, and
-    # it needs the same treatment: no ``tests`` package exists in the work
-    # dir, so ``from tests.raises import raises_message`` failed collection
-    # outright -- before any mutant ran, for every language whose suite uses
-    # it (Container, Forbin and Inject among them).  It imports only the
-    # standard library and pytest, so the copy needs no rewrite of its own.
-    #
-    # Deliberately *not* generalized to ``from tests.<name> import``:
-    # ``tests/samples.py`` imports the registry, which the bundle does not
-    # inline, and copying it would pull that back in.  Tests reaching it are
-    # cut by :func:`_drop_unbundled_tests` instead.
+    # ``tests/raises.py`` is the.
+    # it needs the same treatment:.
+    # dir, so ``from tests.raises.
+    # outright -- before any mutant.
+    # it (Container, Forbin and.
+    # standard library and pytest,.
+    # .
+    # Deliberately *not*.
+    # ``tests/samples.py`` imports.
+    # inline, and copying it would.
+    # cut by.
     if re.search(r"from tests\.raises import", src):
         (tests_dir / "raises.py").write_text((ROOT / "tests" / "raises.py").read_text())
         src = re.sub(r"from tests\.raises import", "from raises import", src)
@@ -318,19 +318,19 @@ def _rewrite_imports(src: str, stem: str, module: str = "") -> str:
     outside the bundle is mutated, so importing the real module is safe.
     """
     if module:
-        # ``from esolangs.<pkg> import <name> as m`` imports the interpreter
-        # *module*, not a name inside it.  The bundle is that module, so the
-        # rewrite is a plain alias -- repointing it at ``from {stem} import
-        # <name>`` asks for an attribute the bundle has no reason to define.
-        #
-        # The skip list applies here too, and not applying it was a bug an
-        # interpreter only hits when a package in that list exports a
-        # module of the *same leaf name*.  Streetcode is the case: its
-        # generator is ``esolangs.tools.boolean.streetcode``, so
-        # ``from esolangs.tools.boolean import streetcode as gen`` matched
-        # this rule and ``gen`` came out bound to the bundled interpreter.
-        # The suite then called it -- ``gen("00110100")`` -- and died with
-        # "'module' object is not callable" before a single mutant ran.
+        # ``from esolangs.<pkg> import.
+        # *module*, not a name inside.
+        # rewrite is a plain alias --.
+        # <name>`` asks for an.
+        # .
+        # The skip list applies here.
+        # interpreter only hits when a.
+        # module of the *same leaf.
+        # generator is.
+        # ``from esolangs.tools.boolean.
+        # this rule and ``gen`` came.
+        # The suite then called it --.
+        # "'module' object is not.
         leaf = module.rsplit(".", 1)[-1]
         skipped = "|".join(_NOT_REWRITTEN)
         src = re.sub(
@@ -338,14 +338,14 @@ def _rewrite_imports(src: str, stem: str, module: str = "") -> str:
             rf"import {stem} as \1",
             src,
         )
-        # ``importlib.import_module("esolangs.interpreters.<module>")`` names
-        # the interpreter in a *string*, which no import-statement rewrite can
-        # see.  Eight suites load the interpreter this way, and left alone
-        # they test the installed package instead of the bundle: no mutant is
-        # visible, so mutmut's forced-fail check aborts the run before a
-        # single one is scored.  The quoted module path is rewritten rather
-        # than the call, because the call is not always on one line -- the
-        # %^2^-1 suite splits it across three.
+        # ``importlib.import_module("eso.
+        # the interpreter in a.
+        # see.
+        # they test the installed.
+        # visible, so mutmut's.
+        # single one is scored.
+        # than the call, because the.
+        # %^2^-1 suite splits it across.
         src = re.sub(
             rf"""(['"])esolangs\.interpreters\.{re.escape(module)}\1""",
             rf"\g<1>{stem}\g<1>",
@@ -423,9 +423,9 @@ if _budget:
             signal.setitimer(signal.ITIMER_REAL, 0)
 '''
 
-# mutmut parses each file into an AST to build its mutants, and the parsing
-# runs in spawned children on macOS/3.12 -- so the limit has to be raised at
-# interpreter startup, which is what a sitecustomize on PYTHONPATH does.
+# mutmut parses each file into.
+# runs in spawned children on.
+# interpreter startup, which is.
 _SITECUSTOMIZE = "import sys\n\nsys.setrecursionlimit(50000)\n"
 
 
@@ -454,9 +454,9 @@ def _split_inlined(bundle: Path, module: str) -> int:
     if not sep:
         raise SystemExit(f"no inline marker for {module} in {bundle.name}")
 
-    # The header (shebang, docstring, __future__ and stdlib imports) has to
-    # stay with both halves: the prefix needs it to import, and a
-    # ``from __future__`` must be the first statement in each file.
+    # The header (shebang,.
+    # stay with both halves: the.
+    # ``from __future__`` must be.
     lines = head.splitlines(keepends=True)
     first_inline = next(
         (i for i, line in enumerate(lines) if line.startswith("# --- inlined from")),
@@ -466,12 +466,12 @@ def _split_inlined(bundle: Path, module: str) -> int:
     if not inlined.strip():
         return 0
 
-    # ``from _inlined import *`` skips underscore-prefixed names unless the
-    # module says otherwise, and the names bundled alongside an interpreter
-    # are often private: Factor is built on brainfuck, so brainfuck's
-    # ``_Machine`` lands here and ``_BFMachine = _Machine`` in the other half
-    # died on a NameError.  An explicit ``__all__`` re-exports everything the
-    # prefix defines, underscores included.
+    # ``from _inlined import *``.
+    # module says otherwise, and.
+    # are often private: Factor is.
+    # ``_Machine`` lands here and.
+    # died on a NameError.
+    # prefix defines, underscores.
     export = '\n\n__all__ = [_n for _n in dir() if not _n.startswith("__")]\n'
     (bundle.parent / "_inlined.py").write_text(preamble + inlined + export)
     bundle.write_text(
@@ -505,28 +505,28 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
     )
     (proj / "tests" / "conftest.py").write_text(_CONFTEST.replace("{stem}", stem))
     (work / "sitecustomize.py").write_text(_SITECUSTOMIZE)
-    # Several suites read a shipped example through ``Path(__file__)
-    # .parents[2]``.  That resolves to the work dir for the baseline run and
-    # to *proj* for the mutation runs, because mutmut re-copies tests/ into
-    # mutants/ and chdirs there -- so both need the link, or the example
-    # tests fail inside mutants/ even unmutated and mutmut scores nothing.
-    # Link rather than copy: nothing outside ``bundled.py`` is mutated.
+    # Several suites read a shipped.
+    # .parents[2]``.
+    # to *proj* for the mutation.
+    # mutants/ and chdirs there --.
+    # tests fail inside mutants/.
+    # Link rather than copy:.
     (work / "examples").symlink_to(ROOT / "examples")
     (proj / "examples").symlink_to(ROOT / "examples")
-    # The same for ``tests/fixtures``, which SLOW ACV MAMMALIAN reads its
-    # program from.  Without it that suite fails its baseline
-    # outright -- not one mutant, the whole run -- and the language cannot
-    # be scored at all.  ``tests/`` here is the directory built above, so
-    # only the fixtures need linking into it.
+    # The same for.
+    # program from.
+    # outright -- not one mutant,.
+    # be scored at all.
+    # only the fixtures need.
     (work / "tests").mkdir(exist_ok=True)
     for tests_dir in (work / "tests", proj / "tests"):
         (tests_dir / "fixtures").symlink_to(ROOT / "tests" / "fixtures")
     (proj / "pyproject.toml").write_text(
         "[tool.mutmut]\n"
         f'paths_to_mutate = ["{out.name}"]\n'
-        # mutmut copies only what it mutates into mutants/, so the inlined
-        # half has to be carried across explicitly or every mutant dies on
-        # an import that the baseline -- which runs from proj/ -- resolves.
+        # mutmut copies only what it.
+        # half has to be carried across.
+        # an import that the baseline.
         'also_copy = ["_inlined.py"]\n'
         "backup = false\n"
         'runner = "python -m pytest -x -q -p no:cacheprovider tests/test_bundled.py"\n'
@@ -541,7 +541,7 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
     return proj, stem, dropped, _own_classes(module)
 
 
-# A decorator line on a class, and the class statement it applies to.
+# A decorator line on a class,.
 _DECORATED_CLASS = re.compile(
     r"^(?P<decorators>(?:@[^\n(]+(?:\([^\n]*\))?\n)+)class (?P<name>\w+)", re.M
 )
@@ -581,8 +581,8 @@ def _undecorate_classes(bundle: Path) -> list[str]:
     if not moved:
         return []
 
-    # The calls go at the end of the module, after every class body has been
-    # defined, innermost decorator first -- the order the syntax applies them.
+    # The calls go at the end of.
+    # defined, innermost decorator.
     applied = "\n".join(
         f"{name} = {decorator}({name})"
         for entry in moved
@@ -627,13 +627,13 @@ def _score(proj: Path, stem: str, classes: set[str]) -> tuple[int, int, list[str
     codes = meta["exit_code_by_key"]
     own = {k: v for k, v in codes.items() if "ǁ" not in k or k.split("ǁ")[1] in classes}
 
-    # Every mutant left out has to belong to a class one of the *inlined*
-    # modules defines.  Anything else means the interpreter's own classes
-    # are being dropped -- the bug that scored Streetcode over 59 mutants
-    # while hiding the 843 belonging to _Machine, and reported it as a
-    # normal-looking 57.6%.  The denominator is checked rather than
-    # estimated: mutmut's own file lists every mutant, so what may go
-    # missing from it is known exactly.
+    # Every mutant left out has to.
+    # modules defines.
+    # are being dropped -- the bug.
+    # while hiding the 843.
+    # normal-looking 57.6%.
+    # estimated: mutmut's own file.
+    # missing from it is known.
     inlined = set().union(*(_classes_of(mod) for mod in _INLINED))
     stray: dict[str, int] = {}
     for key in codes:
@@ -672,8 +672,8 @@ def main() -> int:
         "is not always cheaper: mutmut caps each mutant with an RLIMIT_CPU "
         "of (baseline + 1) * 30, so with less sibling contention a process "
         "burns that CPU budget in fewer wall-seconds and more mutants reach "
-        # argparse expands help through %-formatting, so a literal percent
-        # has to be doubled: 3.14 rejects a bare one outright.
+        # argparse expands help through.
+        # has to be doubled: 3.14.
         "the cap -- at two workers a Forbin run spent 85%% of its time on the "
         "6%% of mutants that timed out",
     )
@@ -685,11 +685,11 @@ def main() -> int:
         if dropped:
             print(f"[note] dropped {dropped} test(s) needing the VM or registry")
 
-        # The per-test alarm belongs to the mutation runs; the baseline has
-        # none, so anything that does not finish here waits forever instead
-        # of saying so.  Every baseline measured across the 46 languages is
-        # under a second, so a cap two orders of magnitude above that costs
-        # nothing and turns a hang into a message.
+        # The per-test alarm belongs to.
+        # none, so anything that does.
+        # of saying so.
+        # under a second, so a cap two.
+        # nothing and turns a hang into.
         started = time.monotonic()
         try:
             baseline = subprocess.run(
@@ -712,14 +712,14 @@ def main() -> int:
             print(baseline.stdout[-2000:])
             raise SystemExit("the bundled tests fail before any mutation")
 
-        # What every test does unmutated, times a wide factor: the alarm only
-        # has to come in under mutmut's ``(estimate + 1) * 30`` CPU-second
-        # RLIMIT to pay off, so it is set loose on purpose.  An alarm too
-        # loose still turns a 30-second burn into a couple of seconds; an
-        # alarm too tight would fail a slow-but-passing test and report a
-        # kill that no mutation earned.  The whole file's wall time is used
-        # rather than any one test's, and the floor covers the languages
-        # whose suites are dominated by interpreter startup.
+        # What every test does.
+        # has to come in under mutmut's.
+        # RLIMIT to pay off, so it is.
+        # loose still turns a 30-second.
+        # alarm too tight would fail a.
+        # kill that no mutation earned.
+        # rather than any one test's,.
+        # whose suites are dominated by.
         budget = max(_MIN_ALARM, elapsed * _ALARM_FACTOR)
         print(f"[note] baseline {elapsed:.2f}s; capping each test at {budget:.1f}s")
 
@@ -741,13 +741,13 @@ def main() -> int:
         if not total:
             raise SystemExit("no mutants were generated")
         if killed < total * _MIN_KILL_RATE:
-            # An exit code still at its initial 0 means that mutant never
-            # reported, which a suite that passes its baseline cannot cause.
-            # Testing for *zero* killed was too narrow: a run of this same
-            # brainfuck suite reported 2 of 68, which is the same failure --
-            # the mutants did not run -- but printed a plausible 2.9% instead
-            # of tripping the check.  A real score does not live down here;
-            # the suites this harness targets kill most of what they see.
+            # An exit code still at its.
+            # reported, which a suite that.
+            # Testing for *zero* killed was.
+            # brainfuck suite reported 2 of.
+            # the mutants did not run --.
+            # of tripping the check.
+            # the suites this harness.
             print(mutation.stdout[-3000:] or mutation.stderr[-3000:])
             raise SystemExit(
                 f"only {killed} of {total} mutants killed with a passing "

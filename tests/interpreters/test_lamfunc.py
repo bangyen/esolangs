@@ -89,7 +89,7 @@ class TestBuiltins:
         The unchosen branch is what makes this visible: an unknown name
         the program actually *runs* halts before anything else can show.
         """
-        assert run_program("p i 1 3 foo p 7") == "11111"  # 3 then 7, in binary
+        assert run_program("p i 1 3 foo p 7") == "11111"  # 3 then 7, in binary.
         with raises_message(HaltError, "calling undefined function 'foo'"):
             run_program("p i 0 3 foo p 7")
 
@@ -102,11 +102,11 @@ class TestBuiltins:
         assert run_program("p i 0 7 8") == "1000"
 
     def test_if_is_lazy(self) -> None:
-        # the unchosen branch's p must not run
+        # the unchosen branch's p must.
         assert run_program("p i 1 3 p 9") == "11"
 
     def test_combine_bits(self) -> None:
-        # 0b10 and 0b110 combine to 0b10110
+        # 0b10 and 0b110 combine to.
         assert run_program("p cb 2 6") == "10110"
 
     def test_last_and_all_but_last_bit(self) -> None:
@@ -125,36 +125,36 @@ class TestFunctions:
         assert run_program(code) == "11111"
 
     def test_identity(self) -> None:
-        # F id f - .f returns the argument without calling it
+        # F id f - .f returns the.
         assert run_program("F id f - .f\np id 7") == "111"
 
     def test_not(self) -> None:
-        # the wiki's not: eq x eq .i .eq
+        # the wiki's not: eq x eq .i.
         assert run_program("F not x - eq x eq .i .eq\np not 0") == "1"
         assert run_program("F not x - eq x eq .i .eq\np not 1") == "0"
 
     def test_call_bound_function(self) -> None:
-        # c .p 5 binds a=p, b=5 and calls p 5
+        # c .p 5 binds a=p, b=5 and.
         assert run_program("F c a b - a b\np c .p 5") == "101101"
 
     def test_nested_call(self) -> None:
-        # f g x y is f(g(x), y): p takes one arg, so p p 5 prints twice
+        # f g x y is f(g(x), y): p.
         assert run_program("p p 5") == "101101"
 
     def test_reference_a_definition_by_name(self) -> None:
-        # .name outside a call returns the function itself (a def here)
+        # .name outside a call returns.
         assert run_program("F f x - x\np .f") == "f"
 
     def test_dot_function_as_a_call(self) -> None:
-        # .name at the top level is a call site for the following tokens
+        # .name at the top level is a.
         assert run_program("F add a b - p a p b\n.add 1 2") == "110"
 
 
 class TestRecursion:
     def test_self_call_through_lazy_if(self) -> None:
-        # loop halves x each call (via fb) until it reaches 0, printing
-        # each value along the way; the recursive call sits inside i's
-        # lazy second branch, not at a "statement" position
+        # loop halves x each call (via.
+        # each value along the way; the.
+        # lazy second branch, not at a.
         code = "F loop x - p x i x loop fb x 0\nloop 0b1000"
         assert run_program(code) == "10001001010"
 
@@ -182,21 +182,21 @@ class TestPartialApplication:
         assert run_program("F f x - p\nf 1 8") == "1000"
 
     def test_prints_a_partial_application_by_name(self) -> None:
-        # p i 5 is a partial of i with only its condition bound; p prints "i.."
+        # p i 5 is a partial of i with.
         assert run_program("p i 5") == "i.."
 
     def test_partial_returned_by_a_function_completes_at_top_level(self) -> None:
-        # F f - i 5 returns a partial of i; the trailing 1 2 fill its branches
+        # F f - i 5 returns a partial.
         assert run_program("F f - i 5\nf 1 2") == ""
 
     def test_i_branch_scanning_off_the_end(self) -> None:
-        # the chosen branch's scan may run past the last token (a partial)
+        # the chosen branch's scan may.
         assert run_program("i 1 p") == ""
 
 
 class TestValues:
     def test_print_a_bare_name_prints_it_as_a_string(self) -> None:
-        # an undefined trailing identifier is a string value, printed as text
+        # an undefined trailing.
         assert run_program("p abc") == "abc"
 
     def test_blank_lines_are_ignored(self) -> None:
@@ -241,7 +241,7 @@ class TestMachine:
         while not machine.halted:
             machine.step()
         assert machine.io.getvalue() == "101"
-        machine.step()  # stepping a halted machine is a no-op
+        machine.step()  # stepping a halted machine is.
         assert machine.io.getvalue() == "101"
 
     def test_referencing_an_undefined_function_halts(self) -> None:

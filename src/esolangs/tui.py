@@ -27,7 +27,7 @@ from typing import TypeGuard
 
 from esolangs.debugger import Debugger, make_debugger
 
-#: Back to the terminal's own attributes, which ends every marked run.
+# : Back to the terminal's own.
 _OFF = "\x1b[0m"
 
 
@@ -93,9 +93,9 @@ class Frame:
     stack: tuple[object, ...]
     output: str
     fault: str | None = None
-    #: What the language says its ``ip`` counts; see :func:`locate`.
+    # : What the language says its.
     ip_shape: str = "offset"
-    #: The machine's own named state, already shortened to fit a row.
+    # : The machine's own named.
     views: tuple[tuple[str, str], ...] = ()
 
     @classmethod
@@ -235,10 +235,10 @@ def _cells(values: tuple[object, ...], width: int) -> str:
         used += len(text) + 1
     if len(shown) == len(values):
         return " ".join(shown)
-    # The count of what was dropped has to fit as well, and it grows as
-    # items are given up for it, so the two are settled together rather
-    # than the row being cut afterwards -- a cut would take the "+N more"
-    # off the end and leave a truncated tape looking complete.
+    # The count of what was dropped.
+    # items are given up for it, so.
+    # than the row being cut.
+    # off the end and leave a.
     while True:
         suffix = f" +{len(values) - len(shown)} more"
         if len(shown) <= 1 or used - 1 + len(suffix) <= width:
@@ -260,9 +260,9 @@ def _paint(
         cut = col - left
         if not 0 <= cut < reach:
             continue
-        # A row shorter than the window still has the position in it -- the
-        # rectangle's padding is trimmed by the slice -- so the marked run
-        # is padded back out to the length it should cover.
+        # A row shorter than the window.
+        # rectangle's padding is.
+        # is padded back out to the.
         width = min(span, reach - cut)
         end = min(cut + span, len(text))
         under = text[cut:end].ljust(width)
@@ -290,10 +290,10 @@ def _recent(values: tuple[int | None, ...], width: int) -> str:
         used += len(text) + 1
     if len(shown) == len(values):
         return " ".join(shown)
-    # The marker for what was dropped has to fit inside the budget too,
-    # and the oldest value is what pays for it -- exactly as the dropped
-    # count is paid for in ``_cells``.  Getting this wrong cuts a digit
-    # off the newest value, which is the one the row exists to show.
+    # The marker for what was.
+    # and the oldest value is what.
+    # count is paid for in.
+    # off the newest value, which.
     marker = "... "
     while len(shown) > 1 and used - 1 + len(marker) > width:
         used -= len(shown.pop(0)) + 1
@@ -317,17 +317,17 @@ def render(
     """
     rows = grid(program := frame.program)
     at = locate(program, frame.ip, frame.ip_shape)
-    # The pane follows the selector when there is one, since moving it off
-    # the screen would otherwise be the same as losing it, and the run
+    # The pane follows the selector.
+    # the screen would otherwise be.
     # otherwise.
     focus = picked or at
     row, col = (focus.row, focus.col) if focus is not None else (0, 0)
 
-    # Where each mark goes, keyed by row and then by column, carrying its
-    # width and which of the three things are true of it.  A cell can be all
-    # three at once, so they are merged rather than one overwriting the
-    # others: a breakpoint the run is sitting on has to stay visible, and so
-    # does the selector resting on either.
+    # Where each mark goes, keyed.
+    # width and which of the three.
+    # three at once, so they are.
+    # others: a breakpoint the run.
+    # does the selector resting on.
     marks: dict[int, dict[int, tuple[int, bool, bool, bool]]] = {}
 
     def _mark(spot: Mark | None, index: int) -> None:
@@ -350,8 +350,8 @@ def render(
     rule = "-" * width
     foot = "hjkl move | t break | space step | c continue | r run | b back | q quit"
 
-    # The panes below the program are fixed, so whatever is left over is what
-    # the program gets; the two rules and the blank line are counted here.
+    # The panes below the program.
+    # the program gets; the two.
     tail = ["memory", "stack", "output"] + ([" fault"] if frame.fault else [])
     if frame.views:
         tail.append("views")
@@ -374,8 +374,8 @@ def render(
         )
     out.append(rule)
 
-    # ``_cells`` fits its own budget; the cut is the guard for a width so
-    # narrow that even one value overruns it.
+    # ``_cells`` fits its own.
+    # narrow that even one value.
     label = width - 9
     out.append(f"memory   {_cells(frame.memory, label)}"[:width])
     out.append(f"stack    {_cells(frame.stack, label)}"[:width])
@@ -385,8 +385,8 @@ def render(
         tag = f"cell {index}"
         out.append(f"watch    {tag}: {_recent(values, label - 2 - len(tag))}"[:width])
     if frame.views:
-        # One row rather than one per name: the language's own vocabulary is
-        # worth showing, but not at the cost of the program pane's height.
+        # One row rather than one per.
+        # worth showing, but not at the.
         named = "  ".join(f"{name}={text}" for name, text in frame.views)
         out.append(f"views    {named}"[:width])
     if frame.fault:
@@ -420,10 +420,10 @@ def replay(language: str, program: str, stdin: str, step: int) -> Frame:
             fault = f"{type(exc).__name__}: {exc}"
             break
         taken += 1
-    # The count is what was *executed*, not what was asked for, so a request
-    # past the halt reports where the program really stopped.  The run key
-    # asks for its whole bound, and stepping back from there has to land on
-    # the last real step rather than one short of a million.
+    # The count is what was.
+    # past the halt reports where.
+    # asks for its whole bound, and.
+    # the last real step rather.
     return Frame.of(language, program, dbg, taken, fault)
 
 
@@ -456,7 +456,7 @@ class History:
     VMs are deterministic.
     """
 
-    #: What the retained frames may occupy before the oldest are dropped.
+    # : What the retained frames.
     budget = 64 << 20
 
     def __init__(self, language: str, program: str, stdin: str = "") -> None:
@@ -488,8 +488,8 @@ class History:
         if self._base <= step < self._base + len(self._frames):
             return self._frames[step - self._base]
         if step < self._base:
-            # Rewound past what is still held; the run is deterministic, so
-            # replaying reaches the same state the dropped frame held.
+            # Rewound past what is still.
+            # replaying reaches the same.
             return replay(self._language, self._program, self._stdin, step)
         while self._top < step and not self._dbg.halted and self._fault is None:
             self._advance()
@@ -518,7 +518,7 @@ class History:
             current += 1
             frame = self.at(current)
             if frame.step < current:
-                return frame  # halted or faulted before getting there
+                return frame  # halted or faulted before.
             if stop is not None and stop(frame):
                 return frame
         return self.at(limit)
@@ -552,9 +552,9 @@ class History:
         try:
             self._dbg.step()
         except Exception as exc:
-            # The fault belongs to the step that did not complete, so it is
-            # attached to the frame already standing at this count, matching
-            # what ``replay`` reports for the same request.
+            # The fault belongs to the step.
+            # attached to the frame already.
+            # what ``replay`` reports for.
             self._fault = f"{type(exc).__name__}: {exc}"
             self._bytes -= _frame_bytes(self._frames.pop())
             self._remember(
@@ -574,23 +574,23 @@ class History:
         self._bytes += _frame_bytes(frame)
         if self._bytes <= self.budget or len(self._frames) < 4:
             return
-        # Trimming a quarter at a time rather than one frame at a time keeps
-        # the cost of the shift amortised; a list is used over a deque
-        # because the lookup above has to be O(1) at any offset.
+        # Trimming a quarter at a time.
+        # the cost of the shift.
+        # because the lookup above has.
         drop = len(self._frames) // 4
         self._bytes -= sum(_frame_bytes(f) for f in self._frames[:drop])
         del self._frames[:drop]
         self._base += drop
 
 
-#: Wipe the screen and park the cursor, which is one repaint's worth of setup.
+# : Wipe the screen and park.
 CLEAR = "\x1b[H\x1b[2J"
 
-#: Which way each movement key sends the selector, as ``(down, across)``.
+# : Which way each movement key.
 _MOVES = {"h": (0, -1), "j": (1, 0), "k": (-1, 0), "l": (0, 1)}
 
-#: How far back a watch asks, before the row's own width cuts it down.
-#: Generous, because asking is a slice of frames already held.
+# : How far back a watch asks,.
+# : Generous, because asking is.
 _WATCH_SPAN = 256
 
 
@@ -706,9 +706,9 @@ def drive(
 
     while True:
         height, width = get_size()
-        # Asked for at each repaint rather than accumulated, because the
-        # trace is a view over the frames already kept: stepping back makes
-        # it shorter, the way the run itself goes back.
+        # Asked for at each repaint.
+        # trace is a view over the.
+        # it shorter, the way the run.
         seen = (
             None if watch is None else (watch, history.trace(watch, step, _WATCH_SPAN))
         )
@@ -723,8 +723,8 @@ def drive(
             picked = _move(*_MOVES[key]) or picked
             continue
         if key == "t":
-            # Nowhere to put one is a no-op rather than a mark on a nothing:
-            # a language whose position is not on the source has no cell a
+            # Nowhere to put one is a no-op.
+            # a language whose position is.
             # breakpoint could name.
             if picked is not None:
                 marked.symmetric_difference_update({picked})
@@ -734,9 +734,9 @@ def drive(
         elif key == "r":
             step = max_steps
         elif key == "c":
-            # Continue means "to the next breakpoint, or the halt", so with
-            # nothing set it is the run key -- which is why it is offered
-            # whether or not the caller asked for a breakpoint.
+            # Continue means "to the next.
+            # nothing set it is the run key.
+            # whether or not the caller.
             step = history.find(step, _with_marks(stop, marked), max_steps).step
         elif key in (" ", "\r", "\n"):
             step += 1
@@ -779,9 +779,9 @@ def run_tui(
         sys.stdout.write(text)
         sys.stdout.flush()
 
-    # Built before the terminal is touched, so an unknown language is a clean
-    # raise for the caller to report rather than a failure part-way into raw
-    # mode with the screen already taken over.
+    # Built before the terminal is.
+    # raise for the caller to.
+    # mode with the screen already.
     history = History(language, program, stdin)
 
     fd = sys.stdin.fileno()

@@ -88,12 +88,12 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
 
-# The two substitution cycles, in the order the cross-check scans them.
+# The two substitution cycles,.
 _CYCLES = ("pevkjzwr", "yuctsobqihald")
 
-# "Past the end" (or before the start) of a program reads as NUL: the
-# cross-check's program string is NUL-terminated, so an out-of-range read
-# yields a command that matches no case.
+# "Past the end" (or before the.
+# cross-check's program string.
+# yields a command that matches.
 _NUL = "\0"
 
 
@@ -122,15 +122,15 @@ def _trunc2(n: int) -> int:
     return n // 2 if n >= 0 else -((-n) // 2)
 
 
-#: One instant of a run: ``(tape, loop, ptr, ind, rep)`` -- the cells, the
-#: stack of loop-entry positions, the cell pointer, the cursor, and the
+# : One instant of a run:.
+# : stack of loop-entry.
 #: repeat counter.
-#:
-#: ``rep`` is what makes a step more than one command.  ``c`` multiplies it
-#: by seven and ``t`` by three, and the *whole* command then runs that many
-#: times, so a single step can print or read repeatedly -- which is why the
-#: effects are collected in a list rather than left to the shell one at a
-#: time, the shape Eval already needed.
+# :.
+# : ``rep`` is what makes a.
+# : by seven and ``t`` by.
+# : times, so a single step can.
+# : effects are collected in a.
+# : time, the shape Eval.
 type _State = tuple[tuple[int, ...], tuple[int, ...], int, int, int]
 
 
@@ -231,13 +231,13 @@ def _grow(tape: tuple[int, ...], ptr: int) -> tuple[int, ...]:
     return (*tape, *([0] * (ptr + 1 - len(tape))))
 
 
-#: Commands whose second application changes nothing, so a repeat of any
-#: length is one application.  Each writes a value taken from somewhere it
-#: does not itself write (a constant, or a neighbouring cell), or moves the
+# : Commands whose second.
+# : length is one application.
+# : does not itself write (a.
 #: pointer to a fixed place.
-#:
-#: ``h`` is absent because it is not idempotent -- it halves *the cell it
-#: writes* -- but it is still collapsible, by the shift in :func:`_advance`.
+# :.
+# : ``h`` is absent because it.
+# : writes* -- but it is still.
 _IDEMPOTENT = frozenset("zwqd")
 
 
@@ -286,23 +286,23 @@ def _advance(
     ind += 1
 
     while rep > 0:
-        # ``c`` and ``t`` make ``rep`` exponential -- 7 per ``c`` in a run, 3
-        # per ``t`` -- so a step can ask for 3**15 iterations of one command.
-        # The commands below are *affine* in the repeat count: running them
-        # ``rep`` times has a closed form that does not depend on anything
-        # the loop mutates, so the remaining iterations are computed at once.
-        # An optimization, not a semantic change; the slow path below
-        # produces the same state one iteration at a time.
-        #
-        # This sits *inside* the loop because ``c``/``t``/``y``/``v`` rebind
-        # ``c`` partway through a step: a ``t`` run multiplies the repeat
-        # count and only then names the command it repeats, so a collapse
-        # that ran once before the loop would miss precisely the case that
+        # ``c`` and ``t`` make ``rep``.
+        # per ``t`` -- so a step can.
+        # The commands below are.
+        # ``rep`` times has a closed.
+        # the loop mutates, so the.
+        # An optimization, not a.
+        # produces the same state one.
+        # .
+        # This sits *inside* the loop.
+        # ``c`` partway through a step:.
+        # count and only then names the.
+        # that ran once before the loop.
         # made ``rep`` large.
-        #
-        # The rest need their iterations -- a print or read produces ``rep``
-        # separate effects, ``a``/``b`` move the cursor mid-repeat, and the
-        # rebinding commands re-fetch as they go.
+        # .
+        # The rest need their.
+        # separate effects, ``a``/``b``.
+        # rebinding commands re-fetch.
         if rep > 1:
             if c == "p":
                 tape, rep = _set(tape, ptr, tape[ptr] + 2 * rep), 0
@@ -318,43 +318,43 @@ def _advance(
                 ptr, rep = max(0, ptr - rep), 0
                 continue
             if c == "h":
-                # Halving ``rep`` times is one shift, but ``_trunc2``
-                # truncates toward zero rather than flooring, so a bare
-                # ``//`` is wrong for every negative not dividing exactly.
+                # Halving ``rep`` times is one.
+                # truncates toward zero rather.
+                # ``//`` is wrong for every.
                 cell = tape[ptr]
                 shifted = cell // (1 << rep) if cell >= 0 else -((-cell) // (1 << rep))
                 tape, rep = _set(tape, ptr, shifted), 0
                 continue
             if c == "k" and -1 <= tape[ptr] <= 1:
-                # Squaring has a closed form -- ``x ** (2 ** rep)`` -- but
-                # for ``|x| > 1`` the *result* has 2**rep times the bits, so
-                # no rewrite makes it affordable (measured at 1.0x); the loop
-                # is not the cost there.  At the fixed points it collapses.
+                # Squaring has a closed form --.
+                # for ``|x| > 1`` the *result*.
+                # no rewrite makes it.
+                # is not the cost there.
                 tape, rep = _set(tape, ptr, tape[ptr] * tape[ptr]), 0
                 continue
             if c in "ou":
-                # A repeated print emits the same cell every time -- nothing
-                # in the loop writes the tape -- so one effect carries the
-                # count rather than appending ``rep`` identical ones.
+                # A repeated print emits the.
+                # in the loop writes the tape.
+                # count rather than appending.
                 value = tape[ptr] if c == "o" else tape[ptr] & 0xFF
                 effects.append(_Print(value, as_char=c == "u", count=rep))
                 rep = 0
                 continue
             if c in _IDEMPOTENT:
-                # Repeating these is doing them once: each writes a value
-                # fixed by the state this iteration began in.
+                # Repeating these is doing them.
+                # fixed by the state this.
                 rep = 1
             elif c in "ab":
-                # The wiki defines these as jumps -- "go to the matching b
-                # if the value is zero", "go back to the matching a if it is
-                # not" -- so each is a *decision*, and nothing between two
-                # iterations changes the cell or the cursor it reads.  A
-                # repeat therefore decides the same way every time.
-                #
-                # The loop stack is this interpreter's way of finding the
-                # matching bracket, not part of the language; without this,
-                # a repeated ``a`` pushed ``rep`` identical entries and left
-                # a loop needing ``rep`` closing ``b``s to unwind.
+                # The wiki defines these as.
+                # if the value is zero", "go.
+                # not" -- so each is a.
+                # iterations changes the cell.
+                # repeat therefore decides the.
+                # .
+                # The loop stack is this.
+                # matching bracket, not part of.
+                # a repeated ``a`` pushed.
+                # a loop needing ``rep``.
                 rep = 1
 
         rep -= 1
@@ -378,11 +378,11 @@ def _advance(
                     (tape, loop, ptr, ind, rep), effects, HaltError()
                 ) from None
         elif c == "j":
-            # ``j`` is answered with a character code, so this is already an int.
+            # ``j`` is answered with a.
             tape = _set(tape, ptr, int(str(reader.take(line=False))))
-            # The cross-check's discard-to-end-of-line loop leaves the main
-            # command variable holding '\n', so a ``c``/``t``-repeated ``j``
-            # only reads once and then no-ops.
+            # The cross-check's.
+            # command variable holding.
+            # only reads once and then.
             c = "\n"
         elif c == "o":
             effects.append(_Print(tape[ptr], as_char=False))
@@ -419,15 +419,15 @@ def _advance(
                 c = prog[ind] if ind < n else _NUL
                 ind += 1
                 rep *= 7
-            # A ``t`` run directly after the ``c`` run repeats *the ``c``*,
-            # which has already applied once, so it adds ``3 ** len`` more
-            # applications of it: ``ct`` is four ``c``s, ``7 ** 4``.  Read
-            # here rather than letting the ``t`` execute on its own, which
-            # would have to hand a count backward to a command already
-            # dispatched -- the shape that made ``pt`` and ``ct`` unable to
+            # A ``t`` run directly after.
+            # which has already applied.
+            # applications of it: ``ct`` is.
+            # here rather than letting the.
+            # would have to hand a count.
+            # dispatched -- the shape that.
             # be right at the same time.
-            # The run loop above already pulled the character after the
-            # ``c``s into ``c``, so that one counts too if it is a ``t``.
+            # The run loop above already.
+            # ``c``s into ``c``, so that.
             adds = 0
             if c == "t":
                 adds = 1
@@ -439,21 +439,21 @@ def _advance(
                 c = prog[ind] if ind < n else _NUL
                 ind += 1
         elif c == "y":
-            # ``y`` binds forward to the next command, as ``c`` and ``v``
-            # do, and then each repeat decides that command separately: one
-            # flip per repeat, heads dropping that one application.  The
-            # flips are drawn here rather than left to the loop because the
-            # affine collapses above run the whole remaining count in a
-            # closed form, which cannot consult a coin per iteration; the
-            # surviving count is what they are handed.
-            #
-            # ``rep`` flips leave ``rep - heads`` applications, so the
-            # number that run is binomial in the repeat count -- ``cyp``
-            # spans 0 to 14 in steps of two rather than the ``{0, 2}`` a
-            # single decision for the whole run would give.  Both readings
-            # agree at ``rep`` 1, which is the only case the wiki states.
-            # ``rep`` was decremented at the top of the loop, so the
-            # applications still owed are this one plus ``rep`` more.
+            # ``y`` binds forward to the.
+            # do, and then each repeat.
+            # flip per repeat, heads.
+            # flips are drawn here rather.
+            # affine collapses above run.
+            # closed form, which cannot.
+            # surviving count is what they.
+            # .
+            # ``rep`` flips leave ``rep -.
+            # number that run is binomial.
+            # spans 0 to 14 in steps of two.
+            # single decision for the whole.
+            # agree at ``rep`` 1, which is.
+            # ``rep`` was decremented at.
+            # applications still owed are.
             owed = rep + 1
             rep = owed - sum(coin.take() for _ in range(owed))
             if ind < n:
@@ -469,10 +469,10 @@ def _advance(
         elif c == "d":
             ptr = 0
         elif c == "t":
-            # The whole run is one count of ``3 ** len``, so the cursor has
-            # to clear all of it: stopping just past the first ``t`` made
-            # each later one a step of its own that walked back over its
-            # predecessors, so ``ptt`` repeated its ``p`` three *then* nine
+            # The whole run is one count of.
+            # to clear all of it: stopping.
+            # each later one a step of its.
+            # predecessors, so ``ptt``.
             # times instead of nine.
             while ind < n and prog[ind] == "t":
                 ind += 1
@@ -521,7 +521,7 @@ class _Machine:
         """Whether the cursor has reached the end of the code."""
         return self.ind >= self.n
 
-    # The VM's language-shaped view: Translated tape + cursor; ip the cursor, memory
+    # The VM's language-shaped.
     # the tape.
 
     @property
@@ -588,10 +588,10 @@ class _Machine:
             except _NeedRead:
                 return None
             except _Halted as halt:
-                # A malformed loop is a terminal (error) outcome, just as it
-                # is to ``run``.  The branch graph has no error flag, so move
-                # its cursor past the program; ``branching_halted`` then
-                # recognizes it without pretending the failed command ran.
+                # A malformed loop is a.
+                # is to ``run``.
+                # its cursor past the program;.
+                # recognizes it without.
                 tape, loop, ptr, _ind, rep = halt.state
                 successors.append((tape, loop, ptr, self.n, rep))
             else:
@@ -635,9 +635,9 @@ class _Machine:
                 try:
                     value = self.io.input_str() if want.line else self.io.input_char()
                 except EOFError:
-                    # The port raises in the shell, before the core has run
-                    # a thing -- but the original had already advanced the
-                    # cursor and spent a repeat, so write that much back.
+                    # The port raises in the shell,.
+                    # a thing -- but the original.
+                    # cursor and spent a repeat, so.
                     tape, loop, ptr, ind, rep = start
                     self._restore((tape, loop, ptr, ind + 1, max(rep - 1, 0)))
                     raise
@@ -647,25 +647,25 @@ class _Machine:
                 coins = (*coins, draw(self._rng, 2))
                 continue
             except _Halted as halt:
-                # A fault partway through a step still moved the cursor,
-                # spent repeats, and may already have printed -- the
-                # original wrote all of that before it raised.
-                #
-                # No current command reaches the body: `effects` is appended
-                # to only by `o` and `u`, `_Halted` is raised only by `i`
-                # and `b`, and one step runs one command -- a `c`/`t` run
-                # repeats that same command rather than mixing two -- so a
-                # step that prints cannot fault and a step that faults
-                # cannot have printed.  Confirmed by exhaustive search over
-                # every program to length 5 containing a repeat and a
-                # faulting command, instrumented at the raise itself: the
-                # effects list was empty at all of them, with the probe
-                # firing on each fault as its own control.
-                #
-                # It stays because the cross-check preserves partial output
-                # across a fault, and a command that both prints and faults
-                # would need it -- deleting it would leave `_Halted`'s
-                # `effects` written at both raise sites and never read.
+                # A fault partway through a.
+                # spent repeats, and may.
+                # original wrote all of that.
+                # .
+                # No current command reaches.
+                # to only by `o` and `u`,.
+                # and `b`, and one step runs.
+                # repeats that same command.
+                # step that prints cannot fault.
+                # cannot have printed.
+                # every program to length 5.
+                # faulting command,.
+                # effects list was empty at all.
+                # firing on each fault as its.
+                # .
+                # It stays because the.
+                # across a fault, and a command.
+                # would need it -- deleting it.
+                # `effects` written at both.
                 for effect in halt.effects:  # pragma: no cover - see above
                     self._write(effect)
                 self._restore(halt.state)

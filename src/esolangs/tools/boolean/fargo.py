@@ -104,8 +104,8 @@ def fargo(truth_table: str) -> str:
     constant = coeffs[0]
     if not terms:
         return f"% 0 {constant}\n$\n"
-    # ``^`` is binary and prefix, so combining k terms needs k - 1 of them
-    # up front; a nonzero constant is one more thing to XOR in.
+    # ``^`` is binary and prefix,.
+    # up front; a nonzero constant.
     if constant:
         terms.insert(0, "1")
     expression = "^ " * (len(terms) - 1) + " ".join(terms)

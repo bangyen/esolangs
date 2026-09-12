@@ -44,11 +44,11 @@ class TestInput:
         assert run_program("v^.", "7\n") == "7"
 
     def test_add_input(self) -> None:
-        # the spec's adder: v+ reads a digit and adds it
+        # the spec's adder: v+ reads a.
         assert run_program("v+v+^.", "4\n5\n") == "9"
 
     def test_subtract_input(self) -> None:
-        # 'v-' reads a digit and subtracts it, the mirror of 'v+'
+        # 'v-' reads a digit and.
         assert run_program("9+v-^.", "4\n") == "5"
 
     def test_input_eof(self) -> None:
@@ -90,7 +90,7 @@ class TestMultiply:
 
 class TestMemory:
     def test_hold_cell(self) -> None:
-        # the spec's second adder: read a, read b, hold b, add to a
+        # the spec's second adder: read.
         assert run_program("v+>v+#<&^.", "3\n4\n") == "7"
 
     def test_move_and_extend(self) -> None:
@@ -100,7 +100,7 @@ class TestMemory:
         assert run_program("5+%^.") == "0"
 
     def test_pointer_left_of_zero_is_clamped(self) -> None:
-        # '<' at cell 0 moves nothing, as brainfuck's own '<' does
+        # '<' at cell 0 moves nothing,.
         assert run_program("<^.") == "0"
 
     def test_a_clamped_left_move_stays_on_the_same_cell(self) -> None:
@@ -113,7 +113,7 @@ class TestMemory:
         """
         assert run_program("5+<^.") == "5"
         assert run_program("5+<<<^.") == "5"
-        # and a clamped move is not a lost one: '>' still finds a fresh cell
+        # and a clamped move is not a.
         assert run_program("5+<>^.") == "0"
 
     def test_the_hold_cell_starts_at_zero(self) -> None:
@@ -127,23 +127,23 @@ class TestMemory:
 
 class TestControlFlow:
     def test_loop_adder(self) -> None:
-        # v+>v+1:1-<1+>1?<^. : read a, b; while b: b--, a++; print a
+        # v+>v+1:1-<1+>1?<^.
         assert run_program("v+>v+1:1-<1+>1?<^", "3\n4\n") == "7"
 
     def test_multiplier(self) -> None:
-        # the spec's multiplier: a * b
+        # the spec's multiplier: a * b.
         assert run_program("v+1->v+#<1:2!>&<1-1?2:>^", "3\n4\n") == "12"
 
     def test_jump_on_nonzero(self) -> None:
-        # 1+ sets cell to 1; 1? jumps to label 1 when nonzero
+        # 1+ sets cell to 1; 1.
         assert run_program("1+1?2:^1:^.") == "1"
 
     def test_jump_on_zero(self) -> None:
-        # cell is 0; 1! jumps to label 1 when zero
+        # cell is 0; 1.
         assert run_program("1!1:^.") == "0"
 
     def test_subroutine(self) -> None:
-        # v+>v+1@^.1$#<&; : read a, b; subroutine 1 adds hold to a; print
+        # v+>v+1@^.1$#<&; : read a, b;.
         assert run_program("v+>v+1@^.1$#<&;", "3\n4\n") == "7"
 
     def test_a_return_ends_only_itself(self) -> None:
@@ -153,7 +153,7 @@ class TestControlFlow:
         so a ``;`` that swallowed what follows it would look identical.
         Two subroutines in a row put a definition in that position.
         """
-        # call 1 then 2; subroutine 1 adds 5, subroutine 2 adds 3
+        # call 1 then 2; subroutine 1.
         assert run_program("1@2@^.1$5+;2$3+;") == "8"
 
 
@@ -231,7 +231,7 @@ class TestComputedDispatch:
 
 class TestParsing:
     def test_bare_number_is_ignored(self) -> None:
-        # a number with no following operator is a no-op
+        # a number with no following.
         assert run_program("123^.") == "0"
 
     def test_unknown_characters_are_ignored(self) -> None:
@@ -330,7 +330,7 @@ class TestMachine:
         assert not machine.halted
         machine.step()
         assert machine.halted
-        machine.step()  # must not raise
+        machine.step()  # must not raise.
 
     def test_the_vm_view_tracks_the_run(self) -> None:
         """``ip``/``memory``/``stack`` are what the debugger reads, so they run.
@@ -352,17 +352,17 @@ class TestMachine:
         assert machine.memory == [0]
         while not machine.halted:
             machine.step()
-        assert machine.ip == 4  # the cursor advanced with the run
-        assert machine.memory == [11]  # 6 + 5, in the cell the program built
+        assert machine.ip == 4  # the cursor advanced with the.
+        assert machine.memory == [11]  # 6 + 5, in the cell the.
 
-        # `stack` is the call stack, and only a call puts anything on it.
+        # `stack` is the call stack,.
         called = _Machine("1@2@^.1$5+;2$3+;", ScriptedIO())
         depths = []
         while not called.halted:
             called.step()
             depths.append(len(called.stack))
-        assert max(depths) == 1  # the two calls nest one deep, not zero
-        assert called.stack == []  # and both returned
+        assert max(depths) == 1  # the two calls nest one deep,.
+        assert called.stack == []  # and both returned.
 
 
 def _machine(code: object) -> object:

@@ -101,6 +101,7 @@ class TestSyllables:
 
     def test_a_stray_combining_ring_is_malformed(self) -> None:
         """The ring is only ever part of ``ɰ̊``."""
+
         with pytest.raises(ValueError, match="symbol"):
             run_program("s̊i")
 
@@ -118,7 +119,7 @@ class TestFricatives:
         assert run_program("ci" * 65 + "fu") == "A"
 
     def test_character_output_is_modulo_256(self) -> None:
-        assert run_program("ci" * 321 + "fu") == "A"  # 321 % 256 == 65
+        assert run_program("ci" * 321 + "fu") == "A"  # 321 % 256 == 65.
 
     def test_input_integer(self) -> None:
         assert run_program("su" + "θi", "7\n") == "7"
@@ -202,10 +203,10 @@ class TestDeque:
     @pytest.mark.parametrize(
         ("push", "pop", "expected"),
         [
-            ("m", "ŋ", "3"),  # front, front: the later push is in front
-            ("m", "ɲ", "1"),  # front, back: the earlier push is at the back
-            ("n", "ŋ", "1"),  # back, back-loaded: the earlier push is in front
-            ("n", "ɲ", "3"),  # back, back: the later push is at the back
+            ("m", "ŋ", "3"),  # front, front: the later push.
+            ("m", "ɲ", "1"),  # front, back: the earlier push.
+            ("n", "ŋ", "1"),  # back, back-loaded: the.
+            ("n", "ɲ", "3"),  # back, back: the later push is.
         ],
         ids=["front-front", "front-back", "back-front", "back-back"],
     )
@@ -235,8 +236,8 @@ class TestDeque:
         what the first one left.
         """
         three = "cin" + "cici" + "n" + "cicici" + "n"
-        assert run_program(three + "coɲ" + "coɲ" + "θi") == "3"  # 6 then 3
-        assert run_program(three + "coŋ" + "coŋ" + "θi") == "3"  # 1 then 3
+        assert run_program(three + "coɲ" + "coɲ" + "θi") == "3"  # 6 then 3.
+        assert run_program(three + "coŋ" + "coŋ" + "θi") == "3"  # 1 then 3.
 
     @pytest.mark.parametrize("program", ["coŋ", "coɲ"], ids=["front", "back"])
     def test_popping_an_empty_deque_halts(self, program: str) -> None:
@@ -298,21 +299,21 @@ class TestFunction:
 
     def test_a_popped_literal_comes_from_the_named_end(self) -> None:
         """``p`` takes the front and ``k`` the back, so they differ."""
-        stage = "cim" + "cicicin"  # front 1, back 4
-        # a - 1 == 4 taking the front, a - 4 == 1 taking the back
+        stage = "cim" + "cicicin"  # front 1, back 4.
+        # a - 1 == 4 taking the front,.
         assert run_program(stage + "do" + "to" + "po" + "su" + "θi", "5\n") == "4"
         assert run_program(stage + "do" + "to" + "ko" + "su" + "θi", "5\n") == "1"
 
     @pytest.mark.parametrize(
         "build",
         [
-            "",  # empty
-            "ʔo",  # a lone open paren, with nothing to open
-            "ʔo" + "do",  # "(a" -- an operand, but the paren never closes
-            "ʡo",  # a lone close paren
-            "do" + "bo",  # a trailing operator
-            "do" + "do",  # two adjacent operands
-            "bo",  # a leading operator
+            "",  # empty.
+            "ʔo",  # a lone open paren, with.
+            "ʔo" + "do",  # "(a" -- an operand, but the.
+            "ʡo",  # a lone close paren.
+            "do" + "bo",  # a trailing operator.
+            "do" + "do",  # two adjacent operands.
+            "bo",  # a leading operator.
         ],
         ids=[
             "empty",
@@ -413,9 +414,9 @@ class TestControlFlow:
         ``s`` 0, ``u`` 1, ``ɹ`` 2, ``i`` 3, ``θ`` 4, ``i`` 5, ``θ`` 6.
         """
         program = "su" + "ɹi" + "θi" + "θi"
-        # 4 is the first θ: prints 4, the i makes it 5, the second θ prints 5
+        # 4 is the first θ: prints 4,.
         assert run_program(program, "4\n") == "45"
-        # 6 is the second θ, reached directly
+        # 6 is the second θ, reached.
         assert run_program(program, "6\n") == "6"
 
     def test_goto_a_syllable_counts_syllables_not_characters(self) -> None:
@@ -467,6 +468,7 @@ class TestControlFlow:
 class TestSpellings:
     def test_the_ascii_g_is_accepted_like_the_script_g(self) -> None:
         """The wiki's table says ``ɡ`` and its Hello, world! writes ``g``."""
+
         ascii_g = "do" + "go" + "do" + "su" + "θi"
         script_g = ascii_g.replace("g", "ɡ")
         assert run_program(ascii_g, "3\n") == run_program(script_g, "3\n") == "9"

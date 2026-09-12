@@ -74,7 +74,7 @@ class _CountingRNG:
 
 class TestCOD:
     def test_increment_and_output(self) -> None:
-        # ')' increments, '---' on the right edge prints and removes
+        # ')' increments, '---' on the.
         assert run_and_capture("~~~~~\n~>))---") == "2"
 
     def test_decrement_and_output(self) -> None:
@@ -92,15 +92,15 @@ class TestCOD:
         assert run_and_capture("~~~~~\n~>(---") == "-1"
 
     def test_less_than_removes_zero_valued_cod(self) -> None:
-        # value 0 hits '<' and is removed; no cod remains, no output
+        # value 0 hits '<' and is.
         assert run_and_capture("~~~~~~\n~><----") == ""
 
     def test_less_than_passes_nonzero_cod(self) -> None:
         assert run_and_capture("~~~~~~~\n~>)<---") == "1"
 
     def test_bare_dash_removes_the_cod(self) -> None:
-        # a lone '-' (not part of a left/right-edge run of exactly 3)
-        # removes the cod outright, per the wiki's "Remove the cod"
+        # a lone '-' (not part of a.
+        # removes the cod outright, per.
         assert run_and_capture("~~~~~~\n~>-)---") == ""
 
     def test_a_dot_run_that_is_not_a_read(self) -> None:
@@ -140,7 +140,7 @@ class TestCOD:
             (4, 0),
             (5, 0),
         }
-        # and the run is live: the cod turns up the column, reads, and prints
+        # and the run is live: the cod.
         code = "\n".join(["~~~~~~", "~~.~~~", "~~.~~~", "~>.---"])
         assert run_and_capture(code, stdin="7") == "7"
 
@@ -155,21 +155,21 @@ class TestCOD:
         from esolangs.interpreters.grid_based.cod import _edge_dash_cells
 
         assert _edge_dash_cells(["---~~~"]) == {(0, 0), (0, 1), (0, 2)}
-        # the cod's only exit is west, so it passes ')' and enters the run
+        # the cod's only exit is west,.
         code = "\n".join(["~~~~~~", "---)>~", "~~~~~~"])
         assert run_and_capture(code) == "1"
 
     def test_triple_dash_not_on_edge_is_three_removals(self) -> None:
-        # '---' with water on both sides is three plain '-' removals, not
-        # print+remove; the cod dies on the first one, so nothing prints
+        # '---' with water on both.
+        # print+remove; the cod dies on.
         assert run_and_capture("~~~~~~~\n~> ---  \n~~~~~~~") == ""
 
     def test_duplicate_at_two_way_fork_splits_forward_and_side(self) -> None:
-        # a '+' at a T with the entry excluded (2 remaining branches) sends
-        # one copy each way; both carry the pre-fork value (1, so the south
-        # copy survives its '<' gate), and each reaches its own edge '---'
-        # -- the east copy prints immediately (value 1), the south copy
-        # passes one more ')' before its own edge (value 2)
+        # a '+' at a T with the entry.
+        # one copy each way; both carry.
+        # copy survives its '<' gate),.
+        # -- the east copy prints.
+        # passes one more ')' before.
         code = "\n".join(
             [
                 "~~~~~~~",
@@ -180,33 +180,33 @@ class TestCOD:
             ]
         )
         out = run_and_capture(code)
-        # Outputs are not separated, so the two prints run together; the
-        # order is whichever cod reaches its edge first, which this test
-        # does not pin, so compare the multiset of characters.
+        # Outputs are not separated, so.
+        # order is whichever cod.
+        # does not pin, so compare the.
         assert sorted(out) == ["1", "2"]
 
     def test_reflect_upward_motion_when_nonzero(self) -> None:
-        # '_' reflects an upward-moving nonzero cod back down; the value is
-        # 1 when it hits '_' (from the ')' passed on the way up), so it
-        # turns south and continues through the same ')' again on the way
-        # back, reaching value 2
+        # '_' reflects an upward-moving.
+        # 1 when it hits '_' (from the.
+        # turns south and continues.
+        # back, reaching value 2.
         code = "\n".join(["~~~~~", "~~~~~", "~_~~~", "~)~~~", "~>~~~"])
         io = ScriptedIO("")
         m = _Machine(code, io)
-        m.step()  # (4,1,N,0) -> (3,1,N,1): passes ')'
-        m.step()  # (3,1,N,1) -> (2,1,S,1): hits '_' with nonzero, reflects
+        m.step()  # (4,1,N,0) -> (3,1,N,1):.
+        m.step()  # (3,1,N,1) -> (2,1,S,1): hits.
         cod = m.cods[0]
         assert (cod.r, cod.c, cod.d, cod.value) == (2, 1, "S", 1)
 
     def test_reflect_is_noop_when_zero(self) -> None:
-        # '_' hit going up with value 0 does nothing: the cod continues
-        # past it (since forward is open, per the standard motion rule),
-        # rather than reflecting
+        # '_' hit going up with value 0.
+        # past it (since forward is.
+        # rather than reflecting.
         code = "\n".join(["~~~~~", "~~~~~", "~_~~~", "~ ~~~", "~>~~~"])
         io = ScriptedIO("")
         m = _Machine(code, io)
-        m.step()  # (4,1,N,0) -> (3,1,N,0)
-        m.step()  # (3,1,N,0) -> (2,1,N,0): '_' is a no-op at value 0
+        m.step()  # (4,1,N,0) -> (3,1,N,0).
+        m.step()  # (3,1,N,0) -> (2,1,N,0): '_'.
         cod = m.cods[0]
         assert (cod.r, cod.c, cod.d, cod.value) == (2, 1, "N", 0)
 
@@ -251,8 +251,8 @@ class TestCOD:
         the only thing that turns it.
         """
         assert run_and_capture(">))---") == "2"
-        # ')' in the last column: the probe past it must read as wall, not
-        # walk off the end of the row
+        # ')' in the last column: the.
+        # walk off the end of the row.
         assert run_and_capture(">(<)") == ""
 
     def test_column_zero_is_a_cell_a_cod_can_be_sent_to(self) -> None:
@@ -267,7 +267,7 @@ class TestCOD:
         code = "\n".join(["~~~~", "->~~", "~~~~"])
         machine = _Machine(code, IO())
         assert [(cod.r, cod.c, cod.d) for cod in machine.cods] == [(1, 1, "W")]
-        machine.step()  # west onto the '-', which removes the cod
+        machine.step()  # west onto the '-', which.
         assert machine.halted
 
     def test_a_short_row_is_padded_with_waves(self) -> None:
@@ -321,8 +321,8 @@ class TestCOD:
             assert str(caught.value) == message
 
     def test_deterministic_rng_picks_first_option(self) -> None:
-        # at a genuine (non '+') random junction, the injected rng's
-        # first-choice policy makes stepping reproducible
+        # at a genuine (non '+') random.
+        # first-choice policy makes.
         code = "~~~~~\n~   ~\n~>---\n~   ~\n~~~~~"
         machine = _Machine(code, IO(), rng=_FirstChoiceRNG())
         for _ in range(10):
@@ -354,26 +354,26 @@ class TestCOD:
         """
         rng = _CountingRNG()
         step_and_capture("~~~~~\n~ > ~\n~~~~~", steps=10, rng=rng)
-        assert rng.calls == [2]  # one draw, between two open directions
+        assert rng.calls == [2]  # one draw, between two open.
 
     def test_step_on_halted_machine_is_noop(self) -> None:
         machine = _Machine("~~~~~\n~><--", IO())
-        machine.step()  # cod value 0 hits '<' and dies
+        machine.step()  # cod value 0 hits '<' and dies.
         assert machine.halted
-        machine.step()  # must not raise
+        machine.step()  # must not raise.
         assert machine.halted
 
     def test_snapshot_is_hashable_and_stable(self) -> None:
         machine = _Machine("~~~~~\n~>)) --", IO())
         snap1 = machine.snapshot()
-        hash(snap1)  # must not raise
+        hash(snap1)  # must not raise.
         machine.step()
         snap2 = machine.snapshot()
         assert snap1 != snap2
 
     def test_trailing_blank_lines_are_stripped(self) -> None:
-        # a trailing "\n\n" leaves an empty final row, which must not
-        # affect grid width or the start scan
+        # a trailing "\n\n" leaves an.
+        # affect grid width or the.
         assert run_and_capture("~~~~~~\n~>)---\n\n") == "1"
 
     def test_trailing_blank_lines_do_not_move_the_bottom_edge(self) -> None:
@@ -389,10 +389,10 @@ class TestCOD:
         assert run_and_capture(code + "\n\n", stdin="7") == "7"
 
     def test_genuine_random_junction_without_rng_uses_secrets(self) -> None:
-        # a real >=2-way fork (not via '+'): forward blocked, both East and
-        # West open.  With no rng override, secrets.randbelow drives the
-        # choice; run it enough times to be confident both directions are
-        # reachable (each is chosen with probability 1/2 per run).
+        # a real >=2-way fork (not via.
+        # West open.
+        # choice; run it enough times.
+        # reachable (each is chosen.
         code = "\n".join(
             [
                 "~~~~~~~",
@@ -404,18 +404,18 @@ class TestCOD:
         seen_dirs = set()
         for _ in range(40):
             machine = _Machine(code, IO())
-            machine.step()  # (3,3,N) -> (2,3,N)
-            machine.step()  # (2,3,N) -> (1,3,N): enters the junction cell
-            machine.step()  # forward (N) blocked: resolves E or W
+            machine.step()  # (3,3,N) -> (2,3,N).
+            machine.step()  # (2,3,N) -> (1,3,N): enters.
+            machine.step()  # forward (N) blocked: resolves.
             seen_dirs.add(machine.cods[0].d)
             if seen_dirs == {"E", "W"}:
                 break
         assert seen_dirs == {"E", "W"}
 
     def test_duplicate_at_dead_end_reverses(self) -> None:
-        # '+' landing on a cell whose only open neighbour is the one the
-        # cod came from (0 forward branches) reverses, matching a plain
-        # dead end
+        # '+' landing on a cell whose.
+        # cod came from (0 forward.
+        # dead end.
         code = "\n".join(["~~~~~", "~+~~~", "~>~~~"])
         machine = _Machine(code, IO())
         machine.step()
@@ -432,8 +432,8 @@ class TestCOD:
         """
         code = "\n".join(["~~~~~", "~+~~~", "~)~~~", "~>~~~"])
         machine = _Machine(code, IO())
-        machine.step()  # (3,1,N,0) -> (2,1,N,1): passes ')'
-        machine.step()  # (2,1,N,1) -> (1,1,S,1): '+' has no forward branch
+        machine.step()  # (3,1,N,0) -> (2,1,N,1):.
+        machine.step()  # (2,1,N,1) -> (1,1,S,1): '+'.
         cod = machine.cods[0]
         assert (cod.r, cod.c, cod.d, cod.value) == (1, 1, "S", 1)
 

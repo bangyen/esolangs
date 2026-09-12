@@ -30,7 +30,7 @@ def init(code: Sequence[str]) -> Callable[[int, int, int], tuple[int, int]]:
     """Initialize movement function for WII2D grid navigation."""
     n = len(code)
     m = len(code[0])
-    # Headings as (drow, dcol): North, South, West, East.  Row grows
+    # Headings as (drow, dcol):.
     # downward, and both axes wrap.
     directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
@@ -56,7 +56,7 @@ def close(
 
         return dist
 
-    # Find all @ positions (excluding the first row)
+    # Find all @ positions.
     at_positions = []
     for row_idx, row in enumerate(code):
         for col_idx, char in enumerate(row):
@@ -75,14 +75,14 @@ def close(
     return find
 
 
-#: One instant of a run: ``(row, col, vel, acc, done)`` -- where the
-#: pointer is, which way it is heading, the accumulator, and whether a
-#: ``.`` stopped it.  A value :func:`_advance` maps forward rather than
+# : One instant of a run:.
+# : pointer is, which way it is.
+# : ``.`` stopped it.
 #: editing in place.
-#:
-#: The grid is not here, and neither are the two functions derived from it:
-#: WII2D never writes to its own source, so all three are fixed for the
-#: whole run and are passed to a step instead of carried by it.
+# :.
+# : The grid is not here, and.
+# : WII2D never writes to its.
+# : whole run and are passed to.
 type _State = tuple[int, int, int, int, bool]
 
 
@@ -140,12 +140,12 @@ def _advance(
     elif op == "?":
         vel = turn if turn is not None else vel
     elif op == "|":
-        # Headings run N, S, W, E, so +-1 swaps within a pair and the
-        # parity of the current heading says which way to step.
+        # Headings run N, S, W, E, so.
+        # parity of the current heading.
         vel = vel - 1 if vel % 2 else vel + 1
     elif op == "@":
         if target := find(row, col):
-            # Land above the target so the step after this one reads it.
+            # Land above the target so the.
             return (target[0] - 1, target[1], vel, acc, done)
     elif op == ".":
         return (row, col, vel, acc, True)
@@ -184,10 +184,10 @@ class _Machine:
         self._find_closest_at = close(self.code)
         self._move_pointer = init(self.code)
 
-        # start above the ! marker, moving northward
+        # start above the .
         self.row = start_row - 1
         self.col = start_col
-        self.vel = 0  # 0 = north, 1 = south, 2 = west, 3 = east
+        self.vel = 0  # 0 = north, 1 = south, 2 =.
         self.acc = 0
         self._done = False
 
@@ -196,12 +196,12 @@ class _Machine:
         """Whether the pointer hit ``.``."""
         return self._done
 
-    # The VM's language-shaped view: 2D wrap-around grid.
+    # The VM's language-shaped.
 
-    #: ``ip`` is a cell of the program's own rectangle: the first two
-    #: parts are a row and a column, and the rest is a heading.  Without
-    #: this a caller cannot tell the pair from a call depth or a frame
-    #: stack, which look identical and mean somewhere else entirely.
+    # : ``ip`` is a cell of the.
+    # : parts are a row and a.
+    # : this a caller cannot tell.
+    # : stack, which look identical.
     ip_shape = "grid"
 
     @property
@@ -267,9 +267,9 @@ class _Machine:
         op = self.code[self.row][self.col]
 
         if op == "~":
-            # ``chr`` raises ``ValueError: chr() arg not in range(0x110000)``,
-            # which names neither the language nor the accumulator that got
-            # there -- and is the message a reader saw for a program of
+            # ``chr`` raises ``ValueError:.
+            # which names neither the.
+            # there -- and is the message a.
             # eleven characters.
             if not 0 <= self.acc <= 0x10FFFF:
                 raise HaltError(

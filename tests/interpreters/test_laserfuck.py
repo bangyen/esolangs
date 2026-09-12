@@ -28,21 +28,21 @@ class TestLaserFuck:
         assert run_and_capture(["+"]) == ""
 
     def test_plus_then_die_byte_mode(self) -> None:
-        # \xff selects byte mode; + touches cell 0 -> prints \x01
+        # \xff selects byte mode; +.
         assert run_and_capture(["\u00ff}o+x\n   x"]) == "\x01"
 
     def test_two_starts_halt_immediately(self) -> None:
-        # a second 'o' halts before any output
+        # a second 'o' halts before any.
         assert run_and_capture(["\u00ff}oo\n   x"]) == ""
 
     def test_right_heading_is_deterministic(self) -> None:
-        # heading 3 (right) runs the + and dies on x
+        # heading 3 (right) runs the +.
         assert run_and_capture(["\u00ff}o+x\n   x"], heading=3) == "\x01"
 
     def test_conditional_mirror(self) -> None:
-        # ',' reads '1' (49); ')' reflects a right-moving beam on a nonzero
-        # cell, 'v' turns it down to the 'x' on the bottom row, where it dies.
-        # Only the input cell is touched and prints as '1'.
+        # ',' reads '1' (49); ')'.
+        # cell, 'v' turns it down to.
+        # Only the input cell is.
 
         class TestIO(IO):
             def __init__(self) -> None:
@@ -69,20 +69,20 @@ class TestLaserFuck:
             assert io_obj.buf.getvalue() == "1", f"heading {heading}"
 
     def test_unconditional_vertical_mirror(self) -> None:
-        # '_' always reflects a vertical beam; heading 1 (down) bounces up and
-        # off the top, touching nothing
+        # '_' always reflects a.
+        # off the top, touching nothing.
         assert run_and_capture(["\u00ff}\n|o_", "  x"], heading=1) == ""
 
     def test_skip(self) -> None:
-        # '#' skips the next command, so the '+' after it does not run
+        # '#' skips the next command,.
         assert run_and_capture(["\u00ff}o#+x\n     x"]) == ""
 
     def test_decimal_mode(self) -> None:
-        # without \xff, values print as decimals (one value, no newline)
+        # without \xff, values print as.
         assert run_and_capture(["}o+x\n   x"]) == "1"
 
     def test_negative_cells_are_excluded(self) -> None:
-        # '-' on zero makes -1, which is excluded from output
+        # '-' on zero makes -1, which.
         assert run_and_capture(["\u00ff}o-x\n   x"]) == ""
 
     def test_input_reads_whole_line_first_char(self) -> None:
@@ -108,35 +108,35 @@ class TestLaserFuck:
         buffer = io.StringIO()
         with redirect_stdout(buffer):
             run(prog, io_obj, rng=FirstDraw(3))
-        assert io_obj.buf.getvalue() == "4"  # ord('4') = 52 = '4'
+        assert io_obj.buf.getvalue() == "4"  # ord('4') = 52 = '4'.
 
     def test_steps_off_the_top(self) -> None:
-        # heading 0 (up) from the top row steps off the grid and dies
+        # heading 0 (up) from the top.
         assert run_and_capture(["o"], heading=0) == ""
 
     def test_move_left_below_cell_zero(self) -> None:
-        # '<' at cell 0 inserts a fresh cell to the left
+        # '<' at cell 0 inserts a fresh.
         assert run_and_capture(["o<x"]) == ""
 
     def test_slash_reflects_up(self) -> None:
-        # '/' reflects right (3) to up (0), which steps off the top edge
+        # '/' reflects right (3) to up.
         assert run_and_capture(["o/"], heading=3) == ""
 
     def test_star_duplicates_laser(self) -> None:
-        # '*' duplicates the laser perpendicularly; both copies die on 'x'
+        # '*' duplicates the laser.
         assert run_and_capture([" x ", "o*x", " x "], heading=3) == ""
 
     def test_decimal_mode_multiple_values(self) -> None:
-        # two touched cells print one value per line in decimal mode
+        # two touched cells print one.
         assert run_and_capture(["o+>+x"]) == "1\n1"
 
     def test_step_on_an_already_halted_machine(self) -> None:
-        # a second start halts the machine before any step; stepping is a no-op
+        # a second start halts the.
         from esolangs.interpreters.grid_based.laserfuck import _Machine
 
         machine = _Machine(["oo"], IO(), rng=FirstDraw(3))
         assert machine.halted
-        machine.step()  # must not raise
+        machine.step()  # must not raise.
 
 
 class TestUncoveredSteering:
@@ -269,7 +269,7 @@ class TestSurvivorGaps:
         cross = ["   x", "   +", "x++o++++x", "   +", "   +", "   +", "   x"]
         buffer = io.StringIO()
         with redirect_stdout(buffer):
-            run(cross, IO())  # no heading: the interpreter draws one
+            run(cross, IO())  # no heading: the interpreter.
         assert buffer.getvalue() in {"1", "2", "3", "4"}
 
     def test_rows_are_padded_to_equal_width(self) -> None:
@@ -419,10 +419,10 @@ class TestSurvivorGaps:
         machine = _Machine(["o+x"], io_obj, rng=FirstDraw(3))
         while not machine.halted:
             machine.step()
-        assert io_obj.getvalue() == ""  # nothing until the step past the halt
+        assert io_obj.getvalue() == ""  # nothing until the step past.
         machine.step()
         first = io_obj.getvalue()
-        assert first  # the dump actually produced something to repeat
+        assert first  # the dump actually produced.
         for _ in range(3):
             machine.step()
         assert io_obj.getvalue() == first
@@ -458,7 +458,7 @@ class TestSurvivorGaps:
 
             def input_str(self, _prompt: str = "Input: ") -> str:
                 self.reads += 1
-                if self.reads > 1:  # a deflected beam comes back for more
+                if self.reads > 1:  # a deflected beam comes back.
                     raise EOFError
                 return ""
 

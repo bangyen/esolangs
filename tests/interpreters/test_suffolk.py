@@ -157,7 +157,7 @@ class TestStepMachine:
 
         machine = _Machine("!", IO())
         before = machine.snapshot()
-        machine.step()  # ! sets the current cell from the accumulator
+        machine.step()  # .
         assert machine.snapshot() != before
         assert machine.tape == (1,)
 
@@ -174,17 +174,17 @@ class TestStepMachine:
         from esolangs.interpreters.tape_based.suffolk import _Machine
 
         machine = _Machine("!.", IO())
-        machine.step()  # !
+        machine.step()  # .
         assert machine.ind == 1
         assert machine.tape == (1,)
         machine.step()  # .
-        assert machine.ind == 0  # wrapped past the last instruction
+        assert machine.ind == 0  # wrapped past the last.
 
     def test_cycle_is_detected(self) -> None:
         from esolangs.interpreters.tape_based.suffolk import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
-        # "." never changes state, so the snapshot repeats immediately
+        # "." never changes state, so.
         assert run_until_halt_or_cycle(_Machine(".", IO())) is False
         assert run_until_halt_or_cycle(_Machine("<", IO())) is False
 
@@ -203,8 +203,8 @@ class TestStepMachine:
 
         machine = _Machine(",", ScriptedIO("\x00\n\x00\n"))
         before = machine.snapshot()
-        machine.step()  # consumes a line; acc stays 0 because the byte is NUL
-        assert machine.acc == before[2]  # nothing else moved
+        machine.step()  # consumes a line; acc stays 0.
+        assert machine.acc == before[2]  # nothing else moved.
         assert machine.snapshot() != before
 
     def test_a_program_that_reads_is_not_called_periodic(self) -> None:
@@ -233,12 +233,12 @@ class TestStepMachine:
     def test_snapshot_excludes_pass_count(self) -> None:
         from esolangs.interpreters.tape_based.suffolk import _Machine
 
-        # "." is a no-op when acc is 0, so the state after one whole pass
-        # (len(code) steps) equals the initial state -- the pass count must
-        # not be part of snapshot, or every state would be unique and the
-        # cycle detector would never fire.
+        # "." is a no-op when acc is 0,.
+        # (len(code) steps) equals the.
+        # not be part of snapshot, or.
+        # cycle detector would never.
         machine = _Machine("..", IO())
         before = machine.snapshot()
         machine.step()
-        machine.step()  # one whole pass
+        machine.step()  # one whole pass.
         assert machine.snapshot() == before

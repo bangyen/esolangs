@@ -85,9 +85,9 @@ def _tree(
     names.  ``state`` carries the running count of escape labels handed
     out, so each leaf gets a distinct one.
     """
-    # A constant subtree needs no further tests: whatever the remaining
-    # bits are, the answer is the same, so the node collapses to its leaf.
-    # This is what makes a table depending on one input cost a single test
+    # A constant subtree needs no.
+    # bits are, the answer is the.
+    # This is what makes a table.
     # rather than ``n`` of them.
     if depth == n or table == table[0] * len(table):
         state["leaves"] += 1
@@ -97,9 +97,9 @@ def _tree(
     zeros = _tree(table[:half], depth + 1, n, state, perm)
     ones = _tree(table[half:], depth + 1, n, state, perm)
 
-    # ``skipq`` fires when the bit equals ``zero``, so the guarded block is
-    # the one-subtree: it is skipped exactly when the bit is 0, and entered
-    # by falling through when the bit is 1.
+    # ``skipq`` fires when the bit.
+    # the one-subtree: it is.
+    # by falling through when the.
     block = f"b{depth}_{state['blocks']}"
     state["blocks"] += 1
     return [
@@ -139,18 +139,18 @@ def _inject_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     body = [f"readto i{d}" for d in range(n)]
     body += _tree(truth_table, 0, n, state, perm)
 
-    # Every escape block has to span all the remaining executable lines, so
-    # the closes come after the tree and before the data tail.  They are
-    # emitted innermost-last: a leaf that escapes must clear every *later*
-    # leaf's code too, and closing them in order of issue does that.
+    # Every escape block has to.
+    # the closes come after the.
+    # emitted innermost-last: a.
+    # leaf's code too, and closing.
     tail = [f"e{i};" for i in range(state["leaves"])]
 
-    # The constants.  ``zero`` is both the comparison operand for every
-    # node and the answer for a 0 leaf; ``one`` is only an answer.  They sit
-    # after the escape closes, so no escape jump can land inside them.
+    # The constants.
+    # node and the answer for a 0.
+    # after the escape closes, so.
     tail += ["zero;", "0", "zero;", "one;", "1", "one;"]
 
-    # The input blocks start empty: ``readto`` fills them, and an empty
-    # block is two adjacent delimiters.
+    # The input blocks start empty:.
+    # block is two adjacent.
     head = [f"i{d};\n i{d};".replace(" ", "") for d in range(n)]
     return "\n".join([*head, *body, *tail])

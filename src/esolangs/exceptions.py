@@ -13,17 +13,17 @@ holds.
 class EsolangError(Exception):
     """Base class for errors from the esolangs package."""
 
-    #: What the program had already written when this was raised.
-    #:
-    #: A program that prints and *then* fails had printed something, and
-    #: :func:`esolangs.run` used to drop it: the exception went up and the
-    #: buffer went out of scope, so a Modulous program that prints ``Hi``
-    #: and then pops an empty stack gave a caller nothing at all -- while
-    #: the debugger, driving the same interpreter, showed ``output: 'Hi'``.
-    #: For someone debugging their own program the bytes before the failure
+    # : What the program had.
+    # :.
+    # : A program that prints and.
+    # : :func:`esolangs.run` used.
+    # : buffer went out of scope,.
+    # : and then pops an empty.
+    # : the debugger, driving the.
+    # : For someone debugging their.
     #: are most of the diagnosis.
-    #:
-    #: Empty for every error raised before the program ran, which is most
+    # :.
+    # : Empty for every error.
     #: of them.
     partial_output: str = ""
 
@@ -43,7 +43,7 @@ class HaltError(EsolangError):
     can say more should.
     """
 
-    #: What a bare ``raise HaltError`` says, since it has to say something.
+    # : What a bare ``raise.
     DEFAULT = "the interpreter halted on an operation with no defined result"
 
     def __init__(self, *args: object) -> None:
@@ -73,21 +73,21 @@ class UnknownLanguageError(EsolangError, ValueError):
         commonest failure -- a case or spelling slip -- into a fix the
         reader can apply without opening ``esolangs list``.
         """
-        # With nothing close enough to suggest, the message was a dead end:
-        # true, and no help at all to someone who has misremembered a name
-        # rather than mistyped one.  So it names the command that lists them.
+        # With nothing close enough to.
+        # true, and no help at all to.
+        # rather than mistyped one.
         hint = (
             f" (did you mean {' or '.join(suggestions)}?)"
             if suggestions
             else "; `esolangs list` shows all of them"
         )
-        # Quoted only when the bare rendering would mislead.  An empty name
-        # read as "unknown language: ; `esolangs list` shows all of them" --
-        # a sentence with a hole in it -- and a name carrying whitespace or
-        # an unprintable character showed as the name the reader typed,
-        # which is how a suggestion came to look identical to the input.
-        # The ordinary case stays unquoted, since quoting every miss to
-        # cover the rare one makes the common message worse.
+        # Quoted only when the bare.
+        # read as "unknown language: ;.
+        # a sentence with a hole in it.
+        # an unprintable character.
+        # which is how a suggestion.
+        # The ordinary case stays.
+        # cover the rare one makes the.
         shown = (
             language
             if language and language == language.strip() and language.isprintable()
