@@ -1,5 +1,3 @@
-"""Unit tests for the Bitdeque interpreter."""
-
 import io
 from contextlib import redirect_stdout
 
@@ -36,7 +34,6 @@ class TestBitdeque:
         assert run_and_capture("POP") == ""
 
     def test_goto(self) -> None:
-        """GOTO with a nonzero register jumps to a numbered instruction."""
         assert run_and_capture("INVERT GOTO 2 PUSH PUSH") == "1 1"
 
     def test_goto_does_not_jump_on_a_zero_register(self) -> None:
@@ -123,7 +120,6 @@ class TestBitdeque:
         assert run_and_capture("INVERT EJECT PUSH") == "0"
 
     def test_invert_is_a_flip_not_a_set(self) -> None:
-        """Two INVERTs cancel; the register is flipped, not set to one."""
         assert run_and_capture("INVERT INVERT PUSH") == "0"
 
 
