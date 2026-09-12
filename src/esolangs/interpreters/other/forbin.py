@@ -51,8 +51,6 @@ from typing import Literal, NoReturn
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# -- parser ---------------------------------------------------------------
-
 # The parse tree, as tuples discriminated by their first element.  Four
 # families, because the grammar has four: a value, a for-loop pattern, the
 # spec that heads a for-loop, and a statement.  They nest -- a statement
@@ -353,7 +351,6 @@ class _Parser:
             funcs[fn.name] = fn
 
 
-# -- runtime --------------------------------------------------------------
 
 
 class _BitReader:

@@ -300,7 +300,6 @@ class _Parser:
         if got != word:
             raise ValueError(f"expected {word!r}, got {got!r}")
 
-    # -- types ---------------------------------------------------------
 
     def parse_type(self) -> _Type:
         """Parse a datatype, including its parenthesized parameters."""
@@ -346,7 +345,6 @@ class _Parser:
             raise ValueError(f"expected a number, got {word!r}")
         return int(word)
 
-    # -- expressions ---------------------------------------------------
 
     def expression(self) -> tuple[object, ...]:
         """Parse ``a ^ b`` (left-associative) into a postfix tuple."""
@@ -392,7 +390,6 @@ class _Parser:
             return ("apply", word, tuple(args))
         return ("var", word)
 
-    # -- statements ----------------------------------------------------
 
     def lvalue(self) -> tuple[str, tuple[object, ...] | None]:
         """Parse a target: a name, optionally with an index."""

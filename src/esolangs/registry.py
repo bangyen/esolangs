@@ -1,14 +1,4 @@
-"""Single source of truth for the languages the package supports.
-
-Each :class:`Language` describes a language's generators (if any), its
-interpreter (if any), and how a program is handed to that interpreter. The
-public API, the tools, and the test suite all derive from this table, so
-adding a language is a one-place change.
-
-:func:`canonical_id` turns a language's display (wiki) name into its
-canonical internal identifier, so the two are derived, not maintained in
-parallel.
-"""
+"""Registry of language metadata, used by the API, tools, and tests."""
 
 import difflib
 import re
@@ -64,14 +54,7 @@ SUGGESTION_CUTOFF = 0.65
 
 
 def canonical_id(name: str) -> str:
-    """Return the canonical internal identifier for a language's display name.
-
-    The id is a valid-Python-identifier slug: lowercase, ASCII, non-ASCII
-    letters transliterated (``þ`` -> ``th``), ``~`` spelled out as
-    ``tilde``, ``*`` dropped, and digit-leading names expanded to words
-    (``6-5`` -> ``six_five``).  A couple of names that no slug can capture
-    are pinned in :data:`_CANONICAL_OVERRIDES`.
-    """
+    """Return a display name's slug, using :data:`_CANONICAL_OVERRIDES` when needed."""
     # Matched case-insensitively: the override is keyed by the display name,
     # so an exact-key lookup made ``CV(N)(C)`` the one language ``resolve``
     # could not match on case -- ``cv(n)(c)`` fell through to the slug rules
@@ -113,35 +96,7 @@ Generator = Callable[..., str]
 
 @dataclass(frozen=True)
 class Language:
-    """Metadata for one language.
-
-    ``id`` is the language's canonical internal identifier: the slug
-    :func:`canonical_id` produces from the display name, used for the
-    interpreter module, the generator function, and the test file, so every
-    internal reference to a language uses the same token.
-
-    ``boolean`` is the language's generator, which may be None: it produces
-    a program computing a truth table.
-    :data:`~esolangs.tools.boolean.BOOLEAN` is derived from it, so
-    registering a generator here is the whole of adding one, with no second
-    list to keep in step.
-
-    ``interpreter`` is the dotted module under
-    ``esolangs.interpreters`` that runs programs (None if the executable
-    lives elsewhere, e.g. in extra/).  ``split`` passes the program split
-    into lines to the interpreter.
-
-    There is deliberately no field for extra ``run()`` arguments.  One
-    existed -- ``kwargs``, carried through :data:`RUNNERS` and unpacked by
-    ``esolangs.run`` -- and no language ever set it, so every call was
-    ``run_fn(program, io)`` with an empty dict threaded through three
-    functions to get there.  The eleven interpreters that take a further
-    argument all default it, and the callers that pass one are the tests
-    and the ``__main__`` blocks, which call the interpreter's ``run``
-    directly and never come through here.  ``esolangs.tools.boolean.
-    examples`` keeps its own ``kwargs`` because that one is used.
-
-    """
+    """Language name, interpreter, source shape, id, and optional generator."""
 
     name: str
     interpreter: str | None = None
