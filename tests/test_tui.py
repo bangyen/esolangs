@@ -47,7 +47,6 @@ def _frame(
     ip_shape: str = "offset",
     views: tuple[tuple[str, str], ...] = (),
 ) -> Frame:
-    """Build a frame from the few fields a screen test actually varies."""
     return Frame(
         language=language,
         program=program,
@@ -71,7 +70,6 @@ _RUN, _BREAK, _PICK = "7", "41", "4"
 
 
 def _runs(screen: str, *want: str, without: str = "") -> list[str]:
-    """The text of every run whose style carries all of ``want``."""
     return [
         text
         for code, text in _STYLED.findall(screen)
@@ -81,34 +79,28 @@ def _runs(screen: str, *want: str, without: str = "") -> list[str]:
 
 
 def _sgr(screen: str) -> frozenset[str]:
-    """The distinct styles the screen uses."""
     return frozenset(code for code, _ in _STYLED.findall(screen))
 
 
 def _marked_break(screen: str) -> list[str]:
-    """Runs painted as a breakpoint the run is not standing on."""
     return _runs(screen, _BREAK, without=_RUN)
 
 
 def _marked_both(screen: str) -> list[str]:
-    """Runs that are the running position *and* a breakpoint."""
     return _runs(screen, _BREAK, _RUN)
 
 
 def _selected(screen: str) -> list[str]:
-    """Runs under the selector."""
     return _runs(screen, _PICK)
 
 
 def _highlighted(screen: str) -> str | None:
-    """The one character marked as the running position, or ``None``."""
     found = _runs(screen, _RUN, without=_BREAK)
     assert len(found) <= 1, f"expected at most one highlight, got {found}"
     return found[0] if found else None
 
 
 def _plain(screen: str) -> str:
-    """``screen`` with every marking removed, leaving the characters."""
     return _STYLED.sub(r"\2", screen)
 
 
