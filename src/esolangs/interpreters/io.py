@@ -49,13 +49,11 @@ class IO:
         """Create an IO with no pending prompt newline."""
         self._newline = False
 
-
     def _read(self, prompt: str) -> str:
         return input(prompt)
 
     def _write(self, value: object) -> None:
         print(value, end="")
-
 
     def print_str(self, text: str) -> None:
         r"""Write ``text`` as-is, adding no trailing newline of its own.
@@ -91,7 +89,6 @@ class IO:
     # interpreters that used to reach for it were, in every case, adding a
     # newline that no spec asked for.  Writing ``print_str(text + "\n")``
     # keeps that decision visible at the call site.
-
 
     def input_str(self, prompt: str = "Input: ") -> str:
         """Read a whole line of input, returning it without the newline."""

@@ -152,8 +152,6 @@ class _Definition:
         return f"<{self.name}/{len(self.params)}>"
 
 
-
-
 def _tokens(line: str) -> list[str]:
     """Split ``line`` into number, letter, and symbol tokens.
 
@@ -189,8 +187,6 @@ def _tokens(line: str) -> list[str]:
 def _number(word: str) -> _Number:
     """Parse a numeric literal, keeping integers exact."""
     return float(word) if "." in word else int(word)
-
-
 
 
 class _Parser:
@@ -558,8 +554,6 @@ def _body(rhs: str, defs: dict[str, _Definition]) -> list[_Node]:
     return [_Parser(_tokens(text), defs).parse()]
 
 
-
-
 class _Frame:
     """One call in progress: its body, its bindings, and its cursor.
 
@@ -656,7 +650,6 @@ class _Machine:
     def _steps(self, value: int) -> None:
         self.state.steps = value
 
-
     @property
     def halted(self) -> bool:
         """Whether every line has been executed and no frame is live."""
@@ -742,7 +735,6 @@ class _Machine:
             tuple(sorted((k, repr(v)) for k, v in frame.locals.items())),
             self.io.position(),
         )
-
 
     def step(self) -> None:
         """Advance the program by one definition, read, or expression node."""

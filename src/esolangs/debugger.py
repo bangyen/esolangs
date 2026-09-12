@@ -74,7 +74,6 @@ class Debugger:
         self._warned = False
         self._dumped = False
 
-
     @property
     def halted(self) -> bool:
         """Whether the wrapped VM has finished executing."""
@@ -186,7 +185,6 @@ class Debugger:
         waiting out a clock.
         """
         return self.vm.snapshot()
-
 
     def break_at(self, ip: int | tuple[int, ...]) -> None:
         """Stop when the program counter reaches ``ip``.
@@ -324,7 +322,6 @@ class Debugger:
         self._suppressed.clear()
         self._hits.clear()
 
-
     def watch_cell(self, index: int) -> list[int | None]:
         """Record ``memory[index]`` each step, returning the history.
 
@@ -377,7 +374,6 @@ class Debugger:
         stack = self.vm.stack
         for slot, stack_history in self._stack_history.items():
             stack_history.append(stack[-1 - slot] if slot < len(stack) else None)
-
 
     def step(self) -> None:
         """Execute one command, recording any watches.
