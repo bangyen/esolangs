@@ -57,6 +57,7 @@ from esolangs import (
     read_answer,
     run,
 )
+from esolangs import spec as _spec
 from esolangs._validate import check_timeout
 from esolangs.debugger import make_debugger
 from esolangs.exceptions import (
@@ -328,7 +329,7 @@ examples:
   esolangs encode Grapheme 10 | esolangs check-stdin Grapheme
   printf '1\\n0\\n1\\n' | esolangs check-stdin --table 0110 brainfuck
 """,
-    "describe": """usage: esolangs describe [--json] <language>
+    "describe": """usage: esolangs describe [--json] [--spec] <language>
 
 Print what a language does with its input bits and where it puts the answer.
 
@@ -341,6 +342,11 @@ This exists because those facts decided every wrong answer anyone got out
 of this tool, and the only place they were readable was a Python session.
 
 options:
+  --spec      print the interpreter's own description of the language: its
+              command table, and where this implementation differs from the
+              wiki page.  Every one of the 69 carries one, they run to a
+              few thousand characters, and they are the best documentation
+              here for *writing* a program rather than generating one.
   --json      print `esolangs.describe` verbatim as JSON.  The default
               layout is for reading and loses things on the way: a pair
               prints as `0 1` with no way back to two values, an empty
@@ -352,6 +358,7 @@ examples:
   esolangs describe Fargo
   esolangs describe "A Painter Ant"
   esolangs describe --json brainfuck
+  esolangs describe --spec Unsquare
 """,
     "read-answer": """usage: esolangs read-answer <language>
 
@@ -1264,15 +1271,22 @@ def _generate(rest: list[str]) -> None:
 
 def _describe(rest: list[str]) -> None:
     """Print a language's input shape, answer location and capabilities."""
-    rest = _split_positional(rest, {"--json"})
+    rest = _split_positional(rest, {"--json", "--spec"})
     as_json = "--json" in rest
-    rest = [a for a in rest if a != "--json"]
+    as_spec = "--spec" in rest
+    rest = [a for a in rest if a not in {"--json", "--spec"}]
     _check_count("describe", rest, 1)
     try:
         facts = describe(rest[0])
     except EsolangError as exc:
         _fail(str(exc))
         raise  # pragma: no cover - unreachable; _fail exits
+    if as_spec:
+        # Printed rather than folded into the record, because it is prose
+        # of a few thousand characters and would swamp every other field.
+        text = _spec(str(facts["name"]))
+        print(json.dumps({**facts, "spec": text}, indent=2) if as_json else text)
+        return
     if as_json:
         # Verbatim, including the keys the reading layout hides: a caller
         # asking for JSON is not reading it, and a field that vanishes when
@@ -1308,6 +1322,12 @@ def _describe(rest: list[str]) -> None:
         # languages got a sentence -- so the languages where getting it
         # wrong is possible were the ones told least plainly.
         print(f"{'input'.ljust(width)}  {_input_sentence(facts)}")
+    # Every field above is about driving a *generated* program.  Someone
+    # writing their own needs the language's command table, which this
+    # package ships as the interpreter's module docstring and used to name
+    # only as ``interpreter: stack_based.unsquare`` -- an import path, with
+    # no hint that importing it is the point.
+    print(f"{'spec'.ljust(width)}  esolangs describe --spec {facts['name']}")
 
 
 def _check_stdin(rest: list[str]) -> None:

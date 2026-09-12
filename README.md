@@ -32,7 +32,7 @@ without activating it.
 
 The Python API is `esolangs.run`, `generate`, `instantiate`,
 `encode_inputs`, `read_answer`, `evaluate`, `verify`, `check_stdin`,
-`check_program`, `make_vm`, `make_debugger`, `describe`, and
+`check_program`, `make_vm`, `make_debugger`, `describe`, `spec`, and
 `list_languages`.  `generate` takes a
 truth table -- `0110` is XOR -- and returns a program computing it.  Use
 `--width` for command-oriented generated programs; grids and
