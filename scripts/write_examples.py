@@ -20,7 +20,7 @@ from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
 _BY_ID = {lang.id: name for name, lang in LANGUAGES.items()}
 
 ROOT = pathlib.Path(__file__).parents[1]
-EXAMPLES = ROOT / "examples"
+EXAMPLES = ROOT / "src" / "esolangs" / "examples"
 
 
 def boolean_programs() -> Iterator[tuple[str, str]]:

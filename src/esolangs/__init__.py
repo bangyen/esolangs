@@ -148,20 +148,15 @@ def __dir__() -> list[str]:
     return sorted(__all__)
 
 
-#: The committed example programs, when running from a source checkout.
+#: The committed example programs, shipped inside the package.
 #:
-#: ``parents[2]`` is the repository root from ``src/esolangs/__init__.py``
-#: and something else entirely from ``site-packages/esolangs/__init__.py``
-#: -- the directory above ``site-packages``.  The wheel does not carry
-#: ``examples/``, so an installed copy finds nothing, which is why
-#: ``describe(...)["examples"]`` is ``[]`` there and populated here.
-#:
-#: Guarded by the manifest rather than by the directory alone: an
-#: unrelated ``examples/`` sitting above ``site-packages`` would otherwise
-#: be globbed and reported as this package's, which is a wrong answer
-#: rather than a missing one.
-_EXAMPLES = pathlib.Path(__file__).resolve().parents[2] / "examples"
-_HAS_EXAMPLES = (_EXAMPLES / "boolean" / "MANIFEST.md").is_file()
+#: They used to sit at the repository root, which put them outside the
+#: wheel: ``parents[2]`` is the repo root from a checkout and the directory
+#: above ``site-packages`` from an install, so an installed copy reported
+#: no examples at all -- and could in principle have globbed an unrelated
+#: ``examples/`` that happened to sit there.  Inside the package the path
+#: is the same either way.
+_EXAMPLES = pathlib.Path(__file__).resolve().parent / "examples"
 
 # An unfilled input slot in a parameterized generator's template.  Matched
 # only for the languages whose generator emits one: ``{`` is a live command
@@ -882,10 +877,9 @@ def describe(language: str) -> LanguageInfo:
     ``steppable_to_answer`` and ``eof_is_a_value``, documented on
     :func:`~esolangs.vm.machine_traits`.
 
-    ``examples`` is **empty unless you are running from a source
-    checkout** -- the committed programs live in ``examples/`` at the
-    repository root, which the wheel does not carry, so an installed copy
-    reports ``[]``.
+    ``examples`` lists the committed programs for the language, which
+    ship with the package; ``examples/boolean/MANIFEST.md`` beside them
+    says what each one computes.
     """
     name = resolve(language)
     lang = LANGUAGES[name]
@@ -897,9 +891,7 @@ def describe(language: str) -> LanguageInfo:
     # ["examples"][0]))`` -- work from one directory and nowhere else: a
     # ``chdir`` away it is ``cannot read examples/boolean/brainfuck.txt``,
     # and for anyone who pip-installed there is no such directory at all.
-    examples = (
-        sorted(str(p) for p in _EXAMPLES.glob(f"*/{stem}.txt")) if _HAS_EXAMPLES else []
-    )
+    examples = sorted(str(p) for p in _EXAMPLES.glob(f"*/{stem}.txt"))
     traits = machine_traits(name)
     parameterized = lang.id in parameterized_ids()
     example = _example_for(lang.id)
