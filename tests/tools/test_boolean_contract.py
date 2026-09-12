@@ -995,3 +995,64 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
     """
     table = make(_ONE_MINTERM_ARITY)
     assert len(essential_inputs(table, _ONE_MINTERM_ARITY)) == _ONE_MINTERM_ARITY
+
+
+#: What ``docs/limitations.md`` says the expensive generators cost, as
+#: ``(n=8 size, n=9 size, growth per input)``.  Sizes are exact because a
+#: program's length is deterministic for a fixed generator and table; the
+#: ratio carries a band because it drifts a little with arity.
+#:
+#: Timings are deliberately absent.  The document states a few and calls
+#: them approximate, and asserting one here would fail whenever the machine
+#: is busy -- which, on a suite that runs four workers, is always.
+_DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
+    "Circuit Diagram": (11_870_366, 60_381_584, 5.1),
+    "COD": (3_458_156, 15_840_376, 4.7),
+    "ROTfuck": (1_158_946, 4_811_236, 4.1),
+    "Polynomial": (3_383_048, 10_896_883, 3.0),
+    "SLOW ACV MAMMALIAN": (1_672_368, 3_380_418, 2.0),
+    "bit~": (507_740, 2_220_956, 4.3),
+    "123": (219_937, 752_570, 3.1),
+    "Factor": (74_472, 155_273, 2.0),
+}
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("name", sorted(_DOCUMENTED_SIZES))
+def test_the_expensive_generators_grow_as_documented(name: str) -> None:
+    """``docs/limitations.md`` tells a reader whether n=11 is affordable.
+
+    It answers that with a growth law rather than an ``estimate()`` API,
+    because the generators the question is about have no cap arithmetic to
+    consult -- Circuit Diagram, COD and ROTfuck never refuse -- so an
+    estimator for them would be a hand-fitted size model, which is the kind
+    of frozen table this repository turns back into a rule.  A rule in prose
+    is only worth having if it is checked, so this is the check.
+
+    n=9 is the ceiling here on purpose: Circuit Diagram is 60MB there and
+    306MB at n=10, and a test that allocates a third of a gigabyte to
+    confirm a documented number is a worse trade than the number being one
+    arity smaller.
+    """
+    at_eight, at_nine, ratio = _DOCUMENTED_SIZES[name]
+    assert len(esolangs.generate(name, _dense(8))) == at_eight
+    assert len(esolangs.generate(name, _dense(9))) == at_nine
+    assert at_nine / at_eight == pytest.approx(ratio, abs=0.35)
+
+
+@pytest.mark.slow
+def test_nothing_else_is_anywhere_near_that_big() -> None:
+    """The document's "every other generator is under 600KB at n=9".
+
+    A claim about the *rest* of the registry is the half a table of named
+    languages cannot make, and it is the half that decides whether a reader
+    has to think about size at all.  The first draft said "under a megabyte"
+    and two generators were over it, which is why this exists.
+    """
+    biggest = max(
+        (len(esolangs.generate(name, _dense(9))), name)
+        for name in esolangs.list_languages()
+        if name not in _DOCUMENTED_SIZES
+    )
+    assert biggest[0] < 600_000, biggest
+    assert biggest[1] == "A Painter Ant"
