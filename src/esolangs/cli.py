@@ -1246,13 +1246,17 @@ def _generate(rest: list[str]) -> None:
                 )
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten)
     try:
-        program = generate(rest[0], rest[1], width)
-        if "--bits" in options:
+        filling = "--bits" in options
+        # Generated unwrapped when there are slots to fill, because then the
+        # width has to apply to the *filled* program: a slot is four columns
+        # and the setter code replacing it is not, so a template wrapped to
+        # the width and then filled overruns it.  ``instantiate`` takes the
+        # width for exactly that reason.
+        program = generate(rest[0], rest[1], None if filling else width)
+        if filling:
             bits = options["--bits"]
             if set(bits) - {"0", "1"} or not bits:
                 _fail(f"--bits must be a string of 0s and 1s, got {bits!r}")
-            # The width applies to the *filled* program: a template is left
-            # unwrapped because no wrapper treats a {Xi} slot as a token.
             program = instantiate(rest[0], program, [int(b) for b in bits], width)
     except EsolangError as exc:
         _fail(f"{exc}{_swapped_hint(rest[0], rest[1])}")

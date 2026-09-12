@@ -1006,14 +1006,14 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: them approximate, and asserting one here would fail whenever the machine
 #: is busy -- which, on a suite that runs four workers, is always.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
-    "Circuit Diagram": (11_870_366, 60_381_584, 5.1),
-    "COD": (3_458_156, 15_840_376, 4.7),
-    "ROTfuck": (1_158_946, 4_811_236, 4.1),
-    "Polynomial": (3_383_048, 10_896_883, 3.0),
+    "Circuit Diagram": (609_526, 1_609_864, 2.6),
+    "COD": (942_692, 3_668_705, 3.9),
+    "ROTfuck": (86_605, 194_945, 2.3),
+    "Polynomial": (3_383_048, 10_896_883, 3.2),
     "SLOW ACV MAMMALIAN": (1_672_368, 3_380_418, 2.0),
-    "bit~": (507_740, 2_220_956, 4.3),
-    "123": (219_937, 752_570, 3.1),
-    "Factor": (74_472, 155_273, 2.0),
+    "bit~": (31_076, 69_005, 2.2),
+    "123": (219_937, 752_570, 3.4),
+    "Factor": (17_613, 36_339, 2.1),
 }
 
 
@@ -1029,10 +1029,13 @@ def test_the_expensive_generators_grow_as_documented(name: str) -> None:
     of frozen table this repository turns back into a rule.  A rule in prose
     is only worth having if it is checked, so this is the check.
 
-    n=9 is the ceiling here on purpose: Circuit Diagram is 60MB there and
-    306MB at n=10, and a test that allocates a third of a gigabyte to
-    confirm a documented number is a worse trade than the number being one
-    arity smaller.
+    n=9 is the ceiling here on purpose: it was chosen when Circuit Diagram
+    was 60MB there and 306MB at n=10, and a test that allocates a third of
+    a gigabyte to confirm a documented number is a worse trade than the
+    number being one arity smaller.  Five of these eight have since shrunk
+    by between 2.4x and 15x -- Circuit Diagram is 1.6MB at n=9 now -- but
+    n=9 stays, because the growth law is what is being checked and one more
+    arity does not check it better.
     """
     at_eight, at_nine, ratio = _DOCUMENTED_SIZES[name]
     assert len(esolangs.generate(name, _dense(8))) == at_eight
