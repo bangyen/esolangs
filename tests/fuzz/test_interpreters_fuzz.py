@@ -1,20 +1,4 @@
-"""Fuzz every interpreter, plus deeper alphabet fuzzing where it is safe.
-
-Every registered interpreter runs a seeded set of mutations of two seeds --
-its sample program and a generator-built one -- plus a hostile short source,
-driven through a bounded VM.  The small ``FUZZ`` table adds unrestricted
-alphabet fuzzing for languages whose random programs must terminate --
-halting or rejecting -- rather than legitimately looping.
-
-The corpus is seeded from the generators because the samples alone barely
-reach an interpreter: a median of five characters, so a sweep over all 64
-languages executed a median of twelve steps each and Container executed
-nothing at all.  Adding generated seeds and drawing edits from each seed's
-own alphabet multiplies executed steps by 3.9x and leaves no language at
-zero.  A variant that outlives the step cap is then handed to cycle
-detection, which *proves* the verdict for 44 of the 52 that reach it; the
-remaining 8 are the unbounded-growth class and keep the SIGALRM backstop.
-"""
+r"""Fuzz every interpreter, plus deeper alphabet fuzzing where it is."""
 
 import importlib
 import os
@@ -52,23 +36,7 @@ _HOSTILE = "!?+-*/[]{}()<>;:,. 01az\n"
 
 
 def _generated_seed(language: str) -> str | None:
-    """Return a generator-built program for ``language``, or ``None``.
-
-    The mutation corpus used to be seeded from ``SAMPLES`` alone, and those
-    programs are tiny: a median of five characters, with Container's the
-    empty string.  Mutating five characters barely reaches an interpreter --
-    a sweep over all 64 languages executed a median of twelve steps each,
-    one step per variant, and Container executed nothing at all.
-
-    Generator output is the corpus this file was missing; seeding from it
-    multiplied executed steps by 2.4x, and more together with the per-seed
-    alphabet below.  A boolean generator takes a truth-table string whose
-    length implies the arity.  ``random.seed`` is set by the caller because
-    some generators draw from the global RNG, and the suite runs under
-    xdist.
-
-    A language with no boolean generator falls back to ``SAMPLES``.
-    """
+    r"""Return a generator-built program for ``language``, or ``None``."""
     boolean_generator = LANGUAGES[language].boolean
     if boolean_generator is not None:
         with suppress(Exception):
@@ -79,7 +47,7 @@ def _generated_seed(language: str) -> str | None:
 def _mutate(
     seed: str, stdin: str, rng: random.Random, alphabet: str
 ) -> list[tuple[str, str]]:
-    """Return four single-edit variants of ``seed``: inserts and deletions."""
+    r"""Return four single-edit variants of ``seed``: inserts and deletions."""
     variants = []
     for _ in range(4):
         if not seed:
@@ -94,11 +62,7 @@ def _mutate(
 
 
 def _expired_at(deadline: float) -> Callable[[], bool]:
-    """Return a ``stop`` predicate that is true once ``deadline`` passes.
-
-    A named factory rather than an inline lambda so the deadline is bound
-    per call instead of captured from the enclosing loop variable.
-    """
+    r"""Return a ``stop`` predicate that is true once ``deadline`` passes."""
     return lambda: time.monotonic() > deadline
 
 
@@ -116,39 +80,14 @@ _MAX_OPERAND_DIGITS = 12
 
 
 def _affordable_variant(program: str) -> bool:
-    """Return whether ``program`` is cheap enough to hand to ``make_vm``.
-
-    Screens the program text rather than the language: any language whose
-    program is a numeral pays this cost, and a name list would go stale.
-    """
+    r"""Return whether ``program`` is cheap enough to hand to ``make_vm``."""
     return not any(
         len(run) > _MAX_OPERAND_DIGITS for run in re.findall(r"\d+", program)
     )
 
 
 def _drives_cheaply(language: str, seed: str) -> bool:
-    """Return whether ``seed`` runs its first steps fast enough to fuzz.
-
-    A step is not a unit of work, and on Factor the work is not even in a
-    step: its generated program is a 60-odd-digit semiprime, and the
-    interpreter hands that to ``sympy.factorint`` while *constructing* the
-    machine.  Factoring a semiprime that size does not finish, so the cost
-    is paid inside ``make_vm`` before a step budget exists -- which is why
-    neither a step cap nor a deadline checked between steps bounds it.
-    Polynomial's 8th-degree seed factors the same way.
-
-    So cost is screened before the seed joins the corpus rather than bounded
-    during it, and the screen times construction as well as a short driven
-    prefix.  It screens by measured cost rather than by a list of slow
-    languages, because a list would go stale the moment a generator changed.
-
-    The screen cannot be made airtight, and the repo already knows why: a
-    SIGALRM cannot land inside sympy's uninterruptible C, so bounding
-    Factor that way needs a subprocess with a hard kill -- far too heavy
-    for a unit test.  The cheap half of the remedy, a digit-length guard on
-    Factor's mutants, is what :func:`_affordable_variant` applies below:
-    keep the operand small enough that factoring it is never the cost.
-    """
+    r"""Return whether ``seed`` runs its first steps fast enough to fuzz."""
     if not _affordable_variant(seed):
         return False
     deadline = time.monotonic() + 1.0
@@ -164,22 +103,7 @@ def _drives_cheaply(language: str, seed: str) -> bool:
 
 
 def _mutated_sources(language: str) -> list[tuple[str, str]]:
-    """Return short hostile variants of ``language``'s programs.
-
-    Every interpreter gets this fuzzer, including languages with generators:
-    generated programs cover the intended language, while these edits
-    exercise parser and runtime boundaries that generation cannot produce.
-
-    Two seed families, because they reach different code.  The sample is the
-    only one carrying stdin, so it keeps the input-reading paths; the
-    generated program is long enough for an edit to land somewhere other
-    than the first instruction.  Inserts are drawn from the seed's own
-    characters -- a generic pool was rejected at the parser by 102 of 384
-    variants, never reaching the interpreter -- but one variant of each
-    family still inserts from :data:`_HOSTILE`, since a character the
-    language does not define is exactly the parser boundary a generator
-    cannot produce.
-    """
+    r"""Return short hostile variants of ``language``'s programs."""
     program, stdin = SAMPLES[language]
     rng = random.Random(sum(map(ord, language)))
     variants = [(program, stdin)]
@@ -200,13 +124,13 @@ def _mutated_sources(language: str) -> list[tuple[str, str]]:
 
 @pytest.fixture(scope="module")
 def fuzz_cases(request: pytest.FixtureRequest) -> tuple[str, list[tuple[str, str]]]:
-    """Build one language's deterministic mutation corpus once."""
+    r"""Build one language's deterministic mutation corpus once."""
     language = request.param
     return language, _mutated_sources(language)
 
 
 def _fuzz_mutated_source(language: str, program: str, stdin: str) -> None:
-    """Drive one hostile variant through the bounded VM checks."""
+    r"""Drive one hostile variant through the bounded VM checks."""
     if not _affordable_variant(program):
         return  # a numeral too long to factor;.
     try:
@@ -245,27 +169,7 @@ def _fuzz_mutated_source(language: str, program: str, stdin: str) -> None:
 def test_every_interpreter_fuzzes_mutated_sources(
     fuzz_cases: tuple[str, list[tuple[str, str]]], case_index: int
 ) -> None:
-    """Fuzz every registered interpreter through bounded VM execution.
-
-    A variant still running at the step cap used to end the check there,
-    which reports nothing: a truncated run and a hung one look identical.
-    Where the cap is reached, cycle detection re-runs the variant and
-    usually *proves* the verdict instead -- of the 52 variants that reach
-    the cap, 44 are provably non-halting rather than merely unfinished.
-
-    The remaining 8 are the unbounded-growth class, which no cycle
-    detector can catch: A Painter Ant's paint grows monotonically, so its
-    state never repeats, and AddSubJump and Suffolk are the others.
-    ``run_until_halt_or_growth`` cannot decide any of them either, since
-    that certificate is tape-shaped and none of the three grows a tape.
-    Suffolk's 2 are provable a second way --
-    ``run_until_halt_or_value_growth`` certifies both, since their cells
-    climb by a constant a lap on a fixed-width tape -- but the other 6 have
-    no tape at all, so nothing here translates or climbs.  All 8 keep the
-    SIGALRM backstop this file already uses, rather than an exemption list
-    naming them -- a hardcoded list of exempt languages is how this suite
-    silently lost twelve interpreters once before.
-    """
+    r"""Fuzz every registered interpreter through bounded VM execution."""
     language, cases = fuzz_cases
     if case_index >= len(cases):
         pytest.skip("language has no generated seed")
@@ -273,7 +177,7 @@ def test_every_interpreter_fuzzes_mutated_sources(
 
 
 class _TimeoutError(Exception):
-    """Raised by the alarm handler when a random program does not terminate."""
+    r"""Raised by the alarm handler when a random program does not."""
 
 
 def _on_alarm(_signum: int, _frame: object) -> None:

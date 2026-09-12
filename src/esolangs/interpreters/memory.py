@@ -1,14 +1,10 @@
-"""Shared helpers for the interpreters."""
+r"""Shared helpers for the interpreters."""
 
 from __future__ import annotations
 
 
 def parse_int_memory(code: str) -> list[int]:
-    """Split ``code`` into a list of whitespace-separated integers.
-
-    ``#`` starts a comment to the end of its line; a non-integer token is a
-    malformed program (:class:`ValueError`).
-    """
+    r"""Split ``code`` into a list of whitespace-separated integers."""
     tokens: list[int] = []
     for line in code.splitlines():
         line = line.split("#", 1)[0].strip()

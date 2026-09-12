@@ -1,1 +1,1 @@
-"""Tests for the repository scripts in scripts/."""
+r"""Tests for the repository scripts in scripts/."""

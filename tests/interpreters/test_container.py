@@ -1,4 +1,4 @@
-"""Unit tests for the Container interpreter."""
+r"""Unit tests for the Container interpreter."""
 
 import io
 from contextlib import redirect_stdout
@@ -43,7 +43,7 @@ HELLO_WORLD = [
 
 class TestContainer:
     def test_hello_world(self) -> None:
-        """Hello, World! program from esolangs.org."""
+        r"""Hello, World."""
         buffer = io.StringIO()
         with redirect_stdout(buffer):
             code = run(HELLO_WORLD, io=IO())
@@ -51,7 +51,7 @@ class TestContainer:
         assert buffer.getvalue() == "Hello, world!"
 
     def test_container_update_clamps_at_zero(self) -> None:
-        """Negative results are clamped to zero."""
+        r"""Negative results are clamped to zero."""
         from esolangs.interpreters.other.container import Con
 
         con = Con("A")
@@ -60,7 +60,7 @@ class TestContainer:
         assert con.update({"A": 2, "B": 0}) == 2
 
     def test_input_container(self) -> None:
-        """An empty-named container going 0 -> 1 reads a character of input."""
+        r"""An empty-named container going 0 -> 1 reads a character of input."""
         from unittest.mock import patch
 
         code = [":", "+1 A>=0", "", "A:", "+1 EXIT>=1", "", "EXIT=1:", "-1 A>=0"]
@@ -72,21 +72,17 @@ class TestContainer:
         assert exit_code == 0
 
     def test_rule_before_declaration_rejected(self) -> None:
-        """A rule line before any container declaration is malformed."""
+        r"""A rule line before any container declaration is malformed."""
         with pytest.raises(ValueError, match="before any container"):
             run(["+1 A>=0"], IO())
 
     def test_the_malformed_program_message_reads_exactly(self) -> None:
-        """``match=`` only looks for a substring, so pin the whole message."""
+        r"""``match=`` only looks for a substring, so pin the whole message."""
         with raises_message(ValueError, "rule line before any container declaration"):
             run(["+1 A>=0"], IO())
 
     def test_output_is_masked_to_seven_bits(self) -> None:
-        """OUT is printed modulo 128, so 200 comes out as 72.
-
-        Hello, World! never drives OUT past 127, which leaves the width of
-        the mask free -- 200 is the smallest round value above it.
-        """
+        r"""OUT is printed modulo 128, so 200 comes out as 72."""
         code = [
             "PRINT:",
             "+1 PRINT<=0",
@@ -104,7 +100,7 @@ class TestContainer:
         assert buffer.getvalue() == "H"
 
     def test_empty_program_halts(self) -> None:
-        """An empty program has no work, output, or exit status."""
+        r"""An empty program has no work, output, or exit status."""
         from esolangs.interpreters.other.container import _Machine
 
         machine = _Machine([], IO())
@@ -120,12 +116,7 @@ class TestContainer:
 
 class TestPublicAPI:
     def test_run_returns_output_instead_of_exiting(self) -> None:
-        """EXIT is a normal halt, so the public API returns the output.
-
-        Container used to call ``sys.exit``, which escaped
-        :func:`esolangs.run` as ``SystemExit`` and made the CLI print
-        nothing at all.
-        """
+        r"""EXIT is a normal halt, so the public API returns the output."""
         import esolangs
 
         assert esolangs.run("Container", "\n".join(HELLO_WORLD)) == "Hello, world!"
@@ -158,7 +149,7 @@ class TestStepMachine:
         assert machine.tick == 0
 
     def test_each_tick_counts_once(self) -> None:
-        """``tick`` advances by one per step, from zero."""
+        r"""``tick`` advances by one per step, from zero."""
         from esolangs.interpreters.other.container import _Machine
 
         machine = _Machine(["A=0:", "+1 A>=0"], IO())
@@ -167,14 +158,7 @@ class TestStepMachine:
         assert machine.tick == 2
 
     def test_the_read_container_takes_one_character_per_firing(self) -> None:
-        """The empty-named container reads one character each time it turns on.
-
-        It oscillates 0 -> 1 -> 0, so it fires on every other tick, and the
-        line it read stays queued for the next firing -- one input line
-        feeds two reads, and IN holds the character until then.  Watching
-        the exit code alone would not show which character landed, nor
-        that the second one came from the queue rather than a fresh line.
-        """
+        r"""The empty-named container reads one character each time it turns on."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.other.container import _Machine
 
@@ -195,7 +179,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(SnapshotContract, StateViewContract):
-    """The shared shapes, with this language's own programs."""
+    r"""The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program: ClassVar[list[str]] = ["A=0:", "+1 A>=0"]

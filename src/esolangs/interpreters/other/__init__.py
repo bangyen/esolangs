@@ -1,1 +1,1 @@
-"""Interpreters for esolangs that fit no tape/stack/register mold."""
+r"""Interpreters for esolangs that fit no tape/stack/register mold."""

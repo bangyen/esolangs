@@ -1,29 +1,4 @@
-"""Mutation-test one interpreter against its own unit tests.
-
-Line coverage says a test *executed* a line; it cannot say the test would
-have noticed the line being wrong.  mutmut answers that by changing the code
-one edit at a time and re-running the tests: an edit no test objects to is a
-"survivor", and a survivor is either an equivalent mutant or a gap.  Run
-against Qoibl at 100% line coverage this found three real gaps, all of them
-guards -- the failure mode where a rejection stops rejecting and nothing
-looks wrong until malformed input gets through.
-
-Mutating the installed package does not work -- it leaves the other modules
-unimportable, or fires an import-time trampoline before mutmut is
-configured.  So this mutates the *bundle* instead: ``scripts/bundle_one.py``
-inlines an interpreter plus its shared modules into one dependency-closed
-file whose executable code is byte-identical to the interpreter's (only
-docstrings move).  That gives mutmut a single self-contained target, and the
-language's own test file -- with its imports repointed at the bundle -- as
-the runner.
-
-Usage:
-    python scripts/mutate_one.py Qoibl
-    python scripts/mutate_one.py Grapheme --keep   # leave the work dir
-
-Requires: mutmut==3.7.0, which fixes a 3.3.1 bug that silently reported
-class-method mutants as killed. Mutant IDs are not comparable across versions.
-"""
+r"""Mutation-test one interpreter against its own unit tests."""
 
 import argparse
 import ast
@@ -80,7 +55,7 @@ _MIN_KILL_RATE = 0.1
 
 
 def _test_file(module: str) -> Path:
-    """Return the test file for ``category.module``, or raise if absent."""
+    r"""Return the test file for ``category.module``, or raise if absent."""
     path = ROOT / "tests" / "interpreters" / f"test_{module.rsplit('.', 1)[-1]}.py"
     if not path.exists():
         raise SystemExit(f"no test file for {module}: expected {path}")
@@ -88,39 +63,7 @@ def _test_file(module: str) -> Path:
 
 
 def _reaches_unbundled(node: ast.AST) -> bool:
-    """Return whether ``node``'s subtree really reaches past the bundle.
-
-    This reads the syntax rather than the text.  A substring scan cannot
-    tell a reach from a *mention* of one, and the mention is not
-    hypothetical: a comment or docstring naming one of the modules dropped
-    the test that carried it, silently, exactly as an import would.  The
-    walk below cannot see prose at all, so the hazard is gone by
-    construction rather than by remembering to phrase comments carefully.
-
-    Three shapes count, which is every shape the suite uses:
-
-    * ``from esolangs.vm import ...`` and ``from esolangs.registry import
-      ...``, plus any submodule of either -- an ``ImportFrom`` whose module
-      is the package or below it.
-    * ``import esolangs.vm`` -- the same reach, spelled as a plain
-      ``Import``.  No test spells it this way today; it is covered because
-      the cost of missing one is a test that cannot fail for any mutant.
-    * ``esolangs.run(...)`` -- an ``Attribute`` call on the package, which
-      dispatches through the registry and so runs the *installed*
-      interpreter rather than the bundle.  A bare ``import esolangs`` is
-      not an import the rewrite can repoint, so these calls were left
-      pointing at the real package -- which only shows when a test asserts
-      the exception it raises.  Point Break's error suite does, and failed
-      its baseline outright, taking the whole language's score with it.
-
-    A string is not a reach.  ``"from esolangs.vm import ..."`` appears in
-    this suite as *data* -- program text a test feeds to something else --
-    and the docstrings carry ``:mod:`` references; neither one imports
-    anything.  A dynamic ``import_module("esolangs.vm")`` would be a real
-    reach that this misses, but the suite has none, and adding a string
-    check to catch a case that does not exist would bring back the prose
-    hazard this removes.
-    """
+    r"""Return whether ``node``'s subtree really reaches past the bundle."""
     packages = ("esolangs.vm", "esolangs.registry")
     for sub in ast.walk(node):
         if isinstance(sub, ast.ImportFrom) and sub.module is not None:
@@ -149,19 +92,7 @@ def _reaches_unbundled(node: ast.AST) -> bool:
 
 
 def _reaching_helpers(src: str) -> list[str]:
-    """Return call markers for helpers that themselves reach past the bundle.
-
-    A helper is any non-test function or method whose body reaches past
-    the bundle, as :func:`_reaches_unbundled` judges it.  What comes back
-    is what a *caller* looks like -- with
-    the parenthesis, and for a method also the ``self.`` form -- so the
-    caller can be matched by the same substring test as everything else.
-
-    Only one level is followed.  A helper calling a helper does not occur
-    in this suite set, and resolving it properly wants a call graph rather
-    than a scan; if one ever appears, the test stays and its score is
-    deflated, which is the same failure this fixes rather than a new one.
-    """
+    r"""Return call markers for helpers that themselves reach past the."""
     try:
         tree = ast.parse(src)
     except SyntaxError:  # pragma: no cover - bodies come from a valid module
@@ -177,14 +108,7 @@ def _reaching_helpers(src: str) -> list[str]:
 
 
 def _parse_body(body: str) -> ast.AST:
-    """Parse a carved-out test body, which is indented inside its class.
-
-    The cut keeps the method's own indentation, so the text is not a module
-    on its own.  ``textwrap.dedent`` puts it back at column zero.  A body
-    that still will not parse yields an empty module rather than raising:
-    the caller is deciding whether to drop a test, and a parse failure is
-    not evidence that it reaches past the bundle.
-    """
+    r"""Parse a carved-out test body, which is indented inside its class."""
     try:
         return ast.parse(textwrap.dedent(body))
     except SyntaxError:  # pragma: no cover - bodies come from a valid module
@@ -192,33 +116,7 @@ def _parse_body(body: str) -> ast.AST:
 
 
 def _drop_unbundled_tests(src: str) -> tuple[str, int]:
-    """Remove tests importing modules the bundle does not inline.
-
-    A test that imports ``esolangs.vm`` inside its body cannot be repointed
-    at the bundle, so it is cut whole rather than left to fail and mark every
-    mutant killed for the wrong reason.
-
-    "Whole" has to include the decorators, which sit *above* the ``def``.
-    Cutting from the ``def`` alone leaves a ``@pytest.mark.parametrize``
-    stranded on whichever test follows, and pytest rejects the file at
-    collection: "function uses no argument 'text'".
-
-    "Whole" also has to *stop* at the next top-level statement.  The match
-    ended at the next method, the next class, or the end of the file, which
-    for the last method of the last class meant the end of the file --
-    taking every module-level test below it along with the one being cut.
-    BrainIf's suite is laid out that way, and its blank-line test was
-    silently dropped: the three mutants that only it kills read as
-    survivors, and no count said three tests had gone missing.
-
-    The reach can also be one call deep.  A test that calls a *helper* --
-    Point Break's ``run_until_halt``, Forbin's ``_verdict`` -- carries no
-    marker of its own, so it stayed in the bundle while the helper it calls
-    went to the registry or the VM.  Such a test runs the installed
-    interpreter, cannot fail for any mutant, and quietly deflates the score
-    with mutants nothing can catch.  Helpers whose own body reaches past
-    the interpreter are found first, and their names become markers too.
-    """
+    r"""Remove tests importing modules the bundle does not inline."""
     dropped = 0
     callers = _reaching_helpers(src)
     for name in re.findall(r"\n    def (test_\w+)\(", src):
@@ -266,20 +164,7 @@ def _drop_unbundled_tests(src: str) -> tuple[str, int]:
 
 
 def _copy_test_helpers(src: str, tests_dir: Path, stem: str) -> str:
-    """Copy the sibling test modules ``src`` imports, and flatten the imports.
-
-    Only the one test file is copied into the work dir, so a suite sharing
-    helpers with another language -- ``from tests.interpreters.oisc import
-    memory, run_program``, as Decleq's and AddSubJump's both do -- failed
-    collection outright: no ``tests.interpreters`` package exists there.
-
-    The helper is copied in beside the test and the import flattened to a
-    plain ``from oisc import ...``, which resolves because pytest puts the
-    test's own directory on the path.  Helpers import from the package too
-    (``oisc`` needs ``ScriptedIO``), so they get the same rewrite -- and
-    mutmut copies ``tests/`` wholesale into ``mutants/``, so the copy carries
-    across on its own.
-    """
+    r"""Copy the sibling test modules ``src`` imports, and flatten the."""
     for name in sorted(set(re.findall(r"from tests\.interpreters\.(\w+) import", src))):
         helper = ROOT / "tests" / "interpreters" / f"{name}.py"
         if not helper.exists():
@@ -307,16 +192,7 @@ def _copy_test_helpers(src: str, tests_dir: Path, stem: str) -> str:
 
 
 def _rewrite_imports(src: str, stem: str, module: str = "") -> str:
-    """Repoint every package import at the single bundled module.
-
-    Imports of the modules the bundle does not inline are left alone, so
-    they keep resolving against the installed package.  A test file that
-    imports a VM helper at module level -- ``run_until_halt_or_cycle``, as
-    the three largest grid interpreters' suites all do -- is not reachable
-    by ``_drop_unbundled_tests``, which only reads test bodies; repointing
-    it at the bundle broke collection before a single mutant ran.  Nothing
-    outside the bundle is mutated, so importing the real module is safe.
-    """
+    r"""Repoint every package import at the single bundled module."""
     if module:
         # ``from esolangs.<pkg> import.
         # *module*, not a name inside.
@@ -430,22 +306,7 @@ _SITECUSTOMIZE = "import sys\n\nsys.setrecursionlimit(50000)\n"
 
 
 def _split_inlined(bundle: Path, module: str) -> int:
-    """Move the bundle's inlined prefix into a module the mutants import.
-
-    ``bundle_one`` inlines ``esolangs.exceptions`` and
-    ``esolangs.interpreters.io`` ahead of the interpreter so the file runs
-    standalone.  mutmut mutates whatever is in ``paths_to_mutate``, so those
-    two ride along: ~64 mutants per language that :func:`_score` then throws
-    away for not being the interpreter's, and -- because a mutated ``IO``
-    hangs the suite rather than failing it -- most of the run's timeouts.
-    Each timeout costs mutmut's whole ``(estimate + 1) * 30`` CPU budget,
-    so the discarded quarter of the mutants was the expensive quarter.
-
-    The prefix moves to ``_inlined.py``, which the bundle imports with a
-    star import, leaving executable code identical and the interpreter's
-    own definitions the only thing left to mutate.  Returns the number of
-    lines moved.
-    """
+    r"""Move the bundle's inlined prefix into a module the mutants import."""
     text = bundle.read_text()
     marker = (
         f"# --- inlined from esolangs/interpreters/{module.replace('.', '/')}.py ---"
@@ -481,7 +342,7 @@ def _split_inlined(bundle: Path, module: str) -> int:
 
 
 def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
-    """Lay out the project; return (dir, stem, dropped, the module's classes)."""
+    r"""Lay out the project; return (dir, stem, dropped, the module's."""
     from bundle_one import Source, bundle
 
     from esolangs.registry import RUNNERS
@@ -548,26 +409,7 @@ _DECORATED_CLASS = re.compile(
 
 
 def _undecorate_classes(bundle: Path) -> list[str]:
-    """Rewrite ``@d`` on a class into ``Class = d(Class)`` after its body.
-
-    mutmut skips any ``FunctionDef`` or ``ClassDef`` carrying decorators --
-    copying them for the trampoline can have side effects, and ``@property``
-    breaks the signature assignment it does (``file_mutation.py``, "ignore
-    decorated functions").  A ``@dataclass`` state class therefore yields no
-    mutants at all while the run still prints a percentage: Eval scored 5/6
-    over a 124-line file, ``run`` being all that was left to mutate once its
-    ``State`` -- the other ninety lines -- was skipped whole.
-
-    Applying the decorator as a plain call below the class is what the
-    decorator syntax means, so the class behaves identically (same
-    ``__init__``, ``__repr__``, ``__eq__``, same ``field(default_factory=)``
-    handling), but the ``ClassDef`` mutmut parses no longer has decorators
-    and its methods are mutated like any other.  Only classes are rewritten:
-    a decorated *method* keeps its decorator, since ``@property`` is exactly
-    what the trampoline cannot take.
-
-    Returns the decorators moved, for the note the caller prints.
-    """
+    r"""Rewrite ``@d`` on a class into ``Class = d(Class)`` after its body."""
     text = bundle.read_text()
     moved: list[str] = []
 
@@ -593,7 +435,7 @@ def _undecorate_classes(bundle: Path) -> list[str]:
 
 
 def _classes_of(dotted: str) -> set[str]:
-    """Return the names of the classes the module at ``dotted`` defines."""
+    r"""Return the names of the classes the module at ``dotted`` defines."""
     import importlib
 
     mod = importlib.import_module(dotted)
@@ -605,24 +447,12 @@ def _classes_of(dotted: str) -> set[str]:
 
 
 def _own_classes(module: str) -> set[str]:
-    """Return the names of the classes the interpreter itself defines.
-
-    ``RUNNERS`` stores the path from the interpreters package down --
-    ``grid_based.streetcode`` -- so it is qualified here before importing.
-    """
+    r"""Return the names of the classes the interpreter itself defines."""
     return _classes_of(f"esolangs.interpreters.{module}")
 
 
 def _score(proj: Path, stem: str, classes: set[str]) -> tuple[int, int, list[str]]:
-    """Return (killed, total, survivor names) from mutmut's own result file.
-
-    The bundle inlines io and exceptions too, and only the interpreter's own
-    mutants are scored.  A class method is named ``x<sep>Class<sep>method``,
-    so the class part says whose it is -- dropping every name that *has* a
-    class part instead threw away the interpreter's own classes, which for a
-    grid language is nearly all of it: Streetcode scored 59 mutants and hid
-    843 belonging to ``_Machine``, its entire stepping engine.
-    """
+    r"""Return (killed, total, survivor names) from mutmut's own result."""
     meta = json.loads((proj / "mutants" / f"{stem}.py.meta").read_text())
     codes = meta["exit_code_by_key"]
     own = {k: v for k, v in codes.items() if "ǁ" not in k or k.split("ǁ")[1] in classes}
@@ -657,7 +487,7 @@ def _score(proj: Path, stem: str, classes: set[str]) -> tuple[int, int, list[str
 
 
 def main() -> int:
-    """Bundle one interpreter, mutate it, and report what survived."""
+    r"""Bundle one interpreter, mutate it, and report what survived."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("language", help="display name, e.g. Qoibl")
     parser.add_argument(

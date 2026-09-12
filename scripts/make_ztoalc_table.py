@@ -1,22 +1,4 @@
-"""Regenerate the committed ZTOALC L anchor table.
-
-The ``ztoalc`` generator needs, for each text length, a Collatz start whose
-trajectory is long enough.  This script derives the committed table
-deterministically so the table is reproducible:
-
-1. a stopping-time sieve up to 10**7 yields every Collatz record-holder
-   (numbers whose total stopping time sets a record);
-2. a greedy interval cover assigns each length the record-holder with the
-   smallest trajectory peak (the exact optimum among record-holders), so
-   generation is a plain lookup;
-3. the three known record-holders beyond the sieve (which the sieve cannot
-   reach) are verified by walking their trajectories and appended, extending
-   coverage to the longest documented total stopping time below 10**10.
-
-Usage:
-    python scripts/make_ztoalc_table.py          # rewrite ztoalc_starts.py
-    python scripts/make_ztoalc_table.py --check  # verify it matches the file
-"""
+r"""Regenerate the committed ZTOALC L anchor table."""
 
 import sys
 from pathlib import Path
@@ -32,7 +14,7 @@ HIGH = [(949, 63728127), (986, 670617279), (1132, 9780657630)]
 
 
 def collatz_length_table(limit: int) -> list[int]:
-    """Compute stopping times for every start up to ``limit`` (zero unknown)."""
+    r"""Compute stopping times for every start up to ``limit`` (zero."""
     lengths = [0] * (limit + 1)
     lengths[1] = 0
 
@@ -56,7 +38,7 @@ def collatz_length_table(limit: int) -> list[int]:
 
 
 def stopping_time(start: int) -> int:
-    """Count steps from ``start`` down to 1 (walked, no table needed)."""
+    r"""Count steps from ``start`` down to 1 (walked, no table needed)."""
     steps = 0
     value = start
     while value != 1:
@@ -66,7 +48,7 @@ def stopping_time(start: int) -> int:
 
 
 def prefix_peaks(start: int, n: int) -> list[int]:
-    """``peaks[i]`` = the largest value among the first ``i+1`` steps of ``start``."""
+    r"""``peaks[i]`` = the largest value among the first ``i+1`` steps of."""
     peaks = []
     peak = 0
     value = start
@@ -78,7 +60,7 @@ def prefix_peaks(start: int, n: int) -> list[int]:
 
 
 def anchors() -> list[tuple[int, int]]:
-    """Derive the length-interval start table from the sieve."""
+    r"""Derive the length-interval start table from the sieve."""
     lengths = collatz_length_table(SIEVE_LIMIT)
 
     records = []
@@ -120,7 +102,7 @@ def anchors() -> list[tuple[int, int]]:
 
 
 def write_module(table: list[tuple[int, int]]) -> None:
-    """Write ``ztoalc_starts.py``."""
+    r"""Write ``ztoalc_starts.py``."""
     lines = [
         '"""Collatz start for each ZTOALC L text-length interval.',
         "",
@@ -144,7 +126,7 @@ def write_module(table: list[tuple[int, int]]) -> None:
 
 
 def main() -> int:
-    """Regenerate the table, or verify it is current with ``--check``."""
+    r"""Regenerate the table, or verify it is current with ``--check``."""
     table = anchors()
     if "--check" in sys.argv:
         namespace: dict[str, object] = {}

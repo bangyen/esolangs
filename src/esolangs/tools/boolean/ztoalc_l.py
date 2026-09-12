@@ -1,11 +1,4 @@
-"""Boolean-function generator for Z-to-ALC (L variant).
-
-The generator *constructs* its programs: there is no search, no simulator,
-and no cache.  A truth table becomes a branch-free chunked array lookup,
-and the lookup's commands are placed on the smallest values of a committed
-anchor's Collatz trajectory -- collision-free by construction, and sized by
-the L-th smallest value visited rather than the trajectory's peak.
-"""
+r"""Boolean-function generator for Z-to-ALC (L variant)."""
 
 from functools import cache
 
@@ -26,22 +19,7 @@ _MAX_LINES = 2**22
 
 
 def _commands(truth_table: str, n: int) -> list[str]:
-    """Return the command sequence computing ``truth_table``, in run order.
-
-    A constant table prints its constant, having consumed its inputs so the
-    program still drains the stream.  Otherwise the table is split into
-    ``2**hi`` chunks of ``2**lo`` rows (``lo = min(n, 2)``): the first
-    ``hi`` inputs index a chunk-code array ``t``, the last ``lo`` index the
-    code's bits through a shared decode array ``u``, and ``u[t[s]][v]`` is
-    the answer.  Chunking is what carries ten inputs: the old one-hot init
-    spent one command per selected row (512 at ``n == 10``), where a chunk
-    set carries four rows in one command (256), plus a decode block capped
-    at ``1 + 16 + 32`` whatever the table says.
-
-    Each index is accumulated by double-and-add directly on the raw input
-    bytes -- the ``'0'`` offsets double along with the bits, so one closing
-    subtraction of ``'0' * (2**bits - 1)`` normalizes the whole index.
-    """
+    r"""Return the command sequence computing ``truth_table``, in run order."""
     if len(set(truth_table)) == 1:
         return [f"x{i} = input" for i in range(n)] + [
             f"print {_ASCII_ZERO + int(truth_table[0])}",
@@ -86,11 +64,7 @@ def _commands(truth_table: str, n: int) -> list[str]:
 
 @cache
 def _usable_values(start: int, cap: int) -> tuple[int, ...]:
-    """Trajectory values of ``start`` at or below ``cap``, in visit order.
-
-    The final 1 is excluded: the machine halts there without executing the
-    line, and line 1 holds the start value anyway.
-    """
+    r"""Trajectory values of ``start`` at or below ``cap``, in visit order."""
     values: list[int] = []
     value = start
     while value != 1:
@@ -101,15 +75,7 @@ def _usable_values(start: int, cap: int) -> tuple[int, ...]:
 
 
 def _slots(length: int) -> tuple[int, list[int]]:
-    """Return an anchor start and the lines its commands occupy.
-
-    The slots are the ``length`` smallest usable values of the first
-    anchor with enough of them, kept in visit order -- a subset of the
-    trajectory's positions is still visited in trajectory order, so the
-    commands run once each, in sequence, and the emitted size is the
-    ``length``-th smallest value instead of the prefix peak (the peak is
-    what capped the old placement at eight inputs).
-    """
+    r"""Return an anchor start and the lines its commands occupy."""
     for _, start in ANCHORS:
         values = _usable_values(start, _MAX_LINES)
         if len(values) < length:
@@ -124,35 +90,7 @@ def _slots(length: int) -> tuple[int, list[int]]:
 
 
 def ztoalc_l(truth_table: str) -> str:
-    """Build a ZTOALC L program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    **The program is constructed, not searched for.**  Nothing branches:
-    the inputs are folded into two indexes by double-and-add and answered
-    by one nested lookup, so there are no branch targets to collide and
-    the commands form one straight run (:func:`_commands`).
-
-    Placement puts command ``j`` on the ``j``-th smallest value the
-    anchor's trajectory visits below ``_MAX_LINES``, in visit order.  A
-    trajectory visits distinct values until it reaches 1, so each command
-    sits on its own line and executes once, in order; every other visited
-    line is blank or beyond the code's end, and the interpreter reads both
-    as no-ops.  The old placement used the trajectory's *prefix*, whose
-    peak grows superexponentially (1.2e7 lines at ``n == 9``) and capped
-    the generator at eight inputs; the smallest-values placement and the
-    chunked lookup together put dense ``n == 10`` at 329 commands worst
-    case against the anchors' 386-slot capacity.  ``n == 11`` needs more
-    commands than any start under the ceiling can hold (587 dense, 545
-    parity, against a sieved record of 395), so it raises
-    :class:`ValueError` -- now a capacity limit rather than a peak.
-
-    Verified against the real interpreter for every table at ``n <= 3``
-    exhaustively, for random and structured tables at ``n == 4`` through
-    ``n == 9``, and for every row of a dense pseudo-random table and of
-    parity at ``n == 10``.
-    """
+    r"""Build a ZTOALC L program computing the given truth table."""
     n = _validate_truth_table(truth_table)
     cmds = _commands(truth_table, n)
     start, slots = _slots(len(cmds))

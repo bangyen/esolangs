@@ -1,9 +1,4 @@
-"""Unit tests for the register-based boolean generators.
-
-Covers the generators in :mod:`esolangs.tools.boolean.register`: Decleq,
-AddSubJump, Collatz Multiverse, Sophie, Dig, Qoibl, Polynomial, and Point
-Break.
-"""
+r"""Unit tests for the register-based boolean generators."""
 
 import random
 
@@ -45,13 +40,7 @@ from tests.tools.boolean_runners import (
 
 
 def _asj_normalize_sites(program: str) -> int:
-    """How many instructions add the ``-48`` constant cell to something.
-
-    One per *stored input* once the reads are hoisted, against one per
-    internal node when they sat at the nodes.  The constant lives in a data
-    cell, so this finds that cell's address and counts the instructions
-    whose ``b`` operand names it.
-    """
+    r"""How many instructions add the ``-48`` constant cell to something."""
     mem = [int(tok) for tok in program.split()]
     const = mem.index(-48)
     return sum(1 for i in range(0, len(mem) - 3, 4) if mem[i + 1] == const)
@@ -73,7 +62,7 @@ class TestAddSubJump:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
+        r"""Every input combination produces the truth-table result."""
         program = boolean.addsubjump(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -81,34 +70,20 @@ class TestAddSubJump:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_branch_normalizes_bits_to_zero_and_four(self) -> None:
-        """Each bit is normalized to {0, 4} and added to a jump cell."""
+        r"""Each bit is normalized to {0, 4} and added to a jump cell."""
         program = boolean.addsubjump("0110")
         assert "-48" in program  # the normalization constant.
         assert run_addsubjump(program, ["0", "1"]) == "1"
         assert run_addsubjump(program, ["1", "0"]) == "1"
 
     def test_normalizes_once_per_input_not_once_per_node(self) -> None:
-        """The reads and their normalization are hoisted out of the tree.
-
-        Reading at the node repeated the four-instruction normalization at
-        every internal node; hoisting spends it once per *stored input*, so
-        the count tracks ``n`` rather than the tree's width.  ``-48`` is the
-        normalization constant and appears once in the data section, so the
-        instructions referencing its cell are what to count.
-        """
+        r"""The reads and their normalization are hoisted out of the tree."""
         # XOR-3 has 7 internal nodes.
         cells = _asj_normalize_sites(boolean.addsubjump("01101001"))
         assert cells == 3
 
     def test_every_path_reads_each_input_once(self) -> None:
-        """A run consumes exactly ``n`` inputs, whatever the table.
-
-        With the reads hoisted this is structural rather than something a
-        folded leaf has to drain, but it is the contract callers depend on:
-        several programs fed from one stream desync if a path leaves bits
-        unconsumed.  An exhaustible iterator proves both directions -- an
-        over-read raises, a leftover proves an under-read.
-        """
+        r"""A run consumes exactly ``n`` inputs, whatever the table."""
         for table, n in (("01101001", 3), ("11111111", 3), ("10101010", 3)):
             program = boolean.addsubjump(table)
             for combo in range(2**n):
@@ -119,12 +94,7 @@ class TestAddSubJump:
                 assert not list(feed), f"{table} inputs {bits} left input unread"
 
     def test_reordering_only_shrinks(self) -> None:
-        """No table comes out longer than the identity order's program.
-
-        ``best_input_order`` tries the identity first and ties keep it, so
-        this is a property of the dispatch rather than of the language; the
-        sweep pins it against a build that cannot silently regress.
-        """
+        r"""No table comes out longer than the identity order's program."""
         improved = 0
         for value in range(256):
             table = format(value, "08b")
@@ -147,7 +117,7 @@ class TestQoibl:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
+        r"""Every input combination produces the truth-table result."""
         program = boolean.qoibl(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -155,14 +125,14 @@ class TestQoibl:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_minterm_structure(self) -> None:
-        """An AND function stores the minterm product and prints 48 + sum."""
+        r"""An AND function stores the minterm product and prints 48 + sum."""
         program = boolean.qoibl("0001")
         assert program.startswith("we e we et")
         assert "ry ye ry" in program  # a minterm product.
         assert program.endswith("tt")
 
     def test_empty_truth_table(self) -> None:
-        """A constant-zero function skips all minterms."""
+        r"""A constant-zero function skips all minterms."""
         program = boolean.qoibl("0000")
         assert "ry ye ry" not in program
 
@@ -181,7 +151,7 @@ class TestPolynomial:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
+        r"""Every input combination produces the truth-table result."""
         program = boolean.polynomial(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -189,20 +159,7 @@ class TestPolynomial:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_wide_table_rejected(self) -> None:
-        """The gate is the instruction count, not the input count.
-
-        Each instruction takes a fresh prime and becomes a polynomial
-        factor, so what the interpreter cannot afford per row is
-        instructions.  A scattered n == 11 table needs 2874 under its
-        cheapest construction and is refused; the message names the count
-        rather than ``n``.
-
-        The witness has to be re-picked whenever the cap moves: the
-        scattered n == 6 witness of the 138 era rendered under the 328 the
-        peels bought, and the n == 8 witness of the 328 era renders under
-        the 1934 the NTT screens bought, so a stale body silently stops
-        exercising the gate.
-        """
+        r"""The gate is the instruction count, not the input count."""
         import random
 
         random.seed(0)
@@ -211,15 +168,7 @@ class TestPolynomial:
             boolean.polynomial(scattered)
 
     def test_polynomial_cap_admits_every_n10_table(self) -> None:
-        """The cap is the analytic worst case over n == 10 tables.
-
-        Level ``k`` of the machine holds at most ``min(2**k, 2**2**(10-k))``
-        states -- reachability bounds it by doubling, the subtable width by
-        counting -- at 5 instructions plus at most 2 transitions each, and
-        the leaf level 5 each less the final endif.  So the cap admits all
-        of n == 10 by construction, and the dense fixture sits under it
-        with room that is measured, not assumed.
-        """
+        r"""The cap is the analytic worst case over n == 10 tables."""
         from esolangs.tools.boolean.register import _POLYNOMIAL_MAX_INSTRS
 
         states = [min(2**k, 2 ** (2 ** (10 - k))) for k in range(11)]
@@ -227,15 +176,7 @@ class TestPolynomial:
 
     @pytest.mark.slow  # 4.5s: one NTT factorization,.
     def test_a_dense_eight_input_table_runs_every_row(self) -> None:
-        """The arity the old cap refused now builds, and every row answers.
-
-        Dense n == 8 is 541 instructions -- past the old 328, and past
-        ``_NTT_MIN_DEGREE`` once rendered, so this is the suite's
-        execution-gate witness for the NTT recovery path *and* for the
-        per-program parse cache: the first row pays the factorization
-        (~3.4s) and the other 255 amortize to under a millisecond each,
-        which is what made the cap raisable at all.
-        """
+        r"""The arity the old cap refused now builds, and every row answers."""
         from tests.tools.test_boolean_contract import _dense
 
         table = _dense(8)
@@ -247,14 +188,7 @@ class TestPolynomial:
 
     @pytest.mark.slow  # 2.3s.
     def test_state_machine_renders_past_the_old_input_gate(self) -> None:
-        """Tables the ``n <= 4`` gate refused outright now render and run.
-
-        The gate was on ``n`` because a decision tree doubles with it.  The
-        state machine merges prefixes with equal residual subfunctions, so a
-        table that collapses is cheap at any width: AND-5 was rejected and
-        is 63 instructions, and parity -- the tree's worst case, 2298
-        instructions at n == 8 -- is linear here and renders through n == 8.
-        """
+        r"""Tables the ``n <= 4`` gate refused outright now render and run."""
         and5 = "0" * 31 + "1"
         program = boolean.polynomial(and5)
         assert program.startswith("f(x) = ")
@@ -269,14 +203,7 @@ class TestPolynomial:
             assert boolean.polynomial(parity).startswith("f(x) = ")
 
     def test_state_machine_merges_what_the_tree_cannot(self) -> None:
-        """A subtable that is not constant can still collapse to one state.
-
-        ``10101010`` is NOT of the last input: the tree folds nothing and
-        spends an internal node per level, while every prefix leaves the
-        same residual subfunction, so the machine needs one state per level
-        until the last.  This is the merge that makes the construction
-        stronger than the fold, rather than another way to spell it.
-        """
+        r"""A subtable that is not constant can still collapse to one state."""
         table = "10101010"
         assert [len(level) for level in _polynomial_states(table, 3)] == [1, 1, 1, 2]
         assert len(_polynomial_dag(table)) < len(_polynomial_tree(table))
@@ -286,7 +213,7 @@ class TestPolynomial:
             assert run_polynomial(program, [str(b) for b in bits]) == table[combo]
 
     def test_dag_cost_mirrors_its_emitter(self) -> None:
-        """``_polynomial_hybrid_cost`` prices a residual through this."""
+        r"""``_polynomial_hybrid_cost`` prices a residual through this."""
         from esolangs.tools.boolean.register import _polynomial_dag_cost
 
         for n in range(1, 4):
@@ -295,11 +222,7 @@ class TestPolynomial:
                 assert _polynomial_dag_cost(table) == len(_polynomial_dag(table))
 
     def test_polynomial_hybrid_cost_mirrors_build(self) -> None:
-        """The hybrid's cost function is a deliberate mirror of its emitter.
-
-        The dispatch screens on the cost before rendering, so a drift here
-        silently skips a table the emitter would have shortened.
-        """
+        r"""The hybrid's cost function is a deliberate mirror of its emitter."""
         from esolangs.tools.boolean.register import (
             _polynomial_hybrid,
             _polynomial_hybrid_cost,
@@ -314,14 +237,7 @@ class TestPolynomial:
                     ), f"{table} k={level}"
 
     def test_hybrid_endpoints_are_the_two_old_constructions(self) -> None:
-        """``k == n`` is the tree and ``k == 0`` is the machine.
-
-        The family is not a third construction beside two others -- it
-        contains both, which is what let the separate emitters go.  The
-        machine's identity holds except on a constant table, where the
-        hybrid collapses to a leaf before reaching it and comes out
-        shorter (5 instructions against 10 at n == 1).
-        """
+        r"""``k == n`` is the tree and ``k == 0`` is the machine."""
         from esolangs.tools.boolean.register import _polynomial_hybrid
 
         for n in range(1, 4):
@@ -335,13 +251,7 @@ class TestPolynomial:
                     assert machine == _polynomial_dag(table), table
 
     def test_polynomial_screen_slack(self) -> None:
-        """The screen's slack is a measurement, and it is arity-dependent.
-
-        Selection is on rendered characters while the screen is on
-        instructions, so the shortest render can sit above the cheapest
-        candidate.  Every table at n <= 3 needs at most 6; a slack fitted
-        there would emit the worse program at n == 4, which reaches 9.
-        """
+        r"""The screen's slack is a measurement, and it is arity-dependent."""
         from esolangs.tools.boolean.register import (
             _POLYNOMIAL_SCREEN_SLACK,
             _polynomial_assemble,
@@ -374,15 +284,7 @@ class TestPolynomial:
         ["00000101", "00001010", "01010000", "01011111", "10100000", "11111010"],
     )
     def test_hybrid_shortens_and_still_computes(self, table: str) -> None:
-        """A split whose halves merge separately beats both parents.
-
-        ``00000101`` is 43 instructions as a tree and 39 as a state machine,
-        but 36 when the first bit branches and each half runs its own
-        machine: the residuals merge *within* the top split and not across
-        it, so neither parent construction sees the merge.  Measured over
-        the n == 3 corpus these tables render 24-30% shorter, and no table
-        grows.
-        """
+        r"""A split whose halves merge separately beats both parents."""
         from esolangs.tools.boolean.register import _polynomial_hybrid
 
         assert len(_polynomial_hybrid(table, 1)) < len(_polynomial_tree(table))
@@ -392,14 +294,7 @@ class TestPolynomial:
             assert run_polynomial(program, [str(b) for b in bits]) == table[combo]
 
     def test_drained_machine_survives_a_one_in_the_drained_bit(self) -> None:
-        """The reduction reaches the machine, not just the tree.
-
-        Draining with ``-= 48`` leaves 0 or 1 and the machine's entry chain
-        tests for zero, so a drained ``1`` fell past every state test -- the
-        failure that made this pairing look impossible.  ``//= 50`` lands on
-        0 either way, so the rows with a 1 in the drained bit are the ones
-        that matter here.
-        """
+        r"""The reduction reaches the machine, not just the tree."""
         from esolangs.tools.boolean.register import _polynomial_drained_dag
 
         table = "0000010100000101"  # ignores its first input.
@@ -412,13 +307,7 @@ class TestPolynomial:
 
     @pytest.mark.parametrize("table", ["01100000", "01101111", "10010000", "10011111"])
     def test_hybrid_losing_on_characters_does_not_ship(self, table: str) -> None:
-        """Fewer instructions is not fewer characters.
-
-        These four are 42 instructions against the tree's 43 and still
-        render 11008 characters against 9507, because a longer program's
-        later instructions consume larger primes.  The dispatch compares
-        *rendered* programs, so they keep the tree's emission.
-        """
+        r"""Fewer instructions is not fewer characters."""
         from esolangs.tools.boolean.register import (
             _polynomial_assemble,
             _polynomial_hybrid,
@@ -431,15 +320,7 @@ class TestPolynomial:
         assert boolean.polynomial(table) == tree
 
     def test_every_path_reads_each_input_once(self) -> None:
-        """Whichever construction wins, a run consumes exactly ``n`` inputs.
-
-        The reads are the interface: a caller feeding several programs from
-        one stream desyncs if a path leaves bits unconsumed.  The tree
-        drains the reads a folded leaf skipped; the state machine reads once
-        inside the single branch each level's chain fires, so the count is
-        structural.  Feeding an exhaustible iterator proves both directions
-        -- an over-read raises, and a leftover proves an under-read.
-        """
+        r"""Whichever construction wins, a run consumes exactly ``n`` inputs."""
         for table, n in (("0110", 2), ("10101010", 3), ("00001111", 3)):
             program = boolean.polynomial(table)
             for combo in range(2**n):
@@ -462,7 +343,7 @@ class TestDig:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
+        r"""Every input combination produces the truth-table result."""
         program = boolean.dig(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -470,13 +351,7 @@ class TestDig:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_xor_layout(self) -> None:
-        """The XOR gate produces the standard two-level decision tree.
-
-        A level is five columns and the blocks abut: the ``#`` a node turns
-        on is the cell right before its child's block, so the child's ``>``
-        goes in that column and the mole walks straight out of the turn
-        into the next ``$``.
-        """
+        r"""The XOR gate produces the standard two-level decision tree."""
         expected = (
             "'         >$30:@\n"
             "     >$3~;#\n"
@@ -489,7 +364,7 @@ class TestDig:
         assert boolean.dig("0110") == expected
 
     def test_a_constant_table_is_one_line(self) -> None:
-        """Nothing to branch on, so the whole grid is a single leaf."""
+        r"""Nothing to branch on, so the whole grid is a single leaf."""
         program = boolean.dig("1111")
         assert [line for line in program.split("\n") if line.strip()] == [
             "'",
@@ -497,13 +372,7 @@ class TestDig:
         ]
 
     def test_constant_subtrees_prune_their_rows(self) -> None:
-        """A folded node's descendants are never written.
-
-        Both tables have four ones, so the difference is arrangement alone:
-        ``11110000`` is two constant halves and keeps one row per half,
-        while parity has no constant slice above a single row and fills the
-        grid.
-        """
+        r"""A folded node's descendants are never written."""
         folded = boolean.dig("11110000")
         full = boolean.dig("10010110")
         assert len(folded) < len(full)
@@ -512,24 +381,14 @@ class TestDig:
         )
 
     def test_a_long_read_run_chains_its_windows(self) -> None:
-        """Past nine cells the ``$`` runs chain rather than growing a digit.
-
-        ``$`` takes its count from the digit beside it, so one window holds
-        at most nine cells -- six reads plus the three that print.  A
-        constant table at n == 7 needs more than that, and must still run.
-        """
+        r"""Past nine cells the ``$`` runs chain rather than growing a digit."""
         table = "1" * 128  # n == 7, constant.
         program = boolean.dig(table)
         assert program.count("$") > 1  # more than one window.
         assert esolangs.run("Dig", program, stdin="\n".join(["1"] * 7)).strip() == "1"
 
     def test_a_width_turns_the_tree_round_and_it_still_computes(self) -> None:
-        """A narrower grid is the same walk, folded back over its own columns.
-
-        The deep levels run west through mirrored blocks, so the mole meets
-        each ``$`` first either way.  Only running it says the turn kept
-        every path intact.
-        """
+        r"""A narrower grid is the same walk, folded back over its own columns."""
         for table in ("0110", "10010110", "0110100110010110", "00010111"):
             n = len(table).bit_length() - 1
             flat = boolean.dig(table)
@@ -546,18 +405,7 @@ class TestDig:
                     assert got == str(int(table[combo])), (table, width, bits)
 
     def test_a_folded_table_keeps_the_flat_layout(self) -> None:
-        """Turning round is not always narrower, so the narrower one wins.
-
-        A table that folds has few blocks to spread in the first place, and
-        what the turn costs -- a spare column a level, and a leaf padded so
-        its digits fall where the other band does not look -- can come to
-        more than the fold saved.  ``dig`` lays both out and keeps the
-        narrower, so a width it cannot meet still gets the best there is.
-
-        These also drive the banded leaf's chained windows: a constant table
-        at ``n == 6`` folds at the root and still owes six reads, one more
-        than a single window covers.
-        """
+        r"""Turning round is not always narrower, so the narrower one wins."""
         for table in ("1" * 64, "1" * 32 + "0" * 32):
             n = len(table).bit_length() - 1
             flat = boolean.dig(table)
@@ -568,13 +416,7 @@ class TestDig:
                 assert got == str(int(table[combo])), (table, bits)
 
     def test_the_turn_mirrors_the_blocks_it_writes(self) -> None:
-        """Past the turn a block is written backwards, so its ``$`` comes first.
-
-        A westbound mole meets the block's cells in the opposite order, so
-        the block that steers it has to be the reverse of the eastbound one
-        -- and the ``<`` that points it in has to sit where the parent's
-        ``#`` turned it.
-        """
+        r"""Past the turn a block is written backwards, so its ``$`` comes."""
         narrow = boolean.dig("0110100110010110", 1)
         assert _DIG_BRANCH[::-1] in narrow, "no mirrored block: the tree never turned"
         assert _DIG_RETURN in narrow, "nothing points the mole west"
@@ -585,14 +427,7 @@ class TestDig:
     def test_the_layout_check_refuses_a_stride_that_collides(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """The clearance check is what licenses the two bands sharing columns.
-
-        With a stride of six the eastbound hops miss every westbound ``$``,
-        ``#`` and digit; with the flat layout's five they do not, and the
-        grid that comes out is wrong in a way only a run would show.  So the
-        check has to refuse it -- a silent pass here would mean it was
-        licensing nothing at all.
-        """
+        r"""The clearance check is what licenses the two bands sharing columns."""
         from esolangs.tools.boolean import register
 
         monkeypatch.setattr(register, "_DIG_BAND", _DIG_STRIDE)
@@ -606,7 +441,7 @@ class TestDig:
 
 class TestSophie:
     def test_hybrid_subsumes_both_routes(self) -> None:
-        """The hybrid is no longer than either prior construction through n=3."""
+        r"""The hybrid is no longer than either prior construction through n=3."""
         from esolangs.tools.boolean.register import _sophie_hybrid
 
         improved = 0
@@ -633,7 +468,7 @@ class TestSophie:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
+        r"""Every input combination produces the truth-table result."""
         program = boolean.sophie(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -641,18 +476,11 @@ class TestSophie:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_structure(self) -> None:
-        """A one-input function is a single conditional pair."""
+        r"""A one-input function is a single conditional pair."""
         assert boolean.sophie("10") == ";@$48{#$49,&}{#$48,&}"
 
     def test_state_machine_merges_what_the_tree_cannot(self) -> None:
-        """A subtable that is not constant can still collapse to one state.
-
-        ``10101010`` is NOT of the last input: the nested tree branches at
-        every level, while every prefix leaves the same residual
-        subfunction, so the chain needs one state per level until the last.
-        The accumulator carries the state label between levels, which is
-        what a nested construction cannot express.
-        """
+        r"""A subtable that is not constant can still collapse to one state."""
         table = "10101010"
         assert [len(level) for level in _polynomial_states(table, 3)] == [1, 1, 1, 2]
         assert len(_sophie_dag(table)) < len(_sophie_tree(table))
@@ -662,11 +490,7 @@ class TestSophie:
             assert run_sophie(program, [str(b) for b in bits]) == table[combo]
 
     def test_merge_only_shrinks(self) -> None:
-        """No table comes out longer than the nested tree alone.
-
-        The hybrid inlines unshared states as tree branches, so labels only
-        pay for actual merges. At n == 3, 130 of 256 tables shrink.
-        """
+        r"""No table comes out longer than the nested tree alone."""
         improved = 0
         for value in range(256):
             table = format(value, "08b")
@@ -677,13 +501,7 @@ class TestSophie:
         assert improved == 130
 
     def test_merge_is_linear_where_the_tree_doubles(self) -> None:
-        """Parity needs two states per level however wide it gets.
-
-        Parity is the nested tree's worst case at every width -- nothing
-        folds, so it branches at all ``2**n - 1`` internal nodes -- and is
-        the merge's best, since the running parity is the whole state.  The
-        saving therefore grows with ``n`` rather than being a fixed trim.
-        """
+        r"""Parity needs two states per level however wide it gets."""
         previous = None
         for n in (4, 5, 6):
             parity = "".join(str(bin(row).count("1") % 2) for row in range(2**n))
@@ -697,13 +515,7 @@ class TestSophie:
             previous = ratio
 
     def test_every_path_reads_each_input_once(self) -> None:
-        """A run consumes exactly ``n`` inputs, whichever build won.
-
-        The tree spends the reads a folded leaf skipped; the state machine
-        reads once inside the single block each level's chain fires.  An
-        exhaustible feed proves both directions -- an over-read raises, a
-        leftover proves an under-read.
-        """
+        r"""A run consumes exactly ``n`` inputs, whichever build won."""
         for table, n in (("10101010", 3), ("11111111", 3), ("01101001", 3)):
             program = boolean.sophie(table)
             for combo in range(2**n):
@@ -714,14 +526,7 @@ class TestSophie:
                 assert not list(feed), f"{table} inputs {bits} left input unread"
 
     def test_constant_subtrees_fold(self) -> None:
-        """A constant slice prints outright, but still reads its inputs.
-
-        Sophie reads *inside* the tree -- a node is ``;`` then its branch
-        -- so a folded leaf carries the ``;`` it skipped.  Dropping them
-        would make the program's input count depend on its table, which
-        :mod:`tests.tools.test_boolean_contract` rejects for every
-        generator.
-        """
+        r"""A constant slice prints outright, but still reads its inputs."""
         assert boolean.sophie("1111") == ";;#$49,&"
         assert boolean.sophie("0000") == ";;#$48,&"
         assert boolean.sophie("0110").count(";") == 3  # nothing folds.
@@ -744,7 +549,7 @@ class TestCollatzMultiverse:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
+        r"""Every input combination produces the truth-table result."""
         program = boolean.collatz_multiverse(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -752,19 +557,13 @@ class TestCollatzMultiverse:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_minterm_structure(self) -> None:
-        """The program reads one input per line and prints once."""
+        r"""The program reads one input per line and prints once."""
         program = boolean.collatz_multiverse("0110")
         assert program.count("input") == 2
         assert program.count("DO PRINT.") == 1
 
     def test_a_dense_table_selects_its_zero_rows(self) -> None:
-        """More ones than zeros costs less built the other way.
-
-        Inverting is free here rather than one operation: the OR ends on a
-        ``flip`` turning ``prod(1 - minterm)`` into the answer, so a
-        complemented table keeps the accumulator instead.  A dense table is
-        therefore *shorter* than its sparse complement, not merely equal.
-        """
+        r"""More ones than zeros costs less built the other way."""
         dense = boolean.collatz_multiverse("11111110")  # one zero row.
         sparse = boolean.collatz_multiverse("00000001")  # one one row.
         assert len(dense) < len(sparse)
@@ -775,12 +574,7 @@ class TestCollatzMultiverse:
                 assert run_collatz_multiverse(program, bits) == table[combo]
 
     def test_constant_tables_collapse_but_still_read(self) -> None:
-        """A constant table collapses to one output but still reads its inputs.
-
-        Collapsing the evaluation is the win; the reads are the language's
-        interface and have to stay, or the caller's bits are left unread on the
-        input stream for whatever runs next.
-        """
+        r"""A constant table collapses to one output but still reads its inputs."""
         for table in ("0000", "1111"):
             program = boolean.collatz_multiverse(table)
             assert program.count("DO PRINT.") == 1
@@ -803,7 +597,7 @@ class TestDecleq:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
+        r"""Every input combination produces the truth-table result."""
         program = boolean.decleq(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -811,7 +605,7 @@ class TestDecleq:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_branch_normalizes_essential_bits_to_one_and_two(self) -> None:
-        """Each essential bit gets a 47-step decrement chain, then one branch."""
+        r"""Each essential bit gets a 47-step decrement chain, then one branch."""
         program = boolean.decleq("0110")
         cells = [int(tok) for tok in program.split()]
         instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
@@ -822,13 +616,7 @@ class TestDecleq:
         assert sum(1 for ins in instrs if ins[0] == -1) == 2  # one read each.
 
     def test_constant_subtrees_fold(self) -> None:
-        """A constant subtree becomes a leaf instead of branching further.
-
-        Decleq splits most-significant-first, so its subtrees are
-        contiguous runs: ``11110000`` is two constant halves and folds to
-        one branch, while ``10101010`` is constant over no run at all and
-        keeps the full tree.
-        """
+        r"""A constant subtree becomes a leaf instead of branching further."""
         program = boolean.decleq("11110000")
         cells = [int(tok) for tok in program.split()]
         instrs = [cells[i : i + 3] for i in range(0, len(cells) - 2, 3)]
@@ -840,20 +628,7 @@ class TestDecleq:
         assert len(boolean.decleq("11110000")) < len(boolean.decleq("10101010"))
 
     def test_folding_leaves_no_dead_cells(self) -> None:
-        """Every cell is an instruction or live data -- none is filler.
-
-        ``data_base`` is computed before emitting, so the tree has to be
-        *counted* before it is walked.  When that count is right the code
-        ends exactly at ``data_base`` and the only zero cells in the
-        finished program are the ``n`` read cells, which the reads fill in
-        at runtime.
-
-        A count that assumed nothing folded would still produce a working
-        program -- the allocation fills out to the reserved address, so
-        every leaf resolves -- with a run of dead zero cells wedged in
-        between (63 at ``n == 3``).  Nothing about the output reveals
-        that, so the cell count is what has to be pinned.
-        """
+        r"""Every cell is an instruction or live data -- none is filler."""
         for table in ("11111111", "11110000", "11001100"):
             n = len(table).bit_length() - 1
             cells = [int(tok) for tok in boolean.decleq(table).split()]
@@ -865,7 +640,7 @@ class TestDecleq:
             assert zeros_at_end == n, f"{table} carries {zeros_at_end - n} dead cells"
 
     def test_folded_leaves_still_print_correctly(self) -> None:
-        """Every folded table still prints its entry for every input."""
+        r"""Every folded table still prints its entry for every input."""
         for table in ("11111111", "11110000", "11001100", "00001111"):
             program = boolean.decleq(table)
             n = len(table).bit_length() - 1
@@ -878,7 +653,7 @@ class TestDecleq:
 class TestPointBreak:
     @pytest.mark.parametrize(("table", "n"), sorted(_PB_TABLES.items()))
     def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination halts or loops per its table entry."""
+        r"""Every input combination halts or loops per its table entry."""
         program = boolean.point_break(table)
         for combo in range(2**n):
             got = point_break_result(program, _pb_combo_bits(combo, n))
@@ -886,15 +661,7 @@ class TestPointBreak:
 
     @pytest.mark.parametrize("table", _PB_CONSTANTS)
     def test_constant_tables(self, table: str) -> None:
-        """A constant table skips the tree but still consumes its inputs.
-
-        The body may shrink to the bare template -- there is no sum to
-        build -- but the reads are the interface: a program whose input
-        count depended on its truth table would leave the caller's
-        remaining bits on the stream for whatever ran next.  These tables
-        take the short-circuit path that bypasses the tree entirely, so
-        they are where a lost read would hide.
-        """
+        r"""A constant table skips the tree but still consumes its inputs."""
         import contextlib
 
         from esolangs.interpreters.io import ScriptedIO
@@ -926,7 +693,7 @@ class TestPointBreak:
                 )
 
     def test_program_structure(self) -> None:
-        """One read per input, complemented bits, a minterm sum, the template."""
+        r"""One read per input, complemented bits, a minterm sum, the template."""
         program = boolean.point_break("0110").splitlines()
         assert program[:3] == ["LET a:=1", "LET b:=?", "LET c:=?"]
         assert program[3:5] == ["LET d:=a-b", "LET e:=a-c"]
@@ -935,13 +702,7 @@ class TestPointBreak:
         assert program[-3:] == ["POINT loop", "IF h BREAK loop", "END loop"]
 
     def test_a_dense_table_sums_its_zero_rows(self) -> None:
-        """More ones than zeros costs less summed the other way.
-
-        The guard breaks the loop on a nonzero, so it is already the
-        complement of the answer -- which makes inverting free here: the
-        complemented sum *is* the guard, and the ``one-f`` subtraction is
-        dropped rather than added to.
-        """
+        r"""More ones than zeros costs less summed the other way."""
         dense = boolean.point_break("11111110").splitlines()
         sparse = boolean.point_break("00000001").splitlines()
         # one minterm each: summing the.
@@ -966,13 +727,7 @@ class TestPointBreak:
 
 
 def _depth_zero_labels(program: str) -> list[int]:
-    """Every ``@$N`` block label at the top level of ``program``.
-
-    Sophie dispatches by setting the accumulator with ``#$N`` and falling
-    through the top-level ``@$N{...}`` blocks, so two blocks sharing an
-    ``N`` means the first also fires.  48 and 49 are excluded: those are the
-    bit tests, which are not dispatch labels.
-    """
+    r"""Every ``@$N`` block label at the top level of ``program``."""
     labels: list[int] = []
     depth = index = 0
     while index < len(program):
@@ -995,28 +750,13 @@ def _depth_zero_labels(program: str) -> list[int]:
 
 
 class TestSophieLabelsAreUnique:
-    """Two blocks with one label make the first fire on the way past.
-
-    Labels used to come from two bands chosen by level parity, on the
-    reasoning that a fired block leaves a *next*-level label in the
-    accumulator which no remaining test in the chain can match.  That is
-    true of consecutive levels and consecutive levels are not the relation
-    that matters: unshared states are inlined, so a single top-level block
-    carries jumps originating at several depths, and levels 2 and 4 -- same
-    parity, same band -- were both targets from inside it.  Level 2 is
-    emitted first, so a jump meant for level 4 ran level 2 first and read
-    inputs the caller never supplied.
-
-    The failure is *shape*-dependent, not size-dependent, which is why it
-    survived: Sophie is correct on all 65536 tables at n <= 4, and collides
-    on 35% of random tables at n=7.
-    """
+    r"""Two blocks with one label make the first fire on the way past."""
 
     # : The smallest table that.
     MINIMAL = "00000000000000010000000100000100"
 
     def test_the_minimal_colliding_table_computes(self) -> None:
-        """It raised ``read past the end of input: 5 lines supplied, read 6``."""
+        r"""It raised ``read past the end of input: 5 lines supplied, read 6``."""
         assert boolean.sophie(self.MINIMAL)  # builds, and always did.
         for combo in range(32):
             bits = [(combo >> (4 - i)) & 1 for i in range(5)]
@@ -1024,20 +764,13 @@ class TestSophieLabelsAreUnique:
             assert got == self.MINIMAL[combo], bits
 
     def test_the_minimal_table_has_no_duplicate_label(self) -> None:
-        """Its program carried two ``@$1`` blocks."""
+        r"""Its program carried two ``@$1`` blocks."""
         labels = _depth_zero_labels(boolean.sophie(self.MINIMAL))
         assert len(labels) == len(set(labels)), labels
 
     @pytest.mark.parametrize("n", [5, 6, 7, 8])
     def test_no_table_collides_at_any_arity(self, n: int) -> None:
-        """A structural check, so it reaches arities executing cannot afford.
-
-        Sampled rather than exhaustive, with a fixed seed: at n=8 the old
-        scheme collided on 88% of random tables, so twenty is ample to
-        catch a regression and cheap enough to run every time.  The shapes
-        that first exposed this are included by name, since a random sample
-        is exactly what missed it for so long.
-        """
+        r"""A structural check, so it reaches arities executing cannot afford."""
         rng = random.Random(n)
         tables = ["".join(rng.choice("01") for _ in range(2**n)) for _ in range(20)]
         tables.append("".join(str(int(bin(r).count("1") == 1)) for r in range(2**n)))
@@ -1046,12 +779,7 @@ class TestSophieLabelsAreUnique:
             assert len(labels) == len(set(labels)), (n, table)
 
     def test_a_label_is_never_a_bit_value(self) -> None:
-        """48 and 49 are what a read leaves behind, so a block cannot own one.
-
-        Nothing else is reserved -- the interpreter parses a label as a
-        plain digit run -- so this is the whole constraint, and it binds
-        only once the count climbs past 47.
-        """
+        r"""48 and 49 are what a read leaves behind, so a block cannot own one."""
         for n in (6, 7, 8):
             table = "".join(str(int(bin(r).count("1") == 1)) for r in range(2**n))
             labels = _depth_zero_labels(boolean.sophie(table))
@@ -1059,7 +787,7 @@ class TestSophieLabelsAreUnique:
             assert _ASCII_ONE not in labels
 
     def test_the_scan_can_actually_see_a_duplicate(self) -> None:
-        """The positive control: a checker that never fires guards nothing."""
+        r"""The positive control: a checker that never fires guards nothing."""
         assert _depth_zero_labels("@$1{;}@$1{;}") == [1, 1]
         assert _depth_zero_labels("@$1{@$1{;}}") == [1]  # nested is not top level.
         assert _depth_zero_labels(";@$48{#$48,&}{#$49,&}") == []  # bit tests only.

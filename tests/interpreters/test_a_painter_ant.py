@@ -1,9 +1,4 @@
-"""Unit tests for the A Painter Ant interpreter.
-
-Tests cover the conditional movement instructions, painting, the implicit
-program loop, whitespace handling, and the documented grid dump that makes
-the no-I/O language observable.
-"""
+r"""Unit tests for the A Painter Ant interpreter."""
 
 import pytest
 
@@ -13,15 +8,7 @@ from tests.interpreters.contract import EmptyProgramContract
 
 
 def run_program(code: str, passes: int = 1) -> str:
-    """Step ``code`` for exactly ``passes`` whole cycles and render.
-
-    ``run()`` itself has no pass count any more -- it steps until the state
-    repeats at a boundary, which for a program that never settles (most of
-    the ones below: a single ``n`` walks onto a fresh cell forever) would
-    not return.  This is the direct replacement for what ``cycles=`` used
-    to pin: drive the machine the same number of passes the old default
-    argument would have run, then read the same render ``run()`` prints.
-    """
+    r"""Step ``code`` for exactly ``passes`` whole cycles and render."""
     machine = _Machine(code)
     span = len(machine.prog)
     for _ in range(passes * span):
@@ -83,17 +70,7 @@ class TestImplicitLoop:
         assert run_program("PnPwPsPe", 3) == ".##\n###\n##.\n.#o"
 
     def test_run_finds_the_first_repeated_pass(self) -> None:
-        """``run`` renders at the first pass boundary whose state repeats.
-
-        ``NPsP`` is not stable after one pass -- its render only settles
-        once pass 2 repeats pass 1's state -- so a version of ``run`` that
-        rendered after a single pass regardless would show a picture the
-        program does not actually keep drawing.  This pins the render
-        against ``run_program`` stepped exactly to the pass where the
-        repeat lands, rather than to an arbitrary later one: any pass count
-        from there on renders the same, so agreeing with pass 2 and
-        disagreeing with pass 1 is the sharpest check available.
-        """
+        r"""``run`` renders at the first pass boundary whose state repeats."""
         io = ScriptedIO()
         run("NPsP", io)
         assert io.getvalue() == run_program("NPsP", 2)
@@ -178,32 +155,19 @@ class TestStepMachine:
 
 
 def test_an_empty_program_leaves_the_ant_where_it_started() -> None:
-    """With no instructions each step returns at once, painting nothing.
-
-    The grid is still dumped, because that is how the language is made
-    observable at all -- so what an empty program shows is the ant's own
-    starting cell and nothing else.
-    """
+    r"""With no instructions each step returns at once, painting nothing."""
     assert run_program("") == "o"
 
 
 def test_run_terminates_on_an_empty_program() -> None:
-    """``run()`` itself, not just the ``_Machine``-driven test helper.
-
-    An empty program has no pass to take (``span == 0``), so the inner
-    step loop is a no-op and the very first boundary snapshot already
-    equals the starting one -- the general Brent's loop breaks on its
-    first iteration without needing a special case.  ``run_program``
-    above never calls ``run`` at all (it drives ``_Machine`` directly),
-    so this is the only place that path is exercised.
-    """
+    r"""``run()`` itself, not just the ``_Machine``-driven test helper."""
     io = ScriptedIO()
     run("", io)
     assert io.getvalue() == "o"
 
 
 class TestContract(EmptyProgramContract):
-    """The shared empty-program shape, with this language's data."""
+    r"""The shared empty-program shape, with this language's data."""
 
     run = staticmethod(run_program)
     empty_output = "o"

@@ -1,13 +1,4 @@
-"""Unit tests for the function x(y) interpreter.
-
-Covers every example on the language's wiki page, the expression forms
-(arithmetic precedence, comparison, the spacing that separates a ternary
-from a comparison, variables and compound assignment), the documented
-spec-gap decisions, and the error conventions.
-
-The wiki examples are the ground truth here, so they are pinned by their
-*output* rather than by inspection of the parse.
-"""
+r"""Unit tests for the function x(y) interpreter."""
 
 import contextlib
 
@@ -65,12 +56,12 @@ class TestWikiExamples:
         assert run_program(HELLO) == "Hello, World!\n"
 
     def test_cat(self) -> None:
-        """``[[~]]`` is ``[expr]`` over the ``[~]`` line read."""
+        r"""``[[~]]`` is ``[expr]`` over the ``[~]`` line read."""
         assert run_program(CAT, "meow\n") == "meow\n"
 
     @pytest.mark.parametrize(("arg", "want"), [(-5, "5"), (7, "7"), (0, "0")])
     def test_absolute_value(self, arg: int, want: str) -> None:
-        """The wiki's ``abs`` only returns, so a caller prints the result."""
+        r"""The wiki's ``abs`` only returns, so a caller prints the result."""
         code = f"function main()\n[abs({arg})]\n\n{ABS}"
         assert run_program(code) == f"{want}\n"
 
@@ -78,12 +69,12 @@ class TestWikiExamples:
         ("arg", "want"), [(0, "1"), (1, "1"), (2, "2"), (5, "120"), (7, "5040")]
     )
     def test_factorial(self, arg: int, want: str) -> None:
-        """``{n - 1}`` re-calls the current function -- the namesake."""
+        r"""``{n - 1}`` re-calls the current function -- the namesake."""
         code = f"function main()\n[factorial({arg})]\n\n{FACTORIAL}"
         assert run_program(code) == f"{want}\n"
 
     def test_fibonacci_streams_the_sequence(self) -> None:
-        """``fib`` recurses forever by design, so it is stepped, not run."""
+        r"""``fib`` recurses forever by design, so it is stepped, not run."""
         m = machine(FIB)
         io = m.io
         for _ in range(400):
@@ -96,18 +87,11 @@ class TestWikiExamples:
         assert printed[:9] == ["1", "1", "2", "3", "5", "8", "13", "21", "34"]
 
     def test_fizzbuzz_repaired(self) -> None:
-        """The repaired FizzBuzz halts after two lines -- a wiki logic bug.
-
-        Beyond the syntax typo the example never recurses from its ``[n]``
-        arm, so it prints ``FizzBuzz`` for 0, then ``1``, and stops.  That
-        is what the example *says*; do not "fix" this expectation.  It still
-        exercises the lazy arms, string ``+``/``==``, ``//`` and the mutual
-        named calls, which is what FizzBuzz is here to cover.
-        """
+        r"""The repaired FizzBuzz halts after two lines -- a wiki logic bug."""
         assert run_program(FIZZBUZZ) == "FizzBuzz\n1\n"
 
     def test_the_wiki_fizzbuzz_line_is_unbalanced(self) -> None:
-        """The verbatim wiki line has two ``<`` against one ``>``."""
+        r"""The verbatim wiki line has two ``<`` against one ``>``."""
         verbatim = FIZZBUZZ.replace(
             "<[n], printAndRecurse(n)>, 0>", "<[n], printAndRecurse(n)>"
         )
@@ -153,21 +137,17 @@ class TestExpressions:
         assert run_program(f"function f()\n[{expr}]") == f"{want}\n"
 
     def test_spacing_separates_a_ternary_from_a_comparison(self) -> None:
-        """``a < b`` is a comparison; ``)<(`` opens a ternary.
-
-        The spacing is the only thing telling the two apart, so it is
-        load-bearing rather than cosmetic.
-        """
+        r"""``a < b`` is a comparison; ``)<(`` opens a ternary."""
         assert run_program('function f()\n[(1 < 2)<"y", "n">]') == "y\n"
         assert run_program('function f()\n[(2 < 1)<"y", "n">]') == "n\n"
 
     def test_a_ternary_evaluates_exactly_one_arm(self) -> None:
-        """Lazily: an arm that prints must not fire when unselected."""
+        r"""Lazily: an arm that prints must not fire when unselected."""
         assert run_program("function f()\n(1 == 1)<[9], [8]>") == "9\n"
         assert run_program("function f()\n(1 == 0)<[9], [8]>") == "8\n"
 
     def test_ternary_arms_may_contain_calls_with_commas(self) -> None:
-        """The arm split is the *top-level* comma, so a call survives it."""
+        r"""The arm split is the *top-level* comma, so a call survives it."""
         code = "function f()\n[(1 == 1)<g(1, 2), 0>]\n\nfunction g(a, b)\n-> a + b"
         assert run_program(code) == "3\n"
 
@@ -214,7 +194,7 @@ class TestFunctions:
         assert run_program(code) == "first\n"
 
     def test_default_return_value_is_zero(self) -> None:
-        """The wiki: "default return value is 0"."""
+        r"""The wiki: "default return value is 0"."""
         code = 'function f()\n[g()]\n\nfunction g()\n`""'
         assert run_program(code) == "0\n"
 
@@ -227,7 +207,7 @@ class TestFunctions:
         assert run_program(code) == "3\n"
 
     def test_mutual_recursion_resolves_after_parsing(self) -> None:
-        """``a`` calls ``b``, declared later, so names bind after the parse."""
+        r"""``a`` calls ``b``, declared later, so names bind after the parse."""
         code = "function a()\n[b(3)]\n\nfunction b(n)\n-> (n < 1)<0, b(n - 1) + 1>"
         assert run_program(code) == "3\n"
 
@@ -254,7 +234,7 @@ class TestInput:
         assert run_program("function f()\n[`~]", "abc\n") == "a\n"
 
     def test_an_empty_line_is_legal_for_character_input(self) -> None:
-        """A bare Enter reads as 0 rather than raising an IndexError."""
+        r"""A bare Enter reads as 0 rather than raising an IndexError."""
         assert run_program("function f()\n[`~]", "\n") == "\x00\n"
 
     def test_exhausted_input_raises_eof(self) -> None:
@@ -279,9 +259,7 @@ class TestErrors:
     def test_a_malformed_program_raises_value_error(
         self, code: str, reason: str
     ) -> None:
-        """The reason is pinned: "any ValueError" would also pass a parser
-        that had started refusing every program.
-        """
+        r"""The reason is pinned: "any ValueError" would also pass a parser."""
         with pytest.raises(ValueError, match=reason):
             run(code, ScriptedIO(""))
 
@@ -294,28 +272,14 @@ class TestErrors:
             run('function f()\n["a" - 1]', ScriptedIO(""))
 
     def test_deep_source_nesting_is_refused_rather_than_overflowing(self) -> None:
-        """A ``RecursionError`` escaping the parser would be a crash.
-
-        The parser recurses over the source, so the fuzz suite's random text
-        could overflow Python's stack: 300 nested parentheses did.  The cap
-        turns that into the ``ValueError`` a malformed program owes.
-        """
+        r"""A ``RecursionError`` escaping the parser would be a crash."""
         deep = "function f()\n-> " + "(" * 3000 + "1" + ")" * 3000
         with pytest.raises(ValueError, match="nests deeper"):
             run(deep, ScriptedIO(""))
 
 
 class TestRunawayRecursion:
-    """Unbounded recursion must not crash the process.
-
-    The interpreter keeps its own evaluation-frame stack rather than using
-    Python's, so there is no depth ceiling and nothing raises: a runaway
-    program simply keeps stepping.  That is the property under test -- the
-    machine steps far past Python's own recursion limit without an
-    exception and without halting.  A program recursing through ever-new
-    states never repeats a snapshot, so the cycle detector cannot stop it
-    either; ``esolangs.run``'s wall-clock timeout is the backstop.
-    """
+    r"""Unbounded recursion must not crash the process."""
 
     @pytest.mark.parametrize(
         "code",
@@ -342,7 +306,7 @@ class TestRunawayRecursion:
 
 class TestMachine:
     def test_snapshot_is_hashable_and_complete(self) -> None:
-        """The frame stack is tuples throughout, so a snapshot hashes."""
+        r"""The frame stack is tuples throughout, so a snapshot hashes."""
         m = machine(FACTORIAL.replace("(n)", "(n | 5)"))
         seen = {m.snapshot()}
         for _ in range(20):
@@ -351,7 +315,7 @@ class TestMachine:
         assert len(seen) > 1
 
     def test_snapshot_tracks_the_input_cursor(self) -> None:
-        """A repeat that ignores consumed input is not a real cycle."""
+        r"""A repeat that ignores consumed input is not a real cycle."""
         io = ScriptedIO("a\nb\n")
         m = _Machine("function f()\n[[~]]\n[[~]]", io)
         before = m.snapshot()

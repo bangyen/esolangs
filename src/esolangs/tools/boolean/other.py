@@ -1,4 +1,4 @@
-"""Boolean-function generators for languages in the ``other`` category."""
+r"""Boolean-function generators for languages in the ``other`` category."""
 
 # laserfuck, streetcode and.
 # construction (a grid layout.
@@ -54,14 +54,7 @@ _NEG_DIGIT = (_ZERO, _NEG_THIRD, _NEG_TWO_THIRDS)
 
 
 def _const(n: int) -> str:
-    """3x code pushing ``n`` on a clean stack, for any integer ``n``.
-
-    ``n`` is written in base 3 and its digits are processed most significant
-    first: ``v`` starts as the leading digit and each following digit ``d``
-    applies the affine map ``v -> 3v + d`` via one ``x`` (see ``_NEG_THIRD``).
-    The result is a closed-form program of ``O(log_3 n)`` length leaving
-    exactly ``[n]`` on the stack.
-    """
+    r"""3x code pushing ``n`` on a clean stack, for any integer ``n``."""
     if n <= 2:
         return _DIGIT[n]
     digits = []
@@ -75,45 +68,7 @@ def _const(n: int) -> str:
 
 
 def function_x_y(truth_table: str, width: int | None = None) -> str:
-    """Build a function x(y) program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    The program reads all ``n`` input lines up front into ``b0..b(n-1)``,
-    then prints one nested ternary: at level ``k`` the condition is
-    ``(b_perm[k] == "1")`` and the arms are the two subtrees, folded to a
-    literal wherever the subtable is constant.  The reads stay in input
-    order and happen unconditionally, so a constant table still consumes
-    all ``n`` inputs -- the reads are the interface.
-
-    A ternary is an expression, so the whole tree is one statement and the
-    construction needs no control flow beyond it.  **The tree splits in
-    whichever input order emits the shortest program**
-    (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
-
-    ``width`` asks for a column count, and the tree meets one by *naming*
-    its subtrees.  A ternary is an expression, so the whole tree is one
-    statement and its width is the whole tree -- but ``var`` binds an
-    expression to a name, and a name is three characters wherever it is
-    used.  So a subtree whose text would push its line past the width is
-    emitted as a ``var`` of its own and referred to by name, which is the
-    same program with the nesting spread down the page instead of along
-    the line.
-
-    That is sound here for a reason worth stating, because it is not true
-    of the language in general: a ``var`` is evaluated where it stands,
-    while a ternary's arms are evaluated **lazily, exactly one of them**.
-    Hoisting an arm therefore evaluates it whether or not it is taken.
-    Nothing in this tree minds -- the arms are string literals and
-    comparisons of variables that were read before the tree starts, so they
-    have no effects to duplicate and no errors to raise.  The reads
-    themselves stay where they were, one per input, above the tree and
-    unconditional.
-
-    The floor is one node's own line, ``var tN: (bK == "1")<tA, tB>``, and
-    a width under it returns the narrowest program rather than refusing.
-    """
+    r"""Build a function x(y) program computing the given truth table."""
     return best_input_order(
         truth_table,
         lambda table, perm: _function_x_y_ordered(table, perm, width),
@@ -123,7 +78,7 @@ def function_x_y(truth_table: str, width: int | None = None) -> str:
 def _function_x_y_ordered(
     truth_table: str, perm: tuple[int, ...], width: int | None = None
 ) -> str:
-    """Emit one input order's function x(y) program; see :func:`function_x_y`."""
+    r"""Emit one input order's function x(y) program; see."""
     n = _validate_truth_table(truth_table)
     named: list[str] = []
     # The prefix a named subtree's.
@@ -134,15 +89,7 @@ def _function_x_y_ordered(
     head = len(f"var t{max(1, 2**n - 1)}: ")
 
     def build(i: int, combo: int) -> str:
-        """Return the text for this subtree, naming as much as the width needs.
-
-        The invariant is that what comes back always fits a ``var`` line of
-        its own.  That is what makes naming an arm legal at any point: the
-        arm has already been built to fit a line, so giving it one cannot
-        overflow.  Naming a *node* does not shorten the node, which is the
-        thing to get right -- a line is too long because of what is inside
-        it, so the arms are what have to go.
-        """
+        r"""Return the text for this subtree, naming as much as the width needs."""
         # ``combo`` has the bits above.
         # so it is the first row of the.
         run = truth_table[combo : combo + 2 ** (n - i)]
@@ -172,25 +119,12 @@ def _function_x_y_ordered(
 
 
 def myscript(truth_table: str) -> str:
-    """Build a MyScript program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    The program reads all ``n`` input lines up front into ``b0..b(n-1)``,
-    then walks a ``check`` decision tree: at level ``i`` it branches on
-    ``b_i`` and the leaves ``say`` the table value for the combination.
-
-    **The tree splits on its inputs in whichever order emits the shortest
-    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
-    The ``var b{i} is ask`` reads stay in input order, so only the variable
-    a ``check`` names moves.
-    """
+    r"""Build a MyScript program computing the given truth table."""
     return best_input_order(truth_table, _myscript_ordered)
 
 
 def _myscript_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order's MyScript program; see :func:`myscript`."""
+    r"""Emit one input order's MyScript program; see :func:`myscript`."""
     n = _validate_truth_table(truth_table)
     lines = [f"var b{i} is ask" for i in range(n)]
 
@@ -213,52 +147,12 @@ def _myscript_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
 
 def three_x(truth_table: str) -> str:
-    """Build a 3x program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    3x reads an integer with ``?`` and has no direct boolean literals or
-    conditionals, so the generator builds a decision tree with variables:
-
-    - each ``?`` reads one input bit and stores it in a variable (the
-      cheapest names after 0 and 3);
-    - a ``( ... )`` loop runs while its guard is nonzero: the guard value is
-      popped into a trash variable (0), the body stores the table entry into
-      the result variable (3), and a sentinel zero exits the loop.
-
-    The result variable defaults to the majority table value (so the
-    ``( ... )`` loop emits no override when every row matches), and only the
-    input combinations whose table entry differs from the default get an
-    override block.  Each override's ``( ... )`` guard leaves the stack
-    balanced via the trash pop, so arbitrary ``n`` works.
-
-    **The tree splits on its inputs in whichever order emits the shortest
-    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
-    The reorder is spelled in the *store targets* rather than in the tree:
-    ``?`` consumes the stream in order, but each read may store into any
-    variable, so reading stream input ``i`` into the name the tree tests at
-    depth ``perm.index(i)`` reorders the splits while consuming the input
-    stream exactly as before.
-
-    That makes the reorder **free of any cost the search cannot see**.  The
-    read block stores each name exactly once whatever the order, so its
-    length never changes, and the tree is byte-identical to the one the
-    permuted table produces -- unlike a generator that walks to its inputs
-    (Circlefuck) or has to hoist them first (S*bleq, BrainIf), where the
-    screen is respectively an over- and an under-estimate.  Here the screen
-    figure is exact: 4.5% at n=3 (146 of 256 tables improved), 5.4% at n=4.
-    """
+    r"""Build a 3x program computing the given truth table."""
     return best_input_order(truth_table, _three_x_ordered)
 
 
 def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order's 3x program; see :func:`three_x`.
-
-    ``perm[k]`` is the stream input the tree tests at depth ``k``, so stream
-    input ``i`` is stored into ``input_vars[perm.index(i)]`` and the tree
-    itself is unchanged.
-    """
+    r"""Emit one input order's 3x program; see :func:`three_x`."""
     n = _validate_truth_table(truth_table)
 
     # Variable allocation: var 0 is.
@@ -287,11 +181,11 @@ def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         return _ONE + "#" + _ONE + "x"  # from [b] leave [1-b].
 
     def guard(i: int, body: str) -> str:
-        """If bit i is 1, run ``body``; leaves the stack balanced."""
+        r"""If bit i is 1, run ``body``; leaves the stack balanced."""
         return read(i) + "(" + trash + body + _ZERO + ")" + trash
 
     def guard_not(i: int, body: str) -> str:
-        """If bit i is 0, run ``body``; leaves the stack balanced."""
+        r"""If bit i is 0, run ``body``; leaves the stack balanced."""
         return read(i) + not_bit() + "(" + trash + body + _ZERO + ")" + trash
 
     # A table that ignores some of.
@@ -361,25 +255,12 @@ def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
 
 def nevermind(truth_table: str) -> str:
-    """Build a Nevermind program computing the given truth table.
-
-    ``truth_table`` is a binary string of length 2**n indexed by the inputs
-    (most significant first), ``n`` is the input count implied by the table length.
-
-    Nevermind reads each input with ``input,?`` into its own variable, then a
-    decision tree of nested ``if``/``endif`` blocks prints the result for the
-    matching combination.
-
-    **The tree splits on its inputs in whichever order emits the shortest
-    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
-    The ``input,?`` reads stay in input order, so only the variable an
-    ``if`` names moves.
-    """
+    r"""Build a Nevermind program computing the given truth table."""
     return best_input_order(truth_table, _nevermind_ordered)
 
 
 def _nevermind_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order's Nevermind program; see :func:`nevermind`."""
+    r"""Emit one input order's Nevermind program; see :func:`nevermind`."""
     n = _validate_truth_table(truth_table)
     lines: list[str] = []
     for i in range(n):
@@ -406,30 +287,13 @@ def _nevermind_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
 
 def _reorder_tt(tt: str, n: int) -> str:
-    """Reorder truth table entries into the slot order the reduces expect.
-
-    Each entry sits in a value slot ``[0, s_i, 0, s_j, ...]``; an even
-    reduce must be able to drop an entire contiguous run of slots without
-    splitting a pair.  Sorting the input index ``i`` by ``(-(i >> 1),
-    i & 1)`` puts the 1-group of the current input first, then the 0-group,
-    with the two sub-cases of the next input adjacent inside each group.
-    Odd-reduce levels (which branch the other way) then re-apply the same
-    ordering, so the sort key serves both.
-    """
+    r"""Reorder truth table entries into the slot order the reduces expect."""
     indices = sorted(range(2**n), key=lambda i: (-(i >> 1), i & 1))
     return "".join(tt[i] for i in indices)
 
 
 def _even_reduce(pairs: int, level: int, n: int) -> str:
-    """Even-reduction block: select half the value pairs, keep all inputs.
-
-    The queue holds ``2*pairs`` value slots ``[0, s0, 0, s1, ...]``, then
-    two 48s, then the ``n`` input chars.  The ``rot`` rotation brings the
-    next input to the front; ``gy ... gz`` branches on it so the ``e^pairs``
-    strides past the half of the value slots the input rejects; ``e^ahead``
-    skips the untouched half and ``f^pairs`` drops it.  Every input stays on
-    the queue, so the level that follows still sees all ``n`` of them.
-    """
+    r"""Even-reduction block: select half the value pairs, keep all inputs."""
     processed = level
     ahead = n - level
     total = n
@@ -473,66 +337,22 @@ _SEL1_N2: str = (
 
 
 def _build_padded_tt(truth_table: str, n_effective: int) -> str:
-    """Pad a ``2**(n_effective - 1)``-entry truth table to ``n_effective`` bits.
-
-    Odd ``n`` is computed with ``n_effective = n + 1`` inputs whose leading
-    (ghost) digit is always 0.  The real table covers the ghost=0 half; the
-    entries the ghost=1 would select are padded with 0 so the never-taken
-    rows stay harmless.
-    """
+    r"""Pad a ``2**(n_effective - 1)``-entry truth table to ``n_effective``."""
     half = 2 ** (n_effective - 1)
     return truth_table.ljust(half * 2, "0")
 
 
 def between(truth_table: str) -> str:
-    """Build a Between program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    The program reads each input bit as a line, converts it to an integer
-    with ``c``, then walks a decision tree laid out linearly: every node
-    tests bit ``i`` and, when the bit is zero, jumps over the ``1`` subtree
-    to the ``0`` subtree; each leaf prints ``|0|``/``|1|`` and exits.  The
-    branch addresses are 0-indexed line numbers, so the size of each subtree
-    is computed ahead of the linear layout.
-
-    A subtree whose rows all agree becomes a leaf rather than branching on
-    bits that cannot change the answer.  Since the addresses come from
-    ``size`` walking the tree a second time, the fold has to be a property of
-    the path alone -- ``constant`` -- so both walks stop in the same places;
-    a check either walk applied and the other did not would leave every
-    branch below it naming the wrong line.
-
-    **The tree splits on its inputs in whichever order emits the shortest
-    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`),
-    since the split order decides which rows a subtree covers -- and so
-    whether it folds.  The reads stay put: the ``'i'v.``/``[i]i.`` block
-    above the tree still stores input ``i`` in variable ``[i]`` in stream
-    order, and only the variable a branch line *names* moves.
-    """
+    r"""Build a Between program computing the given truth table."""
     return best_input_order(truth_table, _between_ordered)
 
 
 def _between_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order's Between program; see :func:`between`.
-
-    ``truth_table`` is already permuted, so the rows and the ``path``
-    indexing them are in the permuted frame.  ``perm`` is spent only on the
-    variable a branch tests, ``[perm[len(path)]]`` -- a substitution that
-    changes no line count, so ``size`` and ``emit`` still fold in the same
-    places and every branch address stays right.
-    """
+    r"""Emit one input order's Between program; see :func:`between`."""
     n = _validate_truth_table(truth_table)
 
     def first_row(path: list[int]) -> int:
-        """Return the lowest table row ``path`` reaches.
-
-        A full path spells a row outright; a short one has its unconsumed
-        bits still to come, so it names the *start* of the ``2**(n - len)``
-        run they span.  Shifting by those bits is what makes a folded leaf
-        read its own slice rather than the small index the raw path spells.
-        """
+        r"""Return the lowest table row ``path`` reaches."""
         row = 0
         for bit in path:
             row = row * 2 + bit
@@ -542,7 +362,7 @@ def _between_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         return int(truth_table[first_row(path)])
 
     def constant(path: list[int]) -> bool:
-        """Whether every row ``path`` reaches holds the same entry."""
+        r"""Whether every row ``path`` reaches holds the same entry."""
         row = first_row(path)
         return len(set(truth_table[row : row + 2 ** (n - len(path))])) == 1
 
@@ -576,23 +396,7 @@ def _between_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
 
 def _odd_reduce(pairs: int, level: int, n: int) -> str:
-    """Odd-reduction block: retire one input, reduce, keep the rest.
-
-    ``level`` is the 0-based reduce level (odd here: 1, 3, ...).  The queue
-    holds ``2*pairs`` value slots ``[0, s0, 0, s1, ...]``, then two 48s,
-    then the ``n`` input chars.  Unlike the even reduce, the odd level
-    branches on a *retired* (previous) input whose bit has already been
-    used, so ``e^rot`` brings that input to the front and the block runs
-    ``zero`` (``gy j e^(qlen-1) gz``) to fold it away, ``swap`` (``e gy j
-    e^(qlen-2) j gz``) to encode the current input as the ghost cell the
-    even-reduce branches on, and ``bring`` (``e^(qlen-1)``) to put the
-    value slots back at the front before ``er`` runs the even-reduce body.
-
-    The ZS adds an extra ghost cell at the front, so the even-reduce body
-    uses ``ahead = n - level + 1`` instead of ``n - level``.  No input is
-    popped; the final ``f^pairs`` in ``er`` drops only the rejected value
-    slots.
-    """
+    r"""Odd-reduction block: retire one input, reduce, keep the rest."""
     processed = level
     ahead = n - level + 1  # +1 for the ghost cell added.
     total = n
@@ -615,7 +419,7 @@ def _odd_reduce(pairs: int, level: int, n: int) -> str:
 
 
 def _taglate_reduced_table(truth_table: str, n: int, used: list[int]) -> str:
-    """Rewrite the function over just the inputs in ``used``."""
+    r"""Rewrite the function over just the inputs in ``used``."""
     width = len(used)
     return "".join(
         truth_table[
@@ -630,54 +434,7 @@ def _taglate_reduced_table(truth_table: str, n: int, used: list[int]) -> str:
 
 
 def taglate(truth_table: str) -> str:
-    r"""Build a Taglate program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    ``n == 1`` reads the single input with ``h`` and computes the affine
-    combination ``base + bit * coeff`` with the ``b``/``c``/``a`` queue
-    arithmetic, then prints it.
-
-    For ``n >= 2`` the program is ``seed\\n<commands>``.  The seed holds
-    ``n_effective`` literal ``'1'``s (``n_effective - 1`` leading, one
-    trailing) around a run of ``'0'``s; the prefix of ``h``/``e``/``b``/
-    ``d``/``j`` commands reads ``n_effective`` inputs and interleaves the
-    (reordered) truth-table bits into ``[0, s0, 0, s1, 0, s2, ...]`` value
-    slots, followed by two 48s and the inputs.  Odd ``n`` prepends a fake
-    zero input (ghost digit) so the slot stride lands on a separator, and
-    pads the table to ``n_effective = n + 1`` inputs.
-
-    The command list alternates even-reduce blocks (select half the
-    value slots on an input bit, keep all inputs) and odd-reduce blocks
-    (retire the previous input, swap the current one in, even-reduce).
-    Neither reduce pops inputs; ``e^6 f^(n_effective - 2) e^2`` reshapes
-    the queue into the 8-cell ``[0, v0, 0, v1, 48, 48, prev, curr]``
-    layout, and ``_SEL1_N2`` selects between the last two candidate
-    values on the two remaining inputs and prints ``48 + bit``.
-
-    **A table that ignores some of its inputs is emitted as the smaller
-    table.**  Nothing here costs anything per *row* -- a one and a zero are
-    both two characters (``bd``/``bb``) -- but almost everything costs per
-    *input*, and the seed alone is ``2**(n_eff + 2)`` cells, so dropping one
-    input drops a whole tier: a constant table goes from 451 characters to
-    21, and ``11110000`` (which depends only on its first input) to 21 as
-    well.  The ignored inputs are still read, then discarded: ``h`` appends
-    the character to the queue's tail, ``e`` repeated once per queued cell
-    rotates it back to the front, and ``f`` drops it, leaving the queue
-    exactly as it was so the reduces' positional arithmetic is undisturbed.
-    The rotation count is the queue length at that point, which before any
-    command has run is the seed's -- computed, not searched.
-
-    A discard can also go *between* the reduced program's reads.  After its
-    ``j``-th ``h``, the queue has ``len(seed) + j`` cells; ``h`` then appends
-    the ignored input, so rotating that many times brings the new tail cell
-    to the front for ``f``.  That restores the exact queue the next command
-    expects, allowing a gapped set such as inputs 0 and 2.  An odd-sized
-    dependency set would make the reduced program ghost-pad itself and expect
-    an input the stream does not carry, so the set is widened by one adjacent
-    ignored input to keep it even.
-    """
+    r"""Build a Taglate program computing the given truth table."""
     n = _validate_truth_table(truth_table)
 
     # A table that ignores some of.
@@ -781,98 +538,23 @@ _CLOCKWISE_LEVEL = 9
 
 
 def clockwise(truth_table: str, width: int | None = None) -> str:
-    """Build a Clockwise program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.  The
-    program prints the result as the ASCII digit ``'0'`` or ``'1'``.
-    ``width`` asks for a column count; the tree stacks as much of itself as
-    it needs to meet one, and a width under the floor returns the narrowest
-    program rather than refusing.
-
-    The program is a decision tree in a closed ring.  ``S`` zeroes the
-    accumulator and seven ``.`` reads consume a ``0``/``1`` input char's seven
-    bits, leaving its value bit in the accumulator.  At each node a ``?``
-    turns the pointer by ``acc`` quarter-turns, so a zero bit continues down
-    the spine while a one bit turns aside into a column of its own; three
-    ``R`` in an L pattern turn it back down into that column.
-
-    A leaf prints the answer's seven bits with ``;``, which emits ``acc % 2``,
-    so a ``+`` before a ``;`` flips the parity into the bit that position
-    needs.  Printing the ASCII digit rather than the bare bit costs almost
-    nothing here: ``'0'`` is ``0110000`` and ``'1'`` is ``0110001``, so the
-    two leaves differ by a single ``+``.  The leaf then resets and counts up
-    to one (``S+``) so the exit ``?`` sees ``acc == 1`` whatever it printed,
-    and turns left along its own row; an ``S`` just left of each exit drops
-    passing paths back to zero so they do not turn on another leaf's exit.
-
-    Every exit row ends at column 0 on a ``!``, which turns a path that
-    arrives with a zero accumulator up the left edge, and a ``+`` one row
-    above puts the accumulator back to one -- so a path climbing the edge
-    passes the exits above it without turning on their ``!``.  That is what
-    lets leaves finish on *different* rows: the ring closes through column 0
-    rather than through one shared bottom row.
-
-    Two ways the tree separates its paths, and the width picks between
-    them.  A node can send its one-branch to a column of its own, which
-    costs the columns that branch displaces -- the classic layout, and the
-    reason an unstacked tree grows as ``2 ** (n + 1)``.  Or it can send it
-    one column left and *stack* the two subtrees, the zero-branch falling
-    down its own column through the one-branch's rows to start below them.
-    Stacking costs one column per level instead of ``2 ** (n - bit)``, and
-    pays for it in rows: the subtree below a stacked node is written twice
-    over, so each stacked level doubles the program's height.
-
-    The shallow levels displace furthest, so those are the ones stacked
-    first: ``width`` fixes the smallest number of levels that brings the
-    grid inside it, and the rest of the tree lays out flat.
-
-    A subtree whose rows all agree stops branching, which narrows the ring:
-    a node displaces only as far as its zero-branch actually spans, and a
-    folded node spans one column.
-
-    Two things the fold does *not* get to do.  It cannot drop the reads:
-    Clockwise reads inside the tree, seven ``.`` per level, so a folded
-    column still spends them (and an ``S`` where the ``?`` would have been,
-    keeping the two leaves of a node the same height).  And it cannot narrow
-    past the hoist: the root's seven reads sit on row 0 left of the corner
-    ``R``, which retires seven rows but needs seven free columns, so an
-    unasked-for width floors at what the hoist needs.  A width that is
-    asked for may go under it -- the request is the point.
-    """
+    r"""Build a Clockwise program computing the given truth table."""
     n = _validate_truth_table(truth_table)
 
     def constant(bit: int, combo: int) -> bool:
-        """Whether every row this subtree covers agrees.
-
-        Rows split most-significant-first, so the subtree entered at
-        ``bit`` with prefix ``combo`` covers the contiguous run of
-        ``2 ** (n - bit)`` rows starting at ``combo << (n - bit)``.
-        """
+        r"""Whether every row this subtree covers agrees."""
         span = 2 ** (n - bit)
         start = combo << (n - bit)
         return len(set(truth_table[start : start + span])) == 1
 
     def leafy(bit: int, combo: int) -> bool:
-        """Whether this subtree stops here, either at ``n`` or on a fold."""
+        r"""Whether this subtree stops here, either at ``n`` or on a fold."""
         return bit == n or (bit > 0 and constant(bit, combo))
 
     shapes: dict[tuple[int, int, int], tuple[int, int]] = {}
 
     def shape(bit: int, combo: int, stacked: int) -> tuple[int, int]:
-        """Report the columns and rows this subtree needs, spine on the right.
-
-        A leaf, folded or not, is one column: a folded one pads its skipped
-        levels to the rows they would have spent, so the two subtrees of a
-        node are always the same height and their leaves share a row.
-
-        A stacked node spans one more column than its one-branch (or the
-        three its own turn needs, whichever is wider) and as many rows as
-        both subtrees together.  A flat one displaces its one-branch clear
-        of the zero-branch's span -- two columns at the least, so no leaf
-        sits directly left of another and the ``S`` before an exit has a
-        cell of its own -- and the two subtrees share the rows.
-        """
+        r"""Report the columns and rows this subtree needs, spine on the right."""
         key = (bit, combo, stacked)
         if key not in shapes:
             if leafy(bit, combo):
@@ -894,13 +576,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
         return shapes[key]
 
     def spine(stacked: int) -> int:
-        """Return the root's column with ``stacked`` levels stacked.
-
-        Column 0 belongs to the ring, so the tree starts one column in.
-        The hoist needs seven free columns left of the root and pays for
-        them with seven rows, which is the better trade whenever the width
-        was not asked for.
-        """
+        r"""Return the root's column with ``stacked`` levels stacked."""
         root = shape(0, 0, stacked)[0]
         if 2 ** (n + 1) >= 8 and (width is None or width >= 9):
             root = max(root, 8)
@@ -934,20 +610,13 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     exits: list[tuple[int, int]] = []
 
     def place(node: tuple[int, int], ch: str) -> None:
-        """Write ``ch`` at ``node``, refusing to land on an occupied cell.
-
-        The geometry above is what keeps two cells apart; this is what
-        says so.  A Clockwise cell acts only on the pointer standing on it,
-        so an overwrite is the whole of what a bad layout can do to the
-        grid -- and a program that silently lost a turn would be wrong in a
-        way only a run of every input combination would find.
-        """
+        r"""Write ``ch`` at ``node``, refusing to land on an occupied cell."""
         if node in cells:
             raise AssertionError(f"two cells at {node}: {cells[node]!r} and {ch!r}")
         cells[node] = ch
 
     def leaf(x: int, y: int, combo: int) -> None:
-        """Print the answer at ``(x, y)`` and leave by the row it ends on."""
+        r"""Print the answer at ``(x, y)`` and leave by the row it ends on."""
         # Emit the answer as the ASCII.
         # Seven ';' print one bit each,.
         # prints acc % 2 -- so a '+'.
@@ -974,7 +643,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
         exits.append((x, y + _CLOCKWISE_LEAF - 1))
 
     def build(bit: int, x: int, y: int, combo: int) -> None:
-        """Lay the subtree for ``combo`` at ``bit``, spine head at ``(x, y)``."""
+        r"""Lay the subtree for ``combo`` at ``bit``, spine head at ``(x, y)``."""
         if leafy(bit, combo):
             # Every row below here agrees,.
             # change the answer and this.
@@ -1051,37 +720,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
 
 
 def container(truth_table: str) -> str:
-    """Build a Container program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Container is a synchronous rule system: every tick each container's value
-    becomes ``max(old + sum of deltas of satisfied ``X>=Y``/``X<=Y`` rules,
-    0)``, the empty-named container reads a line of input into ``IN`` when it
-    turns on, ``PRINT`` outputs ``OUT`` when it turns on, and ``EXIT`` halts
-    when its value changes.  There is no per-tick conditional, so the
-    generator timestamps everything with the tick counter ``T``:
-
-    * The empty container pulses on even ticks ``0..2(n-1)`` (``+1 T>=2k``,
-      ``-2 T>=2k+1``, ``+1 T>=2k+2``), reading one bit per pulse.
-    * For each bit ``k``, an armed gate ``A_k`` (65, dipping to 49) and
-      ``B_k`` (47, dipping to 48) make ``IN>=A_k`` and ``IN<=B_k`` hold for
-      exactly the tick the bit is in ``IN``, testing bit ``k`` once.
-    * A survivor per row (initial 1) is killed by ``-1 IN>=A_k`` or
-      ``-1 IN<=B_k`` when the corresponding bit mismatches, so exactly the
-      matching row's survivor stays 1.
-    * At tick ``2n`` a gate ``Gout`` dips to 1, so ``+1 S_r>=Gout`` adds the
-      table entry of the surviving row to ``OUT``; ``PRINT`` fires and
-      ``EXIT`` halts.
-
-    That last block costs one line per row the table sends to 1, so a dense
-    table is summed from its **zero** rows instead: ``OUT`` starts at 49 and
-    each surviving zero row subtracts one, printing ``49 - S``.  The clamp at
-    zero never bites, since the value stays at 48 or 49.  Worth up to 12.7%
-    at ``n == 4`` (1356 characters down to 1184 for fifteen ones of sixteen);
-    the per-row survivor blocks above are fixed and unaffected.
-    """
+    r"""Build a Container program computing the given truth table."""
     n = _validate_truth_table(truth_table)
 
     lines = ["T:", "+1 T>=T"]
@@ -1136,55 +775,7 @@ def container(truth_table: str) -> str:
 
 
 def bit_tilde(truth_table: str) -> str:
-    """Build a bit~ program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    bit~ is a bit pool with ``{``/``}`` while-nonzero loops.  Each ``)``
-    reads an input byte into eight bits (MSB first), so the input bit lands
-    at cell ``8i+7`` and cells ``8i+2``/``8i+3`` hold the ``00110000`` byte
-    pattern a ``0`` output needs.  Each ``1`` row is built and then
-    immediately tested: one indicator cell per input is copied from that
-    input's chain (chained two-dest copies so the source survives) and
-    complemented when the minterm needs the bit zero, then a nested
-    ``{ bit ... }`` test whose innermost body forces the result cell to 1.
-    The first input-0 copy also consumes the input bit out of cell 7 so the
-    output window holds a clean 48.  The result is copied into cell 7 so
-    ``(`` prints ``48 + result``.  Dense tables evaluate the complement
-    instead (fewer minterms) and flip the output bit once.
-
-    **The scratch window is fixed, not per-row.**  Because a row is tested
-    before the next row is built, the indicators are reused: the working set
-    is ``3 * width + 1`` cells (two chain cells and one indicator per input,
-    plus the result) wherever the table's one-rows fall.  Cells used to be
-    allocated fresh per (input, one-row) pair, which put the scratch area
-    2,032 cells out at eight inputs and left 98% of the emitted program in
-    the unary ``>``/``<`` walks reaching it.  A reused indicator is cleared
-    with ``{~}`` before each copy, since a row whose outer test failed
-    never entered the body that clears the inner indicators.
-
-    Measured on the contract sweep's dense tables.  Both shapes were executed
-    over every input combination through eight inputs and over 64 sampled
-    combinations at nine and ten, and every table through three inputs was
-    executed against every combination::
-
-        n      fresh cells    fixed window    factor
-        3              308             368     0.84x
-        4            2,099           1,344     1.56x
-        6           28,769           6,316     4.56x
-        8          507,740          31,076    16.34x
-        9        2,220,956          69,005    32.19x
-        10       9,963,861         153,854    64.76x
-
-    The highest cell reached goes 2,032 -> 88 at eight inputs and is now
-    linear in ``n`` (10,162 -> 110 at ten), so the mean walk is 2 cells
-    rather than 297 and growth per added input falls from ~4.5x to ~2.2x.
-    **It loses below four inputs** -- the per-row clears cost more than the
-    short walks they save when the scratch area is only a few cells wide --
-    which is the deliberate trade: the small tables give up at most 68
-    characters and the large ones stop being quadratic.
-    """
+    r"""Build a bit~ program computing the given truth table."""
     n = _validate_truth_table(truth_table)
 
     # A table that ignores some of.
@@ -1214,7 +805,7 @@ def bit_tilde(truth_table: str) -> str:
             pos -= 1
 
     def copy2(src: int, d1: int, d2: int) -> None:
-        """Copy ``src`` to ``d1`` and ``d2``, zeroing ``src``."""
+        r"""Copy ``src`` to ``d1`` and ``d2``, zeroing ``src``."""
         nonlocal pos
         move(src)
         prog.append("{")
@@ -1326,29 +917,12 @@ def bit_tilde(truth_table: str) -> str:
 
 
 def forbin(truth_table: str) -> str:
-    """Build a Forbin program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Forbin's ``in`` reads one bit (most significant first), so each input
-    byte contributes 8 reads and only the last bit (the LSB, which is what
-    distinguishes ``'0'`` from ``'1'``) is used.  A decision tree over those
-    bits is laid out with the range-loop if-trick: ``for _:!b..b`` runs its
-    body once when ``b`` is 1 (the ``return`` cuts the second iteration)
-    and falls through when ``b`` is 0, so each node emits the 1-subtree then
-    the 0-subtree and every leaf prints the result byte and returns.
-
-    **The tree splits on its inputs in whichever order emits the shortest
-    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
-    The ``(in 0)`` reads stay in input order -- all ``8n`` of them -- so
-    only the bit a ``for`` names moves.
-    """
+    r"""Build a Forbin program computing the given truth table."""
     return best_input_order(truth_table, _forbin_ordered)
 
 
 def _forbin_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order's Forbin program; see :func:`forbin`."""
+    r"""Emit one input order's Forbin program; see :func:`forbin`."""
     n = _validate_truth_table(truth_table)
 
     lines: list[str] = ["main {"]
@@ -1377,33 +951,14 @@ def _forbin_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
 
 def _suptiftam_bit(i: int) -> str:
-    """Variable name for input bit ``i`` (identifiers must be alphabetical)."""
+    r"""Variable name for input bit ``i`` (identifiers must be."""
     if i < 25:
         return chr(ord("b") + i)
     return "b" + _suptiftam_bit(i - 25)
 
 
 def suptiftam(truth_table: str) -> str:
-    """Build a Suptiftam program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.  The
-    program prints ``'0'`` or ``'1'``.
-
-    Suptiftam has only ``+``/``-``/``/`` and no equality test, so the table
-    is evaluated as a sum of minterms: each bit is read from its own input
-    row and normalized to 0/1 with ``%-[read]22%`` (the literal ``22``
-    parses in base 23 to 48), each minterm multiplies its bits (AND, via a
-    recursive add-until-zero ``mulStep`` guarded by ``if``), and the sum is
-    written to ``term``.  Exactly one minterm is 1 for any input, so the
-    sum is the table entry.
-
-    A table with more ones than zeros is summed over its *zero* rows and the
-    sum inverted, since a minterm is four lines per input and ``1 - sum`` is
-    one line however many it saves.  No constant table needs excluding here,
-    unlike the gate-network generators: an all-ones table complements to no
-    minterms, leaving ``sum`` at 0, and ``1 - 0`` is the 1 it should print.
-    """
+    r"""Build a Suptiftam program computing the given truth table."""
     n = _validate_truth_table(truth_table)
     names = [_suptiftam_bit(i) for i in range(n)]
     lines = [
@@ -1453,19 +1008,7 @@ _FLOWCHART_PITCH = 5
 
 
 def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
-    """Paint the decision tree onto a sparse ``(x, y) -> character`` grid.
-
-    Leaves are placed first, on a fixed pitch, and the switches are then
-    collapsed upwards: each pair of entry columns yields a ``< >`` centred
-    between them with rails drawn out to both.  Positioning everything from
-    the leaf pitch keeps the drawing tight -- an earlier recursive version
-    assembled each subtree into its own padded block and separated the blocks
-    by a gutter, costing a column of blanks for every leaf at every level
-    even though two ``(( ))`` boxes may sit flush against each other.
-
-    Rows run ``( )``, its rail, then four rows per level (``/ /``, a rail,
-    ``< >``, a rail), then the five-row leaf block.
-    """
+    r"""Paint the decision tree onto a sparse ``(x, y) -> character`` grid."""
     cells: dict[tuple[int, int], str] = {}
 
     def put(x: int, y: int, text: str) -> None:
@@ -1476,11 +1019,7 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
     leaf_top = 2 + 4 * n
 
     def leaf(slot: int, bit: str) -> int:
-        """Draw the leaf for ``bit`` in column slot ``slot``; return its middle.
-
-        Leaf ``k`` spans columns ``5k`` to ``5k + 4``, so its middle -- the
-        column every rail in that leaf's band lands on -- is ``5k + 2``.
-        """
+        r"""Draw the leaf for ``bit`` in column slot ``slot``; return its."""
         middle = _FLOWCHART_PITCH * slot + 2
         put(middle - 1, leaf_top, "[ }" if bit == "1" else "{ ]")
         cells[(middle, leaf_top + 1)] = "│"
@@ -1490,7 +1029,7 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
         return middle
 
     def switch(depth: int, west: int, east: int) -> int:
-        """Join two subtrees at ``depth``; return the column it sits on."""
+        r"""Join two subtrees at ``depth``; return the column it sits on."""
         switch_row = 4 + 4 * depth
         middle = (west + east) // 2
         put(middle - 1, switch_row - 2, "/ /")
@@ -1512,11 +1051,7 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
     slots = [0]
 
     def walk(lo: int, hi: int, depth: int) -> int:
-        """Draw the subtree for ``truth_table[lo:hi]``; return its column.
-
-        ``depth`` is the level it sits at, which fixes its rows; its columns
-        come from the leaf slots it consumes.
-        """
+        r"""Draw the subtree for ``truth_table[lo:hi]``; return its column."""
         if len(set(truth_table[lo:hi])) == 1:
             # Constant: no branch below.
             # is a leaf.
@@ -1549,7 +1084,7 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
 
 
 def _flowchart_render(cells: dict[tuple[int, int], str]) -> str:
-    """Flatten a painted cell map into the finished program text."""
+    r"""Flatten a painted cell map into the finished program text."""
     height = max(y for _, y in cells) + 1
     width = max(x for x, _ in cells) + 1
     grid = [[" "] * width for _ in range(height)]
@@ -1559,28 +1094,7 @@ def _flowchart_render(cells: dict[tuple[int, int], str]) -> str:
 
 
 def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
-    """Paint the tree with its subtrees stacked rather than side by side.
-
-    The flat drawing gives every leaf a column of its own, so it grows as
-    ``2 ** n``.  Stacking separates the two subtrees by *rows* instead: the
-    one-branch hangs directly below the switch, and the zero-branch falls
-    down a column of its own, past every row the one-branch occupies, to
-    start below it.  Every node then sits on the same column, and what the
-    width costs is height -- the drawing is as tall as the whole tree.
-
-    A switch entered travelling down sends register 1 to the grid-east and
-    register 0 to the grid-west, so neither branch may simply continue
-    down; each is caught by a corner and routed.  The one-branch turns down
-    one column east, comes back west a row later, and drops onto the spine.
-    The zero-branch runs west to a column reserved for its depth, falls the
-    height of the one-branch, and comes back east.
-
-    Those corridors need no crossings, which is what keeps the drawing
-    simple.  A corridor for depth ``d`` occupies column ``d``, and
-    everything below it in the tree is at a *deeper* depth and so further
-    east; the rails that run west to reach it do so on the switch's own
-    row, above every descendant.  So no rail and no corridor ever meet.
-    """
+    r"""Paint the tree with its subtrees stacked rather than side by side."""
     n = (len(truth_table) - 1).bit_length()
     # Columns 0..n-1 are the.
     # on ``spine``, far enough east.
@@ -1593,7 +1107,7 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
             cells[(x + i, y)] = char
 
     def reads(y: int, count: int) -> int:
-        """Draw ``count`` ``/ /`` nodes down the spine; return the row after."""
+        r"""Draw ``count`` ``/ /`` nodes down the spine; return the row after."""
         for _ in range(count):
             put(spine - 1, y, "/ /")
             cells[(spine, y + 1)] = "│"
@@ -1601,12 +1115,7 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
         return y
 
     def leaf(y: int, depth: int, bit: str) -> int:
-        """Draw the leaf for ``bit``, entered at ``(spine, y)``.
-
-        A folded leaf still owes the reads of the levels it skipped -- the
-        reads are the interface -- and here they simply stack above it,
-        which is what the flat drawing spends a rail on.
-        """
+        r"""Draw the leaf for ``bit``, entered at ``(spine, y)``."""
         y = reads(y, n - depth)
         put(spine - 1, y, "[ }" if bit == "1" else "{ ]")
         cells[(spine, y + 1)] = "│"
@@ -1616,7 +1125,7 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
         return y + 5
 
     def walk(lo: int, hi: int, depth: int, y: int) -> int:
-        """Draw the subtree for ``truth_table[lo:hi]``; return the row after."""
+        r"""Draw the subtree for ``truth_table[lo:hi]``; return the row after."""
         if len(set(truth_table[lo:hi])) == 1:
             return leaf(y, depth, truth_table[lo])
         put(spine - 1, y, "/ /")
@@ -1649,67 +1158,7 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
 
 
 def flowchart(truth_table: str, width: int | None = None) -> str:
-    """Build a Flowchart program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    The program is a binary decision tree drawn on the grid: every level
-    reads one input bit with ``/ /`` and hands it to a ``< >`` switch whose
-    two sides are the halves of the table, and each of the ``2**n`` leaves
-    sets the register to its own digit, prints it, and halts.
-
-    Unlike the repo's other 2D boolean generators there is no geometry to
-    build for the branch itself -- Flowchart has a real conditional node --
-    and each input arrives as a bare bit, so no per-input decoding loop is
-    needed either.  What the layout has to get right instead is routing:
-    every switch is centred over the two subtree entries it feeds, with
-    rails drawn out to each.
-
-    The leaves are laid down first, on a pitch of exactly one ``(( ))``
-    width, and the switches are collapsed upwards from them.  Nothing
-    separates one leaf from the next: two ``(( ))`` boxes may sit flush
-    against each other, since a rail only has to clear a node when it needs
-    to pass *through* that node's row.  Sibling subtrees never do -- they
-    descend in their own column bands -- so the gutter an earlier version
-    kept between them was never required, and dropping it takes the
-    ``n = 4`` drawing from 2444 characters to 1557.
-
-    **The tree holds many ``/ /`` nodes but reads each input once.**  A
-    depth-``n`` tree draws ``2**n - 1`` read nodes, one per internal node,
-    yet any single run walks one root-to-leaf path and so executes exactly
-    ``n`` of them -- which is why a *folded* leaf carries the reads of the
-    levels it skipped on its own rail.  Without them a run that folded early
-    would consume fewer inputs than one that did not, making the program's
-    stream consumption a function of its truth table; only the branching may
-    fold away, never the reads.  The duplication is spatial, the way an
-    unrolled brainfuck branch repeats ``,`` in each arm of a nested ``[ ]``
-    without any one execution reading twice.  This is deliberately *not* the
-    once-only embedding rule that ``tools.boolean.parameterized`` documents:
-    that rule exists so a language with no input mechanism cannot, through
-    repeated ``{Xi}`` substitution, consult a bit more often than an
-    input-capable language would.  Flowchart has a real input command, so it
-    is an input-reading generator like :func:`streetcode` (whose ``I``
-    commands likewise repeat across tree branches), not a parameterized one.
-
-    An alternative construction reads all ``n`` bits up front into a deque
-    and pops one per level instead, exercising the deques -- the language's
-    defining feature, untouched here.  It was built and verified over the
-    same tables, and is worth revisiting if Flowchart ever gets a cross-check
-    that would benefit from the wider coverage; it costs a ``4n``-row
-    prologue and depends on push-top/pop-bottom being FIFO, a silent
-    wrong-answer trap if the pop is ever changed to pop-top.
-    ``width`` asks for a column count.  The flat drawing gives every leaf a
-    column of its own and so grows as ``2 ** n``; a width under that is met
-    by *stacking* the tree instead, separating the two subtrees by rows and
-    putting every node on one column.  See :func:`_flowchart_stacked` for
-    how the branches are routed and why the corridors never cross.  The
-    stacked drawing is ``n + 5`` columns whatever the table, so the width
-    stops tracking ``n`` -- and pays for it in height, being as tall as the
-    whole tree.  A width under that floor returns the narrower of the two
-    rather than refusing, and a heavily folded table is sometimes already
-    narrower flat.
-    """
+    r"""Build a Flowchart program computing the given truth table."""
     _validate_truth_table(truth_table)
     flat = _flowchart_render(_flowchart_cells(truth_table))
     if width is None or max(len(line) for line in flat.split("\n")) <= width:
@@ -1723,17 +1172,12 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
 
 
 def _dinac_name(i: int) -> str:
-    """Return the variable holding input ``i``, per the spec's name regex."""
+    r"""Return the variable holding input ``i``, per the spec's name regex."""
     return f"c{i}"
 
 
 def _dinac_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit the tree that splits on ``perm[k]`` at level ``k``.
-
-    ``truth_table`` is already permuted, so row indices here are in the
-    permuted frame and ``perm`` is spent only where a node names the
-    variable it tests.
-    """
+    r"""Emit the tree that splits on ``perm[k]`` at level ``k``."""
     n = _validate_truth_table(truth_table)
 
     def leaf(_level: int, row: int) -> list[str]:
@@ -1758,21 +1202,5 @@ def _dinac_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
 
 def dinac(truth_table: str) -> str:
-    """Build a DINAC program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.  Each
-    input is read as an aschar with ``IN``, and the program prints ``'0'``
-    or ``'1'``.
-
-    A nested ``IF``/``ELSE`` tree, which is what DINAC is shaped for: a node
-    tests ``ci = '1`` and its two arms are the subtrees.  A subtree whose
-    rows all agree collapses to a single ``OUT``, so a table that ignores an
-    input costs nothing for it below the fold -- but the ``IN`` still runs,
-    since the reads are the interface.
-
-    The split order is searched (:func:`best_input_order`) and the shortest
-    program wins; indentation is four spaces per level, so a deep tree pays
-    for its depth and folding is what a reorder is buying.
-    """
+    r"""Build a DINAC program computing the given truth table."""
     return best_input_order(truth_table, _dinac_ordered)

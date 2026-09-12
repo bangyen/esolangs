@@ -1,12 +1,4 @@
-"""Unit tests for the Inject interpreter.
-
-The three wiki examples are the ground truth here, and one of them is
-*wrong on its own terms*: the truth machine's two branches are exchanged
-under the wiki's own prose.  ``TestWikiExamples`` runs all three and
-asserts what each actually does, with the discrepancy named rather than
-smoothed over, and ``TestCorrectedTruthMachine`` carries a program that
-behaves the way a truth machine is supposed to.
-"""
+r"""Unit tests for the Inject interpreter."""
 
 from typing import Any, ClassVar
 
@@ -86,7 +78,7 @@ CAT = "\n".join(
 
 
 def _run(program: str, stdin: str = "") -> str:
-    """Run ``program`` and return everything it printed."""
+    r"""Run ``program`` and return everything it printed."""
     io = ScriptedIO(stdin)
     run(program, io)
     return io.getvalue()
@@ -98,36 +90,20 @@ def _machine(program: Any) -> _Machine:
 
 class TestWikiExamples:
     def test_hello_world(self) -> None:
-        """The block is sent, then skipped over rather than executed."""
+        r"""The block is sent, then skipped over rather than executed."""
         assert _run(HELLO_WORLD) == "Hello, world!\n"
 
     def test_cat_echoes_until_an_empty_line(self) -> None:
-        """Each line is echoed; the empty line empties the block and stops.
-
-        This is the example that pins two readings: ``send`` terminates
-        every line it writes (otherwise the echo would run together), and
-        an empty input line stores an *empty* block, so ``skipif``'s "at
-        least one line" fails and the loop ends.
-        """
+        r"""Each line is echoed; the empty line empties the block and stops."""
         assert _run(CAT, "ab\ncd\n\n") == "ab\ncd\n"
 
     def test_cat_without_a_terminating_blank_line_reads_past_its_input(self) -> None:
-        """Input exhaustion is EOFError, distinct from the empty-line halt."""
+        r"""Input exhaustion is EOFError, distinct from the empty-line halt."""
         with pytest.raises(EOFError):
             _run(CAT, "ab\n")
 
     def test_wiki_truth_machine_is_inverted(self) -> None:
-        """The wiki's truth machine halts on 1 and loops on 0 -- backwards.
-
-        A truth machine prints its input, then halts on 0 and loops on 1.
-        This program does the opposite, and the wiki's own prose is why:
-        ``skipq data 0`` fires exactly when the input *is* ``0``, the next
-        line (``loop;``) closes rather than opens a block, so ``skip``'s
-        first clause does not apply and its second loops back.  The prose
-        is kept and the example treated as the error, because ``skipif`` is
-        specified with the identical "only executes if" wording and the cat
-        example depends on that wording being literal.
-        """
+        r"""The wiki's truth machine halts on 1 and loops on 0 -- backwards."""
         from esolangs.vm import run_until_halt_or_cycle
 
         # On "1" it halts after a.
@@ -144,7 +120,7 @@ class TestCorrectedTruthMachine:
         assert _run(INJECT_TRUTH_MACHINE, "0\n") == "0\n"
 
     def test_one_prints_and_loops(self) -> None:
-        """The 1 branch loops, and revisits a state so the loop is proven."""
+        r"""The 1 branch loops, and revisits a state so the loop is proven."""
         from esolangs.vm import run_until_halt_or_cycle
 
         io = ScriptedIO("1\n")
@@ -154,7 +130,7 @@ class TestCorrectedTruthMachine:
 
 class TestCommands:
     def test_inject_substitutes_by_regex(self) -> None:
-        """``inject`` rewrites a block through a regular expression."""
+        r"""``inject`` rewrites a block through a regular expression."""
         program = "\n".join(
             [
                 "inject data=l+/L",
@@ -168,19 +144,14 @@ class TestCommands:
         assert _run(program) == "heLo\n"
 
     def test_inject_replacement_may_contain_slashes(self) -> None:
-        """Only the first slash separates the pattern from the replacement."""
+        r"""Only the first slash separates the pattern from the replacement."""
         program = "\n".join(
             ["inject data=b/x/y", "send data", "skip", "data;", "ab", "data;"]
         )
         assert _run(program) == "ax/y\n"
 
     def test_inject_backreference(self) -> None:
-        """A group reference in the replacement is a real backreference.
-
-        Spelled with a raw string in the source: ``"\\1"`` written
-        non-raw is the character ``chr(1)``, which substitutes silently and
-        wrongly.
-        """
+        r"""A group reference in the replacement is a real backreference."""
         program = "\n".join(
             [
                 r"inject data=(a)(b)/\2\1",
@@ -207,31 +178,17 @@ class TestCommands:
         assert _run(program, "new\n") == "new\n"
 
     def test_readto_into_an_earlier_block_keeps_the_pointer_on_its_line(self) -> None:
-        """A rewrite before the pointer moves the pointer with the text.
-
-        The program text is also the code being executed, so growing an
-        *earlier* block pushes every later line down -- the currently
-        executing one included.  Without that shift the pointer would be
-        left one line short and re-run the ``readto``, consuming a second
-        line of input and never advancing.  The block here starts empty and
-        gains a line, which is exactly the boolean generator's shape.
-        """
+        r"""A rewrite before the pointer moves the pointer with the text."""
         program = "\n".join(["data;", "data;", "readto data", "send data"])
         assert _run(program, "x\ny\n") == "x\n"
 
     def test_a_rewrite_does_not_move_its_own_opening_delimiter(self) -> None:
-        """Only positions strictly *after* the rewritten block's start move.
-
-        The block's own opening delimiter sits exactly at that boundary, so
-        shifting it too would corrupt the block's span: the block would
-        appear to start one line later, its contents would be read short,
-        and the following ``send`` would print nothing.
-        """
+        r"""Only positions strictly *after* the rewritten block's start move."""
         program = "\n".join(["d;", "d;", "readto d", "send d", "e;", "x", "e;"])
         assert _run(program, "A\nB\n") == "A\n"
 
     def test_skipif_does_not_fire_on_an_empty_block(self) -> None:
-        """A false guard falls through to the next line instead of jumping."""
+        r"""A false guard falls through to the next line instead of jumping."""
         program = "\n".join(
             [
                 "empty;",
@@ -249,14 +206,7 @@ class TestCommands:
         assert _run(program) == "here\n"
 
     def test_clause_two_returns_to_the_innermost_block(self) -> None:
-        """With two blocks enclosing the pointer, the inner one wins.
-
-        The spec allows blocks to overlap and names the *innermost* as
-        clause 2's target, so a program inside both must jump to the nearer
-        opening label.  A run of ``send`` calls before and after the jump
-        distinguishes the two: returning to ``outer`` would replay the
-        first ``send`` as well.
-        """
+        r"""With two blocks enclosing the pointer, the inner one wins."""
         program = "\n".join(
             [
                 "outer;",
@@ -287,11 +237,7 @@ class TestCommands:
         assert machine.io.getvalue().startswith("A\nB\nB\n"), machine.io.getvalue()
 
     def test_overlapping_blocks_pick_the_shorter_span(self) -> None:
-        """``_innermost`` ranks by span width, not by declaration order.
-
-        The two blocks here overlap rather than nest, and the pointer is in
-        both; the shorter span is the innermost one.
-        """
+        r"""``_innermost`` ranks by span width, not by declaration order."""
         program = "\n".join(
             [
                 "wide;",
@@ -318,26 +264,20 @@ class TestCommands:
         assert machine.ind == 1, "clause 2 targets the narrow block's label"
 
     def test_skip_clause_three_exits(self) -> None:
-        """A bare ``skip`` outside every block ends the program."""
+        r"""A bare ``skip`` outside every block ends the program."""
         program = "\n".join(["skip", "send data", "data;", "unreachable", "data;"])
         assert _run(program) == ""
 
     def test_skip_before_a_non_label_line_exits(self) -> None:
-        """``skip`` whose next line is a command, not a label, is clause 3.
-
-        The first clause asks whether the *next* line opens a block; a
-        plain command answers no, so at top level the program exits rather
-        than jumping.  Distinct from the case where ``skip`` is the final
-        line and there is no next line at all.
-        """
+        r"""``skip`` whose next line is a command, not a label, is clause 3."""
         assert _run("skip\nsend d\nd;\nx\nd;") == ""
 
     def test_skip_as_the_final_line_exits(self) -> None:
-        """There is no next line to inspect, so clause 3 ends the program."""
+        r"""There is no next line to inspect, so clause 3 ends the program."""
         assert _run("skip") == ""
 
     def test_a_non_command_line_is_data(self) -> None:
-        """A line whose first word is not a command executes as a no-op."""
+        r"""A line whose first word is not a command executes as a no-op."""
         assert _run("not a command\nsend d\nskip\nd;\nx\nd;") == "x\n"
 
 
@@ -404,7 +344,7 @@ class TestCycle(CycleContract):
 
 
 def test_main_block_runs_a_file(tmp_path: Any, capsys: Any) -> None:
-    """The ``__main__`` entry point reads a program file and runs it."""
+    r"""The ``__main__`` entry point reads a program file and runs it."""
     path = tmp_path / "hello.inj"
     path.write_text(HELLO_WORLD, encoding="utf-8")
     run(path.read_text(encoding="utf-8"), IO())

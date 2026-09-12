@@ -1,54 +1,4 @@
-"""Interpreter for Lamfunc.
-
-A functional prefix-call language: a program is a list of function
-definitions (``F name - code`` on one line each) followed by a top-level
-call sequence.  Values are integers (decimal or ``0b`` binary literals),
-functions, and strings used as variable names.  ``.f`` returns the function
-``f`` without calling it, and a call with fewer arguments than the
-function's arity returns a lambda that takes the rest, so partial
-application is expressible.
-
-A call ``f g x y h i`` means ``f(g(x(), y()), h()); i()``: each argument is
-itself a full prefix expression consumed by that expression's own arity.
-The eight builtins:
-
-- ``p x`` prints ``x`` (as binary for a number) and returns it.
-- ``eq x y`` returns 1 if ``x == y`` else 0.
-- ``i x y z`` returns ``y`` if ``x`` is nonzero else ``z``.
-- ``cb x y`` combines the bits of ``x`` and ``y`` (``0b10`` and ``0b110``
-  give ``0b10110``).
-- ``lb x`` returns the last bit of ``x``.
-- ``fb x`` returns all but the last bit of ``x``.
-- ``vs x y`` sets the variable named ``x`` to ``y`` and returns ``y``.
-- ``vg x`` returns the value of the variable named ``x`` (0 if undefined).
-
-Decisions for gaps in the wiki spec (documented):
-- a user function's ``return`` value is the value of the last evaluated
-  expression in its body (the wiki shows ``Return`` only in Procedure; here
-  the last expression's value is the function's result, matching the prefix
-  model);
-- redefining a function, calling an undefined function, applying a
-  non-function, or a top-level call with more arguments than a function's
-  arity (an un-consumed dangling argument) is a malformed program
-  (:class:`ValueError`); an invalid runtime operation (e.g. printing a
-  function, or an overflowed bit combine) raises
-  :class:`~esolangs.exceptions.HaltError`.
-
-``_Machine`` runs on an explicit stack of ``_Frame``s (``self.frames``),
-each representing one ``_eval``-equivalent expression evaluation in
-progress: scanning for a leading token, gathering a callable's arguments,
-or running a user function's body / a forced ``i``-branch as a token
-span.  A call in any position -- not just at the top level or a function
-body's own sequence, but nested inside another call's argument list --
-pushes a new frame instead of recursing natively, since Lamfunc has no
-"statement" position whose value is always discarded (unlike languages
-with real statements): a recursive call reached through the lazy ``i``
-builtin's chosen branch is exactly as likely to need this as one at
-plain argument position.  This removes recursion depth as a correctness
-limit entirely; only ``_scan`` (sizing an unevaluated ``i`` branch, bounded
-by the *program text*'s own nesting rather than by how many times it
-runs) is left as native recursion, a narrower and much less likely limit.
-"""
+r"""Interpreter for Lamfunc."""
 
 from __future__ import annotations
 
@@ -67,14 +17,14 @@ _Phase = Literal["scan", "gather", "body"]
 
 @dataclass
 class _Def:
-    """One ``F name - code`` function definition."""
+    r"""One ``F name - code`` function definition."""
 
     params: list[str]
     body: list[str]
 
 
 class _Func:
-    """A callable: a builtin, a user function, or a partial application."""
+    r"""A callable: a builtin, a user function, or a partial application."""
 
     __slots__ = ("arity", "body", "given", "name", "orig", "params")
 
@@ -118,19 +68,19 @@ def _parse_int(tok: str) -> int:
 
 
 def _to_binary(value: int) -> str:
-    """Print an integer as its binary representation (0 as ``0``)."""
+    r"""Print an integer as its binary representation (0 as ``0``)."""
     return bin(value)[2:] if value else "0"
 
 
 def _as_int(value: _Value) -> int:
-    """Coerce a Lamfunc value to an integer (the bit-builtins' operand)."""
+    r"""Coerce a Lamfunc value to an integer (the bit-builtins' operand)."""
     if isinstance(value, int):
         return value
     raise HaltError(f"expected a number, got {value!r}")
 
 
 class _Thunk:
-    """An unevaluated ``i`` branch: a token span, forced only when selected."""
+    r"""An unevaluated ``i`` branch: a token span, forced only when."""
 
     __slots__ = ("end", "start", "tokens")
 
@@ -155,28 +105,7 @@ _Value = int | str | _Func | _Thunk
 
 @dataclass(frozen=True)
 class _Frame:
-    """One ``_eval``-equivalent expression evaluation in progress.
-
-    Frozen: a step returns the frames that follow rather than editing the
-    ones it was handed, so a frame is a value.  ``replace`` builds the
-    changed copy, which reads as the field being set and keeps the seven
-    unchanged ones from being retyped at every site.
-
-    ``args`` and ``saved`` are tuples for the same reason.  ``saved`` is a
-    tuple of ``(name, value)`` pairs rather than a mapping so its order --
-    which the restore walks -- is part of the value; a ``None`` value still
-    means the name was unbound before the call and must be removed rather
-    than written back.
-
-    ``phase`` is ``"scan"`` (looking for the leading token at ``pos``),
-    ``"gather"`` (a callable ``fn`` is resolved; collecting ``args`` up to
-    its arity), or ``"body"`` (running a user function's body as a
-    sequence, threading ``result`` forward).  ``awaiting`` is set while a
-    pushed child frame's value is pending; ``awaiting_result`` further
-    distinguishes "the child's value directly becomes mine" (forcing an
-    ``i`` branch, or a call's body finishing) from "append the child's
-    value to my own ``args``" (gathering an ordinary argument).
-    """
+    r"""One ``_eval``-equivalent expression evaluation in progress."""
 
     tokens: list[str]
     pos: int
@@ -191,7 +120,7 @@ class _Frame:
 
 
 def _arity(name: str, defs: dict[str, _Def]) -> int:
-    """Return ``name``'s arity (a builtin's fixed arity, or a def's)."""
+    r"""Return ``name``'s arity (a builtin's fixed arity, or a def's)."""
     if name in _BUILTINS:
         return _BUILTINS[name].arity
     if name in defs:
@@ -212,12 +141,7 @@ def _lookup(name: str, defs: dict[str, _Def]) -> _Func:
 
 
 def _scan(tokens: list[str], i: int, defs: dict[str, _Def], vars_: _Vars) -> int:
-    """Return how many tokens the expression at ``i`` occupies.
-
-    The one function here still written recursively, and deliberately: it
-    sizes an unevaluated ``i`` branch, so its depth is the *program text*'s
-    own nesting rather than how many times a call runs.
-    """
+    r"""Return how many tokens the expression at ``i`` occupies."""
     tok = tokens[i]
     if (
         tok.startswith(".")
@@ -243,7 +167,7 @@ def _def_fields(
 
 
 def _partial(fn: _Func, given: list[_Value]) -> _Func:
-    """Build a lambda that, when called with the remaining args, calls fn."""
+    r"""Build a lambda that, when called with the remaining args, calls fn."""
     return _Func(
         fn.name + "..",
         fn.arity - len(given),
@@ -257,13 +181,7 @@ def _partial(fn: _Func, given: list[_Value]) -> _Func:
 def _apply_builtin(
     fn: _Func, args: list[_Value], vars_: _Vars
 ) -> tuple[_Value, _Vars, str | None]:
-    """Apply a non-``i``, non-user builtin to its evaluated arguments.
-
-    Never recurses: every one of these builtins is a single, bounded
-    computation on already-evaluated values.  Returns the value, the
-    variables that follow, and the text ``p`` would print -- the one port
-    this language has, reported rather than written.
-    """
+    r"""Apply a non-``i``, non-user builtin to its evaluated arguments."""
     if fn.name == "p":
         return args[0], vars_, _print_value(args[0])
     if fn.name == "eq":
@@ -310,20 +228,7 @@ type _Outcome = tuple[_StackFx, _Vars, int, str | None]
 
 
 def _restored(vars_: _Vars, saved: tuple[tuple[str, _Value | None], ...]) -> _Vars:
-    """Undo a call's parameter bindings, in the order they were saved.
-
-    A ``None`` marks a name that was unbound before the call, so it is
-    removed rather than written back.
-
-    In practice the saved value is always ``None``, and that is a property
-    of the language rather than of this function.  ``vs``/``vg`` take their
-    variable name as a *literal token*, so ``vs "x" 1`` stores under the
-    key ``'"x"'`` -- quotes included -- while a parameter named ``x`` binds
-    under ``'x'``.  The two namespaces therefore never collide, and a
-    parameter can only shadow another parameter of a call still on the
-    stack.  Mutants that drop the restore, or that write an unbound name
-    back as a value, are equivalent for that reason rather than untested.
-    """
+    r"""Undo a call's parameter bindings, in the order they were saved."""
     out = dict(vars_)
     for name, _ in saved:
         out.pop(name, None)
@@ -341,15 +246,7 @@ def _deliver(
     ind: int,
     main: list[str],
 ) -> _Outcome:
-    """Pop the finished top frame and hand its value to whoever awaits it.
-
-    A loop rather than the recursion the method version used: a caller
-    whose ``awaiting_result`` is set takes the child's value as its *own*
-    result and is itself finished, which can chain arbitrarily deep.  The
-    loop also retires that version's identity assertion -- there is no
-    frame to check against the stack top, because the frame being finished
-    is the one this walk is standing on.
-    """
+    r"""Pop the finished top frame and hand its value to whoever awaits it."""
     pops = 1
     while True:
         # Indexed rather than sliced:.
@@ -409,12 +306,7 @@ def _resolve(
     defs: dict[str, _Def],
     main: list[str],
 ) -> _Outcome:
-    """Advance a ``"scan"`` frame: classify the token at ``frame.pos``.
-
-    Resolves immediately to a value (finishing the frame) for a literal, a
-    bound variable, or a bare trailing name; otherwise identifies the
-    callable and switches the frame to ``"gather"``.
-    """
+    r"""Advance a ``"scan"`` frame: classify the token at ``frame.pos``."""
     tokens, i = frame.tokens, frame.pos
     tok = tokens[i]
     if tok.startswith("."):
@@ -447,7 +339,7 @@ def _gather(
     defs: dict[str, _Def],
     main: list[str],
 ) -> _Outcome:
-    """Advance a ``"gather"`` frame by one argument, or dispatch the call."""
+    r"""Advance a ``"gather"`` frame by one argument, or dispatch the call."""
     fn = cast(_Func, frame.fn)
     if len(frame.args) == fn.arity:
         return _dispatch(frame, view, fn, vars_, ind, main)
@@ -479,13 +371,7 @@ def _dispatch(
     ind: int,
     main: list[str],
 ) -> _Outcome:
-    """Apply a fully-gathered call, or push a body frame to run it.
-
-    A partial application completing (``fn.orig is not None``) resolves to
-    its original definition plus the accumulated arguments (the partial's
-    own ``given`` prefix, then this gather's ``args``) before dispatching,
-    the same way the un-partial call would have.
-    """
+    r"""Apply a fully-gathered call, or push a body frame to run it."""
     if fn.orig is not None:
         target = fn.orig
         args = [*fn.given, *frame.args]
@@ -519,7 +405,7 @@ def _dispatch(
 def _step_body(
     frame: _Frame, view: Sequence[_Frame], vars_: _Vars, ind: int, main: list[str]
 ) -> _Outcome:
-    """Advance a ``"body"`` frame: run its next expression, or finish."""
+    r"""Advance a ``"body"`` frame: run its next expression, or finish."""
     if frame.pos >= len(frame.tokens):
         vars_ = _restored(vars_, frame.saved)
         return _deliver(view, frame.result, frame.pos - frame.start, vars_, ind, main)
@@ -535,13 +421,7 @@ def _advance(
     defs: dict[str, _Def],
     main: list[str],
 ) -> _Outcome:
-    """Advance the topmost pending frame by one unit of work.
-
-    Pure: it reads the frame stack rather than editing it, and returns the
-    frames to pop and push instead.  ``p`` is the only command that reaches
-    a port and it prints at most once per step, so the value it would write
-    comes back as the last element rather than through a callback.
-    """
+    r"""Advance the topmost pending frame by one unit of work."""
     frame = view[-1]
     if frame.phase == "scan":
         return _resolve(frame, view, vars_, ind, defs, main)
@@ -552,12 +432,7 @@ def _advance(
 
 @dataclass
 class _State:
-    """Every changing value in a Lamfunc run.
-
-    Frames remain a mutable effect-owned stack so deep recursion does not
-    copy it on every step; grouping it here still makes that ownership part
-    of the machine's one authoritative state boundary.
-    """
+    r"""Every changing value in a Lamfunc run."""
 
     vars: _Vars
     ind: int
@@ -565,7 +440,7 @@ class _State:
 
 
 class _Machine:
-    """One Lamfunc run: the definitions, variables, cursor, and call stack."""
+    r"""One Lamfunc run: the definitions, variables, cursor, and call stack."""
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
@@ -576,7 +451,7 @@ class _Machine:
 
     @property
     def variables(self) -> _Vars:
-        """The variable mapping, retained for the transition helpers."""
+        r"""The variable mapping, retained for the transition helpers."""
         return self.state.vars
 
     @variables.setter
@@ -585,7 +460,7 @@ class _Machine:
 
     @property
     def ind(self) -> int:
-        """The top-level call cursor."""
+        r"""The top-level call cursor."""
         return self.state.ind
 
     @ind.setter
@@ -594,12 +469,12 @@ class _Machine:
 
     @property
     def frames(self) -> list[_Frame]:
-        """The effect-owned frame stack."""
+        r"""The effect-owned frame stack."""
         return self.state.frames
 
     @property
     def halted(self) -> bool:
-        """Whether the top-level cursor has run off the call sequence."""
+        r"""Whether the top-level cursor has run off the call sequence."""
         return self.ind >= len(self.main) and not self.frames
 
     # The VM's language-shaped.
@@ -607,31 +482,21 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        """The current instruction position."""
+        r"""The current instruction position."""
         return self.ind
 
     @property
     def memory(self) -> list[int]:
-        """The addressable cells."""
+        r"""The addressable cells."""
         return [v for v in self.variables.values() if type(v) is int]
 
     @property
     def stack(self) -> list[object]:
-        """No stack in this language."""
+        r"""No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection.
-
-        Function values are not meaningfully hashable (a closure captures
-        live definitions), so argument/result values are captured via
-        ``repr()`` -- sufficient for the state-cycle detector's purpose,
-        since a genuine hang re-evaluates the same position with the same
-        bindings on every lap.  A call that never returns pushes one new
-        frame per step and none is ever popped, so this cannot mistake
-        unbounded recursion for a repeat: the frame tuple's length
-        strictly grows.
-        """
+        r"""Return the complete internal state, hashable for cycle detection."""
         return (
             self.ind,
             tuple(sorted((k, repr(v)) for k, v in self.variables.items())),
@@ -652,16 +517,7 @@ class _Machine:
         )
 
     def frame_entry_key(self, frame: _Frame) -> Hashable:
-        """Return a call body's entry state for the ancestor check.
-
-        ``frames`` also holds short-lived evaluator continuations while a
-        call gathers arguments.  Repeating one of those is not itself a
-        recursive call, so each gets a private marker.  A ``body`` frame is
-        the call boundary: its immutable token list identifies the function
-        body, and the flat variable map carries its parameter bindings and
-        all state a recursive body can read.  See
-        :func:`esolangs.vm.run_until_halt_or_ancestor`.
-        """
+        r"""Return a call body's entry state for the ancestor check."""
         if frame.phase != "body":
             return ("continuation", object())
         return (
@@ -674,20 +530,7 @@ class _Machine:
         )
 
     def step(self) -> None:
-        """Advance the topmost pending frame by one unit of work.
-
-        The one port lives here rather than in the transition: this is the
-        shell.  ``p`` is the only command that writes, and it writes at
-        most once per step, so the transition reports the text and this
-        writes it.
-
-        The frame stack stays a list rather than being threaded as a
-        value.  Lamfunc pushes a frame per call and its depth is unbounded
-        by design -- the interpreter's own deep-recursion test reaches 4002
-        frames -- so rebuilding the stack per step would be quadratic in
-        the call depth.  The transition therefore reports how many frames
-        to pop and which to push, the way Grapheme's reports its stack.
-        """
+        r"""Advance the topmost pending frame by one unit of work."""
         if self.halted:
             return
         if not self.frames:
@@ -720,11 +563,7 @@ def _print_value(value: _Value) -> str:
 
 
 def _parse_program(code: str) -> tuple[dict[str, _Def], list[str]]:
-    """Split the program into definitions and the top-level call sequence.
-
-    A definition is ``F name - code`` on one line; anything else is part of
-    the top-level sequence.  Redefinition is malformed (:class:`ValueError`).
-    """
+    r"""Split the program into definitions and the top-level call sequence."""
     defs: dict[str, _Def] = {}
     main: list[str] = []
     for line in code.splitlines():
@@ -747,7 +586,7 @@ def _parse_program(code: str) -> tuple[dict[str, _Def], list[str]]:
 
 
 def run(code: str, io: IO) -> None:
-    """Run a Lamfunc program."""
+    r"""Run a Lamfunc program."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

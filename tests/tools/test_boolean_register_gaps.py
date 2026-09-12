@@ -1,9 +1,4 @@
-"""The drained-DAG builder's refusals.
-
-Draining pays two instructions per ignored leading input, so the builder
-declines a table that ignores none -- there is nothing to drain, and the
-plain DAG already spells it.
-"""
+r"""The drained-DAG builder's refusals."""
 
 from esolangs.tools.boolean.register import (
     _polynomial_drained_dag,
@@ -18,7 +13,7 @@ class TestDrainedDag:
         assert _polynomial_drained_dag_cost("0110") is None
 
     def test_a_table_ignoring_its_first_input_is_built(self) -> None:
-        """Only the second input matters, so the first is drained."""
+        r"""Only the second input matters, so the first is drained."""
         instrs = _polynomial_drained_dag("0101")
         assert instrs is not None
         cost = _polynomial_drained_dag_cost("0101")

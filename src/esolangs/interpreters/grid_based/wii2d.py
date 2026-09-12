@@ -1,20 +1,4 @@
-"""WII2D (Why Is It 2D?) interpreter implementation.
-
-2D esoteric language inspired by Befunge.
-Pointer moves on a 2D grid with wrap-around behavior and an accumulator.
-
-The wiki requires exactly one ``!`` start marker; this interpreter rejects
-programs that violate that constraint instead of silently tolerating them.
-
-Malformed programs raise :class:`ValueError`.
-
-``~`` prints the accumulator as a character and the accumulator has no
-bound, so a value outside 0..0x10FFFF has no character to print and raises
-:class:`~esolangs.exceptions.HaltError`.  It used to reach ``chr`` and come
-back as ``ValueError: chr() arg not in range(0x110000)``, naming neither
-the language nor the accumulator; a value inside the surrogate range is
-printable here and is what the CLI has to write as bytes.
-"""
+r"""WII2D (Why Is It 2D?) interpreter implementation."""
 
 import copy
 import sys
@@ -27,7 +11,7 @@ from esolangs.interpreters.randomness import Randomness, draw
 
 
 def init(code: Sequence[str]) -> Callable[[int, int, int], tuple[int, int]]:
-    """Initialize movement function for WII2D grid navigation."""
+    r"""Initialize movement function for WII2D grid navigation."""
     n = len(code)
     m = len(code[0])
     # Headings as (drow, dcol):.
@@ -46,10 +30,10 @@ def init(code: Sequence[str]) -> Callable[[int, int, int], tuple[int, int]]:
 def close(
     code: Sequence[str],
 ) -> Callable[[int, int], tuple[int, int] | None]:
-    """Create a function to find the closest @ command for jump operations."""
+    r"""Create a function to find the closest @ command for jump operations."""
 
     def start(row: int, col: int) -> Callable[[tuple[int, int]], int]:
-        """Create a distance function for sorting @ positions."""
+        r"""Create a distance function for sorting @ positions."""
 
         def dist(c: tuple[int, int]) -> int:
             return abs(c[0] - row) + abs(c[1] - col)
@@ -64,7 +48,7 @@ def close(
                 at_positions.append((row_idx, col_idx))
 
     def find(row: int, col: int) -> tuple[int, int] | None:
-        """Find the closest @ position to the given coordinates."""
+        r"""Find the closest @ position to the given coordinates."""
         positions = copy.deepcopy(at_positions)
         positions.sort(key=start(row, col))
         current_pos = (row, col)
@@ -87,12 +71,7 @@ type _State = tuple[int, int, int, int, bool]
 
 
 def _accumulate(op: str, acc: int) -> int:
-    """Return the accumulator after ``op``, which may not change it.
-
-    ``~`` prints rather than computing, so it lands here as a no-op and the
-    caller does the printing; every other non-arithmetic cell is a no-op
-    too, which is what makes blank cells traversable.
-    """
+    r"""Return the accumulator after ``op``, which may not change it."""
     if op.isdigit():
         return int(op)
     if op == "+":
@@ -115,24 +94,7 @@ def _advance(
     find: Callable[[int, int], tuple[int, int] | None],
     turn: int | None = None,
 ) -> _State:
-    """Return the state after executing the cell ``op``.
-
-    Pure: it reads ``state`` and returns a new one.  ``~``'s printing is
-    the caller's business, so this only carries the accumulator forward,
-    and ``?``'s random heading arrives as ``turn`` rather than being drawn
-    here.
-
-    Three cells break the "compute, then move" shape and are preserved as
-    they were:
-
-    * ``@`` jumps to the row *above* the closest other ``@`` and returns
-      without moving or touching the accumulator, so the next step reads
-      that cell rather than stepping over it.  A lone ``@`` has no other
-      to find, so it falls through and is stepped over like scenery.
-    * ``.`` stops the run, likewise without moving.
-    * ``|`` flips between the two axes by nudging the heading one place,
-      which works because the headings are ordered N, S, W, E.
-    """
+    r"""Return the state after executing the cell ``op``."""
     row, col, vel, acc, done = state
 
     if op in "^v<>":
@@ -155,22 +117,10 @@ def _advance(
 
 
 class _Machine:
-    """Per-run WII2D state: position, velocity, and accumulator.
-
-    ``step()`` executes the cell under the pointer and advances it one cell
-    (wrapping around the grid); ``halted`` is true once the pointer hits
-    ``.``.  The VM and the state-cycle hang detector expose this object.
-    Note that ``?`` draws a random heading, so the ordinary deterministic
-    hang detector is unsound on it.  The branching detector enumerates the
-    four headings instead.
-    """
+    r"""Per-run WII2D state: position, velocity, and accumulator."""
 
     def __init__(self, code: list[str], io: IO, rng: Randomness | None = None) -> None:
-        """Validate the ``!`` marker and start above it, like :func:`run`.
-
-        ``rng`` overrides the ``?`` command's random turn, which is what
-        makes a stepped run reproducible; ``None`` draws for real.
-        """
+        r"""Validate the ``!`` marker and start above it, like :func:`run`."""
         self.io = io
         self._rng = rng
         starts = [(r, row.find("!")) for r, row in enumerate(code) if "!" in row]
@@ -193,7 +143,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        """Whether the pointer hit ``.``."""
+        r"""Whether the pointer hit ``.``."""
         return self._done
 
     # The VM's language-shaped.
@@ -206,39 +156,33 @@ class _Machine:
 
     @property
     def ip(self) -> tuple[int, ...]:
-        """The current instruction position."""
+        r"""The current instruction position."""
         return (self.row, self.col, self.vel)
 
     @property
     def memory(self) -> list[int]:
-        """The addressable cells."""
+        r"""The addressable cells."""
         return [self.acc]
 
     @property
     def stack(self) -> list[object]:
-        """No stack in this language."""
+        r"""No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        r"""Return the complete internal state, hashable for cycle detection."""
         return (self.row, self.col, self.vel, self.acc, self.io.position())
 
     def branching_snapshot(self) -> _State:
-        """Return the starting state for an all-random-outcomes search.
-
-        WII2D has no input instruction, so its complete future is already
-        contained in this value.  Output is deliberately absent: buffered
-        output cannot affect a later command, and a repeated machine state
-        keeps repeating whether or not it has printed on the way around.
-        """
+        r"""Return the starting state for an all-random-outcomes search."""
         return (self.row, self.col, self.vel, self.acc, self._done)
 
     def branching_halted(self, state: object) -> bool:
-        """Report whether a branching-search state reached ``.``."""
+        r"""Report whether a branching-search state reached ``.``."""
         return cast(_State, state)[4]
 
     def branching_successors(self, state: object, _limit: int) -> tuple[_State, ...]:
-        """Return the state for every legal ``?`` turn at this cell."""
+        r"""Return the state for every legal ``?`` turn at this cell."""
         branch_state = cast(_State, state)
         row, col, _vel, _acc, _done = branch_state
         op = self.code[row][col]
@@ -255,13 +199,7 @@ class _Machine:
         )
 
     def step(self) -> None:
-        """Execute the cell under the pointer, then move one cell.
-
-        The two effects live here rather than in the transition: this is
-        the shell.  ``~`` prints the accumulator the transition is about to
-        carry forward unchanged, and ``?``'s heading is drawn here and
-        handed over, which is what lets a seeded source make a run repeat.
-        """
+        r"""Execute the cell under the pointer, then move one cell."""
         if self._done:
             return
         op = self.code[self.row][self.col]
@@ -290,12 +228,7 @@ class _Machine:
 
 
 def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
-    """Execute a WII2D program.
-
-    ``rng`` overrides ``?``'s random turn, as COD's does: a caller that
-    needs the turns to fall a particular way passes a source rather than
-    patching this module.
-    """
+    r"""Execute a WII2D program."""
     machine = _Machine(code, io, rng=rng)
     while not machine.halted:
         machine.step()

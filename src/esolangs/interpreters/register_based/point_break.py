@@ -1,51 +1,4 @@
-"""Interpreter for Point Break.
-
-Point Break is a variable-based imperative language with four commands:
-``LET`` assigns a variable the value of an arithmetic expression (``?`` in
-an expression reads a number from input), ``POINT``/``END`` delimit a
-labeled infinite loop, and ``IF``/``BREAK`` exits a labeled loop when a
-variable is nonzero.  The wiki gives the language ``?`` for input but no
-output command, so -- following the repo convention for interpreter-only
-languages -- the interpreter prints the variables when the program ends.  A
-program that never halts still reports nothing, so termination remains
-observable in its own right, which is what the boolean generator's
-halt-for-0 convention answers with.
-
-The wiki leaves several details open; this interpreter decides as follows.
-``BREAK`` resumes after the ``END`` that closes the loop; a loop closed
-implicitly by an ancestor's ``END`` (which also ends its children) resumes
-at that ``END`` instead, so it loops back -- the reading that makes the
-wiki's truth-machine and while-loop examples behave as named.  Expressions
-use standard precedence (``*``/``/`` bind tighter than ``+``/``-``,
-left-associative), division is floor division, and a ``+``/``-`` directly
-before a digit is a signed literal when an operand is expected.  An
-undefined variable or division by zero is an invalid operation and halts
-the program with :class:`~esolangs.exceptions.HaltError`; a malformed
-statement or expression, an unmatched ``END``, a ``BREAK`` outside its
-loop, a duplicate loop label, and an unclosed loop are malformed programs
-and are rejected with :class:`ValueError`.  An empty loop body is
-permitted (it loops forever) and an empty program is a no-op.
-
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
-
-The execution model is a pure function over an immutable ``_State``: the
-variables, the open loop frames, and the statement cursor.  :func:`_advance`
-maps a state and the program's static tables to the next state and never
-edits what it is given; :meth:`_Machine.step` rebinds the three fields from
-what it returned, so the mutation lives in exactly one place.
-
-The statements and the loop structure stay out of the state: Point Break
-never rewrites its own program, and both are computed once when the machine
-is parsed.
-
-``?`` is the language's only port, and it stays a callback rather than
-being hoisted into the shell.  An expression may hold several of them, and
-they are read *as the evaluation reaches them* -- so an expression that
-divides by zero or names an undefined variable stops without consuming the
-inputs to its right.  Reading them all up front would consume input the
-original run leaves alone, which is a difference a corpus of programs whose
-expressions raise mid-way can see.
-"""
+r"""Interpreter for Point Break."""
 
 import sys
 from collections.abc import Callable, Mapping, Sequence
@@ -69,7 +22,7 @@ Statement = Let | Point | IfBreak | End
 
 
 def _tokenize(line: str) -> list[Token]:
-    """Tokenize one line; ``#`` starts a comment and stops the scan."""
+    r"""Tokenize one line; ``#`` starts a comment and stops the scan."""
     tokens: list[Token] = []
     i, n = 0, len(line)
     while i < n:
@@ -128,11 +81,7 @@ def _tokenize(line: str) -> list[Token]:
 
 
 def _check_expr(tokens: list[Token]) -> None:
-    """Raise :class:`ValueError` unless ``tokens`` is a valid expression.
-
-    An expression alternates operands (``?``, a number, or a variable) and
-    operators, starting and ending with an operand.
-    """
+    r"""Raise :class:`ValueError` unless ``tokens`` is a valid expression."""
     if not tokens or tokens[0][0] not in _OPERANDS:
         raise ValueError("malformed expression")
     expect_operand = False
@@ -147,7 +96,7 @@ def _check_expr(tokens: list[Token]) -> None:
 
 
 def _parse_statement(tokens: list[Token]) -> Statement:
-    """Parse one line's tokens into a statement tuple."""
+    r"""Parse one line's tokens into a statement tuple."""
     first = tokens[0]
     if first == ("keyword", "LET") and len(tokens) >= 4:
         name_tok, assign_tok = tokens[1], tokens[2]
@@ -171,14 +120,7 @@ def _parse_statement(tokens: list[Token]) -> Statement:
 
 
 def _frame_index(frames: Sequence[tuple[str, int]], label: str) -> int:
-    """Return the index of the open loop frame for ``label``.
-
-    A plain loop rather than a ``next()`` generator expression, so a
-    timeout signal cannot interrupt the evaluation mid-frame and leave the
-    coverage tracer's lock held.  The static structure walk guarantees the
-    frame is present at runtime, so the fallback only fires during the
-    parse-time check of an unmatched ``END``.
-    """
+    r"""Return the index of the open loop frame for ``label``."""
     for i, frame in enumerate(frames):
         if frame[0] == label:
             return i
@@ -186,13 +128,7 @@ def _frame_index(frames: Sequence[tuple[str, int]], label: str) -> int:
 
 
 def _structure(stmts: list[Statement]) -> dict[int, tuple[int, bool]]:
-    """Validate the loop structure and map POINT indexes to their END.
-
-    Returns ``{pointe_index: (end_index, implicit)}`` where ``implicit``
-    records that the loop is closed by an ancestor's ``END`` rather than
-    its own.  Raises :class:`ValueError` for an unmatched ``END``, a
-    ``BREAK`` outside its loop, a duplicate label, or an unclosed loop.
-    """
+    r"""Validate the loop structure and map POINT indexes to their END."""
     ends: dict[int, tuple[int, bool]] = {}
     frames: list[tuple[str, int]] = []
     labels: set[str] = set()
@@ -241,13 +177,7 @@ type _State = tuple[_Vars, _Frames, int]
 
 
 def _eval(expr: list[Token], variables: _Vars, read: _Read) -> int:
-    """Evaluate a validated expression; ``?`` reads a number from input.
-
-    Pure in its state: it only reads ``variables``.  ``read`` is the ``?``
-    port, and it is called *as the walk reaches it* -- an expression that
-    raises part-way therefore leaves the inputs to its right unread, which
-    is behaviour the input cursor records.
-    """
+    r"""Evaluate a validated expression; ``?`` reads a number from input."""
     pos = 0
 
     def factor() -> int:
@@ -299,18 +229,7 @@ def _advance(
     ends: Mapping[int, tuple[int, bool]],
     read: _Read,
 ) -> _State:
-    """Return the state after executing one statement.
-
-    Pure in its state: it reads ``state`` and returns a new one.  ``read``
-    is the ``?`` port, reached only through :func:`_eval`.
-
-    ``END`` and a taken ``BREAK`` both cut the frame stack back to the
-    loop they name.  They differ in where they resume: ``END`` jumps to the
-    ``POINT`` that opened the loop, so the body runs again, while ``BREAK``
-    resumes after the ``END`` that closes it -- or *at* that ``END`` when
-    the loop is closed implicitly by an ancestor's, which is what makes the
-    wiki's examples behave as named.
-    """
+    r"""Return the state after executing one statement."""
     variables, frames, pc = state
     stmt = stmts[pc]
 
@@ -335,14 +254,7 @@ def _advance(
 
 
 class _Machine:
-    """Per-run Point Break state: statements, variables, frames, cursor.
-
-    ``step()`` executes one statement and ``halted`` says whether the
-    program is done, the shape the VM wrapper and the state-cycle hang
-    detector expect.  :meth:`snapshot` returns the complete internal state
-    — the cursor, variables, open loop frames, and the input cursor — so a
-    repeated snapshot is a *proof* that a deterministic run loops forever.
-    """
+    r"""Per-run Point Break state: statements, variables, frames, cursor."""
 
     # : Whether the variables are.
     # : belongs to the language,.
@@ -352,11 +264,7 @@ class _Machine:
     dumps_on_the_post_halt_step = True
 
     def __init__(self, code: str | list[str], io: IO) -> None:
-        """Parse ``code`` into statements.
-
-        A malformed program raises :class:`ValueError` here; the runtime
-        :class:`HaltError`s fire during ``step`` instead.
-        """
+        r"""Parse ``code`` into statements."""
         self.io = io
         # Out of ``snapshot``: the dump.
         # compares states of a running.
@@ -375,12 +283,12 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        """Whether the cursor has run past the last statement."""
+        r"""Whether the cursor has run past the last statement."""
         return self.pc >= len(self.stmts)
 
     @property
     def dumped(self) -> bool:
-        """Whether the end-of-run variable dump has already been printed."""
+        r"""Whether the end-of-run variable dump has already been printed."""
         return self._dumped
 
     # The VM's language-shaped.
@@ -388,21 +296,21 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        """The current instruction position."""
+        r"""The current instruction position."""
         return self.pc
 
     @property
     def memory(self) -> list[int]:
-        """The addressable cells."""
+        r"""The addressable cells."""
         return [self.variables[k] for k in sorted(self.variables)]
 
     @property
     def stack(self) -> list[object]:
-        """No stack in this language."""
+        r"""No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        r"""Return the complete internal state, hashable for cycle detection."""
         return (
             self.pc,
             tuple(sorted(self.variables.items())),
@@ -412,23 +320,16 @@ class _Machine:
 
     @property
     def _state(self) -> _State:
-        """The machine's fields as the value the transition works on."""
+        r"""The machine's fields as the value the transition works on."""
         return (self.variables, self.frames, self.pc)
 
     def _restore(self, state: _State) -> None:
-        """Write a transition's result back onto the machine's fields."""
+        r"""Write a transition's result back onto the machine's fields."""
         variables, self.frames, self.pc = state
         self.variables = dict(variables)
 
     def step(self) -> None:
-        """Execute one statement, or dump the variables after the halt.
-
-        Both effects live here rather than in the transition: this is the
-        shell.  The input port is handed over as a callback because ``?``
-        is read as the expression walk reaches it, not before the statement
-        runs; the dump is the once-per-run effect ``dumped`` keeps to one,
-        the same shape Minsky Swap and Bitdeque use.
-        """
+        r"""Execute one statement, or dump the variables after the halt."""
         if self.halted:
             if not self.dumped:
                 self.io.print_str(" ".join(map(str, self.memory)))
@@ -438,19 +339,7 @@ class _Machine:
 
 
 def run(code: str | list[str], io: IO) -> None:
-    """Execute a Point Break program.
-
-    The program is a sequence of statements, one per line, with ``#``
-    starting a line comment; ``code`` may be a single string or a list of
-    lines.
-
-    The wiki gives the language ``?`` for input but defines no *output*, so
-    the run ends by printing the variables -- the repo convention for
-    interpreter-only languages, space-separated in name order on one line
-    with no trailing newline, as Minsky Swap prints its registers.  The
-    separator and the choice to print at all are the repo's, not the
-    spec's.
-    """
+    r"""Execute a Point Break program."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

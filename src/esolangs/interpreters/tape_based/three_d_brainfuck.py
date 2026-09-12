@@ -1,41 +1,4 @@
-"""Interpreter for 3D Brainfuck.
-
-A brainfuck variant whose memory array is a three-dimensional grid of byte
-cells (wrapping 0-255) and whose blocks are placed on a three-dimensional
-grid.  ``+``/``-``/``.``/``,`` operate on the array cell at the array
-pointer; ``n``/``s``/``e``/``w``/``u``/``d`` move the array pointer along the
-six axes; ``N``/``S``/``E``/``W``/``U``/``D`` set the instruction pointer's
-heading; ``^``/``V``/``>``/``<``/``"``/``'`` set the generation pointer's
-heading; and ``[``/``]`` loop on the array cell, matched by nesting over the
-source like brainfuck.
-
-The wiki (``esolangs.org/wiki/3D_Brainfuck``) specifies the instruction set
-but not how blocks are initially placed or what the generation pointer emits.
-Documented decisions filling those gaps:
-- the source is a straight line of blocks along +X, block ``i`` at (i, 0, 0);
-- the instruction pointer starts at (0, 0, 0) heading +X, executes the block
-  at its cell, then advances one cell in its heading; moving onto a cell with
-  no block halts the program;
-- a heading block (``N``/``S``/``E``/``W``/``U``/``D``) only changes the
-  heading; every heading but +X and -X walks the pointer off the source
-  line and halts, while -X (``S``) runs back along it, so blocks re-execute
-  and a program can bounce between two headings forever;
-- the array grid is unbounded, cells are created on demand and wrap 0-255;
-- no blocks are ever emitted (the wiki's generation semantics are
-  unspecified), so the generation pointer has no observable state and is not
-  modelled: ``^``/``V``/``>``/``<``/``"``/``'`` are no-ops like any other
-  non-command character, which is a comment;
-- ``,`` raises :class:`EOFError` when input runs out (repo-wide convention);
-  an unbalanced bracket pair is malformed (:class:`ValueError`).
-
-The interpreter runs on a :class:`_Machine` (the block grid, the array
-cells, and the two pointers), so it is step-capable: ``step()`` executes one
-block and ``halted`` is true once the instruction pointer leaves the source
-line.  A loop that returns to an exact state (e.g. a bracket pair around a
-cell that wraps) is a cycle the state-cycle hang detector proves; the
-``run()`` backstop stays for the unbounded-growth class (a loop whose body
-keeps growing the array).
-"""
+r"""Interpreter for 3D Brainfuck."""
 
 import sys
 from collections.abc import Mapping
@@ -63,15 +26,7 @@ _Point = tuple[int, int, int]
 
 
 def _moved(point: _Point, delta: _Point) -> _Point:
-    """Return ``point`` moved by ``delta``, one component at a time.
-
-    Both pointers move this way, so they share it.  Spelled out at each site
-    the sum names ``[0]``, ``[1]`` and ``[2]`` explicitly -- and the
-    instruction pointer never leaves the ``y = z = 0`` line alive, since a
-    heading block walks it off the source and halts it, so a site that read
-    the wrong one of those two behaved identically and nothing could tell.
-    Unpacking both triples names each component once instead.
-    """
+    r"""Return ``point`` moved by ``delta``, one component at a time."""
     x, y, z = point
     dx, dy, dz = delta
     return (x + dx, y + dy, z + dz)
@@ -98,16 +53,7 @@ def _advance(
     match: Mapping[int, int],
     byte: int | None = None,
 ) -> _State:
-    """Return the state after executing the block under the pointer.
-
-    Pure: it reads ``state`` and returns a new one.  ``.``'s printing is
-    the caller's business -- the cell it prints is carried forward
-    unchanged -- and ``,``'s byte arrives as ``byte``.
-
-    A loop that jumps lands at the start of the line after its partner,
-    with the other two coordinates reset: the brackets are matched by line
-    rather than by position, so a jump is to a *row*, not to a cell.
-    """
+    r"""Return the state after executing the block under the pointer."""
     cells, ap, pos, heading = state
     char = grid[pos]
 
@@ -133,15 +79,10 @@ def _advance(
 
 
 class _Machine:
-    """Per-run 3D Brainfuck state: the blocks, the array, and the pointers.
-
-    ``step()`` executes one block; ``halted`` is true once the instruction
-    pointer leaves the source line.  The VM and the state-cycle hang detector
-    expose this object.
-    """
+    r"""Per-run 3D Brainfuck state: the blocks, the array, and the pointers."""
 
     def __init__(self, code: str, io: IO) -> None:
-        """Lay the blocks along +X and start the pointers at the origin."""
+        r"""Lay the blocks along +X and start the pointers at the origin."""
         self.io = io
         self.grid = {(i, 0, 0): char for i, char in enumerate(code)}
         self.m = _matches(code)
@@ -152,7 +93,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        """Whether the instruction pointer has left the source line."""
+        r"""Whether the instruction pointer has left the source line."""
         return self.pos not in self.grid
 
     # The VM's language-shaped view.
@@ -168,26 +109,21 @@ class _Machine:
 
     @property
     def ip(self) -> tuple[int, ...]:
-        """The instruction pointer's position and heading, flattened.
-
-        Where the pointer is does not say where it goes next: the heading
-        is a separate 3D vector, and a breakpoint on a position alone would
-        match the same cell entered from six directions.
-        """
+        r"""The instruction pointer's position and heading, flattened."""
         return (*self.pos, *self.heading)
 
     @property
     def memory(self) -> list[int]:
-        """The cells that have been touched, in address order."""
+        r"""The cells that have been touched, in address order."""
         return [v for _, v in sorted(self.cells.items())]
 
     @property
     def stack(self) -> list[object]:
-        """No stack in this language."""
+        r"""No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        r"""Return the complete internal state, hashable for cycle detection."""
         return (
             tuple(sorted(self.cells.items())),
             self.ap,
@@ -198,21 +134,16 @@ class _Machine:
 
     @property
     def _state(self) -> _State:
-        """The machine's fields as the value the transition works on."""
+        r"""The machine's fields as the value the transition works on."""
         return (self.cells, self.ap, self.pos, self.heading)
 
     def _restore(self, state: _State) -> None:
-        """Write a transition's result back onto the machine's fields."""
+        r"""Write a transition's result back onto the machine's fields."""
         cells, self.ap, self.pos, self.heading = state
         self.cells = cells
 
     def step(self) -> None:
-        """Execute one block, moving the instruction pointer.
-
-        The two ports live here rather than in the transition: this is the
-        shell.  ``.`` prints the addressed cell the transition carries
-        forward unchanged, and ``,``'s byte is read here and handed over.
-        """
+        r"""Execute one block, moving the instruction pointer."""
         if self.halted:
             return
         char = self.grid[self.pos]
@@ -227,7 +158,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    """Run a 3D Brainfuck program."""
+    r"""Run a 3D Brainfuck program."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

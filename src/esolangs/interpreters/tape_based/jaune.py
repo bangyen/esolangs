@@ -1,46 +1,4 @@
-"""Interpreter for Jaune.
-
-A brainfuck-like cell array with a dedicated "hold" cell.  ``^`` outputs the
-current cell as a decimal number, ``v`` reads a digit of input, ``>``/``<``
-move the pointer, ``#`` copies the current cell to the hold cell, ``&`` adds
-the hold cell to the current cell, ``%`` zeroes it, and ``+``/``-`` with an
-optional count adjust it.  ``(number):`` labels a position, ``(number)?``
-jumps to it when the current cell is nonzero, ``(number)!`` when it is zero,
-``(number)$`` defines a subroutine, ``(number)@`` calls it, ``;`` separates
-subroutines, and ``.`` ends the main program.  A bare ``+``/``-`` (no
-number) adds/subtracts 1; a repeated command like ``^^`` is a counted
-command (repeat 2 times).  ``v`` as a command operand (``v+``) reads an
-input digit and uses it as the count; the grammar makes ``v`` a ``number``,
-so ``v?``/``v!`` jump to the label the input names and ``v@`` calls the
-subroutine it names.
-
-Documented decisions for gaps in the wiki spec:
-- ``^`` prints the current cell as a decimal integer, not as a byte;
-- ``v`` reads one input character and stores ``ord(c) - 48``, raising
-  :class:`EOFError` when input runs out;
-- the pointer starts at cell 0 and moves into an array of zero-initialized
-  cells unbounded to the *right*; ``<`` at cell 0 is clamped, as brainfuck
-  clamps its own.  The wiki says only "Moves pointer to the previous cell",
-  so the left edge is a gap; this package fills it by clamping everywhere
-  (see also Streetcode's ``_``).  Cells hold plain integers with no wrapping
-  (the author's reference JauneJS stores each cell as a JavaScript number
-  and does plain ``+=``/``-=``, no modulo or bitmask);
-- a read operand is evaluated to have a command at all, so ``v?``/``v!``
-  consume their input digit whether or not the branch is taken;
-- a read operand converts exactly as ``v`` does (``ord(c) - 48``, an empty
-  read as zero), so it may name any integer -- a non-digit simply names a
-  label that is almost certainly undefined, which halts by the rule below
-  rather than by a separate validation;
-- ``v:`` and ``v$`` are admitted by the grammar but define nothing, since a
-  marker read at runtime has no identity a jump could find; both are dropped
-  at parse, matching the compiler's ``prep``;
-- a jump to an undefined label, a call to an undefined subroutine, or a
-  ``;`` with no active subroutine call is an invalid runtime operation
-  (:class:`~esolangs.exceptions.HaltError`); a command that requires a
-  number but has none is malformed (:class:`ValueError`); an infinite loop
-  (a jump that never halts) is left to run, bounded by the caller's
-  ``timeout``.
-"""
+r"""Interpreter for Jaune."""
 
 from __future__ import annotations
 
@@ -91,11 +49,7 @@ _READ_MARKER = ":$"
 
 @dataclass
 class _Counted:
-    """A Jaune command with no operand, or with a repeat count.
-
-    ``arg`` is the count where the op takes one (``+``/``-``) and ``None``
-    for the bare commands, both of which are legal spellings.
-    """
+    r"""A Jaune command with no operand, or with a repeat count."""
 
     op: _CountedOp
     arg: int | None = None
@@ -103,12 +57,7 @@ class _Counted:
 
 @dataclass
 class _Numbered:
-    """A Jaune command whose operator requires a number: ``:?!$@``.
-
-    :func:`_parse` raises on a bare one of these, so the operand is always
-    present by the time the machine dispatches -- which is why ``arg`` is a
-    plain ``int`` rather than an optional one.
-    """
+    r"""A Jaune command whose operator requires a number: ``:?!$@``."""
 
     op: _NumberedOp
     arg: int
@@ -118,7 +67,7 @@ _Command = _Counted | _Numbered
 
 
 def _parse(code: str) -> list[_Command]:
-    """Parse a program into commands, expanding counts and number operands."""
+    r"""Parse a program into commands, expanding counts and number operands."""
     out: list[_Command] = []
     i = 0
     n = len(code)
@@ -184,12 +133,12 @@ type _State = tuple[tuple[int, ...], int, int, int, tuple[int, ...]]
 
 
 def _set(cells: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
-    """Return ``cells`` with the cell at ``ptr`` set to ``value``."""
+    r"""Return ``cells`` with the cell at ``ptr`` set to ``value``."""
     return (*cells[:ptr], value, *cells[ptr + 1 :])
 
 
 def _find(commands: Sequence[_Command], op: str, num: int | None) -> int | None:
-    """Return the index of the ``op`` marker whose argument is ``num``."""
+    r"""Return the index of the ``op`` marker whose argument is ``num``."""
     for i, cmd in enumerate(commands):
         if cmd.op == op and cmd.arg == num:
             return i
@@ -201,19 +150,7 @@ def _advance(
     commands: Sequence[_Command],
     value: int | None = None,
 ) -> _State:
-    """Return the state after executing ``cmd``.
-
-    Pure: it reads ``state`` and returns a new one.  ``^``'s printing is
-    the caller's business -- the cell it prints is carried forward
-    unchanged -- and the three reading forms arrive as ``value``, already
-    taken from the port and already converted from its digit.
-
-    The tape grows rightward only: ``>`` past the right edge appends a
-    cell, while ``<`` at cell 0 is clamped and moves nothing.
-
-    A jump that is taken, a call, and a return all set the cursor outright
-    rather than stepping it, which is why each returns early.
-    """
+    r"""Return the state after executing ``cmd``."""
     cells, ptr, hold, pos, calls = state
     cmd = commands[pos]
     c = cmd.op
@@ -294,7 +231,7 @@ def _advance(
 
 
 class _Machine:
-    """One Jaune run: cells, pointer, hold cell, and parsed commands."""
+    r"""One Jaune run: cells, pointer, hold cell, and parsed commands."""
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
@@ -313,26 +250,26 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        """The current instruction position."""
+        r"""The current instruction position."""
         return self.pos
 
     @property
     def memory(self) -> list[int]:
-        """The addressable cells."""
+        r"""The addressable cells."""
         return list(self.cells)
 
     @property
     def stack(self) -> list[object]:
-        """The stack."""
+        r"""The stack."""
         return list(self.call_stack)
 
     @property
     def frames(self) -> tuple[int, ...]:
-        """The live subroutine calls, outermost first."""
+        r"""The live subroutine calls, outermost first."""
         return self.call_stack
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        r"""Return the complete internal state, hashable for cycle detection."""
         return (
             self.pos,
             self.cells,
@@ -343,14 +280,7 @@ class _Machine:
         )
 
     def frame_entry_key(self, _frame: object) -> tuple[object, ...]:
-        """Return the state a subroutine needs to replay an ancestor.
-
-        ``call_stack`` holds return addresses, but the target position is
-        the live ``pos`` after ``@`` jumps to its ``$`` marker.  That target,
-        the tape and hold register, and the input position determine every
-        action before this call could return.  See
-        :func:`esolangs.vm.run_until_halt_or_ancestor`.
-        """
+        r"""Return the state a subroutine needs to replay an ancestor."""
         return (
             self.pos,
             self.cells,
@@ -361,7 +291,7 @@ class _Machine:
 
     @property
     def _state(self) -> _State:
-        """The machine's fields as the value the transition works on."""
+        r"""The machine's fields as the value the transition works on."""
         return (
             self.cells,
             self.ptr,
@@ -371,26 +301,11 @@ class _Machine:
         )
 
     def _restore(self, state: _State) -> None:
-        """Write a transition's result back onto the machine's fields.
-
-        The fields are this class's published shape -- ``snapshot`` reads
-        all five -- so they stay; the one assignment a step makes is here
-        rather than in the rules above.
-        """
+        r"""Write a transition's result back onto the machine's fields."""
         self.cells, self.ptr, self.hold, self.pos, self.call_stack = state
 
     def step(self) -> None:
-        """Execute one command, advancing (or jumping) the position.
-
-        The ports live here rather than in the transition: this is the
-        shell.  ``^`` prints the cell the transition carries forward
-        unchanged, and the three reading forms take a line here and convert
-        it from its digit before handing the value over -- an empty line
-        reads as zero.  That zero is *chosen*, not the language's: the wiki
-        defines ``v`` only as "Reads user input to the number" and says
-        nothing about an empty one, so this is the package convention
-        (:meth:`io.IO.input_char`) reached at the call site.
-        """
+        r"""Execute one command, advancing (or jumping) the position."""
         if self.halted:
             return
         cmd = self.commands[self.pos]
@@ -406,7 +321,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    """Run a Jaune program."""
+    r"""Run a Jaune program."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

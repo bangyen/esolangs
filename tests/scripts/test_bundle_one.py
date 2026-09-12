@@ -1,11 +1,4 @@
-"""The single-file bundle reproduces every interpreter's behavior.
-
-``scripts/bundle_one.py`` inlines a language's interpreter together with the
-shared ``esolangs.exceptions`` and ``esolangs.interpreters.io`` modules (and
-any interpreter it imports) into one runnable file.  These tests pin the two
-things that make that useful: the bundle compiles for every language, and
-running it produces exactly what the packaged interpreter produces.
-"""
+r"""The single-file bundle reproduces every interpreter's behavior."""
 
 import importlib
 import importlib.util
@@ -29,12 +22,12 @@ _BY_ID = {lang.id: name for name, lang in LANGUAGES.items()}
 
 
 def _display_name(stem: str) -> str | None:
-    """Return the display name an example stem belongs to, if registered."""
+    r"""Return the display name an example stem belongs to, if registered."""
     return _BY_ID.get(canonical_id(stem.replace("-", " ")))
 
 
 def load_script() -> object:
-    """Import the bundler as a module, mirroring the other script tests."""
+    r"""Import the bundler as a module, mirroring the other script tests."""
     spec = importlib.util.spec_from_file_location("bundle_one", SCRIPT)
     assert spec is not None
     module = importlib.util.module_from_spec(spec)
@@ -44,7 +37,7 @@ def load_script() -> object:
 
 
 def _load_bundle(tmp_path: Path) -> object:
-    """Import a bundled file from ``tmp_path``, returning its module."""
+    r"""Import a bundled file from ``tmp_path``, returning its module."""
     spec = importlib.util.spec_from_file_location("bundle_mod", tmp_path)
     assert spec is not None
     module = importlib.util.module_from_spec(spec)
@@ -55,23 +48,14 @@ def _load_bundle(tmp_path: Path) -> object:
 
 
 def _run_and_read(bundle_mod: object, arg: str | list[str], stdin: str = "") -> str:
-    """Run ``bundle_mod.run`` on ``arg`` and return its captured output.
-
-    Two arguments, like ``esolangs.run`` itself: the comparison below is
-    against that function, which passes the program and the io object and
-    nothing else.
-    """
+    r"""Run ``bundle_mod.run`` on ``arg`` and return its captured output."""
     io = ScriptedIO(stdin)
     bundle_mod.run(arg, io=io)
     return io.getvalue()
 
 
 def _outcome(fn: object) -> tuple[str, str | None]:
-    """Run ``fn`` and normalize its result to (kind, detail) for comparison.
-
-    The caller builds ``fn`` with loop variables bound as default arguments,
-    so a late-binding closure cannot pick up a later iteration's values.
-    """
+    r"""Run ``fn`` and normalize its result to (kind, detail) for."""
     try:
         return ("ok", str(fn()))
     except BaseException as exc:
@@ -80,7 +64,7 @@ def _outcome(fn: object) -> tuple[str, str | None]:
 
 class TestBundleCompiles:
     def test_every_bundle_exposes_run(self, tmp_path: Path) -> None:
-        """Every bundled file is importable and defines ``run``."""
+        r"""Every bundled file is importable and defines ``run``."""
         bundle_one = load_script()
         for name in RUNNERS:
             out = tmp_path / f"{name}.py"
@@ -91,18 +75,7 @@ class TestBundleCompiles:
 
 class TestBundleMatchesPackage:
     def test_generator_languages_match(self, tmp_path: Path) -> None:
-        """A generated program runs the same through the bundle and the package.
-
-        Driven by ``BOOLEAN_EXAMPLES`` rather than by calling the generator
-        with a table of this test's own choosing: a boolean program reads
-        its input bits, and one run without them does not merely fail --
-        several interpreters loop forever waiting, which pins a core
-        instead of failing the suite.  The examples carry inputs that are
-        known to drive their program to a halt.
-
-        Compares outcome type and output so a ``SystemExit`` (Container) or
-        interpreter keyword arguments (Suffolk's ``limit``) match too.
-        """
+        r"""A generated program runs the same through the bundle and the."""
         bundle_one = load_script()
         tested = 0
         for stem, example in sorted(BOOLEAN_EXAMPLES.items()):
@@ -132,7 +105,7 @@ class TestBundleMatchesPackage:
         assert tested > 0
 
     def test_no_generator_languages_import(self, tmp_path: Path) -> None:
-        """Languages without a generator still bundle to importable files."""
+        r"""Languages without a generator still bundle to importable files."""
         bundle_one = load_script()
         for name, (module, _split) in RUNNERS.items():
             if LANGUAGES[name].boolean is not None:
@@ -149,14 +122,14 @@ class TestBundleMatchesPackage:
 @pytest.mark.medium
 class TestBundleDetails:
     def test_sympy_required_note(self, tmp_path: Path) -> None:
-        """Factor's bundle tells the user sympy is required."""
+        r"""Factor's bundle tells the user sympy is required."""
         bundle_one = load_script()
         out = tmp_path / "factor.py"
         bundle_one.bundle("Factor", bundle_one.Source(None), out)
         assert "Requires: pip install sympy" in out.read_text()
 
     def test_transitive_interpreter_inlined(self, tmp_path: Path) -> None:
-        """Factor's bundle inlines the brainfuck interpreter it depends on."""
+        r"""Factor's bundle inlines the brainfuck interpreter it depends on."""
         bundle_one = load_script()
         out = tmp_path / "factor.py"
         bundle_one.bundle("Factor", bundle_one.Source(None), out)
@@ -165,7 +138,7 @@ class TestBundleDetails:
         )
 
     def test_bundle_runs_from_command_line(self, tmp_path: Path) -> None:
-        """The bundle honors the ``python file.py program.txt`` convention."""
+        r"""The bundle honors the ``python file.py program.txt`` convention."""
         import subprocess
 
         bundle_one = load_script()

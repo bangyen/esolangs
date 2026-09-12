@@ -1,36 +1,4 @@
-"""Require every file this branch *touches* to be fully covered.
-
-The diff picks the files; the whole file is then judged.  Touch a file and
-you answer for all of it, not only the lines you added.
-
-This is deliberately stronger than checking the added lines alone, which is what
-this script used to do.  That earlier rule was chosen when eight files under
-``tools/boolean/`` carried pre-existing misses and billing a one-line fix for
-closing debts it did not create seemed unfair.  That debt is now paid: the
-tree measures 100% line coverage, so a whole-file gate bills nobody for
-anything -- it only keeps the number there.  The failure the weaker rule
-allowed was real: a fix could land *next to* an uncovered line, leave it
-uncovered, and pass, which is how a file drifts while every individual change
-looks clean.
-
-The gate reads the coverage data the ``pytest`` step just wrote and the
-branch's own diff hunks.  A file is a failure if the branch touched it and
-coverage knows of any statement in it that never executed.  Comments,
-docstrings and blank lines are not statements, so they cannot fail it, and a
-line the project has excluded via ``exclude_lines`` is already gone from
-``missing_lines`` before the gate sees it -- ``# pragma: no cover`` remains
-the way to retire genuinely unreachable code, with a comment saying why.
-
-*Branches* are held to the same rule when the data has them -- an ``if`` in a
-touched file that only ever went one way fails just as an unexecuted line
-does.  This is deliberately not a percentage: "the file is covered" is the
-only coherent form the threshold takes once the unit is a file.
-
-Fail-open, matching :mod:`_scope`: an unreadable diff, absent coverage data, or
-a run whose test selection cannot support the verdict is reported and skipped
-rather than failed.  A gate that blocks on data it does not have would just
-teach people to bypass it.
-"""
+r"""Require every file this branch *touches* to be fully covered."""
 
 import argparse
 import json
@@ -48,13 +16,7 @@ MEASURED = "src/esolangs/"
 
 
 def _added_lines(base: str) -> dict[str, set[int]] | None:
-    """Map each changed file to the line numbers this branch added.
-
-    ``-U0`` asks for no context, so every line the hunk reports as added is one
-    the branch is answerable for.  Returns ``None`` when the diff cannot be
-    read, which the caller must treat as "cannot tell", never as "nothing
-    changed".
-    """
+    r"""Map each changed file to the line numbers this branch added."""
     got = subprocess.run(
         ["git", "diff", "-U0", base, "--"],
         capture_output=True,
@@ -85,7 +47,7 @@ def _added_lines(base: str) -> dict[str, set[int]] | None:
 
 
 def _rev(*args: str) -> str | None:
-    """Return the single revision *args* resolves to, or ``None``."""
+    r"""Return the single revision *args* resolves to, or ``None``."""
     got = subprocess.run(
         ["git", *args], capture_output=True, text=True, cwd=ROOT, check=False
     )
@@ -93,22 +55,7 @@ def _rev(*args: str) -> str | None:
 
 
 def _diff_base() -> str | None:
-    """Return the ref to diff against, or ``None`` if there is not one.
-
-    The merge-base with main is the branch's own starting point, so diffing
-    against it attributes exactly the branch's work and not whatever landed on
-    main meanwhile.
-
-    Both spellings of main are consulted, and the *newer* merge-base wins.
-    ``origin/main`` alone is wrong whenever local ``main`` is ahead of it --
-    commits that are merely unpushed are not this branch's work, but a base
-    behind them attributes every line they touched to whoever runs the gate.
-    A worktree cut from a stale ``origin/main`` hits this immediately, and the
-    symptom is a gate that blames files the branch never opened.
-
-    ``HEAD~1`` is the last resort for a shallow clone or a detached HEAD,
-    matching :func:`_scope.changed_files`.
-    """
+    r"""Return the ref to diff against, or ``None`` if there is not one."""
     bases = [
         base
         for ref in ("origin/main", "main")
@@ -135,13 +82,7 @@ def _diff_base() -> str | None:
 
 
 def _coverage_json(data_file: Path) -> dict[str, dict[str, Any]] | None:
-    """Return coverage's per-file executed/missing lines, or ``None``.
-
-    Reads through ``coverage json`` rather than the ``.coverage`` SQLite file
-    directly: the report applies the ``exclude_lines`` patterns from
-    pyproject, so a line the project has deliberately excluded is already gone
-    from ``missing_lines`` and cannot fail the gate.
-    """
+    r"""Return coverage's per-file executed/missing lines, or ``None``."""
     if not data_file.exists():
         return None
     got = subprocess.run(
@@ -175,7 +116,7 @@ def _coverage_json(data_file: Path) -> dict[str, dict[str, Any]] | None:
 
 
 def main() -> int:
-    """Check every file this branch touched against the recorded coverage."""
+    r"""Check every file this branch touched against the recorded coverage."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--data-file",

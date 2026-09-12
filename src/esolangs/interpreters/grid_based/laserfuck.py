@@ -1,24 +1,4 @@
-r"""Interpreter for LaserFuck.
-
-A laser (starting at ``o`` with a random initial heading) travels a grid.
-``>``/``<``/``+``/``-``/``,`` work on a brainfuck-style tape, ``\`` and ``/``
-reflect the laser, ``_``/``|`` and ``(``/``)`` reflect it when the current
-cell is nonzero (or always for the unconditional forms), ``^v{}`` set the
-heading directly, ``#`` skips the next command, ``x`` deletes the laser, and
-``*`` duplicates it in a random perpendicular direction.  Execution ends when
-no lasers remain; the tape is then printed, with the first grid cell ``\xff``
-selecting byte mode (no separators) over the default decimal mode, and
-negative cells excluded from the output.
-
-The initial heading is chosen uniformly at random, matching the cross-check;
-a run may therefore produce one of several outputs, so a caller that needs a
-particular one passes an ``rng`` whose first draw is the heading it wants.
-That source also decides each ``*`` split, so one argument makes the whole
-run reproducible.
-
-
-Exhausted input raises :class:`EOFError` (the repo-wide convention).
-"""
+r"""Interpreter for LaserFuck."""
 
 import sys
 from typing import cast
@@ -52,23 +32,18 @@ _NO_POS = (0, 0, 0)
 
 
 def _strip_pos(state: _State) -> _BranchState:
-    """Drop the reported position from a transition's result."""
+    r"""Drop the reported position from a transition's result."""
     tape, ptr, lsrs, ind, jmp, _pos = state
     return (tape, ptr, lsrs, ind, jmp)
 
 
 def _write(tape: _Tape, ptr: int, value: int, touched: int) -> _Tape:
-    """Return ``tape`` with the cell at ``ptr`` set and marked."""
+    r"""Return ``tape`` with the cell at ``ptr`` set and marked."""
     return (*tape[:ptr], (value, touched), *tape[ptr + 1 :])
 
 
 def _move(row: int, col: int, d: int, rows: int) -> tuple[int, int]:
-    """Return the cell one step along heading ``d``.
-
-    Stepping off the top or left edge is spelled as a row past the bottom,
-    which the grid read then treats as off-grid -- the same fate as any
-    other exit, and what makes a beam that leaves die rather than wrap.
-    """
+    r"""Return the cell one step along heading ``d``."""
     if (row == 0 and d == 0) or (col == 0 and d == 2):
         return (rows, col)
     if d == 0:
@@ -89,20 +64,7 @@ def _advance(
     byte: int | None = None,
     split: int = 0,
 ) -> _State:
-    """Return the state after the active beam executes ``op``.
-
-    Pure: it reads ``state`` and returns a new one.  ``,``'s byte arrives
-    as ``byte``, and ``*``'s coin as ``split``, so the two things a step
-    cannot decide for itself are decided by the caller.
-
-    ``x`` kills the active beam, which is why the index is renormalised
-    rather than advanced: the beam that was next has just shifted down one.
-    Every other command hands the turn on in round-robin order.
-
-    ``pos`` is carried through untouched.  It is the position the VM
-    reports for *this* step, recorded by the caller at the arrival heading,
-    so a turn steers the beam without rewriting where it just was.
-    """
+    r"""Return the state after the active beam executes ``op``."""
     tape, ptr, lsrs, ind, jmp, pos = state
 
     if op == ">":
@@ -147,7 +109,7 @@ def _advance(
 
 
 class _Machine:
-    """A LaserFuck run: the grid, the live lasers, and the tape."""
+    r"""A LaserFuck run: the grid, the live lasers, and the tape."""
 
     # : Whether the tape is written.
     # : belongs to the language,.
@@ -173,18 +135,7 @@ class _Machine:
         io: IO,
         rng: Randomness | None = None,
     ) -> None:
-        """Start a laser at ``o``, drawing its heading from ``rng``.
-
-        ``rng`` is the language's whole source of chance: the initial
-        heading here, and the coin ``*`` flips every time it splits a beam.
-        ``None`` draws for real, which is the spec's behaviour.
-
-        There is deliberately no ``heading`` argument.  One existed, pinning
-        the initial direction so a test could choose it -- but a source that
-        answers the first draw does the same thing, and does it for the
-        splits too, so the two mechanisms were one job.  A caller wanting a
-        particular direction hands in a stub that returns it.
-        """
+        r"""Start a laser at ``o``, drawing its heading from ``rng``."""
         self.io = io
         self._rng = rng
         text = [list(ln) for ln in code]
@@ -241,21 +192,21 @@ class _Machine:
 
     @property
     def ip(self) -> tuple[int, ...]:
-        """The active laser's ``(row, col, heading)``."""
+        r"""The active laser's ``(row, col, heading)``."""
         return self.pos
 
     @property
     def memory(self) -> list[int]:
-        """The tape's cell values, without their paint flags."""
+        r"""The tape's cell values, without their paint flags."""
         return [v for v, _ in self.tape]
 
     @property
     def stack(self) -> list[object]:
-        """No stack in this language."""
+        r"""No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        r"""Return the complete internal state, hashable for cycle detection."""
         return (
             self.ptr,
             self.tape,
@@ -271,51 +222,19 @@ class _Machine:
     # split behaviourally identical.
 
     def branching_snapshot(self) -> _BranchState:
-        """Return the pre-heading start state for a branching search.
-
-        The initial heading is a draw like any other, so it belongs to the
-        search rather than to the machine that starts it: a verdict of "every
-        sequence of draws runs forever" has to quantify over all four
-        headings, and a live machine has already committed to one.  ``None``
-        marks the beam as unplaced, and :meth:`branching_successors` opens it
-        into the four headings ``__init__`` chooses between.
-
-        A grid that never placed a laser -- no ``o``, or the second ``o``
-        that stops a run at construction -- has no heading to quantify over,
-        so it reports its own empty beams instead and the ordinary
-        emptiness test halts it.  Handing those the sentinel would invent a
-        beam at the grid's origin and search a run the language never has.
-        """
+        r"""Return the pre-heading start state for a branching search."""
         unplaced = None if self.lsrs else ()
         return (self.tape, self.ptr, unplaced, self.ind, self.jmp)
 
     def branching_halted(self, state: object) -> bool:
-        """Report whether ``state`` has no live beam left.
-
-        The unplaced start state is never halted: :meth:`branching_snapshot`
-        only spells a beam ``None`` when there is one to place, so an
-        unplaced state always has a whole run ahead of it.  A grid with no
-        laser reports empty beams instead, which this halts on directly.
-        """
+        r"""Report whether ``state`` has no live beam left."""
         lsrs = cast(_BranchState, state)[2]
         return lsrs is not None and not lsrs
 
     def branching_successors(
         self, state: object, _limit: int
     ) -> tuple[_BranchState, ...] | None:
-        """Return the state for every draw this state could make.
-
-        Mirrors :meth:`step` rather than :func:`_advance` alone, because the
-        move, the off-grid death and the ``#`` skip all live in the step: a
-        successor calling the transition directly would execute the cell the
-        beam is leaving instead of the one it arrives at.
-
-        Fanout is two at a ``*`` and four at the unplaced start, so ``limit``
-        needs no consulting here -- the caller's cap on distinct states is
-        what bounds the search.  ``,`` returns ``None``: forking it would need
-        an independent input cursor per branch, so the caller reports an
-        undecided result rather than sharing one branch's input with another.
-        """
+        r"""Return the state for every draw this state could make."""
         tape, ptr, lsrs, ind, jmp = cast(_BranchState, state)
         if lsrs is None:
             return tuple(
@@ -356,7 +275,7 @@ class _Machine:
 
     @property
     def _state(self) -> _State:
-        """The machine's fields as the value the transition works on."""
+        r"""The machine's fields as the value the transition works on."""
         return (
             self.tape,
             self.ptr,
@@ -367,35 +286,13 @@ class _Machine:
         )
 
     def _restore(self, state: _State) -> None:
-        """Write a transition's result back onto the machine's fields.
-
-        The fields are this class's published shape -- ``dump`` walks the
-        tape and the VM reads the beams -- so they stay; the one assignment
-        a step makes is here rather than in the rules above.
-        """
+        r"""Write a transition's result back onto the machine's fields."""
         tape, self.ptr, lsrs, self.ind, self.jmp, self.pos = state
         self.tape = tape
         self.lsrs = list(lsrs)
 
     def step(self) -> None:
-        """Move the active laser one step, dumping the tape once halted.
-
-        The dump belongs to the step *after* the halt, as Minsky Swap and
-        RAM0 already spell it, so that stepping a machine to a standstill
-        writes what ``run`` writes.  Keeping it in ``run`` instead left the
-        VM adapter to replicate it, and the two had drifted: the adapter
-        dumped on ``not lsrs`` where ``run`` dumps on ``halted``, so a
-        program stopped by the second start marker printed its tape under
-        ``run`` and nothing at all under the VM.  Guarding on ``halted``
-        covers both ways of stopping, and ``lsrs`` is the wrong test
-        besides -- a beam splitter appends to it, so it grows as well as
-        shrinks.
-
-        The two things a step cannot decide for itself are decided here:
-        ``,`` takes a line from the input port, and ``*`` draws the coin
-        that picks the new beam's heading.  Both are read only when the
-        cell under the beam is actually that command.
-        """
+        r"""Move the active laser one step, dumping the tape once halted."""
         if self.halted:
             if not self._dumped:
                 self.dump()
@@ -430,16 +327,7 @@ class _Machine:
         self._restore(_advance(self._state, op, row, col, d, byte, split))
 
     def dump(self) -> None:
-        r"""Print the tape, honoring the ``\xff`` byte-mode marker.
-
-        The separator is the spec's, not a house style: the wiki says the
-        used cells print "in decimal with line breaks", and that a leading
-        ``\xff`` "outputs unicode with no line breaks".  So decimal mode
-        puts a newline *between* values (never a trailing one) and byte mode
-        runs the characters together.  The other interpreter-only languages
-        here space-separate their dumps, but their specs say nothing about
-        output at all; this one does.
-        """
+        r"""Print the tape, honoring the ``\xff`` byte-mode marker."""
         first_row = self.text[0] if self.text else []
         byte_mode = bool(first_row) and first_row[0] == "\u00ff"
         shown = [val for val, touched in self.tape if touched and val >= 0]
@@ -453,17 +341,7 @@ class _Machine:
 
 
 def run(code: list[str], io: IO, rng: Randomness | None = None) -> None:
-    """Run a LaserFuck program, printing the tape when it halts.
-
-    ``rng`` supplies every choice the language makes: the laser's initial
-    direction (drawn as ``randbelow(4)`` -- 0=up, 1=down, 2=left, 3=right)
-    and each ``*`` split.  ``None`` draws for real, matching the
-    cross-check, so the public behaviour is the spec's.
-
-    This is the same signature COD and WII2D take, for the same reason: a
-    language with a random instruction accepts the source of it, and a
-    caller that needs a particular outcome supplies one that decides.
-    """
+    r"""Run a LaserFuck program, printing the tape when it halts."""
     machine = _Machine(code, io, rng)
     while not machine.halted:
         machine.step()

@@ -1,11 +1,4 @@
-"""Alight paths the wiki's three examples never take.
-
-A call suspending a list or an argument row is run as a real grid.
-``_replace_first`` and ``_first_call_or_none`` are pure functions over
-parsed expression tuples, and reaching each of their arms through the
-grid would mean laying out a 2D program per arm, so those are called on
-the node shapes ``_Parser`` emits.
-"""
+r"""Alight paths the wiki's three examples never take."""
 
 from esolangs.interpreters.grid_based.alight import (
     _command_expr,
@@ -22,12 +15,7 @@ def _run(code: list[str], stdin: str = "") -> str:
 
 
 class TestCallsInsideCompoundExpressions:
-    """A user call suspends the reduction wherever it sits.
-
-    ``_reduce`` returns the partly-reduced expression with the rest of
-    the list or argument row still to do, so these run the real grid
-    rather than a constructed node.
-    """
+    r"""A user call suspends the reduction wherever it sits."""
 
     def test_a_call_inside_a_list_literal_returns(self) -> None:
         program = [
@@ -52,12 +40,7 @@ class TestCallsInsideCompoundExpressions:
         assert _run(program) == "A"
 
     def test_a_call_in_a_user_calls_argument_row_suspends_it(self) -> None:
-        """The outer call keeps its unreduced arguments while the inner runs.
-
-        Two arguments, the first a call: the reduction returns with the
-        second still to do, which is the row a single-argument call never
-        exercises.
-        """
+        r"""The outer call keeps its unreduced arguments while the inner runs."""
         program = [
             "begin;var v;set v add{f{64}, 1};out v;end;",
             "func f{a};end a;",
@@ -74,7 +57,7 @@ class TestCallsInsideCompoundExpressions:
 
 
 class TestReplaceFirst:
-    """The first unresolved call becomes a ``val`` node; the rest stand."""
+    r"""The first unresolved call becomes a ``val`` node; the rest stand."""
 
     def test_a_leaf_holds_no_call(self) -> None:
         assert _replace_first(("num", 1.0), 9.0) == (("num", 1.0), False)
@@ -123,7 +106,7 @@ class TestReplaceFirst:
 
 
 class TestCommandExpression:
-    """Which commands carry an expression, and which evaluate nothing."""
+    r"""Which commands carry an expression, and which evaluate nothing."""
 
     def test_a_declaration_evaluates_nothing(self) -> None:
         assert _command_expr("var c", "var") is None
@@ -147,7 +130,7 @@ class TestCommandExpression:
 
 
 class TestFirstCall:
-    """The leftmost call to a given name, searched in evaluation order."""
+    r"""The leftmost call to a given name, searched in evaluation order."""
 
     def test_a_leaf_holds_no_call(self) -> None:
         assert _first_call_or_none(("num", 1.0), "f") is None

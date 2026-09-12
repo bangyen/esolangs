@@ -1,4 +1,4 @@
-"""Unit tests for the 6-5 interpreter."""
+r"""Unit tests for the 6-5 interpreter."""
 
 import importlib
 
@@ -43,51 +43,34 @@ class TestSixFive:
         assert run_and_capture("0") == ""
 
     def test_hello_world(self) -> None:
-        """Hello World program from esolangs.org."""
+        r"""Hello World program from esolangs.org."""
         assert run_and_capture(HELLO_WORLD) == "Hello, World"
 
     def test_move_right_twice(self) -> None:
-        """1 moves the pointer right two cells."""
+        r"""1 moves the pointer right two cells."""
         assert run_and_capture("15555555555A0") == "2"
 
     def test_right_move_reuses_an_already_allocated_tape(self) -> None:
-        """Moving right need not grow a tape that a prior state already grew."""
+        r"""Moving right need not grow a tape that a prior state already grew."""
         state = sixfive._advance((0, 0, (0, 0, 0)), ["1"])  # noqa: SLF001
         assert state == (1, 2, (0, 0, 0))
 
     def test_move_left(self) -> None:
-        """3 moves the pointer left."""
+        r"""3 moves the pointer left."""
         assert run_and_capture("313A0") == "\x00"
 
     def test_the_conditional_skip_only_fires_on_a_match(self) -> None:
-        """``7n`` skips the next instruction when the cell holds ``n``.
-
-        Both sides matter: ``70`` on a zeroed cell swallows the ``A`` and
-        prints nothing, while a cell holding 48 against ``71`` does not
-        match, so the ``A`` runs and the digit appears.
-        """
+        r"""``7n`` skips the next instruction when the cell holds ``n``."""
         assert run_and_capture("70A0") == ""
         assert run_and_capture("6666666671A0") == "0"
 
     def test_a_jump_to_a_missing_label_falls_through(self) -> None:
-        """``8n`` scans for the nth ``4``; with none there, nothing happens.
-
-        The scan runs off the end of the token list rather than matching, so
-        the pointer is left alone and the next instruction runs -- the same
-        output the program gives without the jump at all.
-        """
+        r"""``8n`` scans for the nth ``4``; with none there, nothing happens."""
         assert run_and_capture("8166666666A0") == "0"
         assert run_and_capture("66666666A0") == "0"
 
     def test_the_two_moves_are_different_sizes(self) -> None:
-        """``1`` goes right by two, ``3`` left by one, and the tape follows.
-
-        Both moves were only ever made in combinations that return to the
-        cell they started from -- ``313`` is right two, left one, left one
-        -- so neither step size was pinned, and neither was how far the
-        tape grows to meet the pointer.  Writing a distinct value either
-        side of one move says where it landed.
-        """
+        r"""``1`` goes right by two, ``3`` left by one, and the tape follows."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.six_five import _Machine
 
@@ -105,34 +88,30 @@ class TestSixFive:
         assert (twice.cell, len(twice.tape)) == (4, 5)
 
     def test_zero_halts_before_the_rest_of_the_program(self) -> None:
-        """``0`` halts, so nothing after it runs.
-
-        Every program ends with ``0``, where halting and simply running out
-        of tokens look the same.  Putting it first says which one happened.
-        """
+        r"""``0`` halts, so nothing after it runs."""
         assert run_and_capture("066666666A0") == ""
 
     def test_multiple_outputs(self) -> None:
         assert run_and_capture("5A5A0") == "\x05\n"
 
     def test_input_adds_to_cell(self) -> None:
-        """B stores input in the cell, then arithmetic applies on top."""
+        r"""B stores input in the cell, then arithmetic applies on top."""
         assert run_and_capture("B5A0", inputs=["A"]) == "F"
 
     def test_jump_to_four(self) -> None:
-        """8n jumps to the nth 4 marker."""
+        r"""8n jumps to the nth 4 marker."""
         assert run_and_capture("81A4A0") == "\x00"
 
     def test_jump_to_second_four(self) -> None:
-        """8n jumps past the nth 4, skipping code before it."""
+        r"""8n jumps past the nth 4, skipping code before it."""
         assert run_and_capture("825A46A4A0") == "\x00"
 
     def test_skip_when_equal(self) -> None:
-        """7n skips the next instruction when the cell equals n."""
+        r"""7n skips the next instruction when the cell equals n."""
         assert run_and_capture("55A7A5A0") == "\n\n"
 
     def test_negative_cell_output_halts(self) -> None:
-        """Outputting a negative cell value is an invalid operation."""
+        r"""Outputting a negative cell value is an invalid operation."""
         import pytest
 
         from esolangs.exceptions import HaltError
@@ -141,15 +120,7 @@ class TestSixFive:
             run_and_capture("2A")
 
     def test_the_printable_range_ends_at_the_last_codepoint(self) -> None:
-        """Both ends of the ``A`` guard, at the value that separates them.
-
-        Only the negative side was ever tested, so the upper bound could
-        have been any large number -- or one short of the real one -- and
-        every program still agreed.  ``B`` reads the boundary character
-        straight in: U+10FFFF prints, and one past it is the invalid
-        operation, which a narrower bound would refuse and a wider one
-        would hand to ``chr`` instead of rejecting.
-        """
+        r"""Both ends of the ``A`` guard, at the value that separates them."""
         import pytest
 
         from esolangs.exceptions import HaltError
@@ -160,43 +131,20 @@ class TestSixFive:
             run_and_capture("B62A", inputs=["\U0010ffff"])
 
     def test_the_left_move_is_relative_to_where_the_pointer_is(self) -> None:
-        """``3`` steps back one, rather than landing on a fixed cell.
-
-        Every earlier ``3`` ran from cell 2, where stepping back and moving
-        to cell 1 are the same thing.  Marking cell 1 and then arriving
-        from cell 5 tells them apart: the step lands on the untouched cell
-        4, while a jump to cell 1 would find the mark.
-        """
+        r"""``3`` steps back one, rather than landing on a fixed cell."""
         assert run_and_capture("1366666666113A0") == "\x00"
 
     def test_a_marker_jump_with_no_operand_does_nothing(self) -> None:
-        """A trailing ``8`` has no operand, so its target count is zero.
-
-        No ``4`` is ever the zeroth one, so the scan matches nothing and
-        the program simply ends.  Reading an operand that is not there
-        fails outright, and defaulting the count to 1 would send the
-        cursor back to the marker and loop forever.
-        """
+        r"""A trailing ``8`` has no operand, so its target count is zero."""
         assert run_and_capture("4A8") == "\x00"
 
     def test_a_conditional_skip_with_no_operand_does_nothing(self) -> None:
-        """The same for a trailing ``7``: no operand, so nothing to read.
-
-        The comparison is against zero, which a zeroed cell matches -- but
-        the instruction it would skip is off the end of the program, so
-        the output cannot show it.  What the output does show is that the
-        missing operand is not read at all.
-        """
+        r"""The same for a trailing ``7``: no operand, so nothing to read."""
         assert run_and_capture("A7") == "\x00"
 
 
 class TestComments:
-    """``C`` starts a comment, unless it is the operand of a ``7`` or ``8``.
-
-    No test used a ``C`` at all, so the whole comment path in the tokenizer
-    ran only on programs that had none: the pattern could have matched a
-    different letter, or nothing, and every program still agreed.
-    """
+    r"""``C`` starts a comment, unless it is the operand of a ``7`` or."""
 
     def test_a_comment_hides_the_rest_of_its_line(self) -> None:
         # without the strip, the.
@@ -207,22 +155,11 @@ class TestComments:
         assert run_and_capture("6C hidden\n66666666A0") == "6"
 
     def test_c_after_a_skip_is_its_operand(self) -> None:
-        """A ``C`` following ``7``/``8`` is the value 12, not a comment.
-
-        ``66`` leaves the cell at 12, so ``7C`` skips the instruction after
-        it -- which is what distinguishes the operand reading from the
-        comment one, since a comment would swallow the rest instead.
-        """
+        r"""A ``C`` following ``7``/``8`` is the value 12, not a comment."""
         assert run_and_capture("667C66666666A0") == "6"
 
     def test_the_tokenizer_pairs_an_operand_with_its_skip(self) -> None:
-        """Directly, because the pairing is invisible in the output.
-
-        A ``7``/``8`` takes the single character after it, and a trailing
-        one with nothing after it stands alone.  Reading two characters
-        instead, or refusing to pair at the end of the program, changes the
-        token list without changing what any program prints.
-        """
+        r"""Directly, because the pairing is invisible in the output."""
         from esolangs.interpreters.tape_based.six_five import _tokens
 
         assert _tokens("7C") == ["7C"]
@@ -258,14 +195,7 @@ class TestStepMachine:
     def test_an_operandless_skip_still_moves_the_cursor_past_one_token(
         self,
     ) -> None:
-        """A bare ``7`` compares against zero and skips on a match.
-
-        The tokenizer only ever leaves a ``7`` bare at the very end of a
-        program, so whatever it skips is past the last token and no output
-        can show it.  The cursor can: a zeroed cell matches the default
-        operand of 0, so it advances twice, where a default of 1 would not
-        match and it would advance once.
-        """
+        r"""A bare ``7`` compares against zero and skips on a match."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.six_five import _Machine
 
@@ -274,12 +204,7 @@ class TestStepMachine:
         assert (machine.ind, machine.halted) == (2, True)
 
     def test_a_marker_jump_lands_past_the_marker_it_found(self) -> None:
-        """``8n`` leaves the cursor after the ``4``, not on it.
-
-        ``4`` is not an instruction, so landing on it costs one wasted
-        step and prints exactly what landing past it prints.  Only the
-        cursor separates the two, and the cycle detector keys on it.
-        """
+        r"""``8n`` leaves the cursor after the ``4``, not on it."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.six_five import _Machine
 
@@ -296,7 +221,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(SnapshotContract, CycleContract):
-    """The shared shapes, with this language's own programs."""
+    r"""The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program = "55A"

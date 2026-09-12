@@ -814,7 +814,7 @@ class TestDivergenceIsProvenNotWaitedOut:
 
 
 class TestBoolsAreRefusedForAStatedReason:
-    r""" "must be 0 or 1" reads as wrong when you passed True, which is 1."""
+    r""""must be 0 or 1" reads as wrong when you passed True, which is 1."""
 
     def test_the_message_says_why(self) -> None:
         r"""The exclusion is deliberate and the reason is a past wrong answer."""
@@ -1364,7 +1364,7 @@ class TestATableLengthNamesTheNearestLegalOnes:
 
 
 class TestFillingSomethingWithNoSlots:
-    r""" "0 input slots" is true and answers a question nobody asked."""
+    r""""0 input slots" is true and answers a question nobody asked."""
 
     def test_a_plain_program_says_it_is_not_a_template(self) -> None:
         r"""The mistake is "this is not a template", not a count of zero."""

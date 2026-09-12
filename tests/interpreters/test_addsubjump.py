@@ -1,14 +1,4 @@
-"""Unit tests for the AddSubJump interpreter.
-
-Tests cover the self-modifying memory model, the add/sub OISC instruction,
-the special addresses (I/O, flags, constants, flag update mode), the jump,
-and the documented halt conventions.
-
-There is no per-run instruction cap to test: a program that loops without
-halting is esolangs.run's timeout to catch (test_api.py's
-test_run_timeout_halts_runaway_program proves the guard works, generically,
-through brainfuck), not something this interpreter enforces on its own.
-"""
+r"""Unit tests for the AddSubJump interpreter."""
 
 import pytest
 
@@ -72,13 +62,7 @@ class TestSpecialAddresses:
         assert _run(code) == "\x00"
 
     def test_writing_a_reserved_address_is_discarded(self) -> None:
-        """Of the special addresses only ``-1`` and ``-9`` accept a write.
-
-        ``-1`` prints and ``-9`` sets the flag-update mode; the constants at
-        ``-6``..``-8`` and the flags between are read-only, so a write aimed
-        at one is dropped rather than landing in memory or raising.  The
-        program then prints, so the run is observed to continue.
-        """
+        r"""Of the special addresses only ``-1`` and ``-9`` accept a write."""
         code = memory([[-5, -6, 20, -7], [-1, -7, -8, -7]], {20: 4})
         assert _run(code) == "\x00"
 
@@ -133,13 +117,7 @@ class TestSpecialAddresses:
 
 
 class TestTruncatedInstruction:
-    """An instruction running off the end of memory reads zeros for the rest.
-
-    Every other program holds whole four-cell instructions, so the guards
-    that decide whether each operand exists were never false and the zero
-    they fall back to was never used.  These programs stop mid-instruction,
-    one cell shorter each time.
-    """
+    r"""An instruction running off the end of memory reads zeros for the."""
 
     def test_a_missing_operand_reads_as_zero(self) -> None:
         # One cell: b, c and d are all.
@@ -160,44 +138,33 @@ class TestTruncatedInstruction:
 
 
 class TestFlags:
-    """The flag update mode and the four flags it refreshes.
-
-    Nothing exercised these: the mode starts off, so a suite that never
-    writes ``-9`` leaves the whole update block unreached, and the flags it
-    would have set unread.  Each program here turns the mode on, performs
-    one arithmetic step whose result is known, and prints one flag.
-    """
+    r"""The flag update mode and the four flags it refreshes."""
 
     @staticmethod
     def _flag(op: int, flag: int) -> str:
-        """Turn the mode on, apply ``op`` to cell 12, then print ``flag``."""
+        r"""Turn the mode on, apply ``op`` to cell 12, then print ``flag``."""
         return memory(
             [[-9, -6, 13, -7], [12, op, 14, -6], [-1, flag, 15, -7]],
             {13: 4, 14: 8, 15: -1},
         )
 
     def test_negative_flag_follows_the_sign_of_the_result(self) -> None:
-        """``NF`` is set when the result is below zero, and only then."""
+        r"""``NF`` is set when the result is below zero, and only then."""
         assert _run(self._flag(-6, -4)) == "\x01"  # 0 - 1 = -1.
         assert _run(self._flag(-7, -4)) == "\x00"  # 0 - 0 = 0.
 
     def test_zero_flag_follows_the_result_being_zero(self) -> None:
-        """``ZF`` is set when the result is exactly zero, and only then."""
+        r"""``ZF`` is set when the result is exactly zero, and only then."""
         assert _run(self._flag(-7, -3)) == "\x01"  # 0 - 0 = 0.
         assert _run(self._flag(-6, -3)) == "\x00"  # 0 - 1 = -1.
 
     def test_carry_and_overflow_stay_zero(self) -> None:
-        """Cells are unbounded, so neither flag has anything to report.
-
-        They are still cleared on every update, which is what keeps them
-        from holding a stale value; a mode that set them instead would be
-        reporting a carry that cannot happen.
-        """
+        r"""Cells are unbounded, so neither flag has anything to report."""
         assert _run(self._flag(-6, -2)) == "\x00"
         assert _run(self._flag(-6, -5)) == "\x00"
 
     def test_flags_do_not_update_while_the_mode_is_off(self) -> None:
-        """The mode starts at zero, so a negative result leaves ``NF`` clear."""
+        r"""The mode starts at zero, so a negative result leaves ``NF`` clear."""
         code = memory([[12, -6, 13, -6], [-1, -4, 14, -7]], {13: 4, 14: -1})
         assert _run(code) == "\x00"
 
@@ -213,38 +180,19 @@ class TestHaltAndErrors:
             _run("12 -6 x -7")
 
     def test_growing_the_memory_zeroes_the_cells_it_skips(self) -> None:
-        """A write past the end pads with zeros, and pads exactly far enough.
-
-        Writing beyond the memory grows it to reach the address, and every
-        cell in between is created by that growth -- so their value is the
-        padding's, and nothing read one.  Cell 19 here is skipped over on
-        the way to 20: it must read as zero, and the memory must stop at
-        21 cells rather than run one over.
-        """
+        r"""A write past the end pads with zeros, and pads exactly far enough."""
         code = memory([[20, -6, 13, -7], [-1, 19, 14, -7]], {13: 4, 14: -1})
         assert _run(code) == "\x00"
 
     def test_a_write_at_the_first_absent_address_still_grows(self) -> None:
-        """The growth fires when the address equals the length, not past it.
-
-        Fifteen cells make address 15 the first that does not exist, and it
-        is exactly the edge the comparison sits on: a check that waited for
-        the address to exceed the length would index off the end here.
-        """
+        r"""The growth fires when the address equals the length, not past it."""
         code = memory([[15, -6, 13, -7], [-1, 15, 14, -7]], {13: 4, 14: -1})
         assert _run(code) == "\x01"
 
     def test_the_largest_allocatable_address_is_the_last_one_that_works(
         self,
     ) -> None:
-        """A write halts only once the address is past the memory ceiling.
-
-        The ceiling itself was never approached, so the comparison deciding
-        it was free to sit a cell either side, and the padding that grows
-        the memory to reach the address was free to be one cell short or
-        long.  Writing to the last legal address succeeds; the next one up
-        halts, and says so.
-        """
+        r"""A write halts only once the address is past the memory ceiling."""
         ceiling = 1 << 24
         assert _run(memory([[ceiling - 1, -6, 13, -7]], {13: -1})) == ""
 
@@ -272,7 +220,7 @@ class TestHaltAndErrors:
         assert _run(code) == "\x01"
 
     def test_unallocatable_address_halts(self) -> None:
-        """Cell values are unbounded; the list holding them is not."""
+        r"""Cell values are unbounded; the list holding them is not."""
         with pytest.raises(HaltError, match="too large"):
             _run("9" * 40)
 
@@ -299,13 +247,7 @@ class TestStepMachine:
         assert machine.snapshot() != before
 
     def test_a_cell_written_to_zero_matches_one_never_written(self) -> None:
-        """The sparse store must not distinguish a stored zero from no key.
-
-        The memory keeps only its non-zero cells, so a write of 0 has to
-        delete the key rather than store it.  If it did not, two runs that
-        agree on every cell value would still snapshot differently and the
-        cycle detector would miss the repeat -- with nothing else failing.
-        """
+        r"""The sparse store must not distinguish a stored zero from no key."""
         from esolangs.interpreters.register_based.addsubjump import (
             _pack,
             _store,
@@ -322,12 +264,7 @@ class TestStepMachine:
         assert length == 3
 
     def test_snapshot_is_independent_of_write_order(self) -> None:
-        """Equal memories must snapshot equal however they were reached.
-
-        A dict iterates in insertion order, so freezing it without sorting
-        would key two identical memories differently purely by the order
-        their cells were written.
-        """
+        r"""Equal memories must snapshot equal however they were reached."""
         from esolangs.interpreters.register_based.addsubjump import (
             _Machine,
             _store,
@@ -341,20 +278,7 @@ class TestStepMachine:
         assert hash(one.snapshot()) == hash(other.snapshot())
 
     def test_the_flag_registers_are_readable_off_the_machine(self) -> None:
-        """The five flag names report the state fields they are named for.
-
-        ``TestFlags`` above proves the flags through *programs*, which read
-        them back out of memory at ``-3``..``-5``; nothing read them off the
-        machine object.  They are the language's own names on the stepped
-        surface, and ``of`` in particular is required elsewhere: the VM
-        looks up ``of`` on a state class to find an alternative constructor
-        and only accepts it when callable, precisely because AddSubJump
-        spells its overflow flag that way.
-
-        The program enables flag-update mode and then produces a zero
-        result, so ``fum`` and ``zf`` both have to move -- a property wired
-        to a neighbouring tuple slot would stay put.
-        """
+        r"""The five flag names report the state fields they are named for."""
         from esolangs.interpreters.register_based.addsubjump import _Machine
 
         code = memory(
@@ -396,7 +320,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(EmptyProgramContract, CycleContract):
-    """The shared empty-program shape, with this language's data."""
+    r"""The shared empty-program shape, with this language's data."""
 
     run = staticmethod(_run)
     machine = staticmethod(_machine)

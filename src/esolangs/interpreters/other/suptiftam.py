@@ -1,56 +1,4 @@
-"""Interpreter for Suptiftam.
-
-A statement-per-line language of functions (one argument, no return value,
-recursion for loops) and two-dimensional tape-tapes.  ``read`` and ``term``
-are built-in tapes standing for input and output: ``read`` is loaded from
-stdin before execution (each input line becomes a row of byte cells, past
-the end all cells are zero), and ``term`` is rendered after the program
-halts.  The four builtin functions (``down``/``left``/``right``/``up``)
-move a tape's head; ``include`` reads a file, which this interpreter does
-not support.
-
-Decisions for gaps in the wiki spec (documented):
-- ``read`` is populated lazily, one input line per row on first access, so
-  a program that never reads input does not consume stdin; reading past the
-  end of the input yields a zero cell (the wiki's EOF convention) and
-  running out of input lines never raises :class:`EOFError`;
-- output is the bounding box of the cells written to ``term`` (rows joined
-  with newlines): byte cells render as their character, integer cells as
-  their decimal string, unwritten cells inside the box as NUL bytes;
-- ``term`` and ``read`` are untyped tapes (the wiki's own examples store
-  both bytes and integers in ``term``), so they never trigger the type
-  mismatch; user tapes declared with ``[integer]``/``[byte]`` are typed and
-  a mismatched assignment leaves the cell unchanged and deterministically
-  prints the digit ``'0'`` (the wiki's "random digit") to ``term``;
-- assigning to an undeclared name declares it with the value's type (the
-  wiki's ``x=A``/``A=7`` example relies on ``A=7`` declaring ``A``);
-- math operands may be identifiers, integer literals, or byte literals and
-  math never nests; ``/`` truncates toward zero, results are integers unless
-  both operands are bytes (then the result is a byte, so the wiki's
-  ``'a' - 'A'`` space renders as a character), and bytes wrap only when
-  stored into a byte cell;
-- the wiki's examples are untested: its truth-machine's ``%-[read]48%``
-  subtracts 100 (the literal ``48`` is base-23-parsed to 100), so the
-  committed example and the boolean generator use ``%-[read]22%`` (the
-  literal ``22`` parses to 48) instead;
-- undefined behavior is pinned: passing a non-tape to a move builtin,
-  calling an undefined function, an undeclared identifier, and division by
-  zero all raise :class:`~esolangs.exceptions.HaltError`; ``include`` raises
-  :class:`~esolangs.exceptions.HaltError` because file-based I/O is not
-  supported;
-- malformed programs (unbalanced call tokens, a stray ``fi``, a header
-  missing its colon) raise :class:`ValueError`.
-
-``_Machine`` runs on the parsed top-level statement list and an explicit
-call stack (``_CallFrame``), so it is step-capable: ``step()`` executes one
-statement -- either the top-level statement at ``ind``, or the next
-statement of the call in progress at the top of ``frames`` -- and ``halted``
-is true once the top-level cursor reaches the end with no call left running.
-Recursion has no depth cap: a call pushes a ``_CallFrame`` instead of
-recursing natively, so the call stack lives in ``frames`` (a Python list)
-rather than in nested Python calls, and a program's own recursion depth is
-bounded only by memory, not by Python's C stack.
-"""
+r"""Interpreter for Suptiftam."""
 
 from __future__ import annotations
 
@@ -100,13 +48,7 @@ _Statement = _Call | _Assign | _TapeDecl
 
 
 class _Tape:
-    """A 2D tape: unbounded cells, a movable head, and an optional cell type.
-
-    ``fixed`` is ``None`` (untyped, e.g. the built-in ``term``/``read``),
-    ``"int"`` (cells hold integers), or ``"byte"`` (cells hold unsigned
-    wrapping bytes).  ``reader`` lazily supplies cell values for ``read``
-    instead of a pre-populated ``cells`` dict.
-    """
+    r"""A 2D tape: unbounded cells, a movable head, and an optional cell."""
 
     __slots__ = ("cells", "fixed", "reader", "x", "y")
 
@@ -122,19 +64,19 @@ class _Tape:
         self.y = 0
 
     def get_cell(self) -> tuple[_CellKind, int]:
-        """Return the ``(kind, value)`` under the head (zeros beyond input)."""
+        r"""Return the ``(kind, value)`` under the head (zeros beyond input)."""
         if self.reader is not None:
             value = self.reader(self.x, self.y)
             return ("byte", 0) if value is None else ("byte", value)
         return self.cells.get((self.x, self.y), ("byte", 0))
 
     def set_cell(self, kind: _CellKind, value: int) -> None:
-        """Write a ``(kind, value)`` to the cell under the head."""
+        r"""Write a ``(kind, value)`` to the cell under the head."""
         self.cells[(self.x, self.y)] = (kind, value)
 
 
 class _Var:
-    """A scalar variable: either an unbounded integer or a wrapping byte."""
+    r"""A scalar variable: either an unbounded integer or a wrapping byte."""
 
     __slots__ = ("kind", "value")
 
@@ -144,7 +86,7 @@ class _Var:
 
 
 class _State:
-    """The whole-program state: scopes, tapes, functions, and lazy input."""
+    r"""The whole-program state: scopes, tapes, functions, and lazy input."""
 
     def __init__(self, io: IO) -> None:
         self.io = io
@@ -157,7 +99,7 @@ class _State:
         self.globals["term"] = self.term
 
     def _read_cell(self, x: int, y: int) -> int | None:
-        """Return the ``read`` tape's byte at ``(x, y)``, loading rows lazily."""
+        r"""Return the ``read`` tape's byte at ``(x, y)``, loading rows lazily."""
         while len(self._rows) <= y:
             try:
                 line = self.io.input_str()
@@ -171,7 +113,7 @@ class _State:
         return row[x]
 
     def rows_key(self) -> tuple[tuple[int, ...] | None, ...]:
-        """Return the already-loaded input rows in a hashable form."""
+        r"""Return the already-loaded input rows in a hashable form."""
         return tuple(tuple(row) if row is not None else None for row in self._rows)
 
 
@@ -179,7 +121,7 @@ class _State:
 
 
 def _tokenize(line: str) -> list[_Token]:
-    """Split one statement line into tokens."""
+    r"""Split one statement line into tokens."""
     tokens: list[_Token] = []
     i = 0
     n = len(line)
@@ -241,7 +183,7 @@ def _base23(text: str) -> int:
 
 
 def _scan_value(line: str, i: int) -> tuple[_Value, int]:
-    """Parse one value expression (ident, literal, byte, or math) at ``i``."""
+    r"""Parse one value expression (ident, literal, byte, or math) at ``i``."""
     i = _skip_spaces(line, i)
     if i >= len(line):
         raise ValueError("expected a value")
@@ -266,7 +208,7 @@ def _scan_value(line: str, i: int) -> tuple[_Value, int]:
 
 
 def _scan_math(line: str, i: int) -> tuple[_Math, int]:
-    """Parse ``%op[x]y%`` starting at the opening ``%``."""
+    r"""Parse ``%op[x]y%`` starting at the opening ``%``."""
     if i + 1 >= len(line) or line[i + 1] not in _OPERATORS:
         raise ValueError(f"malformed math at position {i}")
     op = line[i + 1]
@@ -289,7 +231,7 @@ def _scan_math(line: str, i: int) -> tuple[_Math, int]:
 
 
 def _scan_if(line: str, i: int) -> tuple[_If, int]:
-    """Parse ``if(<value>)`` after the ident ``if`` at position ``i``."""
+    r"""Parse ``if(<value>)`` after the ident ``if`` at position ``i``."""
     j = _skip_spaces(line, i)
     if j >= len(line) or line[j] != "(":
         raise ValueError(f"malformed if at position {i}")
@@ -314,7 +256,7 @@ def _scan_tape_decl(
     i: int,
     tokens: list[_Token],
 ) -> tuple[_TapeTok, int]:
-    """Parse ``name[TYPE]`` where TYPE is ``integer`` (a byte tape) or ``byte``."""
+    r"""Parse ``name[TYPE]`` where TYPE is ``integer`` (a byte tape) or."""
     if not tokens or tokens[-1][0] != "ident":
         raise ValueError(f"malformed tape declaration at position {i}")
     name = tokens[-1][1]
@@ -338,12 +280,7 @@ def _scan_tape_decl(
 
 
 def _parse_header(tokens: list[_Token]) -> tuple[str, str]:
-    """Parse an ``fd`` header into ``(name, argument)``.
-
-    The argument is written adjacent to the colon (``arg:`` or ``:arg``)
-    with the other two tokens in any order, so the argument is the ident
-    next to the colon on the side away from the ``fd`` keyword.
-    """
+    r"""Parse an ``fd`` header into ``(name, argument)``."""
     colon_idx = next((i for i, t in enumerate(tokens) if t[0] == ":"), -1)
     if colon_idx < 0:
         raise ValueError("fd header needs a colon")
@@ -363,7 +300,7 @@ def _parse_header(tokens: list[_Token]) -> tuple[str, str]:
 
 
 def _parse_call(tokens: list[_Token]) -> _Call:
-    """Parse a function-call statement (the four tokens may be in any order)."""
+    r"""Parse a function-call statement (the four tokens may be in any."""
     colons = [i for i, t in enumerate(tokens) if t[0] == ":"]
     if len(colons) != 2 or colons[1] != colons[0] + 2:
         raise ValueError("a call needs its argument between two colons")
@@ -393,7 +330,7 @@ def _parse_call(tokens: list[_Token]) -> _Call:
 
 
 def _parse_decl(tokens: list[_Token], kind: Literal["~", "="]) -> _Assign:
-    """Parse ``name~value`` or ``name=value`` into an assignment statement."""
+    r"""Parse ``name~value`` or ``name=value`` into an assignment statement."""
     if len(tokens) != 3 or tokens[0][0] != "ident" or tokens[1][0] != kind:
         raise ValueError(f"malformed {kind} statement")
     if tokens[2][0] not in ("ident", "num", "byte", "math"):
@@ -402,7 +339,7 @@ def _parse_decl(tokens: list[_Token], kind: Literal["~", "="]) -> _Assign:
 
 
 def _parse_tape_decl(tokens: list[_Token]) -> _TapeDecl:
-    """Parse a lone ``name[TYPE]`` line into a tape declaration."""
+    r"""Parse a lone ``name[TYPE]`` line into a tape declaration."""
     tapes = [t for t in tokens if t[0] == "tape"]
     if len(tokens) != 1 or not tapes:
         raise ValueError("malformed tape declaration")
@@ -413,7 +350,7 @@ def _parse_tape_decl(tokens: list[_Token]) -> _TapeDecl:
 def _parse(
     lines: Sequence[str],
 ) -> tuple[dict[str, list[tuple[str, list[_Statement]]]], list[_Statement]]:
-    """Parse a whole program into hoisted functions and top-level statements."""
+    r"""Parse a whole program into hoisted functions and top-level."""
     functions: dict[str, list[tuple[str, list[_Statement]]]] = {}
     top: list[_Statement] = []
     stack: list[tuple[str, str, list[_Statement]]] = []
@@ -460,7 +397,7 @@ def _lookup(
     state: _State,
     frame: dict[str, object] | None,
 ) -> _Var | _Tape | None:
-    """Resolve a name from the global scope outward (the most global wins)."""
+    r"""Resolve a name from the global scope outward (the most global wins)."""
     if name in state.globals:
         obj = state.globals[name]
         return obj if isinstance(obj, (_Var, _Tape)) else None
@@ -473,7 +410,7 @@ def _lookup(
 def _put(
     name: str, value: object, state: _State, frame: dict[str, object] | None
 ) -> None:
-    """Assign ``value`` to the existing scope, or declare it in the innermost."""
+    r"""Assign ``value`` to the existing scope, or declare it in the."""
     if name in state.globals or frame is None:
         state.globals[name] = value
     else:
@@ -485,7 +422,7 @@ def _eval_value(
     state: _State,
     frame: dict[str, object] | None,
 ) -> _Var | _Tape:
-    """Evaluate a value expression to a ``_Var`` or ``_Tape``."""
+    r"""Evaluate a value expression to a ``_Var`` or ``_Tape``."""
     if token[0] == "num":
         return _Var("int", token[1])
     if token[0] == "byte":
@@ -524,7 +461,7 @@ def _operand(
     state: _State,
     frame: dict[str, object] | None,
 ) -> tuple[_CellKind, int]:
-    """Evaluate a math operand to a ``(kind, value)`` (tapes use their cell)."""
+    r"""Evaluate a math operand to a ``(kind, value)`` (tapes use their."""
     value = _eval_value(token, state, frame)
     if isinstance(value, _Tape):
         return value.get_cell()
@@ -532,7 +469,7 @@ def _operand(
 
 
 def _truth(value: _Var | _Tape) -> bool:
-    """Return whether a value is nonzero (tapes test the value under the head)."""
+    r"""Return whether a value is nonzero (tapes test the value under the."""
     if isinstance(value, _Tape):
         _, cell = value.get_cell()
         return cell != 0
@@ -540,14 +477,14 @@ def _truth(value: _Var | _Tape) -> bool:
 
 
 def _print_digit(state: _State) -> None:
-    """Print the wiki's "random digit" on a type mismatch, deterministically ``'0'``."""
+    r"""Print the wiki's "random digit" on a type mismatch,."""
     state.term.set_cell("byte", ord("0"))
 
 
 def _assign(
     name: str, value: _Var | _Tape, state: _State, frame: dict[str, object] | None
 ) -> None:
-    """Assign ``value`` to ``name`` (a tape cell, a variable, or a new one)."""
+    r"""Assign ``value`` to ``name`` (a tape cell, a variable, or a new."""
     if isinstance(value, _Tape):
         kind, cell = value.get_cell()
     else:
@@ -570,19 +507,7 @@ def _assign(
 
 @dataclass(frozen=True)
 class _CallFrame:
-    """One function call in progress.
-
-    Tracks which extension block, which statement, and the argument value
-    to (re)bind per block.  A function name can map to several
-    ``(param, body)`` blocks (an "extension"); each runs in sequence with a
-    fresh local scope binding its own parameter name to the call's
-    (shared) argument value.
-
-    Frozen: the two cursors are advanced by replacing the frame, so a
-    frame is a value.  ``local`` is the exception the type cannot express
-    -- it is a mutable scope whose ``_Var`` and ``_Tape`` values are shared
-    with the caller, which is how a call writes its argument back.
-    """
+    r"""One function call in progress."""
 
     name: str
     blocks: list[tuple[str, list[_Statement]]]  # never empty (checked before.
@@ -603,7 +528,7 @@ def _dispatch(
     state: _State,
     frame: dict[str, object] | None,
 ) -> _CallFrame | None:
-    """Execute one parsed statement, returning a pushed call frame if any."""
+    r"""Execute one parsed statement, returning a pushed call frame if any."""
     if statement[0] == "call":
         _, name, argument, condition = statement
         if condition is not None and not _truth(_eval_value(condition, state, frame)):
@@ -627,7 +552,7 @@ def _start_call(
     state: _State,
     frame: dict[str, object] | None,
 ) -> _CallFrame | None:
-    """Run a builtin/``include`` inline, or return a frame for a user call."""
+    r"""Run a builtin/``include`` inline, or return a frame for a user call."""
     if name in ("down", "left", "right", "up"):
         value = _eval_value(argument, state, frame)
         if not isinstance(value, _Tape):
@@ -651,7 +576,7 @@ def _start_call(
 
 
 def _render_term(term: _Tape) -> str:
-    """Render the written region of ``term`` as rows of characters."""
+    r"""Render the written region of ``term`` as rows of characters."""
     if not term.cells:
         return ""
     xs = [x for x, _ in term.cells]
@@ -667,7 +592,7 @@ def _render_term(term: _Tape) -> str:
 
 
 def _value_key(value: object) -> tuple[object, ...]:
-    """Capture a scalar or tape by content for an ancestor-entry key."""
+    r"""Capture a scalar or tape by content for an ancestor-entry key."""
     if isinstance(value, _Var):
         return ("var", value.kind, value.value)
     if not isinstance(value, _Tape):
@@ -682,12 +607,12 @@ def _value_key(value: object) -> tuple[object, ...]:
 
 
 def _scope_key(scope: dict[str, object]) -> tuple[tuple[str, tuple[object, ...]], ...]:
-    """Return a stable, structural view of one Suptiftam scope."""
+    r"""Return a stable, structural view of one Suptiftam scope."""
     return tuple(sorted((name, _value_key(value)) for name, value in scope.items()))
 
 
 class _Machine:
-    """One Suptiftam run: the parsed program, state, cursor, and call stack."""
+    r"""One Suptiftam run: the parsed program, state, cursor, and call."""
 
     # : Whether a read past the end.
     # : rather than raising.
@@ -717,7 +642,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        """Whether the cursor has run off the top-level statements."""
+        r"""Whether the cursor has run off the top-level statements."""
         return self.ind >= len(self.top) and not self.frames
 
     # The VM's language-shaped.
@@ -725,12 +650,12 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        """The top-level statement cursor."""
+        r"""The top-level statement cursor."""
         return self.ind
 
     @property
     def memory(self) -> list[int]:
-        """Every integer variable in the global scope, in declaration order."""
+        r"""Every integer variable in the global scope, in declaration order."""
         return [
             v.value
             for v in self.state.globals.values()
@@ -739,17 +664,11 @@ class _Machine:
 
     @property
     def stack(self) -> list[object]:
-        """No stack in this language."""
+        r"""No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection.
-
-        Globals and locals are captured via ``repr()`` since a tape's cells
-        are an unbounded, mutable dict -- sufficient for the state-cycle
-        detector's purpose, since a genuine hang re-executes the same
-        statement position with the same bindings on every lap.
-        """
+        r"""Return the complete internal state, hashable for cycle detection."""
         return (
             self.ind,
             tuple(sorted((k, repr(v)) for k, v in self.state.globals.items())),
@@ -766,16 +685,7 @@ class _Machine:
         )
 
     def frame_entry_key(self, frame: _CallFrame) -> Hashable:
-        """Return the state a call needs to replay an ancestor.
-
-        A Suptiftam argument is a live ``_Var`` or ``_Tape``, not a copied
-        value, and a callee may also read or change globals.  Capturing both
-        scopes structurally therefore matters: a countdown held in a global
-        or a tape head moving toward an input byte can make two calls to the
-        same function terminate rather than replay.  The lazily read rows
-        are state too; the I/O cursor alone does not say which already-read
-        cells are available.  See :func:`esolangs.vm.run_until_halt_or_ancestor`.
-        """
+        r"""Return the state a call needs to replay an ancestor."""
         return (
             frame.name,
             _scope_key(frame.local),
@@ -785,14 +695,7 @@ class _Machine:
         )
 
     def step(self) -> None:
-        """Execute one statement, advancing the call stack or the cursor.
-
-        A call in progress (``self.frames``) is resumed first, one
-        statement at a time; a ``call`` statement pushes a new frame instead
-        of recursing.  Rendering ``term`` happens once, on the step that
-        finishes the program, matching ``run()``'s original
-        print-after-the-loop.
-        """
+        r"""Execute one statement, advancing the call stack or the cursor."""
         if self.halted:
             return
         if self.frames:
@@ -814,16 +717,7 @@ class _Machine:
                 self.state.io.print_str(rendered)
 
     def _step_frame(self) -> None:
-        """Advance the call frame at the top of the stack by one statement.
-
-        The frame's two cursors are advanced by *replacing* the frame: it
-        is a frozen value, so a step returns the frame that follows rather
-        than editing the one it was handed.  Its ``local`` scope is not a
-        value and cannot be: ``_assign`` reaches through it to mutate the
-        ``_Var`` and ``_Tape`` objects it names, and those are shared with
-        the enclosing scopes -- that sharing is how a call's argument is
-        written back to its caller.
-        """
+        r"""Advance the call frame at the top of the stack by one statement."""
         top = self.frames[-1]
         if top.block_ind >= len(top.blocks):
             self.frames.pop()
@@ -844,7 +738,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    """Run a Suptiftam program and print the ``term`` tape's written region."""
+    r"""Run a Suptiftam program and print the ``term`` tape's written."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

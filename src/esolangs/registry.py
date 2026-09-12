@@ -1,14 +1,4 @@
-"""Single source of truth for the languages the package supports.
-
-Each :class:`Language` describes a language's generators (if any), its
-interpreter (if any), and how a program is handed to that interpreter. The
-public API, the tools, and the test suite all derive from this table, so
-adding a language is a one-place change.
-
-:func:`canonical_id` turns a language's display (wiki) name into its
-canonical internal identifier, so the two are derived, not maintained in
-parallel.
-"""
+r"""Single source of truth for the languages the package supports."""
 
 import difflib
 import re
@@ -64,14 +54,7 @@ SUGGESTION_CUTOFF = 0.65
 
 
 def canonical_id(name: str) -> str:
-    """Return the canonical internal identifier for a language's display name.
-
-    The id is a valid-Python-identifier slug: lowercase, ASCII, non-ASCII
-    letters transliterated (``þ`` -> ``th``), ``~`` spelled out as
-    ``tilde``, ``*`` dropped, and digit-leading names expanded to words
-    (``6-5`` -> ``six_five``).  A couple of names that no slug can capture
-    are pinned in :data:`_CANONICAL_OVERRIDES`.
-    """
+    r"""Return the canonical internal identifier for a language's display."""
     # Matched case-insensitively:.
     # so an exact-key lookup made.
     # could not match on case --.
@@ -113,35 +96,7 @@ Generator = Callable[..., str]
 
 @dataclass(frozen=True)
 class Language:
-    """Metadata for one language.
-
-    ``id`` is the language's canonical internal identifier: the slug
-    :func:`canonical_id` produces from the display name, used for the
-    interpreter module, the generator function, and the test file, so every
-    internal reference to a language uses the same token.
-
-    ``boolean`` is the language's generator, which may be None: it produces
-    a program computing a truth table.
-    :data:`~esolangs.tools.boolean.BOOLEAN` is derived from it, so
-    registering a generator here is the whole of adding one, with no second
-    list to keep in step.
-
-    ``interpreter`` is the dotted module under
-    ``esolangs.interpreters`` that runs programs (None if the executable
-    lives elsewhere, e.g. in extra/).  ``split`` passes the program split
-    into lines to the interpreter.
-
-    There is deliberately no field for extra ``run()`` arguments.  One
-    existed -- ``kwargs``, carried through :data:`RUNNERS` and unpacked by
-    ``esolangs.run`` -- and no language ever set it, so every call was
-    ``run_fn(program, io)`` with an empty dict threaded through three
-    functions to get there.  The eleven interpreters that take a further
-    argument all default it, and the callers that pass one are the tests
-    and the ``__main__`` blocks, which call the interpreter's ``run``
-    directly and never come through here.  ``esolangs.tools.boolean.
-    examples`` keeps its own ``kwargs`` because that one is used.
-
-    """
+    r"""Metadata for one language."""
 
     name: str
     interpreter: str | None = None
@@ -612,22 +567,7 @@ RUNNERS: dict[str, tuple[str, bool]] = {
 
 @cache
 def example_stems() -> dict[str, str]:
-    """Return canonical id -> the ``examples/`` filename stem, per language.
-
-    The stems are dash-separated display names (``a-painter-ant``), while
-    every internal reference is the underscored :func:`canonical_id` slug
-    (``a_painter_ant``), and a few match neither by hand (``6-5``,
-    ``pct-squared-minus-one``).  Deriving the map from the example table the
-    same way :meth:`~esolangs.tools.boolean.examples.BooleanExample.build`
-    does keeps the two spellings from drifting: a stem with no language, or
-    a language with no stem, shows up as a missing key rather than as a
-    silently empty example list, which is how 19 of the 69 came to report
-    none.
-
-    The import is deferred because ``examples`` imports this module; the
-    map is wanted only when someone asks for a description, so paying for
-    it then costs nothing at import time.
-    """
+    r"""Return canonical id -> the ``examples/`` filename stem, per."""
     from esolangs.tools.boolean import examples as _examples
 
     return {
@@ -638,22 +578,7 @@ def example_stems() -> dict[str, str]:
 
 @cache
 def _fills() -> dict[str, Callable[[str, list[int]], str]]:
-    """Return canonical id -> the substitution that instantiates a template.
-
-    A *parameterized* generator returns a program with ``{Xi}`` slots rather
-    than one that reads its inputs, and the slots are filled with that
-    language's own code for setting an input.  Each committed example
-    already carries that substitution as its ``fill``, so this is the
-    existing recipe exposed rather than a second list to keep in step.
-
-    Membership here is the definition of "parameterized" used everywhere in
-    the package, and it is derived rather than written down for a measured
-    reason: the same set taken from ``parameterized.__all__`` omits Home
-    Row, whose generator emits ``{X0}`` all the same, and the three
-    hand-kept lists in the docs each named a different subset.  ``fill`` is
-    the only spelling that matches what the generators actually emit -- 17
-    languages, checked against a ``{Xi}`` search over all 69.
-    """
+    r"""Return canonical id -> the substitution that instantiates a."""
     from esolangs.tools.boolean import examples as _examples
 
     return {
@@ -664,7 +589,7 @@ def _fills() -> dict[str, Callable[[str, list[int]], str]]:
 
 
 def parameterized_ids() -> frozenset[str]:
-    """Return the canonical ids whose boolean generator emits a template."""
+    r"""Return the canonical ids whose boolean generator emits a template."""
     return frozenset(_fills())
 
 
@@ -686,32 +611,13 @@ _WIKI_SAFE = "_-.~()*!'+,;=:@&$"
 
 
 def wiki_url(name: str) -> str:
-    """Return the esolangs.org page for a language's display name.
-
-    One function because there were two constructions -- :func:`describe`
-    built the URL inline and ``scripts/make_languages_doc.py`` built it
-    again for the README -- so the same broken link shipped in both, and a
-    fix to either would have left the other wrong.
-    """
+    r"""Return the esolangs.org page for a language's display name."""
     slug = quote(name.replace(" ", "_"), safe=_WIKI_SAFE)
     return f"https://esolangs.org/wiki/{slug}"
 
 
 def resolve(name: str) -> str:
-    """Return the registered display name matching ``name``.
-
-    An exact hit wins.  Otherwise the name is matched by its
-    :func:`canonical_id`, which makes the lookup case- and
-    punctuation-insensitive: ``Brainfuck``, ``brainfuck`` and ``BRAINFUCK``
-    all reach the one registered ``brainfuck``.  That the display names mix
-    conventions (``brainfuck``, ``Suffolk``, ``bit~``) is exactly why -- a
-    caller cannot guess which one a given language follows, and being told
-    "unknown language" for a name that is plainly in ``esolangs list`` is
-    the wrong answer to a question of spelling.
-
-    A name matching nothing raises :class:`UnknownLanguageError` naming the
-    closest registered spellings.
-    """
+    r"""Return the registered display name matching ``name``."""
     if not isinstance(name, str):
         # Checked before.
         # answer a ``None`` language.

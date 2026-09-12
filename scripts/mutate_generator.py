@@ -1,81 +1,4 @@
-"""Mutation-test one generator against the suite that covers it.
-
-The companion to ``scripts/mutate_one.py``, which does this for
-interpreters.  The question is the same one line coverage cannot answer:
-not whether a test *executed* a line, but whether it would have noticed the
-line being wrong.  A generator is a good target for it, because the thing
-it emits is a program -- a test that only checks the program *runs* cannot
-see a change that leaves it running and computing something else.
-
-Three kinds of target share this harness, differing only in where their
-source and tests live (see ``_KINDS``): the ``boolean`` generator family
-under ``esolangs.tools``, the modules directly under ``esolangs.tools``,
-and ``core`` -- the package root, where ``vm``, ``debug``, ``tui`` and
-``cli`` sit.
-
-One blind spot belongs to the harness rather than to any suite, and the
-``core`` kind is where it shows: **a function called only while its module
-is imported cannot be mutated**.  mutmut switches variants through a
-trampoline that reads its config at call time, and an import has already
-happened by then, so the original ran.  ``vm.py``'s ``_derived_adapter`` is
-the case -- ``_VM_ADAPTERS`` is a module-level comprehension over all 69
-languages -- and all 43 of its mutants survive, including ones that would
-raise on any call.  They are not a gap in the tests, which construct VMs
-for every language; they are unreachable by the tool.  Read a ``core``
-score with that subtracted, and do not restructure a module to suit it.
-
-That third kind is here rather than in ``mutate_one`` because
-``mutate_one`` cannot reach it.  It mutates a *bundle*, an interpreter
-inlined with its shared modules into one dependency-closed file, and its
-own docstring says tests reaching past the interpreter into the VM or the
-registry cannot run against one.  The core modules are the top of that
-stack rather than a leaf, so bundling one would mean inlining the package
--- and not bundling is precisely what this harness already does.
-
-Where this differs from ``mutate_one`` is that it does not bundle.
-``mutate_one`` inlines the interpreter into one dependency-closed file
-because mutating the installed package fails two ways: naming one module
-leaves the other 124 unimportable, and copying all of them fires an
-import-time trampoline in ``registry``/``lamfunc`` before mutmut has set
-``mutmut.config``.  Neither applies here.  Only the *target* file is in
-``paths_to_mutate``, so only it gets trampolines; every other module is
-copied verbatim and imports normally.  The generator modules also import
-cleanly on their own -- ``esolangs.tools.boolean.*`` reaches only
-``helpers``, ``wrap``, ``_polynomial``, ``laserfuck_layout`` and
-``ztoalc_starts``.  None of them do work at import time, which is what lets
-both kinds share this layout.
-
-So the layout is the package itself, copied whole into a work directory
-that shadows the editable install because the runner's cwd leads
-``sys.path``.  The shadowing has to hold inside ``mutants/`` too, where
-mutmut chdirs, and it does -- verified by importing the target and printing
-its ``__file__`` before the baseline runs, the positive control this harness
-keeps rather than assumes.
-
-One limit on how a score here should be read: **module-level constants are
-not mutated.**  mutmut 3.x mutates function bodies through a trampoline, so
-a table defined at module scope -- ``_DIG_BRANCH``, the opcode strings, the
-layout tables -- yields no mutants at all.  Several generators keep real
-behaviour in exactly those constants, so a high score says the *code* is
-covered, not the tables.
-
-The tests are not a limit: every suite in the kind's test directory runs,
-rather than the ones that name the target.  :func:`_test_files` has the
-measurement behind that -- the correction this harness needed most, since
-selecting by import alone under-reported 19 of the 27 generator modules.
-
-Every kind is reachable as ``family/module``.  Eight module names --
-helpers, laserfuck, other, register, stack, streetcode, super_snusp, tape
--- exist in *both* generator packages, so a bare name is accepted only
-where it is unambiguous; see :func:`_parse_target`.
-
-Usage:
-    python scripts/mutate_generator.py boolean/register
-    python scripts/mutate_generator.py boolean/streetcode
-    python scripts/mutate_generator.py dimensional --keep   # leave the work dir
-
-Requires: mutmut==3.7.0, the same pin ``mutate_one`` documents.
-"""
+r"""Mutation-test one generator against the suite that covers it."""
 
 import argparse
 import ast
@@ -127,20 +50,7 @@ _CORE_SUPPORT = (
 
 
 class _Kind:
-    """Where one mutable family's source, tests and support files live.
-
-    The kinds differ only in these paths, so they are a table rather
-    than separate code paths.  Every one satisfies the two preconditions the
-    layout relies on: each module imports cleanly on its own, and nothing it
-    reaches does work at import time.  ``boolean.*`` reaches only
-    ``helpers``, ``wrap``, ``_polynomial``, ``laserfuck_layout`` and
-    ``ztoalc_starts``, which the copied package resolves like any other
-    import.
-
-    ``tests_dir`` is deliberately narrow: pointing mutmut at the whole
-    suite widens its stats pass past the tests that actually cover the
-    target.
-    """
+    r"""Where one mutable family's source, tests and support files live."""
 
     def __init__(
         self,
@@ -166,17 +76,17 @@ class _Kind:
 
     @property
     def pkg_dir(self) -> Path:
-        """Return where this kind's modules sit on disk."""
+        r"""Return where this kind's modules sit on disk."""
         base = ROOT / "src" / "esolangs"
         return base / self.pkg_rel if self.pkg_rel else base
 
     @property
     def tests_dir(self) -> Path:
-        """Return where this kind's test modules sit on disk."""
+        r"""Return where this kind's test modules sit on disk."""
         return ROOT / self.tests_rel
 
     def dotted(self, module: str) -> str:
-        """Return the dotted module name a target resolves to."""
+        r"""Return the dotted module name a target resolves to."""
         # An empty ``pkg_rel`` is the.
         # the rest of the top-of-stack.
         # would ask for.
@@ -184,7 +94,7 @@ class _Kind:
         return ".".join(part for part in parts if part)
 
     def rel_target(self, module: str) -> str:
-        """Return the path mutmut mutates, relative to the work directory."""
+        r"""Return the path mutmut mutates, relative to the work directory."""
         parts = ["esolangs", *self.pkg_rel.split("/"), f"{module}.py"]
         return "/".join(part for part in parts if part)
 
@@ -295,7 +205,7 @@ _NON_TARGETS = frozenset({"__init__", "__main__"})
 
 
 def _modules(family: str) -> list[str]:
-    """Return the mutable module names in ``family``, sorted."""
+    r"""Return the mutable module names in ``family``, sorted."""
     return sorted(
         p.stem
         for p in _KINDS[family].pkg_dir.glob("*.py")
@@ -304,14 +214,7 @@ def _modules(family: str) -> list[str]:
 
 
 def _parse_target(target: str) -> tuple[str, str]:
-    """Return the (family, module) a CLI target names, or raise.
-
-    Accepts ``boolean/streetcode`` and the bare ``streetcode``.  A bare name
-    is resolved against every kind, which makes it an error rather than a
-    silent choice when more than one matches -- ``helpers`` is in both
-    ``tools`` and ``tools/boolean``.  Bare names that are unambiguous still
-    work, so ``mutate_generator.py minifuck`` needs no qualifier.
-    """
+    r"""Return the (family, module) a CLI target names, or raise."""
     if "/" in target:
         family, _, module = target.partition("/")
         if family not in _FAMILIES:
@@ -342,35 +245,7 @@ def _parse_target(target: str) -> tuple[str, str]:
 
 
 def _test_files(kind: _Kind) -> list[str]:
-    """Return every test module in this kind's test directory.
-
-    Deliberately not narrowed to the suites that name the target.  Three
-    selection rules were tried, and each one under-reported:
-
-    * **By import.**  A suite that imports
-      ``esolangs.tools.boolean.<module>`` can kill its mutants -- but most
-      suites do not import the module at all.  They import the *package*
-      and reach the generator through its re-export (``boolean.laserfuck``),
-      which no import scan can see.  Measured over the 27 generator
-      modules, importing alone under-selected 19 of them: every ``rotfuck``
-      test lives in ``test_boolean_tape``, which imports only ``boolean``.
-    * **By import, plus the contract suite always.**  Better -- the contract
-      suite is where several generators are checked -- but it fixes only
-      the one file that was noticed, and 19 modules were short by more than
-      that file.
-    * **By attribute access**, resolving ``boolean.<name>`` back to the
-      module that defines it.  This catches the re-export, and still misses
-      a suite that dispatches through a string or a table, which some
-      of these do.
-
-    So selection is a glob, which has no blind spot to construct a
-    refutation for.  Breadth is nearly free here because mutmut does not
-    run this whole set per mutant: its stats pass records which tests
-    execute which functions, and each mutant then runs only the tests that
-    cover it.  The dimensional run is the measurement -- a ~2s suite, and
-    9 mutants at 24 mutations/second.  A suite that never touches the
-    target costs one stats-pass run, not one run per mutant.
-    """
+    r"""Return every test module in this kind's test directory."""
     return sorted(
         path.name
         for path in kind.tests_dir.glob("test_*.py")
@@ -385,25 +260,7 @@ _DECORATED_CLASS = re.compile(
 
 
 def _undecorate_classes(target: Path) -> list[str]:
-    """Rewrite ``@d`` on a class into ``Class = d(Class)`` after its body.
-
-    mutmut skips any ``ClassDef`` carrying decorators, so a ``@dataclass``
-    state class yields no mutants while the run still prints a percentage.
-    ``tape.py`` is exactly this shape -- five decorated dataclasses
-    (``_Cmd``, ``_If``, ``_MoveLeft``, ``_Out``, ``_End``) that model the
-    emitted program -- and ``examples.py`` has another.
-
-    Applying the decorator as a plain call below the class is what the
-    decorator syntax means, so the class behaves identically, but the
-    ``ClassDef`` mutmut parses no longer has decorators and its methods are
-    mutated like any other.  Only classes are rewritten: a decorated
-    *method* keeps its decorator, since ``@property`` is precisely what the
-    trampoline cannot take.
-
-    This is ``mutate_one._undecorate_classes``, which operates on a bundle
-    where this one operates on a copied module.  Returns the decorators
-    moved, for the note the caller prints.
-    """
+    r"""Rewrite ``@d`` on a class into ``Class = d(Class)`` after its body."""
     text = target.read_text()
     moved: list[str] = []
 
@@ -540,46 +397,21 @@ _SITECUSTOMIZE = "import sys\n\nsys.setrecursionlimit(50000)\n"
 
 
 def _pytest_args(kind: _Kind, tests: list[str]) -> list[str]:
-    """Return the pytest arguments, as a list, that the runs share.
-
-    Deliberately free of ``-m``.  Deselecting the slow tests belongs in the
-    work directory's ``addopts`` instead, because mutmut's stats pass runs
-    pytest with its *own* arguments rather than the runner's -- so a ``-m``
-    here filtered the baseline and the mutant runs while the stats pass
-    collected the slow tests regardless.  ``test_minifuck_builds_five_input
-    _xor`` is a 4s build that then ran under mutmut's tracing, blew the
-    per-test alarm, and failed the stats pass; every mutant was scored 0.
-    Configuration is honoured by all three passes, an argument is not.
-    (The alarm no longer fires during that pass at all -- see the conftest
-    -- but the ``-m`` reasoning is unchanged.)
-
-    ``-n 0`` is not optional either.  The repo's ``addopts`` pins ``-n 4``,
-    so without it every one of a few thousand mutants would spawn four xdist
-    workers -- to run a suite that takes seconds.
-    """
+    r"""Return the pytest arguments, as a list, that the runs share."""
     return ["-x", "-q", "-p", "no:cacheprovider", "-n", "0"] + [
         f"{kind.tests_rel}/{name}" for name in tests
     ]
 
 
 def _runner_command(kind: _Kind, tests: list[str]) -> str:
-    """Return the same arguments as the shell command line mutmut runs.
-
-    mutmut takes its runner as a string and splits it with ``shlex``, so an
-    argument containing a space has to be quoted rather than merely joined.
-    """
+    r"""Return the same arguments as the shell command line mutmut runs."""
     return "python -m pytest " + shlex.join(_pytest_args(kind, tests))
 
 
 def _prepare(
     family: str, module: str, work: Path, *, slow: bool
 ) -> tuple[Path, list[str]]:
-    """Lay out the work directory; return (project dir, selected test files).
-
-    The whole package is copied rather than bundled, so every import the
-    generator makes resolves exactly as it does in the repo.  Only the
-    target file is named in ``paths_to_mutate``.
-    """
+    r"""Lay out the work directory; return (project dir, selected test."""
     kind = _KINDS[family]
     proj = work / "proj"
     proj.mkdir(parents=True)
@@ -681,17 +513,7 @@ def _prepare(
 
 
 def _check_shadowing(proj: Path, family: str, module: str) -> None:
-    """Fail unless the copied package is what an import in ``proj`` resolves to.
-
-    This positive control checks the part of this layout that
-    that cannot be verified by reading.  ``mutate_one`` sidesteps the
-    question with a flat single file; a package copy instead relies on the
-    runner's cwd leading ``sys.path``, so that the copy shadows the editable
-    install.  If it ever stopped holding, every mutant would run against the
-    *repo's* generator, nothing would fail, and the run would report a
-    perfect score having tested nothing.  A score of 100% is exactly what
-    this failure looks like, which is why it is checked rather than assumed.
-    """
+    r"""Fail unless the copied package is what an import in ``proj``."""
     dotted = _KINDS[family].dotted(module)
     code = (
         "import sys, importlib; "
@@ -720,13 +542,7 @@ def _check_shadowing(proj: Path, family: str, module: str) -> None:
 
 
 def _score(proj: Path, family: str, module: str) -> tuple[int, int, list[str]]:
-    """Return (killed, total, survivor names) from mutmut's own result file.
-
-    Simpler than ``mutate_one._score``: only the target file is mutated, so
-    every mutant in the meta belongs to it and there is nothing to filter
-    out.  ``mutate_one`` needs a class-ownership filter because its bundle
-    inlines two other modules alongside the interpreter.
-    """
+    r"""Return (killed, total, survivor names) from mutmut's own result."""
     meta_path = proj / "mutants" / (_KINDS[family].rel_target(module) + ".meta")
     if not meta_path.exists():
         raise SystemExit(
@@ -739,7 +555,7 @@ def _score(proj: Path, family: str, module: str) -> tuple[int, int, list[str]]:
 
 
 def main() -> int:
-    """Copy the package, mutate one generator, and report what survived."""
+    r"""Copy the package, mutate one generator, and report what survived."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
         "module",

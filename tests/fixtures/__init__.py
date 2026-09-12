@@ -1,1 +1,1 @@
-"""Shared fixtures for the test suite."""
+r"""Shared fixtures for the test suite."""

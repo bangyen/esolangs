@@ -1,9 +1,4 @@
-"""Unit tests for the Forbin interpreter.
-
-Covers the bit ``in``/``out`` I/O, the iteration and range for-loops (ranges
-double as if-statements), the NOT operator, function calls and recursion,
-and the documented error conventions.
-"""
+r"""Unit tests for the Forbin interpreter."""
 
 import contextlib
 
@@ -23,27 +18,7 @@ def run_program(code: str, stdin: str = "") -> str:
 
 
 def walk_until_halt_or_ancestor(machine: object, limit: int = 64) -> bool:
-    """Step ``machine`` until it halts or a call provably replays an ancestor.
-
-    A local copy of the shared framed-machine walk, deliberately *not*
-    imported: the mutation harness cannot inline the shared module, so a
-    test that reached for it was dropped from the bundle whole -- taking
-    with it every mutant that only these programs catch.  Driving the
-    interpreter's own ``_Machine`` here keeps the class in the run.
-
-    Each newly-pushed frame is compared against the frames beneath it via
-    ``machine.frame_entry_key``.  A frame entering the same function, with
-    the same bindings, at the same input position as an ancestor is about
-    to replay what that ancestor is still in the middle of, so the
-    recursion cannot terminate: returns ``False``.  Returns ``True`` when
-    the machine halts first.
-
-    ``limit`` bounds the walk in *pushes examined*; exhausting it raises
-    :class:`TimeoutError` rather than returning a verdict, so a program the
-    check cannot decide is never reported as halting.  ``steps`` is a
-    second belt for a mutant that neither halts nor pushes -- without it
-    such a mutant spins until the harness alarm rather than failing fast.
-    """
+    r"""Step ``machine`` until it halts or a call provably replays an."""
     # pylint: disable=duplicate-code
     # pylint: disable=duplicate-code
     # pylint: disable=duplicate-code
@@ -105,13 +80,7 @@ class TestInput:
             run(code, ScriptedIO(""))
 
     def test_truth_machine_zero(self) -> None:
-        """A "0" byte is echoed and the program halts.
-
-        Forbin is byte-oriented, so the machine echoes the input character
-        and the range for-loop doubles as the if: ``!h..h`` is empty for
-        '0' (low bit clear) and entered for '1', where ``loop`` prints '1'
-        forever.  Only the terminating branch is exercised.
-        """
+        r"""A "0" byte is echoed and the program halts."""
         code = "\n".join(
             [
                 "main {",
@@ -182,11 +151,7 @@ class TestLoops:
         assert run_program(code) == "AA"
 
     def test_wildcard_iteration_loop_inside_an_expression_position_call(self) -> None:
-        """An expression-position call (``(f 0)``) natively recurses through
-        ``_run``/``_exec_stmt``, which has its own ``for`` handling separate
-        from ``_Machine.step()``'s frame-stack version -- this exercises the
-        iteration (non-range) loop and wildcard-pattern expansion there.
-        """
+        r"""An expression-position call (``(f 0)``) natively recurses through."""
         code = """
             f {
               s = 0;
@@ -203,9 +168,7 @@ class TestLoops:
     def test_non_wildcard_iteration_loop_inside_an_expression_position_call(
         self,
     ) -> None:
-        """Same as above, but the pattern has no wildcard (the plain
-        value-row branch of ``_exec_stmt``'s own ``for`` handling).
-        """
+        r"""Same as above, but the pattern has no wildcard (the plain value-row."""
         code = """
             f {
               s = 0;
@@ -226,7 +189,7 @@ class TestFunctions:
         assert run_program(code) == "\x00"
 
     def test_unpassed_parameter_is_zero(self) -> None:
-        """Unpassed parameters are set to 0 (per the wiki)."""
+        r"""Unpassed parameters are set to 0 (per the wiki)."""
         code = """
             main {
               f a, b { out 0,0,0,0,0,0,0,b; }
@@ -236,7 +199,7 @@ class TestFunctions:
         assert run_program(code) == "\x00"
 
     def test_bare_block_is_function_literal(self) -> None:
-        """A bare {code} block is a function literal in value position."""
+        r"""A bare {code} block is a function literal in value position."""
         code = """
             main {
               x = { return 1; };
@@ -304,48 +267,24 @@ class TestFunctions:
             run_program("main { f { } f 0; a = !f; }")
 
     def test_malformed_syntax(self) -> None:
-        """The whole message is asserted, position included.
-
-        ``_fail`` appends ``at position {self.i}``, and that offset is the
-        only reader of the parser's cursor at the point it gives up, so a
-        substring match leaves both the wording and the position untested.
-        """
+        r"""The whole message is asserted, position included."""
         with pytest.raises(ValueError, match="expected") as caught:
             run_program("main { out 0,0,0,0,0,0,0 } extra")
         assert str(caught.value) == "expected '{' after function name at position 32"
 
 
 class TestScannerBoundaries:
-    """Where the scanner stops: at punctuation, at a keyword, and at EOF.
-
-    Three blind spots, all of them from programs that were too tidy.
-    Every program in the suite put a space after each ``;`` and ``=``, so
-    a cursor that advanced two characters instead of one simply landed on
-    whitespace ``_skip_ws`` would have eaten anyway.  Every program closed
-    its brackets, so no bound check was ever asked about the position one
-    past the end.  And the names that begin with a keyword were all
-    followed by a letter, never an underscore.
-    """
+    r"""Where the scanner stops: at punctuation, at a keyword, and at EOF."""
 
     def test_punctuation_needs_no_space_after_it(self) -> None:
-        """A cursor that steps two characters lands past the next token.
-
-        With a space after every ``;`` and ``=`` the overshoot is
-        invisible.  These programs remove the cushion.
-        """
+        r"""A cursor that steps two characters lands past the next token."""
         assert run_program("main { a = 1;out 0,1,0,0,1,0,0,0; }") == "H"
         assert run_program("main { a =1; out 0,1,0,0,0,0,0,a; }") == "A"
         assert run_program("main{a=1;out 0,1,0,0,0,0,0,a;}") == "A"
         assert run_program("g a { out 0,1,0,0,0,0,0,a; }\nmain{g 1;}") == "A"
 
     def test_a_name_may_be_a_keyword_followed_by_an_underscore(self) -> None:
-        """``for_a`` is a name; the lookahead must not stop at ``for``.
-
-        A keyword is only a keyword when what follows it cannot continue
-        an identifier.  The suite had ``outx`` and ``fora`` -- a *letter*
-        after the keyword -- but never an underscore, which is the other
-        half of that character class.
-        """
+        r"""``for_a`` is a name; the lookahead must not stop at ``for``."""
         assert run_program("main { for_a = 1; out 0,1,0,0,0,0,0,for_a; }") == "A"
         assert (
             run_program(
@@ -356,13 +295,7 @@ class TestScannerBoundaries:
         )
 
     def test_input_ending_mid_construct_is_a_clean_rejection(self) -> None:
-        """Every bound check, asked about the position one past the end.
-
-        A program that stops in the middle of a construct is what puts the
-        cursor at ``i == n`` inside ``_expect``, ``_ident`` and the
-        statement scanner.  Off by one there is the difference between a
-        parse error naming what was wanted and an IndexError.
-        """
+        r"""Every bound check, asked about the position one past the end."""
         for code, message in (
             ("main { x = (g 0", "expected ',' at position 15"),
             ("main { x = (", "expected an identifier at position 12"),
@@ -374,45 +307,25 @@ class TestScannerBoundaries:
                 run(code, ScriptedIO(""))
 
     def test_a_parenthesised_call_in_statement_position(self) -> None:
-        """``(g 0);`` parses as a statement, and then halts.
-
-        The statement scanner accepts a ``call`` node as well as a ``var``,
-        so the parenthesised form gets through parsing -- and then the
-        evaluator treats the whole parenthesised call as the *callee* of a
-        further call, which is not a function.  Both halves matter: the
-        node tag has to be the one the scanner names, and the rejection has
-        to be this one rather than a parse error.
-        """
+        r"""``(g 0);`` parses as a statement, and then halts."""
         with pytest.raises(HaltError) as caught:
             run("g { return 1; }\nmain { (g 0); }", ScriptedIO(""))
         assert str(caught.value) == "called value is not a function"
 
 
 class TestIdentifierCharacters:
-    """What may appear in a name, and where.
-
-    ``_ident`` checks two character classes: the first character may be a
-    letter or ``_``, and each character after it may be alphanumeric or
-    ``_``.  The suite's names were all plain letters, so the underscore
-    half of the *continuation* class was never exercised -- a name could
-    stop being allowed to contain one and every test would still pass.
-    """
+    r"""What may appear in a name, and where."""
 
     def test_an_underscore_may_appear_inside_a_name(self) -> None:
-        """``a_b`` is one identifier, not ``a`` followed by ``_b``.
-
-        Dropping ``_`` from the continuation class ends the name at the
-        underscore, which leaves the rest as a separate token and changes
-        what the program means rather than rejecting it outright.
-        """
+        r"""``a_b`` is one identifier, not ``a`` followed by ``_b``."""
         assert run_program("main { a_b = 1; out 0,1,0,0,0,0,0,a_b; }") == "A"
 
     def test_a_name_may_start_with_an_underscore(self) -> None:
-        """The first-character class allows ``_`` too."""
+        r"""The first-character class allows ``_`` too."""
         assert run_program("main { _x = 1; out 0,1,0,0,0,0,0,_x; }") == "A"
 
     def test_a_name_may_contain_a_digit(self) -> None:
-        """Digits are allowed after the first character, not before it."""
+        r"""Digits are allowed after the first character, not before it."""
         assert run_program("main { a1 = 1; out 0,1,0,0,0,0,0,a1; }") == "A"
         with raises_message(
             ValueError, "statement must be a call, assignment, or return at position 9"
@@ -422,12 +335,7 @@ class TestIdentifierCharacters:
 
 class TestKeywordPrefixedNames:
     def test_an_identifier_may_start_with_a_keyword(self) -> None:
-        """``returnvar`` is a name, not ``return`` followed by ``var``.
-
-        The statement parser checks the character after each keyword and
-        only takes the keyword branch when the word ends there, so a name
-        that merely starts with one parses as an ordinary assignment.
-        """
+        r"""``returnvar`` is a name, not ``return`` followed by ``var``."""
         eight = lambda name: ",".join([name] * 8)  # noqa: E731
         code = (
             "main { returnvar = 1,1,1,1,1,1,1,1;"
@@ -439,15 +347,10 @@ class TestKeywordPrefixedNames:
 
 
 class TestDiscardTarget:
-    """``_`` as an assignment target evaluates the value and drops it."""
+    r"""``_`` as an assignment target evaluates the value and drops it."""
 
     def test_discard_in_a_paired_assignment(self) -> None:
-        """The remaining name still takes the value opposite *its* position.
-
-        Both targets are assigned by position, so the ``_`` consumes the
-        first value and ``x`` the second rather than the first surviving
-        into it.
-        """
+        r"""The remaining name still takes the value opposite *its* position."""
         code = "main { _, x = 1, 0; out 0,0,0,0,0,0,0,x; }"
         assert run_program(code) == "\x00"
 
@@ -455,31 +358,17 @@ class TestDiscardTarget:
         assert run_program(code) == "\x01"
 
     def test_discard_in_a_broadcast_assignment(self) -> None:
-        """One value for several targets skips the ``_`` and fills the rest."""
+        r"""One value for several targets skips the ``_`` and fills the rest."""
         code = "main { _, x = 1; out 0,0,0,0,0,0,0,x; }"
         assert run_program(code) == "\x01"
 
     def test_discard_is_not_readable_afterwards(self) -> None:
-        """``_`` is dropped rather than stored, so reading it is an error."""
+        r"""``_`` is dropped rather than stored, so reading it is an error."""
         with pytest.raises(HaltError, match="undeclared identifier"):
             run_program("main { _ = 1; out 0,0,0,0,0,0,0,_; }")
 
     def test_every_binding_site_honours_the_discard(self) -> None:
-        """Each of the four places a name is bound must skip ``_``.
-
-        The sentinel is compared in four separate places -- broadcast
-        assignment, paired assignment, the step machine's ``for`` row
-        binder, and the recursive evaluator's row binder -- and a test
-        that reaches only one of them leaves the other three free to stop
-        honouring ``_`` unnoticed.  Each program below is the witness for
-        exactly one site: breaking that site alone makes it print
-        ``\x01`` instead of halting, and breaking any other leaves it
-        halting.
-
-        The last two run their loop inside an *expression-position* call,
-        which is evaluated recursively rather than by pushing a frame --
-        the only route to the recursive binder.
-        """
+        r"""Each of the four places a name is bound must skip ``_``."""
         for code in (
             # pylint: disable=duplicate-code
             "main { _ = 1; out 0,0,0,0,0,0,0,_; }",
@@ -498,12 +387,7 @@ class TestDiscardTarget:
 
 
 class TestCallingANonFunction:
-    """A call whose callee resolves to a bit rather than to a function.
-
-    An undeclared name is rejected earlier, as an unknown identifier, so
-    reaching the "not a function" check needs a callee that *does* resolve
-    -- a local holding a bit -- rather than one that does not.
-    """
+    r"""A call whose callee resolves to a bit rather than to a function."""
 
     def test_calling_a_local_with_arguments(self) -> None:
         with pytest.raises(HaltError, match="called value is not a function"):
@@ -520,13 +404,7 @@ class TestParserErrors:
         assert run_program(code) == "\x01"
 
     def test_a_comment_runs_to_the_newline_whatever_it_holds(self) -> None:
-        """Only a line break ends a comment, not any character within it.
-
-        The scan is over the two line-break characters alone, so a comment
-        body is arbitrary text; the existing comment test happens to use
-        only lowercase words, which a scan that also stopped on some other
-        character would still pass.
-        """
+        r"""Only a line break ends a comment, not any character within it."""
         code = "main { // note X here: 3+4 = }{ ;\n out 0,1,0,0,1,0,0,0; }"
         assert run_program(code) == "H"
 
@@ -564,11 +442,7 @@ class TestParserErrors:
         assert str(caught.value) == "unterminated block, expected '}' at position 6"
 
     def test_assignment_target_must_be_a_variable(self) -> None:
-        """Both spellings fail, and at their own position.
-
-        The single-target and multi-target paths reach the same message from
-        different offsets, which is what tells them apart.
-        """
+        r"""Both spellings fail, and at their own position."""
         with pytest.raises(ValueError, match="target must be a variable") as caught:
             run_program("main { (f 1) = 2; }")
         assert str(caught.value) == (
@@ -593,13 +467,7 @@ class TestParserErrors:
             run_program("main { x = 0; r = (x 1); }")
 
     def test_deep_recursion_no_longer_capped(self) -> None:
-        """A correct, terminating recursion past the old 250-level cap completes.
-
-        Statement-position calls (``f(y);``, the language's only recursion
-        idiom -- ``return`` exits a call immediately, so there is no
-        return-value-threading pattern) push an explicit frame instead of
-        recursing natively, so depth is no longer capped at all.
-        """
+        r"""A correct, terminating recursion past the old 250-level cap."""
         depth = 300
         lines = ["main { f0 0; }"]
         for i in range(depth):
@@ -608,16 +476,7 @@ class TestParserErrors:
         assert run_program("\n".join(lines)) == "\x01"
 
     def test_deep_expression_recursion_halts_instead_of_leaking(self) -> None:
-        """Expression-position recursion halts rather than leaking a crash.
-
-        ``x = (f y);`` needs the result back synchronously, so it recurses
-        natively through ``_eval`` rather than pushing a frame, and deep
-        enough it exhausts Python's stack.  The depth that survives is the
-        host's, not the language's, so this asserts the *conversion* rather
-        than a threshold: past it the caller sees the package's own
-        ``HaltError``, not a ``RecursionError`` from the interpreter's
-        internals.
-        """
+        r"""Expression-position recursion halts rather than leaking a crash."""
         depth = 400
         lines = ["main { r = (f0 0); }"]
         for i in range(depth):
@@ -633,12 +492,7 @@ class TestParserErrors:
             run_program("\n".join(lines))
 
     def test_shallow_expression_recursion_still_completes(self) -> None:
-        """The conversion does not swallow a recursion that fits.
-
-        Paired with the deep case: a catch that fired unconditionally, or a
-        depth limit lowered by accident, would pass that test and fail this
-        one.
-        """
+        r"""The conversion does not swallow a recursion that fits."""
         depth = 100
         lines = ["main { r = (f0 0); }"]
         for i in range(depth):
@@ -724,7 +578,7 @@ class TestStepMachine:
         assert hash(machine.snapshot()) is not None
 
     def test_non_numeric_range_bound_halts(self) -> None:
-        """A ``for`` bound has to be a number, not a function."""
+        r"""A ``for`` bound has to be a number, not a function."""
         import pytest
 
         from esolangs.exceptions import HaltError
@@ -733,7 +587,7 @@ class TestStepMachine:
             run_program("f { return 0; }\nmain { for _:f..1 { return 0; } return 0; }")
 
     def test_non_bit_out_argument_halts(self) -> None:
-        """``out`` takes bits, matching the rule ``!`` already enforces."""
+        r"""``out`` takes bits, matching the rule ``!`` already enforces."""
         import pytest
 
         from esolangs.exceptions import HaltError
@@ -743,24 +597,11 @@ class TestStepMachine:
 
 
 class TestForbinMutationSurvivors:
-    """The step granularity a mutation survived, pinned by counting steps.
-
-    Mutation testing (mutmut against a ``bundle_one`` build of this module)
-    reported thirteen changes no test noticed, and every one of them left
-    the output byte-for-byte identical while changing *how many* ``step()``
-    calls the program took.  That is exactly the module's central claim --
-    ``step()`` is interruptible between statements, between a ``for``
-    loop's rows, and between statement-position calls -- and the suite
-    asserted only what each program printed, so a mutant that collapsed the
-    frame-stack path back into the recursive evaluator was invisible.
-
-    Each was confirmed by loading the mutant and the original side by side
-    and diffing their behaviour.
-    """
+    r"""The step granularity a mutation survived, pinned by counting steps."""
 
     @staticmethod
     def _drive(code: str, stdin: str = "") -> tuple[int, str, int]:
-        """Run ``code`` to a halt; return (steps, output, deepest frame stack)."""
+        r"""Run ``code`` to a halt; return (steps, output, deepest frame stack)."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.other.forbin import _Machine
 
@@ -778,13 +619,7 @@ class TestForbinMutationSurvivors:
         return steps, machine.io.getvalue(), deepest
 
     def test_a_statement_position_call_is_its_own_step(self) -> None:
-        """A call pushes a frame rather than recursing inside one step.
-
-        ``_start_statement_call`` returns the pushed frame, and a mutant
-        that returned ``None`` instead ran the call natively through
-        ``_exec_stmt``: same two bytes out, seven steps down to three, and
-        the stack never reached the depth a pushed frame gives it.
-        """
+        r"""A call pushes a frame rather than recursing inside one step."""
         code = "main {\n helper x { out 0,1,0,0,0,0,0,x; }\n helper 1;\n helper 0;\n}\n"
         steps, out, deepest = self._drive(code)
         assert out == "A@"
@@ -792,11 +627,7 @@ class TestForbinMutationSurvivors:
         assert deepest == 2  # main, plus the frame each.
 
     def test_a_for_loop_steps_once_per_row(self) -> None:
-        """The loop yields between rows instead of running to completion.
-
-        A mutant of ``_Machine.step`` ran each loop out inside one step:
-        every program still printed the right bytes, in half the steps.
-        """
+        r"""The loop yields between rows instead of running to completion."""
         once_and_twice = (
             "main {\n n = 0;\n for i:0..0 { n = !n; }\n"
             " out 0,0,0,0,0,0,0,n;\n n = 0;\n for i:0..1 { n = !n; }\n"
@@ -815,19 +646,7 @@ class TestForbinMutationSurvivors:
         assert steps == 11
 
     def test_the_loop_body_cursor_advances_by_exactly_one(self) -> None:
-        """``for_body_pos`` moves one statement at a time, both ways out.
-
-        ``_step_for`` advances the cursor on two separate paths -- the one
-        that pushes a frame for a statement-position call, and the one that
-        runs the statement in place -- and each was invisible to a suite
-        asserting only output.  Setting the cursor rather than incrementing
-        it re-runs a statement forever; adding two skips one.
-
-        The programs below put a call and a plain statement in the same
-        loop body in both orders, so a cursor that lands wrong on either
-        path shows up as a different step count, a different byte string,
-        or a program that stops halting.
-        """
+        r"""``for_body_pos`` moves one statement at a time, both ways out."""
         # pylint: disable=duplicate-code
         steps, out, deepest = self._drive(
             "g { out 0,1,0,0,0,0,0,1; }\nh { out 0,1,0,0,0,1,0,0; }\n"
@@ -850,12 +669,7 @@ class TestForbinMutationSurvivors:
         assert (steps, out, deepest) == (9, "@BAC", 1)
 
     def test_an_iteration_loop_selects_the_wildcard_columns(self) -> None:
-        """``*`` marks the columns to expand, and the test is ``==``.
-
-        ``_for_rows`` collects the wildcard positions with ``p[0] == "*"``.
-        Read as ``!=`` it expanded every *non*-wildcard column instead, and
-        the loop still reached the same answer -- over six more rows.
-        """
+        r"""``*`` marks the columns to expand, and the test is ``==``."""
         code = (
             "main {\n any = 0;\n for i:(0, 0, 1) { for _:!i..i { any = 1; } }\n"
             " out 0,0,0,0,0,0,0,any;\n}\n"
@@ -866,21 +680,7 @@ class TestForbinMutationSurvivors:
 
 
 class TestForbinAncestorHangDetection:
-    """Infinite recursion, proven rather than waited out.
-
-    A whole-state cycle detector cannot catch a Forbin hang: a call that
-    never returns pushes one frame per step and pops none, so the
-    whole-machine snapshot grows forever and never repeats.  Every Forbin
-    hang is in that unbounded-growth class, which is why this language had
-    no hang test at all and leaned on the wall-clock backstop -- the one
-    that deadlocks under ``pytest --cov`` (see ``docs/walls.md``).
-
-    :func:`walk_until_halt_or_ancestor` is the narrower check that class
-    allows: a frame entering the same function, with the same bindings, at
-    the same input position as an ancestor is about to replay what that
-    ancestor is still in the middle of.  What it keys on is the
-    interpreter's own ``frame_entry_key``, which is what these tests pin.
-    """
+    r"""Infinite recursion, proven rather than waited out."""
 
     @staticmethod
     def _verdict(code: str, stdin: str = "") -> bool:
@@ -889,42 +689,30 @@ class TestForbinAncestorHangDetection:
         return walk_until_halt_or_ancestor(_Machine(code, ScriptedIO(stdin)))
 
     def test_an_unconditional_self_call_is_a_proven_hang(self) -> None:
-        """``f`` calls itself with nothing changed, so it never returns."""
+        r"""``f`` calls itself with nothing changed, so it never returns."""
         assert self._verdict("main {\n f {\n  f 0;\n }\n f 0;\n}\n") is False
 
     def test_mutual_recursion_is_a_proven_hang(self) -> None:
-        """The ancestor need not be the same function, only the same state."""
+        r"""The ancestor need not be the same function, only the same state."""
         assert self._verdict("a { b 0; }\nb { a 0; }\nmain { a 0; }\n") is False
 
     def test_a_flipping_argument_still_repeats(self) -> None:
-        """``f !x`` alternates, so the second lap re-enters the first's state.
-
-        ``docs/walls.md`` notes that a genuinely changing argument would
-        slip through.  Forbin's only datatype is bits, so an argument that
-        changes still has to come back around, and the key repeats within
-        two frames.
-        """
+        r"""``f !x`` alternates, so the second lap re-enters the first's state."""
         assert self._verdict("main {\n f x {\n  f !x;\n }\n f 0;\n}\n") is False
 
     def test_a_terminating_program_is_not_flagged(self) -> None:
-        """The ordinary programs the suite already runs must stay unflagged."""
+        r"""The ordinary programs the suite already runs must stay unflagged."""
         assert self._verdict("main {\n h x { out 0,1,0,0,0,0,0,x; }\n h 1;\n h 0;\n}\n")
         assert self._verdict(
             "main {\n g x {\n  for _:!x..x { return 0; }\n  g 1;\n }\n g 0;\n}\n"
         )
 
     def test_the_same_helper_called_twice_is_not_recursion(self) -> None:
-        """Two sequential calls share a key but neither is the other's ancestor."""
+        r"""Two sequential calls share a key but neither is the other's."""
         assert self._verdict("main {\n h x { out 0,1,0,0,0,0,0,x; }\n h 1;\n h 1;\n}\n")
 
     def test_recursion_waiting_on_input_is_not_a_hang(self) -> None:
-        """The input cursor is in the key, and that is what keeps it sound.
-
-        This function re-enters with identical bindings every lap -- its
-        base case depends on a byte it has not read yet.  Keyed on bindings
-        alone it is called a hang while it is one read from returning; the
-        ``'@'`` lap recurses and the ``'A'`` lap returns.
-        """
+        r"""The input cursor is in the key, and that is what keeps it sound."""
         code = (
             "f {\n a,b,c,d,e,g,h,i = (in 0);\n for _:!i..i { return 0; }\n f 0;\n}\n"
             "main { f 0; }\n"
@@ -932,19 +720,11 @@ class TestForbinAncestorHangDetection:
         assert self._verdict(code, "@\nA") is True
 
     def test_an_undecided_walk_raises_rather_than_claiming_a_halt(self) -> None:
-        """Exhausting the bound is not a verdict, and must not read as one.
-
-        A machine whose entry key never repeats is one the check cannot
-        decide.  Returning ``True`` there would report a hanging program as
-        halting, and -- because the walk ran to a generous bound first --
-        would do it slowly: a mutant that defeats the early return took 4.5
-        seconds to answer wrongly, once per mutant, which is what made a
-        mutation run of this module crawl.
-        """
+        r"""Exhausting the bound is not a verdict, and must not read as one."""
         from esolangs.interpreters.other.forbin import _Machine
 
         class _NeverRepeats(_Machine):
-            """Stands in for any mutant whose key stops repeating."""
+            r"""Stands in for any mutant whose key stops repeating."""
 
             counter = 0
 
@@ -958,31 +738,10 @@ class TestForbinAncestorHangDetection:
 
 
 class TestArgumentThreading:
-    r"""Programs that notice ``_eval``'s arguments going astray.
-
-    A mutation run left 216 survivors, and half of them replace one
-    argument of ``_eval(node, frame, globals_, reader, depth)`` with
-    ``None`` at one call site.  Such an edit is invisible unless something
-    that *consumes* that argument is evaluated in that syntactic position:
-
-        ``globals_``  a reference to a top-level function
-        ``reader``    an ``in``
-        ``frame``     a local variable
-        ``depth``     a nested call, which increments it
-
-    and the consuming construct has to sit **at** the position rather than
-    be assigned to a local first -- reading a local forces ``frame``, not
-    whatever filled it.  So each program below puts one forcing construct
-    in one place a value can appear: a range bound, an iteration pattern,
-    a call argument, an ``out`` argument, a ``!``, a return.
-    """
+    r"""Programs that notice ``_eval``'s arguments going astray."""
 
     def test_a_call_returning_a_call(self) -> None:
-        """``globals_`` and ``depth`` threaded through nested returns.
-
-        ``f`` returns the result of calling ``one``, so the return value
-        is evaluated in a frame one deeper than the call that produced it.
-        """
+        r"""``globals_`` and ``depth`` threaded through nested returns."""
         assert (
             run_program(
                 "one { return 1; }\nf { return (one 0); }\n"
@@ -992,7 +751,7 @@ class TestArgumentThreading:
         )
 
     def test_a_call_as_a_range_bound(self) -> None:
-        """A ``for`` bound is a value, so it may itself be a call."""
+        r"""A ``for`` bound is a value, so it may itself be a call."""
         assert (
             run_program(
                 "g x { out 0,1,0,0,0,0,0,x; }\none { return 1; }\n"
@@ -1002,7 +761,7 @@ class TestArgumentThreading:
         )
 
     def test_a_call_in_a_nested_loop_bound(self) -> None:
-        """The inner bound is re-evaluated on every row of the outer loop."""
+        r"""The inner bound is re-evaluated on every row of the outer loop."""
         assert (
             run_program(
                 "g x { out 0,1,0,0,0,0,0,x; }\none { return 1; }\n"
@@ -1012,14 +771,7 @@ class TestArgumentThreading:
         )
 
     def test_a_call_opens_a_range_through_not(self) -> None:
-        r"""``!`` is how a call reaches the *start* of a range.
-
-        ``for i:(one 0)..1`` does not parse -- a leading ``(`` is claimed
-        by the iteration-list branch of ``_for_spec`` -- but ``!`` is read
-        by ``_value``, where ``(`` builds a call.  So ``!(zero 0)`` both
-        parses and evaluates a call in start position, which no other
-        program here reaches.  The same route carries an ``in``.
-        """
+        r"""``!`` is how a call reaches the *start* of a range."""
         assert (
             run_program(
                 "g x { out 0,1,0,0,0,0,0,x; }\nzero { return 0; }\n"
@@ -1043,12 +795,7 @@ class TestArgumentThreading:
         )
 
     def test_a_call_at_the_remaining_positions(self) -> None:
-        """The call twins of the ``in`` cases: argument, pattern, multi-RHS.
-
-        A call and an ``in`` force different arguments through the same
-        slot -- ``globals_`` and ``depth`` for the call, ``reader`` for the
-        input -- so each position needs both.
-        """
+        r"""The call twins of the ``in`` cases: argument, pattern, multi-RHS."""
         assert (
             run_program(
                 "g x { out 0,1,0,0,0,0,0,x; }\none { return 1; }\nmain { g (one 0); }\n"
@@ -1071,12 +818,7 @@ class TestArgumentThreading:
         )
 
     def test_input_read_at_each_position(self) -> None:
-        """``in`` at the position, not assigned to a local first.
-
-        Binding the byte to a local and using the local forces ``frame``;
-        only an ``in`` sitting in the slot forces the bit reader through
-        it.
-        """
+        r"""``in`` at the position, not assigned to a local first."""
         assert run_program("main { out 0,1,0,0,0,0,0,(in 0); }\n", "\x01") == "@"
         assert run_program("main { out 0,1,0,0,0,0,0,!(in 0); }\n", "\x00") == "A"
         assert (
@@ -1112,7 +854,7 @@ class TestArgumentThreading:
         )
 
     def test_a_nested_definition_reads_the_enclosing_frame(self) -> None:
-        """``_lookup`` walks ``frame.parent`` until it finds the name."""
+        r"""``_lookup`` walks ``frame.parent`` until it finds the name."""
         assert (
             run_program(
                 "main {\n a = 1;\n inner { out 0,1,0,0,0,0,0,a; }\n inner 0;\n}\n"
@@ -1128,12 +870,7 @@ class TestArgumentThreading:
         )
 
     def test_two_wildcards_expand_to_four_rows(self) -> None:
-        """``*`` doubles the row count, and the columns are independent.
-
-        One wildcard cannot tell a product over the wildcard *count* from
-        a product over a fixed repeat, nor the order the expanded columns
-        are filled in; two can.
-        """
+        r"""``*`` doubles the row count, and the columns are independent."""
         assert (
             run_program(
                 "g x { out 0,1,0,0,0,0,0,x; }\n"
@@ -1143,11 +880,7 @@ class TestArgumentThreading:
         )
 
     def test_arity_mismatches_are_tolerated(self) -> None:
-        """Extra arguments are dropped and missing ones default to zero.
-
-        The zips that bind parameters and loop variables are deliberately
-        not ``strict``; a mismatch is a documented case, not an error.
-        """
+        r"""Extra arguments are dropped and missing ones default to zero."""
         assert run_program("f x,y { out 0,1,0,0,0,0,y,x; }\nmain { f 1; }\n") == "A"
         assert run_program("f x { out 0,1,0,0,0,0,0,x; }\nmain { f 1,1,1; }\n") == "A"
         assert (
@@ -1159,7 +892,7 @@ class TestArgumentThreading:
         )
 
     def test_a_loop_variable_named_underscore_stays_unbound(self) -> None:
-        """``_`` is the discard name, so it must not enter the frame."""
+        r"""``_`` is the discard name, so it must not enter the frame."""
         with pytest.raises(HaltError, match="undeclared identifier '_'"):
             run(
                 "main {\n for _:0..0 { out 0,1,0,0,0,0,0,0; }\n"
@@ -1169,33 +902,10 @@ class TestArgumentThreading:
 
 
 class TestThreadedResources:
-    """Every evaluator argument, loaded in every position that forwards it.
-
-    ``_eval``/``_exec_stmt``/``_call`` thread four things through every
-    recursive step -- the frame, the globals, the bit reader, and the call
-    depth -- and a suite whose programs never *use* one of them in a given
-    position cannot notice that position forwarding the wrong thing.  Each
-    program below puts a load on exactly one resource:
-
-    ``(in 0)`` needs the reader, a bare local name needs the frame, a call
-    needs the globals, and a call nested inside an expression-position
-    call needs the depth, which is read once as ``depth + 1``.
-
-    The positions matter as much as the loads.  A loop bound, a call
-    argument, an assignment right-hand side, and an iteration pattern are
-    four separate forwarding sites, and the whole set is duplicated between
-    the step machine and the recursive evaluator an expression-position
-    call runs in.
-    """
+    r"""Every evaluator argument, loaded in every position that forwards it."""
 
     def test_the_reader_reaches_every_position_that_can_read(self) -> None:
-        """``(in 0)`` in each spot that forwards the reader.
-
-        ``in`` yields one bit, most significant first, so the stdin byte
-        here is ``\xff`` -- a leading 1.  That matters: a leading 0 would
-        make the read indistinguishable from an unset variable, and the
-        test would pass against a reader that was never consulted.
-        """
+        r"""``(in 0)`` in each spot that forwards the reader."""
         assert (
             run_program("main { for i:0..(in 0) { out 0,1,0,0,0,0,0,i; } }", "\xff")
             == "@A"
@@ -1220,7 +930,7 @@ class TestThreadedResources:
         )
 
     def test_the_frame_reaches_every_position_that_reads_a_local(self) -> None:
-        """A bare local name in each spot that forwards the frame."""
+        r"""A bare local name in each spot that forwards the frame."""
         assert (
             run_program("main { n = 1; for i:0..n { out 0,1,0,0,0,0,0,i; } }") == "@A"
         )
@@ -1235,7 +945,7 @@ class TestThreadedResources:
         )
 
     def test_the_globals_reach_every_position_that_can_call(self) -> None:
-        """A call in each spot that forwards the function table."""
+        r"""A call in each spot that forwards the function table."""
         assert (
             run_program(
                 "h { return 1; }\nmain { for i:0..(h 0) { out 0,1,0,0,0,0,0,i; } }\n"
@@ -1250,19 +960,7 @@ class TestThreadedResources:
         )
 
     def test_an_argument_list_carries_its_own_resources(self) -> None:
-        """``_eval``'s argument list is a separate forwarding site.
-
-        A call node evaluates its callee, then its arguments, then calls.
-        Those are three lines, each forwarding the same four things, and
-        the argument list was the one no program loaded: every call in the
-        suite passed a literal or a bare name, which needs neither the
-        globals nor the reader.
-
-        An argument that is *itself* a call needs the globals; an argument
-        that reads input needs the reader.  Both are wrapped in an
-        expression-position call so the recursive evaluator is what runs
-        them.
-        """
+        r"""``_eval``'s argument list is a separate forwarding site."""
         # pylint: disable=duplicate-code
         assert (
             run_program(
@@ -1283,13 +981,7 @@ class TestThreadedResources:
         )
 
     def test_a_call_nested_in_a_call_is_what_reads_the_depth(self) -> None:
-        """``depth`` is forwarded everywhere and read once, as ``depth + 1``.
-
-        That single read is in ``_call``, so it needs a call reached from
-        *inside* another call's recursive evaluation -- one level of
-        expression-position nesting is not enough to notice a depth that
-        arrived as something other than a number.
-        """
+        r"""``depth`` is forwarded everywhere and read once, as ``depth + 1``."""
         assert (
             run_program(
                 "h { return 1; }\ng { x = (h 0); return x; }\n"
@@ -1308,24 +1000,10 @@ class TestThreadedResources:
 
 
 class TestWildcardExpansion:
-    """``*`` in an iteration pattern expands to every bit combination.
-
-    The expansion is written twice -- once in ``_for_rows`` for the step
-    machine, once inside ``_exec_stmt`` for the recursive evaluator -- and
-    each copy walks the pattern with a *separate* cursor ``w`` into the
-    combination tuple.  A wrong cursor is invisible with fewer than three
-    wildcards (with two, the only wrong index still lands in range and the
-    rows come out permuted rather than short), and invisible in the
-    recursive copy unless the loop is inside an expression-position call.
-    """
+    r"""``*`` in an iteration pattern expands to every bit combination."""
 
     def test_three_wildcards_expand_to_eight_rows_in_order(self) -> None:
-        """Three ``*`` need a cursor that reaches index two.
-
-        With one or two wildcards a cursor that resets or counts backwards
-        still indexes a valid element; the third column is what makes a
-        wrong ``w`` either repeat a bit or run off the tuple.
-        """
+        r"""Three ``*`` need a cursor that reaches index two."""
         code = (
             "g a, b, c { out 0,1,0,0,0,0,0,a; out 0,1,0,0,0,1,0,b; "
             "out 0,1,0,0,1,0,0,c; }\n"
@@ -1334,14 +1012,7 @@ class TestWildcardExpansion:
         assert run_program(code) == "@DH@DI@EH@EIADHADIAEHAEI"
 
     def test_the_recursive_copy_expands_too(self) -> None:
-        """The same expansion, reached through an expression-position call.
-
-        ``_exec_stmt`` carries its own copy of the wildcard walk, and a
-        top-level ``for`` never runs it -- the step machine builds those
-        rows in ``_for_rows`` instead.  These loops return on their first
-        row, so what they pin is that a row was produced at all and that
-        the pattern's fixed columns kept their values.
-        """
+        r"""The same expansion, reached through an expression-position call."""
         assert (
             run_program(
                 "g { for (i,j):((*,*)) { return 0; } return 1; }\n"
@@ -1361,18 +1032,13 @@ class TestWildcardExpansion:
 
 
 class TestCallResultDefaults:
-    """What a call evaluates to when it returns nothing.
-
-    Both are ``0``, and both were only ever used in statement position --
-    where the value is discarded, so a mutant returning ``1`` changed
-    nothing observable.  Assigning the call's value is what reads it.
-    """
+    r"""What a call evaluates to when it returns nothing."""
 
     def test_a_function_that_returns_nothing_evaluates_to_zero(self) -> None:
         assert run_program("g { }\nmain { x = (g 0); out 0,1,0,0,0,0,0,x; }\n") == "@"
 
     def test_out_evaluates_to_zero(self) -> None:
-        """``out`` is a call like any other and yields a value."""
+        r"""``out`` is a call like any other and yields a value."""
         assert (
             run_program("main { x = (out 0,1,0,0,0,0,0,1); out 0,1,0,0,0,0,0,x; }")
             == "A@"
@@ -1380,18 +1046,10 @@ class TestCallResultDefaults:
 
 
 class TestPairedLengthsAreNotChecked:
-    """Forbin pairs by position and stops at the shorter side.
-
-    Five ``zip`` calls bind names to values -- parameters to arguments
-    (twice, once per call path), targets to right-hand sides, and loop
-    variables to a row (twice again).  Each passes ``strict=False``, and
-    tightening any one of them to ``strict=True`` turns a length mismatch
-    from a tolerated program into a crash.  The suite ran no program whose
-    two sides differed, so every one of those edits was invisible.
-    """
+    r"""Forbin pairs by position and stops at the shorter side."""
 
     def test_arity_mismatch_is_tolerated_on_both_call_paths(self) -> None:
-        """A statement call and an expression call bind arguments separately."""
+        r"""A statement call and an expression call bind arguments separately."""
         # pylint: disable=duplicate-code
         assert run_program("g a, b { out 0,1,0,0,0,0,0,a; }\nmain { g 1; }\n") == "A"
         assert run_program("g a { out 0,1,0,0,0,0,0,a; }\nmain { g 1, 0; }\n") == "A"
@@ -1404,12 +1062,12 @@ class TestPairedLengthsAreNotChecked:
         )
 
     def test_an_assignment_may_have_uneven_sides(self) -> None:
-        """Extra targets stay unset and extra values are dropped."""
+        r"""Extra targets stay unset and extra values are dropped."""
         assert run_program("main { a, b = 1, 0, 1; out 0,1,0,0,0,0,0,a; }") == "A"
         assert run_program("main { a, b, c = 1, 0; out 0,1,0,0,0,0,0,a; }") == "A"
 
     def test_a_row_narrower_than_its_variable_list_is_tolerated(self) -> None:
-        """Two loop variables over one-wide rows leave the second unbound."""
+        r"""Two loop variables over one-wide rows leave the second unbound."""
         assert (
             run_program("main { for (i,j):((0),(1)) { out 0,1,0,0,0,0,0,i; } }") == "@A"
         )
@@ -1424,31 +1082,10 @@ class TestPairedLengthsAreNotChecked:
 
 
 class TestErrorMessages:
-    """The wording of a rejection, not merely that one happened.
-
-    Every message below was matched only loosely, or not at all, so an
-    edit widening the literal that names the failing thing went unnoticed.
-    Where the message interpolates a value, only the stable prefix is
-    asserted: a ``_Function`` has no ``__repr__``, so the tail carries its
-    address and differs between runs.
-    """
+    r"""The wording of a rejection, not merely that one happened."""
 
     def test_every_message_is_asserted_whole(self) -> None:
-        """Each rejection's text, in full, against the program that raises it.
-
-        ``pytest.raises(match=...)`` is a *substring* search, so every test
-        below this one passes just as happily against a message with extra
-        text welded on either end -- which is exactly the edit mutation
-        testing makes, and forty of them survived here.  Comparing
-        ``str(caught.value)`` for equality closes that: each program is
-        paired with the one message it must produce, so a widened literal
-        fails, and a rejection firing in the *wrong place* fails too rather
-        than matching some other entry's wording.
-
-        The two interpolating messages are checked by prefix instead: a
-        ``_Function`` has no ``__repr__``, so their tails carry an address
-        that differs between runs.
-        """
+        r"""Each rejection's text, in full, against the program that raises it."""
         exact = (
             ("main { out 0,1,0; }\n", "out needs exactly 8 bit arguments"),
             (
@@ -1505,14 +1142,14 @@ class TestErrorMessages:
             assert str(caught.value).startswith(prefix)
 
     def test_a_range_bound_that_is_not_a_number(self) -> None:
-        """``start`` and ``end`` name which bound was wrong."""
+        r"""``start`` and ``end`` name which bound was wrong."""
         with pytest.raises(HaltError, match="for end bound must be a number"):
             run("f { return 0; }\nmain {\n for i:0..f { f 0; }\n}\n", ScriptedIO(""))
         with pytest.raises(HaltError, match="for start bound must be a number"):
             run("f { return 0; }\nmain {\n for i:f..1 { f 0; }\n}\n", ScriptedIO(""))
 
     def test_out_rejects_the_two_ways_of_being_wrong(self) -> None:
-        """A wrong count and a non-bit argument are different complaints."""
+        r"""A wrong count and a non-bit argument are different complaints."""
         with pytest.raises(HaltError, match="out needs exactly 8 bit arguments"):
             run("main { out 0,1,0; }\n", ScriptedIO(""))
         with pytest.raises(HaltError, match="out needs bit arguments"):
@@ -1540,14 +1177,7 @@ class TestErrorMessages:
                 run(code, ScriptedIO(""))
 
     def test_the_recursive_evaluator_names_its_bounds_too(self) -> None:
-        """``start``/``end`` are spelled twice, and only one copy was tested.
-
-        A top-level ``for`` is driven by the step machine, which builds its
-        rows in ``_for_rows``; a ``for`` inside an *expression-position*
-        call is evaluated recursively by ``_exec_stmt``, which carries its
-        own copy of the same bound check.  Testing only the first left the
-        second free to mislabel which bound was wrong.
-        """
+        r"""``start``/``end`` are spelled twice, and only one copy was tested."""
         for code, which in (
             (
                 "h { return 0; }\ng { for i:0..h { return 0; } return 0; }\n"
@@ -1567,12 +1197,7 @@ class TestErrorMessages:
             )
 
     def test_both_assignment_target_checks_are_reached(self) -> None:
-        """A single target and a target *list* are rejected separately.
-
-        ``_statement`` checks the target twice -- once for ``x = ...``,
-        once per name in ``a, b = ...`` -- and the suite only ever tripped
-        the first.  A multi-target program is what reaches the second.
-        """
+        r"""A single target and a target *list* are rejected separately."""
         for code, position in (
             ("main {\n 1 = 0;\n}\n", 10),
             ("main {\n 1, b = 0, 1;\n}\n", 14),
@@ -1585,12 +1210,7 @@ class TestErrorMessages:
                 run(code, ScriptedIO(""))
 
     def test_a_stray_slash_is_not_a_comment(self) -> None:
-        """A comment needs *two* slashes, and one at the end of input.
-
-        The scanner looks ahead one character for the second ``/``, so the
-        bound it checks matters most where there is no character to look
-        at: a lone ``/`` as the last thing in the file.
-        """
+        r"""A comment needs *two* slashes, and one at the end of input."""
         with pytest.raises(ValueError, match="expected an identifier") as caught:
             run("main { out 0,1,0,0,1,0,0,0; }\n/", ScriptedIO(""))
         # pylint: disable=duplicate-code
@@ -1602,28 +1222,10 @@ class TestErrorMessages:
 
 
 class TestSnapshotWithoutTheCycleDetector:
-    """What the cycle detector sees, checked without importing it.
-
-    ``snapshot`` is otherwise exercised only through the shared runner,
-    which the bundled build used for mutation testing does not inline --
-    so those tests are correctly dropped there, and the method then reads
-    as wholly untested.  That is a property of the harness rather than of
-    the suite.  Driving the machine directly covers the same ground with
-    nothing to drop.
-    """
+    r"""What the cycle detector sees, checked without importing it."""
 
     def test_a_snapshot_distinguishes_the_states_it_must(self) -> None:
-        """Every component of the snapshot has to move something.
-
-        The cycle detector only sees what ``snapshot`` reports, and the
-        tests that exercise it go through the shared runner, which the
-        bundled mutation build does not inline -- so they are dropped and
-        the whole method reads as untested.  These assertions need only
-        the interpreter: they drive two machines directly and compare.
-
-        Each pair below differs in exactly one field, so a snapshot that
-        stopped reporting that field would collapse the two together.
-        """
+        r"""Every component of the snapshot has to move something."""
         from esolangs.interpreters.other.forbin import _Machine
 
         def at(code: str, steps: int, stdin: str = "") -> tuple[object, ...]:
@@ -1652,19 +1254,7 @@ class TestSnapshotWithoutTheCycleDetector:
         assert at(read, 0, "HH") != at(read, 1, "HH")
 
     def test_an_anonymous_function_is_named_by_the_empty_string(self) -> None:
-        """``""`` is a real value here, not a placeholder nobody reads.
-
-        A function literal has no name, and the parser spells that as the
-        empty string.  Nothing *prints* the name, so a mutant storing
-        ``None`` or some other filler instead left every program's output
-        untouched -- but ``frame_entry_key`` carries the name, which is
-        what the hang check compares ancestors on, so the wrong filler
-        changes which recursions are provably non-terminating.
-
-        ``snapshot()`` cannot be used for this: it holds each function's
-        ``repr``, which carries a memory address and differs between runs.
-        ``frame_entry_key`` records the name itself and is stable.
-        """
+        r"""``""`` is a real value here, not a placeholder nobody reads."""
         from esolangs.interpreters.other.forbin import _Machine
 
         machine = _Machine(
@@ -1683,17 +1273,7 @@ class TestSnapshotWithoutTheCycleDetector:
         assert keys == [("", (), 0)]
 
     def test_a_frame_outside_a_loop_reports_a_sentinel(self) -> None:
-        """The two loop counters need a value meaning "not in a loop".
-
-        A frame that is not running a ``for`` has no row index and no
-        position within a body, and the snapshot reports ``-1`` for both.
-        The choice matters: the sentinel has to be a number no real
-        counter can take, or a frame between loops would compare equal to
-        one part-way through iterating.  ``for_ind`` reaches 1 on the
-        second row, so a sentinel of ``+1`` collides with it, and reading
-        the two the other way round -- sentinel while looping, counter
-        while not -- swaps every frame in the tuple.
-        """
+        r"""The two loop counters need a value meaning "not in a loop"."""
         from esolangs.interpreters.other.forbin import _Machine
 
         def frames(code: str, steps: int) -> tuple[object, ...]:

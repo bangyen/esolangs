@@ -1,10 +1,4 @@
-"""Unit tests for the NoComment interpreter.
-
-NoComment is a full wiki language: 10 commands (``i d c l r n f s b o``)
-over a byte tape and a byte stack.  Non-command characters are errors (the
-wiki allows no comments), as are stack underflow and jumps out of code
-space.  These tests pin the plain semantics.
-"""
+r"""Unit tests for the NoComment interpreter."""
 
 import importlib
 import io
@@ -36,7 +30,7 @@ class TestNoComment:
         assert run_and_capture("c" + "i" * 65 + "o") == "A"
 
     def test_cell_clears(self) -> None:
-        """C resets the cell, so a following o prints a NUL."""
+        r"""C resets the cell, so a following o prints a NUL."""
         assert run_and_capture("ciio") == "\x02"
         assert run_and_capture("co") == "\x00"
 
@@ -45,7 +39,7 @@ class TestNoComment:
         assert run_and_capture("do") == "\xff"
 
     def test_pointer_wraps(self) -> None:
-        """The static tape's pointer wraps to the opposite end (per the wiki)."""
+        r"""The static tape's pointer wraps to the opposite end (per the wiki)."""
         assert run_and_capture("c" + "i" * 65 + "r" + "o") == "\x00"
         assert run_and_capture("c" + "i" * 65 + "r" + "i" * 70 + "o") == "F"
         # l at cell 0 wraps to cell.
@@ -53,12 +47,7 @@ class TestNoComment:
         assert run_and_capture("c" + "i" * 65 + "r" + "l" + "o") == "A"
 
     def test_tape_size_is_configurable(self) -> None:
-        """The wiki fixes the wrap but not the size, so the size is a knob.
-
-        The size is observable through that wrap -- cell 0 steps left to
-        ``tape - 1`` -- so this pins the argument reaching *both* wrap sites
-        rather than only the allocation.
-        """
+        r"""The wiki fixes the wrap but not the size, so the size is a knob."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.nocomment import _TAPE, _Machine
 
@@ -75,7 +64,7 @@ class TestNoComment:
             assert right.ptr == 0  # a full lap returns to the.
 
     def test_tape_size_must_be_positive(self) -> None:
-        """A tape with no cells has no cell to point at."""
+        r"""A tape with no cells has no cell to point at."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.nocomment import _Machine
 
@@ -84,126 +73,62 @@ class TestNoComment:
                 _Machine("i", ScriptedIO(), size)
 
     def test_a_one_cell_tape_is_accepted(self) -> None:
-        """One cell is the smallest legal tape, and the guard's own edge.
-
-        ``test_tape_size_must_be_positive`` pins the rejected side and
-        ``test_tape_size_is_configurable`` starts at 2, so nothing stood on
-        the boundary itself: widening the floor to ``<= 1`` or ``< 2``
-        rejects a one-cell tape and no test objected.  One cell is the
-        degenerate wrap -- both ``l`` and ``r`` return to the only cell, so
-        the increments survive a move that would otherwise land elsewhere.
-        """
+        r"""One cell is the smallest legal tape, and the guard's own edge."""
         buffer = io.StringIO()
         with redirect_stdout(buffer):
             nocomment.run("c" + "i" * 65 + "rlo", IO(), tape=1)
         assert buffer.getvalue() == "A"
 
     def test_run_forwards_the_tape_size(self) -> None:
-        """``run`` passes its ``tape`` through, rather than taking the default.
-
-        Every other size test builds a ``_Machine`` directly, so dropping
-        the argument at ``run``'s only call site left the default in place
-        with nothing to notice.  A two-cell tape makes ``rr`` a full lap
-        back to the marked cell; on the 4096-cell default the same program
-        stops two cells away and prints a fresh zero.
-        """
+        r"""``run`` passes its ``tape`` through, rather than taking the default."""
         buffer = io.StringIO()
         with redirect_stdout(buffer):
             nocomment.run("c" + "i" * 65 + "rro", IO(), tape=2)
         assert buffer.getvalue() == "A"
 
     def test_stack_push_pop(self) -> None:
-        """N pushes the cell; f pops into it."""
+        r"""N pushes the cell; f pops into it."""
         assert run_and_capture("c" + "i" * 65 + "n" + "f" + "o") == "A"
         assert run_and_capture("c" + "i" * 65 + "n" + "r" + "f" + "o") == "A"
         assert run_and_capture("c" + "i" * 65 + "n" + "n" + "f" + "f" + "o") == "A"
 
     def test_skip_forward(self) -> None:
-        """S skips X commands forward when the current cell is nonzero."""
+        r"""S skips X commands forward when the current cell is nonzero."""
         # cell = 2, push 2: skip the.
         assert run_and_capture("cii" + "n" + "s" + "ii" + "o") == "\x02"
         assert run_and_capture("ci" + "n" + "s" + "i" + "o") == "\x01"
 
     def test_jump_back(self) -> None:
-        """B jumps back X-1 and loops until the cell reaches zero.
-
-        The suite reached ``b`` only through the out-of-range error, so a
-        backward jump was never actually taken.  Here ``n`` pushes 2 and the
-        body decrements, so the jump fires once and the loop ends: the
-        stack still holds its 2 afterwards, which is what makes the jump a
-        peek rather than a pop.
-        """
+        r"""B jumps back X-1 and loops until the cell reaches zero."""
         assert run_and_capture("ciindbo") == "\x00"
         assert run_and_capture("ciindbdo") == "\xff"
 
     def test_jump_needs_a_nonzero_cell(self) -> None:
-        """S and b do nothing when the current cell is zero.
-
-        Both jumps are guarded on the cell *and* the stack, and every test
-        ran them with both satisfied -- so requiring either one alone would
-        have passed.  Clearing the cell first leaves the jump untaken and
-        the skipped commands run.
-        """
+        r"""S and b do nothing when the current cell is zero."""
         assert run_and_capture("ciincsio") == "\x01"
         assert run_and_capture("cbo") == "\x00"
 
     def test_jump_needs_a_stacked_value(self) -> None:
-        """S and b do nothing when the stack is empty.
-
-        Nothing is pushed here, so the jump has no distance to read: it is
-        skipped silently rather than raising, and the following commands
-        all run.
-        """
+        r"""S and b do nothing when the stack is empty."""
         assert run_and_capture("cisio") == "\x02"
         assert run_and_capture("cibo") == "\x01"
 
     def test_jump_target_is_checked_one_past_the_jump(self) -> None:
-        """The range check looks at the command the jump lands on.
-
-        ``test_jump_out_of_range_is_error`` overshoots by a wide margin, so
-        the exact edge went unchecked: the target could be computed one
-        either side and still be far outside.  Here the skip of 2 from the
-        ``s`` targets one past the last command -- rejected by a single
-        position, which computing the target one lower, or comparing the
-        upper bound inclusively, would have allowed.
-        """
+        r"""The range check looks at the command the jump lands on."""
         with pytest.raises(HaltError):
             run_and_capture("ciinsio")
 
     def test_backward_jump_of_zero_leaves_the_code(self) -> None:
-        """A backward jump of 0 targets one past the jump, which is off the end.
-
-        Pushing a zero and jumping back by it gives a target of ``ind + 1``
-        -- past the last command here, so it is rejected.  It is the only
-        way to reach the low edge of the range check, where a bound of 1 or
-        an exclusive comparison would behave differently.
-        """
+        r"""A backward jump of 0 targets one past the jump, which is off the."""
         with pytest.raises(HaltError):
             run_and_capture("nib")
 
     def test_a_backward_jump_landing_on_the_first_command_is_allowed(self) -> None:
-        """Zero is a legal target: the jump lands on the first command.
-
-        ``test_backward_jump_of_zero_leaves_the_code`` names the low edge but
-        does not reach it -- jumping back by zero targets ``ind + 1``, which
-        is above it.  The edge is reached only when the stacked value is one
-        more than the jump's own index, and it is a *valid* landing: the
-        program continues from the top and runs to completion, printing 6.
-        A floor of 1, or an exclusive comparison, halts here instead.
-        """
+        r"""Zero is a legal target: the jump lands on the first command."""
         assert run_and_capture("iisbinbo") == "\x06"
 
     def test_every_non_command_character_is_rejected(self) -> None:
-        """No character outside the ten commands is executable -- no no-ops exist.
-
-        The jump commands share one branch, so ``s`` and ``b`` form a set,
-        and a set can be widened to swallow a character that should have
-        been malformed.  Pinning that with one chosen sentinel would only
-        pin the sentinel, so this sweeps the whole printable range against
-        the command set itself: whatever a widened set admits, it is in here.
-        The preceding ``iin`` leaves a nonzero cell and a stacked value, so
-        a character wrongly read as a jump would act rather than be ignored.
-        """
+        r"""No character outside the ten commands is executable -- no no-ops."""
         for char in map(chr, range(0x20, 0x7F)):
             if char in "idclrnfsbo":
                 continue
@@ -211,24 +136,24 @@ class TestNoComment:
                 run_and_capture("iin" + char + "o")
 
     def test_unrecognized_command_is_error(self) -> None:
-        """The wiki allows no comments; a non-command is a malformed program."""
+        r"""The wiki allows no comments; a non-command is a malformed program."""
         with pytest.raises(ValueError, match="unrecognized NoComment command"):
             run_and_capture("x" + "c" + "i" * 65 + "o")
 
     def test_stack_underflow_is_error(self) -> None:
-        """Popping an empty stack is an invalid operation."""
+        r"""Popping an empty stack is an invalid operation."""
         with pytest.raises(HaltError):
             run_and_capture("c" + "i" * 65 + "f" + "o")
 
     def test_jump_out_of_range_is_error(self) -> None:
-        """A forward or backward jump leaving the code space is invalid."""
+        r"""A forward or backward jump leaving the code space is invalid."""
         with pytest.raises(HaltError):
             run_and_capture("c" + "i" * 10 + "n" + "s" + "o")
         with pytest.raises(HaltError):
             run_and_capture("c" + "i" * 10 + "n" + "b" + "o")
 
     def test_a_long_increment_run_prints_hello_world(self) -> None:
-        """Thirteen characters walked out on one cell with ``i``/``d``."""
+        r"""Thirteen characters walked out on one cell with ``i``/``d``."""
         program = (
             "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii"
             "iiiioiiiiiiiiiiiiiiiiiiiiiiiiiiiiioiiiiiiiooiiiodddddddddddddddddddd"
@@ -266,7 +191,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
-    """The shared empty-program shape, with this language's data."""
+    r"""The shared empty-program shape, with this language's data."""
 
     run = staticmethod(run_and_capture)
     machine = staticmethod(_machine)

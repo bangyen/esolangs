@@ -1,4 +1,4 @@
-"""Unit tests for the Jaune interpreter."""
+r"""Unit tests for the Jaune interpreter."""
 
 import pytest
 
@@ -28,13 +28,7 @@ class TestArithmetic:
         assert run_program("++^.") == "2"
 
     def test_an_explicit_zero_count_still_adjusts_by_one(self) -> None:
-        """``0+`` parses to a count of 0, which falls back to 1.
-
-        Every other program spells its counts as a run or a positive
-        number, so the ``or 1`` fallback was only ever reached through the
-        bare ``+`` -- where the count is already 1 and the fallback is
-        invisible.  A literal ``0`` is the one spelling that exercises it.
-        """
+        r"""``0+`` parses to a count of 0, which falls back to 1."""
         assert run_program("0+^.") == "1"
         assert run_program("0-^.") == "-1"
 
@@ -56,24 +50,13 @@ class TestInput:
             run_program("v.", "")
 
     def test_an_empty_line_reads_as_zero(self) -> None:
-        """A line the user ended immediately holds no digit, so it is 0.
-
-        Running out of input raises, so the suite only ever reached the
-        two ends of the read -- a digit, or EOF -- and never the line that
-        is present but empty, which is where the fallback lives.
-        """
+        r"""A line the user ended immediately holds no digit, so it is 0."""
         assert run_program("v^.", "\n") == "0"
         assert run_program("5+v+^.", "\n") == "5"
 
 
 class TestMultiply:
-    """The multiply program from :func:`esolangs.tools.boolean.jaune_multiply`.
-
-    It reads two sentinel-delimited decimal operands -- the digits of the
-    first, a ``*`` line, the digits of the second, a ``#`` line -- and prints
-    their product.  The construction handles any operand length, so the
-    generator takes no digit-count parameter (see docs/walls.md).
-    """
+    r"""The multiply program from."""
 
     def test_multiplies_two_operands(self) -> None:
         from esolangs.tools.boolean import jaune_multiply
@@ -104,24 +87,14 @@ class TestMemory:
         assert run_program("<^.") == "0"
 
     def test_a_clamped_left_move_stays_on_the_same_cell(self) -> None:
-        """``<`` at cell 0 leaves the pointer on the cell it was already on.
-
-        On a blank tape every cell is 0, so a clamp and a leftward insert
-        print alike.  Writing a value first tells them apart: clamped, the
-        pointer is still on the 5, where an insert would have put a fresh
-        zero under it.  This interpreter used to insert.
-        """
+        r"""``<`` at cell 0 leaves the pointer on the cell it was already on."""
         assert run_program("5+<^.") == "5"
         assert run_program("5+<<<^.") == "5"
         # and a clamped move is not a.
         assert run_program("5+<>^.") == "0"
 
     def test_the_hold_cell_starts_at_zero(self) -> None:
-        """``&`` before any ``#`` adds nothing.
-
-        Every other program copies into the hold cell before adding from
-        it, so its initial value was never read.
-        """
+        r"""``&`` before any ``#`` adds nothing."""
         assert run_program("&^.") == "0"
 
 
@@ -147,25 +120,13 @@ class TestControlFlow:
         assert run_program("v+>v+1@^.1$#<&;", "3\n4\n") == "7"
 
     def test_a_return_ends_only_itself(self) -> None:
-        """``;`` consumes one character, leaving the next definition whole.
-
-        Every ``;`` the suite runs is the last character of its program,
-        so a ``;`` that swallowed what follows it would look identical.
-        Two subroutines in a row put a definition in that position.
-        """
+        r"""``;`` consumes one character, leaving the next definition whole."""
         # call 1 then 2; subroutine 1.
         assert run_program("1@2@^.1$5+;2$3+;") == "8"
 
 
 class TestComputedDispatch:
-    """``v`` as the operand of a jump or a call.
-
-    The grammar makes ``v`` a ``number`` and every one of ``: ? ! $ @``
-    takes a ``number``, so the input names the label to jump to or the
-    subroutine to call.  These four programs are the divergence probes the
-    roadmap recorded: each raised ``ValueError`` before the forms existed,
-    and the compiler emitted a switch block for each and miscompiled it.
-    """
+    r"""``v`` as the operand of a jump or a call."""
 
     def test_the_input_names_the_subroutine(self) -> None:
         assert run_program("v@^.1$5+;2$3+;", "1\n") == "5"
@@ -180,12 +141,7 @@ class TestComputedDispatch:
     def test_a_read_operand_is_consumed_when_the_branch_is_not_taken(
         self,
     ) -> None:
-        """The number is evaluated to have a command at all.
-
-        So the digit is taken whether or not the jump follows it, and the
-        next read sees the *following* character.  Both programs print the
-        second digit, not the first.
-        """
+        r"""The number is evaluated to have a command at all."""
         assert run_program("v?v^.3:", "3\n8\n") == "8"
         assert run_program("+v!v^.3:", "3\n8\n") == "8"
 
@@ -196,22 +152,12 @@ class TestComputedDispatch:
             run_program("v?^.1:9+;", "4\n")
 
     def test_the_target_is_looked_up_before_the_branch_is_tested(self) -> None:
-        """An undefined label halts even when the jump would not be taken.
-
-        This mirrors the static ``?``/``!``, which call ``_find`` and raise
-        before testing the cell -- one rule for the operator, whichever
-        spelling names its operand.
-        """
+        r"""An undefined label halts even when the jump would not be taken."""
         with pytest.raises(HaltError, match="undefined label 1"):
             run_program("v?^.9:", "1\n")
 
     def test_a_read_marker_defines_nothing(self) -> None:
-        """``v:`` and ``v$`` are grammatical but have no findable identity.
-
-        ``_find`` matches a parsed argument, and a marker read at runtime
-        has none, so both are dropped at parse -- which is what the
-        compiler's ``prep`` does with them.
-        """
+        r"""``v:`` and ``v$`` are grammatical but have no findable identity."""
         from esolangs.interpreters.tape_based.jaune import _parse
 
         assert [c.op for c in _parse("v:5+")] == ["+"]
@@ -220,11 +166,7 @@ class TestComputedDispatch:
         assert run_program("v$5+^.") == "5"
 
     def test_a_loop_reading_its_own_target_exhausts_its_input(self) -> None:
-        """Each pass of the loop reads again, so input decides the end.
-
-        The cell is never cleared, so the jump is taken every time and the
-        run ends on the read rather than on the branch.
-        """
+        r"""Each pass of the loop reads again, so input decides the end."""
         with pytest.raises(EOFError):
             run_program("5+1:v?^.", "1\n1\n1\n")
 
@@ -240,23 +182,12 @@ class TestParsing:
     def test_an_uppercase_letter_is_no_more_a_command_than_a_lowercase_one(
         self,
     ) -> None:
-        """``X`` is ignored, as every unrecognized character is.
-
-        The alphabets the parser tests against are written as strings, and
-        a string only ever contained the operators themselves -- so a
-        character that is *nearly* one of them, differing only in case,
-        never came through to show that the sets are exact.
-        """
+        r"""``X`` is ignored, as every unrecognized character is."""
         assert run_program("X^.") == "0"
         assert run_program("1X^.") == "0"
 
     def test_an_ignored_character_after_the_first_still_advances(self) -> None:
-        """The parser steps past an unknown character, wherever it sits.
-
-        Every program that skips one puts it at the very start, where
-        advancing to index 1 and *assigning* index 1 agree; a second
-        command in front of it is what separates them.
-        """
+        r"""The parser steps past an unknown character, wherever it sits."""
         assert run_program("^x^.") == "00"
 
     def test_bare_operator_requires_a_number(self) -> None:
@@ -264,12 +195,7 @@ class TestParsing:
             run_program("?")
 
     def test_runs_of_an_operator_carry_their_length(self) -> None:
-        """``++`` is one command repeated twice, not two commands.
-
-        Parsing is only ever checked through what a program prints, where
-        a run and a sequence of singles reach the same total -- so the
-        count the parser attaches went unread.
-        """
+        r"""``++`` is one command repeated twice, not two commands."""
         from esolangs.interpreters.tape_based.jaune import _parse
 
         assert [(c.op, c.arg) for c in _parse("+++")] == [("+", 3)]
@@ -277,12 +203,7 @@ class TestParsing:
         assert [(c.op, c.arg) for c in _parse("++-")] == [("+", 2), ("-", 1)]
 
     def test_a_read_operand_needs_a_character_after_it(self) -> None:
-        """``v`` takes the next character as its operand only if there is
-        one; at the end of the code it stands alone.
-
-        The lookahead is a boundary the suite never reached, since every
-        ``v`` it uses has something after it.
-        """
+        r"""``v`` takes the next character as its operand only if there is one;."""
         from esolangs.interpreters.tape_based.jaune import _parse
 
         assert [c.op for c in _parse("v+")] == ["v+"]
@@ -290,7 +211,7 @@ class TestParsing:
         assert [c.op for c in _parse("vv")] == ["v", "v"]
 
     def test_a_number_takes_the_operator_that_follows_it(self) -> None:
-        """``3+`` is a single counted command; a number alone is dropped."""
+        r"""``3+`` is a single counted command; a number alone is dropped."""
         from esolangs.interpreters.tape_based.jaune import _parse
 
         assert [(c.op, c.arg) for c in _parse("3+")] == [("+", 3)]
@@ -312,11 +233,7 @@ class TestErrors:
             run_program("1!")
 
     def test_the_return_error_reads_in_full(self) -> None:
-        """The whole message, not just the fragment a ``match=`` looks for.
-
-        ``match=`` is a substring search, so such an assertion passes on a
-        message padded or reworded around the phrase it looks for.
-        """
+        r"""The whole message, not just the fragment a ``match=`` looks for."""
         with pytest.raises(HaltError) as caught:
             run_program(";^")
         assert str(caught.value) == "; with no active subroutine call"
@@ -333,18 +250,7 @@ class TestMachine:
         machine.step()  # must not raise.
 
     def test_the_vm_view_tracks_the_run(self) -> None:
-        """``ip``/``memory``/``stack`` are what the debugger reads, so they run.
-
-        These are the shared VM-shaped names rather than jaune's own, and
-        nothing else here touches them: the protocol sweep drives ``step``
-        and ``halted``, and the snapshot contract reads ``snapshot``.  A
-        property wired to the wrong field -- ``memory`` handing back the
-        call stack, say -- would still pass every other test in this file.
-
-        Asserted as movement rather than as pinned constants: the point is
-        that each name follows the field it claims, and the subroutine
-        program is the one that makes ``stack`` non-empty at all.
-        """
+        r"""``ip``/``memory``/``stack`` are what the debugger reads, so they."""
         from esolangs.interpreters.tape_based.jaune import _Machine
 
         machine = _Machine("6+5+^.", ScriptedIO())
@@ -373,7 +279,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(SnapshotContract):
-    """The shared shapes, with this language's own programs."""
+    r"""The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program = "6+5+^."

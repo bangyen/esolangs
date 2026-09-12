@@ -1,42 +1,4 @@
-"""Interpreter for Bitdeque.
-
-PUSH/INJECT append a register value to the deque, POP/EJECT pop it (0 when
-empty), INVERT flips the register, and GOTO jumps to a numbered command when
-the register is nonzero.
-
-The wiki says of this language that "there is (currently) no I/O", so
-following the repo convention for interpreter-only languages (Minsky Swap
-prints its registers), the deque contents are printed when the program ends
--- space-separated on one line.  Both the choice to print and the format are
-this interpreter's, not the spec's.
-
-Commands are upper case, and a word that is not one of the six is a
-malformed program rather than a comment, rejected with :class:`ValueError`:
-the tokenizer used to keep what it recognised and drop the rest in silence,
-so a lower-case program ran as nothing and exited 0.
-
-The wiki says GOTO goes to the Nth operation but does not pin down the
-indexing; this interpreter treats N as 0-based (GOTO 2 lands on the third
-command, skipping the GOTO itself), matching its reference test.
-
-The interpreter runs on a :class:`_Machine` (token cursor, register, and
-deque), so it is step-capable: ``step()`` executes one token and ``halted``
-is true once the cursor runs past the last token, making a GOTO loop a
-finite-state cycle the state cycle detector can prove.
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and a token to the next state, and never
-mutates what it is given.  It takes no ``io`` argument at all, so it is
-total and side-effect free by construction rather than by inspection.  The
-deque is a tuple, so a state is a value that can be stored, compared, and
-hashed as it stands.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so the mutation lives in
-exactly one assignment and every rule about what Bitdeque *does* stays in
-the pure layer.  The one effect -- the end-of-run deque dump -- is done by
-``step`` before it calls the pure transition.
-"""
+r"""Interpreter for Bitdeque."""
 
 from __future__ import annotations
 
@@ -63,20 +25,7 @@ type _State = tuple[int, int, tuple[int, ...], bool]
 
 
 def _advance(state: _State, sym: str) -> _State:
-    """Return the state after executing one token.
-
-    Pure: it reads ``state`` and returns a new one.  It takes no ``io``
-    argument, so the dump is necessarily the caller's business -- this
-    function only records, through ``rendered``, that it has happened.
-
-    PUSH and POP work the back of the deque; INJECT and EJECT work the
-    front.  That pairing is what makes this a deque rather than a queue or
-    a stack, so the four are deliberately spelled out rather than folded
-    together.  Popping either end of an empty deque yields zero.
-
-    GOTO is 0-based and only fires when the register is nonzero: it lands
-    on ``num - 1`` so the shared increment below carries it to ``num``.
-    """
+    r"""Return the state after executing one token."""
     ind, reg, deq, rendered = state
     if sym == "PUSH":
         deq = (*deq, reg)
@@ -94,18 +43,7 @@ def _advance(state: _State, sym: str) -> _State:
 
 
 def _reject_stray_text(code: str, pattern: re.Pattern[str]) -> None:
-    """Refuse a word that is not one of the six commands.
-
-    ``findall`` keeps what matches and says nothing about the rest, so
-    ``PUSH FROB PUSH`` ran as two pushes and ``push invert push`` -- the
-    same program in lower case -- ran as nothing at all and exited 0.  The
-    commands are upper case and that had never been written down either,
-    so the whole language was a silent no-op for anyone who guessed wrong.
-
-    A program that does nothing and reports success is the worst answer to
-    a typo, and Bitdeque has six commands, so there is no plausible reading
-    where a seventh word is deliberate.
-    """
+    r"""Refuse a word that is not one of the six commands."""
     end = 0
     for match in pattern.finditer(code):
         if stray := code[end : match.start()].strip():
@@ -123,12 +61,7 @@ def _reject_stray_text(code: str, pattern: re.Pattern[str]) -> None:
 
 
 class _Machine:
-    """Per-run Bitdeque state: the token cursor, register, and deque.
-
-    ``step()`` executes one token; ``halted`` is true once the cursor passes
-    the last token.  The VM and the state-cycle hang detector expose this
-    object.
-    """
+    r"""Per-run Bitdeque state: the token cursor, register, and deque."""
 
     # : Whether the tape/registers.
     # : It belongs to the language,.
@@ -138,7 +71,7 @@ class _Machine:
     dumps_on_the_post_halt_step = True
 
     def __init__(self, code: str, io: IO) -> None:
-        """Tokenize ``code`` and reset the register, deque, and cursor."""
+        r"""Tokenize ``code`` and reset the register, deque, and cursor."""
         self.io = io
         lst = ("INJECT", "PUSH", "EJECT", "POP", "INVERT", r"GOTO *(\d+)")
         join = f"({'|'.join(lst)})"
@@ -166,12 +99,12 @@ class _Machine:
 
     @property
     def rendered(self) -> bool:
-        """Whether the end-of-run deque dump has already been printed."""
+        r"""Whether the end-of-run deque dump has already been printed."""
         return self.state[3]
 
     @property
     def halted(self) -> bool:
-        """Whether the cursor has passed the last token."""
+        r"""Whether the cursor has passed the last token."""
         return self.state[0] >= self.size
 
     # The VM's language-shaped.
@@ -179,21 +112,21 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        """The token cursor."""
+        r"""The token cursor."""
         return self.ind
 
     @property
     def memory(self) -> list[int]:
-        """The deque, front first."""
+        r"""The deque, front first."""
         return list(self.state[2])
 
     @property
     def stack(self) -> list[object]:
-        """The single register, as a one-element stack."""
+        r"""The single register, as a one-element stack."""
         return [self.state[1]]
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        r"""Return the complete internal state, hashable for cycle detection."""
         # The fields this returned.
         # the same order.
         # states of a running machine.
@@ -201,14 +134,7 @@ class _Machine:
         return (tuple(self.tokens), ind, reg, deq, self.io.position())
 
     def step(self) -> None:
-        """Execute one token, printing the deque once the cursor ends.
-
-        The print belongs to the step *after* the halt, as Minsky Swap and
-        RAM0 already spell it, so that stepping a machine to a standstill
-        writes what ``run`` writes.  Keeping it in ``run`` instead left the
-        VM adapter to replicate it, which is how the two drifted apart in
-        the first place.
-        """
+        r"""Execute one token, printing the deque once the cursor ends."""
         ind, reg, deq, rendered = self.state
         if ind >= self.size:
             if not rendered:
@@ -218,17 +144,12 @@ class _Machine:
         self.state = _advance(self.state, self.tokens[ind][0])
 
     def render(self) -> None:
-        """Print the deque contents, one value per space.
-
-        No trailing newline: the wiki defines no I/O for Bitdeque at all, so
-        there is no spec to be faithful to, and a newline here would be
-        nothing but trailing whitespace.
-        """
+        r"""Print the deque contents, one value per space."""
         self.io.print_str(" ".join(map(str, self.state[2])))
 
 
 def run(code: str, io: IO) -> None:
-    """Run a Bitdeque program and print the deque at the end."""
+    r"""Run a Bitdeque program and print the deque at the end."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

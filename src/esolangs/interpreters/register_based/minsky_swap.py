@@ -1,43 +1,4 @@
-"""Minsky Swap interpreter implementation.
-
-Turing-complete language based on Minsky machines.
-Uses two unbounded registers with a register pointer that can be swapped.
-
-Jump targets are 1-based and fixed by the tilde's position in the code line:
-the Nth ``~`` jumps to the Nth number on the jump line, so ``decnz(N)`` (and
-its compact ``~``) restarts execution at line N.  The wiki describes targets
-as 1-based ("line N"), which this interpreter follows.
-
-A ``~`` with no corresponding jump number is a malformed program and is
-rejected with :class:`ValueError`.
-
-The wiki defines no I/O for this language, so the interpreter prints both
-registers when the program ends -- space-separated on one line, with no
-trailing newline.  This is the convention the other interpreter-only
-languages here follow (Back's tape, Bitdeque's deque, A Painter Ant's grid
-raster); the choice to print at all, and the separator, are the repo's, not
-the spec's.  A language whose spec *does* pin an output format follows that
-instead: LaserFuck's says its decimal mode prints "with line breaks", so it
-separates with newlines rather than spaces.
-
-The interpreter runs on a :class:`_Machine` (the parsed program, both
-registers, and the instruction cursor), so it is step-capable: ``step()``
-executes one command and ``halted`` is true once the cursor reaches the end
-of the program.  The register dump is printed exactly once, on the step
-that halts the machine, matching the original's print-after-the-loop
-behavior.
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and the jump table to the next state, and
-never mutates what it is given.  It takes no ``io`` argument at all, so it
-is total and side-effect free by construction rather than by inspection.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so the mutation lives in
-exactly one assignment and every rule about what Minsky Swap *does* stays
-in the pure layer.  The register dump is the language's only effect and is
-done by ``step``.
-"""
+r"""Minsky Swap interpreter implementation."""
 
 from __future__ import annotations
 
@@ -64,19 +25,7 @@ type _State = tuple[int, int, tuple[int, int], bool]
 
 
 def _advance(state: _State, prog: str, targets: dict[int, int]) -> _State:
-    """Return the state after executing one command.
-
-    Pure: it reads ``state`` and returns a new one.  It takes no ``io``
-    argument, so the dump is necessarily the caller's business -- this
-    function only records, through ``dumped``, that it has happened.
-
-    ``~`` is decrement-or-jump: it decrements the current register when it
-    is nonzero, and otherwise jumps to its 1-based target, landing on
-    ``target - 2`` so the shared increment carries it to ``target - 1``.
-
-    The parse strips everything but ``+~*``, so the final branch is ``*``,
-    which swaps which register the pointer addresses.
-    """
+    r"""Return the state after executing one command."""
     ind, ptr, reg, dumped = state
     op = prog[ind]
     if op == "+":
@@ -92,7 +41,7 @@ def _advance(state: _State, prog: str, targets: dict[int, int]) -> _State:
 
 
 def _parse(code: str) -> tuple[str, list[int]]:
-    """Return the compact-notation program and its jump-line numbers."""
+    r"""Return the compact-notation program and its jump-line numbers."""
     prog = ""
     nums: list[int] = []
 
@@ -123,12 +72,7 @@ def _parse(code: str) -> tuple[str, list[int]]:
 
 
 class _Machine:
-    """Per-run Minsky Swap state: the program, both registers, and the cursor.
-
-    ``step()`` executes one command; ``halted`` is true once the cursor
-    reaches the end of the program.  The state-cycle hang detector and the
-    VM expose this object.
-    """
+    r"""Per-run Minsky Swap state: the program, both registers, and the."""
 
     # : Whether the tape/registers.
     # : It belongs to the language,.
@@ -138,7 +82,7 @@ class _Machine:
     dumps_on_the_post_halt_step = True
 
     def __init__(self, code: str, io: IO) -> None:
-        """Parse ``code`` and start both registers at zero."""
+        r"""Parse ``code`` and start both registers at zero."""
         self.io = io
         self.prog, nums = _parse(code)
 
@@ -170,17 +114,17 @@ class _Machine:
 
     @property
     def reg(self) -> tuple[int, int]:
-        """Both registers, in pointer order."""
+        r"""Both registers, in pointer order."""
         return self.state[2]
 
     @property
     def dumped(self) -> bool:
-        """Whether the end-of-run register dump has already been printed."""
+        r"""Whether the end-of-run register dump has already been printed."""
         return self.state[3]
 
     @property
     def halted(self) -> bool:
-        """Whether the cursor has reached the end of the program."""
+        r"""Whether the cursor has reached the end of the program."""
         return self.state[0] >= self.size
 
     # The VM's language-shaped.
@@ -188,21 +132,21 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        """The current instruction position."""
+        r"""The current instruction position."""
         return self.state[0]
 
     @property
     def memory(self) -> list[int]:
-        """The addressable cells."""
+        r"""The addressable cells."""
         return list(self.state[2])
 
     @property
     def stack(self) -> list[object]:
-        """No stack in this language."""
+        r"""No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        r"""Return the complete internal state, hashable for cycle detection."""
         # The three fields this.
         # ``dumped`` stays out: the.
         # machine, and a stopped run is.
@@ -210,13 +154,7 @@ class _Machine:
         return (ind, ptr, reg)
 
     def step(self) -> None:
-        """Execute one command, dumping the registers once the cursor ends.
-
-        The dump is here rather than in the transition: this is the shell,
-        so it is where an effect belongs.  The transition carries the flag
-        that says it has happened, which keeps it to exactly one dump
-        however many times a halted machine is stepped.
-        """
+        r"""Execute one command, dumping the registers once the cursor ends."""
         ind, ptr, reg, dumped = self.state
         if ind >= self.size:
             if not dumped:
@@ -227,7 +165,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    """Execute a Minsky Swap program."""
+    r"""Execute a Minsky Swap program."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

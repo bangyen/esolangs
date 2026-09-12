@@ -1,4 +1,4 @@
-"""Unit tests for the BrainIf interpreter."""
+r"""Unit tests for the BrainIf interpreter."""
 
 from typing import ClassVar
 
@@ -30,15 +30,7 @@ class TestBrainIfBasicCommands:
         assert run_and_capture(["if 0 input", "if 65 output"], inputs=["A"]) == "A"
 
     def test_input_retries_past_blank_lines(self) -> None:
-        """A blank line is read again, not stored as the newline it ended.
-
-        ``input`` reads whole lines, and an empty one carries no character
-        to take -- so the read repeats until a line has one.  Nothing else
-        in the suite feeds a blank line, and the retry is the loop's only
-        observable: without it the first empty string would be indexed and
-        raise, and a loop entered on the wrong condition would either skip
-        the read or never leave it.
-        """
+        r"""A blank line is read again, not stored as the newline it ended."""
         code = ["if 0 input", "if 65 output"]
         assert run_and_capture(code, inputs=["", "", "A"]) == "A"
 
@@ -51,13 +43,7 @@ class TestBrainIfBasicCommands:
         assert run_and_capture(code) == "\x01"
 
     def test_a_write_keeps_the_cell_to_its_right(self) -> None:
-        """Writing one cell rebuilds the tape around it, dropping nothing.
-
-        Every write elsewhere happens with the cells to its right still
-        zero, and a dropped zero is indistinguishable from a kept one --
-        reading past the end gives zero too.  Marking cell 1 first, then
-        writing cell 0, makes the neighbour's survival visible.
-        """
+        r"""Writing one cell rebuilds the tape around it, dropping nothing."""
         code = [
             "if 0 increment",  # cell 0 -> 1.
             "if 1 right",  # to cell 1.
@@ -71,15 +57,7 @@ class TestBrainIfBasicCommands:
         assert run_and_capture(code) == "\x02"
 
     def test_the_walk_out_and_back(self) -> None:
-        """Walk out to cell 3 and back, marking each cell on the return.
-
-        Every move here is from a cell other than the origin, which is what
-        makes it worth its length: from cell 0 a relative ``right`` and an
-        absolute jump to cell 1 agree, and a ``left`` that moves one and
-        one that moves two both clamp to 0.  Walking out first separates
-        them, and reading two cells at the end shows where the pointer
-        actually landed rather than only that it moved.
-        """
+        r"""Walk out to cell 3 and back, marking each cell on the return."""
         code = [
             "if 0 right",  # cell 1.
             "if 0 right",  # cell 2.
@@ -97,17 +75,13 @@ class TestBrainIfBasicCommands:
         assert run_and_capture(code) == "\x00\x01"
 
     def test_a_new_cell_starts_at_zero(self) -> None:
-        """Moving right onto fresh tape appends a zero, not a one."""
+        r"""Moving right onto fresh tape appends a zero, not a one."""
         assert run_and_capture(["if 0 right", "if 0 output"]) == "\x00"
 
 
 class TestBrainIfGeneratedHelloWorld:
     def test_long_climb_prints_two_characters(self) -> None:
-        """A 107-line climb: one cell walked up to 72, printed, then to 105.
-
-        Exercises the interpreter on a program long enough that a
-        misdispatched ``if`` shows up as wrong output rather than a crash.
-        """
+        r"""A 107-line climb: one cell walked up to 72, printed, then to 105."""
         code = [f"if {n} increment" for n in range(72)]
         code.append("if 72 output")
         code += [f"if {n} increment" for n in range(72, 105)]
@@ -115,11 +89,7 @@ class TestBrainIfGeneratedHelloWorld:
         assert run_and_capture(code) == "Hi"
 
     def test_truth_machine_zero(self) -> None:
-        """A 0 input prints 0 and halts.
-
-        The 1 branch (``if 49 goto 2``) loops forever by definition, so only
-        the terminating branch is exercised.
-        """
+        r"""A 0 input prints 0 and halts."""
         program = [
             "if 0 input",
             "if 48 output",
@@ -130,36 +100,27 @@ class TestBrainIfGeneratedHelloWorld:
         assert run_and_capture(program, inputs=["0"]) == "0"
 
     def test_unknown_instruction_ignored(self) -> None:
-        """Lines without a recognized instruction are ignored."""
+        r"""Lines without a recognized instruction are ignored."""
         assert run_and_capture(["if 0 output", "if 0 frobnicate"]) == "\x00"
 
     def test_goto(self) -> None:
-        """Goto jumps to the given line number."""
+        r"""Goto jumps to the given line number."""
         code = ["if 0 goto 3", "if 0 output", "if 0 increment", "if 1 output"]
         assert run_and_capture(code) == "\x01"
 
     def test_missing_value_rejected(self) -> None:
-        """A line without a value operand is malformed.
-
-        The message is matched in full, and with its casing: a loose
-        substring lets the wording drift without any test objecting.
-        """
+        r"""A line without a value operand is malformed."""
         import pytest
 
         with pytest.raises(ValueError, match=r"^malformed BrainIf line: if$"):
             run_and_capture(["if"])
 
     def test_a_value_with_no_command_is_well_formed(self) -> None:
-        """Two tokens are enough: ``if 0`` names a value and does nothing.
-
-        This is the other side of the arity guard.  Only a line of fewer
-        than two tokens is malformed, so a two-token line has to run --
-        and it is the case that separates ``< 2`` from ``< 3``.
-        """
+        r"""Two tokens are enough: ``if 0`` names a value and does nothing."""
         assert run_and_capture(["if 0", "if 0 output"]) == "\x00"
 
     def test_goto_missing_target_rejected(self) -> None:
-        """A goto without a target line is malformed."""
+        r"""A goto without a target line is malformed."""
         import pytest
 
         with pytest.raises(ValueError, match=r"^goto requires a target line$"):
@@ -182,10 +143,7 @@ class TestStepMachine:
         assert machine.ind == 2
 
     def test_the_read_lands_in_the_cell(self) -> None:
-        """``input`` puts the byte where the language says it goes.
-
-        The cursor and snapshot moving is the shared contract below.
-        """
+        r"""``input`` puts the byte where the language says it goes."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.brainif import _Machine
 
@@ -194,7 +152,7 @@ class TestStepMachine:
         assert machine.cells == (ord("A"),)
 
     def test_goto_loop_is_detected_as_a_cycle(self) -> None:
-        """A goto back to itself with the cell unchanged loops forever."""
+        r"""A goto back to itself with the cell unchanged loops forever."""
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.brainif import _Machine
         from esolangs.vm import run_until_halt_or_cycle
@@ -203,20 +161,7 @@ class TestStepMachine:
 
 
 def test_a_blank_line_is_skipped() -> None:
-    """A line with nothing on it advances the counter and does no work.
-
-    Blank lines are how a BrainIf program is spaced out, so they have to be
-    stepped over rather than raising the malformed-line error a one-token
-    line gets.
-
-    Where the blank sits matters, in two ways.  A blank at the top of the
-    program is stepped identically by an advance, a reset to line 1, and a
-    double advance, so it has to follow a line that has already run.  And a
-    run of consecutive blanks hides a double advance -- skipping two blanks
-    still lands on a line that does nothing -- so a single blank is put
-    directly before the output, where skipping two would skip the output
-    itself.  The run of blanks is kept as its own case.
-    """
+    r"""A line with nothing on it advances the counter and does no work."""
     assert run_and_capture(["if 0 increment", "", "if 1 output"]) == "\x01"
     assert run_and_capture(["if 0 increment", "", "   ", "if 1 output"]) == "\x01"
 
@@ -236,7 +181,7 @@ def _reader(code: object, stdin: str) -> object:
 
 
 class TestContract(CycleContract, InputCursorContract, StateViewContract):
-    """The shared shapes, with this language's own programs."""
+    r"""The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     reader = staticmethod(_reader)

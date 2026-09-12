@@ -1,10 +1,4 @@
-"""Unit tests for the Taglate interpreter.
-
-Taglate is a queue-based language: the first line seeds a queue of integers
-(0-65535, wrapping), and the remaining lines hold commands (arithmetic,
-rotate/discard, loops, character I/O, the ``j`` counter trick, and the
-Google Translate URL ``t`` command).
-"""
+r"""Unit tests for the Taglate interpreter."""
 
 import importlib
 from typing import ClassVar
@@ -42,7 +36,7 @@ class TestTaglate:
         assert run_and_capture(["93", "di"]) == chr(57 // 51)
 
     def test_divide_by_zero_halts(self) -> None:
-        """Division by zero is invalid, so the interpreter halts on it."""
+        r"""Division by zero is invalid, so the interpreter halts on it."""
         import pytest
 
         with pytest.raises(HaltError):
@@ -74,7 +68,7 @@ class TestTaglate:
         assert run_and_capture([""]) == ""
 
     def test_a_literal_line_is_printed_by_one_i_per_character(self) -> None:
-        """``i`` advances one character of the line above it."""
+        r"""``i`` advances one character of the line above it."""
         program = "Hello, World!\niiiiiiiiiiiii"
         assert esolangs.run("Taglate", program) == "Hello, World!"
 
@@ -90,59 +84,23 @@ class TestTaglate:
         assert run_and_capture(["1", "gi"]) == "1"
 
     def test_a_g_at_the_very_end_has_nothing_to_pair_with(self) -> None:
-        """The pairing looks ahead, so it must first check there is an ahead.
-
-        ``test_lone_g_is_ignored`` puts the ``g`` before an ``i``, where the
-        look-ahead reads a real character and only the comparison decides.
-        A ``g`` as the last character has no next character at all.
-        """
+        r"""The pairing looks ahead, so it must first check there is an ahead."""
         assert run_and_capture(["1", "ig"]) == "1"
 
     def test_only_y_and_z_pair_with_a_g(self) -> None:
-        """Any other character after a ``g`` leaves the ``g`` alone.
-
-        Both are then skipped, since neither is a command.  Widening the
-        set that pairs would make the two characters one token, which
-        matches none of the commands and so falls through to ``t`` --
-        replacing the queue with the URL instead of leaving it alone.
-        """
+        r"""Any other character after a ``g`` leaves the ``g`` alone."""
         assert run_and_capture(["1", "gXi"]) == "1"
 
     def test_a_skipped_character_advances_the_cursor(self) -> None:
-        """Passing over a non-command moves on, rather than restarting.
-
-        Every program here begins with a command, so a tokenizer that
-        reset to a fixed position on a skip would still have finished
-        them.  A non-command after a command does not finish: the scan
-        returns to that same character forever.
-        """
+        r"""Passing over a non-command moves on, rather than restarting."""
         assert run_and_capture(["1", "ix"]) == "1"
 
     def test_the_command_lines_are_joined_without_a_separator(self) -> None:
-        """``gy`` split across two lines is still one token.
-
-        Every multi-line program keeps each token whole on its line, so
-        anything at all could sit at the join and the tokens would come
-        out the same.  Here the ``g`` ends one line and the ``y`` starts
-        the next: joined directly they open a loop that drains the queue,
-        and separated the ``gz`` below is left with no partner, which is
-        rejected once the queue is non-empty at it.
-        """
+        r"""``gy`` split across two lines is still one token."""
         assert run_and_capture(["11", "g", "yigz"]) == "11"
 
     def test_unmatched_loop_markers_rejected(self) -> None:
-        """An unmatched gy/gz is a malformed program.
-
-        ``match=`` is a substring search, and both messages contain the
-        word it looks for -- so each is asserted whole here, since the
-        message is the only thing that says which marker was the loose
-        one.
-
-        The position is the *token* index rather than a character offset,
-        because a Taglate program is a token list; the shared rejection in
-        :mod:`~esolangs.interpreters.brackets` names whatever the language
-        counts in.
-        """
+        r"""An unmatched gy/gz is a malformed program."""
         with raises_message(ValueError, "unmatched 'gy' at position 0"):
             run_and_capture(["\x001", "gy"])
 
@@ -150,40 +108,20 @@ class TestTaglate:
             run_and_capture(["1", "gz"])
 
     def test_arithmetic_wraps_at_the_queue_ceiling(self) -> None:
-        """Sums and products come back mod 65536, the top of the range.
-
-        ``test_subtract_wraps`` pins the modulus from below, where a
-        negative result comes back near the ceiling and one more or one
-        less would show -- but addition and multiplication each carry
-        their own, and no program overflowed either.  65535 + 1 wraps to
-        zero, and 65535 squared to one.
-        """
+        r"""Sums and products come back mod 65536, the top of the range."""
         assert run_and_capture([chr(65535) + chr(1), "ai"]) == "\x00"
         assert run_and_capture([chr(65535) + chr(65535), "ci"]) == "\x01"
 
     def test_the_counter_wraps_at_the_same_ceiling(self) -> None:
-        """``j`` on a seed above the range comes back inside it.
-
-        Its subtraction is guarded by the value being nonzero, so the
-        wrap is only reachable from a seed character above U+FFFF --
-        which is the one way a value over 65535 enters the queue, since
-        every other command already wrapped.
-        """
+        r"""``j`` on a seed above the range comes back inside it."""
         assert run_and_capture([chr(65537), "ji"]) == "\x00"
 
     def test_a_loop_runs_until_its_head_reaches_zero(self) -> None:
-        """``gz`` goes back while the front is nonzero, not while it is
-        anything but one.
-
-        Every loop here either never repeats or empties its queue, so the
-        countdown's last laps were never run.  This one holds a single
-        value and decrements it in place: stopping at zero prints zero,
-        while stopping one lap early prints one.
-        """
+        r"""``gz`` goes back while the front is nonzero, not while it is."""
         assert run_and_capture([chr(3), "gyjgzi"]) == "\x00"
 
     def test_empty_queue_pop_halts(self) -> None:
-        """Popping an empty queue in arithmetic is an invalid operation."""
+        r"""Popping an empty queue in arithmetic is an invalid operation."""
         import pytest
 
         from esolangs.exceptions import HaltError
@@ -216,7 +154,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(SnapshotContract, CycleContract):
-    """The shared shapes, with this language's own programs."""
+    r"""The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program: ClassVar[list[str]] = ["abc", "i"]
@@ -225,55 +163,29 @@ class TestContract(SnapshotContract, CycleContract):
 
 
 class TestTheTwoQueueLanguagesDifferOnPurpose:
-    """Both silently accepted nonsense; only one of them meant to.
-
-    A reader found ``PUSH FROB PUSH`` running as two pushes and ``qqq``
-    running as nothing, and filed them together as one gap in the queue
-    family.  They are not the same: Bitdeque's swallow was neither
-    documented nor tested and its commands are upper-case *words*, so a
-    lower-case program vanished entirely; Taglate's is pinned by four tests
-    that reason about it.  So one changed and the other got written down,
-    and this is the pair that says which is which.
-    """
+    r"""Both silently accepted nonsense; only one of them meant to."""
 
     def test_bitdeque_refuses_a_word_it_does_not_know(self) -> None:
-        """``findall`` kept what matched and dropped the rest in silence."""
+        r"""``findall`` kept what matched and dropped the rest in silence."""
         with pytest.raises(esolangs.ProgramError, match="not a Bitdeque command"):
             esolangs.run("Bitdeque", "PUSH FROB PUSH", "", 5)
 
     def test_bitdeque_refuses_the_lower_case_program(self) -> None:
-        """The whole language was a no-op for anyone who guessed the case.
-
-        Case-sensitivity had never been written down either, so this exited
-        0 having done nothing -- indistinguishable from a program that
-        legitimately prints nothing.
-        """
+        r"""The whole language was a no-op for anyone who guessed the case."""
         with pytest.raises(esolangs.ProgramError, match="upper case"):
             esolangs.run("Bitdeque", "push invert push", "", 5)
 
     def test_bitdeque_still_runs_a_real_program(self) -> None:
-        """Three refusals are worth nothing if the valid case broke."""
+        r"""Three refusals are worth nothing if the valid case broke."""
         assert esolangs.run("Bitdeque", "PUSH INVERT PUSH", "", 5) == "0 1"
 
     def test_taglate_still_skips_a_non_command(self) -> None:
-        """Deliberately unchanged, and the docstring now says why.
-
-        The wiki says only that the command lines are "filled with a bunch
-        of commands, all lowercase letters" and never says what else may
-        appear, so skipping is a choice rather than a bug -- and it is one
-        this interpreter made on purpose, with tests that reason about the
-        cursor advancing rather than looping.
-        """
+        r"""Deliberately unchanged, and the docstring now says why."""
         assert esolangs.run("Taglate", "1\nix", "", 5) == "1"
         assert esolangs.run("Taglate", "1\ngi", "", 5) == "1"
 
     def test_taglate_says_it_skips(self) -> None:
-        """A surprising choice is only defensible while it is documented.
-
-        This is the whole of the fix on Taglate's side: the behaviour was
-        already deliberate, and the docstring's own "decisions for gaps in
-        the wiki spec" list did not include it.
-        """
+        r"""A surprising choice is only defensible while it is documented."""
         module = importlib.import_module("esolangs.interpreters.queue_based.taglate")
         doc = module.__doc__ or ""
         assert "is **skipped**" in doc

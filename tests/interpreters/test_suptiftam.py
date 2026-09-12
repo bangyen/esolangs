@@ -1,4 +1,4 @@
-"""Unit tests for the Suptiftam interpreter."""
+r"""Unit tests for the Suptiftam interpreter."""
 
 from typing import ClassVar
 
@@ -72,39 +72,35 @@ def run_program(code: str, stdin: str = "") -> str:
 
 class TestHelloWorld:
     def test_wiki_example(self) -> None:
-        """The wiki's Hello World (with its byte-math space) prints the text."""
+        r"""The wiki's Hello World (with its byte-math space) prints the text."""
         assert run_program(HELLO_WORLD) == "Hello, world!"
 
 
 class TestWikiPrograms:
     def test_cat(self) -> None:
-        """The cat program echoes its input back."""
+        r"""The cat program echoes its input back."""
         assert run_program(CAT, "hi") == "hi"
 
     def test_truth_machine_zero(self) -> None:
-        """A 0 input prints 0 and halts.
-
-        The 1 branch loops forever by definition, so only the terminating
-        branch is exercised.
-        """
+        r"""A 0 input prints 0 and halts."""
         assert run_program(TRUTH_MACHINE, "0") == "0"
 
 
 class TestLiterals:
     def test_integer_literals_are_base23_parsed(self) -> None:
-        """Base-14-written literals are parsed in base 23."""
+        r"""Base-14-written literals are parsed in base 23."""
         assert run_program("term=10") == "23"  # 1*23 + 0.
         assert run_program("term=1D") == "36"  # 1*23 + 13.
         assert run_program("term=22") == "48"  # 2*23 + 2, the ASCII '0'.
         assert run_program("term=48") == "100"  # 4*23 + 8.
 
     def test_single_letter_literals(self) -> None:
-        """A bare letter that is no variable is a base-23 literal digit."""
+        r"""A bare letter that is no variable is a base-23 literal digit."""
         assert run_program("term=A") == "10"
         assert run_program("term=D") == "13"
 
     def test_integers_with_no_digits(self) -> None:
-        """A name that later becomes a variable is read as a literal first."""
+        r"""A name that later becomes a variable is read as a literal first."""
         program = "\n".join(["x=A", "A=7", "y=A", "term=y"])
         assert run_program(program) == "7"
 
@@ -115,11 +111,11 @@ class TestLiterals:
 
 class TestMath:
     def test_byte_math_stays_a_byte(self) -> None:
-        """Two byte operands keep the byte type, so the result is a character."""
+        r"""Two byte operands keep the byte type, so the result is a character."""
         assert run_program("term=%-['a']'A'%") == " "
 
     def test_mixed_math_is_an_integer(self) -> None:
-        """A byte with an integer operand widens to an integer result."""
+        r"""A byte with an integer operand widens to an integer result."""
         assert run_program("term=%+['A']1%") == "66"
 
     def test_addition_and_subtraction(self) -> None:
@@ -132,13 +128,7 @@ class TestMath:
         assert run_program("term=%/[6]4%") == "1"
 
     def test_division_signs_over_all_four_combinations(self) -> None:
-        """The sign is negative iff exactly one operand is.
-
-        The case above divides a negative by a positive; a negative
-        *divisor* was never tried, and neither half of the comparison
-        was pinned against zero.  Math cannot nest, so the negatives are
-        built into variables first.
-        """
+        r"""The sign is negative iff exactly one operand is."""
         setup = "a=%-[0]7%\nb=%-[0]2%\n"
         assert run_program(setup + "term=%/[7]2%") == "3"
         assert run_program(setup + "term=%/[a]2%") == "-3"
@@ -146,7 +136,7 @@ class TestMath:
         assert run_program(setup + "term=%/[a]b%") == "3"
 
     def test_a_zero_numerator_divides_to_zero(self) -> None:
-        """Zero is neither negative nor positive: the sign never applies."""
+        r"""Zero is neither negative nor positive: the sign never applies."""
         assert run_program("term=%/[0]2%") == "0"
         assert run_program("b=%-[0]2%\nterm=%/[0]b%") == "0"
 
@@ -155,20 +145,20 @@ class TestMath:
             run_program("term=%/[3]0%")
 
     def test_math_uses_tape_cells(self) -> None:
-        """A tape operand in math reads the value under its head."""
+        r"""A tape operand in math reads the value under its head."""
         assert run_program("term=%-[read]22%", stdin="1\n") == "1"  # 49 - 48.
 
 
 class TestVariables:
     def test_implicit_declaration(self) -> None:
-        """Assigning an undeclared name declares it with the value's type."""
+        r"""Assigning an undeclared name declares it with the value's type."""
         assert run_program("x=5\nterm=x") == "5"
 
     def test_tilde_declaration(self) -> None:
         assert run_program("x~5\nterm=x") == "5"
 
     def test_byte_wraps(self) -> None:
-        """A byte variable wraps modulo 256 on assignment."""
+        r"""A byte variable wraps modulo 256 on assignment."""
         program = "\n".join(
             [
                 "x='" + chr(255) + "'",
@@ -179,7 +169,7 @@ class TestVariables:
         assert run_program(program) == "\x00"  # 255 + 1 wraps to 0.
 
     def test_type_mismatch_prints_a_digit(self) -> None:
-        """A mismatched assignment leaves the variable and prints '0' to term."""
+        r"""A mismatched assignment leaves the variable and prints '0' to term."""
         program = "\n".join(["x=0", "term=x", "x='A'", "term=x"])
         assert run_program(program) == "0"
 
@@ -188,13 +178,7 @@ class TestVariables:
             run_program("term=zzz")
 
     def test_a_non_value_token_halts(self) -> None:
-        """Only the value tokens stand where a value is expected.
-
-        ``_Value`` is the subset of ``_Token`` a declaration or argument
-        accepts, and the parsers check for it before evaluating -- so this
-        guard answers for a token that lexed fine but is not one, which is
-        reached by handing the evaluator one directly.
-        """
+        r"""Only the value tokens stand where a value is expected."""
         from esolangs.interpreters.other.suptiftam import _eval_value, _State
 
         state = _State(ScriptedIO(""))
@@ -210,14 +194,7 @@ class TestCalls:
         assert run_program(program.replace("f:A:()", "():x:f")) == "10"
 
     def test_header_tokens_in_any_order(self) -> None:
-        """The three header tokens permute like a call's four do.
-
-        The argument is whichever ident sits next to the colon on the
-        side away from ``fd``, so ``:x fd f`` puts the colon *first* --
-        with no token before it at all.  Every header elsewhere has one,
-        which left the guard reading that token, and the "no colon at
-        all" test above it, working on positions they never see.
-        """
+        r"""The three header tokens permute like a call's four do."""
         body = "\nterm=x\nfi\nx=A\nf(:A:)"
         assert run_program("fd f :x" + body) == "10"
         assert run_program("fd f x:" + body) == "10"
@@ -252,7 +229,7 @@ class TestCalls:
         assert run_program(program) == "55"  # 10 + .
 
     def test_deep_recursion_no_longer_capped(self) -> None:
-        """A correct, terminating recursion past the old 250-level cap completes."""
+        r"""A correct, terminating recursion past the old 250-level cap."""
         program = "\n".join(
             [
                 "total=0",
@@ -401,24 +378,17 @@ class TestRobustness:
 
     @pytest.mark.parametrize(("code", "message"), REJECTIONS)
     def test_each_rejection_says_its_own_thing(self, code: str, message: str) -> None:
-        """Every malformed program is paired with the message it raises."""
+        r"""Every malformed program is paired with the message it raises."""
         with raises_message(ValueError, message):
             run_program(code)
 
     def test_local_assignment_uses_the_frame_scope(self) -> None:
-        """A new name inside a function is local, not global."""
+        r"""A new name inside a function is local, not global."""
         program = "\n".join(["fd f :x", "y=1", "term=y", "fi", "f(:1:)"])
         assert run_program(program) == "1"
 
     def test_a_parameter_does_not_survive_its_call(self) -> None:
-        """The frame's names are gone once the call returns.
-
-        Output cannot show this: the function prints the same byte whether
-        its parameter was bound in the frame or in the globals, so a
-        binding written to the wrong scope leaves no trace in what the
-        program says.  Reading the global scope afterwards does show it --
-        only the two tapes the language starts with should be there.
-        """
+        r"""The frame's names are gone once the call returns."""
         from esolangs.interpreters.other.suptiftam import _Machine
 
         program = "\n".join(["fd f :x", "x=%+[x]1%", "term=x", "fi", "f(:1:)"])
@@ -435,14 +405,7 @@ class TestRobustness:
                 run_program(code)
 
     def test_an_if_without_its_paren_is_refused(self) -> None:
-        """``_scan_if`` checks for the ``(`` it was told would be there.
-
-        The statement dispatcher only calls it after matching ``if(``, so a
-        whole program cannot reach this -- it is refused as a malformed
-        statement first.  The check is the parser's own precondition, and
-        testing it directly is what keeps the two spellings of "malformed
-        if" agreeing about what counts as one.
-        """
+        r"""``_scan_if`` checks for the ``(`` it was told would be there."""
         from esolangs.interpreters.other.suptiftam import _scan_if
 
         for line in ("if", "if x", "ifx"):
@@ -462,7 +425,7 @@ class TestMachine:
         assert machine.state.io.getvalue() == "H"
 
     def test_a_program_that_never_writes_the_term_prints_nothing(self) -> None:
-        """An unwritten term has no cells, so the end-of-run render is empty."""
+        r"""An unwritten term has no cells, so the end-of-run render is empty."""
         io = ScriptedIO()
         run("var~1", io)
         assert io.getvalue() == ""
@@ -476,7 +439,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(SnapshotContract):
-    """The shared shapes, with this language's own programs."""
+    r"""The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program = "term='H'\nright(:term:)"

@@ -1,51 +1,4 @@
-"""Interpreter for Unsquare.
-
-A stack-based language with an accumulator.  ``O``/``I`` push 0/1, ``A``
-pops the stack into the accumulator, ``S`` swaps the top two, ``+``/``-``/
-``x`` add 2/subtract 2/double the accumulator, ``P`` pushes it, ``o`` prints
-the top of the stack (without popping) as a character -- or as a decimal
-value when it is not a valid code point -- and ``i`` reads a line of input,
-re-prompting on blank lines, and pushes its first character.  ``>``/``<``
-are a loop bracket pair: ``>`` skips forward to the matching ``<`` when the
-accumulator is 0 or 1, otherwise it records its position and ``<`` jumps
-back to it.
-
-Semantics:
-- an empty-stack pop, a swap with fewer than two elements, an ``o`` on an
-  empty stack, an unmatched ``<``, or a ``>`` with no matching ``<`` raise
-  :class:`HaltError` (the cross-check exits with status 3);
-- ``i`` raises :class:`EOFError` when input runs out, where the cross-check
-  exits with status 3;
-- ``i`` re-prompts on blank input lines.
-
-The interpreter runs on a :class:`_Machine` (the stack, jump-return stack,
-accumulator, and code cursor), so it is step-capable: ``step()`` executes
-one command and ``halted`` is true once the cursor reaches the end of the
-program.  A ``>``/``<`` loop whose body leaves the accumulator, stack, and
-jump stack exactly as they were (e.g. ``><`` with the accumulator outside
-``{0, 1}``) is a genuine state cycle a repeated :meth:`_Machine.snapshot`
-proves; a loop that keeps pushing to the stack is unbounded growth and
-needs the wall-clock backstop instead.
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and the code to the next state, and never
-mutates what it is given.  It takes no ``io`` argument at all, so it is
-total and side-effect free by construction rather than by inspection.  Both
-stacks are tuples, so a state is a value that can be stored, compared, and
-hashed as it stands.
-
-Keeping the transition total takes two pieces here, because Unsquare has
-five ways to fail.  :func:`_needs` says how many stack elements a command
-requires, so the shell can reject an underflow before calling the
-transition; and :func:`_forward` returns ``None`` for a ``>`` with no
-matching ``<``, so the shell turns that into the error rather than the
-transition raising mid-scan.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so the mutation lives in
-exactly one assignment and every rule about what Unsquare *does* stays in
-the pure layer.
-"""
+r"""Interpreter for Unsquare."""
 
 from __future__ import annotations
 
@@ -80,17 +33,12 @@ type _State = tuple[int, int, tuple[int, ...], tuple[int, ...]]
 
 
 def _needs(char: str) -> int:
-    """Return how many stack elements ``char`` requires to run."""
+    r"""Return how many stack elements ``char`` requires to run."""
     return _NEEDS.get(char, 0)
 
 
 def _forward(code: str, ind: int) -> int | None:
-    """Return the position of the ``<`` matching the ``>`` at ``ind``.
-
-    ``None`` when the bracket is unmatched, which the caller turns into a
-    :class:`HaltError` -- returning it rather than raising is what keeps
-    the transition below free of error cases.
-    """
+    r"""Return the position of the ``<`` matching the ``>`` at ``ind``."""
     depth = 1
     while depth:
         ind += 1
@@ -109,21 +57,7 @@ def _advance(
     byte: int | None = None,
     target: int | None = None,
 ) -> _State:
-    """Return the state after executing the command at the cursor.
-
-    Pure, and total: the shell has already rejected the stack underflows,
-    read any input character, and resolved any forward jump, so every
-    command it can be handed has a defined successor state.  It takes no
-    ``io`` argument, so ``o`` and ``i`` are the caller's business -- ``o``
-    changes no state at all, and ``i``'s character arrives as ``byte``.
-
-    ``>`` records ``ind - 1`` rather than ``ind``, so the shared increment
-    below leaves the jump stack holding one *before* the bracket; ``<``
-    then pops that and the increment lands back on the ``>`` to re-test it.
-
-    Anything that is not a command is a comment and falls through to the
-    shared increment.
-    """
+    r"""Return the state after executing the command at the cursor."""
     ind, acc, stack, jumps = state
     char = code[ind]
     if char == "O":
@@ -157,15 +91,10 @@ def _advance(
 
 
 class _Machine:
-    """Per-run Unsquare state: the stack, jump stack, accumulator, cursor.
-
-    ``step()`` executes one command; ``halted`` is true once the cursor
-    reaches the end of the program.  The state-cycle hang detector and the
-    VM expose this object.
-    """
+    r"""Per-run Unsquare state: the stack, jump stack, accumulator, cursor."""
 
     def __init__(self, code: str, io: IO) -> None:
-        """Start with empty stacks, a zero accumulator, at the first token."""
+        r"""Start with empty stacks, a zero accumulator, at the first token."""
         self.io = io
         self.code = code
         # ``halted`` is read twice per.
@@ -186,7 +115,7 @@ class _Machine:
 
     @property
     def stack(self) -> tuple[int, ...]:
-        """The data stack, bottom first."""
+        r"""The data stack, bottom first."""
         return self.state[2]
 
     @property
@@ -194,18 +123,13 @@ class _Machine:
         return self.state[3]
 
     def load(self, stack: tuple[int, ...]) -> None:
-        """Put ``stack`` under the machine without running anything.
-
-        Callers seed a stack to watch what a short op-string does to it --
-        the swap-and-sink orderings the boolean generator relies on are
-        only distinguishable from a stack that already has depth.
-        """
+        r"""Put ``stack`` under the machine without running anything."""
         ind, acc, _stack, jumps = self.state
         self.state = (ind, acc, tuple(stack), jumps)
 
     @property
     def halted(self) -> bool:
-        """Whether the cursor has reached the end of the program."""
+        r"""Whether the cursor has reached the end of the program."""
         return self.state[0] >= self.size
 
     # The VM's language-shaped.
@@ -213,32 +137,23 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        """The code cursor."""
+        r"""The code cursor."""
         return self.state[0]
 
     @property
     def memory(self) -> list[int]:
-        """The accumulator, the only cell this language addresses."""
+        r"""The accumulator, the only cell this language addresses."""
         return [self.state[1]]
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        r"""Return the complete internal state, hashable for cycle detection."""
         # Both stacks are already.
         # the order this returned.
         ind, acc, stack, jumps = self.state
         return (ind, acc, stack, jumps, self.io.position())
 
     def step(self) -> None:
-        """Execute one command, advancing the cursor.
-
-        The two I/O effects and all five error cases live here rather than
-        in the transition: this is the shell, so it is where an effect or a
-        raise belongs, and it leaves :func:`_advance` total.
-
-        The unmatched ``>`` leaves the cursor at the end of the code, which
-        is where the original's scan had walked it before noticing.  A
-        caller that catches the error still sees a halted machine.
-        """
+        r"""Execute one command, advancing the cursor."""
         if self.halted:
             return
         ind, acc, stack, jumps = self.state
@@ -272,7 +187,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    """Run an Unsquare program."""
+    r"""Run an Unsquare program."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

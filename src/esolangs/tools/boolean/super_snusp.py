@@ -1,10 +1,4 @@
-"""Boolean-function generator for Super SNUSP.
-
-The generator reads ASCII ``0``/``1`` values, normalizes them to bits, then
-evaluates the truth table's algebraic normal form (ANF).  ANF is an XOR of
-input products, which maps directly to Super SNUSP's ``^`` and ``&`` stack
-operations and avoids the language's random ``=`` opcode entirely.
-"""
+r"""Boolean-function generator for Super SNUSP."""
 
 from esolangs.tools.boolean.helpers import (
     _validate_truth_table,
@@ -28,7 +22,7 @@ _TWO_INPUT_SHORT = {
 
 
 def _anf_coefficients(truth_table: str) -> list[int]:
-    """Return ANF coefficients indexed by the ordinary truth-table rows."""
+    r"""Return ANF coefficients indexed by the ordinary truth-table rows."""
     coefficients = [int(bit) for bit in truth_table]
     n = len(truth_table).bit_length() - 1
     for bit in range(n):
@@ -39,14 +33,14 @@ def _anf_coefficients(truth_table: str) -> list[int]:
 
 
 def _move(start: int, end: int) -> str:
-    """Move the data pointer from ``start`` to ``end`` on the tape."""
+    r"""Move the data pointer from ``start`` to ``end`` on the tape."""
     return (">" if end > start else "<") * abs(end - start)
 
 
 def _emit_anf(
     n: int, truth_table: str, used: list[int], *, coefficients: list[int] | None = None
 ) -> str:
-    """Emit an ANF evaluator over ``used`` stream inputs."""
+    r"""Emit an ANF evaluator over ``used`` stream inputs."""
     program = ['"', "48{"]
     for input_index in range(n):
         program.extend([",", "-"])
@@ -96,7 +90,7 @@ def _anf_cost(
     *,
     coefficients: list[int] | None = None,
 ) -> int:
-    """Return the rendered length of :func:`_emit_anf` without emitting it."""
+    r"""Return the rendered length of :func:`_emit_anf` without emitting it."""
     cost = 4 + 2 * n + len(used) + 7
     if not used or used[-1] != n - 1:
         cost += 1
@@ -117,15 +111,7 @@ def _anf_cost(
 
 
 def _super_snusp_flat(truth_table: str) -> str:
-    """Emit the straight-line program; see :func:`super_snusp`.
-
-    Only essential inputs are retained, compactly, while every original input
-    is still consumed in stream order.  The ANF is built over that projection:
-    for every nonzero coefficient the construction forms its input product
-    beside the accumulator and xors it in.  Both reads happen before any
-    evaluation, so every path consumes exactly ``n`` input lines, including
-    constant and reduced functions.
-    """
+    r"""Emit the straight-line program; see :func:`super_snusp`."""
     n = _validate_truth_table(truth_table)
     if n == 2 and truth_table in _TWO_INPUT_SHORT:
         # An explicit START marker.
@@ -148,13 +134,7 @@ def _super_snusp_flat(truth_table: str) -> str:
 
 
 def _super_snusp_tokens(program: str) -> list[str]:
-    """Split ``program`` into the pieces a fold may not break apart.
-
-    Every command is one cell except a run of digits: a digit multiplies
-    what the cell already holds by ten, and *any* non-digit clears that, so
-    the mirrors of a fold between ``4`` and ``8`` would leave 4 and 8
-    instead of 48.
-    """
+    r"""Split ``program`` into the pieces a fold may not break apart."""
     tokens: list[str] = []
     index = 0
     while index < len(program):
@@ -171,27 +151,7 @@ def _super_snusp_tokens(program: str) -> list[str]:
 
 
 def _super_snusp_folded(program: str, width: int) -> str:
-    r"""Fold ``program`` into a boustrophedon inside ``width`` columns.
-
-    SNUSP's mirrors are what make this the cheapest fold of any generator
-    here: ``\\`` sends an eastward pointer down and a downward one west, so
-    two stacked turn a row round in **one row and one column**.
-    ``/`` does the mirror image, sending a westward pointer down and a
-    downward one east, and brings it back.
-
-    A westward row is written in the order the pointer meets its cells,
-    which is right to left on the page.  Nothing is reversed; the row is.
-
-    The mirrors sit at the far edges and the gap before them is left blank,
-    since a blank is a cell the pointer walks over -- so unlike Alight,
-    which has to pad with empty commands, this pads with nothing at all.
-    Folding where the commands run out instead would leave the next row
-    starting wherever that was, with less than a full row to work with.
-
-    The floor is two columns wider than the longest token, and every token
-    here is one cell but the ``48`` the decode leans on.  A width under the
-    floor is raised to it.
-    """
+    r"""Fold ``program`` into a boustrophedon inside ``width`` columns."""
     tokens = _super_snusp_tokens(program)
     limit = max(width, max(len(token) for token in tokens) + 2)
     cells: dict[tuple[int, int], str] = {}
@@ -232,20 +192,7 @@ def _super_snusp_folded(program: str, width: int) -> str:
 
 
 def super_snusp(truth_table: str, width: int | None = None) -> str:
-    """Build a deterministic Super SNUSP program for ``truth_table``.
-
-    Only essential inputs are retained, compactly, while every original input
-    is still consumed in stream order.  The ANF is built over that projection:
-    for every nonzero coefficient the construction forms its input product
-    beside the accumulator and xors it in.  Both reads happen before any
-    evaluation, so every path consumes exactly ``n`` input lines, including
-    constant and reduced functions.
-
-    ``width`` asks for a column count, and the straight line folds into a
-    boustrophedon to meet one -- see :func:`_super_snusp_folded`, where the
-    mirrors turn a row round in one row and one column.  A width under the
-    floor returns the narrowest program rather than refusing.
-    """
+    r"""Build a deterministic Super SNUSP program for ``truth_table``."""
     flat = _super_snusp_flat(truth_table)
     if width is None or len(flat) <= width:
         return flat

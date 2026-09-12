@@ -1,58 +1,4 @@
-"""Interpreter for function x(y).
-
-A recursive expression language: a program is a list of ``function`` blocks,
-each an indented sequence of one-per-line statements over integers and
-strings.  Execution starts at the *first* function, called with no arguments,
-so every parameter it declares must carry a ``|`` default.  A function
-returns with ``-> expr`` and otherwise falls off its end returning 0.
-``[a]`` prints with a newline and ``` `a ``` without one; ``[~]`` reads a
-line and ``` `~ ``` a single character.  ``{a}`` re-calls the *current*
-function, which is the language's namesake recursion.
-
-Ternary ``cond<a, b>`` is spelled without spaces around ``<``/``>`` while
-comparison ``a < b`` requires them, and that spacing is the only thing
-separating the two -- so it is load-bearing here rather than cosmetic.
-
-The interpreter runs on a :class:`_Machine` holding an explicit stack of
-evaluation frames, so it is step-capable: ``step()`` performs one evaluation
-step, ``halted`` is true once no frame remains, and ``snapshot`` hashes the
-frame stack (tuples throughout) for the cycle detector.  **Recursion depth
-therefore has no ceiling** -- the choice is deliberate, since native Python
-recursion would cap the nesting a generated program may use and turn a
-runaway program into a ``RecursionError`` mid-expression.  A program that
-recurses forever through ever-new states (``fib`` below, by design) is not a
-repeat and so is not caught by the cycle detector; ``esolangs.run``'s
-wall-clock ``timeout`` is the backstop, exactly as in ``grapheme.py``.
-
-Evaluation is a pure transition over an immutable state -- the frame stack --
-paired with *collected effects*: :func:`_advance` returns the next frames and
-what it wants printed, and :meth:`_Machine.step` applies them, so the
-mutation lives in one assignment.  ``_Machine.frames`` is the language's
-recursion and ``_Machine.stack`` the finished operands the transition
-combines; the latter is returned rather than threaded field-by-field because
-it grows without bound, the reason ``grapheme.py`` gives for the same shape.
-
-Decisions for gaps in the wiki spec (documented):
-
-- the wiki lists only ``/`` (already integer division) but its FizzBuzz
-  writes ``n // 3``, so **both** spell integer division here; the example is
-  ground truth and neither reading contradicts the other;
-- a comparison yields 1 or 0, and a ternary condition is true for a nonzero
-  integer or a nonempty string; the wiki defines neither;
-- ``+`` concatenates when either side is a string (FizzBuzz needs
-  ``fizz(n) + buzz(n)`` and ``== ""``); ``-``, ``*`` and ``/`` on a string
-  are an invalid operation (:class:`~esolangs.exceptions.HaltError`);
-- ternary arms are evaluated **lazily**, exactly one of them: FizzBuzz's
-  arms print and recurse, so evaluating both would double its output;
-- a statement used as a value (FizzBuzz's ``<[n], ...>`` arm) evaluates for
-  its effect and yields 0; nothing observable depends on the number;
-- ``[~]`` and ``` `~ ``` raise :class:`EOFError` when input is exhausted;
-- an unparsable program -- unbalanced brackets, a bad statement, no function
-  at all, an entry function whose parameters lack defaults -- is malformed
-  (:class:`ValueError`); an unknown function, a wrong argument count, ``{}``
-  outside a function, an undefined variable and division by zero are invalid
-  operations (:class:`~esolangs.exceptions.HaltError`).
-"""
+r"""Interpreter for function x(y)."""
 
 from __future__ import annotations
 
@@ -105,7 +51,7 @@ _MAX_NESTING: Final = 50
 
 
 class _Function:
-    """One parsed ``function`` block: its parameters and its statements."""
+    r"""One parsed ``function`` block: its parameters and its statements."""
 
     def __init__(
         self, name: str, params: list[tuple[str, _Expr | None]], body: list[_Expr]
@@ -116,7 +62,7 @@ class _Function:
 
 
 def _strip_comments(line: str) -> str:
-    """Drop a ``#`` comment, ignoring a ``#`` inside a string literal."""
+    r"""Drop a ``#`` comment, ignoring a ``#`` inside a string literal."""
     out = []
     quoted = False
     for char in line:
@@ -129,11 +75,7 @@ def _strip_comments(line: str) -> str:
 
 
 def _split_top(text: str, sep: str) -> list[str]:
-    """Split on ``sep`` at bracket depth 0, outside string literals.
-
-    Ternary arms hold calls with their own commas (``fib(num, num + acc)``),
-    so a naive split would cut one of those in half.
-    """
+    r"""Split on ``sep`` at bracket depth 0, outside string literals."""
     parts = []
     depth = 0
     quoted = False
@@ -155,17 +97,7 @@ def _split_top(text: str, sep: str) -> list[str]:
 
 
 class _Parser:
-    """Recursive-descent parser for one expression string.
-
-    Parsing is recursive over the *source*, which is bounded by the program
-    text; only *evaluation* needs the explicit stack, since only evaluation
-    recurses as deeply as a running program chooses.
-
-    Source nesting is capped at :data:`_MAX_NESTING` all the same, because
-    the fuzz suite feeds random text: 300 nested parentheses overflowed
-    Python's own stack, and a ``RecursionError`` escaping the parser is a
-    crash rather than the ``ValueError`` a malformed program owes.
-    """
+    r"""Recursive-descent parser for one expression string."""
 
     def __init__(self, text: str, depth: int = 0) -> None:
         self.text = text
@@ -182,7 +114,7 @@ class _Parser:
             self.pos += 1
 
     def parse(self) -> _Expr:
-        """Parse the whole string, rejecting anything left over."""
+        r"""Parse the whole string, rejecting anything left over."""
         node = self.expr()
         self._skip()
         if self.pos != len(self.text):
@@ -190,7 +122,7 @@ class _Parser:
         return node
 
     def expr(self, level: int = 0) -> _Expr:
-        """Parse a binary-operator expression at ``level`` precedence."""
+        r"""Parse a binary-operator expression at ``level`` precedence."""
         if level > 2:
             return self.ternary()
         node = self.expr(level + 1)
@@ -205,11 +137,7 @@ class _Parser:
             node = ("bin", op, node, right)
 
     def _binary_op(self) -> str | None:
-        """Read a spaced binary operator, or rewind and return None.
-
-        The wiki requires spaces around every binary operator, which is what
-        keeps ``a < b`` a comparison and ``)<(`` a ternary.
-        """
+        r"""Read a spaced binary operator, or rewind and return None."""
         if self.pos == 0 or self.text[self.pos - 1] != " ":
             return None
         for op in _BINARY:
@@ -220,7 +148,7 @@ class _Parser:
         return None
 
     def ternary(self) -> _Expr:
-        """Parse ``cond<a, b>``: an atom optionally followed by arms."""
+        r"""Parse ``cond<a, b>``: an atom optionally followed by arms."""
         node = self.atom()
         while self.pos < len(self.text) and self.text[self.pos] == "<":
             depth = 0
@@ -246,7 +174,7 @@ class _Parser:
         return node
 
     def atom(self) -> _Expr:
-        """Parse a literal, a print/input form, a call, or a variable."""
+        r"""Parse a literal, a print/input form, a call, or a variable."""
         self._skip()
         if self.pos >= len(self.text):
             raise self._error("expression expected")
@@ -298,7 +226,7 @@ class _Parser:
         return ("var", name)
 
     def _number(self) -> _Expr:
-        """Parse an integer literal, which may be glued to a ``-`` sign."""
+        r"""Parse an integer literal, which may be glued to a ``-`` sign."""
         start = self.pos
         if self.text[self.pos] == "-":
             self.pos += 1
@@ -310,7 +238,7 @@ class _Parser:
         return ("lit", int(self.text[start : self.pos]))
 
     def _balanced(self, open_c: str, close_c: str) -> str:
-        """Consume a balanced ``open_c``/``close_c`` group, returning inside."""
+        r"""Consume a balanced ``open_c``/``close_c`` group, returning inside."""
         depth = 0
         for i in range(self.pos, len(self.text)):
             if self.text[i] == open_c:
@@ -325,7 +253,7 @@ class _Parser:
 
 
 def _parse_statement(line: str) -> _Expr:
-    """Parse one statement line into an expression node."""
+    r"""Parse one statement line into an expression node."""
     if line.startswith("->"):
         return ("return", _Parser(line[2:].strip()).parse())
     if line.startswith("var "):
@@ -346,7 +274,7 @@ def _parse_statement(line: str) -> _Expr:
 
 
 def _parse(code: str) -> list[_Function]:
-    """Parse a program into its functions, rejecting a malformed one."""
+    r"""Parse a program into its functions, rejecting a malformed one."""
     functions: list[_Function] = []
     for raw in code.splitlines():
         line = _strip_comments(raw).strip()
@@ -376,13 +304,7 @@ def _parse(code: str) -> list[_Function]:
 
 
 def _sub(node: _Expr, i: int) -> _Expr:
-    """Return child ``i`` of a node.
-
-    ``_Expr`` is a bare tuple of ``object`` -- a node holds children, names
-    and flags in one shape -- so the element type is recovered here rather
-    than by an ``assert`` at each of the dozen uses.  The parser is what
-    guarantees the shape; this only tells the checker about it.
-    """
+    r"""Return child ``i`` of a node."""
     child = node[i]
     if not isinstance(child, tuple):
         raise AssertionError("isinstance(child, tuple)")
@@ -390,7 +312,7 @@ def _sub(node: _Expr, i: int) -> _Expr:
 
 
 def _text(node: _Expr, i: int) -> str:
-    """Return child ``i`` of a node as the name or operator it is."""
+    r"""Return child ``i`` of a node as the name or operator it is."""
     value = node[i]
     if not isinstance(value, str):
         raise AssertionError("isinstance(value, str)")
@@ -398,12 +320,12 @@ def _text(node: _Expr, i: int) -> str:
 
 
 def _truthy(value: _Value) -> bool:
-    """Report truth: a nonzero integer, or a nonempty string."""
+    r"""Report truth: a nonzero integer, or a nonempty string."""
     return value != 0 if isinstance(value, int) else value != ""
 
 
 def _binary(op: str, left: _Value, right: _Value) -> _Value:
-    """Apply a binary operator, raising ``HaltError`` for an invalid one."""
+    r"""Apply a binary operator, raising ``HaltError`` for an invalid one."""
     if op == "==":
         return int(left == right)
     if op == "!=":
@@ -448,13 +370,7 @@ type _State = tuple[tuple[_Frame, ...], tuple[_Value, ...]]
 
 
 class _Machine:
-    """The run state: the functions, the frame stack, and the value stack.
-
-    ``step`` performs one evaluation step -- pushing an expression's
-    operands or combining finished values -- so a program advances a
-    command at a time and never uses Python's own call stack for the
-    language's recursion.
-    """
+    r"""The run state: the functions, the frame stack, and the value stack."""
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
@@ -478,7 +394,7 @@ class _Machine:
         return not self.frames
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the complete internal state, hashable for cycle detection."""
+        r"""Return the complete internal state, hashable for cycle detection."""
         # The frame stack is tuples.
         # cursor rides along because a.
         # is not a real cycle.
@@ -492,28 +408,18 @@ class _Machine:
 
     @property
     def ip(self) -> tuple[int, ...]:
-        """Each active frame's ``(function, statement)``, root-to-leaf.
-
-        A recursion's depth is part of its position here the way it is in
-        ``grapheme.py``: a breakpoint on one statement of ``factorial``
-        matches only at the depth it names, not at every depth at once.
-        """
+        r"""Each active frame's ``(function, statement)``, root-to-leaf."""
         return tuple(
             value for func_i, stmt_i, _, _ in self.frames for value in (func_i, stmt_i)
         )
 
     @property
     def memory(self) -> list[int]:
-        """No addressable cells; the store is the frames' variables."""
+        r"""No addressable cells; the store is the frames' variables."""
         return []
 
     def step(self) -> None:
-        """Perform one evaluation step, applying whatever it asks for.
-
-        The shell: the two ports live here and nowhere else.  A read is
-        taken when the transition asks for one and handed back as a value,
-        and a write is performed on what it returns.
-        """
+        r"""Perform one evaluation step, applying whatever it asks for."""
         want = _wants_read(self.frames)
         byte: _Value | None = None
         if want == "line":
@@ -532,7 +438,7 @@ class _Machine:
 
 
 def _const(node: _Expr) -> _Value:
-    """Evaluate a parameter default, which the wiki only ever writes literal."""
+    r"""Evaluate a parameter default, which the wiki only ever writes."""
     if node[0] == "lit":
         value = node[1]
         if not isinstance(value, int | str):
@@ -542,11 +448,7 @@ def _const(node: _Expr) -> _Value:
 
 
 def _wants_read(stack: tuple[_Frame, ...]) -> str | None:
-    """Report whether the next step reads input, and which way.
-
-    Decided from the pending step the way the template decides from the
-    command about to run, so :func:`_advance` never reaches ``IO``.
-    """
+    r"""Report whether the next step reads input, and which way."""
     if not stack:
         return None
     todo = stack[-1][3]
@@ -567,13 +469,7 @@ def _advance(
     by_name: dict[str, int],
     byte: _Value | None = None,
 ) -> tuple[tuple[_Frame, ...], list[_Value], str | None]:
-    """Return the state after one evaluation step, and anything to print.
-
-    Pure with respect to the ports: a read arrives as ``byte`` and a write
-    leaves as the returned string.  The value stack is returned rather than
-    threaded field-by-field for the reason ``grapheme.py`` gives -- it grows
-    without bound, so rebuilding it per step would be quadratic.
-    """
+    r"""Return the state after one evaluation step, and anything to print."""
     if not stack:
         # Stepping a halted machine is.
         # contract steps past the halt.
@@ -625,10 +521,7 @@ def _advance(
         return (*stack[:-1], frame), [*values[:-2], combined], None
 
     def scheduling(*steps: _Expr) -> tuple[_Frame, ...]:
-        """Replace the current frame with one whose ``todo`` is ``steps``.
-
-        ``todo`` is popped from its end, so a step written last runs first.
-        """
+        r"""Replace the current frame with one whose ``todo`` is ``steps``."""
         return (*stack[:-1], (func_i, stmt_i, variables, (*rest, *steps)))
 
     if kind == "print":
@@ -705,11 +598,7 @@ def _push_operands(
     node: _Expr,
     after: _Expr,
 ) -> tuple[tuple[_Frame, ...], list[_Value], str | None]:
-    """Schedule ``node``'s operands, then the step that combines them.
-
-    ``todo`` is popped from its end, so the operands go on last-first and
-    are evaluated left to right.
-    """
+    r"""Schedule ``node``'s operands, then the step that combines them."""
     func_i, stmt_i, variables, rest = frame
     operands = tuple(_sub(node, i) for i in range(2, len(node)))
     return (
@@ -722,14 +611,14 @@ def _push_operands(
 def _return(
     stack: tuple[_Frame, ...], values: list[_Value], value: _Value
 ) -> tuple[tuple[_Frame, ...], list[_Value], str | None]:
-    """Pop the current frame, leaving its value for the caller."""
+    r"""Pop the current frame, leaving its value for the caller."""
     outer = stack[:-1]
     # The entry frame's value is.
     return outer, ([*values, value] if outer else values), None
 
 
 def run(code: str, io: IO) -> None:
-    """Run a function x(y) program to completion."""
+    r"""Run a function x(y) program to completion."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

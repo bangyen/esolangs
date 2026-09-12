@@ -1,32 +1,4 @@
-"""Assert that no interpreter leaks a raw Python exception to its caller.
-
-``esolangs/exceptions.py`` states the contract: an interpreter halts with
-:class:`HaltError` "instead of leaking an incidental Python error", and a
-structurally malformed program is rejected with :class:`ValueError`.
-Exhausted input raises :class:`EOFError` (the repo-wide convention), and
-Container halts by exiting, so :class:`SystemExit` is its documented end.
-Anything else reaching the caller -- IndexError, TypeError, OverflowError,
-KeyError -- is a bug in the interpreter, not in the program it was given.
-
-The corpus is deliberately hostile but *derived from real programs*: the
-generic fragments below, plus every shipped example for the language, plus
-mutations of those examples (truncated, a character dropped, one doubled,
-one inserted).  Truncation finds the interesting cases -- a half-written
-program reaches states no hand-written test thinks to build.
-
-By default only the languages this branch actually touched are swept,
-which makes it cheap enough to run habitually: a change to one
-interpreter is checked in seconds, and a change to shared machinery
-(``io.py``, ``vm.py``, ``exceptions.py``) still sweeps everything, since
-that is exactly where a one-line bug reaches all 59 languages at once --
-as the ``input_char`` bug this script was written to catch did.
-
-Run::
-
-    python scripts/verify_no_exception_leaks.py            # touched languages
-    python scripts/verify_no_exception_leaks.py --all      # every language
-    python scripts/verify_no_exception_leaks.py --all out.json
-"""
+r"""Assert that no interpreter leaks a raw Python exception to its."""
 
 import concurrent.futures as cf
 import json
@@ -161,7 +133,7 @@ STDINS = ["", "\n", "0\n1\n", "abc"]
 
 
 def mutate(text: str, rng: random.Random, n: int = 12) -> list[str]:
-    """Return small corruptions of a working program."""
+    r"""Return small corruptions of a working program."""
     out: list[str] = []
     if not text:
         return out
@@ -189,7 +161,7 @@ from _scope import changed_files as _changed_files
 def _select(
     langs: list[str], runners: dict[str, tuple[str, bool]]
 ) -> tuple[list[str], str]:
-    """Return the languages worth sweeping, and why that set was chosen."""
+    r"""Return the languages worth sweeping, and why that set was chosen."""
     changed = _changed_files()
     if not changed:
         return langs, "no diff available, sweeping everything"
@@ -204,20 +176,7 @@ def _select(
 
 
 def _drive(lang: str, program: str, stdin: str, cap: int) -> bool:
-    """Run one program, stepping it rather than running it to completion.
-
-    Every registry language is step-capable (``esolangs.vm._VM_ADAPTERS``
-    covers all of them), so the sweep steps the machine and stops at ``cap``
-    instead of waiting out a clock.  A program still going at the cap is not
-    a finding -- looping forever is legal for most of these languages.
-
-    Returns whether it halted, which is what lets :func:`_sweep_one`
-    escalate: halting is monotone in the cap, so a program that finishes
-    here finishes at every larger one and never needs rerunning.  That is
-    :func:`~esolangs.vm.run_until_halt`'s verdict exactly, so the drive is
-    its call and the overrun policy -- a cap is not a finding -- is the
-    ``False`` this hands straight back.
-    """
+    r"""Run one program, stepping it rather than running it to completion."""
     return run_until_halt(make_vm(lang, program, stdin), cap)
 
 
@@ -243,13 +202,7 @@ _JOBS = max(1, int(os.environ.get("LEAKSWEEP_JOBS", 0)) or 2)
 
 
 def _corpus(lang: str, examples: dict[str, list[str]], rng: random.Random) -> list[str]:
-    """Return the programs swept for ``lang``, advancing ``rng`` as it goes.
-
-    One generator feeds every language in order, so the parent and a worker
-    only agree on a corpus if both consume it in the same sequence -- which
-    is why a worker replays the languages before its own rather than seeding
-    afresh.
-    """
+    r"""Return the programs swept for ``lang``, advancing ``rng`` as it."""
     progs = list(GENERIC)
     for src in examples[lang]:
         progs.append(src)
@@ -258,16 +211,7 @@ def _corpus(lang: str, examples: dict[str, list[str]], rng: random.Random) -> li
 
 
 def _sweep_one(lang: str, progs: list[str]) -> tuple[int, list[dict[str, str]]]:
-    """Run every (program, stdin) for one language, collecting leaks.
-
-    Escalating, because halting is monotone in the cap: run everything at a
-    tiny cap first, and only the programs still going are retried at the
-    next.  Almost every program halts in a handful of steps, so the full
-    ``_STEP_CAP`` is paid by the few that need it rather than by all 336.
-
-    The leaks found are the same either way -- an exception raised at step 7
-    is raised at step 7 whatever the cap -- so this is purely a saving.
-    """
+    r"""Run every (program, stdin) for one language, collecting leaks."""
     found: list[dict[str, str]] = []
     pending = [(prog, stdin) for prog in progs for stdin in STDINS]
     n = len(pending)
@@ -298,19 +242,14 @@ def _sweep_one(lang: str, progs: list[str]) -> tuple[int, list[dict[str, str]]]:
 
 
 class _Report(typing.NamedTuple):
-    """What one language's worker reported back."""
+    r"""What one language's worker reported back."""
 
     runs: int
     findings: list[dict[str, str]]
 
 
 def _run_worker(lang: str) -> tuple[float, str, _Report | None]:
-    """Sweep one language in a child process, killing it if it wedges.
-
-    Returns ``(elapsed, status, result)``; ``result`` is ``None`` when the
-    child never reported, which is a failed sweep for that language rather
-    than a clean one -- see the callers' ``timeouts`` list.
-    """
+    r"""Sweep one language in a child process, killing it if it wedges."""
     t0 = time.time()
     try:
         proc = subprocess.run(
@@ -332,13 +271,7 @@ def _run_worker(lang: str) -> tuple[float, str, _Report | None]:
 
 
 def _worker(target: str) -> None:
-    """Sweep one language and print its result as JSON on stdout.
-
-    Runs in a child process so the parent can kill it: an interpreter can
-    spend unbounded time inside a single uninterruptible C call (Factor
-    factors its program with sympy before a step runs), which no step cap
-    or in-process alarm can bound.
-    """
+    r"""Sweep one language and print its result as JSON on stdout."""
     from esolangs.registry import RUNNERS, canonical_id
 
     langs = sorted(RUNNERS)
@@ -362,7 +295,7 @@ def _worker(target: str) -> None:
 
 
 def main() -> None:
-    """Sweep every registered language and report any that leaks."""
+    r"""Sweep every registered language and report any that leaks."""
     from esolangs.registry import RUNNERS, canonical_id
 
     if "--worker" in sys.argv[1:]:

@@ -40,8 +40,8 @@ Eight reach a `while True`, and each carries its own measure.
 
 Forty-nine generators reach only a shape guard: forty-eight the shared one in `_validate_truth_table`, and Circlefuck its own equivalent.
 
-- a **declared cap**, `GeneratorCapError`, at a size or cost policy;
-- an **internal invariant**, `AssertionError`, that the construction claims cannot fail;
+- a **declared cap**, `GeneratorCapError`, at a size or cost policy;.
+- an **internal invariant**, `AssertionError`, that the construction claims cannot fail;.
 - a **construction refusal** — the route ran out of candidates.
 
 One of them is *known* to fire inside `1 <= n <= 10`: WII2D's cost guard on a dense table at `n == 10`, which `_ARITY_CAPPED` pins with the measurement that put it there.
@@ -50,7 +50,7 @@ Several guards say in the source that they are unreachable: 123's construction r
 
 ### Witnesses
 
-Three sweeps in `tests/tools/test_boolean_contract.py`, and they cover different halves of the claim:
+Three sweeps in `tests/tools/test_boolean_contract.py`, and they cover different halves of the claim:.
 
 - `test_every_generator_is_total_on_every_small_table` — *every* table at `n <= 3`, all 276, through all 69.
 - `test_every_generator_builds_up_to_ten_inputs` — two shapes, dense and parity, at every arity to ten.

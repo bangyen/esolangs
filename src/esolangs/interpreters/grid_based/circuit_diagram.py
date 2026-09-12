@@ -1,176 +1,4 @@
-r"""Interpreter for Circuit Diagram.
-
-An ASCII circuit diagram is executed the way the hardware it draws would
-behave: wires drawn with ``-``, ``|``, ``/`` and ``\`` join named logic
-gates, and the whole grid is evaluated as a cellular automaton in which a
-gate drives its output wiring in the *next* generation, once it holds a
-value for every input slot and one of them has just arrived (see the
-judgment calls below, which derive that rule from the page's own flip-flop).
-There is no instruction pointer -- every gate is live at once, which is what
-separates this from every other grid language in the package.
-
-The gates, tabulated by the wiki (https://esolangs.org/wiki/Circuit_Diagram):
-
-=========  ================================================
-``a``      AND -- 1 iff every input wire is 1
-``A``      NAND -- 0 iff every input wire is 1
-``o``      OR -- 1 iff any input wire is 1
-``O``      NOR -- 1 iff no input wire is 1
-``x``      XOR -- 1 iff exactly one input wire is 1
-``X``      XNOR -- 1 iff all inputs are 0, or more than one is 1
-``~``      NOT -- inverts each wire, returning as many as it took
-=========  ================================================
-
-Every gate but ``~`` takes two inputs from its left and drives one output
-to its right; ``~`` takes one.  ``<`` splits a multi-wire in half and ``>``
-appends its second input to its first.  ``-n-`` labels a wiring as carrying
-``n`` wires, a leading ``-`` on a line reads that many bits of input, and
-``:`` prints the wire directly to its left.
-
-Wiring
-------
-
-A *wiring* is a group of wires connected directly or indirectly to each
-other but not through a gate, and it holds one value: Null, 0, or 1 (a
-tuple of those when it is a multi-wire).  Two wires are connected only when
-they point at each other -- the spec's "for there to be a connection, a wire
-must be connected both ways", which makes ``-|`` and even ``.|`` non-
-connections.  ``.`` connects to all eight of its neighbours, and ``=`` is a
-crossover: a wire entering one side continues out the opposite side without
-joining what crosses it.  ``=`` chains, so the ``.===.`` on the prime
-tester's tenth line joins its two ``.``s across three crossover cells; the
-pass-through is therefore iterative rather than a single-cell hop.
-
-Judgment calls
---------------
-
-Four things a running interpreter must settle are unstated on the page.
-Each is resolved below against the page's own worked example -- the 4-bit
-prime tester, which the test suite replays over all sixteen inputs -- rather
-than invented:
-
-* **Values are events, and gates latch them.**  The page never says when
-  ``:`` prints or when a program stops, and the obvious reading -- wirings
-  hold their value until overwritten, run until nothing changes -- is
-  *falsified by the page's own flip-flop*, which it says outputs
-  ``1N1N1N...``: a sticky wiring can never show a Null after a 1.  So a
-  wiring's value lasts one generation, being the XOR of whatever fired into
-  it that generation and Null when nothing did.
-
-  That alone would break the prime tester, whose final ``a`` is fed by two
-  chains of different depths that would never be live together.  The spec
-  covers this in the sentence "when one input has arrived, but the other
-  has not, the gate waits until the other input comes": each gate keeps a
-  **latch per input slot**, a non-null arrival fills or overwrites its slot
-  ("the gate takes that into account"), and the gate fires when every slot
-  is filled *and* at least one input is live this generation.  Requiring a
-  live arrival is what stops a filled latch from re-firing forever, which
-  is what lets the flip-flop alternate instead of pinning itself.
-
-  ``:`` therefore prints whenever its wire carries a value, and a program
-  halts on a quiescent generation -- nothing fired and every wiring Null.
-  A feedback circuit never quiesces and is bounded instead by
-  :func:`esolangs.vm.run_until_halt_or_cycle`, which proves the flip-flop's
-  period-2 oscillation; the latches are part of :meth:`_Machine.snapshot`,
-  since two generations with equal wiring values but different latches are
-  not the same state.
-
-* **Which input bit is which wire.**  ``-4-`` reads four bits, and the
-  example's minterm formula is only primality when the first wire is the
-  most significant bit (``a`` in the page's formula).  The other three
-  orderings each yield a different, non-prime set, so the example pins its
-  own bit ordering: **wire 1 is the first bit read and the MSB.**
-
-* **Input format.**  The page never says how bits arrive.  One line per
-  bit, taking ``1`` as a one bit and anything else as zero, is the
-  convention the package's other bit-oriented grid language (Flowchart)
-  already uses, so it is followed here rather than inventing a second.
-
-* **Gate ports are direction-sets, not fixed cells.**  The AND sample draws
-  its inputs on the upper- and lower-left diagonals, but the prime tester
-  feeds the ``<`` at column 5 of its third line from the upper-left ``/``
-  and the one on its seventh line from the lower-left ``\``, so an input is
-  not always at a fixed offset.  A gate therefore accepts a connection from
-  any of its three left-hand neighbours and drives any of its three
-  right-hand ones, subject to the mutual-connection rule and to the spec's
-  own constraint that **one wiring may not touch both a gate's inputs and
-  its output** -- which is what disambiguates the junctions in the example
-  where a single ``.`` sits diagonally adjacent to a gate it does not feed.
-
-  Two gates narrow that further, each on the spec's own wording.  ``<``
-  drives only its two right-hand diagonals ("any wire that connects to the
-  ``<`` from the upper right or lower right receives the wire"), so the
-  cell straight ahead of a splitter belongs to the wiring feeding it, which
-  is exactly how the prime tester draws it.  ``~`` takes only the cell
-  level with it (the sample is ``.~.``), so a diagonal neighbour is another
-  wiring routed past the gate rather than a second input.  Conversely, one
-  wiring may feed *both* slots of a two-input gate: the constant-output
-  circuit runs a single wiring into both sides of its ``a``, so ports are
-  counted per cell rather than per wiring.
-
-The prime tester is drawn with two gaps
---------------------------------------
-
-The page's only worked example, a 4-bit prime tester, is missing five
-characters, and as drawn it prints nothing at all: two of its OR gates have
-an input that no gate drives, so under the spec's own "gates wait" rule
-they never fire and the circuit never reaches its output.
-``tests/interpreters/test_circuit_diagram.py`` carries both forms --
-``PRIME_TESTER``, the page's diagram plus those five characters, replayed
-over all sixteen inputs, and ``PRIME_TESTER_AS_DRAWN``, whose silence is
-pinned so a later change to the connection rules cannot quietly turn the
-broken diagram into a working one.
-
-The repair is *derived*, not guessed, and it is unique.  The circuit is not
-the sum-of-minterms its caption implies but a product of sums: the final
-``a`` ANDs four OR clauses.  Reading the literals off the gate graph, the
-clauses are ``(? | c)``, ``(? | ~a | ~b)``, ``(d | ~a)`` and ``(~b | d)``,
-with two unknown inputs.  Requiring the whole to be primality over 0-15
-with ``a`` as the MSB forces those two to ``b`` and ``~c``: input 13
-(``1101``) forces the second unknown to 1 while ``c`` is 0 and input 15
-forces it to 0 while ``c`` is 1, giving ``~c``; inputs 0, 1 and 9 can then
-only be excluded by the first clause, giving ``b``.  No other literal
-assignment yields the primes.
-
-The missing characters are where those two signals should run, and the page
-itself shows where.  For ``~c``, the diagonal from the ``~``'s junction up
-to the stranded ``.---.`` fragment crosses two horizontal runs, and the
-page **already draws the ``=`` crossovers at both crossings** -- only the
-single ``/`` between them is absent, so the author drew a diagonal's
-crossings and omitted the diagonal.  For ``b``, a horizontal run stops four
-columns short of the fragment it should reach, with nothing in between to
-cross.  Both omissions are visible on the page as drawn.
-
-Scope
------
-
-The exercised subset of the language is implemented: the seven gates, the
-four wire characters, ``.``, ``=``, ``<``, ``>``, numeric multi-wire
-labels, ``-n-`` input and ``:`` output.  Together these are every symbol the
-page's sole worked example uses.
-
-The page also specifies user-defined functions (``{name ... }``), the
-constant sources ``(`` and ``)``, the wire-removal function ``{%``, the
-clock ``t``, and letter-labelled wires of unfixed width -- **none of which
-appear in any example on the page**, so there is no diagram to derive their
-geometry from and no way to verify an implementation of them.  Each raises
-:class:`ValueError` naming it as out of scope, on the same reasoning that
-kept Gate out of the package: a construct the page never exercises cannot
-be implemented against anything but a guess.  ``t`` would additionally make
-output time-dependent, which the package treats the way it treats unseeded
-randomness.
-
-Malformed programs -- an unknown character, a gate with the wrong number of
-inputs, a wiring that both feeds and is fed by one gate, or a multi-wire
-label inconsistent with the width its wiring carries -- raise
-:class:`ValueError`.
-
-At EOF a read yields a **zero bit** rather than raising: a drawing has no
-halt instruction and every gate is live at once, so exhausted input has to
-leave the automaton with a value to settle on.  A program that reads more
-bits than it is given therefore runs to completion on zeros.  No
-:class:`HaltError` is raised; execution ends when the grid settles.
-"""
+r"""Interpreter for Circuit Diagram."""
 
 import sys
 from collections.abc import Iterator
@@ -249,67 +77,53 @@ _OUT_OF_SCOPE = {
 
 
 def _opposite(direction: tuple[int, int]) -> tuple[int, int]:
-    """Return the direction pointing the other way along the same line."""
+    r"""Return the direction pointing the other way along the same line."""
     d_row, d_col = direction
     return (-d_row, -d_col)
 
 
 class _Grid:
-    """The program text as a rectangular character grid."""
+    r"""The program text as a rectangular character grid."""
 
     def __init__(self, code: list[str]) -> None:
-        """Store ``code`` padded to a common width."""
+        r"""Store ``code`` padded to a common width."""
         self.rows = [line.rstrip("\n") for line in code]
         self.width = max((len(r) for r in self.rows), default=0)
         self.rows = [r.ljust(self.width) for r in self.rows]
         self.height = len(self.rows)
 
     def at(self, row: int, col: int) -> str:
-        """Return the character at ``(row, col)``, or a space when off-grid."""
+        r"""Return the character at ``(row, col)``, or a space when off-grid."""
         if 0 <= row < self.height and 0 <= col < self.width:
             return self.rows[row][col]
         return " "
 
     def cells(self) -> Iterator[tuple[int, int, str]]:
-        """Yield ``(row, col, char)`` for every cell, in reading order."""
+        r"""Yield ``(row, col, char)`` for every cell, in reading order."""
         for row, line in enumerate(self.rows):
             for col, char in enumerate(line):
                 yield row, col, char
 
 
 class _Wiring:
-    """One group of mutually connected wires.
-
-    ``cells`` is every wire cell in the group and ``width`` the number of
-    wires it carries (1 unless a ``-n-`` label widens it).  The *value* it
-    carries is not held here: it lives in the machine's state, indexed by
-    the wiring's position, so a generation is one value rather than a
-    write scattered across every wiring object.
-    """
+    r"""One group of mutually connected wires."""
 
     def __init__(self, cells: frozenset[tuple[int, int]]) -> None:
-        """Create a Null wiring covering ``cells``."""
+        r"""Create a Null wiring covering ``cells``."""
         self.cells = cells
         self.width = 1
         self.labelled = False
 
 
 class _Connections:
-    """The connection graph derived from a grid's wire characters.
-
-    Connections are mutual: ``reaches`` decides whether a cell extends a
-    wire in some direction, and two neighbours are joined only when each
-    reaches the other.  ``=`` is a crossover rather than a wire, so a
-    connection arriving at one passes straight through to the far side,
-    repeating while further ``=``s are met.
-    """
+    r"""The connection graph derived from a grid's wire characters."""
 
     def __init__(self, grid: _Grid) -> None:
-        """Build the connection graph for ``grid``."""
+        r"""Build the connection graph for ``grid``."""
         self.grid = grid
 
     def reaches(self, row: int, col: int, direction: tuple[int, int]) -> bool:
-        """Return whether the wire at ``(row, col)`` extends in ``direction``."""
+        r"""Return whether the wire at ``(row, col)`` extends in ``direction``."""
         char = self.grid.at(row, col)
         directions = _WIRE_DIRECTIONS.get(char)
         return directions is not None and direction in directions
@@ -317,13 +131,7 @@ class _Connections:
     def through(
         self, row: int, col: int, direction: tuple[int, int]
     ) -> tuple[int, int] | None:
-        """Follow ``direction`` from ``(row, col)``, crossing any ``=`` chain.
-
-        Returns the first non-crossover cell reached, or ``None`` when the
-        chain runs off the grid.  A ``=`` extends the connection one more
-        character, and the prime tester's ``.===.`` chains three of them,
-        so the walk repeats rather than hopping a single cell.
-        """
+        r"""Follow ``direction`` from ``(row, col)``, crossing any ``=`` chain."""
         d_row, d_col = direction
         n_row, n_col = row + d_row, col + d_col
         # The loop needs no bounds.
@@ -337,13 +145,7 @@ class _Connections:
         return n_row, n_col
 
     def neighbours(self, row: int, col: int) -> list[tuple[int, int]]:
-        """Return the wire cells mutually connected to the wire at ``(row, col)``.
-
-        Only directions this cell reaches in are tried, and the cell found
-        must reach back along the same line -- the spec's requirement that a
-        wire be "connected both ways", which is what makes ``-|`` and
-        ``.|`` non-connections.
-        """
+        r"""Return the wire cells mutually connected to the wire at ``(row,."""
         found = []
         for direction in _ALL_DIRECTIONS:
             if not self.reaches(row, col, direction):
@@ -357,33 +159,23 @@ class _Connections:
 
 
 class _Gate:
-    """One gate, splitter, combiner or output port.
-
-    ``kind`` is the character drawn, ``inputs`` the wirings feeding it in
-    top-to-bottom order, and ``outputs`` the wirings it drives, likewise
-    ordered.  ``row``/``col`` locate it for error messages and for the
-    reading order in which outputs print.
-
-    The ports are annotated rather than initialised: ``_build_gates``
-    assigns both lists on the line after it constructs the gate, so an empty
-    list here would never be read.
-    """
+    r"""One gate, splitter, combiner or output port."""
 
     inputs: list[_Wiring]
     outputs: list[_Wiring]
 
     def __init__(self, kind: _GateKind, row: int, col: int) -> None:
-        """Create a gate of ``kind`` at ``(row, col)`` with no ports bound."""
+        r"""Create a gate of ``kind`` at ``(row, col)`` with no ports bound."""
         self.kind = kind
         self.row = row
         self.col = col
 
 
 class _Parser:
-    """Turns a grid into wirings and the gates that join them."""
+    r"""Turns a grid into wirings and the gates that join them."""
 
     def __init__(self, grid: _Grid) -> None:
-        """Parse ``grid`` into ``wirings`` and ``gates``."""
+        r"""Parse ``grid`` into ``wirings`` and ``gates``."""
         self.grid = grid
         self.links = _Connections(grid)
         self._check_characters()
@@ -393,7 +185,7 @@ class _Parser:
         self._check_widths()
 
     def _check_characters(self) -> None:
-        """Reject characters that are unknown or out of scope."""
+        r"""Reject characters that are unknown or out of scope."""
         for row, col, char in self.grid.cells():
             # ``+`` only ever joins the.
             # (``-1+2-``), which.
@@ -415,7 +207,7 @@ class _Parser:
             raise ValueError(f"unknown character {char!r} at ({col}, {row})")
 
     def _build_wirings(self) -> list[_Wiring]:
-        """Group every wire cell into maximal connected components."""
+        r"""Group every wire cell into maximal connected components."""
         seen: set[tuple[int, int]] = set()
         wirings = []
         for row, col, char in self.grid.cells():
@@ -434,20 +226,14 @@ class _Parser:
         return wirings
 
     def _wiring_at(self, cell: tuple[int, int]) -> _Wiring | None:
-        """Return the wiring covering ``cell``, if any."""
+        r"""Return the wiring covering ``cell``, if any."""
         for wiring in self.wirings:
             if cell in wiring.cells:
                 return wiring
         return None
 
     def _label_widths(self) -> None:
-        """Apply every ``-n-`` digit run to the wiring it annotates.
-
-        A run of digits sits *inside* a wire, splitting it visually; the
-        wirings on either side are the same electrical wiring, so the label
-        joins them and fixes the width for the whole group.  The spec allows
-        a sum spelling (``-1+2-``), which totals to the same width.
-        """
+        r"""Apply every ``-n-`` digit run to the wiring it annotates."""
         for row in range(self.grid.height):
             col = 0
             while col < self.grid.width:
@@ -464,7 +250,7 @@ class _Parser:
                 self._apply_label(start, col, row, width)
 
     def _label_width(self, text: str, row: int, col: int) -> int:
-        """Return the total width a ``-n-`` label spells, e.g. ``1+2`` -> 3."""
+        r"""Return the total width a ``-n-`` label spells, e.g."""
         parts = text.split("+")
         if not all(part.isdigit() for part in parts):
             raise ValueError(f"malformed wire label {text!r} at ({col}, {row})")
@@ -474,12 +260,7 @@ class _Parser:
         return width
 
     def _apply_label(self, start: int, end: int, row: int, width: int) -> None:
-        """Join the wirings flanking a label and fix their common width.
-
-        The label interrupts a wire, so the cells immediately left and right
-        of it belong to one electrical wiring; they are merged here and the
-        result carries ``width`` wires.
-        """
+        r"""Join the wirings flanking a label and fix their common width."""
         flanking = []
         for cell in ((row, start - 1), (row, end)):
             wiring = self._wiring_at(cell)
@@ -507,26 +288,7 @@ class _Parser:
         side: int,
         offsets: tuple[int, ...] = (-1, 0, 1),
     ) -> list[_Wiring]:
-        """Return the wirings touching one side of a gate, one per port.
-
-        ``side`` is -1 for the gate's left (its inputs) and 1 for its right
-        (its outputs).  All three neighbours on that side are tried, and a
-        wiring counts only when it reaches back toward the gate -- the same
-        mutual-connection rule wires obey between themselves.  Results are
-        ordered top to bottom, which is the order the spec gives a gate's
-        two inputs and a splitter's two outputs.
-
-        A port is counted once per *cell*, not once per wiring, because one
-        wiring may legitimately feed both of a gate's inputs: the page's
-        constant-output circuit runs a single wiring into both sides of its
-        ``a``, which is how it holds the gate's output steady.  Only the
-        crossover walk can make two directions land on one cell, and that
-        is deduplicated.
-
-        ``offsets`` selects which of the three neighbours to try, so a
-        caller can narrow the side: a splitter's outputs are the two
-        diagonals only, and a ``~``'s input is the level cell only.
-        """
+        r"""Return the wirings touching one side of a gate, one per port."""
         found: list[_Wiring] = []
         seen: set[tuple[int, int]] = set()
         for d_row in offsets:
@@ -544,21 +306,7 @@ class _Parser:
         return found
 
     def _build_gates(self) -> list[_Gate]:
-        """Bind every gate's input and output wirings.
-
-        A wiring may not touch both a gate's inputs and its output (the
-        spec says so outright), which is what resolves the example's
-        junctions where one ``.`` sits diagonally beside a gate it does not
-        feed: such a cell is already the gate's output, so it is dropped
-        from the input side rather than counted twice.
-
-        ``<`` is the exception, and the spec states it directly: "any wire
-        that connects to the ``<`` from the upper right or lower right
-        receives the wire", so a splitter drives its two diagonals only.
-        Its straight-ahead neighbour belongs to the wiring feeding it --
-        the prime tester draws exactly that, a ``.`` shared between the
-        splitter's input and the run continuing past it.
-        """
+        r"""Bind every gate's input and output wirings."""
         gates = []
         for row, col, char in self.grid.cells():
             if char in _GATES:
@@ -590,7 +338,7 @@ class _Parser:
         return gates
 
     def _check_arity(self, gate: _Gate) -> None:
-        """Reject a gate whose port count the spec does not allow."""
+        r"""Reject a gate whose port count the spec does not allow."""
         wanted_in = 1 if gate.kind in ("~", _SPLIT, _OUTPUT) else 2
         if len(gate.inputs) != wanted_in:
             raise ValueError(
@@ -610,13 +358,7 @@ class _Parser:
             )
 
     def _check_widths(self) -> None:
-        """Propagate multi-wire widths through the gates, checking consistency.
-
-        A gate other than ``~`` collapses its inputs to one wire, ``~``
-        preserves width, ``<`` halves (rounding down to the upper output),
-        and ``>`` sums.  Widths flow forward until they stop changing, so a
-        label anywhere in a chain fixes the wirings it reaches.
-        """
+        r"""Propagate multi-wire widths through the gates, checking consistency."""
         for _ in range(len(self.wirings) + 1):
             changed = False
             for gate in self.gates:
@@ -641,7 +383,7 @@ class _Parser:
         )
 
     def _implied_widths(self, gate: _Gate) -> list[tuple[_Wiring, int]]:
-        """Return the widths ``gate`` forces on its output wirings."""
+        r"""Return the widths ``gate`` forces on its output wirings."""
         if gate.kind == _OUTPUT:
             return []
         if gate.kind == "~":
@@ -660,12 +402,7 @@ class _Parser:
 
 
 def _apply_gate(kind: _LogicGate, inputs: list[tuple[int, ...]]) -> tuple[int, ...]:
-    """Return the wires ``kind`` drives given its non-null input wires.
-
-    The multi-input readings are the spec's own: AND is 1 iff every wire is
-    1, OR iff any is, XOR iff exactly one is, and the negated gates invert
-    those.  ``~`` is the only gate that returns more than one wire.
-    """
+    r"""Return the wires ``kind`` drives given its non-null input wires."""
     if kind == "~":
         return tuple(1 - bit for bit in inputs[0])
 
@@ -689,7 +426,7 @@ def _apply_gate(kind: _LogicGate, inputs: list[tuple[int, ...]]) -> tuple[int, .
 def _drive(
     gate: "_Gate", inputs: list[tuple[int, ...]]
 ) -> list[tuple["_Wiring", tuple[int, ...]]]:
-    """Return the values ``gate`` writes to each of its outputs."""
+    r"""Return the values ``gate`` writes to each of its outputs."""
     if gate.kind == _SPLIT:
         wires = inputs[0]
         upper = gate.outputs[0].width
@@ -708,7 +445,7 @@ def _drive(
 
 
 def _merge(driven: list[tuple[int, ...]]) -> tuple[int, ...]:
-    """Combine several drivers of one wiring by XOR, per the spec."""
+    r"""Combine several drivers of one wiring by XOR, per the spec."""
     if len(driven) == 1:
         return driven[0]
     width = max(len(value) for value in driven)
@@ -733,12 +470,7 @@ type _State = tuple[_Values, _Latches]
 def _emitted(
     state: _State, wirings: list["_Wiring"], gates: list["_Gate"]
 ) -> list[str]:
-    """Return what each ``:`` gate writes this generation, in gate order.
-
-    Pure: a step makes any number of writes -- one per output gate whose
-    wire carries a value -- so they are reported rather than performed,
-    which is the shape COD and Inject use for the same reason.
-    """
+    r"""Return what each ``:`` gate writes this generation, in gate order."""
     values, _ = state
     index = {id(w): i for i, w in enumerate(wirings)}
     out = []
@@ -754,15 +486,7 @@ def _emitted(
 def _generation(
     state: _State, wirings: list["_Wiring"], gates: list["_Gate"]
 ) -> tuple[_State, bool]:
-    """Return the state after one generation, and whether the run went quiet.
-
-    Pure: it reads ``state`` and returns a new one, and reaches no ``IO``.
-
-    A generation latches whatever arrived on each gate's inputs, fires
-    every gate whose slots are all full, and then re-drives every wiring
-    from what fired.  A wiring nothing drove goes Null again, which is what
-    makes a value an *event* rather than a store.
-    """
+    r"""Return the state after one generation, and whether the run went."""
     values, latches = state
     index = {id(w): i for i, w in enumerate(wirings)}
 
@@ -795,28 +519,7 @@ def _generation(
 
 
 class _Machine:
-    """Per-run Circuit Diagram state: the wirings, the gates, their latches.
-
-    Values are *events*, not stored charge.  Each generation a wiring's
-    value is the XOR of whatever fired into it during that generation, and
-    a wiring nothing drove is Null again -- which is what makes the spec's
-    flip-flop alternate ``1N1N1N...`` instead of settling on a value.
-
-    Gates bridge those events with a latch per input slot, because the spec
-    says a gate "waits until the other input comes" when only one has
-    arrived: a slot remembers the last non-null value it saw, and a later
-    arrival on the same slot overwrites it ("the gate takes that into
-    account").  A gate fires when every slot is filled *and* at least one of
-    its inputs is live this generation, so a filled latch alone cannot make
-    a gate fire forever.
-
-    ``step()`` advances one generation; ``halted`` is true once a generation
-    is quiescent -- nothing fired and every wiring is Null.  The machine is
-    deterministic and :meth:`snapshot` is bounded, so a feedback circuit
-    that never quiesces is caught by ``run_until_halt_or_cycle``; the
-    latches are part of the snapshot, since two generations with equal
-    wiring values but different latches are not the same state.
-    """
+    r"""Per-run Circuit Diagram state: the wirings, the gates, their."""
 
     # : Whether a read past the end.
     # : rather than raising.
@@ -836,7 +539,7 @@ class _Machine:
     eof_is_a_value = True
 
     def __init__(self, code: list[str], io: IO) -> None:
-        """Parse ``code`` and read the input its ``-n-`` ports call for."""
+        r"""Parse ``code`` and read the input its ``-n-`` ports call for."""
         self.io = io
         grid = _Grid(code)
         parsed = _Parser(grid)
@@ -856,14 +559,7 @@ class _Machine:
         self._load_inputs()
 
     def _load_inputs(self) -> None:
-        """Drive every input wiring with the bits read from stdin.
-
-        A ``-`` at the start of a line is an input port; its wiring takes as
-        many bits as it is wide, most significant first (the ordering the
-        prime tester's formula pins down).  Ports are read in reading order,
-        so a diagram with several is fed top to bottom.  Input arrives in
-        generation zero only -- it is an event like any other.
-        """
+        r"""Drive every input wiring with the bits read from stdin."""
         for row in range(self.grid.height):
             line = self.grid.rows[row]
             stripped = line.lstrip()
@@ -887,7 +583,7 @@ class _Machine:
             )
 
     def _wiring_at(self, cell: tuple[int, int]) -> _Wiring | None:
-        """Return the wiring covering ``cell``, if any."""
+        r"""Return the wiring covering ``cell``, if any."""
         for wiring in self.wirings:
             if cell in wiring.cells:
                 return wiring
@@ -896,7 +592,7 @@ class _Machine:
         return None  # pragma: no cover - every cell asked for is covered
 
     def _read_bit(self) -> int:
-        """Read one bit of input, taking exhausted input as a zero bit."""
+        r"""Read one bit of input, taking exhausted input as a zero bit."""
         try:
             value = self.io.input_str()
         except (EOFError, IndexError):
@@ -907,15 +603,7 @@ class _Machine:
 
     @property
     def ip(self) -> None:
-        """Always ``None``: nothing moves through a Circuit Diagram.
-
-        The machine declares ``ip_shape = "opaque"`` below for the same
-        reason: there is no position, so there is nowhere on the drawing a
-        breakpoint could name, and a caller must not be offered one.
-
-        ``step()`` advances one generation of the whole drawing at once, so
-        there is no instruction position to report.
-        """
+        r"""Always ``None``: nothing moves through a Circuit Diagram."""
         return None
 
     # : Never a place in the.
@@ -923,28 +611,16 @@ class _Machine:
 
     @property
     def memory(self) -> list[int]:
-        """The bits driven this generation, in wiring order.
-
-        Wiring values are per-generation events rather than stored charge, so
-        this is what fired *now*, not an accumulated store; a wiring nothing
-        drove is Null and contributes nothing, which is why the length varies
-        from one step to the next.
-        """
+        r"""The bits driven this generation, in wiring order."""
         return [bit for value in self.values if value is not None for bit in value]
 
     @property
     def stack(self) -> list[object]:
-        """Circuit Diagram has no stack."""
+        r"""Circuit Diagram has no stack."""
         return []
 
     def step(self) -> None:
-        """Advance one generation: latch arrivals, fire, then re-drive wires.
-
-        The one port lives here rather than in the transition: this is the
-        shell.  Every ``:`` gate whose wire carries a value this generation
-        prints, so a step makes any number of writes and the transition
-        reports them in gate order.
-        """
+        r"""Advance one generation: latch arrivals, fire, then re-drive wires."""
         for text in _emitted((self.values, self.latches), self.wirings, self.gates):
             self.io.print_str(text)
         (self.values, self.latches), halted = _generation(
@@ -954,14 +630,14 @@ class _Machine:
             self.halted = True
 
     def snapshot(self) -> tuple[object, ...]:
-        """Return the machine's state, hashable for cycle detection."""
+        r"""Return the machine's state, hashable for cycle detection."""
         # The two halves of the state.
         # which is what freezing them.
         return (self.values, self.latches, self.halted)
 
 
 def run(code: list[str], io: IO) -> None:
-    """Execute a Circuit Diagram program."""
+    r"""Execute a Circuit Diagram program."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

@@ -1,4 +1,4 @@
-"""Boolean-function generators for tape-based languages."""
+r"""Boolean-function generators for tape-based languages."""
 
 import sys
 from collections.abc import Sequence
@@ -52,14 +52,14 @@ __all__ = [
 
 @dataclass
 class _Cmd:
-    """A line emitted verbatim, apart from its ``goto`` placeholder."""
+    r"""A line emitted verbatim, apart from its ``goto`` placeholder."""
 
     text: str
 
 
 @dataclass
 class _If:
-    """An ``if <char> goto <label>`` line, resolved once labels are known."""
+    r"""An ``if <char> goto <label>`` line, resolved once labels are known."""
 
     char: int
     label: int
@@ -67,13 +67,7 @@ class _If:
 
 @dataclass
 class _MoveLeft:
-    """An ``if <char> move left`` line that also *defines* ``label``.
-
-    BrainIf reads its inputs from the far cell back toward the answer, so a
-    branch steps *left* onto the next input.  There is no rightward mirror:
-    the build walks out over zeroed cells before the tree runs, and every
-    branch after that walks down, so one direction is all the tree needs.
-    """
+    r"""An ``if <char> move left`` line that also *defines* ``label``."""
 
     char: int
     label: int
@@ -81,55 +75,21 @@ class _MoveLeft:
 
 @dataclass
 class _Out:
-    """A marker defining output routine ``which``; it emits no line itself."""
+    r"""A marker defining output routine ``which``; it emits no line itself."""
 
     which: int
 
 
 @dataclass
 class _End:
-    """The trailing blank line every program ends on."""
+    r"""The trailing blank line every program ends on."""
 
 
 _Entry = _Cmd | _If | _MoveLeft | _Out | _End
 
 
 def brainif(truth_table: str) -> str:
-    """Build a BrainIf program computing the given truth table.
-
-    ``truth_table`` is a binary string of length 2**n indexed by the inputs
-    (most significant first), ``n`` is the input count implied by the table length.
-
-    BrainIf reads each input into a cell with ``if 0 input``, then a
-    recursive decision tree checks each cell with ``if 48/49 goto`` (the
-    groups' checks sit adjacent so a failed check falls through to the next
-    candidate).
-
-    The answer byte is built *first*, on cell 0: 48 ``increment`` lines
-    once, rather than a climb per digit.  There is no way to copy a byte in
-    BrainIf, and a climb of ``if v increment`` lines converges -- every
-    entry value 0..47 leaves it holding 48 -- so one climb cannot serve both
-    digits however it is entered.  Two climbs is 48 + 49 lines, which used
-    to dominate: a ``11110000`` program was 97 increments out of 153 lines.
-
-    Building first also fixes which way the tape runs.  The pointer steps
-    out over cells that are still zero, where one ``if 0 move right``
-    advances exactly one cell -- no digit is around to fire the next line
-    too -- and the tree then reads its inputs from that far cell back down
-    toward the answer.  So a level is a read, two branch tests, and a step
-    left, and a leaf is *there* already: the reads have carried the pointer
-    home, and it adds one iff its entry is a ``1`` before joining a two-line
-    tail.
-
-    That is what makes the tree foldable.  A subtree whose rows all agree
-    becomes a leaf rather than branching on bits that cannot change the
-    answer -- and since a leaf spends no moves getting to the answer, the
-    saving is not handed back.  The skipped levels' *reads* still happen:
-    consumption must not depend on the table, or a caller feeding several
-    programs from one stream would desync.  An earlier arrangement built the
-    answer past the inputs and had each leaf walk out to it, which cost two
-    lines per skipped level and cancelled the fold exactly.
-    """
+    r"""Build a BrainIf program computing the given truth table."""
     n = _validate_truth_table(truth_table)
     entries: list[_Entry] = []
     # The answer byte goes on cell.
@@ -143,7 +103,7 @@ def brainif(truth_table: str) -> str:
     counter = [0]
 
     def build(rows: list[int], k: int) -> list[_Entry]:
-        """Emit the subtree for ``rows``, entered with the pointer on cell n-k+1."""
+        r"""Emit the subtree for ``rows``, entered with the pointer on cell."""
         rest = n - (k - 1)
         if rest == 0 or len({truth_table[row] for row in rows}) == 1:
             # Consume the inputs this path.
@@ -232,21 +192,7 @@ def brainif(truth_table: str) -> str:
 
 
 def circlefuck(truth_table: str) -> str:
-    """Build a Circlefuck program computing the given truth table.
-
-    ``truth_table`` is a binary string of length 2**n indexed by the inputs
-    (most significant first), ``n`` is the input count implied by the table length.
-
-    Circlefuck reads each input with ``,`` and normalizes it to 0/1 with 48
-    ``-``s, then a decision tree branches on the cells from the last input
-    down. Each leaf starts from a cleared cell, so it sets the result with
-    ``+``s, prints it, and halts with ``@`` -- halting at the leaf means the
-    tree never needs to skip the sibling branch.  A boolean table is just
-    the byte-valued generator with ``48 + bit`` outputs.
-
-    A subtree whose rows all agree folds to a leaf; see
-    :func:`circlefuck_byte`, which both share.
-    """
+    r"""Build a Circlefuck program computing the given truth table."""
     # Validated here rather than.
     # a *byte* table, where a.
     # carry the boolean generators'.
@@ -255,26 +201,7 @@ def circlefuck(truth_table: str) -> str:
 
 
 def circlefuck_byte(truth_table: Sequence[int]) -> str:
-    """Build a Circlefuck program computing a byte-valued function.
-
-    ``truth_table`` is a sequence of ``2**n`` byte values (0-255) indexed by
-    the inputs (most significant first); the input count ``n`` is implied
-    by the table length.  This is the boolean generator generalized to
-    arbitrary byte outputs: each leaf prints ``chr(value)`` instead of
-    ``chr(48 + bit)``.
-
-    A subtree whose rows all agree becomes a leaf rather than branching on
-    bits that cannot change the answer.  The reads sit above the tree and
-    are unconditional, so a folded program consumes its input exactly as an
-    unfolded one does.
-
-    **The tree splits on its inputs in whichever order emits the shortest
-    program**, over all ``n!`` of them.  Unlike the generators whose nodes
-    *name* the input they test, a Circlefuck node tests whatever cell the
-    pointer is over, so an order is not a renaming: the tree has to walk
-    the pointer to the cell it wants, and the walk is a real cost the fold
-    has to beat.  See :func:`_circlefuck_ordered`.
-    """
+    r"""Build a Circlefuck program computing a byte-valued function."""
     n = len(truth_table).bit_length() - 1
     if len(truth_table) != 2**n:
         raise ValueError(
@@ -285,13 +212,7 @@ def circlefuck_byte(truth_table: Sequence[int]) -> str:
 
 
 def _permute_byte_table(truth_table: Sequence[int], perm: tuple[int, ...]) -> list[int]:
-    """Return ``truth_table`` re-indexed so input ``perm[i]`` sits at position ``i``.
-
-    Row ``r`` of the result holds the value the original table gives when
-    input ``perm[i]`` carries bit ``i`` of ``r`` -- the permuted frame
-    :func:`~esolangs.tools.boolean.helpers.best_input_order` documents, in
-    which every row index inside the build is self-consistent.
-    """
+    r"""Return ``truth_table`` re-indexed so input ``perm[i]`` sits at."""
     n = len(perm)
     out = [0] * len(truth_table)
     for row in range(len(truth_table)):
@@ -304,18 +225,7 @@ def _permute_byte_table(truth_table: Sequence[int], perm: tuple[int, ...]) -> li
 
 
 def _best_byte_order(truth_table: Sequence[int], n: int) -> str:
-    """Return the shortest program over every input order.
-
-    The byte-valued twin of
-    :func:`~esolangs.tools.boolean.helpers.best_input_order`, which takes a
-    binary *string*; the search and its guarantees are the same.  The
-    identity order goes first and ties keep it, so a table no reorder helps
-    emits exactly what it emitted before.
-
-    The search is capped for the same reason the shared helper caps: ``n!``
-    builds of an ``O(2**n)`` program.  The cap is reached in practice at
-    ``n <= 8``, so the greedy fallback is not decorative.
-    """
+    r"""Return the shortest program over every input order."""
     best = _circlefuck_ordered(list(truth_table), tuple(range(n)))
     if n < 2:
         return best
@@ -331,12 +241,7 @@ def _best_byte_order(truth_table: Sequence[int], n: int) -> str:
 
 
 def _circlefuck_greedy(truth_table: Sequence[int], n: int) -> str:
-    """Pick an order level by level above the exhaustive cap.
-
-    Each remaining input is scored by how many constant subtrees choosing
-    it next would create -- the fold the exhaustive search is hunting --
-    which is ``O(n**2)`` scorings rather than ``n!`` builds.
-    """
+    r"""Pick an order level by level above the exhaustive cap."""
     remaining = list(range(n))
     order: list[int] = []
     while remaining:
@@ -353,12 +258,7 @@ def _circlefuck_greedy(truth_table: Sequence[int], n: int) -> str:
 def _constant_subtree_count(
     truth_table: Sequence[int], n: int, prefix: list[int]
 ) -> int:
-    """Count the subtrees that come out constant after splitting on ``prefix``.
-
-    A subtree is the set of rows agreeing on every input in ``prefix``; it
-    is constant when the table takes one value across all of them, which is
-    exactly when the build folds it to a leaf.
-    """
+    r"""Count the subtrees that come out constant after splitting on."""
     buckets: dict[int, set[int]] = {}
     for row in range(len(truth_table)):
         key = 0
@@ -369,21 +269,7 @@ def _constant_subtree_count(
 
 
 def _circlefuck_ordered(truth_table: list[int], perm: tuple[int, ...]) -> str:
-    """Emit one input order's Circlefuck program; see :func:`circlefuck_byte`.
-
-    ``truth_table`` is in the permuted frame -- bit ``k`` of a row index is
-    the input tested at level ``k`` -- so the fold test below reads rows
-    without consulting ``perm``.  ``perm`` surfaces only where the pointer
-    has to be *aimed*: the inputs sit in cells ``0..n-1`` in stream order,
-    and the cell level ``k`` tests is ``perm[k]``.
-
-    **The walk is what makes this generator's reorder a real question.**  A
-    node here does not name its input, it tests the cell under the pointer,
-    so a level costs ``|previous cell - perm[k]|`` move characters on top of
-    its branch.  The identity order is the one the walk is free for -- it
-    steps left one cell per level, the single ``<`` the unordered build
-    emitted -- so any other order has to fold enough to pay for its moves.
-    """
+    r"""Emit one input order's Circlefuck program; see."""
     n = len(perm)
     prog: list[str] = []
 
@@ -397,23 +283,17 @@ def _circlefuck_ordered(truth_table: list[int], perm: tuple[int, ...]) -> str:
     prog.pop()  # the trailing ">" would leave.
 
     def move(source: int, target: int) -> None:
-        """Walk the pointer from cell ``source`` to cell ``target``."""
+        r"""Walk the pointer from cell ``source`` to cell ``target``."""
         step = ">" if target > source else "<"
         prog.extend(step * abs(target - source))
 
     def span(k: int, row: int) -> range:
-        """Return the table rows the subtree at ``(k, row)`` stands for.
-
-        Bit ``k`` of a row index is the input tested at level ``k``, so a
-        subtree entered at level ``k`` has fixed the bits above ``k`` and
-        varies the ones below: its rows are the stride the unordered build
-        also walked, now in the permuted frame.
-        """
+        r"""Return the table rows the subtree at ``(k, row)`` stands for."""
         step = 2 ** (n - 1 - k)
         return range(row, len(truth_table), step)
 
     def build(k: int, row: int, cell: int) -> None:
-        """Emit the subtree at level ``k`` with the pointer over ``cell``."""
+        r"""Emit the subtree at level ``k`` with the pointer over ``cell``."""
         if k < 0:
             value = truth_table[row]
             if value:
@@ -455,26 +335,7 @@ def _circlefuck_ordered(truth_table: list[int], perm: tuple[int, ...]) -> str:
 
 
 def brainfuck(truth_table: str) -> str:
-    """Build a brainfuck program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    This is :func:`bf_tree`, a decision tree sharing the bit tests.
-
-    There used to be a second construction here -- a branch-free sum of
-    minterms -- and ``bf`` returned whichever came out shorter, since the
-    tree was full and so paid for every input on sparse tables where the
-    minterm paid only per one-row.  Once the tree started folding constant
-    subtrees it won on every table at n <= 4 but the two constant ones,
-    where it now costs about 1.1x the minterm (271 characters at n == 4
-    against the 253 the minterm measured before it was removed) -- a margin
-    that no longer pays for a second construction and a dispatch to choose
-    between them, and which used to be 2.5x.  A constant table is a single
-    leaf, so what is left is almost entirely the reads: it gained nothing
-    from the print-once leaf and everything from dropping the per-input
-    complement construction.
-    """
+    r"""Build a brainfuck program computing the given truth table."""
     return bf_tree(truth_table)
 
 
@@ -505,14 +366,7 @@ _BF_RESIDUE = {">": 1, "<": 2, "+": 3, "-": 4, ".": 5, ",": 6, "[": 7, "]": 8}
 
 
 def _factor_encode(code: str) -> int:
-    """Encode a brainfuck program as the Factor integer for it.
-
-    The decoder sorts the prime factors ascending, so the encoder walks
-    primes upward and hands each instruction the next prime with the right
-    residue modulo 11 (Dirichlet's theorem guarantees one always exists).  A
-    run of identical instructions is folded into one prime's exponent, which
-    keeps the integer small while decoding to the same run.
-    """
+    r"""Encode a brainfuck program as the Factor integer for it."""
     from sympy import isprime
 
     number = 1
@@ -533,40 +387,7 @@ def _factor_encode(code: str) -> int:
 
 
 def factor(truth_table: str, *, max_digits: int = _DEFAULT_MAX_DIGITS) -> str:
-    """Build a Factor program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    A Factor program is a single integer whose prime factorization decodes
-    to brainfuck, so the generator reuses :func:`brainfuck`'s truth-table
-    program unchanged and encodes it with :func:`_factor_encode` (walk primes
-    upward, handing each instruction the next one with the right residue
-    mod 11; Dirichlet's theorem guarantees one always exists).
-
-    Folding the constant subtrees of that program is what turns some
-    otherwise unrenderable tables into runnable ones, since the cap below is
-    on the encoded integer's size.
-
-    ``max_digits`` bounds how long the rendered integer may be, defaulting
-    to :data:`_DEFAULT_MAX_DIGITS`.  This is a program-size cap, not an
-    ``n`` cap: sparse tables (e.g. an all-zero or all-one table) stay small
-    at any ``n``, while dense tables grow the underlying brainfuck program
-    (and so the encoded integer) quickly.
-
-    The bound used to be CPython's own ``sys.get_int_max_str_digits()``,
-    which is a DoS guard against quadratic conversions rather than anything
-    Factor says -- and at its 4300-digit default it stopped this generator
-    at n=3, since n=4 parity needs 6390 digits.  A Factor program *is* one
-    integer, so that guard is not a property of the language to be reported
-    but a limit to be lifted: the render raises it to fit and puts it back,
-    and :func:`esolangs.interpreters.tape_based.factor._parse` does the same
-    on the way in, so what is generated here is what the interpreter runs.
-
-    The check estimates the digit count from the integer's bit length
-    (``log10(2) ~= 0.30103``) to avoid paying for the same oversized
-    conversion just to reject it.
-    """
+    r"""Build a Factor program computing the given truth table."""
     number = _factor_encode(brainfuck(truth_table))
     # Estimated from the bit length.
     # up, so it never.
@@ -590,16 +411,7 @@ def factor(truth_table: str, *, max_digits: int = _DEFAULT_MAX_DIGITS) -> str:
 
 
 def three_d_brainfuck(truth_table: str) -> str:
-    """Build a 3D Brainfuck program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    3D Brainfuck's ``>``/``<`` set the generation pointer's heading (a no-op
-    in this interpreter), so the array is walked along one axis with
-    ``e``/``w`` instead; :func:`brainfuck`'s decision tree otherwise
-    translates directly, so this folds constant subtrees because that does.
-    """
+    r"""Build a 3D Brainfuck program computing the given truth table."""
     return brainfuck(truth_table).translate(str.maketrans("><", "ew"))
 
 
@@ -610,21 +422,7 @@ _CYCLES = ("pevkjzwr", "yuctsobqihald")
 
 
 def painfuck(truth_table: str) -> str:
-    """Build a Painfuck program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Painfuck is brainfuck-compatible: the commands ``a``/``b`` are while-
-    nonzero loops, ``j`` reads a byte and ``u`` prints one.
-    :func:`brainfuck`'s decision tree translates directly (so this folds
-    constant subtrees because that does), mapping BF's
-    ``>``/``<`` (each one cell) to ``rl`` (+1) / ``l`` (-1), ``+``/``-`` to
-    ``ps`` (+1) / ``s`` (-1), and ``[``/``]``/``,``/``.`` to ``a``/``b``/
-    ``j``/``u``.  The interpreter then rewrites the source through two
-    substitution cycles, so each emitted command is pre-shifted ``k`` steps
-    back along its cycle (where ``k`` counts the commands so far) to undo it.
-    """
+    r"""Build a Painfuck program computing the given truth table."""
     code = (
         brainfuck(truth_table)
         .replace(">", "rl")
@@ -655,61 +453,17 @@ def painfuck(truth_table: str) -> str:
 
 
 def bf_tree(truth_table: str) -> str:
-    """Build a decision-tree brainfuck program for the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    The construction is :func:`decision_tree_program`, shared with
-    :func:`dimensional_tree`.  The tree is O(2**n) characters (sharing the
-    bit tests), versus the branch-free minterm evaluator's O(n * 2**n); for
-    XOR-n it measures 0.2K..4.9K characters at n = 2..8, against the
-    1.4K..33M the minterm measured before it was removed.
-    """
+    r"""Build a decision-tree brainfuck program for the given truth table."""
     return decision_tree_program(truth_table, ">", "<")
 
 
 def basicfuck(truth_table: str) -> str:
-    """Build a Basicfuck program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Basicfuck's named variables behave like BF cells with an explicit
-    arithmetic, so the program is a decision tree: each input is read with
-    ``read -> a_i ;`` and normalized to 0/1 with ``a_i -= 48 ;``, then every
-    internal node emits ``if (a_k) { ... }`` next to ``if !(a_k) { ... }``
-    (the wiki spells negation ``!(<X>)``, with the bang before the parens).  A
-    failed ``if`` falls through to its neighbour, so exactly one subtree runs
-    per input combination.  Each leaf adds ``48 + entry`` to the ``out``
-    variable (which starts at 0 and is touched by exactly one leaf) and
-    prints it with ``write <- out ;``.
-
-    A subtree whose rows all agree becomes a leaf instead of branching on
-    bits that cannot change the answer, which is what makes a table like
-    ``11110000`` two leaves rather than eight.  This is safe because a leaf
-    here is self-contained -- it names ``out`` and writes it, with nothing
-    but cosmetic indentation depending on how deep it sits -- so the
-    "exactly one leaf runs" invariant holds at any depth.  Generators whose
-    leaf depends on the path that reached it cannot do this: BrainIf's
-    leaves jump to a shared output routine that assumes the pointer has
-    passed every level's marker, and Streetcode's hall geometry is sized
-    from its subtree's height.
-
-    **The tree splits on its inputs in whichever order emits the shortest
-    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`).
-    The ``read -> a_i`` block stays in input order, so only the variable an
-    ``if`` names moves.
-    """
+    r"""Build a Basicfuck program computing the given truth table."""
     return best_input_order(truth_table, _basicfuck_ordered)
 
 
 def _basicfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order's Basicfuck program; see :func:`basicfuck`.
-
-    The variables are 1-based (``a1``..``an``) while ``perm`` indexes from
-    zero, so the level's variable is ``a{perm[level] + 1}``.
-    """
+    r"""Emit one input order's Basicfuck program; see :func:`basicfuck`."""
     n = _validate_truth_table(truth_table)
 
     lines = ["#basicfuck t=unbounded r=0~255 o=wrap"]
@@ -743,70 +497,13 @@ def _basicfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
 
 def sbleq(truth_table: str) -> str:
-    """Build an S*bleq program computing the given truth table.
-
-    ``truth_table`` is a binary string of length 2**n indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    S*bleq's instruction is ``a b c``: ``mem[a] -= mem[b]``, and when the
-    result is ``<= 0`` the pointer jumps to the address stored at ``c``.
-    The ``<= 0`` branch traps on zero, so a bit normalized to 0 would
-    branch the wrong way; the generator instead normalizes each input to
-    ``49 - byte`` (``'0'`` -> 1, ``'1'`` -> 0), which lands the two cases on
-    opposite sides of zero.
-
-    **The reads are hoisted above the tree**, which is what lets the tree
-    split in any input order. The read block is one instruction per input::
-
-        v_i -2   NXT    # v_i = -byte (always <= 0, so NXT is the next instr)
-
-    A branch then normalizes and tests that stored value in one destructive
-    instruction::
-
-        v_j NEG49 ONE   # a one jumps to ONE, a zero falls through
-
-    The tree tests each input at most once on every root-to-leaf path, so the
-    destructive branch is safe. This removes the separate normalization and
-    its continuation address without limiting input order.
-
-    Hoisting is a saving in its own right, independent of the reorder. The
-    node-read build it replaces read at each node, so every leaf had to
-    *drain* the reads its untaken siblings never made -- an input-capable
-    language reads each of its n inputs exactly once per run whatever the
-    table says -- and that drain cost two instructions and a data triple per
-    undrained level, per leaf.  The hoisted read block pays once per input
-    for the whole program.
-
-    Leaves print ``-3 D 0`` (``D`` a constant 48/49 cell) and halt with
-    ``0 0 HALT`` (``HALT`` holds -1, a negative jump target).  Whole
-    subtrees whose table entries are constant collapse to a leaf.
-
-    S*bleq's operands are addresses, so a cell holding a transient 0/1 is
-    misread as a jump target if any ``c`` references it.  The generator
-    therefore keeps *constant* cells (``NEG49``, ``D48``, ``D49``, ``HALT``,
-    and the ``NXT``/``ONE`` targets, the only cells ever
-    used as a ``c`` operand) strictly separate from *value* cells (each
-    input's ``v``, written by the read and never used as a ``c`` operand).
-    The jump targets are back-patched once the code layout is known.  The
-    normalize subtracts the constant in the ``b`` operand, which the
-    ``store="b"``/``"ab"`` variants would overwrite, so this generator
-    targets base S*bleq (``store="a"``).
-
-    The node-read form is now redundant: the hoisted route has the same
-    one-instruction read-and-test shape at a node but shares its input reads
-    across the tree. It handles every table alone.
-    """
+    r"""Build an S*bleq program computing the given truth table."""
     _validate_truth_table(truth_table)
     return best_input_order(truth_table, _sbleq_hoisted)
 
 
 def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order's hoisted S*bleq program; see :func:`sbleq`.
-
-    ``perm[k]`` is the input the tree tests at level ``k``; the read block
-    stays in input order, so the program consumes its input stream exactly
-    as the node-read build did.
-    """
+    r"""Emit one input order's hoisted S*bleq program; see :func:`sbleq`."""
     n = _validate_truth_table(truth_table)
     neg49, d48 = 0, 1
     vbase = 4
@@ -908,70 +605,12 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
 
 
 def jaune(truth_table: str) -> str:
-    """Build a Jaune program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    All ``n`` bits are read up front -- one ``v`` each (a digit character,
-    ``ord-48``) -- and the tree then routes with ``?`` jumps: a node walks to
-    the cell holding its bit and ``N?`` jumps to label ``N`` when that cell is
-    nonzero, else falls through.  Each leaf prints its answer with ``^`` and
-    jumps to a shared end label.  A subtree whose table slice is a constant
-    collapses to a single leaf.
-
-    Only the inputs the tree actually branches on get a cell of their own:
-    a read is followed by ``>`` when its bit is needed later and left to be
-    overwritten by the next read when it is not, so the kept bits sit in one
-    contiguous block and the tree navigates a span as wide as the function's
-    real dependencies.  A leaf then prints from the cell it is standing on
-    -- its parent's test cell, whose value it knows -- so the answer costs
-    at most one ``+``/``-`` and no navigation.
-
-    **Reading up front is what makes the input count constant.**  The reads
-    used to sit *at* the nodes, so a folded tree skipped them: a constant
-    table consumed no input at all while a parity table consumed every bit,
-    making the program's stream consumption a function of its truth table.
-    Every generator here must avoid this -- the reads are
-    the interface -- and Jaune escaped the contract test that sweeps for it
-    only by not being registered in ``BY_FUNCTION``.
-
-    **The tree splits on its inputs in whichever order emits the shortest
-    program** (:func:`~esolangs.tools.boolean.helpers.best_input_order`),
-    which the hoist enables: with every bit parked in its own cell, a node
-    can test any of them.  Navigation costs one ``>``/``<`` per cell
-    crossed, so an order pays for the folds it wins, and the search measures
-    rather than assumes.
-    """
+    r"""Build a Jaune program computing the given truth table."""
     return best_input_order(truth_table, _jaune_ordered)
 
 
 def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order's Jaune program; see :func:`jaune`.
-
-    Two things keep this cheap, and both come from the tree's shape being
-    known before a line is emitted.
-
-    **Inputs the tree never tests are clobbered rather than stored.**  The
-    read contract asks that every input be *consumed*, not that every value
-    be *kept*, so an input no node branches on is read into the cell the
-    next read overwrites -- ``v`` without the following ``>``.  The tested
-    bits then land in adjacent cells, so the tree navigates a block as wide
-    as the function's real dependencies rather than one as wide as ``n``.  A
-    constant table reads every input and stores none.
-
-    **A leaf prints from the cell it is already standing on.**  It was
-    reached by its parent's test, so the pointer is on that parent's cell
-    and the value there is known -- 1 on the then-branch, 0 on the else --
-    which makes the leaf one ``+``/``-`` and a ``^`` with no navigation at
-    all.  Mutating a bit cell is safe because exactly one leaf runs per
-    execution and it jumps straight to the end.
-
-    The pointer's position on entry to a node is a function of its *level*
-    alone, never of the path taken: both of a parent's branches leave the
-    pointer on the parent's cell, so the navigation is computed per level
-    instead of threaded through the branch history.
-    """
+    r"""Emit one input order's Jaune program; see :func:`jaune`."""
     n = _validate_truth_table(truth_table)
     label = [1]
 
@@ -1032,34 +671,7 @@ def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
 
 def jaune_multiply() -> str:
-    """Build a Jaune program reading two decimal numbers and printing their product.
-
-    The program reads decimal digits (most-significant first, one per input
-    line) into the first operand until a ``*`` line, then digits into the
-    second operand until a ``#`` line, and prints the product as a decimal
-    number with no leading zeros.  The single construction handles *any*
-    number of digits, so the generator takes no ``n`` parameter: multiplying
-    is one function ``a * b``, and the operand lengths are a property of the
-    input, not of the function (unlike a boolean truth table, where ``n``
-    selects a different function space).
-
-    Jaune is the language the multiply capability needs: its cells do not
-    wrap (the author's JauneJS stores each cell as a JavaScript number with
-    plain ``+=``/``-=``, and this interpreter uses Python ``int``), so each
-    operand fits in a single cell with no digit-per-cell carry, and ``^``
-    prints the current cell as a decimal number directly.  Each read loop
-    runs on a dedicated always-one
-    cell: the ``?``/``!`` jumps are conditional, so a cell permanently set to
-    1 gives the loop-back jump an unconditional trigger (the sentinel check
-    is the only exit).  A digit is folded into the operand with ``v+`` (read
-    a digit and add it), ``#`` (copy the current cell to hold) and a run of
-    nine ``&`` (add the hold cell), which multiplies the accumulated value by
-    10; a sentinel is detected by adding its offset from a digit (``*`` is
-    42, so ``6+`` zeroes it) and jumping on zero.  The product is then a
-    repeated-addition loop over the second operand.  Cells 0/1/2/3/4 hold
-    the first operand, the digit scratch, the second operand, the result,
-    and the always-one trigger.
-    """
+    r"""Build a Jaune program reading two decimal numbers and printing."""
     out: list[str] = []
     pos = 0
 
@@ -1134,7 +746,7 @@ def jaune_multiply() -> str:
 
 
 def _suffolk_candidate_cost(truth_table: str, wanted: str, *, invert: bool) -> int:
-    """Return the rendered length of one non-constant Suffolk polarity."""
+    r"""Return the rendered length of one non-constant Suffolk polarity."""
     n = _validate_truth_table(truth_table)
     used = essential_inputs(truth_table, n) or [0]
     reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
@@ -1168,44 +780,11 @@ def _suffolk_candidate_cost(truth_table: str, wanted: str, *, invert: bool) -> i
 
 
 def suffolk(truth_table: str) -> str:
-    """Build a Suffolk program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Suffolk has no branch and no data-dependent jump, so this is a
-    branch-free sum of minterms, run at ``limit=1`` (a single pass, one
-    read per input -- the default 10-pass rerun would replay every ``,``
-    with no more input left).  The only nonlinearity is ``!``, which
-    computes ``max(0, cell + 1 - acc)``: with a preloaded 48-cell and
-    ``acc = 48 + bit`` (one ``,`` read), it yields the complement
-    ``1 - bit``; a second ``!`` from a zero cell complements again to
-    recover ``bit``.  Summing ``n`` literals (complement when the row wants
-    a 0, raw bit when it wants a 1) into ``acc`` and applying ``!`` to a
-    zero cell gives ``max(0, 1 - sum)``, which is 1 only when every literal
-    matches (an AND of that row's minterm) and 0 otherwise.  Every row's
-    minterm cell is 0 except the one matching the actual inputs, so summing
-    all of them plus a preloaded 49-cell into ``acc`` and printing
-    (``.`` emits ``chr(acc - 1)``) prints ``48`` or ``49``.
-
-    Constant tables need no reads at all: ``.`` prints ``chr(acc - 1)``, so
-    the accumulator only has to hold 50 (all-ones, prints ``49``) or 49
-    (all-zeros, prints ``48``) at the print.
-
-    A table can be evaluated from its zero rows and the answer inverted.
-    The exact rendered cost of both polarities is counted first, so only the
-    shorter program is built.  ``_maybe_complement`` is deliberately not
-    used -- its all-ones case complements to *no* minterms, which the
-    constant-table branch above already handles better.
-    """
+    r"""Build a Suffolk program computing the given truth table."""
     n = _validate_truth_table(truth_table)
 
     def const(gap: int, value: int) -> str:
-        """``(gap '>'s then '!') * value`` builds ``value`` at that cell.
-
-        ``!`` resets the pointer to 0, so each repetition re-walks ``gap``
-        steps out to the same cell before incrementing it.
-        """
+        r"""``(gap '>'s then '!') * value`` builds ``value`` at that cell."""
         return (">" * gap + "!") * value
 
     if len({*truth_table}) == 1:
@@ -1230,11 +809,7 @@ def suffolk(truth_table: str) -> str:
     width = len(used)
 
     def evaluate(wanted: str, *, invert: bool) -> str:
-        """Sum the minterms of the rows equal to ``wanted``, then print.
-
-        With ``invert`` the sum answers the *complement* of the table, so
-        the print stage has to flip it back.
-        """
+        r"""Sum the minterms of the rows equal to ``wanted``, then print."""
         # Cell 1 holds the print.
         # re-walks the gap once per.
         # cheapest cell there is: 49.
