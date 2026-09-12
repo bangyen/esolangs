@@ -91,6 +91,7 @@ that row is actually spelled for the language.
 - **algebraic-programming-language** -- an executed line prints its result, so the answer ends in a newline
 - **arrowqueue** -- ArrowQueue answers by termination -- it halts for a 0 result and loops forever for a 1, so only the halting branch is committed.  The headings printed are its interpreter-only queue dump, which the verdict does not read: the answer is that the program halted at all
 - **back** -- Back has no output instruction and dumps its tape at halt; the answer is cell n, past the n input cells -- which the reorder may hold in either order, so only cell n is pinned
+- **bitdeque** -- Bitdeque has no output instruction and dumps its deque at halt; the generator leaves exactly one bit on it, so the whole dump is the answer and there is no position to name
 - **clockwise** -- Clockwise packs seven bits per character and reads them all in one go, so its inputs are one line, not a line per bit; a line per bit is read as a different row and answered wrongly
 - **cod** -- COD has no runtime input and no I/O but a printed number
 - **container** -- Container prints the answer like any other reader; it also ends by calling sys.exit(0) rather than returning, which matters to a harness driving it but not to reading the result

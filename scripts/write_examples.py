@@ -70,8 +70,8 @@ def _logical_row(stem: str, example: object) -> str:
     )
 
 
-def write_boolean_manifest() -> None:
-    """Write the table saying what each committed boolean program computes.
+def boolean_manifest_text() -> str:
+    """Return the table saying what each committed boolean program computes.
 
     A committed program is a *sample*: one truth table at one input row.
     Neither fact is recoverable from the file -- these languages have no
@@ -117,8 +117,19 @@ def write_boolean_manifest() -> None:
         for stem, example in sorted(BOOLEAN_EXAMPLES.items()):
             if example.note:
                 rows.append(f"- **{stem}** -- {example.note}")
+    return "\n".join(rows) + "\n"
+
+
+def write_boolean_manifest() -> None:
+    """Write the manifest to disk.
+
+    Split from the text so a test can compare the committed file against
+    what this would produce without regenerating all 69 programs to find
+    out.  Nothing checked the manifest at all until then, so a note added
+    to a language left the committed table describing the one before it.
+    """
     path = EXAMPLES / "boolean" / "MANIFEST.md"
-    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    path.write_text(boolean_manifest_text(), encoding="utf-8")
     print(f"wrote     examples/boolean/{path.name}")
 
 
