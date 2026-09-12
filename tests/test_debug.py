@@ -342,3 +342,171 @@ class TestSelfHaltsIsAWarningNotAGuarantee:
         doc = esolangs.VM.self_halts.__doc__ or ""
         assert "does not promise" in doc
         assert "Suffolk" in doc
+
+
+def _dumpers() -> list[str]:
+    """Return the languages whose output lands one step past the halt."""
+    return [
+        name
+        for name in esolangs.list_languages()
+        if esolangs.describe(name)["dumps_on_the_post_halt_step"]
+    ]
+
+
+def _runnable(name: str, table: str = "0110") -> tuple[str, str]:
+    """Return a filled program and the stdin to drive it with.
+
+    The bits are ``[0, 0]``, whose XOR is 0, because two of the dumping
+    languages answer by *terminating* -- they halt for a 0 and run forever
+    for a 1.  Driven with bits answering 1 they never reach the halt these
+    tests are about, and the runs come back ``"max_steps"``.
+    """
+    program = esolangs.generate(name, table)
+    if esolangs.describe(name)["parameterized"]:
+        return esolangs.instantiate(name, program, [0, 0]), ""
+    return program, esolangs.encode_inputs(name, [0, 0])
+
+
+class TestABreakpointAtTheHaltIsReported:
+    """``run`` reported ``"halted"`` over a watch that had fired.
+
+    A breakpoint is checked before each step, so a condition the *last*
+    step makes true was never looked at.  The generated brainfuck XOR ends
+    in ``.``, which makes watching for its answer the ordinary case rather
+    than a corner.
+    """
+
+    def test_an_output_watch_on_the_last_step_fires(self) -> None:
+        """The case it was reported for, on the flagship language."""
+        dbg = esolangs.make_debugger(
+            "brainfuck", esolangs.generate("brainfuck", "0110"), stdin="1\n0\n"
+        )
+        dbg.break_on_output("1")
+        assert dbg.run(max_steps=100_000) == "breakpoint"
+        assert dbg.run(max_steps=100_000) == "halted"
+        assert dbg.halted
+
+    @pytest.mark.parametrize("name", _dumpers())
+    def test_a_pre_dump_condition_fires_on_every_dumper(self, name: str) -> None:
+        """Checked on *both* sides of the post-halt dump step, not one.
+
+        Checking only afterwards swallowed every predicate that reads the
+        state before it: ``halted and output == ""`` was true at the halt,
+        false one step later, and reported as ``"halted"``.
+        """
+        program, stdin = _runnable(name)
+        dbg = esolangs.make_debugger(name, program, stdin=stdin)
+        dbg.break_when(lambda vm: vm.halted and vm.output == "")
+        assert dbg.run(max_steps=300_000) == "breakpoint"
+        assert dbg.halted
+        assert dbg.output == ""
+
+    @pytest.mark.parametrize("name", _dumpers())
+    def test_the_answer_is_never_stranded_by_that_stop(self, name: str) -> None:
+        """A stop before the dump must not cost the caller the answer.
+
+        Resuming is what takes it, so the reason -- not ``halted`` -- is
+        what says whether the output is written yet.
+        """
+        program, stdin = _runnable(name)
+        dbg = esolangs.make_debugger(name, program, stdin=stdin)
+        dbg.break_when(lambda vm: vm.halted and vm.output == "")
+        dbg.run(max_steps=300_000)
+        assert dbg.run(max_steps=300_000) == "halted"
+        assert dbg.output == esolangs.run(name, program, stdin, timeout=30)
+
+    @pytest.mark.parametrize("name", _dumpers())
+    def test_the_dump_step_is_taken_once_not_once_per_run(self, name: str) -> None:
+        """Three idle runs grew a watch history by three.
+
+        ``watch_cell`` promises the list grows one per ``step()``, and an
+        already-halted, already-dumped machine takes no step at all.
+        """
+        program, stdin = _runnable(name)
+        dbg = esolangs.make_debugger(name, program, stdin=stdin)
+        history = dbg.watch_cell(0)
+        dbg.run(max_steps=300_000)
+        after_one = len(history)
+        for _ in range(4):
+            dbg.run(max_steps=300_000)
+        assert len(history) == after_one
+
+
+def _step_to_halt(dbg: esolangs.Debugger, budget: int = 200_000) -> None:
+    """Drive ``dbg`` with ``step()`` alone until it halts.
+
+    A plain loop, factored out so it can sit inside a ``pytest.raises``
+    block as one statement.  ``step()`` rather than ``run()`` is the whole
+    point of the tests that call it: the two modes reported an underfed
+    stdin differently.
+    """
+    for _ in range(budget):
+        if dbg.halted:
+            return
+        dbg.step()
+
+
+class TestSteppingWarnsAboutStdinToo:
+    """The warning fired under ``run`` and not under ``step``.
+
+    Backwards: six languages take an exhausted read as a value and answer a
+    different row, and ``step`` is the mode a debugging session drives
+    with.  An underfed Fargo stepped to its halt returned a confident
+    ``'0'`` and said nothing.
+    """
+
+    @staticmethod
+    def _eof_is_a_value() -> list[str]:
+        """The languages that carry on, which is the set that must warn.
+
+        Alight is flagged ``eof_is_a_value`` and is not one of them: it
+        refuses instead, which is the safe outcome and a different claim.
+        It has its own test below rather than a branch in this sweep.
+        """
+        return [
+            name
+            for name in esolangs.list_languages()
+            if esolangs.describe(name)["eof_is_a_value"]
+            and not esolangs.describe(name)["parameterized"]
+            and name != "Alight"
+        ]
+
+    @pytest.mark.parametrize("name", _eof_is_a_value.__func__())  # type: ignore[attr-defined]
+    def test_stepping_to_the_halt_warns(self, name: str) -> None:
+        """Fed one line short, which is the case the flag is about.
+
+        An *empty* stdin is a different question -- several of these
+        diverge before reaching the read at all -- so the input here is
+        short by one line rather than absent.
+        """
+        program = esolangs.generate(name, "0110")
+        full = esolangs.encode_inputs(name, [1, 0])
+        lines = full.split("\n")
+        short = "\n".join(lines[:-2]) + "\n" if len(lines) > 2 else ""
+        if short == full:
+            pytest.skip(f"{name} cannot be underfed by a line")
+        dbg = esolangs.make_debugger(name, program, stdin=short)
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            _step_to_halt(dbg)
+            dbg.step()
+        assert any(
+            issubclass(w.category, esolangs.InputMismatchWarning) for w in caught
+        ), f"{name} stepped to its halt underfed and said nothing"
+
+    def test_alight_refuses_instead_of_warning(self) -> None:
+        """The documented exception, pinned so it stays a *loud* one.
+
+        Alight is flagged ``eof_is_a_value``, which promises an underfed
+        program carries on and answers a different row.  It does not: the
+        sentinel reaches its arithmetic and it halts.  Refusing is the safe
+        half of the two outcomes, so this is fine -- but it is fine only
+        while it stays loud, and a change that made it carry on silently
+        would be the wrong answer the flag warns about.
+        """
+        program = esolangs.generate("Alight", "0110")
+        full = esolangs.encode_inputs("Alight", [1, 0])
+        short = "\n".join(full.split("\n")[:-2]) + "\n"
+        dbg = esolangs.make_debugger("Alight", program, stdin=short)
+        with pytest.raises(esolangs.HaltError, match="eof"):
+            _step_to_halt(dbg)
