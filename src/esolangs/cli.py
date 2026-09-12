@@ -324,9 +324,10 @@ out of range.
 
 Without --table it judges *shape*, and for most languages a shape is not a
 count.  Clockwise wants every bit on one line and Fargo one row index, so
-for those two a stray line is a shape error and is caught.  The other
-sixty-seven read a line per bit, where one line, three lines and no lines
-at all are equally well shaped.  An empty stdin passes `check-stdin
+for those two a stray line is a shape error and is caught.  Of the other
+sixty-seven, sixty-six read a line per bit and Taglate reads a line per
+bit plus a padding one -- and for all of them one line, three lines and no
+lines at all are equally well shaped.  An empty stdin passes `check-stdin
 brainfuck`, which is the trap worth naming: only --table knows how many
 bits the program wanted.
 
@@ -1794,7 +1795,7 @@ def _run(rest: list[str]) -> None:
         # first draft printed a note on every `--judge` call without a table,
         # including the ones where nothing was wrong, and a warning that fires
         # on correct input is worth less than no warning at all.  The other
-        # sixty-seven read a line per bit, so `run` counts what the program
+        # sixty-seven read a line at a time, so `run` counts what the program
         # took against what it was given and catches a mismatch after the
         # fact; these two read a single line and never run off an end to
         # count.

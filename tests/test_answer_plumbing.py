@@ -620,6 +620,35 @@ class TestTheStdinJudgeIsReachableFromPython:
         with pytest.raises(esolangs.ArgumentError, match="spells its bits"):
             esolangs.check_stdin("Grapheme", "0\n1\n")
 
+    @pytest.mark.parametrize("stdin", ["999", "abc", "   ", "%%%", "ZZZ"])
+    def test_it_catches_the_wrong_alphabet_on_one_line_too(self, stdin: str) -> None:
+        """Clockwise's declared alphabet was enforced nowhere at all.
+
+        The shape branch for a one-line language returned before the
+        alphabet check, and that check is written per *line* while this
+        shape spells a bit as a *character*.  So ``"999"`` was accepted,
+        and the program answered a different row of the table -- ``0``
+        where the correct ``"101"`` answers ``1`` -- with nothing said by
+        either guard the documentation promises.
+        """
+        with pytest.raises(esolangs.ArgumentError, match="spells its bits"):
+            esolangs.check_stdin("Clockwise", stdin, "10010110")
+
+    def test_a_good_one_line_stdin_is_still_accepted(self) -> None:
+        """A guard that refused the correct input would be worse."""
+        esolangs.check_stdin("Clockwise", "101", "10010110")
+        assert esolangs.evaluate("Clockwise", "10010110", timeout=30) == "10010110"
+
+    def test_the_run_path_warns_about_it_as_well(self) -> None:
+        """Both documented routes, since both were silent.
+
+        The README promises ``run`` warns and ``run --judge`` refuses; the
+        refusal is the test above, and this is the warning.
+        """
+        program = esolangs.generate("Clockwise", "10010110")
+        with pytest.warns(UserWarning, match="spells its bits"):
+            esolangs.run("Clockwise", program, "999", timeout=30)
+
     def test_it_catches_a_surplus_line(self) -> None:
         """Six lines into a three-input program answered the first three."""
         with pytest.raises(esolangs.ArgumentError, match="reads 3 line"):
