@@ -523,3 +523,78 @@ class TestAMissingFileIsAFileNotFoundError:
         """``from esolangs import *`` injected a dunder into the namespace."""
         assert "__version__" not in esolangs.__all__
         assert esolangs.__version__  # still reachable by name
+
+
+class TestAMistypedPathIsNotRunAsAProgram:
+    """The guard keyed on ``os.path.exists``, so it fired on the mistake
+    you would have noticed anyway and missed the one you would not.
+
+    ``run("brainfuck", "/tmp/nope.txt")`` returned a null byte -- the ``.``
+    in ``.txt`` is brainfuck's print -- so a typo produced a confident
+    wrong answer.  And it is the exact route a CLI user takes when they
+    move to the API, since the CLI takes a filename.
+    """
+
+    @pytest.mark.parametrize(
+        "argument",
+        ["/tmp/definitely-not-here.txt", "programs/xor.txt", "nope.txt", r"a\\b.txt"],
+    )
+    def test_a_path_that_does_not_exist_is_refused(self, argument: str) -> None:
+        """Existence is exactly what it must not depend on."""
+        assert not pathlib.Path(argument).exists()
+        with pytest.raises(esolangs.ProgramError, match="looks like a path"):
+            esolangs.run("brainfuck", argument, "", 5)
+
+    def test_a_path_that_does_exist_is_still_refused(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """The case that already worked has to keep working."""
+        path = tmp_path / "p.txt"
+        path.write_text("+++.")
+        with pytest.raises(esolangs.ProgramError, match="looks like a path"):
+            esolangs.run("brainfuck", str(path), "", 5)
+
+    def test_every_entry_point_agrees(self) -> None:
+        """All four take a program, so all four have to refuse the same thing."""
+        for call in (
+            lambda: esolangs.run("brainfuck", "nope.txt", "", 5),
+            lambda: esolangs.check_program("brainfuck", "nope.txt", ""),
+            lambda: esolangs.make_vm("brainfuck", "nope.txt", ""),
+            lambda: esolangs.make_debugger("brainfuck", "nope.txt", ""),
+        ):
+            with pytest.raises(esolangs.ProgramError, match="looks like a path"):
+                call()
+
+    def test_a_real_program_is_untouched(self) -> None:
+        """A guard that refuses real programs is worse than the bug."""
+        assert esolangs.run("brainfuck", "+++.", "", 5) == "\x03"
+
+    def test_no_committed_example_looks_like_a_path(self) -> None:
+        """The claim the widened rule rests on, checked rather than asserted.
+
+        The suffix alone already excludes every one of them; the
+        character rule is the margin.  A generator that started emitting
+        something filename-shaped would fail here rather than becoming
+        unrunnable in the field.
+        """
+        for path in sorted(pathlib.Path("examples/boolean").glob("*.txt")):
+            text = path.read_text()
+            assert not ("\n" not in text and text.endswith(".txt")), path.name
+
+    def test_no_generated_program_looks_like_one_either(self) -> None:
+        """All 69, three tables each, since a generator could drift into it."""
+        for name in esolangs.list_languages():
+            for table in ("01", "0110", "10010110"):
+                program = esolangs.generate(name, table)
+                looks = "\n" not in program and program.endswith(".txt")
+                assert not looks, (name, table)
+
+    def test_a_pathlib_path_is_read_in_both_directions(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """A Path was always correct, and stays the way to say "this file"."""
+        path = tmp_path / "p.txt"
+        path.write_text("+++.")
+        assert esolangs.run("brainfuck", path, "", 5) == "\x03"
+        with pytest.raises(FileNotFoundError):
+            esolangs.run("brainfuck", tmp_path / "absent.txt", "", 5)

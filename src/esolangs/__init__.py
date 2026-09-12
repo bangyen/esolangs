@@ -371,6 +371,34 @@ def instantiate(
     return wrap_program(fill(template, bits), LANGUAGES[name].id, width)
 
 
+#: Characters a filename is made of, and a program mostly is not.
+_PATH_CHARS = re.compile(r"^[\w./\\-]+$")
+
+
+def _looks_like_a_path(program: str) -> bool:
+    """Whether ``program`` is a filename someone meant to open.
+
+    The check used to end in ``os.path.exists(program)``, which fires on
+    the mistake you would have noticed anyway and misses the one you would
+    not: ``run("brainfuck", "/tmp/nope.txt")`` ran the *path* as a program
+    and returned a null byte -- the ``.`` in ``.txt`` is brainfuck's print.
+    A wrong answer, from a typo, on the exact route a CLI user takes when
+    they move to the API.
+
+    So it keys on shape.  One line, ending ``.txt``, and made only of the
+    characters a path is made of -- letters, digits, dots, dashes,
+    underscores and separators.  A program has to be all three to be
+    mistaken for a filename, and none of the 69 committed examples nor 207
+    generated programs is: the suffix alone already excludes every one of
+    them, and the character rule is the margin.
+    """
+    return (
+        "\n" not in program
+        and program.endswith(".txt")
+        and bool(_PATH_CHARS.match(program))
+    )
+
+
 def check_runnable(language: str, program: str) -> None:
     """Reject a program that is a path or an unfilled template.
 
@@ -385,7 +413,7 @@ def check_runnable(language: str, program: str) -> None:
     ``output: '0'``, so the CLI's ``debug`` calls this too.
     """
     name = resolve(language)
-    if "\n" not in program and program.endswith(".txt") and os.path.exists(program):
+    if _looks_like_a_path(program):
         raise ProgramError(
             f"program looks like a path, not source: {program!r}. "
             f"Read the file first, or pass pathlib.Path({program!r})"
