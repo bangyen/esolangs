@@ -20,7 +20,7 @@ import pytest
 
 import esolangs
 from esolangs import cli
-from esolangs.cli import HELP, main
+from esolangs.cli import HELP, USAGE, main
 from tests.test_cli import _FakeStdin, _program, call_main, run_cli
 
 EXAMPLES = Path(__file__).parents[1] / "examples" / "boolean"
@@ -2792,3 +2792,120 @@ class TestASeedMakesARunRepeat:
     def test_the_help_mentions_it(self) -> None:
         """A flag nobody can find is a flag nobody has."""
         assert "--seed" in HELP["run"]
+
+
+class TestTheTopLevelUsageKeepsUp:
+    """It had fallen behind five subcommands, in both directions.
+
+    Missing from ``esolangs --help``: ``list --json``, ``describe --json``,
+    ``describe --spec``, ``run --seed``, and ``--timeout``/``--width`` on
+    ``answer``, ``verify`` and ``evaluate``.  The ``--timeout`` omission is
+    the one that costs a reader something: it is the flag the three
+    diverging languages need, and its absence reads as "cannot be bounded".
+
+    Drifting the other way too -- the top level advertised ``run --table``
+    while ``run``'s own usage line did not.
+    """
+
+    @staticmethod
+    def _entry(command: str) -> str:
+        """The usage block's lines for ``command``, joined."""
+        lines = USAGE.splitlines()
+        for i, line in enumerate(lines):
+            if line.strip().startswith(command + " ") or line.strip() == command:
+                return " ".join(lines[i : i + 2])
+        raise AssertionError(f"{command} is not in the usage block at all")
+
+    def test_every_command_is_listed(self) -> None:
+        """A command absent from the summary is a command nobody finds."""
+        for command in HELP:
+            assert self._entry(command)
+
+    @pytest.mark.parametrize("command", sorted(HELP))
+    def test_every_documented_flag_is_summarised(self, command: str) -> None:
+        """Read off each subcommand's own usage line, so it cannot drift.
+
+        ``debug`` is exempt: its usage line says ``[options]`` on purpose,
+        which is a summary rather than an omission.
+        """
+        head = HELP[command].split("\n\n")[0]
+        if "[options]" in head:
+            return
+        flags = sorted(set(re.findall(r"--[a-z-]+", head)))
+        entry = self._entry(command)
+        missing = [flag for flag in flags if flag not in entry]
+        assert not missing, f"{command} usage omits {missing}"
+
+
+class TestPrintedCommandsCanBePasted:
+    """The tool emitted commands it cannot itself parse.
+
+    Twelve of the 69 names contain a space, and ``describe`` ends with
+    ``esolangs describe --spec A Painter Ant`` while the template hint
+    offers ``esolangs generate --bits <bits> A Painter Ant <table>``.
+    Copy-pasting either gives ``unexpected argument: 'Painter'``.
+    """
+
+    SPACED = "A Painter Ant"
+
+    def test_the_spec_line_is_quoted(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """And unspaced names stay unquoted, since quoting them is noise."""
+        out, _err = call_both(["describe", self.SPACED], capsys)
+        assert f'--spec "{self.SPACED}"' in out
+        plain, _err = call_both(["describe", "brainfuck"], capsys)
+        assert "--spec brainfuck" in plain
+
+    def test_the_quoted_command_actually_runs(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The point of quoting it, and the thing a test can check."""
+        out, _err = call_both(["describe", "--spec", self.SPACED], capsys)
+        assert out.startswith("Interpreter for A Painter Ant")
+
+    def test_the_template_hint_is_quoted(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """``encode`` on a template language points at ``generate --bits``."""
+        with pytest.raises(SystemExit):
+            call_main(["encode", self.SPACED, "10"], capsys)
+        assert f'"{self.SPACED}"' in capsys.readouterr().err
+
+    def test_every_spaced_name_is_quoted_in_its_describe(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """All twelve, since one unquoted survivor is the whole bug again."""
+        spaced = [n for n in esolangs.list_languages() if " " in n]
+        assert len(spaced) == 12
+        for name in spaced:
+            out, _err = call_both(["describe", name], capsys)
+            assert f'--spec "{name}"' in out, name
+
+
+class TestAnswerProvesRatherThanWaits:
+    """``answer --timeout 20`` took twenty seconds; raising a bound made it
+    strictly slower, which is the opposite of what a bound means.
+
+    ``answer --help`` calls itself "``verify`` for one row instead of all of
+    them", and ``verify`` settles four rows of the same language in a fifth
+    of a second -- the repeated-state proof had reached ``evaluate`` and
+    ``verify`` and never reached here.
+    """
+
+    @pytest.mark.parametrize("language", ["123", "ArrowQueue", "Point Break"])
+    def test_a_diverging_row_is_settled_quickly(self, language: str) -> None:
+        """A generous bound must not be paid; it is the backstop, not the clock."""
+        start = time.perf_counter()
+        answer = esolangs.evaluate(language, "0110", timeout=20)
+        elapsed = time.perf_counter() - start
+        assert answer == "0110"
+        assert elapsed < 20, f"{language} waited {elapsed:.1f}s out of a 20s bound"
+
+    def test_the_cli_answer_agrees_row_by_row(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The proof must not have changed any answer, only the wait."""
+        for bits, expected in (("00", "0"), ("01", "1"), ("10", "1"), ("11", "0")):
+            out, _err = call_both(
+                ["answer", "--timeout", "20", "123", "0110", bits], capsys
+            )
+            assert out.strip() == expected, bits

@@ -46,6 +46,7 @@ from difflib import get_close_matches
 from esolangs import (
     LanguageInfo,
     __version__,
+    _terminates,
     check_runnable,
     check_stdin,
     describe,
@@ -72,14 +73,16 @@ from esolangs.tools.wrap import DEFAULT_WIDTH
 USAGE = """usage: esolangs <command> [...]
 
 commands:
-  list [--details]            list the supported languages
+  list [--details] [--json]   list the supported languages
   encode <language> <bits>    print the stdin that feeds those bits
   generate [--width [N]] [--bits BITS] <language> <truth-table>
                               print a program computing a truth table
                               (--width wraps it; --bits fills a template)
-  describe <language>         print how that language reads its input and
-                              where it puts the answer
-  run [--timeout S] [--judge] [--table T] <language> <file>
+  describe [--json] [--spec] <language>
+                              print how that language reads its input and
+                              where it puts the answer (--spec prints the
+                              interpreter's own description of it)
+  run [--timeout S] [--judge] [--table T] [--seed N] <language> <file>
                               run a program through its interpreter
                               (--judge prints the answer bit instead)
   check-stdin [--table T] <language>
@@ -87,13 +90,13 @@ commands:
                               without running anything
   read-answer <language>      read a program's output on stdin and print
                               the answer bit it carries
-  answer <language> <truth-table> <bits>
+  answer [--timeout S] <language> <truth-table> <bits>
                               generate, feed those bits, run, and print the
                               one answer bit
-  verify <language> <truth-table>
+  verify [--timeout S] [--width [N]] <language> <truth-table>
                               generate, run every row, and report whether
                               the program computes that table
-  evaluate <language> <truth-table>
+  evaluate [--timeout S] [--width [N]] <language> <truth-table>
                               the same, printing the table it computed
   debug [--steps N] [--timeout S] [--watch-cell I] [--break-on-output S]
         <language> <file>
@@ -537,7 +540,10 @@ def _template_hint(exc: TemplateError, language: str) -> str:
     if pointer not in message:
         return message
     head = message.split(pointer)[0]
-    return f"{head}fill them with: esolangs generate --bits <bits> {language} <table>"
+    return (
+        f"{head}fill them with: esolangs generate --bits <bits> "
+        f"{_as_argument(language)} <table>"
+    )
 
 
 def _shell_hint(message: str, language: str) -> str:
@@ -554,7 +560,7 @@ def _shell_hint(message: str, language: str) -> str:
     head = message.split(pointer)[0]
     return (
         f"{head}embed them in the program instead: "
-        f"esolangs generate --bits <bits> {language} <table>"
+        f"esolangs generate --bits <bits> {_as_argument(language)} <table>"
     )
 
 
@@ -1330,7 +1336,7 @@ def _describe(rest: list[str]) -> None:
         print(
             f"{'input'.ljust(width)}  none -- this generator embeds the bits "
             f"in the program: esolangs generate --bits <bits> "
-            f"{facts['name']} <table>"
+            f"{_as_argument(str(facts['name']))} <table>"
         )
     else:
         # The symmetric row.  A reader had ``input_encoding`` and
@@ -1343,7 +1349,10 @@ def _describe(rest: list[str]) -> None:
     # package ships as the interpreter's module docstring and used to name
     # only as ``interpreter: stack_based.unsquare`` -- an import path, with
     # no hint that importing it is the point.
-    print(f"{'spec'.ljust(width)}  esolangs describe --spec {facts['name']}")
+    print(
+        f"{'spec'.ljust(width)}  esolangs describe --spec "
+        f"{_as_argument(str(facts['name']))}"
+    )
 
 
 def _check_stdin(rest: list[str]) -> None:
@@ -1458,13 +1467,30 @@ def _answer(rest: list[str]) -> None:
 def _diverging_answer(
     name: str, source: str, stdin: str, bound: float, facts: LanguageInfo
 ) -> str:
-    """Return the answer bit for a language that answers by terminating."""
+    """Return the answer bit for a language that answers by terminating.
+
+    By *proof* rather than by waiting.  This used to run the row under the
+    bound and read a timeout as the 1 -- so ``answer --timeout 20`` on a
+    1-row took twenty seconds, and raising the bound made it strictly
+    slower, which is the opposite of what a bound should mean.  ``verify``
+    settles four rows of the same language in a fifth of a second because
+    it uses the repeated-state proof; ``answer --help`` calls itself
+    "``verify`` for one row" and was the one place the proof had not
+    reached.
+
+    The clock stays as the backstop it was always meant to be: a loop that
+    grows without bound never repeats a state, so it still has to be timed
+    out.
+    """
     encoding = facts["answer_encoding"]
-    try:
-        run(name, source, stdin, bound)
-    except ExecutionTimeoutError:
-        return str(encoding.index("diverges"))
-    return str(encoding.index("halts"))
+    return _terminates(
+        name,
+        source,
+        stdin,
+        bound,
+        str(encoding.index("halts")),
+        str(encoding.index("diverges")),
+    )
 
 
 def _evaluate(rest: list[str]) -> None:
@@ -1591,6 +1617,19 @@ def _seed_of(options: dict[str, str]) -> int | None:
         raise  # pragma: no cover - unreachable; _fail exits
 
 
+def _as_argument(language: str) -> str:
+    """Return ``language`` spelled the way a shell needs it.
+
+    Twelve of the 69 names contain a space, and the package prints
+    commands containing them -- ``describe`` ends with ``esolangs describe
+    --spec A Painter Ant``, and the template hint offers ``esolangs
+    generate --bits <bits> A Painter Ant <table>``.  Copy-pasting either
+    gives ``unexpected argument: 'Painter'``, so the tool was emitting
+    commands it cannot itself parse.
+    """
+    return f'"{language}"' if " " in language else language
+
+
 def _emit_partial(exc: EsolangError) -> None:
     """Write whatever the program printed before ``exc`` to stdout.
 
@@ -1701,7 +1740,7 @@ def _run(rest: list[str]) -> None:
         _fail(
             f"{name} reads {reads}, so the bit count cannot be checked from "
             f"stdin alone -- pass --table <truth-table> with --judge, or use: "
-            f"esolangs answer {name} <truth-table> <bits>"
+            f"esolangs answer {_as_argument(name)} <truth-table> <bits>"
         )
     # No copy of the warning here.  ``run`` emits the same judgement as a
     # ``UserWarning`` now, so printing it as well said everything twice --
