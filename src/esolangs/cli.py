@@ -1509,6 +1509,26 @@ def _judge(language: str, output: str, mode: object) -> str:
         raise  # pragma: no cover - unreachable; _fail exits
 
 
+def _emit_partial(exc: EsolangError) -> None:
+    """Write whatever the program printed before ``exc`` to stdout.
+
+    A run that failed used to emit nothing at all -- a Modulous program
+    printing ``Hi`` and then popping an empty stack gave an empty stdout,
+    an empty stderr and exit 1, while ``debug`` on the same file showed
+    ``output: 'Hi'``.  The bytes before the failure are most of the
+    diagnosis when the program is one you are still writing.
+
+    On stdout, where the successful run puts them, so a pipe sees the same
+    prefix either way and the error stays on stderr.
+    """
+    if not exc.partial_output:
+        return
+    sys.stdout.write(exc.partial_output)
+    if not exc.partial_output.endswith("\n"):
+        sys.stdout.write("\n")
+    sys.stdout.flush()
+
+
 def _run(rest: list[str]) -> None:
     """Run a program through its interpreter and write its output."""
     rest, options = _pop_options(rest, {"--timeout", "--table"})
@@ -1655,10 +1675,12 @@ def _run(rest: list[str]) -> None:
         # script can tell "ran out of time" from "the program broke".  Those
         # shared exit 1, which made the three termination languages'
         # answer indistinguishable from a crash.
+        _emit_partial(exc)
         _fail(str(exc), _TIMEOUT_EXIT)
     except EsolangError as exc:
         # A usage error (an unknown language) is still 2; anything the
         # program itself did is the program's failure, and exits 1.
+        _emit_partial(exc)
         _fail(str(exc), 2 if isinstance(exc, ValueError) else 1)
     if judge:
         print(_judge(language, output, mode))

@@ -16,6 +16,7 @@ import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cache
+from urllib.parse import quote
 
 from esolangs.exceptions import UnknownLanguageError
 from esolangs.tools import boolean as _boolean
@@ -669,6 +670,31 @@ def parameterized_ids() -> frozenset[str]:
 
 # Canonical id -> display name, the index :func:`resolve` matches against.
 _BY_ID: dict[str, str] = {lang.id: name for name, lang in LANGUAGES.items()}
+
+
+#: Characters a wiki slug may keep as themselves.
+#:
+#: RFC 3986 lets a path segment carry the unreserved set and the sub-delims,
+#: so parentheses, ``*``, ``~`` and ``-`` stay readable -- ``CV(N)(C)`` is a
+#: better link than ``CV%28N%29%28C%29`` and both resolve.  What is *not*
+#: here is the point: ``%`` is the escape character itself and ``^`` is in
+#: neither set, so ``%^2^-1`` went out as
+#: ``https://esolangs.org/wiki/%^2^-1``, which esolangs.org answers 400 --
+#: ``%^2`` is not a percent-escape.  Non-ASCII is escaped too: ``Forþ`` as
+#: raw bytes is served by a browser and refused by a strict client.
+_WIKI_SAFE = "_-.~()*!'+,;=:@&$"
+
+
+def wiki_url(name: str) -> str:
+    """Return the esolangs.org page for a language's display name.
+
+    One function because there were two constructions -- :func:`describe`
+    built the URL inline and ``scripts/make_languages_doc.py`` built it
+    again for the README -- so the same broken link shipped in both, and a
+    fix to either would have left the other wrong.
+    """
+    slug = quote(name.replace(" ", "_"), safe=_WIKI_SAFE)
+    return f"https://esolangs.org/wiki/{slug}"
 
 
 def resolve(name: str) -> str:
