@@ -145,7 +145,8 @@ def _resolve(line: _Line, var: _Vars) -> _Line:
             if val[0] == "$":
                 name = val[1:].strip()
                 if name not in var:
-                    raise HaltError
+                    known = ", ".join(sorted(var)) or "none are defined yet"
+                    raise HaltError(f"${name} is not a defined variable ({known})")
                 out[i + 1] = var[name]
             nxt = out[i + 1]
             if isinstance(nxt, str) and (num := _as_number(nxt)) is not None:
@@ -166,7 +167,7 @@ def _arith(c: _Line) -> int | float | str:
     if o == "*":
         return left * right
     if right == 0:
-        raise HaltError
+        raise HaltError(f"division by zero: {left} {o} {right}")
     return left / right
 
 

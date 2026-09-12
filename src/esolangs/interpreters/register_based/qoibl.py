@@ -349,7 +349,7 @@ def _arithmetic(
         return x * y, var
     if num == "yy":
         if y == 0:
-            raise HaltError
+            raise HaltError(f"division by zero: {x} divided by {y}")
         return x // y, var
     raise ValueError("unrecognized arithmetic operator")
 
