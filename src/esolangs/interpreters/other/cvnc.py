@@ -1,4 +1,104 @@
-r"""Interpreter for CV(N)(C)."""
+"""Interpreter for CV(N)(C).
+
+A pronounceable language whose source is a string of IPA symbols parsed as
+syllables.  Memory is an unbounded unsigned integer *accumulator*, a
+*deque* of unbounded unsigned integers, and a *function* from unbounded
+unsigned integers to unbounded unsigned integers that the program builds up
+symbol by symbol and applies on demand.
+
+The syllable structure is CV(N)(C): a non-nasal consonant, a vowel, an
+optional nasal, and an optional final non-nasal consonant.  Parsing is only
+about *validity* -- every symbol is a command in its own right and they run
+in written order -- so ``suŋs`` is one syllable running four commands and
+``susŋ`` is not a program at all.
+
+The commands, by class:
+
+- **Fricatives do I/O.**  ``θ`` prints the accumulator as an integer, ``f``
+  prints it modulo 256 as an ASCII character, ``s`` reads an integer into
+  it, and ``ʒ`` reads an ASCII character (modulo 256) into it.
+- **Plosives build the function.**  ``d`` appends ``a`` (a reference to the
+  accumulator), ``b`` ``+``, ``t`` ``-``, ``ɡ`` ``×``, ``q`` ``÷``, ``ʔ``
+  ``(``, ``ʡ`` ``)``; ``p`` and ``k`` pop the front and back of the deque
+  and append the popped number as a literal; ``c`` resets the function to
+  its empty default.
+- **Approximants do control flow.**  ``ɰ̊`` and ``ɰ`` open a while loop,
+  jumping past the matching ``ʋ`` when the accumulator is zero and nonzero
+  respectively, and ``ʋ`` jumps back to its opener.  ``ɹ`` and ``j`` are
+  computed gotos, to the accumulator-th character and the accumulator-th
+  syllable of the source.
+- **Vowels modify the accumulator**: ``i`` increments, ``ə`` decrements
+  (flooring at zero), ``æ`` squares, ``o`` takes the integer square root,
+  and ``u`` replaces the accumulator with the function applied to it.
+- **Nasals work the deque**: ``m`` and ``n`` push the accumulator to the
+  front and back, ``ŋ`` and ``ɲ`` pop the front and back into it.
+
+Decisions for gaps in the wiki spec (documented):
+
+- **Syllabification is greedy, and a final consonant is taken only when it
+  cannot begin the next syllable.**  The spec gives the structure and two
+  examples of what is and is not a program, but not the rule that splits a
+  consonant run.  Since every syllable needs a vowel, a consonant followed
+  by a vowel must be an onset, and one that is not must be a coda -- which
+  is forced, not chosen, and parses all four of the page's examples.  The
+  page's own counterexample ``susŋ`` fails it: the nasal is stranded with
+  no vowel, matching the spec's "can't be broken up into valid syllables".
+- **``ɰ̊`` is a single command spelled with two codepoints** (``ɰ`` plus
+  U+030A COMBINING RING ABOVE), so the tokenizer joins them.  A combining
+  ring on anything else, and any symbol outside the command set, makes the
+  program malformed.
+- **``ɹ`` counts codepoints, not commands.**  The spec says "character",
+  and the source is a string of characters; the alternative (counting
+  tokens) would make ``ɰ̊`` occupy one position and silently disagree with
+  the text the programmer wrote.  A goto to a position that is not the
+  start of a syllable is still legal -- execution simply resumes at that
+  command -- but landing on the ring of a ``ɰ̊`` resumes at the ``ɰ̊``
+  itself, since there is no command to run in the middle of one.
+- **A goto past the end of the source halts**, which is what running off
+  the end does anyway; the same is true of ``j`` past the last syllable.
+- **A loop opener jumps *past* its ``ʋ``, not onto it.**  The spec says
+  only "jump to the matching /ʋ/", and landing *on* the loop end would run
+  it, sending control straight back to the test it just failed -- an
+  infinite loop for the very case the test was meant to escape.  The
+  page's truth machine settles it: on input 0 the ``ɰ̊`` must skip the body
+  and reach the end of the program, printing ``0`` once and halting, which
+  it only does if the jump clears the ``ʋ``.  ``ʋ`` itself jumps back
+  *onto* its opener, which re-tests the condition.
+- **The function is applied left to right with ``×`` and ``÷`` binding
+  tighter than ``+`` and ``-``**, the ordinary arithmetic reading of the
+  symbols the spec names.  The wiki's Hello, world! example applies only
+  ``a``, ``a×a``, ``a×a+a``, ``a×a+a+a-a`` and ``a×a+(a)``, which pin the
+  precedence but never divide, so division's rounding is decided here:
+  ``÷`` floors, the only choice that keeps the accumulator an integer.
+- **An invalid function does nothing**, as the spec says for ``u``:
+  "if the function is valid, else do nothing".  *Valid* is defined by the
+  parser -- the token string must parse as a complete expression -- so an
+  empty function, unbalanced parentheses, a trailing operator, and two
+  adjacent operands are all simply inert.  Division by zero is a runtime
+  *operation* rather than a malformed function, so it raises
+  :class:`~esolangs.exceptions.HaltError`.
+- **The accumulator is unsigned**, so a subtraction that would go below
+  zero floors at zero, matching ``ə``'s explicit "decrement if it is
+  greater than zero" and the spec's "unbounded *unsigned* integer" memory.
+  The same floor applies to a negative integer read by ``s``.
+- **Popping an empty deque** (``p``, ``k``, ``ŋ``, ``ɲ``) is an invalid
+  runtime operation and raises :class:`~esolangs.exceptions.HaltError`.
+- **Unbalanced loops** -- a ``ʋ`` with no opener, or an opener with no
+  ``ʋ`` -- make the program malformed (:class:`ValueError`), as does a
+  source that does not syllabify or an empty program.
+- **``s`` takes an unparseable line as zero.**  An empty line (a bare
+  Enter) and a line of junk are both input the user can legitimately type,
+  not invalid *operations* the way popping an empty deque is, so neither
+  raises.  **EOF** is the separate case and propagates as
+  :class:`EOFError` from the IO seam, the repo-wide convention; ``ʒ`` on an
+  empty line reads the newline that ended it.
+- **The multiplication plosive is accepted spelled either way.**  The
+  command table gives it as ``ɡ`` (U+0261 LATIN SMALL LETTER SCRIPT G) but
+  the page's own Hello, world! writes a plain ASCII ``g`` seven times and
+  never uses U+0261, so a reader who copies either the table or the example
+  gets a program that runs.  The ASCII form folds to the IPA one during
+  tokenization.
+"""
 
 from __future__ import annotations
 
@@ -75,7 +175,13 @@ _LOOP_END = "ʋ"
 
 
 def _as_int(line: str) -> int:
-    r"""Parse an input line as an integer, taking anything else as zero."""
+    """Parse an input line as an integer, taking anything else as zero.
+
+    An empty line is a bare Enter and a line of junk is what the fuzz suite
+    feeds; neither is an *invalid operation* the way popping an empty deque
+    is, so both read as 0 rather than raising.  Running out of input is the
+    separate case and still raises :class:`EOFError` from the IO seam.
+    """
     try:
         return int(line)
     except ValueError:
@@ -83,7 +189,12 @@ def _as_int(line: str) -> int:
 
 
 def _tokenize(code: str) -> list[str]:
-    r"""Split ``code`` into commands, joining ``ɰ`` with its combining ring."""
+    """Split ``code`` into commands, joining ``ɰ`` with its combining ring.
+
+    Every other command is one codepoint.  A ring that does not follow
+    ``ɰ``, and any symbol that is not a command, makes the program
+    malformed -- the fuzz suite feeds exactly that.
+    """
     tokens: list[str] = []
     index = 0
     while index < len(code):
@@ -102,7 +213,13 @@ def _tokenize(code: str) -> list[str]:
 
 
 def _syllabify(tokens: list[str]) -> list[int]:
-    r"""Return the token index each syllable starts at, or reject the."""
+    """Return the token index each syllable starts at, or reject the source.
+
+    A syllable is a consonant, a vowel, an optional nasal, and an optional
+    final consonant.  The final consonant is taken only when it cannot be
+    the next syllable's onset -- that is, when no vowel follows it -- which
+    is forced by every syllable needing a vowel of its own.
+    """
     starts: list[int] = []
     index = 0
     while index < len(tokens):
@@ -127,7 +244,7 @@ def _syllabify(tokens: list[str]) -> list[int]:
 
 
 def _match_loops(tokens: list[str]) -> dict[int, int]:
-    r"""Pair every loop opener with its ``ʋ``, rejecting an unbalanced."""
+    """Pair every loop opener with its ``ʋ``, rejecting an unbalanced source."""
     pairs: dict[int, int] = {}
     stack: list[int] = []
     for index, token in enumerate(tokens):
@@ -145,10 +262,21 @@ def _match_loops(tokens: list[str]) -> dict[int, int]:
 
 
 class _Parser:
-    r"""A recursive-descent reader for the function the program has built."""
+    """A recursive-descent reader for the function the program has built.
+
+    The function is a string over ``a``, the four operators and the two
+    parentheses, so this is the grammar of ordinary arithmetic with ``a``
+    for the only atom and a number literal where ``p``/``k`` popped one.
+    Parsing and evaluating together is enough: the accumulator is fixed for
+    the duration of one application, so there is no tree to keep.
+
+    A parse failure means the function is *invalid* in the spec's sense,
+    which ``u`` treats as doing nothing, so the error type is private and
+    :func:`_apply` converts it to "leave the accumulator alone".
+    """
 
     def __init__(self, symbols: list[str], accumulator: int) -> None:
-        r"""Read ``symbols``, substituting ``accumulator`` for every ``a``."""
+        """Read ``symbols``, substituting ``accumulator`` for every ``a``."""
         self.symbols = symbols
         self.accumulator = accumulator
         self.index = 0
@@ -157,14 +285,14 @@ class _Parser:
         return self.symbols[self.index] if self.index < len(self.symbols) else None
 
     def parse(self) -> int:
-        r"""Evaluate the whole function, rejecting anything left over."""
+        """Evaluate the whole function, rejecting anything left over."""
         value = self._expression()
         if self.index != len(self.symbols):
             raise _InvalidFunctionError
         return value
 
     def _expression(self) -> int:
-        r"""Evaluate a sum of terms, left to right."""
+        """Evaluate a sum of terms, left to right."""
         value = self._term()
         while (symbol := self._peek()) in _ADDITIVE:
             self.index += 1
@@ -175,7 +303,7 @@ class _Parser:
         return value
 
     def _term(self) -> int:
-        r"""Evaluate a product of factors, left to right."""
+        """Evaluate a product of factors, left to right."""
         value = self._factor()
         while (symbol := self._peek()) in _MULTIPLICATIVE:
             self.index += 1
@@ -189,7 +317,7 @@ class _Parser:
         return value
 
     def _factor(self) -> int:
-        r"""Evaluate ``a``, a literal, or a parenthesized expression."""
+        """Evaluate ``a``, a literal, or a parenthesized expression."""
         symbol = self._peek()
         if symbol is None:
             raise _InvalidFunctionError
@@ -208,7 +336,7 @@ class _Parser:
 
 
 class _InvalidFunctionError(Exception):
-    r"""The built function does not parse, so ``u`` leaves the accumulator."""
+    """The built function does not parse, so ``u`` leaves the accumulator."""
 
 
 # : One instant of a run:.
@@ -225,14 +353,14 @@ type _State = tuple[int, tuple[int, ...], tuple[str, ...], int]
 
 
 def _popped(deque: tuple[int, ...], *, front: bool) -> tuple[tuple[int, ...], int]:
-    r"""Pop one end of the deque, refusing an empty one."""
+    """Pop one end of the deque, refusing an empty one."""
     if not deque:
         raise HaltError("pop from an empty deque")
     return (deque[1:], deque[0]) if front else (deque[:-1], deque[-1])
 
 
 def _applied(accumulator: int, function: tuple[str, ...]) -> int:
-    r"""Return the function applied to the accumulator, if it parses."""
+    """Return the function applied to the accumulator, if it parses."""
     try:
         return _Parser(list(function), accumulator).parse()
     except _InvalidFunctionError:
@@ -242,7 +370,7 @@ def _applied(accumulator: int, function: tuple[str, ...]) -> int:
 def _fricative(
     state: _State, token: str, line: str | None, byte: int | None
 ) -> tuple[_State, str | int | None]:
-    r"""Run one I/O command, reporting anything it prints."""
+    """Run one I/O command, reporting anything it prints."""
     accumulator, deque, function, pointer = state
     if token == _PRINT_NUM:
         return state, accumulator
@@ -257,7 +385,7 @@ def _fricative(
 
 
 def _plosive(state: _State, token: str) -> _State:
-    r"""Append to the function, or reset it."""
+    """Append to the function, or reset it."""
     accumulator, deque, function, pointer = state
     if token == _CLEAR_FUNCTION:
         return (accumulator, deque, (), pointer)
@@ -268,7 +396,7 @@ def _plosive(state: _State, token: str) -> _State:
 
 
 def _vowel(state: _State, token: str) -> _State:
-    r"""Modify the accumulator."""
+    """Modify the accumulator."""
     accumulator, deque, function, pointer = state
     if token == _INCREMENT:
         accumulator += 1
@@ -284,7 +412,7 @@ def _vowel(state: _State, token: str) -> _State:
 
 
 def _nasal(state: _State, token: str) -> _State:
-    r"""Push to or pop from the deque."""
+    """Push to or pop from the deque."""
     accumulator, deque, function, pointer = state
     if token == _PUSH_FRONT:
         return (accumulator, (accumulator, *deque), function, pointer)
@@ -302,7 +430,7 @@ def _approximant(
     offsets: dict[int, int],
     end: int,
 ) -> _State:
-    r"""Jump: a goto, a loop test, or a loop end."""
+    """Jump: a goto, a loop test, or a loop end."""
     accumulator, deque, function, pointer = state
     if token == _GOTO:
         # Past the end is a halt, which.
@@ -333,7 +461,18 @@ def _advance(
     line: str | None = None,
     byte: int | None = None,
 ) -> tuple[_State, str | int | None]:
-    r"""Execute one command, returning the new state and anything it prints."""
+    """Execute one command, returning the new state and anything it prints.
+
+    Pure: it reads ``state`` and returns a new one, and reaches no ``IO``.
+    The two reading commands take their input as ``line`` and ``byte``, and
+    the two printing ones report what they would write -- an integer for
+    ``θ`` and a character for ``f``, which the shell tells apart by type
+    because the language prints them through different ports.
+
+    The pointer has already been advanced past this token by the caller,
+    which is what the loop arms rely on: they read ``pointer - 1`` to find
+    the command's own position in the pair table.
+    """
     if token in _FRICATIVES:
         return _fricative(state, token, line, byte)
     if token in _PLOSIVES:
@@ -346,10 +485,10 @@ def _advance(
 
 
 class _Machine:
-    r"""The run state of one CV(N)(C) program, steppable one command at a."""
+    """The run state of one CV(N)(C) program, steppable one command at a time."""
 
     def __init__(self, code: str, io: IO) -> None:
-        r"""Parse ``code`` into commands and syllables, ready to step."""
+        """Parse ``code`` into commands and syllables, ready to step."""
         self.tokens = _tokenize(code)
         if not self.tokens:
             raise ValueError("program is empty")
@@ -373,28 +512,34 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        r"""Whether the instruction pointer has run off the end."""
+        """Whether the instruction pointer has run off the end."""
         return self.pointer >= len(self.tokens)
 
     # The VM's language-shaped.
 
     @property
     def ip(self) -> int:
-        r"""The current instruction position."""
+        """The current instruction position."""
         return self.pointer
 
     @property
     def memory(self) -> list[int]:
-        r"""The addressable cells."""
+        """The addressable cells."""
         return [self.accumulator, *self.deque]
 
     @property
     def stack(self) -> list[object]:
-        r"""The stack."""
+        """The stack."""
         return list(self.deque)
 
     def snapshot(self) -> Hashable:
-        r"""Return the complete state, hashable for cycle detection."""
+        """Return the complete state, hashable for cycle detection.
+
+        Carries the pointer, the accumulator, the deque, the function under
+        construction, and the input cursor -- everything a later step can
+        read.  Nothing else varies between two runs of the same program, so
+        a repeat here is a real cycle.
+        """
         return (
             self.pointer,
             self.accumulator,
@@ -404,7 +549,15 @@ class _Machine:
         )
 
     def step(self) -> None:
-        r"""Execute one command, advancing the pointer."""
+        """Execute one command, advancing the pointer.
+
+        The ports live here rather than in the handlers: this is the shell.
+        A command reads at most once, so its input is taken before the
+        transition runs, and the value a print reports is written after --
+        an integer through ``print_num`` and a character through
+        ``print_char``, which is why the transition reports the two as
+        different types rather than as one rendered string.
+        """
         if self.halted:
             return
         token = self.tokens[self.pointer]
@@ -436,7 +589,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    r"""Run a CV(N)(C) program to completion."""
+    """Run a CV(N)(C) program to completion."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

@@ -1,4 +1,57 @@
-r"""Interpreter for Between."""
+"""Interpreter for Between.
+
+Each instruction is one line of the form ``<arg1><operation><arg2>``; the
+five value types are strings (``'...'``), integers (``|...|``), variables
+(``[...]``), conditions (``(...)``), and none (``.``).  Arguments may be
+nested expressions, so ``|[a]+[b]|`` evaluates ``[a]+[b]`` as an integer and
+``([in]='1')`` evaluates ``[in]='1'`` as a condition.  ``f`` jumps to a
+0-indexed instruction, making Between a goto-based language.
+
+Decisions for gaps in the wiki spec (documented):
+- instruction addresses are 0-indexed (the wiki's truth machine example only
+  behaves like a truth machine under 0-indexing, where ``|5|f.`` loops back
+  to line 5 to reprint ``1``);
+- ``p`` writes with no trailing newline;
+- variables are declared (``v``) holding integer 0;
+- strings double apostrophes to include one (``''``), so the parser treats
+  ``''`` inside a literal as an escaped apostrophe (the wiki's ``can't``
+  example is untested and does not round-trip);
+- blank lines and lines starting with ``#`` are comments and skipped; line
+  numbers count only real instructions;
+- a ``goto`` target outside the program, or running off the end of the
+  program without ``x``, halts the program;
+- an undeclared variable, or an operation fed a value of the wrong type
+  (e.g. ``*`` on strings), is an invalid runtime operation and raises
+  :class:`~esolangs.exceptions.HaltError`; a malformed line (unbalanced
+  brackets, an unknown operation, trailing characters) raises
+  :class:`ValueError`.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
+
+The interpreter runs on a :class:`_Machine` (the parsed program, variable
+state, and program counter), so it is step-capable: ``step()`` executes
+one instruction and ``halted`` is true once ``x`` fires or the counter
+runs off the program.
+
+Evaluation is pure over an immutable ``_Vars``: :func:`_eval` and
+:func:`_exec` take the variables they see and return the value together
+with the variables and the control decision the instruction left behind.
+Neither edits what it is handed.  The control decision -- a jump target,
+or that ``x`` fired -- used to be a dictionary passed down the recursion
+and written into from the bottom; it is a returned value now, so an arm
+that sets it cannot be confused with one that merely reads it.
+
+The two ports stay callbacks rather than being hoisted into the shell,
+since :func:`_eval` recurses and the shell cannot know ahead of time how
+many reads a line will make.  In practice a *nested* argument never has a
+side effect at all: a group must produce an integer or a condition, and
+every operation that reads, prints, declares, assigns or exits returns
+none, so none of them can sit inside one.  The threading through nested
+arguments is therefore uniform rather than required, and two mutants
+that break it -- discarding the variables an ``s``'s value expression
+returns, and swapping the order the two operands of a binary operation are
+evaluated in -- are equivalent for that reason rather than untested.
+"""
 
 import sys
 from collections.abc import Callable, Mapping
@@ -37,7 +90,7 @@ _WHITESPACE = " \t"
 
 
 def _scan_string(line: str, i: int) -> int:
-    r"""Return one past the closing quote, treating ``''`` as an apostrophe."""
+    """Return one past the closing quote, treating ``''`` as an apostrophe."""
     j = i + 1
     while j < len(line):
         if line[j] == "'":
@@ -50,14 +103,14 @@ def _scan_string(line: str, i: int) -> int:
 
 
 def _skip_space(line: str, i: int) -> int:
-    r"""Advance ``i`` past any spaces or tabs."""
+    """Advance ``i`` past any spaces or tabs."""
     while i < len(line) and line[i] in _WHITESPACE:
         i += 1
     return i
 
 
 def _parse_expr(line: str, i: int) -> tuple[_Instr, int]:
-    r"""Parse ``<arg1><op><arg2>`` at ``i``, returning its node and the."""
+    """Parse ``<arg1><op><arg2>`` at ``i``, returning its node and the next index."""
     arg1, i = _parse_arg(line, i)
     i = _skip_space(line, i)
     if i >= len(line):
@@ -70,7 +123,7 @@ def _parse_expr(line: str, i: int) -> tuple[_Instr, int]:
 
 
 def _parse_group(line: str, i: int) -> tuple[_Group, int]:
-    r"""Parse a ``|...|`` or ``(...)`` expression group opened at ``i``."""
+    """Parse a ``|...|`` or ``(...)`` expression group opened at ``i``."""
     kind: Literal["int", "cond"] = "int" if line[i] == "|" else "cond"
     closer = "|" if line[i] == "|" else ")"
     expr, j = _parse_expr(line, i + 1)
@@ -80,7 +133,7 @@ def _parse_group(line: str, i: int) -> tuple[_Group, int]:
 
 
 def _parse_arg(line: str, i: int) -> tuple[_Arg, int]:
-    r"""Parse one argument at ``i``, returning its node and the next index."""
+    """Parse one argument at ``i``, returning its node and the next index."""
     i = _skip_space(line, i)
     if i >= len(line):
         raise ValueError("missing argument")
@@ -115,7 +168,7 @@ def _parse_arg(line: str, i: int) -> tuple[_Arg, int]:
 
 
 def _parse_line(line: str) -> _Instr:
-    r"""Parse one instruction line into an ``(op, arg1, arg2)`` node."""
+    """Parse one instruction line into an ``(op, arg1, arg2)`` node."""
     node, i = _parse_expr(line, 0)
     if _skip_space(line, i) != len(line):
         raise ValueError("trailing characters")
@@ -151,7 +204,12 @@ _FALL: _Control = (None, False)
 def _eval(
     node: _Arg, state: _Vars, control: _Control, read: _Read, emit: _Emit
 ) -> tuple[ValueT, _Vars, _Control]:
-    r"""Evaluate a value node (or run an instruction) and return its value."""
+    """Evaluate a value node (or run an instruction) and return its value.
+
+    Pure in its state: it reads ``state`` and returns a new one.  The
+    control decision is threaded through so a nested instruction -- an
+    ``f`` inside an argument -- can still make one.
+    """
     if node[0] == "str":
         return node[1], state, control
     if node[0] == "int":
@@ -176,7 +234,12 @@ def _eval(
 def _exec(
     instr: _Instr, state: _Vars, control: _Control, read: _Read, emit: _Emit
 ) -> tuple[ValueT, _Vars, _Control]:
-    r"""Execute one instruction, returning the value it produces (usually."""
+    """Execute one instruction, returning the value it produces (usually none).
+
+    Pure in its state, like :func:`_eval`.  ``read`` and ``emit`` are the
+    two ports; everything else is a function of the arguments and the
+    variables.
+    """
     op, arg1, arg2 = instr[0], instr[1], instr[2]
     if op == "p":
         value, state, control = _eval(arg1, state, control, read, emit)
@@ -259,7 +322,7 @@ def _exec(
 
 
 class _Machine:
-    r"""One Between run: the parsed program, variables, and counter."""
+    """One Between run: the parsed program, variables, and counter."""
 
     def __init__(self, code: list[str], io: IO) -> None:
         self.io = io
@@ -276,7 +339,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        r"""Whether ``x`` fired or the counter ran off the program."""
+        """Whether ``x`` fired or the counter ran off the program."""
         return self._exited or not 0 <= self.pc < len(self.program)
 
     # The VM's language-shaped.
@@ -284,21 +347,21 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        r"""The current instruction position."""
+        """The current instruction position."""
         return self.pc
 
     @property
     def memory(self) -> list[int]:
-        r"""The addressable cells."""
+        """The addressable cells."""
         return [v for v in self.state.values() if type(v) is int]
 
     @property
     def stack(self) -> list[object]:
-        r"""No stack in this language."""
+        """No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        r"""Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection."""
         return (
             self.pc,
             tuple(sorted(self.state.items())),
@@ -308,16 +371,22 @@ class _Machine:
 
     @property
     def _state(self) -> _State:
-        r"""The complete changing state at the instruction boundary."""
+        """The complete changing state at the instruction boundary."""
         return (self.state, self.pc, self._exited)
 
     def _restore(self, state: _State) -> None:
-        r"""Write a completed instruction transition back onto the shell."""
+        """Write a completed instruction transition back onto the shell."""
         variables, self.pc, self._exited = state
         self.state = dict(variables)
 
     def step(self) -> None:
-        r"""Execute one instruction, advancing (or jumping) the counter."""
+        """Execute one instruction, advancing (or jumping) the counter.
+
+        The two ports live here rather than in the transition: this is the
+        shell.  They are handed over as callbacks because an instruction's
+        arguments nest, so a read or a print happens part-way through
+        evaluating a line rather than before or after it.
+        """
         if self.halted:
             return
         variables, pc, exited = self._state
@@ -339,7 +408,7 @@ class _Machine:
 
 
 def run(code: list[str], io: IO) -> None:
-    r"""Run a Between program, executing instructions until it exits or."""
+    """Run a Between program, executing instructions until it exits or falls off."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

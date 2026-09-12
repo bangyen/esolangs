@@ -1,4 +1,137 @@
-r"""Interpreter for Flowchart."""
+r"""Interpreter for Flowchart.
+
+Nodes drawn as literal flowchart boxes are joined by box-drawing lines, and
+one or more pointers walk those lines, executing the node they land on.
+Each pointer owns a register holding a single bit (``0``, ``1``, or empty)
+and a cursor into a shared, infinite tape of deques; the deques themselves
+are shared by every pointer.  Execution starts on the top-most, left-most
+``( )`` node travelling right, and the program halts once every pointer has
+stopped on an ``(( ))``.
+
+The nodes, all of which the wiki (https://esolangs.org/wiki/Flowchart)
+tabulates explicitly:
+
+===========  ==================================================
+``( )``      start / fork / no-op; the only node that splits
+``(( ))``    end; a pointer that reaches it stops
+``[ ]``      toggle the register (empty becomes 1)
+``{ ]``      set the register to 0
+``[ }``      set the register to 1
+``{ }``      clear the register, making it empty
+``< >``      switch: 1 turns left, 0 turns right, empty goes on
+``/ /``      read one bit of input into the register
+``\ \``      output the register's bit (nothing when it is empty)
+``\[ ]/``    push the register onto the top of the deque
+``/[ ]\``    push the register onto the bottom of the deque
+``\{ }/``    pop the deque's top into the register
+``/{ }\``    pop the deque's bottom into the register
+``< ]``      select the previous deque
+``[ >``      select the next deque
+===========  ==================================================
+
+The spec leaves five things unstated that a running interpreter has to
+settle.  Each is resolved below against the wiki's own worked examples
+rather than invented, and every one of the three examples on the page
+(truth machine, cat, Kolakoski) is exercised by the test suite:
+
+* **A switch's left and right are relative to the pointer's heading**,
+  not absolute compass directions.  The truth machine's ``< >`` is entered
+  travelling *downward*: register 1 has to reach the ``\ \`` that loops
+  back (drawn to the grid-east) and register 0 has to reach the ``\ \``
+  and ``(( ))`` that halt (drawn to the grid-west).  Heading-relative
+  left/right is the only reading that puts 1 on the looping branch, so the
+  example pins the orientation down even though the prose does not.
+
+* **Bits are read and written as characters, not packed into bytes.**  The
+  Boolfuck convention buffers eight bits and emits one byte, but
+  that convention cannot express Flowchart's own truth machine: given
+  ``0`` it reads a single bit, writes a single bit, and halts, so an
+  eight-bit output buffer would never flush and the program would print
+  nothing at all.  ``/ /`` therefore reads one line and takes ``1`` as a
+  one bit and anything else as a zero, and ``\ \`` prints a literal
+  ``'0'`` or ``'1'``.  EOF leaves the register empty rather than raising,
+  which is exactly the "empty if there are no more bits to read" the spec
+  asks for; a pointer reading past the end simply carries an empty
+  register onward, and ``\ \`` then prints nothing.
+
+* **Re-entry memory disambiguates paths; it never suppresses a node.**
+  The spec says a pointer re-entering a node or path it has already
+  travelled "will go in the direction that it had previously travelled
+  unless it were to turn it 180deg".  Read as a rule about *node semantics*
+  it would break the wiki's own cat program, whose ``< >`` nodes sit inside
+  a loop and must be free to decide differently on each lap -- if the first
+  decision were replayed forever the loop could never exit.  So a node's
+  own semantics always run, and the remembered direction only settles
+  genuine ambiguity: which way to leave a junction (a ``T``-shaped fork in
+  the line) or a node whose semantics do not name an exit.  The 180deg
+  clause then means the remembered direction is declined whenever taking
+  it would reverse the pointer.
+
+* **An empty register produces nothing rather than a zero.**  The spec's
+  table says of ``\ \`` that "empty is zero", but the wiki's own cat program
+  contradicts the sentence: its read loop ends by popping an exhausted
+  deque, so the pointer reaches the output node with an empty register on
+  its last lap.  Emitting a zero there would make the cat print a trailing
+  ``0`` it never read (``101`` in, ``1010`` out), which is not a cat.  The
+  example is taken as ground truth, so ``\ \`` prints nothing on an empty
+  register; for the same reason a push of an empty register is a no-op (the
+  deques hold bits, and empty is not one) and a pop from an exhausted deque
+  leaves the register empty.  The truth machine never outputs an empty
+  register, so nothing else on the page constrains this.
+
+  This one is a genuine judgment call and could reasonably go the other
+  way.  The page is from 2025 and categorised Unimplemented, so its
+  diagrams were almost certainly never run, and a spurious trailing bit is
+  exactly the kind of edge case a hand-written example misses -- "the cat
+  is simply buggy, and the prose means what it says" is a defensible
+  reading.  What tipped it here is that the two are not symmetric: under
+  "empty is zero" *every* terminating run of the cat emits the extra bit,
+  since its read loop can only end by popping an exhausted deque, so the
+  example would not be slightly wrong but categorically not a cat.  The
+  page asserts both things and no implementation satisfies both, so
+  something on it is wrong either way.  Reverting is small and local:
+  print ``"0"`` for an empty register in :meth:`_Machine._execute` and
+  update ``test_no_trailing_zero_from_the_empty_register``.
+
+* **Pointers run in lock-step, round-robin, in creation order.**  The
+  spec fixes the starting order (top-most, left-most) and says pointers
+  "run in parallel" but never gives an interleaving, and because the deques
+  are shared the choice is observable.  One step per pointer per round keeps
+  the ordering the spec does give, and a fork creates its pointers in the
+  reading order of the cells its paths leave through -- top-most first, then
+  left-most -- which is the same order the spec uses to pick the starting
+  node.  A pointer's deque cursor is likewise unspecified; it is kept
+  per-pointer here, alongside the register the spec does make per-pointer.
+
+One further rule the spec does state, and this interpreter enforces:
+
+* **A vertical path enters a node at the node's middle.**  The wiki says
+  "vertical paths connecting into a node are expected to connect to the
+  middle of the node", and all three worked examples obey it -- 32 vertical
+  attachments, every one centred.  It is tempting to read the sentence as a
+  drawing convention rather than a law, because those same examples enter
+  nodes *horizontally* at their end cells 47 times (the Kolakoski program's
+  top row is one long horizontal chain).  But the two are not in tension: a
+  node is a contiguous run of cells on a single row, so a horizontal
+  neighbour is always at ``col0 - 1`` or ``col0 + len`` and the cell it enters
+  is always an end cell.  Horizontal entry cannot be drawn any other way,
+  so the spec has nothing to say about it and constrains the one case a
+  program can actually get wrong.  Vertical entry off the middle is
+  therefore malformed, and :meth:`_Machine._check_alignment` rejects it.
+
+  Note this is a check on *entry*, not on movement: a pointer already
+  inside a node still leaves through whichever cell of the box its exit
+  sits on, and a rail may still pass a node by without touching it.
+
+Malformed programs (an unknown node, a vertical path meeting a node off its
+middle, or no ``( )`` to start from) raise :class:`ValueError`.
+
+At EOF a ``/ /`` read leaves the register **empty** rather than raising,
+which is the same state ``{ }`` clears it to.  The nodes that consume the
+register -- printing it, or pushing it onto a deque -- skip a turn while it
+is empty, so a program that reads past the end of its input keeps running
+and simply stops emitting.  No :class:`HaltError` is raised at EOF.
+"""
 
 import sys
 from dataclasses import dataclass, replace
@@ -76,20 +209,31 @@ _EXITS = {
 
 
 def _turn_left(d: tuple[int, int]) -> tuple[int, int]:
-    r"""Return the heading 90 degrees to the left of ``d``."""
+    """Return the heading 90 degrees to the left of ``d``."""
     d_row, d_col = d
     return (-d_col, d_row)
 
 
 def _turn_right(d: tuple[int, int]) -> tuple[int, int]:
-    r"""Return the heading 90 degrees to the right of ``d``."""
+    """Return the heading 90 degrees to the right of ``d``."""
     d_row, d_col = d
     return (d_col, -d_row)
 
 
 @dataclass(frozen=True)
 class _Pointer:
-    r"""One program pointer: a position, a heading, a register, a cursor."""
+    """One program pointer: a position, a heading, a register, a cursor.
+
+    ``row``/``col`` is the cell the pointer currently occupies, ``d`` the
+    heading it is travelling on, ``reg`` its own register (``None`` when
+    empty), and ``deque`` its index into the shared tape of deques.  A
+    pointer that has reached an ``(( ))`` is ``done``.
+
+    Frozen: a step returns the pointers that follow rather than editing the
+    ones it was handed, so a pointer is a value.  ``replace`` builds the
+    changed copy, and ``memory`` is a tuple of pairs so the whole pointer
+    stays hashable -- which is what :meth:`state` already wanted it to be.
+    """
 
     row: int
     col: int
@@ -107,19 +251,19 @@ class _Pointer:
     memory: tuple[tuple[tuple[int, int], tuple[int, int]], ...] = ()
 
     def remembered(self, cell: tuple[int, int]) -> tuple[int, int] | None:
-        r"""Return the heading this pointer last left ``cell`` on."""
+        """Return the heading this pointer last left ``cell`` on."""
         for key, value in self.memory:
             if key == cell:
                 return value
         return None
 
     def remembering(self, cell: tuple[int, int], d: tuple[int, int]) -> "_Pointer":
-        r"""Return this pointer with ``cell``'s exit heading recorded."""
+        """Return this pointer with ``cell``'s exit heading recorded."""
         kept = tuple((k, v) for k, v in self.memory if k != cell)
         return replace(self, memory=(*kept, (cell, d)))
 
     def state(self) -> tuple[object, ...]:
-        r"""Return this pointer's state, hashable for cycle detection."""
+        """Return this pointer's state, hashable for cycle detection."""
         return (
             self.row,
             self.col,
@@ -134,14 +278,27 @@ class _Pointer:
 
 @dataclass
 class _State:
-    r"""Every mutable value in a Flowchart run."""
+    """Every mutable value in a Flowchart run.
+
+    The grid and parsed nodes are fixed for a run.  Pointers and deques are
+    the state a tick changes, so they travel together rather than being two
+    independent machine fields callers have to reconstruct.
+    """
 
     pointers: list[_Pointer]
     deques: dict[int, list[int]]
 
 
 class _Machine:
-    r"""Per-run Flowchart state: the grid, its pointers, and the deques."""
+    """Per-run Flowchart state: the grid, its pointers, and the deques.
+
+    ``step()`` advances every live pointer one cell, in creation order;
+    ``halted`` is true once each has stopped on an ``(( ))``.  The machine
+    is deterministic and its :meth:`snapshot` is bounded whenever the deques
+    are, so ``esolangs.vm.run_until_halt_or_cycle`` can prove a hang on it;
+    a program that grows a deque without bound falls into the same
+    undetectable class as an ever-growing brainfuck tape.
+    """
 
     # : Whether a read past the end.
     # : rather than raising.
@@ -161,7 +318,7 @@ class _Machine:
     eof_is_a_value = True
 
     def __init__(self, code: list[str], io: IO) -> None:
-        r"""Parse ``code``'s nodes and start on the first ``( )``."""
+        """Parse ``code``'s nodes and start on the first ``( )``."""
         self.io = io
         rows = [line.rstrip("\n") for line in code]
         self.width = max((len(r) for r in rows), default=0)
@@ -179,7 +336,7 @@ class _Machine:
 
     @property
     def pointers(self) -> list[_Pointer]:
-        r"""The live pointers, retained as a convenience for step helpers."""
+        """The live pointers, retained as a convenience for step helpers."""
         return self.state.pointers
 
     @pointers.setter
@@ -188,11 +345,11 @@ class _Machine:
 
     @property
     def deques(self) -> dict[int, list[int]]:
-        r"""The shared deques, retained as a convenience for step helpers."""
+        """The shared deques, retained as a convenience for step helpers."""
         return self.state.deques
 
     def _parse(self) -> None:
-        r"""Record every node on the grid, longest spelling first."""
+        """Record every node on the grid, longest spelling first."""
         for row, line in enumerate(self.grid):
             col = 0
             while col < len(line):
@@ -210,7 +367,15 @@ class _Machine:
         self._check_alignment()
 
     def _check_alignment(self) -> None:
-        r"""Reject a vertical path that enters a node off its middle."""
+        """Reject a vertical path that enters a node off its middle.
+
+        Runs after the scan above, because a rail's node may be recorded
+        after the rail itself.  Only vertical arms are checked: a node is a
+        contiguous run of cells on one row, so a horizontal neighbour can
+        only ever be at ``col0 - 1`` or ``col0 + len``, and the cell it enters is
+        therefore always an end cell.  Horizontal entry cannot be drawn any
+        other way, which is why the spec constrains only the vertical case.
+        """
         for row, line in enumerate(self.grid):
             for col, c in enumerate(line):
                 arms = _EXITS.get(c)
@@ -231,7 +396,7 @@ class _Machine:
                         )
 
     def _start(self) -> tuple[int, int]:
-        r"""Return the top-most, left-most ``( )`` node's first cell."""
+        """Return the top-most, left-most ``( )`` node's first cell."""
         for row in range(len(self.grid)):
             for col in range(self.width):
                 node = self.nodes.get((row, col))
@@ -240,7 +405,11 @@ class _Machine:
         raise ValueError("Flowchart program has no '( )' start node")
 
     def _fork_at_start(self) -> None:
-        r"""Split the initial pointer if the start node has several exits."""
+        """Split the initial pointer if the start node has several exits.
+
+        The start ``( )`` forks like any other, but there is no arriving
+        heading to exclude, so every attached path gets a pointer.
+        """
         p = self.pointers[0]
         here = (p.row, p.col)
         exits = self._reading_order(self._exits_from_node(p.row, p.col, None))
@@ -250,7 +419,7 @@ class _Machine:
         self.pointers = [_Pointer(row, col, d, prev=here) for row, col, d in exits]
 
     def _cells_of(self, row: int, col: int) -> list[tuple[int, int]]:
-        r"""Return every cell covered by the node at ``(row, col)``."""
+        """Return every cell covered by the node at ``(row, col)``."""
         spelling, col0 = self.nodes[(row, col)]
         return [(row, col0 + i) for i in range(len(spelling))]
 
@@ -258,18 +427,50 @@ class _Machine:
     def _reading_order(
         exits: list[tuple[int, int, tuple[int, int]]],
     ) -> list[tuple[int, int, tuple[int, int]]]:
-        r"""Sort a fork's exits top-most first, then left-most."""
+        """Sort a fork's exits top-most first, then left-most.
+
+        The spec orders pointers "top-most left-most, traveling right, then
+        downwards", so a fork creates them in the reading order of the cells
+        its paths leave through.  Only the fork sites sort: the unsorted
+        enumeration also feeds :meth:`_leave`'s fallback, which the spec says
+        nothing about.
+        """
         return sorted(exits, key=lambda step: (step[0], step[1]))
 
     def _anchor(self, row: int, col: int) -> tuple[int, int]:
-        r"""Return the key a cell's re-entry memory is stored under."""
+        """Return the key a cell's re-entry memory is stored under.
+
+        A node is several cells wide and a rail may re-enter it at any of
+        them, so every cell of a box shares its first cell's key; a bare
+        path character is its own anchor.
+        """
         node = self.nodes.get((row, col))
         return (row, node[1]) if node else (row, col)
 
     def _exits_from_node(
         self, row: int, col: int, came_from: tuple[int, int] | None
     ) -> list[tuple[int, int, tuple[int, int]]]:
-        r"""Return the ``(row, col, heading)`` steps leaving the node at."""
+        """Return the ``(row, col, heading)`` steps leaving the node at ``(row, col)``.
+
+        A node's exits are the path cells and nodes touching any cell of its
+        box, minus the cell the pointer entered from -- excluding by *cell*
+        rather than by heading matters because a box is several cells wide,
+        so a pointer can enter one cell of it from the north and still find
+        that same northern cell offered again from a different column.
+        ``came_from`` is ``None`` at the start, where nothing is excluded.
+
+        Exits are counted per *destination*, not per cell of this box.  Two
+        stacked nodes touch along their whole overlap, so a three-cell box
+        sitting on another offers a step from each of its columns -- but all
+        three land on the one node below, which is a single path onward, not
+        three.  Counting them separately made a ``( )`` drawn directly above
+        another node fork into three pointers that then walked the rest of
+        the program in lock-step, tripling its output.  A rail between the
+        two nodes never showed the bug, because only its middle column
+        carries the ``│``; the wire's real job is narrowing a wide contact
+        down to one path.  Deduplicating here means a drawing that omits it
+        behaves the same way instead of silently multiplying pointers.
+        """
         cells = set(self._cells_of(row, col))
         out: list[tuple[int, int, tuple[int, int]]] = []
         seen: set[tuple[int, int]] = set()
@@ -293,11 +494,17 @@ class _Machine:
         return out
 
     def _in_bounds(self, row: int, col: int) -> bool:
-        r"""Whether ``(row, col)`` is on the grid."""
+        """Whether ``(row, col)`` is on the grid."""
         return 0 <= row < len(self.grid) and 0 <= col < self.width
 
     def _accepts(self, row: int, col: int, d: tuple[int, int]) -> bool:
-        r"""Whether a pointer may enter ``(row, col)`` travelling on ``d``."""
+        """Whether a pointer may enter ``(row, col)`` travelling on ``d``.
+
+        A line character connects only in the directions its shape draws, so
+        it can be entered exactly when one of those arms points back at the
+        cell the pointer is coming from -- a ``┐`` reached travelling right
+        is entered through its left arm and then turns down.
+        """
         if not self._in_bounds(row, col):
             return False
         if (row, col) in self.nodes:
@@ -307,7 +514,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        r"""Whether every pointer has stopped."""
+        """Whether every pointer has stopped."""
         return all(p.done for p in self.pointers)
 
     # The VM's language-shaped view.
@@ -320,7 +527,13 @@ class _Machine:
 
     @property
     def ip(self) -> tuple[int, ...] | None:
-        r"""The first pointer still running, or ``None`` once none is."""
+        """The first pointer still running, or ``None`` once none is.
+
+        A Flowchart program runs several pointers at once, so there is no
+        single cursor to report: this is the first live one, as
+        ``(row, col, drow, dcol)`` with the heading flattened, and ``None``
+        once every pointer has stopped on an ``(( ))``.
+        """
         for pointer in self.pointers:
             if not pointer.done:
                 return (pointer.row, pointer.col, *pointer.d)
@@ -328,16 +541,19 @@ class _Machine:
 
     @property
     def memory(self) -> list[int]:
-        r"""The shared tape of deques, concatenated in index order."""
+        """The shared tape of deques, concatenated in index order.
+
+        This is what the pointers read and write between them.
+        """
         return [v for key in sorted(self.deques) for v in self.deques[key]]
 
     @property
     def stack(self) -> list[object]:
-        r"""No stack in this language."""
+        """No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        r"""Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection."""
         return (
             tuple(p.state() for p in self.pointers),
             tuple(sorted((k, tuple(v)) for k, v in self.deques.items() if v)),
@@ -345,7 +561,7 @@ class _Machine:
         )
 
     def step(self) -> None:
-        r"""Advance every live pointer one cell, in creation order."""
+        """Advance every live pointer one cell, in creation order."""
         if self.halted:
             return
         for i in range(len(self.pointers)):
@@ -353,11 +569,16 @@ class _Machine:
                 self._advance(i)
 
     def _put(self, i: int, p: _Pointer) -> None:
-        r"""Write ``p`` back as the ``i``th pointer."""
+        """Write ``p`` back as the ``i``th pointer.
+
+        A pointer is frozen, so every change to one is a replacement.  The
+        pointer *list* stays a list: a ``( )`` forks by appending, and the
+        count grows with the program rather than with how long it runs.
+        """
         self.pointers[i] = p
 
     def _advance(self, i: int) -> None:
-        r"""Execute the cell under pointer ``i``, then move it one cell on."""
+        """Execute the cell under pointer ``i``, then move it one cell on."""
         p = self.pointers[i]
         if (p.row, p.col) in self.nodes:
             self._execute(i)
@@ -365,7 +586,7 @@ class _Machine:
             self._follow_path(i)
 
     def _follow_path(self, i: int) -> None:
-        r"""Move pointer ``i`` along the line character it is standing on."""
+        """Move pointer ``i`` along the line character it is standing on."""
         p = self.pointers[i]
         c = self.grid[p.row][p.col]
         back = (-p.d[0], -p.d[1])
@@ -391,7 +612,12 @@ class _Machine:
     def _remembered(
         self, p: _Pointer, row: int, col: int, allowed: list[tuple[int, int]]
     ) -> tuple[int, int] | None:
-        r"""Return ``p``'s remembered exit from ``(row, col)``, if it may be."""
+        """Return ``p``'s remembered exit from ``(row, col)``, if it may be taken.
+
+        The spec declines the remembered direction when following it would
+        turn the pointer 180 degrees, so a rail that re-enters a cell head-on
+        falls back to the ordinary rules instead.
+        """
         d = p.remembered(self._anchor(row, col))
         if d is None or d not in allowed:
             return None
@@ -404,7 +630,7 @@ class _Machine:
         return d
 
     def _move(self, i: int, d: tuple[int, int]) -> None:
-        r"""Step pointer ``i`` one cell along ``d``, stopping off the grid."""
+        """Step pointer ``i`` one cell along ``d``, stopping off the grid."""
         p = self.pointers[i]
         n_row, n_col = p.row + d[0], p.col + d[1]
         if not self._accepts(n_row, n_col, d):
@@ -413,7 +639,13 @@ class _Machine:
         self._put(i, replace(p, prev=(p.row, p.col), row=n_row, col=n_col, d=d))
 
     def _leave(self, i: int, prefer: tuple[int, int] | None = None) -> None:
-        r"""Move ``p`` off the node it occupies."""
+        """Move ``p`` off the node it occupies.
+
+        ``prefer`` is a heading a node's own semantics have chosen (a
+        switch's turn); when it is unavailable, or absent, the remembered
+        direction settles the choice and the pointer's current heading
+        breaks any remaining tie.
+        """
         p = self.pointers[i]
         exits = self._exits_from_node(p.row, p.col, p.prev)
         if not exits:
@@ -438,13 +670,18 @@ class _Machine:
         self._step_to(i, n_row, n_col, d)
 
     def _step_to(self, i: int, row: int, col: int, d: tuple[int, int]) -> None:
-        r"""Record the exit taken from the node and move to ``(row, col)``."""
+        """Record the exit taken from the node and move to ``(row, col)``."""
         p = self.pointers[i]
         p = p.remembering(self._anchor(p.row, p.col), d)
         self._put(i, replace(p, prev=(p.row, p.col), row=row, col=col, d=d))
 
     def _fork(self, i: int) -> None:
-        r"""Split pointer ``i`` across every path leaving a ``( )`` node."""
+        """Split pointer ``i`` across every path leaving a ``( )`` node.
+
+        The pointer itself continues along the first exit and a new pointer,
+        carrying a copy of the register and deque cursor, is appended for
+        each of the others.
+        """
         p = self.pointers[i]
         exits = self._reading_order(self._exits_from_node(p.row, p.col, p.prev))
         if not exits:
@@ -459,11 +696,21 @@ class _Machine:
         self._step_to(i, n_row, n_col, d)
 
     def _deque(self, p: _Pointer) -> list[int]:
-        r"""Return ``p``'s currently selected deque, creating it if needed."""
+        """Return ``p``'s currently selected deque, creating it if needed."""
         return self.deques.setdefault(p.deque, [])
 
     def _execute(self, i: int) -> None:
-        r"""Run the node under pointer ``i``, then move it off that node."""
+        """Run the node under pointer ``i``, then move it off that node.
+
+        The register and deque cursor are computed into locals and written
+        back once, since a pointer is a value: a node changes at most one
+        of them, and the three nodes that route instead of computing
+        (``(( ))``, ``( )``, ``< >``) return before the write-back.
+
+        The deques stay a mutable dict on the machine.  They are shared by
+        every pointer -- that sharing is the language's only channel
+        between forks -- and a fork copies a pointer, not the tape.
+        """
         p = self.pointers[i]
         spelling = self.nodes[(p.row, p.col)][0]
 
@@ -518,7 +765,12 @@ class _Machine:
         self._leave(i)
 
     def _switch(self, i: int) -> None:
-        r"""Route ``p`` by its register: 1 turns left, 0 right, empty goes on."""
+        """Route ``p`` by its register: 1 turns left, 0 right, empty goes on.
+
+        Left and right are relative to the heading the pointer arrived on
+        (see the module docstring); when the chosen side has no path
+        attached, the spec sends the pointer straight forward instead.
+        """
         p = self.pointers[i]
         if p.reg is None:
             self._leave(i, p.d)
@@ -530,7 +782,7 @@ class _Machine:
         self._leave(i, prefer)
 
     def _read_bit(self) -> int | None:
-        r"""Read one bit of input, or ``None`` once the input is exhausted."""
+        """Read one bit of input, or ``None`` once the input is exhausted."""
         try:
             value = self.io.input_str()
         except (EOFError, IndexError):
@@ -539,7 +791,7 @@ class _Machine:
 
 
 def run(code: list[str], io: IO) -> None:
-    r"""Execute a Flowchart program."""
+    """Execute a Flowchart program."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

@@ -1,4 +1,102 @@
-r"""Interpreter for Packlang."""
+"""Interpreter for Packlang.
+
+Packlang organizes code into *packages*: a package declares variables and
+one or more functions, and names the dependencies whose functions it may
+call (``Package : IO, myDep { ... } myName;``).  Variables are typed
+(``Integer``, ``Char``, ``String``, ``Array(type, length)``) and manipulated
+by ``INIT``/``INCR``/``DECR`` rather than assignment; ``Integer(min, max,
+under, over)`` bounds a counter and names the values it wraps to.  Control
+flow is ``If cond Then { ... }`` and ``While cond Do { ... }``.  ``^`` is
+XOR and ``!`` is logical negation, so ``a ^ b`` is a not-equal test and
+``!(a ^ b)`` an equality test -- the spelling every wiki example uses.  The
+built-in ``IO`` package provides ``charPut(value)`` and ``charGet(var)``.
+
+Programs are parsed into a flat statement list per function, so
+:class:`_Machine` steps one statement at a time and :func:`_advance` is a
+pure transition over an immutable state.  The variable store is a tuple of
+``(name, value)`` pairs, so :meth:`_Machine.snapshot` is hashable as it
+stands and a repeated state proves a loop.
+
+Every function is stepped, the entry one and its callees alike.  A call
+*pushes* a frame rather than running the callee inside the calling
+statement, so a statement holding calls is re-entered once per call: each
+step runs the leftmost-innermost one that has not returned, and its value
+comes back rewritten into the statement's expression as a literal.  So
+one command of whichever function is innermost is one ``step()``, every
+intermediate state reaches :meth:`_Machine.snapshot`, and a loop inside a
+called function is provable by
+:func:`esolangs.vm.run_until_halt_or_cycle` rather than hanging where
+nothing can observe it.  The transition still performs no IO itself: it
+*requests* a read by returning a flag and the shell takes the byte, which
+is now reachable from a callee as well.
+
+There is therefore no recursion ceiling.  A program that recurses forever
+grows the frame list rather than Python's stack; that class revisits no
+state, so it is what ``esolangs.run``'s wall-clock ``timeout`` is for,
+exactly as ``grapheme.py`` records.
+
+**Numeric literals are decimal.**  The wiki's examples disagree, and this
+is the gap the roadmap flags.  ``charPut(72)`` (Hello, World!),
+``charPut(48)``/``charPut(49)`` (truth-machine) and ``c ^ 10`` with
+``Array(Char, 100)`` (cat) only work read as decimal; PlusOrMinus's
+``101011``/``101101`` and the dependency example's ``110000``/``101``/
+``011``/``001`` only work read as *binary* character codes.  A pure binary
+reading is refuted outright -- four of the five examples contain literals
+that are not binary at all, including PlusOrMinus's own ``Integer(0, 255,
+255, 0)``.  That leaves decimal against a hybrid ("all-0/1 digits mean
+binary"), 3 examples each; decimal wins because a literal's base must not
+depend on its digit inventory, and because the two examples it declares
+wrong carry the author's own error markers: the comment ``48 (1100000)``
+mis-writes 48, whose binary is ``110000``, and ``equals(101, 011)`` uses
+leading zeros, a binary-writing habit.  So PlusOrMinus and the dependency
+example are declared wrong here and print mojibake rather than ``+-`` and
+``0110``; the tests pin both readings so the decision is visible.
+
+Further decisions for gaps the wiki leaves open:
+
+* **Entry point.**  The wiki never says what runs.  This interpreter calls
+  the parameterless function named ``main``, else the sole parameterless
+  function of the last-declared package -- which is what makes
+  PlusOrMinus runnable, its ``Integer plusOrMinus : code`` naming a
+  package variable rather than taking an argument.  A program with no
+  such function raises :class:`ValueError`, as does an unbalanced or
+  empty program, a malformed declaration, or a call with the wrong
+  argument count.
+* **EOF.**  ``charGet`` reads a line and takes its first byte.  The wiki
+  says empty input returns a newline, but this package reads a blank line
+  as 0 everywhere (``tests/interpreters/test_input_convention.py`` pins
+  that across all interpreters), so the shared convention wins over the
+  wiki here and an empty line is 0.  Reading past the end of the input is
+  the separate case and raises :class:`EOFError`.
+
+  One consequence is worth naming: input arrives through ``splitlines``,
+  so a line never *begins* with byte 10 and ``charGet`` cannot return it.
+  The wiki cat's ``While c ^ 10 Do`` terminator is therefore unreachable
+  here -- the program parses and accumulates but never leaves the loop.
+  That is a property of the package's line-oriented IO rather than of
+  this interpreter; the test file pins both the cat's real behavior and
+  the same construction with a reachable guard.
+* **Invalid runtime operations** raise
+  :class:`~esolangs.exceptions.HaltError`: an undefined variable or
+  function, an array index outside its length, and one rule of this
+  interpreter's own -- **dependency visibility is enforced**
+  (:func:`_visible`).  A package calls its own functions and those of the
+  packages it depends on, and nothing else.  The wiki says a dependency
+  may itself have dependencies, so the relation is followed transitively.
+* **IO inside a called function works.**  It was refused, on the
+  rationale that a call was evaluated inside a statement and so gave the
+  shell no point at which to perform its ports.  Framing calls removed
+  that rationale: a callee's statements are stepped like any other, so
+  the same shell performs its ``charPut``/``charGet`` in call order.
+* **Bounds.**  A plain ``Integer`` and a ``Char`` are unbounded below at 0
+  and wrap modulo 256 above, matching ``charPut``'s byte output;
+  ``Integer(min, max, under, over)`` wraps to the named values instead.
+  ``INIT`` sets a variable to its type's minimum, and an ``Array`` to a
+  row of them, which is what the cat example's ``INIT input`` relies on.
+* **A function's value** is its last evaluated expression statement (the
+  trailing ``0;`` in every wiki example); a function that evaluates none
+  returns 0.
+"""
 
 import re
 import sys
@@ -43,7 +141,11 @@ type _State = tuple[int, _Store, int]
 
 
 class _Type:
-    r"""A declared type's bounds and the values it wraps to."""
+    """A declared type's bounds and the values it wraps to.
+
+    ``length`` is None for a scalar and the row count for an array, so one
+    object describes both and ``INIT`` can build either from it.
+    """
 
     __slots__ = ("high", "length", "low", "over", "under")
 
@@ -64,7 +166,7 @@ class _Type:
         self.length = length
 
     def clamp(self, value: int) -> int:
-        r"""Return ``value`` folded into the type's range."""
+        """Return ``value`` folded into the type's range."""
         if value < self.low:
             return self.under
         if value > self.high:
@@ -72,12 +174,20 @@ class _Type:
         return value
 
     def zero(self) -> object:
-        r"""Return the type's default: its minimum, or a row of them."""
+        """Return the type's default: its minimum, or a row of them."""
         return (self.low,) * self.length if self.length is not None else self.low
 
 
 class _Function:
-    r"""One function: its parameters, its statement list, and its owner."""
+    """One function: its parameters, its statement list, and its owner.
+
+    ``params`` holds only the *typed* parameters (``: Integer a``), which
+    take a value from the caller.  A bare name after the colon
+    (PlusOrMinus's ``Integer plusOrMinus : code``) names a package
+    variable the function uses rather than an argument it receives, so it
+    is not a parameter and does not make the function uncallable as an
+    entry point.
+    """
 
     __slots__ = ("body", "locals", "name", "package", "params", "uses")
 
@@ -99,7 +209,14 @@ class _Function:
 
 
 class _Frame:
-    r"""One call frame: the function, its cursor, and its own variables."""
+    """One call frame: the function, its cursor, and its own variables.
+
+    ``pending`` is the current statement's expression with the calls that
+    have already returned rewritten into it as literals, and ``returned``
+    the value a just-finished callee is handing back.  Both are what let a
+    call inside an expression suspend: the statement is re-entered once per
+    call it contains, each time with one more resolved.
+    """
 
     __slots__ = ("func", "pc", "pending", "result", "returned", "store")
 
@@ -112,12 +229,18 @@ class _Frame:
         self.returned: int | None = None
 
     def key(self) -> tuple[object, ...]:
-        r"""Return the frame as a hashable value for :meth:`snapshot`."""
+        """Return the frame as a hashable value for :meth:`snapshot`."""
         return (self.func.name, self.pc, self.store, self.result)
 
 
 def _strip_comments(code: str) -> str:
-    r"""Remove ``%$ ."""
+    """Remove ``%$ ... %`` blocks and ``% ...`` line comments.
+
+    Block comments are taken first: ``%$`` opens one and the next bare
+    ``%`` closes it, so a line comment inside a block is part of the block.
+    Both are replaced by a space rather than deleted, so ``a%c%b`` cannot
+    fuse into one token.
+    """
     out = []
     i = 0
     while i < len(code):
@@ -139,7 +262,12 @@ _TOKEN = re.compile(r"[A-Za-z_][A-Za-z_0-9]*|\d+|[{}();:,^!]")
 
 
 def _tokenize(code: str) -> list[str]:
-    r"""Return the program's tokens, comments already stripped."""
+    """Return the program's tokens, comments already stripped.
+
+    Any character the pattern does not match is not a Packlang token, so a
+    program containing one is malformed -- the fuzz suite's random input is
+    exactly that case, and it must raise rather than be silently skipped.
+    """
     tokens = _TOKEN.findall(code)
     if "".join(tokens) != "".join(code.split()):
         raise ValueError("program contains characters that are not Packlang tokens")
@@ -147,7 +275,11 @@ def _tokenize(code: str) -> list[str]:
 
 
 class _Parser:
-    r"""Recursive-descent parser producing flat statement lists."""
+    """Recursive-descent parser producing flat statement lists.
+
+    Expressions become a small postfix tuple and statements a flat list
+    with jumps resolved, so nothing in the run has to walk a tree.
+    """
 
     def __init__(self, tokens: list[str]) -> None:
         self.tokens = tokens
@@ -171,7 +303,7 @@ class _Parser:
     # -- types.
 
     def parse_type(self) -> _Type:
-        r"""Parse a datatype, including its parenthesized parameters."""
+        """Parse a datatype, including its parenthesized parameters."""
         name = self.next_token()
         if name == "Integer" and self.peek() == "(":
             self.next_token()
@@ -202,11 +334,11 @@ class _Parser:
         raise ValueError(f"unknown datatype {name!r}")
 
     def commas(self, count: int) -> range:
-        r"""Yield ``count`` slots, consuming the commas between them."""
+        """Yield ``count`` slots, consuming the commas between them."""
         return range(count)
 
     def number(self) -> int:
-        r"""Parse a decimal integer literal; see the module docstring."""
+        """Parse a decimal integer literal; see the module docstring."""
         word = self.next_token()
         if word == ",":
             word = self.next_token()
@@ -217,7 +349,7 @@ class _Parser:
     # -- expressions.
 
     def expression(self) -> tuple[object, ...]:
-        r"""Parse ``a ^ b`` (left-associative) into a postfix tuple."""
+        """Parse ``a ^ b`` (left-associative) into a postfix tuple."""
         node = self.unary()
         while self.peek() == "^":
             self.next_token()
@@ -263,7 +395,7 @@ class _Parser:
     # -- statements.
 
     def lvalue(self) -> tuple[str, tuple[object, ...] | None]:
-        r"""Parse a target: a name, optionally with an index."""
+        """Parse a target: a name, optionally with an index."""
         name = self.next_token()
         if not (name[:1].isalpha() or name[:1] == "_"):
             raise ValueError(f"expected a variable name, got {name!r}")
@@ -275,7 +407,7 @@ class _Parser:
         return name, index
 
     def block(self, out: list[list[object]], local_types: dict[str, _Type]) -> None:
-        r"""Parse ``{ ."""
+        """Parse ``{ ... }``, appending statements to ``out``."""
         self.expect("{")
         while self.peek() != "}":
             if self.peek() is None:
@@ -352,7 +484,12 @@ class _Parser:
         out.append([_VALUE, expr])
 
     def is_declaration(self) -> bool:
-        r"""Whether the tokens at the cursor open a declaration, not a call."""
+        """Whether the tokens at the cursor open a declaration, not a call.
+
+        A declaration is a type then a name then ``;``; an expression
+        statement starting with the same word is a call or a variable.
+        Scanning ahead is what separates them without a symbol table.
+        """
         save = self.pos
         try:
             self.parse_type()
@@ -374,7 +511,7 @@ _IO_PACKAGE = "IO"
 
 
 class _Program:
-    r"""A parsed program: its functions, globals, and dependency graph."""
+    """A parsed program: its functions, globals, and dependency graph."""
 
     __slots__ = ("dependencies", "entry", "functions", "globals", "types")
 
@@ -387,7 +524,7 @@ class _Program:
 
 
 def _parse(code: str) -> _Program:
-    r"""Parse a whole program into its packages and functions."""
+    """Parse a whole program into its packages and functions."""
     tokens = _tokenize(_strip_comments(code))
     if not tokens:
         raise ValueError("empty program")
@@ -431,7 +568,7 @@ def _member(
     members: list[tuple[str, _Function]],
     globals_here: dict[str, _Type],
 ) -> None:
-    r"""Parse one package member: a variable declaration or a function."""
+    """Parse one package member: a variable declaration or a function."""
     declared = parser.parse_type()
     name = parser.next_token()
     if parser.peek() == ";":
@@ -476,7 +613,12 @@ def _member(
 
 
 def _entry(program: _Program, order: list[str]) -> _Function:
-    r"""Return the function a run starts at; see the module docstring."""
+    """Return the function a run starts at; see the module docstring.
+
+    ``main`` wins when it exists, else the last package's sole
+    parameterless function.  The wiki names no entry point at all, and
+    every example but PlusOrMinus calls its function ``main``.
+    """
     main = program.functions.get("main")
     if main is not None and not main.params:
         return main
@@ -509,21 +651,33 @@ def _truth(value: int) -> bool:
 
 
 def _node(value: object) -> _Expr:
-    r"""Narrow a child slot back to an expression node."""
+    """Narrow a child slot back to an expression node.
+
+    The parser builds heterogeneous tuples -- a tag, then names, ints, and
+    sub-nodes -- so a slot's static type is ``object`` and every recursive
+    call would otherwise need a cast.  This is the one place the shape is
+    re-checked, and a violation is a malformed tree rather than bad input.
+    """
     if not isinstance(value, tuple):
         raise HaltError(f"malformed expression node {value!r}")
     return value
 
 
 def _int(value: object) -> int:
-    r"""Narrow a literal or a stored scalar to an ``int``."""
+    """Narrow a literal or a stored scalar to an ``int``."""
     if isinstance(value, bool) or not isinstance(value, int):
         raise HaltError(f"expected a number, got {value!r}")
     return value
 
 
 def _evaluate(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
-    r"""Return the value of an expression, which contains no unresolved."""
+    """Return the value of an expression, which contains no unresolved call.
+
+    Pure with respect to the store, and no longer recursive through a
+    call: ``_Machine.step`` pushes a frame for every function call and
+    rewrites its value in as a ``val`` node, so what reaches here is the
+    call-free remainder.
+    """
     kind = node[0]
     if kind in ("lit", "done"):
         return _int(node[1])
@@ -550,7 +704,12 @@ def _evaluate(node: _Expr, store: _Store, program: _Program, caller: str) -> int
 
 
 def _apply(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
-    r"""Evaluate an array index."""
+    """Evaluate an array index.  A function call never reaches here.
+
+    Indexing and calling look alike in the grammar, and the store decides
+    which one a name is.  ``_Machine.step`` resolves every *call* into a
+    ``done`` node before evaluating, so what survives is the index case.
+    """
     name = str(node[1])
     args = [_node(arg) for arg in _node(node[2])]
     if not any(slot == name for slot, _ in store):
@@ -567,7 +726,13 @@ def _apply(node: _Expr, store: _Store, program: _Program, caller: str) -> int:
 
 
 def _visible(func: _Function, caller: str, program: _Program) -> bool:
-    r"""Whether ``caller``'s package may call ``func``."""
+    """Whether ``caller``'s package may call ``func``.
+
+    A package reaches its own functions and those of the packages it
+    depends on.  The wiki says dependencies may themselves have
+    dependencies, so the relation is followed transitively rather than one
+    level deep.
+    """
     if func.package == caller:
         return True
     seen: set[str] = set()
@@ -586,7 +751,16 @@ def _visible(func: _Function, caller: str, program: _Program) -> bool:
 def _pending_call(
     node: _Expr, store: _Store, program: _Program, caller: str
 ) -> _Expr | None:
-    r"""Return the call :func:`_evaluate` would reach first, or None."""
+    """Return the call :func:`_evaluate` would reach first, or None.
+
+    Leftmost-innermost, which is ``_evaluate``'s own order: a call's own
+    arguments are searched before the call, and ``xor``'s left operand
+    before its right.  Keeping that order is what preserves which
+    ``HaltError`` fires first and the order of a callee's output.
+
+    An ``apply`` over an array *name* is an index, not a call, so it is
+    searched but never returned -- indexing has no body to step.
+    """
     kind = node[0]
     if kind in ("lit", "done", "var", "length"):
         return None
@@ -609,7 +783,12 @@ def _pending_call(
 
 
 def _substitute(node: _Expr, target: _Expr, value: int) -> _Expr:
-    r"""Return ``node`` with ``target`` replaced by the literal ``value``."""
+    """Return ``node`` with ``target`` replaced by the literal ``value``.
+
+    A rewritten *copy*: the parsed program is shared by every frame and by
+    each lap of a ``While``, so writing into it would corrupt the next
+    reader's view of the statement.
+    """
     if node is target:
         return ("done", value)
     kind = node[0]
@@ -633,7 +812,7 @@ def _substitute(node: _Expr, target: _Expr, value: int) -> _Expr:
 
 
 def _callee(node: _Expr, program: _Program, caller: str) -> _Function:
-    r"""Resolve the function a pending call names, checking visibility."""
+    """Resolve the function a pending call names, checking visibility."""
     name = str(node[1])
     func = program.functions.get(name)
     if func is None:
@@ -647,7 +826,7 @@ def _callee(node: _Expr, program: _Program, caller: str) -> _Function:
 
 
 def _entered(func: _Function, values: list[int], program: _Program) -> _Frame:
-    r"""Build the frame a call runs in, binding its arguments."""
+    """Build the frame a call runs in, binding its arguments."""
     if len(values) != len(func.params):
         raise HaltError(f"{func.name!r} takes {len(func.params)} arguments")
     store = _initial_store(func, program)
@@ -656,7 +835,7 @@ def _entered(func: _Function, values: list[int], program: _Program) -> _Frame:
 
 
 def _initial_store(func: _Function, program: _Program) -> _Store:
-    r"""Build a function's store: the globals it sees, plus its own locals."""
+    """Build a function's store: the globals it sees, plus its own locals."""
     types = dict(program.globals)
     types.update(func.locals)
     return tuple((name, kind.zero()) for name, kind in sorted(types.items()))
@@ -672,7 +851,13 @@ def _advance(
     byte: int | None,
     stmt: tuple[object, ...] | None = None,
 ) -> tuple[_Frame, str | None, bool]:
-    r"""Return the frame after one statement, any output, and whether to."""
+    """Return the frame after one statement, any output, and whether to read.
+
+    Pure: it reads the frame and returns a new one, reaching no ``IO``.  A
+    read is requested by returning True for the third element, and the
+    shell calls back with the byte in ``byte`` -- so the transition stays a
+    function of its arguments and the two ports remain the shell's.
+    """
     if stmt is None:  # pragma: no cover - both call sites pass `prepared`
         stmt = frame.func.body[frame.pc]
     op = stmt[0]
@@ -744,7 +929,11 @@ def _write(
     caller: str,
     whole: _Type | None = None,
 ) -> _Store:
-    r"""Apply ``update`` to a variable or one array element."""
+    """Apply ``update`` to a variable or one array element.
+
+    ``whole`` is set by ``INIT``, which resets an entire array rather than
+    one element -- the cat example's ``INIT input`` depends on that.
+    """
     value = _get(store, name)
     if isinstance(value, tuple):
         if index is None:
@@ -777,7 +966,7 @@ _EXPR_SLOT = {
 
 
 def _expression_of(stmt: tuple[object, ...]) -> _Expr | None:
-    r"""Return the expression ``stmt`` evaluates, or None if it has none."""
+    """Return the expression ``stmt`` evaluates, or None if it has none."""
     slot = _EXPR_SLOT.get(str(stmt[0]))
     if slot is None or slot >= len(stmt) or stmt[slot] is None:
         return None
@@ -785,7 +974,12 @@ def _expression_of(stmt: tuple[object, ...]) -> _Expr | None:
 
 
 def _resolved(frame: _Frame) -> tuple[object, ...]:
-    r"""Return the statement to run: the parsed one, or the resolved copy."""
+    """Return the statement to run: the parsed one, or the resolved copy.
+
+    Handing the rewritten *statement* to :func:`_advance` rather than
+    rebuilding the function keeps the parsed program untouched -- it is
+    shared by every frame and by each lap of a ``While``.
+    """
     stmt = frame.func.body[frame.pc]
     if frame.pending is None:
         return stmt
@@ -799,7 +993,15 @@ def _resolved(frame: _Frame) -> tuple[object, ...]:
 
 
 class _Machine:
-    r"""The run state: a stack of call frames and the parsed program."""
+    """The run state: a stack of call frames and the parsed program.
+
+    ``step()`` advances the innermost frame by one statement, and a call
+    -- wherever it sits in an expression -- *pushes* a frame rather than
+    running the callee inside the caller's step.  So every statement of
+    every function reaches :meth:`snapshot`, and a loop inside a called
+    function is provable by :func:`esolangs.vm.run_until_halt_or_cycle`
+    rather than hanging where nothing can see it.
+    """
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
@@ -812,22 +1014,26 @@ class _Machine:
 
     @property
     def frame(self) -> _Frame:
-        r"""The innermost frame: the one ``step`` advances."""
+        """The innermost frame: the one ``step`` advances."""
         return self.frames[-1]
 
     @property
     def halted(self) -> bool:
-        r"""Whether every frame has run out, the entry function last."""
+        """Whether every frame has run out, the entry function last."""
         return not self.frames
 
     @property
     def ip(self) -> int:
-        r"""The current statement position."""
+        """The current statement position."""
         return self.frame.pc if self.frames else 0
 
     @property
     def memory(self) -> list[object]:
-        r"""The addressable cells: the innermost frame's variables, in order."""
+        """The addressable cells: the innermost frame's variables, in order.
+
+        An array variable contributes its row, so the list is flat and a
+        caller reading it sees the same cells the program writes.
+        """
         cells: list[object] = []
         if not self.frames:
             return cells
@@ -837,11 +1043,15 @@ class _Machine:
 
     @property
     def stack(self) -> list[object]:
-        r"""The suspended callers, innermost last."""
+        """The suspended callers, innermost last.
+
+        A call is a frame now, so there *is* something to observe: each
+        entry is the statement its caller is waiting on.
+        """
         return [frame.pc for frame in self.frames[:-1]]
 
     def snapshot(self) -> tuple[object, ...]:
-        r"""Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection."""
         # Every frame's cursor, store.
         # through resolving the calls.
         # input position -- a repeat.
@@ -856,7 +1066,18 @@ class _Machine:
         )
 
     def step(self) -> None:
-        r"""Advance the innermost frame, owning the two ports."""
+        """Advance the innermost frame, owning the two ports.
+
+        A statement holding calls takes more than one step: each step
+        pushes a frame for the leftmost-innermost call that has not
+        returned, and the value comes back rewritten into ``pending`` as a
+        literal.  The statement itself runs on the step where none is
+        left.
+
+        Stepping a halted machine is a no-op rather than an
+        ``IndexError``: ``run_until_halt_or_cycle`` steps once more after
+        the halt to prove it stayed there.
+        """
         if self.halted:
             return
         frame = self.frame
@@ -882,7 +1103,11 @@ class _Machine:
             self.io.print_char(out)
 
     def _resolve(self, frame: _Frame) -> bool:
-        r"""Push a frame for the next unresolved call, if the statement has one."""
+        """Push a frame for the next unresolved call, if the statement has one.
+
+        Returns whether this step was spent starting a call, in which case
+        the statement stays put and is re-entered once the value is in.
+        """
         expr = _expression_of(frame.func.body[frame.pc])
         if expr is None:
             return False
@@ -909,14 +1134,14 @@ class _Machine:
         return True
 
     def _finish(self, frame: _Frame) -> None:
-        r"""Pop a finished frame, delivering its value to the caller."""
+        """Pop a finished frame, delivering its value to the caller."""
         self.frames.pop()
         if self.frames:
             self.frames[-1].returned = frame.result
 
 
 def run(code: str, io: IO) -> None:
-    r"""Run a Packlang program to completion."""
+    """Run a Packlang program to completion."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

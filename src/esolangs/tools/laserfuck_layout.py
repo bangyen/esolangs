@@ -1,4 +1,29 @@
-r"""Fold a LaserFuck program's straight runs so the grid honours a."""
+r"""Fold a LaserFuck program's straight runs so the grid honours a width.
+
+Both LaserFuck generators lay their code along *rows*, and both are wide
+for the same reason: a run of tape commands is written straight out.  The
+boolean generator spends 49 columns on each input reader (``,`` and 48
+``-`` to normalize ``'0'``/``'1'``) and another 49 on each leaf's ``+``
+run, so a wide table outgrows any readable width.
+
+A newline cannot be inserted into a LaserFuck program the way it can into a
+brainfuck one: rows are grid rows, and moving code to the next row moves it
+somewhere the beam does not go.  But the beam can be *steered* there, and a
+straight run is the easiest thing to steer: it has no mirrors and no
+branches, so the only thing that matters is that the beam crosses its cells
+in order, moving right.
+
+:func:`fold` does that with a left-returning zigzag, which costs rows
+instead of columns.  A straight run is all it handles, because it may break
+between any two cells.
+
+The zigzag's leftward legs are usable too, for the runs whose order does
+not matter: a stretch of one repeated character reads the same in either
+direction, so ``fold`` lays such a stretch backwards along the return row
+rather than leaving it blank.  Since the runs that make these grids wide
+are precisely the long same-character ones -- 48 ``-`` per reader, one
+``+`` per unit of text -- that halves the rows the fold spends on them.
+"""
 
 # The column a fold returns to.
 # the ``_`` beneath it), which.
@@ -21,7 +46,39 @@ def fold(
     width: int,
     left: int = MARGIN,
 ) -> tuple[int, int]:
-    r"""Lay ``ops`` into ``grid`` as a left-returning zigzag."""
+    r"""Lay ``ops`` into ``grid`` as a left-returning zigzag.
+
+    ``ops`` is a straight run of tape commands -- no mirrors, no branching
+    -- entered on ``row`` at ``col`` with the beam moving right.  Whenever
+    the run would pass ``width`` it turns down instead and resumes at
+    ``left`` on a lower row, so the run costs rows rather than columns.
+
+    Each fold takes two rows.  ``v`` ends a segment and drops the beam onto
+    a *return* row, whose ``{`` sends it back left to the margin, where a
+    second ``v`` drops it onto the next segment row; that row opens with
+    ``}`` to face the beam right again.  The return row exists because a
+    beam travelling left along a segment row would re-execute that segment
+    backwards, so the leftward leg needs a row whose code is safe to run in
+    reverse.
+
+    A run of one repeated character is exactly that: ``-----`` executed
+    right-to-left is the same program as left-to-right.  So the return row
+    is not left blank but carries as much of the remaining run as is a
+    single repeated character, laid leftwards from the turn-down.  A run
+    that is all one character -- every ``+`` run a leaf writes, every ``-``
+    run an input reader normalizes with -- therefore uses both legs of the
+    zigzag instead of only the rightward one, halving the rows it costs.
+    The fill stops at the first character that differs, so the mixed runs
+    (a reader's ``,``, a leaf's pointer moves) simply resume rightwards on
+    the next segment row as before.
+
+    ``grid`` grows downwards as the fold needs rows, so a caller only has to
+    size it for its own geometry.
+
+    Returns the row and column the beam occupies once the run is laid, so
+    the caller can put whatever follows the run -- ``x``, or the next
+    command -- at that cell.
+    """
     index = 0
     while index < len(ops):
         room = max(width - col - 1, 1)  # keep a column for the.
@@ -49,7 +106,12 @@ def fold(
 
 
 def _fill_backwards(row: list[str], ops: str, start: int, stop: int) -> int:
-    r"""Write the leading same-character run of ``ops`` right-to-left."""
+    """Write the leading same-character run of ``ops`` right-to-left.
+
+    Cells ``start`` down to ``stop`` are filled with the longest prefix of
+    ``ops`` made of one repeated character.  Returns how many ops that
+    consumed, so the caller can resume the run after them.
+    """
     count = 0
     limit = start - stop + 1
     while count < min(len(ops), limit) and ops[count] == ops[0]:
@@ -60,7 +122,7 @@ def _fill_backwards(row: list[str], ops: str, start: int, stop: int) -> int:
 
 
 def reserve(grid: list[list[str]], row: int) -> None:
-    r"""Extend ``grid`` downwards so ``row`` exists."""
+    """Extend ``grid`` downwards so ``row`` exists."""
     width = len(grid[0]) if grid else 0
     while len(grid) <= row:
         grid.append([" "] * width)

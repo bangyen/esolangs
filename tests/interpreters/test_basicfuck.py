@@ -1,4 +1,4 @@
-r"""Unit tests for the Basicfuck interpreter."""
+"""Unit tests for the Basicfuck interpreter."""
 
 import re
 
@@ -91,7 +91,15 @@ class TestBasicfuck:
             run_program(H + "if (a { a += 1; }")  # missing the closing ).
 
     def test_every_rejection_message_is_exact(self) -> None:
-        r"""Each load error is pinned whole, not by a fragment of itself."""
+        """Each load error is pinned whole, not by a fragment of itself.
+
+        ``match=`` is a substring search, so ``"identifier"`` also matches
+        ``"Missing/Invalid identifiers."`` -- the two checks above cannot
+        tell each other apart, and every message was free to be reworded.
+        Two more rejections had no test at all: an unrecognised overflow
+        mode falls in with the malformed directives, and a zero-cell tape
+        is refused for its size.
+        """
         for code, message in (
             ("not a directive\n#allocate a\n", "Missing/Invalid directives."),
             (
@@ -130,12 +138,12 @@ class TestBasicfuck:
             run_program("#basicfuck t=1 r=0~255 o=nearest\n#allocate a, b\n")
 
     def test_invalid_overflow_directive(self) -> None:
-        r"""A one-sided range with ``o=wrap`` is rejected."""
+        """A one-sided range with ``o=wrap`` is rejected."""
         with pytest.raises(ValueError, match="overflow"):
             run_program("#basicfuck t=1 r=0~ o=wrap\n#allocate a\n")
 
     def test_array_access_out_of_bounds_halts(self) -> None:
-        r"""Reading or writing past an array's allocation is an invalid op."""
+        """Reading or writing past an array's allocation is an invalid op."""
         ub = "#basicfuck t=unbounded r=0~255 o=nearest\n#allocate a->2\n"
         with pytest.raises(HaltError):
             run_program(ub + "write <- a->5 ;")
@@ -144,7 +152,16 @@ class TestBasicfuck:
 
 
 class TestMalformedStatements:
-    r"""Each part of a statement's shape is checked, not just its first."""
+    """Each part of a statement's shape is checked, not just its first token.
+
+    The parser walks ``if``/``while`` and ``write``/``read`` piece by piece,
+    giving up at the first part that does not fit.  Every one of those
+    give-up points rejected the same way, so a program that got a later part
+    wrong was accepted or rejected by whichever check happened to run --
+    these pin one malformed program per part.  Each carries trailing
+    statements so the ``ind + 4 < size`` lookahead is satisfied and the
+    parse really does reach the part under test.
+    """
 
     TAIL = "\na += 1;\na += 1;\na += 1;\n"
 
@@ -177,7 +194,13 @@ class TestMalformedStatements:
 
 class TestNestedBlocks:
     def test_a_block_inside_a_loop_body_is_matched_to_its_own_close(self) -> None:
-        r"""Finding a loop's end counts nesting rather than taking the first."""
+        """Finding a loop's end counts nesting rather than taking the first ``}``.
+
+        The scan walks the compiled program keeping a depth counter, so an
+        inner block's close belongs to the inner block.  Without the count
+        the outer loop would end early, at the ``if``'s brace, and run only
+        part of its body.
+        """
         header = "#basicfuck t=4 r=0~255 o=nearest\n#allocate a b\n"
         program = (
             "a += 2;\n"
@@ -213,7 +236,18 @@ class TestStepMachine:
         assert machine.frames == ()
 
     def test_a_frame_reports_what_kind_of_scope_it_is(self) -> None:
-        r"""The snapshot carries each frame's loop bookkeeping, not just its."""
+        """The snapshot carries each frame's loop bookkeeping, not just its
+        cursor.
+
+        A plain scope and a ``while`` owner differ only in those fields --
+        ``loop``, the position its condition sits at, and whether that
+        condition is negated -- so a snapshot that reported the cursor
+        alone would call two different states equal and let the hang
+        detector stop early.  Nothing else here reads them: the other
+        snapshot test asserts only that the tuple can be hashed, and the
+        checks that use the content go through the shared runner, which
+        the bundled build does not inline.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.basicfuck import _Machine
 
@@ -255,10 +289,25 @@ class TestStepMachine:
 
 
 class TestDirectiveEdges:
-    r"""The parts of the header that only an unusual directive reaches."""
+    """The parts of the header that only an unusual directive reaches.
+
+    A mutation run left 119 survivors, a third of them inside the header
+    parser.  The suite drove it with one shape -- ``t=<n> r=<lo>~<hi>
+    o=<mode>``, every field present -- so the branches that supply a
+    *default* were never taken, and neither were the rules about which
+    combinations are legal.
+    """
 
     def test_an_omitted_bound_defaults_to_the_32_bit_limit(self) -> None:
-        r"""``r=~`` leaves both bounds at the widest the interpreter allows."""
+        """``r=~`` leaves both bounds at the widest the interpreter allows.
+
+        The defaults are ``-(2**31)`` and ``2**31 - 1``, and nothing else
+        here reads them: a program that never approaches a bound cannot
+        tell one default from another.  Constants are scanned as
+        arbitrary-length digit runs, so a cell can be driven *to* the
+        default bound and then brought back down into printable range,
+        which reads the bound's exact value out as a byte.
+        """
         top, bot = 2**31 - 1, 2**31
         assert (
             run_program(
@@ -291,7 +340,12 @@ class TestDirectiveEdges:
         )
 
     def test_a_bounded_range_must_say_what_overflow_does(self) -> None:
-        r"""``o=`` is required exactly when a bound is given."""
+        """``o=`` is required exactly when a bound is given.
+
+        One bound is enough to require it, which is the case that
+        separates "any bound" from "both bounds" -- and an open range
+        needs no mode at all.
+        """
         with pytest.raises(ValueError, match=re.escape("Missing overflow directive.")):
             run_program("#basicfuck t=1 r=0~\n#allocate a\na += 65;\n")
         with pytest.raises(ValueError, match=re.escape("Missing overflow directive.")):
@@ -302,7 +356,12 @@ class TestDirectiveEdges:
         )
 
     def test_the_directives_are_rejected_by_name(self) -> None:
-        r"""Each complaint names the thing that was wrong."""
+        """Each complaint names the thing that was wrong.
+
+        The messages are asserted whole.  Every one of them is a literal
+        that an edit can widen or recase, and a substring match would not
+        notice.
+        """
         for code, message in (
             ("", "Missing/Invalid directives."),
             ("#nonsense\n#allocate a\na += 1;\n", "Missing/Invalid directives."),
@@ -334,7 +393,15 @@ class TestDirectiveEdges:
         assert run_program("#basicfuck t=1 r=0~255 o=nearest\n#allocate a") == ""
 
     def test_variable_arithmetic_reserves_a_scratch_cell(self) -> None:
-        r"""``X += Y`` needs one cell beyond the allocations; ``X += 1`` does."""
+        """``X += Y`` needs one cell beyond the allocations; ``X += 1`` does not.
+
+        Adding a *variable* is compiled with a spare cell to work in, so a
+        program that does it needs a tape one larger than its allocation
+        list -- and one that only ever adds constants does not.  The
+        reservation is conditional on the program actually containing such
+        an assignment, which is the part a test using constants alone
+        cannot see.
+        """
         two = "#allocate a, b\na += 65;\nb += 1;\n"
         # adding a variable: two names.
         with pytest.raises(ValueError, match=re.escape("Insufficient memory.")):
@@ -351,7 +418,12 @@ class TestDirectiveEdges:
         )
 
     def test_the_tape_must_hold_every_allocation(self) -> None:
-        r"""One cell per name, and the check is ``>`` not ``>=``."""
+        """One cell per name, and the check is ``>`` not ``>=``.
+
+        Exactly enough tape is enough; one less is not.  A bound that
+        admitted an over-large allocation would let a later name index
+        past the end of the tape.
+        """
         for size in (1, 2, 3):
             names = ", ".join("abc"[:size])
             head = f"#basicfuck t={size} r=0~255 o=nearest\n#allocate {names}\n"
@@ -361,7 +433,11 @@ class TestDirectiveEdges:
                 run_program(short + "a += 1;\n")
 
     def test_a_keyword_cannot_be_an_identifier(self) -> None:
-        r"""All four reserved words are rejected, not just the first."""
+        """All four reserved words are rejected, not just the first.
+
+        The check is a membership test against a tuple; a suite that tries
+        only one of them cannot notice the other three going missing.
+        """
         message = "Invalid identifier."
         for word in ("if", "while", "write", "read"):
             with pytest.raises(ValueError, match=re.escape(message)) as caught:
@@ -381,10 +457,14 @@ class TestDirectiveEdges:
 
 
 class TestOverflowAtBothBounds:
-    r"""Each mode against each end of the range."""
+    """Each mode against each end of the range.
+
+    The suite tested one direction per mode, so the arithmetic that picks
+    *which* bound to clamp or wrap to was only ever exercised one way.
+    """
 
     def test_halt_names_which_way_it_went(self) -> None:
-        r"""Two different complaints, asserted whole."""
+        """Two different complaints, asserted whole."""
         for delta, message in (
             ("a += 12;", "Overflow error."),
             ("a -= 1;", "Underflow error."),
@@ -396,7 +476,12 @@ class TestOverflowAtBothBounds:
             assert str(caught.value) == message
 
     def test_wrap_lands_on_the_far_bound(self) -> None:
-        r"""Wrapping goes to the *opposite* end, not round by the excess."""
+        """Wrapping goes to the *opposite* end, not round by the excess.
+
+        Passing the top lands on the bottom and passing the bottom lands
+        on the top, however far past it went -- so the two directions read
+        each other's bound, and swapping them is what this catches.
+        """
         for delta in ("a += 10;", "a += 12;", "a += 200;"):
             assert (
                 run_program(
@@ -413,7 +498,14 @@ class TestOverflowAtBothBounds:
             )
 
     def test_landing_exactly_on_a_bound_is_in_range(self) -> None:
-        r"""Both guards are strict, so a bound itself is a legal value."""
+        """Both guards are strict, so a bound itself is a legal value.
+
+        Every case above goes *past* a bound, where a strict comparison
+        and a non-strict one agree.  A value landing exactly on one is
+        what separates them: at 9 the cell keeps its value under all
+        three modes, where a non-strict guard would halt, wrap to 0, or
+        clamp instead.
+        """
         for mode in ("halt", "wrap", "nearest"):
             assert (
                 run_program(
@@ -424,7 +516,12 @@ class TestOverflowAtBothBounds:
             ), mode
 
     def test_wrap_needs_both_bounds(self) -> None:
-        r"""``o=wrap`` has nowhere to wrap to unless the range is closed."""
+        """``o=wrap`` has nowhere to wrap to unless the range is closed.
+
+        This is the only route to the "invalid overflow directive"
+        complaint: a misspelled mode fails the directive pattern instead,
+        and is reported as a malformed directive.
+        """
         for rng in ("r=0~", "r=~9", "r=~"):
             with pytest.raises(
                 ValueError, match=re.escape("Invalid overflow directive.")
@@ -455,7 +552,13 @@ class TestOverflowAtBothBounds:
 
 
 class TestLoopConditions:
-    r"""A ``while`` re-tests its condition; a negated one tests the inverse."""
+    """A ``while`` re-tests its condition; a negated one tests the inverse.
+
+    The suite looped only on a truthy counter running down.  A negated
+    ``while`` runs while its cell is *zero*, so the two disagree about
+    when to stop -- and the position the condition is read from differs
+    between them, since ``!`` occupies a slot of its own.
+    """
 
     def test_a_negated_while_runs_until_its_cell_is_set(self) -> None:
         assert (
@@ -486,7 +589,14 @@ class TestLoopConditions:
 
 
 class TestAllocationOffsets:
-    r"""Where each name lands on the tape."""
+    """Where each name lands on the tape.
+
+    ``_index`` walks the allocation list adding each name's size.  With
+    one variable in play a wrong offset is invisible: the cell it lands on
+    is fresh either way, so whatever was written reads back.  It shows
+    only when two names collide on one cell, which needs three
+    allocations all in use.
+    """
 
     def test_three_names_do_not_share_a_cell(self) -> None:
         assert (
@@ -508,7 +618,7 @@ class TestAllocationOffsets:
         )
 
     def test_an_index_past_the_array_is_caught(self) -> None:
-        r"""Reading and writing past the tape both raise, at either end."""
+        """Reading and writing past the tape both raise, at either end."""
         head = "#basicfuck t=8 r=0~255 o=nearest\n#allocate arr->3, z\n"
         message = "tape index out of bounds"
         for body in ("arr->9 += 1;\n", "z += arr->9;\n"):
@@ -517,7 +627,11 @@ class TestAllocationOffsets:
             assert str(caught.value) == message
 
     def test_an_unallocated_name_is_undefined(self) -> None:
-        r"""``_index`` walks the whole list before giving up."""
+        """``_index`` walks the whole list before giving up.
+
+        The complaint comes from falling off the end of the allocation
+        list, which a loop that stopped early would reach too soon.
+        """
         message = "Identifier is undefined."
         with pytest.raises(ValueError, match=re.escape(message)) as caught:
             run_program("#basicfuck t=1 r=0~255 o=nearest\n#allocate a\nzz += 1;\n")
@@ -533,7 +647,19 @@ class TestAllocationOffsets:
 
 
 class TestLexerBoundaries:
-    r"""Tokens that run to the very end of the source."""
+    r"""Tokens that run to the very end of the source.
+
+    The scanners are ``while j < n and program[j]...``.  Every existing
+    test ends its program with a newline, which stops the whitespace skip
+    one character early, so no scan ever reached the final character --
+    and a bound loosened to ``<=`` would index past the end.
+
+    ``_`` is an identifier character.  Removing it from the scan does not
+    reject such a name; it makes the scan consume *nothing*, leaving the
+    cursor where it was, so the tokenizer spins forever.  That happens
+    inside the constructor, before any step, which is why it shows up as a
+    hang rather than an error.
+    """
 
     def test_a_name_may_be_or_contain_an_underscore(self) -> None:
         assert (
@@ -551,7 +677,7 @@ class TestLexerBoundaries:
         )
 
     def test_a_token_may_end_the_source(self) -> None:
-        r"""No trailing newline, so the final character is part of a token."""
+        """No trailing newline, so the final character is part of a token."""
         head = "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\n"
         arrays = "#basicfuck t=8 r=0~255 o=nearest\n#allocate arr->3, z\n"
         message = "Invalid syntax."
@@ -573,7 +699,12 @@ class TestLexerBoundaries:
         assert str(caught.value) == message
 
     def test_a_statement_may_be_cut_short(self) -> None:
-        r"""Running out of tokens is not the same as meeting a wrong one."""
+        """Running out of tokens is not the same as meeting a wrong one.
+
+        The parser's lookaheads are ``ind + k < size``.  Every malformed
+        program the suite had supplied a *wrong* token; none stopped with
+        the cursor exactly at the end, which is where those bounds differ.
+        """
         head = "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\n"
         for tail in (
             "if",
@@ -608,7 +739,7 @@ _WRAP = "#basicfuck t=1 r=0~255 o=wrap\n#allocate a\n"
 
 
 class TestContract(SnapshotContract, CycleContract):
-    r"""The shared shapes."""
+    """The shared shapes. ``while (a)`` with a nonzero ``a`` never exits."""
 
     machine = staticmethod(_machine)
     stepping_program = _NEAREST

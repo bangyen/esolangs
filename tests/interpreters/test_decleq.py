@@ -1,4 +1,14 @@
-r"""Unit tests for the Decleq interpreter."""
+"""Unit tests for the Decleq interpreter.
+
+Tests cover the ``b = a - 1`` countdown OISC, the memory-mapped I/O
+(``-2`` output, ``-1`` input), the jump and fall-through, and the documented
+halt conventions.
+
+There is no per-run instruction cap to test: a self-decrementing loop grows
+without bound and never revisits a snapshot (see the module docstring), so
+esolangs.run's wall-clock timeout is the guard, tested generically in
+test_api.py's test_run_timeout_halts_runaway_program.
+"""
 
 import pytest
 
@@ -58,7 +68,15 @@ class TestHaltAndErrors:
         assert _run(memory([[10, 10, 10_000]], {10: 1})) == ""
 
     def test_a_self_decrementing_loop_never_revisits_a_snapshot(self) -> None:
-        r"""The growth claim the module docstring makes, executed."""
+        """The growth claim the module docstring makes, executed.
+
+        ``memory[b] = memory[a] - 1`` with ``a == b`` and a jump to self
+        walks the cell down by exactly one every pass, so the state the
+        cycle detector hashes is new every time.  This is what makes
+        ``run_until_halt_or_cycle`` provably unable to terminate on the
+        program, and why the interpreter has no instruction cap of its own
+        to catch it -- that is ``esolangs.run(timeout=)``'s job.
+        """
         from esolangs.interpreters.register_based.decleq import _Machine
 
         # a == b == 10 -- the operand.
@@ -83,7 +101,12 @@ class TestHaltAndErrors:
 
 
 class TestOperandRange:
-    r"""The guards on an operand that points outside memory."""
+    """The guards on an operand that points outside memory.
+
+    Every one of these was a surviving mutant: the suite exercised the
+    guards only from well inside memory, where widening or narrowing a
+    bound changes nothing, so each boundary is pinned from both sides.
+    """
 
     def test_output_reads_the_first_cell(self) -> None:
         # b == 0 is in range, so this.
@@ -196,7 +219,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
-    r"""The shared empty-program shape, with this language's data."""
+    """The shared empty-program shape, with this language's data."""
 
     run = staticmethod(_run)
     machine = staticmethod(_machine)
@@ -205,7 +228,13 @@ class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
 
 
 class TestNegativeWriteIndex:
-    r"""``_written`` indexes a negative ``b`` from the right, or raises."""
+    """``_written`` indexes a negative ``b`` from the right, or raises.
+
+    Decleq's store is a tuple, so a negative write cannot fall through to
+    Python's own subscript.  The interpreter reproduces that indexing
+    explicitly: it must land on a real cell rather than grow the store,
+    because growing turns a terminating program into a non-terminating one.
+    """
 
     def test_negative_addr_writes_from_the_right(self) -> None:
         from esolangs.interpreters.register_based.decleq import _written

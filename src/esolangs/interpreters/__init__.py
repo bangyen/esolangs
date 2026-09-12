@@ -1,1 +1,1 @@
-r"""Interpreters for the supported esolangs, grouped by memory model."""
+"""Interpreters for the supported esolangs, grouped by memory model."""

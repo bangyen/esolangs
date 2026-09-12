@@ -1,4 +1,9 @@
-r"""Unit tests for RAM0 interpreter."""
+"""Unit tests for RAM0 interpreter.
+
+Tests cover all RAM0 commands, control flow, memory operations, and edge cases
+from the esolangs.org specification. Includes timeout protection to prevent
+hanging tests from infinite loops.
+"""
 
 import io
 import signal
@@ -18,16 +23,28 @@ from tests.interpreters.contract import (
 
 
 class _TestTimeoutError(Exception):
-    r"""Custom exception for test timeouts."""
+    """Custom exception for test timeouts."""
 
 
 def timeout_handler(_signum: int, _frame: Any) -> None:
-    r"""Signal handler for test timeouts."""
+    """Signal handler for test timeouts."""
     raise _TestTimeoutError("Test timed out")
 
 
 def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 5) -> Any:
-    r"""Run a function with a timeout to prevent hanging tests."""
+    """Run a function with a timeout to prevent hanging tests.
+
+    Args:
+        func: Function to execute
+        timeout_seconds: Maximum time to wait before timing out
+
+    Returns:
+        Result of the function execution
+
+    Raises:
+        _TestTimeoutError: If the function doesn't complete within the timeout
+
+    """
     # Set up signal handler for.
     old_handler = signal.signal(signal.SIGALRM, timeout_handler)
     signal.alarm(timeout_seconds)
@@ -41,10 +58,10 @@ def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 5) -> Any:
 
 
 class TestRAM0BasicCommands:
-    r"""Test basic RAM0 command functionality."""
+    """Test basic RAM0 command functionality."""
 
     def test_z_command_zero_register(self) -> None:
-        r"""Test Z command sets z register to 0."""
+        """Test Z command sets z register to 0."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -55,7 +72,7 @@ class TestRAM0BasicCommands:
         assert output == "z: 0\nn: 0\nram: {}"
 
     def test_a_command_increment(self) -> None:
-        r"""Test A command increments z register."""
+        """Test A command increments z register."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -66,7 +83,7 @@ class TestRAM0BasicCommands:
         assert output == "z: 3\nn: 0\nram: {}"
 
     def test_n_command_copy_z_to_n(self) -> None:
-        r"""Test N command copies z register to n register."""
+        """Test N command copies z register to n register."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -77,7 +94,7 @@ class TestRAM0BasicCommands:
         assert output == "z: 3\nn: 3\nram: {}"
 
     def test_l_command_load_from_memory(self) -> None:
-        r"""Test L command loads value from RAM at address z."""
+        """Test L command loads value from RAM at address z."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -89,7 +106,7 @@ class TestRAM0BasicCommands:
         assert output == "z: 0\nn: 2\nram: {\n    2: 5\n}"
 
     def test_s_command_store_to_memory(self) -> None:
-        r"""Test S command stores z register value to RAM at address n."""
+        """Test S command stores z register value to RAM at address n."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -100,7 +117,7 @@ class TestRAM0BasicCommands:
         assert output == "z: 5\nn: 2\nram: {\n    2: 5\n}"
 
     def test_c_command_conditional_skip(self) -> None:
-        r"""Test C command skips next instruction when z is zero."""
+        """Test C command skips next instruction when z is zero."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -112,7 +129,7 @@ class TestRAM0BasicCommands:
         assert output == "z: 0\nn: 0\nram: {}"
 
     def test_c_command_no_skip_when_nonzero(self) -> None:
-        r"""Test C command does not skip when z is nonzero."""
+        """Test C command does not skip when z is nonzero."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -125,10 +142,10 @@ class TestRAM0BasicCommands:
 
 
 class TestRAM0ControlFlow:
-    r"""Test RAM0 control flow operations."""
+    """Test RAM0 control flow operations."""
 
     def test_goto_command_jump(self) -> None:
-        r"""Test goto command jumps to specified instruction."""
+        """Test goto command jumps to specified instruction."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -141,10 +158,10 @@ class TestRAM0ControlFlow:
 
 
 class TestRAM0MemoryOperations:
-    r"""Test RAM0 memory read/write operations."""
+    """Test RAM0 memory read/write operations."""
 
     def test_multiple_memory_locations(self) -> None:
-        r"""Test storing values at multiple memory locations."""
+        """Test storing values at multiple memory locations."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -155,7 +172,7 @@ class TestRAM0MemoryOperations:
         assert output == "z: 6\nn: 4\nram: {\n    1: 2,\n    4: 6\n}"
 
     def test_memory_overwrite(self) -> None:
-        r"""Test overwriting memory locations."""
+        """Test overwriting memory locations."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -166,7 +183,7 @@ class TestRAM0MemoryOperations:
         assert output == "z: 5\nn: 5\nram: {\n    1: 2,\n    5: 5\n}"
 
     def test_load_from_uninitialized_memory(self) -> None:
-        r"""Test loading from uninitialized memory returns 0."""
+        """Test loading from uninitialized memory returns 0."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -178,10 +195,10 @@ class TestRAM0MemoryOperations:
 
 
 class TestRAM0RegisterInteractions:
-    r"""Test interactions between z and n registers."""
+    """Test interactions between z and n registers."""
 
     def test_register_independence(self) -> None:
-        r"""Test that z and n registers are independent."""
+        """Test that z and n registers are independent."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -192,7 +209,7 @@ class TestRAM0RegisterInteractions:
         assert output == "z: 5\nn: 3\nram: {}"
 
     def test_n_register_preserves_z(self) -> None:
-        r"""Test that N command preserves z register value."""
+        """Test that N command preserves z register value."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -204,10 +221,10 @@ class TestRAM0RegisterInteractions:
 
 
 class TestRAM0EdgeCases:
-    r"""Test RAM0 edge cases and error conditions."""
+    """Test RAM0 edge cases and error conditions."""
 
     def test_empty_program(self) -> None:
-        r"""Test that empty program produces no output."""
+        """Test that empty program produces no output."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -218,7 +235,7 @@ class TestRAM0EdgeCases:
         assert output == "z: 0\nn: 0\nram: {}"
 
     def test_whitespace_only(self) -> None:
-        r"""Test that whitespace-only program produces default output."""
+        """Test that whitespace-only program produces default output."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -229,7 +246,7 @@ class TestRAM0EdgeCases:
         assert output == "z: 0\nn: 0\nram: {}"
 
     def test_invalid_commands_ignored(self) -> None:
-        r"""Test that invalid commands are ignored by regex."""
+        """Test that invalid commands are ignored by regex."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -241,7 +258,7 @@ class TestRAM0EdgeCases:
         assert output == "z: 0\nn: 0\nram: {}"
 
     def test_comments_in_code(self) -> None:
-        r"""Test that comments are properly ignored."""
+        """Test that comments are properly ignored."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -252,7 +269,7 @@ class TestRAM0EdgeCases:
         assert output == "z: 3\nn: 0\nram: {}"
 
     def test_zero_goto_command(self) -> None:
-        r"""Test that goto to instruction 0 terminates program."""
+        """Test that goto to instruction 0 terminates program."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -264,7 +281,7 @@ class TestRAM0EdgeCases:
         assert output == "z: 3\nn: 0\nram: {}"
 
     def test_large_goto_number(self) -> None:
-        r"""Test goto with large instruction numbers."""
+        """Test goto with large instruction numbers."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -277,10 +294,10 @@ class TestRAM0EdgeCases:
 
 
 class TestRAM0MathematicalOperations:
-    r"""Test RAM0 mathematical operations and algorithms."""
+    """Test RAM0 mathematical operations and algorithms."""
 
     def test_counter_pattern(self) -> None:
-        r"""Test counter pattern using memory."""
+        """Test counter pattern using memory."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -294,7 +311,7 @@ class TestRAM0MathematicalOperations:
         assert output == "z: 9\nn: 9\nram: {\n    3: 3,\n    6: 6,\n    9: 9\n}"
 
     def test_register_swap_pattern(self) -> None:
-        r"""Test swapping values between registers using memory."""
+        """Test swapping values between registers using memory."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -308,10 +325,10 @@ class TestRAM0MathematicalOperations:
 
 
 class TestRAM0Integration:
-    r"""Integration tests for RAM0 interpreter."""
+    """Integration tests for RAM0 interpreter."""
 
     def test_complex_program(self) -> None:
-        r"""Test a complex RAM0 program with multiple operations."""
+        """Test a complex RAM0 program with multiple operations."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -324,7 +341,7 @@ class TestRAM0Integration:
         assert output == "z: 0\nn: 8\nram: {\n    2: 5,\n    8: 12\n}"
 
     def test_memory_initialization_pattern(self) -> None:
-        r"""Test pattern for initializing multiple memory locations."""
+        """Test pattern for initializing multiple memory locations."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -340,7 +357,13 @@ class TestRAM0Integration:
 
 
 class TestDumpFormat:
-    r"""The exact text of the state dump."""
+    """The exact text of the state dump.
+
+    The tests above now compare whole dumps, so the punctuation holding one
+    together -- the braces, the indent, the newline closing the RAM block --
+    is covered wherever they run.  These keep it pinned directly, on the
+    smallest programs that show a populated and an empty RAM block.
+    """
 
     def dump(self, code: str) -> str:
         with redirect_stdout(io.StringIO()) as f:
@@ -350,7 +373,13 @@ class TestDumpFormat:
     def test_dump_happens_once_however_often_a_halted_machine_is_stepped(
         self,
     ) -> None:
-        r"""The dump is guarded by a flag that starts as False itself."""
+        """The dump is guarded by a flag that starts as False itself.
+
+        Stepping past the halt is a no-op except for the one dump, and the
+        flag that arranges it is only ever read for truth -- which ``None``
+        satisfies as well as ``False`` -- so the identity is asserted too,
+        the flag being annotated a bool.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.ram0 import _Machine
 
@@ -371,7 +400,13 @@ class TestDumpFormat:
 
 class TestStepMachine:
     def test_load_reads_the_address_in_z(self) -> None:
-        r"""L loads RAM at the address z holds, not at a fixed one."""
+        """L loads RAM at the address z holds, not at a fixed one.
+
+        ``test_l_command_load_from_memory`` loads from an address that was
+        never written, so it asserts the 0 that a *missing* key gives --
+        which is what looking up the wrong address gives too.  Storing 1 at
+        address 1 and loading it back separates them.
+        """
         from esolangs.interpreters.register_based.ram0 import _Machine
 
         machine = _Machine("A N S L", IO())
@@ -380,7 +415,12 @@ class TestStepMachine:
         assert (machine.z, machine.ram) == (1, {1: 1})
 
     def test_conditional_skip_is_relative(self) -> None:
-        r"""C skips the next command; it does not jump to a fixed index."""
+        """C skips the next command; it does not jump to a fixed index.
+
+        Both conditional tests run C at the second token, where skipping
+        ahead and jumping to token 1 land in the same place.  Putting a
+        command before it tells them apart.
+        """
         from esolangs.interpreters.register_based.ram0 import _Machine
 
         machine = _Machine("A Z C A A", IO())
@@ -390,7 +430,11 @@ class TestStepMachine:
         assert machine.z == 1
 
     def test_state_is_dumped_only_once(self) -> None:
-        r"""Stepping a halted machine again does not repeat the dump."""
+        """Stepping a halted machine again does not repeat the dump.
+
+        ``run`` steps once past the end, so a flag that never latches looks
+        identical there; only a second post-halt step shows the repeat.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.ram0 import _Machine
 
@@ -419,7 +463,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(SnapshotContract, CycleContract, StateViewContract):
-    r"""The shared shapes, with this language's own programs."""
+    """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program = "A"
@@ -437,10 +481,20 @@ if __name__ == "__main__":
 
 
 class TestStateViewValues:
-    r"""The named views read the slots they claim, not one another."""
+    """The named views read the slots they claim, not one another.
+
+    The shared contract checks that each view *moves*; which slot it moves
+    with is this file's business, because only this file knows which of its
+    names could be confused for each other.  A value pinned at a step where
+    they hold different things is what a rewiring would change.
+    """
 
     def test_n_and_z_are_separate_registers(self) -> None:
-        r"""One step in they differ; by the end of the run they agree."""
+        """One step in they differ; by the end of the run they agree.
+
+        Reading them at the end would not tell the two apart, which is why
+        this stops after the first command.
+        """
         machine = _machine("A N S")
         machine.step()
         assert (machine.z, machine.n) == (1, 0)

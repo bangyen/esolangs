@@ -1,4 +1,10 @@
-r"""Unit tests for the %^2^-1 boolean generator."""
+"""Unit tests for the %^2^-1 boolean generator.
+
+Covers :mod:`esolangs.tools.boolean.pct_squared_minus_one`, split out of
+``test_boolean_parameterized.py``: the generator derives its programs through
+several ordered constructions and its tests are the second-largest block
+there.
+"""
 
 import importlib
 import itertools
@@ -10,7 +16,18 @@ from esolangs.tools import boolean
 
 
 class TestParameterizedPctSquaredMinusOne:
-    r"""Input-by-substitution boolean generator for %^2^-1."""
+    """Input-by-substitution boolean generator for %^2^-1.
+
+    The wall proved for %^2^-1 (``docs/proofs.md``) shows no program
+    that *reads* its inputs computes XOR or AND at any length.  That bounds
+    the reading model, not the language: these programs embed their bits
+    instead, so the read that erases the accumulator never happens, and
+    every two-input table builds.
+
+    ``l`` prints the accumulator in decimal, so the answer is read straight
+    off stdout as ``"0"`` or ``"1"`` -- no branch is needed, which suits a
+    language whose only jump target is position 0.
+    """
 
     def run_pct(self, prog: str) -> str:
         from esolangs.interpreters.io import ScriptedIO
@@ -43,7 +60,7 @@ class TestParameterizedPctSquaredMinusOne:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every instantiated input produces the truth-table result."""
+        """Every instantiated input produces the truth-table result."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.pct_squared_minus_one(table)
@@ -58,7 +75,7 @@ class TestParameterizedPctSquaredMinusOne:
     @pytest.mark.slow
     @pytest.mark.parametrize("n", [1, 2])
     def test_all_small_tables(self, n: int) -> None:
-        r"""Every table up to two inputs produces the right result."""
+        """Every table up to two inputs produces the right result."""
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
@@ -70,7 +87,7 @@ class TestParameterizedPctSquaredMinusOne:
                 assert got == table[combo], f"{table} inputs {bits}"
 
     def test_instantiations_share_a_length(self) -> None:
-        r"""All four programs are the same length, so none leaks its inputs."""
+        """All four programs are the same length, so none leaks its inputs."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.pct_squared_minus_one("0110")
@@ -80,7 +97,7 @@ class TestParameterizedPctSquaredMinusOne:
         assert len(lengths) == 1, lengths
 
     def test_template_is_input_independent(self) -> None:
-        r"""The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.pct_squared_minus_one("0110")
@@ -89,7 +106,12 @@ class TestParameterizedPctSquaredMinusOne:
 
     @pytest.mark.slow  # 5.3s: derives all sixteen.
     def test_programs_never_read_input(self) -> None:
-        r"""No emitted program contains ``n``, the input command."""
+        """No emitted program contains ``n``, the input command.
+
+        This is what separates the generator from the model the wall
+        bounds: the bits arrive by substitution, so the read that overwrites
+        the accumulator never runs.
+        """
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(16):
@@ -100,7 +122,17 @@ class TestParameterizedPctSquaredMinusOne:
 
     @pytest.mark.parametrize("n", [3, 4, 5, 6])
     def test_minterm_cascade_lifts_the_two_input_cap(self, n: int) -> None:
-        r"""Single-minterm tables build at any arity, past the derived path's."""
+        """Single-minterm tables build at any arity, past the derived path's cap.
+
+        The derived two-input path composes one affine map per input into a
+        shared value, which forces each cofactor of the table to be constant
+        or an affine image of one shared function -- the constraint that caps
+        it at two inputs.  The cascade escapes it by using the erase
+        multiplier as a conditional: the accumulator is loaded with 1 and
+        wiped by the first input whose bit misses the minterm, so *where* the
+        wipe happens depends on the inputs.  That is a branch realised
+        arithmetically in a language whose only jump target is position 0.
+        """
         from esolangs.tools.boolean import parameterized
 
         for index in range(2**n):
@@ -111,7 +143,13 @@ class TestParameterizedPctSquaredMinusOne:
                 assert self.run_pct(self.instantiate(template, bits)) == table[row]
 
     def test_cascade_branches_are_equal_width(self) -> None:
-        r"""No instantiation leaks its inputs through ``len()``."""
+        """No instantiation leaks its inputs through ``len()``.
+
+        Both cascade branches are two characters -- ``pp`` is two negations
+        composing to the identity, ``'p`` zeroes and negates zero -- so a
+        one-character ``'`` erase, whose odd shortfall has no ``pp`` padding,
+        is never what a setter spells.
+        """
         from esolangs.tools.boolean import parameterized
 
         n = 4
@@ -126,7 +164,12 @@ class TestParameterizedPctSquaredMinusOne:
 
     @pytest.mark.parametrize("n", [3, 4, 5])
     def test_cascade_builds_or_and_nand_by_complement(self, n: int) -> None:
-        r"""``ips`` maps a 0/1 accumulator to ``1 - r``, so complements are."""
+        """``ips`` maps a 0/1 accumulator to ``1 - r``, so complements are free.
+
+        ``AND``-``n`` and single minterms are subcubes and build directly;
+        ``OR``-``n`` and ``NAND``-``n`` are the complements of subcubes and
+        build by appending that one three-character negation.
+        """
         from esolangs.tools.boolean import parameterized
 
         tables = {
@@ -142,7 +185,12 @@ class TestParameterizedPctSquaredMinusOne:
                 assert self.run_pct(self.instantiate(template, bits)) == table[row]
 
     def test_cascade_covers_every_subcube_at_three_inputs(self) -> None:
-        r"""Every conjunction of literals builds, free inputs included."""
+        """Every conjunction of literals builds, free inputs included.
+
+        A subcube leaves the inputs its conjunction does not mention free, and
+        their setters are the identity on both branches -- which is what makes
+        the coverage wider than the single-minterm family.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import _cascade
 
         # The cascade is asked directly.
@@ -173,7 +221,13 @@ class TestParameterizedPctSquaredMinusOne:
     # so it is the arity that is.
     @pytest.mark.slow
     def test_affine_path_builds_three_input_parity(self) -> None:
-        r"""XOR3 builds, which no subcube is and the cascade refuses."""
+        """XOR3 builds, which no subcube is and the cascade refuses.
+
+        Parity is the canonical table outside the subcube family: its ON-set
+        is four disjoint minterms, so no conjunction of literals describes it
+        and neither does its complement.  It composes from one affine setter
+        per input instead, which is the construction that lifts the cap.
+        """
         from esolangs.tools.boolean import parameterized
         from esolangs.tools.boolean.pct_squared_minus_one import _cascade
 
@@ -186,7 +240,11 @@ class TestParameterizedPctSquaredMinusOne:
 
     @pytest.mark.slow
     def test_affine_path_instantiations_share_a_length(self) -> None:
-        r"""A composed-affine program leaks nothing through ``len()``."""
+        """A composed-affine program leaks nothing through ``len()``.
+
+        The branches are respelled to a common width rather than padded with
+        ``pp``, so this checks the property the respelling is there to keep.
+        """
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.pct_squared_minus_one("01101001")
@@ -198,7 +256,16 @@ class TestParameterizedPctSquaredMinusOne:
 
     @pytest.mark.slow
     def test_three_inputs_are_total(self) -> None:
-        r"""All 256 three-input tables build, and every one of them runs."""
+        """All 256 three-input tables build, and every one of them runs.
+
+        Totality comes from the band construction, which prints with ``e``
+        rather than ``l``: ``e`` writes ``chr(acc & 0xFF)``, so a row only has
+        to be *congruent* to 48 or 49 mod 256 instead of being exactly 0 or 1,
+        and repeated resets then cut the weighted row order into one band per
+        run of the table.  Every table that builds is executed here, so a
+        construction that grew coverage by emitting a wrong program fails
+        rather than raising the count.
+        """
         from esolangs.tools.boolean import parameterized
 
         for value in range(256):
@@ -216,7 +283,19 @@ class TestParameterizedPctSquaredMinusOne:
             assert len(lengths) == 1, (table, sorted(lengths))
 
     def test_deep_band_builds_four_input_parity(self) -> None:
-        r"""Parity-4 builds and runs, which no earlier path reached."""
+        """Parity-4 builds and runs, which no earlier path reached.
+
+        An earlier *positive* band construction capped its weights at
+        ``3003 // 256 == 11`` units, because building the ladder upward makes
+        every row sum sit under the limit at once; four inputs need
+        ``2**4 - 1 == 15``, so it had no weighting at all and was removed once
+        the deep band strictly dominated it (same coverage, a quarter the
+        program length).  The deep band subtracts instead, so the ladder is
+        negative -- nothing resets below zero -- and the budget does not exist.
+
+        Parity is the case the popcount ladder serves: every weight is one, so
+        the span is ``n`` units rather than ``2**n - 1``.
+        """
         from esolangs.tools.boolean import parameterized
 
         table = "0110100110010110"
@@ -230,7 +309,13 @@ class TestParameterizedPctSquaredMinusOne:
         assert len(lengths) == 1, sorted(lengths)
 
     def test_deep_band_refuses_a_class_splitting_collision(self) -> None:
-        r"""A weighting whose collision splits a class is refused, not served."""
+        """A weighting whose collision splits a class is refused, not served.
+
+        Rows sharing a value are merged by the first cut that reaches them and
+        can never be told apart again, so a weighting that collides two rows of
+        different classes cannot compute the table.  The planner has to reject
+        it rather than emit a program for the wrong function.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import (
             _deep_plan,
             _deep_values,
@@ -247,7 +332,18 @@ class TestParameterizedPctSquaredMinusOne:
         assert _deep_plan("0010", 2, collided) is None
 
     def test_deep_band_builds_symmetric_tables_at_five_inputs(self) -> None:
-        r"""Symmetric tables build past four inputs on the deep band."""
+        """Symmetric tables build past four inputs on the deep band.
+
+        What bounds the deep band is distinctness rather than run count.  Two
+        rows sharing a value are merged by the first cut that reaches them and
+        can never be separated, so a weighting serves a table only if every
+        collision it forces joins rows of one class.  Keeping all rows distinct
+        needs a span of ``(2**n - 1) * 256``, which is 7936 at five inputs
+        against a limit of 3003, so every weighting inside the limit collides
+        *some* rows there.  A symmetric table tolerates exactly that: the
+        popcount ladder spans only ``n * 256`` and merges the rows such a table
+        already agrees on.
+        """
         from esolangs.tools.boolean import parameterized
 
         majority = "".join("1" if bin(r).count("1") >= 3 else "0" for r in range(32))
@@ -261,7 +357,17 @@ class TestParameterizedPctSquaredMinusOne:
         assert len(lengths) == 1, sorted(lengths)
 
     def test_fold_doubling_is_what_reorders(self) -> None:
-        r"""The fold computes a table whose runs alternate four times."""
+        """The fold computes a table whose runs alternate four times.
+
+        ``00000101`` has four runs, and under the wipe-only algebra the
+        groups' cyclic order is invariant -- each wipe caps the spread at
+        3003, one short of the 3004 a relocation jumps, so a landing can
+        never split two survivors and an alternating word of four or more
+        runs can never contract to two points.  The doubling is what breaks
+        that: it regrows a gap past 3004, the landing splits it, and the
+        order changes.  This table is the smallest that *needs* the escape,
+        so it pins the mechanism rather than merely exercising the path.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import _HEADER_END, _fold
 
         table = "00000101"
@@ -280,7 +386,18 @@ class TestParameterizedPctSquaredMinusOne:
 
     @pytest.mark.slow  # a 19-run plan plus 32.
     def test_fold_closes_five_inputs(self) -> None:
-        r"""A five-input table the deep band refuses computes on the fold."""
+        """A five-input table the deep band refuses computes on the fold.
+
+        The table is pinned because finding one is expensive, not because
+        they are rare: ``_deep_band`` refuses it only after exhausting its
+        whole weighting family, an ~18s sweep that was run once to select
+        this witness and is not re-run here.  (Near-parity is *not* such a
+        witness -- a weighting tolerates its collisions and the deep band
+        serves it in milliseconds -- which is why a random table is pinned
+        instead.)  The fold is called directly to keep the test at its own
+        cost; the dispatch reaches it by falling through the same refusal.
+        The template is executed on all 32 rows at equal fill length.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import _fold
 
         table = "11011111100100101001101110111000"
@@ -296,7 +413,14 @@ class TestParameterizedPctSquaredMinusOne:
 
     @pytest.mark.slow  # a 21-point plan plus 32.
     def test_a_wide_state_plans_and_executes(self) -> None:
-        r"""A 21-point table plans in milliseconds and computes every row."""
+        """A 21-point table plans in milliseconds and computes every row.
+
+        Pinned when this table was a planner regression: an earlier
+        search-based configuration explored it for fifty seconds and then
+        *refused a table it can build*.  The rule construction plans it
+        outright, and the rows are executed rather than merely planned,
+        because a plan that does not compute is not a fix.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import _fold
 
         table = "01010101000101111111010101011110"
@@ -312,7 +436,18 @@ class TestParameterizedPctSquaredMinusOne:
 
     @pytest.mark.parametrize("bit", ["0", "1"])
     def test_fold_finishes_a_single_class(self, bit: str) -> None:
-        r"""A constant table leaves one point, which ``finish`` aligns alone."""
+        """A constant table leaves one point, which ``finish`` aligns alone.
+
+        Every other fold test lands two points, one per class, so the pair's
+        mutual gap carries the residue.  A constant table has no second
+        class: ``finish`` takes its one-point arm instead, where there is no
+        gap to make congruent and the only work is shifting that point onto
+        its answer byte within the room left below the limit.
+
+        Both constants are run because the arm subtracts 256 until the shift
+        fits, and the two answer bytes sit at different distances from the
+        limit -- so they do not take that loop the same number of times.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import _fold
 
         table = bit * 8
@@ -342,7 +477,18 @@ class TestParameterizedPctSquaredMinusOne:
         ],
     )
     def test_tables_that_reach_the_rarer_arms(self, table: str, reaches: str) -> None:
-        r"""Witnesses for arms no other table in the suite takes."""
+        """Witnesses for arms no other table in the suite takes.
+
+        Found by tracing the public entry over every table at one, two and
+        three inputs and a few hundred at four and five, then keeping the
+        first table to reach each arm -- so these are reachable in
+        production, not constructed by calling an internal with a state its
+        caller cannot produce.
+
+        Executed rather than merely built: a program that reaches a new arm
+        and computes the wrong function is the failure this is here to
+        catch, so every row runs and the fills stay one width.
+        """
         from esolangs.tools.boolean import parameterized
 
         n = (len(table) - 1).bit_length()
@@ -356,7 +502,20 @@ class TestParameterizedPctSquaredMinusOne:
         assert len(lengths) == 1, sorted(lengths)
 
     def test_dispatch_falls_through_to_the_fold(self) -> None:
-        r"""The public entry reaches the fold, not just ``_fold`` called."""
+        """The public entry reaches the fold, not just ``_fold`` called directly.
+
+        Both fold tests above call ``_fold`` themselves to keep their cost
+        to the plan they are pinning, so nothing exercised the last arm of
+        ``pct_squared_minus_one``'s own ordering -- the one that runs after
+        the deep band refuses.  A generator whose dispatch stopped handing
+        five-input tables to the fold would still pass every test here.
+
+        Cheap because the witness is already pinned: the ~18s sweep that
+        found a table the deep band refuses was paid once, above.  This
+        asserts the refusal still holds (so the fall-through is the arm
+        being taken, not a deep band that quietly started serving it) and
+        that the dispatch returns what the fold returns.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import (
             _deep_band,
             _fold,
@@ -370,7 +529,14 @@ class TestParameterizedPctSquaredMinusOne:
     def test_deep_band_refuses_past_its_span_budget_without_enumerating(
         self,
     ) -> None:
-        r"""Past eleven inputs no weighting fits, and the refusal is instant."""
+        """Past eleven inputs no weighting fits, and the refusal is instant.
+
+        Each unit prices a whole residue system, so even the all-ones
+        weighting costs ``n * 256`` against the 3003 limit.  Without the
+        up-front gate, ``_deep_weightings`` walks ``7**n`` tuples before
+        its sum filter -- hours at twelve inputs -- so this test hanging
+        rather than failing is what removing the gate looks like.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import _deep_band
 
         parity = "".join(str(bin(r).count("1") & 1) for r in range(2**12))
@@ -378,7 +544,20 @@ class TestParameterizedPctSquaredMinusOne:
 
     @pytest.mark.slow  # derives the whole three-input.
     def test_affine_reach_is_exactly_characterized(self) -> None:
-        r"""The composed-affine path's 86/256 is a predicate, not a measurement."""
+        """The composed-affine path's 86/256 is a predicate, not a measurement.
+
+        A three-input table is reachable iff its cofactors on the **last**
+        input are equal, complementary or constant -- the shared-cofactor
+        law -- and it is not constant, the constants being served by earlier
+        paths.  The law and the path coincide exactly: 86 of the 88 tables
+        the law admits, the two missing ones being the constants.
+
+        Pinned because the docs used to record the law as *crossing* this
+        path rather than containing it -- a claim that came from testing the
+        law on the first input instead of the last.  ``x0 ^ x2`` was also
+        excluded for a while, and that was an artefact of the enumeration
+        this path used to run rather than a property of the model.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import _affine
 
         def complement(bits: str) -> str:
@@ -411,7 +590,21 @@ class TestParameterizedPctSquaredMinusOne:
         assert len(reached) == 86
 
     def test_affine_builds_the_table_the_enumeration_missed(self) -> None:
-        r"""``x0 ^ x2`` builds, and short, which the old enumeration refused."""
+        """``x0 ^ x2`` builds, and short, which the old enumeration refused.
+
+        The path used to compose every branch pair layer by layer, keeping
+        six value vectors per induced partition and choosing them by
+        arrival.  Vectors sharing a partition are not interchangeable -- a
+        later setter translates by a bounded offset, so one far from zero
+        cannot be moved onto the values a tail needs -- and for this table's
+        partition the six banked witnesses were all out of reach while the
+        usable one was dropped.  The construction has no such choice to get
+        wrong: it reads the partition off the table and solves.
+
+        Kept as the regression, with the length checked too: the table was
+        served by the deep band at 3054 characters while this path builds it
+        in well under a hundred.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import _affine
 
         for table in ("01011010", "10100101"):
@@ -427,14 +620,27 @@ class TestParameterizedPctSquaredMinusOne:
             assert len(template) < 100, len(template)
 
     def test_affine_declines_outside_three_inputs(self) -> None:
-        r"""The construction serves the arity the dispatch calls it for."""
+        """The construction serves the arity the dispatch calls it for.
+
+        The pre-vector it solves has four entries, one per pair of leading
+        bits, so the derivation is written for three inputs; the deep band
+        covers every table this would reach above that, and the dispatch
+        calls it at three only.  Declining rather than guessing keeps the
+        two facts in one place.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import _affine
 
         assert _affine("0110", 2) is None
         assert _affine("0110100110010110", 4) is None
 
     def test_cascade_reach_is_exactly_the_subcubes(self) -> None:
-        r"""The cascade builds exactly the tables that are a subcube or one's."""
+        """The cascade builds exactly the tables that are a subcube or one's
+        complement, which is what its docstring claims at any arity.
+
+        Checked at three inputs against the whole arity.  A subcube here is
+        the 1-set agreeing on some inputs and free on the rest, so the count
+        of ones is ``2 ** (free inputs)``.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import _cascade
 
         def is_subcube(table: str) -> bool:
@@ -458,7 +664,22 @@ class TestParameterizedPctSquaredMinusOne:
 
     @pytest.mark.slow  # every weighting inside the.
     def test_a_legal_weighting_always_schedules(self) -> None:
-        r"""Legality decides the deep band; the schedule then follows."""
+        """Legality decides the deep band; the schedule then follows.
+
+        A weighting collides rows whose weighted sums tie, and a collision is
+        survivable exactly when it joins rows of one class -- so a weighting
+        is *legal* for a table when no cross-class pair ties.  The
+        construction rests on legality being sufficient as well as necessary:
+        it picks the first legal weighting inside the span budget and calls
+        the planner once, where the search called it per candidate.
+
+        Pinned because a counterexample would not raise.  The planner would
+        return ``None``, the loop would move on, and the only visible effect
+        would be a longer program from a later construction -- so the
+        property is checked rather than assumed.  Failures do exist outside
+        the budget, at ``sum(units) * 256`` past the limit, which is why
+        :func:`_deep_weightings` drops those rather than trying them.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import (
             _cross_class_diffs,
             _deep_plan,
@@ -485,7 +706,14 @@ class TestParameterizedPctSquaredMinusOne:
         assert checked > 3000, checked
 
     def test_span_budget_is_what_rejects_a_legal_weighting(self) -> None:
-        r"""The dropped weightings are dropped for a stated reason."""
+        """The dropped weightings are dropped for a stated reason.
+
+        A weighting is measured in whole residue systems, so its span is
+        ``sum(units) * 256`` and the limit allows ``3003 // 256 == 11`` of
+        them.  Every weighting seen to fail with legal collisions failed
+        exactly there -- sum 12, span 3072 -- which is what makes the budget
+        a derivation rather than a tuning knob.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import (
             _BAND_UNIT,
             _LIMIT,
@@ -497,7 +725,15 @@ class TestParameterizedPctSquaredMinusOne:
         assert max(sum(u) for u in _deep_weightings(4)) == _LIMIT // _BAND_UNIT
 
     def test_deep_band_is_screened_above_four_inputs(self) -> None:
-        r"""Asymmetric five-input tables are screened, symmetric ones built."""
+        """Asymmetric five-input tables are screened, symmetric ones built.
+
+        The deep band cannot serve a five-input table unless the table
+        agrees on every popcount class -- its weightings force collisions
+        there -- and proving that by enumeration cost about eighteen
+        seconds per table.  The screen settles it immediately, so the
+        expensive refusal is skipped while the tables it really does build
+        still take its (much shorter) programs.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import _deep_band
 
         parity = "".join(str(bin(r).count("1") % 2) for r in range(32))
@@ -511,7 +747,15 @@ class TestParameterizedPctSquaredMinusOne:
 
     @pytest.mark.slow  # 8.3s: the ladder build plus.
     def test_ladder_builds_majority_three(self) -> None:
-        r"""Majority-3 builds, which no affine composition of setters reaches."""
+        """Majority-3 builds, which no affine composition of setters reaches.
+
+        It is the smallest OR of disjoint subcubes, and the docs recorded it as
+        out of reach on the grounds that chaining indicator gadgets needs a
+        running total to survive a gadget that erases.  The ladder keeps that
+        total in the accumulator and lets the over-3003 reset read it as a
+        threshold, so the argument does not bind.  Executed on all eight rows
+        rather than asserted structurally.
+        """
         from esolangs.tools.boolean import parameterized
         from esolangs.tools.boolean.pct_squared_minus_one import _affine, _cascade
 
@@ -532,7 +776,16 @@ class TestParameterizedPctSquaredMinusOne:
 
     @pytest.mark.slow  # the whole setter grid,.
     def test_every_branch_pair_shares_a_spelling_width(self) -> None:
-        r"""No setter in the grid needs the "no shared width" fallback."""
+        """No setter in the grid needs the "no shared width" fallback.
+
+        Both branches of a setter must be the same width or the program leaks
+        its inputs through ``len()``.  :func:`_spell_affine` gives up when two
+        branches share no width -- but for the shipped grid that never
+        happens, which is why the guard carries a coverage pragma.  Pinned
+        here so the pragma rests on a checked property: narrowing the grid or
+        the spelling depth makes this fail rather than silently making dead
+        code live.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import (
             _WIDE_A_VALS,
             _WIDE_B_VALS,
@@ -547,7 +800,19 @@ class TestParameterizedPctSquaredMinusOne:
                 assert shared, (zero, one)
 
     def test_the_wide_multipliers_are_the_command_closure(self) -> None:
-        r"""``_WIDE_A_VALS`` is generated, and the generator is the language."""
+        """``_WIDE_A_VALS`` is generated, and the generator is the language.
+
+        ``m`` doubles and ``p`` negates, so the reachable multipliers are
+        the signed powers of two plus the erase -- a closure over the two
+        commands, not a list of measured answers.  Only the *bound* is
+        measured, which is why it is a separate constant.
+
+        Order is asserted alongside the set because the wide search takes
+        the first spelling that behaves: ascending magnitude, positive
+        before negative.  Reordering would change which spelling wins
+        without changing what is reachable, so a set-only assertion would
+        not see it.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import (
             _WIDE_A_LIMIT,
             _WIDE_A_VALS,
@@ -567,7 +832,13 @@ class TestParameterizedPctSquaredMinusOne:
         assert _wide_a_vals(8) == (0, 1, -1, 2, -2, 4, -4, 8, -8)
 
     def test_built_spell_bases_match_the_frozen_witnesses(self) -> None:
-        r"""The fold reproduces the enumeration's witnesses exactly."""
+        """The fold reproduces the enumeration's witnesses exactly.
+
+        These are what the old breadth-first walk over ``simp'`` found:
+        the shortest spelling of each grid map at each width parity, with
+        ``a == 0`` carrying one base because the erase forgets the prefix.
+        The module grows the same strings; this remembers what they were.
+        """
         frozen: dict[tuple[int, int], tuple[str | None, str | None]] = {
             (-4, -12): ("pimm", "mpiim"),
             (-4, -11): ("mpssmi", "psmmi"),
@@ -749,7 +1020,14 @@ class TestParameterizedPctSquaredMinusOne:
         assert module._spell_bases() == frozen  # noqa: SLF001
 
     def test_every_derived_spelling_behaves_at_every_width(self) -> None:
-        r"""Each width's string realises its map, padding included."""
+        """Each width's string realises its map, padding included.
+
+        The spellings derive from :func:`_spell_bases` -- a minimal witness
+        per parity, widened by ``pp`` suffixes, or by ``s`` prefixes where
+        the erase forgets them -- so this checks the *derived* strings, not
+        just the bases: every entry of every map's width dict is run over
+        the admission window and must land on ``a*x + b`` exactly.
+        """
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
         for a in module._WIDE_A_VALS:  # noqa: SLF001
             for b in module._WIDE_B_VALS:  # noqa: SLF001
@@ -763,7 +1041,13 @@ class TestParameterizedPctSquaredMinusOne:
                     ), (a, b, width, code)
 
     def test_slope_zero_forgets_the_accumulator(self) -> None:
-        r"""``'`` is the constant map: it discards whatever it was given."""
+        """``'`` is the constant map: it discards whatever it was given.
+
+        The setters are affine maps ``x -> a*x + b``, and ``a == 0`` is the
+        one that cannot be reached by scaling -- it needs the reset command.
+        Both inputs must land on the same value, which is what makes it a
+        constant rather than merely a steep slope.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import _affine_code, _apply
 
         code = _affine_code(0, 5)
@@ -778,7 +1062,14 @@ class TestParameterizedPctSquaredMinusOne:
         assert _affine_code(1, -1) is None
 
     def test_the_model_mirrors_every_command_the_language_has(self) -> None:
-        r"""``_apply`` stands in for the interpreter, so it owes it every op."""
+        """``_apply`` stands in for the interpreter, so it owes it every op.
+
+        The emitted tails only ever translate, so ``m`` and the over-3003
+        reset are not on the path a built program takes -- but they are
+        what the *language* does, and a model that quietly disagreed with
+        the interpreter would let a future tail shape be validated against
+        a machine that does not exist.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import _LIMIT, _apply
 
         assert _apply(10, "s") == 8  # s subtracts 2.
@@ -802,7 +1093,13 @@ class TestParameterizedPctSquaredMinusOne:
         assert _apply(10, "sxs") == 6, "an unmodelled command interrupts nothing"
 
     def test_a_tail_is_not_always_available(self) -> None:
-        r"""Not every pair of class values can be printed apart."""
+        """Not every pair of class values can be printed apart.
+
+        The tail has to land the one-class on exactly 1 and the zero-class
+        on 0 (or past the reset limit).  Two classes that share a value are
+        the clearest case that no tail can separate -- ``l`` prints one
+        accumulator, so identical inputs cannot print differently.
+        """
         from esolangs.tools.boolean.pct_squared_minus_one import _tail_for
 
         assert _tail_for(-5, -5) is None
@@ -812,7 +1109,14 @@ class TestParameterizedPctSquaredMinusOne:
         assert _tail_for(5, 0) is None
 
     def test_a_table_no_candidate_realizes_is_reported(self) -> None:
-        r"""With every parameter set rejected the derivation reports nothing."""
+        """With every parameter set rejected the derivation reports nothing.
+
+        The enumeration is small and structural -- the constants input 0
+        contributes, the spelling, and the class pair -- and some candidate
+        always works out for a two-input table.  Rejecting all of them is
+        what exercises the empty answer, which the caller turns into its
+        own refusal rather than emitting a program for the wrong function.
+        """
         import importlib
 
         # The package re-exports the.
@@ -826,44 +1130,61 @@ class TestParameterizedPctSquaredMinusOne:
 
 
 class TestPctSquaredHelpers:
-    r"""The %^2^-1 spelling helpers, at the inputs their guards exist for."""
+    """The %^2^-1 spelling helpers, at the inputs their guards exist for.
+
+    These are pure functions over small integers, so the edges the search
+    itself only reaches incidentally are reachable directly: a width that
+    admits no spelling and the zero shortcut.
+    """
 
     @staticmethod
     def module():
         return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
 
     def test_sub_of_width_rejects_an_unreachable_split(self) -> None:
-        r"""A width too narrow to spell ``k`` has no ``i``/``s`` split."""
+        """A width too narrow to spell ``k`` has no ``i``/``s`` split."""
         assert self.module()._sub_of_width(1, 1) is None  # noqa: SLF001
 
     @pytest.mark.parametrize("name", ["_even_width_for"])
     def test_zero_needs_no_width(self, name: str) -> None:
-        r"""Subtracting nothing is width zero, not a search."""
+        """Subtracting nothing is width zero, not a search."""
         assert getattr(self.module(), name)(0) == 0
 
     @pytest.mark.parametrize("name", ["_even_width_for"])
     @pytest.mark.parametrize("k", [1, 2, 3, 7])
     def test_unspellable_weights_return_none(self, name: str, k: int) -> None:
-        r"""Some weights have no even-width spelling at all."""
+        """Some weights have no even-width spelling at all."""
         assert getattr(self.module(), name)(k) is None
 
     @pytest.mark.parametrize("name", ["_even_width_for"])
     def test_odd_starting_width_is_bumped_even(self, name: str) -> None:
-        r"""``k == 8`` starts the scan at an odd width, so it is bumped."""
+        """``k == 8`` starts the scan at an odd width, so it is bumped."""
         width = getattr(self.module(), name)(8)
         assert width is not None
         assert width % 2 == 0
 
     def test_a_ladder_refuses_an_unspellable_base(self) -> None:
-        r"""The lead is spelled first, so its width decides before any weight."""
+        """The lead is spelled first, so its width decides before any weight.
+
+        7 is one of the four values with no even-width spelling, and a
+        ladder led by it cannot be built whatever its weights are.
+        """
         assert self.module()._ladder_setters((12,), 7) is None  # noqa: SLF001
 
     def test_a_ladder_refuses_an_unspellable_weight(self) -> None:
-        r"""One bad weight refuses the ladder even under a legal lead."""
+        """One bad weight refuses the ladder even under a legal lead.
+
+        The base here spells at width 4, so the refusal can only come from
+        the weight -- which separates this from the lead's own guard.
+        """
         assert self.module()._ladder_setters((7,), 12) is None  # noqa: SLF001
 
     def test_a_ladder_spells_both_branches_at_one_width(self) -> None:
-        r"""A legal ladder holds and subtracts at the same length."""
+        """A legal ladder holds and subtracts at the same length.
+
+        The hold is ``pp`` repeated and the subtraction is the same width,
+        so no program leaks which bit it embeds through ``len()``.
+        """
         got = self.module()._ladder_setters((12,), 12)  # noqa: SLF001
         assert got is not None
         setters, lead = got
@@ -872,7 +1193,16 @@ class TestPctSquaredHelpers:
         assert lead == code
 
     def test_every_tabulated_ladder_entry_computes_its_split(self) -> None:
-        r"""Each built ladder entry is checked by arithmetic, not trust."""
+        """Each built ladder entry is checked by arithmetic, not trust.
+
+        The suffix was once found by a breadth-first composition over the
+        rungs, then frozen as data; it is computed now, so this re-derives
+        what the search used to guarantee: running the suffix over every
+        rung of its ladder's stage-one vector -- through :func:`_apply`,
+        the exact model of the interpreter's step -- leaves each row's
+        answer in the accumulator.  ``l`` is a no-op to the model, so the
+        final value is what the program prints.
+        """
         module = self.module()
         for table, (index, suffix) in module._ladder_built().items():  # noqa: SLF001
             weights, base = module._LADDERS[index]  # noqa: SLF001
@@ -885,7 +1215,13 @@ class TestPctSquaredHelpers:
                 assert got == int(want), (table, row)
 
     def test_ladder_gadgets_match_frozen_spellings(self) -> None:
-        r"""The gadget rule reproduces the five searched spellings, byte for."""
+        """The gadget rule reproduces the five searched spellings, byte for byte.
+
+        These strings are what the rung-composition search froze; the
+        module now spells each from its ``(cut, slope)`` pair, so this is
+        the fixture that keeps the construction honest.  The order matters
+        too -- the fold is first-claim-wins over shortest-first gadgets.
+        """
         module = self.module()
         assert module._LADDER_GADGETS == (  # noqa: SLF001
             "pspmsmipsp",
@@ -896,7 +1232,16 @@ class TestPctSquaredHelpers:
         )
 
     def test_the_move_algebra_refuses_what_it_cannot_place(self) -> None:
-        r"""Each refusal in ``_fold_step`` is a placement the window forbids."""
+        """Each refusal in ``_fold_step`` is a placement the window forbids.
+
+        These are the guards a plan search only meets by accident, so they
+        are driven from constructed states instead: a doubling whose result
+        leaves the window, a degenerate state with nothing to double, and
+        an everything-wipe while two classes are still live (which would
+        merge points the suffix still has to tell apart).  Each is paired
+        with the state that *is* accepted, so a guard that stopped firing
+        would fail here rather than silently widening the algebra.
+        """
         module = self.module()
         fold_step = module._fold_step  # noqa: SLF001
         limit = module._LIMIT  # noqa: SLF001
@@ -938,7 +1283,13 @@ class TestPctSquaredHelpers:
         assert fold_step(one_class, all_wipe) == ((0, 0, "a", frozenset({0, 1})),)
 
     def test_a_rise_relocates_survivors_above_the_victims(self) -> None:
-        r"""``u`` mirrors ``d``: the survivors move relative to the victim."""
+        """``u`` mirrors ``d``: the survivors move relative to the victim bottom.
+
+        The two directions are separate arms of the same wipe, and only the
+        dive is on the common path, so the rise is driven here directly.
+        Both must land every group inside the window and keep one merged
+        victim point, which is what makes the resulting state legal.
+        """
         module = self.module()
         fold_step = module._fold_step  # noqa: SLF001
         clean_amount = module._fold_clean_amount  # noqa: SLF001
@@ -960,7 +1311,16 @@ class TestPctSquaredHelpers:
             assert {x for _, _, _, ids in moved for x in ids} == {0, 1, 2}, kind
 
     def test_a_wipe_whose_survivors_will_not_fit_is_refused(self) -> None:
-        r"""The span is re-checked *after* the relocation, not only before it."""
+        """The span is re-checked *after* the relocation, not only before it.
+
+        A wipe's amount is picked from the landing window, so it always
+        passes the window check -- but an extent rides along with its group
+        and is not scaled by the move, so a wide enough one puts the
+        relocated state outside the accumulator's range even at a legal
+        amount.  That is what the second span check catches, and nothing
+        earlier can: the same wipe on the same positions is accepted once
+        the extent is small.
+        """
         module = self.module()
         fold_step = module._fold_step  # noqa: SLF001
 
@@ -980,7 +1340,13 @@ class TestPctSquaredHelpers:
         assert fold_step(narrow, ("u", 1, 3004, frozenset())) is not None
 
     def test_a_clean_amount_needs_a_frame_to_land_in(self) -> None:
-        r"""With no room to relocate into, there is no amount to return."""
+        """With no room to relocate into, there is no amount to return.
+
+        A single point has no survivor to measure a window against, so the
+        frame is undefined and the caller gets ``None`` rather than an
+        amount that would collide.  A state with survivors returns the
+        first free landing instead.
+        """
         module = self.module()
         clean_amount = module._fold_clean_amount  # noqa: SLF001
         limit = module._LIMIT  # noqa: SLF001
@@ -992,7 +1358,15 @@ class TestPctSquaredHelpers:
             assert clean_amount(spread, kind, 1) == limit + 1
 
     def test_a_reduction_gives_up_when_its_own_move_is_refused(self) -> None:
-        r"""The rules can name a move the algebra then rejects, and that ends."""
+        """The rules can name a move the algebra then rejects, and that ends it.
+
+        These are two different refusals and only one of them is "no move
+        exists": here ``_fold_rule_move`` does return an op -- a rise of the
+        bottom group -- but the extents riding along put the relocated state
+        outside the window, so ``_fold_step`` refuses it.  The reduction
+        stops rather than skipping to a second-choice move, because the
+        rules are a construction and not a search.
+        """
         module = self.module()
         fold_reduce = module._fold_reduce  # noqa: SLF001
         fold_rule_move = module._fold_rule_move  # noqa: SLF001
@@ -1013,7 +1387,13 @@ class TestPctSquaredHelpers:
         assert fold_reduce(state, fold_done, budget=5) is None
 
     def test_a_reduction_gives_up_when_no_move_applies(self) -> None:
-        r"""``_fold_reduce`` returns ``None`` rather than an unfinished plan."""
+        """``_fold_reduce`` returns ``None`` rather than an unfinished plan.
+
+        A state whose only candidate moves are refused cannot be driven to
+        the done condition, and reporting a partial op list would hand the
+        emitter a plan that does not reach the answer.  The budget is
+        small here so the loop ends on the refusal, not on exhaustion.
+        """
         module = self.module()
         fold_reduce = module._fold_reduce  # noqa: SLF001
         limit = module._LIMIT  # noqa: SLF001
@@ -1030,7 +1410,13 @@ class TestPctSquaredHelpers:
     def test_the_all_wipe_candidate_needs_one_class_and_something_to_move(
         self,
     ) -> None:
-        r"""``_fold_moves`` offers the everything-wipe only where it is legal."""
+        """``_fold_moves`` offers the everything-wipe only where it is legal.
+
+        It collapses every point onto one, so it is offered only once a
+        single class remains -- and only when some group still carries a
+        position or an extent, since collapsing an already-collapsed state
+        is not a move.
+        """
         module = self.module()
         fold_moves = module._fold_moves  # noqa: SLF001
 
@@ -1054,7 +1440,15 @@ class TestPctSquaredHelpers:
         assert kinds(((0, 0, "a", frozenset({0})),)) == []
 
     def test_sub_units_borrows_an_i_back_to_pay_a_remainder_of_one(self) -> None:
-        r"""A remainder of 1 cannot be spelled directly, so a whole ``i`` is."""
+        """A remainder of 1 cannot be spelled directly, so a whole ``i`` is broken up.
+
+        ``s`` takes 2 and ``i`` takes 3, so the shortest spelling packs
+        as many ``i`` as it can.  A remainder of 1 has no spelling of its
+        own -- nothing costs a single unit -- so the rule borrows one
+        ``i`` back and pays the resulting 4 as two ``s``.  Every arm is
+        pinned here because the lengths are what the width arithmetic
+        upstream budgets against.
+        """
         module = self.module()
         sub_units = module._sub_units  # noqa: SLF001
 
@@ -1086,12 +1480,20 @@ class TestPctSquaredHelpers:
             assert len(spelled) == best, units
 
     def test_a_ladder_cut_that_overshoots_backs_the_doubling_off(self) -> None:
-        r"""When the largest power overshoots the cut, ``j`` steps down one."""
+        """When the largest power overshoots the cut, ``j`` steps down one.
+
+        ``j`` is picked as the largest doubling that fits under the cut,
+        but that first choice can leave a remainder that is negative (the
+        threshold already passed the cut) or odd (``k`` pays it two units
+        at a time and cannot spell a half).  Either way the only repair is
+        a smaller ``j``, and the assertions just past it are what say the
+        second choice always lands -- so a gadget still comes back.
+        """
         module = self.module()
         ladder_gadget = module._ladder_gadget  # noqa: SLF001
 
         def chosen_j(cut: int) -> tuple[int, bool]:
-            r"""Return the j the gadget settles on, and whether it backed off."""
+            """Return the j the gadget settles on, and whether it backed off."""
             j = (3004 // cut).bit_length() - 1
             remainder = -(-3004 // (1 << j)) - cut
             if remainder < 0 or remainder % 2 != 0:
@@ -1115,7 +1517,18 @@ class TestPctSquaredHelpers:
         assert clean.endswith("ipsp")
 
     def test_built_ladder_matches_the_frozen_witnesses(self) -> None:
-        r"""The fold reproduces the table it replaced, entry for entry."""
+        """The fold reproduces the table it replaced, entry for entry.
+
+        These twenty-four are what the breadth-first harvest froze: the
+        table each ladder-plus-suffix pair serves, and the pair the harvest
+        picked for it.  Two things the fold may legitimately differ on are
+        allowed for: it names two tables the harvest never listed (the
+        constants, which every earlier path serves in a tenth the
+        characters), and for two more it picks a shorter gadget than the
+        harvest did.  What is asserted is that every frozen table is still
+        served and that the pair chosen computes it -- and, where the pair
+        differs, that the ladder is not what the generator emits anyway.
+        """
         frozen = {
             "00010011": (0, "mpspmipspsl"),
             "11101100": (0, "mpspmipspipl"),
@@ -1166,7 +1579,14 @@ class TestPctSquaredHelpers:
                 )
 
     def test_built_fold_skeletons_match_the_mined_plans(self) -> None:
-        r"""The peel/park/close rule reproduces the mined plans exactly."""
+        """The peel/park/close rule reproduces the mined plans exactly.
+
+        These twelve are what the harvest froze: the plan for each run-length
+        word the three-phase construction serves.  The module builds them
+        from ``r``, ``delta`` and ``pat[1]`` now; this remembers what they
+        were.  ``pat[1]`` is ignored at ``r == 5`` -- both pairs there agree
+        -- so the ten distinct plans cover twelve keys.
+        """
         mined = {
             (2, 0, 0): (("u", 1, "cmax"),),
             (2, 0, 1): (("d", 1, "cmax"),),
@@ -1236,7 +1656,19 @@ class TestPctSquaredHelpers:
             assert module._fold_skeleton(*key) == plan, key  # noqa: SLF001
 
     def test_fold_served_is_reachability(self) -> None:
-        r"""``_fold_served`` accepts exactly the buildable low-run keys."""
+        """``_fold_served`` accepts exactly the buildable low-run keys.
+
+        The predicate replaced a twelve-entry table whose comment called
+        its four absences a corpus measurement.  They are structural, so
+        this re-derives the set rather than pinning it: enumerating every
+        run pattern reproduces the accepted keys exactly, and no key the
+        predicate accepts is one no pattern can produce.
+
+        ``delta`` is set when every middle index of the pattern is ``1``.
+        For ``r`` of 2, 3 and 4 that set contains index 1, so ``delta``
+        implies ``pat[1]``; at ``r == 3`` index 1 is the *only* middle, so
+        the implication runs both ways there.
+        """
         module = self.module()
         reachable = set()
         for r in range(1, 13):
@@ -1254,14 +1686,18 @@ class TestPctSquaredHelpers:
         assert not accepted - reachable
 
     def test_the_ladder_declines_other_arities(self) -> None:
-        r"""Every shipped ladder has three weights, so only ``n == 3`` serves."""
+        """Every shipped ladder has three weights, so only ``n == 3`` serves.
+
+        The harvest the tabulation froze was empty at every other arity;
+        the guard makes that an explicit decline rather than a lookup miss.
+        """
         module = self.module()
         assert module._ladder("0110", 2) is None  # noqa: SLF001
         assert module._ladder("01" * 8, 4) is None  # noqa: SLF001
 
 
 class TestPctInterleavedFold:
-    r"""The staged replacement emits real code between its placeholders."""
+    """The staged replacement emits real code between its placeholders."""
 
     def test_interleaved_template_replays_every_three_input_row(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -1289,7 +1725,14 @@ class TestPctInterleavedFold:
     # slow-marked sibling below.
     # whole 256-table space on the.
     def test_every_three_input_table_builds_or_declines_exactly(self) -> None:
-        r"""Sweep all 256 three-input tables through the staged build."""
+        """Sweep all 256 three-input tables through the staged build.
+
+        One table exercises one route; the whole space is what reaches the
+        merge, split and refusal arms, and it is the only way to hold the
+        two outcomes to their contracts at once.  A decline must be exactly
+        ``None``, never a partial template a caller might emit.  That a
+        build *computes* its table is the sibling's job.
+        """
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
         built = 0
         for value in range(256):
@@ -1307,7 +1750,13 @@ class TestPctInterleavedFold:
 
     @pytest.mark.slow  # ~5s: 1088 interpreter replays.
     def test_every_three_input_build_computes_its_table(self) -> None:
-        r"""Every table the route builds is replayed row by row."""
+        """Every table the route builds is replayed row by row.
+
+        A template that computes the wrong table is worse than a decline, so
+        the rows are checked on the interpreter rather than the shape being
+        trusted.  The build half runs in the fast loop; this is the half that
+        costs interpreter time.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.pct_squared_minus_one import run
 
@@ -1325,7 +1774,14 @@ class TestPctInterleavedFold:
 
     @pytest.mark.slow  # ~10s: 4096 four-input builds.
     def test_four_input_tables_build_or_decline_without_raising(self) -> None:
-        r"""At four inputs the merge has room to act, so its arms are reached."""
+        """At four inputs the merge has room to act, so its arms are reached here.
+
+        Build-only on a stride: what is under test is that every table
+        either yields a well-formed template or declines cleanly.  A raise
+        would mean the planner emitted a move its own algebra refuses,
+        which is the failure the guards exist to prevent, and no amount of
+        row replay would reveal it if the build never returned.
+        """
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
         built = 0
         for value in range(0, 2**16, 16):
@@ -1340,7 +1796,16 @@ class TestPctInterleavedFold:
         assert built == 1444
 
     def test_interleaved_fallback_builds_past_the_all_row_ladder(self) -> None:
-        r"""A late-ignored suffix stays compact instead of spending 4096 rungs."""
+        """A late-ignored suffix stays compact instead of spending 4096 rungs.
+
+        Rows are *sampled* on a stride, as at eleven inputs above: the build
+        itself is instant, and all 4096 rows through the interpreter were
+        seven seconds of this module's budget for one table.  The stride is
+        coprime to the arity's runs and covers all four values of the two
+        bits the table actually reads, so every branch of the answer is
+        still executed -- the suffix is ignored by construction, which is
+        the property under test.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.pct_squared_minus_one import run
 
@@ -1362,7 +1827,13 @@ class TestPctInterleavedFold:
 
 
 class TestPctFoldEmitter:
-    r"""The emitter's mirror, driven at the steps the planner rarely asks."""
+    """The emitter's mirror, driven at the steps the planner rarely asks for.
+
+    :class:`_FoldEmitter` tracks every row's accumulator exactly, so its
+    moves can be checked as arithmetic: build one over a small table and
+    read ``pos`` before and after.  ``s`` subtracts 2 and ``i`` subtracts
+    3, and ``p`` negates, so a rise is spelled as a negated descent.
+    """
 
     @staticmethod
     def emitter(table: str = "01", n: int = 1):
@@ -1370,14 +1841,20 @@ class TestPctFoldEmitter:
         return module._FoldEmitter(table, n)  # noqa: SLF001
 
     def test_a_zero_step_emits_nothing(self) -> None:
-        r"""Moving by zero is not spelled at all, in either direction."""
+        """Moving by zero is not spelled at all, in either direction."""
         for move in ("descend", "plain_rise"):
             em = self.emitter()
             getattr(em, move)(0)
             assert em.body == []
 
     def test_a_single_step_is_spelled_as_three_against_two(self) -> None:
-        r"""One has no spelling of its own: ``s`` is 2 and ``i`` is 3."""
+        """One has no spelling of its own: ``s`` is 2 and ``i`` is 3.
+
+        So a step of 1 is a step of 3 the other way against a step of 2
+        back -- the only combination of the two primitives that lands one
+        away.  Both directions net exactly one, and every row moves
+        together, since the accumulator is shared.
+        """
         em = self.emitter()
         before = dict(em.pos)
         em.descend(1)
@@ -1391,7 +1868,15 @@ class TestPctFoldEmitter:
         assert all(em.pos[r] - before[r] == 1 for r in before)
 
     def test_the_final_alignment_wraps_when_it_would_overshoot(self) -> None:
-        r"""The last shift is a residue, and only one lift of it fits."""
+        """The last shift is a residue, and only one lift of it fits.
+
+        ``finish`` moves the surviving point onto its answer byte, which
+        pins it only modulo 256.  Taken as a positive residue that shift
+        can exceed the headroom to the limit, so it is lowered by 256 until
+        it fits -- the same residue, reached from below.  A point near the
+        ceiling therefore ends up *under* where it started while still
+        landing on the byte.
+        """
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
 
         for start, expected in ((0, 48), (2900, 2864)):
@@ -1405,7 +1890,14 @@ class TestPctFoldEmitter:
             assert abs(em.pos[key]) <= module._LIMIT  # noqa: SLF001
 
     def test_a_rise_with_no_headroom_preshifts_first(self) -> None:
-        r"""``p`` needs two to work with, so a shorter rise makes room."""
+        """``p`` needs two to work with, so a shorter rise makes room.
+
+        The rise is ``p``, a subtraction, ``p``, and the subtraction has
+        no spelling below 2.  When the victims sit so high that the
+        relocation leaves less than that, the emitter drops everything
+        first and recomputes the distance from the new bottom.  A victim
+        one lower needs no preshift, which is what separates the two.
+        """
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
         limit = module._LIMIT  # noqa: SLF001
 
@@ -1424,14 +1916,25 @@ class TestPctFoldEmitter:
 
 
 class TestPctFoldMoves:
-    r"""The fold's move generator, at the guards that refuse a relocation."""
+    """The fold's move generator, at the guards that refuse a relocation.
+
+    A ``_FoldPoint`` is ``(top, span, class, ids)`` and a state is a tuple
+    of them.  The guards below are properties of the arithmetic, so they
+    are driven with states built by hand: the spacings involved are wider
+    than any table's own starting layout, which is four per run.
+    """
 
     @staticmethod
     def module():
         return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
 
     def test_a_collision_across_classes_is_not_a_merge(self) -> None:
-        r"""Two points at one value are indistinguishable forever after."""
+        """Two points at one value are indistinguishable forever after.
+
+        So a collision is legal only within a class -- and only between
+        points already wiped, since a group with extent has rows at
+        several values and an equal top is not an equal anything.
+        """
         module = self.module()
         merge = module._fold_merge  # noqa: SLF001
 
@@ -1445,7 +1948,13 @@ class TestPctFoldMoves:
         assert merge(legal) == ((0, 0, "0", frozenset({0, 1})),)
 
     def test_a_survivor_reaching_below_the_victims_offers_no_window(self) -> None:
-        r"""The relocation window is the gap to the nearest survivor's bottom."""
+        """The relocation window is the gap to the nearest survivor's bottom.
+
+        A survivor whose span reaches down past the victims' top closes
+        that gap entirely, so there is no amount to relocate by and the
+        dive is skipped rather than spelled.  Both the ascending and the
+        descending half apply the same rule.
+        """
         state = (
             (0, 400, "0", frozenset({0})),
             (-100, 0, "0", frozenset({1})),
@@ -1454,7 +1963,14 @@ class TestPctFoldMoves:
         assert len(list(self.module()._fold_moves(state, kcap=3))) == 1  # noqa: SLF001
 
     def test_a_relocation_that_would_overflow_the_span_is_skipped(self) -> None:
-        r"""Every wipe caps the spread, so a move that widens it is refused."""
+        """Every wipe caps the spread, so a move that widens it is refused.
+
+        Two survivors far from *each other* are what reaches this: the
+        near one bounds how far the state may travel, and the far one is
+        still far after travelling that distance.  The guard is what keeps
+        the yielded states inside the accumulator's range, so it is
+        checked on the output rather than only executed.
+        """
         module = self.module()
         state = (
             (0, 0, "0", frozenset({0})),
@@ -1470,7 +1986,13 @@ class TestPctFoldMoves:
 
 
 class TestPctFoldPlanners:
-    r"""The rule construction's refusals, driven through their own guards."""
+    """The rule construction's refusals, driven through their own guards.
+
+    :func:`_fold_reduce` runs the case analysis of ``_fold_rule_move`` to a
+    ``done`` state.  It answers ``None`` rather than raising when no rule
+    applies or the budget runs out, so the refusals are reachable without
+    contriving an unsolvable table.
+    """
 
     @staticmethod
     def module():
@@ -1486,14 +2008,23 @@ class TestPctFoldPlanners:
     )
 
     def test_the_reduction_gives_up_on_its_budget(self) -> None:
-        r"""A budget of zero takes no step and answers ``None``."""
+        """A budget of zero takes no step and answers ``None``.
+
+        The default budget is derived from the state and is a latency
+        guard the corpus never reaches; passing one drives the refusal
+        without a state the rules genuinely dead-end on.
+        """
         module = self.module()
 
         done = module._fold_done  # noqa: SLF001
         assert module._fold_reduce(self.STATE, done, budget=0) is None  # noqa: SLF001
 
     def test_the_reduction_finishes_when_it_is_given_room(self) -> None:
-        r"""The positive control: the refusal above is the budget."""
+        """The positive control: the refusal above is the budget.
+
+        Without this a ``None`` could just as well mean the state was
+        malformed, or that no rule ever applies to it.
+        """
         module = self.module()
 
         ops = module._fold_reduce(self.STATE, module._fold_done)  # noqa: SLF001
@@ -1505,7 +2036,13 @@ class TestPctFoldPlanners:
         assert module._fold_done(state)  # noqa: SLF001
 
     def test_no_rule_applies_to_a_walled_state(self) -> None:
-        r"""Spans that fill the workspace leave the case analysis empty."""
+        """Spans that fill the workspace leave the case analysis empty.
+
+        Two groups whose extents nearly fill the workspace offer no legal
+        wipe in either direction -- the gap ``q1`` is negative both ways --
+        and the spread is past the doubling bound, so every case falls
+        through and the move is ``None``.
+        """
         module = self.module()
 
         stuck = (
@@ -1515,7 +2052,12 @@ class TestPctFoldPlanners:
         assert module._fold_rule_move(stuck) is None  # noqa: SLF001
 
     def test_a_step_the_state_does_not_offer_answers_none(self) -> None:
-        r"""``_fold_step`` re-checks a move rather than trusting it."""
+        """``_fold_step`` re-checks a move rather than trusting it.
+
+        An amount outside the window, a wipe with mixed-class victims, and
+        an everything-wipe on a two-class state are each refused, so an op
+        that was never legal cannot be applied by accident.
+        """
         module = self.module()
 
         outside = ("d", 1, 99999, frozenset({3}))
@@ -1526,7 +2068,12 @@ class TestPctFoldPlanners:
         assert module._fold_step(self.STATE, everything) is None  # noqa: SLF001
 
     def test_a_clean_amount_skips_an_occupied_landing(self) -> None:
-        r"""The first collision-free amount is computed, not the minimum."""
+        """The first collision-free amount is computed, not the minimum.
+
+        A survivor sitting exactly 3004 above the victims occupies the
+        window's first value, so the clean amount is 3005 -- landing there
+        would be a merge the algebra refuses when the classes differ.
+        """
         module = self.module()
 
         state = (
@@ -1537,14 +2084,25 @@ class TestPctFoldPlanners:
 
 
 class TestPctFoldPlan:
-    r"""The plan's rotation pre-pass, and the bound that refuses a table."""
+    """The plan's rotation pre-pass, and the bound that refuses a table.
+
+    ``_fold_plan`` wipes every group that still has extent before the
+    rules run, because a group with extent cannot be a collision target.
+    The pre-pass stops on its own when no such wipe is on offer.
+    """
 
     @staticmethod
     def module():
         return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
 
     def test_the_pre_pass_stops_when_no_bottom_wipe_is_offered(self) -> None:
-        r"""Extent that no minimum-relocation wipe can clear ends the plan."""
+        """Extent that no minimum-relocation wipe can clear ends the plan.
+
+        Two groups whose spans nearly fill the workspace leave no room for
+        the relocation a wipe needs, so the pre-pass breaks out with the
+        extent still there and the rules that follow have nothing to
+        work with.  The answer is ``None``, not a partial plan.
+        """
         stuck = (
             (0, 3000, "0", frozenset({0})),
             (-10, 3000, "1", frozenset({1})),
@@ -1552,7 +2110,11 @@ class TestPctFoldPlan:
         assert self.module()._fold_plan(stuck) is None  # noqa: SLF001
 
     def test_the_pre_pass_clears_extent_when_it_can(self) -> None:
-        r"""The positive control: ordinary extent is wiped and descends."""
+        """The positive control: ordinary extent is wiped and descends.
+
+        Three groups with room around them plan normally, so the refusal
+        above is the geometry and not the presence of extent.
+        """
         ok = (
             (0, 8, "0", frozenset({0, 1, 2})),
             (-40, 8, "1", frozenset({3, 4, 5})),
@@ -1563,7 +2125,14 @@ class TestPctFoldPlan:
         assert plan
 
     def test_a_reduction_that_cannot_finish_leaves_the_plan_empty(self) -> None:
-        r"""The pre-pass can clear extent the rules still cannot use."""
+        """The pre-pass can clear extent the rules still cannot use.
+
+        Here the wipes run to completion but the reduction that follows
+        reaches no two-point state -- every case of the rule analysis
+        falls through -- so the whole plan is ``None`` and the caller
+        moves on to the next construction rather than emitting a partial
+        one.
+        """
         state = (
             (-40, 0, "0", frozenset({0})),
             (-48, 0, "1", frozenset({1})),
@@ -1574,7 +2143,18 @@ class TestPctFoldPlan:
         assert self.module()._fold_plan(state) is None  # noqa: SLF001
 
     def test_a_table_too_wide_for_the_workspace_is_refused(self) -> None:
-        r"""The ladder must fit the workspace, and the packed one fits longest."""
+        """The ladder must fit the workspace, and the packed one fits longest.
+
+        The emitter lays the rows from a zero accumulator, so a ladder has to
+        fit ``[-_LIMIT, _LIMIT]`` -- not the ``2 * _LIMIT`` span a *relative*
+        plan state may occupy.  Checking only the latter lets the planner spend
+        thousands of moves on a geometry the emitter refuses on its first op.
+
+        Which ladder is offered sets the reach.  The uniform ones spend
+        ``step * (2**n - 1)`` and give out at nine and ten inputs; the packed
+        ladder spends only ``2**n + 1`` and carries eleven.  Twelve exceeds
+        even that, so no ladder is offered and the fold refuses.
+        """
         module = self.module()
         limit = module._LIMIT  # noqa: SLF001
 
@@ -1596,7 +2176,15 @@ class TestPctFoldPlan:
         assert module._fold("0011", 2) is not None  # noqa: SLF001
 
     def test_the_packed_ladder_meets_the_distinctness_floor(self) -> None:
-        r"""``2**n + 1`` is the least a distinct-position ladder can span."""
+        """``2**n + 1`` is the least a distinct-position ladder can span.
+
+        The ``2**n`` subset sums are distinct non-negative integers, so the
+        largest is at least ``2**n - 1``.  The minimum weight is 2 -- ``2a +
+        3b`` cannot spell 1 -- so no subset sums to 1, and by symmetry none
+        sums to ``S - 1``; two values inside ``[0, S]`` are unattainable and
+        ``S >= 2**n + 1``.  The shipped ladder meets that exactly, which is
+        what buys the arity over a uniform one.
+        """
         module = self.module()
         assert module._sub_code(1) is None  # noqa: SLF001
         for n in range(2, 12):
@@ -1609,7 +2197,13 @@ class TestPctFoldPlan:
 
     @pytest.mark.parametrize("ladder", ["narrow", "packed"])
     def test_ladder_setters_are_equal_width(self, ladder: str) -> None:
-        r"""Both branches match in width, and odd-width amounts are respelled."""
+        """Both branches match in width, and odd-width amounts are respelled.
+
+        The identity has no odd-width spelling, so an amount whose cheapest
+        subtraction is one character (2, spelled ``"s"``) can never be padded
+        to match a hold and is respelled wider instead.  Both ladders contain
+        such an amount.  Checked by execution, not by reading the spelling.
+        """
         module = self.module()
         n = 6
         weights = (
@@ -1631,7 +2225,20 @@ class TestPctFoldPlan:
             assert module._apply(0, code) == positions[row]  # noqa: SLF001
 
     def test_every_setter_amount_past_the_reset_line_spells(self) -> None:
-        r"""Amounts at and above the reset line respell by descending."""
+        """Amounts at and above the reset line respell by descending.
+
+        The overshoot respelling negates, so from 3002 up it leaves the
+        accumulator above the 3003 reset: the reset zeroes it and the
+        add-back nets ``+k`` rather than ``-amount``.  All 1504 amounts in
+        3002..6008 failed that way and *raised* instead of declining, which
+        ``_interleaved_fold`` reaches through ``span + 2`` once the spread
+        hits 3000.  A pure ``s``/``i`` descent never rises, so it has no
+        such ceiling.
+
+        The whole range a setter can be asked for is checked, since
+        positions span ``+-_LIMIT``: the widest gap is 6006 and the caller
+        adds 2.  Boundaries are checked by execution.
+        """
         module = self.module()
         limit = module._LIMIT  # noqa: SLF001
         for amount in (3002, 3003, 3006, 6006, 2 * limit + 2):
@@ -1642,7 +2249,20 @@ class TestPctFoldPlan:
 
     @pytest.mark.slow  # ~5s: ten inputs, 1024 rows.
     def test_a_low_run_ten_input_table_builds_and_runs(self) -> None:
-        r"""A low-run ten-input table takes the skeleton path, and lays."""
+        """A low-run ten-input table takes the skeleton path, and lays.
+
+        This is the regression the ladder gate closed.  ``x0 ^ x1`` widened
+        to ten inputs has three runs, so it is no subcube (the cascade
+        misses) and reaches the fold, where ``_fold_construct``'s ``r <= 5``
+        skeletons plan it in three ops.  Those skeletons were mined on the
+        wide ladder, whose ten-input span is 4092 against a 3003-value
+        workspace -- so the emitter could not lay the plan, and the build
+        died on a bare ``AssertionError`` rather than building or refusing.
+
+        On the narrow ladder the same plan lays.  Every row is executed,
+        because a plan that the emitter accepts is still not evidence that
+        the program computes the table.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.pct_squared_minus_one import run
         from esolangs.tools.boolean import parameterized
@@ -1665,7 +2285,14 @@ class TestPctFoldPlan:
 
     @pytest.mark.slow  # ~14s: eleven inputs, a.
     def test_the_packed_ladder_reaches_eleven_inputs(self) -> None:
-        r"""Eleven inputs build on the packed ladder and print correctly."""
+        """Eleven inputs build on the packed ladder and print correctly.
+
+        The uniform ladders both overrun the workspace here -- 8188 and 4094
+        against 3003 -- so this arity exists only because the packed ladder
+        spends ``2**n + 1``.  Rows are *sampled* rather than swept: all 2048
+        take about two minutes on the interpreter, well past this module's
+        budget, and the full sweep is a notes probe instead.
+        """
         import random
 
         from esolangs.interpreters.io import ScriptedIO
@@ -1689,7 +2316,7 @@ class TestPctFoldPlan:
 
     @pytest.mark.slow  # generic twelve-input fold:.
     def test_interleaved_fold_builds_a_generic_twelve_input_table(self) -> None:
-        r"""A centred final embed escapes the all-row ladder's limit."""
+        """A centred final embed escapes the all-row ladder's limit."""
         import random
 
         from esolangs.interpreters.io import ScriptedIO
@@ -1712,7 +2339,12 @@ class TestPctFoldPlan:
 
     @pytest.mark.slow  # packed prefix + sixteen-class.
     def test_interleaved_fold_builds_a_generic_thirteen_input_table(self) -> None:
-        r"""The packed prefix ladder compacts to its cofactors before laying."""
+        """The packed prefix ladder compacts to its cofactors before laying.
+
+        Thirteen inputs need the eleven-input packed ladder, whose unit gaps
+        jam the conveyor; the pre-lay compaction to at most sixteen cofactor
+        points, and the collision-free split total, are what this exercises.
+        """
         import random
 
         from esolangs.interpreters.io import ScriptedIO
@@ -1736,7 +2368,14 @@ class TestPctFoldPlan:
     def test_a_table_whose_plan_fails_builds_nothing(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        r"""No plan means no template, not a partial one."""
+        """No plan means no template, not a partial one.
+
+        Every table tried plans successfully -- the fold is documented as
+        found in practice rather than proved total -- so the refusal is
+        driven by making the planner decline instead of hunting for a
+        table that defeats it.  The table used here builds normally when
+        the planner is left alone.
+        """
         module = self.module()
         assert module._fold("0011", 2) is not None  # noqa: SLF001
 
@@ -1745,14 +2384,26 @@ class TestPctFoldPlan:
 
 
 class TestPctAffineSolver:
-    r"""The wide band's line solver, at the inputs it has to refuse."""
+    """The wide band's line solver, at the inputs it has to refuse.
+
+    ``_solve_affine`` fits ``a * v + b == p`` over a fixed grid of
+    multipliers and offsets, dividing rather than searching: two points
+    with distinct values determine the line.  Constant values leave the
+    multiplier free, which is the separate arm below.
+    """
 
     @staticmethod
     def module():
         return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
 
     def test_the_shorter_of_cascade_and_affine_ships(self) -> None:
-        r"""The cascade is usually shorter at three inputs, but not always."""
+        """The cascade is usually shorter at three inputs, but not always.
+
+        The dispatch used to return it on sight, which served 44 of 256
+        tables a longer program than the affine path builds.  Both are
+        cheap at this arity, so both are built and the shorter kept;
+        ``00000101`` is the worst case, 40 characters against 33.
+        """
         module = self.module()
         improved = 0
         for value in range(256):
@@ -1764,7 +2415,13 @@ class TestPctAffineSolver:
         assert improved == 42  # the other two tie, keeping.
 
     def test_affine_stays_gated_above_three_inputs(self) -> None:
-        r"""The comparison must not reach the four-input enumeration."""
+        """The comparison must not reach the four-input enumeration.
+
+        ``_affine`` derives a whole arity at once -- 36458 composition
+        states at n == 4, about two minutes a table -- so the deep band
+        serves those instead.  Building both would pay that cost on every
+        four-input table, served or not.
+        """
         module = self.module()
         assert module._affine.__doc__  # noqa: SLF001
         parity4 = "".join(str(bin(row).count("1") % 2) for row in range(16))
@@ -1774,7 +2431,12 @@ class TestPctAffineSolver:
         assert time.perf_counter() - start < 10.0
 
     def test_constant_values_cannot_meet_differing_wants(self) -> None:
-        r"""One value cannot map to two answers, whatever the line."""
+        """One value cannot map to two answers, whatever the line.
+
+        With every ``value`` equal there is no second point to fix the
+        multiplier, so the fit is possible only when every ``wanted`` is
+        equal too.  Mixed wants are refused before the grid is searched.
+        """
         solve = self.module()._solve_affine  # noqa: SLF001
 
         assert solve((5, 5, 5), (1, 2, 3)) is None
@@ -1783,7 +2445,12 @@ class TestPctAffineSolver:
         assert solve((0, 0), (4, 4)) == (0, 4)
 
     def test_a_constant_want_outside_the_offset_grid_is_refused(self) -> None:
-        r"""The offset has to be one the language can spell."""
+        """The offset has to be one the language can spell.
+
+        With the values all zero the offset *is* the wanted value, so a
+        want beyond the grid leaves no multiplier that helps -- the loop
+        runs out rather than returning a line off the grid.
+        """
         module = self.module()
         beyond = max(module._WIDE_B_VALS) + 100  # noqa: SLF001
 
@@ -1791,7 +2458,13 @@ class TestPctAffineSolver:
         assert module._solve_affine((0, 1), (3, 5)) == (2, 3)  # noqa: SLF001
 
     def test_a_multiplier_off_the_grid_drops_the_realisation(self) -> None:
-        r"""A ratio the grid does not carry is skipped, not rounded."""
+        """A ratio the grid does not carry is skipped, not rounded.
+
+        ``_realisations`` divides the two differences by the pivot gap, and
+        a quotient outside the admitted multipliers cannot be spelled, so
+        that placement is dropped.  Values a few apart realise many ways;
+        values a thousand apart realise none.
+        """
         realise = self.module()._realisations  # noqa: SLF001
 
         assert realise((0, 1, 2, 3))
@@ -1799,21 +2472,42 @@ class TestPctAffineSolver:
 
 
 class TestPctAffineBand:
-    r"""The three-input band's two skips, which the shipped budget hides."""
+    """The three-input band's two skips, which the shipped budget hides.
+
+    ``_affine`` weighs its candidate pre-vectors cheapest first and stops
+    after :data:`_CANDIDATES` of them.  Both guards below sit past that
+    cut at the shipped value of 12 -- measured over all 256 three-input
+    tables, neither runs -- because the vectors that trip them are built
+    from the largest offsets and sort last.  They are not dead: widening
+    the budget reaches both, which is what these tests do.  The budget is
+    a bound on *program length*, not on which tables build, so widening
+    it changes nothing about the answers.
+    """
 
     @staticmethod
     def module():
         return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
 
     def test_the_shipped_budget_stops_before_both_skips(self) -> None:
-        r"""The premise: at 12 candidates neither guard is reached."""
+        """The premise: at 12 candidates neither guard is reached.
+
+        Without this the tests below would look like ordinary coverage of
+        a path the generator walks every day, when in fact the shipped
+        configuration never gets there.
+        """
         module = self.module()
         assert module._CANDIDATES == 12  # noqa: SLF001
 
     def test_a_candidate_with_no_realisation_is_skipped(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        r"""Solving the two halves does not mean the vector can be spelled."""
+        """Solving the two halves does not mean the vector can be spelled.
+
+        ``_solve_affine`` asks whether a line exists over the grid;
+        ``_realisations`` asks whether the pair of setters that produce
+        the vector can be written down.  A candidate can pass the first
+        and fail the second, and then it is dropped rather than priced.
+        """
         module = self.module()
         values = (12, 13, 13, 12)
 
@@ -1827,7 +2521,13 @@ class TestPctAffineBand:
     def test_a_relabelling_that_will_not_solve_is_skipped(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        r"""The final setter is solved again against the answer bits."""
+        """The final setter is solved again against the answer bits.
+
+        The earlier solves fit the table's own halves; this one fits the
+        0/1 the program actually prints, both ways round.  One of the two
+        can fail where the halves succeeded, and that spelling is passed
+        over rather than emitted half-formed.
+        """
         module = self.module()
         values = (12, 12, 12, 13)
         even, odd = (0, 0, 0, 0), (0, 0, 0, 1)
@@ -1843,7 +2543,15 @@ class TestPctAffineBand:
 
 
 class TestPctFoldSkeletonResolver:
-    r"""The tabulated planner's refusals, driven on constructed states."""
+    """The tabulated planner's refusals, driven on constructed states.
+
+    ``_fold_construct`` builds a plan with :func:`_fold_skeleton` and
+    resolves each symbolic amount against the live state, so every refusal
+    is a property of the *geometry* rather than of a table.  Building the
+    states directly is what reaches them: a wipe that leaves no survivor and
+    a landing that does not match are both shapes the fold's own planner
+    steers around, so no generated table drives one.
+    """
 
     @staticmethod
     def module():
@@ -1860,27 +2568,27 @@ class TestPctFoldSkeletonResolver:
 
     @pytest.mark.parametrize("kind", ["d", "u"])
     def test_geometry_refuses_a_wipe_that_leaves_no_survivor(self, kind: str) -> None:
-        r"""Both branches measure the window against the survivors."""
+        """Both branches measure the window against the survivors."""
         module = self.module()
         assert module._fold_geometry(self.LONE, kind, 1) is None  # noqa: SLF001
 
     def test_resolve_passes_on_a_wipe_with_no_geometry(self) -> None:
-        r"""A symbolic amount cannot be resolved where the window does not."""
+        """A symbolic amount cannot be resolved where the window does not exist."""
         module = self.module()
         assert module._fold_resolve(self.LONE, "d", 1, "cmax") is None  # noqa: SLF001
 
     def test_resolve_refuses_a_landing_index_past_the_survivors(self) -> None:
-        r"""``landN`` names a survivor by index, and one wipe leaves only one."""
+        """``landN`` names a survivor by index, and one wipe leaves only one."""
         module = self.module()
         assert module._fold_resolve(self.PAIR, "d", 1, "land9") is None  # noqa: SLF001
 
     def test_resolve_refuses_a_landing_that_does_not_match(self) -> None:
-        r"""A landing is a merge, so span, class and window all have to agree."""
+        """A landing is a merge, so span, class and window all have to agree."""
         module = self.module()
         assert module._fold_resolve(self.PAIR, "d", 1, "land0") is None  # noqa: SLF001
 
     def test_construct_emits_an_empty_plan_for_a_finished_state(self) -> None:
-        r"""Two wiped points of different classes is what ``_fold_done``."""
+        """Two wiped points of different classes is what ``_fold_done`` accepts."""
         module = self.module()
         finished = (
             (0, 0, "a", frozenset({0})),

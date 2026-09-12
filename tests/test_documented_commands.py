@@ -158,6 +158,8 @@ def test_every_test_a_docstring_names_still_exists() -> None:
     assert not missing, "docstrings name tests that do not exist: " + "; ".join(
         f"{name} (in {', '.join(where)})" for name, where in sorted(missing.items())
     )
+    # A regex that stopped matching.
+    assert len(cited) >= 15, f"only {len(cited)} citations found"
 
 
 # : A fully-qualified reference.
@@ -192,3 +194,5 @@ def test_every_qualified_reference_resolves() -> None:
     assert not broken, "references that resolve to nothing: " + "; ".join(
         f"{t} (in {', '.join(sorted(w))})" for t, w in sorted(broken.items())
     )
+    # A regex that stopped matching.
+    assert len(targets) >= 40, f"only {len(targets)} qualified references found"

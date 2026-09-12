@@ -1,4 +1,64 @@
-r"""Boolean-function generator for Interprogck8."""
+"""Boolean-function generator for Interprogck8.
+
+The decision tree is routed entirely by ``DownAccLines``, the computed
+forward jump.  Nothing here touches the current-function slot: the
+roadmap's question was whether a tree had to be squeezed through that
+single slot, and it does not have to go near it.
+
+**The branch gadget.**  ``u`` reads the input digit as 48 or 49; ``@dd``
+four times and ``@nt`` eight times leave the bit itself in the
+accumulator.  ``DownAccLines`` lands on ``ip + 1 + acc``, so the two
+values land one line apart -- too close to separate two arms.  A second
+jump spreads them:
+
+    DownAccLines      p     bit 0 -> p+1, bit 1 -> p+2
+    @id               p+1   bit-0 path only: acc 0 -> 10
+    DownAccLines      p+2   bit 1 arrives with 1, bit 0 with 10
+
+so bit 1 lands at ``p+4`` and bit 0 at ``p+13``, nine lines apart.  Past
+the split the accumulator is a known constant on each path, so every later
+jump is unconditional: ``NnNn`` plus modifiers plus ``DownAccLines`` reaches
+any line up to 255 ahead, and further by riding the express (below).
+
+**Layout.**  Both landing sites hold jumps rather than code, so neither arm
+has to be spelled inside the nine-line window: the window hops to a relay
+just past the bit-0 jump, and the relay enters the bit-1 subtree.  Leaves
+print their digit and leave through a *ladder* of per-node exits -- one hop
+reaches 255 lines and an n=3 tree is longer than that, so a leaf climbs out
+through its ancestors rather than jumping to the end in one go.
+
+Every distance is derived from the assembled index map, never counted by
+hand, and the widths are a fixed point: sizing one jump moves every label
+after it.
+
+**The express, which is what carries a hop past one reach.**  A hop longer
+than 255 lines used to be respelled at every waypoint, ~25 lines each, and
+the waypoints of different hops fought over the same dead lines -- the
+routing was iterative and its cost exploded past n=7.  ``DownAccLines``
+does not consume the accumulator, so a long hop needs to spell its stride
+*once*: the jump's own slot loads the accumulator and launches, and every
+waypoint after that is a bare one-line ``DownAccLines`` that flies the
+same stride again, give or take a few ``@nd``/``@id`` adjusters where the
+stride has to change.
+
+Those waypoints -- *rungs* -- are parked in *meadows*: blocks of dead
+lines behind an unconditional jump, emitted at safe points between gadgets
+every :data:`_MEADOW_SPACING` lines and sized to the express chains
+crossing the point.  Control walking into a meadow hops over it; control
+landing inside is a rung in flight.  Meadows are placed after every width
+has settled, and laying a rung replaces a one-line placeholder with a
+one-line instruction, so routing never moves a label: every chain is
+planned against final coordinates and cannot interfere with another,
+which is what replaced the old router's patience knob, rung-spacing knob
+and 2031s n=8 price.
+
+Demand is measured, not derived, so placement can still come up short.  A
+chain the meadows cannot carry is a *shortfall* naming the window that
+held no rung slot; the repair adds one meadow inside each distinct
+window and reroutes from clean placeholders, at most :data:`_REPAIRS`
+additions -- a budget with a certificate per round, not a search -- and a
+table still short after it is refused with the window, never mis-routed.
+"""
 
 from bisect import bisect_left, bisect_right
 from functools import cache
@@ -15,7 +75,13 @@ _REACH = 255
 
 
 def _set_acc(target: int) -> list[str]:
-    r"""Lines loading ``target`` (0-255) whatever the accumulator held."""
+    """Lines loading ``target`` (0-255) whatever the accumulator held.
+
+    Counting up costs ``target % 10`` single steps; overshooting to the
+    next ten and counting back with ``@nt`` costs ``10 - target % 10``.
+    The shorter of the two spells 8 in four lines instead of nine, which is
+    what lets the nine-line window reach past a distance of 7.
+    """
     up = ["@id"] * (target // 10) + ["@nd"] * (target % 10)
     over = -(-target // 10)
     down = ["@id"] * over + ["@nt"] * (over * 10 - target)
@@ -24,7 +90,12 @@ def _set_acc(target: int) -> list[str]:
 
 @cache
 def _hop_width(distance: int) -> int:
-    r"""Lines an unconditional hop of ``distance`` needs."""
+    """Lines an unconditional hop of ``distance`` needs.
+
+    Memoised: sizing calls this once per growable jump per pass, and the
+    distances repeat -- a hop spans at most one reach plus whatever a
+    not-yet-promoted jump reads, so the key space is a few hundred wide.
+    """
     return len(_set_acc(distance)) + 1
 
 
@@ -52,7 +123,16 @@ if _hop_width(_EXPRESS) > _WINDOW:
 
 
 class _Jump:
-    r"""A hop to ``label``, holding ``width`` lines until it is resolved."""
+    """A hop to ``label``, holding ``width`` lines until it is resolved.
+
+    ``fixed`` marks a slot whose size is load-bearing geometry -- the
+    nine-line window -- so it is checked for overflow rather than grown.
+
+    ``express`` marks a jump promoted to a fixed :data:`_EXPRESS`-wide
+    slot because its span outgrew one reach; the router later points it at
+    ``to_line`` -- its first rung, or the target itself where the span
+    shrank back under one reach by the time widths settled.
+    """
 
     __slots__ = ("express", "fixed", "label", "to_line", "width")
 
@@ -71,7 +151,7 @@ class _Jump:
 
 
 class _Label:
-    r"""A named position, occupying no line."""
+    """A named position, occupying no line."""
 
     __slots__ = ("name",)
 
@@ -80,13 +160,20 @@ class _Label:
 
 
 class _Safe:
-    r"""A zero-width point between gadgets where a meadow may be laid."""
+    """A zero-width point between gadgets where a meadow may be laid.
+
+    Only marked positions are eligible: splicing lines into the middle of
+    the branch gadget would break its fixed nine-line offset, and a meadow
+    starts with an accumulator-clobbering jump, so the point also has to be
+    one where the accumulator is dead -- which every gadget boundary is,
+    since every continuation begins with a read or a load.
+    """
 
     __slots__ = ()
 
 
 class _Rung:
-    r"""One reserved dead line in a meadow, ``x`` until a chain claims it."""
+    """One reserved dead line in a meadow, ``x`` until a chain claims it."""
 
     __slots__ = ("op",)
 
@@ -98,7 +185,7 @@ type _Item = str | _Jump | _Label | _Safe | _Rung
 
 
 def _emit(table: str, n: int) -> list[_Item]:
-    r"""Lay the tree out flat, leaving every jump unresolved."""
+    """Lay the tree out flat, leaving every jump unresolved."""
     counter = [0]
     out: list[_Item] = []
 
@@ -146,7 +233,7 @@ def _emit(table: str, n: int) -> list[_Item]:
 
 
 def _index(items: list[_Item]) -> tuple[list[int], dict[str, int]]:
-    r"""Return each item's starting line and every label's line."""
+    """Return each item's starting line and every label's line."""
     starts: list[int] = []
     append = starts.append
     labels: dict[str, int] = {}
@@ -168,7 +255,17 @@ def _index(items: list[_Item]) -> tuple[list[int], dict[str, int]]:
 
 
 def _resolve(items: list[_Item]) -> tuple[list[int], dict[str, int]]:
-    r"""Size every growable jump until no width changes; return the index."""
+    """Size every growable jump until no width changes; return the index.
+
+    A jump's own width shifts every label after it, so this is a fixed
+    point rather than one pass.  A width can shrink as well as grow, so
+    the bound is measured rather than argued -- and with every long span
+    parked at the fixed express width, what is left to move is local.
+
+    Which jumps are growable cannot change inside the loop, so they are
+    picked out once instead of re-scanned every pass; the returned index
+    is the settled one, so the caller need not walk the program again.
+    """
     growable = [
         (position, item)
         for position, item in enumerate(items)
@@ -194,7 +291,12 @@ def _resolve(items: list[_Item]) -> tuple[list[int], dict[str, int]]:
 
 
 def _settle(items: list[_Item]) -> None:
-    r"""Size widths and promote over-reach jumps until neither moves."""
+    """Size widths and promote over-reach jumps until neither moves.
+
+    Promotion is monotone -- an express jump never demotes, and promoting
+    one only pushes labels apart -- so the alternation converges; the
+    bound is the jump count, since each round must promote at least one.
+    """
     while True:
         starts, labels = _resolve(items)
         promoted = 0
@@ -244,7 +346,7 @@ _REPAIRS = 256
 
 
 def _spans(items: list[_Item]) -> list[tuple[int, int]]:
-    r"""Every express jump's (launch, target), on current coordinates."""
+    """Every express jump's (launch, target), on current coordinates."""
     starts, labels = _index(items)
     return [
         (start + item.width, labels[item.label])
@@ -254,14 +356,21 @@ def _spans(items: list[_Item]) -> list[tuple[int, int]]:
 
 
 def _meadow(size: int, tag: int) -> tuple[list[_Rung], list[_Item]]:
-    r"""One meadow: its rungs, and the guard-jump block that carries them."""
+    """One meadow: its rungs, and the guard-jump block that carries them."""
     rungs = [_Rung() for _ in range(size)]
     skip = f"M{tag}"
     return rungs, [_Jump(skip, 2), *rungs, _Label(skip)]
 
 
 def _place(items: list[_Item]) -> list[list[_Rung]]:
-    r"""Lay a meadow at every safe point one spacing past the last."""
+    """Lay a meadow at every safe point one spacing past the last.
+
+    Runs on settled coordinates, so the spacing seen here is real; the
+    guards and promotions that follow stretch it, which is why the pitch
+    sits well under the reach.  Each meadow is sized to the express
+    chains crossing its point.  The sentinels are kept: a routing
+    shortfall later adds meadows at them (:func:`_add`).
+    """
     starts, _labels = _index(items)
     spans = _spans(items)
     out: list[_Item] = []
@@ -281,7 +390,17 @@ def _place(items: list[_Item]) -> list[list[_Rung]]:
 
 
 def _add(items: list[_Item], meadows: list[list[_Rung]], low: int, high: int) -> None:
-    r"""Insert one more meadow inside the shortfall window ``(low, high)``."""
+    """Insert one more meadow inside the shortfall window ``(low, high)``.
+
+    The repair for a routing shortfall: the refusal names the window that
+    held no usable rung slot, and the meadow goes at the last safe point
+    inside it -- nearest whatever the stranded chain was reaching for.
+    Falls back to the nearest safe point when the window holds none.
+
+    Walks the lines itself rather than indexing the whole program: the
+    scan stops at the window, and a repair round calls this once per
+    stranded window.
+    """
     at = None
     fallback = None
     line = 0
@@ -307,7 +426,12 @@ def _add(items: list[_Item], meadows: list[list[_Rung]], low: int, high: int) ->
 
 
 def _adjust(current: int, wanted: int) -> list[str]:
-    r"""Return the shortest lines turning ``current`` into ``wanted``."""
+    """Return the shortest lines turning ``current`` into ``wanted``.
+
+    Either nudged with ``@id``/``@dd`` tens and ``@nd``/``@nt`` units --
+    the usual case, since consecutive strides differ by a meadow pitch or
+    two -- or respelled from zero where that is shorter.
+    """
     delta = wanted - current
     best: list[str] | None = None
     for tens in range(delta // 10 - 1, delta // 10 + 2):
@@ -322,7 +446,7 @@ def _adjust(current: int, wanted: int) -> list[str]:
 
 
 class _Bank:
-    r"""One meadow's allocation state: its rungs, their lines, a cursor."""
+    """One meadow's allocation state: its rungs, their lines, a cursor."""
 
     __slots__ = ("cursor", "lines", "rungs")
 
@@ -333,7 +457,7 @@ class _Bank:
 
     @property
     def line(self) -> int | None:
-        r"""Where the next rung would land, or ``None`` when full."""
+        """Where the next rung would land, or ``None`` when full."""
         if self.cursor >= len(self.rungs):
             return None
         return self.lines[self.cursor]
@@ -343,7 +467,7 @@ class _Bank:
         return len(self.rungs) - self.cursor
 
     def lay(self, ops: list[str], length: int) -> None:
-        r"""Claim ``length`` lines: pads, then ``ops``, then the hop."""
+        """Claim ``length`` lines: pads, then ``ops``, then the hop."""
         body = ["x"] * (length - len(ops) - 1) + ops + ["DownAccLines"]
         for rung, op in zip(
             self.rungs[self.cursor : self.cursor + length], body, strict=True
@@ -353,7 +477,18 @@ class _Bank:
 
 
 def _lay(bank: _Bank, acc: int | None, landing: int, wanted: int) -> int | None:
-    r"""Lay one rung in ``bank`` carrying ``acc`` from ``landing`` to."""
+    """Lay one rung in ``bank`` carrying ``acc`` from ``landing`` to ``wanted``.
+
+    ``acc`` is ``None`` for a terminal rung, whose incoming accumulator is
+    only decided when the approach to it is routed later -- so its body
+    must respell from zero rather than adjust.
+
+    The rung's length and its stride are coupled: a longer body launches
+    from further down, which shrinks the stride, which changes the body.
+    Scanned rather than solved -- lengths are small -- taking the first
+    length whose body fits, padded in front so the hop stays at the end.
+    Returns the stride flown, or ``None`` where nothing fits.
+    """
     for length in range(1, min(bank.free, _EXPRESS) + 1):
         stride = wanted - landing - length
         if not 0 <= stride <= _REACH:
@@ -369,7 +504,16 @@ def _lay(bank: _Bank, acc: int | None, landing: int, wanted: int) -> int | None:
 
 
 def _fits(free: int, landing: int, target: int, acc: int | None = None) -> bool:
-    r"""Whether a terminal rung landing at ``landing`` can finish in."""
+    """Whether a terminal rung landing at ``landing`` can finish in ``free``.
+
+    Mirrors :func:`_lay` with no allocation.  With ``acc`` unknown the
+    body is priced as a respell -- the worst a terminal can need, since
+    the real lay adjusts from the accumulator the approach delivers when
+    that is shorter -- so a bank that passes is guaranteed to take the
+    rung later.  A terminal the entry hop reaches directly knows its
+    accumulator already, and pricing the true adjusters lets it fit in
+    room a respell could not.
+    """
     for length in range(1, min(free, _EXPRESS) + 1):
         stride = target - landing - length
         if not 0 <= stride <= _REACH:
@@ -385,7 +529,13 @@ def _fits(free: int, landing: int, target: int, acc: int | None = None) -> bool:
 
 
 class _StuckError(GeneratorCapError):
-    r"""One routing shortfall, naming the window that held no rung slot."""
+    """One routing shortfall, naming the window that held no rung slot.
+
+    A :class:`ValueError` so an unrepaired shortfall is the generator's
+    ordinary refusal; the window is where :func:`_add` repairs.  For a
+    stranded approach that is the reach ahead of its landing; for a chain
+    that found no terminal it is the stretch before its target.
+    """
 
     def __init__(self, low: int, high: int, label: str) -> None:
         super().__init__(
@@ -397,7 +547,14 @@ class _StuckError(GeneratorCapError):
 
 
 def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_StuckError]:
-    r"""Point every express jump at its chain, laying rungs in meadows."""
+    """Point every express jump at its chain, laying rungs in meadows.
+
+    Coordinates are final -- laying a rung rewrites a placeholder line in
+    place -- so chains are planned once, greedily, each hop taking the
+    furthest meadow in reach.  A chain that finds no meadow it can use is
+    a shortfall by name, never a mis-routed program; every shortfall of
+    the pass is returned together, so one repair round serves them all.
+    """
     starts, labels = _index(items)
     rung_line = {
         id(item): start
@@ -415,7 +572,15 @@ def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_StuckError]:
     widest = max((len(bank.rungs) for bank in banks), default=0)
 
     def within(low: int, high: int) -> list[_Bank]:
-        r"""Banks whose cursor line lies in ``(low, high]``, furthest first."""
+        """Banks whose cursor line lies in ``(low, high]``, furthest first.
+
+        The slice is bounded exactly on the right -- a meadow starting
+        past ``high`` cannot hold a line inside -- and widened on the left
+        by the widest meadow actually laid, since a cursor has drifted at
+        most a whole meadow past its head.  Every candidate is then
+        filtered on its real line, so the widening costs comparisons only
+        and the slice is the same set the old whole-list scan found.
+        """
         if high <= low:
             return []
         left = bisect_left(heads, low - widest + 1)
@@ -432,7 +597,12 @@ def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_StuckError]:
         return _StuckError(landing, until, label)
 
     def onward(landing: int, until: int) -> list[_Bank]:
-        r"""Banks a hop from ``landing`` could land in, furthest first."""
+        """Banks a hop from ``landing`` could land in, furthest first.
+
+        Room for a typical adjuster rung is demanded up front, so a chain
+        never hops into a bank it cannot leave: consecutive strides differ
+        by a meadow pitch or two, well inside what thirteen adjusters fix.
+        """
         return [
             bank
             for bank in within(landing, min(until, landing + _REACH))
@@ -522,7 +692,7 @@ def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_StuckError]:
 
 
 def _check(label: str, distance: int, width: int) -> None:
-    r"""Refuse a jump the gadget cannot spell, naming which and by how much."""
+    """Refuse a jump the gadget cannot spell, naming which and by how much."""
     if not 0 <= distance <= _REACH:
         raise ValueError(f"jump to {label} spans {distance} lines (max {_REACH})")
     if _hop_width(distance) > width:
@@ -532,7 +702,10 @@ def _check(label: str, distance: int, width: int) -> None:
 
 
 def interprogck8(truth_table: str) -> str:
-    r"""Return a program printing ``truth_table``'s result for its inputs."""
+    """Return a program printing ``truth_table``'s result for its inputs.
+
+    Reads ``n`` digits, one per line, and prints ``0`` or ``1``.
+    """
     n = _validate_truth_table(truth_table)
     items = _emit(truth_table, n)
     # Widths first, so meadows are.

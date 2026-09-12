@@ -1,4 +1,37 @@
-r"""Interpreter for S*bleq."""
+r"""Interpreter for S*bleq.
+
+S*bleq is a derivative of Subleq, an OISC whose single instruction subtracts
+and branches when the result is less than or equal to zero.  Each instruction
+is three addresses ``a b c``:
+
+    mem[a] = mem[a] - mem[b]
+    if mem[a] <= 0: ip = mem[c]     # indirect: jump to the value at c
+
+The instruction pointer advances by three otherwise.  Three special addresses
+take the place of I/O and the instruction pointer (and never appear in ``c``):
+
+    -1  the instruction pointer itself
+    -2  the next byte of user input
+    -3  output the value at the other address in the instruction
+
+The base S*bleq stores the difference in ``a``.  The wiki defines three
+variations that only change the store target or add indirection: ``S*bl*q``
+stores in both ``a`` and ``b``, ``Subl*q`` stores in ``b``, and the
+``S**bleq`` family reads/writes through ``*a`` and ``*b``.  This interpreter
+implements the base language; a ``store`` parameter selects the base or the
+two store-target variations.
+
+Programs are read as whitespace-separated integers and loaded into memory at
+address zero.  Memory is unbounded; reads past the end of the program return
+zero, matching the Subleq convention that an OISC memory is an infinite array
+of cells.  Execution halts when the instruction pointer runs off the end of
+the program, or when a ``c`` address holds a negative target (jumping to a
+negative address).
+
+
+Reading input (``-2``) past the end of the stream returns zero
+at EOF (per the wiki); malformed programs raise :class:`ValueError`.
+"""
 
 import sys
 
@@ -21,7 +54,13 @@ type _State = tuple[tuple[int, ...], int, bool]
 
 
 def _read(state: _State, addr: int, byte: int | None = None) -> int:
-    r"""Read a value: a special address or a memory cell."""
+    """Read a value: a special address or a memory cell.
+
+    ``byte`` is what the shell already took from the input port, since
+    ``-2`` is the one address whose read consumes something.  An address
+    past the end reads as zero; a negative one other than the two special
+    cases is not an address at all.
+    """
     mem, ip, _halted = state
     if addr == -1:
         return ip
@@ -33,7 +72,12 @@ def _read(state: _State, addr: int, byte: int | None = None) -> int:
 
 
 def _write(state: _State, addr: int, value: int) -> _State:
-    r"""Return ``state`` with ``addr`` set to ``value``."""
+    """Return ``state`` with ``addr`` set to ``value``.
+
+    Writing ``-1`` moves the instruction pointer, which is what lets an
+    S*bleq program compute where to go next; ``-2`` and ``-3`` are
+    read-only ports and a write to either is discarded.
+    """
     mem, ip, halted = state
     if addr >= 0:
         if addr >= len(mem):
@@ -46,7 +90,18 @@ def _write(state: _State, addr: int, value: int) -> _State:
 
 
 def _advance(state: _State, store: str, byte: int | None = None) -> _State:
-    r"""Return the state after executing one ``a b c`` instruction."""
+    """Return the state after executing one ``a b c`` instruction.
+
+    Pure: it reads ``state`` and returns a new one.  It takes no ``io``
+    argument, so the output port is the caller's business -- an instruction
+    that writes one changes nothing but the pointer -- and the input port's
+    byte arrives as ``byte``.
+
+    The store variant decides where the difference lands: ``"a"`` writes
+    only ``a``, while ``"ab"`` and ``"b"`` also write ``b`` when it is a
+    real address.  A non-positive difference branches to ``c``, and a
+    branch to a negative address halts.
+    """
     mem, ip, _halted = state
     a, b, c = mem[ip], mem[ip + 1], mem[ip + 2]
     if a == -3 or b == -3:
@@ -85,7 +140,11 @@ class _Machine:
     eof_is_a_value = True
 
     def __init__(self, code: str, io: IO, store: str = "a") -> None:
-        r"""Build a machine over the cells ``code`` parses to."""
+        """Build a machine over the cells ``code`` parses to.
+
+        The program is a list of integers, not text, so the source is
+        parsed here into the ``mem`` tuple the machine steps over.
+        """
         self.io = io
         self.mem = tuple(_parse(code))
         self.ip = 0
@@ -96,7 +155,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        r"""Whether the instruction pointer has run off the program."""
+        """Whether the instruction pointer has run off the program."""
         return self._halted or not (0 <= self.ip < len(self.mem) - 2)
 
     # The VM's language-shaped.
@@ -104,25 +163,30 @@ class _Machine:
 
     @property
     def memory(self) -> list[int]:
-        r"""The addressable cells."""
+        """The addressable cells."""
         return list(self.mem)
 
     @property
     def stack(self) -> list[object]:
-        r"""No stack in this language."""
+        """No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        r"""Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection."""
         return (self.mem, self.ip, self.io.position(), self._halted)
 
     @property
     def _state(self) -> _State:
-        r"""The machine's fields as the value the transitions work on."""
+        """The machine's fields as the value the transitions work on."""
         return (self.mem, self.ip, self._halted)
 
     def _restore(self, state: _State) -> None:
-        r"""Write a transition's result back onto the machine's fields."""
+        """Write a transition's result back onto the machine's fields.
+
+        The fields are this class's constructor API, so they stay; the one
+        assignment a step makes is here rather than scattered through the
+        rules above.
+        """
         mem, self.ip, self._halted = state
         self.mem = mem
 
@@ -137,7 +201,13 @@ class _Machine:
         self.io.print_char(chr(value & 0xFF))
 
     def step(self) -> None:
-        r"""Execute one instruction (``a b c``), advancing or branching."""
+        """Execute one instruction (``a b c``), advancing or branching.
+
+        The two ports live here rather than in the transition: this is the
+        shell, so it is where an effect belongs.  ``-3`` in either operand
+        slot prints the other, and ``-2`` in either is a read -- taken once
+        here and handed over, since both operands consult the same byte.
+        """
         if self.halted:
             return
         state = self._state
@@ -154,7 +224,11 @@ class _Machine:
 
 
 def run(code: str, io: IO, store: str = "a") -> None:
-    r"""Execute an S*bleq program."""
+    """Execute an S*bleq program.
+
+    ``store`` selects the storage variant: ``"a"`` (base S*bleq), ``"ab"``
+    (S*bl*q, stores in both a and b), or ``"b"`` (Subl*q, stores in b).
+    """
     mach = _Machine(code, io, store=store)
 
     while not mach.halted:

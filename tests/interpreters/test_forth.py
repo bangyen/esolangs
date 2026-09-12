@@ -1,4 +1,4 @@
-r"""Unit tests for the Forþ interpreter."""
+"""Unit tests for the Forþ interpreter."""
 
 import pytest
 
@@ -80,27 +80,36 @@ class TestForth:
         assert run_program("65a.") == "\x05"
 
     def test_uppercase_past_f_is_not_a_digit(self) -> None:
-        r"""Only A-F push; G is past the end of the hex run and is ignored."""
+        """Only A-F push; G is past the end of the hex run and is ignored."""
         assert run_program("0G.") == "\x00"
 
     def test_x_is_neither_an_operator_nor_a_bracket(self) -> None:
-        r"""X sits outside every command class, so it leaves the stack alone."""
+        """X sits outside every command class, so it leaves the stack alone.
+
+        A stray X read as an opener would scan to the end of the program
+        and abort; read as a binary operator it would underflow.  Either
+        way the run would halt instead of printing.
+        """
         assert run_program("X5.") == "\x05"
 
     def test_calling_an_unstored_scope_runs_nothing(self) -> None:
-        r"""``;`` on a key with no scope pushes an empty frame, not nothing."""
+        """``;`` on a key with no scope pushes an empty frame, not nothing."""
         assert run_program("1;") == ""
 
     def test_a_branch_scope_stops_at_its_closing_bracket(self) -> None:
-        r"""The scope excludes the ``)``, so what follows runs once, not twice."""
+        """The scope excludes the ``)``, so what follows runs once, not twice."""
         assert run_program("1(5:).") == "\x05"
 
     def test_a_live_nested_branch_matches_the_outer_bracket(self) -> None:
-        r"""Depth is counted up as well as down, so the outer scope is whole."""
+        """Depth is counted up as well as down, so the outer scope is whole.
+
+        Truncating the outer scope at the inner ``)`` would leave it with an
+        unterminated ``(``, aborting the nested scope and printing nothing.
+        """
         assert run_program("1((5.))") == "\x05"
 
     def test_a_loop_inside_a_called_scope_finishes(self) -> None:
-        r"""A loop two frames deep re-enters the top frame, not frame 1."""
+        """A loop two frames deep re-enters the top frame, not frame 1."""
         assert run_program("1{3[:1-]A.}1;") == "\n"
 
     def test_empty_stack_pop_halts(self) -> None:
@@ -128,18 +137,24 @@ class TestForth:
             run_program("[")
 
     def test_nested_error_is_discarded(self) -> None:
-        r"""A called scope's underflow returns 3, which the caller ignores."""
+        """A called scope's underflow returns 3, which the caller ignores."""
         assert run_program("1{/}1;") == ""
 
     def test_nested_empty_pop_is_fatal(self) -> None:
-        r"""An empty-stack pop inside a called scope halts the whole program."""
+        """An empty-stack pop inside a called scope halts the whole program."""
         with pytest.raises(HaltError):
             run_program("1{.};")
 
 
 class TestStepMachine:
     def test_arithmetic_wraps_to_a_signed_32_bit_range(self) -> None:
-        r"""Results wrap into -2**31 ."""
+        """Results wrap into -2**31 .. 2**31-1, which only the stack shows.
+
+        ``.`` prints ``value & 0xFF``, so every test that reads output sees
+        the low byte alone -- the wrap could land anywhere above it and the
+        printed character would not change.  Squaring 9 five times passes
+        2**31 and has to come back negative.
+        """
         from esolangs.interpreters.stack_based.forth import _Machine
 
         machine = _Machine("9:*:*:*:*", ScriptedIO())
@@ -148,7 +163,12 @@ class TestStepMachine:
         assert list(machine.stack) == [-501334399]
 
     def test_the_wrap_folds_at_exactly_two_to_the_thirty_first(self) -> None:
-        r"""2**31 is the first value that wraps, and it lands on the floor."""
+        """2**31 is the first value that wraps, and it lands on the floor.
+
+        The modulus has to be 2**32: a wider one would leave 2**31 alone,
+        and no smaller product reaches the boundary to show it.  2**16
+        times 2**15 is the product built here.
+        """
         from esolangs.interpreters.stack_based.forth import _Machine
 
         machine = _Machine("2:*:*:*:*88*8*8*8**", ScriptedIO())
@@ -157,7 +177,12 @@ class TestStepMachine:
         assert list(machine.stack) == [-2147483648]
 
     def test_an_unstored_key_calls_an_empty_scope(self) -> None:
-        r"""``;`` falls back to the empty string, so the pushed frame has code."""
+        """``;`` falls back to the empty string, so the pushed frame has code.
+
+        A missing fallback would push ``None`` and the next step would fail
+        measuring its length; a non-empty one would run commands nobody
+        stored.
+        """
         from esolangs.interpreters.stack_based.forth import _Machine
 
         machine = _Machine("1;", ScriptedIO())
@@ -166,7 +191,12 @@ class TestStepMachine:
         assert [frame.code for frame in machine.frames] == ["1;", ""]
 
     def test_a_loop_reenters_its_frame_each_pass(self) -> None:
-        r"""A loop restarts its body until the top reaches zero."""
+        """A loop restarts its body until the top reaches zero.
+
+        The frame it re-enters has to be marked a loop, or the second pass
+        would not run.  Counting down while duplicating leaves one value
+        per pass, so the stack shows how many times the body ran.
+        """
         from esolangs.interpreters.stack_based.forth import _Machine
 
         machine = _Machine("3[:1-]", ScriptedIO())
@@ -202,7 +232,11 @@ class TestStepMachine:
         assert machine.error is False  # the nested error is discarded.
 
     def test_the_read_pushes_every_byte_of_the_line(self) -> None:
-        r"""``,`` pushes the whole line, one byte per cell."""
+        """``,`` pushes the whole line, one byte per cell.
+
+        The cursor and snapshot moving is the shared contract below; that
+        one read yields several stack entries is Forþ's own.
+        """
         from esolangs.interpreters.stack_based.forth import _Machine
 
         machine = _Machine(",", ScriptedIO("hi"))
@@ -225,7 +259,7 @@ def _reader(code: object, stdin: str) -> object:
 
 
 class TestContract(EmptyProgramContract, CycleContract, InputCursorContract):
-    r"""The shared empty-program shape, with this language's data."""
+    """The shared empty-program shape, with this language's data."""
 
     run = staticmethod(run_program)
     machine = staticmethod(_machine)

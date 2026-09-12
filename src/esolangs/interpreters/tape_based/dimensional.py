@@ -1,4 +1,35 @@
-r"""Interpreter for Dimensional v3.0."""
+"""Interpreter for Dimensional v3.0.
+
+Dimensional v3.0 (the current wiki spec) is a hierarchy of pointers: an
+``n``-pointer (n > 1) is an infinite-dimensional pointer whose position
+contains an ``(n-1)``-slot, and a ``1``-slot holds an unsigned byte.  The
+value is the byte reached by following the chain of pointers from the
+selected axis down to level 2.  ``$AXIS`` picks which pointer the move and
+loop commands act on; moving a higher pointer selects a fresh lower slot, so
+moving away and back to the origin restores the previous tape.
+
+The v3.0 wiki leaves some details open; this interpreter resolves them as
+follows (documented choices, not part of any written spec):
+
+* The pointer axis defaults to 2 (the innermost pointer, which addresses
+  bytes directly), so ``>0``/``<0`` with no ``$AXIS`` is a linear byte tape.
+* ``d`` and ``x`` read a decimal/hexadecimal number from input (like ``,``
+  reads a character).
+* ``$AXIS`` values below 2 are clamped to 2 (there is no 1-pointer).
+* A ``:`` or ``=`` at the end of a program, or a malformed ``=`` literal, is
+  a :class:`ValueError`; unmatched ``[``/``]`` or ``{``/``}`` brackets are
+  rejected, matching the package's other tape interpreters.
+* Cells wrap at 8 bits (unsigned bytes).
+
+Commands: ``>d``/``<d`` move the axis pointer along dimension ``d`` (bare
+``>``/``<`` use the value as the dimension), ``+``/``-`` adjust the value,
+``:CH``/``=HEX`` set it from the source, ``.`` prints it, ``,``/``d``/``x``
+read it from input, ``[``/``]`` loop on it, ``{d``/``}`` loop on the axis
+pointer's dimension-``d`` coordinate, ``?d``/``!d`` read/clear it, ``$AXIS``
+selects the pointer, and ``*`` toggles comment mode.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
+"""
 
 import sys
 from collections.abc import Callable, Mapping
@@ -10,7 +41,11 @@ from esolangs.interpreters.io import IO
 
 
 class _Level:
-    r"""One pointer level: its position plus the slots it can select."""
+    """One pointer level: its position plus the slots it can select.
+
+    For level 2 the selected "slot" is the byte value itself; for higher
+    levels it is the :class:`_Level` one step down the chain.
+    """
 
     __slots__ = ("level", "pos", "slots")
 
@@ -23,7 +58,7 @@ class _Level:
         return tuple(sorted((k, v) for k, v in self.pos.items() if v))
 
     def child(self) -> object:
-        r"""Return the structure at the current position (fresh if first visit)."""
+        """Return the structure at the current position (fresh if first visit)."""
         key = self.key()
         child = self.slots.get(key)
         if child is None:
@@ -32,7 +67,7 @@ class _Level:
         return child
 
     def freeze(self) -> tuple[object, ...]:
-        r"""Return a hashable snapshot of this level's position and slots."""
+        """Return a hashable snapshot of this level's position and slots."""
         return (
             self.key(),
             tuple(
@@ -45,14 +80,20 @@ class _Level:
 
 
 class _Tape:
-    r"""The pointer hierarchy, current axis, and the byte it addresses."""
+    """The pointer hierarchy, current axis, and the byte it addresses.
+
+    Not the steppable machine -- that is :class:`_Machine`, which holds one
+    of these.  This is the language's memory: a chain of :class:`_Level`
+    pointers, each selecting either the byte (at level 2) or the level
+    below it.
+    """
 
     def __init__(self) -> None:
         self.axis = 2
         self.top = _Level(2)
 
     def node_at(self, level: int) -> _Level:
-        r"""Return the level-``level`` pointer on the current path (growing the."""
+        """Return the level-``level`` pointer on the current path (growing the top)."""
         while self.top.level < level:
             old = self.top
             env = _Level(old.level + 1)
@@ -82,7 +123,7 @@ class _Tape:
 
 
 def _matches(code: str) -> dict[int, int]:
-    r"""Map each bracket to its partner, ignoring comment regions."""
+    """Map each bracket to its partner, ignoring comment regions."""
     stack_b: list[int] = []
     stack_c: list[int] = []
     res: dict[int, int] = {}
@@ -118,7 +159,7 @@ def _matches(code: str) -> dict[int, int]:
 
 
 def _number(code: str, ind: int, default: int | None) -> tuple[int | None, int]:
-    r"""Parse an optional ``~``-prefixed number at ``ind``; ``None`` if."""
+    """Parse an optional ``~``-prefixed number at ``ind``; ``None`` if absent."""
     if ind >= len(code):
         return default, ind
     neg = False
@@ -152,7 +193,7 @@ type _State = tuple[int, bool, int]
 # : rather than the list Eval.
 @dataclass(frozen=True)
 class _Move:
-    r"""Step one place along ``dim``; ``None`` means the current value."""
+    """Step one place along ``dim``; ``None`` means the current value."""
 
     dim: int | None
     delta: int
@@ -160,28 +201,28 @@ class _Move:
 
 @dataclass(frozen=True)
 class _SetValue:
-    r"""Write a value into the addressed byte."""
+    """Write a value into the addressed byte."""
 
     value: int
 
 
 @dataclass(frozen=True)
 class _AddValue:
-    r"""Add to the addressed byte."""
+    """Add to the addressed byte."""
 
     delta: int
 
 
 @dataclass(frozen=True)
 class _FromCoord:
-    r"""Write a coordinate into the addressed byte, as a byte."""
+    """Write a coordinate into the addressed byte, as a byte."""
 
     dim: int
 
 
 @dataclass(frozen=True)
 class _Clear:
-    r"""Forget the position along ``dim``."""
+    """Forget the position along ``dim``."""
 
     dim: int
 
@@ -197,7 +238,18 @@ def _advance(
     coord: Callable[[int], int],
     port: int | None = None,
 ) -> tuple[_State, _Effect | None]:
-    r"""Return the state after one command, and what it wants done."""
+    """Return the state after one command, and what it wants done.
+
+    Pure in the sense the series means: it reads its arguments and returns
+    a description.  The tape is reached only through ``value`` and
+    ``coord``, which the two loop forms need to decide where the cursor
+    goes, and the three reading commands arrive as ``port``.
+
+    The cursor is already past the command.  Its advance is the caller's,
+    because several commands can reject their operand -- a ``:`` with
+    nothing after it, a ``=`` without two hex digits -- and the original
+    had moved the cursor before it looked.
+    """
     ind, comment, axis = state
     c = code[ind - 1]
 
@@ -260,7 +312,13 @@ def _advance(
 
 
 class _Machine:
-    r"""One Dimensional run: the code position, comment mode, and tape."""
+    """One Dimensional run: the code position, comment mode, and tape.
+
+    The steppable machine, named as every other interpreter names it, so
+    that the class carrying ``step``/``halted``/``snapshot`` is the one a
+    reader finds by looking for ``_Machine``.  The pointer hierarchy it
+    runs on is :class:`_Tape`.
+    """
 
     def __init__(self, code: str, io: IO) -> None:
         self.code = code
@@ -279,21 +337,21 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        r"""The current instruction position."""
+        """The current instruction position."""
         return self.ind
 
     @property
     def memory(self) -> list[int]:
-        r"""The addressable cells."""
+        """The addressable cells."""
         return [self.tape.value()]
 
     @property
     def stack(self) -> list[object]:
-        r"""No stack in this language."""
+        """No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        r"""Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection."""
         return (
             self.ind,
             self.comment,
@@ -305,15 +363,20 @@ class _Machine:
 
     @property
     def _state(self) -> _State:
-        r"""The machine's fields as the value the transition works on."""
+        """The machine's fields as the value the transition works on."""
         return (self.ind, self.comment, self.tape.axis)
 
     def _restore(self, state: _State) -> None:
-        r"""Write a transition's result back onto the machine's fields."""
+        """Write a transition's result back onto the machine's fields.
+
+        The tape object itself never moves through the state, so only its
+        axis is written back here; ``snapshot`` still reads the same tape
+        it always did.
+        """
         self.ind, self.comment, self.tape.axis = state
 
     def _apply(self, effect: _Effect) -> None:
-        r"""Carry out the one tape change a command asked for."""
+        """Carry out the one tape change a command asked for."""
         tape = self.tape
         if isinstance(effect, _Move):
             dim = tape.value() if effect.dim is None else effect.dim
@@ -328,7 +391,17 @@ class _Machine:
             tape.clear(effect.dim)
 
     def step(self) -> None:
-        r"""Execute one command (or comment character), advancing the position."""
+        """Execute one command (or comment character), advancing the position.
+
+        The ports live here rather than in the transition: this is the
+        shell.  ``.`` prints the addressed byte, and ``,``/``d``/``x`` read
+        one -- as a character, a decimal number, and a hex number.
+
+        The cursor is advanced before the command runs, because several
+        commands reject their operand after the original had already moved
+        it: a ``:`` at the end of the code, a ``=`` without two hex digits,
+        and any of the three reads at EOF.
+        """
         if self.halted:
             return
         code = self.code
@@ -355,7 +428,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    r"""Run a Dimensional v3.0 program."""
+    """Run a Dimensional v3.0 program."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
