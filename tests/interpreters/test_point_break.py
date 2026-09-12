@@ -372,7 +372,8 @@ class TestProgramShape:
     def test_program_as_string_and_lines(self) -> None:
         """A program is accepted as one string or as a list of lines, and
         the two forms reach the same final state -- otherwise the split is
-        doing something the joined form is not."""
+        doing something the joined form is not.
+        """
         joined = _Machine("LET zero:=0\nLET one:=1", ScriptedIO())
         split = _Machine(["LET zero:=0", "LET one:=1"], ScriptedIO())
 

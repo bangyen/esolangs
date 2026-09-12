@@ -362,6 +362,49 @@ class TestEveryLanguageImplementsTheSameInterface:
     the behaviour behind the names.
     """
 
+    def test_a_positional_ip_says_what_it_counts(
+        self, language: str, program: str, stdin: str
+    ) -> None:
+        """A machine reporting a tuple ``ip`` declares how to read it.
+
+        This is the one convention here whose breach is *silent*.  Forget
+        ``self_halts`` and a driving loop hangs; forget ``ip_shape`` and a
+        tuple simply stops being drawable, so a new grid language would
+        quietly lose its highlight and nothing else would change.
+
+        The declaration exists because the value cannot be read without it.
+        A cell, a call depth paired with a cursor, and a stack of one
+        position per frame are all tuples of small ints, and six languages
+        were marked in the *wrong* place for exactly as long as the screen
+        tried to tell them apart by looking.
+        """
+        vm = make_vm(language, program, stdin)
+        shapes = set()
+        for _ in range(10):
+            if vm.halted:
+                break
+            shapes.add(type(vm.ip))
+            with contextlib.suppress(Exception):
+                vm.step()
+        if tuple in shapes:
+            assert vm.ip_shape != "offset", (
+                f"{language} reports a tuple ip but declares no ip_shape, "
+                "so its position cannot be drawn"
+            )
+
+    def test_a_declared_ip_shape_is_one_the_reader_knows(
+        self, language: str, program: str, stdin: str
+    ) -> None:
+        """A misspelled shape is the same silent failure one level up.
+
+        ``locate`` answers an unknown shape with "not located", so
+        ``ip_shape = "gird"`` would read exactly like declaring nothing.
+        """
+        shape = make_vm(language, program, stdin).ip_shape
+        assert shape in {"offset", "grid", "line", "opaque"}, (
+            f"{language} declares ip_shape={shape!r}, which nothing reads"
+        )
+
     def test_the_wrapped_machine_implements_the_shape_protocol(
         self, language: str, program: str, stdin: str
     ) -> None:

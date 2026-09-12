@@ -83,8 +83,19 @@ languages and the three that answer by diverging included -- because every
 decision they make reads a `describe` field rather than a language name.
 
 `debug` runs a program under the breakpoint/watch VM and reports where it
-stopped: `--steps` bounds the run, `--watch-cell` prints one value per step,
-and `--break-on-output` stops with the watched text still the last written.
+stopped: `--steps` bounds the run and `--watch-cell` prints one value per
+step.  `--break-at`, `--break-on-cell I=V`, and `--break-on-output` each
+stop with their condition still true.
+
+`--tui` steps it on screen instead, highlighting the op about to run and
+showing the tape, stack, output, and the language's own named state beside
+it, with `--watch-cell`'s history as a row that grows as you step and
+shortens as you go back.  `hjkl` move a selector so a breakpoint can be set
+where the run has not reached yet; `t` marks under it and `c` continues to
+the next one.  Feed such a run with `--stdin`, since the keys and the
+program cannot share one stream.  A language whose position is not a place
+in the source — a call stack, a 3-D point — is left unhighlighted rather
+than marked in the wrong place; the header always shows the raw `ip`.
 
 ## Examples
 

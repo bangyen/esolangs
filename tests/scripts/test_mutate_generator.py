@@ -90,7 +90,7 @@ class TestPytestArgs:
         assert args[args.index("-n") + 1] == "0"
 
     def test_the_runner_command_quotes_its_arguments(self) -> None:
-        """mutmut splits the runner with ``shlex``, so it must be quoted.
+        """Mutmut splits the runner with ``shlex``, so it must be quoted.
 
         Joining the list on spaces and splitting it again is what turned
         ``-m "not slow"`` into two arguments, matching no tests at all --
@@ -146,7 +146,7 @@ class TestAlarmBudget:
         assert "if _budget and not _STATS_PASS:" in conftest
 
     def test_a_failed_stats_pass_is_not_reported_as_a_score(self) -> None:
-        """mutmut leaves a full meta of zeros when it cannot collect stats.
+        """Mutmut leaves a full meta of zeros when it cannot collect stats.
 
         Every exit code is still at its initial 0, which scores as
         "everything survived" rather than as the failure it is.  The
@@ -160,7 +160,7 @@ class TestAlarmBudget:
 
 class TestUndecorateClasses:
     def test_a_decorated_dataclass_is_rewritten(self, tmp_path: Path) -> None:
-        """mutmut skips a decorated ``ClassDef``, yielding it no mutants.
+        """Mutmut skips a decorated ``ClassDef``, yielding it no mutants.
 
         ``tape.py`` has five ``@dataclass`` nodes modelling the emitted
         program, so left decorated they contribute nothing while the run

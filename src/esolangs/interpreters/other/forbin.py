@@ -755,6 +755,12 @@ class _Machine:
     # The VM's language-shaped view: a call-frame language whose store is
     # the innermost frame's integer locals.
 
+    #: ``ip`` is a position, but not one on the source text: each live frame's statement
+    #: position.
+    #: Declared rather than left to the default so that a tuple nobody has
+    #: classified is a missing answer instead of this one.
+    ip_shape = "opaque"
+
     @property
     def ip(self) -> tuple[int, ...]:
         """Each live frame's statement position, outermost first.

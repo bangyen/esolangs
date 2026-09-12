@@ -120,7 +120,8 @@ class TestStepMachine:
 
 class TestLongPrograms:
     """A Factor program is one integer, so CPython's digit guard caps the
-    language rather than the interpreter."""
+    language rather than the interpreter.
+    """
 
     def test_a_program_past_cpythons_digit_limit_still_parses(self) -> None:
         """4300 digits is a DoS guard on int/str, not a Factor rule.

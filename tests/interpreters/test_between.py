@@ -102,7 +102,7 @@ class TestOperations:
             run_and_capture("'a'*|2|")
 
     def test_convert_integer_to_string(self) -> None:
-        """c on an integer yields a string, usable only as a discarded value."""
+        """C on an integer yields a string, usable only as a discarded value."""
         assert run_and_capture("'v'v.\n[v]s|12|\n[v]c.") == ""
 
     def test_convert_string_to_integer(self) -> None:

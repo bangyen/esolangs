@@ -163,6 +163,30 @@ class TestWidthOption:
         assert max(len(line) for line in out.rstrip("\n").split("\n")) <= 20
         assert esolangs.run("brainfuck", out, "0\n1\n1\n") == "0"
 
+    def test_a_width_of_one_is_positive(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The guard rejects zero and below, not one.
+
+        Every other test here passes a comfortable twenty, so the boundary
+        was free to move up by one and refuse a width the option accepts.
+        """
+        out = call_main(["generate", "brainfuck", "0110", "--width", "1"], capsys)
+        assert out.strip()
+
+    def test_the_option_may_come_before_the_positionals(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """``--width N`` consumes two arguments, not three.
+
+        With the option last -- which is how every other test writes it --
+        over-consuming runs off the end and looks the same.  Put an
+        argument after it and the difference is a swallowed language name.
+        """
+        out = call_main(["generate", "--width", "20", "brainfuck", TABLE3], capsys)
+        assert max(len(line) for line in out.rstrip("\n").split("\n")) <= 20
+        assert esolangs.run("brainfuck", out, "0\n1\n1\n") == "0"
+
     def test_width_with_an_equals_sign(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -345,11 +369,247 @@ class TestDebugCommand:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """The trailing option has nothing to consume, so it is an error
-        rather than a silently missing bound."""
+        rather than a silently missing bound.
+        """
         with pytest.raises(SystemExit) as exc:
             call_main(["debug", "brainfuck", "prog.b", "--steps"], capsys)
         assert exc.value.code == 2
         assert "--steps needs a value" in capsys.readouterr().err
+
+
+class TestBreakpointOptions:
+    """``--break-at`` and ``--break-on-cell`` on the batch debugger."""
+
+    def test_break_at_stops_on_the_position(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        out = call_main(
+            ["debug", "--break-at", "3", "brainfuck", _program(tmp_path, "+++++")],
+            capsys,
+        )
+        assert "ip: 3" in out
+        assert "halted: no" in out
+
+    def test_break_on_cell_stops_with_the_value_still_there(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        out = call_main(
+            [
+                "debug",
+                "--break-on-cell",
+                "0=3",
+                "--watch-cell",
+                "0",
+                "brainfuck",
+                _program(tmp_path, "+++++"),
+            ],
+            capsys,
+        )
+        assert "cell 0: [1, 2, 3]" in out
+
+    @pytest.mark.parametrize("value", ["3", "x=1", "0=y", ""])
+    def test_a_malformed_cell_breakpoint_is_refused(
+        self, value: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                [
+                    "debug",
+                    f"--break-on-cell={value}",
+                    "brainfuck",
+                    _program(tmp_path, "+"),
+                ],
+                capsys,
+            )
+        assert exc.value.code == 2
+        assert "INDEX=VALUE" in capsys.readouterr().err
+
+    def test_a_non_integer_break_at_is_refused(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["debug", "--break-at", "x", "brainfuck", _program(tmp_path, "+")],
+                capsys,
+            )
+        assert exc.value.code == 2
+        assert "must be an integer" in capsys.readouterr().err
+
+
+class TestTuiFlag:
+    """``--tui`` hands the run to the step-through screen."""
+
+    def test_it_calls_the_screen_with_the_program_and_input(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        # The key loop owns the terminal, so what is pinned here is the
+        # handoff: the flag is recognised, stripped from the positionals,
+        # and the right three arguments reach the screen.
+        with patch("esolangs.cli.run_tui") as screen:
+            call_main(
+                [
+                    "debug",
+                    "--tui",
+                    "--stdin",
+                    "01",
+                    "brainfuck",
+                    _program(tmp_path, ",."),
+                ],
+                capsys,
+            )
+        screen.assert_called_once()
+        language, program, stdin = screen.call_args.args
+        assert (language, program, stdin) == ("brainfuck", ",.", "01")
+
+    def test_breakpoints_reach_the_screen(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The same flags the batch debugger takes drive the continue key."""
+        with patch("esolangs.cli.run_tui") as screen:
+            call_main(
+                [
+                    "debug",
+                    "--tui",
+                    "--stdin",
+                    "",
+                    "--break-on-cell",
+                    "0=2",
+                    "brainfuck",
+                    _program(tmp_path, "+++"),
+                ],
+                capsys,
+            )
+        stop = screen.call_args.kwargs["stop"]
+        assert stop is not None
+        # The predicate reads a frame, so it can be checked without a run.
+        frame = esolangs.tui.Frame(
+            language="brainfuck",
+            program="+++",
+            ip=2,
+            step=2,
+            halted=False,
+            memory=(2,),
+            stack=(),
+            output="",
+        )
+        assert stop(frame)
+
+    def test_a_position_reaches_the_screen_as_a_drawn_mark(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """``--break-at`` is the one breakpoint that has somewhere to be drawn."""
+        with patch("esolangs.cli.run_tui") as screen:
+            call_main(
+                [
+                    "debug",
+                    "--tui",
+                    "--stdin",
+                    "",
+                    "--break-at",
+                    "2",
+                    "brainfuck",
+                    _program(tmp_path, "+++"),
+                ],
+                capsys,
+            )
+        assert screen.call_args.kwargs["at"] == (2,)
+        # A position needs no predicate: the screen stops on what it marks.
+        assert screen.call_args.kwargs["stop"] is None
+
+    def test_a_cell_breakpoint_has_nothing_to_draw(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with patch("esolangs.cli.run_tui") as screen:
+            call_main(
+                [
+                    "debug",
+                    "--tui",
+                    "--stdin",
+                    "",
+                    "--break-on-cell",
+                    "0=2",
+                    "brainfuck",
+                    _program(tmp_path, "+++"),
+                ],
+                capsys,
+            )
+        assert screen.call_args.kwargs["at"] == ()
+        assert screen.call_args.kwargs["stop"] is not None
+
+    def test_a_watched_cell_reaches_the_screen(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """``--watch-cell`` means the same on both sides, shown as a row."""
+        with patch("esolangs.cli.run_tui") as screen:
+            call_main(
+                [
+                    "debug",
+                    "--tui",
+                    "--stdin",
+                    "",
+                    "--watch-cell",
+                    "2",
+                    "brainfuck",
+                    _program(tmp_path, "+++"),
+                ],
+                capsys,
+            )
+        assert screen.call_args.kwargs["watch"] == 2
+
+    def test_no_watch_flag_means_no_row(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with patch("esolangs.cli.run_tui") as screen:
+            call_main(
+                ["debug", "--tui", "--stdin", "", "brainfuck", _program(tmp_path, "+")],
+                capsys,
+            )
+        assert screen.call_args.kwargs["watch"] is None
+
+    def test_no_breakpoint_flags_means_no_predicate(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with patch("esolangs.cli.run_tui") as screen:
+            call_main(
+                ["debug", "--tui", "--stdin", "", "brainfuck", _program(tmp_path, "+")],
+                capsys,
+            )
+        assert screen.call_args.kwargs["stop"] is None
+
+    def test_a_piped_stream_without_stdin_is_refused(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Keys and program input cannot share one descriptor.
+
+        Rather than let the screen read the program's bytes as keystrokes,
+        the pipe is rejected and ``--stdin`` is named as the way in.
+        """
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                ["debug", "--tui", "brainfuck", _program(tmp_path, ",.")],
+                capsys,
+                stdin="Z",
+            )
+        assert exc.value.code == 2
+        assert "--stdin" in capsys.readouterr().err
+
+    def test_an_unknown_language_is_reported(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit) as exc:
+            call_main(
+                [
+                    "debug",
+                    "--tui",
+                    "--stdin",
+                    "",
+                    "NoSuchLanguage",
+                    _program(tmp_path, "+"),
+                ],
+                capsys,
+            )
+        assert exc.value.code == 2
+        assert "unknown language" in capsys.readouterr().err
 
 
 class TestHelp:
@@ -480,7 +740,7 @@ class TestProgramFailuresAreReported:
         assert "Traceback" not in result.stderr
 
     def test_the_readme_suffolk_flow_completes(self, tmp_path: Path) -> None:
-        """generate then run, the README's first pair, for all four rows."""
+        """Generate then run, the README's first pair, for all four rows."""
         generated = run_cli("generate", "Suffolk", "0110")
         path = tmp_path / "su.txt"
         path.write_text(generated.stdout.rstrip("\n"))

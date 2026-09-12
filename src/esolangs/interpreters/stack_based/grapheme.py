@@ -431,6 +431,12 @@ class _Machine:
     # The VM's language-shaped view: a stack language whose call frames each
     # carry their own cursor, and with no addressable cells.
 
+    #: ``ip`` is a position, but not one on the source text: each active frame's pc,
+    #: root-to-leaf.
+    #: Declared rather than left to the default so that a tuple nobody has
+    #: classified is a missing answer instead of this one.
+    ip_shape = "opaque"
+
     @property
     def ip(self) -> tuple[int, ...]:
         """Each active frame's pc, root-to-leaf.

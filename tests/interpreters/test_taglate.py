@@ -143,7 +143,6 @@ class TestTaglate:
         :mod:`~esolangs.interpreters.brackets` names whatever the language
         counts in.
         """
-
         with raises_message(ValueError, "unmatched 'gy' at position 0"):
             run_and_capture(["\x001", "gy"])
 

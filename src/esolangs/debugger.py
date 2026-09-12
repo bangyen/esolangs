@@ -85,6 +85,16 @@ class Debugger:
         return self.vm.ip
 
     @property
+    def ip_shape(self) -> str:
+        """How the wrapped VM's ``ip`` reads as a place in the source."""
+        return self.vm.ip_shape
+
+    @property
+    def views(self) -> tuple[tuple[str, str], ...]:
+        """The wrapped VM's machine-specific named state."""
+        return self.vm.views
+
+    @property
     def memory(self) -> list[int]:
         """The wrapped VM's addressable cells."""
         return self.vm.memory
