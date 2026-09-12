@@ -9,6 +9,7 @@ file that lays out a grid, builds a looping input reader, and rotates a
 block on end to meet a width.
 """
 
+from functools import cache
 from itertools import permutations
 from typing import NamedTuple
 
@@ -327,6 +328,38 @@ def _laserfuck_assemble_reader(
     return lines, row, col
 
 
+_ReaderCandidate = tuple[int, int, tuple[str, ...], int, int]
+
+
+@cache
+def _laserfuck_reader_candidates(
+    n: int,
+    perm: tuple[int, ...] | None = None,
+) -> tuple[_ReaderCandidate, ...]:
+    """Every orientation word's reader, shortest first, as ``(rows, span, ...)``.
+
+    The search depends on ``n`` and ``perm`` alone -- a truth table never
+    reaches the reader, and a width only *filters* the result -- so every
+    build at one arity and order rebuilt the same ``2**count`` readers.
+    Caching it hoists the search out of the per-build path the way
+    :func:`_laserfuck_placements` hoisted the cuts out of the per-word one.
+    Rows come back as tuples because the callers only read them.
+    """
+    placements = _laserfuck_placements(n, perm)
+    count = len(placements)
+    candidates = []
+    for choice in range(2**count):
+        orientation = "".join("R" if choice >> b & 1 else "F" for b in range(count))
+        rows_of, exit_row, exit_col = _laserfuck_assemble_reader(
+            placements, orientation
+        )
+        span = max(len(line) for line in rows_of)
+        candidates.append((len(rows_of), span, tuple(rows_of), exit_row, exit_col))
+    # Stable, so ties still break on the orientation word's own order.
+    candidates.sort(key=lambda item: (item[0], item[1]))
+    return tuple(candidates)
+
+
 def _laserfuck_build(
     truth_table: str,
     perm: tuple[int, ...],
@@ -399,17 +432,7 @@ def _laserfuck_build(
     # The tree adds only a column or two past the reader, so the reader is
     # what a width has to bargain with: side by side the rings are one row
     # and forty-odd columns, stacked they are seven rows and under twenty.
-    placements = _laserfuck_placements(n, perm)
-    count = len(placements)
-    candidates = []
-    for choice in range(2**count):
-        orientation = "".join("R" if choice >> b & 1 else "F" for b in range(count))
-        rows_of, exit_row, exit_col = _laserfuck_assemble_reader(
-            placements, orientation
-        )
-        span = max(len(line) for line in rows_of)
-        candidates.append((len(rows_of), span, rows_of, exit_row, exit_col))
-    candidates.sort(key=lambda item: (item[0], item[1]))
+    candidates = _laserfuck_reader_candidates(n, perm)
     fitting = [
         item
         for item in candidates

@@ -167,6 +167,8 @@ class TestQoibl:
         assert "ry ye ry" not in program
 
 
+# 4.2s over 72 tests: runs the generated program.
+@pytest.mark.medium
 class TestPolynomial:
     @pytest.mark.parametrize(
         ("table", "n"),

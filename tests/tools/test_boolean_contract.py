@@ -19,6 +19,12 @@ from esolangs.registry import BY_BOOLEAN, LANGUAGES
 from esolangs.tools.boolean.helpers import essential_inputs
 from esolangs.vm import run_until_halt_or_cycle
 
+# Every sweep here runs an interpreter over a generated program -- the whole
+# file is the execution gate -- so the module is `medium` and the inner loop
+# leaves it out.  42.9s of the fast band's 193.8s was this file alone.  The
+# per-param `slow` marks below still apply on top.
+pytestmark = pytest.mark.medium
+
 # One constant table against one that folds nothing.  A generator loses reads
 # by *folding*, so the comparison needs a table that folds completely and one
 # that folds not at all; near-constant tables in between produce intermediate

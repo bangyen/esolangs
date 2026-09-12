@@ -10,8 +10,9 @@ help:
     @echo "  lint         - Run all linting targets"
     @echo "  test         - Local check, scoped to this branch; slow tests left to CI"
     @echo "  test-full    - Every check, whole tree"
-    @echo "  test-quick   - Fast dev loop: pre-commit + pytest (skip slow) (~6s pytest)"
-    @echo "  test-py      - pytest only (8749 tests, -n auto; skip slow with -m 'not slow')"
+    @echo "  test-quick   - Tier 1: pre-commit + pytest, fast band only (~8s pytest)"
+    @echo "  test-mid     - Tier 2: pytest, fast + medium (execution and subprocess) (~25s)"
+    @echo "  test-py      - pytest only (10325 tests, -n auto; all three tiers)"
     @echo "  test-line    - extra/line suites with pytest only (~3s)"
     @echo "  test-anchor  - ztoalc anchor table check (~3.2s)"
     @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
@@ -20,7 +21,14 @@ help:
     @echo "  install-dev  - Install development dependencies"
     @echo "  clean        - Clean up generated files"
     @echo ""
-    @echo "  Use 'just test-quick' for inner loop, 'just test-full' before a release."
+    @echo ""
+    @echo "  Three tiers, by what a test does rather than by a stopwatch:"
+    @echo "    fast   - unmarked; no interpreter run, no subprocess"
+    @echo "    medium - runs a generated program, or drives the CLI/git"
+    @echo "    slow   - the long tail, left to CI by a default 'just test'"
+    @echo ""
+    @echo "  Use 'just test-quick' for inner loop, 'just test-mid' before a commit,"
+    @echo "  'just test-full' before a release."
 
 # install tooling
 install-dev:
@@ -61,9 +69,13 @@ test *args:
 test-full *args:
     {{PYTHON}} scripts/verify.py --full {{args}}
 
-# fast dev loop: pre-commit + pytest (skip slow) — quiet by default
+# tier 1 — inner loop: pre-commit + pytest, fast band only, quiet by default
 test-quick *args:
-    PYTEST_ADDOPTS="-m 'not slow'" {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest {{args}}
+    PYTEST_ADDOPTS="-m 'not slow and not medium'" {{PYTHON}} scripts/verify.py --quiet --only pre-commit,pytest {{args}}
+
+# tier 2 — before a commit: everything but the long tail
+test-mid *args:
+    PYTEST_ADDOPTS="-m 'not slow'" {{PYTHON}} scripts/verify.py --only pytest {{args}}
 
 # granular targets — each maps to one STEPS entry in scripts/verify.py (see verify.py --list)
 # add --quiet to any of these for terse output (e.g. just test-py --quiet)

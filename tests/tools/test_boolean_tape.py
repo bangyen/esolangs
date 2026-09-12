@@ -479,6 +479,8 @@ class TestSixFive:
         assert not hasattr(module, "_six_five_node_read")
 
 
+# 2.3s over 84 tests: runs the generated program.
+@pytest.mark.medium
 class TestStreetcode:
     def test_default_uses_only_shared_layouts(self) -> None:
         """Per-input loops are width fallbacks, never default candidates."""

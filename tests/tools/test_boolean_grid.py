@@ -40,6 +40,8 @@ def _render_after_passes(program: str, passes: int) -> str:
     return machine.render()
 
 
+# 2.0s over 45 tests: runs the generated program.
+@pytest.mark.medium
 class TestAPainterAnt:
     """The A Painter Ant generator (a no-I/O grid language, parameterized convention).
 
@@ -1524,6 +1526,8 @@ class TestCircuitDiagram:
             circuit_diagram("012x")
 
 
+# 6.2s over 99 tests: builds and runs banded drawings.
+@pytest.mark.medium
 class TestCircuitDiagramLayoutGuards:
     """The layout's collision checks, reached by constructing the state.
 

@@ -556,6 +556,8 @@ class TestQoiblParserGuards:
         assert var == {"e": 1}
 
 
+# 1.9s over 51 tests: runs the generated program.
+@pytest.mark.medium
 class TestTheTokenizerCarriesItsOwnStack:
     """The search used to spend one Python frame per character.
 

@@ -2310,6 +2310,8 @@ def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
             )
 
 
+# 2.3s over 132 tests: runs the generated program.
+@pytest.mark.medium
 class TestParameterizedOneTwoThree:
     """Input-by-substitution boolean generator for the no-input language 123.
 
