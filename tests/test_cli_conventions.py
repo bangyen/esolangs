@@ -9,6 +9,7 @@ languages left unreachable by a fix that pointed a CLI user at a Python call.
 import json
 import subprocess
 import sys
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -16,7 +17,7 @@ import pytest
 
 import esolangs
 from esolangs import cli
-from esolangs.cli import main
+from esolangs.cli import HELP, main
 from tests.test_cli import _FakeStdin, _program, call_main, run_cli
 
 EXAMPLES = Path(__file__).parents[1] / "examples" / "boolean"
@@ -2249,3 +2250,42 @@ class TestJsonOutput:
             call_main(["list", "--json", "extra"], capsys)
         with pytest.raises(SystemExit):
             call_main(["describe", "--json", "brainfuck", "extra"], capsys)
+
+
+class TestTheTimeoutIsABackstopNotAPerRowCost:
+    """`verify --help` was a third copy of a claim the package retired.
+
+    It said the three languages answering 1 by not terminating "pay this on
+    every 1-row, so a low value is worth setting for them".  That was true
+    when written and stopped being true in the change that added the
+    divergence proof: those rows are settled by a repeated machine state in
+    microseconds, and the bound is only the backstop for a program that
+    diverges by *growing*.  ``evaluate``'s docstring says so and adds that
+    two docstrings disagreeing about how something works is worse than
+    either being out of date -- and then the CLI help was a third.
+
+    Corrected, and pinned by measurement rather than by matching words: if
+    the timeout ever does get paid per 1-row again, sixteen rows at a
+    thirty-second bound takes eight minutes and this fails.
+    """
+
+    #: Sixteen rows, half of them 1s, on a language that answers by diverging.
+    TABLE = "0110100110010110"
+
+    @pytest.mark.parametrize("language", ["123", "ArrowQueue", "Point Break"])
+    def test_a_generous_bound_is_not_paid_per_row(self, language: str) -> None:
+        """Thirty seconds a row would be minutes; the proof makes it instant."""
+        start = time.perf_counter()
+        assert esolangs.verify(language, self.TABLE, timeout=30)
+        elapsed = time.perf_counter() - start
+        ones = self.TABLE.count("1")
+        assert elapsed < 30, (
+            f"{language} took {elapsed:.1f}s for {ones} 1-rows at a 30s bound, "
+            f"so the bound is being waited out rather than proved"
+        )
+
+    def test_the_help_no_longer_says_it_is_paid(self) -> None:
+        """The specific retired sentence, so a fourth copy cannot creep back."""
+        help_text = HELP["verify"]
+        assert "pay this on every" not in help_text
+        assert "backstop" in help_text
