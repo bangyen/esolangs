@@ -25,16 +25,16 @@ are precisely the long same-character ones -- 48 ``-`` per reader, one
 ``+`` per unit of text -- that halves the rows the fold spends on them.
 """
 
-# The column a fold returns to.
-# the ``_`` beneath it), which.
-# startup, so a zigzag.
-# the funnel and start the.
+# The column a fold returns to.  Columns 0..2 carry the funnel (``|o^`` and
+# the ``_`` beneath it), which every initial heading is routed through at
+# startup, so a zigzag returning to column 0 would drop the beam back onto
+# the funnel and start the program over.
 MARGIN = 3
 
-# The narrowest width a fold.
-# turns the beam right, at.
-# segment.
-# the rest of the width.
+# The narrowest width a fold can make progress in: the margin cell that
+# turns the beam right, at least one op, and the turn-down that ends the
+# segment.  A width below this is raised to it rather than refused, matching
+# the rest of the width plumbing.
 MIN_WIDTH = MARGIN + 2
 
 
@@ -81,7 +81,7 @@ def fold(
     """
     index = 0
     while index < len(ops):
-        room = max(width - col - 1, 1)  # keep a column for the.
+        room = max(width - col - 1, 1)  # keep a column for the turn-down 'v'
         take = min(room, len(ops) - index)
         for char in ops[index : index + take]:
             grid[row][col] = char
@@ -90,16 +90,16 @@ def fold(
         if index < len(ops):
             reserve(grid, row + 2)
             grid[row][col] = "v"
-            grid[row + 1][col] = "{"  # return row: head back to the.
+            grid[row + 1][col] = "{"  # return row: head back to the margin
             grid[row + 1][left] = "v"
-            # The leftward leg runs the.
-            # carry ops that read the same.
-            # character.
-            # margin, stopping short of it.
+            # The leftward leg runs the return row backwards, so it may only
+            # carry ops that read the same either way: one repeated
+            # character.  Lay them from the turn-down back towards the
+            # margin, stopping short of it so the 'v' there still catches
             # the beam.
             index += _fill_backwards(grid[row + 1], ops[index:], col - 1, left + 1)
             row += 2
-            grid[row][left] = "}"  # next segment row: face right.
+            grid[row][left] = "}"  # next segment row: face right again
             col = left + 1
     reserve(grid, row + 1)
     return row, col

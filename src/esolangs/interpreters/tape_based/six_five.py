@@ -40,23 +40,23 @@ import sys
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# : The largest value ``A`` can.
-# : character range is an.
+#: The largest value ``A`` can print.  Outputting a cell outside the valid
+#: character range is an invalid operation, not a wrap or a truncation.
 _MAX_CHAR = 0x10FFFF
 
-# : One instant of a run:.
-# : pointer, and the tape.
-# : returns a new one rather.
-# : ``tuple`` for the same.
-# :.
-# : The tokens are deliberately.
-# : run, so carrying them would.
-# : detector stores.
-# :.
-# : The field order starts.
-# : interpreters, but.
-# : -- the order it always.
-# : reorder every hash the.
+#: One instant of a run: ``(ind, cell, tape)`` -- the token cursor, the cell
+#: pointer, and the tape.  A value, not a record: every transition below
+#: returns a new one rather than editing one in place, and the tape is a
+#: ``tuple`` for the same reason.
+#:
+#: The tokens are deliberately not in here.  They do not change during a
+#: run, so carrying them would put constant data in every value the cycle
+#: detector stores.  They are a parameter to the transition instead.
+#:
+#: The field order starts ``ind`` for consistency with the other
+#: interpreters, but ``snapshot`` still returns ``(cell, tape, ind, ...)``
+#: -- the order it always returned.  Reordering there would silently
+#: reorder every hash the cycle detector has stored.
 type _State = tuple[int, int, tuple[int, ...]]
 
 
@@ -142,9 +142,9 @@ def _advance(state: _State, toks: list[str], byte: int | None = None) -> _State:
             ind = target
     elif tok[0] == "7":
         if tape[cell] == (num(tok[1]) if len(tok) > 1 else 0):
-            ind += 1  # skip the next instruction.
+            ind += 1  # skip the next instruction
     elif tok == "0":
-        return (len(toks), cell, tape)  # halt.
+        return (len(toks), cell, tape)  # halt
     elif tok == "B":
         tape = _written(tape, cell, byte if byte is not None else 0)
     return (ind + 1, cell, tape)
@@ -163,13 +163,13 @@ class _Machine:
         """Tokenize ``code`` and reset the cell, tape, and cursor."""
         self.io = io
         self.toks = _tokens(code)
-        # ``halted`` is read twice per.
-        # once by ``step``'s guard --.
+        # ``halted`` is read twice per token -- once by ``run``'s loop and
+        # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.toks)
         self.state: _State = (0, 0, (0,))
 
-    # The language's own names.
-    # than fields of their own, so.
+    # The language's own names.  They are views on the current state rather
+    # than fields of their own, so there is one place a step can change.
 
     @property
     def ind(self) -> int:
@@ -183,15 +183,15 @@ class _Machine:
     def tape(self) -> tuple[int, ...]:
         return self.state[2]
 
-    # The growth detector's view.
-    # aliased to the name.
-    # qualifies for that protocol:.
-    # brainfuck's ``<`` does.
-    # the certificate's ``m >= 1``.
-    # other command reads or writes.
-    # cells and appends two zeros.
-    # rightward growth, and the.
-    # the displacement rather than.
+    # The growth detector's view.  The pointer is ``cell`` here, so it is
+    # aliased to the name ``esolangs.vm._TapeMachine`` asks for.  6-5
+    # qualifies for that protocol: ``3`` clamps at the left edge exactly as
+    # brainfuck's ``<`` does (``elif tok == "3" and cell``), which is what
+    # the certificate's ``m >= 1`` condition is written against, and every
+    # other command reads or writes only ``tape[cell]``.  ``1`` moves *two*
+    # cells and appends two zeros rather than one; that is still fresh
+    # rightward growth, and the certificate checks the tape grew by exactly
+    # the displacement rather than by one.
 
     @property
     def ptr(self) -> int:
@@ -207,7 +207,7 @@ class _Machine:
         """Whether the cursor has passed the last token."""
         return self.state[0] >= self.size
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: Token tape + cursor; ip the cursor, memory the
     # cell tape.
 
     @property
@@ -227,8 +227,8 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The tape is already a tuple,.
-        # order this returned before.
+        # The tape is already a tuple, so it goes in as it stands, in the
+        # order this returned before the fields moved into a state value.
         ind, cell, tape = self.state
         return (cell, tape, ind, self.io.position())
 

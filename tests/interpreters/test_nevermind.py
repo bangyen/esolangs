@@ -178,7 +178,7 @@ class TestStepMachine:
 
         machine = _Machine([], IO())
         assert machine.halted
-        machine.step()  # stepping a halted machine is.
+        machine.step()  # stepping a halted machine is a no-op
         assert machine.halted
 
     def test_arithmetic_on_a_string_halts(self) -> None:

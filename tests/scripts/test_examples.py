@@ -37,38 +37,38 @@ def _file_name(display_name: str) -> str:
     return display_name.lower().replace(" ", "-")
 
 
-# The VM registry is keyed by.
-# examples are keyed by their.
-# shared metadata and uniquely.
+# The VM registry is keyed by the language's display name, while boolean
+# examples are keyed by their filesystem stem.  The interpreter module is
+# shared metadata and uniquely identifies the registered display name.
 VM_LANGUAGE = {
     lang.interpreter: lang.name
     for lang in LANGUAGES.values()
     if lang.interpreter is not None
 }
 
-# container halts by calling.
+# container halts by calling sys.exit(0)
 EXITS = {"container"}
 
-# Boolean examples whose answer.
-# output: each halts for a 0.
-# program must be the halting.
-# .
-# :func:`test_boolean_example`.
-# step cap, which is right for.
-# three: a file holding the.
-# suite with no diagnostic.
-# -- ``bits`` is just data, and.
-# so.
-# program terminates *before*.
+# Boolean examples whose answer is their *termination* rather than their
+# output: each halts for a 0 and loops forever for a 1, so the committed
+# program must be the halting branch.
+#
+# :func:`test_boolean_example` runs a committed program to completion with no
+# step cap, which is right for every other language and fatal for these
+# three: a file holding the looping branch does not fail, it hangs the
+# suite with no diagnostic.  Nothing about the entry forces the halting row
+# -- ``bits`` is just data, and a wrong one regenerates a looping file --
+# so :func:`test_halt_convention_examples_halt` checks the committed
+# program terminates *before* anything runs it unbounded.
 HALT_CONVENTION = {"123", "arrowqueue", "point-break"}
 
-# Boolean generators.
-# id, each for a stated reason.
-# answer is recoverable from.
-# ``esolangs.tools.boolean.examp.
-# report belongs here rather.
-# .
-# Empty, and that is the claim:.
+# Boolean generators deliberately without a committed example, by canonical
+# id, each for a stated reason.  A language qualifies for an example when its
+# answer is recoverable from what its program prints (see
+# ``esolangs.tools.boolean.examples``); one whose answer no program can
+# report belongs here rather than silently missing.
+#
+# Empty, and that is the claim: every boolean generator currently has one.
 _NO_EXAMPLE: set[str] = set()
 
 
@@ -186,18 +186,18 @@ def test_every_boolean_generator_has_an_example() -> None:
     )
 
 
-# The boolean examples.
-# that is not an I/O truth.
-# from.
-# program the generator, truth.
-# -- so the files stay in sync.
-# .
-# The input-reading languages.
-# ones (see.
-# in the program text and read.
-# output at all: their result.
-# terminating (`0`) branch is.
-# definition and is not.
+# The boolean examples demonstrate a language's boolean-function capability
+# that is not an I/O truth machine (see docs/walls.md).  They are derived
+# from ``esolangs.tools.boolean.examples``, which records for each committed
+# program the generator, truth table, and input combination that produced it
+# -- so the files stay in sync with the generators.
+#
+# The input-reading languages take their bits on stdin; the parameterized
+# ones (see ``esolangs.tools.boolean.parameterized``) have the bits embedded
+# in the program text and read no input.  ArrowQueue and Point Break have no
+# output at all: their result is the halt-vs-loop convention, so only the
+# terminating (`0`) branch is committed -- the `1` branch loops forever by
+# definition and is not executed.
 BOOLEAN_EXAMPLES = {
     stem: (ex.interpreter, list(ex.inputs), ex.expected, ex.split, dict(ex.kwargs))
     for stem, ex in BOOLEAN_GENERATED.items()
@@ -252,36 +252,36 @@ def test_boolean_example(name: str) -> None:
     )
     vm = make_vm(VM_LANGUAGE[_module], program, "".join(f"{line}\n" for line in inputs))
     if name == "a-painter-ant":
-        # Its implicit loop has no.
-        # language-defined stop.
-        # pass boundary, so finish this.
+        # Its implicit loop has no halting state: a repeated snapshot is its
+        # language-defined stop.  The public interpreter renders only at a
+        # pass boundary, so finish this already-proven periodic pass first.
         assert not run_until_halt_or_cycle(vm)
         while vm.ip != 0:
             vm.step()
         got = vm._machine.render()  # type: ignore[attr-defined]  # noqa: SLF001
     else:
-        # Suffolk used to need a branch.
-        # on an escaping ``EOFError``.
-        # to be wrapped in.
-        # now -- which is what ``run``.
-        # the common path and the.
+        # Suffolk used to need a branch here: its reading programs stopped
+        # on an escaping ``EOFError`` rather than halting, so the prover had
+        # to be wrapped in ``pytest.raises``.  The exhausted read is a halt
+        # now -- which is what ``run`` always treated it as -- so it takes
+        # the common path and the branch is gone.
         assert _prove_halt(vm), f"examples/boolean/{name}.txt does not reach its halt"
-        # A few state-dumping languages.
-        # after their halt.
-        # every VM exactly matches each.
+        # A few state-dumping languages deliberately write on the first step
+        # after their halt.  That step is otherwise a no-op, so taking it for
+        # every VM exactly matches each interpreter's public ``run`` behavior.
         vm.step()
         got = vm.output
     if not BOOLEAN_GENERATED[name].expected_compared:
-        # The constructed 123 template.
-        # merging, and a ``2`` there.
-        # junk bytes that are.
-        # proven halt asserted above.
-        # to have a silent halting row;.
+        # The constructed 123 template pops through location -2 while
+        # merging, and a ``2`` there prints whatever the cell holds --
+        # junk bytes that are deliberately not the answer, which is the
+        # proven halt asserted above.  The retired stored plans happened
+        # to have a silent halting row; the construction does not, so the
         # bytes are not compared.
-        # .
-        # Read from the entry rather.
-        # manifest generated from these.
-        # rendering ``expected`` for.
-        # for a program that prints two.
+        #
+        # Read from the entry rather than matched on the name, so the
+        # manifest generated from these entries can say the same thing:
+        # rendering ``expected`` for this one advertised "outputs nothing"
+        # for a program that prints two bytes.
         return
     assert got == expected

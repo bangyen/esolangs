@@ -16,38 +16,38 @@ from esolangs.tools.boolean.helpers import _validate_truth_table
 
 __all__ = ["pct_squared_minus_one"]
 
-# : The accumulator is zeroed.
+#: The accumulator is zeroed when it exceeds this, checked before each command.
 _LIMIT = 3003
 
-# : Affine multipliers a setter.
+#: Affine multipliers a setter may realise: identity, negate, erase, double.
 _A_VALS = (1, -1, 0, 2)
 
-# : Offsets considered for a.
-# : magnitude past 8 (XOR's.
-# : statement about the.
+#: Offsets considered for a setter branch.  The derived solutions never need a
+#: magnitude past 8 (XOR's ``+/-8`` is the extreme), so this window is a
+#: statement about the construction rather than a search budget.
 _OFFSETS = range(-10, 11)
 
-# : Accumulator values the.
-# : The tail has to move these.
-# : with one translation, which.
-# : are the only pairs that.
+#: Accumulator values the answers ``(0, 1)`` may land on before the tail runs.
+#: The tail has to move these onto ``0``/``1``, and :func:`_tail_for` does that
+#: with one translation, which needs the pair a step apart -- so nearby pairs
+#: are the only pairs that print.
 _CLASS_PAIRS = tuple(
     (zero, one) for zero in range(-9, 10) for one in range(-9, 10) if zero != one
 )
 
-# : Separates the setter header.
-# :.
-# : A *blank line*, not a.
-# : rows like the body: a.
-# : two it falls in, and only.
-# : blank line inside either.
-# : empty row -- so the.
-# :.
-# : This is a template-format.
-# : never sees a header;.
+#: Separates the setter header from the program body in a template.
+#:
+#: A *blank line*, not a newline, so that the header may be folded across
+#: rows like the body: a single newline is then interior to whichever of the
+#: two it falls in, and only the blank line divides them.  Nothing emits a
+#: blank line inside either part -- the wrapper's packing never produces an
+#: empty row -- so the division is unambiguous.
+#:
+#: This is a template-format constant, not a language one.  The interpreter
+#: never sees a header; :func:`fill` consumes it.
 _HEADER_END = "\n\n"
 
-# : Matches one setter.
+#: Matches one setter declaration in the header, ``k=<zero>|<one>``.
 _DECL_RE = re.compile(r"(\d+)=([^|;]*)\|([^;]*)")
 
 
@@ -179,10 +179,10 @@ def _tail_for(one_value: int, zero_value: int) -> str | None:
         if code is None:
             continue
         body = pre + code
-        # The shift was solved from.
-        # rather than selects -- 236.
-        # range all pass it.
-        # tail evidence rather than.
+        # The shift was solved from these very values, so the check confirms
+        # rather than selects -- 236 candidate pairs over the reachable
+        # range all pass it.  It stays because it is what makes the emitted
+        # tail evidence rather than assertion.
         if (  # pragma: no branch - the arithmetic above cannot produce a miss
             _apply(one_value, body) == 1 and _apply(zero_value, body) == 0
         ):
@@ -191,24 +191,24 @@ def _tail_for(one_value: int, zero_value: int) -> str | None:
     return None
 
 
-# : The class pairs that.
-# : :data:`_CLASS_PAIRS`.
-# : ``p``, so it exists only.
-# : the other -- and even then.
-# : for a shift of 1, which is.
-# : and ``(-1, -2)`` out of the.
-# :.
-# : This is a *filter on dead.
-# : :func:`_solution` ends with.
-# : ``None`` when it misses, so.
-# : :func:`_derive`'s ``best``,.
-# : comprehension preserves.
-# : candidate of a given width,.
-# : Skipping the other 310 is.
-# : 619k :func:`_solution`.
-# : end to end on the.
-# : 0.37s).
-# : hoisting inside it was.
+#: The class pairs that actually print, which is 32 of the 342 in
+#: :data:`_CLASS_PAIRS`.  A tail is a bare translation, optionally after a
+#: ``p``, so it exists only when the pair is one step apart in one direction or
+#: the other -- and even then not always, because ``_sub_code`` has no spelling
+#: for a shift of 1, which is what strikes ``(1, 0)``, ``(1, 2)``, ``(-1, 0)``
+#: and ``(-1, -2)`` out of the survivors.
+#:
+#: This is a *filter on dead iterations*, not a change of search space.
+#: :func:`_solution` ends with ``_tail_for(classes[1], classes[0])`` and returns
+#: ``None`` when it misses, so a pair outside this tuple can never reach
+#: :func:`_derive`'s ``best``, whatever the rest of the parameter set is.  The
+#: comprehension preserves ``_CLASS_PAIRS`` order and ``best`` keeps the first
+#: candidate of a given width, so the winner is unchanged as well as the reach.
+#: Skipping the other 310 is worth 8.6x on the call count -- measured at
+#: 619k :func:`_solution` calls per two-input table against 72k -- and 6.1x
+#: end to end on the eighteen-table profile that found this loop (2.28s to
+#: 0.37s).  The remaining time is the same nest at a tenth the width, so
+#: hoisting inside it was measured and left out: it is worth about 0.1s.
 _VIABLE_CLASS_PAIRS = tuple(
     pair for pair in _CLASS_PAIRS if _tail_for(pair[1], pair[0]) is not None
 )
@@ -350,26 +350,26 @@ def _derive(truth_table: str) -> tuple[list[tuple[str, str]], str] | None:
     return best[1], best[2]
 
 
-# : Setter branches for the.
-# : characters wide, so a.
-# : parity problem never.
-# : odd shortfall against an.
-# : ``pp`` is two negations,.
-# : then negates zero, which is.
+#: Setter branches for the arbitrary-arity minterm cascade.  Both are two
+#: characters wide, so a setter leaks nothing through ``len()`` and the pad
+#: parity problem never arises: a bare ``'`` erase is one character, and the
+#: odd shortfall against an empty identity branch has no ``pp`` padding.
+#: ``pp`` is two negations, which compose to the identity; ``'p`` zeroes and
+#: then negates zero, which is still zero.
 _CASCADE_IDENT = "pp"
 _CASCADE_ERASE = "'p"
 
-# : Loads 1 into the.
-# : 3, ``s`` subtracts 2.
-# : has no representation for 1.
+#: Loads 1 into the accumulator from 0: ``i`` subtracts 3, ``p`` negates to
+#: 3, ``s`` subtracts 2.  The direct ``+1`` has no spelling -- ``_sub_code``
+#: has no representation for 1 -- so the constant is built by this detour.
 _CASCADE_ONE = "ips"
 
 
-# : Negates a 0/1 accumulator:.
-# : subtracts 2, so ``r``.
-# : the indicator into its.
-# : ``NAND``-``n``.
-# : which builds 1 from an.
+#: Negates a 0/1 accumulator: ``i`` subtracts 3, ``p`` negates, ``s``
+#: subtracts 2, so ``r`` becomes ``1 - r``.  Appending it to a cascade turns
+#: the indicator into its complement, which is what reaches ``OR``-``n`` and
+#: ``NAND``-``n``.  It is the same three characters as :data:`_CASCADE_ONE`,
+#: which builds 1 from an accumulator that is already 0.
 _CASCADE_NOT = "ips"
 
 
@@ -391,8 +391,8 @@ def _subcube_of(truth_table: str, n: int) -> dict[int, int] | None:
         return None
     rows = [tuple((index >> (n - 1 - k)) & 1 for k in range(n)) for index in ones]
     fixed = {k: rows[0][k] for k in range(n) if len({row[k] for row in rows}) == 1}
-    # A subcube on ``len(fixed)``.
-    # a table with the right.
+    # A subcube on ``len(fixed)`` pinned inputs has exactly this many rows;
+    # a table with the right pinning but the wrong count is not one.
     if len(ones) != 2 ** (n - len(fixed)):
         return None
     return fixed
@@ -449,16 +449,16 @@ def _cascade(truth_table: str, n: int) -> str | None:
     return header + _HEADER_END + body
 
 
-# : Multipliers the wide search.
-# : ``p`` (negate) over the.
-# : erase.
-# :.
-# : Written as the closure.
-# : because the bound is the.
-# : reaches no further table,.
-# : is what the two commands.
-# : required because the wide.
-# : behaves: ascending.
+#: Multipliers the wide search composes: the closure of ``m`` (double) and
+#: ``p`` (negate) over the identity, bounded by ``_WIDE_A_LIMIT``, then the
+#: erase.  So ``mp`` is ``-2``, ``mm`` is ``4`` and ``mmp`` is ``-4``.
+#:
+#: Written as the closure rather than as the seven values it comes to,
+#: because the bound is the only measured part: widening past ``|a| == 4``
+#: reaches no further table, while the *shape* -- signed powers of two --
+#: is what the two commands generate and is not a search result.  Order is
+#: required because the wide search takes the first spelling that
+#: behaves: ascending magnitude, positive before negative.
 _WIDE_A_LIMIT = 4
 
 
@@ -474,20 +474,20 @@ def _wide_a_vals(limit: int) -> tuple[int, ...]:
 
 _WIDE_A_VALS = _wide_a_vals(_WIDE_A_LIMIT)
 
-# : Offsets the wide search.
-# : no table that ``+/-12``.
+#: Offsets the wide search composes.  Measured: widening to ``+/-16`` reaches
+#: no table that ``+/-12`` misses.
 _WIDE_B_VALS = tuple(range(-12, 13))
 
-# : Window a candidate spelling.
-# : because it *behaves* as.
-# : which is what lets ``mp``.
+#: Window a candidate spelling is checked against.  A spelling is admitted
+#: because it *behaves* as ``a*x + b`` here, not because it matches a template,
+#: which is what lets ``mp`` be found as ``a == -2`` without a rule for it.
 _SPELL_WINDOW = range(-90, 91)
 
-# : Longest command string the.
+#: Longest command string the speller enumerates for one branch.
 _SPELL_MAX = 7
 
 
-# : The alphabet a branch.
+#: The alphabet a branch spells its map in: erase, step, double, negate.
 _SPELL_ALPHABET = "simp'"
 
 
@@ -534,7 +534,7 @@ def _spell_bases() -> dict[tuple[int, int], tuple[str | None, str | None]]:
     """
     window = tuple(_SPELL_WINDOW)
     shortest: dict[tuple[tuple[int, int], int], str] = {}
-    # The empty string is the.
+    # The empty string is the identity map, and it is even-width.
     identity = _spell_map(window)
     # The window is x itself.
     if identity is None:
@@ -562,8 +562,8 @@ def _spell_bases() -> dict[tuple[int, int], tuple[str | None, str | None]]:
             even = shortest.get(((a, b), 0))
             odd = shortest.get(((a, b), 1))
             if a == 0:
-                # The erase forgets the prefix,.
-                # every width above its own and.
+                # The erase forgets the prefix, so the shorter base spells
+                # every width above its own and the odd slot stays empty.
                 found = [code for code in (even, odd) if code is not None]
                 # Every grid map spells.
                 if not found:
@@ -612,44 +612,44 @@ def _spellings_by_width(a: int, b: int) -> dict[int, str]:
         return out
     for base in (even, odd):
         if base is None:  # pragma: no cover - only a == 0 maps miss a parity
-            # All 25 single-parity maps in.
-            # returned above, so both bases.
-            # The guard stays because it is.
-            # a future base table with a.
-            # it here rather than pad a.
+            # All 25 single-parity maps in the grid have ``a == 0``, and those
+            # returned above, so both bases exist by the time the loop runs.
+            # The guard stays because it is what makes that reasoning local:
+            # a future base table with a one-parity ``a != 0`` map would skip
+            # it here rather than pad a ``None``.
             continue
         for width in range(len(base), _SPELL_MAX + 1, 2):
             out[width] = base + "pp" * ((width - len(base)) // 2)
     return out
 
 
-# : One branch of a setter as.
+#: One branch of a setter as an affine map, ``(a, b)`` for ``x -> a*x + b``.
 _Branch = tuple[int, int]
 
 
-# : Ladders the search runs, as.
-# : of 250 and every rung stays.
-# : one exactly affine: the.
-# : accumulator, so no rung.
-# :.
-# : These eight are a *cover*,.
-# : four bases leaves 256.
-# : other paths miss; greedy.
-# : between them reach all.
-# :.
-# : The cover is minimal --.
-# : for the first three, two.
-# : removing the ladder path.
-# : characters over the twenty.
-# : majority-of-three going 874.
-# :.
-# : **What keeping eight rather.
-# : build time.** An earlier.
-# : about fifty seconds;.
-# : cover's 0.01s.
-# : 26 -- and every one of.
-# : widening would only move.
-# : change, which is the reason.
+#: Ladders the search runs, as ``(weights, base)``.  Every value is a multiple
+#: of 250 and every rung stays within ``[-3003, 0]``, which is what keeps stage
+#: one exactly affine: the reset fires only above 3003 and never on a negative
+#: accumulator, so no rung clamps before the suffix asks it to.
+#:
+#: These eight are a *cover*, not a grid.  The full product of four weights and
+#: four bases leaves 256 distinct ladders, of which 150 reach some table the
+#: other paths miss; greedy set cover over their yields picks these eight, which
+#: between them reach all twenty.
+#:
+#: The cover is minimal -- dropping any one of the eight strands tables (four
+#: for the first three, two for the rest) -- and it determines *size*:
+#: removing the ladder path entirely costs no correctness but 88% more
+#: characters over the twenty it serves (31615 against 59457), with
+#: majority-of-three going 874 to 2280.
+#:
+#: **What keeping eight rather than all 256 buys is assignment stability, not
+#: build time.**  An earlier revision of this comment priced the full grid at
+#: about fifty seconds; measured, folding all 256 takes **0.21s** against the
+#: cover's 0.01s.  What the full grid does change is reach -- 50 tables against
+#: 26 -- and every one of those 24 extras already builds by an earlier path, so
+#: widening would only move which path claims them.  That is a behaviour
+#: change, which is the reason the cover ships, and it is the same argument
 #: :data:`_LADDER_CUTS` makes.
 _LADDERS = (
     ((250, 500, 250), 1000),
@@ -662,9 +662,9 @@ _LADDERS = (
     ((1250, 1250, 500), 2000),
 )
 
-# : Longest suffix the ladder.
-# : the shipped grid need at.
-# : this bounds the frontier.
+#: Longest suffix the ladder search composes after stage 1.  The witnesses in
+#: the shipped grid need at most ten characters; the search is breadth-first, so
+#: this bounds the frontier rather than selecting among solutions.
 _LADDER_DEPTH = 10
 
 
@@ -722,7 +722,7 @@ def _ladder_setters(
         if width is None:
             return None
         code = _sub_of_width(weight, width)
-        if code is None:  # pragma: no cover - the width just spelled it
+        if code is None:  # pragma: no cover - _even_width_for just found one
             return None
         setters.append(("p" * width, code))
     return setters, lead
@@ -748,28 +748,28 @@ def _ladder_vector(
     return tuple(out)
 
 
-# : The five comparators the.
-# : ``(cut, slope)`` -- the two.
-# : :func:`_ladder_gadget`.
-# : threshold on the rung's.
-# : second stage reaches, which.
-# : ``ceil(3004 / slope)``;.
-# : the cut (plus rung 0, when.
-# : band between the thresholds.
-# : cover with the same status.
-# : twenty tables need was.
-# : The spellings themselves.
-# : claimed deriving them meant.
-# : composition is forced (see.
-# : strings now live in the.
-# :.
-# : Five pairs suffice for the.
-# : every comparator the.
-# : slope reaches, 83 gadgets.
-# : serves nothing these five.
-# : fold never lists, but every.
-# : and four would flip from.
-# : so the wider family buys.
+#: The five comparators the ladder path composes after stage one, as
+#: ``(cut, slope)`` -- the two numbers a gadget is a function of, with
+#: :func:`_ladder_gadget` spelling each one.  ``cut`` is the outer
+#: threshold on the rung's magnitude and ``slope`` is the total scale the
+#: second stage reaches, which fixes the inner threshold at
+#: ``ceil(3004 / slope)``; between them a gadget sends rungs at or past
+#: the cut (plus rung 0, when the offsets allow it) to one class and the
+#: band between the thresholds to the other.  These pairs are a measured
+#: cover with the same status as :data:`_LADDERS`: which comparators the
+#: twenty tables need was found by search, and what ships is its result.
+#: The spellings themselves are constructed -- an earlier comment here
+#: claimed deriving them meant re-running the rung composition, but the
+#: composition is forced (see :func:`_ladder_gadget`), and the frozen
+#: strings now live in the suite as the fixture the rule must reproduce.
+#:
+#: Five pairs suffice for the same reason eight ladders do: enumerating
+#: every comparator the grammar spells -- one per outer 250-band each
+#: slope reaches, 83 gadgets in all -- and folding them over the ladders
+#: serves nothing these five miss.  It picks up ten tables the shipped
+#: fold never lists, but every one already builds through an earlier path,
+#: and four would flip from the deep band or the fold to a ladder program,
+#: so the wider family buys behaviour change rather than reach.
 _LADDER_CUTS = ((3004, 4), (1502, 4), (1500, 4), (751, 8), (3004, 8))
 
 
@@ -781,7 +781,7 @@ def _sub_units(units: int) -> str:
     one ``i`` back to pay it as two ``s`` (so 1 unit alone is
     unspellable, which no caller asks for).
     """
-    # Unspellable; silence would.
+    # Unspellable; silence would emit "ss".
     if units == 1:
         raise AssertionError("units != 1")
     if units % 3 == 0:
@@ -848,8 +848,8 @@ def _ladder_gadget(cut: int, slope: int) -> str:
 
 _LADDER_GADGETS = tuple(_ladder_gadget(cut, slope) for cut, slope in _LADDER_CUTS)
 
-# : How a gadget finishes:.
-# : inverts it first, so the.
+#: How a gadget finishes: ``sl`` prints the split as it stands, ``ipl``
+#: inverts it first, so the pair covers a table and its complement.
 _LADDER_TAILS = ("sl", "ipl")
 
 
@@ -917,8 +917,8 @@ def _ladder(truth_table: str, n: int) -> str | None:
     setter of its own.
     """
     if n != 3:
-        # Every shipped ladder has.
-        # tabulation froze was empty at.
+        # Every shipped ladder has three weights, so the harvest this
+        # tabulation froze was empty at every other arity.
         return None
     found = _ladder_built().get(truth_table)
     if found is None:
@@ -935,31 +935,31 @@ def _ladder(truth_table: str, n: int) -> str | None:
     return header + _HEADER_END + body
 
 
-# : Byte values ``e`` prints as.
-# : the accumulator in decimal.
-# : ``chr(acc & 0xFF)`` -- the.
-# : mod 256, which is what.
+#: Byte values ``e`` prints as ``"0"`` and ``"1"``.  Unlike ``l``, which prints
+#: the accumulator in decimal and so needs it to *be* 0 or 1, ``e`` prints
+#: ``chr(acc & 0xFF)`` -- the accumulator only has to be *congruent* to these
+#: mod 256, which is what lifts the ceiling every other path runs into.
 _BYTE_ZERO = 48
 _BYTE_ONE = 49
 
-# : The band construction's.
-# : congruent mod 256 and the.
+#: The band construction's weights are multiples of this, so every row starts
+#: congruent mod 256 and the residue of a band is decided by one translation.
 _BAND_UNIT = 256
 
-# : Where a band construction.
-# : the next stage's translate.
-# : under it that parking.
+#: Where a band construction parks its survivors after each wipe: positive, so
+#: the next stage's translate can still push them over the limit, and far enough
+#: under it that parking itself never clamps.
 _BAND_PARK = 2000
 
 
-# : How far the deep band's.
-# : where the measured coverage.
-# : over weightings rather than.
+#: How far the deep band's weights range, in whole residue systems.  Six is
+#: where the measured coverage stops improving at four inputs; the search is
+#: over weightings rather than programs, so this bounds a derivation's input,
 #: not a program space.
 _DEEP_CAP = 6
 
-# : Where the deep band parks.
-# : the limit, so a later cut's.
+#: Where the deep band parks its survivors between cuts.  Positive and under
+#: the limit, so a later cut's translation can still carry them across it.
 _DEEP_PARK = 2000
 
 
@@ -1015,8 +1015,8 @@ def _deep_plan(truth_table: str, n: int, values: list[int]) -> str | None:
     groups: dict[int, set[str]] = {}
     for row in rows:
         groups.setdefault(values[row], set()).add(truth_table[row])
-    # Two rows sharing a value can.
-    # across classes would emit a.
+    # Two rows sharing a value can never be told apart again, so a collision
+    # across classes would emit a program computing the wrong function.
     if any(len(classes) > 1 for classes in groups.values()):
         return None
 
@@ -1048,11 +1048,11 @@ def _deep_plan(truth_table: str, n: int, values: list[int]) -> str | None:
         if drop is None:
             continue  # pragma: no cover - screened by legality
         body = _deep_body(truth_table, n, values, order, anchor, live, prefix, drop)
-        # The first prefix that spells.
-        # loop always returns on that.
+        # The first prefix that spells a drop spells a body too, so the
+        # loop always returns on that pass rather than trying another.
         if body is not None:  # pragma: no branch
             return body
-    return None  # pragma: no cover
+    return None  # pragma: no cover - screened by legality
 
 
 def _deep_body(
@@ -1070,11 +1070,11 @@ def _deep_body(
     dropped = _sub_code(drop) if drop else ""
     if dropped is None:  # pragma: no cover - the caller chose a spellable drop
         return None
-    # The ladder subtracted, so one.
-    # the drop carried past the.
+    # The ladder subtracted, so one ``p`` turns the order positive; the rows
+    # the drop carried past the limit are wiped by the next command's reset.
     body = dropped + "p"
-    # Rows collapse onto their.
-    # more than the span budget.
+    # Rows collapse onto their runs' values -- eleven for parity-10, never
+    # more than the span budget allows -- so each code runs once per value,
     # not once per row.
     moved = {-v: _apply(-v, dropped + "p") for v in set(values)}
     current = {r: moved[-values[r]] for r in rows}
@@ -1082,11 +1082,11 @@ def _deep_body(
         return None  # pragma: no cover - screened by legality
     cleared = set(order[:prefix])
     for row in cleared:
-        # Empty from the screened.
-        # ``prefix == 0`` -- measured.
-        # inputs, 1332 bodies, all of.
-        # past the limit and there is.
-        # planner's own handling of a.
+        # Empty from the screened caller: a legal weighting is planned at
+        # ``prefix == 0`` -- measured over every table at two and three
+        # inputs, 1332 bodies, all of them prefix 0 -- so nothing is carried
+        # past the limit and there is nothing to clear.  The loop is the
+        # planner's own handling of a prefix a wider caller could ask for.
         current[row] = 0  # pragma: no cover - screened by legality
 
     live_order = [r for r in order if r not in cleared]
@@ -1105,9 +1105,9 @@ def _deep_body(
         if low > high or low <= 0:
             return None  # pragma: no cover - screened by legality
         band = _BYTE_ONE if truth_table[wipe[0]] == "1" else _BYTE_ZERO
-        # A wiped band thereafter takes.
-        # so the parking cancels from.
-        # cut: the translation is.
+        # A wiped band thereafter takes the same translations as the survivors,
+        # so the parking cancels from their gap and one congruence fixes the
+        # cut: the translation is solved, not searched.
         wanted = (live - band - current[anchor]) % _BAND_UNIT
         up = low + ((wanted - low) % _BAND_UNIT)
         if up > high:
@@ -1130,24 +1130,24 @@ def _deep_body(
         cleared.update(wipe)
 
     base = (live - current[anchor]) % _BAND_UNIT
-    # Nearest zero first: a shift.
-    # taking the smallest keeps the.
-    # from -80 residue systems up.
-    # ten-thousand-character run of.
+    # Nearest zero first: a shift is spelled one character per two units, so
+    # taking the smallest keeps the program short.  An earlier version scanned
+    # from -80 residue systems up and emitted the first that worked, which is a
+    # ten-thousand-character run of ``s``.
     for shift in sorted((base + _BAND_UNIT * reps for reps in range(-8, 9)), key=abs):
         tail = _affine_code(1, shift)
         if tail is None:
             continue  # pragma: no cover - screened by legality
         shifted = {v: _apply(v, tail) for v in set(current.values())}
         printed = {r: shifted[v] for r, v in current.items()}
-        # A band reaching here has a.
-        # the first spellable tail.
+        # A band reaching here has a working shift among the seventeen, so
+        # the first spellable tail prints and the loop returns.
         if all(  # pragma: no branch
             (printed[r] & 0xFF) == (_BYTE_ONE if truth_table[r] == "1" else _BYTE_ZERO)
             for r in rows
         ):
             return body + tail + "e"
-    return None  # pragma: no cover
+    return None  # pragma: no cover - screened by legality
 
 
 def _deep_setters(
@@ -1167,9 +1167,9 @@ def _deep_setters(
         if code is None:  # pragma: no cover - the width just spelled it
             return None
         hold = "p" * width
-        # The hold branch is ``pp``.
-        # identity, so both branches.
-        # program leaks its inputs.
+        # The hold branch is ``pp`` repeated, two negations composing to the
+        # identity, so both branches run the same number of commands and no
+        # program leaks its inputs through ``len()``.
         setters.append((hold, code) if not (mask >> index) & 1 else (code, hold))
     return tuple(setters)
 
@@ -1187,19 +1187,19 @@ def _cross_class_diffs(truth_table: str, n: int) -> list[tuple[int, ...]]:
     Sixteen rows give 120 pairs but only about 32 distinct vectors, and the
     dedup is what makes the legality test cheap enough to replace planning.
     """
-    # A diff is the disjoint bit.
-    # row has a 1 the second lacks,.
-    # packed int each and only the.
-    # ``lead > 0`` says the top.
+    # A diff is the disjoint bit pair ``(plus, minus)`` -- where the first
+    # row has a 1 the second lacks, and vice versa -- so pairs dedup as one
+    # packed int each and only the distinct survivors spell out as tuples.
+    # ``lead > 0`` says the top differing bit is a plus, i.e. ``plus > minus``.
     seen: set[int] = set()
     size = 2**n
     for row in range(size):
         for other in range(row + 1, size):
             if truth_table[row] == truth_table[other]:
                 continue
-            # ``other > row``, so the.
-            # always other's: ``other &.
-            # ``row & ~other``, and the.
+            # ``other > row``, so the highest bit the two differ on is
+            # always other's: ``other & ~row`` therefore always exceeds
+            # ``row & ~other``, and the canonical order is the swap every
             # time rather than a comparison.
             plus, minus = other & ~row, row & ~other
             seen.add((plus << n) | minus)
@@ -1259,7 +1259,7 @@ def _deep_weightings(n: int) -> tuple[tuple[int, ...], ...]:
         units[index] = 0
 
     fill(0, budget)
-    by_sum[0].clear()  # the all-zero tuple, the one.
+    by_sum[0].clear()  # the all-zero tuple, the one sum-0 composition
     for bucket in by_sum:
         bucket.sort(key=lambda u: (max(u), u))
     return tuple(chain.from_iterable(by_sum))
@@ -1310,14 +1310,14 @@ def _deep_band(truth_table: str, n: int) -> str | None:
     program the enumeration occasionally finds.
     """
     if n > _LIMIT // _BAND_UNIT:
-        # Each unit prices a whole.
-        # weighting costs ``n * 256``.
-        # eleven inputs.
-        # only symmetric tables pass.
-        # table that ignores an input.
-        # already served.
-        # enumeration below -- a.
-        # whose every survivor the.
+        # Each unit prices a whole residue system, so even the all-ones
+        # weighting costs ``n * 256`` of span and the budget tops out at
+        # eleven inputs.  A zero unit cannot rescue a table here either:
+        # only symmetric tables pass the screen below, and a symmetric
+        # table that ignores an input is constant -- which the cascade
+        # already served.  Refusing up front skips the sum-bounded
+        # enumeration below -- a million-tuple walk at thirteen inputs
+        # whose every survivor the zero-unit argument rejects.
         return None
     if n > 4 and any(
         len({truth_table[r] for r in range(2**n) if bin(r).count("1") == pop}) > 1
@@ -1325,15 +1325,15 @@ def _deep_band(truth_table: str, n: int) -> str | None:
     ):
         return None
     diffs = _cross_class_diffs(truth_table, n)
-    # A singleton diff -- rows.
-    # ``±units[k]`` under every.
-    # there is illegal at all masks.
-    # any.
-    # (any coordinate can carry a.
-    # everything past the screen.
-    # the C-speed ``0 in units``.
-    # 24219 weightings ordered.
-    # have a zero unit, so the.
+    # A singleton diff -- rows apart in one coordinate -- totals
+    # ``±units[k]`` under every mask, so a weighting with a zero unit
+    # there is illegal at all masks and can be skipped without testing
+    # any.  Every non-constant symmetric table has all ``n`` singletons
+    # (any coordinate can carry a class-boundary bit flip), and that is
+    # everything past the screen above, so past four inputs the skip is
+    # the C-speed ``0 in units``.  Parity is the extreme case again: all
+    # 24219 weightings ordered before the popcount ladder at nine inputs
+    # have a zero unit, so the ladder is the first weighting *tested*.
     singles = {diff.index(1) for diff in diffs if sum(map(abs, diff)) == 1}
     full_screen = len(singles) == n
     for units in _deep_weightings(n):
@@ -1343,12 +1343,12 @@ def _deep_band(truth_table: str, n: int) -> str | None:
         elif any(not units[k] for k in singles):
             continue
         for mask in range(2**n):
-            # Legality decides the.
-            # weighting whose collisions.
-            # been observed to fail here --.
-            # span budget were scheduled.
-            # replaces planning as the.
-            # below runs once rather than.
+            # Legality decides the weighting; the schedule then follows.  A
+            # weighting whose collisions all join rows of one class has never
+            # been observed to fail here -- 63274 legal weightings inside the
+            # span budget were scheduled without one refusal -- so this test
+            # replaces planning as the thing being searched for, and the plan
+            # below runs once rather than once per candidate.
             if not _weighting_is_legal(units, mask, diffs):
                 continue
             values = _deep_values(n, units, mask)
@@ -1368,96 +1368,96 @@ def _deep_band(truth_table: str, n: int) -> str | None:
 
 _FOLD_STEP = 4
 
-# : The ladder spacing tried.
-# :.
-# : **What bounded the fold was.
-# : rows start at ``-step *.
-# : the emitter has to lay it.
-# : At the wide spacing that is.
-# : workspace, so no such table.
-# : planner searched.
-# : is exactly what happened:.
-# : the emitter would refuse,.
-# : unmerged.) Halving the.
-# : and ten inputs then build.
-# :.
-# : Two is the floor.
-# : :func:`_sub_code` spells.
-# : the last input to subtract.
-# : With 2 the floor, ``2 *.
-# : inputs.
-# : itself the waste, and.
-# : spending only what.
-# :.
-# : It is a *fallback* rather.
-# : is built on the wider.
-# : plans the same tables but.
-# : on a miss keeps every.
-# : confines the change to the.
+#: The ladder spacing tried when :data:`_FOLD_STEP` finds no plan.
+#:
+#: **What bounded the fold was the ladder's footprint, not the search.**  The
+#: rows start at ``-step * r``, so the ladder spans ``step * (2**n - 1)``, and
+#: the emitter has to lay it inside ``[-_LIMIT, 0]`` from a zero accumulator.
+#: At the wide spacing that is 4092 against 3003 at ten inputs -- over the
+#: workspace, so no such table could ever be emitted, however long the
+#: planner searched.  (Before :func:`_fold_at` gated on the right bound, that
+#: is exactly what happened: the descent wandered a relative-geometry space
+#: the emitter would refuse, dead-ending 354 moves in with 420 of 514 points
+#: unmerged.)  Halving the spacing halves the footprint to 2046, which fits,
+#: and ten inputs then build and print every row on the interpreter.
+#:
+#: Two is the floor.  ``s`` subtracts 2 and ``i`` subtracts 3, so
+#: :func:`_sub_code` spells every amount except 1 -- a step of 1 would need
+#: the last input to subtract exactly 1 and has no spelling at any width.
+#: With 2 the floor, ``2 * (2**n - 1) <= 3003`` caps *this* ladder at ten
+#: inputs.  That is not where the fold ends, though: uniform spacing is
+#: itself the waste, and :data:`_FOLD_SUBSET_LADDER` reaches eleven by
+#: spending only what distinctness costs.
+#:
+#: It is a *fallback* rather than the default because every shipped program
+#: is built on the wider ladder: at four inputs and below the narrow ladder
+#: plans the same tables but emits different characters, so trying it only
+#: on a miss keeps every template that builds today byte-identical and
+#: confines the change to the arities that refused.
 _FOLD_NARROW_STEP = 2
 
-# : The packed ladder: ``(2, 3,.
-# :.
-# : **A uniform ladder wastes.
-# : to sit at ``2**n``.
-# : merged by the first cut.
-# : but a uniform ladder buys.
-# : 1)``, which is far more.
-# : is a set of weights whose.
-# : cheapest such set spans.
-# :.
-# : The floor is easy to state.
-# : integers, so the largest is.
-# : (``2a + 3b`` cannot spell.
-# : sums to ``S - 1``.
-# : and ``S >= 2**n + 1``.
-# : cover the small residues.
-# : a weight of 1, and the.
-# : ``2**n`` sums are distinct.
-# :.
-# : That is what lifts the.
-# : eleven inputs against the.
-# : **2049**, and eleven inputs.
-# : does not fit, so this shape.
-# : reaches thirteen, since.
-# : positions a ``p``-negated.
-# :.
-# : **Row order stops matching.
-# : the rest of the fold had.
-# : ``-step * r``, so.
-# : are contiguous; with these.
-# : (weight 16).
-# : position rather than over.
-# : plan search, the moves, the.
+#: The packed ladder: ``(2, 3, 4, 8, 16, ..., 2**(n-2) * 2)``.
+#:
+#: **A uniform ladder wastes half the workspace.**  The fold needs the rows
+#: to sit at ``2**n`` *distinct* positions -- two rows sharing a value are
+#: merged by the first cut reaching them and can never be separated again --
+#: but a uniform ladder buys that distinctness by spending ``step * (2**n -
+#: 1)``, which is far more than distinctness costs.  What it actually costs
+#: is a set of weights whose ``2**n`` subset sums are distinct, and the
+#: cheapest such set spans about ``2**n`` rather than ``2 * 2**n``.
+#:
+#: The floor is easy to state.  The sums are ``2**n`` distinct non-negative
+#: integers, so the largest is at least ``2**n - 1``; the minimum weight is 2
+#: (``2a + 3b`` cannot spell 1), so no subset sums to 1, and by symmetry none
+#: sums to ``S - 1``.  Two values inside ``[0, S]`` are therefore unattainable
+#: and ``S >= 2**n + 1``.  The set above **meets that floor exactly**: 2 and 3
+#: cover the small residues that a pure doubling ladder cannot reach without
+#: a weight of 1, and the powers above them behave like a binary code, so all
+#: ``2**n`` sums are distinct with a total of exactly ``2**n + 1``.
+#:
+#: That is what lifts the arity.  The narrow uniform ladder spends 4094 at
+#: eleven inputs against the 3003 the workspace allows; this one spends
+#: **2049**, and eleven inputs build and execute.  Twelve needs 4097, which
+#: does not fit, so this shape ends there -- and no ladder of any shape
+#: reaches thirteen, since ``2**13 + 1`` exceeds even the two-sided ``6007``
+#: positions a ``p``-negated ladder could address.
+#:
+#: **Row order stops matching position order here**, which is the one thing
+#: the rest of the fold had assumed.  On a uniform ladder row ``r`` sits at
+#: ``-step * r``, so consecutive rows are adjacent points and a table's runs
+#: are contiguous; with these weights row 1 (weight 1024) sits *below* row 8
+#: (weight 16).  :func:`_fold_at` therefore groups runs over rows sorted by
+#: position rather than over ``range(2**n)``.  Everything downstream -- the
+#: plan search, the moves, the emitter -- already worked in positions and
 #: needed no change.
-# : The value is the ladder's.
-# : powers;.
-# : They are what meets the.
-# : ``2 * (2**n - 1)``, and it.
-# : weight of 1 would otherwise.
+#: The value is the ladder's irregular *head*, the two weights that are not
+#: powers; :func:`_fold_subset_weights` appends the doubling tail to it.
+#: They are what meets the floor -- a pure doubling ladder from 2 spans
+#: ``2 * (2**n - 1)``, and it is 2 and 3 together that cover the small sums a
+#: weight of 1 would otherwise be needed for.
 _FOLD_SUBSET_LADDER = (2, 3)
 
-# : One point of a fold plan:.
-# : row value relative to the.
-# : (0 once it has been wiped.
+#: One point of a fold plan: ``(top, span, cls, rows)`` -- the group's highest
+#: row value relative to the state's top, how far its rows extend below it
+#: (0 once it has been wiped and its rows merged), its class, and the rows.
 _FoldPoint = tuple[int, int, str, frozenset[int]]
 _FoldState = tuple[_FoldPoint, ...]
 
-# : One move: ``(kind, k, c,.
-# : wipe the bottom/top ``k``.
+#: One move: ``(kind, k, c, victims)`` -- ``"m"`` doubles, ``"d"``/``"u"``
+#: wipe the bottom/top ``k`` groups with relocation amount ``c``.
 _FoldOp = tuple[str, int, int, frozenset[int]]
 
-# : The largest bridge state.
-# : not chosen: exhaustively.
-# : hand the bridge more than.
-# : the state (a function of.
-# : 12``) top out at four.
-# : a 512-point state burned.
-# : for 192s -- while.
+#: The largest bridge state :func:`_fold_to_cofactors` will search.  Measured,
+#: not chosen: exhaustively over ``n <= 4`` the 33628 tables that build never
+#: hand the bridge more than eight points, and the adversaries built to grow
+#: the state (a function of the first ``k`` inputs embedded at ``n = 8, 10,
+#: 12``) top out at four.  Above this a doomed arity used to get expensive --
+#: a 512-point state burned the retired best-first bridge's 50000-state cap
+#: for 192s -- while contributing no build, so it is declined instead of
 #: paid for.
 _COFACTOR_BRIDGE_POINTS = 8
 
-# : A point in the emitter's.
+#: A point in the emitter's mirror: a raw row or a merged set of rows.
 _FoldKey = int | frozenset[int]
 
 
@@ -1515,8 +1515,8 @@ def _fold_moves(
     top_all = max(p for p, _, _, _ in state)
     bot_all = min(p - s for p, s, _, _ in state)
     spread = top_all - bot_all
-    # Doubling needs the whole.
-    # odd spread of 3003 has no.
+    # Doubling needs the whole state inside [-3003, 3003] afterwards, and an
+    # odd spread of 3003 has no integer placement, hence the -2.
     if 0 < spread * 2 <= 2 * _LIMIT - 2:
         yield (
             "m",
@@ -1600,8 +1600,8 @@ def _fold_moves(
             if hi - lo > 2 * _LIMIT:
                 continue
             merged = _fold_merge(items)
-            # The span check above is the.
-            # pair that passes it always.
+            # The span check above is the merge's own precondition, so a
+            # pair that passes it always merges.
             if merged is not None:  # pragma: no branch
                 yield (
                     "u",
@@ -1663,7 +1663,7 @@ def _fold_step(state: _FoldState, op: _FoldOp) -> _FoldState | None:
             return None
         return _fold_norm([(p * 2, s * 2, c, i) for p, s, c, i in state])
     if k == len(state):
-        # The everything-wipe: legal.
+        # The everything-wipe: legal only once a single class remains.
         if len({c for _, _, c, _ in state}) != 1:
             return None
         allids = frozenset(x for _, _, _, i in state for x in i)
@@ -1709,13 +1709,13 @@ def _fold_clean_amount(state: _FoldState, kind: str, k: int) -> int | None:
     for amount in range(_LIMIT + 1, _LIMIT + q1 + 1):
         if amount not in occupied:
             return amount
-    # The window cannot be.
-    # set is the survivor tops,.
-    # needs ``q1`` survivors --.
-    # *nearest* survivor, and.
-    # Measured over 47.2M legal.
-    # every k, mixed spans and.
-    # stays as the total function's.
+    # The window cannot be exhausted: it has ``q1`` slots and the occupied
+    # set is the survivor tops, which are distinct positions, so filling it
+    # needs ``q1`` survivors -- while ``q1`` is itself the gap to the
+    # *nearest* survivor, and packing that many in collapses it to 1.
+    # Measured over 47.2M legal wipe frames (sizes 2-4, both directions,
+    # every k, mixed spans and classes): no window ever ran out.  The return
+    # stays as the total function's last arm.
     return None  # pragma: no cover
 
 
@@ -1781,7 +1781,7 @@ def _fold_rule_move(state: _FoldState) -> _FoldOp | None:
         k += 1
     if 1 < k < m:
         amount = _fold_clean_amount(state, "u", k)
-        # ``1 < k < m`` is the clean.
+        # ``1 < k < m`` is the clean amount's own precondition.
         if amount is not None:  # pragma: no branch
             return _fold_op(state, "u", k, amount)
     asc = sorted(state, key=lambda t: t[0])
@@ -1790,7 +1790,7 @@ def _fold_rule_move(state: _FoldState) -> _FoldOp | None:
         k += 1
     if 1 < k < m:
         amount = _fold_clean_amount(state, "d", k)
-        # ``1 < k < m`` is the clean.
+        # ``1 < k < m`` is the clean amount's own precondition.
         if amount is not None:  # pragma: no branch
             return _fold_op(state, "d", k, amount)
     top = max(p for p, _, _, _ in state)
@@ -1851,244 +1851,244 @@ def _fold_reduce(
     return ops if done(st) else None
 
 
-# : The rule construction's.
-# : rather than a flat number.
-# : count** -- the fold opens.
-# : a budget written against.
+#: The rule construction's step budget, as ``slope * points + slack``
+#: rather than a flat number.  **The starting point count is the run
+#: count** -- the fold opens with one point per run of the sorted table, so
+#: a budget written against points is written against the table's own
 #: structure.
-# :.
-# : **The budget is what.
-# : descent's termination facts.
-# : coalesces points, so the.
-# : workspace, so the states at.
-# : third leg was its ``seen``.
-# : The rules are.
-# : none was observed anywhere.
-# : forbids one, and the budget.
-# : ``None`` refusal every.
-# :.
-# : So the slope only has to be.
-# : and its calibration.
-# : **four inputs was.
-# : non-constant four-input.
-# : against the 144 this budget.
-# : exhaustive population, not.
-# : table is regular: the.
-# : the worst ratio peaks at.
-# :.
-# : Sampling at wider arities.
-# : points) and, importantly,.
-# : observed ratio rose with.
-# : the slope is not presented.
-# : above an observed peak that.
-# : rules sit further under it.
-# : ratio is 4.77, at 13.
-# : eleven-input state -- so.
-# : that acceptable is the.
-# : decide what builds, only.
-# : being the last route tried,.
-# : nothing on a table that.
-# :.
-# : **What the cost actually.
-# : exhaustive rather than.
-# : lengths, every one of the.
-# : 32767 at four map to a.
-# : 65534 tables share those.
-# : complement -- the cost is.
-# : table beyond the word.
-# :.
-# : The dependence is on the.
-# : of the 2248.
-# : cost-invariant.
-# : run count and class sizes.
-# : otherwise alternating word.
-# : table shape, three times.
-# : worst tables in the whole.
-# : alternating with a single.
-# :.
-# : **All of the above is about.
-# : not an invariant of.
-# : the order.
-# : makes each step depend on.
-# : distance.
-# : signatures with a global.
-# : three-input words, and can.
-# : descent takes 9 steps on.
-# :.
-# : Against the true distance.
-# : a fixed run count the.
-# : (spread 1, against the.
-# : the exact run lengths at.
-# : ambiguity at every run.
-# : used to record is a fact.
-# : exact lengths that "matter.
-# :.
-# : **The optimal cost has a.
-# : and calling a slot *long*.
-# :.
-# : cost(word) = 2 * r - 3 - (r.
-# :.
-# : where the *middle* slots.
-# : odd ``r``, two for even.
-# : minimum cost at that run.
-# : The bracket is the.
-# : spread above is exactly.
-# :.
-# : **Definitions, because the.
-# : wrong.** ``cost`` is the.
-# : one point per run, at.
-# : ``_FOLD_STEP * (len - 1)``.
-# : ``(top, span, class)``.
-# : successors with.
-# : bind below nine points.
-# : move set for every word.
-# : ``kcap=3`` was a different.
-# :.
-# : The harness's start state.
-# : that is checked rather than.
-# : four-input tables, the.
-# : has the identical signature.
-# : of 65534.
-# : complement share one --.
+#:
+#: **The budget is what guarantees a return.**  Two of the retired
+#: descent's termination facts still hold -- ``_fold_merge`` only ever
+#: coalesces points, so the count never rises, and every move guards the
+#: workspace, so the states at a fixed count are finitely many -- but the
+#: third leg was its ``seen`` set, and :func:`_fold_reduce` carries none.
+#: The rules are deterministic, so a revisited state would be a true cycle;
+#: none was observed anywhere the construction was measured, but nothing
+#: forbids one, and the budget converts that possibility into the same
+#: ``None`` refusal every other dead end takes.
+#:
+#: So the slope only has to be generous enough not to cut a reduction short,
+#: and its calibration predates the rules: on the retired descent's walks
+#: **four inputs was enumerated rather than sampled**: folding all 65534
+#: non-constant four-input tables gives a worst of 78 steps at 16 points,
+#: against the 144 this budget allows there -- 1.8x headroom over an
+#: exhaustive population, not a lucky sample.  The whole ``pts -> steps``
+#: table is regular: the maximum climbs smoothly with the point count and
+#: the worst ratio peaks at **5.25** around 12 points, then falls away.
+#:
+#: Sampling at wider arities agrees (worst 5.65 at five inputs, at 17
+#: points) and, importantly, does *not* converge downward -- the worst
+#: observed ratio rose with every widening, 4.25 through 5.65.  That is why
+#: the slope is not presented as derived: it is a bound chosen to sit well
+#: above an observed peak that small states, not large ones, produce.  The
+#: rules sit further under it than the descent did -- their worst observed
+#: ratio is 4.77, at 13 points, over the same corpora plus the 997-group
+#: eleven-input state -- so the bound carries over unshrunk.  What makes
+#: that acceptable is the termination argument above -- the budget does not
+#: decide what builds, only how long a doomed descent runs -- plus the fold
+#: being the last route tried, so a loose budget costs refusal latency and
+#: nothing on a table that builds.
+#:
+#: **What the cost actually depends on is the run-length word**, and that is
+#: exhaustive rather than sampled: writing each table as its sequence of run
+#: lengths, every one of the 127 distinct words at three inputs and all
+#: 32767 at four map to a *single* step count, with no exceptions.  Since
+#: 65534 tables share those 32767 words in pairs -- a table and its
+#: complement -- the cost is complement-invariant too, and nothing about the
+#: table beyond the word matters.
+#:
+#: The dependence is on the word as a *sequence*, not as a multiset: only 27
+#: of the 2248 rotation-and-reflection classes at four inputs are
+#: cost-invariant.  Position is what moves it.  Holding the point count,
+#: run count and class sizes fixed and sliding one length-2 run through an
+#: otherwise alternating word takes the cost from 27 steps to 78 -- the same
+#: table shape, three times the work, decided by where the defect sits.  The
+#: worst tables in the whole four-input enumeration are exactly that: near
+#: alternating with a single late defect.
+#:
+#: **All of the above is about the greedy descent's path length, which is
+#: not an invariant of anything.**  It is one policy's walk, tie-broken by
+#: the order :func:`_fold_moves` yields and carrying a ``seen`` set that
+#: makes each step depend on the whole history, so it is not even a graph
+#: distance.  Comparing it against one -- a breadth-first search over
+#: signatures with a global visited set -- it is *optimal on 4 of 196*
+#: three-input words, and can be 14 steps where 6 suffice.  Some words the
+#: descent takes 9 steps on are 2 steps from done.
+#:
+#: Against the true distance the structure is completely different.  Within
+#: a fixed run count the optimal cost takes exactly **two adjacent values**
+#: (spread 1, against the greedy spread of 9), and it does *not* depend on
+#: the exact run lengths at all -- only on which runs exceed 1, with zero
+#: ambiguity at every run count.  So the incompressibility this docstring
+#: used to record is a fact about the heuristic, not about the fold: the
+#: exact lengths that "matter without limit" matter only to greedy's walk.
+#:
+#: **The optimal cost has a closed form.**  Writing ``r`` for the run count
+#: and calling a slot *long* when its run exceeds 1::
+#:
+#:     cost(word) = 2 * r - 3 - (r % 2) + [every middle slot is long]
+#:
+#: where the *middle* slots are ``{(r - 1) // 2, r // 2}`` -- one slot for
+#: odd ``r``, two for even.  The first three terms are ``base(r)``, the
+#: minimum cost at that run count: 1, 2, 5, 6, 9, 10, 13 at ``r = 2..8``.
+#: The bracket is the ``delta``, which is 0 or 1, so the two-adjacent-values
+#: spread above is exactly this term.
+#:
+#: **Definitions, because the quantity is what the prior investigation got
+#: wrong.**  ``cost`` is the breadth-first distance from the start state --
+#: one point per run, at ``-_FOLD_STEP * first_row`` with span
+#: ``_FOLD_STEP * (len - 1)`` -- to a :func:`_fold_done` state, over
+#: ``(top, span, class)`` signatures with a *global* visited set, generating
+#: successors with :func:`_fold_moves` at ``kcap=None``.  ``kcap`` does not
+#: bind below nine points (``kmax = m if m <= 8``), so this is the shipped
+#: move set for every word measured; at ``r >= 9`` the retired descent's
+#: ``kcap=3`` was a different graph and is not covered by this rule.
+#:
+#: The harness's start state is the same object :func:`_fold` builds, and
+#: that is checked rather than assumed: over all 65534 non-constant
+#: four-input tables, the state constructed from the run-length word alone
+#: has the identical signature to the one built from the table, 65534
+#: of 65534.  Those tables carry only 32767 distinct words -- a table and its
+#: complement share one -- which is where the cost's complement-invariance
 #: comes from.
-# :.
-# : Measured over **1091 words.
-# : inputs for ``r <= 6`` (all.
-# : words, the ones with the.
-# : over ``>1``-patterns at.
-# : carried by several words.
-# : killed the earlier.
-# : words at five and six.
-# : rule is most likely to get.
-# : extreme mass contrasts, the.
-# :.
-# : The delta is pinned at the.
-# : ``r == 6`` the middle is a.
-# : matters: at four inputs.
-# : each cost 9 with one middle.
-# : 10 with both.
-# : ``(1, 1, 1, 2, 1, 1, 25)``.
-# : with no solution and depth.
-# : present at a run count no.
-# : against ``base(7) == 10``,.
-# : ``(2, 1, 1, 1, 1, 1, 1)``.
-# : (1.17M states, 344s and.
-# : ``(1, 1, 1, 1, 1, 1, 26)``.
+#:
+#: Measured over **1091 words with zero mismatches**: exhaustive at three
+#: inputs for ``r <= 6`` (all 119 words) plus two of the seven ``r == 7``
+#: words, the ones with the defect at either end; exhaustive
+#: over ``>1``-patterns at four and five inputs for ``r <= 5``, each pattern
+#: carried by several words that vary *where* the mass sits (the axis that
+#: killed the earlier candidates), 322 and 468 words; 300 uniformly random
+#: words at five and six inputs; and an adversarial round on the shapes the
+#: rule is most likely to get wrong -- pairs differing only at a middle slot,
+#: extreme mass contrasts, the same pattern at 8, 16, 32 and 64 rows.
+#:
+#: The delta is pinned at the run counts where its shape changes.  At
+#: ``r == 6`` the middle is a *pair* of slots and the conjunction is what
+#: matters: at four inputs ``(1, 1, 2, 1, 1, 10)`` and ``(1, 1, 1, 2, 1, 10)``
+#: each cost 9 with one middle slot long, while ``(1, 1, 2, 2, 1, 9)`` costs
+#: 10 with both.  At ``r == 7`` the middle is the single slot 3, and
+#: ``(1, 1, 1, 2, 1, 1, 25)`` costs exactly 11 -- depths 9 and 10 exhaust
+#: with no solution and depth 11 finds a plan (393s) -- so the ``+1`` is
+#: present at a run count no other measurement reached.  It is measured
+#: against ``base(7) == 10``, which is itself proved twice: a full BFS on
+#: ``(2, 1, 1, 1, 1, 1, 1)`` and on ``(1, 1, 1, 1, 1, 1, 2)`` at three inputs
+#: (1.17M states, 344s and 195s), and an iterative deepening on
+#: ``(1, 1, 1, 1, 1, 1, 26)`` at five that finds nothing at depth 9 and a
 #: plan at depth 10.
-# :.
-# : **The delta's mechanism,.
-# : points requires an.
-# : span*: the wipe collapses.
-# : survivor keeps its span,.
-# : anything whose span is.
-# : ``desc[:k]`` -- 8116 of.
-# : long *middle* run is the.
-# : dragging a neighbour, so it.
-# : necessary condition on all.
-# : them admitting a one-move.
-# :.
-# : The earlier telling of this.
-# : keeping straight: a ``k >=.
-# : (414 of 840 partial sweeps.
-# : requirement lives in the.
-# :.
-# : The ``base(r)`` half is.
-# : plans gives ``r - 1 + 2 *.
-# : ``floor((r - 2) / 2)``.
-# : ``d``; ``(1, 1, 14)`` is.
-# : ``d, m, d, u, u``; ``(1, 1,.
-# : three ``u``.
-# : the count tracks how often.
-# : mechanism sketch, not a.
-# : validated by measurement,.
+#:
+#: **The delta's mechanism, re-derived.**  A one-move finish from three
+#: points requires an untouched span-0 point, and *only a wipe zeroes a
+#: span*: the wipe collapses its victims to ``(0, 0, cls, ids)`` while every
+#: survivor keeps its span, and :func:`_fold_merge` refuses to coalesce
+#: anything whose span is nonzero.  Since every wipe takes ``asc[:k]`` or
+#: ``desc[:k]`` -- 8116 of 8116 moves checked contiguous, none interior -- a
+#: long *middle* run is the one group no prefix or suffix reaches without
+#: dragging a neighbour, so it costs the extra move.  Verified as a
+#: necessary condition on all 1005 reachable three-point states, with 462 of
+#: them admitting a one-move finish as a positive control.
+#:
+#: The earlier telling of this mechanism was wrong in one detail worth
+#: keeping straight: a ``k >= 2`` wipe does *not* require span-0 victims
+#: (414 of 840 partial sweeps observed have a spanned victim).  The span-0
+#: requirement lives in the landing, not the sweep.
+#:
+#: The ``base(r)`` half is regularity rather than proof.  Censusing optimal
+#: plans gives ``r - 1 + 2 * floor((r - 2) / 2)`` moves, split as
+#: ``floor((r - 2) / 2)`` doublings and the rest wipes -- ``(1, 15)`` is one
+#: ``d``; ``(1, 1, 14)`` is ``d`` then ``u``; ``(1, 1, 1, 13)`` is
+#: ``d, m, d, u, u``; ``(1, 1, 1, 1, 1, 11)`` is four ``d``, two ``m``,
+#: three ``u``.  A doubling is what lets a landing split two survivors, so
+#: the count tracks how often the cyclic order must be broken.  That is a
+#: mechanism sketch, not a lower-bound argument: the closed form is
+#: validated by measurement, and the ``m``-count is observed rather than
 #: derived.
-# :.
-# : **Four recorded.
-# : corrected here.** Every.
-# : path length, not against a.
-# : ``(19, 2, 11)`` and ``(23,.
-# : ``(10, 20, 34)`` both cost.
-# : both cost 6.
-# : recodings were never.
-# : -slot rule's supposed death.
-# : ``(1, 14, 1)`` costs 3.
-# : says, against the claim.
-# : recorded ``base`` table was.
-# : 0 at four inputs -- a.
-# : start state has a nonzero.
-# :.
-# : What this does *not* say:.
-# : was measured (``r <= 5`` at.
-# : and ``r >= 8`` is untested.
-# : closed form's prediction,.
-# : costs about six minutes and.
-# : compute question rather.
-# :.
-# : One law was found and.
-# : three-input maxima exactly,.
-# : -- four inputs violate it.
-# : the tight small-arity fit.
+#:
+#: **Four recorded counterexamples were greedy artifacts, and the record is
+#: corrected here.**  Every pair below was measured against the descent's
+#: path length, not against a distance, and under BFS each pair *agrees*:
+#: ``(19, 2, 11)`` and ``(23, 2, 7)`` both cost 3; ``(34, 20, 10)`` and
+#: ``(10, 20, 34)`` both cost 3; ``(40, 4, 8, 12)`` and ``(12, 4, 8, 40)``
+#: both cost 6.  So the cums-mod-4-with-cap key and the ``min(x, K)``
+#: recodings were never falsified against the true cost -- and the middle
+#: -slot rule's supposed death at four inputs was the same mistake:
+#: ``(1, 14, 1)`` costs 3 where ``(1, 1, 14)`` costs 2, exactly as the rule
+#: says, against the claim that all 3-run words there cost 2 alike.  The
+#: recorded ``base`` table was wrong too: ``base(2) = 1`` at every arity, not
+#: 0 at four inputs -- a two-run word always has a run longer than 1, so its
+#: start state has a nonzero span and cannot already be done.
+#:
+#: What this does *not* say: the ``>1``-pattern is sufficient only where it
+#: was measured (``r <= 5`` at four and five inputs, ``r <= 6`` at three),
+#: and ``r >= 8`` is untested at every arity -- ``base(8) = 13`` is the
+#: closed form's prediction, not a measurement.  A full BFS at seven runs
+#: costs about six minutes and 1.2M states, so the ladder above that is a
+#: compute question rather than an open one.
+#:
+#: One law was found and refuted: ``3 * points`` bounds the exhaustive
+#: three-input maxima exactly, with the bound attained.  It does not survive
+#: -- four inputs violate it at ten points and five inputs reach 5.65 -- so
+#: the tight small-arity fit is a coincidence of small states rather than
 #: the shape of the algorithm.
-# :.
-# : One thing measured and.
-# : descent's move generation.
-# : long plateaus, but that.
-# : real descent starts from.
-# : Instrumenting the shipped.
-# : -- median 1.92, worst 5.10.
-# :.
-# : Substituting it for the.
-# : 387 tables at three through.
-# : byte-identical, every one.
-# : *not* enough it lifts an.
-# : used 359 steps, so nine.
-# : tables, where the derived.
-# :.
-# : What it is not any more is.
-# : **Plan length is not.
-# : wrong objective.** Ops have.
-# : dive at 3004 costs 1490.
-# : the accumulator is already.
-# : over a thousand.
-# : spelled in unary --.
-# : count barely correlates.
-# : to 6 was measured to save.
+#:
+#: One thing measured and *rejected*: widening ``kcap`` from 3 to 6 in the
+#: descent's move generation.  A re-implemented harness suggested it removed
+#: long plateaus, but that harness started from ``2**n`` points where the
+#: real descent starts from the run count, so it was not this algorithm.
+#: Instrumenting the shipped beam gives byte-identical ratios at both values
+#: -- median 1.92, worst 5.10 either way -- so the widening buys nothing.
+#:
+#: Substituting it for the flat 400 is a **no-op where 400 was enough**: over
+#: 387 tables at three through eight inputs the emitted programs are
+#: byte-identical, every one re-executed on the interpreter.  Where 400 was
+#: *not* enough it lifts an arity, which is the point -- eight inputs already
+#: used 359 steps, so nine overran the flat budget and built 1 of 3 random
+#: tables, where the derived bound builds 3 of 3 and prints all 512 rows.
+#:
+#: What it is not any more is *arity-capping* by accident.
+#: **Plan length is not program length, and for size it is close to the
+#: wrong objective.**  Ops have wildly different prices: within one plan a
+#: dive at 3004 costs 1490 characters from a resting accumulator and 4 when
+#: the accumulator is already near, a doubling costs 751, and the finish
+#: over a thousand.  The charge is the arithmetic distance travelled,
+#: spelled in unary -- :func:`_sub_code` is ``k // 2`` characters -- so op
+#: count barely correlates with emitted length.  Cutting a plan from 17 ops
+#: to 6 was measured to save 13% of characters; optimising characters
 #: directly saves 60% and more.
-# :.
-# : **The cost model is closed.
-# : constructible three-input.
-# : emitter's position updates,.
-# : single congruence -- ``need.
-# : whose unique in-window.
-# : plan can therefore be.
-# :.
-# : That model explains a fact.
-# : complement-invariant,.
-# : 49, so which class lands on.
-# : by 2 mod 256 -- about 127.
-# : complement ``10011000``.
-# :.
-# : **One construction ships.
-# : table builds from three.
-# : characters against this.
-# : enumerated optimum, each.
-# : row correct at one fill.
+#:
+#: **The cost model is closed form**, verified to zero error on all 56
+#: constructible three-input tables.  Each op is priced by mirroring the
+#: emitter's position updates, and :meth:`_FoldEmitter.finish` solves a
+#: single congruence -- ``need = (-(byte(hi) - byte(lo)) - pos[lo]) % 256``,
+#: whose unique in-window solution ``u`` costs ``u // 2 + 31``.  A candidate
+#: plan can therefore be priced without emitting it.
+#:
+#: That model explains a fact worth recording: character cost is **not**
+#: complement-invariant, though plan length is.  The answer bytes are 48 and
+#: 49, so which class lands on top flips a ``+-1`` and moves the congruence
+#: by 2 mod 256 -- about 127 characters.  ``01100111`` costs 5424 where its
+#: complement ``10011000`` costs 5306.
+#:
+#: **One construction ships nothing yet but is verified:** every three-run
+#: table builds from three greedy rises, no search -- 3176 to 3185
+#: characters against this generator's 9838 to 10640, within 1 to 8 of the
+#: enumerated optimum, each program executed on the interpreter with every
+#: row correct at one fill width.  The cost is nearly independent of the run
 #: lengths and of the arity.
-# :.
-# : Three attempts to.
-# : retried.
-# : looked like a 27.7% win and.
-# : build -- the apparent.
-# : tables, at 116/254 coverage.
-# : observed optimal shapes,.
-# : wide the amount branching.
-# : of 40 at a mean of **-67%**.
-# : cost-to-go term; the choice.
+#:
+#: Three attempts to generalise that failed, recorded so they are not
+#: retried.  Reranking this descent by characters instead of point count
+#: looked like a 27.7% win and is **272% worse** on tables all variants
+#: build -- the apparent saving was selection bias from abandoning hard
+#: tables, at 116/254 coverage against 206/254.  A fixed catalogue of the
+#: observed optimal shapes, walked greedily, saturates at 34 of 40 however
+#: wide the amount branching.  And greedy on the exact cost model builds 8
+#: of 40 at a mean of **-67%**.  Exact edge weights are not enough without a
+#: cost-to-go term; the choice of move is not greedily determined.
 _FOLD_STEP_SLOPE = 8
 _FOLD_STEP_SLACK = 16
 
 
-# : Which run-length words the.
+#: Which run-length words the three-phase construction serves.  ``r`` is the
 def _fold_served(r: int, delta: int, pat1: int) -> bool:
     """Whether the three-phase construction serves this run-length word.
 
@@ -2144,8 +2144,8 @@ def _fold_skeleton(r: int, delta: int, pat1: int) -> tuple[tuple[str, int, str],
         if delta:
             return (("d", 1, "cmax"), ("d", 1, "cmax"), ("d", 2, "cmax"))
         return (("d", 1, "cmax"), ("u", 2, "cmax"))
-    # One peel per run past the.
-    # more for delta, alternating.
+    # One peel per run past the four the park and close consume, plus one
+    # more for delta, alternating direction from the dive that starts it.
     peels = r - 4 + delta
     peel = [("d", 1, "cmax") if i % 2 == 0 else ("u", 2, "cmax") for i in range(peels)]
     park: tuple[str, int, str]
@@ -2357,8 +2357,8 @@ class _FoldEmitter:
             raise AssertionError("2 * spread <= 2 * _LIMIT")
         want_top = 1501
         if next_is_rise:
-            # The next command sequence.
-            # anything below -3003, so the.
+            # The next command sequence opens with ``p``, which wipes
+            # anything below -3003, so the doubled state must fit both ways.
             want_top = max(spread - 1501, 0)
             if want_top > 1501:
                 raise AssertionError(spread)
@@ -2430,8 +2430,8 @@ class _FoldEmitter:
         over = {p for p, v in self.pos.items() if v > _LIMIT}
         if over != vic:
             raise AssertionError((over, vic))
-        # Any next command's pre-check.
-        # that flush explicit and costs.
+        # Any next command's pre-check resets the victims; one ``s`` makes
+        # that flush explicit and costs a uniform -2 everyone absorbs.
         self.body.append("s")
         for p in vic:
             self.pos[p] = 0
@@ -2521,11 +2521,11 @@ class _FoldEmitter:
             lo, hi = pts
             t = (self.byte(hi) - self.pos[hi]) % 256
             room = _LIMIT - self.pos[hi]
-            # Unreachable here, unlike in.
-            # block just put ``hi`` at 0.
-            # by 2, so ``room`` is exactly.
-            # residue mod 256.
-            # loop stays because the.
+            # Unreachable here, unlike in the one-point branch above: the
+            # block just put ``hi`` at 0 and then shifted everything down
+            # by 2, so ``room`` is exactly ``_LIMIT + 2`` while ``t`` is a
+            # residue mod 256.  255 < 3005, so the lift never fires.  The
+            # loop stays because the one-point branch's does, and the two
             # read as one rule.
             while t > room:  # pragma: no cover - room is _LIMIT + 2 > 255
                 t -= 256
@@ -2584,20 +2584,20 @@ def _fold_setters(n: int, weights: tuple[int, ...]) -> list[tuple[str, str]]:
         if code is not None and len(code) % 2 == 0:
             out.append(("p" * len(code), code))
             continue
-        # Odd (or unspellable) width:.
-        # same amount at the next even.
-        # back through a ``p``-wrapped.
-        # ``sub(amount + k) + "p" +.
-        # the two respellings, but it.
-        # inside the reset line; the.
-        # .
-        # ``_sub_code`` alone never.
-        # as it can, so both halves.
-        # odd for every ``k``.
-        # them move 6 in two characters.
-        # is what changes the parity.
-        # ``ii`` subtracts 6, ``pssp``.
-        # of 2, against ``pppppp``.
+        # Odd (or unspellable) width: no hold exists there, so subtract the
+        # same amount at the next even width.  Overshoot by ``k`` and add it
+        # back through a ``p``-wrapped subtraction,
+        # ``sub(amount + k) + "p" + sub(k) + "p"``.  This is the shorter of
+        # the two respellings, but it only works while ``amount + k`` stays
+        # inside the reset line; the descent below covers the rest.
+        #
+        # ``_sub_code`` alone never gets there: it spells with as many ``s``
+        # as it can, so both halves shrink together and the total width stays
+        # odd for every ``k``.  Spending ``i`` -- which subtracts 3, so two of
+        # them move 6 in two characters where three ``s`` would take three --
+        # is what changes the parity.  ``iipssp`` is the case that matters:
+        # ``ii`` subtracts 6, ``pssp`` adds 4 back, six characters for a net
+        # of 2, against ``pppppp`` holding.
         spellings = [
             over + "p" + back + "p"
             for over_i in range(5)
@@ -2611,22 +2611,22 @@ def _fold_setters(n: int, weights: tuple[int, ...]) -> list[tuple[str, str]]:
             (c for c in spellings if _apply(0, c) == -amount), key=len, default=None
         )
         if widened is None:
-            # The overshoot negates, and.
-            # leaves the accumulator at.
-            # reset line, so the next.
-            # nets ``+k`` instead of.
-            # amounts in 3002..6008 fails.
-            # :func:`_interleaved_fold`.
-            # 3000 -- where this used to.
-            # .
-            # Trading ``s`` for ``i`` at.
-            # it only ever descends, so the.
-            # magnitude.
-            # character less, which is what.
-            # is tried second because the.
-            # where both apply, and every.
-            # built on it -- 1, 2, 3 and 7.
-            # all and are exactly the.
+            # The overshoot negates, and from 3002 up that is fatal: ``p``
+            # leaves the accumulator at ``+(amount + k)``, above the 3003
+            # reset line, so the next command zeroes it and the add-back
+            # nets ``+k`` instead of ``-amount``.  Every one of the 1504
+            # amounts in 3002..6008 fails that way, and ``span + 2`` in
+            # :func:`_interleaved_fold` reaches them once the spread hits
+            # 3000 -- where this used to raise rather than decline.
+            #
+            # Trading ``s`` for ``i`` at the amount itself needs no ``p``:
+            # it only ever descends, so the reset cannot fire at any
+            # magnitude.  Two ``i`` for three ``s`` moves the same 6 in one
+            # character less, which is what reaches the other parity.  It
+            # is tried second because the overshoot is the shorter spelling
+            # where both apply, and every template that builds today is
+            # built on it -- 1, 2, 3 and 7 have no even-width descent at
+            # all and are exactly the amounts that still need it.
             widened = min(
                 (
                     code
@@ -2717,8 +2717,8 @@ def _fold_subset_weights(n: int) -> tuple[int, ...] | None:
     is the floor any such ladder pays.  ``n >= 2`` throughout: the fold is
     only ever reached above two inputs.
     """
-    # The tail starts one past the.
-    # subset sum distinct: a power.
+    # The tail starts one past the head's total, which is what keeps every
+    # subset sum distinct: a power exceeding the sum of everything below it
     # can never be matched by them.
     head = _FOLD_SUBSET_LADDER
     start = sum(head) - 1
@@ -2851,13 +2851,13 @@ def _interleaved_final_pair(truth_table: str, n: int) -> str | None:
         if weights is narrow:
             got = _centred_setter(span)
         else:
-            # A compacted state's points.
-            # bands no longer fit the.
-            # points they are not needed.
-            # their parents sit exactly.
-            # even total that is no pair's.
-            # the same computed value the.
-            # never spell: the identity has.
+            # A compacted state's points can span past 3001, where disjoint
+            # bands no longer fit the workspace -- and with class-many
+            # points they are not needed.  Two children collide only when
+            # their parents sit exactly ``up + down`` apart, so the first
+            # even total that is no pair's distance splits collision-free,
+            # the same computed value the wipe rules land on.  Odd totals
+            # never spell: the identity has no odd-width hold.
             dists = {
                 b - a
                 for a in emitter.pos.values()
@@ -2865,9 +2865,9 @@ def _interleaved_final_pair(truth_table: str, n: int) -> str | None:
                 if b > a
             }
             got = None
-            # The range holds more even.
-            # so a free one always exists.
-            # and `_split_setter` spells.
+            # The range holds more even totals than there are distances,
+            # so a free one always exists and the loop always breaks --
+            # and `_split_setter` spells every total it is handed here.
             for total in range(4, 2 * len(dists) + 8, 2):  # pragma: no branch
                 if total in dists:
                     continue
@@ -2888,13 +2888,13 @@ def _interleaved_final_pair(truth_table: str, n: int) -> str | None:
             rows = set(key) if isinstance(key, frozenset) else {key}
             for bit, code in ((0, zero), (1, one)):
                 picked = {row for row in rows if (row >> (n - 1 - index)) & 1 == bit}
-                # No known table reaches this:.
-                # hold rows agreeing on the bit.
-                # merges by cofactor class,.
-                # bit.
-                # documented shape, and the.
+                # No known table reaches this: a merged key would have to
+                # hold rows agreeing on the bit being laid, and the reduce
+                # merges by cofactor class, which splits on exactly that
+                # bit.  320 random tables at three to ten inputs, every
+                # documented shape, and the low-bit-ignoring families all
                 # miss it.
-                if not picked:  # pragma: no cover - both branches always populated
+                if not picked:  # pragma: no cover - see above
                     continue
                 value2 = _apply(value, code)
                 if not -_LIMIT <= value2 <= _LIMIT:
@@ -2941,19 +2941,19 @@ def _interleaved_final_pair(truth_table: str, n: int) -> str | None:
                 emitter.rise(amount, rows)
 
     if weights is not narrow:
-        # The packed ladder lays its.
-        # window is one.
-        # collision-free landing; the.
-        # and put the span past the.
-        # Compacted first -- one point.
-        # sixteen -- the state still.
-        # doubling fires and regrows.
-        # later stage works on.
+        # The packed ladder lays its rows at *unit* gaps, so every landing
+        # window is one already-occupied amount and the first wipe has no
+        # collision-free landing; the split below would double the points
+        # and put the span past the doubling bound, freezing that jam in.
+        # Compacted first -- one point per four-row cofactor, at most
+        # sixteen -- the state still spans only the ladder, where the
+        # doubling fires and regrows the gaps the conveyor needs, and every
+        # later stage works on class-many points rather than row-many.
         compact = state()
-        # Sixteen live classes rather.
-        # serves its own class, so the.
-        # measured 11.3 ops per.
-        # fits slope 8.
+        # Sixteen live classes rather than two: case 2's window only ever
+        # serves its own class, so the conveyor hops more between merges --
+        # measured 11.3 ops per starting point where the two-class corpus
+        # fits slope 8.  Doubling the slope keeps the guard linear and the
         # refusal path intact.
         packed = _fold_reduce(
             compact,
@@ -3000,8 +3000,8 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
     """
     if n in (12, 13):
         staged = _interleaved_final_pair(truth_table, n)
-        # Every twelve- and.
-        # by the pair; a miss would.
+        # Every twelve- and thirteen-input table the suite builds is served
+        # by the pair; a miss would fall through to the ladders below.
         if staged is not None:  # pragma: no branch
             return staged
     setters: list[tuple[str, str]] = []
@@ -3014,12 +3014,12 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
     emitter.body = []
 
     for index in range(n):
-        # A live cofactor that takes.
-        # need a new rung at all, and.
-        # input from re-expanding a.
-        # again.
-        # gap of two keeps the 0 and 1.
-        # binary weight for inputs.
+        # A live cofactor that takes the same suffix on both branches does not
+        # need a new rung at all, and identity branches keep a late ignored
+        # input from re-expanding a compacted state merely to collapse it
+        # again.  Where a split remains, one current span plus a
+        # gap of two keeps the 0 and 1 bands disjoint without paying a global
+        # binary weight for inputs already folded away.
         splits = False
         for group_key in emitter.pos:
             raw = set(group_key) if isinstance(group_key, frozenset) else {group_key}
@@ -3035,21 +3035,21 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
         setters.append((zero, one))
         next_pos: dict[_FoldKey, int] = {}
         next_cls: dict[_FoldKey, str] = {}
-        # A previously merged cofactor.
-        # the same branch retain one.
-        # inductive fact the merge.
+        # A previously merged cofactor splits only on this input.  Rows taking
+        # the same branch retain one identical suffix cofactor, which is the
+        # inductive fact the merge below asserts rather than assumes.
         by_value: dict[tuple[int, str], set[int]] = {}
         for group_key, value in emitter.pos.items():
             raw = set(group_key) if isinstance(group_key, frozenset) else {group_key}
             for bit in (0, 1):
                 picked = {row for row in raw if (row >> (n - 1 - index)) & 1 == bit}
                 if not picked:  # pragma: no cover - both branches always populated
-                    # A group is a *union* of rows.
-                    # and only ever merges -- so it.
-                    # input it has not consumed.
-                    # input are always present.
-                    # (all n=2 and n=3 tables, 400.
-                    # none was constant on the bit.
+                    # A group is a *union* of rows -- it starts as all of them
+                    # and only ever merges -- so it is never filtered on an
+                    # input it has not consumed yet, and both values of that
+                    # input are always present.  Measured over 24186 groups
+                    # (all n=2 and n=3 tables, 400 random tables at n=4..6):
+                    # none was constant on the bit being split.
                     continue
                 code = one if bit else zero
                 new_value = _apply(value, code)
@@ -3059,18 +3059,18 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
                     _cofactor_class(truth_table, n, row, index + 1) for row in picked
                 }
                 if len(suffixes) != 1:  # pragma: no cover - the merge invariant
-                    # This is the inductive fact.
-                    # it holds by construction:.
-                    # suffix cofactor, so a group's.
-                    # and splitting it on the next.
-                    # rather than mixing two.
-                    # n=2 and n=3, 500 random at.
-                    # check stays as the assertion.
+                    # This is the inductive fact the comment above names, and
+                    # it holds by construction: groups are keyed by their
+                    # suffix cofactor, so a group's rows already share one,
+                    # and splitting it on the next input refines that key
+                    # rather than mixing two.  Measured over 1772 tables (all
+                    # n=2 and n=3, 500 random at n=4..6): never violated.  The
+                    # check stays as the assertion that keeps it honest.
                     return None
                 cls = next(iter(suffixes))
                 by_value.setdefault((new_value, cls), set()).update(picked)
-        # A position collision across.
-        # distinction before the.
+        # A position collision across unequal cofactors would erase a future
+        # distinction before the planner can see it.
         occupied: dict[int, str] = {}
         for (value, cls), raw in by_value.items():
             if value in occupied and occupied[value] != cls:
@@ -3105,24 +3105,24 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
         for key, value in emitter.pos.items()
         for cls in [emitter.cls[key]]
     ]
-    # After the last placeholder a.
-    # two-class plan and residue.
+    # After the last placeholder a suffix is one answer bit, so the existing
+    # two-class plan and residue endgame apply unchanged.
     final = _fold_plan(_fold_norm(final_items))
     if final is None:  # pragma: no cover - a done state is never refused
-        # Every state reaching here is.
-        # ``_fold_plan`` on a done.
-        # refusing: ``_fold_reduce``.
-        # for a move.
-        # ``None``.
+        # Every state reaching here is already ``_fold_done`` (see below), and
+        # ``_fold_plan`` on a done state returns the empty plan rather than
+        # refusing: ``_fold_reduce`` checks the done condition before it looks
+        # for a move.  Measured over 4000 constructed done states: never
+        # ``None``.  The check stays as the caller's half of the contract.
         return None
-    # ``final`` is always empty, so.
-    # last placeholder every row.
-    # point, which is exactly.
-    # empty plan for a state that.
-    # of 164 states reaching.
-    # (all n=2 and n=3 tables.
-    # loop stays because the.
-    # this call -- a future stage.
+    # ``final`` is always empty, so this loop never has a body to run: by the
+    # last placeholder every row has been merged onto its cofactor's single
+    # point, which is exactly ``_fold_done``, and ``_fold_plan`` returns the
+    # empty plan for a state that already satisfies it.  Measured: every one
+    # of 164 states reaching ``_fold_plan`` here was already done on arrival
+    # (all n=2 and n=3 tables exhaustively, random tables at n=4..11).  The
+    # loop stays because the emptiness is a property of the *state*, not of
+    # this call -- a future stage that left work behind would need it.
     for kind, _, amount, row_ids in final:  # pragma: no cover
         if kind == "m":
             emitter.double(next_is_rise=False)
@@ -3137,24 +3137,24 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
     return header + _HEADER_END + "".join(emitter.body)
 
 
-# : A two-sided ladder was.
-# : the positive-ladder band.
-# : setter, spelled ``p sub(k).
-# : so the ``p``-repeated hold.
-# : moves half the rows above.
-# : ``[-_LIMIT, _LIMIT]``.
-# : it lays 4096 distinct rows.
-# :.
-# : It still serves nothing,.
-# : resource**: the plan needs.
-# : span at least 4095 wherever.
-# : and the guard refuses a.
-# : 4099-wide start has only.
-# : the doubling is offered.
-# : a span past 3002 can never.
-# : proves is needed to reorder.
-# : across five arities are.
-# : packed one.
+#: A two-sided ladder was built and **removed once measured**, the same way
+#: the positive-ladder band was.  One weight is made negative -- an *adding*
+#: setter, spelled ``p sub(k) p``, whose inner subtraction must come out even
+#: so the ``p``-repeated hold is an identity rather than a negation -- which
+#: moves half the rows above zero.  That doubles the *positions* available,
+#: ``[-_LIMIT, _LIMIT]`` rather than ``[-_LIMIT, 0]``, and at twelve inputs
+#: it lays 4096 distinct rows peaking at 2050, comfortably inside 3003.
+#:
+#: It still serves nothing, because **positions are not the binding
+#: resource**: the plan needs the state's *span*, and 4096 distinct integers
+#: span at least 4095 wherever they sit.  A wipe relocates by at least 3004
+#: and the guard refuses a state spanning more than ``2 * _LIMIT``, so a
+#: 4099-wide start has only two legal moves and the descent dies at once;
+#: the doubling is offered only under ``spread * 2 <= 2 * _LIMIT - 2``, which
+#: a span past 3002 can never satisfy, and the doubling is what this module
+#: proves is needed to reorder groups at all.  Measured: 0 of 18 tables
+#: across five arities are served by the straddle ladder and not by the
+#: packed one.  Straddling therefore buys room the construction cannot spend.
 
 
 def _fold_positions(n: int, weights: tuple[int, ...]) -> list[int]:
@@ -3198,10 +3198,10 @@ def _fold_at(truth_table: str, n: int, weights: tuple[int, ...]) -> str | None:
     is already ordered is the identity.
     """
     pos = _fold_positions(n, weights)
-    # Two rows sharing a position.
-    # never be separated again, so.
-    # one.
-    # :func:`_fold_ladders`, not a.
+    # Two rows sharing a position are merged before the plan starts and can
+    # never be separated again, so every ladder offered is a distinct-sum
+    # one.  Asserted rather than guarded: a ladder that collides is a bug in
+    # :func:`_fold_ladders`, not a table this construction declines.
     if len(set(pos)) != len(pos):
         raise AssertionError((n, weights))
     if max(abs(p) for p in pos) > _LIMIT:
@@ -3241,21 +3241,21 @@ def _fold_at(truth_table: str, n: int, weights: tuple[int, ...]) -> str | None:
     return header + _HEADER_END + placeholders + "".join(emitter.body)
 
 
-# : How many candidate.
-# : shortest program among.
-# : Both are budgets on *output.
-# : candidate that solves.
-# : model admits is built at.
-# : arity, ``(12, 6)`` is where.
-# : enumeration this replaced;.
+#: How many candidate pre-vectors the construction weighs before taking the
+#: shortest program among them, and how many spellings of each it prices.
+#: Both are budgets on *output length*, not on reachability: the first
+#: candidate that solves already computes the table, and every table the
+#: model admits is built at ``(1, 1)``.  Measured over the whole three-input
+#: arity, ``(12, 6)`` is where no table's program comes out longer than the
+#: enumeration this replaced; ``(6, 3)`` leaves four longer, the worst
 #: 36 -> 41.
 _CANDIDATES = 12
 _SPELLINGS = 6
 
-# : Steps between the classes.
-# : the rows sit before the.
-# : a smaller spread spells.
-# : tends to produce the.
+#: Steps between the classes of a pre-vector.  The step decides how far apart
+#: the rows sit before the last setter maps them onto the answer values, and
+#: a smaller spread spells shorter, so these are tried in the order that
+#: tends to produce the shortest program rather than by magnitude alone.
 _STEPS = (1, 2, 3, 4, -1, -2, 6, -3, 8, 12, -4)
 
 
@@ -3417,8 +3417,8 @@ def _affine(truth_table: str, n: int) -> str | None:
         spellings = _realisations(values)
         if not spellings:
             continue
-        # Cheapest first: a setter's.
-        # subtracts, so the smallest.
+        # Cheapest first: a setter's length follows the magnitude of what it
+        # subtracts, so the smallest offsets spell the shortest program.
         spellings.sort(
             key=lambda r: max(abs(r[0][0]), abs(r[0][1]), abs(r[1][1]), abs(r[2][1]))
         )
@@ -3466,10 +3466,10 @@ def _spell_affine(
         one_widths = _spellings_by_width(*one_branch)
         shared = set(zero_widths) & set(one_widths)
         if not shared:  # pragma: no cover - every grid branch spells at 6 and 7
-            # Measured over all 7 * 25.
-            # of them has a spelling at.
-            # branches share at least those.
-            # grid is a constant that could.
+            # Measured over all 7 * 25 ``(a, b)`` the grid admits: every one
+            # of them has a spelling at width 6 and at width 7, so any two
+            # branches share at least those.  The guard stays because the
+            # grid is a constant that could widen.
             return None
         width = min(shared)
         setters.append((zero_widths[width], one_widths[width]))
@@ -3517,32 +3517,32 @@ def pct_squared_minus_one(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     if n > 2:
-        # Above two inputs the.
-        # slope per column of a.
-        # does, at any arity.
-        # than served by a program.
-        # The cascade covers every.
-        # shorter -- ``2n + 4``.
-        # *Usually* is not always, so.
-        # the two are built and the.
-        # sight served 44 of 256 tables.
-        # path gives, by up to 7.
-        # Building both over that.
-        # returning early, since a.
-        # path would have done -- the.
+        # Above two inputs the derivation below does not apply -- it reads one
+        # slope per column of a two-input table -- but the minterm cascade
+        # does, at any arity.  A table it cannot build is still refused rather
+        # than served by a program computing the wrong function.
+        # The cascade covers every subcube at any arity, and is usually the
+        # shorter -- ``2n + 4`` characters against the affine path's setters.
+        # *Usually* is not always, so at three inputs, where both are cheap,
+        # the two are built and the shorter kept: returning the cascade on
+        # sight served 44 of 256 tables a longer program than the affine
+        # path gives, by up to 7 characters (``00000101`` is 40 against 33).
+        # Building both over that corpus costs 0.466s against 0.590s for
+        # returning early, since a served cascade skips no work the affine
+        # path would have done -- the comparison is free here.
         cascade = _cascade(truth_table, n)
-        # Tables that are not subcubes.
-        # setter per input, which is.
-        # .
-        # Only at three.
-        # composition frontier grows 90.
-        # so a four-input table costs.
-        # ends up served -- parity-4.
-        # deep band that serves it.
-        # this path reaches above three.
-        # rather than paid for; at.
+        # Tables that are not subcubes may still compose from one affine
+        # setter per input, which is what reaches XOR at three inputs.
+        #
+        # Only at three.  This path derives a whole arity at once and its
+        # composition frontier grows 90 -> 1630 -> 36458 states at n = 2, 3, 4,
+        # so a four-input table costs about two minutes here whether or not it
+        # ends up served -- parity-4 was measured at 125s, against 0.01s for the
+        # deep band that serves it instead.  The deep band covers every table
+        # this path reaches above three inputs, so the enumeration is skipped
+        # rather than paid for; at three inputs it stays, where it is instant.
         affine = _affine(truth_table, n) if n == 3 else None
-        # Ties keep the cascade, which.
+        # Ties keep the cascade, which is what the order emitted before.
         best = min(
             (build for build in (cascade, affine) if build is not None),
             key=len,
@@ -3550,42 +3550,42 @@ def pct_squared_minus_one(truth_table: str) -> str:
         )
         if best is not None:
             return best
-        # Everything above is affine in.
-        # rows that do not already.
-        # uses the over-3003 reset as a.
-        # majority.
-        # far -- hundreds of characters.
+        # Everything above is affine in the accumulator, so it cannot merge
+        # rows that do not already agree.  The ladder path is the one that
+        # uses the over-3003 reset as a threshold, which is what reaches a
+        # majority.  It is tried last because its programs are the longest by
+        # far -- hundreds of characters against the others' dozens.
         ladder = _ladder(truth_table, n)
         if ladder is not None:
             return ladder
-        # Every path above prints with.
-        # exactly 0 or 1.
-        # residue mod 256 matters --.
-        # into as many bands as the.
-        # subtraction, so the whole.
-        # cannot fire, and rows of one.
+        # Every path above prints with ``l``, which needs the accumulator to be
+        # exactly 0 or 1.  The deep band prints with ``e`` instead -- only the
+        # residue mod 256 matters -- and repeated resets cut a weighted order
+        # into as many bands as the table has runs.  Its ladder is built by
+        # subtraction, so the whole order sits below zero where the reset
+        # cannot fire, and rows of one class may collide; that is what makes
         # three and four inputs total.
         deep = _deep_band(truth_table, n)
         if deep is not None:
             return deep
-        # The deep band still reads the.
-        # weighting, and from five.
-        # collides rows of opposite.
-        # drops the weighting.
-        # (each wipe moves a group by.
-        # doubling regrows gaps) that.
-        # only the final two-point gap.
-        # a full residue system as its.
+        # The deep band still reads the table's structure off one additive
+        # weighting, and from five inputs on every weighting inside the limit
+        # collides rows of opposite classes for a generic table.  The fold
+        # drops the weighting altogether: it plans a sequence of relocations
+        # (each wipe moves a group by exactly 3004 plus a bounded slack, the
+        # doubling regrows gaps) that merges each class onto one value, and
+        # only the final two-point gap carries a residue requirement -- with
+        # a full residue system as its window.  It closes five inputs whole.
         fold = _fold(truth_table, n)
         if fold is None:
-            # The staged route is.
-            # at the arities they already.
-            # while beyond them it is the.
-            # equal suffix cofactors before.
+            # The staged route is intentionally after the established ladders:
+            # at the arities they already serve it is a much longer program,
+            # while beyond them it is the only construction that can release
+            # equal suffix cofactors before every row has been laid.
             fold = _interleaved_fold(truth_table, n)
-        # Reaching this raise means no.
-        # and the staged cofactor route.
-        # emitting nothing is better.
+        # Reaching this raise means no ladder served: either the plan search
+        # and the staged cofactor route both gave up.  The guard stays because
+        # emitting nothing is better than emitting a program for the wrong
         # function.
         if fold is None:
             raise GeneratorCapError(
@@ -3599,25 +3599,25 @@ def pct_squared_minus_one(truth_table: str) -> str:
                 f"got {n} inputs ({truth_table!r})"
             )
         return fold
-    # Widen a one-input table by.
-    # present in the derivation but.
+    # Widen a one-input table by repeating each entry, so the second input is
+    # present in the derivation but cannot change the answer.
     widened = truth_table if n == 2 else "".join(bit * 2 for bit in truth_table)
     derived = _derive(widened)
-    # Every one- and two-input.
-    # finds a realisable parameter.
-    # derivation rather than a.
+    # Every one- and two-input table derives -- the enumeration always
+    # finds a realisable parameter set -- so a miss is a bug in the
+    # derivation rather than a table this generator cannot serve.
     if derived is None:
         raise AssertionError(f"no %^2^-1 derivation for truth table {truth_table!r}")
     setters, tail = derived
     if n == 1:
-        # A widened table cannot depend.
-        # two branches carry the same.
-        # placeholder.
-        # silently dropping a branch.
+        # A widened table cannot depend on its second input, so that setter's
+        # two branches carry the same code; fold it into the tail and keep one
+        # placeholder.  The equality is checked rather than assumed, because
+        # silently dropping a branch that *did* differ would emit a program
         # for the wrong function.
         zero, one = setters[1]
-        # The widened table repeats.
-        # the answer and its two.
+        # The widened table repeats each entry, so input 1 cannot change
+        # the answer and its two branches must come out identical.
         if zero != one:
             raise AssertionError(
                 f"one-input derivation split on input 1: {truth_table!r}"

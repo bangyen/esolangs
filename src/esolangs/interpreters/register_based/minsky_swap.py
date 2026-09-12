@@ -46,20 +46,20 @@ import sys
 
 from esolangs.interpreters.io import IO
 
-# : One instant of a run:.
-# : register pointer, both.
-# : been printed.
-# : new one rather than editing.
+#: One instant of a run: ``(ind, ptr, reg, dumped)`` -- the cursor, the
+#: register pointer, both registers, and whether the end-of-run dump has
+#: been printed.  A value, not a record: every transition below returns a
+#: new one rather than editing one in place, and the registers are a tuple
 #: for the same reason.
-# :.
-# : ``dumped`` is state because.
-# : happens *after* the cursor.
-# : cannot tell "about to dump".
-# : ``snapshot``, which reports.
-# :.
-# : The program and its jump.
-# : changes during a run, so.
-# : value the cycle detector.
+#:
+#: ``dumped`` is state because the dump is a once-per-run effect that
+#: happens *after* the cursor has run off the end, so the position alone
+#: cannot tell "about to dump" from "already dumped".  It stays out of
+#: ``snapshot``, which reports the three fields it always reported.
+#:
+#: The program and its jump table are deliberately not in here.  Neither
+#: changes during a run, so carrying them would put constant data in every
+#: value the cycle detector stores.
 type _State = tuple[int, int, tuple[int, int], bool]
 
 
@@ -108,7 +108,7 @@ def _parse(code: str) -> tuple[str, list[int]]:
                 prog += "~"
                 skip = int(m[1]) if m[1] else 1
                 nums.append(skip)
-        # Also process any remaining.
+        # Also process any remaining compact notation
         compact_part = re.sub(r"(inc|swap|decnz)\([^)]*\);", "", code)
         compact_part = re.sub("[^+~*]", "", compact_part)
         prog += compact_part
@@ -130,10 +130,10 @@ class _Machine:
     VM expose this object.
     """
 
-    # : Whether the tape/registers.
-    # : It belongs to the language,.
-    # : ends its loop with one more.
-    # : ``halted`` has driven the.
+    #: Whether the tape/registers are written on the step *after* the halt.
+    #: It belongs to the language, not to whoever is stepping it: ``run``
+    #: ends its loop with one more ``step()``, so a caller who stops at
+    #: ``halted`` has driven the program correctly and still holds none of
     #: its output.
     dumps_on_the_post_halt_step = True
 
@@ -142,9 +142,9 @@ class _Machine:
         self.io = io
         self.prog, nums = _parse(code)
 
-        # Each tilde's jump target is.
-        # line: the Nth tilde jumps to.
-        # targets are 1-based (so a.
+        # Each tilde's jump target is fixed by its position in the code
+        # line: the Nth tilde jumps to the Nth number on the jump line, and
+        # targets are 1-based (so a jump to N runs the (N-1)th command).
         self.targets: dict[int, int] = {}
         for i, ch in enumerate(self.prog):
             if ch == "~":
@@ -152,13 +152,13 @@ class _Machine:
                     raise ValueError("unmatched '~' with no jump target")
                 self.targets[i] = nums[len(self.targets)]
 
-        # ``halted`` is read twice per.
-        # once by ``step``'s guard --.
+        # ``halted`` is read twice per command -- once by ``run``'s loop and
+        # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.prog)
         self.state: _State = (0, 0, (0, 0), False)
 
-    # The language's own names.
-    # than fields of their own, so.
+    # The language's own names.  They are views on the current state rather
+    # than fields of their own, so there is one place a step can change.
 
     @property
     def ind(self) -> int:
@@ -183,7 +183,7 @@ class _Machine:
         """Whether the cursor has reached the end of the program."""
         return self.state[0] >= self.size
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: Two registers + pointer; ip the cursor, memory
     # both registers.
 
     @property
@@ -203,9 +203,9 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The three fields this.
-        # ``dumped`` stays out: the.
-        # machine, and a stopped run is.
+        # The three fields this returned before ``dumped`` joined the state.
+        # ``dumped`` stays out: the detector compares states of a running
+        # machine, and a stopped run is not something it is asked about.
         ind, ptr, reg, _dumped = self.state
         return (ind, ptr, reg)
 
@@ -231,7 +231,7 @@ def run(code: str, io: IO) -> None:
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
-    machine.step()  # dump the final registers.
+    machine.step()  # dump the final registers
 
 
 if __name__ == "__main__":

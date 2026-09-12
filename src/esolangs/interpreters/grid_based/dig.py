@@ -25,23 +25,23 @@ import sys
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# Headings as (drow, dcol), in.
-# them: up, right, down, left.
+# Headings as (drow, dcol), in the order the ``^>'<`` glyphs select
+# them: up, right, down, left.  Row grows downward.
 _DIRECT = [(-1, 0), (0, 1), (1, 0), (0, -1)]
 
 
-# : One instant of a run:.
-# : grid, where the mole is and.
-# : how many work commands.
-# : value :func:`_advance` maps.
+#: One instant of a run: ``(code, row, col, move, mole, num, done)`` -- the
+#: grid, where the mole is and which way it faces, the value it carries,
+#: how many work commands remain armed, and whether it has stopped.  A
+#: value :func:`_advance` maps forward, with the grid as a ``tuple`` of
 #: rows for the same reason.
-# :.
-# : The grid is state, not a.
-# : the cell under it, so what.
-# : step wrote.
-# :.
-# : ``num`` is the underground.
-# : inert unless it is.
+#:
+#: The grid is state, not a fixed program: ``;`` writes the mole back into
+#: the cell under it, so what a later pass reads is something an earlier
+#: step wrote.  ``snapshot`` already included it for that reason.
+#:
+#: ``num`` is the underground counter ``$`` arms.  Every work command is
+#: inert unless it is positive, so it is what decides whether a cell is an
 #: instruction or scenery.
 type _State = tuple[tuple[str, ...], int, int, int, int, int, bool]
 
@@ -90,10 +90,10 @@ def _advance(
 
     if num:
         if char == "%":
-            # "Overrides current value with.
-            # 1." The wiki stops there,.
-            # out its third case -- so the.
-            # the spec, and the choice here.
+            # "Overrides current value with space when 0, and newline when
+            # 1."  The wiki stops there, unlike ``#`` below, which spells
+            # out its third case -- so the other eight digits are a gap in
+            # the spec, and the choice here is to leave the mole alone.
             if (n := _value(code, row, col, size)) == 1:
                 mole = 10
             elif n == 0:
@@ -101,7 +101,7 @@ def _advance(
         elif char in "=~":
             mole = value if value is not None else 0
         elif char == ":":
-            mole = 0  # the print itself already.
+            mole = 0  # the print itself already happened in the shell
         elif char == "+":
             mole += _value(code, row, col, size)
         elif char == "-":
@@ -122,16 +122,16 @@ def _advance(
     elif char in "^>'<":
         move = "^>'<".find(char)
     elif char == "#":
-        # The adjacent digit steers,.
-        # cases: "Rotates Mole to left.
-        # when 1.
-        # third arm is specified.
+        # The adjacent digit steers, and the wiki spells out all three
+        # cases: "Rotates Mole to left when value beside it is 0, and right
+        # when 1.  When it's neither of those, keep straight."  So the
+        # third arm is specified behaviour, not a fall-through.
         if (n := _value(code, row, col, size)) == 1:
             move += 1
         elif n == 0:
             move -= 1
-        # The modulo is required, not.
-        # turning drives the heading.
+        # The modulo is required, not defensive: a grid that keeps
+        # turning drives the heading past the ends of _DIRECT.
         move %= 4
     elif char == "$":
         num = _value(code, row, col, size)
@@ -141,7 +141,7 @@ def _advance(
     row += _DIRECT[move][0]
     col += _DIRECT[move][1]
 
-    # Walking off the grid stops.
+    # Walking off the grid stops the program, without error.
     if row < 0 or row >= len(code) or col < 0 or col >= size:
         done = True
     return (code, row, col, move, mole, num, done)
@@ -176,15 +176,15 @@ class _Machine:
         """Whether the mole has halted or left the grid."""
         return self._done
 
-    # The VM's language-shaped view.
-    # the instruction position is.
-    # -- a bare index would not say.
-    # the one value the mole.
+    # The VM's language-shaped view.  Dig is a 2D grid walked by a mole, so
+    # the instruction position is where the mole is *and* which way it faces
+    # -- a bare index would not say where the next step lands.  ``memory`` is
+    # the one value the mole carries; there is no stack.
 
-    # : ``ip`` is a cell of the.
-    # : parts are a row and a.
-    # : this a caller cannot tell.
-    # : stack, which look identical.
+    #: ``ip`` is a cell of the program's own rectangle: the first two
+    #: parts are a row and a column, and the rest is a heading.  Without
+    #: this a caller cannot tell the pair from a call depth or a frame
+    #: stack, which look identical and mean somewhere else entirely.
     ip_shape = "grid"
 
     @property

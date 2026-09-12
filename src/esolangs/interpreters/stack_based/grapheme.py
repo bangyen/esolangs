@@ -87,11 +87,11 @@ from esolangs.interpreters.io import IO
 
 _FUNC: Final = "func"
 
-# A Grapheme value is a number,.
-# is always the pair ``(_FUNC,.
-# buffer is closed.
-# conversions below handle.
-# for a fourth kind that cannot.
+# A Grapheme value is a number, a string, or a function -- and a function
+# is always the pair ``(_FUNC, body)``, built in the two places a frame's
+# buffer is closed.  Naming the three lets the checker see that the
+# conversions below handle every one, so none needs a trailing assertion
+# for a fourth kind that cannot exist, and the function body no longer has
 # to be cast to str at each use.
 _Function = tuple[Literal["func"], str]
 _Value = int | str | _Function
@@ -109,7 +109,7 @@ def _to_int(value: _Value) -> int:
     """Convert a value to an integer (the ``J`` command)."""
     if isinstance(value, int):
         return value
-    if isinstance(value, tuple):  # function -> number of.
+    if isinstance(value, tuple):  # function -> number of commands
         return len(value[1])
     res = 0
     for c in value:
@@ -123,9 +123,9 @@ def _to_str(value: _Value) -> str:
     """Convert a value to a string (the ``N`` command)."""
     if isinstance(value, str):
         return value
-    if isinstance(value, tuple):  # function -> its body.
+    if isinstance(value, tuple):  # function -> its body
         return value[1]
-    digits = "JABCDEFGHI"  # J = 0, A = 1, ..., I = 9.
+    digits = "JABCDEFGHI"  # J = 0, A = 1, ..., I = 9
     if value == 0:
         return "J"
     res: list[str] = []
@@ -153,32 +153,32 @@ def _truthy(value: _Value) -> bool:
     return value[1] != ""
 
 
-# : One call context: ``(code,.
-# :.
-# : A tuple rather than a.
-# : :meth:`_Machine.snapshot`.
-# : same reason.
-# : rewound instead of popped.
+#: One call context: ``(code, pc, mode, buf, pending_at, repeat)``.
+#:
+#: A tuple rather than a record, so the whole call stack is a value that
+#: :meth:`_Machine.snapshot` can hash -- Eval's frames are tuples for the
+#: same reason.  ``repeat`` carries ``Z``'s body: a frame holding one is
+#: rewound instead of popped while the stack is non-empty.
 type _Frame = tuple[str, int, str, tuple[str, ...], int, str]
 
-# : The part of a run the pure.
-# : The value stack is.
+#: The part of a run the pure layer owns: the variables and the call stack.
+#: The value stack is deliberately absent; see the module docstring.
 type _Vars = Mapping[_Value, _Value]
 type _State = tuple[_Vars, tuple[_Frame, ...]]
 
-# : A read-only view of the.
+#: A read-only view of the live value stack, which the pure layer indexes
 #: but never writes.
 type _StackView = Sequence[_Value]
 
-# : What a step wants done to.
-# : top, what to add after.
-# : Applied in exactly that.
+#: What a step wants done to the value stack: how many to remove from the
+#: top, what to add after that, and whether ``P`` reversed what was left.
+#: Applied in exactly that order.
 type _StackFx = tuple[int, tuple[_Value, ...], bool]
 
 
-# : The command that opens each.
-# : are the same letter: ``E``.
-# : them once keeps the open.
+#: The command that opens each mode, and the one that closes it.  The two
+#: are the same letter: ``E`` opens string mode and ``E`` ends it.  Naming
+#: them once keeps the open and close arms from drifting apart.
 _OPENS: Final = {"E": "string", "F": "int", "H": "func"}
 _CLOSES: Final = {mode: char for char, mode in _OPENS.items()}
 
@@ -257,11 +257,11 @@ def _advance(
     pushes: tuple[_Value, ...] = ()
     reverse = False
 
-    # A frame whose code has run.
-    # and pops it without spending.
+    # A frame whose code has run out never reaches here: the shell flushes
+    # and pops it without spending a step, so ``pc`` indexes a command.
     c = code[pc]
 
-    # In a mode, every character.
+    # In a mode, every character but the closing one is data.
     if mode in _CLOSES:
         grown: _Frame
         if c == _CLOSES[mode]:
@@ -361,10 +361,10 @@ def _advance(
     elif c == "X":
         pops, value = _pop(view, pops)
         if _truthy(value):
-            # execute the next command,.
+            # execute the next command, then skip the one after it
             pending_at = pc
         else:
-            # skip the next command.
+            # skip the next command entirely
             pc += 1
     elif c == "Y":
         pops, value = _pop(view, pops)
@@ -381,8 +381,8 @@ def _advance(
             body = value[1]
             call_repeat = value[1]
     else:
-        # a string read from input and.
-        # character; reject it like the.
+        # a string read from input and executed via G/I may carry any
+        # character; reject it like the top-level program validation would
         raise ValueError(f"unhandled command {c!r}")
 
     pc += 1
@@ -395,9 +395,9 @@ def _advance(
     if body is not None:
         frames = (*frames, _frame(body, call_repeat))
 
-    # a command that left the.
-    # a call returned) is completed.
-    # soon as the last command runs.
+    # a command that left the current frame finished (the program ended or
+    # a call returned) is completed now, so a caller sees ``halted`` as
+    # soon as the last command runs instead of one step later.
     state = (variables, frames)
     fx = (pops, pushes, reverse)
     while frames and frames[-1][1] >= len(frames[-1][0]):
@@ -420,21 +420,21 @@ class _Machine:
         self.vars: _Vars = {}
         self.io = io
         self.frames: tuple[_Frame, ...] = (_frame(code),)
-        # Where the top-level frame.
-        # position once every frame has.
+        # Where the top-level frame ends, so ``ip`` can still report a
+        # position once every frame has been popped.
         self._top_length = len(code)
 
     @property
     def halted(self) -> bool:
         return not self.frames
 
-    # The VM's language-shaped.
-    # carry their own cursor, and.
+    # The VM's language-shaped view: a stack language whose call frames each
+    # carry their own cursor, and with no addressable cells.
 
-    # : ``ip`` is a position, but.
+    #: ``ip`` is a position, but not one on the source text: each active frame's pc,
     #: root-to-leaf.
-    # : Declared rather than left.
-    # : classified is a missing.
+    #: Declared rather than left to the default so that a tuple nobody has
+    #: classified is a missing answer instead of this one.
     ip_shape = "opaque"
 
     @property
@@ -463,9 +463,9 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # A frame is already a tuple of.
-        # goes in as it stands rather.
-        # which is what a frame being a.
+        # A frame is already a tuple of its six fields, so the call stack
+        # goes in as it stands rather than being unpacked field by field --
+        # which is what a frame being a value rather than a record buys.
         return (
             tuple(self.stack),
             frozenset(self.vars.items()),
@@ -518,8 +518,8 @@ class _Machine:
 
         code, pc, mode, _, _, _ = self.frames[-1]
 
-        # A frame whose code has run.
-        # only flushes and pops, which.
+        # A frame whose code has run out does no work and costs no step: it
+        # only flushes and pops, which the transition does.
         if pc >= len(code):
             (self.vars, self.frames), fx = _finished(
                 (self.vars, self.frames), self.stack, (0, (), False)
@@ -527,9 +527,9 @@ class _Machine:
             self._apply(fx)
             return
 
-        # ``W`` reads only when it is a.
-        # character is data, so a ``W``.
-        # touch the port -- reading.
+        # ``W`` reads only when it is a *command*.  Inside a mode every
+        # character is data, so a ``W`` accumulating into a string must not
+        # touch the port -- reading there turns a program that prints into
         # one that raises at EOF.
         line_in = None
         if mode == "" and code[pc] == "W":

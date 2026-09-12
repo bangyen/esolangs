@@ -32,10 +32,10 @@ from typing import NamedTuple
 
 from esolangs.interpreters.io import IO
 
-# : Width of the print window:.
+#: Width of the print window: ``.`` reads cells 0-7 as one binary byte.
 _WIDTH = 8
 
-# : Mask of the print window,.
+#: Mask of the print window, cells 0-7.
 _WINDOW = (1 << _WIDTH) - 1
 
 
@@ -87,7 +87,7 @@ class _Effect(NamedTuple):
     reads: bool = False
 
 
-# : The effect of a step that.
+#: The effect of a step that does no IO, shared rather than rebuilt per step.
 _QUIET = _Effect()
 
 
@@ -106,7 +106,7 @@ def _pool(tape: int) -> int:
     """
     window = tape & _WINDOW
     return sum(
-        ((window >> i) & 1) << (_WIDTH - 1 - i)  # .
+        ((window >> i) & 1) << (_WIDTH - 1 - i)  #
         for i in range(_WIDTH)
     )
 
@@ -150,12 +150,12 @@ def _step(
     if ins == "<":
         return (tape, length, ptr - 1 if ptr else ptr, False, None, False)
     if ins not in ".[":
-        # Anything else is a comment.
+        # Anything else is a comment character: only the cursor moves.
         return (tape, length, ptr, False, None, False)
 
-    # Both commands walk right and.
-    # tape so the cell *after* the.
-    # The appended cell is a zero,.
+    # Both commands walk right and flip the cell they land on, growing the
+    # tape so the cell *after* the pointer always exists for the skip below.
+    # The appended cell is a zero, which the int already spells: only the
     # recorded length has to move.
     ptr += 1
     if ptr + 1 >= length:
@@ -163,16 +163,16 @@ def _step(
     tape ^= 1 << ptr
 
     if ins == ".":
-        # A non-zero window prints; a.
-        # byte back through _load --.
+        # A non-zero window prints; a zero one reads, and the shell owes the
+        # byte back through _load -- the decision is pure, the fetch is not.
         pool = _pool(tape)
         if pool:
             return (tape, length, ptr, False, chr(pool), False)
         return (tape, length, ptr, False, None, True)
 
     if not (tape >> ptr) & 1:
-        # [ flipped the cell to 0: flip.
-        # one instruction, on top of.
+        # [ flipped the cell to 0: flip the one beyond it and skip ahead by
+        # one instruction, on top of the advance every step makes.
         tape ^= 1 << (ptr + 1)
         return (tape, length, ptr, True, None, False)
 
@@ -196,7 +196,7 @@ def _advance(state: _State) -> tuple[_State, _Effect]:
         ins, state.tape, state.length, state.ptr
     )
 
-    # A collapsed ``[`` skips the.
+    # A collapsed ``[`` skips the next instruction, on top of the advance
     # every step makes.
     ind = state.ind + (2 if skipped else 1)
 
@@ -236,11 +236,11 @@ class _Machine:
     def ind(self) -> int:
         return self.state.ind
 
-    # The VM's language-shaped view.
-    # cursor: ``ip`` is that.
-    # stack.
-    # sits with the machine that.
-    # caller cannot reach back into.
+    # The VM's language-shaped view.  Minifuck is a binary tape walked by a
+    # cursor: ``ip`` is that cursor, ``memory`` the cells, and there is no
+    # stack.  These live here rather than in ``esolangs.vm`` so the mapping
+    # sits with the machine that knows it; the lists are fresh copies, so a
+    # caller cannot reach back into the tape through them.
 
     @property
     def ip(self) -> int:

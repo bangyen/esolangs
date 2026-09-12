@@ -70,7 +70,7 @@ class TestLineBoolean:
         """The regression case: a 3-deep tree with an inward-turning arm."""
         _check_truth_table("00010111", 3, tmp_path)
 
-    @pytest.mark.slow  # 5.2s: 32 input combinations.
+    @pytest.mark.slow  # 5.2s: 32 input combinations through the renderer
     def test_parity_n5(self, tmp_path: Path) -> None:
         """5-input parity, past the ceiling this generator used to document.
 
@@ -90,7 +90,7 @@ class TestLineBoolean:
         """
         _check_truth_table("01101001100101101001011001101001", 5, tmp_path)
 
-    @pytest.mark.slow  # 7s: all 256 rendered-tree.
+    @pytest.mark.slow  # 7s: all 256 rendered-tree executions
     def test_parity_n8(self, tmp_path: Path) -> None:
         """8-input parity reaches every leaf through the real PNG round trip."""
         _check_truth_table(
@@ -99,24 +99,24 @@ class TestLineBoolean:
             tmp_path,
         )
 
-    # n=9 is sampled, and n=10 is.
-    # combination, at 13.4s and.
-    # covered not one further line.
-    # simulate -- the tree is one.
-    # every leaf of it, so a wider.
-    # drawing.
-    # the rows below are the ones.
-    # single-bit index, both.
-    # boundary -- so a mis-sized.
-    # showing up as a larger.
-    # .
-    # Sampling the rows is not what.
-    # not a speed measure: at n=9.
-    # 0.6s of execution, so the.
-    # whatever the rows.
-    # chosen so the remaining arity.
+    # n=9 is sampled, and n=10 is gone.  Both used to sweep every input
+    # combination, at 13.4s and 29.0s; measured against the n<=8 set they
+    # covered not one further line of render, extract, lattice, mask, png or
+    # simulate -- the tree is one recursive shape and n=8 already reaches
+    # every leaf of it, so a wider arity re-runs the same code on a bigger
+    # drawing.  What a ninth input does add is a carry the eighth does not:
+    # the rows below are the ones where the arm sizing can go wrong -- every
+    # single-bit index, both extremes, and both sides of each power-of-two
+    # boundary -- so a mis-sized arm still fails here rather than only
+    # showing up as a larger picture.
+    #
+    # Sampling the rows is not what makes this cheap, and the row list is
+    # not a speed measure: at n=9 the run is 11.6s of `extract` against
+    # 0.6s of execution, so the drawing is the cost and it is paid once
+    # whatever the rows.  Dropping n=10 is the saving (29.0s); the rows are
+    # chosen so the remaining arity still fails loudly rather than merely
     # rendering.
-    @pytest.mark.slow  # 13s: one n=9 drawing,.
+    @pytest.mark.slow  # 13s: one n=9 drawing, extracted once, at its boundary rows
     def test_parity_n9_on_boundary_rows(self, tmp_path: Path) -> None:
         """9-input parity is checked where an arm's size can go wrong."""
         n = 9

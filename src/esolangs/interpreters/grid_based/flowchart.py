@@ -139,18 +139,18 @@ from typing import Literal, assert_never
 
 from esolangs.interpreters.io import IO
 
-# Headings, as (d_row, d_col).
+# Headings, as (d_row, d_col) with rows growing downward.
 _UP = (-1, 0)
 _DOWN = (1, 0)
 _LEFT = (0, -1)
 _RIGHT = (0, 1)
 _HEADINGS = (_RIGHT, _DOWN, _LEFT, _UP)
 
-# The spellings, as a type.
-# and it copies out of.
-# dispatches on is one of these.
-# that mypy narrows to the last.
-# Adding a node means adding it.
+# The spellings, as a type.  ``_parse`` is the only writer of ``self.nodes``
+# and it copies out of :data:`_NODES`, so every spelling the interpreter ever
+# dispatches on is one of these -- which lets ``_execute`` end in an ``else``
+# that mypy narrows to the last one, rather than a branch nothing can take.
+# Adding a node means adding it here as well as to ``_NODES``, or the tuple
 # stops type-checking.
 _Spelling = Literal[
     "(( ))",
@@ -170,8 +170,8 @@ _Spelling = Literal[
     "[ >",
 ]
 
-# Node spellings, longest.
-# ``[ >`` and ``[ ]`` share a.
+# Node spellings, longest first: ``\[ ]/`` contains ``[ ]``, and ``[ }``,
+# ``[ >`` and ``[ ]`` share a prefix, so a shorter spelling must never be
 # matched inside a longer one.
 _NODES: tuple[_Spelling, ...] = (
     "(( ))",
@@ -191,8 +191,8 @@ _NODES: tuple[_Spelling, ...] = (
     "[ >",
 )
 
-# Characters that carry a.
-# plain conduit: the headings.
+# Characters that carry a pointer between nodes.  Every one of these is a
+# plain conduit: the headings it permits are derived from its shape.
 _EXITS = {
     "─": (_LEFT, _RIGHT),
     "│": (_UP, _DOWN),
@@ -241,13 +241,13 @@ class _Pointer:
     reg: int | None = None
     deque: int = 0
     done: bool = False
-    # The cell stepped away from,.
-    # neighbours the pointer.
+    # The cell stepped away from, so a multi-cell node knows which of its
+    # neighbours the pointer entered through.
     prev: tuple[int, int] | None = None
-    # Where this pointer last left.
-    # re-entry a property of the.
-    # through"), so each carries.
-    # anchor cell, not by whichever.
+    # Where this pointer last left each node or path cell.  The spec makes
+    # re-entry a property of the pointer ("a node or path *it's* been
+    # through"), so each carries its own; a node's entry is keyed by its
+    # anchor cell, not by whichever column the pointer stood on.
     memory: tuple[tuple[tuple[int, int], tuple[int, int]], ...] = ()
 
     def remembered(self, cell: tuple[int, int]) -> tuple[int, int] | None:
@@ -300,20 +300,20 @@ class _Machine:
     undetectable class as an ever-growing brainfuck tape.
     """
 
-    # : Whether a read past the end.
-    # : rather than raising.
-    # :.
-    # : package norm and what.
-    # : not, so an underfed program.
-    # : instead of refusing, and a.
+    #: Whether a read past the end of the input yields a *value* here
+    #: rather than raising.  Forty-five of the sixty-nine raise
+    #: :class:`~esolangs.exceptions.InputExhaustedError`, which is the
+    #: package norm and what :func:`esolangs.run` documents; this one does
+    #: not, so an underfed program answers a different row of its table
+    #: instead of refusing, and a caller has no way to tell from the output
     #: that it happened.
-    # :.
-    # : Declared rather than.
-    # : audited against every wiki.
-    # : (``docs/limitations.md``,.
-    # : would be a decision about.
-    # : What was wrong was that.
-    # : was false for seven.
+    #:
+    #: Declared rather than changed.  The zero-beyond-input convention was
+    #: audited against every wiki page and settled deliberately
+    #: (``docs/limitations.md``, Interpreter conventions); rewriting it
+    #: would be a decision about what these languages *mean*, not a fix.
+    #: What was wrong was that nothing said so, so the promise ``run`` made
+    #: was false for seven languages and a generic caller could not find
     #: out which.
     eof_is_a_value = True
 
@@ -324,8 +324,8 @@ class _Machine:
         self.width = max((len(r) for r in rows), default=0)
         self.grid = tuple(r.ljust(self.width) for r in rows)
 
-        # (row, col) -> (node spelling,.
-        # cell a node covers maps to.
+        # (row, col) -> (node spelling, col of the node's first character); every
+        # cell a node covers maps to that node, so a pointer arriving at any
         # column of the box executes it.
         self.nodes: dict[tuple[int, int], tuple[_Spelling, int]] = {}
         self._parse()
@@ -483,8 +483,8 @@ class _Machine:
                     continue
                 if not self._accepts(n_row, n_col, d):
                     continue
-                # A node is reached once.
-                # box; a bare path cell is its.
+                # A node is reached once however many of its cells touch this
+                # box; a bare path cell is its own destination.
                 node = self.nodes.get((n_row, n_col))
                 target = (n_row, node[1]) if node else (n_row, n_col)
                 if target in seen:
@@ -519,10 +519,10 @@ class _Machine:
 
     # The VM's language-shaped view.
 
-    # : ``ip`` is a cell of the.
-    # : parts are a row and a.
-    # : this a caller cannot tell.
-    # : stack, which look identical.
+    #: ``ip`` is a cell of the program's own rectangle: the first two
+    #: parts are a row and a column, and the rest is a heading.  Without
+    #: this a caller cannot tell the pair from a call depth or a frame
+    #: stack, which look identical and mean somewhere else entirely.
     ip_shape = "grid"
 
     @property
@@ -592,11 +592,11 @@ class _Machine:
         back = (-p.d[0], -p.d[1])
         allowed = [d for d in _EXITS.get(c, ()) if d != back]
         if not allowed:  # pragma: no cover - no line character has a single arm
-            # A pointer only ever stands on.
-            # both _move and.
-            # always one of this cell's.
-            # only for a one-armed.
-            # guard stays so adding one.
+            # A pointer only ever stands on a cell it entered legally, and
+            # both _move and _exits_from_node gate on _accepts, so `back` is
+            # always one of this cell's arms.  Removing it empties `allowed`
+            # only for a one-armed character, and _EXITS has none -- but the
+            # guard stays so adding one later stops rather than crashes.
             self._put(i, replace(p, done=True))
             return
         if len(allowed) > 1:
@@ -622,9 +622,9 @@ class _Machine:
         if d is None or d not in allowed:
             return None
         if d == (-p.d[0], -p.d[1]):
-            # The spec's 180-degree decline.
-            # this is not a proof: a.
-            # never reached it, but the.
+            # The spec's 180-degree decline.  Unlike the other pragmas here
+            # this is not a proof: a brute-force sweep of ~3M small grids
+            # never reached it, but the rule comes from the wiki's worked
             # examples, so it stays.
             return None  # pragma: no cover - no known grid reaches it
         return d
@@ -755,10 +755,10 @@ class _Machine:
         elif spelling == "[ >":
             deque += 1
         else:
-            # Unreachable, and checked to.
-            # the arms above, so mypy.
-            # to the type but not.
-            # than silently falling through.
+            # Unreachable, and checked to be: ``_Spelling`` is exhausted by
+            # the arms above, so mypy narrows this to ``Never``.  A node added
+            # to the type but not dispatched here fails the type check rather
+            # than silently falling through to ``_leave``.
             assert_never(spelling)
 
         self._put(i, replace(p, reg=reg, deque=deque))

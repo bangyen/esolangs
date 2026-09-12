@@ -22,8 +22,8 @@ from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "bundle_one.py"
 
-# Example stems are the.
-# display name.
+# Example stems are the hyphenated display slug; the registry is keyed by
+# display name.  Going through ``canonical_id`` joins them without a second
 # hand-maintained table.
 _BY_ID = {lang.id: name for name, lang in LANGUAGES.items()}
 
@@ -145,7 +145,7 @@ class TestBundleMatchesPackage:
             assert callable(expected.run), name
 
 
-# 2.9s over 18 tests: shells.
+# 2.9s over 18 tests: shells out to the bundler.
 @pytest.mark.medium
 class TestBundleDetails:
     def test_sympy_required_note(self, tmp_path: Path) -> None:
@@ -181,6 +181,6 @@ class TestBundleDetails:
             input="0\n1\n",
         )
         assert result.returncode == 0
-        # The bundle reads through the.
-        # "Input: " prompt per read;.
+        # The bundle reads through the interactive IO, which writes an
+        # "Input: " prompt per read; the program's own output follows them.
         assert result.stdout == "Input: Input: 1"

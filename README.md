@@ -1,8 +1,12 @@
 # Esolang Interpreters
 
-[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org) [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-Interpreters and generators for esoteric languages.
+Interpreters and generators for esoteric
+languages. Current work is in [the roadmap](docs/roadmap.md); contracts and
+known boundaries are in [limitations](docs/limitations.md). The rest of
+[`docs/`](docs/README.md) is indexed there.
 
 ## Use
 
@@ -20,32 +24,93 @@ printf '0\n1\n' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
 just test
 ```
 
-Pass each command the language it was generated for: running a Suffolk program as brainfuck does not fail, it reports something useless.
+Pass each command the language it was generated for: running a Suffolk
+program as brainfuck does not fail, it reports something useless.
 
-`just install-dev` puts the `esolangs` entry point in `.venv/bin`, so it is on `PATH` only once that venv is active; `uv run esolangs ...` works without activating it.
+`just install-dev` puts the `esolangs` entry point in `.venv/bin`, so it is
+on `PATH` only once that venv is active; `uv run esolangs ...` works
+without activating it.
 
-The Python API is `esolangs.run`, `generate`, `instantiate`, `encode_inputs`, `read_answer`, `evaluate`, `verify`, `check_stdin`, `check_program`, `make_vm`, `make_debugger`, `describe`, `spec`, and `list_languages`.
+The Python API is `esolangs.run`, `generate`, `instantiate`,
+`encode_inputs`, `read_answer`, `evaluate`, `verify`, `check_stdin`,
+`check_program`, `make_vm`, `make_debugger`, `describe`, `spec`, and
+`list_languages`.  `generate` takes a
+truth table -- `0110` is XOR -- and returns a program computing it.  Both
+it and the CLI's `--width` bound the columns, and most grids honour it too
+by laying themselves out rather than being reflowed -- `describe(language)
+["width_effect"]` says which of the three you have, and names the 22 that
+ignore a width because their newlines are part of the program.
 
-Two exported tuples spell vocabularies you would otherwise hand-copy, and they are not the same kind of thing despite sitting together in `dir()`.
+Two exported tuples spell vocabularies you would otherwise hand-copy, and
+they are not the same kind of thing despite sitting together in `dir()`.
+`STOP_REASONS` is `("halted", "breakpoint", "max_steps", "timeout")` --
+what `make_debugger(...).run()` returns.  A program that *faults* raises
+out of `run` instead, so it has no reason of its own; `esolangs debug`
+catches that and prints a fifth word, `stopped: raised`, which means this
+tuple is not what that CLI line ranges over.  `TERMINATION_OUTCOMES` is
+`("halts", "diverges")` and has nothing to do with debugging: it is the
+`answer_encoding` of the three languages that answer by *running*, in the
+order `describe(...)` gives them, so index 0 is the answer 0 and
+`encoding.index("diverges")` is the polarity.
 
-**How a language reads its input bits is not universal.** Most take one `0`/`1` line each, but Grapheme reads `%`/`A`, Clockwise wants every bit on one line, Fargo wants the row index as a single decimal number (`1111` is `15`), and Taglate pads an odd input count with a leading zero line (its three-input programs read four lines).
+**How a language reads its input bits is not universal.**  Most take one
+`0`/`1` line each, but Grapheme reads `%`/`A`, Clockwise wants every bit on
+one line, Fargo wants the row index as a single decimal number (`1111` is
+`15`), and Taglate pads an odd input count with a leading zero line (its
+three-input programs read four lines).  Stdin is checked against the shape and alphabet a
+language declares: `esolangs run` warns, `esolangs run --judge` refuses,
+and `esolangs.check_stdin(language, stdin, truth_table)` is the same judge
+from Python -- give it the table and it checks the bit *count* too, which
+catches a surplus line as well as a missing one.  A shape it cannot tell
+apart from a legitimate one still answers the wrong row, so let
+`esolangs.encode_inputs(language, bits)` build the stdin — or read the
+Input column of [`examples/boolean/MANIFEST.md`](examples/boolean/MANIFEST.md),
+which lists every language's.
 
-Seventeen languages have a **parameterized** generator: it embeds the inputs in the program rather than reading them, so `generate` returns a template with a `{Xi}` slot per input.
+Seventeen languages have a **parameterized** generator: it embeds the
+inputs in the program rather than reading them, so `generate` returns a
+template with a `{Xi}` slot per input.  Fill it with
+`esolangs.instantiate(language, template, bits)` -- running one unfilled is
+refused.  `esolangs list --details` marks them `tmpl`, and
+[`docs/languages.md`](docs/languages.md#parameterized-generators) lists
+them.
 
-**Reading the answer back is the same story.** Most languages print it, but six dump their whole final state with the answer somewhere inside, and three answer by *terminating* -- they halt for a 0 and loop forever for a 1.
+**Reading the answer back is the same story.**  Most languages print it,
+but six dump their whole final state with the answer somewhere inside, and
+three answer by *terminating* -- they halt for a 0 and loop forever for a 1.
+`esolangs.read_answer(language, output)` handles the first two cases; for
+the third, bound the run and catch `ExecutionTimeoutError` as the 1.  With
+`describe`, `encode_inputs`, `instantiate` and `read_answer`, a caller can
+generate, feed and judge a program in a language it knows nothing about,
+with no per-language branch anywhere.
 
-**That round trip is `evaluate`, so you do not have to write it.** It runs the generated program on every row of its input space and returns the table it actually computes; `verify` is the same thing with the comparison done:
+**That round trip is `evaluate`, so you do not have to write it.**  It runs
+the generated program on every row of its input space and returns the table
+it actually computes; `verify` is the same thing with the comparison done:
 
 ```python
 esolangs.evaluate("A Painter Ant", "0110")  # -> '0110'
 esolangs.verify("Fargo", "10010110")  # -> True
 ```
 
-Both work for all 69 -- the four odd input shapes, the seventeen template languages and the three that answer by diverging included -- because every decision they make reads a `describe` field rather than a language name.
+Both work for all 69 -- the four odd input shapes, the seventeen template
+languages and the three that answer by diverging included -- because every
+decision they make reads a `describe` field rather than a language name.
 
-`debug` runs a program under the breakpoint/watch VM and reports where it stopped: `--steps` bounds the run and `--watch-cell` prints one value per step.
+`debug` runs a program under the breakpoint/watch VM and reports where it
+stopped: `--steps` bounds the run and `--watch-cell` prints one value per
+step.  `--break-at`, `--break-on-cell I=V`, and `--break-on-output` each
+stop with their condition still true.
 
-`--tui` steps it on screen instead, highlighting the op about to run and showing the tape, stack, output, and the language's own named state beside it, with `--watch-cell`'s history as a row that grows as you step and shortens as you go back.
+`--tui` steps it on screen instead, highlighting the op about to run and
+showing the tape, stack, output, and the language's own named state beside
+it, with `--watch-cell`'s history as a row that grows as you step and
+shortens as you go back.  `hjkl` move a selector so a breakpoint can be set
+where the run has not reached yet; `t` marks under it and `c` continues to
+the next one.  Feed such a run with `--stdin`, since the keys and the
+program cannot share one stream.  A language whose position is not a place
+in the source — a call stack, a 3-D point — is left unhighlighted rather
+than marked in the wrong place; the header always shows the raw `ip`.
 
 ## Examples
 
@@ -56,6 +121,8 @@ Both work for all 69 -- the four odd input shapes, the seventeen template langua
 ```
 
 Feeding it the two input bits, one per line, prints their XOR.
+`tests/test_readme_example.py` runs all four rows, so the block cannot
+drift.
 
 <!-- EXAMPLES:START -->
 
@@ -68,7 +135,8 @@ languages with a boolean generator.  It regenerates via
 
 ## Implemented languages
 
-<details> <!-- IMPLEMENTED:START -->
+<details>
+<!-- IMPLEMENTED:START -->
 
 <summary>Show all 69 languages</summary>
 
@@ -173,9 +241,11 @@ Languages that don't fit into the above categories.
 - [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/ztoalc_l.py))
 - [function x(y)](https://esolangs.org/wiki/function_x(y)) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/function_x_y.py))
 
-<!-- IMPLEMENTED:END --> </details>
+<!-- IMPLEMENTED:END -->
+</details>
 
-Line remains a standalone PNG-language tool under `extra/line`; run `just test-line` for its suite.
+Line remains a standalone PNG-language tool under `extra/line`; run
+`just test-line` for its suite.
 
 ## Generators
 
@@ -190,8 +260,14 @@ tables.
 
 <!-- BOOLEAN-COUNT:END -->
 
-Generators are available through `esolangs generate`; `esolangs list --details` marks which languages have one (`gen`), which return a template (`tmpl`), and which have a committed example (`ex`).
+Generators are available through `esolangs generate`; `esolangs list
+--details` marks which languages have one (`gen`), which return a template
+(`tmpl`), and which have a committed example (`ex`). Add `--json` to get
+those as an object per language instead of a marker column, and `esolangs
+describe --json <language>` for the whole record. Regenerate committed
+examples with `python scripts/write_examples.py`.
 
 ## Contributing
 
 Read [the contribution guide](docs/CONTRIBUTING.md), then run `just test`.
+The project is GPL v3; see [LICENSE](LICENSE).

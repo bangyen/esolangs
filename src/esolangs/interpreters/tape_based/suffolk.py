@@ -49,18 +49,18 @@ import sys
 
 from esolangs.interpreters.io import IO
 
-# : One instant of a run:.
-# : pointer, the accumulator,.
-# : transition below returns a.
-# : the tape is a ``tuple`` for.
-# :.
-# : There is no halted flag:.
-# : -- a repeated state or the.
-# : so "stopped" is a fact.
-# :.
-# : The code is deliberately.
-# : so carrying it would put.
-# : it stores one per step.
+#: One instant of a run: ``(ind, ptr, acc, tape)`` -- the code cursor, the
+#: pointer, the accumulator, and the tape.  A value, not a record: every
+#: transition below returns a new one rather than editing one in place, and
+#: the tape is a ``tuple`` for the same reason.
+#:
+#: There is no halted flag: Suffolk never halts.  ``run`` stops on a proof
+#: -- a repeated state or the EOF from reading past the end of the input --
+#: so "stopped" is a fact about the *run*, not about any state.
+#:
+#: The code is deliberately not in here.  It does not change during a run,
+#: so carrying it would put constant data in every value ``run`` stores, and
+#: it stores one per step until the program repeats.
 type _State = tuple[int, int, int, tuple[int, ...]]
 
 
@@ -100,15 +100,15 @@ def _advance(state: _State, code: str, byte: int | None = None) -> _State:
 class _Machine:
     """Per-run Suffolk state: the code, tape, and accumulator."""
 
-    # : Whether the program can.
-    # : language, not to whoever is.
-    # : infinite, so ``while not.
-    # : caller stepping this one.
-    # : detector, or.
-    # :.
-    # : :func:`run` stops it from.
-    # : program that reads hits.
-    # : and one that reads nothing.
+    #: Whether the program can reach a halt of its own.  It belongs to the
+    #: language, not to whoever is stepping it: the wiki's rerun is
+    #: infinite, so ``while not vm.halted: vm.step()`` never returns.  A
+    #: caller stepping this one has to bound the run itself -- with a hang
+    #: detector, or :func:`esolangs.run`'s ``timeout``.
+    #:
+    #: :func:`run` stops it from outside, and takes no bound to do it: a
+    #: program that reads hits :class:`EOFError` past the end of its input,
+    #: and one that reads nothing returns to the state it began in.
     self_halts = False
 
     def __init__(self, code: str, io: IO) -> None:
@@ -123,8 +123,8 @@ class _Machine:
         self.state: _State = (0, 0, 0, (0,))
         self._exhausted = False
 
-    # The language's own names.
-    # than fields of their own, so.
+    # The language's own names.  They are views on the current state rather
+    # than fields of their own, so there is one place a step can change.
 
     @property
     def ind(self) -> int:
@@ -169,13 +169,13 @@ class _Machine:
         """
         return self._exhausted
 
-    # ``esolangs.vm._AffineMachine``.
-    # Suffolk qualifies because.
-    # what to do -- ``ind`` wraps.
-    # fixed rules -- and every.
-    # one ``max(0, ...)``, which.
-    # decides is the one.
-    # cells growing without bound,.
+    # ``esolangs.vm._AffineMachine``: the growing-cell hang certificate.
+    # Suffolk qualifies because ``_advance`` never reads a value to decide
+    # what to do -- ``ind`` wraps unconditionally and the pointer moves by
+    # fixed rules -- and every value it writes is affine but for ``!``'s
+    # one ``max(0, ...)``, which ``clamp_slack`` exposes.  The class this
+    # decides is the one :func:`run`'s docstring leaves to the caller:
+    # cells growing without bound, with no input to run out of.
 
     @property
     def key(self) -> tuple[int, int, int]:
@@ -206,7 +206,7 @@ class _Machine:
         """Return the input cursor, so a reading loop is not a repeat."""
         return self.io.position()
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: Tape + accumulator; ip the cursor, memory the tape.
 
     @property
     def ip(self) -> int:
@@ -264,10 +264,10 @@ class _Machine:
         sym = self.code[ind]
         byte = None
         if sym == ",":
-            # The read past the end of the.
-            # so it ends the machine here.
-            # happens to be driving.
-            # state stays the one that.
+            # The read past the end of the input is this language's stop,
+            # so it ends the machine here rather than escaping to whoever
+            # happens to be driving.  Nothing has advanced yet, so the
+            # state stays the one that produced the finished output.
             try:
                 inp = self.io.input_str()
             except EOFError:

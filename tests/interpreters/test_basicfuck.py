@@ -40,7 +40,7 @@ class TestBasicfuck:
             run_program(prog + "a -= 1;")
 
     def test_var_to_var(self) -> None:
-        # t=3: the cross-check reserves.
+        # t=3: the cross-check reserves a cell for variable-variable arithmetic
         prog = "#basicfuck t=3 r=0~255 o=wrap\n#allocate a, b\n"
         assert run_program(prog + "a += 5;\nb += a;\nwrite <- b ;") == "\x05"
 
@@ -80,15 +80,15 @@ class TestBasicfuck:
         with pytest.raises(ValueError, match="syntax"):
             run_program(H + "a += ;")
         with pytest.raises(ValueError, match="syntax"):
-            run_program(H + "a 5 1 ;")  # missing += / -=.
+            run_program(H + "a 5 1 ;")  # missing += / -=
         with pytest.raises(ValueError, match="syntax"):
-            run_program(H + "a += {;")  # a constant that is not a.
+            run_program(H + "a += {;")  # a constant that is not a number
         with pytest.raises(ValueError, match="syntax"):
-            run_program(H + "write a b ;")  # missing the <- arrow.
+            run_program(H + "write a b ;")  # missing the <- arrow
         with pytest.raises(ValueError, match="syntax"):
-            run_program(H + "read a b ;")  # missing the -> arrow.
+            run_program(H + "read a b ;")  # missing the -> arrow
         with pytest.raises(ValueError, match="syntax"):
-            run_program(H + "if (a { a += 1; }")  # missing the closing ).
+            run_program(H + "if (a { a += 1; }")  # missing the closing )
 
     def test_every_rejection_message_is_exact(self) -> None:
         """Each load error is pinned whole, not by a fragment of itself.
@@ -214,7 +214,7 @@ class TestNestedBlocks:
             "a += 65;\n"
             "write <- a ;"
         )
-        # The loop runs to completion.
+        # The loop runs to completion (a reaches 0) before the 65 is added.
         assert run_program(header + program) == "A"
 
 
@@ -226,13 +226,13 @@ class TestStepMachine:
         prog = "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\n"
         machine = _Machine(prog + "a += 65;\nwrite <- a ;", ScriptedIO())
         assert (machine.frames[-1][1], list(machine.cells)) == (0, [0])
-        machine.step()  # a += 65.
+        machine.step()  # a += 65
         assert list(machine.cells) == [65]
-        machine.step()  # write prints a.
+        machine.step()  # write prints a
         assert machine.io.getvalue() == "A"
-        machine.step()  # the finished frame is.
+        machine.step()  # the finished frame is finalized
         assert machine.halted
-        machine.step()  # stepping a halted machine is.
+        machine.step()  # stepping a halted machine is a no-op
         assert machine.frames == ()
 
     def test_a_frame_reports_what_kind_of_scope_it_is(self) -> None:
@@ -261,13 +261,13 @@ class TestStepMachine:
                 machine.step()
             return machine.snapshot()[1]
 
-        # the outermost frame is not a.
+        # the outermost frame is not a loop owner: no condition, not negated
         top = frames_after("a += 1;\n", 0)
         assert len(top) == 1
         _prog, ptr, loop, cond_pos, neg, body = top[0]
         assert (ptr, loop, cond_pos, neg, body) == (0, False, -1, False, None)
 
-        # entering a while pushes a.
+        # entering a while pushes a body frame and marks its owner
         owner, inner = None, None
         for step in range(1, 8):
             got = frames_after("a += 1;\nwhile (a) { a -= 1; }\n", step)
@@ -276,13 +276,13 @@ class TestStepMachine:
                 break
         assert owner is not None
         assert inner is not None
-        assert owner[2] is True  # the owner runs a loop.
-        assert owner[3] >= 0  # and knows where its condition.
-        assert owner[5] is not None  # and holds the body to re-run.
-        assert inner[2] is False  # the body itself is an.
+        assert owner[2] is True  # the owner runs a loop
+        assert owner[3] >= 0  # and knows where its condition is
+        assert owner[5] is not None  # and holds the body to re-run
+        assert inner[2] is False  # the body itself is an ordinary scope
         assert inner[5] is None
 
-        # a negated loop is a different.
+        # a negated loop is a different state from a plain one
         plain = frames_after("a += 1;\nwhile (a) { a -= 1; }\n", 2)
         negated = frames_after("a += 1;\nwhile !(a) { a += 1; }\n", 2)
         assert plain != negated
@@ -323,7 +323,7 @@ class TestDirectiveEdges:
             )
             == "B"
         )
-        # and each half-open form.
+        # and each half-open form defaults only its missing side
         assert (
             run_program(
                 "#basicfuck t=1 r=0~ o=nearest\n#allocate a\n"
@@ -365,7 +365,7 @@ class TestDirectiveEdges:
         for code, message in (
             ("", "Missing/Invalid directives."),
             ("#nonsense\n#allocate a\na += 1;\n", "Missing/Invalid directives."),
-            # a mode the directive does not.
+            # a mode the directive does not offer fails the whole pattern
             (
                 "#basicfuck t=1 r=0~9 o=sideways\n#allocate a\na += 1;\n",
                 "Missing/Invalid directives.",
@@ -389,7 +389,7 @@ class TestDirectiveEdges:
                 run_program(code)
             assert str(caught.value) == message
 
-        # an allocation line with.
+        # an allocation line with nothing after it is a complete program
         assert run_program("#basicfuck t=1 r=0~255 o=nearest\n#allocate a") == ""
 
     def test_variable_arithmetic_reserves_a_scratch_cell(self) -> None:
@@ -403,7 +403,7 @@ class TestDirectiveEdges:
         cannot see.
         """
         two = "#allocate a, b\na += 65;\nb += 1;\n"
-        # adding a variable: two names.
+        # adding a variable: two names need three cells
         with pytest.raises(ValueError, match=re.escape("Insufficient memory.")):
             run_program(f"#basicfuck t=2 r=0~255 o=nearest\n{two}a += b;\n")
         assert (
@@ -412,7 +412,7 @@ class TestDirectiveEdges:
             )
             == "B"
         )
-        # adding only constants: two.
+        # adding only constants: two names fit in two cells
         assert (
             run_program(f"#basicfuck t=2 r=0~255 o=nearest\n{two}write <- a;\n") == "A"
         )
@@ -446,7 +446,7 @@ class TestDirectiveEdges:
                     f"{word} += 1;\n"
                 )
             assert str(caught.value) == message
-        # a name that merely starts.
+        # a name that merely starts with a keyword is fine
         assert (
             run_program(
                 "#basicfuck t=1 r=0~255 o=nearest\n#allocate iffy\n"
@@ -636,7 +636,7 @@ class TestAllocationOffsets:
         with pytest.raises(ValueError, match=re.escape(message)) as caught:
             run_program("#basicfuck t=1 r=0~255 o=nearest\n#allocate a\nzz += 1;\n")
         assert str(caught.value) == message
-        # and a name that IS allocated,.
+        # and a name that IS allocated, but only after others, still resolves
         assert (
             run_program(
                 "#basicfuck t=3 r=0~255 o=nearest\n#allocate a, b, c\n"
@@ -682,7 +682,7 @@ class TestLexerBoundaries:
         arrays = "#basicfuck t=8 r=0~255 o=nearest\n#allocate arr->3, z\n"
         message = "Invalid syntax."
         cases = [head + t for t in ("write <- a", "a", "a_", "a += 12", "a += 1")]
-        # an array index running to the.
+        # an array index running to the end, and a bare arrow
         cases += [arrays + "arr->2", arrays + "arr->"]
         for code in cases:
             with pytest.raises(ValueError, match=re.escape(message)) as caught:
@@ -733,7 +733,7 @@ def _machine(code: object) -> object:
     return _Machine(code, ScriptedIO())
 
 
-# The directives every program.
+# The directives every program needs before its first statement.
 _NEAREST = "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\n"
 _WRAP = "#basicfuck t=1 r=0~255 o=wrap\n#allocate a\n"
 

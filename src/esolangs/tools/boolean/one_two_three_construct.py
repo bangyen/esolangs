@@ -87,12 +87,12 @@ from functools import cache
 
 __all__ = ["ConstructError", "construct"]
 
-# : Fill characters, shared.
+#: Fill characters, shared with the stored-plan module's contract.
 _ONE, _ZERO = "1", "2"
 
-# : Bit offset of cell 0 in a.
-# : -1..-3, so shifting by.
-# : non-negative and lets one.
+#: Bit offset of cell 0 in a row's tape mask.  The ring occupies cells
+#: -1..-3, so shifting by three keeps every reachable cell's bit index
+#: non-negative and lets one ``1 << (pos + _RING)`` cover both regions.
 _RING = 3
 
 
@@ -109,12 +109,12 @@ def _mask(cells: Iterable[int]) -> int:
     return m
 
 
-# : One emitted token: a.
-# : fill slot.
-# : of thousands of commands.
-# : character made.
-# : build (3.5s of 7.3s).
-# : nothing that hands the.
+#: One emitted token: a maximal ``1``/``2`` *run*, or ``("X", i)`` for a
+#: fill slot.  A run rather than a character because a segment is hundreds
+#: of thousands of commands long and only a few dozen runs: storing it per
+#: character made :func:`_row_runs` re-coalesce 21.3M tokens per ten-input
+#: build (3.5s of 7.3s).  A one-character string is still a valid run, so
+#: nothing that hands the builder a token list has to change.
 type _Token = str | tuple[str, int]
 
 
@@ -140,11 +140,11 @@ class _Row:
 
     __slots__ = ("bits", "dead", "pos", "tape")
 
-    # : ``tape`` is a bitmask, not.
-    # : ``pos``.
-    # : innermost loop, where an.
-    # : set operation, and it.
-    # : ``frozenset(tape)`` these.
+    #: ``tape`` is a bitmask, not a set: bit ``pos + _RING`` is cell
+    #: ``pos``.  The builder toggles and tests one cell at a time in the
+    #: innermost loop, where an int shift is several times cheaper than a
+    #: set operation, and it doubles as its own hashable snapshot -- the
+    #: ``frozenset(tape)`` these state keys used to build was pure cost.
     def __init__(self, bits: tuple[int, ...]) -> None:
         self.bits = bits
         self.pos = 0
@@ -152,10 +152,10 @@ class _Row:
         self.dead = False
 
 
-# : Remaining work budget for.
-# : in simulated commands —.
-# : builds or raises.
-# : decremented in place from.
+#: Remaining work budget for the current :func:`construct` call, counted
+#: in simulated commands — machine-independent, so the same table either
+#: builds or raises identically everywhere.  A list so the counter can be
+#: decremented in place from :func:`_exec_char`.
 _work = [0]
 
 
@@ -177,7 +177,7 @@ def _exec_char(row: _Row, ch: str) -> None:
         if row.pos == -3:
             raise ConstructError(f"row {row.bits}: '2' at -3 reads stdin")
         if row.pos == -2:
-            row.pos = 0  # prints a junk byte;.
+            row.pos = 0  # prints a junk byte; snapshot-invisible
         else:
             row.pos += 1
     else:  # pragma: no cover - the builder only emits 1/2 runs
@@ -216,11 +216,11 @@ def _exec_run(row: _Row, ch: str, w: int) -> None:
             row.pos += w
             return
         if row.pos - w >= -1:
-            # A descent that stops at -1 or.
-            # exactly "toggle the w cells.
-            # the cells pos-w+1..pos are.
-            # w-bit mask.
-            # at -3 both matter, so that.
+            # A descent that stops at -1 or above never wraps, so it is
+            # exactly "toggle the w cells it steps off, then move down":
+            # the cells pos-w+1..pos are contiguous, hence one XOR with a
+            # w-bit mask.  Below -1 the ring's -4 -> 0 wrap and the read
+            # at -3 both matter, so that case stays per-character.
             _work[0] -= w
             if _work[0] < 0:
                 raise _WorkExhaustedError
@@ -228,8 +228,8 @@ def _exec_run(row: _Row, ch: str, w: int) -> None:
             row.pos -= w
             return
     if ch == _ONE and row.pos >= 0 and w > row.pos + 1:
-        # A descent that runs past -1.
-        # part above it is the.
+        # A descent that runs past -1 splits at the ring boundary: the
+        # part above it is the contiguous-XOR case, and the rest laps.
         head = row.pos + 1
         _work[0] -= head
         if _work[0] < 0:
@@ -238,25 +238,25 @@ def _exec_run(row: _Row, ch: str, w: int) -> None:
         row.pos = -1
         w -= head
     if ch == _ONE and w >= 4 and row.pos < 0:
-        # Inside the ring ``1`` cycles.
-        # period 4, toggling each of.
-        # whole number of laps.
-        # lap count is even and flips.
-        # ``w % 4`` steps have to be.
-        # inner loop, where the.
+        # Inside the ring ``1`` cycles 0 -> -1 -> -2 -> -3 -> 0 with
+        # period 4, toggling each of those four cells once per lap.  A
+        # whole number of laps therefore cancels on every cell when the
+        # lap count is even and flips all four when it is odd, so only
+        # ``w % 4`` steps have to be walked.  This is the kill segment's
+        # inner loop, where the descents run hundreds of cells deep.
         laps, rest = divmod(w, 4)
         _work[0] -= w - rest
         if _work[0] < 0:
             raise _WorkExhaustedError
         if laps & 1:
-            row.tape ^= 0b1111  # cells -3..0, i.e.
+            row.tape ^= 0b1111  # cells -3..0, i.e. bits 0..3
         for _ in range(rest):
             _exec_char(row, ch)
         return
     if ch == _ZERO and w and row.pos < 0:
-        # ``2`` at -1 or -2 lands on 0.
-        # and -3 reads stdin, which is.
-        # everything and the remaining.
+        # ``2`` at -1 or -2 lands on 0 (the -2 route prints a junk byte),
+        # and -3 reads stdin, which is fatal -- so the first step decides
+        # everything and the remaining w-1 are a plain right-walk.
         _exec_char(row, ch)
         w -= 1
         if w:
@@ -308,7 +308,7 @@ def _run_parts(s: str) -> list[str]:
             other = _ZERO
         elif ch == _ZERO:
             other = _ONE
-        else:  # pragma: no cover - 2**n groups is the exact worst case
+        else:  # pragma: no cover - the builder only emits 1/2 runs
             raise AssertionError(ch)
         j = s.find(other, i + 1)
         if j < 0:
@@ -437,35 +437,35 @@ def _normalize(b: _Builder) -> None:
     would read from), ``2`` otherwise.  All four ring cells occupied is an
     absorbing dead state, so the loop raises rather than spinning.
     """
-    # Which character comes next.
-    # ``1`` when some row sits at.
-    # have marked.
-    # positions, with no tape and.
-    # string is executed (once,.
-    # difference between planning.
-    # every row's tape through.
-    # command the separation stage.
+    # Which character comes next depends only on where the rows *are* --
+    # ``1`` when some row sits at -3, ``2`` otherwise -- never on what they
+    # have marked.  So the whole string is planned on a plain list of
+    # positions, with no tape and no builder clone, and only the finished
+    # string is executed (once, through the batched ``run``).  This is the
+    # difference between planning and simulating: the probe used to run
+    # every row's tape through ``_exec_char`` per character, 92% of every
+    # command the separation stage simulated.
     positions = [r.pos for r in b.live()]
     if all(p >= 0 for p in positions):
         return
-    # A live-lock is a repeated.
-    # the step is deterministic and.
-    # negative row, so a cycling.
-    # (measured worst case: nine).
-    # immediately instead of.
-    # this loop spent 4.96M of its.
-    # *do* normalize emit only a.
+    # A live-lock is a repeated position vector, reached almost at once:
+    # the step is deterministic and only the four ring cells can hold a
+    # negative row, so a cycling state repeats within a handful of steps
+    # (measured worst case: nine).  Detecting the repeat ends those calls
+    # immediately instead of spinning to a 10000-iteration cap -- where
+    # this loop spent 4.96M of its 4.96M iterations, since the calls that
+    # *do* normalize emit only a few characters each.
     out: list[str] = []
     seen: set[tuple[int, ...]] = {tuple(positions)}
     while True:
         if any(p == -3 for p in positions):
             out.append(_ONE)
-            # ``1`` steps left and wraps -4.
+            # ``1`` steps left and wraps -4 -> 0; no cell read can fail.
             positions = [0 if p == -4 else p for p in (q - 1 for q in positions)]
         else:
             out.append(_ZERO)
-            # ``2`` at -3 would read stdin,.
-            # cleared -3, so every row here.
+            # ``2`` at -3 would read stdin, but the branch above already
+            # cleared -3, so every row here either sits at -1/-2 (landing
             # on 0) or walks right.
             positions = [0 if p in (-1, -2) else p + 1 for p in positions]
         if all(p >= 0 for p in positions):
@@ -566,8 +566,8 @@ def _separate(b: _Builder, marks: list[int], ws: tuple[int, ...] | None = None) 
             w = max(1, d // 2) if ws is None else ws[i]
             if d < w:  # pragma: no cover - the probed arities all pass
                 raise ConstructError(f"level {i}: walk {d} under escape {w}")
-            # `d < w` is refused above, and.
-            # overshoots the escape, so.
+            # `d < w` is refused above, and the planned walk always
+            # overshoots the escape, so this always runs.
             if d > w:  # pragma: no branch
                 b.run("2" * (d - w))
                 b.test()
@@ -642,8 +642,8 @@ def _geometry(n: int) -> tuple[tuple[int, ...], tuple[int, ...] | None]:
         ok = False
     if ok:
         return marks, ws
-    # No probed arity reaches this.
-    # total by argument at the.
+    # No probed arity reaches this fallback; it is what keeps construct
+    # total by argument at the arities nobody has probed.
     return tuple(2 ** (n + 1) * 2**i + 1 for i in range(n)), None  # pragma: no cover
 
 
@@ -751,10 +751,10 @@ def _verdict(b: _Builder, table: str) -> None:
     live = b.live()
     positions = [r.pos for r in live]
     if len(set(positions)) != len(positions) or any(p % 2 == 0 for p in positions):
-        # Never observed (separation.
-        # the spacing :func:`_geometry`.
-        # mark base keeps the gaps.
-        # keeps the.
+        # Never observed (separation puts row r at ``base + 2*r`` under
+        # the spacing :func:`_geometry` picks, checked to n = 10, and the
+        # mark base keeps the gaps even); raising
+        # keeps the no-unproven-template contract if a wider arity
         # ever breaks the parity.
         raise ConstructError("verdict precondition: positions not distinct odd")
     a = max(r.pos for r in ones) + 2
@@ -813,7 +813,7 @@ def _jump_tables(code: str) -> tuple[list[int], list[int]]:
     fwd = [0] * len(code)
     prev = -1
     for i in threes:
-        back[i] = prev + 1  # just after the previous 3, or.
+        back[i] = prev + 1  # just after the previous 3, or the start
         prev = i
     nxt = len(code)
     for i in reversed(threes):
@@ -864,15 +864,15 @@ def _replay_ones(pos: int, tape: int, w: int) -> tuple[int, int]:
             tape ^= ((1 << head) - 1) << (pos - head + 1 + _RING)
             pos -= head
             w -= head
-            # No wrap check here: ``head``.
-            # walk stops at -1 at the.
-            # wrap belongs to the.
-            # only place the pointer steps.
+            # No wrap check here: ``head`` is capped at ``pos + 1``, so this
+            # walk stops at -1 at the lowest and cannot reach -4.  The cell-0
+            # wrap belongs to the inside-the-ring loop below, which is the
+            # only place the pointer steps one at a time.
             continue
         laps, rest = divmod(w, 4)
         if laps:
             if laps & 1:
-                tape ^= 0b1111  # a lap flips cells -3..0 once.
+                tape ^= 0b1111  # a lap flips cells -3..0 once each
             w = rest
             continue
         for _ in range(w):
@@ -924,35 +924,35 @@ def _replay_verdict(code: str) -> str:
     already raised above.
     """
     if not any(c in "123" for c in code):
-        return "0"  # a command-less program halts.
+        return "0"  # a command-less program halts with no output
     back, fwd = _jump_tables(code)
     run_at, run_ch, run_end = _code_runs(code)
     size = len(code)
     ip = pos = tape = 0
     power = lam = 1
     saved: tuple[int, int, int] | None = None
-    # Events, not commands: only.
-    # run of any length is one step.
-    # command cap here: the answer.
-    # never a fuel-limit inference.
-    # tape prefix, so one of those.
+    # Events, not commands: only jumps and loopbacks are counted, and a
+    # run of any length is one step.  There is deliberately no event or
+    # command cap here: the answer is a real halt or an exact state revisit,
+    # never a fuel-limit inference.  Constructed programs only touch a finite
+    # tape prefix, so one of those two outcomes must eventually occur.
     while True:
         if ip >= size:
-            # End of the program: halt.
+            # End of the program: halt below location 0, else loop.
             if pos < 0:
                 return "0"
             ip = 0
         elif code[ip] == "3":
             if pos < 0:
-                ip += 1  # below location 0 a 3 is a NOP.
+                ip += 1  # below location 0 a 3 is a NOP
                 continue
             if not tape >> (pos + _RING) & 1:
-                ip = fwd[ip]  # FALSE skips forward; ip still.
+                ip = fwd[ip]  # FALSE skips forward; ip still increases
                 continue
             ip = back[ip]
         else:
             r = run_at[ip]
-            if r < 0:  # unrecognized characters are.
+            if r < 0:  # unrecognized characters are NOPs
                 ip += 1
                 continue
             fn = _replay_ones if run_ch[r] == _ONE else _replay_twos
@@ -967,17 +967,17 @@ def _replay_verdict(code: str) -> str:
         lam += 1
 
 
-# : Simulated commands a.
-# : Counted work, not wall.
-# : raises identically on every.
-# :.
-# : The counter is charged for.
-# : read by a planning decision.
-# : so charging cannot change.
-# : a diverging build is cut.
-# : so the budget is a.
-# : at an unprobed arity, not a.
-# : scales it with the row.
+#: Simulated commands a :func:`construct` call may spend before raising.
+#: Counted work, not wall clock, so the same table either builds or
+#: raises identically on every machine.
+#:
+#: The counter is charged for what is actually simulated.  It is never
+#: read by a planning decision -- only tested against zero to abort --
+#: so charging cannot change which template a table emits, only whether
+#: a diverging build is cut off.  The pipeline is planned end to end,
+#: so the budget is a divergence guard for a stage invariant breaking
+#: at an unprobed arity, not a search allowance; :func:`construct`
+#: scales it with the row count so it never becomes an arity ceiling.
 _WORK_BUDGET = 2_000_000_000
 
 
@@ -1004,16 +1004,16 @@ def construct(truth_table: str) -> str:
     against that interpreter on random programs.
     """
     n = max(1, (len(truth_table) - 1).bit_length())
-    # The mark geometry comes from.
-    # when its per-arity reference.
-    # the doubling base with.
-    # arity -- otherwise.
-    # caches, so it is charged once.
-    # .
-    # The budget still bounds a.
-    # wider table is exponentially.
-    # shield paints -- so the cap.
-    # divergence guard, not an.
+    # The mark geometry comes from _geometry: the tight linear layout
+    # when its per-arity reference run proves out (every probed arity),
+    # the doubling base with halving escapes -- proven total at every
+    # arity -- otherwise.  The reference run manages its own budget and
+    # caches, so it is charged once per arity, not per table.
+    #
+    # The budget still bounds a diverging build, but everything about a
+    # wider table is exponentially bigger -- rows, template length,
+    # shield paints -- so the cap scales with the row count to stay a
+    # divergence guard, not an arity ceiling.
     marks_t, ws = _geometry(n)
     marks = list(marks_t)
     _work[0] = _WORK_BUDGET * max(1, 2 ** (n - 4))

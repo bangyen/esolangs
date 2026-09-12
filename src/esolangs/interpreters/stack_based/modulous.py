@@ -39,7 +39,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
 
-# : A command is a bracketed.
+#: A command is a bracketed group, which may hold one quoted string.
 _TOKEN = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
 
 
@@ -69,32 +69,32 @@ def _reject_stray_text(code: str) -> None:
         )
 
 
-# : One instant of a run:.
-# : named variables, and the.
-# :.
-# : The tokens stay out:.
-# : rewrites it, so a handler.
+#: One instant of a run: ``(stk, var, ind)`` -- the data stack, the four
+#: named variables, and the token cursor.
+#:
+#: The tokens stay out: Modulous parses its program once and never
+#: rewrites it, so a handler is handed the token it is running rather than
 #: carrying the list.
 type _Core = tuple[tuple[int, ...], dict[str, int], int]
 
-# : Every value a Modulous step.
-# : and cursor, plus whether.
-# : once and never rewritten,.
+#: Every value a Modulous step can change: the handler's stack, variables,
+#: and cursor, plus whether ``END`` has stopped the run.  Tokens are parsed
+#: once and never rewritten, while ports and randomness stay in the shell.
 type _State = tuple[_Core, bool]
 
-# : One instant as the.
-# : :data:`_State` except that.
-# : a dict cannot be a member.
+#: One instant as the all-outcomes search sees it.  Identical to
+#: :data:`_State` except that ``var`` is the sorted tuple of its items --
+#: a dict cannot be a member of the search's visited set.
 type _FrozenCore = tuple[tuple[int, ...], tuple[tuple[str, int], ...], int]
 type _BranchState = tuple[_FrozenCore, bool]
 
 
-# : The most outcomes one.
-# : is a program operand rather.
-# : for more states than any.
-# : property of the transition.
-# : that budget shrinks as the.
-# : program decidable or not.
+#: The most outcomes one ``RND`` may open in a branching search.  Its range
+#: is a program operand rather than a fixed coin, so a single token can ask
+#: for more states than any search wants to hold.  This is deliberately a
+#: property of the transition rather than the caller's remaining budget:
+#: that budget shrinks as the search proceeds, which would make the same
+#: program decidable or not depending on when the token was reached.
 _RND_FANOUT = 256
 
 
@@ -119,8 +119,8 @@ class _Machine:
     io: IO
     tokens: tuple[str, ...]
     _halted: bool
-    # Overrides ``RND``'s draw,.
-    # reproducible; ``None`` draws.
+    # Overrides ``RND``'s draw, which is what makes a stepped run
+    # reproducible; ``None`` draws for real.
     rng: Randomness | None
 
     def __init__(self, code: str, io: IO, rng: Randomness | None = None) -> None:
@@ -139,8 +139,8 @@ class _Machine:
         """Whether the instruction pointer has run off the program."""
         return self._halted or self.ind >= len(self.tokens)
 
-    # The VM's language-shaped.
-    # variables are not addressable.
+    # The VM's language-shaped view: the store is the stack, and the named
+    # variables are not addressable cells, so ``memory`` stays empty.
 
     @property
     def ip(self) -> int:
@@ -167,11 +167,11 @@ class _Machine:
             self._halted,
         )
 
-    # The all-random-outcomes.
-    # which a search cannot key on,.
-    # the sorted tuple ``snapshot``.
-    # the way back in.
-    # rather than forking, and.
+    # The all-random-outcomes search.  ``_Core`` holds ``var`` as a dict,
+    # which a search cannot key on, so the branching state carries it as
+    # the sorted tuple ``snapshot`` already uses and rebuilds the dict on
+    # the way back in.  The input cursor is left out: ``INP`` declines
+    # rather than forking, and output cannot affect a later token.
 
     def branching_snapshot(self) -> _BranchState:
         """Return the current state as the search's starting point."""
@@ -269,10 +269,10 @@ class _Machine:
                 core, halted = self._state
                 self._restore((_var_arith(core, mod), halted))
                 return
-            # Not a command and not.
-            # ``return``, so ``[PRTINT]``.
-            # INT]`` -- ran as nothing at.
-            # printed nothing, which is the.
+            # Not a command and not variable arithmetic.  This used to
+            # ``return``, so ``[PRTINT]`` -- a plausible slip for ``[PRT
+            # INT]`` -- ran as nothing at all: the program exited 0 having
+            # printed nothing, which is the worst answer to a typo.
             raise ValueError(
                 f"[{mod}] is not a Modulous command: {arg[0]!r} is not one of "
                 f"{', '.join(sorted(_DISPATCH))}, and a bare VARn+k or VARn-k "
@@ -370,12 +370,12 @@ def _psh(core: _Core, mod: str, arg: list[str], _value: str | int | None) -> _Co
         m = mod.split('"')[1]
         return ((*stk, *[ord(c) for c in m][::-1]), var, ind)
     if "VAR" in mod:
-        # The store names its target.
-        # does, so it rejects an.
-        # the ``VARn+k`` arithmetic.
-        # through created the variable.
-        # -- the keyword spelling,.
-        # into a phantom ``VAR`` and.
+        # The store names its target the same way every other variable op
+        # does, so it rejects an unknown name the same way too: ``PRT`` and
+        # the ``VARn+k`` arithmetic both halt on one, and letting the store
+        # through created the variable instead.  That made ``[PSH VAR VAR1]``
+        # -- the keyword spelling, which the syntax is ``[PSH VAR1]`` -- store
+        # into a phantom ``VAR`` and silently do nothing to ``VAR1``.
         name = _operand(arg, 1)
         _named(var, name)
         return (stk, {**var, name: _top(stk)}, ind)
@@ -450,8 +450,8 @@ def _var_arith(core: _Core, mod: str) -> _Core:
     if "+" in mod:
         lhs, rhs = mod.split("+")
         return (stk, {**var, lhs: _named(var, lhs) + int(rhs)}, ind)
-    # The caller only routes a.
-    # so the one that is not a.
+    # The caller only routes a token here when it holds a ``+`` or a ``-``,
+    # so the one that is not a ``+`` is a ``-``.
     lhs, rhs = mod.split("-")
     return (stk, {**var, lhs: _named(var, lhs) - int(rhs)}, ind)
 

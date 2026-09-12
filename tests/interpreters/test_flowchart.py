@@ -15,9 +15,9 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.vm import run_until_halt_or_cycle
 from tests.raises import raises_message
 
-# The wiki's truth machine:.
-# 1 print it forever.
-# heading-relative left.
+# The wiki's truth machine: read a bit, and on 0 print it once and halt, on
+# 1 print it forever.  The switch is entered travelling downward, so its
+# heading-relative left (grid-east) is the looping branch.
 TRUTH_MACHINE = [
     "       ( )──┐        ",
     "           / /       ",
@@ -27,8 +27,8 @@ TRUTH_MACHINE = [
     "              └─────┘",
 ]
 
-# The wiki's cat: the upper.
-# runs out, and the lower loop.
+# The wiki's cat: the upper loop reads bits onto a deque until the input
+# runs out, and the lower loop pops them back off and prints them.
 CAT = [
     "( )──┐   ",
     "  ┌─/ /─┐",
@@ -46,8 +46,8 @@ CAT = [
     "   (( )) ",
 ]
 
-# The wiki's Kolakoski-sequence.
-# east and a south path, so it.
+# The wiki's Kolakoski-sequence generator.  Its opening ``( )`` has both an
+# east and a south path, so it is the one example that forks.
 KOLAKOSKI = [
     "( )─[ }─\\[ ]/─/{ }\\─\\ \\─( )─< >─( )─( )─( )─{ }─(( ))",
     " │              │        │   └────────────────────┘",
@@ -464,7 +464,7 @@ class TestPointersStop:
         machine = _Machine(["( )"], ScriptedIO(""))
         machine.step()
         assert machine.halted
-        machine.step()  # the early return: no pointer.
+        machine.step()  # the early return: no pointer is live to advance
         assert machine.halted
 
     def test_rail_running_off_the_grid_stops(self) -> None:

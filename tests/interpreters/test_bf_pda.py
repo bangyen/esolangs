@@ -171,7 +171,7 @@ class TestStepMachine:
 
         machine = _Machine("<", ScriptedIO())
         before = machine.snapshot()
-        machine.step()  # < pushes a zero.
+        machine.step()  # < pushes a zero
         assert machine.snapshot() != before
         assert machine.stack == (0,)
 
@@ -179,9 +179,9 @@ class TestStepMachine:
         from esolangs.interpreters.stack_based.bf_pda import _Machine
 
         machine = _Machine("<", ScriptedIO())
-        machine.step()  # < pushes a zero.
+        machine.step()  # < pushes a zero
         assert machine.halted
-        machine.step()  # stepping a halted machine is.
+        machine.step()  # stepping a halted machine is a no-op
         assert machine.stack == (0,)
 
 

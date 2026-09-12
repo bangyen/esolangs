@@ -52,7 +52,7 @@ class TestBIOBasicCommands:
         assert f.getvalue() == "\x01"
 
         with redirect_stdout(io.StringIO()) as f:
-            run("0oz;" * 10 + "1iz;", io=IO())  # 10 increments = ASCII 10.
+            run("0oz;" * 10 + "1iz;", io=IO())  # 10 increments = ASCII 10 (newline)
         assert f.getvalue() == "\n"
 
     def test_case_insensitive_commands(self) -> None:
@@ -107,13 +107,15 @@ class TestBIOMathematicalOperations:
         """Test addition: 0ox; 0oy; 0ix{ 1ox; 0oy; }; 1iy;"""
         with redirect_stdout(io.StringIO()) as f:
             run("0ox;0oy;0ix{1ox;0oy;};1iy;", io=IO())
-        assert f.getvalue() == "\x02"  # 1 + 1 = 2.
+        assert f.getvalue() == "\x02"  # 1 + 1 = 2
 
     def test_subtraction(self) -> None:
         """Test subtraction: 0ox; 0ox; 0oy; 0iy{ 0ox; 1oy; }; 1ix;"""
         with redirect_stdout(io.StringIO()) as f:
             run("0ox;" * 2 + "0oy;0iy{0ox;1oy;};1ix;", io=IO())
-        assert f.getvalue() == "\x03"  # 2 + 1 = 3 (this is actually.
+        assert (
+            f.getvalue() == "\x03"
+        )  # 2 + 1 = 3 (this is actually addition, not subtraction)
 
     def test_multiplication(self) -> None:
         """Test multiplication: 0ox; 0ox; 0ox; 0ox; 0ox;
@@ -121,7 +123,7 @@ class TestBIOMathematicalOperations:
         """
         with redirect_stdout(io.StringIO()) as f:
             run("0ox;" * 5 + "0ix{1ox;" + "0oy;" * 5 + "};1iy;", io=IO())
-        assert f.getvalue() == "\x19"  # 5 * 5 = 25.
+        assert f.getvalue() == "\x19"  # 5 * 5 = 25
 
     def test_complex_calculation(self) -> None:
         """Test a more complex calculation."""
@@ -135,8 +137,8 @@ class TestBIOHelloWorld:
 
     def test_hello_world_program(self) -> None:
         """Test the complete Hello World program from esolangs.org."""
-        # This is a simplified version.
-        # The full program is very.
+        # This is a simplified version of the Hello World program
+        # The full program is very long, so we test the pattern for generating 'H'
         hello_world_code = (
             "0ox;" * 9
             + "0ix{"
@@ -158,8 +160,8 @@ class TestBIOHelloWorld:
 
     def test_character_generation_pattern(self) -> None:
         """Test the pattern for generating specific ASCII characters."""
-        # Generate 'A' (ASCII 65).
-        # 65 = 8*8 + 1, so we need 8.
+        # Generate 'A' (ASCII 65)
+        # 65 = 8*8 + 1, so we need 8 increments, then 8*8 in loop, then 1 more
         with redirect_stdout(io.StringIO()) as f:
             run("0ox;" * 8 + "0ix{" + "0oy;" * 8 + "1ox;};0oy;1iy;", io=IO())
         assert f.getvalue() == "A"
@@ -194,11 +196,11 @@ class TestBIOEdgeCases:
     @pytest.mark.parametrize(
         "code",
         [
-            "0ix;",  # a guard terminated by `;`.
-            "0Iy;",  # the same, uppercase.
-            "0ox;0iz;",  # a guard alone, after a valid.
-            "0ox{};",  # `{` on an increment, which.
-            "1ix{};",  # `{` on an output command.
+            "0ix;",  # a guard terminated by `;` instead of its `{`
+            "0Iy;",  # the same, uppercase
+            "0ox;0iz;",  # a guard alone, after a valid command
+            "0ox{};",  # `{` on an increment, which opens nothing
+            "1ix{};",  # `{` on an output command
         ],
     )
     def test_terminator_must_match_the_opcode(self, code: str) -> None:
@@ -232,7 +234,7 @@ class TestBIOEdgeCases:
 
     def test_large_register_values(self) -> None:
         """Test handling of large register values."""
-        large_code = "0ox;" * 300 + "1ix;"  # 300 increments.
+        large_code = "0ox;" * 300 + "1ix;"  # 300 increments
         with redirect_stdout(io.StringIO()) as f:
             run(large_code, io=IO())
         assert f.getvalue() == chr(300 % 256)
@@ -250,13 +252,13 @@ class TestBIOIntegration:
     def test_complex_program(self) -> None:
         """Test a complex BIO program with multiple operations."""
         complex_code = (
-            "0ox;" * 3  # x = 3.
-            + "0oy;" * 2  # y = 2.
-            + "0ix{"  # while x > 0.
-            + "0oz;"  # increment z.
-            + "1ox;"  # decrement x.
+            "0ox;" * 3  # x = 3
+            + "0oy;" * 2  # y = 2
+            + "0ix{"  # while x > 0
+            + "0oz;"  # increment z
+            + "1ox;"  # decrement x
             + "};"
-            + "1iz;"  # output z (should be 3).
+            + "1iz;"  # output z (should be 3)
         )
 
         with redirect_stdout(io.StringIO()) as f:
@@ -272,7 +274,7 @@ class TestBIOIntegration:
     def test_character_arithmetic(self) -> None:
         """Test character arithmetic operations."""
         with redirect_stdout(io.StringIO()) as f:
-            run("0ox;" * 66 + "1ix;", io=IO())  # 66 = 'B'.
+            run("0ox;" * 66 + "1ix;", io=IO())  # 66 = 'B'
         assert f.getvalue() == "B"
 
 
@@ -283,18 +285,18 @@ class TestStepMachine:
 
         machine = _Machine("0ox;0ix{1ox;};", ScriptedIO())
         assert (machine.reg, machine.stk, machine.ind) == ((0, 0, 0), (), 0)
-        machine.step()  # 0ox sets x to 1.
+        machine.step()  # 0ox sets x to 1
         assert machine.reg == (1, 0, 0)
-        machine.step()  # 0ix sees x nonzero and pushes.
+        machine.step()  # 0ix sees x nonzero and pushes the loop
         assert machine.stk == (1,)
-        machine.step()  # 1ox decrements x.
+        machine.step()  # 1ox decrements x
         assert machine.reg == (0, 0, 0)
-        machine.step()  # } pops the loop and lands.
+        machine.step()  # } pops the loop and lands back on the 0ix
         assert machine.stk == ()
         assert machine.ind == 1
-        machine.step()  # 0ix sees x zero and skips the.
+        machine.step()  # 0ix sees x zero and skips the body
         assert machine.halted
-        machine.step()  # stepping a halted machine is.
+        machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 4
 
     def test_nonterminating_loop_is_detected_as_a_cycle(self) -> None:

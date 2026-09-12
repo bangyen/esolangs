@@ -12,58 +12,58 @@ from esolangs.tools.boolean.helpers import _validate_truth_table, instantiate
 __all__ = ["a_painter_ant"]
 
 
-# --- A Painter Ant (no-input.
-# .
-# Boolean generators for A.
-# .
-# A Painter Ant is a single ant.
-# (all black to start).
-# that direction only if the.
-# ``W`` move only if the.
-# cell black/white.
-# instruction the pointer.
-# .
-# The wiki defines no I/O, so.
-# convention (like.
-# carries ``{X0}`` and ``{X1}``.
-# :func:`instantiate` fills.
-# **colour of the cell the ant.
-# black is zero), read by a.
-# is the visited-cell bounding.
-# .
-# The construction paints the.
-# leaf for its inputs.
-# and returns to the origin;.
-# table entry and left.
-# zero.
-# so the white cells are.
-# every later cycle only.
-# cycle-stable.
-# ends cycle 2 at) to a.
-# embedding does the last.
-# .
-# The head is built.
-# the axes (the final input on.
-# ``0``) and the cycle-2 ant.
-# ``docs/generators/a_painter_an.
-# the leaves sit on one row ``y.
-# apart so adjacent stars share.
-# y-axis.
-# just the three above -- XOR.
-# through ``n == 7`` (34788.
+# --- A Painter Ant (no-input grid language; parameterized convention) ---
+#
+# Boolean generators for A Painter Ant.
+#
+# A Painter Ant is a single ant on an infinite grid of black or white cells
+# (all black to start).  Lowercase ``n``/``e``/``s``/``w`` move one cell in
+# that direction only if the destination is black; uppercase ``N``/``E``/``S``/
+# ``W`` move only if the destination is white; ``p``/``P`` paint the current
+# cell black/white.  The program runs in an implicit loop: after the last
+# instruction the pointer returns to the first.
+#
+# The wiki defines no I/O, so the generator follows the parameterized
+# convention (like ``bio``/``back``/``nocomment``/``bfpda``): the template
+# carries ``{X0}`` and ``{X1}`` placeholders for the two input bits, which
+# :func:`instantiate` fills with the per-bit routing code.  The answer is the
+# **colour of the cell the ant lands on** at the end of a cycle (white is one,
+# black is zero), read by a semantic grid model (the interpreter's own output
+# is the visited-cell bounding box, which carries no coordinates).
+#
+# The construction paints the decision-tree leaves and routes the ant to the
+# leaf for its inputs.  :func:`_head` paints one leaf per input combination
+# and returns to the origin; each leaf is painted ``P`` (white) for a one
+# table entry and left unpainted (a space, ignored by the interpreter) for a
+# zero.  Only ``P`` is ever used -- the generator never paints a cell black --
+# so the white cells are monotone increasing: cycle 1 establishes them and
+# every later cycle only re-confirms a subset, which makes the programs
+# cycle-stable.  The ``body`` then funnels the ant (from whichever corner it
+# ends cycle 2 at) to a canonical routing point, and the final input's
+# embedding does the last east/west route onto the output leaf.
+#
+# The head is built generically: for one and two inputs the leaves sit on
+# the axes (the final input on ``x = +-2``, the first on ``y = +-2`` or
+# ``0``) and the cycle-2 ant dances on the pre-painted stars (see
+# ``docs/generators/a_painter_ant_generator.md`` for the ring rule).  For three inputs
+# the leaves sit on one row ``y = -2`` at ``x = +-2 +-4 +-8``, four cells
+# apart so adjacent stars share their axis cells and symmetric across the
+# y-axis.  The row generalises: this one ``_head`` serves every arity, not
+# just the three above -- XOR builds and lands correctly on all inputs
+# through ``n == 7`` (34788 characters), which is as far as it was measured,
 # not a ceiling.
-# .
-# The template routes the first.
-# for a one bit, east/south for.
-# east/west after it.
-# zero, an 8-character.
-# leaf).
-# program is a cycle-stable.
+#
+# The template routes the first ``n-1`` inputs by their weight (west/north
+# for a one bit, east/south for a zero) before the body and the final input
+# east/west after it (``WWwWWEEe`` for a one bit and ``NENEESWw`` for a
+# zero, an 8-character complement pair that lands on the opposite-coloured
+# leaf).  Every table of any input count is supported and every instantiated
+# program is a cycle-stable fixed point (the bounding box is identical for
 # any whole number of cycles).
 
-# ``{XF}``: the final.
+# ``{XF}``: the final (least-significant) input routes east/west.
 _XF = {1: "WWwWWEEe", 0: "NENEESWw"}
-# The inverse of each move.
+# The inverse of each move direction, for retracing a path.
 _OPP = {
     "n": "s",
     "s": "n",
@@ -165,9 +165,9 @@ def _head(truth_table: str, bits: list[int]) -> str:
         if not _leaf_color(truth_table, list(leaf_bits)):
             out.append(" ")
             continue
-        # Odd n starts on a horizontal.
-        # NE and the reverse path would.
-        # leading WS (no moves) flips.
+        # Odd n starts on a horizontal bit, so its outbound would lead with
+        # NE and the reverse path would end on an orphan WS anchor; a
+        # leading WS (no moves) flips it to start WS / end NE like n == 2.
         outbound = "WS" if n >= 3 and n % 2 == 1 else ""
         outbound += "".join(
             (
@@ -198,15 +198,15 @@ def _body() -> str:
     leaves from -- and its blocked-uppercase returns are the anchors of the
     cycle-2 dance.
     """
-    # West star, entered from the.
-    # clockwise spiral (single ring.
-    # cells, and blocked-uppercase.
+    # West star, entered from the shared cell: east ring cell, then the
+    # clockwise spiral (single ring steps, L-shaped detours out to the axis
+    # cells, and blocked-uppercase returns from the axis cells), ending on
     # the south-east diagonal.
     west = ("wP", "nP", "wnP", "EsP", "wP", "swP", "WWeP", "sP", "esP", "SSnP", "eP")
-    # East (mirror) star, entered.
-    # and walked clockwise to the.
+    # East (mirror) star, entered after the gap on the south-west diagonal
+    # and walked clockwise to the shared west axis cell.
     east = ("NNseP", "SSnP", "eP", "neP", "EEwP", "nP", "wnP", "NNsP", "wP", "sP", "wP")
-    gap = 4 - 2  # star centres 4 apart; each.
+    gap = 4 - 2  # star centres 4 apart; each ring reaches 1 cell inward
     return "N" + "".join(west) + "e" * gap + "P" + "".join(east) + "S"
 
 
@@ -228,9 +228,9 @@ def a_painter_ant(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
-    # The head paints every leaf,.
-    # n-1 inputs route by weight.
-    # (least-significant) input.
+    # The head paints every leaf, the body paints the two stars, the first
+    # n-1 inputs route by weight before the body, and the final
+    # (least-significant) input routes east/west onto its leaf after it.
     head = _head(truth_table, [0] * n)
     prefix = "".join("{X" + str(i) + "}" for i in range(n - 1))
     suffix = "{X" + str(n - 1) + "}"

@@ -31,9 +31,9 @@ PACKAGE = "esolangs.tools.boolean"
 Key = tuple[str, str]
 Func = ast.FunctionDef | ast.AsyncFunctionDef
 
-# : (module, function) -> its.
+#: (module, function) -> its ast node.
 NODES: dict[Key, Func] = {}
-# : module -> name -> module.
+#: module -> name -> module the name was imported from.
 IMPORTS: dict[str, dict[str, str]] = defaultdict(dict)
 
 for info in pkgutil.iter_modules(boolean.__path__):
@@ -105,7 +105,7 @@ def unbounded(node: ast.AST) -> int:
     )
 
 
-# : module -> its source lines,.
+#: module -> its source lines, for reading the pragma beside a raise.
 LINES: dict[str, list[str]] = {}
 for info in pkgutil.iter_modules(boolean.__path__):
     if info.name != "examples":

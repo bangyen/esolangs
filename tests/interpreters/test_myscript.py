@@ -156,7 +156,7 @@ class TestErrors:
         assert run_and_capture("-}`\n") == ""
 
     def test_truthiness_coercion(self) -> None:
-        # int/str/list/function values.
+        # int/str/list/function values coerce in while conditions
         assert run_and_capture("var a is []\nwhile a,\n  say x") == ""
         assert run_and_capture('while "",\n  say x') == ""
         assert run_and_capture("while 0,\n  say x") == ""
@@ -185,13 +185,13 @@ class TestErrors:
         assert run_and_capture(code) == "321"
 
     def test_while_loop_with_condition_recheck(self) -> None:
-        # the condition is re-evaluated.
+        # the condition is re-evaluated after each pass through the body
         code = "var i is 1\nvar f is func\n  var i is 2\nwhile i,\n  var i is 0\nsay i"
         assert run_and_capture(code) == "0"
 
     def test_while_loop_inside_a_function_body(self) -> None:
-        # a while loop nested in a.
-        # stack like any other, not run.
+        # a while loop nested in a function body is stepped on the frame
+        # stack like any other, not run to completion inside one step()
         code = (
             "var f is func\n"
             "  var i is 2\n"
@@ -307,7 +307,7 @@ class TestFrameStack:
             "while dec i,\n"
             "  var i is subtract i 1"
         )
-        # 2 and 1 run the body; 0 is.
+        # 2 and 1 run the body; 0 is the check that ends the loop.
         assert run_and_capture(code) == "210"
 
     def test_a_call_in_a_check_subject_and_case_is_stepped(self) -> None:
@@ -326,7 +326,7 @@ class TestFrameStack:
         while not machine.halted:
             depths.add(len(machine.frames))
             machine.step()
-        # The body's own frame is.
+        # The body's own frame is entered, so the run is seen at depth 2.
         assert max(depths) >= 2
 
 

@@ -45,8 +45,8 @@ from tests.raises import raises_message
 if TYPE_CHECKING:
     from esolangs.tools.boolean.examples import BooleanExample
 
-# : Every table over one and.
-# : shapes a tree can get.
+#: Every table over one and two inputs, then a set at three chosen for the
+#: shapes a tree can get wrong: constant, one-variable, parity, majority,
 #: AND, OR, and the two NANDs.
 _TABLES: list[str] = [
     *(format(i, "02b") for i in range(4)),
@@ -55,11 +55,11 @@ _TABLES: list[str] = [
     "11111111",
     "00001111",
     "01010101",
-    "10010110",  # parity.
-    "00010111",  # majority.
-    "00000001",  # AND3.
-    "11111110",  # NAND3.
-    "01111111",  # OR3.
+    "10010110",  # parity
+    "00010111",  # majority
+    "00000001",  # AND3
+    "11111110",  # NAND3
+    "01111111",  # OR3
 ]
 
 
@@ -73,9 +73,9 @@ def _run(example: BooleanExample, program: str, stdin: str) -> str:
     io = ScriptedIO(stdin)
     argument = program.splitlines() if example.split else program
     extra = dict(example.kwargs)
-    # ``seed`` is not an argument.
-    # whose spec makes something.
-    # must be pinned to, so it.
+    # ``seed`` is not an argument to ``run``: it names the draw a language
+    # whose spec makes something random -- LaserFuck's initial heading --
+    # must be pinned to, so it arrives as the randomness source itself.
     if "seed" in extra:
         from esolangs.interpreters.randomness import Seeded
 
@@ -110,7 +110,7 @@ def _stdin(name: str, bits: list[int]) -> str:
     return encode_inputs(_DISPLAY_NAME[name], bits)
 
 
-# : Example stem -> registry.
+#: Example stem -> registry display name, which is what the public API takes.
 _BY_ID = {lang.id: name for name, lang in LANGUAGES.items()}
 _DISPLAY_NAME = {
     stem: _BY_ID[canonical_id(stem.replace("-", " "))] for stem in BOOLEAN_EXAMPLES
@@ -126,27 +126,27 @@ def _combination(
     return _run(example, program, _stdin(name, bits))
 
 
-# : Languages the sweep cannot.
-# : its own module instead; the.
-# : names only real generators,.
+#: Languages the sweep cannot drive, with the reason.  Each is exercised by
+#: its own module instead; the completeness test below pins that this set
+#: names only real generators, so an entry cannot outlive its cause.
 _NOT_SWEPT: dict[str, str] = {
-    # Its implicit loop has no.
-    # language's stop -- so a plain.
-    # drives the VM to the cycle.
+    # Its implicit loop has no halting state -- a repeated snapshot is the
+    # language's stop -- so a plain ``run`` never returns.  Its own module
+    # drives the VM to the cycle and renders the grid.
     "a-painter-ant": "halts by cycling, not by reaching a halt state",
-    # Reads until the input runs.
-    # so the answer arrives through.
+    # Reads until the input runs out and treats the EOFError as its halt,
+    # so the answer arrives through an exception rather than a return.
     "suffolk": "stops on EOF rather than halting",
-    # Halts by exiting the process,.
+    # Halts by exiting the process, which a sweep cannot catch per row.
     "container": "halts by exiting with status 0",
-    # Answers by halting or looping.
-    # there is no output to compare.
+    # Answers by halting or looping forever rather than by printing, so
+    # there is no output to compare a row against.
     "point-break": "answers by termination, not by output",
     "123": "answers by termination, not by output",
-    # The dumping languages print.
-    # register list, a queue, a RAM.
-    # the answer is a fact about.
-    # strip.
+    # The dumping languages print their whole final state -- a tape, a
+    # register list, a queue, a RAM map -- and which part of that dump is
+    # the answer is a fact about the language, not a suffix a sweep can
+    # strip.  Their own modules read the cell they wrote.
     "back": "dumps its tape, so the answer is a cell rather than the output",
     "ram0": "dumps its machine, so the answer is a register rather than the output",
     "minsky-swap": "dumps its registers, so the answer is one of them",
@@ -160,7 +160,7 @@ def _sweepable() -> list[str]:
 
 
 @pytest.mark.parametrize("name", _sweepable())
-# 9.6s over the file: runs.
+# 9.6s over the file: runs every generated program against its table.
 @pytest.mark.medium
 def test_the_generated_program_computes_its_table(name: str) -> None:
     """Every row of every small table comes back as the table says.
@@ -175,8 +175,8 @@ def test_the_generated_program_computes_its_table(name: str) -> None:
         try:
             program = example.generator(table)
         except ValueError:
-            # A generator may document an.
-            # refusal itself is its own.
+            # A generator may document an arity or shape it refuses; the
+            # refusal itself is its own module's to pin.
             continue
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -204,9 +204,9 @@ def test_a_table_of_the_wrong_length_is_refused(name: str) -> None:
 @pytest.mark.parametrize("name", sorted(BOOLEAN_EXAMPLES))
 def test_a_table_of_other_characters_is_refused(name: str) -> None:
     """A truth table carrying anything but ``0``/``1`` builds nothing."""
-    # The message echoes the.
-    # character and where it is: it.
-    # a reader who typed "nonsense".
+    # The message echoes the *argument* now, and names the offending
+    # character and where it is: it used to print ``sorted(set(...))``, so
+    # a reader who typed "nonsense" was told "got 'enos'".
     with raises_message(
         ValueError,
         "truth table must contain only '0' and '1', got '02' -- "

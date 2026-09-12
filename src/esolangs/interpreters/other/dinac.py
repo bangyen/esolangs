@@ -76,7 +76,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
 _KEYWORDS = frozenset(("DEF", "ELSE", "GIVE", "IF", "IN", "OUT", "SET", "WHILE"))
-# Named because a bare "'".
+# Named because a bare "'" comparison reads to bandit as a hardcoded secret.
 _QUOTE = "'"
 _HEX = "0123456789ABCDEF"
 _ESCAPES = {"0": "\0", "n": "\n", "t": "\t", "r": "\r", "\\": "\\"}
@@ -108,14 +108,14 @@ class _Value:
 _SNUVAL = _Value("snuval")
 
 
-# -- expressions.
+# -- expressions -----------------------------------------------------------
 
-# Discriminated by the first.
+# Discriminated by the first element, like the statement tuples below.
 _Lit = tuple[Literal["lit"], _Value]
 _Name = tuple[Literal["name"], str]
 _Not = tuple[Literal["not"], "_Expr"]
-_Step = tuple[Literal["step"], str, "_Expr"]  # postfix + / -.
-_Cmp = tuple[Literal["cmp"], str, "_Expr", "_Expr"]  # = / .
+_Step = tuple[Literal["step"], str, "_Expr"]  # postfix + / -
+_Cmp = tuple[Literal["cmp"], str, "_Expr", "_Expr"]  # = / !
 _Call = tuple[Literal["call"], str, tuple["_Expr", ...]]
 _Expr = _Lit | _Name | _Not | _Step | _Cmp | _Call
 
@@ -128,9 +128,9 @@ def _parse_literal(text: str) -> _Value | None:
         return _Value("wubyte", int(text, 16))
     if text.startswith("'"):
         return _parse_aschar(text[1:])
-    # A bare escape: the wiki's.
-    # examples write ``SET c:\0``,.
-    # examples are ground truth, so.
+    # A bare escape: the wiki's prose spells an aschar ``'`` + char, but its
+    # examples write ``SET c:\0``, ``OUT \n`` and ``DEF/\0`` unquoted.  The
+    # examples are ground truth, so both spellings are accepted.
     if text.startswith("\\"):
         return _parse_aschar(text)
     return None
@@ -234,19 +234,19 @@ def _parse_primary(reader: _Reader) -> _Expr:
         reader.pos += 1
     token = reader.text[start : reader.pos]
     if not token:
-        # An aschar literal may *be*.
-        # ``'+``), so a quote is.
+        # An aschar literal may *be* one of the delimiters (``' ``, ``'(``,
+        # ``'+``), so a quote is re-read here taking the next character raw.
         raise ValueError(f"expected a value at position {start}")
-    # A lone quote means the.
-    # delimiters the scan above.
-    # is taken raw here rather than.
+    # A lone quote means the character it introduces is one of the
+    # delimiters the scan above stopped on (``' ``, ``'(``, ``'+``), so it
+    # is taken raw here rather than tokenized.
     if len(token) == 1 and token == _QUOTE:
         if reader.pos < len(reader.text):
             char = reader.text[reader.pos]
             reader.pos += 1
             value = _parse_aschar(char)
-            # The scan above stops only on.
-            # those is a legal aschar, so.
+            # The scan above stops only on " ()~=!,+-", and every one of
+            # those is a legal aschar, so the parse cannot fail here.
             if value is not None:  # pragma: no branch
                 return ("lit", value)
         raise ValueError("malformed aschar literal")
@@ -264,7 +264,7 @@ def _parse_primary(reader: _Reader) -> _Expr:
 
 def _parse_args(reader: _Reader) -> tuple[_Expr, ...]:
     """Parse a call's parenthesized, comma-separated argument list."""
-    reader.pos += 1  # the "(".
+    reader.pos += 1  # the "("
     args: list[_Expr] = []
     reader.skip()
     if reader.peek() == ")":
@@ -296,7 +296,7 @@ def _parse_whole(text: str) -> _Expr:
     return expr
 
 
-# -- statements.
+# -- statements ------------------------------------------------------------
 
 _Out = tuple[Literal["out"], _Expr]
 _In = tuple[Literal["in"], str]
@@ -308,8 +308,8 @@ _If = tuple[Literal["if"], _Expr, tuple["_Stmt", ...], tuple["_Stmt", ...]]
 _While = tuple[Literal["while"], _Expr, tuple["_Stmt", ...]]
 _Stmt = _Out | _In | _Set | _Assign | _Give | _CallStmt | _If | _While
 
-# : Where each statement kind.
-# : absent because it has none.
+#: Where each statement kind keeps the expression it evaluates.  ``IN`` is
+#: absent because it has none -- it names a variable and reads into it.
 _EXPR_SLOT = {
     "out": 1,
     "give": 1,
@@ -350,7 +350,7 @@ def _strip_comment(line: str) -> str:
             break
         out.append(char)
         if char == "'" and i + 1 < len(line):
-            # The quoted character is taken.
+            # The quoted character is taken raw, escape included.
             nxt = line[i + 1]
             out.append(nxt)
             i += 2
@@ -456,10 +456,10 @@ class _Parser:
             seen.add(pname)
             params.append((pname, _parse_typed(sample)))
         body = self._block(level, f"DEF {name}")
-        # The wiki: a non-snuval.
-        # error".
-        # refused at parse time; a GIVE.
-        # runtime is the HaltError in.
+        # The wiki: a non-snuval function that never returns "will raise an
+        # error".  A body with no GIVE anywhere cannot return, so it is
+        # refused at parse time; a GIVE that is merely unreachable at
+        # runtime is the HaltError in ``_checked`` instead.
         if returns != "snuval" and not any(s[0] == "give" for s in _walk(body)):
             raise ValueError(f"function {name!r} returns {returns} but never GIVEs")
         function = _Function(name, returns, tuple(params), body)
@@ -497,8 +497,8 @@ class _Parser:
         head, sep, value = text.partition(" . ")
         if sep and _is_name(head) and head not in _KEYWORDS:
             return ("assign", head, _parse_whole(value))
-        # A bare call is a statement of.
-        # DEF/$ function, whose value.
+        # A bare call is a statement of its own: the wiki's way to invoke a
+        # DEF/$ function, whose value there is nothing to bind.
         if text.rstrip().endswith(")"):
             expr = _parse_whole(text)
             if expr[0] == "call":
@@ -541,7 +541,7 @@ def _parse(code: str) -> tuple[_Overloads, tuple[_Stmt, ...]]:
     return parser.functions, top
 
 
-# -- evaluation.
+# -- evaluation ------------------------------------------------------------
 
 
 def _step_value(value: _Value, op: str) -> _Value:
@@ -563,7 +563,7 @@ def _bit(*, flag: bool) -> _Value:
     return _Value("wubyte", 1 if flag else 0)
 
 
-# -- the machine.
+# -- the machine -----------------------------------------------------------
 
 
 @dataclass
@@ -598,11 +598,11 @@ class _Frame:
     returned: _Value | None = None
 
 
-# : The whole run state as a.
-# : identity, its cursor, and.
-# : This is what.
-# : is complete -- the overload.
-# : parse time, so nothing.
+#: The whole run state as a value: the frame stack (each frame's block
+#: identity, its cursor, and the bindings it can see) and the input cursor.
+#: This is what :meth:`_Machine.snapshot` hands the cycle detector, and it
+#: is complete -- the overload table and the parsed bodies are fixed at
+#: parse time, so nothing outside these fields can change during a run.
 type _Bindings = tuple[tuple[str, str, int], ...]
 type _FrameState = tuple[int, int, _Bindings, str, tuple[str, int] | None]
 type _State = tuple[tuple[_FrameState, ...], int]
@@ -618,20 +618,20 @@ class _Machine:
     is at the top level or inside a function body.
     """
 
-    # : Whether a read past the end.
-    # : rather than raising.
-    # :.
-    # : package norm and what.
-    # : not, so an underfed program.
-    # : instead of refusing, and a.
+    #: Whether a read past the end of the input yields a *value* here
+    #: rather than raising.  Forty-five of the sixty-nine raise
+    #: :class:`~esolangs.exceptions.InputExhaustedError`, which is the
+    #: package norm and what :func:`esolangs.run` documents; this one does
+    #: not, so an underfed program answers a different row of its table
+    #: instead of refusing, and a caller has no way to tell from the output
     #: that it happened.
-    # :.
-    # : Declared rather than.
-    # : audited against every wiki.
-    # : (``docs/limitations.md``,.
-    # : would be a decision about.
-    # : What was wrong was that.
-    # : was false for seven.
+    #:
+    #: Declared rather than changed.  The zero-beyond-input convention was
+    #: audited against every wiki page and settled deliberately
+    #: (``docs/limitations.md``, Interpreter conventions); rewriting it
+    #: would be a decision about what these languages *mean*, not a fix.
+    #: What was wrong was that nothing said so, so the promise ``run`` made
+    #: was false for seven languages and a generic caller could not find
     #: out which.
     eof_is_a_value = True
 
@@ -648,14 +648,14 @@ class _Machine:
 
     def snapshot(self) -> _State:
         """Return the complete internal state, hashable for cycle detection."""
-        # Every frame's cursor and.
-        # cursor: a lap that consumed a.
-        # identified by ``id``, which.
-        # block tuple is built once at.
-        # .
-        # ``pending`` is by *value*: it.
-        # so it is freshly built rather.
-        # states differing only in how.
+        # Every frame's cursor and every binding it can see, plus the input
+        # cursor: a lap that consumed a line is not a repeat.  A body is
+        # identified by ``id``, which is stable for the run because every
+        # block tuple is built once at parse time and never rebuilt.
+        #
+        # ``pending`` is by *value*: it is rewritten as each call returns,
+        # so it is freshly built rather than a parse-time tuple, and two
+        # states differing only in how far a statement's calls have got are
         # not the same state.
         return (
             tuple(
@@ -691,7 +691,7 @@ class _Machine:
         """The frame stack's depth exposed as the VM's stack view."""
         return [frame.ind for frame in self.frames]
 
-    # -- expression evaluation, the.
+    # -- expression evaluation, the one place that recurses ---------------
 
     def _eval(self, expr: _Expr, scope: dict[str, _Value]) -> _Value:
         """Evaluate an expression in ``scope``, running any calls inline."""
@@ -711,16 +711,16 @@ class _Machine:
             right = self._eval(expr[3], scope)
             same = _compare(left, right)
             return _bit(flag=same if expr[1] == "=" else not same)
-        # Unreachable: ``step`` pushes.
-        # its value in before.
+        # Unreachable: ``step`` pushes a frame for every call and rewrites
+        # its value in before evaluating, so what arrives here is call-free.
         raise HaltError(  # pragma: no cover - see the comment above
             f"unresolved call to {expr[1]!r}"
         )
 
     def _resolve(self, function: _Function, values: list[_Value]) -> dict[str, _Value]:
         """Bind a call's evaluated arguments to its overload's parameters."""
-        # strict: the overload was.
-        # two sequences are the same.
+        # strict: the overload was selected by its parameter *types*, so the
+        # two sequences are the same length by construction.
         return {
             pname: value
             for (pname, _), value in zip(function.params, values, strict=True)
@@ -795,14 +795,14 @@ class _Machine:
             tuple(self._substitute(arg, target, value) for arg in expr[2]),
         )
 
-    # -- the simple statements,.
+    # -- the simple statements, shared by both execution paths -------------
 
     def _simple(self, stmt: _Stmt, scope: dict[str, _Value]) -> None:
         """Execute a statement with no body: OUT, IN, SET, or an assignment."""
         if stmt[0] == "out":
             self.io.print_str(self._eval(stmt[1], scope).render())
         elif stmt[0] == "callstmt":
-            self._eval(stmt[1], scope)  # run for its effects; the.
+            self._eval(stmt[1], scope)  # run for its effects; the value is dropped
         elif stmt[0] == "in":
             self._read(stmt[1], scope)
         elif stmt[0] == "set":
@@ -812,8 +812,8 @@ class _Machine:
             if value.kind == "snuval":
                 raise HaltError(f"SET {stmt[1]!r} needs a typed initial value")
             scope[stmt[1]] = value
-        # The outer dispatch sends.
-        # chain is exhaustive and the.
+        # The outer dispatch sends exactly these five kinds here, so the
+        # chain is exhaustive and the last test never falls through.
         elif stmt[0] == "assign":  # pragma: no branch
             current = scope.get(stmt[1])
             if current is None:
@@ -849,28 +849,28 @@ class _Machine:
             scope[name] = _Value(current.kind, 0)
             return
         if current.kind == "aschar":
-            # An empty line is legal and.
-            # package-wide answer, the same.
+            # An empty line is legal and has no character to take; 0 is the
+            # package-wide answer, the same one ``io.input_char`` gives.
             code = ord(line[0]) if line else 0
             scope[name] = _Value("aschar", code if code < 128 else 0)
             return
         scope[name] = _Value("wubyte", _wubyte_of(line))
 
-    # -- the stepped shell.
+    # -- the stepped shell -------------------------------------------------
 
     def _finish(self, frame: _Frame) -> None:
         """Pop an exhausted frame, delivering a call's value if it was one."""
         self.frames.pop()
         if frame.function is None:
             return
-        # A function body that runs out.
-        # which ``_checked`` refuses.
+        # A function body that runs out without a GIVE returns the snuval,
+        # which ``_checked`` refuses unless the overload declares one.
         self._deliver(self._checked(frame.function, _SNUVAL))
 
     def _deliver(self, value: _Value) -> None:
         """Hand a finished call's value back to the frame that wanted it."""
-        # A call is always made from.
-        # itself a frame -- so popping.
+        # A call is always made from somewhere -- the top-level program is
+        # itself a frame -- so popping the callee never empties the stack.
         if self.frames:  # pragma: no branch
             self.frames[-1].returned = value
 
@@ -902,15 +902,15 @@ class _Machine:
             return
         stmt = frame.body[frame.ind]
 
-        # An expression is re-entered.
-        # the calls already resolved;.
+        # An expression is re-entered once per call it contains, carrying
+        # the calls already resolved; ``returned`` is the one that just did.
         expr = self._expression_of(stmt)
         if expr is not None:
             working = frame.pending if frame.pending is not None else expr
             if frame.returned is not None:
                 call = self._pending_call(working)
-                # A value is waiting only.
-                # stepped, so the same search.
+                # A value is waiting only because a call was found and
+                # stepped, so the same search finds it again here.
                 if call is not None:  # pragma: no branch
                     working = self._substitute(working, call, frame.returned)
                 frame.returned = None
@@ -928,10 +928,10 @@ class _Machine:
             self.frames.append(_Frame(branch, frame.scope))
         elif stmt[0] == "while":
             if self._eval(stmt[1], frame.scope).truthy():
-                # Rewind onto the WHILE itself,.
-                # re-tests the condition rather.
-                # next lap re-reads the.
-                # again rather than reusing.
+                # Rewind onto the WHILE itself, so finishing the body
+                # re-tests the condition rather than falling past it.  The
+                # next lap re-reads the *parsed* condition, so its calls run
+                # again rather than reusing this lap's resolved values.
                 frame.ind -= 1
                 self.frames.append(_Frame(stmt[2], frame.scope))
         elif stmt[0] == "give":
@@ -948,8 +948,8 @@ class _Machine:
 
     def _push_call(self, call: _Call, scope: dict[str, _Value]) -> None:
         """Start a call: select its overload and push its body as a frame."""
-        # Every argument is call-free.
-        # innermost call, so any call.
+        # Every argument is call-free by now -- ``_pending_call`` returns the
+        # innermost call, so any call among the arguments was resolved first.
         values = [self._eval(arg, scope) for arg in call[2]]
         function = self._overload(call[1], values)
         self.frames.append(

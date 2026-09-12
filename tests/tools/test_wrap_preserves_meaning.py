@@ -25,8 +25,8 @@ import esolangs
 from esolangs.registry import LANGUAGES
 from esolangs.tools.wrap import WRAPPERS
 
-# Narrow enough to break.
-# so the breaks land in.
+# Narrow enough to break somewhere in almost every program, and coprime-ish
+# so the breaks land in different places rather than all at one stride.
 _WIDTHS = (5, 11, 27)
 
 _TABLES = ("0110", "0001")
