@@ -38,20 +38,24 @@ IMPORTS: dict[str, dict[str, str]] = defaultdict(dict)
 for info in pkgutil.iter_modules(boolean.__path__):
     if info.name == "examples":
         continue
-    tree = ast.parse(inspect.getsource(importlib.import_module(
-        f"{PACKAGE}.{info.name}"
-    )))
+    tree = ast.parse(
+        inspect.getsource(importlib.import_module(f"{PACKAGE}.{info.name}"))
+    )
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
             NODES.setdefault((info.name, node.name), node)
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            if node.module.startswith(PACKAGE):
-                origin = node.module.rsplit(".", 1)[-1]
-                for alias in node.names:
-                    IMPORTS[info.name][alias.asname or alias.name] = origin
+        elif (
+            isinstance(node, ast.ImportFrom)
+            and node.module
+            and node.module.startswith(PACKAGE)
+        ):
+            origin = node.module.rsplit(".", 1)[-1]
+            for alias in node.names:
+                IMPORTS[info.name][alias.asname or alias.name] = origin
 
 
 def calls(node: ast.AST) -> set[str]:
+    """Every name this function calls, by attribute or plain name."""
     out: set[str] = set()
     for sub in ast.walk(node):
         if isinstance(sub, ast.Call):
@@ -74,6 +78,7 @@ def resolve(module: str, name: str) -> Key | None:
 
 
 def reach(start: Key) -> set[Key]:
+    """Every (module, function) reachable from ``start`` inside the package."""
     seen: set[Key] = set()
     stack = [start]
     while stack:
@@ -90,6 +95,7 @@ def reach(start: Key) -> set[Key]:
 
 
 def unbounded(node: ast.AST) -> int:
+    """How many ``while True`` loops sit inside this function."""
     return sum(
         isinstance(sub, ast.While)
         and isinstance(sub.test, ast.Constant)
@@ -123,9 +129,7 @@ def raised(module: str, node: ast.AST) -> set[tuple[str, int, bool]]:
             if not isinstance(target, ast.Name):
                 continue
             span = src[sub.lineno - 1 : (sub.end_lineno or sub.lineno)]
-            out.add(
-                (target.id, sub.lineno, any("pragma: no cover" in s for s in span))
-            )
+            out.add((target.id, sub.lineno, any("pragma: no cover" in s for s in span)))
     return out
 
 
