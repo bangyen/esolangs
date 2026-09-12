@@ -10,6 +10,7 @@ function they call, because that is how the caller met them.
 import importlib
 import inspect
 import pathlib
+import threading
 from pathlib import Path
 
 import pytest
@@ -598,3 +599,71 @@ class TestAMistypedPathIsNotRunAsAProgram:
         assert esolangs.run("brainfuck", path, "", 5) == "\x03"
         with pytest.raises(FileNotFoundError):
             esolangs.run("brainfuck", tmp_path / "absent.txt", "", 5)
+
+
+class TestTheThreadRefusalNamesAWayThrough:
+    """A worker thread had two options and no third.
+
+    Timeouts are SIGALRM, so ``timeout=`` raised and ``timeout=None`` ran
+    forever.  Both routes out already existed -- the debugger's cooperative
+    bound, and ``evaluate``/``verify``'s divergence proof -- and the
+    message mentioned neither.
+
+    Deliberately not a silent fallback to the stepping path: two execution
+    paths for one function is how the two came to disagree before, which
+    is what ``tests/test_stepping_parity.py`` exists to catch.
+    """
+
+    @staticmethod
+    def _off_thread(work: object) -> object:
+        """Run ``work`` on a worker thread and hand back what it produced."""
+        box: dict[str, object] = {}
+
+        def target() -> None:
+            try:
+                box["value"] = work()  # type: ignore[operator]
+            except BaseException as exc:
+                box["value"] = exc
+
+        thread = threading.Thread(target=target)
+        thread.start()
+        thread.join(60)
+        assert not thread.is_alive(), "the worker never finished"
+        return box["value"]
+
+    def test_the_message_names_both_routes(self) -> None:
+        """Naming a route is a claim; the two tests below run it."""
+        outcome = self._off_thread(lambda: esolangs.run("brainfuck", "+++.", "", 5))
+        assert isinstance(outcome, esolangs.ArgumentError)
+        message = str(outcome)
+        assert "make_debugger" in message
+        assert "timeout=None" in message
+
+    def test_the_debugger_route_bounds_a_diverging_program(self) -> None:
+        """The one that matters: a program that never halts, on a thread."""
+        template = esolangs.generate("123", "0110")
+        program = esolangs.instantiate("123", template, [0, 1])
+
+        def work() -> object:
+            return esolangs.make_debugger("123", program, "").run(timeout=2.0)
+
+        assert self._off_thread(work) == "timeout"
+
+    def test_the_evaluate_route_works_on_a_thread(self) -> None:
+        """``timeout=None`` is unbounded for ``run`` and settled here.
+
+        The three diverging languages are proved by a repeated state, so
+        ``None`` terminates rather than hanging -- which is what makes it a
+        real answer to "how do I do this off the main thread".
+        """
+        for language in ("123", "ArrowQueue", "Point Break"):
+            outcome = self._off_thread(
+                lambda language=language: esolangs.evaluate(  # type: ignore[misc]
+                    language, "0110", timeout=None
+                )
+            )
+            assert outcome == "0110", language
+
+    def test_the_main_thread_is_unaffected(self) -> None:
+        """The refusal is about threads, not about timeouts."""
+        assert esolangs.run("brainfuck", "+++.", "", 5) == "\x03"
