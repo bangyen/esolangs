@@ -435,7 +435,14 @@ _OTHER_TABLES = {"majority": "00010111", "mixed": "11111001"}
 # one, so a timeout is one of the behaviours being compared rather than a
 # failure -- what must match is that the wrapped program loops exactly where
 # the unwrapped one does.
-_RUN_TIMEOUT = 5.0
+#
+# The bound is the whole cost of the 123 rows: `mixed` has six ones, run
+# wrapped and unwrapped, so it was six times two times 5.0 -- 60s, to the
+# hundredth.  The floor is the slowest halting run in this corpus, since one
+# cut short would be misread as a loop; measured over every wrapped language
+# and both tables below, that is 0.296s (Polynomial). Two seconds is 6.8x
+# that here and about 2.7x with CI's slower cores.
+_RUN_TIMEOUT = 2.0
 
 
 def _behaviour(name: str, program: str, stdin: str) -> str:

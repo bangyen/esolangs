@@ -38,10 +38,23 @@ sweep workers roughly fit the eight performance cores.
 | Mondays 06:00 UTC, or by hand | the whole suite, same three | none -- it is diff-scoped, and a scheduled run on `main` has no merge base |
 
 The split is a wall-time call, not a confidence one.  Measured locally at
-two workers: `-m "not slow"` is 10314 tests in 85s, `-m slow` is 335 in
-467s -- 85% of the suite's time for 3% of its tests.  There is no worker
-count to raise: `-n auto` is already every vCPU the runner has, since psutil
-is absent and xdist falls back to `os.cpu_count()`.
+two workers: `-m "not slow"` is 10314 tests in 81s, `-m slow` is 335 in
+289s.  There is no worker count to raise: `-n auto` is already every vCPU
+the runner has, since psutil is absent and xdist falls back to
+`os.cpu_count()`.
+
+The slow band was 467s before three fixes, none of which weakened an
+assertion -- what they removed was repeated work and dead waiting:
+
+| Fix | Saved |
+| --- | --- |
+| Qoibl caches its tokenization by source; `verify` was paying the identical search once per row | 90s |
+| `test_generic_verifier`'s termination bound 5.0s -> 1.0s; the diverging rows had already decided and the slowest *halting* row measures 0.000s | 60s |
+| `test_wrap`'s run bound 5.0s -> 2.0s; the slowest halting run in that corpus is 0.296s | 28s |
+
+The same pattern is worth checking first whenever a test's duration is a
+round multiple of a timeout: `mixed-123` measured 60.01s, which is six
+one-rows times two programs times 5.0.
 
 The cost is that `check_diff_coverage.py` reports instead of failing on a
 PR: with a subset selected, an uncovered line may just belong to a test

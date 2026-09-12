@@ -25,8 +25,17 @@ import esolangs
 _TABLES = ("0110", "0001", "10010110", "00010111")
 
 #: A termination-answering language proves a 1 by *not* halting, so this is
-#: paid once per such row.  Three languages, so the floor is real but small.
-_TERMINATION_TIMEOUT = 5.0
+#: paid once per such row, and it is dead wall time rather than work: the
+#: run has already decided, and the bound only says how long the suite sits
+#: still.  Three languages times four one-rows times the old 5.0 was 152s of
+#: this file, the largest single block in the slow band.
+#:
+#: The floor is the slowest *halting* row in those three -- a 0-row that
+#: takes longer than the bound would be misread as a loop.  Measured across
+#: 123, ArrowQueue and Point Break over all four tables below: 0.000s, every
+#: one of them sub-millisecond.  A second is three orders of magnitude of
+#: headroom, which survives CI being about 2.5x slower per core.
+_TERMINATION_TIMEOUT = 1.0
 _RUN_TIMEOUT = 30.0
 
 
