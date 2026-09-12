@@ -344,44 +344,53 @@ at n=11, above the ceiling.
 
 ## Expensive but uncapped
 
-The caps above are the generators that *refuse*. The trap is the ones that
-do not: a reader asking "can I afford n=11 on Circuit Diagram?" gets no
-answer from a cap table, because Circuit Diagram has no cap. It builds, and
-the artifact is 1.5GB.
+The caps above are the generators that *refuse*. The ones that do not are
+the ones a cap table cannot answer for: asking "can I afford n=11 on
+Circuit Diagram?" gets nothing back, because Circuit Diagram has no cap.
+It builds, whatever the size turns out to be.
 
-Generation is not the cost and gives no warning. Dense n=10 Circuit Diagram
-is **306,424,058 characters produced in 0.33 seconds at 674MB RSS** -- fast
-enough to feel free, large enough to be the whole of a small machine, with
-nothing between the call and the string.
+That size used to be the warning. Dense n=10 Circuit Diagram was
+**306,424,058 characters at 674MB RSS**, produced in a third of a second --
+fast enough to feel free, large enough to be the whole of a small machine.
+Allocating a row's columns once per row rather than once per gate took it
+to **4,036,596 characters**, and n=11 from an extrapolated 1.5GB to a
+measured 9,840,720. The same round of work shrank bit~ by 32x, ROTfuck by
+25x and COD by 4.3x.
 
-Program size against arity, on the dense pseudo-random table the caps are
-stated against, and the growth per input that sets the rest:
+So the numbers below are no longer a wall. They are still a growth law, and
+that is what they are for: nothing here refuses, so extrapolating is the
+only way to find out what an arity costs before paying for it. Program size
+against arity, on the dense pseudo-random table the caps are stated
+against:
 
 | Generator | n=8 | n=9 | growth per input |
 | --- | --- | --- | --- |
-| Circuit Diagram | 11,870,366 | 60,381,584 | ~5.1x |
-| COD | 3,458,156 | 15,840,376 | ~4.7x |
-| ROTfuck | 1,158,946 | 4,811,236 | ~4.1x |
-| Polynomial | 3,383,048 | 10,896,883 | ~3.0x |
+| Polynomial | 3,383,048 | 10,896,883 | ~3.2x |
+| COD | 942,692 | 3,668,705 | ~3.9x |
 | SLOW ACV MAMMALIAN | 1,672,368 | 3,380,418 | ~2.0x |
-| bit~ | 507,740 | 2,220,956 | ~4.3x |
-| 123 | 219,937 | 752,570 | ~3.1x |
-| Factor | 74,472 | 155,273 | ~2.0x |
+| Circuit Diagram | 609,526 | 1,609,864 | ~2.6x |
+| 123 | 219,937 | 752,570 | ~3.4x |
+| ROTfuck | 86,605 | 194,945 | ~2.3x |
+| bit~ | 31,076 | 69,005 | ~2.2x |
+| Factor | 17,613 | 36,339 | ~2.1x |
 
 Every other generator is under 600KB at n=9; the largest of them is A
-Painter Ant at 517,452. The two-megabyte pair above is why the cut is
-measured rather than guessed -- the first draft of this section said "under
-a megabyte" and both of them were over it.
+Painter Ant at 517,452 -- which is now bigger than the bottom three rows
+above, so the table is a list of the fastest *growing* generators and not
+of the largest ones.
 
 Two consequences worth having before you start:
 
-- **Extrapolate with the ratio, not with hope.** 306MB at n=10 and ~5.1x
-  puts Circuit Diagram's dense n=11 near 1.5GB, which an independent
-  measurement of a different n=11 table put at 1,526,274,340 characters.
-- **Run time is the real wall, and it does not track generation.** Circuit
-  Diagram n=8 generates in under a tenth of a second and takes roughly 22
-  seconds *per row*, so a full 256-row table is about an hour and a half.
-  Nothing warns about that either, and `evaluate` runs every row.
+- **Extrapolate with the ratio, not with hope.** COD is the one to watch
+  now: 3.7MB at n=9 and ~3.9x puts its dense n=11 near 56MB, and nothing
+  stops it. Polynomial is larger still but capped, so it refuses at n=11
+  rather than handing you the file -- the top row of this table is the one
+  row you cannot actually reach.
+- **Run time is the real wall, and it does not track generation.** It is a
+  smaller wall than it was -- one dense n=8 Circuit Diagram row now takes
+  0.81 seconds where it took roughly 22, so a full 256-row table is about
+  three and a half minutes rather than an hour and a half. Nothing warns
+  about it either way, and `evaluate` runs every row.
 
 `test_the_expensive_generators_grow_as_documented` re-derives the sizes and
 the ratios rather than trusting this table -- sizes only, since a program's

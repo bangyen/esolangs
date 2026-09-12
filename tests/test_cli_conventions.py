@@ -1034,11 +1034,16 @@ class TestTheSmallInconsistencies:
         assert "--judge given more than once" in capsys.readouterr().err
 
     def test_a_no_op_width_says_so(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """It was silently ignored: two identical programs, one asked to differ."""
+        """It was silently ignored: two identical programs, one asked to differ.
+
+        Clockwise used to be the example and now stacks its tree to a
+        width; CV(N)(C) cannot follow it, because its loader rejects a
+        newline outright rather than choosing not to use one.
+        """
         _out, err = call_both(
-            ["generate", "--width", "10", "Clockwise", "0100"], capsys
+            ["generate", "--width", "10", "CV(N)(C)", "0100"], capsys
         )
-        assert "no effect on Clockwise" in err
+        assert "no effect on CV(N)(C)" in err
 
     def test_a_wrapping_width_says_nothing(
         self, capsys: pytest.CaptureFixture[str]

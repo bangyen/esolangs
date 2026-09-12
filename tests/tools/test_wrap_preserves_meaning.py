@@ -38,9 +38,9 @@ def _wrappable() -> list[str]:
     A language with no wrapper is returned unchanged by ``wrap_program``, so
     there is nothing to break.  Everything else is in, **including the
     parameterized ones**: excluding them is what let Minifuck and Bitdeque
-    through.  Their templates are not wrapped, but the program
-    :func:`~esolangs.instantiate` builds from one is, and both were silently
-    computing the wrong table at several widths -- Minifuck because a
+    through.  Both a template and the program
+    :func:`~esolangs.instantiate` builds from one are wrapped, and both were
+    silently computing the wrong table at several widths -- Minifuck because a
     newline landed where a collapsed ``[`` skips, Bitdeque because one
     between ``GOTO`` and its operand deleted both from the token stream.
 

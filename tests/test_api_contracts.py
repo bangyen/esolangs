@@ -30,6 +30,7 @@ from esolangs.exceptions import (
     UnknownLanguageError,
 )
 from esolangs.registry import LANGUAGES, parameterized_ids
+from esolangs.tools.wrap import takes_width
 
 XOR = "0110"
 ROOT = pathlib.Path(__file__).parents[1]
@@ -219,13 +220,25 @@ class TestDescribe:
         assert missing == []
 
     def test_width_aware_names_the_generators_that_lay_themselves_out(self) -> None:
-        """It answered False for all 69: it takes a generator, not a name."""
-        aware = [
+        """It answered False for all 69: it takes a generator, not a name.
+
+        Derived rather than listed.  It was two names, then twelve, and
+        every generator that learns to lay itself out adds another -- a
+        hard-coded list turns that into a failure with nothing wrong.
+        What must hold is that the flag tracks the generator's signature.
+        """
+        aware = {
             name
             for name in esolangs.list_languages()
             if esolangs.describe(name)["width_aware"]
-        ]
-        assert aware == ["LaserFuck", "Streetcode"]
+        }
+        signature = {
+            name
+            for name, lang in LANGUAGES.items()
+            if lang.boolean is not None and takes_width(lang.boolean)
+        }
+        assert aware == signature
+        assert aware, "no generator lays itself out; the flag guards nothing"
 
 
 class TestPackageSurface:
