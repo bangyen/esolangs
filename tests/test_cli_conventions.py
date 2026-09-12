@@ -2556,3 +2556,130 @@ class TestTheSpecIsReachable:
         with pytest.raises(SystemExit):
             call_main(["describe", "--spec", "nosuchlang"], capsys)
         assert "nosuchlang" in capsys.readouterr().err
+
+
+class TestOutputPythonCannotEncode:
+    """A legal WII2D program crashed the CLI with a nineteen-line traceback.
+
+    ``~`` prints the accumulator as a character with no bound, so a program
+    can legitimately produce a lone surrogate -- and writing one to a UTF-8
+    stdout raises ``UnicodeEncodeError`` from inside the CLI.  Not producing
+    a raw traceback is the thing this CLI is built for, and there were two
+    separate sites: the success path, and the partial-output write added
+    the same afternoon, so fixing either alone would have left the other.
+    """
+
+    #: ``>5s++***********~.`` drives the accumulator to 27 * 2**11 = 0xD800.
+    SURROGATE = ">5s++***********~.\n!\n"
+
+    def test_the_library_returns_it_unharmed(self) -> None:
+        """The crash was the CLI's; the library was always fine."""
+        assert esolangs.run("WII2D", self.SURROGATE, "", 5) == "\ud800"
+
+    def test_the_cli_does_not_crash(self, tmp_path: Path) -> None:
+        """It exited 1 with a traceback; it exits 0 with the bytes.
+
+        Driven as a subprocess rather than through ``capsys``, which is not
+        squeamishness: the fix writes the surrogate through the byte stream
+        because no valid UTF-8 spells it, and ``capsys`` decodes what it
+        captures as UTF-8 and raises.  A real stdout is a byte sink, so the
+        subprocess is the honest test and the captured one would be testing
+        the harness.
+        """
+        path = tmp_path / "w.txt"
+        path.write_text(self.SURROGATE)
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "esolangs",
+                "run",
+                "--timeout",
+                "5",
+                "WII2D",
+                str(path),
+            ],
+            capture_output=True,
+            input=b"",
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr[-300:]
+        assert b"Traceback" not in result.stderr
+        # The WTF-8 spelling of U+D800, which is what "verbatim" means for
+        # text that has no valid UTF-8 form.
+        assert result.stdout.startswith(b"\xed\xa0\x80")
+
+    def test_the_partial_output_write_is_guarded_too(self) -> None:
+        """The second site.  ``>+~`` overruns the code point range.
+
+        It reaches the failure *after* printing a megabyte, so the partial
+        write is the one that carries the unencodable text -- and that
+        write is newer than the bug report that found the first one.
+        """
+        with pytest.raises(esolangs.HaltError) as caught:
+            esolangs.run("WII2D", ">+~\n!\n", "", 5)
+        assert len(caught.value.partial_output) > 1_000_000
+
+    def test_the_overrun_says_what_it_was(self) -> None:
+        """It leaked ``chr() arg not in range(0x110000)``, naming nothing."""
+        with pytest.raises(esolangs.HaltError) as caught:
+            esolangs.run("WII2D", ">+~\n!\n", "", 5)
+        message = str(caught.value)
+        assert "'~'" in message
+        assert "row 0, column 2" in message
+        assert "1114112" in message
+
+
+class TestTheDocumentedExitCodesAreTheRealOnes:
+    """``run --help`` said a program error exits 1.  A malformed one exits 2.
+
+    That is the commoner of the two, and the help text was the only place
+    exit codes were written down at all.
+    """
+
+    @pytest.mark.parametrize(
+        ("label", "source", "stdin", "expected"),
+        [
+            ("ran", "+++.", "", 0),
+            ("read past the end", ",.", "", 1),
+            ("malformed program", "[[[", "", 2),
+        ],
+    )
+    def test_each_code_is_what_the_help_claims(
+        self,
+        label: str,
+        source: str,
+        stdin: str,
+        expected: int,
+        capsys: pytest.CaptureFixture[str],
+        tmp_path: Path,
+    ) -> None:
+        """Measured through ``main``, which is what a script sees."""
+        path = tmp_path / "p.bf"
+        path.write_text(source)
+        args = ["run", "--timeout", "5", "brainfuck", str(path)]
+        if expected == 0:
+            call_both(args, capsys, stdin=stdin)
+            return
+        with pytest.raises(SystemExit) as exit_code:
+            call_main(args, capsys, stdin=stdin)
+        assert exit_code.value.code == expected, label
+
+    def test_an_unreadable_ask_is_two(
+        self, capsys: pytest.CaptureFixture[str], tmp_path: Path
+    ) -> None:
+        """An unknown language and a missing file are both the ask, not the run."""
+        for args in (
+            ["run", "--timeout", "5", "nosuchlang", str(tmp_path / "p.bf")],
+            ["run", "--timeout", "5", "brainfuck", str(tmp_path / "absent.bf")],
+        ):
+            with pytest.raises(SystemExit) as exit_code:
+                call_main(args, capsys)
+            assert exit_code.value.code == 2, args
+
+    def test_the_help_lists_them(self) -> None:
+        """The claim has to be in the text a reader is pointed at."""
+        text = HELP["run"]
+        for code in ("0 ran", "124", "130"):
+            assert code in text
+        assert "distinct from a program error's 1" not in text
