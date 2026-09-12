@@ -35,7 +35,13 @@ read as though it were.
 
 **The claim.** For each of the 69 boolean generators `g` and each truth
 table `t` of length `2**n` with `1 <= n <= 10`, the call `g(t)` terminates
-and returns a non-empty program.
+and returns a non-empty program — with one pinned exception, WII2D on a
+dense-shaped table at `n == 10`, whose cap `_ARITY_CAPPED` records and
+`test_arity_caps_are_still_caps` asserts is still binding.
+
+The exception is in the claim rather than in a footnote on purpose: this
+file's top line has to be the refutable one, and a version without the
+carve-out is refuted by the repo's own suite.
 
 **What it is not.** Not that the program is *correct* — Grapheme returned a
 healthy string for four years while emitting something its own interpreter
@@ -84,24 +90,32 @@ Eight reach a `while True`, and each carries its own measure.
 
 ### No raise inside the domain
 
-Forty-eight generators reach exactly one live raise, the shared shape guard
-in `_validate_truth_table` (Circlefuck carries its own equivalent). It fires
-on a table whose length is not a power of two — that is the domain's
-*definition*, not a hole in it. The remaining twenty-one carry something
-more, and it is one of three things:
+Forty-nine generators reach only a shape guard: forty-eight the shared one
+in `_validate_truth_table`, and Circlefuck its own equivalent. It fires on a
+table whose length is not a power of two — that is the domain's
+*definition*, not a hole in it. The remaining twenty carry something more,
+and it is one of three things:
 
 - a **declared cap**, `GeneratorCapError`, at a size or cost policy;
 - an **internal invariant**, `AssertionError`, that the construction claims
   cannot fail;
 - a **construction refusal** — the route ran out of candidates.
 
-Only one of them fires inside `1 <= n <= 10`: WII2D's cost guard on a dense
-table at `n >= 10`, which `_ARITY_CAPPED` pins with the measurement that put
-it there. Every other guard listed below is argued unreachable on the domain
-and witnessed as not firing. Several say so in the source — 123's, Eval's,
-Unsquare's and 6-5's operand guard carry `# pragma: no cover` — and
-Minifuck's final `ValueError` is deliberately *not* pragma'd: it is a
-tripwire whose message names the table that broke the argument.
+One of them is *known* to fire inside `1 <= n <= 10`: WII2D's cost guard on
+a dense table at `n == 10`, which `_ARITY_CAPPED` pins with the measurement
+that put it there. No other guard fires on anything the witnesses below
+reach — which is a weaker statement than "no other guard can fire", and the
+gap is real above `n == 3`. `%^2^-1` is where it shows: its refusal is not
+condition-bounded to an arity, and its own message says "every table *tried*
+from five through thirteen". Above the exhaustive band the claim rests on
+two shapes and a one-minterm table per arity, not on the whole domain.
+
+Several guards say in the source that they are unreachable: 123's
+construction refusal, Eval's and Unsquare's missing-arrangement guards, and
+6-5's `n > 35` label cap all carry `# pragma: no cover`. 6-5's *operand*
+guard does not — it is argued unreachable, not marked so. Neither is
+Minifuck's final `ValueError`, and that one is deliberate: it is a tripwire
+whose message names the table that broke the argument.
 
 ### Witnesses
 
@@ -145,7 +159,7 @@ what has to be shown not to fire, beyond the shape guard every row carries.
 | Bitdeque | bounded | — |
 | brainfuck | bounded | — |
 | BrainIf | bounded | — |
-| Circlefuck | bounded | its own shape guard |
+| Circlefuck | bounded | — (its own shape guard, not the shared one) |
 | Circuit Diagram | bounded | wire, glyph and complement placement invariants |
 | Clockwise | bounded | a placement invariant |
 | COD | bounded | — |
@@ -179,14 +193,14 @@ what has to be shown not to fire, beyond the shape guard every row carries.
 | 123 | `_normalize` | construction refusal (pragma'd); slots in name order |
 | Packlang | bounded | — |
 | Painfuck | bounded | — |
-| %^2^-1 | bounded | cap: past the arities the construction reaches |
+| %^2^-1 | bounded | refusal: no ladder served — not arity-bounded |
 | Point Break | bounded | — |
 | Polynomial | bounded | cap: `_POLYNOMIAL_MAX_INSTRS` |
 | Qoibl | bounded | — |
 | RAM0 | bounded | — |
 | ROTfuck | `_rotfuck_move_cycle` | — |
 | S*bleq | bounded | — |
-| 6-5 | bounded | cap: 35 branch labels; operand range (pragma'd) |
+| 6-5 | bounded | cap: 35 branch labels; operand range (live, argued) |
 | SLOW ACV MAMMALIAN | `_subtree` | a trampoline overflowed its slot |
 | Sophie | bounded | — |
 | Streetcode | bounded | — |
@@ -197,7 +211,7 @@ what has to be shown not to fire, beyond the shape guard every row carries.
 | 3D Brainfuck | bounded | — |
 | 3x | bounded | — |
 | Unsquare | bounded | the identity stack arrangement is missing (pragma'd) |
-| WII2D | `_wii2d_compress` | **cap: fires at dense `n >= 10`** — the one pinned refusal |
+| WII2D | `_wii2d_compress` | **cap: fires at dense `n == 10`** — the one pinned refusal |
 | ZTOALC L | bounded | cap: `_MAX_LINES` command lines |
 
 The rows are not hand-collected. `scripts/boolean_totality_report.py` walks
