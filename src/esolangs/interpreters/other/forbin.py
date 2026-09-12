@@ -51,13 +51,13 @@ from typing import Literal, NoReturn
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# -- parser ---------------------------------------------------------------
+# -- parser.
 
-# The parse tree, as tuples discriminated by their first element.  Four
-# families, because the grammar has four: a value, a for-loop pattern, the
-# spec that heads a for-loop, and a statement.  They nest -- a statement
-# holds a spec, a spec holds patterns, a pattern holds values -- so the
-# aliases quote their forward references.
+# The parse tree, as tuples.
+# families, because the grammar.
+# spec that heads a for-loop,.
+# holds a spec, a spec holds.
+# aliases quote their forward.
 _Lit = tuple[Literal["lit"], int]
 _Not = tuple[Literal["not"], "_ValueNode"]
 _Var = tuple[Literal["var"], str]
@@ -65,8 +65,8 @@ _FnLit = tuple[Literal["fnlit"], "_Function"]
 _CallNode = tuple[Literal["call"], "_ValueNode", list["_ValueNode"]]
 _ValueNode = _Lit | _Not | _Var | _FnLit | _CallNode
 
-# ``*`` is a wildcard standing for both bit values, so it is a bare
-# one-tuple: reading [1] off one is a type error rather than an IndexError.
+# ``*`` is a wildcard standing.
+# one-tuple: reading [1] off.
 _Star = tuple[Literal["*"]]
 _ValuePat = tuple[Literal["value"], _ValueNode]
 _Group = tuple[Literal["group"], list["_Star | _ValuePat"]]
@@ -147,7 +147,7 @@ class _Parser:
         if c in "01":
             self.i += 1
             return ("lit", int(c))
-        if c == "{":  # a bare {code} block is a function literal (no args)
+        if c == "{":  # a bare {code} block is a.
             body, nested = self._block()
             fn = _Function("", [])
             fn.body, fn.nested = body, nested
@@ -157,7 +157,7 @@ class _Parser:
             save = self.i
             first = self._ident()
             self._skip_ws()
-            if self._peek() == "@":  # anonymous function literal
+            if self._peek() == "@":  # anonymous function literal.
                 params = [first]
                 self._expect("@")
                 body, nested = self._block()
@@ -320,8 +320,8 @@ class _Parser:
             if self._peek() != "=":
                 self._fail("expected '=' after assignment targets")
             self.i += 1
-            # Collecting the names as they are checked keeps the target
-            # list typed, which an ``all(...)`` over the values would not.
+            # Collecting the names as they.
+            # list typed, which an.
             names: list[str] = []
             for v in values:
                 if v[0] != "var":
@@ -353,7 +353,7 @@ class _Parser:
             funcs[fn.name] = fn
 
 
-# -- runtime --------------------------------------------------------------
+# -- runtime.
 
 
 class _BitReader:
@@ -488,7 +488,7 @@ def _call(
 ) -> object:
     if isinstance(callee, _Function):
         frame = _Frame(callee, caller)
-        # unpassed parameters are set to 0 (per the wiki)
+        # unpassed parameters are set.
         for name in callee.args:
             frame.locals[name] = 0
         for name, value in zip(callee.args, args, strict=False):
@@ -498,15 +498,15 @@ def _call(
     if isinstance(callee, str):
         if callee == "in":
             return reader.read()
-        # A name only evaluates to a string for the two builtins -- see the
-        # ``("in", "out")`` test in ``_value`` -- so the remaining one is
-        # ``out`` and needs no test of its own.
+        # A name only evaluates to a.
+        # ``("in", "out")`` test in.
+        # ``out`` and needs no test of.
         if len(args) != 8:
             raise HaltError("out needs exactly 8 bit arguments")
         byte = 0
         for bit in args:
-            # Same rule as ``!`` above: a bit is 0 or 1, and anything
-            # else has no byte to contribute.
+            # Same rule as ``!`` above: a.
+            # else has no byte to.
             if bit == 0:
                 byte *= 2
             elif bit == 1:
@@ -562,7 +562,7 @@ def _exec_stmt(
         args = [_eval(a, frame, globals_, reader, depth) for a in stmt[2]]
         _call(callee, args, frame, globals_, reader, depth)
         return None
-    # The three arms above are the other statement kinds, so what is
+    # The three arms above are the.
     # left is a ``for``.
     spec, body = stmt[1], stmt[2]
     rows: list[list[object]]
@@ -697,7 +697,7 @@ def _start_statement_call(
         return None
     args = [_eval(a, frame, globals_, reader, 0) for a in stmt[2]]
     new_frame = _Frame(callee, frame)
-    # unpassed parameters are set to 0 (per the wiki)
+    # unpassed parameters are set.
     for name in callee.args:
         new_frame.locals[name] = 0
     for name, value in zip(callee.args, args, strict=False):
@@ -724,8 +724,8 @@ class _Machine:
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
-        # Where the source ends, kept because ``ip`` still has to report a
-        # position once every frame has been popped.
+        # Where the source ends, kept.
+        # position once every frame has.
         self._length = len(code)
         self.globals = _Parser(code).parse()
         if "main" not in self.globals:
@@ -733,8 +733,8 @@ class _Machine:
         reader = _BitReader(io)
         main_fn = self.globals["main"]
         main_frame = _Frame(main_fn, None)
-        # unpassed parameters are set to 0 (per the wiki); main is called
-        # with a single dummy argument 0, so every parameter ends up 0
+        # unpassed parameters are set.
+        # with a single dummy argument.
         for name in main_fn.args:
             main_frame.locals[name] = 0
         self.state = _State([main_frame], reader)
@@ -752,13 +752,13 @@ class _Machine:
         """Whether the frame stack has emptied (``main`` returned or ended)."""
         return not self.frames
 
-    # The VM's language-shaped view: a call-frame language whose store is
-    # the innermost frame's integer locals.
+    # The VM's language-shaped.
+    # the innermost frame's integer.
 
-    #: ``ip`` is a position, but not one on the source text: each live frame's statement
+    # : ``ip`` is a position, but.
     #: position.
-    #: Declared rather than left to the default so that a tuple nobody has
-    #: classified is a missing answer instead of this one.
+    # : Declared rather than left.
+    # : classified is a missing.
     ip_shape = "opaque"
 
     @property
@@ -902,17 +902,17 @@ class _Machine:
         for name, value in zip(frame.for_names, row, strict=False):
             if name != "_":
                 frame.locals[name] = value
-        # This method only runs while the cursor sits on the ``for`` whose
-        # rows it is walking, so the statement under it is that ``for``.
-        # The tag is checked rather than tested-and-skipped: narrowing the
-        # union is what lets ``current[2]`` be read at all, and a plain
-        # ``if`` would make a broken invariant skip the body assignment
-        # silently instead of saying so.  Raising rather than asserting
-        # keeps the check under ``python -O``.
-        # The message names the tag actually found.  Being unreachable, the
-        # line carries mutants no test can kill whatever it says -- measured
-        # at three for a constant string and three for this -- so the
-        # spelling is chosen for what it reports if the impossible happens.
+        # This method only runs while.
+        # rows it is walking, so the.
+        # The tag is checked rather.
+        # union is what lets.
+        # ``if`` would make a broken.
+        # silently instead of saying so.
+        # keeps the check under.
+        # The message names the tag.
+        # line carries mutants no test.
+        # at three for a constant.
+        # spelling is chosen for what.
         current = frame.body[frame.pos]
         if current[0] != "for":
             raise AssertionError(f"cursor left the for statement: {current[0]}")

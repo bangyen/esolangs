@@ -54,28 +54,28 @@ import sys
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-#: The largest value ``o`` can print as a character, and the surrogate range
-#: it must not hand to ``chr``.  Anything else prints as a decimal instead.
+# : The largest value ``o`` can.
+# : it must not hand to ``chr``.
 _MAX_CHAR = 0x10FFFF
 _SURROGATES = range(0xD800, 0xE000)
 
-#: How many stack elements each command needs to run.  ``S`` is the only
-#: one that needs two; the other two need one.  A command absent from
+# : How many stack elements.
+# : one that needs two; the.
 #: this mapping needs none.
 _NEEDS = {"A": 1, "o": 1, "S": 2}
 
-#: One instant of a run: ``(ind, acc, stack, jumps)`` -- the code cursor,
-#: the accumulator, the data stack, and the jump-return stack.  A value, not
-#: a record: every transition below returns a new one rather than editing
-#: one in place, and both stacks are tuples for the same reason.
-#:
-#: The jump stack is state, not a scratch register: a ``<`` reads the
-#: position a matching ``>`` pushed, so two runs sitting on the same command
-#: with different jump stacks will go different places next.
-#:
-#: The code is deliberately not in here.  It does not change during a run,
-#: so carrying it would put constant data in every value the cycle detector
-#: stores.  It is a parameter to the transition instead.
+# : One instant of a run:.
+# : the accumulator, the data.
+# : a record: every transition.
+# : one in place, and both.
+# :.
+# : The jump stack is state,.
+# : position a matching ``>``.
+# : with different jump stacks.
+# :.
+# : The code is deliberately.
+# : so carrying it would put.
+# : stores.
 type _State = tuple[int, int, tuple[int, ...], tuple[int, ...]]
 
 
@@ -145,8 +145,8 @@ def _advance(
     elif char == "i":
         stack = (*stack, byte if byte is not None else 0)
     elif char == ">":
-        # The accumulator decides: 0 or 1 skips the loop, anything else
-        # enters it and records where to come back to.
+        # The accumulator decides: 0 or.
+        # enters it and records where.
         if acc in (0, 1):
             ind = target if target is not None else ind
         else:
@@ -168,13 +168,13 @@ class _Machine:
         """Start with empty stacks, a zero accumulator, at the first token."""
         self.io = io
         self.code = code
-        # ``halted`` is read twice per command -- once by ``run``'s loop and
-        # once by ``step``'s guard -- so the length is taken once here.
+        # ``halted`` is read twice per.
+        # once by ``step``'s guard --.
         self.size = len(code)
         self.state: _State = (0, 0, (), ())
 
-    # The language's own names.  They are views on the current state rather
-    # than fields of their own, so there is one place a step can change.
+    # The language's own names.
+    # than fields of their own, so.
 
     @property
     def ind(self) -> int:
@@ -208,7 +208,7 @@ class _Machine:
         """Whether the cursor has reached the end of the program."""
         return self.state[0] >= self.size
 
-    # The VM's language-shaped view: accumulator + loop stack.  ``stack``
+    # The VM's language-shaped.
     # above already is the view.
 
     @property
@@ -223,8 +223,8 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # Both stacks are already tuples, so they go in as they stand, in
-        # the order this returned before the fields moved into a state.
+        # Both stacks are already.
+        # the order this returned.
         ind, acc, stack, jumps = self.state
         return (ind, acc, stack, jumps, self.io.position())
 

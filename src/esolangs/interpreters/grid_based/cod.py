@@ -80,9 +80,9 @@ from typing import Literal, cast
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
 
-# The four directions a cod swims in.  Naming them keeps a direction apart
-# from the grid characters that are also plain strings, so the _DIRS and
-# _OPP lookups are checked rather than trusted.
+# The four directions a cod.
+# from the grid characters that.
+# _OPP lookups are checked.
 _Direction = Literal["N", "S", "E", "W"]
 
 
@@ -170,9 +170,9 @@ def _open_dirs(
     ]
 
 
-#: What one cod's step wants done: print its value, or take a number from
-#: the input port.  A step advances *every* live cod, so the effects are a
-#: list -- Eval's shape, for the same reason.
+# : What one cod's step wants.
+# : the input port.
+# : list -- Eval's shape, for.
 @dataclass(frozen=True)
 class _Print:
     """Write a cod's value."""
@@ -189,22 +189,22 @@ class _Read:
 
 type _Effect = _Print | _Read
 
-#: Every value a COD tick can change: the ordered collection of live cods.
-#: Each cod is frozen and a tick already builds its successors, so the
-#: collection is a value too.  The grid is fixed for a run and ports stay in
+# : Every value a COD tick can.
+# : Each cod is frozen and a.
+# : collection is a value too.
 #: the shell.
 type _State = tuple[_Cod, ...]
 
-#: One instant as the all-outcomes search sees it: the live cods, or
-#: ``None`` for a start marker whose heading has not been drawn yet.
+# : One instant as the.
+# : ``None`` for a start marker.
 type _BranchState = tuple[_Cod, ...] | None
 
-#: The most outcomes one tick may open in a branching search.  A tick draws
-#: once per blocked cod, so its fanout is the *product* of those choices and
-#: grows with the school rather than with any one junction.  Like the other
-#: random languages' caps this is a property of the transition, not of the
-#: caller's remaining budget: that budget shrinks as the search proceeds,
-#: which would make the same program decidable or not depending on when the
+# : The most outcomes one tick.
+# : once per blocked cod, so.
+# : grows with the school.
+# : random languages' caps this.
+# : caller's remaining budget:.
+# : which would make the same.
 #: tick was reached.
 _TICK_FANOUT = 256
 
@@ -279,9 +279,9 @@ class _Machine:
     tests), and is the shared hook every random language here uses.
     """
 
-    #: The seed a reproducible run starts from.  It belongs to the
-    #: language, not to whoever is stepping it: 1 sends the wiki's own
-    #: junction example East, the way its walkthrough goes.
+    # : The seed a reproducible run.
+    # : language, not to whoever is.
+    # : junction example East, the.
     reproducible_seed = 1
 
     def __init__(self, code: str, io: IO, rng: Randomness | None = None) -> None:
@@ -303,10 +303,10 @@ class _Machine:
 
         cods: list[_Cod] = []
         started = False
-        #: The start cell and the headings it could have taken, kept only
-        #: when there was a real choice.  A branching search re-makes that
-        #: draw itself; one open direction is no choice, so it stays
-        #: ``None`` and the search starts from the launched cod.
+        # : The start cell and the.
+        # : when there was a real.
+        # : draw itself; one open.
+        # : ``None`` and the search.
         self._launch: tuple[int, int, tuple[_Direction, ...]] | None = None
         for r, row in enumerate(self.grid):
             for c, ch in enumerate(row):
@@ -325,7 +325,7 @@ class _Machine:
             raise ValueError("no cod start marker '>'")
         self.cods: _State = tuple(cods)
 
-    # -- geometry -----------------------------------------------------
+    # -- geometry.
 
     def _open_dirs(
         self, r: int, c: int, exclude: _Direction | None = None
@@ -335,7 +335,7 @@ class _Machine:
     def _choose(self, options: list[_Direction]) -> _Direction:
         return options[draw(self._rng, len(options))]
 
-    # -- state ----------------------------------------------------------
+    # -- state.
 
     @property
     def halted(self) -> bool:
@@ -343,10 +343,10 @@ class _Machine:
 
     # The VM's language-shaped view.
 
-    #: ``ip`` is a cell of the program's own rectangle: the first two
-    #: parts are a row and a column, and the rest is a heading.  Without
-    #: this a caller cannot tell the pair from a call depth or a frame
-    #: stack, which look identical and mean somewhere else entirely.
+    # : ``ip`` is a cell of the.
+    # : parts are a row and a.
+    # : this a caller cannot tell.
+    # : stack, which look identical.
     ip_shape = "grid"
 
     @property
@@ -380,10 +380,10 @@ class _Machine:
             self.io.position(),
         )
 
-    # The all-random-outcomes search.  ``_State`` is the live cods and
-    # nothing else -- the grid and its edge sets never change -- so the
-    # branching state is that tuple, minus the input cursor ``snapshot``
-    # carries: a read declines below rather than being forked.
+    # The all-random-outcomes.
+    # nothing else -- the grid and.
+    # branching state is that.
+    # carries: a read declines.
 
     def branching_snapshot(self) -> _BranchState:
         """Return the pre-launch start state for a branching search.
@@ -426,11 +426,11 @@ class _Machine:
         if cods is None:
             launch = self._launch
             if launch is None:  # pragma: no cover - snapshot pairs the two
-                # ``branching_snapshot`` returns ``None`` only when
-                # ``_launch`` is set, so the two travel together and this
-                # cannot fire.  It is a raise rather than an ``assert``
-                # because an assert is compiled out under ``-O``, which
-                # would turn the contradiction into an unpacking TypeError
+                # ``branching_snapshot``.
+                # ``_launch`` is set, so the.
+                # cannot fire.
+                # because an assert is compiled.
+                # would turn the contradiction.
                 # three lines further on.
                 raise AssertionError("a pre-launch state must carry a launch")
             row, col, opens = launch
@@ -473,7 +473,7 @@ class _Machine:
         """Write a tick transition back onto the machine shell."""
         self.cods = state
 
-    # -- stepping ---------------------------------------------------------
+    # -- stepping.
 
     def step(self) -> None:
         """Advance every live cod by one cell, executing what it lands on.
@@ -503,9 +503,9 @@ class _Machine:
                 if isinstance(effect, _Print):
                     self.io.print_str(str(effect.value))
                 else:
-                    # The cod has already swum onto the dot by the time it
-                    # reads, and the original left it there when the port
-                    # raised at EOF -- so commit the move first.
+                    # The cod has already swum onto.
+                    # reads, and the original left.
+                    # raised at EOF -- so commit.
                     self._restore((*next_cods, *grown, *remaining[index + 1 :]))
                     read = self.io.input_num()
                     grown = [

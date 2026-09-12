@@ -110,16 +110,16 @@ from esolangs.tools.boolean.helpers import (
     read_at,
 )
 
-# The gate characters this generator draws: an AND and an OR for the
-# minterm tree, and the two self-fed XOR forms for a constant table.
+# The gate characters this.
+# minterm tree, and the two.
 _GateGlyph = Literal["a", "o", "x", "X"]
 _ConstGlyph = Literal["x", "X"]
 
 __all__ = ["circuit_diagram"]
 
-# Spacing.  Buses are two columns apart and gate bands two rows apart, so
-# that no two junctions of different signals ever land within one cell of
-# each other (see the module docstring's note on the eight-way ``.``).
+# Spacing.
+# that no two junctions of.
+# each other (see the module.
 _COL_STEP = 2
 _ROW_STEP = 2
 
@@ -141,13 +141,13 @@ class _Layout:
 
     def __init__(self) -> None:
         """Start an empty layout."""
-        # Runs are half-open interior intervals keyed by the fixed axis:
-        # row -> [(x0, x1, signal)] and column -> [(y0, y1, signal)].
+        # Runs are half-open interior.
+        # row -> [(x0, x1, signal)] and.
         self.horizontal: dict[int, list[tuple[int, int, int]]] = {}
         self.vertical: dict[int, list[tuple[int, int, int]]] = {}
         self.junctions: dict[tuple[int, int], int] = {}
         self.glyphs: dict[tuple[int, int], str] = {}
-        # Glyph coordinates indexed both ways, for the run/glyph checks.
+        # Glyph coordinates indexed.
         self._glyph_rows: dict[int, list[int]] = {}
         self._glyph_cols: dict[int, list[int]] = {}
 
@@ -274,7 +274,7 @@ class _Layout:
         if height == 0:
             return ""  # pragma: no cover - every table lays a wire
 
-        # Rightmost occupied cell per row, and the point features by row.
+        # Rightmost occupied cell per.
         last = [-1] * height
         verts: dict[int, list[int]] = {}
         for x, runs in self.vertical.items():
@@ -334,23 +334,23 @@ class _Builder:
         self.next_column = 1
         self.next_row = 0
         self.next_signal = 0
-        # signal id -> (column, topmost row the bus has reached)
+        # signal id -> (column, topmost.
         self.buses: dict[int, tuple[int, int]] = {}
-        # Gate column groups that may be handed out again, and the group each
-        # recyclable signal was cut from.  Only a *gate's* output is ever
-        # entered here: an input rail and a complement are read by every
-        # minterm that selects them, so their columns stay live for the whole
-        # drawing, while the circuit below is a left fold -- each ``a`` chain
-        # result and each running ``o`` result is read exactly once, by the
-        # gate on the next band down -- so those die as soon as they are read.
+        # Gate column groups that may.
+        # recyclable signal was cut.
+        # entered here: an input rail.
+        # minterm that selects them, so.
+        # drawing, while the circuit.
+        # result and each running ``o``.
+        # gate on the next band down --.
         self.free_strides: list[int] = []
         self.stride_of: dict[int, int] = {}
-        # Set once a width is asked for: the column a new band starts at,
-        # and the width the bands have to stay inside.  ``live`` is every
-        # intermediate signal not yet read into the gate that consumes it,
-        # in the order they were made -- what a band has to carry.  Rails
-        # and complements are not in it: they are read by everything, sit
-        # left of ``band_start``, and are never reclaimed.
+        # Set once a width is asked.
+        # and the width the bands have.
+        # intermediate signal not yet.
+        # in the order they were made.
+        # and complements are not in.
+        # left of ``band_start``, and.
         self.limit: int | None = None
         self.band_start = 0
         self.live: list[int] = []
@@ -386,22 +386,22 @@ class _Builder:
         the gate itself, and the bus it drives -- so no earlier bus can run
         down through any of them.
         """
-        # A dead group is reused rather than a fresh one taken.  Two things
+        # A dead group is reused rather.
         # make that safe.
-        #
-        # Rows: the drawing only ever moves *down*.  ``_new_band`` hands out
-        # increasing rows and ``_tap`` only extends a bus downward, so a
-        # recycled group's old wiring ends at the row of the gate that read
-        # it last, and everything drawn into it afterwards starts a band
+        # .
+        # Rows: the drawing only ever.
+        # increasing rows and ``_tap``.
+        # recycled group's old wiring.
+        # it last, and everything drawn.
         # below that.
-        #
-        # Columns: the signal flows left to right, and a gate must sit to the
-        # *right* of every bus it reads.  ``_tap`` runs the bus along the
-        # gate's row to the input junction one column left of the glyph, so a
-        # group recycled to the left of a source would have that run cross
-        # the gate's own glyph cell -- which is how this first went wrong,
-        # caught by :class:`_Layout` refusing to draw it.  ``after`` is the
-        # rightmost bus the gate will read, and only a group past it will do.
+        # .
+        # Columns: the signal flows.
+        # *right* of every bus it reads.
+        # gate's row to the input.
+        # group recycled to the left of.
+        # the gate's own glyph cell --.
+        # caught by :class:`_Layout`.
+        # rightmost bus the gate will.
         usable = [group for group in self.free_strides if group + _COL_STEP > after]
         if usable:
             first = min(usable)
@@ -442,12 +442,12 @@ class _Builder:
             row = self._new_band()
             self._tap(signal, column, row)
             self.buses[signal] = (column, row)
-        # A carried signal sits in a column of its own rather than a gate's
-        # group, so releasing it gives nothing back.  It stays in ``live``,
-        # though: a later band has to carry it again, and forgetting one is
-        # how this first went wrong -- the next band handed its column to
-        # another signal while its bus was still running down it, which
-        # :class:`_Layout` refused to draw.
+        # A carried signal sits in a.
+        # group, so releasing it gives.
+        # though: a later band has to.
+        # how this first went wrong --.
+        # another signal while its bus.
+        # :class:`_Layout` refused to.
         self.stride_of.clear()
         self.free_strides.clear()
         self.next_column = self.band_start + len(self.live) * _COL_STEP
@@ -517,8 +517,8 @@ class _Builder:
         _, column = self._gate_columns(self.buses[source][0])
         row = self._new_band()
 
-        # ``~`` reads the cell level with it, so the tap has to end on the
-        # junction immediately to its left rather than short of it.
+        # ``~`` reads the cell level.
+        # junction immediately to its.
         self._tap(source, column - 1, row)
         self.layout.glyph(column, row, "~")
 
@@ -609,12 +609,12 @@ class _Builder:
         it.
         """
         column, reached = self.buses[signal]
-        # Each leg is skipped when the bus already sits on the tap's row or
-        # column, which the layout never produces: rows advance for every
-        # gate and a bus column is its own, so a tap is always at least one
-        # cell away on both axes.  Both tests stay, since a layout change
-        # that did reach a tap head-on would otherwise draw a zero-length
-        # run and a junction on top of the bus.
+        # Each leg is skipped when the.
+        # column, which the layout.
+        # gate and a bus column is its.
+        # cell away on both axes.
+        # that did reach a tap head-on.
+        # run and a junction on top of.
         if y != reached:  # pragma: no branch - a tap is never on the bus row
             self.layout.run_vertical(column, reached, y, signal)
             self.layout.junction(column, y, signal)
@@ -700,28 +700,28 @@ def _circuit_diagram_at(truth_table: str, limit: int | None) -> str:
 
     builder = _Builder()
     n = len(truth_table).bit_length() - 1
-    # Every input keeps its own ``-`` row -- the rows are the read order and
-    # the interface -- but a table that ignores some of them is a smaller
-    # table, and the cost here is entirely in the *body*: one ``a`` chain
-    # per selected row, each a gate per literal plus the runs feeding it.
-    # So the chains are built over the essential inputs' rails only, and an
-    # ignored rail simply drives nothing, exactly as every rail but the
-    # first already does for a constant table.
+    # Every input keeps its own.
+    # the interface -- but a table.
+    # table, and the cost here is.
+    # per selected row, each a gate.
+    # So the chains are built over.
+    # ignored rail simply drives.
+    # first already does for a.
     used = essential_inputs(truth_table, n) or [0]
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
     rails = [builder.input_bus() for _ in range(n)]
     if len(used) < n:
-        # Re-point at the surviving rails and evaluate the reduced table;
-        # everything below is written against ``rails``/``truth_table``.
+        # Re-point at the surviving.
+        # everything below is written.
         rails = [rails[i] for i in used]
         truth_table = table
         n = len(used)
 
-    # A sum of minterms spends one ``a`` chain per 1-row, so a table with
-    # more ones than zeros is cheaper built from its *zero* rows and
-    # inverted: every chain that saves costs a share of one ``~``.  A
-    # constant table is excluded because it is already a single gate, and
-    # complementing it would only swap which glyph that gate uses.
+    # A sum of minterms spends one.
+    # more ones than zeros is.
+    # inverted: every chain that.
+    # constant table is excluded.
+    # complementing it would only.
     if len(set(truth_table)) == 1:
         table, invert_result = truth_table, False
     else:
@@ -735,18 +735,18 @@ def _circuit_diagram_at(truth_table: str, limit: int | None) -> str:
         constant = None
 
     if constant is not None:
-        # A constant table is one self-fed gate over ``rails[0]``; it reads no
-        # literal at all, so building the complements would leave every one of
-        # them driving a bus nothing consumes.  (An all-ones table is the trap
-        # here: every index is a minterm, so a per-minterm test concludes no
-        # complement is needed for a table that reads none of them either way.)
+        # A constant table is one.
+        # literal at all, so building.
+        # them driving a bus nothing.
+        # here: every index is a.
+        # complement is needed for a.
         result = builder.constant(rails[0], constant)
     else:
-        # A complement is computed once and shared by every minterm that
-        # selects it -- but only if one does.  An input whose bit is 1 in every
-        # minterm (both inputs of an AND, say) never reads its ``~``, and
-        # building one anyway leaves a gate driving a bus nothing consumes,
-        # plus the tap and the run out to it.
+        # A complement is computed once.
+        # selects it -- but only if one.
+        # minterm (both inputs of an.
+        # building one anyway leaves a.
+        # plus the tap and the run out.
         needs_complement = [
             any(not (index >> (n - 1 - position)) & 1 for index in minterms)
             for position in range(n)
@@ -755,9 +755,9 @@ def _circuit_diagram_at(truth_table: str, limit: int | None) -> str:
             (rail, builder.invert(rail) if needed else None)
             for rail, needed in zip(rails, needs_complement, strict=True)
         ]
-        # The rails and complements are read by everything below and so stay
-        # live for the whole drawing; a band can only reclaim what comes
-        # after them, which is why the limit is set here and not sooner.
+        # The rails and complements are.
+        # live for the whole drawing; a.
+        # after them, which is why the.
         builder.band_start = builder.next_column
         builder.limit = limit
 

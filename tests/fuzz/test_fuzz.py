@@ -93,7 +93,7 @@ def test_bfstack_random() -> None:
     random.seed(6)
     for _ in range(50):
         code = _random_string("><+-.", 30)
-        # '.' on an empty stack is an accepted outcome
+        # '.' on an empty stack is an.
         with suppress(HaltError):
             run_safely(bfstack_run, code)
 
@@ -101,9 +101,9 @@ def test_bfstack_random() -> None:
 def test_bio_random() -> None:
     random.seed(7)
     for _ in range(50):
-        # Random text is rarely a legal program: BIO checks its braces and
-        # its commands when it loads, so a rejection is the expected
-        # outcome and only an *unexpected* exception fails the fuzz.
+        # Random text is rarely a legal.
+        # its commands when it loads,.
+        # outcome and only an.
         with suppress(ValueError):
             run_safely(bio_run, _random_string("0O1Ixyz;{}", 30))
 
@@ -112,8 +112,8 @@ def test_minsky_random() -> None:
     random.seed(9)
     for _ in range(50):
         code = _random_string("+*~", 30)
-        # every ~ needs a matching number on the jump line; jump targets past
-        # the end terminate instead of self-looping
+        # every ~ needs a matching.
+        # the end terminate instead of.
         run_safely(minsky_run, code + "\n" + " ".join(["99"] * code.count("~")))
 
 
@@ -128,7 +128,7 @@ def test_qoibl_random() -> None:
 def test_eval_random() -> None:
     random.seed(11)
     for _ in range(50):
-        # empty-stack pop / evaluating a non-string are accepted
+        # empty-stack pop / evaluating.
         with suppress(HaltError):
             run_safely(eval_run, _random_string("0+-.=~^`;*?!", 30))
 
@@ -145,11 +145,11 @@ def test_painfuck_random_including_random_skip() -> None:
     from esolangs.interpreters.tape_based.painfuck import _CYCLES, _Machine
 
     random.seed(12)
-    # Input, pointer-moving, and repeat/control commands can make the graph
-    # unbounded.  This small corpus uses only state-bounded commands plus
-    # ``y``; the ordinary fuzzer and unit tests cover the remaining commands.
-    # Painfuck translates source by character position; invert that
-    # translation so the executable program really has this alphabet.
+    # Input, pointer-moving, and.
+    # unbounded.
+    # ``y``; the ordinary fuzzer.
+    # Painfuck translates source by.
+    # translation so the executable.
     alphabet = "zhwqyed"
 
     def source_for(commands: str) -> str:
@@ -178,8 +178,8 @@ def test_wii2d_random_turns() -> None:
     for _ in range(25):
         width = 4
         code = ["".join(random.choice("?.") for _ in range(width)) for _ in range(3)]
-        # One start marker is required.  The rest of this bounded-state corpus
-        # contains only a halt and the formerly omitted random-turn command.
+        # One start marker is required.
+        # contains only a halt and the.
         start_col = random.randrange(width)
         code[-1] = code[-1][:start_col] + "!" + code[-1][start_col + 1 :]
         try:

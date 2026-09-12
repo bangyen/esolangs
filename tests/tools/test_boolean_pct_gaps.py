@@ -72,7 +72,7 @@ class TestFoldSpan:
 
     def test_two_points_span_their_separation_plus_the_lower_extent(self) -> None:
         state = _state((10, 2, "0", frozenset({0})), (4, 1, "1", frozenset({1})))
-        # Normalized to points 0 and -6; the lower one reaches one further.
+        # Normalized to points 0 and.
         assert _fold_span(state) == 7
 
     def test_a_single_point_spans_its_own_extent(self) -> None:
@@ -95,11 +95,11 @@ class TestSetters:
         got = _centred_setter(10)
         assert got is not None
         _zero, _one, up, down = got
-        # Two more than the span: one clear cell on each side.
+        # Two more than the span: one.
         assert up + down == 12
 
     def test_a_total_too_small_to_split_is_refused(self) -> None:
-        # Both moves must be at least 2, so 3 cannot be spelled.
+        # Both moves must be at least.
         assert _split_setter(3) is None
 
 
@@ -123,8 +123,8 @@ class TestFoldCofactorBridge:
                 for row in range(_COFACTOR_BRIDGE_POINTS)
             )
         )
-        # Searched rather than refused outright: a list, or None if the
-        # rules did not close -- what must not happen is the cap firing.
+        # Searched rather than refused.
+        # rules did not close -- what.
         assert _fold_to_cofactors(narrow) is None or isinstance(
             _fold_to_cofactors(narrow), list
         )
@@ -243,8 +243,8 @@ class TestInterleavedFinalPair:
         """No ladder lays the prefix inside the workspace footprint."""
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
         with monkeypatch.context() as patch:
-            # A narrow ladder too wide for the workspace sends the choice
-            # to the packed one, which then declines.
+            # A narrow ladder too wide for.
+            # to the packed one, which then.
             patch.setattr(module, "_fold_uniform", lambda *_a, **_k: [10**9])
             patch.setattr(module, "_fold_subset_weights", lambda *_a, **_k: None)
             assert _interleaved_final_pair("0011" * 4, 4) is None

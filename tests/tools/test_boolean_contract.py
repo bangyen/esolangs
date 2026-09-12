@@ -19,59 +19,59 @@ from esolangs.registry import BY_BOOLEAN, LANGUAGES
 from esolangs.tools.boolean.helpers import essential_inputs
 from esolangs.vm import run_until_halt_or_cycle
 
-# Every sweep here runs an interpreter over a generated program -- the whole
-# file is the execution gate -- so the module is `medium` and the inner loop
-# leaves it out.  42.9s of the fast band's 193.8s was this file alone.  The
-# per-param `slow` marks below still apply on top.
+# Every sweep here runs an.
+# file is the execution gate --.
+# leaves it out.
+# per-param `slow` marks below.
 pytestmark = pytest.mark.medium
 
-# One constant table against one that folds nothing.  A generator loses reads
-# by *folding*, so the comparison needs a table that folds completely and one
-# that folds not at all; near-constant tables in between produce intermediate
-# counts but never catch a generator these two miss.  This sweep runs every
-# interpreter on every table on every pytest invocation, so cases that add
-# cost without adding detection are not worth carrying -- ``00000001`` and
-# ``11111110`` were dropped for that reason.
-#
-# ``01101001`` is parity, the one table with no constant subtree above a
-# single row, so nothing about it can fold.
+# One constant table against.
+# by *folding*, so the.
+# that folds not at all;.
+# counts but never catch a.
+# interpreter on every table on.
+# cost without adding detection.
+# ``11111110`` were dropped for.
+# .
+# ``01101001`` is parity, the.
+# single row, so nothing about.
 _TABLES = ["00000000", "01101001"]
 
 
-# Generators marked ``slow`` for a cost that is a *regression*, not the cost
-# the construction ought to carry.  The rule is a one-second budget per entry
-# in this sweep.  The mark keeps the fast run fast; it does not make the cost
-# acceptable, so an entry leaves when the cost is paid for rather than when
+# Generators marked ``slow``.
+# the construction ought to.
+# in this sweep.
+# acceptable, so an entry.
 # it stops being noticed.
-#
-# The set is empty.  ``minifuck`` was its last member, at 14.9s of the
-# sweep's 18.0s, and left on 2026-09-06 when the emitter stopped stepping
-# its straight runs one character at a time: the entry now measures 0.03s
-# against the one-second budget.  ``docs/generators/minifuck_generator.md`` has the
-# full ledger of what entered and left this set, with the measurement
+# .
+# The set is empty.
+# sweep's 18.0s, and left on.
+# its straight runs one.
+# against the one-second budget.
+# full ledger of what entered.
 # behind each.
 _SEARCHING_GENERATORS_REGRESSED: frozenset[str] = frozenset()
 
-# Naming the languages rather than timing them at collection time is
-# deliberate: a wall-clock threshold evaluated during collection would make
-# the selected test set depend on how loaded the machine is, so a run could
-# silently cover less than the last one.  Re-measure and edit this set when
+# Naming the languages rather.
+# deliberate: a wall-clock.
+# the selected test set depend.
+# silently cover less than the.
 # a generator's cost changes.
 _SEARCHING_GENERATORS: frozenset[str] = frozenset()
 
-# The same one-second rule, applied to the two reordering sweeps.  Those call
-# the ``_*_ordered`` builder once per input order for every table up to three
-# inputs, so a generator that *searches* pays that cost repeatedly.
-#
-# ``ztoalc_l`` was this set's only member, at 3.0s in
-# test_reordering_never_grows_a_program against 0.02s in the read-count sweep
-# above.  It no longer reorders at all -- it constructs one branch-free
-# lookup whose length is permutation-invariant -- so it left both the sweep
-# and this set.  The next entry down was streetcode at 0.06s, comfortably
-# under budget, which is why the set is now empty rather than re-pointed.
-#
-# A generator can be cheap in one sweep and expensive in the other, so this
-# set is maintained independently of the one above.
+# The same one-second rule,.
+# the ``_*_ordered`` builder.
+# inputs, so a generator that.
+# .
+# ``ztoalc_l`` was this set's.
+# test_reordering_never_grows_a_.
+# above.
+# lookup whose length is.
+# and this set.
+# under budget, which is why.
+# .
+# A generator can be cheap in.
+# set is maintained.
 _SLOW_REORDERING_GENERATORS: frozenset[str] = frozenset()
 
 
@@ -123,23 +123,23 @@ def _reads(entry: tuple, table: str) -> int:
     try:
         program = str(fn(table))
     except ValueError:
-        # A generator that does not cover this table emits no program, and a
-        # program that does not exist reads nothing.  Reporting 0 routes the
-        # caller into its "does not read input" skip rather than failing on a
-        # coverage gap, which is not what this test measures.  %^2^-1 is the
-        # case in hand: it derives two-input tables only, and the sweep's
+        # A generator that does not.
+        # program that does not exist.
+        # caller into its "does not.
+        # coverage gap, which is not.
+        # case in hand: it derives.
         # parity table has three.
         return 0
     io = ScriptedIO("0\n" * 8)
     source = program.splitlines() if lang.split else program
     module = importlib.import_module("esolangs.interpreters." + lang.interpreter)
     machine_cls = getattr(module, "_Machine")  # noqa: B009
-    # Every interpreter names its state object ``_Machine``, so this reads
-    # the same count for every language.  It used to fall back to ``run``
-    # for the three that spelled the class ``State``: that measured a whole
-    # run rather than a stepped one, silently, for exactly those three.
-    # A program may halt through its own error path or call exit; either way the
-    # read count up to that point is what matters here.
+    # Every interpreter names its.
+    # the same count for every.
+    # for the three that spelled.
+    # run rather than a stepped.
+    # A program may halt through.
+    # read count up to that point.
     with contextlib.suppress(Exception, SystemExit):
         of = getattr(machine_cls, "of", None)
         build = of if callable(of) else machine_cls
@@ -228,8 +228,8 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
     )
 
 
-# The tree generators that pick their input split order by measuring, and the
-# builder that emits one fixed order, so a test can compare the two.
+# The tree generators that pick.
+# builder that emits one fixed.
 def _reordering_generators() -> list[object]:
     from esolangs.tools.boolean.helpers import _decision_tree_program
     from esolangs.tools.boolean.other import (
@@ -271,8 +271,8 @@ def _reordering_generators() -> list[object]:
         (
             "circlefuck",
             boolean.circlefuck,
-            # The byte-valued builder underneath takes a *byte* table,
-            # so the contract's binary-string table is lifted the way
+            # The byte-valued builder.
+            # so the contract's.
             # circlefuck() itself lifts it.
             lambda t, p: _circlefuck_ordered([_ASCII_ZERO + int(b) for b in t], p),
         ),
@@ -303,9 +303,9 @@ def test_reordering_never_grows_a_program(
         for value in range(2 ** (2**n)):
             table = bin(value)[2:].zfill(2**n)
             baseline = ordered(table, tuple(range(n)))
-            # A searching generator returns "" for an order it cannot place
-            # (ZTOALC L); there is no baseline to be no worse than, and any
-            # order that *did* place is an improvement on not building.
+            # A searching generator returns.
+            # (ZTOALC L); there is no.
+            # order that *did* place is an.
             if not baseline:
                 continue
             assert len(fn(table)) <= len(baseline), f"{name} grew on {table}"
@@ -329,9 +329,9 @@ def test_reordering_shrinks_the_tables_it_should(
     """
     if name == "jaune":
         pytest.skip("clobbering already makes the identity order optimal here")
-    # Circlefuck splits last-input-first, so ``10101010`` is the table its
-    # identity order already folds; the one only a reorder folds is the
-    # same function with its inputs renamed the other way.
+    # Circlefuck splits.
+    # identity order already folds;.
+    # same function with its inputs.
     table = "11110000" if name == "circlefuck" else "10101010"
     assert len(fn(table)) < len(ordered(table, (0, 1, 2))), (
         f"{name} did not reorder a table that only reordering folds"
@@ -409,15 +409,15 @@ def test_the_greedy_order_is_the_documented_one() -> None:
     """
     from esolangs.tools.boolean.helpers import _greedy_input_order
 
-    # Tables the heuristic reorders, and the order it picks.
+    # Tables the heuristic.
     assert _greedy_input_order("00000101", 3) == (0, 2, 1)
     assert _greedy_input_order("00010001", 3) == (1, 2, 0)
 
-    # Tables no split helps: ties keep the lowest index, giving the identity.
+    # Tables no split helps: ties.
     for table in ("00011011", "01000111", "00111100", "01101001"):
         assert _greedy_input_order(table, 3) == (0, 1, 2), table
 
-    # And the wide table the run-it test above uses, pinned positively.
+    # And the wide table the run-it.
     assert _greedy_input_order("01" * 64, 7) == (6, 0, 1, 2, 3, 4, 5)
 
     reordered = sum(
@@ -463,18 +463,18 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
         (2, 1, 0): 311,
     }
 
-    # One and two inputs, where the tape is short enough that an off-by-one
-    # in the move would still land inside it.
+    # One and two inputs, where the.
+    # in the move would still land.
     assert len(_decision_tree_program("01", ">", "<", (0,))) == 115
     assert len(_decision_tree_program("0110", ">", "<", (0, 1))) == 205
     assert len(_decision_tree_program("0110", ">", "<", (1, 0))) == 211
 
 
-# The shape each boolean generator's construction takes, which decides which
-# optimizations even apply to it: folding, input reordering and dependency
-# reduction are tree techniques, complement/polarity is a minterm one.  The
-# lists are measured (see the doc's "Which shape a boolean generator is"),
-# so this test is what keeps them true rather than a comment that rots.
+# The shape each boolean.
+# optimizations even apply to.
+# reduction are tree.
+# lists are measured (see the.
+# so this test is what keeps.
 _MINTERM_SHAPED = {
     "a_painter_ant",
     "algebraic_programming_language",
@@ -482,58 +482,58 @@ _MINTERM_SHAPED = {
     "container",
 }
 
-# Neither model describes these.  ``wii2d`` is a route search over a grid,
-# not a sum and not a tree.  The other two do not take a boolean truth table
-# at all: ``jaune_multiply`` takes no argument (it multiplies two decimal
-# numbers, a fixed program), and ``circlefuck_byte`` takes a *byte* table.
-#
-# ``slow_acv_mammalian`` is a tree, but a deliberately *unfolded*
-# one, so the folding discriminator does not apply to it.  Its nodes are
-# what read the input -- the branch condition is the bit ``ACCEPT`` just
-# appended -- so collapsing a constant subtree would drop that subtree's
-# reads and break the read-count contract above.  The tree therefore stays
-# uniform depth ``n`` and its size tracks ``2**n`` whatever the table says.
-#
-# ``minifuck`` is a search too, and of the same kind as ``wii2d``: it emits
-# whatever code it can *see* produce the table's column, so the program has
-# no per-row structure to fold and its size tracks the search rather than the
+# Neither model describes these.
+# not a sum and not a tree.
+# at all: ``jaune_multiply``.
+# numbers, a fixed program),.
+# .
+# ``slow_acv_mammalian`` is a.
+# one, so the folding.
+# what read the input -- the.
+# appended -- so collapsing a.
+# reads and break the.
+# uniform depth ``n`` and its.
+# .
+# ``minifuck`` is a search too,.
+# whatever code it can *see*.
+# no per-row structure to fold.
 # table's shape.
-#
-# ``ztoalc_l`` emits no tree either, and for a reason the folding
-# discriminator cannot see.  It builds one branch-free chunked lookup: the
-# inputs are folded into a chunk index and a bit index, the table's
-# four-row chunks are stored as codes, and a shared decode array turns the
-# selected code's bit into the answer.  There are no subtrees to collapse,
-# and the program's size tracks the nonzero-chunk and distinct-code counts,
-# not the table's shape.  (It is not minterm-shaped either: a minterm sum's
-# cost is one term per selected row, where a chunk set carries four rows
-# and the emitted length is a Collatz placement -- the L-th smallest value
-# of a committed anchor's trajectory -- rather than a function of the row
-# count.)
-#
-# ``pct_squared_minus_one`` emits no tree at all.  %^2^-1's only branch is
-# ``t``, which jumps to position 0 and nowhere else, so the generator
-# computes the answer *arithmetically* -- one affine setter per input and a
-# single ``l`` -- rather than routing rows to leaves.  Its size tracks the
-# constants the solver happens to find, not the table's shape, so the
-# folding discriminator has nothing to measure.  It also raises on the
-# ``n == 3`` tables this test uses, which it cannot separate.
-#
-# ``one_two_three`` emits no tree either, and for a related reason: 123's
-# answer is whether the program halts, and what decides that is the pointer
-# phase the embeds leave behind, so the generator emits a flat plan whose
-# length tracks the modulo-four decode rather than any table shape.  It also
-# raises on the ``n == 3`` tables this test uses -- an ignored input still
-# has to be embedded, and every fill moves the pointer that carries the
-# answer, so the projection this test's folding measures cannot happen.
-# Minterm sums that nonetheless gain on a one-dependency table, and *not* by
-# folding: they apply dependency reduction (technique 10), emitting the
-# smaller table that a degenerate one really is.  The distinction the shape
-# test would otherwise lose is that these have no subtrees at all -- the sum
-# is simply over fewer rows because the table was rewritten over its
-# essential inputs, so the gain tracks the dropped *arity* rather than any
-# collapsed structure.  Reordering does not become applicable to them the way
-# it would if they had grown a tree, which is why they are neither list.
+# .
+# ``ztoalc_l`` emits no tree.
+# discriminator cannot see.
+# inputs are folded into a.
+# four-row chunks are stored as.
+# selected code's bit into the.
+# and the program's size tracks.
+# not the table's shape.
+# cost is one term per selected.
+# and the emitted length is a.
+# of a committed anchor's.
+# count.).
+# .
+# ``pct_squared_minus_one``.
+# ``t``, which jumps to.
+# computes the answer.
+# single ``l`` -- rather than.
+# constants the solver happens.
+# folding discriminator has.
+# ``n == 3`` tables this test.
+# .
+# ``one_two_three`` emits no.
+# answer is whether the program.
+# phase the embeds leave.
+# length tracks the modulo-four.
+# raises on the ``n == 3``.
+# has to be embedded, and every.
+# answer, so the projection.
+# Minterm sums that nonetheless.
+# folding: they apply.
+# smaller table that a.
+# test would otherwise lose is.
+# is simply over fewer rows.
+# essential inputs, so the gain.
+# collapsed structure.
+# it would if they had grown a.
 _REDUCING = {
     "bit_tilde",
     "cod",
@@ -548,13 +548,13 @@ _REDUCING = {
     "super_snusp",
 }
 
-# ``alight`` is a branch-free lookup of the same class as
-# ``ztoalc_l``: the inputs are folded into a row index by Horner's
-# rule and the table is a string literal read with ``at{table, i+0.5}``, so
-# there are no subtrees to collapse and every table of a given arity renders
-# to exactly the same length.  A 0% fold is the construction working.
-# (ZTOALC L's chunked variant of the same fold keeps it in this list for
-# the same reason: lookup size does not track table shape.)
+# ``alight`` is a branch-free.
+# ``ztoalc_l``: the inputs are.
+# rule and the table is a.
+# there are no subtrees to.
+# to exactly the same length.
+# (ZTOALC L's chunked variant.
+# the same reason: lookup size.
 _UNSHAPED = {
     "alight",
     "wii2d",
@@ -567,8 +567,8 @@ _UNSHAPED = {
     "slow_acv_mammalian",
 }
 
-# Every table depending on exactly one input, at n == 3, both polarities.
-# All have ones-count 4, as parity does, so the comparison below is not
+# Every table depending on.
+# All have ones-count 4, as.
 # measuring density.
 _ONE_DEPENDENCY = (
     "11110000",
@@ -696,9 +696,9 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
     parity = len(fn(_PARITY))
     folds = 1 - best / parity
     if name in _REDUCING:
-        # The gain is real but is not a fold, so assert it from the other
-        # direction: the saving must come from dropped inputs, which means a
-        # table that depends on *every* input cannot be shortened at all.
+        # The gain is real but is not a.
+        # direction: the saving must.
+        # table that depends on *every*.
         assert folds >= 0.05, (
             f"{name} is listed as applying dependency reduction but gains "
             f"only {folds:.1%} on a one-dependency table -- its reduction "
@@ -721,59 +721,59 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
         )
 
 
-# Every boolean generator builds a table at n <= _MAX_ARITY.  Ten inputs:
-# the whole registry was swept at n=1..10 on both shapes, and exactly one
-# generator falls short -- WII2D, dense only, recorded below.  Every other
-# one of the 69 builds both shapes at n=10.
-#
-# Ten is here because it was made affordable, not because the cost was
-# waved through.  This sweep stopped at five for a long time, then briefly
-# at eight: n<=10 cost 141s of CPU, and n=9 alone was 53s of it.  Five
-# generators were then measured and rewritten:
-#
-#     minifuck        42.8s -> 8.6s     interprogck8    14.7s -> 3.5s
-#     polynomial      28.4s -> 5.5s     wii2d            7.2s -> 1.3s
-#     one_two_three   17.8s -> 3.7s
-#
-# plus a generic pass on the order search below.  The whole n=1..10 sweep
-# is now 46.1s of CPU.  Per arity: n=6 6.2s, n=7 1.0s, n=8 5.7s, n=9 7.2s,
+# Every boolean generator.
+# the whole registry was swept.
+# generator falls short --.
+# one of the 69 builds both.
+# .
+# Ten is here because it was.
+# waved through.
+# at eight: n<=10 cost 141s of.
+# generators were then measured.
+# .
+# minifuck 42.8s -> 8.6s.
+# polynomial 28.4s -> 5.5s.
+# one_two_three 17.8s -> 3.7s.
+# .
+# plus a generic pass on the.
+# is now 46.1s of CPU.
 # n=10 23.8s.
-#
-# n=6 costing six times n=7 is not a measurement error and not warmup -- it
-# is ``_ORDER_SEARCH_MAX = 6`` in ``helpers.py``.  At n <= 6 a reordering
-# generator builds all ``n!`` = 720 candidate orders and keeps the
-# shortest; at n=7 it switches to the greedy ``O(n**2)`` pick, so a
-# *bigger* table is hundreds of times faster (laserfuck 1.03s at six
-# against 0.002s at seven, streetcode 0.56s against 0.002s).
-#
-# What that 720-build search buys, measured by running the registry at n=6
-# with the cap at 6 and at 5: 3,193,830 chars in 10.7s against 3,195,778 in
-# 0.79s.  Only 13 of 138 cases differ and the registry total is 0.06%, but
-# the win is concentrated, not absent -- ram0 parity 29.9% shorter under the
-# search, circlefuck dense 26.4%, six_five dense 14.2%, unsquare dense
-# 13.5%.  Lowering the cap is a bad trade rather than a free 10s.
-#
-# **Measuring that requires patching six modules, not one.**  ``laserfuck``,
-# ``streetcode``, ``stack``, ``six_five`` and ``tape`` each do ``from
-# .helpers import _ORDER_SEARCH_MAX``, a by-value import, so patching
-# ``helpers`` alone leaves the two most expensive generators exhaustive and
-# reports the greedy side as 5.17s instead of 0.79s.
-#
-# n=6 was 10.0s until the candidates themselves were made cheap.  The
-# search still builds every one of the 720 and measures it -- see the
-# ``best_input_order`` docstring for why the count cannot come down without
-# going per-language -- so that pass left all 1380 programs byte-identical.
-#
-# Across everything here, 1356 of the registry's 1380 programs are
-# byte-identical: the 24 that moved are nine factor arities that used to
-# refuse, minifuck's dense n=9 at +6.4%, and one_two_three's n=4..10 both
-# shapes, which the mark respacing cut by 82% overall.
-#
-# Ten still peaks at 637MB RSS on Circuit Diagram's n=10 dense table, 306MB
-# of program text.  That memory, not the time, is what keeps the band split:
-# n <= _QUICK_ARITY runs in the default gate and the rest is marked slow.
-# Both bands assert the same thing; splitting them keeps the fast gate at
-# the 69 items and ~3s it had when this swept to five.
+# .
+# n=6 costing six times n=7 is.
+# is ``_ORDER_SEARCH_MAX = 6``.
+# generator builds all ``n!`` =.
+# shortest; at n=7 it switches.
+# *bigger* table is hundreds of.
+# against 0.002s at seven,.
+# .
+# What that 720-build search.
+# with the cap at 6 and at 5:.
+# 0.79s.
+# the win is concentrated, not.
+# search, circlefuck dense.
+# 13.5%.
+# .
+# **Measuring that requires.
+# ``streetcode``, ``stack``,.
+# .helpers import.
+# ``helpers`` alone leaves the.
+# reports the greedy side as.
+# .
+# n=6 was 10.0s until the.
+# search still builds every one.
+# ``best_input_order``.
+# going per-language -- so that.
+# .
+# Across everything here, 1356.
+# byte-identical: the 24 that.
+# refuse, minifuck's dense n=9.
+# shapes, which the mark.
+# .
+# Ten still peaks at 637MB RSS.
+# of program text.
+# n <= _QUICK_ARITY runs in the.
+# Both bands assert the same.
+# the 69 items and ~3s it had.
 _MAX_ARITY = 10
 _QUICK_ARITY = 5
 
@@ -786,46 +786,46 @@ _ARITY_BANDS = (
     ),
 )
 
-# The generators that do not reach _MAX_ARITY, keyed by ``(name, shape)``
-# because a cap can bind on one table shape and not the other.  WII2D is
-# exactly that: a per-name cap of 9 would demand its parity n=10 refuse,
-# which it does not -- that shape builds in 350 characters.
-#
-#   wii2d refuses n=10 dense because the decode spans 512 index points past
-#   the ``_WII2D_MAX_INDEX_DOMAIN = 256`` cost guard.  Unlike the two caps
-#   below, raising the constant does *not* buy the table: at domain 512 the
-#   decode ratchets -- live count crawls 512 -> 475 over 19 steps while the
-#   bit length doubles every step, reaching 1.09M bits, the 19th step alone
-#   144s -- and refuses on the magnitude bound instead.  It is a wall of the
-#   exactly-once embed convention; ``docs/walls.md`` carries the curve.
-#
-# Two generators that used to be here are gone, and both of those refusals
-# were the *construction's* limit rather than the language's:
-#
-#   interprogck8 capped at n=3 because one ``DownAccLines`` reaches 255
-#   lines and the n=4 bit-0 crossing spans 452.  Long hops now ride an
-#   express through one-line rungs parked in meadows.
-#
-#   factor capped at n=3 on CPython's 4300-digit ``int``-render guard, then
-#   at n=6 on the 16000-digit budget that replaced it.  Both are size
-#   policies rather than anything Factor says.
-#
-# An entry needs the measurement that put it there and the phrase its own
-# refusal is built around -- asserting only that something refused would
-# accept a generator that had started failing for an unrelated reason,
-# since an encoding bug reads exactly like a cap from the outside.
+# The generators that do not.
+# because a cap can bind on one.
+# exactly that: a per-name cap.
+# which it does not -- that.
+# .
+# wii2d refuses n=10 dense.
+# the ``_WII2D_MAX_INDEX_DOMAIN.
+# below, raising the constant.
+# decode ratchets -- live count.
+# bit length doubles every.
+# 144s -- and refuses on the.
+# exactly-once embed.
+# .
+# Two generators that used to.
+# were the *construction's*.
+# .
+# interprogck8 capped at n=3.
+# lines and the n=4 bit-0.
+# express through one-line.
+# .
+# factor capped at n=3 on.
+# at n=6 on the 16000-digit.
+# policies rather than anything.
+# .
+# An entry needs the.
+# refusal is built around --.
+# accept a generator that had.
+# since an encoding bug reads.
 _ARITY_CAPPED: dict[tuple[str, str], tuple[int, str]] = {
     ("wii2d", "dense"): (9, "cost guard; below the bound this is a size/time"),
 }
 
 
-# The two table shapes every generator is built against.  A dense
-# pseudo-random table and parity fail *differently*: WII2D reaches n=10 on
-# parity but stops at n=9 dense, factor's digit budget runs out a rung
-# earlier on parity than on dense, and Polynomial's 1934-instruction cap
-# refuses dense n=11 (2910) while parity fits far past it.  A single-shape
-# sweep reports the wrong ceiling for all three, which is why both shapes
-# are built at every arity and why the cap table is keyed by shape.
+# The two table shapes every.
+# pseudo-random table and.
+# parity but stops at n=9.
+# earlier on parity than on.
+# refuses dense n=11 (2910).
+# sweep reports the wrong.
+# are built at every arity and.
 def _dense(n: int) -> str:
     """A deterministic dense pseudo-random table -- the worst case to fold."""
     digest = hashlib.sha256(f"dense:{n}".encode()).digest()
@@ -901,20 +901,20 @@ def test_arity_caps_are_still_caps() -> None:
             fn(make(cap + 1))
 
 
-# Every table of arity one, two and three: 4 + 16 + 256 = 276 of them.  The
-# sweep above sees two tables per arity, so a generator that refuses some
-# *third* shape -- an all-but-one-row table, a table whose fold leaves one
-# essential input, a single minterm -- passes it and fails here.  This is the
-# exhaustive-domain half, and n <= 3 is the last arity where exhaustive is a
-# thing one can afford: n=4 is 65536 tables per generator.
-#
-# It is the executable witness `docs/proofs.md` names for the totality
-# entries.  A structural argument says a generator returns on every table of
-# every arity; this checks the whole domain at the arities where "whole" is
-# reachable, which is what stops the argument from resting on its own prose.
-#
-# 4.7s serial across all 69, no generator over 1.8s -- pct-squared-minus-one
-# is the top, Factor 0.25s, the other 67 under 0.6s each.
+# Every table of arity one, two.
+# sweep above sees two tables.
+# *third* shape -- an.
+# essential input, a single.
+# exhaustive-domain half, and n.
+# thing one can afford: n=4 is.
+# .
+# It is the executable witness.
+# entries.
+# every arity; this checks the.
+# reachable, which is what.
+# .
+# 4.7s serial across all 69, no.
+# is the top, Factor 0.25s, the.
 _EXHAUSTIVE_ARITY = 3
 
 
@@ -960,34 +960,34 @@ def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
     assert _cm_constants([]) == lines
 
 
-# The build sweep above proves every generator *returns* a program up to ten
-# inputs.  It never runs one, and for four years nothing else ran one past
-# four inputs either.  Grapheme's variable keys collided with two of its own
-# command characters from slot 5 onward, so from six essential inputs it
-# emitted a program its own interpreter could not execute -- and the sweep
-# saw a healthy non-empty string every time.
-#
-# The property that matters is not table *size* but how many inputs are
-# *essential*: a dense n=9 table that folds down to one input exercises one
-# slot and sails through.  A single-minterm table is the cheap way to force
-# all n of them -- its one 1 makes every input matter, while the program
-# stays small enough to execute.  Grapheme n=9 costs 0.18s that way against
-# 11.7s for an all-essential random table, which is the difference between a
+# The build sweep above proves.
+# inputs.
+# four inputs either.
+# command characters from slot.
+# emitted a program its own.
+# saw a healthy non-empty.
+# .
+# The property that matters is.
+# *essential*: a dense n=9.
+# slot and sails through.
+# all n of them -- its one 1.
+# stays small enough to execute.
+# 11.7s for an all-essential.
 # test and a nightly job.
-#
-# n=6 is the floor that would have caught the bug and is affordable for all
-# 69: 18.6s of work in total, no language over 4.3s, 6.9s wall across the
-# four workers this suite runs on, and none excluded.  Restoring the old
-# key alphabet makes this fail, which is the only evidence that the arity
+# .
+# n=6 is the floor that would.
+# 69: 18.6s of work in total,.
+# four workers this suite runs.
+# key alphabet makes this fail,.
 # is high enough.
-# There is deliberately no exclusion table here -- an empty one is the
-# finding, and if a language ever needs to be added, it needs a reason and a
-# cost beside it like ``_ARITY_CAPPED`` carries.
-#
-# A wider probe backs the choice rather than a hunch: 517 evaluations over
-# all 69 languages, both shapes, n=5..8, found zero further failures of this
-# kind, so Grapheme was the only one.  22 language/arity pairs were too
-# expensive to reach and are *unchecked*, not passing.
+# There is deliberately no.
+# finding, and if a language.
+# cost beside it like.
+# .
+# A wider probe backs the.
+# all 69 languages, both.
+# kind, so Grapheme was the.
+# expensive to reach and are.
 _ONE_MINTERM_ARITY = 6
 
 
@@ -1014,7 +1014,7 @@ def _one_hot(n: int) -> str:
     return "".join(str(int(bin(row).count("1") == 1)) for row in range(2**n))
 
 
-#: The table shapes every generator's *output* is executed against.
+# : The table shapes every.
 _EXEC_SHAPES = (("one_minterm", _one_minterm), ("one_hot", _one_hot))
 
 
@@ -1047,14 +1047,14 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
     assert len(essential_inputs(table, _ONE_MINTERM_ARITY)) == _ONE_MINTERM_ARITY
 
 
-#: What ``docs/limitations.md`` says the expensive generators cost, as
-#: ``(n=8 size, n=9 size, growth per input)``.  Sizes are exact because a
-#: program's length is deterministic for a fixed generator and table; the
-#: ratio carries a band because it drifts a little with arity.
-#:
-#: Timings are deliberately absent.  The document states a few and calls
-#: them approximate, and asserting one here would fail whenever the machine
-#: is busy -- which, on a suite that runs four workers, is always.
+# : What.
+# : ``(n=8 size, n=9 size,.
+# : program's length is.
+# : ratio carries a band.
+# :.
+# : Timings are deliberately.
+# : them approximate, and.
+# : is busy -- which, on a.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
     "Circuit Diagram": (609_526, 1_609_864, 2.6),
     "COD": (942_692, 3_668_705, 3.9),

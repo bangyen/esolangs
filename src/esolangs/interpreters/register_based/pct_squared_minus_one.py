@@ -39,23 +39,23 @@ import sys
 
 from esolangs.interpreters.io import IO
 
-#: One instant of a run: ``(ind, acc)`` -- the code position and the
-#: accumulator.  A value, not a record: every transition below returns a new
-#: one rather than editing one in place.
-#:
-#: This is exactly what ``snapshot`` returns, and always has been.  The
-#: state and its hashable view are the same tuple, so unlike brainfuck --
-#: whose tape needs committing before an observer may see it -- there is no
-#: second spelling of a logical state for the cycle detector to trip over.
-#:
-#: A plain tuple rather than a ``NamedTuple``: the two fields are read by
-#: unpacking in the functions that use them, so the names buy little, and
-#: ``NamedTuple.__new__`` is Python-level where the tuple constructor is
+# : One instant of a run:.
+# : accumulator.
+# : one rather than editing one.
+# :.
+# : This is exactly what.
+# : state and its hashable view.
+# : whose tape needs committing.
+# : second spelling of a.
+# :.
+# : A plain tuple rather than a.
+# : unpacking in the functions.
+# : ``NamedTuple.__new__`` is.
 #: C-level.
-#:
-#: The code is deliberately *not* in here.  It does not change during a run,
-#: so carrying it would put constant data in every value the cycle detector
-#: stores.  It is a parameter to the transition instead.
+# :.
+# : The code is deliberately.
+# : so carrying it would put.
+# : stores.
 type _State = tuple[int, int]
 
 
@@ -107,8 +107,8 @@ def _advance(state: _State, code: str) -> _State:
     elif char == "'":
         acc = 0
     elif char == "t" and acc != 0:
-        # The rewind lands on position 0 and is read from there next step,
-        # so it returns directly rather than taking the increment below.
+        # The rewind lands on position.
+        # so it returns directly rather.
         return (0, acc)
     return (ind + 1, acc)
 
@@ -127,14 +127,14 @@ class _Machine:
         """Store ``code`` and start the accumulator at zero."""
         self.io = io
         self.code = code
-        # ``halted`` is read twice per command -- once by ``run``'s loop and
-        # once by ``step``'s guard -- so the length is taken once here
-        # rather than recomputed on every one of those reads.
+        # ``halted`` is read twice per.
+        # once by ``step``'s guard --.
+        # rather than recomputed on.
         self.size = len(code)
         self.state: _State = (0, 0)
 
-    # The language's own names.  They are views on the current state rather
-    # than fields of their own, so there is one place a step can change.
+    # The language's own names.
+    # than fields of their own, so.
 
     @property
     def ind(self) -> int:
@@ -149,7 +149,7 @@ class _Machine:
         """Whether the cursor has reached the end of the program."""
         return self.state[0] >= self.size
 
-    # The VM's language-shaped view: Accumulator + cursor; ip the cursor, memory the
+    # The VM's language-shaped.
     # accumulator.
 
     @property
@@ -169,8 +169,8 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The state as it stands: it is already the (ind, acc) pair this
-        # returned before the split, and it is already hashable.
+        # The state as it stands: it is.
+        # returned before the split,.
         return self.state
 
     def step(self) -> None:

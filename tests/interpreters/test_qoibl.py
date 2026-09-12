@@ -61,7 +61,7 @@ class TestQoiblBasicOperations:
 
     def test_print_character(self) -> None:
         """Test tt instruction for printing characters."""
-        code: list[str] = ["tt yeeyeee tt"]  # 'H' in binary
+        code: list[str] = ["tt yeeyeee tt"]  # 'H' in binary.
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
         assert f.getvalue() == "H"
@@ -69,17 +69,17 @@ class TestQoiblBasicOperations:
     def test_print_hello_world(self) -> None:
         """Test printing 'Hello, worl' using multiple print statements."""
         hello_world_code: list[str] = [
-            "tt yeeyeee tt",  # H
-            "tt yyeeyey tt",  # e
-            "tt yyeyyee tt",  # l
-            "tt yyeyyee tt",  # l
-            "tt yyeyyyy tt",  # o
-            "tt yeyyee tt",  # ,
-            "tt yeeeee tt",  # (space)
-            "tt yyyeyyy tt",  # w
-            "tt yyeyyyy tt",  # o
-            "tt yyyeeye tt",  # r
-            "tt yyeyyee tt",  # l
+            "tt yeeyeee tt",  # H.
+            "tt yyeeyey tt",  # e.
+            "tt yyeyyee tt",  # l.
+            "tt yyeyyee tt",  # l.
+            "tt yyeyyyy tt",  # o.
+            "tt yeyyee tt",  # ,.
+            "tt yeeeee tt",  # (space).
+            "tt yyyeyyy tt",  # w.
+            "tt yyeyyyy tt",  # o.
+            "tt yyyeeye tt",  # r.
+            "tt yyeyyee tt",  # l.
         ]
         with redirect_stdout(io.StringIO()) as f:
             run(hello_world_code, io=IO())
@@ -88,19 +88,19 @@ class TestQoiblBasicOperations:
     def test_assignment_and_access(self) -> None:
         """Test we (assignment) and qe (access) instructions."""
         code: list[str] = [
-            "we y we yyeeee we",  # var[1] = 48
-            "tt qe y qe tt",  # print var[1]
+            "we y we yyeeee we",  # var[1] = 48.
+            "tt qe y qe tt",  # print var[1].
         ]
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
-        assert f.getvalue() == chr(48)  # '0'
+        assert f.getvalue() == chr(48)  # '0'.
 
     def test_input_operation(self) -> None:
         """Test et (input) instruction."""
         code: list[str] = [
             "we y we et we",
             "tt qe y qe tt",
-        ]  # input -> var[1], print var[1]
+        ]  # input -> var[1], print var[1].
         with (
             patch("builtins.input", return_value="A"),
             redirect_stdout(io.StringIO()) as f,
@@ -156,35 +156,35 @@ class TestQoiblConditionals:
     def test_equality_condition(self) -> None:
         """Test ee (equality) operator."""
         code: list[str] = [
-            "we y we yy we",  # var[1] = 3
-            "we ye we yy we",  # var[2] = 3
-            "tt qe y qe yr ee yr qe ye qe tt",  # print var[1] == var[2]
+            "we y we yy we",  # var[1] = 3.
+            "we ye we yy we",  # var[2] = 3.
+            "tt qe y qe yr ee yr qe ye qe tt",  # print var[1] == var[2].
         ]
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
-        assert f.getvalue() == chr(1)  # True
+        assert f.getvalue() == chr(1)  # True.
 
     def test_greater_than_condition(self) -> None:
         """Test ey (greater than) operator."""
         code: list[str] = [
-            "we y we yyy we",  # var[1] = 7
-            "we ye we yy we",  # var[2] = 3
-            "tt qe y qe yr ey yr qe ye qe tt",  # print var[1] > var[2]
+            "we y we yyy we",  # var[1] = 7.
+            "we ye we yy we",  # var[2] = 3.
+            "tt qe y qe yr ey yr qe ye qe tt",  # print var[1] > var[2].
         ]
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
-        assert f.getvalue() == chr(1)  # True
+        assert f.getvalue() == chr(1)  # True.
 
     def test_less_than_condition(self) -> None:
         """Test ye (less than) operator."""
         code: list[str] = [
-            "we y we y we",  # var[1] = 1
-            "we ye we yy we",  # var[2] = 3
-            "tt qe y qe yr ye yr qe ye qe tt",  # print var[1] < var[2]
+            "we y we y we",  # var[1] = 1.
+            "we ye we yy we",  # var[2] = 3.
+            "tt qe y qe yr ye yr qe ye qe tt",  # print var[1] < var[2].
         ]
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
-        assert f.getvalue() == chr(1)  # True
+        assert f.getvalue() == chr(1)  # True.
 
     def test_the_orderings_are_strict(self) -> None:
         """``ye`` and ``ey`` are false when the two operands are equal.
@@ -195,8 +195,8 @@ class TestQoiblConditionals:
         """
         for op in ("ye", "ey"):
             code: list[str] = [
-                "we y we yy we",  # var[1] = 3
-                "we ye we yy we",  # var[2] = 3
+                "we y we yy we",  # var[1] = 3.
+                "we ye we yy we",  # var[2] = 3.
                 f"tt qe y qe yr {op} yr qe ye qe tt",
             ]
             with redirect_stdout(io.StringIO()) as f:
@@ -206,13 +206,13 @@ class TestQoiblConditionals:
     def test_not_equal_condition(self) -> None:
         """Test yy (not equal) operator."""
         code: list[str] = [
-            "we y we y we",  # var[1] = 1
-            "we ye we yy we",  # var[2] = 3
-            "tt qe y qe yr yy yr qe ye qe tt",  # print var[1] != var[2]
+            "we y we y we",  # var[1] = 1.
+            "we ye we yy we",  # var[2] = 3.
+            "tt qe y qe yr yy yr qe ye qe tt",  # print var[1] != var[2].
         ]
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
-        assert f.getvalue() == chr(1)  # True
+        assert f.getvalue() == chr(1)  # True.
 
 
 class TestQoiblMathOperations:
@@ -221,9 +221,9 @@ class TestQoiblMathOperations:
     def test_addition(self) -> None:
         """Test ee (addition) operator."""
         code: list[str] = [
-            "we y we yy we",  # var[1] = 3
-            "we ye we yy we",  # var[2] = 3
-            "tt qe y qe ry ee ry qe ye qe tt",  # print var[1] + var[2]
+            "we y we yy we",  # var[1] = 3.
+            "we ye we yy we",  # var[2] = 3.
+            "tt qe y qe ry ee ry qe ye qe tt",  # print var[1] + var[2].
         ]
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
@@ -232,9 +232,9 @@ class TestQoiblMathOperations:
     def test_subtraction(self) -> None:
         """Test ey (subtraction) operator."""
         code: list[str] = [
-            "we y we yyy we",  # var[1] = 7
-            "we ye we yy we",  # var[2] = 3
-            "tt qe y qe ry ey ry qe ye qe tt",  # print var[1] - var[2]
+            "we y we yyy we",  # var[1] = 7.
+            "we ye we yy we",  # var[2] = 3.
+            "tt qe y qe ry ey ry qe ye qe tt",  # print var[1] - var[2].
         ]
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
@@ -243,9 +243,9 @@ class TestQoiblMathOperations:
     def test_multiplication(self) -> None:
         """Test ye (multiplication) operator."""
         code: list[str] = [
-            "we y we yy we",  # var[1] = 3
-            "we ye we yy we",  # var[2] = 3
-            "tt qe y qe ry ye ry qe ye qe tt",  # print var[1] * var[2]
+            "we y we yy we",  # var[1] = 3.
+            "we ye we yy we",  # var[2] = 3.
+            "tt qe y qe ry ye ry qe ye qe tt",  # print var[1] * var[2].
         ]
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
@@ -254,13 +254,13 @@ class TestQoiblMathOperations:
     def test_division(self) -> None:
         """Test yy (division) operator."""
         code: list[str] = [
-            "we y we yyy we",  # var[1] = 7
-            "we ye we yy we",  # var[2] = 3
-            "tt qe y qe ry yy ry qe ye qe tt",  # print var[1] // var[2]
+            "we y we yyy we",  # var[1] = 7.
+            "we ye we yy we",  # var[2] = 3.
+            "tt qe y qe ry yy ry qe ye qe tt",  # print var[1] // var[2].
         ]
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
-        assert f.getvalue() == chr(2)  # 7 // 3 = 2
+        assert f.getvalue() == chr(2)  # 7 // 3 = 2.
 
 
 class TestQoiblExamples:
@@ -269,15 +269,15 @@ class TestQoiblExamples:
     def test_one_digit_adder(self) -> None:
         """Test the one digit adder example (up to 4+5)."""
         code: list[str] = [
-            "we e we yyeeee we",  # var[0] = 2
-            "we y we et ry ey ry qe e qe we",  # var[1] = input - 2
-            "we ye we et ry ey ry qe e qe we",  # var[2] = input - 2
-            "we y we qe y qe ry ee ry qe ye qe we",  # var[1] = var[1] + var[2]
-            "we y we qe y qe ry ee ry qe e qe we",  # var[1] = var[1] + 2
-            "tt qe y qe tt",  # print var[1]
+            "we e we yyeeee we",  # var[0] = 2.
+            "we y we et ry ey ry qe e qe we",  # var[1] = input - 2.
+            "we ye we et ry ey ry qe e qe we",  # var[2] = input - 2.
+            "we y we qe y qe ry ee ry qe ye qe we",  # var[1] = var[1] + var[2].
+            "we y we qe y qe ry ee ry qe e qe we",  # var[1] = var[1] + 2.
+            "tt qe y qe tt",  # print var[1].
         ]
 
-        # Test 2 + 3 = 5
+        # Test 2 + 3 = 5.
         def run_adder() -> str:
             with (
                 patch("builtins.input", side_effect=["2", "3"]),
@@ -287,18 +287,18 @@ class TestQoiblExamples:
             return f.getvalue()
 
         result = run_with_timeout(run_adder, timeout_seconds=2)
-        assert result == "5"  # Should print 5
+        assert result == "5"  # Should print 5.
 
     def test_while_loop(self) -> None:
         """Test the rr while loop: decrement var[1] until it is not > 1."""
         code: list[str] = [
-            "we y we yy we",  # var[1] = 3
+            "we y we yy we",  # var[1] = 3.
             "rr qe y qe yr ey yr y rr we y we qe y qe ry ey ry y we rr",
-            "tt qe y qe tt",  # print var[1]
+            "tt qe y qe tt",  # print var[1].
         ]
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
-        assert f.getvalue() == chr(1)  # decremented 3 -> 1
+        assert f.getvalue() == chr(1)  # decremented 3 -> 1.
 
 
 class TestQoiblEdgeCases:
@@ -319,7 +319,7 @@ class TestQoiblEdgeCases:
 
     def test_undefined_variable_access(self) -> None:
         """Test accessing undefined variables (should return 0)."""
-        code: list[str] = ["tt qe yyy qe tt"]  # print var[7] (undefined)
+        code: list[str] = ["tt qe yyy qe tt"]  # print var[7] (undefined).
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
         assert f.getvalue() == chr(0)
@@ -329,9 +329,9 @@ class TestQoiblEdgeCases:
         from esolangs.exceptions import HaltError
 
         code: list[str] = [
-            "we y we yyy we",  # var[1] = 7
-            "we ye we e we",  # var[2] = 0
-            "tt qe y qe ry yy ry qe ye qe tt",  # print var[1] // var[2]
+            "we y we yyy we",  # var[1] = 7.
+            "we ye we e we",  # var[2] = 0.
+            "tt qe y qe ry yy ry qe ye qe tt",  # print var[1] // var[2].
         ]
         with pytest.raises(HaltError):
             run(code, IO())
@@ -362,10 +362,10 @@ class TestQoiblEdgeCases:
     def test_nested_expressions(self) -> None:
         """Test nested expressions and complex operations."""
         code: list[str] = [
-            "we y we yy we",  # var[1] = 3
-            "we ye we yy we",  # var[2] = 3
-            "we yyy we qe y qe ry ee ry qe ye qe we",  # var[3] = var[1] + var[2]
-            "tt qe yyy qe tt",  # print var[3]
+            "we y we yy we",  # var[1] = 3.
+            "we ye we yy we",  # var[2] = 3.
+            "we yyy we qe y qe ry ee ry qe ye qe we",  # var[3] = var[1] + var[2].
+            "tt qe yyy qe tt",  # print var[3].
         ]
         with redirect_stdout(io.StringIO()) as f:
             run(code, IO())
@@ -513,9 +513,9 @@ class TestQoiblParserGuards:
         """
         from esolangs.interpreters.register_based.qoibl import _steal
 
-        assert _steal(["yy"], "e") is None  # no trailing 'e' to give back
-        assert _steal(["e"], "e") == []  # a one-character literal vanishes
-        assert _steal(["ye"], "e") == ["y"]  # a longer one is shortened
+        assert _steal(["yy"], "e") is None  # no trailing 'e' to give back.
+        assert _steal(["e"], "e") == []  # a one-character literal.
+        assert _steal(["ye"], "e") == ["y"]  # a longer one is shortened.
 
     def test_steal_declines_an_empty_token_list(self) -> None:
         """The emptiness check has to come first, or indexing raises.
@@ -538,8 +538,8 @@ class TestQoiblParserGuards:
         from esolangs.interpreters.register_based.qoibl import _wellformed
 
         assert _wellformed(["e", "yr", "ee", "yr", "y"]) is True
-        assert _wellformed(["e", "yr", "ee", "ry", "y"]) is False  # wrong close
-        assert _wellformed(["e", "yr", "ee"]) is False  # no close at all
+        assert _wellformed(["e", "yr", "ee", "ry", "y"]) is False  # wrong close.
+        assert _wellformed(["e", "yr", "ee"]) is False  # no close at all.
 
     def test_an_unrecognised_token_evaluates_to_zero(self) -> None:
         """The evaluator's last arm answers a token no keyword claims.
@@ -556,7 +556,7 @@ class TestQoiblParserGuards:
         assert var == {"e": 1}
 
 
-# 1.9s over 51 tests: runs the generated program.
+# 1.9s over 51 tests: runs the.
 @pytest.mark.medium
 class TestTheTokenizerCarriesItsOwnStack:
     """The search used to spend one Python frame per character.
@@ -603,14 +603,14 @@ class TestTheTokenizerCarriesItsOwnStack:
             ("yr", [["yr"]]),
             ("et", [["et"]]),
             ("eet", [["e"], ["et"]]),
-            # The `et`/`yr` ambiguity: a reading that consumes the next
-            # character is tried before one that reaches backwards, so `eyr`
-            # is a literal `ey` then `ry`, not `e` then `yr`.
+            # The `et`/`yr` ambiguity: a.
+            # character is tried before one.
+            # is a literal `ey` then `ry`,.
             ("eyr ", [["ey", "ry"]]),
             ("eeyr", [["eey", "ry"]]),
             ("yyr", [["yy", "ry"]]),
-            # Whitespace is a boundary, so the backwards reach cannot cross
-            # it and the same characters read differently.
+            # Whitespace is a boundary, so.
+            # it and the same characters.
             ("e yr", [["e", "yr"]]),
             ("ey et", [["ey"], ["et"]]),
             ("y ttyytt", [["y"], ["tt", "yy", "tt"]]),

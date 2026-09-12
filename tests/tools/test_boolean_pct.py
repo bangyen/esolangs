@@ -45,18 +45,18 @@ class TestParameterizedPctSquaredMinusOne:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            # The two constant tables are the slow ones to derive -- 1.1s
-            # and 1.0s against 0.04s for NOT -- putting them alone over
-            # the fast run's one-second budget.
-            pytest.param("00", 1, marks=pytest.mark.slow),  # constant zero
-            pytest.param("11", 1, marks=pytest.mark.slow),  # constant one
-            ("0001", 2),  # AND
-            ("0110", 2),  # XOR -- the function the wall forbids a reader
-            ("1001", 2),  # XNOR
-            ("0111", 2),  # OR
-            ("1110", 2),  # NAND
+            ("10", 1),  # NOT.
+            ("01", 1),  # identity.
+            # The two constant tables are.
+            # and 1.0s against 0.04s for.
+            # the fast run's one-second.
+            pytest.param("00", 1, marks=pytest.mark.slow),  # constant zero.
+            pytest.param("11", 1, marks=pytest.mark.slow),  # constant one.
+            ("0001", 2),  # AND.
+            ("0110", 2),  # XOR -- the function the wall.
+            ("1001", 2),  # XNOR.
+            ("0111", 2),  # OR.
+            ("1110", 2),  # NAND.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -69,9 +69,9 @@ class TestParameterizedPctSquaredMinusOne:
             got = self.run_pct(self.instantiate(template, bits))
             assert got == table[combo], f"inputs {bits}"
 
-    # Derives every table at that arity: 2.0s at n=1 and 5.3s at n=2, both
-    # over the fast run's one-second budget.  No single table dominates --
-    # the cost is the count -- so the whole sweep is marked, not a case.
+    # Derives every table at that.
+    # over the fast run's.
+    # the cost is the count -- so.
     @pytest.mark.slow
     @pytest.mark.parametrize("n", [1, 2])
     def test_all_small_tables(self, n: int) -> None:
@@ -104,7 +104,7 @@ class TestParameterizedPctSquaredMinusOne:
         assert "{X0}" in template
         assert "{X1}" in template
 
-    @pytest.mark.slow  # 5.3s: derives all sixteen two-input tables
+    @pytest.mark.slow  # 5.3s: derives all sixteen.
     def test_programs_never_read_input(self) -> None:
         """No emitted program contains ``n``, the input command.
 
@@ -193,10 +193,10 @@ class TestParameterizedPctSquaredMinusOne:
         """
         from esolangs.tools.boolean.pct_squared_minus_one import _cascade
 
-        # The cascade is asked directly rather than through the generator,
-        # which now falls back to the composed-affine path when no subcube
-        # serves -- counting the generator's successes would measure both
-        # constructions and no longer pin this one.
+        # The cascade is asked directly.
+        # which now falls back to the.
+        # serves -- counting the.
+        # constructions and no longer.
         built = 0
         for value in range(256):
             table = format(value, "08b")
@@ -207,18 +207,18 @@ class TestParameterizedPctSquaredMinusOne:
             for row in range(8):
                 bits = [(row >> (2 - k)) & 1 for k in range(3)]
                 assert self.run_pct(self.instantiate(template, bits)) == table[row]
-        # The count is exactly ``2 * 3**n - 2*n``.  There are ``3**n``
-        # subcubes (each input is pinned to 0, pinned to 1, or free), and as
-        # many complements; the overlap is precisely the ``2*n`` single-literal
-        # tables, the only subcubes whose complement is also a subcube.  The
-        # constant tables do not double-count, because :func:`_subcube_of`
-        # rejects an empty ON-set.  Pinned so a regression in the acceptor is
-        # caught rather than passing quietly.
+        # The count is exactly ``2 *.
+        # subcubes (each input is.
+        # many complements; the overlap.
+        # tables, the only subcubes.
+        # constant tables do not.
+        # rejects an empty ON-set.
+        # caught rather than passing.
         assert built == 2 * 3**3 - 2 * 3 == 48
 
-    # The cost is the three-input composition, which is derived once for the
-    # whole arity and cached -- 4.9s on the first table and free thereafter,
-    # so it is the arity that is marked, not this table.
+    # The cost is the three-input.
+    # whole arity and cached --.
+    # so it is the arity that is.
     @pytest.mark.slow
     def test_affine_path_builds_three_input_parity(self) -> None:
         """XOR3 builds, which no subcube is and the cascade refuses.
@@ -270,7 +270,7 @@ class TestParameterizedPctSquaredMinusOne:
 
         for value in range(256):
             table = format(value, "08b")
-            # No ``except`` here: a refusal is a failure now, not a skip.
+            # No ``except`` here: a refusal.
             template = parameterized.pct_squared_minus_one(table)
             lengths = set()
             for row in range(8):
@@ -278,7 +278,7 @@ class TestParameterizedPctSquaredMinusOne:
                 program = self.instantiate(template, bits)
                 lengths.add(len(program))
                 assert self.run_pct(program) == table[row], (table, bits)
-            # Both branches of every setter share a width, so no program leaks
+            # Both branches of every setter.
             # its inputs through ``len()``.
             assert len(lengths) == 1, (table, sorted(lengths))
 
@@ -321,14 +321,14 @@ class TestParameterizedPctSquaredMinusOne:
             _deep_values,
         )
 
-        # Weights (1, 1) collide rows 01 and 10 on one value.  XOR puts both in
-        # the same class, so the collision is harmless and the table plans.
+        # Weights (1, 1) collide rows.
+        # the same class, so the.
         collided = _deep_values(2, (1, 1), 0)
         assert collided[1] == collided[2]
         assert _deep_plan("0110", 2, collided) is not None
-        # A table that disagrees on exactly those two rows is refused: no
-        # schedule can separate rows the ladder has already merged.  ``"0010"``
-        # is 1 on row 10 and 0 on row 01.
+        # A table that disagrees on.
+        # schedule can separate rows.
+        # is 1 on row 10 and 0 on row.
         assert _deep_plan("0010", 2, collided) is None
 
     def test_deep_band_builds_symmetric_tables_at_five_inputs(self) -> None:
@@ -373,7 +373,7 @@ class TestParameterizedPctSquaredMinusOne:
         table = "00000101"
         template = _fold(table, 3)
         assert template is not None
-        # The body, not the header: the ``m`` is the doubling the body does.
+        # The body, not the header: the.
         body = template.partition(_HEADER_END)[2]
         assert "m" in body, "the doubling never fired"
         lengths = set()
@@ -384,7 +384,7 @@ class TestParameterizedPctSquaredMinusOne:
             assert self.run_pct(program) == table[row], (table, bits)
         assert len(lengths) == 1, sorted(lengths)
 
-    @pytest.mark.slow  # a 19-run plan plus 32 interpreter runs
+    @pytest.mark.slow  # a 19-run plan plus 32.
     def test_fold_closes_five_inputs(self) -> None:
         """A five-input table the deep band refuses computes on the fold.
 
@@ -411,7 +411,7 @@ class TestParameterizedPctSquaredMinusOne:
             assert self.run_pct(program) == table[row], (table, bits)
         assert len(lengths) == 1, sorted(lengths)
 
-    @pytest.mark.slow  # a 21-point plan plus 32 interpreter runs
+    @pytest.mark.slow  # a 21-point plan plus 32.
     def test_a_wide_state_plans_and_executes(self) -> None:
         """A 21-point table plans in milliseconds and computes every row.
 
@@ -457,21 +457,21 @@ class TestParameterizedPctSquaredMinusOne:
             bits = [(row >> (2 - k)) & 1 for k in range(3)]
             assert self.run_pct(self.instantiate(template, bits)) == bit
 
-    @pytest.mark.slow  # three arities' worth of interpreter runs
+    @pytest.mark.slow  # three arities' worth of.
     @pytest.mark.parametrize(
         ("table", "reaches"),
         [
-            # A weighting whose setter spelling is empty for some input --
-            # the pair `_deep_setters` appends when a unit contributes
-            # nothing, which every other table's weighting avoids.
+            # A weighting whose setter.
+            # the pair `_deep_setters`.
+            # nothing, which every other.
             ("1100110001110111", "an empty setter pair"),
-            # The deep band's own refusal, reached through the dispatch:
-            # this table exhausts the weighting family before the fold
+            # The deep band's own refusal,.
+            # this table exhausts the.
             # picks it up.
             ("1101000011010101", "the deep band's refusal"),
-            # The fold's narrow-gap endgame: the two surviving points land
-            # within 258 of each other, so `finish` cannot solve the
-            # congruence directly and parks the upper point past the limit
+            # The fold's narrow-gap.
+            # within 258 of each other, so.
+            # congruence directly and parks.
             # to reopen the gap first.
             ("00001111101010010010001011101101", "finish's narrow-gap reopen"),
         ],
@@ -523,7 +523,7 @@ class TestParameterizedPctSquaredMinusOne:
         )
 
         table = "11011111100100101001101110111000"
-        assert _deep_band(table, 5) is None  # the arm above must still refuse
+        assert _deep_band(table, 5) is None  # the arm above must still.
         assert pct_squared_minus_one(table) == _fold(table, 5)
 
     def test_deep_band_refuses_past_its_span_budget_without_enumerating(
@@ -542,7 +542,7 @@ class TestParameterizedPctSquaredMinusOne:
         parity = "".join(str(bin(r).count("1") & 1) for r in range(2**12))
         assert _deep_band(parity, 12) is None
 
-    @pytest.mark.slow  # derives the whole three-input arity once
+    @pytest.mark.slow  # derives the whole three-input.
     def test_affine_reach_is_exactly_characterized(self) -> None:
         """The composed-affine path's 86/256 is a predicate, not a measurement.
 
@@ -662,7 +662,7 @@ class TestParameterizedPctSquaredMinusOne:
         }
         assert len(reached) == 48
 
-    @pytest.mark.slow  # every weighting inside the budget, over a table sample
+    @pytest.mark.slow  # every weighting inside the.
     def test_a_legal_weighting_always_schedules(self) -> None:
         """Legality decides the deep band; the schedule then follows.
 
@@ -740,12 +740,12 @@ class TestParameterizedPctSquaredMinusOne:
         majority = "".join("1" if bin(r).count("1") >= 3 else "0" for r in range(32))
         assert _deep_band(parity, 5) is not None
         assert _deep_band(majority, 5) is not None
-        # One flipped row breaks the popcount symmetry and is screened out.
+        # One flipped row breaks the.
         asymmetric = list(parity)
         asymmetric[7] = "0" if asymmetric[7] == "1" else "1"
         assert _deep_band("".join(asymmetric), 5) is None
 
-    @pytest.mark.slow  # 8.3s: the ladder build plus eight interpreter runs
+    @pytest.mark.slow  # 8.3s: the ladder build plus.
     def test_ladder_builds_majority_three(self) -> None:
         """Majority-3 builds, which no affine composition of setters reaches.
 
@@ -760,7 +760,7 @@ class TestParameterizedPctSquaredMinusOne:
         from esolangs.tools.boolean.pct_squared_minus_one import _affine, _cascade
 
         table = "00010111"
-        # The other two paths really do refuse it, so this pins the ladder.
+        # The other two paths really do.
         assert _cascade(table, 3) is None
         assert _affine(table, 3) is None
         template = parameterized.pct_squared_minus_one(table)
@@ -770,11 +770,11 @@ class TestParameterizedPctSquaredMinusOne:
             program = self.instantiate(template, bits)
             lengths.add(len(program))
             assert self.run_pct(program) == table[row]
-        # Both branches of every setter share a width, so no program leaks its
+        # Both branches of every setter.
         # inputs through ``len()``.
         assert len(lengths) == 1, lengths
 
-    @pytest.mark.slow  # the whole setter grid, pairwise
+    @pytest.mark.slow  # the whole setter grid,.
     def test_every_branch_pair_shares_a_spelling_width(self) -> None:
         """No setter in the grid needs the "no shared width" fallback.
 
@@ -822,13 +822,13 @@ class TestParameterizedPctSquaredMinusOne:
         assert _WIDE_A_VALS == (0, 1, -1, 2, -2, 4, -4)
         assert _wide_a_vals(_WIDE_A_LIMIT) == _WIDE_A_VALS
 
-        # The closure itself: reachable by doubling and negating from 1.
+        # The closure itself: reachable.
         reach = {0, 1}
         for _ in range(_WIDE_A_LIMIT.bit_length()):
             reach |= {2 * v for v in reach} | {-v for v in reach}
         assert set(_WIDE_A_VALS) == {v for v in reach if abs(v) <= _WIDE_A_LIMIT}
 
-        # Widening is a knob, not a rewrite: the next power just appears.
+        # Widening is a knob, not a.
         assert _wide_a_vals(8) == (0, 1, -1, 2, -2, 4, -4, 8, -8)
 
     def test_built_spell_bases_match_the_frozen_witnesses(self) -> None:
@@ -1056,9 +1056,9 @@ class TestParameterizedPctSquaredMinusOne:
         assert _apply(7, code) == 5
         assert _apply(0, code) == 5
 
-        # Only four multipliers have a spelling; anything else has no code.
+        # Only four multipliers have a.
         assert _affine_code(3, 0) is None
-        # The offset needs one too: 1 is the gap `s`/`i` cannot express.
+        # The offset needs one too: 1.
         assert _affine_code(1, -1) is None
 
     def test_the_model_mirrors_every_command_the_language_has(self) -> None:
@@ -1072,22 +1072,22 @@ class TestParameterizedPctSquaredMinusOne:
         """
         from esolangs.tools.boolean.pct_squared_minus_one import _LIMIT, _apply
 
-        assert _apply(10, "s") == 8  # s subtracts 2
-        assert _apply(10, "i") == 7  # i subtracts 3
-        assert _apply(10, "m") == 20  # m doubles
-        assert _apply(10, "p") == -10  # p negates
-        assert _apply(10, "'") == 0  # ' erases
+        assert _apply(10, "s") == 8  # s subtracts 2.
+        assert _apply(10, "i") == 7  # i subtracts 3.
+        assert _apply(10, "m") == 20  # m doubles.
+        assert _apply(10, "p") == -10  # p negates.
+        assert _apply(10, "'") == 0  # ' erases.
 
-        # The reset fires *before* a command, not after: one past the limit
-        # is zeroed and the command then applies to that zero.
+        # The reset fires *before* a.
+        # is zeroed and the command.
         assert _apply(_LIMIT + 1, "s") == -2
         assert _apply(_LIMIT, "s") == _LIMIT - 2, "at the limit nothing resets"
 
-        # The model covers the five commands the generator emits; the
-        # language's others (``l``/``e``/``n`` do I/O, ``t`` jumps) leave the
-        # accumulator alone here, exactly as a character the interpreter
-        # does not recognize does.  Skipping rather than raising is what
-        # lets a tail be scored without first filtering its spelling.
+        # The model covers the five.
+        # language's others.
+        # accumulator alone here,.
+        # does not recognize does.
+        # lets a tail be scored without.
         assert _apply(10, "l") == 10
         assert _apply(10, "x") == 10
         assert _apply(10, "sxs") == 6, "an unmodelled command interrupts nothing"
@@ -1104,8 +1104,8 @@ class TestParameterizedPctSquaredMinusOne:
 
         assert _tail_for(-5, -5) is None
         assert _tail_for(1, 0) is not None, "the trivial pair still works"
-        # Two classes further apart than a step have no tail either: the
-        # translation moves both together, so it cannot close a wider gap.
+        # Two classes further apart.
+        # translation moves both.
         assert _tail_for(5, 0) is None
 
     def test_a_table_no_candidate_realizes_is_reported(self) -> None:
@@ -1119,8 +1119,8 @@ class TestParameterizedPctSquaredMinusOne:
         """
         import importlib
 
-        # The package re-exports the generator under the submodule's own
-        # name, so import the module explicitly rather than by attribute.
+        # The package re-exports the.
+        # name, so import the module.
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
         from esolangs.tools.boolean.pct_squared_minus_one import _derive
 
@@ -1247,28 +1247,28 @@ class TestPctSquaredHelpers:
         limit = module._LIMIT  # noqa: SLF001
         double = ("m", 0, 0, frozenset())
 
-        # A doubling has to leave the whole state inside the window.
+        # A doubling has to leave the.
         too_wide = (
             (limit, 0, "a", frozenset({0})),
             (-limit, 0, "a", frozenset({1})),
         )
         assert fold_step(too_wide, double) is None
 
-        # A single point at the origin has a zero span, which is refused by
-        # the same guard's lower bound -- there is nothing to scale.
+        # A single point at the origin.
+        # the same guard's lower bound.
         flat = ((0, 0, "a", frozenset({0})),)
         assert fold_step(flat, double) is None
 
-        # A state that does fit doubles: the normalization re-anchors the
-        # top at 0, so what the scaling shows up as is the doubled gap.
+        # A state that does fit.
+        # top at 0, so what the scaling.
         fits = ((10, 0, "a", frozenset({0})), (0, 0, "a", frozenset({1})))
         doubled = fold_step(fits, double)
         assert doubled is not None
         positions = sorted(p for p, _, _, _ in doubled)
         assert positions[-1] - positions[0] == 20
 
-        # The everything-wipe merges all points onto one, so it is legal
-        # only once a single class is left.
+        # The everything-wipe merges.
+        # only once a single class is.
         all_wipe = ("d", 2, limit + 1, frozenset())
         two_classes = (
             (10, 0, "a", frozenset({0})),
@@ -1304,10 +1304,10 @@ class TestPctSquaredHelpers:
             assert amount is not None, kind
             moved = fold_step(state, (kind, 1, amount, frozenset()))
             assert moved is not None, kind
-            # One group is wiped onto the origin; the other two survive.
+            # One group is wiped onto the.
             assert len(moved) == 3, kind
             assert any(p == 0 for p, _, _, _ in moved), kind
-            # Every id is still accounted for -- a wipe merges, never drops.
+            # Every id is still accounted.
             assert {x for _, _, _, ids in moved for x in ids} == {0, 1, 2}, kind
 
     def test_a_wipe_whose_survivors_will_not_fit_is_refused(self) -> None:
@@ -1332,7 +1332,7 @@ class TestPctSquaredHelpers:
         )
         assert fold_step(wide, ("u", 1, 3004, frozenset())) is None
 
-        # Same geometry, ordinary extent: the wipe goes through.
+        # Same geometry, ordinary.
         narrow = tuple(
             (p, 0, c, frozenset({i}))
             for i, (p, c) in enumerate(zip(*positions, strict=True))
@@ -1378,11 +1378,11 @@ class TestPctSquaredHelpers:
             (-33, 2000, "b", frozenset({1})),
             (-26, 0, "a", frozenset({2})),
         )
-        # The state is unfinished and the rules do offer a move for it ...
+        # The state is unfinished and.
         assert fold_done(state) is False
         move = fold_rule_move(state)
         assert move is not None
-        # ... but that very move is one the algebra will not take.
+        # .
         assert fold_step(state, move) is None
         assert fold_reduce(state, fold_done, budget=5) is None
 
@@ -1427,7 +1427,7 @@ class TestPctSquaredHelpers:
             (10, 0, "a", frozenset({0})),
             (0, 0, "a", frozenset({1})),
         )
-        # k == len(state) is the everything-wipe.
+        # k == len(state) is the.
         assert ("d", 2) in kinds(one_class)
 
         two_classes = (
@@ -1436,7 +1436,7 @@ class TestPctSquaredHelpers:
         )
         assert ("d", 2) not in kinds(two_classes)
 
-        # Already collapsed: nothing to offer at all.
+        # Already collapsed: nothing to.
         assert kinds(((0, 0, "a", frozenset({0})),)) == []
 
     def test_sub_units_borrows_an_i_back_to_pay_a_remainder_of_one(self) -> None:
@@ -1452,19 +1452,19 @@ class TestPctSquaredHelpers:
         module = self.module()
         sub_units = module._sub_units  # noqa: SLF001
 
-        # Exact multiples of 3: all i, nothing left over.
+        # Exact multiples of 3: all i,.
         assert sub_units(3) == "i"
         assert sub_units(9) == "iii"
-        # Remainder 2: one trailing s pays it exactly.
+        # Remainder 2: one trailing s.
         assert sub_units(2) == "s"
         assert sub_units(5) == "is"
-        # Remainder 1: borrow an i back, so 4 units spell as two s.
+        # Remainder 1: borrow an i.
         assert sub_units(4) == "ss"
         assert sub_units(7) == "iss"
         assert sub_units(10) == "iiss"
 
-        # Whatever the arm, the spelling has to be worth what was asked,
-        # and no other spelling of the same value may be shorter.
+        # Whatever the arm, the.
+        # and no other spelling of the.
         for units in range(2, 40):
             spelled = sub_units(units)
             assert spelled.count("i") * 3 + spelled.count("s") * 2 == units, units
@@ -1500,17 +1500,17 @@ class TestPctSquaredHelpers:
                 return j - 1, True
             return j, False
 
-        # The back-off is the common case, not a corner: most cuts need it.
+        # The back-off is the common.
         assert sum(chosen_j(cut)[1] for cut in range(1, 3005)) > 1000
 
-        # A slope has to be a whole number of doublings at the settled j,
-        # so it is picked from that j rather than fixed in advance.
+        # A slope has to be a whole.
+        # so it is picked from that j.
         backed_off = ladder_gadget(1, 2 << chosen_j(1)[0])
         assert chosen_j(1)[1] is True
         assert "psp" in backed_off
         assert backed_off.endswith("ipsp")
 
-        # A cut that does not overshoot keeps its first j, same shape.
+        # A cut that does not overshoot.
         clean_cut = next(cut for cut in range(1, 3005) if not chosen_j(cut)[1])
         clean = ladder_gadget(clean_cut, 2 << chosen_j(clean_cut)[0])
         assert "psp" in clean
@@ -1570,10 +1570,10 @@ class TestPctSquaredHelpers:
                 got = module._apply(vector[row], suffix)  # noqa: SLF001
                 assert got == int(want), (table, row)
             if (index, suffix) != witness:
-                # Two tables are reached by a shorter gadget than the
-                # harvest picked.  Both compute the table, and neither is
-                # emitted: every earlier path serves these in a tenth the
-                # characters, so the ladder is never consulted for them.
+                # Two tables are reached by a.
+                # harvest picked.
+                # emitted: every earlier path.
+                # characters, so the ladder is.
                 assert module.pct_squared_minus_one(table) != module._ladder(  # noqa: SLF001
                     table, 3
                 )
@@ -1704,13 +1704,13 @@ class TestPctInterleavedFold:
         from esolangs.interpreters.register_based.pct_squared_minus_one import run
 
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
-        table = "00001111"  # X1 creates equal suffix cofactors before X2
+        table = "00001111"  # X1 creates equal suffix.
         template = module._interleaved_fold(table, 3)  # noqa: SLF001
         assert template is not None
         slots = [template.index("{X" + str(i) + "}") for i in range(3)]
         assert slots == sorted(slots)
-        # Slots remain in stream order even when a stage coalesces directly
-        # through equal branches instead of needing a relocation.
+        # Slots remain in stream order.
+        # through equal branches.
         assert template.count("{X") == 3
         for row, want in enumerate(table):
             bits = [(row >> 2) & 1, (row >> 1) & 1, row & 1]
@@ -1718,12 +1718,12 @@ class TestPctInterleavedFold:
             run(module.fill(template, bits), io)
             assert io.getvalue() == want
 
-    # Split by cost, measured: the 256 builds are 0.28s and the 1088
-    # interpreter replays are 5.15s.  The build sweep carries the contract a
-    # mutant can break -- the selective count, decline-is-None, slot order --
-    # so it stays in the fast run, and the exhaustive replay moves to the
-    # slow-marked sibling below.  Splitting rather than sampling keeps the
-    # whole 256-table space on the route-reaching half.
+    # Split by cost, measured: the.
+    # interpreter replays are 5.15s.
+    # mutant can break -- the.
+    # so it stays in the fast run,.
+    # slow-marked sibling below.
+    # whole 256-table space on the.
     def test_every_three_input_table_builds_or_declines_exactly(self) -> None:
         """Sweep all 256 three-input tables through the staged build.
 
@@ -1743,12 +1743,12 @@ class TestPctInterleavedFold:
             built += 1
             assert template.count("{X") == 3, table
             slots = [template.index("{X" + str(i) + "}") for i in range(3)]
-            assert slots == sorted(slots), table  # slots stay in stream order
-        # The route is selective by design -- it runs before the all-row
-        # fallback -- so pin that it neither builds everything nor nothing.
+            assert slots == sorted(slots), table  # slots stay in stream order.
+        # The route is selective by.
+        # fallback -- so pin that it.
         assert built == 136
 
-    @pytest.mark.slow  # ~5s: 1088 interpreter replays
+    @pytest.mark.slow  # ~5s: 1088 interpreter replays.
     def test_every_three_input_build_computes_its_table(self) -> None:
         """Every table the route builds is replayed row by row.
 
@@ -1772,7 +1772,7 @@ class TestPctInterleavedFold:
                 run(module.fill(template, bits), io)
                 assert io.getvalue() == want, (table, row)
 
-    @pytest.mark.slow  # ~10s: 4096 four-input builds
+    @pytest.mark.slow  # ~10s: 4096 four-input builds.
     def test_four_input_tables_build_or_decline_without_raising(self) -> None:
         """At four inputs the merge has room to act, so its arms are reached here.
 
@@ -1811,8 +1811,8 @@ class TestPctInterleavedFold:
 
         module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
         n = 12
-        # XOR of the first two bits: it is neither a cascade subcube nor a
-        # threshold, and the all-row fold cannot lay its 4096 positions.
+        # XOR of the first two bits: it.
+        # threshold, and the all-row.
         table = "".join("0110"[row >> (n - 2)] for row in range(2**n))
         assert module._fold(table, n) is None  # noqa: SLF001
         template = module.pct_squared_minus_one(table)
@@ -1909,9 +1909,9 @@ class TestPctFoldEmitter:
             em.rise(limit + 1, frozenset({keys[0]}))
             return em.body
 
-        # u == 1: below the floor, so a preshift of 1 is spelled first.
+        # u == 1: below the floor, so a.
         assert rise_from(limit) == ["i", "psp", "psp", "s"]
-        # u == 2: exactly the floor, so the rise is spelled on its own.
+        # u == 2: exactly the floor, so.
         assert rise_from(limit - 1) == ["psp", "s"]
 
 
@@ -1998,8 +1998,8 @@ class TestPctFoldPlanners:
     def module():
         return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
 
-    #: Four points, alternating classes: not already finished, and small
-    #: enough that the rules answer quickly.
+    # : Four points, alternating.
+    # : enough that the rules.
     STATE = (
         (0, 0, "0", frozenset({0})),
         (-4, 0, "1", frozenset({1})),
@@ -2158,21 +2158,21 @@ class TestPctFoldPlan:
         module = self.module()
         limit = module._LIMIT  # noqa: SLF001
 
-        # Each ladder in turn gives out one or two arities later than the last.
+        # Each ladder in turn gives out.
         assert limit < module._FOLD_STEP * (2**10 - 1)  # noqa: SLF001
         assert limit < module._FOLD_NARROW_STEP * (2**11 - 1)  # noqa: SLF001
         assert sum(module._fold_subset_weights(11)) <= limit  # noqa: SLF001
         assert module._fold_subset_weights(12) is None  # noqa: SLF001
 
-        # Nothing serves twelve inputs, so the fold declines.  The table has
-        # to be one the fold would otherwise plan: ``"01" * 2048`` alternates
-        # every row, which is 4096 runs and a subcube the *cascade* builds,
-        # so it never reaches the fold at all.  A low-run table does.
+        # Nothing serves twelve inputs,.
+        # to be one the fold would.
+        # every row, which is 4096 runs.
+        # so it never reaches the fold.
         wide = "".join(str(((r >> 11) & 1) ^ ((r >> 10) & 1)) for r in range(2**12))
         assert module._cascade(wide, 12) is None  # noqa: SLF001
         assert module._fold(wide, 12) is None  # noqa: SLF001
-        # A table inside the bound still builds, so the ``None`` above is
-        # the workspace and not the arity itself.
+        # A table inside the bound.
+        # the workspace and not the.
         assert module._fold("0011", 2) is not None  # noqa: SLF001
 
     def test_the_packed_ladder_meets_the_distinctness_floor(self) -> None:
@@ -2217,7 +2217,7 @@ class TestPctFoldPlan:
         for zero, one in setters:
             assert len(zero) == len(one)
             assert module._apply(0, zero) == 0  # noqa: SLF001
-        # The whole chain lays every row exactly where the ladder says.
+        # The whole chain lays every.
         positions = module._fold_positions(n, weights)  # noqa: SLF001
         for row in (0, 1, 2, 2**n - 1):
             bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
@@ -2247,7 +2247,7 @@ class TestPctFoldPlan:
             assert module._apply(0, zero) == 0, amount  # noqa: SLF001
             assert module._apply(0, one) == -amount, amount  # noqa: SLF001
 
-    @pytest.mark.slow  # ~5s: ten inputs, 1024 rows filled and run
+    @pytest.mark.slow  # ~5s: ten inputs, 1024 rows.
     def test_a_low_run_ten_input_table_builds_and_runs(self) -> None:
         """A low-run ten-input table takes the skeleton path, and lays.
 
@@ -2283,7 +2283,7 @@ class TestPctFoldPlan:
             assert io.getvalue() == table[row], f"row {row}"
         assert len(widths) == 1, widths
 
-    @pytest.mark.slow  # ~14s: eleven inputs, a sampled row sweep
+    @pytest.mark.slow  # ~14s: eleven inputs, a.
     def test_the_packed_ladder_reaches_eleven_inputs(self) -> None:
         """Eleven inputs build on the packed ladder and print correctly.
 
@@ -2305,7 +2305,7 @@ class TestPctFoldPlan:
         table = "".join(rng.choice("01") for _ in range(2**n))
         template = parameterized.pct_squared_minus_one(table)
         widths = set()
-        for row in range(0, 2**n, 97):  # a stride coprime to the arity's runs
+        for row in range(0, 2**n, 97):  # a stride coprime to the.
             bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
             program = _fill_pct_squared_minus_one(template, bits)
             widths.add(len(program))
@@ -2314,7 +2314,7 @@ class TestPctFoldPlan:
             assert io.getvalue() == table[row], f"row {row}"
         assert len(widths) == 1, widths
 
-    @pytest.mark.slow  # generic twelve-input fold: ~12s to plan
+    @pytest.mark.slow  # generic twelve-input fold:.
     def test_interleaved_fold_builds_a_generic_twelve_input_table(self) -> None:
         """A centred final embed escapes the all-row ladder's limit."""
         import random
@@ -2337,7 +2337,7 @@ class TestPctFoldPlan:
             assert io.getvalue() == table[row], row
         assert len(widths) == 1, widths
 
-    @pytest.mark.slow  # packed prefix + sixteen-class compaction: ~60s to plan
+    @pytest.mark.slow  # packed prefix + sixteen-class.
     def test_interleaved_fold_builds_a_generic_thirteen_input_table(self) -> None:
         """The packed prefix ladder compacts to its cofactors before laying.
 
@@ -2412,7 +2412,7 @@ class TestPctAffineSolver:
             cascade = module._cascade(table, 3)  # noqa: SLF001
             assert cascade is None or shipped <= len(cascade), table
             improved += cascade is not None and shipped < len(cascade)
-        assert improved == 42  # the other two tie, keeping the cascade
+        assert improved == 42  # the other two tie, keeping.
 
     def test_affine_stays_gated_above_three_inputs(self) -> None:
         """The comparison must not reach the four-input enumeration.
@@ -2425,7 +2425,7 @@ class TestPctAffineSolver:
         module = self.module()
         assert module._affine.__doc__  # noqa: SLF001
         parity4 = "".join(str(bin(row).count("1") % 2) for row in range(16))
-        # The deep band answers this instantly; reaching _affine would not.
+        # The deep band answers this.
         start = time.perf_counter()
         boolean.pct_squared_minus_one(parity4)
         assert time.perf_counter() - start < 10.0
@@ -2440,8 +2440,8 @@ class TestPctAffineSolver:
         solve = self.module()._solve_affine  # noqa: SLF001
 
         assert solve((5, 5, 5), (1, 2, 3)) is None
-        # The same shape with one want is solvable, so the refusal is the
-        # disagreement and not the constant values.
+        # The same shape with one want.
+        # disagreement and not the.
         assert solve((0, 0), (4, 4)) == (0, 4)
 
     def test_a_constant_want_outside_the_offset_grid_is_refused(self) -> None:
@@ -2534,7 +2534,7 @@ class TestPctAffineBand:
 
         assert module._solve_affine(values, even) is not None  # noqa: SLF001
         assert module._solve_affine(values, odd) is not None  # noqa: SLF001
-        # Relabelling with one=0, other=1 leaves the odd half unsolvable.
+        # Relabelling with one=0,.
         relabelled = tuple(0 if bit else 1 for bit in odd)
         assert module._solve_affine(values, relabelled) is None  # noqa: SLF001
 
@@ -2557,10 +2557,10 @@ class TestPctFoldSkeletonResolver:
     def module():
         return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
 
-    #: One point: whichever way it is wiped, nothing survives.
+    # : One point: whichever way it.
     LONE = ((0, 0, "a", frozenset({0})),)
 
-    #: Two points of one class, four apart and both already wiped.
+    # : Two points of one class,.
     PAIR = (
         (0, 0, "a", frozenset({0})),
         (-4, 0, "a", frozenset({1})),

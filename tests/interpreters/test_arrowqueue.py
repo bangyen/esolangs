@@ -42,9 +42,9 @@ class TestArrowQueue:
         assert run_and_capture(["   "]) == ""
 
     def test_registered_interpreter_runs(self) -> None:
-        # ``~`` queues heading 0 and ``*`` turns the IP down, which walks it
-        # off this one-row grid before ``+`` is ever reached -- so the queue
-        # still holds that 0 at the halt, and the dump prints it.
+        # ``~`` queues heading 0 and.
+        # off this one-row grid before.
+        # still holds that 0 at the.
         assert esolangs.run("ArrowQueue", "~*+") == "0"
 
     def test_the_dump_separates_headings_with_a_space(self) -> None:
@@ -82,12 +82,12 @@ class TestArrowQueue:
         machine = _Machine(["~~"], io)
         while not machine.halted:
             machine.step()
-        assert io.getvalue() == ""  # the dump is the next step's
+        assert io.getvalue() == ""  # the dump is the next step's.
         machine.step()
         assert io.getvalue() == "0 0"
         machine.step()
         machine.step()
-        assert io.getvalue() == "0 0"  # and not once more
+        assert io.getvalue() == "0 0"  # and not once more.
 
 
 class TestMachineState:
@@ -195,6 +195,6 @@ class TestContract(EmptyProgramContract, CycleContract):
     run = staticmethod(run_and_capture)
     machine = staticmethod(_machine)
     empty_program: ClassVar[list[str]] = []
-    # The same ring either way; the ~ in the middle row is what sustains it.
+    # The same ring either way; the.
     halting_program: ClassVar[list[str]] = [" ~*", "+ *", "*~+"]
     looping_program: ClassVar[list[str]] = [" ~*", "+~*", "*~+"]

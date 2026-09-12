@@ -142,7 +142,7 @@ Package : IO, myDependency {
 } myPackage;
 """
 
-# The dependency example with every literal rewritten binary -> decimal,
+# The dependency example with.
 # and nothing else changed.
 DEPENDENCY_REBASED = (
     DEPENDENCY.replace("110000", "48")
@@ -230,9 +230,9 @@ class TestLiteralBase:
     def test_the_decimal_examples_are_byte_exact(self) -> None:
         assert _run(HELLO) == "Hello, World!\r\n"
         assert _run(TRUTH_MACHINE, "0\n") == "0"
-        # The cat's own terminator is unreachable under line-based input
-        # (see TestWikiExamples); its decimal literals are what is pinned
-        # here -- 100 as an array length and 13/10 as the CRLF it echoes.
+        # The cat's own terminator is.
+        # (see TestWikiExamples); its.
+        # here -- 100 as an array.
         assert (
             _run(CAT.replace("While c ^ 10 Do", "While c Do"), "h\ni\n\n") == "hi\r\n"
         )
@@ -405,8 +405,8 @@ class TestErrors:
         """
         with pytest.raises(ValueError, match="unbalanced"):
             _run("Package : IO {\n  Integer main {\n    charPut(65);\n")
-        # A partial close leaves the cursor mid-declaration, so the first
-        # check the parser reaches is the datatype one.
+        # A partial close leaves the.
+        # check the parser reaches is.
         with pytest.raises(ValueError, match="unknown datatype"):
             _run("Package : IO {\n  Integer main {\n    0;\n} p;")
 
@@ -435,7 +435,7 @@ class TestErrors:
         machine = _Machine(program, ScriptedIO())
         for _ in range(4000):
             machine.step()
-        # Far past Python's own recursion limit, and still going.
+        # Far past Python's own.
         assert len(machine.frames) > 1000
         assert not machine.halted
 
@@ -496,7 +496,7 @@ Package : IO {
 """
         with pytest.raises(HaltError, match="does not depend on"):
             _run(undeclared)
-        # Positive control: declaring the dependency makes the same call work.
+        # Positive control: declaring.
         declared = undeclared.replace("Package : IO {", "Package : IO, myDependency {")
         assert _run(declared) == "1"
 
@@ -659,9 +659,9 @@ class TestBooleanGenerator:
         [
             "0" * 16,
             "1" * 16,
-            "0110100110010110",  # parity at n == 4
+            "0110100110010110",  # parity at n == 4.
             "1000100010001000",
-            "0000000000000001",  # AND, the densest ANF at this arity
+            "0000000000000001",  # AND, the densest ANF at this.
         ],
     )
     def test_four_input_tables(self, table: str) -> None:
@@ -697,14 +697,14 @@ class TestBooleanGenerator:
         # x0 & x1: one term, degree 2.
         assert packlang("0001").count("INCR acc") == 1
         assert packlang("0001").count("If ") == 2
-        # x0 ^ x1: two terms, degree 1 each.
+        # x0 ^ x1: two terms, degree 1.
         assert packlang("0110").count("INCR acc") == 2
         assert packlang("0110").count("If ") == 2
-        # 3-way parity: three terms, degree 1 each.
+        # 3-way parity: three terms,.
         assert packlang("01101001").count("INCR acc") == 3
         assert packlang("01101001").count("If ") == 3
-        # A constant table has only the degree-zero coefficient: an
-        # unguarded INCR, or none at all.
+        # A constant table has only the.
+        # unguarded INCR, or none at.
         assert packlang("1111").count("If ") == 0
         assert packlang("1111").count("INCR acc") == 1
         assert packlang("0000").count("INCR acc") == 0
@@ -727,9 +727,9 @@ class TestSnapshot(SnapshotContract):
 class TestCycle(CycleContract):
     machine: ClassVar[Any] = staticmethod(_machine)
     halting_program: ClassVar[Any] = HELLO
-    # ``While 1 Do { charPut(49); }`` revisits its snapshot: the store and
-    # the cursor both return to where they were, and it reads no input, so
-    # the position cannot advance either.
+    # ``While 1 Do { charPut(49);.
+    # the cursor both return to.
+    # the position cannot advance.
     looping_program: ClassVar[Any] = """
 Package : IO {
   Integer main {

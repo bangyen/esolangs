@@ -166,8 +166,8 @@ class TestModulous:
 
     def test_reset(self) -> None:
         """RST restarts from the first module, re-reading input."""
-        # After RST the pointer returns to the start, so the second input
-        # line is read; then JMP F 2 IF 0 jumps over RST to PRT/END.
+        # After RST the pointer returns.
+        # line is read; then JMP F 2 IF.
         assert (
             run_and_capture(
                 "[INP INT][JMP F 2 IF 0][RST][PRT INT][END]", inputs=["5", "0"]
@@ -376,8 +376,8 @@ class TestStepMachine:
     def test_a_token_less_state_starts_halted(self) -> None:
         from esolangs.interpreters.stack_based.modulous import _Machine
 
-        # `step` has no halted guard of its own -- the caller checks first,
-        # which is what the VM's run loop does.
+        # `step` has no halted guard of.
+        # which is what the VM's run.
         assert _Machine("", IO()).halted
 
     def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
@@ -385,6 +385,6 @@ class TestStepMachine:
 
         state = _Machine("[PSH INT 5][PRT INT][END]", IO())
         before = state.snapshot()
-        hash(before)  # must not raise
+        hash(before)  # must not raise.
         state.step()
         assert state.snapshot() != before

@@ -84,11 +84,11 @@ def main() -> int:
                 failures += 1
                 print(f"{module}: " + "; ".join(issues))
 
-    # The walk above is only as good as its coverage, and the bug this
-    # replaced was a coverage hole rather than a bad check.  Every module
-    # the registry names must have been one of the files walked; a
-    # language whose interpreter moves out from under this script fails
-    # here instead of quietly going unchecked.
+    # The walk above is only as.
+    # replaced was a coverage hole.
+    # the registry names must have.
+    # language whose interpreter.
+    # here instead of quietly going.
     missed = sorted(set(module_to_name) - checked)
     if missed:
         failures += len(missed)

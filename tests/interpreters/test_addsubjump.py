@@ -28,14 +28,14 @@ def _run(code, stdin=""):
 
 class TestInstruction:
     def test_output_a_memory_cell(self) -> None:
-        # The wiki's example: -1 1 0 -7 outputs memory address 1; here the
-        # value cell is at address 4 and *c = memory[0] = -1 halts.
+        # The wiki's example: -1 1 0 -7.
+        # value cell is at address 4.
         assert _run("-1 4 0 -7 65") == "A"
 
     def test_adds_through_the_constant_one(self) -> None:
-        # memory[12] += 1 twice (d = -7 is the constant 0, so the += branch),
-        # then output and halt (c = -8 reads the constant -1, a special
-        # address).  Jump targets come from data cells 13/14.
+        # memory[12] += 1 twice (d = -7.
+        # then output and halt (c = -8.
+        # address).
         code = memory(
             [
                 [12, -6, 13, -7],
@@ -47,19 +47,19 @@ class TestInstruction:
         assert _run(code) == "\x02"
 
     def test_subtracts_when_the_selector_is_positive(self) -> None:
-        # d = -6 is the constant 1, so the -= branch fires: 0 - 1 = -1.
+        # d = -6 is the constant 1, so.
         code = memory([[12, -6, 13, -6], [-1, 12, -8, -7]], {13: 4})
         assert _run(code) == "\xff"
 
     def test_jumps_via_a_data_cell(self) -> None:
-        # The increment's *c = memory[13] = 4 sends the pointer to ip 4.
+        # The increment's *c =.
         code = memory([[12, -6, 13, -7], [-1, 12, -8, -7]], {13: 4})
         assert _run(code) == "\x01"
 
 
 class TestSpecialAddresses:
     def test_constants(self) -> None:
-        # -6 = 1, -7 = 0, -8 = -1: memory[30] = 1 + 0 + (-1) = 0.
+        # -6 = 1, -7 = 0, -8 = -1:.
         code = memory(
             [
                 [30, -6, 20, -7],
@@ -83,7 +83,7 @@ class TestSpecialAddresses:
         assert _run(code) == "\x00"
 
     def test_input_byte_is_added_to_the_target(self) -> None:
-        # memory[12] starts 0, so reading -1 (as *b) adds the input byte.
+        # memory[12] starts 0, so.
         code = memory([[12, -1, 13, -7], [-1, 12, -8, -7]], {13: 4})
         assert _run(code, "X") == "X"
 
@@ -94,7 +94,7 @@ class TestSpecialAddresses:
             run(code, io)
 
     def test_flags_only_update_while_flag_mode_is_set(self) -> None:
-        # Without touching -9 the zero flag stays 0 even after a +0 result.
+        # Without touching -9 the zero.
         code = memory(
             [
                 [12, -7, 13, -7],
@@ -105,8 +105,8 @@ class TestSpecialAddresses:
         assert _run(code) == "\x00"
 
     def test_zero_flag_is_set_under_flag_mode(self) -> None:
-        # Enable flag mode (-9 += 1), produce a zero result, copy the zero
-        # flag (-3) into a cell, and output it.
+        # Enable flag mode (-9 += 1),.
+        # flag (-3) into a cell, and.
         code = memory(
             [
                 [-9, -6, 40, -7],
@@ -119,7 +119,7 @@ class TestSpecialAddresses:
         assert _run(code) == "\x01"
 
     def test_negative_flag(self) -> None:
-        # Under flag mode, 0 - 1 = -1 sets the negative flag (-4).
+        # Under flag mode, 0 - 1 = -1.
         code = memory(
             [
                 [-9, -6, 40, -7],
@@ -142,20 +142,20 @@ class TestTruncatedInstruction:
     """
 
     def test_a_missing_operand_reads_as_zero(self) -> None:
-        # One cell: b, c and d are all absent, so each reads 0. a is -1, so
-        # the instruction prints *b = memory[0] = -1, a byte of 0xff.
+        # One cell: b, c and d are all.
+        # the instruction prints *b =.
         assert _run("-1") == "\xff"
 
     def test_the_second_operand_is_the_first_that_can_be_present(self) -> None:
-        # Two cells: b exists (address 4, an absent cell, so 0) while c and
-        # d do not. Printing *b gives NUL rather than the -1 above.
+        # Two cells: b exists (address.
+        # d do not.
         assert _run("-1 4") == "\x00"
-        # ... and b really is read, not defaulted: -6 is the constant 1.
+        # .
         assert _run("-1 -6") == "\x01"
 
     def test_a_present_third_operand_still_ends_the_run(self) -> None:
-        # Three cells: c exists and holds 0, so the jump goes to memory[0]
-        # = -1, a special address, which halts.
+        # Three cells: c exists and.
+        # = -1, a special address,.
         assert _run("-1 4 0") == "\x00"
 
 
@@ -178,13 +178,13 @@ class TestFlags:
 
     def test_negative_flag_follows_the_sign_of_the_result(self) -> None:
         """``NF`` is set when the result is below zero, and only then."""
-        assert _run(self._flag(-6, -4)) == "\x01"  # 0 - 1 = -1
-        assert _run(self._flag(-7, -4)) == "\x00"  # 0 - 0 =  0
+        assert _run(self._flag(-6, -4)) == "\x01"  # 0 - 1 = -1.
+        assert _run(self._flag(-7, -4)) == "\x00"  # 0 - 0 = 0.
 
     def test_zero_flag_follows_the_result_being_zero(self) -> None:
         """``ZF`` is set when the result is exactly zero, and only then."""
-        assert _run(self._flag(-7, -3)) == "\x01"  # 0 - 0 =  0
-        assert _run(self._flag(-6, -3)) == "\x00"  # 0 - 1 = -1
+        assert _run(self._flag(-7, -3)) == "\x01"  # 0 - 0 = 0.
+        assert _run(self._flag(-6, -3)) == "\x00"  # 0 - 1 = -1.
 
     def test_carry_and_overflow_stay_zero(self) -> None:
         """Cells are unbounded, so neither flag has anything to report.
@@ -204,7 +204,7 @@ class TestFlags:
 
 class TestHaltAndErrors:
     def test_jump_off_the_end_halts(self) -> None:
-        # The jump target (a data cell) is huge, past the memory.
+        # The jump target (a data cell).
         code = memory([[12, -6, 13, -7]], {13: 1000})
         assert _run(code) == ""
 
@@ -253,8 +253,8 @@ class TestHaltAndErrors:
         assert str(caught.value) == f"memory address {ceiling} is too large"
 
     def test_carry_and_overflow_flags_read_as_zero(self) -> None:
-        # The carry (-2) and overflow (-5) flags are always 0 in this
-        # interpreter, so copying them into cells prints two NUL bytes.
+        # The carry (-2) and overflow.
+        # interpreter, so copying them.
         code = memory(
             [
                 [31, -2, 44, -7],
@@ -283,11 +283,11 @@ class TestStepMachine:
 
         machine = _Machine("-1 1 0 -7", ScriptedIO())
         assert (machine.ip, list(machine.memory)) == (0, [-1, 1, 0, -7])
-        machine.step()  # writes *b to I/O and jumps via *c (a special address)
+        machine.step()  # writes *b to I/O and jumps.
         assert machine.io.getvalue() == "\x01"
         assert machine.ip == -1
         assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
+        machine.step()  # stepping a halted machine is.
         assert machine.ip == -1
 
     def test_snapshot_includes_the_input_cursor(self) -> None:
@@ -312,11 +312,11 @@ class TestStepMachine:
         )
 
         state = (_pack([5, 0, 0]), 0, 0, 0, 0, 0, 0)
-        # Write a non-zero and then zero it again: back to the start.
+        # Write a non-zero and then.
         written = _store(_store(state, 1, 7), 1, 0)
         assert written[0] == state[0], "a zeroed cell left a key behind"
 
-        # And a parsed zero is already absent, so the two agree.
+        # And a parsed zero is already.
         cells, length = _pack([5, 0, 0])
         assert cells == {0: 5}
         assert length == 3
@@ -378,13 +378,13 @@ class TestStepMachine:
         while not machine.halted:
             machine.step()
             seen.add((machine.fum, machine.zf))
-        assert machine.fum == 1  # -9 turned the mode on and it stayed on
-        assert (1, 1) in seen  # and the zero result set ZF while it was on
-        # The three flags this program never disturbs stay clear, so the
-        # accessors are not all reading one field.
+        assert machine.fum == 1  # -9 turned the mode on and it.
+        assert (1, 1) in seen  # and the zero result set ZF.
+        # The three flags this program.
+        # accessors are not all reading.
         assert (machine.cf, machine.nf, machine.vf) == (0, 0, 0)
-        # AddSubJump has no stack, and the shared VM view says so with an
-        # empty one rather than by omitting the name.
+        # AddSubJump has no stack, and.
+        # empty one rather than by.
         assert machine.stack == []
 
 

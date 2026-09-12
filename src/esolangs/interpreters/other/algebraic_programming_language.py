@@ -79,19 +79,19 @@ from typing import Literal
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# -- values ---------------------------------------------------------------
+# -- values.
 
-# The only datatype is a number, but a *function* reaches an expression
-# slot too: the wiki's ``WHILE(x, c)`` takes its condition and body as
-# arguments and calls them with ``x()``.  A bare uppercase name therefore
-# evaluates to the definition it names.
+# The only datatype is a.
+# slot too: the wiki's.
+# arguments and calls them with.
+# evaluates to the definition.
 _Number = int | float
 
-# -- parse tree -----------------------------------------------------------
+# -- parse tree.
 
-# Tuples discriminated by their first element, the way Forbin spells the
-# same idea.  ``call`` covers functions and custom operators alike: an
-# operator is a call whose name is its symbol pattern, so one node type
+# Tuples discriminated by their.
+# same idea.
+# operator is a call whose name.
 # and one lookup serve both.
 _Lit = tuple[Literal["lit"], _Number]
 _Var = tuple[Literal["var"], str]
@@ -104,12 +104,12 @@ _Node = _Lit | _Var | _Ref | _Neg | _Ret | _Bin | _Call
 
 _LOWER = "abcdefghijklmnopqrstuvwxyz"
 _UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-# The spec allows accented Latin, Cyrillic, and Greek letters as well, so
-# case is tested with ``str`` methods rather than against these ASCII
-# spellings; the constants are kept for the digits and the symbol class.
+# The spec allows accented.
+# case is tested with ``str``.
+# spellings; the constants are.
 _DIGITS = "0123456789"
-# Operator symbols are "any non-alphanumeric ... and non-+-*/%&|()={}$
-# symbol", so the reserved set is exactly what a custom operator may not
+# Operator symbols are "any.
+# symbol", so the reserved set.
 # use.
 _RESERVED = set("+-*/%&|()={}$ \t,")
 
@@ -155,7 +155,7 @@ class _Definition:
         return f"<{self.name}/{len(self.params)}>"
 
 
-# -- tokenizer ------------------------------------------------------------
+# -- tokenizer.
 
 
 def _tokens(line: str) -> list[str]:
@@ -177,8 +177,8 @@ def _tokens(line: str) -> list[str]:
             start = ind
             while ind < len(line) and line[ind] in _DIGITS:
                 ind += 1
-            # A fractional part only counts when a digit follows the dot;
-            # otherwise the dot is an operator symbol in its own right.
+            # A fractional part only counts.
+            # otherwise the dot is an.
             if ind + 1 < len(line) and line[ind] == "." and line[ind + 1] in _DIGITS:
                 ind += 1
                 while ind < len(line) and line[ind] in _DIGITS:
@@ -195,7 +195,7 @@ def _number(word: str) -> _Number:
     return float(word) if "." in word else int(word)
 
 
-# -- parser ---------------------------------------------------------------
+# -- parser.
 
 
 class _Parser:
@@ -253,8 +253,8 @@ class _Parser:
         """Parse at the lowest precedence (``|``)."""
         return self._binary(0)
 
-    # ``|`` then ``&`` then additive then multiplicative; ``**`` is handled
-    # by :meth:`_power` because it associates the other way.
+    # ``|`` then ``&`` then.
+    # by :meth:`_power` because it.
     _LEVELS: tuple[tuple[str, ...], ...] = (("|",), ("&",), ("+", "-"), ("*", "/", "%"))
 
     def _binary(self, level: int) -> _Node:
@@ -264,9 +264,9 @@ class _Parser:
         node = self._binary(level + 1)
         while True:
             word = self.peek()
-            # No ``**`` guard is needed here: ``_power`` consumes one
-            # before returning, so the cursor never sits on the first
-            # ``*`` of a ``**`` by the time this loop sees it.
+            # No ``**`` guard is needed.
+            # before returning, so the.
+            # ``*`` of a ``**`` by the time.
             if word is None or word not in self._LEVELS[level]:
                 return node
             self.take()
@@ -368,10 +368,10 @@ class _Parser:
         while ind < len(pattern):
             char = pattern[ind]
             if char == "\0":
-                # An argument slot inside the pattern parses a tightly
-                # bound operand, not a whole expression: the surrounding
-                # symbols delimit it.  A *prefix* operator is allowed
-                # there, so ``!!a`` is a complement of a complement.
+                # An argument slot inside the.
+                # bound operand, not a whole.
+                # symbols delimit it.
+                # there, so ``!!a`` is a.
                 try:
                     args.append(self._operand())
                 except ValueError:
@@ -392,8 +392,8 @@ class _Parser:
         if word[0] in _DIGITS:
             self.take()
             node: _Node = ("lit", _number(word))
-            # ``1(2)`` is invalid syntax by the spec, and so is ``1 a``:
-            # implied multiplication is between *variables*.
+            # ``1(2)`` is invalid syntax by.
+            # implied multiplication is.
             if self.peek() == "(":
                 raise ValueError("bracket multiplication is invalid syntax")
             return self._implied(node)
@@ -405,8 +405,8 @@ class _Parser:
         if _is_lower(word):
             self.take()
             if self.peek() == "(":
-                # ``c()`` where ``c`` is a parameter holding a function:
-                # the wiki's ``IF(x, c) = x & c()`` calls its argument.
+                # ``c()`` where ``c`` is a.
+                # the wiki's ``IF(x, c) = x &.
                 return ("call", word, self._arguments())
             return self._implied(("var", word))
         if _is_upper(word):
@@ -415,8 +415,8 @@ class _Parser:
                 name += self.take()
             if self.peek() == "(":
                 return ("call", name, self._arguments())
-            # A bare uppercase name is the function itself, which is how
-            # ``WHILE(x, c)`` receives something it can call.
+            # A bare uppercase name is the.
+            # ``WHILE(x, c)`` receives.
             return ("ref", name)
         raise ValueError(f"unexpected token {word!r}")
 
@@ -468,8 +468,8 @@ def _parse_lhs(lhs: str) -> tuple[str, list[str]]:
     ``\0`` standing in for each argument slot so the parser can match it
     against the token stream.
     """
-    # The surrounding whitespace is not part of the header, and quoting it
-    # back in an error message only misleads the reader.
+    # The surrounding whitespace is.
+    # back in an error message only.
     lhs = lhs.strip()
     tokens = _tokens(lhs)
     if not tokens:
@@ -495,14 +495,14 @@ def _parse_lhs(lhs: str) -> tuple[str, list[str]]:
                     raise ValueError(f"bad parameter {tokens[ind]!r}")
                 params.append(tokens[ind])
                 ind += 1
-            # The loop cannot run out of tokens: getting past it needs a
-            # closer, and ``)`` ends it here while ``}`` fails the
+            # The loop cannot run out of.
+            # closer, and ``)`` ends it.
             # ``bad parameter`` check above.
             ind += 1
         if ind != len(tokens):
             raise ValueError(f"trailing input in header {lhs!r}")
         return name, params
-    # A custom operator: letters are argument slots, everything else is a
+    # A custom operator: letters.
     # literal symbol of the pattern.
     pattern = ""
     op_params: list[str] = []
@@ -551,8 +551,8 @@ def _body(rhs: str, defs: dict[str, _Definition]) -> list[_Node]:
     text = rhs.strip()
     if text.startswith("{"):
         if not text.endswith("}"):
-            # ``_blocks`` has already balanced the braces, so what is left
-            # is a block with something after its closer -- ``F() = {1} 2``.
+            # ``_blocks`` has already.
+            # is a block with something.
             raise ValueError(f"trailing input after block in {text!r}")
         inner = text[1:-1]
         return [
@@ -563,7 +563,7 @@ def _body(rhs: str, defs: dict[str, _Definition]) -> list[_Node]:
     return [_Parser(_tokens(text), defs).parse()]
 
 
-# -- evaluation -----------------------------------------------------------
+# -- evaluation.
 
 
 class _Frame:
@@ -624,9 +624,9 @@ class _Machine:
     the frame stack, printing the result when the stack empties.
     """
 
-    #: The wiki gives no bound; this caps *one* line's evaluation so a
-    #: runaway expression cannot allocate without limit while still
-    #: leaving the hang detectors room to prove a loop.
+    # : The wiki gives no bound;.
+    # : runaway expression cannot.
+    # : leaving the hang detectors.
     _WORK_LIMIT = 1 << 20
 
     def __init__(self, code: str, io: IO) -> None:
@@ -662,15 +662,15 @@ class _Machine:
     def _steps(self, value: int) -> None:
         self.state.steps = value
 
-    # -- the VM's language-shaped view --------------------------------
+    # -- the VM's language-shaped.
 
     @property
     def halted(self) -> bool:
         """Whether every line has been executed and no frame is live."""
         return self.line >= len(self.lines) and not self.frames
 
-    #: ``ip`` starts with a line number rather than a cell or an offset,
-    #: with each open frame's index after it.
+    # : ``ip`` starts with a line.
+    # : with each open frame's.
     ip_shape = "line"
 
     @property
@@ -750,7 +750,7 @@ class _Machine:
             self.io.position(),
         )
 
-    # -- stepping -----------------------------------------------------
+    # -- stepping.
 
     def step(self) -> None:
         """Advance the program by one definition, read, or expression node."""
@@ -774,15 +774,15 @@ class _Machine:
         lhs, rhs = split
         name, params = _parse_lhs(lhs)
         if not params and _is_lower(name):
-            # ``n = 123``: a plain assignment.  It binds rather than
-            # prints and takes no input, so its body runs in a frame
-            # flagged to assign the result instead of printing it.
+            # ``n = 123``: a plain.
+            # prints and takes no input, so.
+            # flagged to assign the result.
             self._push(_Definition("", [], _body(rhs, self.defs)), {}, assign=name)
             return
-        # The name is registered *before* its body is parsed, so a
-        # definition can refer to itself: the wiki's truth machine is
-        # ``x? = x & x?``, whose body names the very operator being
-        # defined, and the parser can only match ``?`` against a pattern
+        # The name is registered.
+        # definition can refer to.
+        # ``x.
+        # defined, and the parser can.
         # it already knows.
         definition = _Definition(name, params, [("lit", 0)])
         self.defs[name] = definition
@@ -832,9 +832,9 @@ class _Machine:
             self._advance(frame)
             return
         node, done = frame.work[-1]
-        # Narrowed on ``node`` itself rather than through a ``kind`` local,
-        # so mypy can discriminate the tuple union: binding the tag to a
-        # variable first loses the link between it and the node's shape.
+        # Narrowed on ``node`` itself.
+        # so mypy can discriminate the.
+        # variable first loses the link.
         if node[0] == "lit":
             self._resolve(frame, node[1])
             return
@@ -854,8 +854,8 @@ class _Machine:
             if not done:
                 self._descend(frame, node[1])
                 return
-            # ``$`` exits the function immediately, so the rest of the
-            # expression around it is abandoned rather than resumed.
+            # ``$`` exits the function.
+            # expression around it is.
             frame.returned = True
             frame.value = done[0]
             frame.work.clear()
@@ -914,7 +914,7 @@ class _Machine:
             return
         left, right = done[0], done[1]
         if op in ("&", "|"):
-            # The left operand did not decide the answer, so the value is
+            # The left operand did not.
             # the right one as evaluated.
             self._resolve(frame, right)
             return
@@ -926,8 +926,8 @@ class _Machine:
         if len(done) < len(args):
             self._descend(frame, args[len(done)])
             return
-        # A name bound to a *value* is a parameter holding a function,
-        # which is how the wiki's ``WHILE(x, c)`` calls ``x()``.
+        # A name bound to a *value* is.
+        # which is how the wiki's.
         target = frame.locals.get(name)
         definition = target if isinstance(target, _Definition) else self.defs.get(name)
         if definition is None:
@@ -950,9 +950,9 @@ class _Machine:
     def _advance(self, frame: _Frame) -> None:
         """Move to the frame's next statement, or return from it."""
         if not frame.returned and frame.stmt + 1 < len(frame.fn.body):
-            # Every statement but the last prints, per the wiki's
-            # MULTILINE example -- unless it carries a ``$``, which makes
-            # it a conditional return rather than a printed value.
+            # Every statement but the last.
+            # MULTILINE example -- unless.
+            # it a conditional return.
             if not frame.fn.control[frame.stmt]:
                 self._print(frame.value)
             frame.stmt += 1
@@ -1019,8 +1019,8 @@ def _arith(op: str, left: _Number, right: _Number) -> _Number:
         if right == 0:
             raise HaltError("division by zero")
         quotient = left / right
-        # Keep an exact integer where the division is exact, so the
-        # unbounded-integer model survives a round trip through ``/``.
+        # Keep an exact integer where.
+        # unbounded-integer model.
         return int(quotient) if quotient.is_integer() else quotient
     if op == "%":
         if right == 0:

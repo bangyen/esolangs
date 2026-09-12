@@ -49,7 +49,7 @@ class IO:
         """Create an IO with no pending prompt newline."""
         self._newline = False
 
-    # -- low-level seam: override in subclasses -----------------------
+    # -- low-level seam: override.
 
     def _read(self, prompt: str) -> str:
         return input(prompt)
@@ -57,7 +57,7 @@ class IO:
     def _write(self, value: object) -> None:
         print(value, end="")
 
-    # -- output -------------------------------------------------------
+    # -- output.
 
     def print_str(self, text: str) -> None:
         r"""Write ``text`` as-is, adding no trailing newline of its own.
@@ -88,13 +88,13 @@ class IO:
         self._write(num)
         self._newline = True
 
-    # There is deliberately no ``print_line``.  A trailing newline is a
-    # choice about a language's output format, not a default: the
-    # interpreters that used to reach for it were, in every case, adding a
-    # newline that no spec asked for.  Writing ``print_str(text + "\n")``
-    # keeps that decision visible at the call site.
+    # There is deliberately no.
+    # choice about a language's.
+    # interpreters that used to.
+    # newline that no spec asked.
+    # keeps that decision visible.
 
-    # -- input --------------------------------------------------------
+    # -- input.
 
     def input_str(self, prompt: str = "Input: ") -> str:
         """Read a whole line of input, returning it without the newline."""
@@ -189,12 +189,12 @@ class ScriptedIO(IO):
         try:
             value = next(self._lines)
         except StopIteration:
-            # An InputExhaustedError *is* an EOFError, so the repo-wide
-            # convention every interpreter documents -- and Suffolk's run
-            # loop detects -- is unchanged.  What it adds is the message:
-            # a bare EOFError() reaches the caller as the empty string,
-            # which cannot say that the program wanted more input than the
-            # caller passed, or how much it had.
+            # An InputExhaustedError *is*.
+            # convention every interpreter.
+            # loop detects -- is unchanged.
+            # a bare EOFError() reaches the.
+            # which cannot say that the.
+            # caller passed, or how much it.
             self._past_end += 1
             raise InputExhaustedError(self._reads, len(self._supplied)) from None
         self._reads += 1

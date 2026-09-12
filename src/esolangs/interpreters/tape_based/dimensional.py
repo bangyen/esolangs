@@ -97,7 +97,7 @@ class _Tape:
         while self.top.level < level:
             old = self.top
             env = _Level(old.level + 1)
-            env.slots[()] = old  # the origin of the envelope holds the old tape
+            env.slots[()] = old  # the origin of the envelope.
             self.top = env
         node = self.top
         while node.level > level:
@@ -175,22 +175,22 @@ def _number(code: str, ind: int, default: int | None) -> tuple[int | None, int]:
     return default, ind
 
 
-#: One instant of a run: ``(ind, comment, axis)`` -- the code cursor,
-#: whether a ``*`` region is open, and how many pointer levels ``$`` has
+# : One instant of a run:.
+# : whether a ``*`` region is.
 #: asked for.
-#:
-#: The tape is *not* here.  It is a chain of lazily grown levels holding
-#: sparse maps, so freezing one per step would rebuild the whole structure
-#: for every command -- the cost that made A Painter Ant's tests 1300x
-#: slower.  Nothing shares a level, so there is no aliasing to preserve
-#: either: the transition names what it wants done to the tape and the
+# :.
+# : The tape is *not* here.
+# : sparse maps, so freezing.
+# : for every command -- the.
+# : slower.
+# : either: the transition.
 #: shell does it.
 type _State = tuple[int, bool, int]
 
 
-#: What a command wants done to the tape.  Every Dimensional command makes
-#: at most one such change, so this is Minifuck's single-effect shape
-#: rather than the list Eval and Painfuck need.
+# : What a command wants done.
+# : at most one such change, so.
+# : rather than the list Eval.
 @dataclass(frozen=True)
 class _Move:
     """Step one place along ``dim``; ``None`` means the current value."""
@@ -268,7 +268,7 @@ def _advance(
     if c == "-":
         return ((ind, comment, axis), _AddValue(-1))
     if c == ".":
-        # The print already happened in the shell.
+        # The print already happened in.
         return ((ind, comment, axis), None)
     if c in ",dx":
         return ((ind, comment, axis), _SetValue(port if port is not None else 0))
@@ -307,7 +307,7 @@ def _advance(
     if c == "!":
         dim, ind = _number(code, ind, 0)
         return ((ind, comment, axis), _Clear(dim if dim is not None else 0))
-    # any other character is not a command and is ignored
+    # any other character is not a.
     return ((ind, comment, axis), None)
 
 
@@ -332,7 +332,7 @@ class _Machine:
     def halted(self) -> bool:
         return self.ind >= len(self.code)
 
-    # The VM's language-shaped view: Pointer hierarchy; ip is the code cursor, memory
+    # The VM's language-shaped.
     # the axes.
 
     @property

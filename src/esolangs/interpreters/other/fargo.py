@@ -85,9 +85,9 @@ from dataclasses import dataclass, replace
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# The wiki renders the truth machine with zero-width spaces inside two of
-# its lines; they are invisible presentation, not syntax, so the tokenizer
-# drops them rather than letting them ride along inside a token.
+# The wiki renders the truth.
+# its lines; they are invisible.
+# drops them rather than.
 _ZERO_WIDTH = "​"
 
 
@@ -107,12 +107,12 @@ class _Func:
     def __init__(self, name: str, arity: int, raw: tuple[int, ...] = ()) -> None:
         self.name = name
         self.arity = arity
-        #: Parameter positions taking a function unevaluated (``:``'s second).
+        # : Parameter positions taking.
         self.raw = raw
 
 
-# Arrays nest (``+[] x y`` concatenates two of them), so the alias is
-# recursive; the ``type`` statement is lazily evaluated, which is what lets
+# Arrays nest (``+[] x y``.
+# recursive; the ``type``.
 # it name itself.
 type _Value = int | tuple[_Value, ...] | _Func
 
@@ -121,14 +121,14 @@ class _Pending:
     """The "no value to deliver" marker returned by ``:`` (see below)."""
 
 
-# ``:`` alone can finish without a value of its own, because invoking its
-# body hands the delivery to that call instead.  A sentinel rather than
-# ``None`` so it cannot be confused with a legitimate result.
+# ``:`` alone can finish.
+# body hands the delivery to.
+# ``None`` so it cannot be.
 _PENDING = _Pending()
 
 
-# The builtins, by name.  ``$`` alone takes no arguments, which is why a
-# bare ``$`` is a complete call and can sit in an argument position.
+# The builtins, by name.
+# bare ``$`` is a complete call.
 _BUILTINS: dict[str, _Func] = {
     "<": _Func("<", 1),
     ">": _Func(">", 1),
@@ -279,20 +279,20 @@ class _State:
 class _Machine:
     """One Fargo run: the definitions, the two numbers, and the call stack."""
 
-    #: Whether a read past the end of the input yields a *value* here
-    #: rather than raising.  Forty-five of the sixty-nine raise
-    #: :class:`~esolangs.exceptions.InputExhaustedError`, which is the
-    #: package norm and what :func:`esolangs.run` documents; this one does
-    #: not, so an underfed program answers a different row of its table
-    #: instead of refusing, and a caller has no way to tell from the output
+    # : Whether a read past the end.
+    # : rather than raising.
+    # :.
+    # : package norm and what.
+    # : not, so an underfed program.
+    # : instead of refusing, and a.
     #: that it happened.
-    #:
-    #: Declared rather than changed.  The zero-beyond-input convention was
-    #: audited against every wiki page and settled deliberately
-    #: (``docs/limitations.md``, Interpreter conventions); rewriting it
-    #: would be a decision about what these languages *mean*, not a fix.
-    #: What was wrong was that nothing said so, so the promise ``run`` made
-    #: was false for seven languages and a generic caller could not find
+    # :.
+    # : Declared rather than.
+    # : audited against every wiki.
+    # : (``docs/limitations.md``,.
+    # : would be a decision about.
+    # : What was wrong was that.
+    # : was false for seven.
     #: out which.
     eof_is_a_value = True
 
@@ -348,7 +348,7 @@ class _Machine:
         """Whether every top-level call has run to completion."""
         return self.ind >= len(self.calls) and not self.frames
 
-    # The VM's language-shaped view: Prefix-call evaluator; ip is the top-level line
+    # The VM's language-shaped.
     # cursor.
 
     @property
@@ -442,16 +442,16 @@ class _Machine:
         owed = 1
         for index, token in enumerate(definition.code):
             bare = _bare_name(token)
-            # A raw reference (``:f``) is a value, not a call, so it owes
-            # nothing -- but the bare ``:`` is the conditional itself.
+            # A raw reference (``:f``) is a.
+            # nothing -- but the bare ``:``.
             if bare != token or _is_literal(bare) or bare in definition.params:
                 arity = 0
             elif bare in _BUILTINS:
                 arity = _BUILTINS[bare].arity
             elif bare in self.defs:
-                # Including the definition being checked: parsing files it
-                # into ``defs`` before this runs, so a self-call resolves
-                # here and needs no separate arm.
+                # Including the definition.
+                # into ``defs`` before this.
+                # here and needs no separate.
                 arity = len(self.defs[bare].params)
             else:
                 arity = 0
@@ -500,8 +500,8 @@ class _Machine:
             self._supply(frame, self._lookup(name, frame))
             return
         if self._wants_raw(frame):
-            # The waiting call takes this parameter unevaluated, so the
-            # name is passed along as a function instead of being run.
+            # The waiting call takes this.
+            # name is passed along as a.
             self._supply(frame, self._lookup(token, frame))
             return
         if frame.binds and (bound := frame.bound(token)) is not None:
@@ -537,13 +537,13 @@ class _Machine:
             self._retop(replace(frame, result=value))
             return
         fn, args = frame.pending[-1]
-        # A raw slot takes whatever arrives unchanged: a function to invoke
-        # later, or a plain value ``:`` will simply yield.
+        # A raw slot takes whatever.
+        # later, or a plain value ``:``.
         args = (*args, value)
-        # ``==`` rather than ``>=``, and the two cannot be told apart: an
-        # argument arrives one at a time and the call is popped the moment
-        # it is full, so the count never passes the arity without landing
-        # on it.  Instrumenting this comparison over the corpus sees 16
+        # ``==`` rather than ``>=``,.
+        # argument arrives one at a.
+        # it is full, so the count.
+        # on it.
         # deliveries and no overshoot.
         if len(args) == fn.arity:
             self._retop(replace(frame, pending=frame.pending[:-1]))
@@ -675,9 +675,9 @@ class _Machine:
                 f"conditional body {body.name!r} takes {body.arity} argument(s)"
             )
         self._invoke(frame, body, [])
-        # Either way the value is already accounted for: a user function's
-        # arrives when its pushed frame finishes, and a zero-arity builtin
-        # body (``: 1 $``) was supplied by ``_invoke`` itself.
+        # Either way the value is.
+        # arrives when its pushed frame.
+        # body (``: 1 $``) was supplied.
         return _PENDING
 
 

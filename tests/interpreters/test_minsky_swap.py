@@ -50,7 +50,7 @@ class TestMinskySwapBasicCommands:
 
         with redirect_stdout(io.StringIO()) as f:
             run("~+\n2", io=IO())
-        # ~ jumps to command 2 (the +) since the register is zero
+        # ~ jumps to command 2 (the +).
         assert f.getvalue().strip() == "1 0"
 
     def test_jump_targets(self) -> None:
@@ -147,7 +147,7 @@ class TestMinskySwapReadableNotation:
         from esolangs.interpreters.register_based.minsky_swap import _Machine
 
         machine = _Machine("decnz();", IO())
-        machine.step()  # zero register, so the tilde jumps
+        machine.step()  # zero register, so the tilde.
         assert machine.ind == 0, "the jump returned to the first command"
         assert not machine.halted
 
@@ -290,8 +290,8 @@ class TestStepMachine:
         with redirect_stdout(buffer):
             while not machine.halted:
                 machine.step()
-            machine.step()  # the dump
-            machine.step()  # once halted and dumped, a no-op
+            machine.step()  # the dump.
+            machine.step()  # once halted and dumped, a.
         assert buffer.getvalue().strip() == "1 0"
 
     def test_a_decrement_targeting_line_zero_falls_through(self) -> None:
@@ -305,7 +305,7 @@ class TestStepMachine:
         """
         from esolangs.interpreters.register_based.minsky_swap import _Machine
 
-        machine = _Machine("~\n0", IO())  # zero register, target line 0
+        machine = _Machine("~\n0", IO())  # zero register, target line 0.
         machine.step()
         assert machine.reg == (0, 0), "nothing to decrement"
         assert machine.ind == 1, "the cursor advanced rather than jumping"
@@ -325,13 +325,13 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     stepping_program = "+"
     halting_program = "+"
     looping_program = "~\n1"
-    # `dumped` only flips on the step *after* the halt, where this language
-    # prints its registers, so the contract's run-to-halt leaves it False.
-    # It is still read either side, which is what the view is here to pin;
+    # `dumped` only flips on the.
+    # prints its registers, so the.
+    # It is still read either side,.
     # `reg` and `ip` are what move.
     state_views = ("ptr", "reg", "dumped", "ip", "memory")
-    # `*` swaps the register pair, so the pointer moves as well as the
-    # register.  `dumped` latches on the step past the halt, which the
+    # `*` swaps the register pair,.
+    # register.
     # check does not take.
     viewing_program = "*+"
     constant_views = frozenset({"dumped"})

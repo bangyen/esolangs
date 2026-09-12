@@ -27,12 +27,12 @@ from tests.interpreters.contract import (
 )
 from tests.interpreters.runner import run_program
 
-# --- the wiki's three examples, transcribed from the page source ---------
-#
-# Written as explicit lists of strings rather than a dedented block so that
-# the interior columns survive an editor or a hook that trims trailing
-# whitespace: the vertical ``turn right`` in each sits at a fixed column,
-# and the row that is blank in the middle of one is a legal in-command
+# --- the wiki's three.
+# .
+# Written as explicit lists of.
+# the interior columns survive.
+# whitespace: the vertical.
+# and the row that is blank in.
 # space, not padding.
 
 CAT_TURN = [
@@ -296,8 +296,8 @@ class TestErrors:
         """
         with pytest.raises(ValueError, match="unknown command 'dne'"):
             run(["begin;;dne;"], ScriptedIO())
-        # And the same word travelling the other way *is* a halt, so the
-        # test above is about the spelling and not about the cell.
+        # And the same word travelling.
+        # test above is about the.
         assert _run(["begin;;end;"]) == ""
 
     def test_walking_off_the_grid_is_a_runtime_error(self) -> None:
@@ -387,7 +387,7 @@ class TestFunctions:
         machine = _machine(program)
         for _ in range(3000):
             machine.step()
-        # Far past Python's own recursion limit, and still going.
+        # Far past Python's own.
         assert len(machine.walkers) > 1000
         assert not machine.halted
 
@@ -409,7 +409,7 @@ class TestFunctions:
             "var c;set c at{l, 0.5};out c;end;",
             "func f{a};end a;",
         ]
-        # 'A' is 65: one increment gives 'B', two would give 'C'.
+        # 'A' is 65: one increment.
         assert _run(program) == "B"
 
     def test_two_calls_beside_an_effectful_at_still_fire_it_once(self) -> None:
@@ -436,10 +436,10 @@ class TestFunctions:
         does repeat; a walk that grows is the separate class the timeout
         covers.
         """
-        # The proven ring from :class:`TestCycles`, entered by a call.  Its
-        # continuation rows shift right by 3: a walk resumes just past its
-        # header, which is column 5 for ``begin`` and column 8 for
-        # ``func r{}``, so the arms have to move with the pivots.
+        # The proven ring from.
+        # continuation rows shift right.
+        # header, which is column 5 for.
+        # ``func r{}``, so the arms.
         program = [
             "begin;var v;set v r{};end;",
             "func r{};turn right;",
@@ -575,8 +575,8 @@ class TestSnapshot(SnapshotContract):
                 copy = machine.snapshot()
             machine.step()
         assert banked is not None, "the run never held a non-empty list"
-        # The list grew and was written to after ``banked`` was taken; an
-        # unfrozen snapshot would have followed it and still compare equal
+        # The list grew and was written.
+        # unfrozen snapshot would have.
         # to a freshly taken one.
         assert banked == copy
         assert banked != machine.snapshot()
@@ -585,10 +585,10 @@ class TestSnapshot(SnapshotContract):
 class TestCycles(CycleContract):
     machine = staticmethod(_machine)
     halting_program: ClassVar[list[str]] = ["begin;;end;"]
-    # Four ``turn right`` commands around a rectangle, each starting one
-    # cell past the previous one's pivot.  The pointer walks the ring
-    # forever reading no input and setting no variable, so its snapshot
-    # repeats exactly -- a real cycle rather than a state that grows.
+    # Four ``turn right`` commands.
+    # cell past the previous one's.
+    # forever reading no input and.
+    # repeats exactly -- a real.
     looping_program: ClassVar[list[str]] = [
         "begin;turn right;",
         "     t          t",
@@ -617,24 +617,24 @@ class TestEdgeCases:
     @pytest.mark.parametrize(
         ("program", "message"),
         [
-            # An unterminated string runs to the grid edge still quoted.
+            # An unterminated string runs.
             ('begin;var v;set v "abc;', "unterminated string"),
-            # A '{' with no matching '}' runs out of command text.
+            # A '{' with no matching '}'.
             ("begin;var v;set v len{v;", "expected"),
-            # A trailing ' shields the terminator, so the command runs to
-            # the grid edge still escaping -- which _scan refuses.
+            # A trailing ' shields the.
+            # the grid edge still escaping.
             ("begin;var v;set v '", "unterminated string"),
-            # An operator with no right-hand operand.
+            # An operator with no.
             ("begin;var v;set v 1+;", "expression ends early"),
-            # Nothing that can start an operand.
+            # Nothing that can start an.
             ("begin;var v;set v @;", "cannot parse operand"),
-            # A list whose elements are not comma-separated.
+            # A list whose elements are not.
             ("begin;var v;set v [1 2];", "expected"),
-            # Text after a complete expression.
+            # Text after a complete.
             ("begin;var v;set v 1 2;", "trailing text"),
-            # A command that is neither a keyword nor a call.
+            # A command that is neither a.
             ("begin;var v;v 1;", "unknown command"),
-            # A non-empty command with no leading word at all.
+            # A non-empty command with no.
             ("begin;+;", "cannot parse command"),
         ],
     )
@@ -648,23 +648,23 @@ class TestEdgeCases:
     @pytest.mark.parametrize(
         ("program", "message"),
         [
-            # Two lists can only be concatenated.
+            # Two lists can only be.
             ('begin;var v;set v "ab"*"cd";end;', "two lists"),
-            # A list and a number can only be repeated.
+            # A list and a number can only.
             ('begin;var v;set v "ab"-2;end;', "list and"),
-            # A repeat count has to be a whole non-negative number.
+            # A repeat count has to be a.
             ('begin;var v;set v "ab"*1.5;end;', "repeat count"),
             # Arithmetic on a special value.
             ("begin;var v;set v nil+1;end;", "cannot apply"),
-            # A pad count that is not a whole number.
+            # A pad count that is not a.
             ('begin;var v;set v len{"ab", 1.5};end;', "pad count"),
-            # trunc/sign of something that is not a number.
+            # trunc/sign of something that.
             ("begin;var v;set v trunc{nil};end;", "takes one number"),
-            # A list builtin applied to a non-list.
+            # A list builtin applied to a.
             ("begin;var v;set v len{1};end;", "takes a list"),
-            # Three-argument at past the end of the list.
+            # Three-argument at past the.
             ('begin;var v;set v at{"ab", 9.5, 65};end;', "past the end"),
-            # A code point outside the Unicode range.
+            # A code point outside the.
             ("begin;var v;set v 0-1;out v;end;", "not a character code"),
             # A non-integral code point.
             ("begin;var v;set v 65.5;out v;end;", "not a character code"),
@@ -685,7 +685,7 @@ class TestEdgeCases:
         assert _run([joined]) == "c"
         repeated = 'begin;var v;set v at{"ab"*2, 3.5};out v;end;'
         assert _run([repeated]) == "b"
-        # A number on the left repeats the same way.
+        # A number on the left repeats.
         commuted = 'begin;var v;set v at{2*"ab", 3.5};out v;end;'
         assert _run([commuted]) == "b"
 
@@ -757,15 +757,15 @@ class TestFunctionDefinitionEdges:
     @pytest.mark.parametrize(
         "definition",
         [
-            # A different function's name -- the finder must keep looking.
+            # A different function's name.
             "func other{a};end a;",
-            # A header whose parameter is a reserved word.
+            # A header whose parameter is a.
             "func g{end};end 65;",
-            # A header with a parameter list that never closes.
+            # A header with a parameter.
             "func g{a;end a;",
-            # A header with a stray token after the closing brace.
+            # A header with a stray token.
             "func g{a}x;end a;",
-            # A parameter separated by something other than a comma.
+            # A parameter separated by.
             "func g{a b};end a;",
         ],
     )
@@ -816,11 +816,11 @@ class TestFunctionDefinitionEdges:
     @pytest.mark.parametrize(
         ("lines", "message"),
         [
-            # Trailing text after a variable name.
+            # Trailing text after a.
             (["begin;var v x;end;"], "trailing text after variable name"),
-            # Trailing text after a turn's expression.
+            # Trailing text after a turn's.
             (["begin;turn right x;end;"], "trailing text"),
-            # Trailing text after an end value.
+            # Trailing text after an end.
             (
                 ["begin;var v;set v f{1};end;", "func f{a};end a b;"],
                 "trailing text after end value",

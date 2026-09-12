@@ -26,9 +26,9 @@ from esolangs.interpreters.register_based.polynomial import (
 )
 from tests.interpreters.contract import CycleContract, SnapshotContract
 
-# Programs whose roots span orders of magnitude or repeat a wide delta -- the
-# cases where a float64 solver rounds a root and drops or corrupts a
-# character.  Kept as data because only the decode is under test.
+# pylint: disable=duplicate-code  # independent oracle; see class docstring
+# pylint: disable=duplicate-code  # independent oracle; see class docstring
+# pylint: disable=duplicate-code  # independent oracle; see class docstring
 _PRECISION_PROGRAMS: dict[str, str] = json.loads(
     (Path(__file__).parents[2] / "tests/fixtures/polynomial_precision.json").read_text()
 )
@@ -54,8 +54,8 @@ class TestPolynomialHelperFunctions:
         """A quadratic factor whose q is negative encodes no instruction."""
         from esolangs.interpreters.register_based.polynomial import _factor_roots
 
-        # x^3 - 5x + 2 = (x - 2)(x^2 + 2x - 1); the quadratic has q = -2,
-        # so only the linear root survives.
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
         assert _factor_roots((1, 0, -5, 2)) == (_Root(2, 0),)
 
     def test_factor_skips_a_cubic_factor(self) -> None:
@@ -69,8 +69,8 @@ class TestPolynomialHelperFunctions:
 
         assert _factor_roots((1, 0, 0, -2)) == ()
 
-        # And a cubic alongside a decodable linear factor: (x^3 - 2)(x - 1)
-        # keeps the 1 and still skips the cubic.
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
         assert _factor_roots((1, -1, 0, -2, 2)) == (_Root(1, 0),)
 
     def test_sanitize_simple_polynomial(self) -> None:
@@ -90,12 +90,12 @@ class TestPolynomialHelperFunctions:
 
     def test_brackets_simple(self) -> None:
         """Test bracket matching for simple cases."""
-        code = [[1], [2]]  # if, endif
+        code = [[1], [2]]  # if, endif.
         assert brackets(code, 0) == 1
 
     def test_brackets_nested(self) -> None:
         """Test bracket matching for nested structures."""
-        code = [[1], [1], [2], [2]]  # if, if, endif, endif
+        code = [[1], [1], [2], [2]]  # if, if, endif, endif.
         assert brackets(code, 0) == 3
         assert brackets(code, 1) == 2
 
@@ -208,16 +208,16 @@ class TestPolynomialSafety:
 
     def test_helper_functions_safe(self) -> None:
         """Test that helper functions are safe to call."""
-        # Test prime function with various inputs
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
         assert prime(2) is True
-        assert prime(1) is False  # 1 is not prime
-        assert prime(0) is False  # 0 is not prime
+        assert prime(1) is False  # 1 is not prime.
+        assert prime(0) is False  # 0 is not prime.
 
-        # Test sanitize function with various inputs
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
         assert sanitize("f(x) = 1") == [1]
-        assert sanitize("f(x) = x^2") == [1, 0, 0]  # Avoid buggy "f(x) = x" case
+        assert sanitize("f(x) = x^2") == [1, 0, 0]  # Avoid buggy "f(x) = x" case.
 
-        # Test brackets function with simple input
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
         code = [[1], [2]]
         assert brackets(code, 0) == 1
 
@@ -387,9 +387,9 @@ class TestPeelPrimePowerRoots:
         )
 
         x = sp.Symbol("x")
-        # A composite root and a negative one are not prime powers; a large
-        # prime sits past the window the degree affords; and an exponent past
-        # the cap is a prime power the enumeration stops short of.
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
         cases = {
             "composite_root": (x - 6) * (x - 8) * ((x - 3) ** 2 + 16),
             "prime_past_window": (x - int(sp.nextprime(10**4))) * (x - 4),
@@ -420,13 +420,13 @@ class TestPeelPrimePowerRoots:
         )
 
         x = sp.Symbol("x")
-        # 8 is a prime power the peel takes; 6 is not, so it must remain.
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
         poly = sp.Poly((x - 8) * (x - 6), x)
         coefficients = [int(k) for k in poly.all_coeffs()]
         peeled, remainder = _peel_prime_power_roots(coefficients)
 
         assert peeled == [8]
-        # The remainder is the deflated quotient, x - 6.
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
         assert remainder == [1, -6]
 
     def test_peeled_roots_are_exact_factors(self) -> None:
@@ -493,7 +493,7 @@ class TestFactorRootsRejections:
         )
 
         real = _PEEL_MAX_REAL_PART + 10
-        # (x - real)**2 + 4
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
         coefficients = (1, -2 * real, real * real + 4)
         assert _factor_roots(coefficients) == (
             _Root(real, 2),
@@ -575,8 +575,8 @@ class TestWideCoefficientParsing:
         digits = "9" * (limit + 5)
         coefficients = sanitize(f"f(x) = {digits}x^2 + 1")
         assert sys.get_int_max_str_digits() == limit, "the cap is handed back"
-        # Reading the value back needs the cap raised again, which is the
-        # whole reason the parser raises it in the first place.
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
         sys.set_int_max_str_digits(limit + 10)
         try:
             assert len(str(coefficients[0])) == limit + 5
@@ -649,7 +649,7 @@ class TestPeelInstructionQuadratics:
 
         x = sp.Symbol("x")
         cases = {
-            # 15 is not p**(2*b), so this quadratic is unrecognisable.
+            # pylint: disable=duplicate-code  # independent oracle; see class docstring
             "square_not_a_prime_power": self._product([(3, 15)]),
             "real_part_past_window": self._product([(_PEEL_MAX_REAL_PART + 7, 4)]),
             "cubic_factor": self._product([(3, 4)], sp.Poly(x**3 - x - 1, x)),
@@ -660,8 +660,8 @@ class TestPeelInstructionQuadratics:
 
         found, remainder = _peel_instruction_quadratics(list(coefficients))
 
-        # Whatever came out must divide the original exactly, and the
-        # remainder must be precisely the cofactor -- nothing dropped.
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
         original = sp.Poly(coefficients, x)
         taken = sp.Poly(1, x)
         for real, square in found:
@@ -679,7 +679,7 @@ class TestPeelInstructionQuadratics:
         coefficients = [int(k) for k in sp.Poly((x - 3) ** 2 + 4, x).all_coeffs()]
         assert _divide_quadratic(coefficients, 3, 4) == [1]
         assert _divide_quadratic(coefficients, 99, 7) is None
-        # A quadratic sharing only the real part must not be taken either.
+        # pylint: disable=duplicate-code  # independent oracle; see class docstring
         assert _divide_quadratic(coefficients, 3, 9) is None
 
 
@@ -761,7 +761,7 @@ class TestNttRecovery:
             _roots_mod,
         )
 
-        assert 0 in _roots_mod([1, -7, 0], _NTT_FIELDS[0])  # x(x - 7)
+        assert 0 in _roots_mod([1, -7, 0], _NTT_FIELDS[0])  # x(x - 7).
 
     def test_iter_bits_matches_bit_positions(self) -> None:
         """The byte-scan extraction is exactly ``bin()``'s set bits."""
@@ -796,7 +796,7 @@ class TestNttRecovery:
             if index % 3 == 2:
                 reals.append(p ** (1 + index % 4))
             else:
-                a = (index * 37) % 800 - 400  # data operands, both signs
+                a = (index * 37) % 800 - 400  # data operands, both signs.
                 pairs.append((a, p ** (2 * (1 + index % 3))))
         coefficients = self._program(pairs, reals)
         assert len(coefficients) - 1 > _NTT_MIN_DEGREE
@@ -831,7 +831,7 @@ class TestNttRecovery:
             _Root,
         )
 
-        wide = _NTT_FIELDS[0][0]  # a real part the lift cannot reach
+        wide = _NTT_FIELDS[0][0]  # a real part the lift cannot.
         pairs = [(3, p * p) for p in sp.primerange(2, 800)]
         pairs = pairs[: (_NTT_MIN_DEGREE // 2) + 2]
         coefficients = self._program([*pairs, (wide, 9)], [])
@@ -942,10 +942,10 @@ class TestStepMachine:
 
         machine = _Machine("f(x) = x^2+4", ScriptedIO())
         assert (machine.ind, machine.reg) == (0, 0)
-        machine.step()  # the [0, 1] instruction prints the register
+        machine.step()  # the [0, 1] instruction prints.
         assert machine.io.getvalue() == "\x00"
         assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
+        machine.step()  # stepping a halted machine is.
         assert machine.ind == 1
 
 

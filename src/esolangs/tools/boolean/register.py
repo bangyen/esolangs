@@ -15,32 +15,32 @@ from esolangs.tools.boolean.helpers import (
     stored_inputs,
 )
 
-# Dig blocks for one level of the decision tree.  ``$`` takes its count
-# from the digit beside it and looks up, right, down, left for one, so the
-# count sits to the *right* of the ``$`` and the whole block is entered
-# from the left: the count digit is itself the first of the commands it
-# arms, which is why three covers a read and a store.
-_DIG_BRANCH = "$3~;#"  # arm three, read a bit, store it, then turn on it
-_DIG_ENTER = ">"  # the root's turn out of the column the mole starts down
-_DIG_CONTINUE = ">"  # a child of a branch: keep facing right into its block
-_DIG_RETURN = "<"  # the same, for a child the mole reaches facing west
-_DIG_PRINT = "{}:@"  # set the mole to the result and print it
-# ``$`` reads its repeat count from the digit beside it, so a run of cells
-# under one ``$`` is at most nine long.
+# Dig blocks for one level of.
+# from the digit beside it and.
+# count sits to the *right* of.
+# from the left: the count.
+# arms, which is why three.
+_DIG_BRANCH = "$3~;#"  # arm three, read a bit, store.
+_DIG_ENTER = ">"  # the root's turn out of the.
+_DIG_CONTINUE = ">"  # a child of a branch: keep.
+_DIG_RETURN = "<"  # the same, for a child the.
+_DIG_PRINT = "{}:@"  # set the mole to the result.
+# ``$`` reads its repeat count.
+# under one ``$`` is at most.
 _DIG_SPAN = 9
-# Columns one level owns.  A block is five cells and its ``#`` is the last,
-# so the child's ``>`` sits under that ``#`` -- which is the cell before the
-# child's own block, and the stride is what puts it there.
+# Columns one level owns.
+# so the child's ``>`` sits.
+# child's own block, and the.
 _DIG_STRIDE = len(_DIG_BRANCH)
-# A banded level leaves one column spare.  Six is what makes the two bands
-# able to share columns at all: see :func:`_dig_columns`.
+# A banded level leaves one.
+# able to share columns at all:.
 _DIG_BAND = _DIG_STRIDE + 1
-# Cells a mole walking over them does not obey.  Everything else is
-# scenery while the underground counter is at zero -- digits included,
-# which is what lets a corridor cross a block's middle.
+# Cells a mole walking over.
+# scenery while the underground.
+# which is what lets a corridor.
 _DIG_OPAQUE = "^>'<#$@"
-# Cells that hold a digit where a neighbouring ``$`` or ``#`` would find
-# one.  ``;`` counts: it writes the mole into its own cell, so on the
+# Cells that hold a digit where.
+# one.
 # executed path it *is* a digit.
 _DIG_DIGITS = "0123456789;"
 _DIG_STRIDE = len(_DIG_BRANCH)
@@ -105,7 +105,7 @@ def decleq(truth_table: str) -> str:
         cell.
         """
         if level == n or constant(level, row):
-            return 2  # output, then halt
+            return 2  # output, then halt.
         return (
             1
             + tree_instrs(level + 1, row + 2 ** (n - 1 - level))
@@ -115,12 +115,12 @@ def decleq(truth_table: str) -> str:
             )
         )
 
-    # Every input is read to preserve the interface, but only inputs on
-    # which the table depends need normalizing: folding makes both outcomes
-    # of every other branch equivalent.
+    # Every input is read to.
+    # which the table depends need.
+    # of every other branch.
     essential = set(essential_inputs(truth_table, n))
-    # instructions: n reads, one normalization chain per essential input,
-    # and the tree, whose size depends on how much of it folds away.
+    # instructions: n reads, one.
+    # and the tree, whose size.
     n_instr = n + 47 * len(essential) + tree_instrs(0, 0)
     data_base = 3 * n_instr
     read_cells = [data_base + i for i in range(n)]
@@ -146,17 +146,17 @@ def decleq(truth_table: str) -> str:
         for _ in range(47):
             emit(rc, rc, pc() + 3)
 
-    # The halt jump has to name an address past the end of memory, unknown
-    # until the data cells below have been appended.  Each leaf emits this
-    # placeholder and the real address is substituted once the program is
-    # complete, so the sentinel is exactly one past the last cell however the
+    # The halt jump has to name an.
+    # until the data cells below.
+    # placeholder and the real.
+    # complete, so the sentinel is.
     # tree came out.
     halts: list[int] = []
 
     def node(level: int, row: int) -> None:
-        # The fold has to stop in exactly the places tree_instrs stopped:
-        # it sized the data cells from that walk, so a check applied here
-        # and not there would leave every leaf naming the wrong address.
+        # The fold has to stop in.
+        # it sized the data cells from.
+        # and not there would leave.
         if level == n or constant(level, row):
             emit(-2, out49 if truth_table[row] == "1" else out48, 0)
             emit(0, 0, 0)
@@ -175,17 +175,17 @@ def decleq(truth_table: str) -> str:
     mem.extend([0] * (out49 - len(mem) + 1))
     mem[out48] = _ASCII_ZERO
     mem[out49] = _ASCII_ONE
-    # One past the last cell: the interpreter halts as soon as the pointer
-    # leaves memory, so this is the smallest address that stops the program.
-    #
-    # Deriving it from the cell count also keeps it out of wrap_grid's way,
-    # however big the program gets.  Every leaf names out48 or out49 --
-    # len(mem) - 2 and len(mem) - 1 -- so a token within two of the sentinel
-    # always exists, and the two can differ by at most one digit (only across
-    # a power of ten).  _cell_width drops an outlier only while it is at
-    # least *twice* the next width, which one digit never is above 9 cells,
-    # so the sentinel widens the cell at worst and never spans two of them
-    # the way the old constant 10**9 did.
+    # One past the last cell: the.
+    # leaves memory, so this is the.
+    # .
+    # Deriving it from the cell.
+    # however big the program gets.
+    # len(mem) - 2 and len(mem) - 1.
+    # always exists, and the two.
+    # a power of ten).
+    # least *twice* the next width,.
+    # so the sentinel widens the.
+    # the way the old constant.
     for addr in halts:
         mem[addr] = len(mem)
     return " ".join(map(str, mem))
@@ -247,11 +247,11 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     instructions: list[list[Any]] = []
     next_cells: list[str | None] = []
     values: dict[str, int | tuple[str, int]] = {}
-    # The operand names in the order the instructions mention them, recorded
-    # as they are emitted.  The numbering pass below wants exactly this list
-    # and used to recover it by re-scanning every operand of every
-    # instruction -- 3.5M ``isinstance`` calls on a six-input build, which
-    # the order search pays once per candidate.
+    # The operand names in the.
+    # as they are emitted.
+    # and used to recover it by.
+    # instruction -- 3.5M.
+    # the order search pays once.
     named: list[str] = []
 
     def emit(a: object, b: object, c: object, d: int) -> int:
@@ -263,7 +263,7 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
                 named.append(v)
         return idx
 
-    emit(-9, -6, "next", -7)  # enable flag mode
+    emit(-9, -6, "next", -7)  # enable flag mode.
     values["C48"] = -_ASCII_ZERO
     values["U"] = 0
     values["D48"] = _ASCII_ZERO
@@ -271,53 +271,53 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     stored = stored_inputs(truth_table, perm)
 
-    # The reads, in stream order.  An input no node tests is read into
-    # write-only scratch: the contract is that every input is *consumed*,
+    # The reads, in stream order.
+    # write-only scratch: the.
     # not that every value is kept.
     if any(i not in stored for i in range(n)):
         values["DUMP"] = 0
     for i in range(n):
         if i not in stored:
-            emit("DUMP", -1, "next", -7)  # read and discard
+            emit("DUMP", -1, "next", -7)  # read and discard.
             continue
         bit = f"B{i}"
         values[bit] = 0
-        emit(bit, -1, "next", -7)  # B += input byte (48/49)
-        emit(bit, "C48", "next", -7)  # B += -48
-        emit(bit, bit, "next", -7)  # double
-        emit(bit, bit, "next", -7)  # double -> {0, 4}
+        emit(bit, -1, "next", -7)  # B += input byte (48/49).
+        emit(bit, "C48", "next", -7)  # B += -48.
+        emit(bit, bit, "next", -7)  # double.
+        emit(bit, bit, "next", -7)  # double -> {0, 4}.
 
-    # Rows split most significant first, so the span a node covers is the
-    # contiguous ``truth_table[lo:hi]`` and its two halves are that slice cut
-    # in two.  Carried as a pair rather than as the list of row indices it
-    # used to be: the list rebuilt itself at every node, O(n * 2**n) per
-    # candidate, for spans the slice bounds already name.
+    # Rows split most significant.
+    # contiguous.
+    # in two.
+    # used to be: the list rebuilt.
+    # candidate, for spans the.
     def build(level: int, lo: int, hi: int) -> None:
         if truth_table.count(truth_table[lo], lo, hi) == hi - lo:
-            # Every read already happened up front, so a folded leaf prints
-            # and halts with nothing to drain.
+            # Every read already happened.
+            # and halts with nothing to.
             out = _ASCII_ZERO + int(truth_table[lo])
             emit(-1, f"D{out}", -8, -7)
             return
         half = (hi - lo) // 2
         if perm[level] not in stored:
-            # A discarded input has no cell to test.  Its bit cannot change
-            # the answer, so both halves are the same function -- descend
-            # into the zero half, keeping the row span halving with level.
+            # A discarded input has no cell.
+            # the answer, so both halves.
+            # into the zero half, keeping.
             build(level + 1, lo, lo + half)
             return
         base = len(instructions)
         bit = f"B{perm[level]}"
         jump = f"J{base}"
-        # Two instructions precede the trampolines, so the jump cell starts
-        # at the zero trampoline two slots on.
+        # Two instructions precede the.
+        # at the zero trampoline two.
         values[jump] = ("t0", base + 2)
-        emit(jump, bit, "next", -7)  # J += B, the hoisted bit this node tests
-        emit("U", "U", jump, -7)  # goto *J
+        emit(jump, bit, "next", -7)  # J += B, the hoisted bit this.
+        emit("U", "U", jump, -7)  # goto *J.
         ztarget = f"Z{base}"
         otarget = f"O{base}"
-        emit("U", "U", ztarget, -7)  # zero trampoline
-        emit("U", "U", otarget, -7)  # one trampoline
+        emit("U", "U", ztarget, -7)  # zero trampoline.
+        emit("U", "U", otarget, -7)  # one trampoline.
         zstart = len(instructions)
         build(level + 1, lo, lo + half)
         ostart = len(instructions)
@@ -328,12 +328,12 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     build(0, 0, 2**n)
 
     base_data = 4 * len(instructions)
-    # Insertion-ordered name -> index.  A dict rather than a list because the
-    # list spelling scanned twice per call -- ``in`` and then ``.index`` --
-    # which is O(names) on a table that calls this once per operand: 1.6M
-    # calls and 2.4s of a 3.8s six-input build, the generator's whole cost.
-    # ``dict`` preserves insertion order, so the numbering it hands out is
-    # the same one the scan produced.
+    # Insertion-ordered name ->.
+    # list spelling scanned twice.
+    # which is O(names) on a table.
+    # calls and 2.4s of a 3.8s.
+    # ``dict`` preserves insertion.
+    # the same one the scan.
     names: dict[str, int] = {}
 
     def cell(name: str) -> int:
@@ -395,10 +395,10 @@ def collatz_multiverse(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     if all(c == truth_table[0] for c in truth_table):
-        # A constant table needs no evaluation, but the reads are the language's
-        # interface: skipping them would leave the caller's bits unread on the
-        # input stream and drop the prompts a prompting interpreter emits.  So
-        # read every input, discard it, and print the constant.
+        # A constant table needs no.
+        # interface: skipping them.
+        # input stream and drop the.
+        # read every input, discard it,.
         const = _ASCII_ZERO + int(truth_table[0])
         lines = _cm_constants({const})
         lines += [f"b{i} = negativeOne x + input, NOT PRINT." for i in range(n)]
@@ -431,20 +431,20 @@ def collatz_multiverse(truth_table: str) -> str:
 
     acc = "acc"
     lines.append("acc = negativeOne x + k1, NOT PRINT.")
-    # Each selected row costs a minterm -- an indicator per input, an AND
-    # chain, and a flip -- so a dense table is built from its zeros.
-    # Inverting is free here: the OR already ends on a ``flip``, so the
-    # complement drops it rather than adding one.
-    # A table that ignores some of its inputs is a smaller table, and since a
-    # minterm costs an indicator *per input*, dropping an input removes rows
-    # and shortens the rows that remain.  Every input keeps its ``b{i}`` read
-    # (the reads are the interface); an ignored one is never turned into an
-    # indicator.  This is the constant branch above generalized from "no
-    # essential inputs" to "the ones that matter".
+    # Each selected row costs a.
+    # chain, and a flip -- so a.
+    # Inverting is free here: the.
+    # complement drops it rather.
+    # A table that ignores some of.
+    # minterm costs an indicator.
+    # and shortens the rows that.
+    # (the reads are the.
+    # indicator.
+    # essential inputs" to "the.
 
-    # ``literal`` allocates a register and emits for a non-negated input, so
-    # it is called in the same order the hand-written loop called it: every
-    # literal of a row, then its product, then the accumulate.
+    # ``literal`` allocates a.
+    # it is called in the same.
+    # literal of a row, then its.
     def literal(i: int, negated: bool) -> str:  # noqa: FBT001 - a literal's sign, from minterm_literals
         if negated:
             return flip(f"b{i}")
@@ -467,8 +467,8 @@ def collatz_multiverse(truth_table: str) -> str:
 
     _used, _width, invert = minterm_sum(truth_table, literal, product, accumulate)
 
-    # ``acc`` holds prod(1 - minterm), so the answer is its flip -- unless
-    # the minterms were the table's zeros, when ``acc`` is already it.
+    # ``acc`` holds prod(1 -.
+    # the minterms were the table's.
     result = acc if invert else flip(acc)
     out = fresh()
     lines.append(f"{out} = negativeOne x + {result}, NOT PRINT.")
@@ -504,13 +504,13 @@ def sophie(truth_table: str) -> str:
     return _sophie_hybrid(truth_table)
 
 
-#: Accumulator values a Sophie label may not take.
-#:
-#: A read leaves the accumulator holding the character read, and the tests
-#: are against ``48``/``49`` -- ASCII ``0`` and ``1`` -- so a block labelled
-#: with either would fire on an ordinary bit rather than on a jump.  Nothing
-#: else is reserved: the interpreter reads a label as a plain digit run, so
-#: they can climb as high as the program needs.
+# : Accumulator values a Sophie.
+# :.
+# : A read leaves the.
+# : are against ``48``/``49``.
+# : with either would fire on.
+# : else is reserved: the.
+# : they can climb as high as.
 _SOPHIE_RESERVED = frozenset({_ASCII_ZERO, _ASCII_ONE})
 
 
@@ -667,9 +667,9 @@ def _dig_columns(n: int, split: int | None) -> tuple[int, int]:
     """
     if split is None:
         return 1, 0
-    # The west band ends four columns short of where the east band's last
-    # ``#`` stands, which is the cell the mole turns west from; putting it
-    # one stride further back is what makes ``d`` four modulo six.
+    # The west band ends four.
+    # ``#`` stands, which is the.
+    # one stride further back is.
     return 1, _DIG_BAND * (n - split) + 3
 
 
@@ -719,11 +719,11 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
     def walk(row: int, level: int, lo: int, hi: int) -> None:
         """Lay the subtree for ``truth_table[lo:hi]`` at ``row``."""
         if level == n or len(set(truth_table[lo:hi])) == 1:
-            # A constant slice cannot be told apart by more branching, so
-            # this is a leaf and every row below it goes unwritten.  It
-            # still reads what it did not branch on: a program whose input
-            # count depended on its table would desync a caller feeding
-            # several programs from one stream.
+            # A constant slice cannot be.
+            # this is a leaf and every row.
+            # still reads what it did not.
+            # count depended on its table.
+            # several programs from one.
             reads = n - level
             block(
                 row,
@@ -736,9 +736,9 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
         hop = col - 4 if leftward(level) else col + 4
         step = 2 ** (n - level - 1)
         half = (hi - lo) // 2
-        # ``#`` rotates one way on a 0 and the other on a 1, so which child
-        # is up and which is down follows the mole's heading: a bit that
-        # sends an eastbound mole down sends a westbound one up.
+        # ``#`` rotates one way on a 0.
+        # is up and which is down.
+        # sends an eastbound mole down.
         one, zero = (
             (row - step, row + step) if leftward(level) else (row + step, row - step)
         )
@@ -746,15 +746,15 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
             (one, (lo + half, hi)),
             (zero, (lo, lo + half)),
         ):
-            # the mole arrives here vertically from the parent's "#", which
-            # is the cell right before the child's own block -- so the turn
-            # goes in that column, pointing the way the child is entered
+            # the mole arrives here.
+            # is the cell right before the.
+            # goes in that column, pointing.
             place(child, hop, _DIG_RETURN if leftward(level + 1) else _DIG_CONTINUE)
             corridors.append((hop, row, child))
             walk(child, level + 1, *bounds)
 
-    # The mole starts at (0, 0) facing right, so the ``'`` below turns it
-    # down column 0 and this is the cell that turns it back out of it.
+    # The mole starts at (0, 0).
+    # down column 0 and this is the.
     place(total // 2, east - 1, _DIG_ENTER)
     walk(total // 2, 0, 0, 2**n)
     _dig_clear(cells, corridors)
@@ -766,8 +766,8 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
     grid = [[" "] * span for _ in range(total)]
     for (row, col), char in cells.items():
         grid[row][col] = char
-    # Rows are painted into a rectangle of blanks, but the mole never walks
-    # past the last command on a row, so the trailing filler is inert and is
+    # Rows are painted into a.
+    # past the last command on a.
     # trimmed rather than committed.
     return "\n".join("".join(row).rstrip() for row in grid)
 
@@ -861,9 +861,9 @@ def dig(truth_table: str, width: int | None = None) -> str:
         return flat
     if max(len(line) for line in flat.split("\n")) <= width:
         return flat
-    # The turn has to leave the westbound band room to finish left of where
-    # the eastbound one starts its last block, which is what fixes the
-    # split rather than any search: the halves are as even as that allows.
+    # The turn has to leave the.
+    # the eastbound one starts its.
+    # split rather than any search:.
     banded = _dig_grid(truth_table, n, -(-(n + 2) // 2))
     if max(len(line) for line in banded.split("\n")) < max(
         len(line) for line in flat.split("\n")
@@ -896,14 +896,14 @@ def qoibl(truth_table: str) -> str:
     under the size of the sparser half.
     """
     n = _validate_truth_table(truth_table)
-    # A table that ignores some of its inputs is a smaller table, and since a
-    # minterm costs one ``qe`` factor *per input* on top of two lines per
-    # selected row, dropping an input removes rows and shortens the rows that
-    # remain.  Every input keeps its ``et`` read, its normalization and its
-    # complement (they are the interface); an ignored one is never named as a
-    # factor.  Measured at ``n == 3``, that setup is 29% of a one-dependency
-    # program and the minterm body the other 71%, so most of the arity cost
-    # here is reachable -- unlike ``suffolk``, whose per-input setup is 96%
+    # A table that ignores some of.
+    # minterm costs one ``qe``.
+    # selected row, dropping an.
+    # remain.
+    # complement (they are the.
+    # factor.
+    # program and the minterm body.
+    # here is reachable -- unlike.
     # of the program.
     lines = []
     for i in range(n):
@@ -945,58 +945,58 @@ def qoibl(truth_table: str) -> str:
     return "\n".join(lines)
 
 
-# Largest instruction count :func:`polynomial` will emit.  Each instruction
-# consumes a fresh prime and contributes a factor, so the polynomial's degree
-# -- and the cost of recovering the instructions from it -- tracks this count
+# Largest instruction count.
+# consumes a fresh prime and.
+# -- and the cost of recovering.
 # and nothing else.
-#
-# The bound is the analytic worst case over n == 10 tables: level ``k`` of
-# the state machine holds at most ``min(2**k, 2**2**(10 - k))`` states at 7
-# instructions each (5 fixed plus at most 2 transitions), and the leaf level
-# 5 each less the final endif -- ``7*275 + 5*2 - 1 = 1934``, so every n=10
-# table builds.  ``test_polynomial_cap_admits_every_n10_table`` re-derives
-# it.  The dense n=10 fixture needs 1638; dense n=11 needs 2910 and is
+# .
+# The bound is the analytic.
+# the state machine holds at.
+# instructions each (5 fixed.
+# 5 each less the final endif.
+# table builds.
+# it.
 # refused.
-#
-# The policy is still "admit what a suite can afford to check", against a
-# cost curve that moved twice.  At 138 recovery was a bare ``factor_list``
-# (~10s at the bound); the exact peels bought 328 (n=7 dense, 21.1s a row).
-# Two interpreter changes moved it again: recovery is cached per program --
-# rows of one table share a single factorization and parse -- and past
-# ``_NTT_MIN_DEGREE`` peel candidates come from NTT root sets rather than
-# enumeration and GF factoring.  Measured on the dense fixtures, whole
-# table verified against every row: n=8 (541 instructions) 3.5s for all
-# 256 rows where the old path took 115s for the *first*, n=10 (1638) 44s
-# for all 1024 rows, 43.7s of it the one factorization.
-#
-# The count, not the arity, is still what this measures: a table that
-# collapses to few states is cheap at any width, and parity renders far
+# .
+# The policy is still "admit.
+# cost curve that moved twice.
+# (~10s at the bound); the.
+# Two interpreter changes moved.
+# rows of one table share a.
+# ``_NTT_MIN_DEGREE`` peel.
+# enumeration and GF factoring.
+# table verified against every.
+# 256 rows where the old path.
+# for all 1024 rows, 43.7s of.
+# .
+# The count, not the arity, is.
+# collapses to few states is.
 # past n == 10 inside the bound.
-#
-# What the bound declines is measured, not assumed: past it, dense n=11
-# (2910 instructions) builds and runs all 2048 rows correctly in 267s --
-# 264.5s of that the single factorization, then 0.001s a row -- for a
-# 123609143-character program.  Against n=10 on the same machine (1638,
-# 56s), 1.78x the instructions costs 4.7x the time.  Left at 1934 on that
-# price -- and 2910 is only the dense fixture: the formula above at
-# n == 11 gives 3726, so even a cap sized to that price leaves the arity
+# .
+# What the bound declines is.
+# (2910 instructions) builds.
+# 264.5s of that the single.
+# 123609143-character program.
+# 56s), 1.78x the instructions.
+# price -- and 2910 is only the.
+# n == 11 gives 3726, so even a.
 # partial.
 _POLYNOMIAL_MAX_INSTRS = 1934
 
-# How far above the cheapest candidate the dispatch still renders.  Selection
-# is on characters, so the instruction count only screens -- and a strict
-# screen picks wrong, because the two disagree.  ``01100110`` is the case:
-# the drained
-# machine is 30 instructions and renders 5267 characters, while a drained
-# ``k == 2`` build is 32 and renders 4814, since a longer program's later
-# instructions consume larger primes.
-#
-# The slack has to be measured per arity, not guessed: every table at
-# n <= 3 needs at most 6 (242 of 256 need 0), but 1000 sampled tables at
-# n == 4 reach 9, and 32 of them need more than 6 -- a slack fitted to the
-# smaller corpus silently emits the worse program on those.  Held at the
-# n == 4 worst case with a margin of one, so a table needing more is a real
-# finding rather than a quiet regression; ``test_polynomial_screen_slack``
+# How far above the cheapest.
+# is on characters, so the.
+# screen picks wrong, because.
+# the drained.
+# machine is 30 instructions.
+# ``k == 2`` build is 32 and.
+# instructions consume larger.
+# .
+# The slack has to be measured.
+# n <= 3 needs at most 6 (242.
+# n == 4 reach 9, and 32 of.
+# smaller corpus silently emits.
+# n == 4 worst case with a.
+# finding rather than a quiet.
 # re-derives it.
 _POLYNOMIAL_SCREEN_SLACK = 10
 
@@ -1061,10 +1061,10 @@ def polynomial(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
-    # Every construction here is :func:`_polynomial_hybrid` at some ``k``.
-    # ``k == n`` is the plain decision tree, ``k == 0`` the plain state
-    # machine, and the interior splits the difference; the reduced variants
-    # below prepend a drain and rebuild on a smaller table.
+    # Every construction here is.
+    # ``k == n`` is the plain.
+    # machine, and the interior.
+    # below prepend a drain and.
     builders: list[tuple[int, Any]] = [
         (
             _polynomial_hybrid_cost(truth_table, level),
@@ -1073,26 +1073,26 @@ def polynomial(truth_table: str) -> str:
         for level in range(n, -1, -1)
     ]
 
-    # A table that ignores some of its inputs is a smaller table, and this
-    # generator cannot get there on its own: a read *assigns* to the single
-    # register, so the construction consumes inputs in stream order and an
-    # ignored one still costs a full level of branching before reaching the
-    # input that matters.  Folding collapses subtrees, not the levels above
-    # them -- ``10101010`` costs 66 instructions where the one-input table
+    # A table that ignores some of.
+    # generator cannot get there on.
+    # register, so the construction.
+    # ignored one still costs a.
+    # input that matters.
+    # them -- ``10101010`` costs 66.
     # it really is costs 12.
-    #
-    # Reduction sidesteps that because it is *order-blind*: it rewrites the
-    # table before anything is built.  The ignored inputs are drained first,
-    # so every path still consumes exactly ``n`` inputs.  Only a *leading*
-    # run can be handled this way -- an ignored input sitting after an
-    # essential one would be drained out of turn and the build would branch
-    # on the wrong bit (measured: 92 wrong rows over 26 tables).
+    # .
+    # Reduction sidesteps that.
+    # table before anything is.
+    # so every path still consumes.
+    # run can be handled this way.
+    # essential one would be.
+    # on the wrong bit (measured:.
     essential = essential_inputs(truth_table, n) or [0]
     lead = next((i for i in range(n) if i in essential), n)
     if lead:
         prefix: list[list[int]] = []
         for _ in range(lead):
-            prefix.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48
+            prefix.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48.
         reduced = read_at(truth_table, list(range(lead, n)), n)
         reduced_n = n - lead
         builders += [
@@ -1104,13 +1104,13 @@ def polynomial(truth_table: str) -> str:
             )
             for level in range(reduced_n, 0, -1)
         ]
-        # The machine cannot take the ``-= 48`` drain above: its entry chain
-        # tests for zero, so a drained 1 fell past every state test.  Its
-        # own drain divides the bit away instead; see
-        # :func:`_polynomial_drained_dag`.
+        # The machine cannot take the.
+        # tests for zero, so a drained.
+        # own drain divides the bit.
+        # :func:`_polynomial_drained_dag.
         drained = _polynomial_drained_dag_cost(truth_table)
-        # Only reached inside ``if lead:``, and the cost is None only when
-        # there is no lead to drain, so it always answers here.
+        # Only reached inside ``if.
+        # there is no lead to drain, so.
         if drained is not None:  # pragma: no branch
             builders.append((drained, lambda: _polynomial_drained_dag(truth_table)))
 
@@ -1124,22 +1124,22 @@ def polynomial(truth_table: str) -> str:
             "of this width can afford",
         )
 
-    # Selection is on *rendered characters*, because instructions and
-    # characters disagree: `01100000` and three relatives are 42
-    # instructions against the tree's 43 and still render 11008 characters
-    # against 9507, since a longer program's later instructions consume
+    # Selection is on *rendered.
+    # characters disagree:.
+    # instructions against the.
+    # against 9507, since a longer.
     # larger primes.
-    #
-    # So the instruction count only screens: a candidate more than
-    # ``_POLYNOMIAL_SCREEN_SLACK`` above the cheapest cannot win and is not
-    # built.  That renders 604 of 1064 candidates over the n == 3 corpus,
-    # which costs 2.54x there (0.3s across 256 programs) and 1.09x on an
-    # n == 4 sample -- the arity where generation time actually lives.
-    # The screen is a measured bound, not a proof: a candidate rendering
-    # shorter from a further-out instruction count would be skipped.
-    #
-    # ``k`` descends so the tree is tried first, and the comparison is
-    # strict, so a table nothing shortens emits what it always emitted.
+    # .
+    # So the instruction count only.
+    # ``_POLYNOMIAL_SCREEN_SLACK``.
+    # built.
+    # which costs 2.54x there (0.3s.
+    # n == 4 sample -- the arity.
+    # The screen is a measured.
+    # shorter from a further-out.
+    # .
+    # ``k`` descends so the tree is.
+    # strict, so a table nothing.
     cheapest = min(cost for cost, _ in fits)
     program: str | None = None
     for cost, build in fits:
@@ -1173,10 +1173,10 @@ def _polynomial_assemble(instrs: list[list[int]]) -> str:
             factors.append([1, -2 * a, a * a + p ** (2 * b)])
         else:
             factors.append([1, -(p ** instr[0])])
-    # The expansion is the whole cost past n == 7 -- the factor count is the
-    # degree, and multiplying them in one incremental sweep rescans a
-    # polynomial whose coefficients keep growing.  ``render_product`` cuts
-    # the list into groups and merges them packed; see there.
+    # The expansion is the whole.
+    # degree, and multiplying them.
+    # polynomial whose coefficients.
+    # the list into groups and.
     return str(render_product(factors))
 
 
@@ -1251,8 +1251,8 @@ def _polynomial_dag(truth_table: str) -> list[list[int]]:
     n = _validate_truth_table(truth_table)
     levels = _polynomial_states(truth_table, n)
     index = [{s: i for i, s in enumerate(level)} for level in levels]
-    # Keeps a taken branch's register clear of every later test in its own
-    # chain.  Only widens literals, never the instruction count that costs.
+    # Keeps a taken branch's.
+    # chain.
     offset = max(len(level) for level in levels) + 1
     instrs: list[list[int]] = []
 
@@ -1261,44 +1261,44 @@ def _polynomial_dag(truth_table: str) -> list[list[int]]:
         states = levels[k]
         for i, state in enumerate(states):
             if i:
-                instrs.append([1, 2])  # -= 1
-            instrs.append([4])  # if reg == 0
+                instrs.append([1, 2])  # -= 1.
+            instrs.append([4])  # if reg == 0.
             remaining = len(states) - 1 - i
             zero_index = index[k + 1][state[:width]]
             one_index = index[k + 1][state[width:]]
             zero_target = offset + zero_index + remaining
-            instrs.append([0, 2])  # input
+            instrs.append([0, 2])  # input.
             if zero_index == one_index:
-                # Both children merge, so this bit cannot change the answer.
-                # Divide it away rather than multiplying by zero, which the
-                # interpreter would read as an input instruction.
-                instrs.append([_ASCII_ZERO + 2, 4])  # //= 50 -> 0
+                # Both children merge, so this.
+                # Divide it away rather than.
+                # interpreter would read as an.
+                instrs.append([_ASCII_ZERO + 2, 4])  # //= 50 -> 0.
             else:
-                instrs.append([_ASCII_ZERO, 2])  # -= 48, leaving 0 or 1
+                instrs.append([_ASCII_ZERO, 2])  # -= 48, leaving 0 or 1.
                 span = one_index - zero_index
                 if span != 1:
-                    instrs.append([span, 3])  # *= span, never zero here
-            instrs.append([zero_target, 1])  # += the child's parked value
-            instrs.append([2])  # endif
-        instrs.append([offset, 2])  # -= offset, recovering the child index
+                    instrs.append([span, 3])  # *= span, never zero here.
+            instrs.append([zero_target, 1])  # += the child's parked value.
+            instrs.append([2])  # endif.
+        instrs.append([offset, 2])  # -= offset, recovering the.
 
-    # The leaf states are one-wide subtables, so each *is* its answer.  No
-    # guard is needed after printing: the register holds 48 or 49 and the
-    # one decrement a two-state chain can still apply leaves 47 or 48.
+    # The leaf states are one-wide.
+    # guard is needed after.
+    # one decrement a two-state.
     for i, state in enumerate(levels[n]):
         if i:
-            instrs.append([1, 2])  # -= 1
-        instrs.append([4])  # if reg == 0
+            instrs.append([1, 2])  # -= 1.
+        instrs.append([4])  # if reg == 0.
         instrs.append([_ASCII_ZERO + int(state), 1])
-        instrs.append([0, 1])  # output
-        instrs.append([2])  # endif
+        instrs.append([0, 1])  # output.
+        instrs.append([2])  # endif.
 
     for instr in instrs:
-        # ``a == 0`` is how the interpreter spells I/O, so an arithmetic
-        # instruction computing a zero operand would silently become a read
-        # -- a wrong program rather than a failure.  The builder never emits
-        # one; this raises rather than asserting so the guard survives
-        # ``-O``, where the trap it catches would be silent.
+        # ``a == 0`` is how the.
+        # instruction computing a zero.
+        # -- a wrong program rather.
+        # one; this raises rather than.
+        # ``-O``, where the trap it.
         if len(instr) == 2 and instr[0] == 0 and instr not in ([0, 1], [0, 2]):
             raise AssertionError(
                 f"{instr} has a zero operand, which the interpreter reads as "
@@ -1346,24 +1346,24 @@ def _polynomial_hybrid(truth_table: str, k: int) -> list[list[int]]:
         if len(vals) == 1:
             v = int(vals.pop())
             emit_delta(_ASCII_ZERO + v - last)
-            instrs.append([0, 1])  # output
+            instrs.append([0, 1])  # output.
             for _ in range(bit, n):
-                instrs.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48
+                instrs.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48.
             emit_delta(1)
             return
         if bit == k:
-            emit_delta(-last)  # the machine's chain tests for zero
+            emit_delta(-last)  # the machine's chain tests for.
             instrs.extend(_polynomial_dag("".join(truth_table[r] for r in rows)))
-            if bit:  # inside a tree arm; the top level has no else to skip
+            if bit:  # inside a tree arm; the top.
                 instrs.append([1, 1])
             return
-        instrs.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48
+        instrs.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48.
         g1 = [r for r in rows if ((r >> (n - 1 - bit)) & 1) == 1]
         g0 = [r for r in rows if ((r >> (n - 1 - bit)) & 1) == 0]
-        instrs.append([1])  # if reg > 0
+        instrs.append([1])  # if reg > 0.
         build(g1, bit + 1, 1)
         instrs.append([2])
-        instrs.append([4])  # if reg == 0
+        instrs.append([4])  # if reg == 0.
         build(g0, bit + 1, 0)
         instrs.append([2])
 
@@ -1391,13 +1391,13 @@ def _polynomial_drained_dag(truth_table: str) -> list[list[int]] | None:
     if not lead:
         return None
     reduced = read_at(truth_table, list(range(lead, n)), n)
-    # Exhausted over every table to four inputs: a nonzero lead leaves an
-    # essential input behind, so the reduction always holds two rows.
+    # Exhausted over every table to.
+    # essential input behind, so.
     if len(reduced) < 2:  # pragma: no cover - see above
         return None
     instrs: list[list[int]] = []
     for _ in range(lead):
-        instrs.extend([[0, 2], [_ASCII_ZERO + 2, 4]])  # input; //= 50 -> 0
+        instrs.extend([[0, 2], [_ASCII_ZERO + 2, 4]])  # input; //= 50 -> 0.
     instrs.extend(_polynomial_dag(reduced))
     return instrs
 
@@ -1410,8 +1410,8 @@ def _polynomial_drained_dag_cost(truth_table: str) -> int | None:
     if not lead:
         return None
     reduced = read_at(truth_table, list(range(lead, n)), n)
-    # Exhausted over every table to four inputs: a nonzero lead leaves an
-    # essential input behind, so the reduction always holds two rows.
+    # Exhausted over every table to.
+    # essential input behind, so.
     if len(reduced) < 2:  # pragma: no cover - see above
         return None
     return 2 * lead + _polynomial_dag_cost(reduced)
@@ -1437,7 +1437,7 @@ def _polynomial_hybrid_cost(truth_table: str, k: int) -> int:
             return delta(_ASCII_ZERO + v - last) + 1 + 2 * (n - bit) + delta(1)
         if bit == k:
             residual = "".join(truth_table[r] for r in rows)
-            # The park is emitted only inside a tree arm; see the emitter.
+            # The park is emitted only.
             return delta(-last) + _polynomial_dag_cost(residual) + (1 if bit else 0)
         split = n - 1 - bit
         g1 = [r for r in rows if ((r >> split) & 1) == 1]
@@ -1491,9 +1491,9 @@ def point_break(truth_table: str) -> str:
     are the interface, and only the body may shrink.
     """
     n = _validate_truth_table(truth_table)
-    # The reads a constant table makes and throws away.  ``?`` is the read,
-    # and the names are the ones the non-constant path would have used, so
-    # nothing else about the template shifts.
+    # The reads a constant table.
+    # and the names are the ones.
+    # nothing else about the.
     discards = [f"LET {_pb_name(1 + i)}:=?" for i in range(n)]
     if all(c == "0" for c in truth_table):
         return "\n".join([*discards, f"LET {_pb_name(0)}:=1"])
@@ -1515,17 +1515,17 @@ def point_break(truth_table: str) -> str:
         lines.append(f"LET {_pb_name(1 + n + i)}:={_pb_name(0)}-{_pb_name(1 + i)}")
     lines.append(f"LET {_pb_name(1 + 2 * n)}:=0")
 
-    # Each selected row costs a ``LET`` per factor plus one to add it in, so
-    # a table with more ones than zeros is cheaper summed over its *zero*
-    # rows.  Inverting is free: the tail already needs ``1 - f`` for the
-    # loop guard, so a complemented sum *is* that guard.
-    # A table that ignores some of its inputs is a smaller table, and since
-    # each selected row costs a ``LET`` per factor, dropping an input removes
-    # rows and shortens the rows that remain.  The reads and the complements
-    # stay at the full arity, as the constant branch above keeps them; an
-    # ignored input is never named as a factor.  This is that branch
-    # generalized from "no essential inputs" to "the ones that matter", and
-    # the docstring's rule -- only the body may shrink -- makes it safe.
+    # Each selected row costs a.
+    # a table with more ones than.
+    # rows.
+    # loop guard, so a complemented.
+    # A table that ignores some of.
+    # each selected row costs a.
+    # rows and shortens the rows.
+    # stay at the full arity, as.
+    # ignored input is never named.
+    # generalized from "no.
+    # the docstring's rule -- only.
     def literal(i: int, negated: bool) -> str:  # noqa: FBT001 - a literal's sign, from minterm_literals
         return _pb_name(1 + n + i) if negated else _pb_name(1 + i)
 
@@ -1539,8 +1539,8 @@ def point_break(truth_table: str) -> str:
         lines.append(f"LET {_pb_name(1 + 2 * n)}:={_pb_name(1 + 2 * n)}+{row}")
 
     _used, _width, invert = minterm_sum(truth_table, literal, product, accumulate)
-    # ``g`` is the loop guard, which breaks on a nonzero -- so it is the
-    # complement of the answer, and a complemented sum already holds it.
+    # ``g`` is the loop guard,.
+    # complement of the answer, and.
     if invert:
         lines.append(f"LET {_pb_name(3 + 2 * n)}:={_pb_name(1 + 2 * n)}")
     else:

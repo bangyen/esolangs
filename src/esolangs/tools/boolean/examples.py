@@ -66,9 +66,9 @@ from esolangs.tools.boolean.helpers import instantiate
 from esolangs.tools.boolean.parameterized import _instantiate_arrowqueue
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
-# The committed programs all witness the same two-input function and row:
-# AND2 evaluated on 0,1.  The generator suites cover the other tables and
-# rows; keeping this corpus uniform makes the files directly comparable.
+# The committed programs all.
+# AND2 evaluated on 0,1.
+# rows; keeping this corpus.
 AND2 = "0001"
 
 
@@ -95,74 +95,74 @@ class BooleanExample:
     interpreter: str
     expected: str
     inputs: tuple[str, ...] = ()
-    #: Whether ``expected`` is the program's actual output.  False where the
-    #: answer is the *halt* and the bytes written on the way out are junk:
-    #: 123's constructed template pops through location -2 while merging and
-    #: prints whatever that cell holds.  ``expected`` is then a placeholder
-    #: no one should compare against -- which the manifest was presenting as
-    #: "this program outputs nothing", when it prints two bytes.
+    # : Whether ``expected`` is the.
+    # : answer is the *halt* and.
+    # : 123's constructed template.
+    # : prints whatever that cell.
+    # : no one should compare.
+    # : "this program outputs.
     expected_compared: bool = True
-    #: How the answer reaches the caller.  ``output`` is the usual: the
-    #: program prints it.  ``termination`` means the program *halts* for a 0
-    #: and loops forever for a 1, so a timeout is the 1.  ``dump`` means the
-    #: program prints its whole final state and the answer sits at a fixed
-    #: place in it, which ``note`` names.  Carried as a field because the
-    #: prose alone cannot be branched on: a sweep that hardcoded two of the
-    #: dumps and forgot a third reported a passing language as broken.
+    # : How the answer reaches the.
+    # : program prints it.
+    # : and loops forever for a 1,.
+    # : program prints its whole.
+    # : place in it, which ``note``.
+    # : prose alone cannot be.
+    # : dumps and forgot a third.
     answer_mode: str = "output"
-    #: Where the answer sits in the output, as a regex whose first group is
-    #: it.  Empty means the last non-whitespace character, which is right
-    #: for every language that prints its answer and for four of the six
-    #: that dump state -- their dump happens to end on it.  The other two
-    #: need saying: RAM0's answer is its ``z`` register, three lines above
-    #: the end, and A Painter Ant's is a mark in a painted grid.
+    # : Where the answer sits in.
+    # : it.
+    # : for every language that.
+    # : that dump state -- their.
+    # : need saying: RAM0's answer.
+    # : the end, and A Painter.
     answer_pattern: str = ""
-    #: How this language spells a 0 and a 1 *in the answer position*, the
-    #: mirror of ``alphabet`` for input.  A Painter Ant marks the ant's own
-    #: cell ``o`` on black and ``@`` on white, so its answer is a letter.
-    #:
-    #: For an ``answer_mode`` of ``termination`` this is the *polarity*
-    #: instead -- ``("halts", "diverges")`` -- because which way round it
-    #: goes was prose only, so a caller reading ``answer_mode`` still had to
-    #: hardcode halt-means-0 from the English.  It is the one convention a
-    #: zero-per-language verifier could not get from the API.
+    # : How this language spells a.
+    # : mirror of ``alphabet`` for.
+    # : cell ``o`` on black and.
+    # :.
+    # : For an ``answer_mode`` of.
+    # : instead -- ``("halts",.
+    # : goes was prose only, so a.
+    # : hardcode halt-means-0 from.
+    # : zero-per-language verifier.
     answer_values: tuple[str, str] = ("0", "1")
-    #: How this language spells an input 0 and an input 1.  Almost always
-    #: the digits, but not universally, and the exception is silent rather
-    #: than loud: Grapheme's generator normalizes each line with
-    #: ``ord(line[0]) - 65`` and then maps zero to 1 and nonzero to 0, so
-    #: ``A`` is a 1 and every other first character is a 0 -- a ``"0"``
-    #: line and a ``"1"`` line both read as 0, and the program answers the
-    #: all-zeros row instead of refusing.  The second half is not optional
-    #: prose: ``ord('A') - 65`` is 0, so the subtraction on its own says
-    #: the opposite of what the language does.
-    #:
-    #: This said "every non-empty string is truthy, so a ``"0"`` line reads
-    #: as a 1", which is the language's general rule and not what the
-    #: generator does with it.  The warning was right and its direction was
-    #: backwards, which is worse than saying nothing: a reader who trusts
-    #: the reason predicts all-ones and debugs the wrong thing.  Carried
-    #: here so ``describe`` can tell a caller before they feed it digits.
+    # : How this language spells an.
+    # : the digits, but not.
+    # : than loud: Grapheme's.
+    # : ``ord(line[0]) - 65`` and.
+    # : ``A`` is a 1 and every.
+    # : line and a ``"1"`` line.
+    # : all-zeros row instead of.
+    # : prose: ``ord('A') - 65`` is.
+    # : the opposite of what the.
+    # :.
+    # : This said "every non-empty.
+    # : as a 1", which is the.
+    # : generator does with it.
+    # : backwards, which is worse.
+    # : the reason predicts.
+    # : here so ``describe`` can.
     alphabet: tuple[str, str] = ("0", "1")
-    #: How the bits are laid out on stdin.  ``line_per_bit`` is the rule
-    #: everywhere else; ``one_line`` puts them all on one (Clockwise packs
-    #: seven bits per character and reads the lot in one go); ``row_index``
-    #: sends a single number whose bits are the inputs (Fargo reads it
-    #: before the program starts and indexes it with ``@ k``);
-    #: ``line_per_bit_padded`` is Taglate's: a line per bit like the
-    #: majority, plus the leading zero ``ghost_digit`` describes.  It was
-    #: briefly called ``char_stream``, on the strength of a comment saying
-    #: Taglate "reads a character at a time" -- true of the interpreter,
-    #: false of the stdin it wants, since :class:`ScriptedIO` hands over
-    #: whole lines.  Feeding it literal characters (``"01"``) is an
-    #: input-exhausted error; a line per bit is what works.
+    # : How the bits are laid out.
+    # : everywhere else;.
+    # : seven bits per character.
+    # : sends a single number whose.
+    # : before the program starts.
+    # : ``line_per_bit_padded`` is.
+    # : majority, plus the leading.
+    # : briefly called.
+    # : Taglate "reads a character.
+    # : false of the stdin it.
+    # : whole lines.
+    # : input-exhausted error; a.
     input_shape: str = "line_per_bit"
-    #: Whether an odd input count is padded with a leading zero the program
-    #: reads like any other digit.  Taglate's slot stride has to land on a
-    #: separator, so its n=3 program reads four digits; feeding three is an
-    #: input-exhausted error, and padding at the *end* instead answers every
-    #: MSB-set row wrongly.  One input is the exception -- that arity is an
-    #: affine computation on the bit itself, and reads exactly one digit.
+    # : Whether an odd input count.
+    # : reads like any other digit.
+    # : separator, so its n=3.
+    # : input-exhausted error, and.
+    # : MSB-set row wrongly.
+    # : affine computation on the.
     ghost_digit: bool = False
     bits: tuple[int, ...] = ()
     fill: Callable[[str, list[int]], str] | None = None
@@ -271,9 +271,9 @@ def _embedded(
     )
 
 
-# Each ``fill`` below is the language's own way of spelling "set input i to
-# this bit", the counterpart of the input read an input-capable language
-# performs.  They mirror the substitutions the generator tests use.
+# Each ``fill`` below is the.
+# this bit", the counterpart of.
+# performs.
 
 
 def _fill_bio(template: str, bits: list[int]) -> str:
@@ -310,7 +310,7 @@ def _fill_nocomment(template: str, bits: list[int]) -> str:
 
 
 def _fill_lamfunc(template: str, bits: list[int]) -> str:
-    # each {Xi} fills a `vs v{i}` store with the binary literal
+    # each {Xi} fills a `vs v{i}`.
     return instantiate(
         template,
         bits,
@@ -319,8 +319,8 @@ def _fill_lamfunc(template: str, bits: list[int]) -> str:
 
 
 def _fill_bitdeque(template: str, bits: list[int]) -> str:
-    # The register flips after every load block, and the load pushes the
-    # inputs in name order, so bit i is pushed at load position i with the
+    # The register flips after.
+    # inputs in name order, so bit.
     # incoming register at i % 2.
     return instantiate(
         template,
@@ -407,7 +407,7 @@ def _fill_minsky_swap(template: str, bits: list[int]) -> str:
     size: int = 2**n
 
     def set_bit(i: int, bit: int) -> str:
-        if i == n - 1:  # LSB: length-4 block, no "~"
+        if i == n - 1:  # LSB: length-4 block, no "~".
             return "+*+*" if bit else "****"
         weight: int = 2 ** (n - 1 - i)
         if bit:
@@ -572,12 +572,12 @@ def _fill_pct_squared_minus_one(template: str, bits: list[int]) -> str:
 
 
 def _fill_arrowqueue(template: str, bits: list[int]) -> str:
-    # ArrowQueue rebuilds its whole header rather than substituting in place
+    # ArrowQueue rebuilds its whole.
     return _instantiate_arrowqueue(template, bits)
 
 
-# Example file stem -> how that example is built and run.  Stems match the
-# language's display name lowercased with spaces as dashes.
+# Example file stem -> how that.
+# language's display name.
 BOOLEAN_EXAMPLES: dict[str, BooleanExample] = {}
 
 
@@ -586,8 +586,8 @@ def _register() -> None:
 
     reading = {
         "addsubjump": _reader(b.addsubjump, "register_based.addsubjump"),
-        # An executed line prints its result and nothing else, so the
-        # answer arrives with the newline that ends that line.
+        # An executed line prints its.
+        # answer arrives with the.
         "algebraic-programming-language": _reader(
             b.algebraic_programming_language,
             "other.algebraic_programming_language",
@@ -613,8 +613,8 @@ def _register() -> None:
             "also ends by calling sys.exit(0) rather than returning, which "
             "matters to a harness driving it but not to reading the result",
         ),
-        # ``send`` terminates every line it writes, so the answer arrives
-        # with a newline after it -- there is no other output command.
+        # ``send`` terminates every.
+        # with a newline after it --.
         "inject": _reader(
             b.inject,
             "other.inject",
@@ -649,11 +649,11 @@ def _register() -> None:
         "dimensional": _reader(b.dimensional, "tape_based.dimensional"),
         "dinac": _reader(b.dinac, "other.dinac"),
         "factor": _reader(b.factor, "tape_based.factor"),
-        # Fargo reads one *number* before the program starts, not a bit per
-        # line, and ``@ k`` indexes that number's bits.  The boolean
-        # convention is therefore to feed the row index: the inputs
-        # most-significant-first are its binary digits, so the 0,1 row of a
-        # two-input table is the single line "1".
+        # Fargo reads one *number*.
+        # line, and ``@ k`` indexes.
+        # convention is therefore to.
+        # most-significant-first are.
+        # two-input table is the single.
         "fargo": _reader(
             b.fargo,
             "other.fargo",
@@ -838,11 +838,11 @@ def _register() -> None:
             "register_based.pct_squared_minus_one",
             _fill_pct_squared_minus_one,
         ),
-        # 123 answers with the termination convention, as ArrowQueue does, so
-        # only the halting (0) branch is committed.  The constructed template
-        # pops through location -2 while merging, which prints junk bytes on
-        # every row; ``test_boolean_example`` asserts the halt and ignores
-        # them, so ``expected`` is vestigial here.
+        # 123 answers with the.
+        # only the halting (0) branch.
+        # pops through location -2.
+        # every row;.
+        # them, so ``expected`` is.
         "123": _embedded(
             b.one_two_three,
             "tape_based.one_two_three",
@@ -877,28 +877,28 @@ def _register() -> None:
         ),
     }
 
-    # Stamp each example with its own stem, so ``build()`` knows which
-    # language it is and can pick the matching token-aware wrapper without
-    # the caller having to supply it.
+    # Stamp each example with its.
+    # language it is and can pick.
+    # the caller having to supply.
     for stem, example in {**reading, **embedded}.items():
         BOOLEAN_EXAMPLES[stem] = replace(example, stem=stem)
 
 
 _register()
 
-# Committed programs that no current generator produces, so they are run as
-# behaviour tests but exempt from the generator-match check.
-#
-# Empty since Minifuck's entry was retired.  That program was the last
-# hand-written one: it read its inputs at runtime, the construction the old,
-# removed generator used, and was kept as the only committed record of that
-# reading model.  Minifuck's shipped generator is parameterized and embeds
-# its inputs, so ``examples/boolean/minifuck.txt`` is now generated like
-# every other file and the reading model survives as prose in
-# ``docs/generators/minifuck_generator.md`` rather than as a program nothing produces.
-#
-# The mechanism is kept rather than deleted: it costs one empty dict and is
-# what a future committed-but-ungenerated program would use.
+# Committed programs that no.
+# behaviour tests but exempt.
+# .
+# Empty since Minifuck's entry.
+# hand-written one: it read its.
+# removed generator used, and.
+# reading model.
+# its inputs, so.
+# every other file and the.
+# ``docs/generators/minifuck_gen.
+# .
+# The mechanism is kept rather.
+# what a future.
 HAND_WRITTEN: dict[str, tuple[str, tuple[str, ...], str, bool]] = {}
 
 __all__ = ["AND2", "BOOLEAN_EXAMPLES", "HAND_WRITTEN", "BooleanExample"]

@@ -36,8 +36,8 @@ import esolangs
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.registry import LANGUAGES
 
-#: The value every interpreter must read for a line the user ended
-#: immediately.  Exhausted input is a different thing and still raises.
+# : The value every interpreter.
+# : immediately.
 BLANK_LINE = 0
 
 
@@ -100,7 +100,7 @@ def _constant_byte(node: ast.expr) -> int | None:
     ):
         return ord(node.args[0].value)
     if isinstance(node, ast.Constant) and isinstance(node.value, int):
-        # bool is an int subclass, and True is not a byte a read yields.
+        # bool is an int subclass, and.
         return None if isinstance(node.value, bool) else node.value
     return None
 
@@ -273,21 +273,21 @@ def test_the_convention_is_reachable_through_the_base_class() -> None:
         assert IO().input_char() == BLANK_LINE
 
 
-#: What a language does when a *reading* program is handed no input at
-#: all.  Twenty-two files pinned this one language at a time; the split
-#: between the two answers is the interesting part, so it is written down
+# : What a language does when a.
+# : all.
+# : between the two answers is.
 #: here rather than inferred.
-#:
-#: The default is that the ``EOFError`` escapes: the interpreter does not
-#: catch it, so the caller sees a real end of input.  The languages below
-#: answer differently, and each for a reason of its own -- so the set is a
-#: statement about them, not a list of exceptions to ignore.
+# :.
+# : The default is that the.
+# : catch it, so the caller.
+# : answer differently, and.
+# : statement about them, not a.
 _EOF_IS_A_HALT: dict[str, str] = {
-    # Reads until the input runs out and treats that as its stop, which is
-    # how its generated programs terminate at all.
+    # Reads until the input runs.
+    # how its generated programs.
     "suffolk": "reads to exhaustion, so EOF is the halt",
-    # Read their inputs before the program runs, so an exhausted stream is
-    # a load-time answer rather than a step that fails.
+    # Read their inputs before the.
+    # a load-time answer rather.
     "fargo": "the interpreter reads before the program starts",
     "circuit_diagram": "resolves its inputs while laying the grid",
     "flowchart": "reads at the switch, which a program without one skips",
@@ -316,14 +316,14 @@ def _reading_languages() -> list[str]:
     return sorted(
         name
         for name, example in BOOLEAN_EXAMPLES.items()
-        # A ``fill`` means the bits are embedded in the program text, so
-        # the language has no input command to run out of.
+        # A ``fill`` means the bits are.
+        # the language has no input.
         if example.fill is None
         and name not in _EOF_IS_A_HALT
-        # Suptiftam's read sits inside a loop that never ends without one,
-        # so an empty stream is a hang rather than a raise.
+        # Suptiftam's read sits inside.
+        # so an empty stream is a hang.
         and name != "suptiftam"
-        # Alight raises its own error before the read is reached.
+        # Alight raises its own error.
         and name != "alight"
     )
 

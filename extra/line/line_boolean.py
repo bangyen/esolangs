@@ -98,7 +98,7 @@ def line_boolean(truth_table: str) -> Node:
     """
     n = _validate_truth_table(truth_table)
 
-    # Read n inputs into cells 0..n-1, one `i` per cell, `>` between them.
+    # Read n inputs into cells.
     head = Node("i")
     tail = head
     for _ in range(n - 1):
@@ -107,7 +107,7 @@ def line_boolean(truth_table: str) -> Node:
         read = Node("i")
         move.next = read
         tail = read
-    # Walk back to cell 0 so the decision tree tests bits in reading order.
+    # Walk back to cell 0 so the.
     for _ in range(n - 1):
         move = Node("<")
         tail.next = move
@@ -125,7 +125,7 @@ def line_boolean(truth_table: str) -> Node:
         def branch(bit: str) -> Node:
             sub = fork(bits + bit, depth + 1)
             if depth + 1 < n:
-                # Advance to the next input's cell before testing it.
+                # Advance to the next input's.
                 move = Node(">")
                 move.next = sub
                 return move

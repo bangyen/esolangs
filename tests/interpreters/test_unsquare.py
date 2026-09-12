@@ -29,10 +29,10 @@ class TestUnsquare:
     def test_accumulator_ops(self) -> None:
         assert run_program("I+Po") == "\x02"
         assert run_program("++Po") == "\x04"
-        assert run_program("-Po") == "-2"  # -2 is not a valid code point
+        assert run_program("-Po") == "-2"  # -2 is not a valid code point.
         assert run_program("xxPo") == "\x00"
-        # The doubling above runs on zero, which any multiplier leaves at
-        # zero.  Doubling something first says the factor is 2.
+        # The doubling above runs on.
+        # zero.
         assert run_program("+xPo") == "\x04"
         assert run_program("+xxPo") == "\x08"
 
@@ -59,17 +59,17 @@ class TestUnsquare:
         moved.  A third element underneath is there because the indices
         involved only diverge on a stack deeper than two.
         """
-        # the accumulator carries across pushes: +P pushes 2, ++P pushes 6.
-        # Then I pushes 1, and the swap exchanges the 1 and the 6.
+        # the accumulator carries.
+        # Then I pushes 1, and the swap.
         assert run_program("+P++PISoAo") == "\x06\x01"
-        # and with only the two, the pair still comes back in order
+        # and with only the two, the.
         assert run_program("+P++PSoAo") == "\x02\x06"
 
     def test_read_input(self) -> None:
         assert run_program("iPo", "7\n") == "\x00"
 
     def test_read_pushes_first_char(self) -> None:
-        assert run_program("iPo", "hi\n") == "\x00"  # acc is 0, P pushes it
+        assert run_program("iPo", "hi\n") == "\x00"  # acc is 0, P pushes it.
 
     def test_read_blank_lines_reprompt(self) -> None:
         assert run_program("iPo", "\n\n7\n") == "\x00"
@@ -100,13 +100,13 @@ class TestUnsquare:
         even and cannot reach the odd boundaries; those are read through
         ``i`` instead, which pushes a character's code point.
         """
-        # the surrogate block is rejected at both ends, and its neighbours
-        # are not
+        # the surrogate block is.
+        # are not.
         assert run_program("io", chr(0xD800)) == "55296"
         assert run_program("io", chr(0xDFFF)) == "57343"
         assert run_program("io", chr(0xD7FF)) == "\ud7ff"
         assert run_program("io", chr(0xE000)) == "\ue000"
-        # the top of the range is a character; one past it is not
+        # the top of the range is a.
         assert run_program("io", chr(0x10FFFF)) == "\U0010ffff"
         assert run_program("+xxxx+xxxxxxxxxxxxxxxPo") == "1114112"
 
@@ -141,14 +141,14 @@ class TestUnsquare:
         assert run_program("OIA>A<Po") == "\x01"
 
     def test_skipped_loop_counts_nested_brackets(self) -> None:
-        # the accumulator starts at 0, so the leading > skips its body; the
-        # nested >< inside must be counted so the skip stops at the
-        # *matching* <, leaving the trailing Io to push and print
+        # the accumulator starts at 0,.
+        # nested >< inside must be.
+        # *matching* <, leaving the.
         assert run_program(">I><I<Io") == "\x01"
 
     def test_loop_counts_down(self) -> None:
-        # acc 4: each pass pushes acc, prints, and subtracts 2; the > records
-        # and re-checks until acc reaches 0, then skips past the <.
+        # acc 4: each pass pushes acc,.
+        # and re-checks until acc.
         assert run_program("++>Po-<") == "\x04\x02"
 
     def test_error_empty_stack(self) -> None:
@@ -207,8 +207,8 @@ class TestStepMachine:
         machine = _Machine("+I", ScriptedIO())
         for _ in range(2):
             machine.step()
-        assert machine.memory == [2]  # the accumulator
-        assert machine.stack == (1,)  # what I pushed
+        assert machine.memory == [2]  # the accumulator.
+        assert machine.stack == (1,)  # what I pushed.
 
     def test_an_unmatched_bracket_leaves_the_machine_halted(self) -> None:
         """The cursor is moved to the end before the error is raised.
@@ -232,7 +232,7 @@ class TestStepMachine:
 
         machine = _Machine("", ScriptedIO())
         assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
+        machine.step()  # stepping a halted machine is.
         assert machine.stack == ()
 
 
@@ -259,12 +259,12 @@ class TestContract(CycleContract, InputCursorContract, StateViewContract):
     reading_stdin = "hi"
     halting_program = "Io"
     looping_program = "IIAx><"
-    # `I` pushes and `o` prints, so the cursor and the data stack both move
-    # while the jump stack stays empty -- which is the point: they are
-    # separate slots, not one field read under four names.
+    # `I` pushes and `o` prints, so.
+    # while the jump stack stays.
+    # separate slots, not one field.
     state_views = ("ind", "acc", "stack", "jumps", "ip", "memory")
-    # The loop test's own program: it moves the accumulator, the jump
-    # stack, and the data stack, where "Io" moved only the last.
+    # The loop test's own program:.
+    # stack, and the data stack,.
     viewing_program = "++>Po-<"
 
 
@@ -282,6 +282,6 @@ class TestStateViewValues:
         machine = _machine("++>Po-<")
         for _ in range(6):
             machine.step()
-        assert machine.acc == 2  # decremented once inside the body
-        assert machine.jumps == (1,)  # the > that was entered
-        assert machine.stack == (4,)  # what P pushed on the first pass
+        assert machine.acc == 2  # decremented once inside the.
+        assert machine.jumps == (1,)  # the > that was entered.
+        assert machine.stack == (4,)  # what P pushed on the first.

@@ -72,21 +72,21 @@ from esolangs.interpreters.memory import parse_int_memory as _parse
 _OUT = -2
 _IN = -1
 
-#: One instant of a run: ``(pc, memory)`` -- the program counter and the
-#: self-modifying store.  A value, not a record: every transition below
-#: returns a new one rather than editing one in place, and the memory is a
-#: ``tuple`` for the same reason.
-#:
-#: The memory is in the state rather than beside it because this language
-#: rewrites it as it runs *and* can extend it: a write past the end grows
-#: the store, and ``halted`` compares the pointer against the current
-#: length.  The length is therefore something a step decides, and two states
-#: that agree on every cell they share but not on how many cells exist are
+# : One instant of a run:.
+# : self-modifying store.
+# : returns a new one rather.
+# : ``tuple`` for the same.
+# :.
+# : The memory is in the state.
+# : rewrites it as it runs.
+# : the store, and ``halted``.
+# : length.
+# : that agree on every cell.
 #: different states.
-#:
-#: A plain tuple rather than a ``NamedTuple``: the fields are read by
-#: unpacking in the functions that use them, so the names bought little, and
-#: ``NamedTuple.__new__`` is Python-level where the tuple constructor is
+# :.
+# : A plain tuple rather than a.
+# : unpacking in the functions.
+# : ``NamedTuple.__new__`` is.
 #: C-level.
 type _State = tuple[int, tuple[int, ...]]
 
@@ -117,9 +117,9 @@ def _written(memory: tuple[int, ...], addr: int, value: int) -> tuple[int, ...]:
     """
     if addr < 0:
         if addr < -len(memory):
-            # This used to be a bare ``IndexError``, which escaped the
-            # package's one promise: ``run("Decleq", "4 -8")`` reached a
-            # caller as a raw traceback rather than an ``EsolangError``.
+            # This used to be a bare.
+            # package's one promise:.
+            # caller as a raw traceback.
             raise HaltError(
                 f"address {addr} is {-addr - len(memory)} cells past the "
                 f"left end of a {len(memory)}-cell store"
@@ -160,7 +160,7 @@ def _advance(state: _State, byte: int | None = None) -> _State:
     if a == _OUT:
         return (pc + 3, memory)
     if a == _IN:
-        # ``byte`` is what the shell read; the write can grow the store.
+        # ``byte`` is what the shell.
         return (pc + 3, _written(memory, b, byte if byte is not None else 0))
     value = _read(memory, a) - 1
     memory = _written(memory, b, value)
@@ -181,8 +181,8 @@ class _Machine:
         self.io = io
         self.state: _State = (0, tuple(_parse(code)))
 
-    # The language's own names.  They are views on the current state rather
-    # than fields of their own, so there is one place a step can change.
+    # The language's own names.
+    # than fields of their own, so.
 
     @property
     def pc(self) -> int:
@@ -190,9 +190,9 @@ class _Machine:
 
     @pc.setter
     def pc(self, value: int) -> None:
-        # Writable so a caller can place the pointer directly on a state
-        # that running the program cannot reach cleanly -- the truncated
-        # tail below cell 6 is only reachable past a cell that has since
+        # Writable so a caller can.
+        # that running the program.
+        # tail below cell 6 is only.
         # become the input opcode.
         self.state = (value, self.state[1])
 
@@ -202,7 +202,7 @@ class _Machine:
         pc, memory = self.state
         return pc < 0 or pc >= len(memory)
 
-    # The VM's language-shaped view: OISC cells + program counter.
+    # The VM's language-shaped.
 
     @property
     def ip(self) -> int:
@@ -212,8 +212,8 @@ class _Machine:
     @property
     def memory(self) -> list[int]:
         """The addressable cells."""
-        # A list, because that is what this exposed before the memory became
-        # a tuple, and the VM copies what it is handed.
+        # A list, because that is what.
+        # a tuple, and the VM copies.
         return list(self.state[1])
 
     @property
@@ -223,8 +223,8 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The memory is already a tuple, so it goes in as it stands.  The
-        # input cursor joins it because a repeat that ignores consumed input
+        # The memory is already a.
+        # input cursor joins it because.
         # is not a real cycle.
         pc, memory = self.state
         return (memory, pc, self.io.position())

@@ -151,9 +151,9 @@ import inspect
 import re
 from collections.abc import Callable
 
-# The default width for a wrapped program.  80 is the conventional review
-# and diff width, and matches the repo's own 88-column limit for Python
-# closely enough that a wrapped program never looks out of place beside it.
+# The default width for a.
+# and diff width, and matches.
+# closely enough that a wrapped.
 DEFAULT_WIDTH = 80
 
 
@@ -219,7 +219,7 @@ def wrap_grid(program: str, width: int) -> str:
     if not tokens:
         return program
     cell = _cell_width(tokens)
-    # A row of k cells is k cells plus the k-1 single spaces between them.
+    # A row of k cells is k cells.
     per_row = max(1, (width + 1) // (cell + 1))
     lines: list[str] = []
     row: list[str] = []
@@ -229,12 +229,12 @@ def wrap_grid(program: str, width: int) -> str:
         if row and used + span > per_row:
             lines.append(" ".join(row))
             row, used = [], 0
-        # A token spanning k cells is right-aligned across the whole span:
-        # its k cells plus the k-1 separators they absorb.
+        # A token spanning k cells is.
+        # its k cells plus the k-1.
         row.append(token.rjust(span * cell + span - 1))
         used += span
-    # The loop ends by appending, and an empty ``tokens`` returned above, so
-    # ``row`` always holds the last row by the time it is flushed here.
+    # The loop ends by appending,.
+    # ``row`` always holds the last.
     if row:  # pragma: no branch - never empty; see above
         lines.append(" ".join(row))
     return "\n".join(lines)
@@ -274,19 +274,19 @@ def _span(length: int, cell: int) -> int:
     return max(1, -(-(length + 1) // (cell + 1)))
 
 
-#: A ``{Xi}`` placeholder is one token in *every* language, because
-#: ``BooleanExample.fill`` finds one by string replace: a newline through the
-#: middle leaves it unfilled and the program reads the halves as commands.
-#:
-#: This belongs here rather than in the individual patterns because it is a
-#: property of the templates, not of any language's grammar -- and stating it
-#: per-pattern is what let it be missed.  Tiling is not enough to protect it:
-#: a ``.`` alternative tiles a placeholder one character at a time, so the
-#: tokens still cover the program and :func:`_join_tokens` is still free to
-#: break it in half.  Six languages did, at widths up to 118.
-#:
-#: A *filled* program has no placeholder in it, so this changes nothing for
-#: one; it only ever applies to a template.
+# : A ``{Xi}`` placeholder is.
+# : ``BooleanExample.fill``.
+# : middle leaves it unfilled.
+# :.
+# : This belongs here rather.
+# : property of the templates,.
+# : per-pattern is what let it.
+# : a ``.`` alternative tiles a.
+# : tokens still cover the.
+# : break it in half.
+# :.
+# : A *filled* program has no.
+# : one; it only ever applies.
 _PLACEHOLDER = r"\{X\d+\}"
 
 
@@ -342,83 +342,83 @@ def _join_tokens(tokens: list[str], width: int, separator: str) -> str:
     return "\n".join(lines)
 
 
-# A BIO command is a ``[0|1][o|i][x|y|z]`` triple with the ``;`` that ends
-# it, a loop-open triple carrying the ``{`` that opens its body, or the
-# ``};`` that closes one -- plus the space the boolean generator separates
-# commands with.  The commands are why BIO cannot be wrapped by character
-# count, and their varying width is why a fixed stride will not do either.
-#
-# ``{Xi}`` is here because BIO is *parameterized*: what
-# :func:`~esolangs.generate` is handed to wrap is the template, placeholders
-# and all.  Without it the tokens did not cover the program, :func:`_bio`
-# took its "I cannot read this, leave it alone" exit, and the wrapper was a
-# silent no-op on every template -- 3466 columns at eight inputs, reported
-# as wrapped.  The committed examples never saw it because they fill first.
-#
-# It stays spelled out here, unlike in :data:`_PCT_COMMAND`, because
-# :func:`_bio` tokenizes with this pattern *itself* rather than through
-# :func:`wrap_tokens` -- so it does not get :data:`_PLACEHOLDER` prepended,
-# and dropping this alternative would restore the no-op.  A test covers it.
+# A BIO command is a.
+# it, a loop-open triple.
+# ``};`` that closes one --.
+# commands with.
+# count, and their varying.
+# .
+# ``{Xi}`` is here because BIO.
+# :func:`~esolangs.generate` is.
+# and all.
+# took its "I cannot read this,.
+# silent no-op on every.
+# as wrapped.
+# .
+# It stays spelled out here,.
+# :func:`_bio` tokenizes with.
+# :func:`wrap_tokens` -- so it.
+# and dropping this alternative.
 _BIO_COMMAND = r"[01][oOiI][xXyYzZ](?:\{|;)|\};|\{X\d+\}| "
 
-# Brainfuck-family single-character commands, and the languages that
-# extend them with a digit argument (Dimensional's ``>0``/``<0``).
+# Brainfuck-family.
+# extend them with a digit.
 _DIMENSIONAL_COMMAND = r"[<>]\d+|."
 
-# 6-5's ``7``/``8`` take the *next character* as their operand, whatever it
-# is -- the interpreter's own tokenizer merges the pair without inspecting
-# it, so the operand is not restricted to the digits and letters the spec
-# names.  Matching any character (rather than, say, ``[0-9A-Z]``) keeps the
-# wrapper's token stream identical to the interpreter's on every program,
-# including ones carrying operands outside the spec's alphabet.
-#
-# ``7n`` additionally swallows the instruction it guards -- including that
-# instruction's own operand when it is another ``7n``/``8n`` -- because a
-# newline between them would be skipped in its place.  See :func:`_six_five`.
+# 6-5's ``7``/``8`` take the.
+# is -- the interpreter's own.
+# it, so the operand is not.
+# names.
+# wrapper's token stream.
+# including ones carrying.
+# .
+# ``7n`` additionally swallows.
+# instruction's own operand.
+# newline between them would be.
 _SIX_FIVE_COMMAND = r"7[\s\S](?:[78][\s\S]|[\s\S])|8[\s\S]|[\s\S]"
 
-# The languages that print through a *literal*, where a newline dropped
-# inside the literal is not whitespace between commands but a character the
-# program goes on to print (or, in Sophie's case, prints *instead* of the
-# one that was there).  Each pattern makes the literal a single unbreakable
-# token and leaves every other character its own, so the boolean programs --
-# which carry no literal -- still tokenize exactly as ``wrap_chars`` would.
-#
-# A literal wider than the width is then left on its own line rather than
-# broken, which is :func:`_join_tokens`'s existing behaviour for an
-# oversized token: a 3x program that is one ``[...]`` does not wrap.  An
-# over-wide line is the honest outcome here, since the alternative is a
-# program that prints something else.
-# Sophie's loads and branches take a *run* of digits, and the interpreter
-# matches each as one unit: ``#\$(\d+)`` for a numeric load, ``@\$(\d+){``
-# for a numeric branch, and the one-character forms behind them.  The
-# alternatives below are those four, longest first, so a break can never
-# land inside a number or between ``@$48`` and the ``{`` it opens.
-#
-# The earlier pattern spelled the load ``#\$\d+,`` with the comma required,
-# which is a different command -- so ``#$1`` fell through to the
-# one-character form, tokenized as ``#$`` and ``1``, and a newline between
-# them left a load of the character ``'\n'``.
-# ``}{`` is the last alternative and not a command at all: it is an
-# if-block's close beside its else-block's open.  A failed branch jumps to
-# the close and then tests whether the *next* character is ``{`` to decide
-# whether an else-block follows, so a newline between the two loses the
-# else.  Only that adjacency matters -- a ``}`` followed by anything else
-# was not opening an else either way.
+# The languages that print.
+# inside the literal is not.
+# program goes on to print (or,.
+# one that was there).
+# token and leaves every other.
+# which carry no literal --.
+# .
+# A literal wider than the.
+# broken, which is.
+# oversized token: a 3x program.
+# over-wide line is the honest.
+# program that prints something.
+# Sophie's loads and branches.
+# matches each as one unit:.
+# for a numeric branch, and the.
+# alternatives below are those.
+# land inside a number or.
+# .
+# The earlier pattern spelled.
+# which is a different command.
+# one-character form, tokenized.
+# them left a load of the.
+# ``}{`` is the last.
+# if-block's close beside its.
+# the close and then tests.
+# whether an else-block.
+# else.
+# was not opening an else.
 _SOPHIE_COMMAND = r"@\$\d+\{|@\$?.\{|#\$\d+|#\$?.|\}\{|."
 
-# A collapsed Minifuck ``[`` skips the next *character* (the interpreter
-# advances ``ind + 2``), so a newline sitting there is what gets skipped and
-# the instruction it should have skipped runs instead.  Consecutive ``[``
-# chain that displacement, so a whole run has to stay with the character
-# after it rather than just the last one.
+# A collapsed Minifuck ``[``.
+# advances ``ind + 2``), so a.
+# the instruction it should.
+# chain that displacement, so a.
+# after it rather than just the.
 _MINIFUCK_COMMAND = r"\[+.|."
 
-# Jaune's operators take an operand *before* them: ``3?`` jumps to label 3,
-# ``2+`` adds 2, and ``v`` is a number too, so ``v?`` jumps to the label the
-# input names.  Those pairs are the only unbreakable units.  A repeated bare
-# command (``++``) is a counted one, but splitting it changes nothing --
-# adding 1 twice is adding 2 -- so a run needs no rule of its own.
+# Jaune's operators take an.
+# ``2+`` adds 2, and ``v`` is a.
+# input names.
+# command (``++``) is a counted.
+# adding 1 twice is adding 2 --.
 _JAUNE_COMMAND = r"\d+[-+:?!$@]|v[-+?!@]|."
 _BRACKET_LITERAL = r"\[[^\]]*\]|."
 _QUOTE_LITERAL = r'"[^"]*"|.'
@@ -463,8 +463,8 @@ def _bio(program: str, width: int) -> str:
     if _bio_depth(merged) >= 2:
         return _bio_indented(merged, width)
     wrapped = _join_tokens(merged, width, separator="")
-    # A break after a command leaves its trailing separator at the end of the
-    # line; the newline separates the commands just as well, so drop it.
+    # A break after a command.
+    # line; the newline separates.
     return "\n".join(line.rstrip(" ") for line in wrapped.split("\n"))
 
 
@@ -512,7 +512,7 @@ def _bio_indented(tokens: list[str], width: int) -> str:
     lines: list[str] = []
     depth = 0
     run: list[str] = []
-    # Two spaces a level, up to the depth that still leaves a run a quarter
+    # Two spaces a level, up to the.
     # of the width to pack into.
     cap = max(0, (width - width // 4) // 2)
 
@@ -706,10 +706,10 @@ def _polynomial(program: str, width: int) -> str:
     pending = ""
     for token in program.split():
         if token in ("+", "-"):
-            # A sign already held has no term to attach to; keep it as its
-            # own line rather than dropping it.  ``format_coeffs`` never
-            # emits two in a row (it collapses ``+ -`` into ``- ``), so this
-            # is only about the helper staying total for any input.
+            # A sign already held has no.
+            # own line rather than dropping.
+            # emits two in a row (it.
+            # is only about the helper.
             if pending:
                 terms.append(pending)
             pending = token
@@ -720,7 +720,7 @@ def _polynomial(program: str, width: int) -> str:
             terms.append(token)
     if pending:
         terms.append(pending)
-    # ``f(x)``, ``=`` and the leading term are three tokens of one line.
+    # ``f(x)``, ``=`` and the.
     if len(terms) >= 3 and terms[0] == "f(x)" and terms[1] == "=":
         terms[:3] = [" ".join(terms[:3])]
     return "\n".join(_folded_term(term, width) for term in terms)
@@ -755,18 +755,18 @@ def _taglate(program: str, width: int) -> str:
     return seed + "\n" + wrap_chars(commands.replace("\n", ""), width)
 
 
-# %^2^-1's commands are single characters; the placeholder that is not one is
-# :data:`_PLACEHOLDER`'s business, not this pattern's.
+# %^2^-1's commands are single.
+# :data:`_PLACEHOLDER`'s.
 _PCT_COMMAND = r"."
 
-# What divides a %^2^-1 template's setter header from its body: a blank line,
-# so that a single newline inside either part is that part's own fold.
-#
-# Spelled here rather than imported, because importing it would pull the whole
-# ``esolangs.tools.boolean`` package -- thirty-odd generator modules -- into a
-# module that otherwise needs nothing but the standard library.  The generator
-# owns the value (``pct_squared_minus_one._HEADER_END``) and a test asserts the
-# two agree, so the duplication cannot drift silently.
+# What divides a %^2^-1.
+# so that a single newline.
+# .
+# Spelled here rather than.
+# ``esolangs.tools.boolean``.
+# module that otherwise needs.
+# owns the value.
+# two agree, so the duplication.
 _PCT_HEADER_END = "\n\n"
 
 
@@ -814,7 +814,7 @@ def _pct_header(header: str, width: int) -> str:
     before it reads.
     """
     units = [unit + ";" for unit in header.split(";")]
-    units[-1] = units[-1][:-1]  # the last declaration has no ``;`` after it
+    units[-1] = units[-1][:-1]  # the last declaration has no.
     rows: list[str] = []
     for row in _join_tokens(units, width, separator="").split("\n"):
         rows.append(row if len(row) <= width else wrap_chars(row, width))
@@ -839,31 +839,31 @@ def _qoibl(program: str, width: int) -> str:
     return "\n".join(wrap_space_delimited(line, width) for line in program.split("\n"))
 
 
-# Language id -> the wrapper that language needs.  A language absent here
-# is never wrapped: either its newlines are semantic (the 2D grid
-# languages), it rejects them outright (NoComment), or its own execution
-# model makes character position meaningful (ROTfuck).  See the module
-# docstring for why each exclusion is an exclusion.
+# Language id -> the wrapper.
+# is never wrapped: either its.
+# languages), it rejects them.
+# model makes character.
+# docstring for why each.
 WRAPPERS = {
     "addsubjump": wrap_grid,
     "decleq": wrap_grid,
     "sbleq": wrap_grid,
-    # Space-delimited, but its ``+``/``-`` are tokens of their own and its
-    # terms outgrow any width, so the plain space wrapper stranded every
-    # sign on a line by itself; ``_polynomial`` keeps each sign with its
-    # term and gives each term a line.
+    # Space-delimited, but its.
+    # terms outgrow any width, so.
+    # sign on a line by itself;.
+    # term and gives each term a.
     "polynomial": _polynomial,
-    # Space-delimited, but ``GOTO`` and its target must stay on one line.
+    # Space-delimited, but ``GOTO``.
     "bitdeque": _bitdeque,
     "bio": _bio,
     "dimensional": _dimensional,
-    # Almost single-character, but 7n/8n are two-character tokens that a
-    # plain character wrap splits -- see :func:`_six_five`.
+    # Almost single-character, but.
+    # plain character wrap splits.
     "six_five": _six_five,
     "brainfuck": wrap_chars,
     "three_d_brainfuck": wrap_chars,
     "circlefuck": wrap_chars,
-    # Not single-character after all: ``[`` skips the character after it.
+    # Not single-character after.
     "minifuck": _minifuck,
     "factor": wrap_chars,
     "home_row": wrap_chars,
@@ -873,60 +873,60 @@ WRAPPERS = {
     "rotfuck": wrap_chars,
     "bfstack": wrap_chars,
     "suffolk": wrap_chars,
-    # 123 is single-character commands throughout -- its trailing ``1`` is a
-    # terminator, not a structural line -- so any position is a legal break.
+    # 123 is single-character.
+    # terminator, not a structural.
     "one_two_three": wrap_chars,
-    # SLOW ACV MAMMALIAN's commands are whole words (``SEED``, ``SPRINT``,
-    # ``DIGEST``), so it wraps on whitespace like the numeric languages;
-    # breaking by character count would split a word and change the program.
+    # SLOW ACV MAMMALIAN's commands.
+    # ``DIGEST``), so it wraps on.
+    # breaking by character count.
     "slow_acv_mammalian": wrap_space_delimited,
-    # Space-delimited too, and the space is the only safe break: Lamfunc's
-    # ``vs``/``vg``/``0b1`` and RAM0's operands (``L C 19``) are multi-
-    # character tokens that a character wrap splits.  RAM0's numbers are
-    # instruction indices, which a break between tokens leaves alone.
+    # Space-delimited too, and the.
+    # ``vs``/``vg``/``0b1`` and.
+    # character tokens that a.
+    # instruction indices, which a.
     "lamfunc": wrap_space_delimited,
     "ram0": wrap_space_delimited,
-    # Operand-before-operator, so a break between the two is a load error.
+    # Operand-before-operator, so a.
     "jaune": _jaune,
-    # Their programs are single long lines that need wrapping, and they
-    # print through a literal that must not be broken; the literal-aware
-    # wrappers above are what keeps a break out of one.
+    # Their programs are single.
+    # print through a literal that.
+    # wrappers above are what keeps.
     "modulous": _bracket_literal,
     "eval": _quote_literal,
     "sophie": _sophie,
     "three_x": _bracket_literal,
-    # Forth's commands are single characters throughout, with no literal.
+    # Forth's commands are single.
     "forth": wrap_chars,
-    # Both concatenate their command text before reading it, so a line break
-    # can never land inside a command: Taglate joins every line after the
-    # queue seed and only then tokenizes (so a two-character ``gy``/``gz``
-    # cannot be split across rows), and A Painter Ant drops whitespace
-    # outright.  Their boolean programs are the single long lines that
+    # Both concatenate their.
+    # can never land inside a.
+    # queue seed and only then.
+    # cannot be split across rows),.
+    # outright.
     # need this.
     "taglate": _taglate,
     "a_painter_ant": wrap_chars,
-    # Its body is the longest unwrapped line in the corpus -- 2444 columns at
-    # ``n == 3`` -- and its header is structural, so it wraps like Taglate.
+    # Its body is the longest.
+    # ``n == 3`` -- and its header.
     "pct_squared_minus_one": _pct_squared_minus_one,
-    # Single-character stack commands, no literal and no multi-character
-    # token, so any position is a legal break.
+    # Single-character stack.
+    # token, so any position is a.
     "bf_pda": wrap_chars,
-    # One statement a line, each of space-separated tokens, and a newline
-    # between two tokens is just whitespace -- so each line folds on its own.
+    # One statement a line, each of.
+    # between two tokens is just.
     "qoibl": _qoibl,
 }
 
 
-# The languages whose wrapper handles an already-multi-line program itself,
-# rather than being skipped by :func:`wrap_program` for having a newline in
-# it.  Taglate's first line seeds its queue and is structural, so its
-# wrapper keeps that row whole and folds only the commands below it;
-# %^2^-1's first line declares its setters and is structural for the same
-# reason, being what ``fill`` parses to instantiate the body.
-# Qoibl is multi-line for a third reason: none of its lines is structural,
-# but every one is a statement, so its wrapper folds each separately rather
-# than reflowing the program as one stream.  The language would not notice
-# the difference -- a newline is whitespace to it -- but the reader would.
+# The languages whose wrapper.
+# rather than being skipped by.
+# it.
+# wrapper keeps that row whole.
+# %^2^-1's first line declares.
+# reason, being what ``fill``.
+# Qoibl is multi-line for a.
+# but every one is a statement,.
+# than reflowing the program as.
+# the difference -- a newline.
 MULTILINE = frozenset({"taglate", "pct_squared_minus_one", "qoibl"})
 
 

@@ -27,7 +27,7 @@ def load_script() -> object:
     return module
 
 
-# 2.9s over 6 tests: shells out to git.
+# 2.9s over 6 tests: shells out.
 @pytest.mark.medium
 class TestChangedFiles:
     """The list handed to a checker has to be one a checker can accept."""

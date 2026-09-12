@@ -15,7 +15,7 @@ import re
 import sys
 from pathlib import Path
 
-# hook repo (as it appears in .pre-commit-config.yaml) -> pyproject dist name
+# hook repo (as it appears in.
 HOOKS = {
     "https://github.com/charliermarsh/ruff-pre-commit": "ruff",
 }

@@ -24,7 +24,7 @@ HELLO_WORLD = "\n".join(
         "right(:term:)",
         "term=','",
         "right(:term:)",
-        "term=%-['a']'A'%",  # 'a' - 'A' = 32, a space
+        "term=%-['a']'A'%",  # 'a' - 'A' = 32, a space.
         "right(:term:)",
         "term='w'",
         "right(:term:)",
@@ -47,7 +47,7 @@ TRUTH_MACHINE = "\n".join(
         "right(:term:)",
         "tmach(:x:)if(x)",
         "fi",
-        "tmach(:%-[read]22%:)",  # the wiki's 48 parses as 100; 22 parses as 48
+        "tmach(:%-[read]22%:)",  # the wiki's 48 parses as 100;.
     ]
 )
 
@@ -93,10 +93,10 @@ class TestWikiPrograms:
 class TestLiterals:
     def test_integer_literals_are_base23_parsed(self) -> None:
         """Base-14-written literals are parsed in base 23."""
-        assert run_program("term=10") == "23"  # 1*23 + 0
-        assert run_program("term=1D") == "36"  # 1*23 + 13
-        assert run_program("term=22") == "48"  # 2*23 + 2, the ASCII '0'
-        assert run_program("term=48") == "100"  # 4*23 + 8
+        assert run_program("term=10") == "23"  # 1*23 + 0.
+        assert run_program("term=1D") == "36"  # 1*23 + 13.
+        assert run_program("term=22") == "48"  # 2*23 + 2, the ASCII '0'.
+        assert run_program("term=48") == "100"  # 4*23 + 8.
 
     def test_single_letter_literals(self) -> None:
         """A bare letter that is no variable is a base-23 literal digit."""
@@ -110,7 +110,7 @@ class TestLiterals:
 
     def test_byte_literals(self) -> None:
         assert run_program("term='A'") == "A"
-        assert run_program("term=' '") == " "  # a space is a valid byte literal
+        assert run_program("term=' '") == " "  # a space is a valid byte.
 
 
 class TestMath:
@@ -123,8 +123,8 @@ class TestMath:
         assert run_program("term=%+['A']1%") == "66"
 
     def test_addition_and_subtraction(self) -> None:
-        assert run_program("term=%+[A]B%") == "21"  # 10 + 11
-        assert run_program("term=%-[A]B%") == "-1"  # 10 - 11
+        assert run_program("term=%+[A]B%") == "21"  # 10 + 11.
+        assert run_program("term=%-[A]B%") == "-1"  # 10 - 11.
 
     def test_division_truncates_toward_zero(self) -> None:
         assert run_program("term=%/[6]3%") == "2"
@@ -156,7 +156,7 @@ class TestMath:
 
     def test_math_uses_tape_cells(self) -> None:
         """A tape operand in math reads the value under its head."""
-        assert run_program("term=%-[read]22%", stdin="1\n") == "1"  # 49 - 48
+        assert run_program("term=%-[read]22%", stdin="1\n") == "1"  # 49 - 48.
 
 
 class TestVariables:
@@ -176,7 +176,7 @@ class TestVariables:
                 "term=x",
             ]
         )
-        assert run_program(program) == "\x00"  # 255 + 1 wraps to 0
+        assert run_program(program) == "\x00"  # 255 + 1 wraps to 0.
 
     def test_type_mismatch_prints_a_digit(self) -> None:
         """A mismatched assignment leaves the variable and prints '0' to term."""
@@ -225,16 +225,16 @@ class TestCalls:
 
     def test_conditional_call(self) -> None:
         program = "\n".join(["fd f :x", "term='y'", "fi", "term='a'", "f(:0:)if(0)"])
-        assert run_program(program) == "a"  # 0 is false, so f never runs
+        assert run_program(program) == "a"  # 0 is false, so f never runs.
         program = "\n".join(["fd f :x", "term='y'", "fi", "term='a'", "f(:0:)if(1)"])
-        assert run_program(program) == "y"  # 1 is true, so f overwrites
+        assert run_program(program) == "y"  # 1 is true, so f overwrites.
 
     def test_conditional_call_on_a_tape(self) -> None:
         program = "\n".join(
             ["fd f :x", "term='y'", "fi", "term='a'", "f(:0:)if(:read:)"]
         )
-        assert run_program(program, stdin="1\n") == "y"  # nonzero cell fires
-        assert run_program(program, stdin="") == "a"  # an EOF cell is zero
+        assert run_program(program, stdin="1\n") == "y"  # nonzero cell fires.
+        assert run_program(program, stdin="") == "a"  # an EOF cell is zero.
 
     def test_recursion_counts_down(self) -> None:
         program = "\n".join(
@@ -245,11 +245,11 @@ class TestCalls:
                 "n=%-[n]1%",
                 "count(:n:)if(n)",
                 "fi",
-                "count(:A:)",  # A = 10
+                "count(:A:)",  # A = 10.
                 "term=total",
             ]
         )
-        assert run_program(program) == "55"  # 10 + ... + 1
+        assert run_program(program) == "55"  # 10 + .
 
     def test_deep_recursion_no_longer_capped(self) -> None:
         """A correct, terminating recursion past the old 250-level cap completes."""
@@ -261,11 +261,11 @@ class TestCalls:
                 "n=%-[n]1%",
                 "count(:n:)if(n)",
                 "fi",
-                "count(:0D1:)",  # 0D1 = 300 in base 23
+                "count(:0D1:)",  # 0D1 = 300 in base 23.
                 "term=total",
             ]
         )
-        assert run_program(program) == "45150"  # 300 + ... + 1
+        assert run_program(program) == "45150"  # 300 + .
 
     def test_undefined_function_halts(self) -> None:
         with pytest.raises(HaltError, match="undefined function"):
@@ -309,11 +309,11 @@ class TestTapes:
         assert run_program(program) == "a\x00c"
 
     def test_user_tape_declarations(self) -> None:
-        # [integer] declares a byte tape
+        # [integer] declares a byte.
         assert run_program("t[integer]\nt='A'\nterm=t") == "A"
-        # [byte] declares an integer tape; a byte mismatch prints the digit
+        # [byte] declares an integer.
         assert run_program("t[byte]\nt=1\nterm=t") == "1"
-        assert run_program("t[byte]\nt='A'\nterm=t") == "\x00"  # mismatch
+        assert run_program("t[byte]\nt='A'\nterm=t") == "\x00"  # mismatch.
 
     def test_redeclaring_a_tape_is_a_noop(self) -> None:
         program = "t[integer]\nt[integer]\nt='A'\nterm=t"
@@ -334,7 +334,7 @@ class TestTapes:
                 "term=read",
             ]
         )
-        assert run_program(program, stdin="hi\n") == "\x00"  # past the row's end
+        assert run_program(program, stdin="hi\n") == "\x00"  # past the row's end.
 
 
 class TestBuiltins:
@@ -355,11 +355,11 @@ class TestRobustness:
         program = "term='a'\tthis is a comment\nterm='b'"
         assert run_program(program) == "b"
 
-    # Each malformed program paired with the message it must raise.  A list
-    # asserting only that *something* was rejected proves too little: a
-    # check firing in the wrong place -- or one message swapped for another
-    # -- still passes it.  The positions matter too, so they are pinned here
-    # rather than left to a bare ``pytest.raises(ValueError)``.
+    # Each malformed program paired.
+    # asserting only that.
+    # check firing in the wrong.
+    # -- still passes it.
+    # rather than left to a bare.
     REJECTIONS: ClassVar[list[tuple[str, str]]] = [
         ("fi", "fi without a matching fd"),
         ("fd f :x\nterm='a'", "function 'f' is missing its fi"),
@@ -367,8 +367,8 @@ class TestRobustness:
         ("fd x", "fd header needs a colon"),
         ("fd 5 :x", "fd header needs a function name"),
         ("fd x 5:", "the fd argument must be an identifier"),
-        # The colon leading the line: there is no token before it, so the
-        # argument can only come from after -- and ``fd`` is not one.
+        # The colon leading the line:.
+        # argument can only come from.
         (":fd f x", "the fd argument must be an identifier"),
         ("f(:x:g)", "a call has exactly one function name"),
         ("f(:x)", "a call needs its argument between two colons"),
@@ -458,7 +458,7 @@ class TestMachine:
         while not machine.halted:
             machine.step()
         assert machine.state.io.getvalue() == "H"
-        machine.step()  # stepping a halted machine is a no-op
+        machine.step()  # stepping a halted machine is.
         assert machine.state.io.getvalue() == "H"
 
     def test_a_program_that_never_writes_the_term_prints_nothing(self) -> None:

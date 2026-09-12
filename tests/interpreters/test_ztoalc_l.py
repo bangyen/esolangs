@@ -388,7 +388,7 @@ class TestMachine:
 
         machine = _Machine(["1"], IO())
         assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
+        machine.step()  # stepping a halted machine is.
         assert machine.halted
 
 

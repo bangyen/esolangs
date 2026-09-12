@@ -41,9 +41,9 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# The gate only speaks for the package coverage is configured to measure
-# (`source = ["src/esolangs"]`).  A touched file in tests/ or scripts/ has no
-# coverage record to check, so it is not evidence of anything either way.
+# The gate only speaks for the.
+# (`source = ["src/esolangs"]`).
+# coverage record to check, so.
 MEASURED = "src/esolangs/"
 
 
@@ -71,9 +71,9 @@ def _added_lines(base: str) -> dict[str, set[int]] | None:
         if line.startswith("+++ b/"):
             current = line[6:]
         elif line.startswith("@@") and current is not None:
-            # "@@ -old,count +new,count @@" -- the new-side start and length
-            # are what the branch is adding.  A hunk that deletes only has
-            # length 0 and contributes nothing.
+            # "@@ -old,count +new,count @@".
+            # are what the branch is adding.
+            # length 0 and contributes.
             span = line.split("+")[1].split("@@")[0].strip()
             start, _, count = span.partition(",")
             length = int(count) if count else 1
@@ -115,9 +115,9 @@ def _diff_base() -> str | None:
         if (base := _rev("merge-base", ref, "HEAD")) is not None
     ]
     if bases:
-        # `--is-ancestor` orders the two candidates: the one *descended* from
-        # the other is further along the branch's history, so it is the
-        # tighter base.  Equal bases make either answer the same.
+        # `--is-ancestor` orders the.
+        # the other is further along.
+        # tighter base.
         best = bases[0]
         for other in bases[1:]:
             if _rev("rev-parse", best) != _rev("rev-parse", other) and (
@@ -162,9 +162,9 @@ def _coverage_json(data_file: Path) -> dict[str, dict[str, Any]] | None:
     )
     if got.returncode != 0:
         return None
-    # `coverage json -o -` writes the document to stdout, but a warning (an
-    # unreadable data file, say) lands there too, so the payload is located
-    # rather than assumed to start at byte zero.
+    # `coverage json -o -` writes.
+    # unreadable data file, say).
+    # rather than assumed to start.
     start = got.stdout.find("{")
     if start < 0:
         return None
@@ -217,27 +217,27 @@ def main() -> int:
     unmeasured: list[str] = []
     checked = 0
     arcs_checked = 0
-    # Branch data is optional: a `pytest --cov` run without `--cov-branch`
-    # records no arcs at all, and a gate that failed on its absence would
-    # block every such run.  Only a file that *has* arc data is judged on it.
+    # Branch data is optional: a.
+    # records no arcs at all, and a.
+    # block every such run.
     branch_data = False
     for path in sorted(targets):
         record = files.get(path)
         if record is None:
-            # Coverage records a file only if it was imported.  A brand-new
-            # module that no test imports yet is exactly the gap this gate
-            # exists to catch, so it is reported rather than skipped.
+            # Coverage records a file only.
+            # module that no test imports.
+            # exists to catch, so it is.
             unmeasured.append(path)
             continue
-        # Whole-file: every statement coverage knows about, not just the
-        # ones this branch's hunks happen to name.
+        # Whole-file: every statement.
+        # ones this branch's hunks.
         missing = sorted(record["missing_lines"])
         checked += len(record["executed_lines"]) + len(record["missing_lines"])
         if missing:
             gaps.append((path, missing))
 
-        # An arc is `[from, to]`.  A negative `to` is coverage's spelling for
-        # leaving the function, which is a real untaken exit rather than a
+        # An arc is `[from, to]`.
+        # leaving the function, which.
         # line number.
         summary = record.get("summary", {})
         if summary.get("num_branches") is None:

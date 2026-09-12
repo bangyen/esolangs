@@ -27,24 +27,24 @@ class Test3x:
         assert run_program("[Hello, World!]") == "Hello, World!"
 
     def test_literal_skips_past_bracket(self) -> None:
-        # the literal ends at the first ], so trailing commands still run
+        # the literal ends at the first.
         assert run_program("[A]333x!") == "A0"
 
     def test_push_three(self) -> None:
         assert run_program("3!") == "3"
 
     def test_x_operation(self) -> None:
-        # (3-3)/3 = 0, (3-0)/3 = 1
+        # (3-3)/3 = 0, (3-0)/3 = 1.
         assert run_program("333x!") == "0"
         assert run_program("3333x3x!") == "1"
 
     def test_fraction_output(self) -> None:
-        # (1-3)/3 = -2/3, printed as a fraction
+        # (1-3)/3 = -2/3, printed as a.
         assert run_program("3333333x3xx!") == "-2/3"
 
     def test_swap(self) -> None:
         assert run_program("333x3!") == "3"
-        assert run_program("333x3#!") == "0"  # swapped
+        assert run_program("333x3#!") == "0"  # swapped.
 
     def test_printing_pops_one_value_at_a_time(self) -> None:
         """``!`` removes the top and leaves everything under it.
@@ -58,28 +58,28 @@ class Test3x:
         assert run_program("????!!!", "1\n2\n3\n4\n") == "432"
 
     def test_read(self) -> None:
-        assert run_program("33?x!", "6\n") == "1"  # (6-3)/3
-        assert run_program("?3^!", "6\n") == "3"  # unassigned variable -> 3
+        assert run_program("33?x!", "6\n") == "1"  # (6-3)/3.
+        assert run_program("?3^!", "6\n") == "3"  # unassigned variable -> 3.
 
     def test_store_and_recall(self) -> None:
-        assert run_program("3^!") == "3"  # default value for an unassigned key
-        assert run_program("3333xv3^!") == "0"  # store 0 under 3, recall it
+        assert run_program("3^!") == "3"  # default value for an.
+        assert run_program("3333xv3^!") == "0"  # store 0 under 3, recall it.
 
     def test_storing_a_second_key_keeps_the_first(self) -> None:
         """A binding replaces only its own key, not the whole variable store."""
-        # Store 0 under 3, then 3 under 0.  The final lookup proves the
-        # first binding survived the insertion of the second one.
+        # Store 0 under 3, then 3 under.
+        # first binding survived the.
         assert run_program("3333xv3333x3v3^!") == "0"
 
     def test_loop(self) -> None:
-        # push 1, loop prints 0 then exits on the 0
+        # push 1, loop prints 0 then.
         assert run_program("3333x3x(33x)!") == "0"
-        # push 0, the loop skips
+        # push 0, the loop skips.
         assert run_program("333x(3)!") == "0"
 
     def test_loop_repeats(self) -> None:
-        # push 3, loop: 33x -> 0, exit; but with a counter... use input: ? reads n
-        # (3-?)/3 ... instead verify the loop body runs while top nonzero
+        # push 3, loop: 33x -> 0, exit;.
+        # (3-?)/3 .
         assert run_program("3(33x)!") == "0"
 
     def test_error_empty_stack(self) -> None:
@@ -105,10 +105,10 @@ class Test3x:
         this walks a program to every one of them.
         """
         for code, stdin, message in (
-            ("!", "", "empty stack"),  # through _pop
-            ("x", "", "empty stack"),  # the arithmetic's first pop
-            ("(", "", "empty stack"),  # the loop head's own guard
-            (")", "", "empty stack"),  # and the loop tail's
+            ("!", "", "empty stack"),  # through _pop.
+            ("x", "", "empty stack"),  # the arithmetic's first pop.
+            ("(", "", "empty stack"),  # the loop head's own guard.
+            (")", "", "empty stack"),  # and the loop tail's.
             ("333x33x!", "", "division by zero"),
             ("333x(", "", "unmatched ("),
             ("3)", "", "unmatched )"),
@@ -122,13 +122,13 @@ class Test3x:
                 run_program(code, stdin)
 
     def test_loop_jumps_back_on_nonzero_top(self) -> None:
-        # pass 1 ends with a 3 on top (jump back), pass 2 with a 0 (exit)
+        # pass 1 ends with a 3 on top.
         assert run_program("333(33x#)!") == "0"
 
     def test_skipped_loop_counts_nested_brackets(self) -> None:
-        # 333x leaves 0 on top, so the outer ( skips its body; the nested
-        # () inside must be counted so the skip stops at the *matching* ),
-        # not the inner one, leaving the trailing 3 to be printed
+        # 333x leaves 0 on top, so the.
+        # () inside must be counted so.
+        # not the inner one, leaving.
         assert run_program("333x(3()3)3!") == "3"
         assert run_program("333x(())3!") == "3"
 
@@ -225,9 +225,9 @@ class TestStepMachine:
         assert run_program("[a]b[c]") == "ac"
         assert run_program("[hi][yo]") == "hiyo"
         assert run_program("[]") == ""
-        # An empty literal alone prints nothing whether its closer is found
-        # or missed, so it needs a real literal behind it: a search starting
-        # a character late runs past this closer into the next pair.
+        # An empty literal alone prints.
+        # or missed, so it needs a real.
+        # a character late runs past.
         assert run_program("[][a]") == "a"
 
     def test_printing_uses_the_fraction_form_only_when_it_has_to(self) -> None:
@@ -255,7 +255,7 @@ class TestStepMachine:
 
         machine = _Machine("", ScriptedIO())
         assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
+        machine.step()  # stepping a halted machine is.
         assert machine.stack == ()
 
 
@@ -274,8 +274,8 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     halting_program = "3!"
     looping_program = "3()"
     state_views = ("ind", "variables", "ip", "memory")
-    # Assigns a variable, so `variables` moves.  `memory` stays empty
-    # for every program in this file.
+    # Assigns a variable, so.
+    # for every program in this.
     viewing_program = "3333xv3^!"
     constant_views = frozenset({"memory"})
 

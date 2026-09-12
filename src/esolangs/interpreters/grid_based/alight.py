@@ -81,8 +81,8 @@ from typing import Literal, TypeGuard, cast
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-#: Headings as ``(drow, dcol)`` in screen coordinates -- row grows downward,
-#: so a *left* turn (counter-clockwise on the page) takes east to north.
+# : Headings as ``(drow,.
+# : so a *left* turn.
 type _Heading = tuple[int, int]
 
 _EAST: _Heading = (0, 1)
@@ -90,24 +90,24 @@ _WEST: _Heading = (0, -1)
 _NORTH: _Heading = (-1, 0)
 _SOUTH: _Heading = (1, 0)
 
-# Turning is a rotation of this cycle: the next entry is a right turn, the
-# previous a left one.  Written as a cycle rather than two dicts so the two
+# Turning is a rotation of this.
+# previous a left one.
 # directions cannot disagree.
 _CLOCKWISE: tuple[_Heading, ...] = (_NORTH, _EAST, _SOUTH, _WEST)
 
-#: The four special values, as their own singleton type.  A special is not a
-#: number -- comparing one against a number is false rather than an error --
-#: so it needs to be distinguishable from ``0``, which ``nil`` is not if the
-#: specials are spelled as ints.
+# : The four special values, as.
+# : number -- comparing one.
+# : so it needs to be.
+# : specials are spelled as.
 type _Special = Literal["nil", "eof", "left", "right"]
 _SPECIALS: tuple[_Special, ...] = ("nil", "eof", "left", "right")
 
-#: A value: a number, a list of values, or one of the four specials.
+# : A value: a number, a list.
 type _Value = float | list["_Value"] | _Special
 
-#: Reserved words a variable may not be named.  The wiki says variable names
-#: are alphanumeric and "not reserved words" without listing them; these are
-#: every word the grammar itself gives a meaning.
+# : Reserved words a variable.
+# : are alphanumeric and "not.
+# : every word the grammar.
 _RESERVED = frozenset(
     {
         "begin",
@@ -128,16 +128,16 @@ _RESERVED = frozenset(
     }
 )
 
-#: The four functions the language supplies.  Everything else a call
-#: names is a ``func`` on the grid, which ``step`` runs by pushing a
-#: walker rather than by evaluating it in place.
+# : The four functions the.
+# : names is a ``func`` on the.
+# : walker rather than by.
 _BUILTINS = ("at", "len", "trunc", "sign")
 
-# There is no call-depth cap.  A call pushes a walker rather than running
-# the callee inside the caller's step, so a runaway program grows the
-# walker list on the heap and never touches Python's stack.  That class
-# revisits no state, so it is what ``esolangs.run``'s wall-clock
-# ``timeout`` is for -- the reasoning ``grapheme.py`` records.
+# There is no call-depth cap.
+# the callee inside the.
+# walker list on the heap and.
+# revisits no state, so it is.
+# ``timeout`` is for -- the.
 
 
 class _Walker:
@@ -219,7 +219,7 @@ def _read_word(grid: list[str], row: int, col: int, heading: _Heading) -> str:
     """
     drow, dcol = heading
     out: list[str] = []
-    for _ in range(5):  # ``begin`` is the longest word this is asked for
+    for _ in range(5):  # ``begin`` is the longest word.
         if not (0 <= row < len(grid) and 0 <= col < len(grid[0])):
             return "".join(out)
         out.append(grid[row][col])
@@ -268,8 +268,8 @@ def _scan(
         col += dcol
     if quoted or escape:
         raise ValueError("unterminated string literal")
-    # Stepped off the grid: back up onto the last in-bounds cell, which is
-    # the pivot an edge-terminated command ends on.
+    # Stepped off the grid: back up.
+    # the pivot an edge-terminated.
     return "".join(text), row - drow, col - dcol
 
 
@@ -307,9 +307,9 @@ class _Parser:
         return self.text[start : self.pos]
 
 
-# The binary operators, longest spelling first is unnecessary -- all are one
-# character -- but the set is named so the parser and the evaluator cannot
-# drift on which characters are operators.
+# The binary operators, longest.
+# character -- but the set is.
+# drift on which characters are.
 _BINARY = frozenset("+-*/=<>&|^")
 
 
@@ -320,10 +320,10 @@ def _parse_expr(p: _Parser) -> "_Expr":
         c = p.peek()
         if c not in _BINARY or c == "":
             return node
-        # A '-' directly before a digit is still an operator here, never a
-        # sign: ``len{l}-0.5`` is a subtraction, and an operand position is
-        # the only place a leading '-' could be a negation.  Alight has no
-        # unary minus, so there is no ambiguity to resolve.
+        # A '-' directly before a digit.
+        # sign: ``len{l}-0.5`` is a.
+        # the only place a leading '-'.
+        # unary minus, so there is no.
         p.pos += 1
         node = ("bin", c, node, _parse_operand(p))
 
@@ -339,11 +339,11 @@ def _parse_operand(p: _Parser) -> "_Expr":
     if c == "'":
         p.pos += 1
         if p.pos >= len(p.text):  # pragma: no cover - _scan catches it first
-            # Unreachable from a real program: a trailing ``'`` shields the
-            # cell after it, so the command either runs on past its
-            # terminator or hits the grid edge, where ``_scan`` raises
-            # "unterminated string literal".  Kept as a guard because
-            # ``_parse_operand`` is also called on hand-built text.
+            # Unreachable from a real.
+            # cell after it, so the command.
+            # terminator or hits the grid.
+            # "unterminated string literal".
+            # ``_parse_operand`` is also.
             raise ValueError("character literal ends early")
         p.pos += 1
         return ("num", float(ord(p.text[p.pos - 1])))
@@ -354,11 +354,11 @@ def _parse_operand(p: _Parser) -> "_Expr":
             chars.append(("num", float(ord(p.text[p.pos]))))
             p.pos += 1
         if p.pos >= len(p.text):  # pragma: no cover - _scan catches it first
-            # Unreachable from a real program, like the ``'`` guard above:
-            # ``_scan`` tracks the same quoting, so a command whose ``"``
-            # never closes runs to the grid edge and is refused there with
-            # this message.  Kept because the parser is also called on
-            # hand-built text, where nothing has scanned it.
+            # Unreachable from a real.
+            # ``_scan`` tracks the same.
+            # never closes runs to the grid.
+            # this message.
+            # hand-built text, where.
             raise ValueError("unterminated string literal")
         p.pos += 1
         return ("list", chars)
@@ -407,21 +407,21 @@ def _parse_args(p: _Parser, close: str) -> list["_Expr"]:
         p.pos += 1
 
 
-#: A parsed expression tree.  Tuples rather than classes: they are immutable
-#: and hashable, so a snapshot can carry one, and the evaluator dispatches on
+# : A parsed expression tree.
+# : and hashable, so a snapshot.
 #: the tag.
 type _Expr = tuple[object, ...]
 
-#: One instant of a walk: ``(row, col, heading, vars)`` -- where the pointer
-#: is, which way it is going, and the frame it is going there with.  The grid
-#: is not in it: no command writes to the program, so it is a constant of the
-#: run rather than state, and holding it here would make every snapshot carry
+# : One instant of a walk:.
+# : is, which way it is going,.
+# : is not in it: no command.
+# : run rather than state, and.
 #: a copy of the source.
-#:
-#: ``vars`` is frozen to nested tuples by :func:`_freeze` before a snapshot
-#: stores it, because a variable may hold a list -- and since three-argument
-#: ``at`` writes in place, a live reference would let a later command mutate
-#: a snapshot the cycle detector had already banked.
+# :.
+# : ``vars`` is frozen to.
+# : stores it, because a.
+# : ``at`` writes in place, a.
+# : a snapshot the cycle.
 type _State = tuple[int, int, _Heading, tuple[object, ...]]
 
 
@@ -492,8 +492,8 @@ def _arith(op: str, left: _Value, right: _Value) -> _Value:
     if isinstance(left, list):
         return _repeat(op, left, right)
     if isinstance(right, list):
-        # Repetition is commutative in the spelling: ``3 * "ab"`` and
-        # ``"ab" * 3`` are the same list.
+        # Repetition is commutative in.
+        # ``"ab" * 3`` are the same.
         return _repeat(op, right, left)
     if not (_is_num(left) and _is_num(right)):
         raise HaltError(f"cannot apply {op!r} to {left!r} and {right!r}")
@@ -553,20 +553,20 @@ class _Machine:
     :func:`esolangs.vm.run_until_halt_or_cycle`.
     """
 
-    #: Whether a read past the end of the input yields a *value* here
-    #: rather than raising.  Forty-five of the sixty-nine raise
-    #: :class:`~esolangs.exceptions.InputExhaustedError`, which is the
-    #: package norm and what :func:`esolangs.run` documents; this one does
-    #: not, so an underfed program answers a different row of its table
-    #: instead of refusing, and a caller has no way to tell from the output
+    # : Whether a read past the end.
+    # : rather than raising.
+    # :.
+    # : package norm and what.
+    # : not, so an underfed program.
+    # : instead of refusing, and a.
     #: that it happened.
-    #:
-    #: Declared rather than changed.  The zero-beyond-input convention was
-    #: audited against every wiki page and settled deliberately
-    #: (``docs/limitations.md``, Interpreter conventions); rewriting it
-    #: would be a decision about what these languages *mean*, not a fix.
-    #: What was wrong was that nothing said so, so the promise ``run`` made
-    #: was false for seven languages and a generic caller could not find
+    # :.
+    # : Declared rather than.
+    # : audited against every wiki.
+    # : (``docs/limitations.md``,.
+    # : would be a decision about.
+    # : What was wrong was that.
+    # : was false for seven.
     #: out which.
     eof_is_a_value = True
 
@@ -582,8 +582,8 @@ class _Machine:
             raise ValueError("program has no 'begin'")
         row, col, heading = start
         drow, dcol = heading
-        # The walk resumes from just past ``begin``'s last character; the
-        # ``;`` that terminates it is the first thing ``_scan`` will see.
+        # The walk resumes from just.
+        # ``;`` that terminates it is.
         self.walkers = [_Walker(row + 5 * drow, col + 5 * dcol, heading, {})]
 
     @property
@@ -622,19 +622,19 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # Every walker, not only the innermost: a callee that returns to a
-        # caller standing somewhere else is a different state, and a lap
-        # that consumed a line is not a repeat.
+        # Every walker, not only the.
+        # caller standing somewhere.
+        # that consumed a line is not a.
         return (
             tuple(walker.key() for walker in self.walkers),
             self.halted,
             self.io.position(),
         )
 
-    #: ``ip`` is a cell of the program's own rectangle: the first two
-    #: parts are a row and a column, and the rest is a heading.  Without
-    #: this a caller cannot tell the pair from a call depth or a frame
-    #: stack, which look identical and mean somewhere else entirely.
+    # : ``ip`` is a cell of the.
+    # : parts are a row and a.
+    # : this a caller cannot tell.
+    # : stack, which look identical.
     ip_shape = "grid"
 
     @property
@@ -713,8 +713,8 @@ class _Machine:
         name = cast(str, expr[1])
         if name not in _BUILTINS:
             return ("call", name, args), name
-        # A builtin with every argument resolved: run it now and keep the
-        # value, so a re-entry never runs it again.
+        # A builtin with every argument.
+        # value, so a re-entry never.
         return ("val", _builtin(name, [self._eval(a) for a in args])), None
 
     def _resolve(self, text: str, word: str) -> bool:
@@ -768,7 +768,7 @@ class _Machine:
             heading = _turned(heading, left=_truth(self._eval_rest(text, "turn")))
         elif word == "skip":
             if _truth(self._eval_rest(text, "skip")):
-                # Consume the next command without running it, from just
+                # Consume the next command.
                 # past this one's pivot.
                 drow, dcol = heading
                 _, row, col = _scan(self.grid, row + drow, col + dcol, heading)
@@ -810,9 +810,9 @@ class _Machine:
     def _exec(self, text: str, word: str) -> None:
         """Run one non-control command."""
         if word == "":
-            # A command of nothing but whitespace is the wiki's nop.  Every
-            # cell between two semicolons is legal there, which is what lets
-            # a vertical command carry a blank row.
+            # A command of nothing but.
+            # cell between two semicolons.
+            # a vertical command carry a.
             if text.strip():
                 raise ValueError(f"cannot parse command {text!r}")
             return
@@ -841,22 +841,22 @@ class _Machine:
             self._write(self.vars[self._existing(text)])
             return
         if word == "wait":
-            # Evaluated for its errors and discarded: a sleep is unobservable
-            # through this repo's IO and would only hang the suite.
+            # Evaluated for its errors and.
+            # through this repo's IO and.
             self._eval_rest(text, "wait")
             return
-        # A bare *call* is a command, run for its effect and its value
-        # discarded -- the reversed-cat example's ``at{l, len{l}-0.5, c};``.
-        # Only a call, not any expression: the example shows no other kind,
-        # and a call is the only expression that can have an effect at all.
+        # A bare *call* is a command,.
+        # discarded -- the reversed-cat.
+        # Only a call, not any.
+        # and a call is the only.
         p = _Parser(text)
         p.word()
         if p.peek() == "{":
             p.pos += 1
             args = _parse_args(p, "}")
             if p.at_end():
-                # ``pending`` already holds this call resolved -- including
-                # the builtin's own effect, run once by ``_reduce``.
+                # ``pending`` already holds.
+                # the builtin's own effect, run.
                 if self.walker.pending is not None:
                     self._eval(self.walker.pending)
                 else:
@@ -890,8 +890,8 @@ class _Machine:
             line = self.io.input_str()
         except EOFError:
             return "eof"
-        # An empty line is a real line with no character on it; 0 is what
-        # ``input_char`` and every other interpreter here return for one.
+        # An empty line is a real line.
+        # ``input_char`` and every.
         return float(ord(line[0])) if line else 0.0
 
     def _write(self, value: _Value) -> None:
@@ -913,8 +913,8 @@ class _Machine:
         if tag == "num":
             return cast(float, expr[1])
         if tag == "val":
-            # A call ``_reduce`` already ran, carrying its value so that a
-            # re-entry of this command does not run it a second time.
+            # A call ``_reduce`` already.
+            # re-entry of this command does.
             return cast(_Value, expr[1])
         if tag == "special":
             return cast(_Special, expr[1])
@@ -1012,7 +1012,7 @@ def _builtin(name: str, args: list[_Value]) -> _Value:
         padding: list[_Value] = ["nil"] * int(count)
         return [*seq, *padding]
     if len(args) == 2:
-        # Out of bounds reads as nil, per the wiki -- only the three-argument
+        # Out of bounds reads as nil,.
         # *set* form raises.
         slot = _index(args[1])
         return seq[slot] if slot < len(seq) else "nil"
@@ -1023,11 +1023,11 @@ def _builtin(name: str, args: list[_Value]) -> _Value:
         raise HaltError(f"at index {args[1]!r} past the end of a {len(seq)}-list")
     if seq and isinstance(seq[0], list) != isinstance(args[2], list):
         raise HaltError("at would put the wrong type of value in a list")
-    # Sets in place, against the prose's "returns a copy" -- see the module
-    # docstring.  The reversed-cat example's bare ``at{l, len{l}-0.5, c};``
-    # command is a pure no-op under copy semantics, which leaves ``l`` all
-    # nil and makes the example crash on its own first ``out``; in place it
-    # reverses.  The example wins.
+    # Sets in place, against the.
+    # docstring.
+    # command is a pure no-op under.
+    # nil and makes the example.
+    # reverses.
     seq[slot] = args[2]
     return seq
 
@@ -1055,8 +1055,8 @@ def _find_func(
                 if params is None:
                     continue
                 del prow, pcol
-                # The body begins one cell past the ``func`` command's
-                # semicolon, exactly as a ``turn``'s next command does.
+                # The body begins one cell past.
+                # semicolon, exactly as a.
                 _, srow, scol = _scan(grid, row, col, heading)
                 return srow + drow, scol + dcol, heading, params
     return None
@@ -1113,7 +1113,7 @@ def _command_expr(text: str, word: str) -> "_Expr | None":
     elif word not in ("turn", "skip", "wait", "end"):
         if not _is_call(text, word):
             return None
-        p = _Parser(text)  # a bare call: parse the whole command
+        p = _Parser(text)  # a bare call: parse the whole.
     if word == "end" and p.at_end():
         return None
     return _parse_expr(p)
@@ -1207,10 +1207,10 @@ def _freeze(value: object) -> object:
     if isinstance(value, list):
         return tuple(_freeze(v) for v in value)
     if isinstance(value, tuple):
-        # A pending expression is a tuple *tree* whose leaves can be live
-        # lists -- a ``("list", [...])`` node, or a ``("val", <list>)`` an
-        # evaluated ``at`` left behind.  Returning it unchanged would bank
-        # a snapshot that a later mutation silently rewrites.
+        # A pending expression is a.
+        # lists -- a ``("list",.
+        # evaluated ``at`` left behind.
+        # a snapshot that a later.
         return tuple(_freeze(v) for v in value)
     return value
 

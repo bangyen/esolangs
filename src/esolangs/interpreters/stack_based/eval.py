@@ -49,24 +49,24 @@ from collections.abc import Hashable
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-#: A value on a stack: Eval's stacks hold both.
+# : A value on a stack: Eval's.
 type _Val = int | str
 
-#: The part of a run the pure layer owns: ``(ptr, (stack0, stack1))`` -- the
-#: active stack index and both stacks.  A value, not a record: every
-#: transition below returns a new one rather than editing one in place.
-#:
-#: The code cursor is *not* in here.  Cursors belong to frames: a nested
-#: ``!`` gets its own, while the stacks are shared by every frame.
+# : The part of a run the pure.
+# : active stack index and both.
+# : transition below returns a.
+# :.
+# : The code cursor is *not* in.
+# : ``!`` gets its own, while.
 type _Core = tuple[int, tuple[tuple[_Val, ...], tuple[_Val, ...]]]
 
-#: One frame on the call stack: the program it is running and how far in.
-#: A plain tuple, rebuilt rather than edited, so the whole stack is a value
+# : One frame on the call.
+# : A plain tuple, rebuilt.
 #: the cycle detector can hash.
 type _Frame = tuple[str, int]
 
-#: Every value an Eval command can change: the shared two-stack core and the
-#: immutable call-frame stack.  Program text lives in its frame; ports stay
+# : Every value an Eval command.
+# : immutable call-frame stack.
 #: in the shell.
 type _State = tuple[_Core, tuple[_Frame, ...]]
 
@@ -155,9 +155,9 @@ def _iterate(
             raise _Fault
         call = value
     elif char in "\"'":
-        # A literal runs to the next quote, or to the end of the program
-        # when there is none -- which is what ``partition`` returns either
-        # way, with no unmatched case to fall back on.
+        # A literal runs to the next.
+        # when there is none -- which.
+        # way, with no unmatched case.
         text = sym[ind + 1 :].partition('"')[0].replace("`", '"')
         ind += len(text) + 1
         core = _pushed(core, f'"{text}"' if char == "'" else text)
@@ -196,14 +196,14 @@ class _Machine:
         """Whether every frame has returned."""
         return not self.frames
 
-    # The VM's language-shaped view: two stacks and an active index, so
-    # ``stack`` is whichever one ``ptr`` selects and there are no
+    # The VM's language-shaped.
+    # ``stack`` is whichever one.
     # addressable cells.
 
-    #: ``ip`` is a position, but not one on the source text: a call depth paired with
+    # : ``ip`` is a position, but.
     #: the innermost cursor.
-    #: Declared rather than left to the default so that a tuple nobody has
-    #: classified is a missing answer instead of this one.
+    # : Declared rather than left.
+    # : classified is a missing.
     ip_shape = "opaque"
 
     @property
@@ -304,8 +304,8 @@ class _Machine:
             self.io.print_value(output)
         frames = (*frames[:-1], (sym, ind))
         if call is not None:
-            # The nested program becomes a frame of its own rather than
-            # running here, which is what makes its commands steps.
+            # The nested program becomes a.
+            # running here, which is what.
             frames = (*frames, (call, 0))
         self._restore((core, frames))
 

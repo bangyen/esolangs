@@ -126,13 +126,13 @@ def convert(pre: Sequence[complex | _Root]) -> list[list[int]]:
     exactly however wide it is.
     """
     rounded_roots = [(round(k.real), round(k.imag)) for k in pre]
-    # Sort by imaginary part, then by real part
+    # Sort by imaginary part, then.
     sorted_roots = sorted(rounded_roots, key=lambda x: (x[1], x[0]))
     post: list[list[int]] = []
     num = 2
 
-    # A prime power p**v (v >= 1) is always >= p, so once num exceeds the
-    # largest root magnitude no further root can match.
+    # A prime power p**v (v >= 1).
+    # largest root magnitude no.
     if rounded_roots:
         limit = max(max(abs(im), abs(real)) for real, im in rounded_roots)
     else:
@@ -142,7 +142,7 @@ def convert(pre: Sequence[complex | _Root]) -> list[list[int]]:
         if not prime(num):
             num += 1
             continue
-        for root in sorted_roots[:]:  # Use slice to avoid modification during iteration
+        for root in sorted_roots[:]:  # Use slice to avoid.
             real, im = root
             if im:
                 for val in range(1, 7):
@@ -184,28 +184,28 @@ def sanitize(code: str) -> list[int]:
 
 def _sanitize(code: str) -> list[int]:
     """Parse polynomial string into coefficient list."""
-    # Remove "f(x) = " prefix (with or without surrounding spaces)
+    # Remove "f(x) = " prefix (with.
     match = re.match(r"f\(x\)\s*=\s*(.*)", code)
     if not match:
         return [0]
 
     code = match.group(1).strip()
 
-    # Handle simple cases
+    # Handle simple cases.
     if not code or code == "0":
         return [0]
 
-    # Normalize the polynomial string
+    # Normalize the polynomial.
     code = code.replace(" ", "")
 
-    # Add explicit coefficients and degrees for x terms
-    code = re.sub(r"(?<!\d)x(?!\^)", "1x^1", code)  # x -> 1x^1
-    code = re.sub(r"x([+-])", r"x^1\1", code)  # x+ -> x^1+
+    # Add explicit coefficients and.
+    code = re.sub(r"(?<!\d)x(?!\^)", "1x^1", code)  # x -> 1x^1.
+    code = re.sub(r"x([+-])", r"x^1\1", code)  # x+ -> x^1+.
 
-    # Find all terms with their degrees and coefficients
+    # Find all terms with their.
     terms = {}
 
-    # Find x^n terms first
+    # Find x^n terms first.
     for match in re.finditer(r"(-?\d*)x\^(\d+)", code):
         coeff_str = match.group(1)
         if not coeff_str:
@@ -217,90 +217,90 @@ def _sanitize(code: str) -> list[int]:
         degree = int(match.group(2))
         terms[degree] = coeff
 
-    # Remove x terms from code to find constants
+    # Remove x terms from code to.
     code_without_x = re.sub(r"-?\d*x\^\d+", "", code)
 
-    # Find constant terms (remaining numbers)
+    # Find constant terms.
     for match in re.finditer(r"-?\d+", code_without_x):
         coeff = int(match.group(0))
         terms[0] = coeff
 
-    # If no terms found, return [0]
+    # If no terms found, return [0].
     if not terms:
         return [0]
 
-    # Build coefficient list from highest to lowest degree
+    # Build coefficient list from.
     max_degree = max(terms.keys())
     return [terms.get(degree, 0) for degree in range(max_degree, -1, -1)]
 
 
-#: Largest exponent a real instruction's root can carry, from the
-#: ``range(1, 9)`` :func:`convert` reads them back with.  The peel below
-#: enumerates ``p**v`` up to this, so the two agree by construction.
+# : Largest exponent a real.
+# : ``range(1, 9)``.
+# : enumerates ``p**v`` up to.
 _PEEL_MAX_EXPONENT = 8
 
-#: How many primes the peel enumerates, as a multiple of the polynomial's
-#: degree.  A program assigns its k-th instruction the k-th prime and each
-#: instruction costs at least one degree, so the degree bounds the primes
-#: that can appear; the slack covers a program written by hand rather than
-#: generated.  Candidates are cheap -- one Horner pass each -- and a miss
-#: costs only that the root stays in the tail.
+# : How many primes the peel.
+# : degree.
+# : instruction costs at least.
+# : that can appear; the slack.
+# : generated.
+# : costs only that the root.
 _PEEL_PRIME_SLACK = 2
 
-#: Largest exponent a complex instruction's imaginary part can carry, from
-#: the ``range(1, 7)`` :func:`convert` reads it back with.
+# : Largest exponent a complex.
+# : the ``range(1, 7)``.
 _PEEL_MAX_IMAGINARY_EXPONENT = 6
 
-#: Bound on the ``a`` a quadratic peel will lift out of its residue.  ``a``
-#: is a data operand -- a table index, an offset, a codepoint delta -- so it
-#: has no encoding bound the way an exponent does, and a residue that lifts
-#: to something enormous is a pairing that happened to line up rather than a
-#: real factor.  Generously past the ``-3 .. 50`` a dense n=6 table uses;
-#: anything past it falls through to ``factor_list`` like any other miss.
+# : Bound on the ``a`` a.
+# : is a data operand -- a.
+# : has no encoding bound the.
+# : to something enormous is a.
+# : real factor.
+# : anything past it falls.
 _PEEL_MAX_REAL_PART = 1 << 20
 
-#: Prime the quadratic peel finds roots modulo.  It must be ``1 (mod 4)``,
-#: and that is not a detail: a factor's ``q`` is ``p**(2*b)``, a perfect
-#: square, so ``-q`` is a quadratic residue exactly when ``-1`` is -- which
-#: holds iff the modulus is ``1 (mod 4)``.  Under such a prime *every*
-#: encodable ``q`` admits the square root the pairing needs; under a ``3
-#: (mod 4)`` prime *none* does, and the peel silently finds nothing.
-#: Measured: ``nextprime(2**64)`` recovers 51 of 51 sampled ``q`` values,
-#: while ``nextprime(2**32)`` and ``nextprime(2**128)`` -- both ``3 (mod
-#: 4)`` -- recover none.  Wide enough that distinct small ``a`` stay
+# : Prime the quadratic peel.
+# : and that is not a detail: a.
+# : square, so ``-q`` is a.
+# : holds iff the modulus is.
+# : encodable ``q`` admits the.
+# : (mod 4)`` prime *none*.
+# : Measured:.
+# : while ``nextprime(2**32)``.
+# : 4)`` -- recover none.
 #: distinct mod it.
 _PEEL_MODULUS = 18446744073709551629
 
-#: Degree above which the candidate search runs through NTT root sets
-#: instead of enumerating (real roots) and factoring over
-#: :data:`_PEEL_MODULUS` (quadratics).  The NTT path pays a fixed ~0.45s
-#: to evaluate the polynomial over both fields, so it loses below the
-#: crossover and wins above it superlinearly.  Measured on generated
-#: programs, enumerated against screened: degree 74 is 298ms against
-#: 457ms, degree 118 is 687ms against 479ms -- the crossover -- and then
-#: degree 314 is 5.3s against 0.7s, degree 912 is 78s against 2.6s, and
-#: degree 2770 (dense n=10) extrapolates to ~15 minutes against 44s.
+# : Degree above which the.
+# : instead of enumerating.
+# : :data:`_PEEL_MODULUS`.
+# : to evaluate the polynomial.
+# : crossover and wins above it.
+# : programs, enumerated.
+# : 457ms, degree 118 is 687ms.
+# : degree 314 is 5.3s against.
+# : degree 2770 (dense n=10).
 _NTT_MIN_DEGREE = 100
 
-#: The two prime fields the large-degree path finds roots in, as ``(m, c,
-#: k, g)`` with ``m = c * 2**k + 1`` prime and ``g`` a primitive root.
-#: Both are ``1 (mod 4)`` so ``sqrt(-1)`` exists (the same constraint
-#: :data:`_PEEL_MODULUS` carries, for the same pairing).  The first field
-#: is where quadratic candidates are *paired* -- its size bounds the
-#: recoverable real part at ``m // 2`` and sets the spurious-pair rate --
-#: and the second only cross-checks, killing all but ~0.2% of the spurious
-#: pairs before the trial division.  ``test_ntt_field_constants``
-#: re-derives all four numbers of each.
+# : The two prime fields the.
+# : k, g)`` with ``m = c * 2**k.
+# : Both are ``1 (mod 4)`` so.
+# : :data:`_PEEL_MODULUS`.
+# : is where quadratic.
+# : recoverable real part at.
+# : and the second only.
+# : pairs before the trial.
+# : re-derives all four numbers.
 _NTT_FIELDS = ((163841, 5, 15, 3), (65537, 1, 16, 3))
 
-#: Modulus of the single-word trial division that screens a quadratic
-#: candidate before the exact one (2**61 - 1, prime).  An exact divisor
-#: divides mod anything, so the screen never rejects a true factor; a
-#: spurious candidate dies here in one cheap pass instead of an exact
-#: division over multi-thousand-digit coefficients.
+# : Modulus of the single-word.
+# : candidate before the exact.
+# : divides mod anything, so.
+# : spurious candidate dies.
+# : division over.
 _TRIAL_MODULUS = (1 << 61) - 1
 
-#: Nonzero bytes in a packed root mask; see :func:`_iter_bits`.
+# : Nonzero bytes in a packed.
 _NONZERO_BYTE = re.compile(rb"[^\x00]")
 
 
@@ -428,7 +428,7 @@ def _quadratic_candidates_ntt(
     full = (1 << m0) - 1
     half = m0 // 2
     candidates: set[tuple[int, int]] = set()
-    for index, base in enumerate(  # pragma: no branch - ends on the break
+    for index, base in enumerate(  # pragma: no branch
         sp.primerange(2, prime_count * prime_count + 3)
     ):
         if index >= prime_count:
@@ -547,8 +547,8 @@ def _divide_quadratic(
         if index >= 2:
             value -= b0 * quotient[index - 2]
         quotient.append(value)
-    # Both remainder positions have to vanish for this to be a factor.
-    # ``size >= 3`` from the guard above, so that much always applies.
+    # Both remainder positions have.
+    # ``size >= 3`` from the guard.
     linear = coefficients[size - 2] - b1 * quotient[size - 3]
     if size >= 4:
         linear -= b0 * quotient[size - 4]
@@ -601,8 +601,8 @@ def _peel_instruction_quadratics(
         field_poly = sp.Poly(coefficients, x, domain=sp.GF(modulus))
         _content, field_factors = field_poly.factor_list()
     except (sp.PolynomialError, NotImplementedError, ValueError):
-        # The field factorization is the whole search; without it there is
-        # nothing to peel and the caller's factor_list still sees everything.
+        # The field factorization is.
+        # nothing to peel and the.
         return [], coefficients
 
     roots: set[int] = set()
@@ -614,12 +614,12 @@ def _peel_instruction_quadratics(
     if not roots:
         return [], coefficients
 
-    # One instruction is at least two degrees, so the degree bounds the
-    # primes a program of this size can have reached.
+    # One instruction is at least.
+    # primes a program of this size.
     prime_count = max(1, (len(coefficients) - 1) * _PEEL_PRIME_SLACK)
     candidates: set[tuple[int, int]] = set()
-    # `primerange(2, n*n + 3)` always holds more than `n` primes, so the loop
-    # leaves on the `break` and never by running out.
+    # `primerange(2, n*n + 3)`.
+    # leaves on the `break` and.
     for index, base in enumerate(  # pragma: no branch
         sp.primerange(2, prime_count * prime_count + 3)
     ):
@@ -629,17 +629,17 @@ def _peel_instruction_quadratics(
             square = base ** (2 * exponent)
             root_of_negative = sp.sqrt_mod((-square) % modulus, modulus)
             if root_of_negative is None:
-                # _PEEL_MODULUS is prime and 1 mod 4, so -1 is a quadratic
-                # residue; `square` is a square, so -square is one too.  Only
-                # a retuned modulus can land here, and skipping would silently
+                # _PEEL_MODULUS is prime and 1.
+                # residue; `square` is a.
+                # a retuned modulus can land.
                 # drop candidates.
                 raise AssertionError(f"-{square} has no square root mod {modulus}")
             offset = int(root_of_negative)
             for root in roots:
                 real_mod = (root - offset) % modulus
-                # A genuine factor puts *both* of its roots in the set.
-                # ``real_mod + offset`` is ``root`` itself, so only the
-                # other one is worth asking about.
+                # A genuine factor puts *both*.
+                # ``real_mod + offset`` is.
+                # other one is worth asking.
                 if (real_mod - offset) % modulus not in roots:
                     continue
                 real = real_mod if real_mod < modulus // 2 else real_mod - modulus
@@ -686,7 +686,7 @@ def _peel_prime_power_roots(
     """
     found: list[int] = []
     limit = max(1, (len(coefficients) - 1) * _PEEL_PRIME_SLACK)
-    # As above: the range always outlasts `limit`, so this ends on the `break`.
+    # As above: the range always.
     for prime_index, base in enumerate(  # pragma: no branch
         sp.primerange(2, limit * limit + 3)
     ):
@@ -698,14 +698,14 @@ def _peel_prime_power_roots(
                 candidate *= base
                 continue
             while len(coefficients) > 1:
-                # Horner: the polynomial's value at ``candidate``.
+                # Horner: the polynomial's.
                 value = 0
                 for coefficient in coefficients:
                     value = value * candidate + coefficient
                 if value:
                     break
                 found.append(candidate)
-                # Synthetic division by an exact root, so it stays exact.
+                # Synthetic division by an.
                 deflated = [coefficients[0]]
                 for coefficient in coefficients[1:-1]:
                     deflated.append(coefficient + deflated[-1] * candidate)
@@ -792,7 +792,7 @@ def _factor_roots(coefficients: tuple[int, ...]) -> tuple[_Root, ...]:
             if imag * imag != q:
                 continue
             roots.extend([_Root(real, imag), _Root(real, -imag)] * multiplicity)
-        # higher-degree factors encode no instruction; skip
+        # higher-degree factors encode.
     return tuple(roots)
 
 
@@ -819,41 +819,41 @@ def _parse_program(code: str) -> tuple[tuple[int, ...], ...]:
     return tuple(tuple(instr) for instr in convert(roots))
 
 
-#: The arithmetic instructions, in the order their codes select them.
-#: Each is a function of the register and the instruction's operand, so
-#: none of them reaches the machine the way the old bound lambdas did.
+# : The arithmetic.
+# : Each is a function of the.
+# : none of them reaches the.
 _ARITH: tuple[Callable[[int, int], int], ...] = (
-    lambda r, a: r + a,  # +=
-    lambda r, a: r - a,  # -=
-    lambda r, a: r * a,  # *=
-    lambda r, a: r // a,  # /=
-    lambda r, a: r % a,  # %=
-    lambda r, a: r**a,  # ^
+    lambda r, a: r + a,  # +=.
+    lambda r, a: r - a,  # -=.
+    lambda r, a: r * a,  # *=.
+    lambda r, a: r // a,  # /=.
+    lambda r, a: r % a,  # %=.
+    lambda r, a: r**a,  # ^.
 )
 
-#: The branch conditions, keyed by ``(code - 1) % 4`` the way the
-#: instruction codes reach them.  The old table held these in the same list
-#: as the arithmetic above, with an integer ``0`` wedged into the endif slot
-#: to keep the indices lining up; splitting them means neither table has a
-#: hole and every entry has one signature.
-#:
-#: Key 1 -- the endif slot -- is deliberately absent, because nothing
-#: reaches it.  ``convert`` emits single-element codes 1..8 only, so the
-#: final arm would need ``one == 10`` and cannot get it, and the bracket arm
-#: would need a closer whose *partner* is also a 6, which ``brackets``
-#: rejects as unmatched before any condition is consulted.  Enumerating
-#: every 2- and 3-instruction table over 1..8 from every cursor and all
-#: three register signs -- 4992 combinations -- reaches it zero times, and
-#: calling the old slot directly does raise, so the sweep's probe fires.
+# : The branch conditions,.
+# : instruction codes reach.
+# : as the arithmetic above,.
+# : to keep the indices lining.
+# : hole and every entry has.
+# :.
+# : Key 1 -- the endif slot --.
+# : reaches it.
+# : final arm would need ``one.
+# : would need a closer whose.
+# : rejects as unmatched before.
+# : every 2- and 3-instruction.
+# : three register signs --.
+# : calling the old slot.
 _COND: dict[int, Callable[[int], bool]] = {
     0: lambda reg: reg > 0,
     2: lambda reg: reg < 0,
     3: lambda reg: not reg,
 }
 
-#: One instant of a run: ``(reg, ind)`` -- the single integer register and
-#: the instruction cursor.  A value, not a record: :func:`_advance` returns a
-#: new pair rather than editing one in place.
+# : One instant of a run:.
+# : the instruction cursor.
+# : new pair rather than.
 type _State = tuple[int, int]
 
 
@@ -886,8 +886,8 @@ def _advance(
         elif two - 1:
             reg = byte if byte else -1
         else:
-            # Negative registers print as NUL: the wiki says output ignores
-            # them, and clamping is this interpreter's documented reading.
+            # Negative registers print as.
+            # them, and clamping is this.
             output = chr(max(0, reg))
     elif one in [2, 6]:
         beg = instructions[brackets(instructions, ind)][0]
@@ -920,7 +920,7 @@ class _Machine:
         """Whether the cursor has reached the end of the instructions."""
         return self.ind >= len(self.instructions)
 
-    # The VM's language-shaped view: Single register + cursor; ip the cursor, memory
+    # The VM's language-shaped.
     # the register.
 
     @property
@@ -958,9 +958,9 @@ class _Machine:
 
         byte = None
         if two and not one and two - 1:
-            # An empty line reads as -1, which is what the trailing NUL in
-            # the original's ``input_str() + chr(0)`` produced: ``ord`` of
-            # that NUL is 0, and ``0 or -1`` is -1.
+            # An empty line reads as -1,.
+            # the original's ``input_str().
+            # that NUL is 0, and ``0 or.
             val = self.io.input_str() + chr(0)
             byte = ord(val[0])
 

@@ -28,10 +28,10 @@ def test_lurd_mirror_turns_rightward_flow_downward() -> None:
 @pytest.mark.parametrize(
     ("program", "expected"),
     [
-        ('"?65.', chr(5)),  # zero skips the 6 and emits the literal 5.
-        ('"1?65.', "A"),  # nonzero falls through and builds 65.
-        ('"1{2+.', chr(3)),  # ADD reads the stack top without consuming it.
-        ('"5{1=.', chr(3)),  # RAND alone consumes its stack argument.
+        ('"?65.', chr(5)),  # zero skips the 6 and emits.
+        ('"1?65.', "A"),  # nonzero falls through and.
+        ('"1{2+.', chr(3)),  # ADD reads the stack top.
+        ('"5{1=.', chr(3)),  # RAND alone consumes its stack.
     ],
 )
 def test_core_linear_opcodes(program: str, expected: str) -> None:
@@ -108,7 +108,7 @@ def test_four_input_generator_executes(table: str) -> None:
 
 def test_generator_reduces_unused_inputs_but_reads_them() -> None:
     """Projection saves ANF work without leaving stream input behind."""
-    reduced = super_snusp("00001111")  # depends only on the first input
+    reduced = super_snusp("00001111")  # depends only on the first.
     parity = super_snusp("01101001")
     assert reduced.count(",") == 3
     assert len(reduced) < len(parity)
@@ -124,18 +124,18 @@ def test_generator_rejects_invalid_table() -> None:
 @pytest.mark.parametrize(
     ("value", "degree", "expected"),
     [
-        # Zero, which the negative branch's ``<`` must not claim.
+        # Zero, which the negative.
         (0, 2, 0),
         (0, 3, 0),
-        # Degree 1, the smallest the rejection admits: the root is the value.
+        # Degree 1, the smallest the.
         (1, 1, 1),
         (7, 1, 7),
-        # Exact powers, where the search's ``<=`` decides whether the answer
-        # is the root itself or one below it.
+        # Exact powers, where the.
+        # is the root itself or one.
         (8, 3, 2),
         (9, 2, 3),
-        (10, 2, 3),  # and an inexact one, for contrast
-        # Negatives with an odd degree, exact and not.
+        (10, 2, 3),  # and an inexact one, for.
+        # Negatives with an odd degree,.
         (-8, 3, -2),
         (-7, 3, -2),
     ],
@@ -165,19 +165,19 @@ def test_the_integer_root_refuses_what_it_cannot_answer(
 @pytest.mark.parametrize(
     ("program", "expected"),
     [
-        ('"!965.', "A"),  # SKIP steps over the 9, leaving 65 to build.
-        ("\"65.'99.", "A"),  # HALT ends the run before the second emit.
-        ('"1{$65.', "A"),  # DROP discards the pushed 1 without reading it.
+        ('"!965.', "A"),  # SKIP steps over the 9,.
+        ("\"65.'99.", "A"),  # HALT ends the run before the.
+        ('"1{$65.', "A"),  # DROP discards the pushed 1.
         ('"100{365%.', "A"),  # MOD: 365 % 100.
         ('"5{13*.', "A"),  # MUL reads the stack top.
         ('"5{325:.', "A"),  # DIV floors toward the operand.
         ('"2{4225;.', "A"),  # ROOT: the square root of 4225.
         ('"6{1[.', "@"),  # SHL by the stack top.
         ('"1{130].', "A"),  # SHR by the stack top.
-        ('"66~_.', "C"),  # NOT gives -67; negating it emits 67.
+        ('"66~_.', "C"),  # NOT gives -67; negating it.
         ('"66(.', "A"),  # DEC steps the cell down one.
         ('"64).', "A"),  # INC steps it up one.
-        ('   .\n"65/', "A"),  # RULD mirror turns rightward flow upward.
+        ('   .\n"65/', "A"),  # RULD mirror turns rightward.
     ],
 )
 def test_remaining_linear_opcodes(program: str, expected: str) -> None:
@@ -187,8 +187,8 @@ def test_remaining_linear_opcodes(program: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("program", "expected"),
     [
-        ('"1_`65.\n', chr(5)),  # NEGSKIP steps over the 6 when the cell is < 0.
-        ('"65_`.9.', "\t"),  # a negative cell skips the emit and builds 9.
+        ('"1_`65.\n', chr(5)),  # NEGSKIP steps over the 6 when.
+        ('"65_`.9.', "\t"),  # a negative cell skips the.
     ],
 )
 def test_negative_skip_reads_the_cell_sign(program: str, expected: str) -> None:
@@ -203,8 +203,8 @@ def test_char_input_writes_the_byte_it_read() -> None:
     ("program", "expected"),
     [
         ('"100{365_%#', "-65"),  # MOD keeps the dividend's sign.
-        ('"3{27_;#', "-3"),  # an exact odd root of a negative value.
-        ('"3{9_;#', "-3"),  # an inexact one floors away from zero.
+        ('"3{27_;#', "-3"),  # an exact odd root of a.
+        ('"3{9_;#', "-3"),  # an inexact one floors away.
     ],
 )
 def test_negative_operands_keep_their_sign(program: str, expected: str) -> None:
@@ -218,7 +218,7 @@ def test_negative_operands_keep_their_sign(program: str, expected: str) -> None:
         '"1_{1[.',  # SHL by a negative amount.
         '"1_{1].',  # SHR by a negative amount.
         '"0{4;.',  # ROOT of degree zero.
-        '"2{65_;#',  # an even root of a negative value.
+        '"2{65_;#',  # an even root of a negative.
         '"1_.',  # chr() of a negative cell.
     ],
 )
@@ -244,7 +244,7 @@ def test_advance_short_circuits_once_the_cursor_has_left_the_grid() -> None:
         (",", None),  # no byte was read.
         ("@", None),  # no number was read.
         ("=", None),  # no draw was made.
-        ("=", 99),  # a draw outside the two operands' span.
+        ("=", 99),  # a draw outside the two.
     ],
 )
 def test_advance_refuses_an_input_the_shell_did_not_supply(

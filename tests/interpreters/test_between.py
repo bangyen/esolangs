@@ -324,11 +324,11 @@ class TestErrors:
         with pytest.raises(ValueError, match="unknown operation"):
             run_and_capture("|1|q.")
 
-    # Every rejection the interpreter can raise, paired with the program
-    # that raises it.  The assertions elsewhere in this file use
-    # ``pytest.raises(match=...)``, which is a *substring* search and so
-    # passes on any message the real one contains -- these compare the
-    # whole string, which is what pins the wording down.
+    # Every rejection the.
+    # that raises it.
+    # ``pytest.raises(match=...)``,.
+    # passes on any message the.
+    # whole string, which is what.
     MESSAGES: ClassVar[list[tuple[str, str]]] = [
         ("(True)p.", "p cannot print this value"),
         ("|1|v.", "variable name must be a string"),

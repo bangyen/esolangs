@@ -15,12 +15,12 @@ from esolangs.tools.ztoalc_starts import ANCHORS
 
 __all__ = ["ztoalc_l"]
 
-# Commands are placed only on trajectory values at or below this, so it is
-# the emitted line count's ceiling (the same 2**22 the old tree generator
-# carried).  What bounds arity is the anchors' capacity *under* it: 511935
-# visits 386 values at or below 2**22, the most of any committed anchor,
-# and the best start anywhere under the ceiling reaches only 395 (a sieve
-# of every start to 2**22), so a bigger table needs a higher ceiling, not
+# Commands are placed only on.
+# the emitted line count's.
+# carried).
+# visits 386 values at or below.
+# and the best start anywhere.
+# of every start to 2**22), so.
 # a better anchor.
 _MAX_LINES = 2**22
 
@@ -67,9 +67,9 @@ def _commands(truth_table: str, n: int) -> list[str]:
         cmds.append("v += input")
     cmds.append(f"v -= {_ASCII_ZERO * (width - 1)}")
 
-    # A zero chunk is free: ``t``'s elements default to 0, and code 0 is in
-    # ``sorted(set(chunks))`` exactly when some chunk needs it, so ``u[0]``
-    # exists whenever ``t[s]`` can be 0.
+    # A zero chunk is free: ``t``'s.
+    # ``sorted(set(chunks))``.
+    # exists whenever ``t[s]`` can.
     cmds.append(f"t = [{2**hi}]")
     cmds.extend(f"t[{c}] = {k}" for c, k in enumerate(chunks) if k)
     cmds.append(f"u = [{2**width}]")

@@ -19,7 +19,7 @@ from esolangs.tools.boolean.helpers import (
 
 __all__ = ["rotfuck"]
 
-# The eight-step rotation cycle: + -> - -> > -> < -> , -> . -> [ -> ] -> +.
+# The eight-step rotation.
 _ROTFUCK_CHAIN = "+-><,.[]"
 
 
@@ -114,7 +114,7 @@ def _rotfuck_body_for(delta: int, op: str) -> str:
         out.append(pad)
         offset += 2
         if op not in _rotfuck_allowed(offset % 8):
-            # padding always shifts a +/- op off both its forbidden offsets
+            # padding always shifts a +/-.
             raise ValueError(
                 "ROTfuck body op lands on a forbidden offset"
             )  # pragma: no cover
@@ -148,8 +148,8 @@ def _rotfuck_body(guard: int, target: int, op: str) -> str:
     return _rotfuck_body_for(target - guard, op)
 
 
-# Rotating the finished program: the char at absolute position ``i`` becomes
-# ``rot^{-i}`` of itself, so one translation table per residue class mod 8.
+# Rotating the finished.
+# ``rot^{-i}`` of itself, so.
 _ROT_TABLES = tuple(
     bytes.maketrans(
         _ROTFUCK_CHAIN.encode(),
@@ -220,13 +220,13 @@ def rotfuck(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
-    # A table that ignores some of its inputs is a smaller table, and the
-    # cell layout and the block list are both dominated by ``2**n``: one
-    # mismatch cell and one minterm cell per row, and one guarded block per
-    # (row, input) pair.  Evaluating over the essential inputs drops the
-    # exponent to ``2**width``.  Every input still gets its ``,`` read and
-    # its own cell -- the reads are the interface -- and an ignored one is
-    # normalized like the rest and then simply never guards a block.
+    # A table that ignores some of.
+    # cell layout and the block.
+    # mismatch cell and one minterm.
+    # (row, input) pair.
+    # exponent to ``2**width``.
+    # its own cell -- the reads are.
+    # normalized like the rest and.
     used = essential_inputs(truth_table, n) or [0]
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
     width = len(used)
@@ -246,8 +246,8 @@ def rotfuck(truth_table: str) -> str:
         eff.append(text)
         pos += len(text)
 
-    # Read the bits (each on its own line), normalize to 0/1, set the
-    # complements to 1, and set the single minterm cell to 1 (the mismatch
+    # Read the bits (each on its.
+    # complements to 1, and set the.
     # cell starts 0).
     for i in range(n):
         emit(",")
@@ -262,20 +262,20 @@ def rotfuck(truth_table: str) -> str:
     emit(">" * (m - c[-1]))
     emit("+")
 
-    # Block layout: the complements once, then each 1-row in turn -- its
-    # literals guard the mismatch count, one block zeroes the minterm cell
-    # iff that count is nonzero, one accumulates a matching minterm into the
-    # result, and two undo passes hand the next row a clean ``mc``/``m``.
-    #
-    # The undo is what lets the two cells be reused.  ``m`` is restored by
-    # the same ``mc`` guard that cleared it, so it fires exactly when the
-    # clear did; ``mc`` is restored by re-running each literal guard with
-    # ``-``, which fires on exactly the bits that incremented it.  Neither
-    # needs to know the runtime value, which a reset otherwise would: ``mc``
-    # holds a mismatch *count* between 0 and ``width``.
+    # Block layout: the complements.
+    # literals guard the mismatch.
+    # iff that count is nonzero,.
+    # result, and two undo passes.
+    # .
+    # The undo is what lets the two.
+    # the same ``mc`` guard that.
+    # clear did; ``mc`` is restored.
+    # ``-``, which fires on exactly.
+    # needs to know the runtime.
+    # holds a mismatch *count*.
     block_specs: list[tuple[int, int, str]] = []
     for i in range(n):
-        block_specs.append((b[i], c[i], "-"))  # complement c_i = 1 - b_i
+        block_specs.append((b[i], c[i], "-"))  # complement c_i = 1 - b_i.
     for k in range(2**width):
         if table[k] != "1":
             continue
@@ -284,12 +284,12 @@ def rotfuck(truth_table: str) -> str:
             for slot, negated in minterm_literals(k, width)
         ]
         for guard in guards:
-            block_specs.append((guard, mc, "+"))  # mismatch count
-        block_specs.append((mc, m, "-"))  # zero the minterm on any mismatch
-        block_specs.append((m, r, "+"))  # accumulate a matching 1-row
-        block_specs.append((mc, m, "+"))  # restore the minterm cell
+            block_specs.append((guard, mc, "+"))  # mismatch count.
+        block_specs.append((mc, m, "-"))  # zero the minterm on any.
+        block_specs.append((m, r, "+"))  # accumulate a matching 1-row.
+        block_specs.append((mc, m, "+"))  # restore the minterm cell.
         for guard in guards:
-            block_specs.append((guard, mc, "-"))  # restore the mismatch count
+            block_specs.append((guard, mc, "-"))  # restore the mismatch count.
 
     ptr = m
     for guard, target, op in block_specs:
@@ -305,9 +305,9 @@ def rotfuck(truth_table: str) -> str:
         emit("]")
         phantoms[p + len(body) + 1] = p
 
-    # Every block is guarded on an input or complement cell, and those are
-    # exactly the cells below ``r``, so the walk to the result is forward
-    # whatever the table holds -- including an all-zero one, whose last
+    # Every block is guarded on an.
+    # exactly the cells below.
+    # whatever the table holds --.
     # block is the final complement.
     emit(">" * (r - ptr))
     emit("+" * _ASCII_ZERO)

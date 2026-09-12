@@ -16,9 +16,9 @@ __all__ = ["super_snusp"]
 
 
 _TWO_INPUT_SHORT = {
-    # These executed forms reuse 48 both to decode each input and to encode
-    # the answer.  They beat the general ANF construction by keeping the
-    # literal at the bottom of the stack rather than rebuilding it at the end.
+    # These executed forms reuse 48.
+    # the answer.
+    # literal at the bottom of the.
     "0000": "48{,-> ,-<}.",
     "0011": "48{,-> ,-<^.",
     "0101": "48{,-> ,-<>^.",
@@ -53,9 +53,9 @@ def _emit_anf(
         if input_index in used:
             program.append(">")
 
-    # A trailing ignored input occupies the accumulator cell.  Inputs that
-    # are ignored earlier are overwritten by the next retained input, so a
-    # clear is needed only when the last stream input is ignored (or none are
+    # A trailing ignored input.
+    # are ignored earlier are.
+    # clear is needed only when the.
     # retained at all).
     if not used or used[-1] != n - 1:
         program.append("0")
@@ -83,8 +83,8 @@ def _emit_anf(
                 )
         program.extend(["{", "<", "^"])
 
-    # The stack top is a term by now, so build a fresh ASCII offset in the
-    # product cell and push it.  The accumulator is then exactly 48 or 49.
+    # The stack top is a term by.
+    # product cell and push it.
     program.extend([">", "48", "{", "<", "+", "."])
     return "".join(program)
 
@@ -108,7 +108,7 @@ def _anf_cost(
     for mask, coefficient in enumerate(coefficients[1:], start=1):
         if not coefficient:
             continue
-        cost += 5  # ``>1`` then ``{<^`` around the product.
+        cost += 5  # ``>1`` then ``{<^`` around.
         for input_index in range(len(used)):
             table_bit = 1 << (len(used) - 1 - input_index)
             if mask & table_bit:
@@ -128,8 +128,8 @@ def _super_snusp_flat(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     if n == 2 and truth_table in _TWO_INPUT_SHORT:
-        # An explicit START marker removes the spec's undocumented default
-        # heading from generated programs; it is a no-op once execution begins.
+        # An explicit START marker.
+        # heading from generated.
         return '"' + _TWO_INPUT_SHORT[truth_table]
 
     used = essential_inputs(truth_table, n)
@@ -197,8 +197,8 @@ def _super_snusp_folded(program: str, width: int) -> str:
     cells: dict[tuple[int, int], str] = {}
     row, col, step = 0, 0, 1
     pending = list(tokens)
-    # Every pass places at least one token and the pass that empties
-    # ``pending`` leaves through the break below.
+    # Every pass places at least.
+    # ``pending`` leaves through.
     while True:
         edge = limit - 1 if step == 1 else 0
         mirror = "\\" if step == 1 else "/"

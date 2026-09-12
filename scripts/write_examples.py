@@ -144,9 +144,9 @@ def write_set(name: str) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     for stem, generated in SETS[name]():
         path = directory / f"{stem}.txt"
-        # The file is the generator's output plus a final newline, so it is
-        # a well-formed text file; the sync test compares after stripping
-        # that newline, exactly as the interpreters do when running it.
+        # The file is the generator's.
+        # a well-formed text file; the.
+        # that newline, exactly as the.
         program = generated.rstrip("\n") + "\n"
         existing = path.read_text(encoding="utf-8") if path.exists() else None
         path.write_text(program, encoding="utf-8")
@@ -163,8 +163,8 @@ def main() -> int:
         "sets",
         nargs="*",
         choices=list(SETS),
-        # No default: argparse validates a default list against ``choices``
-        # as if it were a single value, so an empty ``sets`` means "all".
+        # No default: argparse.
+        # as if it were a single value,.
         help="example sets to write (default: all)",
     )
     args = parser.parse_args()

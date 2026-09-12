@@ -2,25 +2,25 @@
 
 from esolangs.tools.boolean.helpers import _validate_truth_table, best_input_order
 
-#: The variable names inputs are read into, in the order the harness feeds
-#: them.  APL binds a variable by *naming* it on an executed line, so the
-#: names must appear in ascending order in the program text.
-#:
-#: The wiki allows "any lowercase Latin (including accents), Cyrillic, or
-#: Greek letters" as a variable, so the alphabet is not the 26 ASCII
-#: letters.  The accented Latin range is appended, which more than
-#: covers any arity a minterm sum can materialize -- ``n == 54`` is
-#: already a ``2**54``-row table.  Cyrillic and Greek are left out
-#: deliberately: they are legal, but Greek alpha and Cyrillic u are
-#: confusable with Latin a and y in a generated program (ruff's RUF001
-#: says so), and there is no arity that needs them.
-#:
-#: The sequence is codepoint-ascending, which :func:`_order_key` relies
-#: on: literals are sorted by name so the emitted line names ``a`` before
-#: ``b``, and a non-monotone alphabet would put the reads out of order.
+# : The variable names inputs.
+# : them.
+# : names must appear in.
+# :.
+# : The wiki allows "any.
+# : Greek letters" as a.
+# : letters.
+# : covers any arity a minterm.
+# : already a ``2**54``-row.
+# : deliberately: they are.
+# : confusable with Latin a and.
+# : says so), and there is no.
+# :.
+# : The sequence is.
+# : on: literals are sorted by.
+# : ``b``, and a non-monotone.
 _NAMES = "abcdefghijklmnopqrstuvwxyzàáâãäåæçèéêëìíîïñòóôõöøùúûüý"
 
-#: The complement operator, spelled exactly as the wiki spells it.
+# : The complement operator,.
 _NOT = "!x = {\nx & $0\n$1\n}"
 
 
@@ -100,17 +100,17 @@ def _apl_ordered(
     n = _validate_truth_table(truth_table)
     rows = [row for row, bit in enumerate(truth_table) if bit == "1"]
     if not rows:
-        # The constant-0 table needs no inputs read at all... but every
-        # generator must read its ``n`` inputs, so the minterms are
-        # replaced by an expression that names each one and yields 0.
+        # The constant-0 table needs no.
+        # generator must read its ``n``.
+        # replaced by an expression.
         body = " & ".join(f"!!{_NAMES[i]}" for i in range(n)) + " & 0"
         return f"{_NOT}\n{body}"
     terms = []
     for row in rows:
         literals = []
         for level in range(n):
-            # ``perm`` says which input this level tests; the row index is
-            # in the permuted frame, so the bit comes from the level.
+            # ``perm`` says which input.
+            # in the permuted frame, so the.
             bit = (row >> (n - 1 - level)) & 1
             name = _NAMES[perm[level]]
             literals.append(f"!!{name}" if bit else f"!{name}")
@@ -142,16 +142,16 @@ def _apl_narrowed(terms: list[list[str]], n: int, width: int) -> str:
     """
     named: list[str] = []
     reads = " & ".join(_NAMES[i] for i in range(n)) + " & 0"
-    # Splitting below the floor does not narrow anything -- it lengthens the
-    # names, and the executed line carries two of them -- so the floor is
-    # what a width under it is raised to.  Without this, asking for 1 gives
-    # a *wider* program than asking for 20, which is not what "the narrowest
+    # Splitting below the floor.
+    # names, and the executed line.
+    # what a width under it is.
+    # a *wider* program than asking.
     # it can build" should mean.
     limit = max(width, len(reads) + 9)
-    # Definitions are bounded by two per node of a tree over the literals,
-    # and the prefix has to be budgeted against the longest name that tree
-    # can reach rather than the next one -- a subexpression is named later
-    # than it is built, so the counter may gain a letter in between.
+    # Definitions are bounded by.
+    # and the prefix has to be.
+    # can reach rather than the.
+    # than it is built, so the.
     bound = 4 * len(terms) * (n + 1) + 4
     head = len(f"{_apl_name(bound)} = ")
 
@@ -179,13 +179,13 @@ def _apl_narrowed(terms: list[list[str]], n: int, width: int) -> str:
         return op.join([left, right])
 
     products = [fold(literals, " & ") for literals in terms]
-    # A product that stayed inline keeps the brackets the flat form gives
-    # it; one that became a call does not need them.
+    # A product that stayed inline.
+    # it; one that became a call.
     summands = [part if part.endswith("()") else f"({part})" for part in products]
     body = fold(summands, " | ")
     if len(reads) + len(body) + 6 > limit and not body.endswith("()"):
-        # The executed line carries the prefix as well as the sum, so it is
-        # the one line ``fold`` cannot have budgeted for.
+        # The executed line carries the.
+        # the one line ``fold`` cannot.
         body = define(body)
     return "\n".join([*named, f"({reads}) | {body}"])
 

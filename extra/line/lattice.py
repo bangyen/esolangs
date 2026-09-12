@@ -59,12 +59,12 @@ from dataclasses import dataclass
 
 from mask import Mask
 
-# 8 directions in (dy, dx) form, indexed 0..7 as N, NE, E, SE, S, SW, W, NW --
-# the same indexing render.py's headings would map onto, so a direction index
-# here and a (dy, dx) heading there describe the same geometry.  Owned by
-# this module (rather than extract.py, which also uses it) since extract.py
-# already depends on this module's walker -- extract.py imports it back from
-# here instead of the two modules importing from each other.
+# 8 directions in (dy, dx).
+# the same indexing render.py's.
+# here and a (dy, dx) heading.
+# this module (rather than.
+# already depends on this.
+# here instead of the two.
 _DIRS: list[tuple[int, int]] = [
     (-1, 0),
     (-1, 1),
@@ -82,23 +82,23 @@ def _ink(mask: Mask, y: int, x: int) -> bool:
     return 0 <= y < h and 0 <= x < w and bool(mask[y, x])
 
 
-# Matches render.py's _UNIT: the nominal grid spacing (in source pixels)
-# between corners in a Line drawing.  Only used as an upper bound on how far
-# a single segment is walked before giving up -- see _walk_segment -- since
-# the band probe (see module docstring) already reads a segment's actual
-# length directly rather than assuming this exactly, and real fixtures
-# measure a pixel or two off it in practice.
+# Matches render.py's _UNIT:.
+# between corners in a Line.
+# a single segment is walked.
+# the band probe (see module.
+# length directly rather than.
+# measure a pixel or two off it.
 UNIT = 20
 
-# Upper bound on how long a single walked segment is allowed to be before
-# _walk_segment gives up rather than looping indefinitely on a corrupted or
-# unexpected image.  Not a small multiple of UNIT: a merged run of several
-# consecutive `+`/`-` opcodes draws as a single, proportionally longer
-# straight/diagonal run with no intermediate corner at all (see
-# render.py's module docstring), and fixtures/multiplication.png's own
-# longest run measures ~60px (three units) with no wiki-documented ceiling
-# on the repeat count -- so this is generous headroom above what either
-# fixture needs, not a tight bound.
+# Upper bound on how long a.
+# _walk_segment gives up rather.
+# unexpected image.
+# consecutive `+`/`-` opcodes.
+# straight/diagonal run with no.
+# render.py's module.
+# longest run measures ~60px.
+# on the repeat count -- so.
+# fixture needs, not a tight.
 _MAX_SEGMENT = UNIT * 20
 
 
@@ -134,13 +134,13 @@ def star(mask: Mask, y: int, x: int, length: int = 15) -> set[int]:
     return lit
 
 
-# How many pixels of real, unbroken ink _snap requires before trusting a
-# perpendicular-offset candidate as the true centerline for a chosen
-# direction -- long enough to tell a genuine leg (segments on both wiki
-# fixtures all measure >= 19px, see star's own default) apart from a
-# neighboring, unrelated leg's ink brushing past for a pixel or two (e.g.
-# a diagonal leg's own body passing near a perpendicular bar one row over,
-# confirmed to falsely satisfy a 1-pixel-deep check at fixtures/addition.png's
+# How many pixels of real,.
+# perpendicular-offset.
+# direction -- long enough to.
+# fixtures all measure >= 19px,.
+# neighboring, unrelated leg's.
+# a diagonal leg's own body.
+# confirmed to falsely satisfy.
 # V-notch corner).
 _SNAP_CONFIRM = 6
 
@@ -291,14 +291,14 @@ def _classify(lit: set[int], back: int) -> tuple[str, list[int]]:
         return "end", []
     if len(rest) == 1:
         return "straight", list(rest)
-    # Rotate relative to the *heading* (the direction arrived in), not
-    # `back` (the direction arrived from).  These differ by 180 degrees, so
-    # rotating off `back` -- as this did originally -- names each physical
-    # arm as its opposite, and every consumer then has to swap the labels
-    # back.  `render.py`'s `_turn_right`/`_turn_left` rotate off the heading,
-    # and the wiki's rule ("turn right if the current cell is 0") is written
-    # from the cursor's own travelling frame, so the heading is the frame
-    # that makes `right`/`zero` mean what they say.
+    # Rotate relative to the.
+    # `back` (the direction arrived.
+    # rotating off `back` -- as.
+    # arm as its opposite, and.
+    # back.
+    # and the wiki's rule ("turn.
+    # from the cursor's own.
+    # that makes `right`/`zero`.
     heading = _opposite(back)
     right, left = (heading + 2) % 8, (heading - 2) % 8
     straight = heading
@@ -408,10 +408,10 @@ def walk_tree(
             vertices.append(Vertex(y, x, None))
             return Stroke(vertices)
 
-        # "straight" or "crossing": continue the same stroke through this
-        # vertex, adopting its one forward option as the new heading, and
-        # snapping onto that leg's true centerline first (see _snap) since
-        # the current (y, x) may be a pixel off it.
+        # "straight" or "crossing":.
+        # vertex, adopting its one.
+        # snapping onto that leg's true.
+        # the current (y, x) may be a.
         heading = options[0]
         y, x = _snap(mask, y, x, heading)
 

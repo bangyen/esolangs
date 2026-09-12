@@ -97,7 +97,7 @@ class TestBitTilde:
         machine = _Machine(">>)(", ScriptedIO("A"))
         while not machine.halted:
             machine.step()
-        assert len(machine.tape) == 10  # two moves right, eight bits of window
+        assert len(machine.tape) == 10  # two moves right, eight bits.
 
     def test_input_replaces_exactly_eight_cells(self) -> None:
         """``)`` overwrites the eight bits of its window and no more.
@@ -132,8 +132,8 @@ class TestBitTilde:
         assert run_and_capture("~><{(>{<~>~}~<}") == "\x80\xc0"
 
     def test_nested_loops_match_by_depth(self) -> None:
-        # the outer `{` at bit 0 skips the nested brackets to the matching
-        # outer `}`, printing the untouched (all-zero) pool
+        # the outer `{` at bit 0 skips.
+        # outer `}`, printing the.
         assert run_and_capture("{{~~}~}(~") == "\x00"
 
     def test_output_bytes_round_trip_under_latin1(self) -> None:
@@ -181,12 +181,12 @@ class TestStepMachine:
 
         machine = _Machine("~(", ScriptedIO())
         assert (machine.ind, list(machine.tape)) == (0, [0] * 8)
-        machine.step()  # ~ flips the MSB
+        machine.step()  # ~ flips the MSB.
         assert machine.tape[0] == 1
-        machine.step()  # ( prints the byte
+        machine.step()  # ( prints the byte.
         assert machine.io.getvalue() == "\x80"
         assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
+        machine.step()  # stepping a halted machine is.
         assert machine.ind == 2
 
 
@@ -205,8 +205,8 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     halting_program = "~("
     looping_program = "~{}"
     state_views = ("ind", "cell", "ip", "memory")
-    # Walks out far enough to flip a cell and come back, so `cell`
-    # moves rather than only the cursor.
+    # Walks out far enough to flip.
+    # moves rather than only the.
     viewing_program = ">>>>>>>~<<<<<<<("
 
 
@@ -224,5 +224,5 @@ class TestStateViewValues:
         machine = _machine(">>>>>>>~<<<<<<<(")
         for _ in range(9):
             machine.step()
-        assert machine.cell == 6  # walked out to 7 and back one
-        assert machine.ind == 9  # still counting forward
+        assert machine.cell == 6  # walked out to 7 and back one.
+        assert machine.ind == 9  # still counting forward.

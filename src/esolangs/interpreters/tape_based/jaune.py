@@ -52,33 +52,33 @@ from typing import Literal
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# The two command shapes, kept apart by their operators.  Because no
-# operator appears in both, comparing ``cmd.op`` discriminates the union:
-# inside ``cmd.op == "?"`` the checker knows the command is a _Numbered and
-# that its ``arg`` is an ``int``, so the jumps and the call read the operand
-# without testing what :func:`_parse` has already guaranteed.
+# The two command shapes, kept.
+# operator appears in both,.
+# inside ``cmd.op == "?"`` the.
+# that its ``arg`` is an.
+# without testing what.
 _CountedOp = Literal[
     "^", "v", "v+", "v-", "v?", "v!", "v@", ">", "<", "#", "&", "%", "+", "-", ";", "."
 ]
 _NumberedOp = Literal[":", "?", "!", "$", "@"]
 
-# Spelling the alphabets as typed containers rather than plain strings is
-# what lets ``in`` narrow a parsed character to its operator type, so the
-# constructors below take it directly instead of casting.
+# Spelling the alphabets as.
+# what lets ``in`` narrow a.
+# constructors below take it.
 _BARE: frozenset[_CountedOp] = frozenset(("^", ">", "<", "#", "&", "%", "."))
 _NUMBERED: frozenset[_NumberedOp] = frozenset((":", "?", "!", "$", "@"))
 
-# The grammar makes ``v`` a ``number``, so every operator taking one admits
-# it: ``v+``/``v-`` count, ``v?``/``v!`` name the label to jump to, and
-# ``v@`` names the subroutine to call.  Each is its own op rather than a
-# _Numbered carrying a runtime operand, which is what keeps ``_Numbered.arg``
-# a plain ``int`` and ``_find`` matching against static markers only.
-#
-# ``v:`` and ``v$`` are admitted by the grammar and deliberately absent: a
-# marker read at runtime has no findable identity, since ``_find`` matches
-# the parsed argument and the markers are fall-through positions that never
-# execute.  The compiler's ``prep`` strips both (``compilers/jaune.py``), so
-# dropping them at parse keeps the two engines agreeing.
+# The grammar makes ``v`` a.
+# it: ``v+``/``v-`` count,.
+# ``v@`` names the subroutine.
+# _Numbered carrying a runtime.
+# a plain ``int`` and ``_find``.
+# .
+# ``v:`` and ``v$`` are.
+# marker read at runtime has no.
+# the parsed argument and the.
+# execute.
+# dropping them at parse keeps.
 _READ_OPERAND: dict[str, _CountedOp] = {
     "+": "v+",
     "-": "v-",
@@ -131,18 +131,18 @@ def _parse(code: str) -> list[_Command]:
             out.append(_Counted(";"))
             i += 1
         elif c == "v":
-            # 'v' reads a digit; as an operand ('v+') the read value is the
-            # count, and for 'v?'/'v!'/'v@' the label or subroutine named.
+            # 'v' reads a digit; as an.
+            # count, and for 'v?'/'v!'/'v@'.
             if i + 1 < n and (read := _READ_OPERAND.get(code[i + 1])) is not None:
                 out.append(_Counted(read))
                 i += 2
             elif i + 1 < n and code[i + 1] in _READ_MARKER:
-                i += 2  # a read marker defines nothing: dropped, as prep does
+                i += 2  # a read marker defines.
             else:
                 out.append(_Counted("v"))
                 i += 1
         elif c in "+-":
-            # a run like ++ is a counted command (repeat); a bare + is +1
+            # a run like ++ is a counted.
             j = i
             while j < n and code[j] == c:
                 j += 1
@@ -158,27 +158,27 @@ def _parse(code: str) -> list[_Command]:
                 out.append(_Numbered(op, num))
                 i = j + 1
             elif j < n and code[j] in "+-":
-                # "-" reaches here as a counted subtract, never as a jump:
-                # the numbered operators above do not include it.
+                # "-" reaches here as a counted.
+                # the numbered operators above.
                 out.append(_Counted("+" if code[j] == "+" else "-", num))
                 i = j + 1
             else:
-                # a bare number with no operator: ignore (no-op)
+                # a bare number with no.
                 i = j
         elif c in ":-?!$@":
-            # a bare operator with no number: malformed
+            # a bare operator with no.
             raise ValueError(f"command {c!r} requires a number")
         else:
-            i += 1  # ignore anything else
+            i += 1  # ignore anything else.
     return out
 
 
-#: One instant of a run: ``(cells, ptr, hold, pos, calls)`` -- the tape,
-#: the cell pointer, the ``#`` hold register, the command cursor, and the
+# : One instant of a run:.
+# : the cell pointer, the ``#``.
 #: stack of return positions.
-#:
-#: The commands and the label and subroutine tables stay out: Jaune parses
-#: its program once and never rewrites it, so a step is handed them rather
+# :.
+# : The commands and the label.
+# : its program once and never.
 #: than carrying them.
 type _State = tuple[tuple[int, ...], int, int, int, tuple[int, ...]]
 
@@ -219,7 +219,7 @@ def _advance(
     c = cmd.op
 
     if c == "^":
-        pass  # printed by the caller; the cell is unchanged
+        pass  # printed by the caller; the.
     elif c == "v":
         cells = _set(cells, ptr, value if value is not None else 0)
     elif c in ("v+", "v-"):
@@ -230,11 +230,11 @@ def _advance(
         if ptr == len(cells):
             cells = (*cells, 0)
     elif c == "<":
-        # Clamped at cell 0, as brainfuck clamps its own ``<``.  This used
-        # to insert a fresh cell and leave the pointer where it was, which
-        # grew the tape leftward; the wiki says only "Moves pointer to the
-        # previous cell" and nothing about bounds, so both readings filled a
-        # gap, and clamping is the one the rest of this package uses.
+        # Clamped at cell 0, as.
+        # to insert a fresh cell and.
+        # grew the tape leftward; the.
+        # previous cell" and nothing.
+        # gap, and clamping is the one.
         ptr = max(0, ptr - 1)
     elif c == "#":
         hold = cells[ptr]
@@ -264,10 +264,10 @@ def _advance(
             raise HaltError(f"call to undefined subroutine {cmd.arg}")
         return (cells, ptr, hold, target, (*calls, pos + 1))
     elif c in ("v?", "v!"):
-        # The read names the label, so the operand is the digit just taken
-        # rather than a parsed one.  The read happens whether or not the
-        # branch is taken -- the grammar evaluates the number to have a
-        # command at all -- so input advances either way.
+        # The read names the label, so.
+        # rather than a parsed one.
+        # branch is taken -- the.
+        # command at all -- so input.
         num = value if value is not None else 0
         target = _find(commands, ":", num)
         if target is None:
@@ -287,8 +287,8 @@ def _advance(
         return (cells, ptr, hold, calls[-1], calls[:-1])
     elif c == ".":
         return (cells, ptr, hold, len(commands), calls)
-    # ":" and "$" are positions rather than commands -- a label and a
-    # subroutine definition -- so execution falls through them in place.
+    # ":" and "$" are positions.
+    # subroutine definition -- so.
 
     return (cells, ptr, hold, pos + 1, calls)
 
@@ -309,7 +309,7 @@ class _Machine:
     def halted(self) -> bool:
         return self.pos >= len(self.commands)
 
-    # The VM's language-shaped view: Cell tape + hold register; ip the command position.
+    # The VM's language-shaped.
 
     @property
     def ip(self) -> int:

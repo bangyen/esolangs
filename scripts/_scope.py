@@ -20,8 +20,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# Changing any of these changes how *every* interpreter reads, steps, or
-# reports, so touching one sweeps the whole registry rather than nothing.
+# Changing any of these changes.
+# reports, so touching one.
 SHARED_INTERPRETER = (
     "interpreters/io.py",
     "interpreters/memory.py",
@@ -31,8 +31,8 @@ SHARED_INTERPRETER = (
     "registry.py",
 )
 
-# The checking machinery itself.  A change here can alter what every step
-# does, so it can never be validated by a scoped run of that same machinery.
+# The checking machinery itself.
+# does, so it can never be.
 SHARED_TOOLING = (
     "scripts/verify.py",
     "scripts/_scope.py",
@@ -64,8 +64,8 @@ def changed_files() -> list[str]:
             names = got.stdout.split()
             break
 
-    # Uncommitted edits are part of the tree being checked whether or not the
-    # committed diff resolved, so they are collected even when neither ref did.
+    # Uncommitted edits are part of.
+    # committed diff resolved, so.
     status = subprocess.run(
         ["git", "status", "--porcelain"],
         capture_output=True,
@@ -75,16 +75,16 @@ def changed_files() -> list[str]:
     )
     if status.returncode == 0:
         for line in status.stdout.splitlines():
-            # A rename is reported as "R  old -> new"; the new path is the one
-            # that exists to be checked, so a rename never scopes itself out.
+            # A rename is reported as "R.
+            # that exists to be checked, so.
             path = line[3:].strip().split(" -> ")[-1]
             if path:
                 names.append(path)
 
-    # A file that is both committed on the branch and dirty in the tree appears
-    # in both queries.  Passing the same path to a checker twice is not merely
-    # wasteful -- mypy rejects the repeat as a duplicate module -- so the list
-    # is deduplicated while keeping its order stable for readable output.
+    # A file that is both committed.
+    # in both queries.
+    # wasteful -- mypy rejects the.
+    # is deduplicated while keeping.
     return list(dict.fromkeys(names))
 
 

@@ -9,8 +9,8 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.tape_based.factor import decode, run
 from tests.interpreters.contract import CycleContract, SnapshotContract
 
-# The wiki's published programs, decoded from their prime factorizations.
-CAT = 310861643  # 17 * 29 * 71 * 83 * 107 -> ,[.,]
+# The wiki's published.
+CAT = 310861643  # 17 * 29 * 71 * 83 * 107 ->.
 TRUTH = int(
     "233915737501853959241591127266540514014498928384925170744745"
     "371936977107366667491950094954248611898080571424768"
@@ -37,8 +37,8 @@ class TestDecode:
 
     def test_instructions_sort_ascending(self) -> None:
         """Factors sort ascending, so the residues map to that order."""
-        assert decode(3 * 23) == "+>"  # 3 -> '+', 23 -> '>'
-        assert decode(23 * 3) == "+>"  # same multiset, same order
+        assert decode(3 * 23) == "+>"  # 3 -> '+', 23 -> '>'.
+        assert decode(23 * 3) == "+>"  # same multiset, same order.
 
     def test_wiki_cat(self) -> None:
         """The wiki's cat number decodes to ,[.,]."""
@@ -111,9 +111,9 @@ class TestStepMachine:
 
         machine = _Machine("15", ScriptedIO())
         assert (machine.bf.ind, list(machine.bf.tape)) == (0, [0])
-        machine.step()  # + increments the cell
+        machine.step()  # + increments the cell.
         assert list(machine.bf.tape) == [1]
-        machine.step()  # . prints it
+        machine.step()  # .
         assert machine.io.getvalue() == "\x01"
         assert machine.halted
 
@@ -138,8 +138,8 @@ class TestLongPrograms:
         finally:
             sys.set_int_max_str_digits(limit)
         assert len(program) > limit, "the point of the test is to exceed it"
-        # 2 has residue 2 mod 11, so this decodes to 20000 '<' -- every one
-        # of them clamped at the left edge, printing nothing and halting.
+        # 2 has residue 2 mod 11, so.
+        # of them clamped at the left.
         assert run_program_text(program) == ""
 
     def test_the_parse_leaves_the_global_limit_alone(self) -> None:
@@ -171,14 +171,14 @@ class TestFactorint:
             1,
             2**10,
             6619**3 * 2,
-            # A residue that survives the sieve: both factors are past
-            # _SMALL_PRIME_LIMIT, so the composite goes to sympy whole.
+            # A residue that survives the.
+            # _SMALL_PRIME_LIMIT, so the.
             999983 * 999979,
-            # One large prime, the other end of the same split.
+            # One large prime, the other.
             (10**9 + 7) * 4,
-            # A Mersenne prime, which the sieve cannot touch at all.
+            # A Mersenne prime, which the.
             2**61 - 1,
-            # The shape Factor actually emits: many small primes.
+            # The shape Factor actually.
             2**49 * 3**20 * 5**7 * 6619,
         ],
     )
@@ -220,8 +220,8 @@ class TestFactorint:
         elapsed = time.perf_counter() - start
 
         assert max(factors) > 10000, "the case only bites above a 10000 sieve"
-        # Generous next to the ~0.004s it takes, and far under the minutes
-        # a stranded composite costs, so this fails on the bug and not on
+        # Generous next to the ~0.004s.
+        # a stranded composite costs,.
         # a slow machine.
         assert elapsed < 5.0, f"factorizing took {elapsed:.1f}s"
 
@@ -253,7 +253,7 @@ class TestFactorint:
 
         with patch.object(factor_module.sympy, "factorint", refuse):
             assert _factorint(number) == dict.fromkeys(primes, 1)
-        # The sieve, not sympy, is what found them.
+        # The sieve, not sympy, is what.
         assert sympy.factorint(number) == dict.fromkeys(primes, 1)
 
     def test_does_not_pay_isprime_per_chunk(self) -> None:
@@ -279,8 +279,8 @@ class TestFactorint:
             asked.append(value)
             return bool(real_isprime(value))
 
-        # A prime in the third chunk, so the sieve must widen twice, with
-        # a fat small-prime tail to make the residue a real bignum.
+        # A prime in the third chunk,.
+        # a fat small-prime tail to.
         far = int(factor_module.sympy.nextprime(_SIEVE_CHUNK * 2))
         assert far > _SIEVE_CHUNK * 2, far
         number = 3**40 * 5**20 * far

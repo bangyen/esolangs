@@ -48,7 +48,7 @@ class TestNoComment:
         """The static tape's pointer wraps to the opposite end (per the wiki)."""
         assert run_and_capture("c" + "i" * 65 + "r" + "o") == "\x00"
         assert run_and_capture("c" + "i" * 65 + "r" + "i" * 70 + "o") == "F"
-        # l at cell 0 wraps to cell 4095, a fresh zero cell
+        # l at cell 0 wraps to cell.
         assert run_and_capture("c" + "i" * 65 + "l" + "o") == "\x00"
         assert run_and_capture("c" + "i" * 65 + "r" + "l" + "o") == "A"
 
@@ -62,7 +62,7 @@ class TestNoComment:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.nocomment import _TAPE, _Machine
 
-        assert _TAPE == 4096  # the default stays put; moving it moves behaviour
+        assert _TAPE == 4096  # the default stays put; moving.
 
         for size in (2, 512, 8192):
             left = _Machine("l", ScriptedIO(), size)
@@ -72,7 +72,7 @@ class TestNoComment:
             right = _Machine("r" * size, ScriptedIO(), size)
             while not right.halted:
                 right.step()
-            assert right.ptr == 0  # a full lap returns to the origin
+            assert right.ptr == 0  # a full lap returns to the.
 
     def test_tape_size_must_be_positive(self) -> None:
         """A tape with no cells has no cell to point at."""
@@ -120,7 +120,7 @@ class TestNoComment:
 
     def test_skip_forward(self) -> None:
         """S skips X commands forward when the current cell is nonzero."""
-        # cell = 2, push 2: skip the two i's, print cell 2
+        # cell = 2, push 2: skip the.
         assert run_and_capture("cii" + "n" + "s" + "ii" + "o") == "\x02"
         assert run_and_capture("ci" + "n" + "s" + "i" + "o") == "\x01"
 
@@ -247,14 +247,14 @@ class TestStepMachine:
 
         machine = _Machine("cino", ScriptedIO())
         assert (machine.ptr, machine.ind, machine.stack) == (0, 0, ())
-        machine.step()  # c clears the cell
-        machine.step()  # i increments it
-        machine.step()  # n pushes the cell
+        machine.step()  # c clears the cell.
+        machine.step()  # i increments it.
+        machine.step()  # n pushes the cell.
         assert machine.stack == (1,)
-        machine.step()  # o prints the cell
+        machine.step()  # o prints the cell.
         assert machine.io.getvalue() == "\x01"
         assert machine.halted
-        machine.step()  # stepping a halted machine is a no-op
+        machine.step()  # stepping a halted machine is.
         assert machine.ind == 4
 
 

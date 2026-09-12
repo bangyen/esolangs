@@ -57,10 +57,10 @@ from typing import Literal
 
 from esolangs.interpreters.io import IO
 
-# The heading an instruction moves along, as (dx, dy).  The ant's plane is
-# an unbounded sparse grid rather than rows of text, so x really is the
-# horizontal axis here.  Naming the four keeps a heading distinct from the
-# instruction characters that spell it in either case.
+# The heading an instruction.
+# an unbounded sparse grid.
+# horizontal axis here.
+# instruction characters that.
 _Heading = Literal["n", "e", "s", "w"]
 
 _MOVE: dict[_Heading, tuple[int, int]] = {
@@ -70,46 +70,46 @@ _MOVE: dict[_Heading, tuple[int, int]] = {
     "w": (-1, 0),
 }
 
-# An instruction is a heading in either case -- lowercase moves onto a
-# black cell, uppercase onto a white one -- or a paint.  Deriving the
-# validation string from _MOVE keeps it in step with the headings the move
+# An instruction is a heading.
+# black cell, uppercase onto a.
+# validation string from _MOVE.
 # branch can actually look up.
 _INSTRUCTIONS = "".join(h + h.upper() for h in _MOVE) + "pP"
 
-# The same headings keyed by their own spelling, so the move branch
-# can turn a parsed character into a _Heading without asserting it.
+# The same headings keyed by.
+# can turn a parsed character.
 _HEADING: dict[str, _Heading] = {h: h for h in _MOVE}
 
 
-#: One instant of a run: ``(grid, x, y, ip, visited)`` -- the painted
-#: cells, the ant's position, the instruction cursor, and every cell the
-#: ant has stood on.  The input :func:`_advance` reads; it returns a
-#: :data:`_Move` rather than another of these, since only the shell writes.
-#:
-#: The grid has to be in the state, unlike WII2D's: ``p`` and ``P`` write
-#: to it, so what a move finds ahead of the ant is something an earlier
+# : One instant of a run:.
+# : cells, the ant's position,.
+# : ant has stood on.
+# : :data:`_Move` rather than.
+# :.
+# : The grid has to be in the.
+# : to it, so what a move finds.
 #: step decided.
-#:
-#: ``visited`` is *not* here.  It is append-only bookkeeping that no rule
-#: ever reads -- only :meth:`_Machine.render` does, to size the bounding
-#: box -- so the shell records it from the position each step returns, and
-#: the transition stays a function of what actually decides a move.
-#:
-#: The grid is a read-only ``Mapping`` rather than a frozen copy: a paint
-#: returns a new dict, so the value handed in is left as it was, while a
-#: lookup stays O(1).  That is not a nicety.  Freezing it into a
-#: ``frozenset`` of items reads well and costs a full rebuild on every
-#: access; on the boolean generator's programs, whose grids run to
-#: thousands of cells over a cycle, it turned a 0.1s test into a 134s one.
+# :.
+# : ``visited`` is *not* here.
+# : ever reads -- only.
+# : box -- so the shell records.
+# : the transition stays a.
+# :.
+# : The grid is a read-only.
+# : returns a new dict, so the.
+# : lookup stays O(1).
+# : ``frozenset`` of items.
+# : access; on the boolean.
+# : thousands of cells over a.
 type _Grid = Mapping[tuple[int, int], int]
 type _State = tuple[_Grid, int, int, int]
 
-#: What one instruction did: ``(x, y, ip, paint)`` -- where the ant ended
-#: up, and the single cell it painted as ``(cell, colour)``, or ``None``
-#: when it painted nothing.  A transition returns this rather than a whole
-#: new grid so that recording one painted cell costs one write instead of
-#: a copy of every cell painted so far; :meth:`_Machine._restore` applies
-#: it to the grid the shell owns.
+# : What one instruction did:.
+# : up, and the single cell it.
+# : when it painted nothing.
+# : new grid so that recording.
+# : a copy of every cell.
+# : it to the grid the shell.
 type _Move = tuple[int, int, int, tuple[tuple[int, int], int] | None]
 
 
@@ -144,8 +144,8 @@ def _advance(state: _State, command: str) -> _Move:
     if command == "P":
         return (x, y, ip, ((x, y), 1))
 
-    # Not a move command at all unless the lowercased character is one of
-    # the four headings, which is what the lookup requires.
+    # Not a move command at all.
+    # the four headings, which is.
     heading = _HEADING.get(command.lower())
     if heading is None:  # pragma: no cover - _INSTRUCTIONS admits no other
         raise ValueError(f"unknown command {command!r}")
@@ -169,27 +169,27 @@ class _Machine:
     rather than once per step -- see its docstring for why.
     """
 
-    #: Whether the program can reach a halt of its own.  It belongs to the
-    #: language, not to whoever is stepping it: ``halted`` here is always
-    #: ``False``, so ``while not vm.halted: vm.step()`` never returns.  A
-    #: caller stepping this one has to bound the run itself -- with a hang
-    #: detector, or :func:`esolangs.run`'s ``timeout``.
-    #:
-    #: :func:`run` stops it from outside, by its own means: a pass-boundary
-    #: Brent's cycle detector, then the render.
+    # : Whether the program can.
+    # : language, not to whoever is.
+    # : ``False``, so ``while not.
+    # : caller stepping this one.
+    # : detector, or.
+    # :.
+    # : :func:`run` stops it from.
+    # : Brent's cycle detector,.
     self_halts = False
 
-    #: Whether stepping ever reaches the answer.  Uniquely here, no: the
-    #: answer is the rendered grid *after* the walk is proven periodic, and
-    #: a stepping caller is by definition always mid-walk.  Three million
-    #: steps leave ``halted`` false and ``output`` empty, which reads as a
-    #: hang and is really a category error -- ``self_halts = False`` alone
-    #: does not say so, since Suffolk carries it too and does write its
+    # : Whether stepping ever.
+    # : answer is the rendered grid.
+    # : a stepping caller is by.
+    # : steps leave ``halted``.
+    # : hang and is really a.
+    # : does not say so, since.
     #: answer while being stepped.
-    #:
-    #: So the flag exists to be consulted rather than discovered: a caller
-    #: driving this language by :meth:`step` should call
-    #: :func:`esolangs.run` instead, which owns the cycle proof and the
+    # :.
+    # : So the flag exists to be.
+    # : driving this language by.
+    # : :func:`esolangs.run`.
     #: render.
     steppable_to_answer = False
 
@@ -206,8 +206,8 @@ class _Machine:
         render is written on the step after :meth:`interrupt`.
         """
         self.io = io if io is not None else IO()
-        # Out of ``snapshot``: the dump is the shell's bookkeeping, and the
-        # detector compares states of a running machine.
+        # Out of ``snapshot``: the dump.
+        # detector compares states of a.
         self._interrupted = False
         self._dumped = False
         self.prog = "".join(c for c in code if not c.isspace())
@@ -224,7 +224,7 @@ class _Machine:
         """The implicit loop never halts; only a repeated state proves a loop."""
         return False
 
-    # The VM's language-shaped view: 2D grid; ip is the instruction cursor, memory the
+    # The VM's language-shaped.
     # cell colours.
 
     @property
@@ -260,17 +260,17 @@ class _Machine:
         self.x, self.y, self.ip, paint = move
         if paint is not None:
             cell, colour = paint
-            # Written unconditionally.  73.7% of the paints in this
-            # module's counterexample walk are redundant, but guarding them
-            # with a ``grid.get(cell, 0) != colour`` test measured *slower*
-            # (0.1113s against 0.1095s): the read costs about what the
-            # write it saves does.  Storing black cells rather than
-            # deleting them keeps the two colours symmetric here; nothing
-            # can tell the difference, since ``_glyph`` and ``_colour``
-            # both read through ``grid.get(cell, 0)``.
+            # Written unconditionally.
+            # module's counterexample walk.
+            # with a ``grid.get(cell, 0) !=.
+            # (0.1113s against 0.1095s):.
+            # write it saves does.
+            # deleting them keeps the two.
+            # can tell the difference,.
+            # both read through.
             self.grid[cell] = colour
-        # Standing on a cell is what marks it visited, so recording the
-        # position the transition returned covers every move.
+        # Standing on a cell is what.
+        # position the transition.
         self.visited.add((self.x, self.y))
 
     def interrupt(self) -> None:
@@ -308,9 +308,9 @@ class _Machine:
                 self.io.print_str(self.render())
                 self._dumped = True
             return
-        # ``run`` steps in whole passes of ``len(prog)``, so an empty
-        # program's pass is zero steps and it is never stepped at all;
-        # this keeps a direct caller from indexing it.
+        # ``run`` steps in whole passes.
+        # program's pass is zero steps.
+        # this keeps a direct caller.
         if not self.prog:  # pragma: no cover - run() never steps an empty program
             return
         x, y, _ip, paint = _advance(self._state, self.prog[self.ip])
@@ -389,8 +389,8 @@ def run(code: str, io: IO) -> None:
             tortoise = machine.snapshot()
             power *= 2
             passes = 0
-    # The loop breaks at a pass boundary, which is where ``interrupt`` is
-    # sound; the step after it renders, as the halting languages' post-halt
+    # The loop breaks at a pass.
+    # sound; the step after it.
     # step does.
     machine.interrupt()
     machine.step()

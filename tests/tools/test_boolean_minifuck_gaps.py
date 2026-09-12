@@ -16,8 +16,8 @@ class TestChainExtent:
         assert chain.extent(10**6) == (_CHAIN_CAP - 3, False)
 
     def test_the_clamp_is_the_same_for_a_chain_of_ones(self) -> None:
-        # Crossing costs two instructions per cell here rather than one,
-        # so the ceiling is reached by a different route to the same cap.
+        # Crossing costs two.
+        # so the ceiling is reached by.
         chain = _Chain([1] * _CHAIN_CAP)
         extent, _ = chain.extent(10**6)
         assert extent == _CHAIN_CAP - 3

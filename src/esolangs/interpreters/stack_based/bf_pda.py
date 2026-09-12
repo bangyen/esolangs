@@ -47,16 +47,16 @@ import sys
 
 from esolangs.interpreters.io import IO
 
-#: One instant of a run: ``(ip, stack)`` -- the cursor and the bit stack.  A
-#: value, not a record: every transition below returns a new one rather than
-#: editing one in place, and the stack is a ``tuple`` for the same reason.
-#:
-#: This is exactly what ``snapshot`` returns, and always has been, so the
-#: state and its hashable view are the same tuple.
-#:
-#: The code is deliberately not in here.  It does not change during a run,
-#: so carrying it would put constant data in every value the cycle detector
-#: stores.  It is a parameter to the transition instead.
+# : One instant of a run:.
+# : value, not a record: every.
+# : editing one in place, and.
+# :.
+# : This is exactly what.
+# : state and its hashable view.
+# :.
+# : The code is deliberately.
+# : so carrying it would put.
+# : stores.
 type _State = tuple[int, tuple[int, ...]]
 
 
@@ -112,12 +112,12 @@ def _advance(state: _State, code: str) -> _State:
     """
     ip, stack = state
     if code[ip] == "@":
-        # An empty stack auto-pushes the zero the peek saw, then flips it.
+        # An empty stack auto-pushes.
         stack = (*stack[:-1], stack[-1] ^ 1) if stack else (1,)
     elif code[ip] == "<":
         stack = (*stack, 0)
     elif code[ip] == ">":
-        # ``>`` on an empty stack pops nothing.
+        # ``>`` on an empty stack pops.
         stack = stack[:-1]
     elif code[ip] == "[":
         if _top(stack) == 0:
@@ -152,13 +152,13 @@ class _Machine:
 
         self.io = io
         self.code = code
-        # ``halted`` is read twice per command -- once by ``run``'s loop and
-        # once by ``step``'s guard -- so the length is taken once here.
+        # ``halted`` is read twice per.
+        # once by ``step``'s guard --.
         self.size = len(code)
         self.state: _State = (0, ())
 
-    # The language's own names.  They are views on the current state rather
-    # than fields of their own, so there is one place a step can change.
+    # The language's own names.
+    # than fields of their own, so.
 
     @property
     def ip(self) -> int:
@@ -175,9 +175,9 @@ class _Machine:
         """Whether the cursor has reached the end of the code."""
         return self.state[0] >= self.size
 
-    # The VM's language-shaped view: a stack of bits whose top is the
-    # current cell, so the store *is* the stack and ``memory`` is empty.
-    # ``ip`` and ``stack`` above already are the view.
+    # The VM's language-shaped.
+    # current cell, so the store.
+    # ``ip`` and ``stack`` above.
 
     @property
     def memory(self) -> list[int]:
@@ -186,8 +186,8 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The state as it stands: it is already the (ip, stack) pair this
-        # returned before the split, and it is already hashable.
+        # The state as it stands: it is.
+        # returned before the split,.
         return self.state
 
     def step(self) -> None:

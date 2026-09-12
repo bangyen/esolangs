@@ -55,18 +55,18 @@ import sys
 from esolangs.interpreters.brackets import unmatched
 from esolangs.interpreters.io import IO
 
-#: One instant of a run: ``(ind, cell, tape)`` -- the code cursor, the
-#: pointer, and the bit pool.  A value, not a record: every transition below
-#: returns a new one rather than editing one in place, and the pool is a
-#: ``tuple`` for the same reason.
-#:
-#: The code is deliberately not in here.  It does not change during a run,
-#: so carrying it would put constant data in every value the cycle detector
-#: stores.  It is a parameter to the transition instead.
-#:
-#: The field order starts ``ind, cell`` for readability, but ``snapshot``
-#: still returns ``(tape, cell, ind, ...)`` -- the order it always returned.
-#: Reordering there would silently reorder every stored hash.
+# : One instant of a run:.
+# : pointer, and the bit pool.
+# : returns a new one rather.
+# : ``tuple`` for the same.
+# :.
+# : The code is deliberately.
+# : so carrying it would put.
+# : stores.
+# :.
+# : The field order starts.
+# : still returns ``(tape,.
+# : Reordering there would.
 type _State = tuple[int, int, tuple[int, ...]]
 
 
@@ -96,9 +96,9 @@ def _match(code: str, ind: int, step: int) -> int:
     while depth:
         ind += step
         if not 0 <= ind < len(code):
-            # The scan walks away from the bracket, so the position named
-            # is the one it started from -- the bracket that has no match,
-            # not wherever the walk fell off the code.
+            # The scan walks away from the.
+            # is the one it started from --.
+            # not wherever the walk fell.
             raise unmatched(code[start], start)
         if code[ind] == "{":
             depth += 1
@@ -134,12 +134,12 @@ def _advance(
     if char == "~":
         tape = (*tape[:cell], tape[cell] ^ 1, *tape[cell + 1 :])
     elif char == ">":
-        # The window is eight cells wide, so the pool grows to keep one.
+        # The window is eight cells.
         if cell + 8 > len(tape):
             tape = (*tape, 0)
         cell += 1
     elif char == "<":
-        # ``<`` at the first cell is a no-op rather than an error.
+        # ``<`` at the first cell is a.
         if cell:
             cell -= 1
     elif char == ")":
@@ -147,7 +147,7 @@ def _advance(
         tape = _grown(tape, cell + 8)
         tape = (*tape[:cell], *bits, *tape[cell + 8 :])
     elif target is not None:
-        # Both brackets, once the shell has decided a jump happens.
+        # Both brackets, once the shell.
         ind = target
     return (ind + 1, cell, tape)
 
@@ -164,13 +164,13 @@ class _Machine:
         """Start with an eight-cell pool at the origin."""
         self.io = io
         self.code = code
-        # ``halted`` is read twice per character -- once by ``run``'s loop
-        # and once by ``step``'s guard -- so the length is taken once here.
+        # ``halted`` is read twice per.
+        # and once by ``step``'s guard.
         self.size = len(code)
         self.state: _State = (0, 0, (0,) * 8)
 
-    # The language's own names.  They are views on the current state rather
-    # than fields of their own, so there is one place a step can change.
+    # The language's own names.
+    # than fields of their own, so.
 
     @property
     def ind(self) -> int:
@@ -189,7 +189,7 @@ class _Machine:
         """Whether the cursor has reached the end of the code."""
         return self.state[0] >= self.size
 
-    # The VM's language-shaped view: Bit pool + pointer; ip the cursor, memory the pool.
+    # The VM's language-shaped.
 
     @property
     def ip(self) -> int:
@@ -208,8 +208,8 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The pool is already a tuple, so it goes in as it stands, in the
-        # order this returned before the fields moved into a state value.
+        # The pool is already a tuple,.
+        # order this returned before.
         ind, cell, tape = self.state
         return (tape, cell, ind, self.io.position())
 

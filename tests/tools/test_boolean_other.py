@@ -39,16 +39,16 @@ class TestInject:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("01", 1),  # identity
-            ("10", 1),  # NOT
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("1000000000000000", 4),  # AND4
+            ("01", 1),  # identity.
+            ("10", 1),  # NOT.
+            ("00", 1),  # constant zero.
+            ("11", 1),  # constant one.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("1110", 2),  # NAND.
+            ("11111110", 3),  # NAND3.
+            ("01101001", 3),  # XOR3.
+            ("1000000000000000", 4),  # AND4.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -160,7 +160,7 @@ class TestInject:
             (t, d) for t, d, n in calls if d == n and t != t[0] * len(t)
         ]
         assert collapsed_by_depth_only == []
-        # And the tree itself is unchanged when the depth clause cannot fire.
+        # And the tree itself is.
         state = {"leaves": 0, "blocks": 0}
         assert _tree("01101001", 0, 3, state, (0, 1, 2)) == _tree(
             "01101001", 0, 3, {"leaves": 0, "blocks": 0}, (0, 1, 2)
@@ -171,17 +171,17 @@ class TestSuptiftam:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("01", 1),  # identity
-            ("10", 1),  # NOT
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("1000000000000000", 4),  # AND4
-            ("1111111111111111", 4),  # constant one
+            ("01", 1),  # identity.
+            ("10", 1),  # NOT.
+            ("00", 1),  # constant zero.
+            ("11", 1),  # constant one.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("1110", 2),  # NAND.
+            ("11111110", 3),  # NAND3.
+            ("01101001", 3),  # XOR3.
+            ("1000000000000000", 4),  # AND4.
+            ("1111111111111111", 4),  # constant one.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -196,7 +196,7 @@ class TestSuptiftam:
         """The program reads one row per input and sums the minterms."""
         program = boolean.suptiftam("0001")
         assert program.startswith("sum=0\np=1\nfd mulStep :x")
-        assert program.count("%-[read]22%") == 2  # one normalized read per input
+        assert program.count("%-[read]22%") == 2  # one normalized read per input.
         assert program.count("down(:read:)") == 2
         assert program.endswith("term=sum")
 
@@ -215,8 +215,8 @@ class TestSuptiftam:
         """
         assert "term=%-[1]sum%" in boolean.suptiftam("1111")
         assert "mulStep(:p:)if(p)" not in boolean.suptiftam("1111")
-        assert "term=sum" in boolean.suptiftam("0001")  # sparse: drawn directly
-        # and both still compute their table
+        assert "term=sum" in boolean.suptiftam("0001")  # sparse: drawn directly.
+        # and both still compute their.
         for table in ("1111", "11111110"):
             n = len(table).bit_length() - 1
             program = boolean.suptiftam(table)
@@ -239,15 +239,15 @@ class TestForbinBoolean:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
+            ("10", 1),  # NOT.
+            ("01", 1),  # identity.
+            ("00", 1),  # constant zero.
+            ("11", 1),  # constant one.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("1110", 2),  # NAND.
+            ("11111110", 3),  # NAND3.
+            ("01101001", 3),  # XOR3.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -261,7 +261,7 @@ class TestForbinBoolean:
     def test_uses_the_lsb_of_each_input(self) -> None:
         """Each input is read as 8 bits and only the LSB drives the tree."""
         program = boolean.forbin("01")
-        # one 8-variable read, then a decision tree that prints '1' for bit 1
+        # one 8-variable read, then a.
         assert "i0_0,i0_1,i0_2,i0_3,i0_4,i0_5,i0_6,i0_7 = (in 0);" in program
 
     def test_constant_subtrees_fold(self) -> None:
@@ -275,17 +275,17 @@ class TestCvnc:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("01", 1),  # identity
-            ("10", 1),  # NOT
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("1000000000000000", 4),  # AND4
-            ("1111111111111111", 4),  # constant one
+            ("01", 1),  # identity.
+            ("10", 1),  # NOT.
+            ("00", 1),  # constant zero.
+            ("11", 1),  # constant one.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("1110", 2),  # NAND.
+            ("11111110", 3),  # NAND3.
+            ("01101001", 3),  # XOR3.
+            ("1000000000000000", 4),  # AND4.
+            ("1111111111111111", 4),  # constant one.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -299,16 +299,16 @@ class TestCvnc:
     def test_a_table_that_folds_nothing_is_a_full_tree(self) -> None:
         """Parity folds nowhere, so it keeps a leaf per row."""
         program = boolean.cvnc("01101001")
-        assert program.count("fu") == 8  # one leaf per row
-        assert program.count("\u0270\u030ao") == 7  # one branch per interior node
+        assert program.count("fu") == 8  # one leaf per row.
+        assert program.count("\u0270\u030ao") == 7  # one branch per interior node.
 
     def test_a_constant_table_folds_to_one_leaf_but_keeps_its_reads(self) -> None:
         """Folding drops the branches, never the reads."""
         for table in ("00000000", "11111111"):
             program = boolean.cvnc(table)
-            assert program.count("so") == 3  # still three inputs consumed
-            assert program.count("\u0270\u030ao") == 0  # nothing left to branch on
-            assert program.count("fu") == 1  # one leaf for the whole table
+            assert program.count("so") == 3  # still three inputs consumed.
+            assert program.count("\u0270\u030ao") == 0  # nothing left to branch on.
+            assert program.count("fu") == 1  # one leaf for the whole table.
 
     def test_a_one_dependency_table_costs_two_leaves(self) -> None:
         """Depending on one input collapses the other two levels.
@@ -319,8 +319,8 @@ class TestCvnc:
         """
         program = boolean.cvnc("11110000")
         assert program.count("fu") == 2
-        assert program.count("\u0270\u030ao") == 1  # only the root still branches
-        assert program.count("so") == 3  # three inputs, read once each
+        assert program.count("\u0270\u030ao") == 1  # only the root still branches.
+        assert program.count("so") == 3  # three inputs, read once each.
         for combo in range(8):
             bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
             assert run_cvnc(program, bits) == "11110000"[combo]
@@ -339,7 +339,7 @@ class TestCvnc:
         module = importlib.import_module("esolangs.tools.boolean.cvnc")
         reach = module._HALT_REACH  # noqa: SLF001
 
-        # parity is the table that folds nothing, so it is the worst case
+        # parity is the table that.
         for n in range(1, 9):
             table = "01" * (2**n // 2)
             assert len(boolean.cvnc(table)) < reach, f"n={n}"
@@ -352,8 +352,8 @@ class TestCvnc:
         The reach is far past any table worth generating, so the guard is
         reached by shrinking it rather than by building a vast table.
         """
-        # ``esolangs.tools.boolean.cvnc`` resolves to the re-exported
-        # *function*, so the module has to be fetched by name.
+        # ``esolangs.tools.boolean.cvnc`.
+        # *function*, so the module has.
         module = importlib.import_module("esolangs.tools.boolean.cvnc")
         monkeypatch.setattr(module, "_HALT_REACH", 10)
         with pytest.raises(ValueError, match="outgrew"):
@@ -381,10 +381,10 @@ class TestCvnc:
         show up as a shorter program, not merely a different one.
         """
         program = boolean.cvnc("10101010")
-        assert program.count("fu") == 2  # two leaves, as the reorder intends
+        assert program.count("fu") == 2  # two leaves, as the reorder.
         assert program.count("ɰ̊o") == 1
-        # The unreordered node-read tree over the same table folds only at the
-        # bottom, so it costs a leaf per row.
+        # The unreordered node-read.
+        # bottom, so it costs a leaf.
         module = importlib.import_module("esolangs.tools.boolean.cvnc")
         unreordered = module._tree("10101010", 0)  # noqa: SLF001
         assert unreordered.count("fu") == 8
@@ -393,10 +393,10 @@ class TestCvnc:
     def test_the_hoisted_build_stores_and_fetches_rather_than_rotating(self) -> None:
         """The bridge between read order and test order is the deque's ends."""
         program = boolean.cvnc("10101010")
-        # Every input is read once and pushed to an end in the same syllable.
+        # Every input is read once and.
         assert program.count("so") == 3
         assert program.count("som") + program.count("son") == 3
-        # The one surviving node fetches rather than reads.
+        # The one surviving node.
         assert program.count("cuŋ") + program.count("cuɲ") == 1
 
     @pytest.mark.parametrize("n", [1, 2, 3])
@@ -420,7 +420,7 @@ class TestCvnc:
         for value in range(2**8):
             table = bin(value)[2:].zfill(8)
             assert len(boolean.cvnc(table)) <= len(module._tree(table, 0))  # noqa: SLF001
-        # and parity specifically keeps the node-read build
+        # and parity specifically keeps.
         assert boolean.cvnc("01101001") == module._tree("01101001", 0)  # noqa: SLF001
 
     def test_an_unservable_order_is_skipped_rather_than_mispriced(self) -> None:
@@ -432,10 +432,10 @@ class TestCvnc:
         a length it never paid.
         """
         module = importlib.import_module("esolangs.tools.boolean.cvnc")
-        # (0, 2, 1, 3) is the smallest non-unimodal permutation.
+        # (0, 2, 1, 3) is the smallest.
         assert module._deque_schedule((0, 2, 1, 3)) is None  # noqa: SLF001
         assert module._stored_candidate("0" * 16, (0, 2, 1, 3)) == ""  # noqa: SLF001
-        # The identity is always unimodal, so a candidate always exists.
+        # The identity is always.
         assert module._deque_schedule((0, 1, 2, 3)) is not None  # noqa: SLF001
 
     @pytest.mark.parametrize(
@@ -600,10 +600,10 @@ class TestFargo:
             for n in (2, 4, 6, 8)
         ]
         gaps = [b - a for a, b in itertools.pairwise(sizes)]
-        # Each step of two inputs costs a bounded amount, nowhere near the
-        # doubling per input a decision tree would pay.
+        # Each step of two inputs costs.
+        # doubling per input a decision.
         assert all(12 <= gap <= 20 for gap in gaps), f"not linear: {sizes}"
-        # A decision tree over n == 8 would be thousands of characters.
+        # A decision tree over n == 8.
         assert sizes[-1] < 100, f"growing too fast: {sizes}"
 
     def test_a_one_dependency_table_folds(self) -> None:
@@ -618,18 +618,18 @@ class TestFlowchart:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("01", 1),  # identity
-            ("10", 1),  # NOT
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0001", 2),  # AND
-            ("0111", 2),  # OR
-            ("0110", 2),  # XOR
-            ("1110", 2),  # NAND
-            ("01101001", 3),  # XOR3
-            ("11111110", 3),  # NAND3
-            ("0110100110010110", 4),  # XOR4
-            ("1000000000000000", 4),  # AND4
+            ("01", 1),  # identity.
+            ("10", 1),  # NOT.
+            ("00", 1),  # constant zero.
+            ("11", 1),  # constant one.
+            ("0001", 2),  # AND.
+            ("0111", 2),  # OR.
+            ("0110", 2),  # XOR.
+            ("1110", 2),  # NAND.
+            ("01101001", 3),  # XOR3.
+            ("11111110", 3),  # NAND3.
+            ("0110100110010110", 4),  # XOR4.
+            ("1000000000000000", 4),  # AND4.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -662,8 +662,8 @@ class TestFlowchart:
     def test_tree_depth_matches_input_count(self) -> None:
         """One ``/ /`` read node sits on each path from entry to a leaf."""
         program = boolean.flowchart("0110100110010110")
-        assert program.count("< >") == 15  # 2**4 - 1 internal nodes
-        assert program.count("(( ))") == 16  # 2**4 leaves
+        assert program.count("< >") == 15  # 2**4 - 1 internal nodes.
+        assert program.count("(( ))") == 16  # 2**4 leaves.
 
     def test_constant_subtrees_fold(self) -> None:
         """A constant slice is one leaf, and takes one column band.
@@ -674,8 +674,8 @@ class TestFlowchart:
         """
         assert boolean.flowchart("11111111").count("(( ))") == 1
         assert boolean.flowchart("11110000").count("(( ))") == 2
-        assert boolean.flowchart("10010110").count("(( ))") == 8  # no fold
-        # a constant table needs no switch at all
+        assert boolean.flowchart("10010110").count("(( ))") == 8  # no fold.
+        # a constant table needs no.
         assert boolean.flowchart("11111111").count("< >") == 0
         assert boolean.flowchart("11110000").count("< >") == 1
 
@@ -784,10 +784,10 @@ class TestFlowchart:
             assert max(len(row) for row in stacked.splitlines()) == n + 5, n
             assert max(len(row) for row in flat.splitlines()) == 5 * 2**n, n
             assert len(stacked.splitlines()) > len(flat.splitlines()), n
-        # A table that folds to a single leaf is already as wide as one
-        # ``(( ))``, and stacking spends a corridor column per level on top
-        # of that -- so there the flat drawing is the narrower of the two
-        # and asking for any width keeps it.
+        # A table that folds to a.
+        # ``(( ))``, and stacking.
+        # of that -- so there the flat.
+        # and asking for any width.
         assert boolean.flowchart("1111", 1) == boolean.flowchart("1111")
 
     def test_a_stacked_corridor_belongs_to_its_depth(self) -> None:
@@ -817,11 +817,11 @@ class TestBetween:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1111111111111111", 4),  # constant one
+            ("10", 1),  # NOT.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("11111110", 3),  # NAND3.
+            ("1111111111111111", 4),  # constant one.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -837,8 +837,8 @@ class TestBetween:
         program = boolean.between("0110")
         lines = program.splitlines()
         assert lines[:3] == ["'0'v.", "[0]i.", "[0]s|[0]c.|"]
-        # XOR has no constant slice above a single row, so nothing folds and
-        # every combination keeps its own leaf.
+        # XOR has no constant slice.
+        # every combination keeps its.
         assert lines.count(".x.") == 4
 
     def test_constant_subtrees_fold(self) -> None:
@@ -851,7 +851,7 @@ class TestBetween:
         """
         assert boolean.between("11111111").count(".x.") == 1
         assert boolean.between("11110000").count(".x.") == 2
-        assert boolean.between("10010110").count(".x.") == 8  # parity: no fold
+        assert boolean.between("10010110").count(".x.") == 8  # parity: no fold.
 
     def test_mismatched_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="power-of-two"):
@@ -866,11 +866,11 @@ class TestNevermind:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1000000000000000", 4),  # AND4
+            ("10", 1),  # NOT.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("11111110", 3),  # NAND3.
+            ("1000000000000000", 4),  # AND4.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -892,19 +892,19 @@ class TestNevermind:
         """A constant slice prints its answer instead of branching further."""
         assert boolean.nevermind("11111111").count("print,") == 1
         assert boolean.nevermind("11110000").count("print,") == 2
-        assert boolean.nevermind("10010110").count("print,") == 8  # no fold
+        assert boolean.nevermind("10010110").count("print,") == 8  # no fold.
 
 
 class TestContainer:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("01", 1),  # NOT
+            ("01", 1),  # NOT.
             ("10", 1),
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1111111111111111", 4),  # constant one
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("11111110", 3),  # NAND3.
+            ("1111111111111111", 4),  # constant one.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -919,8 +919,8 @@ class TestContainer:
         """The program reads n inputs and keeps one survivor per row."""
         program = boolean.container("0110")
         assert program.startswith("T:\n+1 T>=T")
-        assert ":" in program.splitlines()[:4]  # the empty-named reader
-        assert program.count("S") >= 4  # a survivor per row
+        assert ":" in program.splitlines()[:4]  # the empty-named reader.
+        assert program.count("S") >= 4  # a survivor per row.
         assert program.count("PRINT:") == 1
 
     def test_dense_tables_evaluate_the_complement(self) -> None:
@@ -933,8 +933,8 @@ class TestContainer:
         smaller.
         """
         lengths = [len(boolean.container("1" * k + "0" * (8 - k))) for k in range(9)]
-        assert lengths[4] == max(lengths)  # four ones is the worst case
-        assert lengths == lengths[::-1]  # and the curve is symmetric
+        assert lengths[4] == max(lengths)  # four ones is the worst case.
+        assert lengths == lengths[::-1]  # and the curve is symmetric.
 
     @pytest.mark.parametrize("table", ["11111110", "11111111", "1110", "0111"])
     def test_complemented_tables_still_compute(self, table: str) -> None:
@@ -956,15 +956,15 @@ class TestZtoalc:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("00000001", 3),  # AND3
-            ("01101001", 3),  # XOR3
-            ("1111111100000000", 4),  # top half
+            ("10", 1),  # NOT.
+            ("01", 1),  # identity.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("1110", 2),  # NAND.
+            ("11111110", 3),  # NAND3.
+            ("00000001", 3),  # AND3.
+            ("01101001", 3),  # XOR3.
+            ("1111111100000000", 4),  # top half.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -989,10 +989,10 @@ class TestZtoalc:
         """The program is a branch-free array lookup on a Collatz trajectory."""
         program = boolean.ztoalc_l("0110")
         lines = program.splitlines()
-        assert lines[0].strip().isdigit()  # line 1 is the starting value
+        assert lines[0].strip().isdigit()  # line 1 is the starting value.
         assert any(line.strip().startswith("t = [") for line in lines)
         assert any(line.strip().startswith("print") for line in lines)
-        # The construction branches on nothing, so the tree's jumps are gone.
+        # The construction branches on.
         assert not any("jump" in line for line in lines)
 
     def test_commands_are_placed_without_collisions(self) -> None:
@@ -1128,7 +1128,7 @@ class TestZtoalc:
         assert len(_commands("0" * 128, 7)) == 8
         assert _slots(8)[0] == 6
         assert _slots(9)[0] == 18
-        # The smallest anchor, to show the lookup is not simply constant.
+        # The smallest anchor, to show.
         assert _slots(1)[0] == 2
 
     def test_the_refusal_names_the_length_and_the_capacity(self) -> None:
@@ -1148,7 +1148,7 @@ class TestZtoalc:
         from esolangs.tools.ztoalc_starts import ANCHORS
 
         capacity = max(len(_usable_values(s, _MAX_LINES)) for _, s in ANCHORS)
-        assert capacity == 386  # start 511935; the sieved record anywhere is 395
+        assert capacity == 386  # start 511935; the sieved.
         with pytest.raises(ValueError, match="committed anchors offer") as caught:
             _slots(capacity + 1)
         assert str(caught.value) == (
@@ -1223,14 +1223,14 @@ class TestZtoalc:
         """
         from esolangs.tools.boolean.ztoalc_l import _commands
 
-        cmds = _commands("01101001", 3)  # parity: chunks 0110, 1001
+        cmds = _commands("01101001", 3)  # parity: chunks 0110, 1001.
         assert [c for c in cmds if c.startswith("u = ")] == ["u = [16]"]
         assert [c for c in cmds if c.startswith("u[") and "= [" in c] == [
             "u[6] = [4]",
             "u[9] = [4]",
         ]
 
-        cmds = _commands("00000001", 3)  # a zero chunk forces u[0]
+        cmds = _commands("00000001", 3)  # a zero chunk forces u[0].
         assert "u[0] = [4]" in cmds
         assert [c for c in cmds if c.startswith("t[")] == ["t[1] = 1"]
 
@@ -1271,11 +1271,11 @@ class TestClockwise:
             ("10", 1),
             ("00", 1),
             ("11", 1),
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("00000001", 3),  # AND3
-            ("1000000000000000", 4),  # AND4
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("1110", 2),  # NAND.
+            ("00000001", 3),  # AND3.
+            ("1000000000000000", 4),  # AND4.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1291,7 +1291,7 @@ class TestClockwise:
         program = boolean.clockwise("0110")
         lines = program.splitlines()
         assert lines[0][0] == " "
-        assert run_clockwise(program, ["1", "0"]) == "1"  # XOR(1, 0)
+        assert run_clockwise(program, ["1", "0"]) == "1"  # XOR(1, 0).
 
     @pytest.mark.parametrize(("table", "n"), [("0001", 2), ("01101001", 3)])
     def test_tree_sits_against_the_left_edge(self, table: str, n: int) -> None:
@@ -1339,7 +1339,7 @@ class TestClockwise:
             width = max(len(row) for row in rows)
             grid = [row.ljust(width) for row in rows]
             columns = [sum(1 for row in grid if row[x] == ".") for x in range(width)]
-            # the deepest column reads every input; none reads more
+            # the deepest column reads.
             assert max(columns) <= 7 * n, table
             for combo in range(2**n):
                 bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
@@ -1355,8 +1355,8 @@ class TestClockwise:
         needs.
         """
         for n in (1, 2, 3):
-            # the alternating table folds nothing at any level, so it is the
-            # full-size program every other table must come in at or under
+            # the alternating table folds.
+            # full-size program every other.
             unfolded = len(boolean.clockwise("10" * (2 ** (n - 1))))
             for table_int in range(2 ** (2**n)):
                 table = format(table_int, f"0{2**n}b")
@@ -1428,11 +1428,11 @@ class TestTaglate:
             ("01", 1),
             ("10", 1),
             ("11", 1),
-            ("0001", 2),  # AND
-            ("0110", 2),  # XOR
-            ("1110", 2),  # NAND
-            ("00000001", 3),  # majority
-            ("0000000000000001", 4),  # 4-AND
+            ("0001", 2),  # AND.
+            ("0110", 2),  # XOR.
+            ("1110", 2),  # NAND.
+            ("00000001", 3),  # majority.
+            ("0000000000000001", 4),  # 4-AND.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1440,7 +1440,7 @@ class TestTaglate:
         program = boolean.taglate(table)
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            # Odd n > 1 uses a ghost digit (fake zero first input)
+            # Odd n > 1 uses a ghost digit.
             inputs = (
                 ["0"] + [str(b) for b in bits]
                 if n % 2 == 1 and n > 1
@@ -1466,7 +1466,7 @@ class TestTaglate:
             program = boolean.taglate(tt)
             for combo in range(8):
                 bits = [(combo >> (2 - i)) & 1 for i in range(3)]
-                inputs = ["0"] + [str(b) for b in bits]  # ghost digit
+                inputs = ["0"] + [str(b) for b in bits]  # ghost digit.
                 got = run_taglate(program, inputs)
                 if got != tt[combo]:
                     failures += 1
@@ -1486,7 +1486,7 @@ class TestTaglate:
         be the same length; now the ones that depend on fewer inputs are
         dramatically shorter.
         """
-        full = len(boolean.taglate("10010110"))  # depends on all three
+        full = len(boolean.taglate("10010110"))  # depends on all three.
         for table in ("11110000", "11001100", "10101010", "00000000"):
             assert len(boolean.taglate(table)) < full // 10, table
 
@@ -1513,7 +1513,7 @@ class TestTaglate:
         for table in tables:
             program = boolean.taglate(table)
             assert len(program) < full, table
-            assert program.count("h") == 4, table  # ghost plus all three inputs
+            assert program.count("h") == 4, table  # ghost plus all three inputs.
             for combo in range(8):
                 bits = [str((combo >> shift) & 1) for shift in (2, 1, 0)]
                 assert run_taglate(program, ["0", *bits]) == table[combo], (table, bits)
@@ -1540,10 +1540,10 @@ class TestTaglate:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("1111111100000000", 4),  # depends on input 0
-            ("1111000011110000", 4),  # input 1
-            ("1010101010101010", 4),  # input 3
-            ("1111111111111111", 4),  # none at all
+            ("1111111100000000", 4),  # depends on input 0.
+            ("1111000011110000", 4),  # input 1.
+            ("1010101010101010", 4),  # input 3.
+            ("1111111111111111", 4),  # none at all.
         ],
     )
     def test_reduced_tables_compute_past_three_inputs(self, table: str, n: int) -> None:
@@ -1558,10 +1558,10 @@ class TestTaglate:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            # depends on inputs 0-2, so the window widens rightward to 0-3
+            # depends on inputs 0-2, so the.
             ("0000000000000011", 4),
-            # depends on inputs 1-3, which has no room on the right, so the
-            # window widens leftward to 0-3 instead
+            # depends on inputs 1-3, which.
+            # window widens leftward to 0-3.
             ("0000000100000001", 4),
         ],
     )
@@ -1634,7 +1634,7 @@ class TestThreeX:
             program = _three_x_ordered(table, perm)
             head = program[: program.index("(")] if "(" in program else program
             assert head.count("?") == 3
-            # the reads are the first thing the program does
+            # the reads are the first thing.
             assert program.startswith("?")
 
     def test_every_input_order_computes_the_table(self) -> None:
@@ -1677,8 +1677,8 @@ class TestThreeX:
         """Each input bit is read into a distinct variable."""
         program = boolean.three_x("0001")
         assert program.count("?") == 2
-        assert "333x" in program  # the constant-0 encoding appears
-        assert "3333x3x" in program  # the constant-1 encoding appears
+        assert "333x" in program  # the constant-0 encoding.
+        assert "3333x3x" in program  # the constant-1 encoding.
 
     def test_constant_table_has_no_override_blocks(self) -> None:
         """When every row equals the default, no ( ... ) guards are emitted."""
@@ -1687,10 +1687,10 @@ class TestThreeX:
 
     def test_majority_default_handles_zero_row(self) -> None:
         """A zero row differing from a majority-1 default still overrides it."""
-        program = boolean.three_x("0110")  # XOR: two 1s, two 0s
+        program = boolean.three_x("0110")  # XOR: two 1s, two 0s.
         assert program.startswith("?")
         assert program.endswith("!")
-        assert "(" in program  # the zero row needs an override block
+        assert "(" in program  # the zero row needs an.
 
     def test_scales_to_more_inputs(self) -> None:
         """The generator handles n beyond the built-in constants."""
@@ -1699,8 +1699,8 @@ class TestThreeX:
 
     def test_shared_tree_prefix_sharing(self) -> None:
         """Differing combos share prefix guards instead of repeating them."""
-        # top-half n=5: 16 zero-rows all share MSB=0.  A full tree has
-        # 31 guard nodes; independent chains would emit 16 * 5 = 80.
+        # top-half n=5: 16 zero-rows.
+        # 31 guard nodes; independent.
         program = boolean.three_x("0" * 16 + "1" * 16)
         assert program.count("(") < 40
 
@@ -1716,8 +1716,8 @@ class TestThreeX:
         """Each base-3 digit past the first appends the 3v+d affine step."""
         from esolangs.tools.boolean import other
 
-        # 12 is "110" in base 3: seed 1, then d=1, then d=0.  Each transform
-        # adds exactly one `#` (the swap before the `x`), and no seed has one.
+        # 12 is "110" in base 3: seed.
+        # adds exactly one `#` (the.
         twelve = other._const(12)  # noqa: SLF001
         assert twelve.startswith(other._const(1))  # noqa: SLF001
         assert twelve.count("#") == 2
@@ -1727,8 +1727,8 @@ class TestThreeX:
         from esolangs.tools.boolean import other
 
         small, large = other._const(100), other._const(1_000_000)  # noqa: SLF001
-        assert len(small) < 120  # 100 is "10201": 5 digits
-        assert len(large) < 350  # 1_000_000 is 13 base-3 digits
+        assert len(small) < 120  # 100 is "10201": 5 digits.
+        assert len(large) < 350  # 1_000_000 is 13 base-3 digits.
         assert len(large) < len(small) * 4
 
 
@@ -1736,18 +1736,18 @@ class TestLaserFuck:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
+            ("10", 1),  # NOT.
             ("01", 1),
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("00000001", 3),  # AND3
-            ("1111111100000000", 4),  # top half
-            ("0110100110010110", 4),  # XOR4
+            ("00", 1),  # constant zero.
+            ("11", 1),  # constant one.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("1110", 2),  # NAND.
+            ("11111110", 3),  # NAND3.
+            ("01101001", 3),  # XOR3.
+            ("00000001", 3),  # AND3.
+            ("1111111100000000", 4),  # top half.
+            ("0110100110010110", 4),  # XOR4.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -1759,8 +1759,8 @@ class TestLaserFuck:
                 got = run_laserfuck(program, [str(b) for b in bits], heading)
                 assert got == str(int(table[combo])), f"inputs {bits} heading {heading}"
 
-    # n=3 is 256 tables at 2.0s, over the fast run's one-second budget;
-    # n=1 and n=2 are 16 tables between them and stay well under it.
+    # n=3 is 256 tables at 2.0s,.
+    # n=1 and n=2 are 16 tables.
     @pytest.mark.parametrize("n", [1, 2, pytest.param(3, marks=pytest.mark.slow)])
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to three inputs produces the right result."""
@@ -1814,8 +1814,8 @@ class TestLaserFuck:
         """
         import importlib
 
-        # The package re-exports the generator under the submodule's own
-        # name, so import the module explicitly rather than by attribute.
+        # The package re-exports the.
+        # name, so import the module.
         module = importlib.import_module("esolangs.tools.boolean.laserfuck")
         real = module._laserfuck_build  # noqa: SLF001
 
@@ -1882,7 +1882,7 @@ class TestLaserFuck:
         The input cells are driven negative by the leaf, and ``dump`` skips
         negative cells, so nothing but the answer survives.
         """
-        program = boolean.laserfuck("0001")  # AND2
+        program = boolean.laserfuck("0001")  # AND2.
         for bits, want in (([0, 1], "0"), ([1, 1], "1")):
             got = run_laserfuck(program, [str(b) for b in bits], 3)
             assert got == want, f"inputs {bits}"
@@ -1892,15 +1892,15 @@ class TestLaserFuck:
         program = boolean.laserfuck("0110")
         assert "#" in program
         assert ")" in program
-        # the tree is mirrored, so a one-branch turns on '/' rather than '\\'
+        # the tree is mirrored, so a.
         assert "/" in program
 
     @pytest.mark.parametrize(
         ("table", "n", "width"),
         [
-            # The tree is never folded and grows six columns per node, so the
-            # narrowest width a table can honour rises with its input count:
-            # roughly 19, 34, and 63 columns for one, two, and three inputs.
+            # The tree is never folded and.
+            # narrowest width a table can.
+            # roughly 19, 34, and 63.
             ("01", 1, 20),
             ("01", 1, 40),
             ("10", 1, 80),
@@ -1936,7 +1936,7 @@ class TestLaserFuck:
         they are two columns and forty-odd rows, so a width the flat form
         cannot meet is still met.
         """
-        table = "01101001"  # XOR3
+        table = "01101001"  # XOR3.
         natural = max(len(ln) for ln in boolean.laserfuck(table).split("\n"))
         assert natural > 30
         narrow = boolean.laserfuck(table, 30).split("\n")
@@ -1957,8 +1957,8 @@ class TestLaserFuck:
         assert rows[0].endswith("v")
         assert rows[1].endswith("{")
         assert "-" in rows[1], "the return row should carry the spilled run"
-        # 30 ops at width 20: 16 on the segment row, the rest reversed onto
-        # the return row, so the run never needs a second segment row.
+        # 30 ops at width 20: 16 on the.
+        # the return row, so the run.
         assert end_row == 2, "a same-character run should not need a third row"
         assert end_col == laserfuck_layout.MARGIN + 1
 
@@ -1974,7 +1974,7 @@ class TestLaserFuck:
         body = rows[1][laserfuck_layout.MARGIN + 1 :].rstrip()
         ops = body[:-1].strip() if body.endswith("{") else body.strip()
         assert set(ops) <= {"-"}, f"mixed ops on a return row: {ops!r}"
-        # the '>' that broke the run resumes on the next segment row
+        # the '>' that broke the run.
         assert ">" in rows[2]
 
     def test_folded_readers_are_rings(self) -> None:
@@ -1986,13 +1986,13 @@ class TestLaserFuck:
         the reader costs a fixed two rows however many inputs there are.
         """
         rows = boolean.laserfuck("0110", 80).split("\n")
-        # columns 0..2 are the funnel; the reader starts at the margin
+        # columns 0..2 are the funnel;.
         head = rows[0][laserfuck_layout.MARGIN :]
         legs = rows[1][laserfuck_layout.MARGIN :]
         assert head.count("}") == 3, "the reader's own '}' plus one per ring"
         assert head.count("#/)") == 2, "each ring tests its counter"
         assert legs.count("^") == 2, "each ring returns to its own '}'"
-        # no 48-'-' run survives anywhere in the program
+        # no 48-'-' run survives.
         assert "-" * 10 not in "\n".join(rows)
 
     def test_ringed_leaves_sit_on_their_own_descent_rows(self) -> None:
@@ -2003,15 +2003,15 @@ class TestLaserFuck:
         the ``\\`` that turns the beam onto its row -- so no ``v``, no return
         row and no band, and the grid loses better than half its rows.
         """
-        # width 50 forces the mirrored form, where the tree hangs below
+        # width 50 forces the mirrored.
         rows = boolean.laserfuck("0110", 50).split("\n")
-        # 'x' only ever ends a leaf, so the leaf rows are exactly these
+        # 'x' only ever ends a leaf, so.
         leaves = [line for line in rows if "x" in line]
         assert len(leaves) == 4, "one leaf per input combination"
-        # the all-zero leaf rides the row the tree starts on, so only the
-        # mirrored, a one-branch's leaf hangs under a '/' and its code runs
-        # leftward, so the 'x' comes *before* the turn.  The all-zero leaf
-        # shares the tree's first row, which carries the entry mirror too.
+        # the all-zero leaf rides the.
+        # mirrored, a one-branch's leaf.
+        # leftward, so the 'x' comes.
+        # shares the tree's first row,.
         first = min(index for index, line in enumerate(rows) if "x" in line)
         turned = [
             line for index, line in enumerate(rows) if "x" in line and index > first
@@ -2019,8 +2019,8 @@ class TestLaserFuck:
         assert len(turned) == 3
         for line in turned:
             assert line.index("x") < line.index("/")
-        # nothing below the leaves: no bands, no drop corridors.  Mirrored,
-        # a leaf's row ends at its turn rather than at its 'x'.
+        # nothing below the leaves: no.
+        # a leaf's row ends at its turn.
         assert rows[-1].rstrip()[-1] in "x/"
 
     def test_a_dropping_beam_crosses_no_other_row_s_code(self) -> None:
@@ -2036,8 +2036,8 @@ class TestLaserFuck:
             for index, line in enumerate(rows):
                 for column, char in enumerate(line):
                     if char != "v" or index < 3:
-                        continue  # the funnel and reader steer themselves
-                    # find the '\' that catches this drop
+                        continue  # the funnel and reader steer.
+                    # find the '\' that catches.
                     below = [
                         (k, rows[k])
                         for k in range(index + 1, len(rows))
@@ -2046,7 +2046,7 @@ class TestLaserFuck:
                     for k, lower in below:
                         cell = lower[column]
                         if cell in "\\/":
-                            break  # caught, as intended
+                            break  # caught, as intended.
                         assert cell == " ", (
                             f"{table}: beam from row {index} column {column} "
                             f"runs {cell!r} on row {k}"
@@ -2064,7 +2064,7 @@ class TestLaserFuck:
         narrow = boolean.laserfuck("0110", 50).split("\n")
         assert len(wide) < len(narrow), "sharing rows should cost fewer rows"
         assert max(len(line) for line in wide) > max(len(line) for line in narrow)
-        # the reader's own first row carries tree code too
+        # the reader's own first row.
         assert "#/)" in wide[0], "the reader's last ring is on row 0"
         assert ">#v)" in wide[0], "and the tree's first node follows it there"
 
@@ -2080,7 +2080,7 @@ class TestLaserFuck:
             for width in (45, 40, 30, 25, 18)
         }
         assert len(seen) >= 4, f"expected several distinct widths, got {seen}"
-        # asking for less never gives more
+        # asking for less never gives.
         widths = [
             max(len(line) for line in boolean.laserfuck("0110", w).split("\n"))
             for w in (45, 40, 30, 25, 18)
@@ -2177,7 +2177,7 @@ class TestLaserFuck:
         at = boolean.laserfuck(table, flip).split("\n")
         assert (len(at), max(len(line) for line in at)) == wide
 
-        # At the flip the constraint stops binding, so the grid matches the
+        # At the flip the constraint.
         # unconstrained build.
         free = boolean.laserfuck(table).split("\n")
         assert (len(free), max(len(line) for line in free)) == wide
@@ -2277,16 +2277,16 @@ class TestMyScript:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("1000000000000000", 4),  # AND4
+            ("10", 1),  # NOT.
+            ("01", 1),  # identity.
+            ("00", 1),  # constant zero.
+            ("11", 1),  # constant one.
+            ("0110", 2),  # XOR.
+            ("0001", 2),  # AND.
+            ("1110", 2),  # NAND.
+            ("11111110", 3),  # NAND3.
+            ("01101001", 3),  # XOR3.
+            ("1000000000000000", 4),  # AND4.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -2301,7 +2301,7 @@ class TestMyScript:
         """A constant slice says its answer instead of branching further."""
         assert boolean.myscript("11111111").count("say") == 1
         assert boolean.myscript("11110000").count("say") == 2
-        assert boolean.myscript("10010110").count("say") == 8  # parity: no fold
+        assert boolean.myscript("10010110").count("say") == 8  # parity: no fold.
 
 
 class TestGeneratorEdgePaths:
@@ -2351,8 +2351,8 @@ class TestGeneratorEdgePaths:
         with pytest.raises(ValueError, match="no operand character for 36"):
             _six_five_label(_SIX_FIVE_MAX_LABEL + 1)
 
-        # The range is closed at *both* ends, and zero is a real label --
-        # a guard reading ``1 <=`` or ``0 <`` would reject the first one.
+        # The range is closed at *both*.
+        # a guard reading ``1 <=`` or.
         assert _six_five_label(0) == "0"
         assert _six_five_label(1) == "1"
         with pytest.raises(ValueError, match="no operand character for -1"):
@@ -2411,13 +2411,13 @@ class TestAlgebraicProgrammingLanguage:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("01", 1),  # identity
-            ("10", 1),  # not
-            ("0001", 2),  # AND2
-            ("0111", 2),  # OR2
-            ("0110", 2),  # XOR2
-            ("01101001", 3),  # parity
-            ("1000000000000000", 4),  # AND4
+            ("01", 1),  # identity.
+            ("10", 1),  # not.
+            ("0001", 2),  # AND2.
+            ("0111", 2),  # OR2.
+            ("0110", 2),  # XOR2.
+            ("01101001", 3),  # parity.
+            ("1000000000000000", 4),  # AND4.
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
@@ -2527,16 +2527,16 @@ class TestAlgebraicProgrammingLanguage:
         """
         table = "0110100110010110"
         narrow = boolean.algebraic_programming_language(table, 30)
-        # the ``!x`` header is the first four lines and its body sits inside
-        # braces; past it, a line without an ``=`` is one that runs, and
-        # there must be exactly one however much was hoisted
+        # the ``!x`` header is the.
+        # braces; past it, a line.
+        # there must be exactly one.
         lines = narrow.splitlines()
         assert lines[:4] == ["!x = {", "x & $0", "$1", "}"], lines[:4]
         executed = [line for line in lines[4:] if "=" not in line]
         assert len(executed) == 1, executed
         line = executed[0]
         assert line.startswith("(a & b & c & d & 0) | "), line
-        # and every input is still read exactly once, in order
+        # and every input is still read.
         assert [ch for ch in line if ch in "abcd"] == ["a", "b", "c", "d"]
 
     def test_narrowing_below_the_floor_does_not_widen(self) -> None:
@@ -2632,18 +2632,18 @@ class TestFunctionXY:
     @pytest.mark.parametrize(
         "table",
         [
-            "01",  # identity
-            "10",  # NOT
-            "00",  # constant zero
-            "11",  # constant one
-            "0001",  # AND
-            "0111",  # OR
-            "0110",  # XOR
-            "1110",  # NAND
-            "01101001",  # XOR3
-            "11111110",  # NAND3
-            "1000000000000000",  # AND4
-            "0110100110010110",  # parity4: nothing folds
+            "01",  # identity.
+            "10",  # NOT.
+            "00",  # constant zero.
+            "11",  # constant one.
+            "0001",  # AND.
+            "0111",  # OR.
+            "0110",  # XOR.
+            "1110",  # NAND.
+            "01101001",  # XOR3.
+            "11111110",  # NAND3.
+            "1000000000000000",  # AND4.
+            "0110100110010110",  # parity4: nothing folds.
         ],
     )
     def test_truth_table(self, table: str) -> None:
@@ -2672,7 +2672,7 @@ class TestFunctionXY:
         for table in ("0000", "1111"):
             program = boolean.function_x_y(table)
             assert program.count("[~]") == 2
-            # and it still answers correctly
+            # and it still answers.
             assert run_function_x_y(program, ["0", "0"]) == table[0]
 
     def test_a_constant_table_folds_to_a_literal(self) -> None:
@@ -2695,7 +2695,7 @@ class TestFunctionXY:
     def test_a_malformed_table_is_refused(self) -> None:
         with pytest.raises(ValueError, match="power-of-two"):
             boolean.function_x_y("011")
-        # a nullary table is a constant, not a boolean function
+        # a nullary table is a.
         with pytest.raises(ValueError, match="at least one input"):
             boolean.function_x_y("0")
 

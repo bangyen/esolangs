@@ -39,17 +39,17 @@ from esolangs._validate import check_address
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_int_memory as _parse
 
-# The three store targets the wiki defines: base S*bleq, S*bl*q, Subl*q.
+# The three store targets the.
 _STORES = ("a", "ab", "b")
 
 
-#: One instant of a run: ``(mem, ip, halted)`` -- the self-modifying
-#: memory, the instruction pointer, and whether a negative jump stopped the
-#: run.  A value the transitions below map forward, never editing one in
-#: place, with the memory as a ``tuple`` for the same reason.
-#:
-#: ``halted`` is carried because a jump to a negative address stops the run
-#: with the pointer left where it was, so the position alone does not say.
+# : One instant of a run:.
+# : memory, the instruction.
+# : run.
+# : place, with the memory as a.
+# :.
+# : ``halted`` is carried.
+# : with the pointer left where.
 type _State = tuple[tuple[int, ...], int, bool]
 
 
@@ -105,7 +105,7 @@ def _advance(state: _State, store: str, byte: int | None = None) -> _State:
     mem, ip, _halted = state
     a, b, c = mem[ip], mem[ip + 1], mem[ip + 2]
     if a == -3 or b == -3:
-        # The print already happened in the shell.
+        # The print already happened in.
         return (mem, ip + 3, False)
 
     diff = _read(state, a, byte) - _read(state, b, byte)
@@ -122,20 +122,20 @@ def _advance(state: _State, store: str, byte: int | None = None) -> _State:
 
 
 class _Machine:
-    #: Whether a read past the end of the input yields a *value* here
-    #: rather than raising.  Forty-five of the sixty-nine raise
-    #: :class:`~esolangs.exceptions.InputExhaustedError`, which is the
-    #: package norm and what :func:`esolangs.run` documents; this one does
-    #: not, so an underfed program answers a different row of its table
-    #: instead of refusing, and a caller has no way to tell from the output
+    # : Whether a read past the end.
+    # : rather than raising.
+    # :.
+    # : package norm and what.
+    # : not, so an underfed program.
+    # : instead of refusing, and a.
     #: that it happened.
-    #:
-    #: Declared rather than changed.  The zero-beyond-input convention was
-    #: audited against every wiki page and settled deliberately
-    #: (``docs/limitations.md``, Interpreter conventions); rewriting it
-    #: would be a decision about what these languages *mean*, not a fix.
-    #: What was wrong was that nothing said so, so the promise ``run`` made
-    #: was false for seven languages and a generic caller could not find
+    # :.
+    # : Declared rather than.
+    # : audited against every wiki.
+    # : (``docs/limitations.md``,.
+    # : would be a decision about.
+    # : What was wrong was that.
+    # : was false for seven.
     #: out which.
     eof_is_a_value = True
 
@@ -158,7 +158,7 @@ class _Machine:
         """Whether the instruction pointer has run off the program."""
         return self._halted or not (0 <= self.ip < len(self.mem) - 2)
 
-    # The VM's language-shaped view: OISC cells + instruction pointer; memory is the
+    # The VM's language-shaped.
     # program memory.
 
     @property
@@ -191,7 +191,7 @@ class _Machine:
         self.mem = mem
 
     def input_byte(self) -> int:
-        # -2 returns the next byte of input; EOF reads as zero
+        # -2 returns the next byte of.
         try:
             return ord(self.io.input_str()[0])
         except (EOFError, IndexError):

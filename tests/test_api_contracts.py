@@ -1,11 +1,4 @@
-"""Contracts the public API owes a caller who has only read the docs.
-
-Each test here pins a behaviour that a blind usability pass found missing:
-a template that ran as a program and answered wrong, a language name that
-differed from the one the CLI printed, a breakpoint that could not be
-resumed past.  They are grouped by the promise they keep rather than by the
-function they call, because that is how the caller met them.
-"""
+r"""Contracts the public API owes a caller who has only read the docs."""
 
 import importlib
 import inspect
@@ -37,15 +30,15 @@ ROOT = pathlib.Path(__file__).parents[1]
 
 
 class TestNameResolution:
-    """A language name is matched however the caller spells it."""
+    r"""A language name is matched however the caller spells it."""
 
     @pytest.mark.parametrize("spelling", ["brainfuck", "Brainfuck", "BRAINFUCK"])
     def test_case_is_ignored(self, spelling: str) -> None:
-        """The registry mixes conventions, so a caller cannot guess one."""
+        r"""The registry mixes conventions, so a caller cannot guess one."""
         assert esolangs.run(spelling, "+.", timeout=5) == "\x01"
 
     def test_a_near_miss_is_named(self) -> None:
-        """A misspelling is a spelling problem; answer it with the spelling."""
+        r"""A misspelling is a spelling problem; answer it with the spelling."""
         with pytest.raises(UnknownLanguageError) as exc:
             esolangs.generate("Sophi", XOR)
         assert "did you mean Sophie" in str(exc.value)
@@ -55,14 +48,14 @@ class TestNameResolution:
             esolangs.generate("zzzz", XOR)
 
     def test_every_entry_point_resolves(self) -> None:
-        """One helper backs them all, so none can drift out of step."""
+        r"""One helper backs them all, so none can drift out of step."""
         assert esolangs.describe("BRAINFUCK")["name"] == "brainfuck"
         assert esolangs.make_vm("BRAINFUCK", "+").ip == 0
         assert esolangs.make_debugger("BRAINFUCK", "+").ip == 0
 
 
 class TestParameterizedTemplates:
-    """A template is never mistaken for a runnable program."""
+    r"""A template is never mistaken for a runnable program."""
 
     def test_describe_says_so_in_advance(self) -> None:
         facts = esolangs.describe("Minifuck")
@@ -71,7 +64,7 @@ class TestParameterizedTemplates:
         assert esolangs.describe("brainfuck")["parameterized"] is False
 
     def test_running_one_unfilled_is_refused(self) -> None:
-        """Minifuck ignored its slots and reported a constant as the answer."""
+        r"""Minifuck ignored its slots and reported a constant as the answer."""
         template = esolangs.generate("Minifuck", XOR)
         with pytest.raises(TemplateError) as exc:
             esolangs.run("Minifuck", template)
@@ -79,7 +72,7 @@ class TestParameterizedTemplates:
         assert "instantiate" in str(exc.value)
 
     def test_instantiating_gives_the_right_answer(self) -> None:
-        """The whole point: all four rows, executed."""
+        r"""The whole point: all four rows, executed."""
         template = esolangs.generate("Minifuck", XOR)
         got = "".join(
             esolangs.run("Minifuck", esolangs.instantiate("Minifuck", template, [a, b]))
@@ -93,11 +86,7 @@ class TestParameterizedTemplates:
             esolangs.instantiate("brainfuck", esolangs.generate("brainfuck", XOR), [0])
 
     def test_the_set_matches_what_the_generators_emit(self) -> None:
-        """The definition is behavioural, so nothing can quietly leave it.
-
-        The same set taken from ``parameterized.__all__`` omits Home Row,
-        and three documents each named a different subset.
-        """
+        r"""The definition is behavioural, so nothing can quietly leave it."""
         emits = {
             lang.id
             for lang in LANGUAGES.values()
@@ -107,7 +96,7 @@ class TestParameterizedTemplates:
 
 
 class TestErrorsAreCatchable:
-    """``except EsolangError`` is the one handler a caller needs."""
+    r"""``except EsolangError`` is the one handler a caller needs."""
 
     @pytest.mark.parametrize(
         ("call", "expected"),
@@ -117,8 +106,8 @@ class TestErrorsAreCatchable:
             (lambda: esolangs.generate("brainfuck", "0121"), TruthTableError),
             (lambda: esolangs.generate("brainfuck", 6), TruthTableError),
             (lambda: esolangs.run("brainfuck", 42), ProgramError),
-            # A bad stdin is an ArgumentError, not a ProgramError: the stdin
-            # is not the program.  Either way it is an EsolangError, which is
+            # A bad stdin is an.
+            # is not the program.
             # what this class is about.
             (lambda: esolangs.run("brainfuck", ",.", stdin=["0"]), ArgumentError),
             (lambda: esolangs.run("Nope", "+"), UnknownLanguageError),
@@ -131,21 +120,21 @@ class TestErrorsAreCatchable:
         assert str(exc.value), "an error with no message cannot be acted on"
 
     def test_exhausted_input_says_how_much_there_was(self) -> None:
-        """A bare ``EOFError()`` reached the caller as the empty string."""
+        r"""A bare ``EOFError()`` reached the caller as the empty string."""
         with pytest.raises(InputExhaustedError, match="1 line supplied"):
             esolangs.run("brainfuck", ",,.", stdin="0\n")
 
     def test_it_is_still_an_eoferror(self) -> None:
-        """The repo-wide convention every interpreter documents is unchanged."""
+        r"""The repo-wide convention every interpreter documents is unchanged."""
         with pytest.raises(EOFError):
             esolangs.run("brainfuck", ",.", stdin="")
 
 
 class TestRunTakesSource:
-    """``run`` takes a program, and says so when it is handed a path."""
+    r"""``run`` takes a program, and says so when it is handed a path."""
 
     def test_a_path_string_is_refused(self) -> None:
-        """It used to execute the filename and print a null byte."""
+        r"""It used to execute the filename and print a null byte."""
         with pytest.raises(ProgramError, match="looks like a path"):
             esolangs.run("brainfuck", "examples/boolean/brainfuck.txt")
 
@@ -154,12 +143,12 @@ class TestRunTakesSource:
         assert esolangs.run("brainfuck", path, stdin="0\n1\n", timeout=30) == "0"
 
     def test_a_real_program_is_never_mistaken_for_one(self) -> None:
-        """The guard needs an existing file, so ordinary source is exempt."""
+        r"""The guard needs an existing file, so ordinary source is exempt."""
         assert esolangs.run("brainfuck", "+.", timeout=5) == "\x01"
 
 
 class TestDebuggerResume:
-    """A stopped debugger can be resumed, and says why it stopped."""
+    r"""A stopped debugger can be resumed, and says why it stopped."""
 
     def _debugger(self) -> esolangs.Debugger:
         return esolangs.make_debugger(
@@ -167,7 +156,7 @@ class TestDebuggerResume:
         )
 
     def test_output_breakpoint_does_not_deadlock(self) -> None:
-        """Output only accumulates, so the condition is true forever after."""
+        r"""Output only accumulates, so the condition is true forever after."""
         dbg = self._debugger()
         dbg.break_on_output("1")
         assert dbg.run(max_steps=100000) == "breakpoint"
@@ -180,7 +169,7 @@ class TestDebuggerResume:
         assert dbg.run() == "halted"
 
     def test_a_position_breakpoint_still_fires_before_its_step(self) -> None:
-        """The documented contract: ``break_at`` does not execute that ip."""
+        r"""The documented contract: ``break_at`` does not execute that ip."""
         dbg = esolangs.make_debugger("brainfuck", "++>+<.", stdin="")
         dbg.break_at(0)
         assert dbg.run() == "breakpoint"
@@ -195,23 +184,17 @@ class TestDebuggerResume:
         assert dbg.run() == "halted"
 
     def test_timeout_bounds_an_unbounded_run(self) -> None:
-        """``run()`` with no budget hangs on a program that never halts.
-
-        Both bounds report through the return value.  A timeout used to
-        raise while ``max_steps`` returned, so a caller bounding a runaway
-        both ways needed a ``try`` around a call whose stated job is to say
-        why it stopped.
-        """
+        r"""``run()`` with no budget hangs on a program that never halts."""
         dbg = esolangs.make_debugger("brainfuck", "+[]", stdin="")
         assert dbg.run(timeout=1) == "timeout"
         assert not dbg.halted
 
 
 class TestDescribe:
-    """``describe`` answers what a caller would otherwise read code for."""
+    r"""``describe`` answers what a caller would otherwise read code for."""
 
     def test_every_language_finds_its_examples(self) -> None:
-        """19 of 69 reported none: the id and the stem are spelled apart."""
+        r"""19 of 69 reported none: the id and the stem are spelled apart."""
         missing = [
             name
             for name in esolangs.list_languages()
@@ -220,13 +203,7 @@ class TestDescribe:
         assert missing == []
 
     def test_width_aware_names_the_generators_that_lay_themselves_out(self) -> None:
-        """It answered False for all 69: it takes a generator, not a name.
-
-        Derived rather than listed.  It was two names, then twelve, and
-        every generator that learns to lay itself out adds another -- a
-        hard-coded list turns that into a failure with nothing wrong.
-        What must hold is that the flag tracks the generator's signature.
-        """
+        r"""It answered False for all 69: it takes a generator, not a name."""
         aware = {
             name
             for name in esolangs.list_languages()
@@ -242,7 +219,7 @@ class TestDescribe:
 
 
 class TestPackageSurface:
-    """What ``dir(esolangs)`` advertises is what the package supports."""
+    r"""What ``dir(esolangs)`` advertises is what the package supports."""
 
     def test_all_is_declared_and_importable(self) -> None:
         assert esolangs.__all__
@@ -258,15 +235,15 @@ class TestPackageSurface:
 
 
 class TestConventionsAreDiscoverable:
-    """How to feed a language, and how to read its answer, are askable."""
+    r"""How to feed a language, and how to read its answer, are askable."""
 
     def test_grapheme_names_its_input_alphabet(self) -> None:
-        """Digits are read as truthy, so 0/1 lines answer the wrong row."""
+        r"""Digits are read as truthy, so 0/1 lines answer the wrong row."""
         assert esolangs.describe("Grapheme")["input_encoding"] == ("%", "A")
         assert esolangs.describe("brainfuck")["input_encoding"] == ("0", "1")
 
     def test_the_named_alphabet_is_the_one_that_works(self) -> None:
-        """The point of the key: using it reproduces the truth table."""
+        r"""The point of the key: using it reproduces the truth table."""
         zero, one = esolangs.describe("Grapheme")["input_encoding"]  # type: ignore[misc]
         program = esolangs.generate("Grapheme", XOR)
         got = "".join(
@@ -280,7 +257,7 @@ class TestConventionsAreDiscoverable:
 
     @pytest.mark.parametrize("name", ["123", "ArrowQueue", "Point Break", "Fargo"])
     def test_a_language_that_needs_explaining_explains_itself(self, name: str) -> None:
-        """Termination-as-answer and Fargo's row index are not guessable."""
+        r"""Termination-as-answer and Fargo's row index are not guessable."""
         assert esolangs.describe(name)["answer_convention"]
 
     def test_a_plain_printer_needs_no_note(self) -> None:
@@ -288,7 +265,7 @@ class TestConventionsAreDiscoverable:
 
 
 class TestEveryDeliberateErrorIsCatchable:
-    """The package docstring's promise, checked against the interpreters."""
+    r"""The package docstring's promise, checked against the interpreters."""
 
     @pytest.mark.parametrize(
         ("language", "source"),
@@ -302,19 +279,19 @@ class TestEveryDeliberateErrorIsCatchable:
     def test_a_malformed_program_is_a_programerror(
         self, language: str, source: str
     ) -> None:
-        """They were bare ValueErrors, so the documented base class missed."""
+        r"""They were bare ValueErrors, so the documented base class missed."""
         with pytest.raises(ProgramError) as exc:
             esolangs.run(language, source, timeout=5)
         assert isinstance(exc.value, EsolangError)
         assert str(exc.value)
 
     def test_every_committed_example_runs_from_its_described_path(self) -> None:
-        """describe() handed out paths run() choked on: the file's newline."""
+        r"""describe() handed out paths run() choked on: the file's newline."""
         failures = []
         for name in esolangs.list_languages():
             facts = esolangs.describe(name)
             if facts["parameterized"] or facts["answer_convention"]:
-                continue  # needs bits embedded, or answers by terminating
+                continue  # needs bits embedded, or.
             zero, one = facts["input_encoding"]  # type: ignore[misc]
             for example in facts["examples"]:  # type: ignore[union-attr]
                 try:
@@ -330,7 +307,7 @@ class TestEveryDeliberateErrorIsCatchable:
 
 
 class TestInstantiateValidates:
-    """A wrong call is refused where it is made, not one layer downstream."""
+    r"""A wrong call is refused where it is made, not one layer downstream."""
 
     def test_the_bit_count_must_match_the_slots(self) -> None:
         template = esolangs.generate("Minifuck", XOR)
@@ -338,22 +315,17 @@ class TestInstantiateValidates:
             esolangs.instantiate("Minifuck", template, [1])
 
     def test_a_bit_must_be_a_bit(self) -> None:
-        """``2`` was substituted silently into a program that then lied.
-
-        An :class:`ArgumentError` rather than a ``TemplateError``: the
-        template is fine, the argument is not, and the same check now backs
-        ``encode_inputs`` -- which has no template to complain about.
-        """
+        r"""``2`` was substituted silently into a program that then lied."""
         template = esolangs.generate("Minifuck", XOR)
         with pytest.raises(esolangs.ArgumentError, match="must each be 0 or 1"):
             esolangs.instantiate("Minifuck", template, [2, 0])
 
 
 class TestNoTwoNamesDisagree:
-    """One question, one answer."""
+    r"""One question, one answer."""
 
     def test_width_awareness_has_a_single_spelling(self) -> None:
-        """``esolangs.takes_width`` took a function and answered False here."""
+        r"""``esolangs.takes_width`` took a function and answered False here."""
         assert not hasattr(esolangs, "takes_width")
         assert esolangs.describe("LaserFuck")["width_aware"] is True
 
@@ -362,22 +334,10 @@ class TestNoTwoNamesDisagree:
 
 
 class TestTheSignaturesAgreeWithThemselves:
-    """Two functions taking the same argument should describe it the same.
-
-    Found by reading the public signatures side by side rather than by
-    using any one of them, which is the view a caller writing against the
-    package gets and no single call ever shows.
-    """
+    r"""Two functions taking the same argument should describe it the same."""
 
     def test_bits_is_annotated_the_same_in_both_places(self) -> None:
-        """``encode_inputs`` promised more than it accepts.
-
-        It was annotated ``Sequence[int]`` while ``instantiate`` said
-        ``list[int] | tuple[int, ...]``, and *both* refuse anything else at
-        runtime -- so a typed caller passing a ``range`` got mypy's
-        approval and an ``ArgumentError``.  The narrow one was the true
-        one.
-        """
+        r"""``encode_inputs`` promised more than it accepts."""
         annotations = {
             fn.__name__: inspect.signature(fn).parameters["bits"].annotation
             for fn in (esolangs.encode_inputs, esolangs.instantiate)
@@ -394,26 +354,21 @@ class TestTheSignaturesAgreeWithThemselves:
         ],
     )
     def test_both_accept_and_refuse_the_same_things(self, call: object) -> None:
-        """The annotation is only right while the behaviour matches it."""
+        r"""The annotation is only right while the behaviour matches it."""
         call([1, 0])  # type: ignore[operator]
         call((1, 0))  # type: ignore[operator]
         with pytest.raises(esolangs.ArgumentError, match="list or tuple"):
             call(range(2))  # type: ignore[operator]
 
     def test_the_default_sentinel_reads_as_a_default(self) -> None:
-        """``help`` showed a memory address that changed every run.
-
-        ``timeout: float | esolangs._Default | None = <esolangs._Default
-        object at 0x105fa12b0>`` is documentation nobody can use; the
-        sentinel means "omit this", so it says so.
-        """
+        r"""``help`` showed a memory address that changed every run."""
         for fn in (esolangs.evaluate, esolangs.verify):
             rendered = str(inspect.signature(fn))
             assert "<default>" in rendered, fn.__name__
             assert "object at 0x" not in rendered, fn.__name__
 
     def test_language_is_first_everywhere(self) -> None:
-        """The one argument every public call shares, in the same place."""
+        r"""The one argument every public call shares, in the same place."""
         for name in esolangs.__all__:
             attribute = getattr(esolangs, name)
             if not inspect.isfunction(attribute):
@@ -425,30 +380,20 @@ class TestTheSignaturesAgreeWithThemselves:
 
 
 class TestDescribeHasANameableType:
-    """``dict[str, object]`` was accurate and useless.
-
-    Every field access needed a cast, and ``mypy --strict`` over an
-    ordinary consumer program reported five errors, all of them this one.
-    The docstring already specified every key; ``LanguageInfo`` is that
-    specification in a form a type checker can read.
-    """
+    r"""``dict[str, object]`` was accurate and useless."""
 
     def test_it_is_exported(self) -> None:
-        """A type you cannot name is a type you cannot annotate with."""
+        r"""A type you cannot name is a type you cannot annotate with."""
         assert "LanguageInfo" in esolangs.__all__
         assert esolangs.LanguageInfo.__doc__
 
     def test_every_key_is_declared(self) -> None:
-        """The TypedDict and the dict must not drift apart."""
+        r"""The TypedDict and the dict must not drift apart."""
         declared = set(esolangs.LanguageInfo.__annotations__)
         assert declared == set(esolangs.describe("brainfuck"))
 
     def test_every_language_matches_the_declared_types(self) -> None:
-        """Declared from a survey of all 69, so it is checked against all 69.
-
-        A TypedDict is not enforced at runtime, so nothing but this notices
-        a language whose field is a different shape.
-        """
+        r"""Declared from a survey of all 69, so it is checked against all 69."""
         import typing
 
         hints = typing.get_type_hints(esolangs.LanguageInfo)
@@ -465,16 +410,11 @@ class TestDescribeHasANameableType:
                 elif expected == tuple[str, str]:
                     assert isinstance(value, tuple), (name, key)
                     assert len(value) == 2, (name, key)
-                else:  # the two that may be None
+                else:  # the two that may be None.
                     assert value is None or isinstance(value, str), (name, key)
 
     def test_the_four_machine_traits_are_still_carried(self) -> None:
-        """They were merged with ``**``, which a TypedDict cannot verify.
-
-        Spelling them out is what let the type land, and it means a
-        renamed trait is now a type error rather than a silently missing
-        key.
-        """
+        r"""They were merged with ``**``, which a TypedDict cannot verify."""
         facts = esolangs.describe("RAM0")
         for key in (
             "self_halts",
@@ -486,16 +426,12 @@ class TestDescribeHasANameableType:
 
 
 class TestSpecAbortsRatherThanReturningNothing:
-    """``-OO`` strips docstrings, and ``spec`` read one.
-
-    So it returned ``""`` for all 69 languages -- a silent wrong answer
-    from the function whose whole promise is that it cannot go stale.
-    """
+    r"""``-OO`` strips docstrings, and ``spec`` read one."""
 
     def test_it_raises_when_there_is_no_docstring(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Simulated by emptying one, since the test run is not under -OO."""
+        r"""Simulated by emptying one, since the test run is not under -OO."""
         module = importlib.import_module(
             "esolangs.interpreters."
             + str(esolangs.describe("brainfuck")["interpreter"])
@@ -505,20 +441,15 @@ class TestSpecAbortsRatherThanReturningNothing:
             esolangs.spec("brainfuck")
 
     def test_it_still_returns_the_text_normally(self) -> None:
-        """The abort must not have eaten the ordinary path."""
+        r"""The abort must not have eaten the ordinary path."""
         assert esolangs.spec("brainfuck").startswith("Interpreter for")
 
 
 class TestAMissingFileIsAFileNotFoundError:
-    """``run`` takes an ``os.PathLike``, so a caller writes the stdlib catch.
-
-    It got a ``ProgramError``, which is a ``ValueError`` and not an
-    ``OSError``, so ``except FileNotFoundError`` missed it entirely --
-    while ``ExecutionTimeoutError`` had been a ``TimeoutError`` all along.
-    """
+    r"""``run`` takes an ``os.PathLike``, so a caller writes the stdlib."""
 
     def test_it_is_catchable_both_ways(self, tmp_path: Path) -> None:
-        """Ours for callers who catch ours, the stdlib's for the rest."""
+        r"""Ours for callers who catch ours, the stdlib's for the rest."""
         missing = tmp_path / "absent.bf"
         with pytest.raises(FileNotFoundError):
             esolangs.run("brainfuck", missing, "", 5)
@@ -530,7 +461,7 @@ class TestAMissingFileIsAFileNotFoundError:
     def test_an_unreadable_file_is_still_a_plain_program_error(
         self, tmp_path: Path
     ) -> None:
-        """Only *absent* is a FileNotFoundError; the rest keep their class."""
+        r"""Only *absent* is a FileNotFoundError; the rest keep their class."""
         blocked = tmp_path / "blocked.bf"
         blocked.write_bytes(b"\xff\xfe\x00")
         with pytest.raises(esolangs.ProgramError) as caught:
@@ -538,27 +469,20 @@ class TestAMissingFileIsAFileNotFoundError:
         assert not isinstance(caught.value, FileNotFoundError)
 
     def test_version_is_not_star_imported(self) -> None:
-        """``from esolangs import *`` injected a dunder into the namespace."""
+        r"""``from esolangs import *`` injected a dunder into the namespace."""
         assert "__version__" not in esolangs.__all__
-        assert esolangs.__version__  # still reachable by name
+        assert esolangs.__version__  # still reachable by name.
 
 
 class TestAMistypedPathIsNotRunAsAProgram:
-    """The guard keyed on ``os.path.exists``, so it fired on the mistake
-    you would have noticed anyway and missed the one you would not.
-
-    ``run("brainfuck", "/tmp/nope.txt")`` returned a null byte -- the ``.``
-    in ``.txt`` is brainfuck's print -- so a typo produced a confident
-    wrong answer.  And it is the exact route a CLI user takes when they
-    move to the API, since the CLI takes a filename.
-    """
+    r"""The guard keyed on ``os.path.exists``, so it fired on the mistake."""
 
     @pytest.mark.parametrize(
         "argument",
         ["/tmp/definitely-not-here.txt", "programs/xor.txt", "nope.txt", r"a\\b.txt"],
     )
     def test_a_path_that_does_not_exist_is_refused(self, argument: str) -> None:
-        """Existence is exactly what it must not depend on."""
+        r"""Existence is exactly what it must not depend on."""
         assert not pathlib.Path(argument).exists()
         with pytest.raises(esolangs.ProgramError, match="looks like a path"):
             esolangs.run("brainfuck", argument, "", 5)
@@ -566,14 +490,14 @@ class TestAMistypedPathIsNotRunAsAProgram:
     def test_a_path_that_does_exist_is_still_refused(
         self, tmp_path: pathlib.Path
     ) -> None:
-        """The case that already worked has to keep working."""
+        r"""The case that already worked has to keep working."""
         path = tmp_path / "p.txt"
         path.write_text("+++.")
         with pytest.raises(esolangs.ProgramError, match="looks like a path"):
             esolangs.run("brainfuck", str(path), "", 5)
 
     def test_every_entry_point_agrees(self) -> None:
-        """All four take a program, so all four have to refuse the same thing."""
+        r"""All four take a program, so all four have to refuse the same thing."""
         for call in (
             lambda: esolangs.run("brainfuck", "nope.txt", "", 5),
             lambda: esolangs.check_program("brainfuck", "nope.txt", ""),
@@ -584,23 +508,17 @@ class TestAMistypedPathIsNotRunAsAProgram:
                 call()
 
     def test_a_real_program_is_untouched(self) -> None:
-        """A guard that refuses real programs is worse than the bug."""
+        r"""A guard that refuses real programs is worse than the bug."""
         assert esolangs.run("brainfuck", "+++.", "", 5) == "\x03"
 
     def test_no_committed_example_looks_like_a_path(self) -> None:
-        """The claim the widened rule rests on, checked rather than asserted.
-
-        The suffix alone already excludes every one of them; the
-        character rule is the margin.  A generator that started emitting
-        something filename-shaped would fail here rather than becoming
-        unrunnable in the field.
-        """
+        r"""The claim the widened rule rests on, checked rather than asserted."""
         for path in sorted(pathlib.Path("examples/boolean").glob("*.txt")):
             text = path.read_text()
             assert not ("\n" not in text and text.endswith(".txt")), path.name
 
     def test_no_generated_program_looks_like_one_either(self) -> None:
-        """All 69, three tables each, since a generator could drift into it."""
+        r"""All 69, three tables each, since a generator could drift into it."""
         for name in esolangs.list_languages():
             for table in ("01", "0110", "10010110"):
                 program = esolangs.generate(name, table)
@@ -610,7 +528,7 @@ class TestAMistypedPathIsNotRunAsAProgram:
     def test_a_pathlib_path_is_read_in_both_directions(
         self, tmp_path: pathlib.Path
     ) -> None:
-        """A Path was always correct, and stays the way to say "this file"."""
+        r"""A Path was always correct, and stays the way to say "this file"."""
         path = tmp_path / "p.txt"
         path.write_text("+++.")
         assert esolangs.run("brainfuck", path, "", 5) == "\x03"
@@ -618,28 +536,18 @@ class TestAMistypedPathIsNotRunAsAProgram:
             esolangs.run("brainfuck", tmp_path / "absent.txt", "", 5)
 
 
-# 2.2s over 12 tests: runs a diverging program to its bound.
+# 2.2s over 12 tests: runs a.
 @pytest.mark.medium
-# 2.2s over 12 tests: runs a diverging program to its bound.
+# 2.2s over 12 tests: runs a.
 @pytest.mark.medium
-# 2.2s over 12 tests: runs a diverging program to its bound.
+# 2.2s over 12 tests: runs a.
 @pytest.mark.medium
 class TestTheThreadRefusalNamesAWayThrough:
-    """A worker thread had two options and no third.
-
-    Timeouts are SIGALRM, so ``timeout=`` raised and ``timeout=None`` ran
-    forever.  Both routes out already existed -- the debugger's cooperative
-    bound, and ``evaluate``/``verify``'s divergence proof -- and the
-    message mentioned neither.
-
-    Deliberately not a silent fallback to the stepping path: two execution
-    paths for one function is how the two came to disagree before, which
-    is what ``tests/test_stepping_parity.py`` exists to catch.
-    """
+    r"""A worker thread had two options and no third."""
 
     @staticmethod
     def _off_thread(work: object) -> object:
-        """Run ``work`` on a worker thread and hand back what it produced."""
+        r"""Run ``work`` on a worker thread and hand back what it produced."""
         box: dict[str, object] = {}
 
         def target() -> None:
@@ -655,7 +563,7 @@ class TestTheThreadRefusalNamesAWayThrough:
         return box["value"]
 
     def test_the_message_names_both_routes(self) -> None:
-        """Naming a route is a claim; the two tests below run it."""
+        r"""Naming a route is a claim; the two tests below run it."""
         outcome = self._off_thread(lambda: esolangs.run("brainfuck", "+++.", "", 5))
         assert isinstance(outcome, esolangs.ArgumentError)
         message = str(outcome)
@@ -663,7 +571,7 @@ class TestTheThreadRefusalNamesAWayThrough:
         assert "timeout=None" in message
 
     def test_the_debugger_route_bounds_a_diverging_program(self) -> None:
-        """The one that matters: a program that never halts, on a thread."""
+        r"""The one that matters: a program that never halts, on a thread."""
         template = esolangs.generate("123", "0110")
         program = esolangs.instantiate("123", template, [0, 1])
 
@@ -673,12 +581,7 @@ class TestTheThreadRefusalNamesAWayThrough:
         assert self._off_thread(work) == "timeout"
 
     def test_the_evaluate_route_works_on_a_thread(self) -> None:
-        """``timeout=None`` is unbounded for ``run`` and settled here.
-
-        The three diverging languages are proved by a repeated state, so
-        ``None`` terminates rather than hanging -- which is what makes it a
-        real answer to "how do I do this off the main thread".
-        """
+        r"""``timeout=None`` is unbounded for ``run`` and settled here."""
         for language in ("123", "ArrowQueue", "Point Break"):
             outcome = self._off_thread(
                 lambda language=language: esolangs.evaluate(  # type: ignore[misc]
@@ -688,41 +591,31 @@ class TestTheThreadRefusalNamesAWayThrough:
             assert outcome == "0110", language
 
     def test_the_main_thread_is_unaffected(self) -> None:
-        """The refusal is about threads, not about timeouts."""
+        r"""The refusal is about threads, not about timeouts."""
         assert esolangs.run("brainfuck", "+++.", "", 5) == "\x03"
 
 
-# 7.8s over 21 tests: each spawns the CLI to read the version.
+# 7.8s over 21 tests: each.
 @pytest.mark.medium
-# 7.8s over 21 tests: each spawns the CLI to read the version.
+# 7.8s over 21 tests: each.
 @pytest.mark.medium
-# 7.8s over 21 tests: each spawns the CLI to read the version.
+# 7.8s over 21 tests: each.
 @pytest.mark.medium
 class TestTheVersionIsResolvedWhenAsked:
-    """``importlib.metadata`` was two fifths of the import for a string.
-
-    It drags in ``email.parser`` to read a wheel's metadata, and measured
-    23ms of this package's 56ms import -- paid by every caller, and most
-    of them never read the version at all.  PEP 562 defers it to whoever
-    asks; import is 35ms now and ``importlib.metadata`` is not in the tree.
-    """
+    r"""``importlib.metadata`` was two fifths of the import for a string."""
 
     def test_it_still_answers(self) -> None:
-        """Lazy is only acceptable while the answer is the same one."""
+        r"""Lazy is only acceptable while the answer is the same one."""
         assert re.match(r"^\d+\.\d+", esolangs.__version__)
 
     def test_it_is_cached_after_the_first_read(self) -> None:
-        """Otherwise every access pays what the import used to."""
+        r"""Otherwise every access pays what the import used to."""
         first = esolangs.__version__
         assert "__version__" in vars(esolangs)
         assert esolangs.__version__ is first
 
     def test_metadata_is_not_imported_by_importing_us(self) -> None:
-        """The measurement, as a check rather than a note in a commit.
-
-        A fresh interpreter, so nothing else in this process has pulled
-        it in first.
-        """
+        r"""The measurement, as a check rather than a note in a commit."""
         code = "import sys; import esolangs; print('importlib.metadata' in sys.modules)"
         result = subprocess.run(
             [sys.executable, "-c", code], capture_output=True, text=True, check=True
@@ -730,7 +623,7 @@ class TestTheVersionIsResolvedWhenAsked:
         assert result.stdout.strip() == "False", result.stdout
 
     def test_reading_it_does_import_metadata(self) -> None:
-        """The other half: deferred, not removed."""
+        r"""The other half: deferred, not removed."""
         code = (
             "import sys; import esolangs; esolangs.__version__; "
             "print('importlib.metadata' in sys.modules)"
@@ -741,16 +634,16 @@ class TestTheVersionIsResolvedWhenAsked:
         assert result.stdout.strip() == "True", result.stdout
 
     def test_an_unknown_attribute_still_fails_normally(self) -> None:
-        """A module ``__getattr__`` that swallows misses hides typos."""
+        r"""A module ``__getattr__`` that swallows misses hides typos."""
         with pytest.raises(AttributeError, match="nosuchthing"):
             esolangs.nosuchthing  # type: ignore[attr-defined]  # noqa: B018
 
     def test_the_namespace_is_unchanged(self) -> None:
-        """``dir`` must still match ``__all__``, which the hook could break."""
+        r"""``dir`` must still match ``__all__``, which the hook could break."""
         assert dir(esolangs) == sorted(esolangs.__all__)
 
     def test_the_cli_reports_it(self) -> None:
-        """The one caller that always wants it."""
+        r"""The one caller that always wants it."""
         result = subprocess.run(
             [sys.executable, "-m", "esolangs", "--version"],
             capture_output=True,
@@ -761,29 +654,18 @@ class TestTheVersionIsResolvedWhenAsked:
 
 
 class TestTheVmPathRefusesLikeRunDoes:
-    """``run`` translated an interpreter's exceptions and the VM did not.
-
-    So the package's one promise -- every deliberate failure derives from
-    ``EsolangError`` -- held on one of the two ways to execute a program
-    and not the other.  ``make_vm("brainfuck", "]")`` leaked a bare
-    ``ValueError``, for 48 of the 69 languages.
-    """
+    r"""``run`` translated an interpreter's exceptions and the VM did not."""
 
     JUNK = ("]", "}", ")", "ZZZ", "[", "\x00")
 
     @pytest.mark.parametrize("entry", ["make_vm", "make_debugger"])
     def test_a_malformed_program_is_a_program_error(self, entry: str) -> None:
-        """The one-character case, on the language it was reported for."""
+        r"""The one-character case, on the language it was reported for."""
         with pytest.raises(esolangs.ProgramError, match="unmatched"):
             getattr(esolangs, entry)("brainfuck", "]")
 
     def test_no_language_leaks_anything_else(self) -> None:
-        """All 69 against six kinds of junk, both entry points.
-
-        Swept rather than sampled because the leak was *per interpreter* --
-        every one that validates its program text had it, and which those
-        are is not something a caller can predict.
-        """
+        r"""All 69 against six kinds of junk, both entry points."""
         escapes = []
         for name in esolangs.list_languages():
             for junk in self.JUNK:
@@ -797,7 +679,7 @@ class TestTheVmPathRefusesLikeRunDoes:
         assert not escapes, escapes[:5]
 
     def test_the_two_paths_agree_on_the_class(self) -> None:
-        """Not merely "both raise" -- both raise the *same* thing."""
+        r"""Not merely "both raise" -- both raise the *same* thing."""
         for entry in (esolangs.make_vm, esolangs.make_debugger):
             with pytest.raises(esolangs.ProgramError) as stepped:
                 entry("brainfuck", "]")
@@ -806,25 +688,14 @@ class TestTheVmPathRefusesLikeRunDoes:
             assert str(stepped.value) == str(ran.value)
 
     def test_a_recursion_limit_is_an_interpreter_limit(self) -> None:
-        """Ninety open parens raised a bare ``RecursionError`` from ``step``.
-
-        ``run`` on the identical program was already clean, so the depth
-        guard existed on one path only.
-        """
+        r"""Ninety open parens raised a bare ``RecursionError`` from ``step``."""
         vm = esolangs.make_vm("Algebraic Programming Language", "(" * 90)
         with pytest.raises(esolangs.InterpreterLimitError):
             vm.step()
 
 
 class TestAnAddressIsNotAllocatedOnTrust:
-    """Three interpreters grew a store to whatever the program named.
-
-    ``run("S*bleq", "100000000000000000000 0 0")`` came back as
-    ``OverflowError: cannot fit 'int' into an index-sized integer``, and
-    one order of magnitude down as ``MemoryError`` -- both escaping
-    ``EsolangError``, and neither stoppable by ``timeout``, because the
-    allocation is a single step.
-    """
+    r"""Three interpreters grew a store to whatever the program named."""
 
     HUGE: ClassVar[list[tuple[str, str]]] = [
         ("S*bleq", "100000000000000000000 0 0"),
@@ -835,12 +706,12 @@ class TestAnAddressIsNotAllocatedOnTrust:
 
     @pytest.mark.parametrize(("language", "program"), HUGE)
     def test_it_is_refused_cleanly(self, language: str, program: str) -> None:
-        """Refused before allocating, so a bigger machine thrashes no worse."""
+        r"""Refused before allocating, so a bigger machine thrashes no worse."""
         with pytest.raises(esolangs.InterpreterLimitError, match="grow its store"):
             esolangs.run(language, program, "", 2)
 
     def test_an_ordinary_address_still_grows(self) -> None:
-        """A cap that refused real programs would be worse than the bug."""
+        r"""A cap that refused real programs would be worse than the bug."""
         assert esolangs.run("S*bleq", "20 0 0", "", 5) == ""
         assert esolangs.evaluate("Decleq", "0110", timeout=30) == "0110"
         assert esolangs.evaluate("S*bleq", "0110", timeout=30) == "0110"
@@ -848,43 +719,28 @@ class TestAnAddressIsNotAllocatedOnTrust:
 
 
 class TestDecleqNegativeAddressing:
-    """A write past the left end escaped as a bare ``IndexError``."""
+    r"""A write past the left end escaped as a bare ``IndexError``."""
 
     def test_it_halts_instead_of_leaking(self) -> None:
-        """Four characters, reduced from a 20,000-character random program."""
+        r"""Four characters, reduced from a 20,000-character random program."""
         with pytest.raises(esolangs.HaltError, match="past the left end"):
             esolangs.run("Decleq", "4 -8", "", 2)
 
     def test_the_documented_negative_write_is_unchanged(self) -> None:
-        """Indexing from the right is deliberate and pinned elsewhere.
-
-        Left alone: growing leftwards instead would turn a terminating
-        program into a non-terminating one, which is the reason it works
-        this way.
-        """
+        r"""Indexing from the right is deliberate and pinned elsewhere."""
         vm = esolangs.make_vm("Decleq", "0 -1 3")
         vm.step()
         assert list(vm.memory)[:3] == [0, -1, -1]
 
     def test_the_asymmetry_is_documented(self) -> None:
-        """A read of -1 is 0 and a write to -1 lands on the last cell.
-
-        Both halves are deliberate and together they mean a program can
-        write where it cannot read -- which was in a *function* docstring,
-        so ``spec`` never showed it.
-        """
+        r"""A read of -1 is 0 and a write to -1 lands on the last cell."""
         spec = esolangs.spec("Decleq")
         assert "negative" in spec.lower()
         assert "read back" in spec or "cannot read" in spec
 
 
 class TestThePathGuardKnowsMoreThanTxt:
-    """It tested for a literal ``.txt`` and nothing else.
-
-    So ``prog.bf`` -- the natural extension for this package's flagship
-    language -- and ``/etc/hosts`` were executed as source, which is the
-    exact failure the guard exists to prevent.
-    """
+    r"""It tested for a literal ``.txt`` and nothing else."""
 
     @pytest.mark.parametrize(
         "argument",
@@ -901,29 +757,22 @@ class TestThePathGuardKnowsMoreThanTxt:
         ],
     )
     def test_a_path_shaped_string_is_refused(self, argument: str) -> None:
-        """Rooted, or ending in a short extension, and only path characters."""
+        r"""Rooted, or ending in a short extension, and only path characters."""
         with pytest.raises(esolangs.ProgramError, match="looks like a path"):
             esolangs.run("brainfuck", argument, "", 5)
 
     @pytest.mark.parametrize("program", ["+++.", ".", "..", "---.", ">>++<<--."])
     def test_a_real_program_still_runs(self, program: str) -> None:
-        """``.`` and ``..`` are legal brainfuck and must not be mistaken."""
+        r"""``.`` and ``..`` are legal brainfuck and must not be mistaken."""
         esolangs.run("brainfuck", program, "", 5)
 
     @pytest.mark.parametrize("program", ["~~", "~*+", ".", "..", "-", "a/b/c"])
     def test_a_hand_written_program_is_not_mistaken(self, program: str) -> None:
-        """``~~`` is two ArrowQueue commands and was refused.
-
-        My first version of this rule counted a leading ``~`` as rooted,
-        which is right for ``~/`` and wrong for a language that spells a
-        command with a tilde.  The suite caught it; the generated-program
-        sweep below did not, because these are hand-written and no
-        generator emits them.  Only ``~/`` is rooted now.
-        """
+        r"""``~~`` is two ArrowQueue commands and was refused."""
         assert not esolangs._looks_like_a_path(program), program  # noqa: SLF001
 
     def test_no_generated_program_is_mistaken(self) -> None:
-        """The widened rule is only safe while this holds."""
+        r"""The widened rule is only safe while this holds."""
         mistaken = []
         for name in esolangs.list_languages():
             for table in ("01", "0110"):
