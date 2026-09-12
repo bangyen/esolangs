@@ -49,7 +49,6 @@ class IO:
         """Create an IO with no pending prompt newline."""
         self._newline = False
 
-    # -- low-level seam: override in subclasses -----------------------
 
     def _read(self, prompt: str) -> str:
         return input(prompt)
@@ -57,7 +56,6 @@ class IO:
     def _write(self, value: object) -> None:
         print(value, end="")
 
-    # -- output -------------------------------------------------------
 
     def print_str(self, text: str) -> None:
         r"""Write ``text`` as-is, adding no trailing newline of its own.
@@ -94,7 +92,6 @@ class IO:
     # newline that no spec asked for.  Writing ``print_str(text + "\n")``
     # keeps that decision visible at the call site.
 
-    # -- input --------------------------------------------------------
 
     def input_str(self, prompt: str = "Input: ") -> str:
         """Read a whole line of input, returning it without the newline."""

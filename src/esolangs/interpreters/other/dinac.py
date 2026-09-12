@@ -108,7 +108,6 @@ class _Value:
 _SNUVAL = _Value("snuval")
 
 
-# -- expressions -----------------------------------------------------------
 
 # Discriminated by the first element, like the statement tuples below.
 _Lit = tuple[Literal["lit"], _Value]
@@ -296,7 +295,6 @@ def _parse_whole(text: str) -> _Expr:
     return expr
 
 
-# -- statements ------------------------------------------------------------
 
 _Out = tuple[Literal["out"], _Expr]
 _In = tuple[Literal["in"], str]
@@ -541,7 +539,6 @@ def _parse(code: str) -> tuple[_Overloads, tuple[_Stmt, ...]]:
     return parser.functions, top
 
 
-# -- evaluation ------------------------------------------------------------
 
 
 def _step_value(value: _Value, op: str) -> _Value:
@@ -563,7 +560,6 @@ def _bit(*, flag: bool) -> _Value:
     return _Value("wubyte", 1 if flag else 0)
 
 
-# -- the machine -----------------------------------------------------------
 
 
 @dataclass
@@ -691,7 +687,6 @@ class _Machine:
         """The frame stack's depth exposed as the VM's stack view."""
         return [frame.ind for frame in self.frames]
 
-    # -- expression evaluation, the one place that recurses ---------------
 
     def _eval(self, expr: _Expr, scope: dict[str, _Value]) -> _Value:
         """Evaluate an expression in ``scope``, running any calls inline."""
@@ -795,7 +790,6 @@ class _Machine:
             tuple(self._substitute(arg, target, value) for arg in expr[2]),
         )
 
-    # -- the simple statements, shared by both execution paths -------------
 
     def _simple(self, stmt: _Stmt, scope: dict[str, _Value]) -> None:
         """Execute a statement with no body: OUT, IN, SET, or an assignment."""
@@ -856,7 +850,6 @@ class _Machine:
             return
         scope[name] = _Value("wubyte", _wubyte_of(line))
 
-    # -- the stepped shell -------------------------------------------------
 
     def _finish(self, frame: _Frame) -> None:
         """Pop an exhausted frame, delivering a call's value if it was one."""

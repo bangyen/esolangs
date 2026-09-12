@@ -79,15 +79,12 @@ from typing import Literal
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# -- values ---------------------------------------------------------------
-
 # The only datatype is a number, but a *function* reaches an expression
 # slot too: the wiki's ``WHILE(x, c)`` takes its condition and body as
 # arguments and calls them with ``x()``.  A bare uppercase name therefore
 # evaluates to the definition it names.
 _Number = int | float
 
-# -- parse tree -----------------------------------------------------------
 
 # Tuples discriminated by their first element, the way Forbin spells the
 # same idea.  ``call`` covers functions and custom operators alike: an
@@ -155,7 +152,6 @@ class _Definition:
         return f"<{self.name}/{len(self.params)}>"
 
 
-# -- tokenizer ------------------------------------------------------------
 
 
 def _tokens(line: str) -> list[str]:
@@ -195,7 +191,6 @@ def _number(word: str) -> _Number:
     return float(word) if "." in word else int(word)
 
 
-# -- parser ---------------------------------------------------------------
 
 
 class _Parser:
@@ -563,7 +558,6 @@ def _body(rhs: str, defs: dict[str, _Definition]) -> list[_Node]:
     return [_Parser(_tokens(text), defs).parse()]
 
 
-# -- evaluation -----------------------------------------------------------
 
 
 class _Frame:
@@ -662,7 +656,6 @@ class _Machine:
     def _steps(self, value: int) -> None:
         self.state.steps = value
 
-    # -- the VM's language-shaped view --------------------------------
 
     @property
     def halted(self) -> bool:
@@ -750,7 +743,6 @@ class _Machine:
             self.io.position(),
         )
 
-    # -- stepping -----------------------------------------------------
 
     def step(self) -> None:
         """Advance the program by one definition, read, or expression node."""

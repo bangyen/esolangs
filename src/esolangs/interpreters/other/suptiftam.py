@@ -175,7 +175,6 @@ class _State:
         return tuple(tuple(row) if row is not None else None for row in self._rows)
 
 
-# -- parsing ---------------------------------------------------------------
 
 
 def _tokenize(line: str) -> list[_Token]:
@@ -452,7 +451,6 @@ def _parse(
     return functions, top
 
 
-# -- runtime ---------------------------------------------------------------
 
 
 def _lookup(

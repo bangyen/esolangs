@@ -325,7 +325,6 @@ class _Machine:
             raise ValueError("no cod start marker '>'")
         self.cods: _State = tuple(cods)
 
-    # -- geometry -----------------------------------------------------
 
     def _open_dirs(
         self, r: int, c: int, exclude: _Direction | None = None
@@ -335,7 +334,6 @@ class _Machine:
     def _choose(self, options: list[_Direction]) -> _Direction:
         return options[draw(self._rng, len(options))]
 
-    # -- state ----------------------------------------------------------
 
     @property
     def halted(self) -> bool:
@@ -473,7 +471,6 @@ class _Machine:
         """Write a tick transition back onto the machine shell."""
         self.cods = state
 
-    # -- stepping ---------------------------------------------------------
 
     def step(self) -> None:
         """Advance every live cod by one cell, executing what it lands on.

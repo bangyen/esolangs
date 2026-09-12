@@ -30,7 +30,6 @@ def machine(code: str) -> _Machine:
     return _Machine(code, ScriptedIO(""))
 
 
-# -- the wiki's own examples -------------------------------------------
 
 # Reproduced from https://esolangs.org/wiki/Function_x(y) verbatim, except
 # where a note says otherwise.
@@ -115,7 +114,6 @@ class TestWikiExamples:
             run(verbatim, ScriptedIO(""))
 
 
-# -- expressions --------------------------------------------------------
 
 
 class TestExpressions:
