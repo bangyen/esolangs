@@ -13,6 +13,7 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import (
+    ArgumentError,
     EsolangError,
     InputExhaustedError,
     ProgramError,
@@ -107,7 +108,10 @@ class TestErrorsAreCatchable:
             (lambda: esolangs.generate("brainfuck", "0121"), TruthTableError),
             (lambda: esolangs.generate("brainfuck", 6), TruthTableError),
             (lambda: esolangs.run("brainfuck", 42), ProgramError),
-            (lambda: esolangs.run("brainfuck", ",.", stdin=["0"]), ProgramError),
+            # A bad stdin is an ArgumentError, not a ProgramError: the stdin
+            # is not the program.  Either way it is an EsolangError, which is
+            # what this class is about.
+            (lambda: esolangs.run("brainfuck", ",.", stdin=["0"]), ArgumentError),
             (lambda: esolangs.run("Nope", "+"), UnknownLanguageError),
         ],
     )

@@ -728,7 +728,17 @@ def interprogck8(truth_table: str) -> str:
         if not stuck:
             break
         if added > _REPAIRS:
-            raise stuck[0]
+            # The shortfall alone is a maintainer's note -- it names a line
+            # window and a label, and a caller learns from it neither the
+            # arity nor the ceiling nor that anything is capped.  The three
+            # sibling caps read "caps at 1934, but this table needs 2862";
+            # this one now opens the same way and keeps the routing detail
+            # after the dash, where it is still the thing to debug from.
+            raise GeneratorCapError(
+                f"Interprogck8 is routed and tested to 10 inputs and this "
+                f"table has {n}: after {_REPAIRS} repair rounds its express "
+                f"jumps still have nowhere to land -- {stuck[0]}"
+            ) from stuck[0]
         for rungs in meadows:
             for rung in rungs:
                 rung.op = "x"

@@ -86,9 +86,20 @@ def _validate_shape(truth_table: str) -> int:
         )
     n = len(truth_table).bit_length() - 1
     if len(truth_table) != 2**n:
+        # The likeliest first error anyone gets, and the rule alone leaves
+        # them to do the arithmetic.  The brackets are cheap here because
+        # this is the cold path -- the check itself runs ~720 times per call
+        # at n=6, but only ever raises once.
+        between = (
+            f"; {len(truth_table)} is between {2**n} "
+            f"({n} input{'' if n == 1 else 's'}) and "
+            f"{2 ** (n + 1)} ({n + 1} input{'' if n + 1 == 1 else 's'})"
+            if truth_table
+            else ""
+        )
         raise TruthTableError(
             "truth table must have a power-of-two number of entries "
-            f"(2**n), got {len(truth_table)}",
+            f"(2**n), got {len(truth_table)}{between}",
         )
     return n
 
