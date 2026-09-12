@@ -36,7 +36,7 @@ import threading
 import warnings
 from collections.abc import Callable, Sequence
 from functools import partial
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 
 from esolangs._validate import check_bits, check_timeout, check_width
 from esolangs.debugger import STOP_REASONS, Debugger, StopReason, make_debugger
@@ -50,6 +50,7 @@ from esolangs.exceptions import (
     InputMismatchWarning,
     InterpreterLimitError,
     ProgramError,
+    ProgramNotFoundError,
     TemplateError,
     TruthTableError,
     UnknownLanguageError,
@@ -101,12 +102,13 @@ __all__ = [
     "InputExhaustedError",
     "InputMismatchWarning",
     "InterpreterLimitError",
+    "LanguageInfo",
     "ProgramError",
+    "ProgramNotFoundError",
     "StopReason",
     "TemplateError",
     "TruthTableError",
     "UnknownLanguageError",
-    "__version__",
     "check_program",
     "check_stdin",
     "describe",
@@ -426,6 +428,10 @@ def check_program(
     if isinstance(program, os.PathLike):
         try:
             program = pathlib.Path(program).read_text(encoding="utf-8").rstrip("\n")
+        except FileNotFoundError as exc:
+            # Split from the OSError clause below so a caller who passed a
+            # Path can write ``except FileNotFoundError`` and have it work.
+            raise ProgramNotFoundError(f"cannot read {program}: {exc}") from exc
         except OSError as exc:
             raise ProgramError(f"cannot read {program}: {exc}") from exc
         except UnicodeDecodeError as exc:
@@ -805,7 +811,45 @@ def _run_timed_signal(
             signal.setitimer(signal.ITIMER_REAL, pending)
 
 
-def describe(language: str) -> dict[str, object]:
+class LanguageInfo(TypedDict):
+    """What :func:`describe` returns, as a type a caller can annotate with.
+
+    It was ``dict[str, object]``, which is accurate and useless: every
+    field access needs a cast, and ``mypy --strict`` over an ordinary
+    consumer program reported five errors, all of them this.  The
+    docstring on :func:`describe` already specified every key -- this is
+    that specification in a form the type checker can read.
+
+    ``total=True``: every language has every key.  A field that does not
+    apply is a documented empty value rather than a missing one, which is
+    what lets a caller iterate the registry without branching -- the
+    property four rounds of this package's history were spent on.
+    """
+
+    name: str
+    id: str
+    state_model: str | None
+    interpreter: str | None
+    boolean_generator: bool
+    parameterized: bool
+    reads_input: bool
+    width_aware: bool
+    width_effect: str
+    input_encoding: tuple[str, str]
+    input_shape: str
+    answer_mode: str
+    answer_pattern: str
+    answer_encoding: tuple[str, str]
+    answer_convention: str | None
+    self_halts: bool
+    dumps_on_the_post_halt_step: bool
+    steppable_to_answer: bool
+    eof_is_a_value: bool
+    examples: list[str]
+    wiki_url: str
+
+
+def describe(language: str) -> LanguageInfo:
     """Return a structured description of ``language``.
 
     The summary carries the ``state_model`` (derived from the
@@ -894,6 +938,7 @@ def describe(language: str) -> dict[str, object]:
     # ``chdir`` away it is ``cannot read examples/boolean/brainfuck.txt``,
     # and for anyone who pip-installed there is no such directory at all.
     examples = sorted(str(p) for p in _EXAMPLES.glob(f"*/{stem}.txt"))
+    traits = machine_traits(name)
     parameterized = lang.id in parameterized_ids()
     example = _example_for(lang.id)
     return {
@@ -915,7 +960,15 @@ def describe(language: str) -> dict[str, object]:
         "answer_pattern": example.answer_pattern if example else "",
         "answer_encoding": example.answer_values if example else ("0", "1"),
         "answer_convention": (example.note or None) if example else None,
-        **machine_traits(name),
+        # Spelled out rather than ``**machine_traits(name)``: that returns
+        # a ``dict[str, bool]``, which a TypedDict cannot verify a
+        # ``**``-expansion of, so the merge would have silently accepted a
+        # renamed or dropped trait.  ``test_describe_agrees_with_the_machine``
+        # keeps the four in step with what the VM reports.
+        "self_halts": traits["self_halts"],
+        "dumps_on_the_post_halt_step": traits["dumps_on_the_post_halt_step"],
+        "steppable_to_answer": traits["steppable_to_answer"],
+        "eof_is_a_value": traits["eof_is_a_value"],
         "examples": examples,
         "wiki_url": wiki_url(name),
     }
@@ -974,7 +1027,18 @@ def spec(language: str) -> str:
     name = resolve(language)
     module = RUNNERS[name][0]
     interpreter = importlib.import_module("esolangs.interpreters." + module)
-    return (interpreter.__doc__ or "").strip()
+    text = (interpreter.__doc__ or "").strip()
+    if not text:
+        # ``-OO`` strips docstrings, so this returned ``""`` for all 69 --
+        # a silent wrong answer from the function whose whole promise is
+        # "read rather than stored, so it cannot drift".  Nothing to say is
+        # worth an abort, not an empty string that looks like an answer.
+        raise ProgramError(
+            f"{name}'s spec is its interpreter's docstring, and this "
+            f"interpreter has none -- Python was started with -OO (or "
+            f"PYTHONOPTIMIZE=2), which strips them"
+        )
+    return text
 
 
 def encode_inputs(
@@ -1127,7 +1191,7 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
     if not isinstance(stdin, str):
         raise ArgumentError(f"stdin must be a string, got {type(stdin).__name__}")
     shape = str(facts["input_shape"])
-    zero, one = cast("tuple[str, str]", facts["input_encoding"])
+    zero, one = facts["input_encoding"]
     # ``splitlines``, which is what :class:`ScriptedIO` uses to cut stdin
     # into the lines it hands over -- so this counts exactly the lines the
     # program will read.  It was ``stdin.strip().split("\n")``, and the
@@ -1399,7 +1463,7 @@ def evaluate(
         # Which of halting and diverging means 1, as data.  It is
         # ``("halts", "diverges")`` for all three, but reading the order
         # rather than assuming it is what keeps this branch language-free.
-        encoding = list(facts["answer_encoding"])  # type: ignore[call-overload]
+        encoding = list(facts["answer_encoding"])
         diverges_is = str(encoding.index("diverges"))
         halts_is = str(encoding.index("halts"))
     answers = []
