@@ -296,6 +296,52 @@ class TestTheLastResortPathsContinued:
         assert "brainfuck: not a position" in capsys.readouterr().err
 
 
+class TestATimeoutHasOneExitCode:
+    """124 wherever the bound runs out, not two codes for one event.
+
+    ``run`` and ``debug`` exited 124 and ``evaluate``, ``verify`` and
+    ``answer`` exited 1 on the same event, so a script could not test for
+    it -- and 124 is the only exit code this CLI documents a meaning for.
+    The three languages whose answer *is* a timeout make the distinction
+    load-bearing rather than tidy.
+    """
+
+    @pytest.mark.medium
+    @pytest.mark.parametrize(
+        "args",
+        [
+            ["evaluate", "10010110"],
+            ["verify", "10010110"],
+            ["answer", "10010110", "101"],
+        ],
+    )
+    def test_the_bound_running_out_is_124(
+        self, args: list[str], capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A bound too small to finish, on a generator slow enough to catch."""
+        command, rest = args[0], args[1:]
+        with pytest.raises(SystemExit) as exc:
+            call_main([command, "--timeout", "0.001", "Polynomial", *rest], capsys)
+        assert exc.value.code == 124
+        capsys.readouterr()
+
+    @pytest.mark.medium
+    def test_a_usage_error_is_still_2_and_a_fault_still_1(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The other two codes are unchanged, so 124 narrowed only the timeout."""
+        with pytest.raises(SystemExit) as exc:
+            call_main(["evaluate", "brainfuck", "011"], capsys)
+        assert exc.value.code == 2
+        capsys.readouterr()
+        path = tmp_path / "p.txt"
+        path.write_text(",.")
+        with pytest.raises(SystemExit) as exc:
+            call_main(["run", "brainfuck", str(path)], capsys)
+        assert exc.value.code == 1
+        capsys.readouterr()
+
+
 class TestRunCanBeBounded:
     """Several of these languages loop forever by design."""
 
