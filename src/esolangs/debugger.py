@@ -304,11 +304,18 @@ class Debugger:
     def watch_stack(self, slot: int) -> list[object]:
         """Record the ``slot``-th stack value from the top each step.
 
-        A language with no stack records an empty history forever, and
-        is not refused: ``stack`` is ``[]`` for those, which is a
-        legitimate state rather than an absent one, and the VM protocol
-        draws no line between the two.  ``describe(...)["state_model"]``
+        A language with no stack records ``None`` once per step rather
+        than an empty history, and is not refused: ``stack`` is ``[]`` for
+        those, which is a legitimate state rather than an absent one, and
+        the VM protocol draws no line between the two.  A missing slot
+        reads as ``None`` exactly as :meth:`watch_cell` records ``None``
+        for a cell the tape has not grown to, so a stackless language is
+        every slot missing on every step.  ``describe(...)["state_model"]``
         is the fact to consult first.
+
+        This said "records an empty history forever", which is what a
+        reader would have to test to find out was wrong: the list is one
+        ``None`` per step and is never empty after a run.
         """
         check_whole(slot, "slot")
         if slot not in self._stack_history:
@@ -372,14 +379,36 @@ class Debugger:
         ``break_at(ip)`` on the initial position still stops before the
         first step executes.
 
-        It is checked once more after the machine halts, because otherwise
-        a condition the *last* step made true is never looked at and the
-        run reports ``"halted"`` over a watch that fired.  The run after
-        that one returns ``"halted"``, since the hit is then suppressed.
+        It is checked again after the machine halts, because otherwise a
+        condition the *last* step made true is never looked at and the run
+        reports ``"halted"`` over a watch that fired.  The run after that
+        one returns ``"halted"``, since the hit is then suppressed.
+
+        On the seven languages where the output arrives one step past the
+        halt (``dumps_on_the_post_halt_step``) that is two more checks, not
+        one: once before this method takes the dump step and once after,
+        since the dump changes ``output`` and either state can be the one
+        a caller is watching for.
+
+        **So a ``"breakpoint"`` can now be returned with ``halted`` true
+        and ``output`` still empty**, on those seven, which was not
+        reachable before.  It is not a stuck state -- ``step()``, or
+        another ``run()``, takes the dump and writes the answer -- but a
+        caller whose loop reads ``if dbg.halted: return dbg.output`` on a
+        stop it did not check the reason of will read ``""``.
 
         ``max_steps`` bounds the run in steps and ``timeout`` in wall-clock
         seconds; the default of ``None`` for both is unbounded, which is
         right for a machine known to halt and a hang for one that is not.
+
+        The post-halt dump step is outside the budget, so on those seven
+        languages ``max_steps=N`` can advance the machine ``N + 1`` times
+        and a watch history comes back one longer than the bound.  That is
+        deliberate -- the step exists so the answer is readable, and
+        spending the caller's last unit of budget on it would mean a bound
+        that happens to equal the program's length hides the output -- but
+        it was not written down.
+
         Either bound *returns* -- ``"max_steps"`` or ``"timeout"`` -- rather
         than raising, so one ``reason ==`` covers every way a run can *stop*
         and a caller bounding both ways needs no ``except`` for the bounds.
@@ -537,5 +566,12 @@ def make_debugger(
     program that is malformed for its language raises
     :class:`~esolangs.exceptions.ProgramError`, which is the refusal that
     does happen here.
+
+    So, on one language, is
+    :class:`~esolangs.exceptions.InputExhaustedError`: Clockwise reads its
+    whole input in one go and does it while the machine is being built, so
+    an underfed Clockwise program faults here rather than at
+    :meth:`Debugger.run` like the other fifty-one.  Worth knowing before
+    wrapping only the ``run`` in a guard.
     """
     return Debugger(make_vm(language, program, stdin))

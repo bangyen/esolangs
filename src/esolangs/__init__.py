@@ -549,6 +549,22 @@ def run(
     single line, so an underfed program is undetectable here and only
     ``check_stdin`` with the table catches it.
 
+    Two languages do neither, and the flag does not separate them out:
+
+    * **Alight** is marked ``eof_is_a_value`` and does not carry on -- the
+      sentinel reaches its arithmetic and it halts with ``cannot apply '+'
+      to 2.0 and 'eof'``.  So it refuses, loudly, which is the safe half
+      of the flag's two outcomes but not the one it names.
+    * **Suffolk** is marked ``False`` and does not raise.  An exhausted
+      read *ends* the program, so a run comes back ``halted`` with no
+      output and no warning at all.  That is written down under
+      ``self_halts``, which says Suffolk "ends when a read runs out of
+      input" -- the two traits describe the same fact and only one of them
+      is where a reader looks for it.
+
+    Swept rather than sampled: the other fifty of the fifty-two
+    stdin-reading languages do exactly what the flag says.
+
     How a language spells its bits is not universal -- Grapheme reads
     ``%``/``A``, Fargo one number whose bits are the inputs -- so take the
     alphabet from ``describe(language)["input_encoding"]``; feeding the

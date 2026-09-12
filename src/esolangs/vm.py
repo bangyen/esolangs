@@ -944,6 +944,17 @@ class VM(Protocol):
         vertically, and the *first* is what changes.  The rest agree.
         Anything past the second component is the language's own -- a
         heading, a phase -- and is not described here.
+
+        **The row-then-column rule is about those ten and no others.**
+        Twenty languages report a tuple: the other ten are not grid
+        languages at all -- 3D Brainfuck and Back are tape machines, Eval,
+        Forþ and Grapheme stack ones, Interprogck8 and MyScript register
+        ones, and APL, Forbin and ``function x(y)`` are their own thing.
+        Half of those report a bare ``(0,)``.  Their components are the
+        language's own and mean whatever that language needs, so a 4-tuple
+        from Back is not a coordinate in row-major order and nothing here
+        says it is.  ``describe(...)["state_model"]`` is what separates the
+        two groups.
         """
 
     @property
