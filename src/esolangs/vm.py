@@ -925,10 +925,25 @@ class VM(Protocol):
 
         **The tuple's arity is the language's own and is not stable within
         a run.**  This used to promise ``(x, y, heading)``, which is three
-        of them: the registry also has 1-, 2-, 4- and 6-tuples, and six
-        languages change shape mid-run -- Basicfuck, Flowchart, MyScript and
-        Super SNUSP to ``None``, COD and ``function x(y)`` to an empty
-        tuple -- so a caller must read the shape rather than assume one.
+        of them: at the start of a run the registry also has 1-, 2-, 4- and
+        6-tuples, and *eight* languages change shape as they go -- so a
+        caller must read the shape rather than assume one.
+
+        The eight, measured by stepping each to its halt:
+
+        * to ``None``: Basicfuck (from an ``int``), Flowchart, MyScript,
+          Super SNUSP
+        * to an empty tuple: ``function x(y)``
+        * growing and shrinking again: the Algebraic Programming Language
+          between 1, 2 and 3, Forþ between 1, 2 and 3, and **COD through
+          4, 8, 12 and 16 before ending at 0**
+
+        So the arities a run can actually present are 0, 1, 2, 3, 4, 6, 8,
+        12 and 16.  Sizing anything to the largest *initial* arity is the
+        mistake this paragraph exists to prevent, and the paragraph itself
+        used to invite it: it said six languages and named COD as going to
+        an empty tuple, when COD's shape mostly *grows* and reaches four
+        times the width the enumeration stopped at.
         :meth:`~esolangs.debugger.Debugger.break_at` checks the kind for
         exactly this reason, and deliberately does not check the arity.
 
@@ -1065,6 +1080,28 @@ class VM(Protocol):
         actually broken is that :func:`esolangs.run` promised the exception
         for every language, and a caller had no way to learn which ones
         it does not come from.
+
+        **Two languages are not either of those two outcomes**, and the flag
+        cannot say so on its own.  Fed one line short of what it wants:
+
+        * **Alight** is ``True`` and does not carry on.  The sentinel
+          reaches its arithmetic and it halts with ``cannot apply '+' to
+          2.0 and 'eof'`` -- a refusal, which is the safe half of the two
+          outcomes but not the one this flag names.
+        * **Suffolk** is ``False`` and does not raise.  The exhausted read
+          *ends* the program, so it comes back halted with no output and no
+          warning.  That is written down under :attr:`self_halts`, which
+          says Suffolk "ends when a read runs out of input" -- the same fact
+          under a different trait, and not the one a reader checks here.
+
+        Everything else is exactly what the flag says: of the fifty-two
+        languages that read stdin, forty-four of the forty-five ``False``
+        ones raise, and five of the six ``True`` ones answer a different row
+        and warn with
+        :class:`~esolangs.exceptions.InputMismatchWarning`.  Swept, not
+        sampled -- and swept with an input one line short rather than an
+        empty one, which is a different question: several languages diverge
+        on empty stdin instead of reaching the read at all.
         """
 
     @property

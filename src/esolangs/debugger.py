@@ -88,7 +88,16 @@ class Debugger:
 
     @property
     def ip(self) -> int | tuple[int, ...] | None:
-        """The wrapped VM's current position."""
+        """The wrapped VM's current position.
+
+        An ``int``, a tuple, or ``None``, and **not stable in kind or
+        arity within a run**.  :meth:`break_at` is the reason to care:
+        it is a method of this class and using it correctly depends on
+        what shape this reports.  :attr:`~esolangs.vm.VM.ip` has the
+        rules -- row before column for the grid ten, the other ten that
+        report tuples meaning something else entirely, and the eight
+        that change shape mid-run.
+        """
         return self.vm.ip
 
     @property
@@ -113,18 +122,34 @@ class Debugger:
 
     @property
     def self_halts(self) -> bool:
-        """Whether a program in this language can reach a halt of its own."""
+        """Whether a program in this language can reach a halt of its own.
+
+        See :attr:`~esolangs.vm.VM.self_halts` for which languages, and
+        for why the answer is not "the ones without a halt command".
+        Deliberately a pointer rather than a paraphrase: a second copy
+        of a fact is a second thing to keep true, and the copies here
+        have already drifted apart once.
+        """
         return self.vm.self_halts
 
     @property
     def dumps_on_the_post_halt_step(self) -> bool:
         """Whether the output lands on the step *after* ``halted`` goes true.
 
-        **On this class :meth:`run` has already taken that step**, so a
-        ``run()`` that reported ``"halted"`` holds the dumped output and
-        needs nothing further.  :meth:`step` has not: a caller driving with
+        **On this class a :meth:`run` that returned ``"halted"`` has
+        already taken that step**, so it holds the dumped output and needs
+        nothing further.  :meth:`step` has not: a caller driving with
         ``while not dbg.halted: dbg.step()`` stops one step short and holds
         ``""``, which is what the trait is warning about.
+
+        A run that returned ``"breakpoint"`` may or may not have taken it,
+        because the breakpoint is checked on both sides of the dump -- so
+        on these seven, ``halted`` being true does not by itself mean the
+        answer is written.  The stop *reason* is what tells you; see
+        :meth:`run`.  This used to lead with an unconditional "``run`` has
+        already taken that step", which was true when only ``"halted"``
+        could follow a halt and stopped being true when the second check
+        was added.
 
         Said here because the wrapped VM's version of this docstring says
         "one further ``step()`` writes what ``run`` writes", meaning
@@ -136,7 +161,12 @@ class Debugger:
 
     @property
     def steppable_to_answer(self) -> bool:
-        """Whether stepping this language ever reaches the answer."""
+        """Whether stepping this language ever reaches the answer.
+
+        See :attr:`~esolangs.vm.VM.steppable_to_answer` for the one
+        language this is ``False`` for and why a bigger budget does not
+        help.  A pointer, not a paraphrase -- see :attr:`self_halts`.
+        """
         return self.vm.steppable_to_answer
 
     def snapshot(self) -> object:
@@ -176,11 +206,15 @@ class Debugger:
 
         Only the kind, not the arity.  A tuple ``ip``'s length is the
         language's own -- three for ArrowQueue and Clockwise, four for
-        Alight and COD, six for one of them -- and it is not even constant
-        within a run: six languages change shape as they go, several to
-        ``None`` once the agent they were tracking is consumed, and COD from
-        a 4-tuple to an empty one.  So an arity check would refuse
-        breakpoints that are perfectly legitimate later in the same run.
+        Alight and COD, six for 3D Brainfuck, which is a tape machine
+        rather than one of the grid languages above -- and it is not even
+        constant within a run: eight languages change shape as they go,
+        four to ``None``, ``function x(y)`` to an empty tuple, and COD
+        through 8, 12 and 16 before it empties.  So an arity check would
+        refuse breakpoints that are perfectly legitimate later in the same
+        run.  :attr:`~esolangs.vm.VM.ip` has the full list; it is not
+        repeated here, because two copies of a count are how the last one
+        came to be wrong.
         A machine whose ``ip`` is already ``None`` or empty has no shape to
         compare against, and anything is accepted.
 
@@ -288,9 +322,17 @@ class Debugger:
     def watch_cell(self, index: int) -> list[int | None]:
         """Record ``memory[index]`` each step, returning the history.
 
-        A cell that does not exist yet records ``None`` (the tape has not
-        grown there); the list grows by one per :meth:`step`.  Watching a
-        cell again returns the existing history.
+        A cell that is not there records ``None``; the list grows by one
+        per :meth:`step`.  Watching a cell again returns the existing
+        history.
+
+        "Not there" is not only "not grown to yet".  Memory *shrinks* on
+        six languages mid-run -- COD from four cells to none, Forbin from
+        sixteen to none, Taglate from twenty-two to four, and Packlang,
+        Circuit Diagram and Bitdeque likewise -- so a watch can record
+        integers and then go back to ``None``.  Reading that as "the tape
+        has not grown there yet", which this used to say, gets the second
+        half backwards.
 
         **Recording starts here, not at construction**, so steps taken
         before this call leave no entry: watch first, then run.  The list is
@@ -355,9 +397,20 @@ class Debugger:
         The guard was not protecting anything either: an interpreter's
         ``step`` past its halt is a no-op by construction, so the delegation
         is safe for every other language too.
+
+        Warns about an underfed stdin at the halt, exactly as :meth:`run`
+        does.  It did not, and that was the wrong way round: the warning
+        exists because six languages take an exhausted read as a *value* and
+        answer a different row of the table, which is a wrong answer with
+        nothing in the output to show for it -- and ``step`` is the mode a
+        debugging session actually drives with.  A caller stepping an
+        underfed Fargo to its halt got a confident ``'0'`` and no warning,
+        while ``run`` on the same machine said so.
         """
         self.vm.step()
         self._record()
+        if self.vm.halted:
+            self._warn_about_stdin_once()
 
     def run(
         self, max_steps: int | None = None, timeout: float | None = None
