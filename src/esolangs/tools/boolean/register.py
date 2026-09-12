@@ -504,8 +504,53 @@ def sophie(truth_table: str) -> str:
     return _sophie_hybrid(truth_table)
 
 
-# leaves test against.
-_SOPHIE_BANDS = ((1, 20), (21, 40))
+#: Accumulator values a Sophie label may not take.
+#:
+#: A read leaves the accumulator holding the character read, and the tests
+#: are against ``48``/``49`` -- ASCII ``0`` and ``1`` -- so a block labelled
+#: with either would fire on an ordinary bit rather than on a jump.  Nothing
+#: else is reserved: the interpreter reads a label as a plain digit run, so
+#: they can climb as high as the program needs.
+_SOPHIE_RESERVED = frozenset({_ASCII_ZERO, _ASCII_ONE})
+
+
+def sophie_labels(retained: list[list[str]]) -> list[dict[str, int]]:
+    """Return one label per retained state, unique across all levels.
+
+    This used to draw from two bands by level parity -- ``((1, 20), (21,
+    40))`` -- on the reasoning that a fired block leaves the accumulator
+    holding a *next*-level label, which no remaining test in the chain can
+    match.  The reasoning holds for consecutive levels and that is not the
+    relation that matters.  Unshared states are *inlined*, so one top-level
+    block contains jumps originating at many different depths, and two
+    levels of the same parity are both jump targets from inside it.  Level 2
+    and level 4 then both got label ``1``, and since level 2 is emitted
+    first, a jump meant for level 4 fired level 2 on the way past -- reading
+    inputs the caller never supplied.
+
+    The smallest table that does it is the five-input
+    ``00000000000000010000000100000100``, whose program carries two ``@$1``
+    blocks.  It is shape-dependent rather than size-dependent, so it hides
+    from parity and dense tables and shows up on one-hot: over 500 random
+    tables per arity, 1.6% collide at n=5, 11.2% at n=6, 35.0% at n=7 and
+    87.6% at n=8, while all 65536 tables at n <= 4 are clean.
+
+    Numbering across the whole program rather than per level also retires a
+    second latent collision: the bands' upper bounds were never read, so a
+    level with more than twenty retained states ran straight into the next
+    band.
+    """
+    labels: list[dict[str, int]] = []
+    number = 1
+    for states in retained:
+        level: dict[str, int] = {}
+        for state in states:
+            while number in _SOPHIE_RESERVED:
+                number += 1
+            level[state] = number
+            number += 1
+        labels.append(level)
+    return labels
 
 
 def _sophie_hybrid(truth_table: str) -> str:
@@ -529,10 +574,7 @@ def _sophie_hybrid(truth_table: str) -> str:
         ]
         for k, states in enumerate(levels)
     ]
-    labels = [
-        {state: _SOPHIE_BANDS[k % 2][0] + index for index, state in enumerate(states)}
-        for k, states in enumerate(retained)
-    ]
+    labels = sophie_labels(retained)
 
     def body(k: int, state: str) -> str:
         if len(set(state)) == 1:

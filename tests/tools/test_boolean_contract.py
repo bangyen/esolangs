@@ -8,6 +8,7 @@ import contextlib
 import hashlib
 import importlib
 import re
+from collections.abc import Callable
 
 import pytest
 
@@ -940,22 +941,57 @@ def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
 _ONE_MINTERM_ARITY = 6
 
 
+def _one_minterm(n: int) -> str:
+    """A single 1, which makes every input essential at minimum size."""
+    return "1" + "0" * (2**n - 1)
+
+
+def _one_hot(n: int) -> str:
+    """1 exactly where one input is set.
+
+    The second shape, and it is here because one minterm was not enough.
+    Sophie emitted programs that read ``n + 1`` inputs and died on their own
+    generator's output, and this sweep did not see it: parity, dense, a
+    single minterm, majority and a mux all passed at n=6, and one-hot
+    failed.  Arity was never the missing coordinate -- Sophie is clean on
+    every one of the 65536 tables at n <= 4 and collides on 35% of random
+    tables at n=7 -- so a second *shape* buys what a seventh input does not.
+
+    It costs 27.6s of work across the 69, against 18.6s for one minterm.  A
+    third shape was measured and dropped: a 2-CNF at n=6 costs 67.2s, 37s of
+    it Circuit Diagram alone, and caught nothing this does not.
+    """
+    return "".join(str(int(bin(row).count("1") == 1)) for row in range(2**n))
+
+
+#: The table shapes every generator's *output* is executed against.
+_EXEC_SHAPES = (("one_minterm", _one_minterm), ("one_hot", _one_hot))
+
+
+@pytest.mark.parametrize(
+    "make", [make for _, make in _EXEC_SHAPES], ids=[s for s, _ in _EXEC_SHAPES]
+)
 @pytest.mark.parametrize("name", sorted(esolangs.list_languages()))
-def test_every_generator_runs_what_it_builds(name: str) -> None:
+def test_every_generator_runs_what_it_builds(
+    name: str, make: Callable[[int], str]
+) -> None:
     """Build a table using all six inputs, execute it, and check every row.
 
     Parameterized per language rather than looped so that a failure names
     the one that broke instead of stopping at the first.
     """
-    table = "1" + "0" * (2**_ONE_MINTERM_ARITY - 1)
+    table = make(_ONE_MINTERM_ARITY)
     assert esolangs.evaluate(name, table, timeout=30) == table
 
 
-def test_the_minterm_table_really_needs_every_input() -> None:
-    """The guard above is worthless if its table folds.
+@pytest.mark.parametrize(
+    "make", [make for _, make in _EXEC_SHAPES], ids=[s for s, _ in _EXEC_SHAPES]
+)
+def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> None:
+    """The guards above are worthless if their tables fold.
 
-    This is the assumption the whole file rests on, and it is one line to
+    This is the assumption the whole sweep rests on, and it is one line to
     check, so it is checked rather than asserted in a comment.
     """
-    table = "1" + "0" * (2**_ONE_MINTERM_ARITY - 1)
+    table = make(_ONE_MINTERM_ARITY)
     assert len(essential_inputs(table, _ONE_MINTERM_ARITY)) == _ONE_MINTERM_ARITY

@@ -14,7 +14,21 @@ constructions without building them, and there is no longer a choice to make.
 # pylint: disable=duplicate-code
 
 from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
-from esolangs.tools.boolean.register import _SOPHIE_BANDS, _polynomial_states
+from esolangs.tools.boolean.register import _polynomial_states
+
+#: Label bands for the *pure* DAG below, which the shipped generator no
+#: longer shares.
+#:
+#: Two bands by level parity are enough here and were not enough there, and
+#: the difference is inlining.  This emits one block per state at every
+#: level, in level order, so every jump goes from level k to level k + 1 and
+#: the accumulator only ever holds a next-level label while control is
+#: passing the current level's blocks -- which draw from the other band.
+#: The shipped generator inlines unshared states, so one top-level block
+#: carries jumps originating at many depths, two same-parity levels are both
+#: targets from inside it, and the earlier one fires first.  See
+#: :func:`~esolangs.tools.boolean.register.sophie_labels`.
+_SOPHIE_BANDS = ((1, 20), (21, 40))
 
 
 def _polynomial_tree(truth_table: str) -> list[list[int]]:
