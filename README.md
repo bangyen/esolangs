@@ -7,7 +7,7 @@ Interpreters and boolean-circuit generators for 69 esoteric languages.
 `generate` takes a truth table and returns a program computing it;
 `verify` runs that program on every row and checks what it answers.
 
-[usage](docs/usage.md) is the caller's guide — the exported functions, the
+[usage](docs/usage.md) is the caller's guide -- the exported functions, the
 four odd input shapes, templates, reading an answer back, the debugger.
 [roadmap](docs/roadmap.md) tracks live work, [limitations](docs/limitations.md)
 records contracts, and the rest of [`docs/`](docs/README.md) is indexed there.
@@ -36,7 +36,7 @@ esolangs.verify("Fargo", "10010110")  # -> True
 
 Pass each command the language it was generated for: running a Suffolk
 program as brainfuck does not fail, it reports something useless.  How a
-language reads its input bits is not universal either — let
+language reads its input bits is not universal either -- let
 [`encode_inputs`](docs/usage.md#feeding-a-program) build the stdin.
 
 ## Examples
@@ -50,6 +50,40 @@ language reads its input bits is not universal either — let
 Feeding it the two input bits, one per line, prints their XOR.
 `tests/test_readme_example.py` runs all four rows, so the block cannot
 drift.
+
+## Stepping a program
+
+<!-- TUI-FRAME:START -->
+
+`--tui` steps it on screen instead.  This is a real frame -- Flowchart at
+step 14, redrawn by `tui.render` every time this file is generated:
+
+```
+Flowchart  step 14  ip (9, 7, 1, 0)  running
+--------------------------------------------------------------------------
+ 5 |     ┌───< >───┐
+ 6 |     │         │
+ 7 |    / /       / /
+ 8 |     │         │
+ 9 |   ┌< >─┐    ┌< >─┐
+10 |   │    │    │    │
+11 |  { ]  [ }  [ }  { ]
+12 |   │    │    │    │
+13 |  \ \  \ \  \ \  \ \
+14 |   │    │    │    │
+15 | (( ))(( ))(( ))(( ))
+--------------------------------------------------------------------------
+memory   (empty)
+stack    (empty)
+output   ''
+views    deques={}  pointers=[_Pointer(row=9, col=7, d=(1, 0), reg=1, dequ
+hjkl move | t break | space step | c continue | r run | b back | q quit
+```
+
+The live screen reverse-videos the cell at that `ip`; colour does not survive
+the page.  [usage](docs/usage.md#debugging) names every key.
+
+<!-- TUI-FRAME:END -->
 
 <!-- EXAMPLES:START -->
 
