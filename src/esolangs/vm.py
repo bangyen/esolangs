@@ -931,10 +931,24 @@ class VM(Protocol):
     def self_halts(self) -> bool:
         """Whether the program can reach a halt of its own.
 
-        ``False`` where ``halted`` never becomes true, so the obvious
-        ``while not vm.halted: vm.step()`` never returns.  A caller driving
-        such a language has to bound the run itself: a hang detector above,
-        or :func:`esolangs.run`'s ``timeout``.
+        ``False`` where the *language* has no halt of its own, so a caller
+        driving one has to bound the run itself: a hang detector above, or
+        :func:`esolangs.run`'s ``timeout``.
+
+        **It does not promise that a given program runs forever**, and this
+        used to say ``while not vm.halted: vm.step()`` never returns, flatly.
+        Suffolk refutes that: it has no halt instruction, and it ends when a
+        read runs out of input, so the loop returns after 757 steps on a
+        generated truth-table program and never on one that reads nothing.
+        A Painter Ant is the other ``False`` and does run forever.  So the
+        two disagree about the very sentence the trait was described by, and
+        what they share is the thing worth saying -- neither *program text*
+        contains a halt, so the bound has to come from outside.
+
+        Read as a warning rather than a guarantee: ``False`` means bound the
+        run, ``True`` means you need not.  A caller that wants to know
+        whether a particular program stops has to ask the program, and
+        :meth:`snapshot` is how -- a repeated state proves the loop.
 
         No count here, and none below.  This used to say "the two
         languages" and its sibling "the four languages"; the sibling was
@@ -1089,8 +1103,20 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
     is left.
     """
     module_path, split = RUNNERS[language]
+    # Bound to another name first: a class body cannot read the enclosing
+    # function's ``language`` while binding a class attribute of that name.
+    display_name = language
 
     class _Derived(_DelegatingVM):
+        #: The registry's display name for this adapter's language.
+        #:
+        #: Only the derived class can know it -- ``_DelegatingVM`` is built
+        #: from a program and a stdin and never sees a name -- and the
+        #: debugger needs it to ask ``describe`` whether a read past the end
+        #: of input is a value for this language, which is the difference
+        #: between a wrong answer and an exception.
+        language = display_name
+
         def __init__(self, program: str, stdin: str = "") -> None:
             super().__init__(program, stdin)
             import importlib
