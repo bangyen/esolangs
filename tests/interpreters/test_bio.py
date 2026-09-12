@@ -15,10 +15,8 @@ from tests.raises import raises_message
 
 
 class TestBIOBasicCommands:
-    """Test basic BIO command functionality."""
 
     def test_increment_commands(self) -> None:
-        """Test 0O[xyz] increment commands."""
         with redirect_stdout(io.StringIO()) as f:
             run("0ox;1ix;", io=IO())
         assert f.getvalue() == "\x01"
@@ -32,7 +30,6 @@ class TestBIOBasicCommands:
         assert f.getvalue() == "\x01"
 
     def test_decrement_commands(self) -> None:
-        """Test 1O[xyz] decrement commands."""
         with redirect_stdout(io.StringIO()) as f:
             run("1ox;1ix;", io=IO())
         assert f.getvalue() == "\xff"
@@ -42,7 +39,6 @@ class TestBIOBasicCommands:
         assert f.getvalue() == "\x00"
 
     def test_output_commands(self) -> None:
-        """Test 1I[xyz] output commands."""
         with redirect_stdout(io.StringIO()) as f:
             run("1ix;", io=IO())
         assert f.getvalue() == "\x00"
@@ -56,7 +52,6 @@ class TestBIOBasicCommands:
         assert f.getvalue() == "\n"
 
     def test_case_insensitive_commands(self) -> None:
-        """Test that BIO commands are case-insensitive."""
         with redirect_stdout(io.StringIO()) as f:
             run("0OX;1IX;", io=IO())
         assert f.getvalue() == "\x01"
@@ -66,51 +61,42 @@ class TestBIOBasicCommands:
         assert f.getvalue() == "\x01"
 
     def test_register_independence(self) -> None:
-        """Test that registers x, y, z are independent."""
         with redirect_stdout(io.StringIO()) as f:
             run("0ox;0oy;0oz;1ix;1iy;1iz;", io=IO())
         assert f.getvalue() == "\x01\x01\x01"
 
 
 class TestBIOWhileLoops:
-    """Test BIO while loop functionality (0I[xyz] commands)."""
 
     def test_simple_while_loop(self) -> None:
-        """Test a simple while loop that executes once."""
         with redirect_stdout(io.StringIO()) as f:
             run("0ox;0ix{0oy;1ox;};1iy;", io=IO())
         assert f.getvalue() == "\x01"
 
     def test_while_loop_skip_when_zero(self) -> None:
-        """Test that while loop is skipped when register is zero."""
         with redirect_stdout(io.StringIO()) as f:
             run("0ix{0oy;};1iy;", io=IO())
         assert f.getvalue() == "\x00"
 
     def test_nested_while_loops(self) -> None:
-        """Test nested while loops."""
         with redirect_stdout(io.StringIO()) as f:
             run("0ox;0ix{0oy;0iy{0oz;1oy;};1ox;};1iz;", io=IO())
         assert f.getvalue() == "\x01"
 
     def test_while_loop_with_output(self) -> None:
-        """Test while loop that outputs characters."""
         with redirect_stdout(io.StringIO()) as f:
             run("0ox;0ox;0ix{1ix;1ox;};", io=IO())
         assert f.getvalue() == "\x02\x01"
 
 
 class TestBIOMathematicalOperations:
-    """Test BIO mathematical operations from esolangs.org examples."""
 
     def test_addition(self) -> None:
-        """Test addition: 0ox; 0oy; 0ix{ 1ox; 0oy; }; 1iy;"""
         with redirect_stdout(io.StringIO()) as f:
             run("0ox;0oy;0ix{1ox;0oy;};1iy;", io=IO())
         assert f.getvalue() == "\x02"  # 1 + 1 = 2
 
     def test_subtraction(self) -> None:
-        """Test subtraction: 0ox; 0ox; 0oy; 0iy{ 0ox; 1oy; }; 1ix;"""
         with redirect_stdout(io.StringIO()) as f:
             run("0ox;" * 2 + "0oy;0iy{0ox;1oy;};1ix;", io=IO())
         assert (
@@ -126,17 +112,14 @@ class TestBIOMathematicalOperations:
         assert f.getvalue() == "\x19"  # 5 * 5 = 25
 
     def test_complex_calculation(self) -> None:
-        """Test a more complex calculation."""
         with redirect_stdout(io.StringIO()) as f:
             run("0ox;" * 3 + "0ix{1ox;0oy;0oy;};1iy;", io=IO())
         assert f.getvalue() == "\x06"
 
 
 class TestBIOHelloWorld:
-    """Test BIO Hello World program from esolangs.org."""
 
     def test_hello_world_program(self) -> None:
-        """Test the complete Hello World program from esolangs.org."""
         # This is a simplified version of the Hello World program
         # The full program is very long, so we test the pattern for generating 'H'
         hello_world_code = (
@@ -159,7 +142,6 @@ class TestBIOHelloWorld:
         assert f.getvalue() == "He"
 
     def test_character_generation_pattern(self) -> None:
-        """Test the pattern for generating specific ASCII characters."""
         # Generate 'A' (ASCII 65)
         # 65 = 8*8 + 1, so we need 8 increments, then 8*8 in loop, then 1 more
         with redirect_stdout(io.StringIO()) as f:
@@ -168,16 +150,13 @@ class TestBIOHelloWorld:
 
 
 class TestBIOEdgeCases:
-    """Test BIO edge cases and error conditions."""
 
     def test_empty_program(self) -> None:
-        """Test that empty program produces no output."""
         with redirect_stdout(io.StringIO()) as f:
             run("", io=IO())
         assert f.getvalue() == ""
 
     def test_whitespace_only(self) -> None:
-        """Test that whitespace-only program produces no output."""
         with redirect_stdout(io.StringIO()) as f:
             run("   \n\t  ", io=IO())
         assert f.getvalue() == ""
@@ -233,14 +212,12 @@ class TestBIOEdgeCases:
                 run(code, io=IO())
 
     def test_large_register_values(self) -> None:
-        """Test handling of large register values."""
         large_code = "0ox;" * 300 + "1ix;"  # 300 increments
         with redirect_stdout(io.StringIO()) as f:
             run(large_code, io=IO())
         assert f.getvalue() == chr(300 % 256)
 
     def test_empty_while_loop(self) -> None:
-        """Test empty while loop that doesn't execute."""
         with redirect_stdout(io.StringIO()) as f:
             run("0ix{};1ix;", io=IO())
         assert f.getvalue() == "\x00"
@@ -250,7 +227,6 @@ class TestBIOIntegration:
     """Integration tests for BIO interpreter."""
 
     def test_complex_program(self) -> None:
-        """Test a complex BIO program with multiple operations."""
         complex_code = (
             "0ox;" * 3  # x = 3
             + "0oy;" * 2  # y = 2
@@ -266,13 +242,11 @@ class TestBIOIntegration:
         assert f.getvalue() == "\x03"
 
     def test_register_reset_pattern(self) -> None:
-        """Test the common pattern of resetting registers to zero."""
         with redirect_stdout(io.StringIO()) as f:
             run("0oy;" * 3 + "0iy{1oy;};1iy;", io=IO())
         assert f.getvalue() == "\x00"
 
     def test_character_arithmetic(self) -> None:
-        """Test character arithmetic operations."""
         with redirect_stdout(io.StringIO()) as f:
             run("0ox;" * 66 + "1ix;", io=IO())  # 66 = 'B'
         assert f.getvalue() == "B"
