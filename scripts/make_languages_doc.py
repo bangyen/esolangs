@@ -1,15 +1,21 @@
-"""Generate docs/languages.md and the README's Implemented Languages list.
+"""Generate docs/languages.md, docs/usage.md's tables, and README sections.
 
 Walks the registry to produce the language capability matrix
 (docs/languages.md) and the grouped, wiki-linked language list in the
 README, so neither page goes stale the way a hand-maintained list would.
 Every column derives from the registry or a capability set -- never from
 which files happen to sit in examples/.
+
+The two docs/usage.md blocks exist because the facts in them used to be
+*prose* policed by regex, in three documents at once.  A rendered table
+compared for equality states the same facts without prescribing a sentence
+to hold them, which is why the gates could stop matching wording.
 """
 
 import pathlib
 import textwrap
 
+import esolangs
 from esolangs.registry import LANGUAGES, RUNNERS, parameterized_ids, wiki_url
 from esolangs.tools.boolean import BOOLEAN
 
@@ -72,6 +78,16 @@ _EXAMPLES_START = "<!-- EXAMPLES:START -->"
 _EXAMPLES_END = "<!-- EXAMPLES:END -->"
 _BOOLEAN_COUNT_START = "<!-- BOOLEAN-COUNT:START -->"
 _BOOLEAN_COUNT_END = "<!-- BOOLEAN-COUNT:END -->"
+_SHAPES_START = "<!-- INPUT-SHAPES:START -->"
+_SHAPES_END = "<!-- INPUT-SHAPES:END -->"
+_API_START = "<!-- PUBLIC-API:START -->"
+_API_END = "<!-- PUBLIC-API:END -->"
+
+#: The bit vector the stdin table is rendered for.  Three bits, because an
+#: odd count is what makes Taglate's padding visible -- at two it encodes
+#: like everything else, and Fargo's decimal and binary readings coincide
+#: below four.
+_SAMPLE_BITS = [1, 0, 1]
 
 
 def _wiki_name(name: str) -> str:
@@ -249,6 +265,96 @@ def render_boolean_count_section() -> str:
     )
 
 
+def _reads_stdin() -> list[str]:
+    """Return the languages that take their inputs on stdin, sorted."""
+    names = esolangs.list_languages()
+    return sorted(name for name in names if esolangs.describe(name)["reads_input"])
+
+
+def _is_exceptional(name: str) -> bool:
+    """Return whether the stdin is anything but one ``0``/``1`` line per bit."""
+    record = esolangs.describe(name)
+    shape = record["input_shape"]
+    alphabet = tuple(record["input_encoding"])
+    return shape != "line_per_bit" or alphabet != ("0", "1")
+
+
+def render_input_shapes_section() -> str:
+    """Render docs/usage.md's stdin table between the markers.
+
+    Every cell is ``repr(encode_inputs(language, [1, 0, 1]))``, so the table
+    is the encoder's own output rather than a description of it.  This
+    replaced three hand-written prose copies of the same four exceptions;
+    one of them called Fargo's row index a bits-on-one-line input, returned
+    0 where the answer was 1, and was believed because it read plausibly.
+    """
+    reading = _reads_stdin()
+    odd = [name for name in reading if _is_exceptional(name)]
+    rows = [
+        "| Language | `input_shape` | Alphabet | stdin for inputs 1, 0, 1 |",
+        "| --- | --- | --- | --- |",
+    ]
+    for name in odd:
+        record = esolangs.describe(name)
+        alphabet = "/".join(f"`{c}`" for c in record["input_encoding"])
+        stdin = repr(esolangs.encode_inputs(name, _SAMPLE_BITS))
+        rows.append(f"| {name} | `{record['input_shape']}` | {alphabet} | `{stdin}` |")
+    default = repr(esolangs.encode_inputs("brainfuck", _SAMPLE_BITS))
+    rows.extend(
+        [
+            "",
+            f"The other {len(reading) - len(odd)} that read stdin take one"
+            f" `0`/`1` line per bit -- `{default}`.",
+            f"The remaining {len(LANGUAGES) - len(reading)} read no stdin at all:"
+            " their inputs are",
+            "embedded by `instantiate`.  Call `encode_inputs` rather than"
+            " reading a row off",
+            "this table; it is generated from `describe`, and so is the table.",
+        ]
+    )
+    return "\n".join(rows)
+
+
+def render_api_section() -> str:
+    """Render docs/usage.md's exported-callable list between the markers.
+
+    ``esolangs.__all__`` filtered to functions, one per line with the first
+    line of its docstring.  The gate that used to demand all of these in a
+    single README sentence is what produced a thirteen-name run-on; this
+    list carries the same guarantee and no sentence.
+    """
+    import inspect
+    import re
+
+    lines = []
+    for name in esolangs.__all__:
+        member = getattr(esolangs, name)
+        if not inspect.isfunction(member):
+            continue
+        summary = (inspect.getdoc(member) or "").split("\n")[0].rstrip(".")
+        # The docstrings are reStructuredText; a role marker and a double
+        # backtick both render as literal text in Markdown.
+        summary = re.sub(r":\w+:`~?([^`]+)`", r"`\1`", summary)
+        summary = summary.replace("``", "`")
+        lines.append(f"- `esolangs.{name}` — {summary[0].lower()}{summary[1:]}")
+    return "\n".join(lines)
+
+
+def _splice(text: str, start: str, end: str, body: str) -> str:
+    """Replace the marked block in ``text``, keeping the markers themselves."""
+    block = start + "\n\n" + body + "\n\n" + end
+    return text[: text.index(start)] + block + text[text.index(end) + len(end) :]
+
+
+def update_usage() -> None:
+    """Rewrite the generated tables in docs/usage.md between their markers."""
+    path = ROOT / "docs" / "usage.md"
+    text = path.read_text()
+    text = _splice(text, _SHAPES_START, _SHAPES_END, render_input_shapes_section())
+    text = _splice(text, _API_START, _API_END, render_api_section())
+    path.write_text(text)
+
+
 def update_readme() -> None:
     """Rewrite the generated sections of README.md between their markers."""
     path = ROOT / "README.md"
@@ -258,8 +364,7 @@ def update_readme() -> None:
         (_EXAMPLES_START, _EXAMPLES_END, render_examples_section),
         (_BOOLEAN_COUNT_START, _BOOLEAN_COUNT_END, render_boolean_count_section),
     ):
-        block = start + "\n\n" + render() + "\n\n" + end
-        text = text[: text.index(start)] + block + text[text.index(end) + len(end) :]
+        text = _splice(text, start, end, render())
     path.write_text(text)
 
 
@@ -271,3 +376,5 @@ if __name__ == "__main__":
     print(f"wrote {out} ({count} languages)")
     update_readme()
     print("updated the generated sections of README.md")
+    update_usage()
+    print("updated the generated tables of docs/usage.md")

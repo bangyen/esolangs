@@ -328,8 +328,8 @@ index with a leading zero, and with --table the wrong bit count or an index
 out of range.
 
 Without --table it judges *shape*, and for most languages a shape is not a
-count.  Clockwise wants every bit on one line and Fargo one row index, so
-for those two a stray line is a shape error and is caught.  Of the other
+count.  Clockwise wants every bit on one line; Fargo wants one row index.
+For those two a stray line is a shape error and is caught.  Of the other
 sixty-seven, sixty-six read a line per bit and Taglate reads a line per
 bit plus a padding one -- and for all of them one line, three lines and no
 lines at all are equally well shaped.  An empty stdin passes `check-stdin

@@ -10,9 +10,24 @@ returned 0 where the answer was 1, exit 0, no warning, and it hides below
 four inputs because the decimal and binary readings coincide there.
 
 So the first class below recomputes the exceptional set from
-:func:`esolangs.describe` and checks the prose against it.  A fourth
+:func:`esolangs.describe` and checks the documentation against it.  A fourth
 language with a fourth shape, or a shape that changes, now fails here
 instead of being read and believed.
+
+That check used to have two halves, and only one of them was carrying its
+weight.  The *positive* half demanded that some sentence naming each
+language match a regex -- which meant the regex, not the author, chose the
+wording, and three documents grew a hand-copied clause shaped to satisfy
+it.  It is replaced here by a generated table in ``docs/usage.md`` whose
+every cell is ``encode_inputs``' own output, compared for equality: the
+same guarantee, stated as data, prescribing no sentence.
+
+The *negative* half -- no document may describe a language as a shape it
+does not have -- is the one that caught the original bug, so it stays, and
+now sweeps every document rather than three.  Widening it immediately found
+a live one: ``check-stdin --help`` read "Clockwise wants every bit on one
+line and Fargo one row index", binding Fargo to Clockwise's shape in a
+single clause, in a help text the old gate did not look at.
 """
 
 from __future__ import annotations
@@ -30,16 +45,33 @@ from esolangs import cli
 from esolangs.cli import HELP
 from esolangs.registry import _BY_ID, SUGGESTION_CUTOFF, canonical_id
 
-README = (pathlib.Path(__file__).parents[1] / "README.md").read_text()
+ROOT = pathlib.Path(__file__).parents[1]
+README = (ROOT / "README.md").read_text()
+USAGE_DOC = ROOT / "docs" / "usage.md"
 
-#: How each exceptional shape has to be *described*, as a regex over the
-#: prose.  Keyed by the ``input_shape`` the data reports, so a language that
-#: changes shape changes which sentence it has to appear in.
+#: The bit vector ``docs/usage.md``'s stdin table is rendered for; it has to
+#: match the generator's ``_SAMPLE_BITS`` or the table cannot be compared.
+_SAMPLE_BITS = [1, 0, 1]
+
+#: How each shape may *not* be described, as a regex over the prose.  Only
+#: the negative direction is regex-matched: a document that states one of
+#: these about a language with a different shape is wrong, whatever else it
+#: says.  Nothing here obliges a document to contain any of it.
 _SHAPE_PROSE = {
     "one_line": r"(all |every |them all )?(bits? )?.{0,12}on one line",
     "row_index": r"row index as (one|a single) decimal number|row index as one decimal",
     "line_per_bit_padded": r"pads an odd input count with a leading zero",
 }
+
+
+def _every_document() -> dict[str, str]:
+    """Return every document a reader could follow, keyed by where it is."""
+    found = {"README.md": README, "usage": cli.USAGE}
+    for name, text in HELP.items():
+        found[f"{name} --help"] = text
+    for doc in sorted((ROOT / "docs").rglob("*.md")):
+        found[str(doc.relative_to(ROOT))] = doc.read_text()
+    return found
 
 
 @pytest.mark.filterwarnings("ignore::UserWarning")
@@ -59,30 +91,51 @@ class TestTheProseMatchesTheData:
             "Taglate": "line_per_bit_padded",
         }
 
-    @pytest.mark.parametrize("document", ["README", "run", "encode"])
-    def test_each_document_describes_each_shape_correctly(self, document: str) -> None:
-        """Fargo was lumped in with Clockwise in all three at once."""
+    def test_the_reference_table_is_the_encoders_own_output(self) -> None:
+        """The positive half, as data: every cell is what ``encode_inputs`` returns.
+
+        Parsed back out of the rendered Markdown rather than compared to the
+        renderer, so a table that was generated and then hand-edited fails
+        here and not only in the sync test.
+        """
+        table = USAGE_DOC.read_text().split("<!-- INPUT-SHAPES:START -->")[1]
+        rows = {}
+        for line in table.splitlines():
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            if len(cells) == 4 and cells[0] in esolangs.list_languages():
+                rows[cells[0]] = (cells[1], cells[3])
+
+        expected = {}
+        for name in esolangs.list_languages():
+            record = esolangs.describe(name)
+            if not record["reads_input"]:
+                continue
+            shape = record["input_shape"]
+            alphabet = tuple(record["input_encoding"])
+            if shape == "line_per_bit" and alphabet == ("0", "1"):
+                continue
+            stdin = esolangs.encode_inputs(name, _SAMPLE_BITS)
+            expected[name] = (f"`{shape}`", f"`{stdin!r}`")
+
+        assert rows == expected
+
+    @pytest.mark.parametrize("document", sorted(_every_document()))
+    def test_no_document_states_a_shape_a_language_does_not_have(
+        self, document: str
+    ) -> None:
+        """The negative half, over every document rather than three.
+
+        "Clockwise and Fargo want them all on one line" names Fargo in a
+        clause matching ``one_line``, which is Clockwise's shape.  The
+        positive half could never catch that, because the same documents
+        also state Fargo's real shape somewhere else.
+        """
         # Whitespace collapsed first: these documents are hard-wrapped, so a
         # newline lands in the middle of the phrase being matched.
-        text = re.sub(r"\s+", " ", README if document == "README" else HELP[document])
+        text = re.sub(r"\s+", " ", _every_document()[document])
         for name in esolangs.list_languages():
-            shape = esolangs.describe(name)["input_shape"]
-            if shape == "line_per_bit":
-                continue
-            assert name in text, (document, name)
+            shape = str(esolangs.describe(name)["input_shape"])
             naming = [s for s in re.split(r"(?<=[.,;])\s+", text) if name in s]
-            # Some sentence has to describe it correctly...
-            assert any(re.search(_SHAPE_PROSE[str(shape)], s) for s in naming), (
-                document,
-                name,
-                naming,
-            )
-            # ...and none may describe it as a shape it does not have.  This
-            # second half is the one that catches the bug that prompted the
-            # test: "Clockwise and Fargo want them all on one line" names
-            # Fargo in a sentence matching `one_line`, which is Clockwise's
-            # shape.  Checking only the first half would have passed it,
-            # since the same documents also mention Fargo's real shape.
             for other, pattern in _SHAPE_PROSE.items():
                 if other == shape:
                     continue
@@ -871,14 +924,22 @@ class TestTheApiNameListsCannotDriftAgain:
             if inspect.isfunction(getattr(esolangs, name))
         }
 
-    def test_the_readme_sentence_names_every_public_function(self) -> None:
-        """The sentence that introduces the API has to introduce all of it."""
-        readme = (pathlib.Path(__file__).parents[1] / "README.md").read_text()
-        # The paragraph, not the first "." -- which lands inside
-        # ``esolangs.run`` and made this pass on almost nothing.
-        sentence = readme.split("The Python API is", 1)[1].split("\n\n", 1)[0]
-        missing = sorted(n for n in self._public_callables() if n not in sentence)
-        assert not missing, f"README's API sentence omits: {missing}"
+    def test_the_api_reference_lists_every_public_function(self) -> None:
+        """The reference has to introduce all of it -- as a list, not a sentence.
+
+        This was "the README's API sentence names every function", which is
+        what produced a thirteen-name run-on on the front page: the gate
+        demanded one paragraph, so one paragraph is what got written.  A
+        generated list carries the same guarantee per line.
+        """
+        listed = USAGE_DOC.read_text().split("<!-- PUBLIC-API:START -->", 1)[1]
+        listed = listed.split("<!-- PUBLIC-API:END -->", 1)[0]
+        entries = {
+            line.split("`")[1].removeprefix("esolangs.")
+            for line in listed.splitlines()
+            if line.startswith("- `esolangs.")
+        }
+        assert entries == self._public_callables()
 
     def test_the_module_docstring_names_every_public_function(self) -> None:
         """Same for the thing ``help(esolangs)`` shows first."""
