@@ -186,10 +186,13 @@ options:
                width to the generator as a *hint* (LaserFuck asked for 10
                gives 18, asked for 200 gives 56, because it folds runs
                rather than breaking lines), and `none` ignores it, because
-               the language's newlines are semantic or it rejects them.  A template is
-               wrapped only once --bits has filled its slots.  A bare
-               --width takes the default, so the next word is read as the
-               language, not as a width.
+               the language's newlines are semantic or it rejects them.  A
+               template is wrapped too -- {{Xi}} is one token, so no width
+               breaks a slot -- and with --bits the width is applied again
+               to the filled program, which the setter code makes wider
+               than the slot it replaced.  A bare --width takes the
+               default, so the next word is read as the language, not as a
+               width.
 
 examples:
   esolangs generate brainfuck 0110
@@ -1325,14 +1328,15 @@ def _generate(rest: list[str]) -> None:
                 )
     _check_count("generate", rest, 2, bare_width=bare, eaten=eaten)
     try:
-        filling = "--bits" in options
-        # Generated unwrapped when there are slots to fill, because then the
-        # width has to apply to the *filled* program: a slot is four columns
-        # and the setter code replacing it is not, so a template wrapped to
-        # the width and then filled overruns it.  ``instantiate`` takes the
-        # width for exactly that reason.
-        program = generate(rest[0], rest[1], None if filling else width)
-        if filling:
+        # Widthed at both ends, and that is not a mistake.  ``generate``
+        # lays the template out -- which is the only place a *layout*
+        # language like COD can honour a width at all -- and ``instantiate``
+        # reflows the filled program from the template's pre-width source,
+        # because the setter code replacing a slot is wider than the four
+        # columns the slot took.  Generating unwrapped here instead threw
+        # COD's and WII2D's layout away.
+        program = generate(rest[0], rest[1], width)
+        if "--bits" in options:
             bits = options["--bits"]
             if set(bits) - {"0", "1"} or not bits:
                 _fail(f"--bits must be a string of 0s and 1s, got {bits!r}")
