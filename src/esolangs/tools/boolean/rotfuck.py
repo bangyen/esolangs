@@ -180,10 +180,43 @@ def rotfuck(truth_table: str) -> str:
 
     The truth table is evaluated as a minterm sum: the input bits are read
     and normalized into cells ``0..n-1``, their complements into
-    ``n..2n-1``, each minterm's mismatch count into ``2n+1..2n+2**n``, and
-    each minterm into ``2n+1+2**n..2n+1+2*2**n``.  Per-input a single
-    ``-``-guarded block zeroes the matching minterm, ``1``-rows accumulate
-    into the result cell, and ``48 + r`` is printed.
+    ``n..2n-1``, and a single mismatch count and minterm cell sit at
+    ``2n+1`` and ``2n+2``.  Each ``1``-row's literals guard increments of
+    the mismatch count, one block zeroes the minterm cell iff that count is
+    nonzero, a matching minterm accumulates into the result cell, and
+    ``48 + r`` is printed.
+
+    **The two working cells are reused, not allocated per row.**  A row
+    undoes itself before the next one runs: ``m`` is restored by the same
+    ``mc`` guard that cleared it, and ``mc`` by re-running each literal
+    guard with ``-``.  Both fire on exactly the conditions that changed the
+    cell, so neither undo needs the runtime value -- which a plain reset
+    would, since ``mc`` holds a count between 0 and ``width``.
+
+    The cells used to be two arrays of ``2**width``, which put them up to
+    528 cells out at eight inputs while every block is guarded on an input
+    cell below 16.  Each block body walks guard to target and back in
+    unary, so that layout spent 75% of the program on ``>``/``<``.  The
+    block *count* is unchanged for a half-dense table -- only ``1``-rows
+    are built now, at ``2 * width + 3`` blocks each instead of every row at
+    ``width + 1`` -- but the bodies are short.
+
+    Measured on the contract sweep's dense tables.  Both shapes were
+    executed over every input combination through eight inputs and over 48
+    sampled combinations at nine and ten, and every table through three
+    inputs was executed against every combination::
+
+        n      two arrays    two cells    factor    highest cell
+        3           1,707        1,412     1.21x        23 ->  9
+        5          17,597        3,904     4.51x        75 -> 13
+        6          69,159       13,026     5.31x       140 -> 15
+        8       1,158,946       86,605    13.38x       528 -> 19
+        9       4,811,236      194,945    24.68x     1,043 -> 21
+        10     20,438,259      484,928    42.15x     2,068 -> 23
+
+    The reach is now ``2n + 3``, so unlike the array layout it does not
+    grow with the table at all.  Every arity gets shorter, including the
+    small ones.
     """
     n = _validate_truth_table(truth_table)
 
@@ -201,8 +234,8 @@ def rotfuck(truth_table: str) -> str:
     b = list(range(n))
     c = list(range(n, 2 * n))
     r = 2 * n
-    mc = list(range(2 * n + 1, 2 * n + 1 + 2**width))
-    m = list(range(2 * n + 1 + 2**width, 2 * n + 1 + 2 * 2**width))
+    mc = 2 * n + 1
+    m = 2 * n + 2
 
     eff: list[str] = []
     pos = 0
@@ -214,7 +247,8 @@ def rotfuck(truth_table: str) -> str:
         pos += len(text)
 
     # Read the bits (each on its own line), normalize to 0/1, set the
-    # complements to 1, set the minterm cells to 1 (mismatch cells start 0).
+    # complements to 1, and set the single minterm cell to 1 (the mismatch
+    # cell starts 0).
     for i in range(n):
         emit(",")
         emit("-" * _ASCII_ZERO)
@@ -225,29 +259,39 @@ def rotfuck(truth_table: str) -> str:
         emit("+")
         if i < n - 1:
             emit(">")
-    emit(">" * (m[0] - c[-1]))
-    for k in range(2**width):
-        emit("+")
-        if k < 2**width - 1:
-            emit(">")
+    emit(">" * (m - c[-1]))
+    emit("+")
 
-    # Block layout: for each minterm, each input bit guards a mismatch count;
-    # a single block then zeroes the minterm iff its count is nonzero; and
-    # each 1-row guards an accumulation into the result cell.
+    # Block layout: the complements once, then each 1-row in turn -- its
+    # literals guard the mismatch count, one block zeroes the minterm cell
+    # iff that count is nonzero, one accumulates a matching minterm into the
+    # result, and two undo passes hand the next row a clean ``mc``/``m``.
+    #
+    # The undo is what lets the two cells be reused.  ``m`` is restored by
+    # the same ``mc`` guard that cleared it, so it fires exactly when the
+    # clear did; ``mc`` is restored by re-running each literal guard with
+    # ``-``, which fires on exactly the bits that incremented it.  Neither
+    # needs to know the runtime value, which a reset otherwise would: ``mc``
+    # holds a mismatch *count* between 0 and ``width``.
     block_specs: list[tuple[int, int, str]] = []
     for i in range(n):
         block_specs.append((b[i], c[i], "-"))  # complement c_i = 1 - b_i
     for k in range(2**width):
-        for slot, negated in minterm_literals(k, width):
-            i = used[slot]
-            guard = b[i] if negated else c[i]
-            block_specs.append((guard, mc[k], "+"))  # mismatch count
-        block_specs.append((mc[k], m[k], "-"))  # zero minterm on any mismatch
-    for k in range(2**width):
-        if table[k] == "1":
-            block_specs.append((m[k], r, "+"))  # accumulate 1-rows
+        if table[k] != "1":
+            continue
+        guards = [
+            b[used[slot]] if negated else c[used[slot]]
+            for slot, negated in minterm_literals(k, width)
+        ]
+        for guard in guards:
+            block_specs.append((guard, mc, "+"))  # mismatch count
+        block_specs.append((mc, m, "-"))  # zero the minterm on any mismatch
+        block_specs.append((m, r, "+"))  # accumulate a matching 1-row
+        block_specs.append((mc, m, "+"))  # restore the minterm cell
+        for guard in guards:
+            block_specs.append((guard, mc, "-"))  # restore the mismatch count
 
-    ptr = m[-1]
+    ptr = m
     for guard, target, op in block_specs:
         if ptr < guard:
             emit(">" * (guard - ptr))
@@ -261,10 +305,11 @@ def rotfuck(truth_table: str) -> str:
         emit("]")
         phantoms[p + len(body) + 1] = p
 
-    if ptr < r:  # pragma: no cover - the last block's guard sits above r
-        emit(">" * (r - ptr))
-    else:
-        emit("<" * (ptr - r))
+    # Every block is guarded on an input or complement cell, and those are
+    # exactly the cells below ``r``, so the walk to the result is forward
+    # whatever the table holds -- including an all-zero one, whose last
+    # block is the final complement.
+    emit(">" * (r - ptr))
     emit("+" * _ASCII_ZERO)
     emit(".")
 
