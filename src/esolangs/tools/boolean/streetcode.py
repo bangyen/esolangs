@@ -336,7 +336,18 @@ def _streetcode_lift(rows: list[str]) -> list[str]:
     grid = [[row[c] for c in kept] for row in grid]
 
     # Write it into row 1 reversed, ending against the eastern wall.
-    east = len(grid[0]) - 2
+    #
+    # The wall is found rather than assumed to be the last column.  A block
+    # hanging below the street can be wider than the street itself, and
+    # ``width`` above is the widest row of the *whole* grid -- so for a
+    # table whose tree runs past its street, ``len(grid[0]) - 2`` named a
+    # column east of the street's own ``+`` and the prefix was written
+    # outside the walls.  The result was a row two columns longer than the
+    # border above it, which the interpreter rejects as not two-wide.
+    # ``generate("Streetcode", "0001", 20)`` was one: four of the sixteen
+    # two-input tables, at every width up to 35, where the narrow shape is
+    # the one selected.
+    east = "".join(grid[0]).rindex("+") - 1
     for i, char in enumerate(prefix):
         grid[1][east - i] = char
 

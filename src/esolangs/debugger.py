@@ -30,6 +30,12 @@ StopReason = Literal["halted", "breakpoint", "max_steps", "timeout"]
 #: be iterated or attribute-accessed, so its members were discoverable only
 #: by reading a docstring; this is the same list a caller can loop over or
 #: assert against.
+#:
+#: These are what :meth:`Debugger.run` *returns*.  The CLI's ``debug`` prints
+#: one more -- ``stopped: raised``, when the program faulted -- because it
+#: catches what ``run`` lets through and reports it rather than showing a
+#: traceback.  So this is not the vocabulary of that line, and asserting a
+#: parsed ``stopped:`` against this tuple fails on the fifth.
 STOP_REASONS: tuple[StopReason, ...] = ("halted", "breakpoint", "max_steps", "timeout")
 
 
@@ -66,6 +72,7 @@ class Debugger:
         self._hits: set[int] = set()
         self._timed_out = False
         self._warned = False
+        self._dumped = False
 
     # -- passthrough to the wrapped VM --------------------------------
 
@@ -111,7 +118,20 @@ class Debugger:
 
     @property
     def dumps_on_the_post_halt_step(self) -> bool:
-        """Whether the output lands on the step *after* ``halted`` goes true."""
+        """Whether the output lands on the step *after* ``halted`` goes true.
+
+        **On this class :meth:`run` has already taken that step**, so a
+        ``run()`` that reported ``"halted"`` holds the dumped output and
+        needs nothing further.  :meth:`step` has not: a caller driving with
+        ``while not dbg.halted: dbg.step()`` stops one step short and holds
+        ``""``, which is what the trait is warning about.
+
+        Said here because the wrapped VM's version of this docstring says
+        "one further ``step()`` writes what ``run`` writes", meaning
+        :func:`esolangs.run` -- and read on a :class:`Debugger`, ``run``
+        naturally reads as :meth:`Debugger.run`, which makes the sentence
+        describe a step this class has already taken.
+        """
         return self.vm.dumps_on_the_post_halt_step
 
     @property
@@ -120,7 +140,14 @@ class Debugger:
         return self.vm.steppable_to_answer
 
     def snapshot(self) -> object:
-        """Return the wrapped machine's complete state, hashable.
+        """Return the wrapped machine's complete *internal* state, hashable.
+
+        Internal, not everything: ``output`` is excluded.  That is what the
+        loop proof needs -- equal internal state means the same future, so a
+        repeat means the machine never halts -- but it does mean two
+        snapshots can compare equal across a step that wrote something, as
+        the post-halt dump step does on seven languages.  Do not read it as
+        a full state diff.
 
         Mirrored for the reason this class already gives for the traits: a
         caller reaching through ``self.vm`` to get at it is doing the thing
@@ -354,8 +381,19 @@ class Debugger:
         seconds; the default of ``None`` for both is unbounded, which is
         right for a machine known to halt and a hang for one that is not.
         Either bound *returns* -- ``"max_steps"`` or ``"timeout"`` -- rather
-        than raising, so one ``reason ==`` covers every way a run can end and
-        a caller bounding both ways needs no ``except`` beside it.  The
+        than raising, so one ``reason ==`` covers every way a run can *stop*
+        and a caller bounding both ways needs no ``except`` for the bounds.
+
+        It does still need one for the program.  A run that faults raises
+        out of here rather than returning a fifth reason: an
+        :class:`~esolangs.exceptions.InputExhaustedError` from an underfed
+        ``,`` is the common one, and it is not recoverable in place, since
+        there is no way to hand more stdin to a live debugger -- every later
+        ``run()`` raises it again.  This paragraph used to say "needs no
+        ``except`` beside it" without that qualification, which is the
+        advice that breaks on the most ordinary mistake a session makes.
+        :meth:`~esolangs.cli` ``debug`` catches it and prints
+        ``stopped: raised``; see :data:`STOP_REASONS`.  The
         timeout is checked in the same place as a breakpoint rather than
         through a signal, so it needs no main thread and leaves the machine
         inspectable where it stopped.
@@ -373,7 +411,27 @@ class Debugger:
         halted = run_until_halt(self, max_steps, stop=lambda: self._stop(deadline))
         if halted:
             self._warn_about_stdin_once()
-            if self.dumps_on_the_post_halt_step:
+            # Checked *before* the dump step as well as after it.
+            #
+            # A breakpoint is checked before each step, so one whose
+            # condition the final step makes true was never looked at:
+            # ``run_until_halt`` returned and "halted" was reported over a
+            # watch that had fired.  ``break_on_output`` is where that bites,
+            # since a program whose last instruction is its output is the
+            # ordinary case -- the generated brainfuck XOR ends in ``.``.
+            #
+            # Two checks rather than one, because the dump below is itself a
+            # step and it changes ``output``.  Checking only afterwards
+            # swallowed every predicate that reads the *pre-dump* state --
+            # ``vm.halted and vm.output == ""`` on the seven dumping
+            # languages was true at the halt, false one step later, and
+            # reported as "halted".  Checking only before would put the
+            # answer out of reach of a watch on the dumped text.  So: once
+            # here, and once after.
+            if self._at_breakpoint():
+                self._suppressed = set(self._hits)
+                return "breakpoint"
+            if self.dumps_on_the_post_halt_step and not self._dumped:
                 # :meth:`step` learned to cross the halt and this did not,
                 # so seven languages finished a *run* with an empty
                 # ``output`` and the answer one un-taken step away.  Reading
@@ -383,27 +441,19 @@ class Debugger:
                 # ``debug`` did not, and printed ``output: ''`` for a
                 # program that had run correctly.
                 #
-                # Only for the seven.  The extra step is a no-op everywhere
-                # else, but it would still land in every watch history, and
-                # a bound that is not needed should not be spent.
+                # Only for the seven, and only once.  The extra step is a
+                # no-op everywhere else, but it would still land in every
+                # watch history, and a bound that is not needed should not
+                # be spent.  Taking it once per *run* rather than once per
+                # debugger meant an idle ``run()`` on an already-dumped
+                # machine spent another one: three calls on a halted Minsky
+                # Swap grew a ``watch_cell`` history by three, against a
+                # promise that it grows one per ``step()``.
+                self._dumped = True
                 self.step()
-            if self._at_breakpoint():
-                # A breakpoint is checked *before* a step, so one whose
-                # condition the final step makes true was never looked at:
-                # ``run_until_halt`` returned, and "halted" was reported
-                # over a watch that had fired.  ``break_on_output`` is where
-                # that bites, because a program whose last instruction is
-                # its output is the ordinary case rather than a corner --
-                # the generated brainfuck XOR ends in ``.``, so watching for
-                # its answer reported a miss.
-                #
-                # Checked after the post-halt step, so the seven languages
-                # that dump there can be watched for what they dump.  The
-                # machine really has halted, which is why the *next* run
-                # says so: the hit is suppressed, nothing else fires, and
-                # ``halted`` is already true for a caller that asks.
-                self._suppressed = set(self._hits)
-                return "breakpoint"
+                if self._at_breakpoint():
+                    self._suppressed = set(self._hits)
+                    return "breakpoint"
             return "halted"
         if self._timed_out:
             return "timeout"
@@ -476,7 +526,16 @@ def make_debugger(
     """Return a :class:`Debugger` over a fresh :class:`VM` for ``language``.
 
     ``stdin`` is fed to the program line by line, like :func:`esolangs.run`.
-    A language without a step-capable interpreter raises
-    :class:`UnknownLanguageError`, as with :func:`esolangs.make_vm`.
+    Only a name outside the registry raises
+    :class:`~esolangs.exceptions.UnknownLanguageError`, as with
+    :func:`esolangs.make_vm`.
+
+    This used to say "a language without a step-capable interpreter", which
+    describes a set with no members -- every registered language is
+    step-capable, which is what ``make_vm``'s own docstring says two lines
+    away.  A reader guarding against it was guarding against nothing.  A
+    program that is malformed for its language raises
+    :class:`~esolangs.exceptions.ProgramError`, which is the refusal that
+    does happen here.
     """
     return Debugger(make_vm(language, program, stdin))

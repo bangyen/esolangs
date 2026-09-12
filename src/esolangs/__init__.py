@@ -67,8 +67,8 @@ from esolangs.registry import (
 # a caller reaching for ``esolangs.takes_width("LaserFuck")`` got False for
 # every language in the registry, contradicting both its own docstring and
 # ``describe(...)["width_aware"]`` -- which is the question they were asking.
+from esolangs.tools.wrap import WRAPPERS, wrap_program
 from esolangs.tools.wrap import takes_width as _takes_width
-from esolangs.tools.wrap import wrap_program
 from esolangs.vm import VM, machine_traits, make_vm
 
 
@@ -201,11 +201,22 @@ class _Template(str):
     """
 
     language: str
+    unwrapped: str
 
-    def __new__(cls, text: str, language: str) -> "_Template":
-        """Return ``text`` tagged as ``language``'s template."""
+    def __new__(cls, text: str, language: str, unwrapped: str = "") -> "_Template":
+        """Return ``text`` tagged as ``language``'s template.
+
+        ``unwrapped`` is the same template before a width was applied, kept
+        because :func:`instantiate` cannot recover it: a reflow wrapper
+        leaves ordinary newlines behind and there is no way to tell the ones
+        it inserted from ones the generator meant.  Without it a width on
+        ``instantiate`` was a no-op for every parameterized language --
+        ``wrap_program`` declines to reflow a program that already has
+        newlines, which after ``generate(table, width)`` it always does.
+        """
         template = super().__new__(cls, text)
         template.language = language
+        template.unwrapped = unwrapped or text
         return template
 
 
@@ -224,8 +235,14 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
 
     ``width`` is a *request*, not a bound.  What it does depends on the
     language -- see ``describe(language)["width_effect"]`` -- and for the
-    38 languages whose newlines are semantic it does nothing at all.  A
-    single token longer than the width still overruns it.
+    22 whose newlines are semantic, or that reject one outright, it does
+    nothing at all.  A single token longer than the width still overruns
+    it.
+
+    The count is not a constant.  It said 38 while the answer was 22,
+    because a round of teaching generators to lay themselves out moved
+    sixteen languages out of that group without moving the sentence.
+    ``describe`` is derived and cannot drift; prefer it to this number.
     """
     resolved = resolve(language)
     lang = LANGUAGES[resolved]
@@ -250,7 +267,8 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
         # (:data:`~esolangs.tools.wrap._PLACEHOLDER`), so no width can land
         # inside one.  Skipping the wrap instead would leave the eleven
         # parameterized languages with a ``width`` that quietly did nothing.
-        return _Template(wrap_program(str(fn(truth_table)), lang.id, width), resolved)
+        plain = str(fn(truth_table))
+        return _Template(wrap_program(plain, lang.id, width), resolved, plain)
     return wrap_program(str(fn(truth_table)), lang.id, width)
 
 
@@ -353,10 +371,26 @@ def instantiate(
             f"this {name} template has {wanted} input slot"
             f"{'' if wanted == 1 else 's'}, but {given}"
         )
-    # The width lands here rather than on ``generate``, because a slot is
-    # not a token any wrapper knows and a break inside one destroys the
-    # template.  Once the bits are in, the program is ordinary text again.
-    return wrap_program(fill(template, bits), LANGUAGES[name].id, width)
+    # Reflowed from the template *before* its width, when there is one.
+    #
+    # ``wrap_program`` declines to reflow a program that already has
+    # newlines, since for most languages a newline is layout rather than
+    # something it put there.  After ``generate(table, width)`` a template
+    # always has them, so re-wrapping the filled program did nothing at all
+    # -- a width here was inert for all seventeen parameterized languages,
+    # which is exactly the call this function's docstring recommends.
+    # Filling the unwrapped source instead gives the wrapper the single-line
+    # program it needs, and the answer is the same either way because the
+    # slots are in the same places.
+    #
+    # Only for the languages a wrapper actually reflows.  A layout language
+    # -- COD, WII2D -- lays its *template* out to the width in the generator
+    # and has no wrapper here, so for those the width-laid-out template is
+    # the one to fill and unwrapping it would throw the layout away.
+    source: str = template
+    if width is not None and LANGUAGES[name].id in WRAPPERS:
+        source = getattr(template, "unwrapped", template)
+    return wrap_program(fill(source, bits), LANGUAGES[name].id, width)
 
 
 #: Characters a filename is made of, and a program mostly is not.
@@ -1268,6 +1302,11 @@ def read_answer(language: str, output: str) -> str:
     )
 
 
+#: Not a stop reason.  It sits beside :data:`STOP_REASONS` in ``dir()`` and
+#: reads like a sibling of it; it is not one.  A stop reason says why a
+#: *debugger* stopped, and this says how one of the three answer-by-running
+#: languages spells its answer.
+#:
 #: The two outcomes an ``answer_mode`` of ``"termination"`` reports, in the
 #: order ``describe(...)["answer_encoding"]`` gives them: index 0 is the
 #: answer 0 and index 1 the answer 1, so ``encoding.index("diverges")`` is

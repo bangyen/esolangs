@@ -35,9 +35,11 @@ The Python API is `esolangs.run`, `generate`, `instantiate`,
 `encode_inputs`, `read_answer`, `evaluate`, `verify`, `check_stdin`,
 `check_program`, `make_vm`, `make_debugger`, `describe`, `spec`, and
 `list_languages`.  `generate` takes a
-truth table -- `0110` is XOR -- and returns a program computing it.  Use
-`--width` for command-oriented generated programs; grids and
-newline-sensitive languages retain their own layout.
+truth table -- `0110` is XOR -- and returns a program computing it.  Both
+it and the CLI's `--width` bound the columns, and most grids honour it too
+by laying themselves out rather than being reflowed -- `describe(language)
+["width_effect"]` says which of the three you have, and names the 22 that
+ignore a width because their newlines are part of the program.
 
 **How a language reads its input bits is not universal.**  Most take one
 `0`/`1` line each, but Grapheme reads `%`/`A`, Clockwise wants every bit on
