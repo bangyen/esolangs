@@ -165,8 +165,9 @@ def shortest(*candidates: str) -> str:
     encoding against a delta one -- and which shape wins depends on the input,
     not on the language.  Rather than predict the winner, those generators
     build every shape and emit the smallest, a rule the test suite pins in
-    several places (``test_streetcode_emits_the_shorter_of_ring_and_street``
-    and the ``len(program) <= ...`` bounds in the generator suites).
+    several places (``test_the_emitted_program_has_an_exact_length`` for
+    Streetcode, whose docstring notes nothing else there measures size at
+    all, and the ``len(program) <= ...`` bounds in the generator suites).
 
     This names that rule so a reader meets it as a decision rather than
     re-deriving it from a ``min`` with a ``key``.  Ties keep the first
