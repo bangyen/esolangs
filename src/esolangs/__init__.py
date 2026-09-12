@@ -457,7 +457,28 @@ def check_runnable(language: str, program: str) -> None:
 def check_program(
     language: str, program: str | os.PathLike[str], stdin: str = ""
 ) -> str:
-    """Return ``program`` as source, having checked it and ``stdin``.
+    """Return ``program`` as source, having checked what can be checked here.
+
+    **Not a load check.**  It refuses a program that is the wrong *kind* of
+    thing -- a path handed over as a string, an unfilled template, a
+    non-string, an unreadable file, a name outside the registry -- and it
+    type-checks ``stdin``.  It does not ask the language whether the source
+    parses: ``check_program("brainfuck", "[")`` returns the program, and
+    :func:`make_vm` on the same string raises ``ProgramError: unmatched
+    '['``.  Thirty-five of the sixty-nine languages have some program this
+    accepts and the interpreter then rejects.
+
+    That is structural rather than an oversight waiting to be fixed here.
+    :func:`make_vm` *calls* this function, so validating by building a
+    machine would recurse; the load check belongs to the interpreter and
+    happens when one is built.  Use this as a pre-flight for the mistakes
+    above, and :func:`make_vm` or :func:`run` inside ``except
+    EsolangError`` when the question is "will this program load".
+
+    ``stdin`` is checked for its type only, not its content.
+    :func:`check_stdin` is the one that reads it against the shape and
+    alphabet a language declares, and it needs the truth table to do the
+    whole job.
 
     The whole load-time contract in one place, because there are two ways
     to execute a program and only :func:`run` used to apply it:
@@ -1239,6 +1260,20 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
         if wanted is not None and len(lines[0]) != wanted:
             raise ArgumentError(
                 f"{name} wants {wanted} bits on its one line, got {len(lines[0])}"
+            )
+        # Per *character*, because for this shape a character is a bit --
+        # and the alphabet check below is per line, which this branch used
+        # to return past.  So the one language with this shape had its
+        # declared alphabet enforced nowhere: ``check_stdin("Clockwise",
+        # "999", table)`` was accepted, and the program answered a
+        # different row of the table with nothing said, which is exactly
+        # what this function exists to prevent.
+        astray = [char for char in lines[0] if char not in (zero, one)]
+        if astray:
+            raise ArgumentError(
+                f"{name} spells its bits {zero!r} and {one!r}, and "
+                f"{len(astray)} character(s) of its one line are outside "
+                f"that -- the first is {astray[0]!r}"
             )
         return
     stray = [line for line in lines if line not in (zero, one)]
