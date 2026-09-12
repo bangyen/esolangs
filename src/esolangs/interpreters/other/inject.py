@@ -368,7 +368,6 @@ class _Machine:
         # separates a re-read from a genuine cycle.
         return (self.ind, self.done, tuple(self.lines), self.io.position())
 
-    # -- one command --------------------------------------------------
 
     @property
     def _state(self) -> _State:
