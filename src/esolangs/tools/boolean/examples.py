@@ -130,9 +130,12 @@ class BooleanExample:
     #: How this language spells an input 0 and an input 1.  Almost always
     #: the digits, but not universally, and the exception is silent rather
     #: than loud: Grapheme's generator normalizes each line with
-    #: ``ord(line[0]) - 65``, so ``A`` is a 1 and every other first
-    #: character is a 0 -- a ``"0"`` line and a ``"1"`` line both read as
-    #: 0, and the program answers the all-zeros row instead of refusing.
+    #: ``ord(line[0]) - 65`` and then maps zero to 1 and nonzero to 0, so
+    #: ``A`` is a 1 and every other first character is a 0 -- a ``"0"``
+    #: line and a ``"1"`` line both read as 0, and the program answers the
+    #: all-zeros row instead of refusing.  The second half is not optional
+    #: prose: ``ord('A') - 65`` is 0, so the subtraction on its own says
+    #: the opposite of what the language does.
     #:
     #: This said "every non-empty string is truthy, so a ``"0"`` line reads
     #: as a 1", which is the language's general rule and not what the
@@ -634,9 +637,11 @@ def _register() -> None:
             inputs=("01",),
             input_shape="one_line",
             split=True,
-            note="Clockwise packs seven bits per character and reads them "
-            "all in one go, so its inputs are one line, not a line per bit; "
-            "a line per bit is read as a different row and answered wrongly",
+            note="Clockwise reads all its input bits in one go, so they go "
+            "on one line -- one character per bit, not a line per bit, and "
+            "not seven bits packed into a character: that packing is real "
+            "but is on the output side. A line per bit, or a packed one, "
+            "is read as a different row and answered wrongly",
         ),
         "cvnc": _reader(b.cvnc, "other.cvnc"),
         "decleq": _reader(b.decleq, "register_based.decleq"),
@@ -668,10 +673,12 @@ def _register() -> None:
             alphabet=("%", "A"),
             note=(
                 "Grapheme's generator normalizes each input line with "
-                "ord(line[0]) - 65, so its input bits are spelled % and A: "
-                "'A' is a 1 and every other first character is a 0, which "
-                "means a 0/1 line reads as 0 and the program answers the "
-                "all-zeros row"
+                "ord(line[0]) - 65 and then maps zero to 1, so its input "
+                "bits are spelled % and A: 'A' is a 1 and every other "
+                "first character is a 0, which means a 0/1 line reads as 0 "
+                "and the program answers the all-zeros row. The second "
+                "step is not optional prose -- ord('A') - 65 is 0, so the "
+                "subtraction alone says the opposite"
             ),
         ),
         "jaune": _reader(b.jaune, "tape_based.jaune"),
