@@ -324,9 +324,7 @@ class TestTransitionsDoNotReachIO:
 #: The numbers only go down.  A new bare raise fails this, which is the
 #: point: the cheap thing when writing an interpreter is to raise the class
 #: and move on, and that is exactly how thirteen files got here.
-_WORDLESS_HALTS: dict[str, int] = {
-    "other/ztoalc_l.py": 10,
-}
+_WORDLESS_HALTS: dict[str, int] = {}
 
 #: A ``raise`` of a bare exception class, or one with no arguments at all.
 _BARE_RAISE = re.compile(
@@ -386,6 +384,10 @@ def test_no_interpreter_halts_without_saying_why() -> None:
 def test_the_scan_finds_the_ones_it_is_meant_to() -> None:
     """A regex that matched nothing would make the guard above vacuous."""
     assert sum(_wordless_halts().values()) == sum(_WORDLESS_HALTS.values())
-    assert sum(_WORDLESS_HALTS.values()) >= 5
+    # The ledger is empty, so the regex is pinned against samples rather
+    # than against a count of the offenders that are left.
+    assert _BARE_RAISE.match("    raise HaltError")
+    assert _BARE_RAISE.match("        raise ValueError()")
+    assert not _BARE_RAISE.match('    raise HaltError("division by zero")')
     # Modulous was the reported case and is fixed, so it must not be here.
     assert "stack_based/modulous.py" not in _wordless_halts()

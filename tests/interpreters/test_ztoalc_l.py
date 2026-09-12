@@ -4,10 +4,14 @@ ZTOALC L L executes lines in Collatz-trajectory order determined by the initial
 pointer value. With pointer 3, lines are visited in the order 2, 4, 3, 1.
 """
 
+import importlib
 import io
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
+import pytest
+
+import esolangs
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.other.ztoalc_l import run
 
@@ -386,3 +390,66 @@ class TestMachine:
         assert machine.halted
         machine.step()  # stepping a halted machine is a no-op
         assert machine.halted
+
+
+class TestAMalformedIndexIsRefused:
+    """The module docstring promised this and the parser did not do it.
+
+    It says an "empty or unbalanced index expression (``a[]``, ``a[1``) is
+    a malformed program and is rejected with ``ValueError``".  That held
+    for store *targets*, which go through ``_split``, and not for read
+    expressions, which do not.  Two independent readers found it in the
+    same afternoon.
+    """
+
+    @staticmethod
+    def _program(expression: str) -> str:
+        """A three-line program whose last line evaluates ``expression``."""
+        return "\n".join(["3", "jump y 0", "x = [2]", f"print {expression}"]) + "\n"
+
+    def test_an_unbalanced_index_is_refused(self) -> None:
+        """``x[1`` ran, and gave byte-identical output to ``x[1]``.
+
+        The closing bracket was stepped over with ``pos += 1`` and never
+        checked, so a malformed program produced a confident right-looking
+        answer -- the worst of the three outcomes here.
+        """
+        with pytest.raises(esolangs.ProgramError, match="missing the"):
+            esolangs.run("ZTOALC L", self._program("x[1"), "", 5)
+
+    def test_a_truncated_index_does_not_leak_an_indexerror(self) -> None:
+        """``x[`` raised a bare ``IndexError`` out of the parser.
+
+        The package makes one promise about errors -- everything deliberate
+        derives from ``EsolangError`` -- and this was the one place in this
+        interpreter that broke it.
+        """
+        with pytest.raises(esolangs.ProgramError, match="ends where an expression"):
+            esolangs.run("ZTOALC L", self._program("x["), "", 5)
+
+    def test_an_empty_index_is_a_program_error(self) -> None:
+        """``x[]`` was reported as an undefined variable named ``''``.
+
+        A lookup that failed and a program that is malformed are different
+        things, and ``HaltError`` against ``ProgramError`` is exactly the
+        distinction this package spends an exception hierarchy on.
+        """
+        with pytest.raises(esolangs.ProgramError, match="empty index"):
+            esolangs.run("ZTOALC L", self._program("x[]"), "", 5)
+
+    def test_the_well_formed_one_still_runs(self) -> None:
+        """Three refusals are worth nothing if the fourth case broke."""
+        assert esolangs.run("ZTOALC L", self._program("x[0]"), "", 5) == "\x00"
+
+    def test_the_docstring_claim_is_now_true(self) -> None:
+        """It named both spellings; both now do what it says.
+
+        ``ProgramError`` *is* the ``ValueError`` the docstring promises --
+        it derives from it -- so the sentence was accurate about the type
+        and wrong about whether anything raised.
+        """
+        module = importlib.import_module("esolangs.interpreters.other.ztoalc_l")
+        assert "a[]" in (module.__doc__ or "")
+        for expression in ("x[]", "x[1"):
+            with pytest.raises(ValueError):  # noqa: PT011 - the documented type
+                esolangs.run("ZTOALC L", self._program(expression), "", 5)
