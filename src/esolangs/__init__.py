@@ -27,7 +27,6 @@ Every error raised on purpose derives from
 """
 
 import importlib
-import importlib.metadata as _metadata
 import os
 import pathlib
 import re
@@ -74,14 +73,29 @@ from esolangs.tools.wrap import takes_width as _takes_width
 from esolangs.tools.wrap import wrap_program
 from esolangs.vm import VM, machine_traits, make_vm
 
+
 #: Read from the installed distribution rather than written here: the
 #: hand-kept copy said 0.1.0 while the package was 0.2.0, so ``--version``
 #: named a release that does not exist.  The fallback covers a source tree
 #: that was never installed.
-try:
-    __version__ = _metadata.version("esolangs")
-except _metadata.PackageNotFoundError:  # pragma: no cover - installed in CI
-    __version__ = "0.0.0+unknown"
+#: Read on first access rather than on import.  ``importlib.metadata``
+#: drags in ``email.parser`` to parse a wheel's metadata, and measured 23ms
+#: of this package's 56ms import -- two fifths of it, spent on a string
+#: most callers never read.  PEP 562 defers it to whoever asks.
+def __getattr__(name: str) -> str:
+    """Resolve ``__version__`` lazily; everything else is a normal miss."""
+    if name != "__version__":
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    import importlib.metadata
+
+    try:
+        version = importlib.metadata.version("esolangs")
+    except importlib.metadata.PackageNotFoundError:  # pragma: no cover - CI installs
+        # A source tree that was never installed.
+        version = "0.0.0+unknown"
+    globals()["__version__"] = version
+    return version
+
 
 #: The public surface.  Without it ``dir(esolangs)`` advertised ``Any``,
 #: ``Callable``, ``importlib``, ``pathlib``, ``signal`` and ``threading``
