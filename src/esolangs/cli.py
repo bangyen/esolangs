@@ -27,8 +27,11 @@ Exit codes separate the failures a caller handles differently: **2** is a
 usage error (an unknown command, option, or language -- nothing ran), **1**
 is the program's own failure (it read past its input, halted on an invalid
 operation, was a template), and **124** is a run stopped by ``--timeout``,
-after timeout(1).  That last one used to be 1 as well, which left the three
-languages whose answer *is* a timeout indistinguishable from a crash.  Only
+after timeout(1) -- from every command that takes one, not only ``run`` and
+``debug``.  That last one used to be 1 as well, which left the three
+languages whose answer *is* a timeout indistinguishable from a crash, and
+then stayed 1 in ``evaluate``, ``verify`` and ``answer`` after the other
+two were fixed, which left a script unable to use one code for the event.  Only
 an unexpected error still reaches the terminal as a traceback, which is what
 a traceback should mean.
 """
@@ -306,7 +309,9 @@ Print the truth table a generated <language> program actually computes.
 
 `verify` with the comparison left to you: the output is a binary string the
 same length as <truth-table>, so a mismatch shows which rows disagree
-rather than collapsing to a yes or no.  Exits 0 whenever the program ran.
+rather than collapsing to a yes or no.  Exits 0 whenever the program ran,
+and 124 when --timeout stopped it -- which for the three languages that
+answer by not terminating is the answer rather than a fault.
 
 examples:
   esolangs evaluate brainfuck 0110
@@ -360,9 +365,13 @@ options:
   --json      print `esolangs.describe` verbatim as JSON.  The default
               layout is for reading and loses things on the way: a pair
               prints as `0 1` with no way back to two values, an empty
-              field is dropped rather than shown as empty, and the closing
+              field is dropped rather than shown as empty, the closing
               `input` line is a sentence this command composes and not a
-              key at all.  --json is the dict, exactly.
+              key at all, and for the seventeen template languages
+              `input_shape` and `input_encoding` are left out entirely --
+              they describe an stdin those programs never read, and the
+              `input` line says so instead.  --json is the dict, exactly,
+              those two included.
 
 examples:
   esolangs describe Fargo
@@ -512,6 +521,24 @@ class _UnboundedNotice:
 #: by not terminating, the timeout is the *answer*, and a script had no way
 #: to tell that from the program having broken.
 _TIMEOUT_EXIT = 124
+
+
+def _exit_code(exc: EsolangError) -> int:
+    """Return the exit code ``exc`` should leave behind.
+
+    Derived rather than written at each site, because it was written at
+    each site: ``run`` and ``debug`` exited 124 on a bound running out and
+    ``evaluate``, ``verify`` and ``answer`` exited 1 on the same event, so
+    a script could not use one code to mean "the bound ran out".  The
+    124 is the only exit code this CLI documents a meaning for, in ``run
+    --help``, and three of the five commands did not honour it.
+
+    A ``ValueError`` is misuse and stays 2; everything else is 1.
+    """
+    if isinstance(exc, ExecutionTimeoutError):
+        return _TIMEOUT_EXIT
+    return 2 if isinstance(exc, ValueError) else 1
+
 
 #: The two input shapes whose bit count cannot be recovered from stdin.
 #: Every other language reads a line per bit, so a run can compare what it
@@ -1607,7 +1634,7 @@ def _answer(rest: list[str]) -> None:
         # No ``TemplateError`` clause: this command generates the template
         # and fills it in the same breath, so it never hands an unfilled one
         # on -- the same reason ``evaluate`` has none.
-        _fail(str(exc), 2 if isinstance(exc, ValueError) else 1)
+        _fail(str(exc), _exit_code(exc))
 
 
 def _diverging_answer(
@@ -1685,7 +1712,7 @@ def _run_round_trip(rest: list[str], command: str) -> None:
         # No ``TemplateError`` clause: this command never hands an unfilled
         # template on, because ``evaluate`` reads ``parameterized`` and
         # fills the slots itself.
-        _fail(str(exc), 2 if isinstance(exc, ValueError) else 1)
+        _fail(str(exc), _exit_code(exc))
     if command == "evaluate":
         print(computed)
         return
@@ -1951,7 +1978,7 @@ def _run(rest: list[str]) -> None:
         # A usage error (an unknown language) is still 2; anything the
         # program itself did is the program's failure, and exits 1.
         _emit_partial(exc)
-        _fail(str(exc), 2 if isinstance(exc, ValueError) else 1)
+        _fail(str(exc), _exit_code(exc))
     if judge:
         print(_judge(language, output, mode))
         return
