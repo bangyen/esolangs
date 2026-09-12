@@ -1139,14 +1139,22 @@ def read_answer(language: str, output: str) -> str:
         return "1"
     if raw == zero:
         return "0"
-    where = (
-        f"matching {example.answer_pattern!r}"
-        if example.answer_pattern
-        else "as the last character"
-    )
+    # For a pattern language the regex used to be the *whole* explanation,
+    # which is the right thing to hand a maintainer and nothing at all to
+    # hand a reader wondering where the answer was supposed to be.  The note
+    # is the plain-language half and already exists; the pattern follows it
+    # in parentheses, so neither reader loses.
+    where = "in its final state" if example.answer_pattern else "as the last character"
+    # The note whenever there is one, not just for the two pattern
+    # languages: Back, Minsky Swap and LaserFuck dump their state and are
+    # read by last character, so "as the last character" is a true account
+    # of the mechanism and no account at all of where the answer lives.
+    detail = f" -- {example.note}" if example.note else ""
+    if example.answer_pattern:
+        detail += f" (matched with {example.answer_pattern!r})"
     raise ProgramError(
         f"{name} produced no answer this could read: expected {zero!r} or "
-        f"{one!r} {where}, got {output[-40:]!r}"
+        f"{one!r} {where}, got {output[-40:]!r}{detail}"
     )
 
 

@@ -24,6 +24,7 @@ import re
 import pytest
 
 import esolangs
+from esolangs import cli
 from esolangs.cli import HELP
 
 README = (pathlib.Path(__file__).parents[1] / "README.md").read_text()
@@ -1509,3 +1510,94 @@ class TestFillingSomethingWithNoSlots:
         template = esolangs.generate("Minifuck", "0110")
         with pytest.raises(esolangs.TemplateError, match="2 input slots"):
             esolangs.instantiate("Minifuck", template, [1, 0, 1])
+
+
+class TestASuggestionIsWorthLessThanSilence:
+    """0.6 offered ``Sophie`` for ``nope``.
+
+    A wrong guess is worse than none: it sends the reader off to check a
+    language they never meant.  0.65 is the lowest cutoff that suggests
+    nothing for any of the junk below, and it rescues exactly as many real
+    typos as 0.6 did -- 291 of 298 single-edit slips across the 69 names.
+    0.7 starts costing rescues.  ``notes/cutoff.py`` is the measurement.
+    """
+
+    @pytest.mark.parametrize(
+        "word", ["nope", "zzzz", "xyz", "qqqqqq", "hello", "python", "asdf", "foo"]
+    )
+    def test_a_word_that_is_not_close_gets_no_guess(self, word: str) -> None:
+        """It gets the command that lists them, which is the honest answer."""
+        with pytest.raises(esolangs.UnknownLanguageError) as caught:
+            esolangs.describe(word)
+        assert "did you mean" not in str(caught.value)
+        assert "`esolangs list` shows all of them" in str(caught.value)
+
+    @pytest.mark.parametrize(
+        ("typo", "wanted"),
+        [
+            ("Brainfck", "brainfuck"),
+            ("brainfuk", "brainfuck"),
+            ("Streetcod", "Streetcode"),
+            ("Minifuk", "Minifuck"),
+            ("Sofie", "Sophie"),
+            ("Sufolk", "Suffolk"),
+        ],
+    )
+    def test_a_real_typo_is_still_rescued(self, typo: str, wanted: str) -> None:
+        """The half of the trade that raising a cutoff can quietly cost."""
+        with pytest.raises(esolangs.UnknownLanguageError) as caught:
+            esolangs.describe(typo)
+        assert wanted in str(caught.value)
+
+    def test_the_cli_shares_the_number(self) -> None:
+        """Its docstring promised the same cutoff while keeping its own copy."""
+        assert cli._did_you_mean("nope", esolangs.list_languages()) == ""  # noqa: SLF001
+        assert "--width" in cli._did_you_mean("--wdith", ["--width", "--bits"])  # noqa: SLF001
+
+
+class TestReadAnswerExplainsInWords:
+    """The regex was the whole explanation for the two pattern languages.
+
+    Right for a maintainer, nothing at all for a reader wondering where the
+    answer was meant to be -- and the plain-language note already existed on
+    ``describe``.  The note leads now and the pattern follows in brackets,
+    so neither reader loses.
+    """
+
+    @pytest.mark.parametrize("name", ["A Painter Ant", "RAM0"])
+    def test_the_note_leads_and_the_pattern_follows(self, name: str) -> None:
+        """Both halves, in that order."""
+        with pytest.raises(esolangs.ProgramError) as caught:
+            esolangs.read_answer(name, "garbage")
+        message = str(caught.value)
+        note = str(esolangs.describe(name)["answer_convention"])
+        pattern = str(esolangs.describe(name)["answer_pattern"])
+        assert note in message
+        # The pattern is rendered with !r, so a backslash in it is doubled.
+        assert repr(pattern) in message
+        assert message.index(note) < message.index(repr(pattern))
+
+    def test_a_plain_language_is_unchanged(self) -> None:
+        """No pattern, no note, and nothing to add -- it was already clear."""
+        with pytest.raises(esolangs.ProgramError) as caught:
+            esolangs.read_answer("brainfuck", "garbage")
+        assert "as the last character" in str(caught.value)
+        assert "matched with" not in str(caught.value)
+
+    def test_every_dump_language_says_something_in_words(self) -> None:
+        """The general claim, not the two cases that prompted it.
+
+        Writing this is what caught the narrow first fix: only the two
+        *pattern* languages got the note, and Back, Minsky Swap and
+        LaserFuck dump their state while being read by last character --
+        so they got "as the last character", a true account of the
+        mechanism and no account of where the answer lives.
+        """
+        for name in esolangs.list_languages():
+            facts = esolangs.describe(name)
+            if facts["answer_mode"] != "dump":
+                continue
+            with pytest.raises(esolangs.ProgramError) as caught:
+                esolangs.read_answer(name, "garbage")
+            note = facts["answer_convention"]
+            assert note is None or str(note) in str(caught.value), name
