@@ -422,18 +422,20 @@ def test_the_greedy_order_is_the_documented_one() -> None:
 def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
     """``perm`` reaches the emission in exactly one place, and it shows.
 
-    The layout puts input ``i``'s bit at cell ``2 * perm[i]`` with its
-    complement alongside, and that is the only place the permutation is
-    spent -- the reads and the complement construction above the tree run
-    in their own order.  So a mutated cell formula (``3 * perm[i]``,
-    ``perm[i - 1]``, an off-by-one on the move) still emits a *runnable*
-    brainfuck program over a differently-shaped tape; the generators that
-    consume this are checked by running them, and running still gives the
-    right answer whenever the layout is merely stretched.
+    The layout puts input ``i``'s bit at cell ``2 * perm[i]`` with that
+    node's flag cell alongside, and that is the only place the permutation
+    is spent -- the reads above the tree run in their own order.  So a
+    mutated cell formula (``3 * perm[i]``, ``perm[i - 1]``, an off-by-one on
+    the move) still emits a *runnable* brainfuck program over a
+    differently-shaped tape; the generators that consume this are checked by
+    running them, and running still gives the right answer whenever the
+    layout is merely stretched.
 
-    The emitted length is what the formula moves.  All six three-input
-    permutations come out distinct, so the mapping is pinned rather than
-    just its identity case.
+    The emitted length is what the formula moves.  The six three-input
+    permutations take five distinct lengths -- not six, since two orders can
+    move the pointer the same total distance -- so the whole dict is
+    asserted rather than one length per order, and any entry changing fails
+    this.
     """
     from itertools import permutations
 
@@ -444,19 +446,19 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
         for perm in permutations(range(3))
     }
     assert lengths == {
-        (0, 1, 2): 769,
-        (0, 2, 1): 785,
-        (1, 0, 2): 783,
-        (1, 2, 0): 799,
-        (2, 0, 1): 797,
-        (2, 1, 0): 797,
+        (0, 1, 2): 299,
+        (0, 2, 1): 313,
+        (1, 0, 2): 309,
+        (1, 2, 0): 317,
+        (2, 0, 1): 313,
+        (2, 1, 0): 311,
     }
 
     # One and two inputs, where the tape is short enough that an off-by-one
     # in the move would still land inside it.
-    assert len(_decision_tree_program("01", ">", "<", (0,))) == 225
-    assert len(_decision_tree_program("0110", ">", "<", (0, 1))) == 485
-    assert len(_decision_tree_program("0110", ">", "<", (1, 0))) == 499
+    assert len(_decision_tree_program("01", ">", "<", (0,))) == 115
+    assert len(_decision_tree_program("0110", ">", "<", (0, 1))) == 205
+    assert len(_decision_tree_program("0110", ">", "<", (1, 0))) == 211
 
 
 # The shape each boolean generator's construction takes, which decides which
@@ -599,6 +601,60 @@ def test_a_one_entry_table_is_refused(name: str, fn: object, table: str) -> None
     with pytest.raises(ValueError, match="at least one input") as caught:
         fn(table)
     assert "at least one input" in str(caught.value), f"{name} on {table!r}"
+
+
+@pytest.mark.parametrize(
+    ("name", "fn"),
+    sorted(
+        (lang.id, lang.boolean)
+        for lang in LANGUAGES.values()
+        if lang.boolean is not None
+    ),
+    ids=lambda v: v if isinstance(v, str) else "",
+)
+@pytest.mark.parametrize(
+    ("table", "fragment"),
+    [("011", "power-of-two"), ("0123", "only '0' and '1'")],
+)
+def test_a_malformed_table_is_refused_in_the_shared_words(
+    name: str, fn: object, table: str, fragment: str
+) -> None:
+    """Every generator rejects a malformed table in the *shared* validator's words.
+
+    The sibling above pins that a nullary table is refused; this pins the
+    other two rejections, and pins them by wording rather than by type.  All
+    69 generators route these through
+    :func:`~esolangs.tools.boolean.helpers._validate_truth_table`, so the
+    message is uniform today -- a generator that grows its own validator
+    keeps raising ``ValueError`` and passes every other check while telling
+    the caller something different from its 68 siblings.
+
+    That gap is not hypothetical.  It is what a blind reconstruction of
+    ``packlang`` did: inlined its own checks, reported ``"must be a binary
+    string"`` for ``"0123"`` and ``"needs at least one input: a power-of-two
+    length"`` for ``"011"``, and nothing in the suite noticed.  These two
+    messages were pinned per generator in four files and packlang was in
+    none of them; ``scripts/check_generators.py`` checks the signature, not
+    the words.
+
+    The second assertion is what catches that ``"011"`` case, and is the
+    reason this is not merely a substring check: a *malformed* table and a
+    *nullary* one are different defects, so the nullary wording must not
+    appear here.  Reporting "needs at least one input" for a three-entry
+    table names the wrong problem while still containing the right
+    substring.  No registry generator conflates them today.
+
+    Swept from the registry for the same reason as the nullary check: it has
+    to stay true when the next language lands.
+    """
+    assert callable(fn), name
+    with pytest.raises(ValueError, match=re.escape(fragment)) as caught:
+        fn(table)
+    assert "at least one input" not in str(caught.value), (
+        f"{name} on {table!r} said {str(caught.value)!r}, which reports a "
+        f"nullary table -- {table!r} is malformed, not nullary, and the two "
+        f"are separate rejections with separate words"
+    )
 
 
 @pytest.mark.parametrize(

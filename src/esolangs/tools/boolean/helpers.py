@@ -615,29 +615,44 @@ def decision_tree_program(truth_table: str, right: str, left: str) -> str:
     only in how a move is spelled: ``right``/``left`` are the tokens that
     step the pointer one cell up/down (``>``/``<`` for Brainfuck, ``>0``/
     ``<0`` for Dimensional, whose bare moves would read the cell value as
-    the dimension).  Everything else -- the cell layout, the complement
-    construction, and the tree itself -- is identical.
+    the dimension).  Everything else -- the cell layout and the tree itself
+    -- is identical.
 
-    Each input is read and normalized to 0/1 into cell ``2i``, its
-    complement ``1 - b`` into cell ``2i + 1`` (via two temp cells at ``2n``
-    and ``2n + 1``), and a node tests ``[b]`` for the one-side and
-    ``[1 - b]`` for the zero-side: the complement guards naturally exclude
-    the sibling, so only the matching leaf fires.  Each branch clears its
-    guard cell before its ``]``, so the loop exits after one pass, and a
-    fired leaf clears the result cell, so every ``]`` on the way out sees
-    zero.  The tree is O(2**n) characters, sharing the bit tests.
+    Each input is read and normalized to 0/1 into cell ``2i``, and cell
+    ``2i + 1`` is that node's flag.  A node sets the flag, tests ``[b]`` for
+    the one-side and clears the flag inside it, then tests ``[flag]`` for the
+    zero-side: the flag carries "the one-side did not run" across, so exactly
+    one side fires.  Each loop clears what it tested before its ``]``, so it
+    exits after one pass and leaves both cells zero for the nodes below; the
+    result cell is never a guard, so nothing on the way out has to see it.
+    The tree is O(2**n) characters, sharing the bit tests.
+
+    The flag is computed where it is used, not ahead of time.  This used to
+    be a precomputed complement ``1 - b`` per input, built above the tree
+    through two temp cells -- correct, but O(n**2) characters, since each
+    input's construction walked out to the temps and back.  That cost fell
+    on every table, and dominated the sparse ones, whose trees are almost
+    entirely folded away: n == 10 sparse went from 2,646 characters to 754.
+
+    A leaf only *records* its bit -- a ``'1'`` leaf is one ``+`` on the result
+    cell and a ``'0'`` leaf emits nothing at all -- and the single ``.`` sits
+    below the tree, where the ASCII offset is paid once.  Printing at the leaf
+    instead cost ``_ASCII_ZERO`` characters per leaf, which on a dense table
+    was most of the program.  Together the two take n == 10 xor from 77,939
+    characters to 18,495.
 
     A subtree whose rows all agree collapses to a leaf rather than branching
     on bits that cannot change the answer: the side jumps straight to the
-    result cell and prints.  This is what the deepest level always did --
-    a one-row span is trivially constant -- lifted to any level, so a table
-    like ``11110000`` spends one leaf per half instead of a full tree.  The
-    inputs are still all read (the reads are unconditional, above the tree),
-    so a folded program consumes its input the same way an unfolded one
-    does.  Factor is the generator that most wants this: it encodes this
-    program as an integer and refuses tables whose encoding exceeds
-    Python's digit limit, so folding turns some previously unrenderable
-    tables into runnable ones.
+    result cell, or is dropped entirely when its value is ``'0'``.  This is
+    what the deepest level always did -- a one-row span is trivially
+    constant -- lifted to any level, so a table like ``11110000`` spends one
+    leaf per half instead of a full tree.  The inputs are still all read (the
+    reads are unconditional, above the tree), so a folded program consumes
+    its input the same way an unfolded one does.  Factor is the generator
+    that most wants this: it encodes this program as an integer and refuses
+    tables whose encoding exceeds Python's digit limit, so folding -- and now
+    the print-once leaf -- turns some previously unrenderable tables into
+    runnable ones.
     """
     return best_input_order(
         truth_table,
@@ -655,9 +670,9 @@ def _decision_tree_program(
 
     ``truth_table`` is already permuted, so every row index here is in the
     permuted frame.  ``perm`` is spent in exactly one place -- the cell a
-    node tests, ``2 * perm[i]`` with its complement at ``2 * perm[i] + 1``.
-    The reads and the complement construction above the tree run over the
-    inputs in their own order and are untouched by it.
+    node tests, ``2 * perm[i]``, with that node's flag at ``2 * perm[i] + 1``.
+    The reads above the tree run over the inputs in their own order and are
+    untouched by it.
     """
     n = _validate_truth_table(truth_table)
 
@@ -670,7 +685,7 @@ def _decision_tree_program(
         cells.append(right * delta if delta >= 0 else left * -delta)
         pos = target
 
-    # read bits b_i at cell 2i, leaving the complements (cells 1, 3, ...) zero
+    # read bits b_i at cell 2i, leaving the flag cells (1, 3, ...) zero
     for i in range(n):
         cells.append(",")
         # ``append`` of the run, not ``extend`` over its characters: the run
@@ -680,45 +695,8 @@ def _decision_tree_program(
         if i < n - 1:
             move(pos + 2)
 
-    # complements nb_i = 1 - b_i at cell 2i+1 (t1, t2 at 2n, 2n+1)
-    for i in range(n):
-        move(2 * n)
-        cells.append("[-]")
-        move(2 * n + 1)
-        cells.append("[-]")
-        move(2 * i)
-        cells.append("[")
-        move(2 * n)
-        cells.append("+")
-        move(2 * n + 1)
-        cells.append("+")
-        move(2 * i)
-        cells.append("-")
-        cells.append("]")  # b -> t1, t2
-        move(2 * i + 1)
-        cells.append("+")  # nb = 1
-        move(2 * n + 1)
-        cells.append("[")
-        move(2 * i + 1)
-        cells.append("-")
-        move(2 * n + 1)
-        cells.append("-")
-        cells.append("]")  # nb -= t2
-        move(2 * n)
-        cells.append("[")
-        move(2 * i)
-        cells.append("+")
-        move(2 * n)
-        cells.append("-")
-        cells.append("]")  # restore b from t1
-
     # decision tree: node i entered at cell 2i, exits at cell 2i+1
-    result = 2 * n + 2
-
-    def leaf(value: str) -> None:
-        cells.append("+" * (_ASCII_ZERO + int(value)))
-        cells.append(".")
-        cells.append("[-]")  # clear the result so every ] on the way out sees zero
+    result = 2 * n
 
     def constant(i: int, combo: int) -> str | None:
         """Return the shared value of the subtree at ``(i, combo)``, else None.
@@ -734,38 +712,59 @@ def _decision_tree_program(
     def branch(i: int, combo: int) -> None:
         """Emit one side of node ``i``: a leaf when constant, else a subtree.
 
-        A folded leaf prints from the result cell just as a full-depth one
-        does, so the guard-cell dance around it is unchanged; only the depth
-        it is reached at differs.
+        A ``'1'`` leaf is a single ``+`` on the result cell; a ``'0'`` leaf
+        emits nothing at all, because the result cell is already zero and the
+        arm's own guard clear is enough to exit.  Either way the arm is
+        pointer-neutral, so the guard-cell dance around it is unchanged and
+        only the depth the leaf is reached at differs.
         """
         value = constant(i + 1, combo)
-        # A subtree is entered at the cell holding *its* input, which is
-        # ``2 * perm[i + 1]`` -- adjacent only when the order is the
-        # identity, so the target is computed rather than stepped over.
-        move(result if value is not None else 2 * perm[i + 1])
-        if value is not None:
-            leaf(value)
-        else:
+        if value is None:
+            # A subtree is entered at the cell holding *its* input, which is
+            # ``2 * perm[i + 1]`` -- adjacent only when the order is the
+            # identity, so the target is computed rather than stepped over.
+            move(2 * perm[i + 1])
             node(i + 1, combo)
+        elif value == "1":
+            move(result)
+            cells.append("+")
 
     def node(i: int, combo: int) -> None:
+        """Emit node ``i``: test ``b_i``, run one side, and leave both cells zero.
+
+        The flag cell carries "the one-side did not run" into the zero-side,
+        which is what the precomputed complement used to do.  Entered at
+        ``bit`` with the flag cell zero, left at the flag cell with both
+        zero again, so nodes nest.
+        """
         bit = 2 * perm[i]
+        flag = bit + 1
         one = combo | (1 << (n - 1 - i))
+        move(flag)
+        cells.append("+")  # flag = 1, pending
         move(bit)
-        cells.append("[")  # one-side: if b_i
+        cells.append("[-")  # one-side: if b_i, and clear it so this ] exits
+        move(flag)
+        cells.append("-")  # the one-side ran, so the zero-side must not
         branch(i, one)
         move(bit)
-        cells.append("[-]")  # clear b_i so this ] exits
         cells.append("]")
-        move(bit + 1)
-        cells.append("[")  # zero-side: if 1 - b_i
+        move(flag)
+        cells.append("[-")  # zero-side: the flag survived, so b_i was 0
         branch(i, combo)
-        move(bit + 1)
-        cells.append("[-]")  # clear the complement so this ] exits
+        move(flag)
         cells.append("]")
 
     move(2 * perm[0])
     node(0, 0)
+
+    # One print, below the tree.  Exactly one leaf fires, leaving 0 or 1 in
+    # the result cell, so the ASCII offset is paid once here instead of at
+    # every leaf -- which is what the whole tree used to spend most of its
+    # characters on.
+    move(result)
+    cells.append("+" * _ASCII_ZERO)
+    cells.append(".")
     return "".join(cells)
 
 

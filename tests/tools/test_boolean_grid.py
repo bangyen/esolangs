@@ -1702,7 +1702,15 @@ class TestCircuitDiagramLayoutGuards:
             ("01", 1, 4),
             ("0001", 7, 11),
             ("0110", 23, 35),
-            ("00010111", 61, 91),
+            # 91 columns before gate groups were recycled, and the width is
+            # what moves when they stop being: the rows are untouched, since
+            # reuse gives back columns and never a band.
+            ("00010111", 61, 61),
+            # Four inputs, where the two savings compound: 219 columns as a
+            # left fold with no reuse, 99 once groups were recycled, and 87
+            # once the folds were balanced.  The rows never move -- neither
+            # change gives back a band.
+            ("0110100110010110", 147, 87),
         ],
     )
     def test_the_drawing_has_exact_dimensions(
@@ -1724,6 +1732,42 @@ class TestCircuitDiagramLayoutGuards:
         drawing = circuit_diagram(table).split("\n")
         assert len(drawing) == rows
         assert max(len(row) for row in drawing) == columns
+
+    def test_balancing_the_folds_keeps_the_width_logarithmic(self) -> None:
+        """Each extra input doubles the minterms and costs a bounded step.
+
+        A gate sits right of every bus it reads, so the drawing's width is
+        set by the gate network's *depth*.  Folded left that depth is the
+        number of parts, and an extra input would roughly double it; folded
+        in half it is the logarithm, so an extra input adds one level.
+
+        The pins are what a regression would move.  Left-folded, the same
+        four are 61, 99, 161 and 271.
+        """
+        widths = {}
+        for n in (3, 4, 5, 6):
+            table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
+            drawing = boolean.circuit_diagram(table)
+            widths[n] = max(len(row) for row in drawing.splitlines())
+        assert widths == {3: 61, 4: 87, 5: 113, 6: 133}
+        steps = [widths[n + 1] - widths[n] for n in (3, 4, 5)]
+        assert max(steps) <= 30, steps
+
+    def test_a_balanced_fold_holds_only_its_depth_live(self) -> None:
+        """The halves are drawn one after the other, not all up front.
+
+        Building every minterm chain first and then combining them would
+        have the same depth but put each chain's result on a bus of its
+        own, spending in columns what the balancing saved.  Drawing each
+        half fully before starting the next keeps at most one partial
+        result per level alive, which is why the width falls rather than
+        merely moving.
+        """
+        # Sixteen minterms at n=5: all-up-front would need sixteen live
+        # buses, which at two columns each could not fit in this width.
+        table = "".join(str(bin(i).count("1") % 2) for i in range(32))
+        drawing = boolean.circuit_diagram(table)
+        assert max(len(row) for row in drawing.splitlines()) == 113
 
     def test_real_layouts_never_come_within_one_cell(self) -> None:
         """The generator's spacing keeps every table clear of the guard.
@@ -1752,6 +1796,98 @@ class TestCircuitDiagramLayoutGuards:
                 circuit_diagram(format(table_int, "04b"))
         assert closest, "no layout carried two signals' junctions"
         assert min(closest) >= 2
+
+    @staticmethod
+    def _run_at(table: str, width: int | None) -> str:
+        """The banded program's output for every input, in table order."""
+        from esolangs.interpreters.grid_based.circuit_diagram import run
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+
+        n = len(table).bit_length() - 1
+        program = circuit_diagram(table, width).split("\n")
+        results = []
+        for index in range(len(table)):
+            stdin = "".join(f"{bit}\n" for bit in format(index, f"0{n}b"))
+            io = ScriptedIO(stdin)
+            run(program, io)
+            results.append(io.getvalue())
+        return "".join(results)
+
+    def test_a_width_bands_the_drawing_and_it_still_computes(self) -> None:
+        """Banding carries the live signals left; the circuit is unchanged.
+
+        A gate must sit right of every bus it reads, so a group freed
+        behind the drawing is unusable and the width grows with the
+        network's depth.  A band moves what is still live back to the left
+        and frees everything behind it -- and a wire that merged with
+        another would be wrong in a way only a run would show, so this runs
+        every input combination.
+        """
+        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+
+        # ``00101111`` at 30 is the case that bands on the final ``~``: a
+        # dense table is drawn from its zero rows and inverted, and that one
+        # gate sits past the whole network, where it used to run over the
+        # width because only ``gate`` checked.
+        for table in ("01101001", "0110100110010110", "00010111", "00101111"):
+            flat = circuit_diagram(table)
+            wide = max(len(row) for row in flat.splitlines())
+            floor = max(len(row) for row in circuit_diagram(table, 1).splitlines())
+            for width in (1, 30, 50, 60, 80, wide):
+                narrow = circuit_diagram(table, width)
+                columns = max(len(row) for row in narrow.splitlines())
+                assert columns <= max(width, floor), (table, width, columns)
+                assert self._run_at(table, width) == table, (table, width)
+
+    def test_banding_brings_every_arity_inside_eighty(self) -> None:
+        """Which is the point: unbanded, parity clears 80 columns at n == 4.
+
+        The floor is what a band cannot reclaim -- the rails and the
+        complements, read by every minterm and so live for the whole
+        drawing -- so it grows with the *inputs* rather than with the
+        table, which is why it stays well under 80 while the flat drawing
+        does not.
+        """
+        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+
+        for n in (4, 5, 6):
+            table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
+            flat = circuit_diagram(table)
+            banded = circuit_diagram(table, 80)
+            assert max(len(row) for row in flat.splitlines()) > 80, n
+            assert max(len(row) for row in banded.splitlines()) <= 80, n
+            # and it costs rows, which is the trade
+            assert len(banded.splitlines()) > len(flat.splitlines()), n
+
+    def test_a_band_must_re_carry_what_an_earlier_one_moved(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Forgetting a carried signal hands its column away while it is live.
+
+        That is how this first went wrong, and it is the layout guard that
+        caught it rather than a wrong answer.  Making ``_band`` forget makes
+        it fire again -- so the guard is what licenses the banding, not a
+        check that happens to pass.
+        """
+        import importlib
+
+        from esolangs.tools.boolean.circuit_diagram import _Builder
+
+        module = importlib.import_module("esolangs.tools.boolean.circuit_diagram")
+        original = getattr(_Builder, "_band")  # noqa: B009 - SLF001 otherwise
+
+        def forgetful(self: _Builder) -> None:
+            original(self)
+            self.live.clear()
+
+        table = "".join(str(bin(i).count("1") % 2) for i in range(32))
+        monkeypatch.setattr(_Builder, "_band", forgetful)
+        with pytest.raises(AssertionError, match="two signals run vertical"):
+            module.circuit_diagram(table, 40)
+        monkeypatch.undo()
+        # and with the carry kept, the same drawing builds and computes
+        assert self._run_at(table, 40) == table
 
 
 class TestSuperSNUSP:
@@ -1955,3 +2091,159 @@ class TestSuperSNUSP:
             super_snusp("010")
         with pytest.raises(ValueError, match="only '0' and '1'"):
             super_snusp("012x")
+
+
+class TestAlightWidth:
+    """Alight's boustrophedon, which is the only way its line can fold.
+
+    A command is a word walked cell by cell, so a row end cuts one in half
+    and no after-the-fact reflow can touch it.  What the generator has that
+    a wrapper does not is ``turn``.
+    """
+
+    @staticmethod
+    def _run(program: str, bits: list[str]) -> str:
+        import esolangs
+
+        stdin = "".join(f"{bit}\n" for bit in bits)
+        return esolangs.run("Alight", program, stdin=stdin, timeout=5.0).strip()
+
+    def test_a_width_folds_the_walk_and_it_still_computes(self) -> None:
+        """The folded walk computes what the straight one did."""
+        for table in ("0110", "01101001", "0110100110010110"):
+            n = len(table).bit_length() - 1
+            flat = boolean.alight(table)
+            wide = max(len(row) for row in flat.splitlines())
+            floor = max(len(row) for row in boolean.alight(table, 1).splitlines())
+            assert floor < wide, f"{table} never narrows"
+            for width in (1, 40, 60, wide):
+                narrow = boolean.alight(table, width)
+                columns = max(len(row) for row in narrow.splitlines())
+                assert columns <= max(width, floor), (table, width, columns)
+                for combo in range(2**n):
+                    bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                    assert self._run(narrow, bits) == table[combo], (table, width)
+
+    def test_splitting_the_literal_takes_the_floor_off_the_table(self) -> None:
+        """The literal was the floor; chunking it means the arity no longer is.
+
+        A string is one token of one command, so an unsplit table literal
+        makes the floor ``2 ** n`` -- 48, 64, 96, 160 columns at n=4..7,
+        doubling with every input even though the flat program's width
+        barely grows.  Split into guarded chunks, the floor is one chunk
+        plus its guard and the turn they share a row with, which the width
+        picks: it stops tracking ``n`` altogether.
+        """
+        floors = {}
+        for n in (4, 5, 6, 7):
+            table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
+            narrow = boolean.alight(table, 1)
+            floors[n] = max(len(row) for row in narrow.splitlines())
+            # the unsplit literal alone would have been wider than this
+            literal = len(f'set r at{{"{table}", i+0.5}};')
+            assert floors[n] < literal or n == 4, (n, floors[n], literal)
+        assert max(floors.values()) - min(floors.values()) <= 4, floors
+
+    def test_a_width_is_met_at_every_arity(self) -> None:
+        """Which is what splitting the literal buys: 80 columns holds at n=7.
+
+        Unsplit, the literal alone put n=6 at 96 columns however narrow the
+        request.
+        """
+        for n in (4, 5, 6, 7):
+            table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
+            for width in (60, 80):
+                narrow = boolean.alight(table, width)
+                assert max(len(row) for row in narrow.splitlines()) <= width, (n, width)
+
+    def test_a_chunk_and_its_guard_stay_on_one_row(self) -> None:
+        """``skip`` guards the *next command along the heading*.
+
+        A fold between the two would leave the ``skip`` skipping the turn
+        instead of the lookup, and the walk would carry straight on off the
+        grid.  So the pair is one unit to the folder, and the check is that
+        every ``skip`` has its lookup after it on the same row -- read in
+        the direction that row runs.
+        """
+        table = "".join(str(bin(i).count("1") % 2) for i in range(64))
+        rows = boolean.alight(table, 60).splitlines()
+        seen = 0
+        for row in rows:
+            for text in (row, row[::-1]):
+                for index in range(len(text) - 4):
+                    if text[index : index + 4] == "skip":
+                        seen += 1
+                        assert "set r at{" in text[index:], text
+        assert seen, "no guarded chunk in the drawing"
+
+    def test_a_folded_row_keeps_the_space_inside_its_turn(self) -> None:
+        """``turn right`` has a space, and a vertical turn writes it as a cell.
+
+        Stripping a row's trailing blank -- which is what every other
+        generator here does -- deletes that space and the walk reads
+        ``turnright``.  So rows are trimmed to their last *written* cell
+        instead, and a row whose only content is that blank stays a blank.
+        """
+        narrow = boolean.alight("0110100110010110", 40)
+        rows = narrow.splitlines()
+        assert any(row.strip() == "" and row != "" for row in rows), (
+            "the turn's own space was stripped away"
+        )
+        assert "turnright" not in narrow.replace("\n", "")
+
+
+class TestSuperSNUSPWidth:
+    """SNUSP's mirrors, which make this the cheapest fold of any generator here.
+
+    ``\\`` sends an eastward pointer down and a downward one west, so two
+    stacked turn a row round in one row and one column; ``/`` is the mirror
+    image and brings it back.
+    """
+
+    @staticmethod
+    def _run(program: str, bits: list[str]) -> str:
+        import esolangs
+
+        stdin = "".join(f"{bit}\n" for bit in bits)
+        return esolangs.run("Super SNUSP", program, stdin=stdin, timeout=5.0).strip()
+
+    def test_a_width_folds_the_line_and_it_still_computes(self) -> None:
+        """The folded pointer computes what the straight one did."""
+        for table in ("0110", "01101001", "0110100110010110"):
+            n = len(table).bit_length() - 1
+            flat = boolean.super_snusp(table)
+            wide = max(len(row) for row in flat.splitlines())
+            floor = max(len(row) for row in boolean.super_snusp(table, 1).splitlines())
+            assert floor < wide, f"{table} never narrows"
+            for width in (1, 6, 12, 20, wide):
+                narrow = boolean.super_snusp(table, width)
+                columns = max(len(row) for row in narrow.splitlines())
+                assert columns <= max(width, floor), (table, width, columns)
+                for combo in range(2**n):
+                    bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                    assert self._run(narrow, bits) == table[combo], (table, width)
+
+    def test_both_mirrors_are_used(self) -> None:
+        """A program long enough to fold twice turns round and back again.
+
+        One mirror pair would be enough to show a fold; it takes the other
+        to show the pointer coming *back*, and a rule that only ever went
+        one way would pass a one-fold test.
+        """
+        table = "".join(str(bin(i).count("1") % 2) for i in range(32))
+        narrow = boolean.super_snusp(table, 12)
+        assert "\\" in narrow, narrow
+        assert "/" in narrow, narrow
+        assert narrow.count("\\") >= 2, "an east-to-west turn is two mirrors"
+        assert narrow.count("/") >= 2, "so is a west-to-east one"
+
+    def test_a_digit_run_is_never_split_by_a_fold(self) -> None:
+        """``48`` has to stay on one row: a mirror in between would make it 4, 8.
+
+        A digit multiplies what the cell holds by ten and *any* non-digit
+        clears that, so the mirrors of a fold between the two digits would
+        leave 4 and then 8 rather than 48.
+        """
+        for width in range(4, 20):
+            narrow = boolean.super_snusp("0110100110010110", width)
+            assert "48" in narrow, (width, narrow)

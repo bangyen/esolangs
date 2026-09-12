@@ -158,4 +158,6 @@ class TestContract(EmptyProgramContract, CycleContract, StateViewContract):
     halting_program = "i"
     looping_program = "mipt"
     state_views = ("ind", "acc", "ip", "memory")
-    viewing_program = "pl"  # `p` raises the accumulator, `l` prints it
+    # `m`/`i`/`p`/`t` between them move the accumulator and the store,
+    # not just the cursor.
+    viewing_program = "mipt"

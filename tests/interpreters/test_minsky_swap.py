@@ -331,4 +331,26 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     # It is still read either side, which is what the view is here to pin;
     # `reg` and `ip` are what move.
     state_views = ("ptr", "reg", "dumped", "ip", "memory")
-    viewing_program = "+"
+    # `*` swaps the register pair, so the pointer moves as well as the
+    # register.  `dumped` latches on the step past the halt, which the
+    # check does not take.
+    viewing_program = "*+"
+    constant_views = frozenset({"dumped"})
+
+
+class TestStateViewValues:
+    """The named views read the slots they claim, not one another.
+
+    The shared contract checks that each view *moves*; which slot it moves
+    with is this file's business, because only this file knows which of its
+    names could be confused for each other.  A value pinned at a step where
+    they hold different things is what a rewiring would change.
+    """
+
+    def test_ptr_is_the_register_pointer_not_the_cursor(self) -> None:
+        """The swap moves the pointer once; the cursor moves every step."""
+        machine = _machine("*+")
+        while not machine.halted:
+            machine.step()
+        assert machine.ptr == 1
+        assert machine.ip == 2

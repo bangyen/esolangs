@@ -1,1 +1,12 @@
-begin;var a;var i;var r;inp a;set i a-48;inp a;set i i*2+a-48;set r at{"0001", i+0.5};out r;end;
+begin;var a;var i;var r;inp a;set i a-48;inp a;set i i*2+a-48;;;;;;;;turn right;
+                                                                               t
+                                                                               u
+                                                                               r
+                                                                               n
+                                                                                
+                                                                               r
+                                                                               i
+                                                                               g
+                                                                               h
+                                                                               t
+                                             ;dne;r tuo;}5.0+i ,"1000"{ta r tes;
