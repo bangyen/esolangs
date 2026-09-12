@@ -16,6 +16,18 @@ Decisions for gaps in the wiki spec (documented):
   :class:`~esolangs.exceptions.HaltError`;
 - an unmatched ``gy``/``gz`` is a malformed program and is rejected with
   :class:`ValueError`;
+- a character that is not a command is **skipped**, and a lone ``g`` not
+  followed by ``y``/``z`` is skipped with it.  The wiki says only that the
+  command lines are "filled with a bunch of commands, all lowercase
+  letters" and does not say what else may appear, so this is a choice.  Its
+  cost is that a program of pure nonsense (``qqq``) runs cleanly and prints
+  nothing, which reads as success; the reason to keep it is that skipping
+  is what the tokenizer was built to do and
+  ``test_a_skipped_character_advances_the_cursor`` and its three
+  neighbours pin the advance behaviour deliberately.  Bitdeque, the other
+  queue language, refuses instead -- there the swallow was neither
+  intended nor tested, and its commands are upper-case words, so a
+  lower-case program vanished entirely;
 - ``t`` keeps ASCII letters, digits, and ``-_.~`` (the RFC 3986 unreserved
   set), encoding everything else as ``%XX`` (uppercase hex, more digits for
   values above 255).  This is a deliberate conservative choice: the real
