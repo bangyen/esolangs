@@ -1040,9 +1040,7 @@ class TestTheSmallInconsistencies:
         width; CV(N)(C) cannot follow it, because its loader rejects a
         newline outright rather than choosing not to use one.
         """
-        _out, err = call_both(
-            ["generate", "--width", "10", "CV(N)(C)", "0100"], capsys
-        )
+        _out, err = call_both(["generate", "--width", "10", "CV(N)(C)", "0100"], capsys)
         assert "no effect on CV(N)(C)" in err
 
     def test_a_wrapping_width_says_nothing(
