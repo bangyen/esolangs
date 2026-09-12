@@ -254,7 +254,8 @@ options:
                      languages whose answer for a 1 is that the program
                      never stops, and to none for the rest.
 """,
-    "verify": """usage: esolangs verify [--timeout S] <language> <truth-table>
+    "verify": """usage: esolangs verify [--timeout S] [--width [N]]
+                        <language> <truth-table>
 
 Generate a program for <truth-table>, run it on every row of its input
 space, and report whether it computes that table.
@@ -285,12 +286,19 @@ options:
                      the backstop for a program that diverges by growing.
                      A sixteen-row 123 table at --timeout 30 takes under a
                      second, not eight minutes.
+  --width [N]        build the program wrapped to N columns and check *that*,
+                     which is the round trip worth running after a --width:
+                     a wrap that broke a token would compute a different
+                     table, or none.  `esolangs describe <language>` reports
+                     which of three things a width does, as `width_effect`.
 
 examples:
   esolangs verify brainfuck 0110
   esolangs verify --timeout 5 123 0110
+  esolangs verify --width 40 brainfuck 10010110
 """,
-    "evaluate": """usage: esolangs evaluate [--timeout S] <language> <truth-table>
+    "evaluate": """usage: esolangs evaluate [--timeout S] [--width [N]]
+                          <language> <truth-table>
 
 Print the truth table a generated <language> program actually computes.
 
@@ -1442,11 +1450,25 @@ def _run_round_trip(rest: list[str], command: str) -> None:
     """
     rest, options = _pop_options(rest, {"--timeout"})
     timeout = _timeout_of(options)
-    rest = _split_positional(rest, set(), {"--timeout"})
-    _check_count(command, rest, 2)
+    before = list(rest)
+    rest, width, bare = _pop_width(rest)
+    rest = _split_positional(rest, set(), {"--timeout", "--width"})
+    # The same trap ``generate`` carries: ``--width`` takes an *optional* N,
+    # so a truth table typed straight after it is eaten as the width and the
+    # complaint lands on a missing table.
+    eaten = ""
+    if width is not None and not bare:
+        for i, arg in enumerate(before[:-1]):
+            value = before[i + 1]
+            if arg == "--width" and _looks_like_a_table(value):
+                eaten = (
+                    f"\n\nnote: --width consumed {value!r}, which looks like a "
+                    f"truth table; put the table after the language"
+                )
+    _check_count(command, rest, 2, bare_width=bare, eaten=eaten)
     language, table = rest[0], rest[1]
     try:
-        computed = evaluate(language, table, timeout)
+        computed = evaluate(language, table, timeout, width)
     except GeneratorCapError as exc:
         # Nothing ran, so this is the usage class: the generator refused the
         # table rather than building a program that got the wrong answer.

@@ -2289,3 +2289,44 @@ class TestTheTimeoutIsABackstopNotAPerRowCost:
         help_text = HELP["verify"]
         assert "pay this on every" not in help_text
         assert "backstop" in help_text
+
+
+class TestVerifyAndEvaluateTakeAWidth:
+    """The CLI half of the same gap, parsed the way ``generate`` parses it."""
+
+    def test_verify_accepts_a_width(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """And still says ok, because the wrap did not break the program."""
+        out, err = call_both(
+            ["verify", "--width", "40", "brainfuck", "10010110"], capsys
+        )
+        assert out.strip() == "ok"
+        assert err == ""
+
+    def test_evaluate_accepts_a_width(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """A template language, so the width has to reach ``instantiate``."""
+        out, _err = call_both(["evaluate", "--width", "40", "Minifuck", "0110"], capsys)
+        assert out.strip() == "0110"
+
+    def test_a_bare_width_takes_the_default(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """As it does on ``generate``, so the next word is the language."""
+        out, _err = call_both(["verify", "--width", "brainfuck", "0110"], capsys)
+        assert out.strip() == "ok"
+
+    def test_a_width_that_ate_the_table_says_so(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """``--width`` takes an optional N, which is a trap ``generate`` names.
+
+        Without the note the complaint is about a missing truth table, which
+        is baffling when you did type one.
+        """
+        with pytest.raises(SystemExit):
+            call_main(["verify", "--width", "0110", "brainfuck"], capsys)
+        assert "looks like a truth table" in capsys.readouterr().err
+
+    def test_the_help_mentions_it(self) -> None:
+        """A flag nobody can find is a flag nobody has."""
+        assert "--width" in HELP["verify"]
+        assert "--width" in HELP["evaluate"]
