@@ -338,9 +338,17 @@ Read stdin and say whether it is what <language> wants, without running a
 program.
 
 Exits 0 and says nothing when it is fine.  Otherwise it names what is wrong
-and exits 2 -- the wrong alphabet, the wrong number of lines, a row index
-with a leading zero, and with --table the wrong bit count or an index out of
-range.
+and exits 2 -- the wrong alphabet, a shape the language cannot read, a row
+index with a leading zero, and with --table the wrong bit count or an index
+out of range.
+
+Without --table it judges *shape*, and for most languages a shape is not a
+count.  Clockwise wants every bit on one line and Fargo one row index, so
+for those two a stray line is a shape error and is caught.  The other
+sixty-seven read a line per bit, where one line, three lines and no lines
+at all are equally well shaped.  An empty stdin passes `check-stdin
+brainfuck`, which is the trap worth naming: only --table knows how many
+bits the program wanted.
 
 This is the check `run` applies as a warning and `run --judge` applies as a
 refusal, on its own, so a pipeline can validate input before spending a run
