@@ -29,9 +29,10 @@ from esolangs.registry import BY_BOOLEAN
 
 PACKAGE = "esolangs.tools.boolean"
 Key = tuple[str, str]
+Func = ast.FunctionDef | ast.AsyncFunctionDef
 
 #: (module, function) -> its ast node.
-NODES: dict[Key, ast.FunctionDef] = {}
+NODES: dict[Key, Func] = {}
 #: module -> name -> module the name was imported from.
 IMPORTS: dict[str, dict[str, str]] = defaultdict(dict)
 
@@ -178,8 +179,8 @@ for name in sorted(BY_BOOLEAN):
     groups[tuple(live)].append(name)
 
 print("\n== by raise set ==")
-for key, names in sorted(groups.items(), key=lambda kv: -len(kv[1])):
-    print(f"[{','.join(key) or 'no raise'}] {len(names)}: {' '.join(names)}")
+for excs, names in sorted(groups.items(), key=lambda kv: -len(kv[1])):
+    print(f"[{','.join(excs) or 'no raise'}] {len(names)}: {' '.join(names)}")
 
 print("\n== unbounded loop sites, and who reaches them ==")
 for site, names in sorted(loop_sites.items()):
