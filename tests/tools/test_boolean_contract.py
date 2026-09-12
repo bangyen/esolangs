@@ -921,9 +921,7 @@ _EXHAUSTIVE_ARITY = 3
 def _all_tables(arity: int) -> list[str]:
     """Every truth table of every arity from one up to ``arity``."""
     return [
-        format(k, f"0{2**n}b")
-        for n in range(1, arity + 1)
-        for k in range(2 ** (2**n))
+        format(k, f"0{2**n}b") for n in range(1, arity + 1) for k in range(2 ** (2**n))
     ]
 
 
