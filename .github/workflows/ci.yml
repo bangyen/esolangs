@@ -143,8 +143,8 @@ jobs:
       # `os.cpu_count()` because psutil is not a dependency here -- so there
       # is no worker count left to raise.  What made this job slow was the
       # `slow` band: 353 of 10865 tests that measure, locally at two workers,
-      # 467s of a 552s suite -- 85% of the time for 3% of the tests.  Those
-      # moved to `.github/workflows/weekly.yml`; this runs fast and `medium`.
+      # 289s against the 81s the rest take.  Those moved to
+      # `.github/workflows/weekly.yml`; this runs fast and `medium`.
       #
       # `--cov-branch` is free on this leg (see the table above) and the gate
       # below needs the arcs.
