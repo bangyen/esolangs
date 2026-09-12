@@ -59,6 +59,14 @@ def canonical_id(name: str) -> str:
     # could not match on case -- ``cv(n)(c)`` fell through to the slug rules
     # and became ``cv_n_c``, which is nothing's id.  Every other awkward
     # name (``BRAINFUCK``, ``s*bleq``, ``forþ``) was already tolerant.
+    # Stripped before anything else.  The slug rules below collapse runs of
+    # non-alphanumerics and strip the result, so 67 of the 69 names already
+    # tolerated a stray surrounding space -- but the override lookup is an
+    # exact one, and the two names that need an override were therefore the
+    # exact two that did not.  ``CV(N)(C) `` was the bad one: it fell
+    # through to ``cv_n_c``, matched nothing, and came back as "did you mean
+    # CV(N)(C)?" -- an invisible diff and no way forward.
+    name = name.strip()
     folded = {key.casefold(): value for key, value in _CANONICAL_OVERRIDES.items()}
     if name.casefold() in folded:
         return folded[name.casefold()]

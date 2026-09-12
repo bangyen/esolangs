@@ -1376,3 +1376,136 @@ class TestEveryDumpSaysWhereTheAnswerIs:
             dump = esolangs.run("Bitdeque", program, "", timeout=10)
             assert dump == "0110"[combo], bits
             assert len(dump) == 1, dump
+
+
+class TestABadStdinIsAnArgumentFault:
+    """Four entry points filed it as a *program* fault, and one did not.
+
+    ``ProgramError`` says "a program could not be loaded: it is malformed
+    for its language".  The stdin is not the program.  Both derive from
+    ``EsolangError`` so a generic handler always worked, but the taxonomy
+    is the thing this package sells, and here it disagreed with itself.
+    """
+
+    @pytest.mark.parametrize(
+        "call",
+        [
+            lambda: esolangs.run("brainfuck", ",.", b"0\n"),
+            lambda: esolangs.check_program("brainfuck", ",.", b"0\n"),
+            lambda: esolangs.make_vm("brainfuck", ",.", b"0\n"),
+            lambda: esolangs.make_debugger("brainfuck", ",.", b"0\n"),
+            lambda: esolangs.check_stdin("brainfuck", b"0\n"),
+        ],
+    )
+    def test_every_entry_point_agrees(self, call: object) -> None:
+        """One fault, one class -- ``except ArgumentError`` has to cover all five."""
+        with pytest.raises(esolangs.ArgumentError, match="stdin must be a string"):
+            call()  # type: ignore[operator]
+
+    def test_a_bad_program_is_still_a_program_error(self) -> None:
+        """The change must not blur the distinction the other way."""
+        with pytest.raises(esolangs.ProgramError, match="program must be a string"):
+            esolangs.run("brainfuck", 42, "")  # type: ignore[arg-type]
+
+
+class TestASurroundingSpaceResolves:
+    """67 of 69 names already tolerated one, and the two that did not.
+
+    ``canonical_id`` collapses runs of non-alphanumerics and strips the
+    result, so a stray space fell out for almost every name.  The override
+    table is an exact lookup, though, so the two names needing an override
+    were exactly the two that broke -- and ``"CV(N)(C) "`` came back as
+    ``did you mean CV(N)(C)?``, an invisible diff with no way forward.
+    """
+
+    @pytest.mark.parametrize("pad", [" {}", "{} ", " {} ", "\t{}\n"])
+    def test_every_language_tolerates_surrounding_space(self, pad: str) -> None:
+        """All 69, because the two that failed were not the obvious two."""
+        for name in esolangs.list_languages():
+            assert esolangs.describe(pad.format(name))["name"] == name
+
+    @pytest.mark.parametrize("name", ["%^2^-1", "CV(N)(C)"])
+    def test_the_two_override_names_specifically(self, name: str) -> None:
+        """Named, so a future override cannot quietly reintroduce the gap."""
+        assert esolangs.describe(f" {name} ")["name"] == name
+
+    def test_internal_spacing_is_still_normalized(self) -> None:
+        """The strip must not have replaced the rule that was already working."""
+        assert esolangs.describe("Home  Row")["name"] == "Home Row"
+
+
+class TestAnUnknownNameIsShownReadably:
+    """A bare rendering can be a lie, and was for two shapes of input."""
+
+    def test_an_empty_name_is_not_a_hole_in_a_sentence(self) -> None:
+        """It read ``unknown language: ; `esolangs list` shows all of them``."""
+        with pytest.raises(esolangs.UnknownLanguageError, match="unknown language: ''"):
+            esolangs.describe("")
+
+    def test_an_unprintable_name_is_quoted(self) -> None:
+        """Otherwise the message renders the control character and lies."""
+        with pytest.raises(esolangs.UnknownLanguageError) as caught:
+            esolangs.describe("brain\x00fuck")
+        assert "\\x00" in str(caught.value)
+
+    def test_an_ordinary_miss_stays_unquoted(self) -> None:
+        """Quoting every miss to cover the rare one makes the common case worse."""
+        with pytest.raises(
+            esolangs.UnknownLanguageError, match="unknown language: zzzz"
+        ):
+            esolangs.describe("zzzz")
+
+
+class TestATableLengthNamesTheNearestLegalOnes:
+    """The rule without the arithmetic, on the likeliest first error."""
+
+    @pytest.mark.parametrize(
+        ("table", "expected"),
+        [
+            ("0" * 3, "3 is between 2 (1 input) and 4 (2 inputs)"),
+            ("0" * 6, "6 is between 4 (2 inputs) and 8 (3 inputs)"),
+            ("0" * 100, "100 is between 64 (6 inputs) and 128 (7 inputs)"),
+        ],
+    )
+    def test_the_brackets_are_named(self, table: str, expected: str) -> None:
+        """And singular where it should be: "1 input", not "1 inputs"."""
+        with pytest.raises(esolangs.TruthTableError, match=re.escape(expected)):
+            esolangs.generate("brainfuck", table)
+
+    def test_an_empty_table_gets_no_brackets(self) -> None:
+        """``2 ** -1`` is 0.5, so the arithmetic does not apply to nothing."""
+        with pytest.raises(esolangs.TruthTableError) as caught:
+            esolangs.generate("brainfuck", "")
+        assert "is between" not in str(caught.value)
+
+    def test_the_brackets_are_actually_legal_lengths(self) -> None:
+        """The message would be worse than none if it named an unusable size."""
+        with pytest.raises(esolangs.TruthTableError) as caught:
+            esolangs.generate("brainfuck", "0" * 6)
+        for length in (4, 8):
+            assert f"{length} (" in str(caught.value)
+            esolangs.generate("brainfuck", "0" * length)  # so it builds
+
+
+class TestFillingSomethingWithNoSlots:
+    """ "0 input slots" is true and answers a question nobody asked."""
+
+    def test_a_plain_program_says_it_is_not_a_template(self) -> None:
+        """The mistake is "this is not a template", not a count of zero."""
+        with pytest.raises(
+            esolangs.TemplateError, match=re.escape("no {Xi} slots to fill")
+        ):
+            esolangs.instantiate("Minifuck", "abc", [1, 0])
+
+    def test_filling_twice_says_the_same_thing(self) -> None:
+        """The other way to get here, and it looks identical from inside."""
+        template = esolangs.generate("Minifuck", "0110")
+        filled = esolangs.instantiate("Minifuck", template, [1, 0])
+        with pytest.raises(esolangs.TemplateError, match="already been applied"):
+            esolangs.instantiate("Minifuck", filled, [1, 0])
+
+    def test_a_real_slot_mismatch_still_counts(self) -> None:
+        """The count is the right answer when there *are* slots."""
+        template = esolangs.generate("Minifuck", "0110")
+        with pytest.raises(esolangs.TemplateError, match="2 input slots"):
+            esolangs.instantiate("Minifuck", template, [1, 0, 1])

@@ -340,6 +340,17 @@ def instantiate(
     bits = check_bits(bits, "bits")
     wanted = len({int(slot) for slot in _SLOT_INDEX.findall(template)})
     if len(bits) != wanted:
+        if wanted == 0:
+            # The count is true and answers a question nobody asked.  Both
+            # ways of getting here -- an ordinary program, and a template
+            # instantiate() has already filled -- look the same from here,
+            # so the message names both rather than guessing.
+            raise TemplateError(
+                f"this {name} text has no {{Xi}} slots to fill: it is either "
+                f"an ordinary program or a template instantiate() has already "
+                f"been applied to, and generate({name!r}, table) returns the "
+                f"template to fill"
+            )
         given = (
             f"{len(bits)} bit was given"
             if len(bits) == 1
@@ -428,7 +439,14 @@ def check_program(
             f"{type(program).__name__}"
         )
     if not isinstance(stdin, str):
-        raise ProgramError(
+        # ArgumentError, not ProgramError: the stdin is not the program, and
+        # ProgramError says "a program could not be loaded: it is malformed
+        # for its language".  ``check_stdin`` filed the identical fault as an
+        # ArgumentError all along, so the four entry points that reach here
+        # disagreed with it -- and a caller who wrapped their bad-stdin guard
+        # in ``except ArgumentError`` caught it for one function and missed
+        # it for the other four.
+        raise ArgumentError(
             f"stdin must be a string, got {type(stdin).__name__}; "
             f"join your lines with '\\n'"
         )

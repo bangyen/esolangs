@@ -55,7 +55,19 @@ class UnknownLanguageError(EsolangError, ValueError):
             if suggestions
             else "; `esolangs list` shows all of them"
         )
-        super().__init__(f"unknown language: {language}{hint}")
+        # Quoted only when the bare rendering would mislead.  An empty name
+        # read as "unknown language: ; `esolangs list` shows all of them" --
+        # a sentence with a hole in it -- and a name carrying whitespace or
+        # an unprintable character showed as the name the reader typed,
+        # which is how a suggestion came to look identical to the input.
+        # The ordinary case stays unquoted, since quoting every miss to
+        # cover the rare one makes the common message worse.
+        shown = (
+            language
+            if language and language == language.strip() and language.isprintable()
+            else repr(language)
+        )
+        super().__init__(f"unknown language: {shown}{hint}")
         self.language = language
         self.suggestions = suggestions
 

@@ -193,7 +193,8 @@ def test_a_table_of_the_wrong_length_is_refused(name: str) -> None:
     """
     with raises_message(
         ValueError,
-        "truth table must have a power-of-two number of entries (2**n), got 3",
+        "truth table must have a power-of-two number of entries (2**n), got 3"
+        "; 3 is between 2 (1 input) and 4 (2 inputs)",
     ):
         BOOLEAN_EXAMPLES[name].generator("011")
 
