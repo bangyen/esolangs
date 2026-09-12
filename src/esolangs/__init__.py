@@ -466,6 +466,15 @@ def run(
 ) -> str:
     """Execute ``program`` and return its output.
 
+    **A Path and its text are not quite the same argument.**  Reading a
+    file strips one trailing newline and passing a string does not, so
+    ``run(lang, path)`` and ``run(lang, path.read_text())`` disagree for
+    the languages where a newline is not a legal character -- CV(N)(C)
+    answers the first and refuses the second, naming the newline as a
+    symbol it does not have.  Both halves are deliberate: one in a file is
+    the editor's, and a trailing newline in a string you built is yours.
+    This said only that a Path "is read", which reads as equivalence.
+
     ``program`` is the program's *source*.  A :class:`~pathlib.Path` is read
     first, so the CLI's file-taking habit carries over; a plain string that
     names an existing ``.txt`` file is refused rather than executed, because

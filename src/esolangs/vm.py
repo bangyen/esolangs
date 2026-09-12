@@ -917,6 +917,19 @@ class VM(Protocol):
         tuple -- so a caller must read the shape rather than assume one.
         :meth:`~esolangs.debugger.Debugger.break_at` checks the kind for
         exactly this reason, and deliberately does not check the arity.
+
+        **What the leading components mean is stable even though the arity
+        is not: they are row then column, never x then y.**  A reader
+        asking which way round had to work it out by construction, and the
+        paragraph above -- correctly refusing to promise a *shape* -- reads
+        as though the order were unknowable too.  It is not: of the ten
+        grid languages that report a coordinate, Alight and Super SNUSP lay
+        their programs on a single row, so the only move they can make is
+        along the column, and the *second* component is what changes; Dig,
+        Flowchart, LaserFuck and Streetcode each begin by moving
+        vertically, and the *first* is what changes.  The rest agree.
+        Anything past the second component is the language's own -- a
+        heading, a phase -- and is not described here.
         """
 
     @property

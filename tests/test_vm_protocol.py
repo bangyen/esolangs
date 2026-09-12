@@ -44,6 +44,7 @@ what actually raises and would fail if any of them regressed.
 
 import contextlib
 import io
+from pathlib import Path
 from typing import cast
 
 import pytest
@@ -489,3 +490,107 @@ class TestEveryLanguageIsPure:
             _settle(make_vm(language, program, stdin), language)
         assert out.getvalue() == ""
         assert err.getvalue() == ""
+
+
+class TestTheCoordinateOrderIsRowThenColumn:
+    """``VM.ip``'s arity is unstable and the *order* is not, and only one
+    of those was written down.
+
+    The paragraph above it correctly refuses to promise a shape -- the
+    registry has 1-, 2-, 3-, 4- and 6-tuples and six languages change
+    mid-run -- which reads as though the order were unknowable too.  A
+    reader worked it out by construction instead.
+    """
+
+    def test_a_single_row_grid_moves_in_the_second_component(self) -> None:
+        """Alight and Super SNUSP lay their programs on one row.
+
+        The only move they can make is along the column, so whichever
+        component changes *is* the column -- no reasoning about headings
+        required.
+        """
+        for name in ("Alight", "Super SNUSP"):
+            program, stdin = _row_for(name)
+            assert program.count("\n") == 0, name  # one row
+            assert _first_move(name, program, stdin)[0] == 0, name
+
+    def test_a_downward_start_moves_in_the_first_component(self) -> None:
+        """Dig, Flowchart, LaserFuck and Streetcode begin vertically.
+
+        The other half of the pincer: these cannot move along a row first,
+        so the component that changes is the row.
+        """
+        for name in ("Dig", "Flowchart", "LaserFuck", "Streetcode"):
+            program, stdin = _row_for(name)
+            before, after = _first_move_pair(name, program, stdin)
+            assert before[0] != after[0], name
+            assert before[1] == after[1], name
+
+    def test_the_docstring_says_so(self) -> None:
+        """And says it without re-promising the arity that was retired."""
+        doc = esolangs.VM.ip.__doc__ or ""
+        assert "row then column" in doc
+        assert "not stable within" in doc  # the older warning survives
+
+
+def _row_for(name: str) -> tuple[str, str]:
+    """A runnable program and its stdin for a two-input table."""
+    table = "0110"
+    program = esolangs.generate(name, table)
+    if esolangs.describe(name)["parameterized"]:
+        return esolangs.instantiate(name, program, [0, 0]), ""
+    return program, esolangs.encode_inputs(name, [0, 0], table)
+
+
+def _first_move_pair(
+    name: str, program: str, stdin: str
+) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    """The coordinate before and after the first move that changes it."""
+    vm = esolangs.make_vm(name, program, stdin)
+    start = vm.ip
+    assert isinstance(start, tuple)
+    for _ in range(400):
+        if vm.halted:
+            break
+        vm.step()
+        here = vm.ip
+        if isinstance(here, tuple) and len(here) >= 2 and here[:2] != start[:2]:
+            return start[:2], here[:2]
+    raise AssertionError(f"{name} never moved")
+
+
+def _first_move(name: str, program: str, stdin: str) -> tuple[int, int]:
+    """Which components changed on the first move, as a (row, col) pair."""
+    before, after = _first_move_pair(name, program, stdin)
+    return (before[0] != after[0], before[1] != after[1])
+
+
+class TestAPathAndItsTextDifferOnTheTrailingNewline:
+    """``run(lang, path)`` and ``run(lang, path.read_text())`` disagree.
+
+    Reading a file strips one trailing newline and passing a string does
+    not.  Both halves are deliberate; the docstring said only that a Path
+    "is read", which reads as equivalence.
+    """
+
+    def test_they_disagree_where_a_newline_is_not_legal(self, tmp_path: Path) -> None:
+        """CV(N)(C) has no newline in its alphabet, so it is the visible case."""
+        path = tmp_path / "c.txt"
+        path.write_text(esolangs.generate("CV(N)(C)", "0110") + "\n")
+        stdin = esolangs.encode_inputs("CV(N)(C)", [0, 0], "0110")
+        assert esolangs.run("CV(N)(C)", path, stdin, 5) == "0"
+        with pytest.raises(esolangs.ProgramError):
+            esolangs.run("CV(N)(C)", path.read_text(), stdin, 5)
+
+    def test_they_agree_without_one(self, tmp_path: Path) -> None:
+        """The difference is the newline and nothing else."""
+        path = tmp_path / "c.txt"
+        path.write_text(esolangs.generate("CV(N)(C)", "0110"))
+        stdin = esolangs.encode_inputs("CV(N)(C)", [0, 0], "0110")
+        assert esolangs.run("CV(N)(C)", path, stdin, 5) == esolangs.run(
+            "CV(N)(C)", path.read_text(), stdin, 5
+        )
+
+    def test_the_docstring_says_so(self) -> None:
+        """A surprise is only acceptable while it is written down."""
+        assert "not quite the same argument" in (esolangs.run.__doc__ or "")
