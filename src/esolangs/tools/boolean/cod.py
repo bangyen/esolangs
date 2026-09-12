@@ -206,6 +206,108 @@ def _cod_cells(block: str) -> list[list[str]]:
     return [_COD_CELL.findall(row) for row in block.split("\n")]
 
 
+# Five columns for a rotated box plus one for the riser that climbs back.
+_COD_STRIDE = 6
+
+
+def _cod_rotate_cw(block: str) -> list[str]:
+    """Stand a block on end: ``new[c][H - 1 - r] = old[r][c]``.
+
+    A fork box is five rows by up to twelve hundred columns, and it is laid
+    beside the cascade, which is ``2 ** (n + 1) + 1`` rows -- so the flat
+    chain leaves every row below the fifth blank, 89% of the grid at eight
+    inputs.  Rotated, a box is a *vertical pipe* and the waste goes.
+
+    Nothing in a box needs rewriting to survive the turn, which is what
+    makes this cheap: COD's commands are ``+-)(<_`` and **none of them is
+    directional** -- a cod is steered by walls, not by its instructions.
+    Only ``---`` prints (horizontal, touching a side edge) and ``...`` reads
+    (vertical, touching a top or bottom edge) are orientation-bound, and a
+    fork box contains neither.  Contrast LaserFuck's ``_laserfuck_rotate``,
+    which must substitute its mirrors.
+
+    Rotate the box with its ``?`` entry marker still a single character: a
+    ``{Xi}`` is four characters and one cell, so turning the spelled-out
+    placeholder scatters it down a column.
+    """
+    rows = block.split("\n")
+    height = len(rows)
+    width = max(len(row) for row in rows)
+    rows = [row.ljust(width) for row in rows]
+    return [
+        "".join(rows[height - 1 - r][c] for r in range(height)) for c in range(width)
+    ]
+
+
+def _cod_rotated(n: int, truth_table: str) -> str:
+    """Build the program with phase 1 as rotated columns rather than one row.
+
+    Each box becomes a pipe entered at the top of its column 3 and left at
+    the bottom of the same column (the flat entry ``(1, 0)`` maps to
+    ``(0, 3)``, and column 4 is wall, so a cod arriving from the north is
+    forced south into the fork).  Boxes are joined by a corridor that is
+    private to it and to them: down the exit column to a bottom row, east to
+    a riser, north to a top row, then east to the next box's entry, where a
+    wall forces it south.  Because every box owns its columns and every
+    corridor its own cells, no cell is ever re-entered from two directions
+    -- the failure that blocked the shared-cell merge described in
+    :func:`cod`.
+
+    One box per column also puts every ``{Xi}`` on the same grid row, in
+    left-to-right order, so the slots come out in name order by
+    construction.
+    """
+    boxes = [_cod_rotate_cw(_cod_fork_box(n, k + 1)) for k in range(n - 1)]
+    height = max(len(box) for box in boxes) + 2  # a top and a bottom corridor
+    cascade_col = _COD_STRIDE * (n - 1)
+    grid = [["~"] * cascade_col for _ in range(height)]
+
+    for k, box in enumerate(boxes):
+        base = _COD_STRIDE * k
+        entry, riser = base + 3, base + 5
+        for r, row in enumerate(box):
+            for c, char in enumerate(row):
+                grid[r + 1][base + c] = char
+        for r in range(len(box) + 1, height - 1):
+            grid[r][entry] = " "  # drop the exit column to the bottom corridor
+        for c in range(entry, riser + 1):
+            grid[height - 1][c] = " "  # bottom corridor, east to the riser
+        # The last riser stops at row 1 to enter the cascade heading east;
+        # the others carry on to the top corridor row.
+        for r in range(0 if k < n - 2 else 1, height - 1):
+            grid[r][riser] = " "
+        if k < n - 2:
+            for c in range(riser, base + _COD_STRIDE + 4):
+                grid[0][c] = " "  # top corridor, east to the next entry
+
+    for c in range(4):
+        grid[0][c] = " "
+    grid[0][0] = ">"
+
+    cascade = _cod_cascade(n, truth_table).split("\n")
+    cascade[1] = "{X" + str(n - 1) + "}" + cascade[1][1:]
+    # Pad in *cells* and with wall.  In characters, a row holding a ``{Xi}``
+    # shrinks by three when the template is filled, and a leaf's ``---`` then
+    # stops touching the right edge -- which disables every print silently,
+    # since ``_edge_dash_cells`` simply finds nothing.  Blanks rather than
+    # wall would open water the cascade is built assuming is solid, and the
+    # cod escapes its shaft; the interpreter itself pads short rows with wall.
+    cells = [len(_COD_CELL.findall(row)) for row in cascade]
+    cwidth = max(cells)
+    cascade = [
+        row + "~" * (cwidth - got) for row, got in zip(cascade, cells, strict=True)
+    ]
+
+    rows = [
+        "".join(grid[r]) + (cascade[r] if r < len(cascade) else "~" * cwidth)
+        for r in range(height)
+    ]
+    program = "\n".join(rows)
+    for k in range(n - 1):
+        program = program.replace("?", "{X" + str(k) + "}", 1)
+    return program
+
+
 def _cod_width(program: str) -> int:
     """Measure the program as *text*, which is what a caller is handed.
 
@@ -425,7 +527,17 @@ def cod(truth_table: str, width: int | None = None) -> str:
         # blocks are joined left to right that is the better trade -- the
         # width becomes the tallest block rather than the widest.
         return _cod_turned(full)
-    return reduced if reduced is not None and len(reduced) < len(full) else full
+    # Three shapes now, and the shortest wins.  The rotated layout
+    # (:func:`_cod_rotated`) overtakes the flat one at four inputs and pulls
+    # away -- 1.29x there, 3.67x at eight -- but *loses* at three, where the
+    # corridors cost more than the blank rows they remove, so this stays a
+    # comparison rather than a replacement.
+    candidates = [full]
+    if reduced is not None:
+        candidates.append(reduced)
+    if n >= 2:
+        candidates.append(_cod_rotated(n, truth_table))
+    return min(candidates, key=len)
 
 
 _byte_limit = "this truth table needs a skip beyond the 256-cell byte limit"
