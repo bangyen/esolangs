@@ -7,6 +7,7 @@ leave both committed files unchanged.
 """
 
 import importlib.util
+import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -25,6 +26,8 @@ _SHAPES_START = "<!-- INPUT-SHAPES:START -->"
 _SHAPES_END = "<!-- INPUT-SHAPES:END -->"
 _API_START = "<!-- PUBLIC-API:START -->"
 _API_END = "<!-- PUBLIC-API:END -->"
+_TUI_START = "<!-- TUI-FRAME:START -->"
+_TUI_END = "<!-- TUI-FRAME:END -->"
 
 
 def load_script() -> object:
@@ -96,6 +99,57 @@ def test_readme_counts_match_the_registry() -> None:
     examples = module.render_examples_section()
     assert f"each of the {len(module.BOOLEAN)}\nlanguages with a boolean" in examples
     assert f"  {len(module.BOOLEAN)} of the" in module.render_boolean_count_section()
+
+
+def test_readme_tui_frame_is_in_sync() -> None:
+    """Regenerating the TUI screen leaves it unchanged.
+
+    This is the check that makes a screenshot safe to put on a front page:
+    the block is `tui.render`'s output, so a layout change fails here
+    instead of leaving a stale picture nothing can see is stale.
+    """
+    module = load_script()
+    expected = _TUI_START + "\n\n" + module.render_tui_section() + "\n\n" + _TUI_END
+    assert _marked(README.read_text(), _TUI_START, _TUI_END) == expected
+
+
+def test_the_tui_frame_has_no_trailing_whitespace() -> None:
+    """`trailing-whitespace` runs on README.md and would strip the padding.
+
+    The renderer pads grid rows out to its width, so without the rstrip the
+    hook and the sync test above disagree on every commit -- the same
+    collision `.pre-commit-config.yaml` excludes `examples/` for.
+    """
+    module = load_script()
+    rendered = module.render_tui_section()
+    assert not [line for line in rendered.splitlines() if line != line.rstrip()]
+
+
+def test_the_tui_frame_draws_the_generators_own_program() -> None:
+    """Not a mock-up: each drawn row is a row of the generated program.
+
+    The sync test above only says the block matches the renderer.  This says
+    the renderer was pointed at a real generated program, so a frame built
+    from a hand-written toy grid would fail even while staying in sync.
+
+    The language and table are repeated here rather than read off the
+    script, so that changing them there is a visible change here too.
+    """
+    module = load_script()
+    import esolangs
+
+    program = esolangs.generate("Flowchart", "0110")
+    rows = program.splitlines()
+    drawn = [
+        line.split("|", 1)
+        for line in module.render_tui_section().splitlines()
+        if re.fullmatch(r"\s*\d+ \|.*", line)
+    ]
+    assert drawn, "no numbered program rows on the screen"
+    for number, body in drawn:
+        # The pane is windowed by column, so the drawn text is a slice of
+        # the row it is numbered with -- one-based, as the screen shows it.
+        assert body.strip() in rows[int(number) - 1], (number, body)
 
 
 def _marked(text: str, start: str, end: str) -> str:

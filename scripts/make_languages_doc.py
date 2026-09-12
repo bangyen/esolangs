@@ -13,6 +13,7 @@ to hold them, which is why the gates could stop matching wording.
 """
 
 import pathlib
+import re
 import textwrap
 
 import esolangs
@@ -82,6 +83,21 @@ _SHAPES_START = "<!-- INPUT-SHAPES:START -->"
 _SHAPES_END = "<!-- INPUT-SHAPES:END -->"
 _API_START = "<!-- PUBLIC-API:START -->"
 _API_END = "<!-- PUBLIC-API:END -->"
+_TUI_START = "<!-- TUI-FRAME:START -->"
+_TUI_END = "<!-- TUI-FRAME:END -->"
+
+#: The frame the README shows.  Flowchart because the pane is worth seeing:
+#: it is a grid language, so the screenshot shows the 2D program pane and a
+#: tuple ``ip``, neither of which a tape language exercises.  ``replay``
+#: derives the frame from nothing, so this is a coordinate, not a recording.
+_TUI_LANGUAGE = "Flowchart"
+_TUI_TABLE = "0110"
+_TUI_BITS = [0, 1]
+_TUI_STEP = 14
+_TUI_HEIGHT = 20
+_TUI_WIDTH = 74
+
+_ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 #: The bit vector the stdin table is rendered for.  Three bits, because an
 #: odd count is what makes Taglate's padding visible -- at two it encodes
@@ -336,8 +352,49 @@ def render_api_section() -> str:
         # backtick both render as literal text in Markdown.
         summary = re.sub(r":\w+:`~?([^`]+)`", r"`\1`", summary)
         summary = summary.replace("``", "`")
-        lines.append(f"- `esolangs.{name}` — {summary[0].lower()}{summary[1:]}")
+        lines.append(f"- `esolangs.{name}` -- {summary[0].lower()}{summary[1:]}")
     return "\n".join(lines)
+
+
+def render_tui_section() -> str:
+    """Render the README's TUI screen between the markers.
+
+    A real frame, not a mock-up: ``tui.replay`` reconstructs the state
+    ``_TUI_STEP`` commands into a fresh run and ``tui.render`` draws it.  So
+    the block is the screen, and a layout change fails the sync test rather
+    than leaving a stale picture on the front page -- which is the whole
+    reason this is text and not a recording.
+
+    Two departures from the live screen, both forced by the page.  Colour is
+    dropped, so the reverse-video cell marking the op about to run does not
+    survive; the header's ``ip`` names it instead, which is the same fallback
+    an ``opaque`` language gets.  And every line is right-stripped, because
+    ``trailing-whitespace`` runs on README.md and would otherwise strip the
+    grid's padding back out from under the committed block.
+    """
+    from esolangs import tui
+
+    program = esolangs.generate(_TUI_LANGUAGE, _TUI_TABLE)
+    stdin = esolangs.encode_inputs(_TUI_LANGUAGE, _TUI_BITS)
+    frame = tui.replay(_TUI_LANGUAGE, program, stdin, _TUI_STEP)
+    screen = tui.render(frame, height=_TUI_HEIGHT, width=_TUI_WIDTH)
+    drawn = "\n".join(line.rstrip() for line in _ANSI.sub("", screen).splitlines())
+    return "\n".join(
+        [
+            f"`--tui` steps it on screen instead.  This is a real frame --"
+            f" {_TUI_LANGUAGE} at",
+            f"step {_TUI_STEP}, redrawn by `tui.render` every time this file"
+            f" is generated:",
+            "",
+            "```",
+            drawn,
+            "```",
+            "",
+            "The live screen reverse-videos the cell at that `ip`; colour"
+            " does not survive",
+            "the page.  [usage](docs/usage.md#debugging) names every key.",
+        ]
+    )
 
 
 def _splice(text: str, start: str, end: str, body: str) -> str:
@@ -363,6 +420,7 @@ def update_readme() -> None:
         (_README_START, _README_END, render_languages_section),
         (_EXAMPLES_START, _EXAMPLES_END, render_examples_section),
         (_BOOLEAN_COUNT_START, _BOOLEAN_COUNT_END, render_boolean_count_section),
+        (_TUI_START, _TUI_END, render_tui_section),
     ):
         text = _splice(text, start, end, render())
     path.write_text(text)
