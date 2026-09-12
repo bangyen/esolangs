@@ -1,4 +1,9 @@
-r"""Unit tests for the parameterized (no-input) boolean generators."""
+"""Unit tests for the parameterized (no-input) boolean generators.
+
+Covers :mod:`esolangs.tools.boolean.parameterized`, whose languages take no
+input and instead embed each input by substitution, plus the COD and Eval
+generators that follow the same convention.
+"""
 
 import importlib
 import io
@@ -15,7 +20,17 @@ from tests.tools.boolean_runners import one_two_three_result
 
 
 def _parameterized_generators():
-    r"""Return every parameterized generator the module exports."""
+    """Return every parameterized generator the module exports.
+
+    Read off ``__all__`` rather than hand-listed.  The roster used to name
+    thirteen of the seventeen exports, so ``a_painter_ant``, ``cod`` and
+    ``wii2d`` were silently exempt from the exactly-once and slot-order
+    invariants below -- including ``cod``, which this module's own docstring
+    claims to cover.  The exemption bought nothing (all three satisfy both
+    invariants), which is what makes a silent roster worse than an explicit
+    one: nobody chose it.  ``instantiate`` is the shared helper, not
+    a generator, so it is the one name excluded, by name and for a reason.
+    """
     from esolangs.tools.boolean import parameterized
 
     return [
@@ -27,7 +42,17 @@ def _parameterized_generators():
 
 @pytest.mark.slow  # ~3s: builds every generator,.
 def test_parameterized_generators_embed_each_input_once() -> None:
-    r"""Every no-input generator embeds each input exactly once."""
+    """Every no-input generator embeds each input exactly once.
+
+    An input-capable language reads each of its n inputs exactly once per
+    run; a no-input language's parameterized generator should match, so each
+    {Xi} appears exactly once -- never re-embedded at multiple decision
+    nodes.
+
+    A {Ci} complement placeholder must not appear at all.  instantiate no
+    longer fills one, so a template carrying it would ship the literal text
+    to the interpreter instead of failing, which is worth catching here.
+    """
 
     checked = 0
     for name, gen in _parameterized_generators():
@@ -104,7 +129,14 @@ _SLOT_ORDER_TABLES = ("0110", "01101001", "10101010", "11110000", "00111100")
 
 
 def _all_derived_plans(derived_plans, staged_arities, n: int) -> dict:
-    r"""Every staging the enumeration places at ``n``, in one pass."""
+    """Every staging the enumeration places at ``n``, in one pass.
+
+    ``_derived_plans`` is asked for the tables it should look for, so a test
+    that wants the whole arity has to name them.  The arity guard is checked
+    *first*: naming every table means ``2 ** (2 ** n)`` of them, which is
+    unbuildable past four inputs, and the guard is what the unstaged arities
+    are being tested for anyway.
+    """
     if n not in staged_arities:
         return derived_plans(n, ())
     every = tuple(format(v, f"0{2**n}b") for v in range(2 ** (2**n)))
@@ -112,7 +144,7 @@ def _all_derived_plans(derived_plans, staged_arities, n: int) -> dict:
 
 
 def _slot_order(gen: object, table: str) -> list[int] | None:
-    r"""The ``{Xi}`` indices in the order ``gen`` emits them, or None."""
+    """The ``{Xi}`` indices in the order ``gen`` emits them, or None."""
 
     try:
         template = gen(table)
@@ -123,7 +155,17 @@ def _slot_order(gen: object, table: str) -> list[int] | None:
 
 @pytest.mark.slow  # builds every generator over.
 def test_slots_run_in_name_order() -> None:
-    r"""Every template emits ``{X0}``..``{Xn-1}`` in ascending order."""
+    """Every template emits ``{X0}``..``{Xn-1}`` in ascending order.
+
+    Ordering is not needed for correctness -- :func:`instantiate` replaces
+    each placeholder by name, wherever it sits -- but it is the shape every
+    generator here holds to, and a load that leaves it is a load that has
+    been restructured.  That is worth a failure rather than a shrug.
+
+    Every generator is swept, with no exceptions carried -- Minifuck was the
+    last one and is covered in its own test below, which pins the specific
+    tables that used to leave sequence.
+    """
     checked = 0
     for name, gen in _parameterized_generators():
         for table in _SLOT_ORDER_TABLES:
@@ -136,14 +178,39 @@ def test_slots_run_in_name_order() -> None:
 
 
 def _drawing(template: str) -> str:
-    r"""The template with every placeholder *name* erased."""
+    """The template with every placeholder *name* erased.
+
+    What the reorder bar tests is the emitted drawing, so comparing
+    templates directly would count a mere relabelling as a change.  Erasing
+    the names leaves exactly what a relabelling cannot alter.
+    """
 
     return re.sub(r"\{X\d+\}", "{X}", template)
 
 
 @pytest.mark.slow  # builds every permuting.
 def test_a_permuting_generator_changes_its_drawing() -> None:
-    r"""A generator that permutes its slots must emit a different *drawing*."""
+    """A generator that permutes its slots must emit a different *drawing*.
+
+    This is the reorder bar, and it is the one thing that could make a
+    template's slot permutation a redefined benchmark rather than a smaller
+    program.  ``instantiate`` substitutes by name, and ``_fill_back``'s
+    setter is ``lambda _i, b:`` -- it ignores the index -- so if two input
+    orders produced the same drawing they would emit *byte-identical
+    programs* and any "saving" between them would be booked against the
+    harness's fill order alone.
+
+    They do not.  Back's tree is built on the permuted table, so a different
+    order folds differently and draws a different program: at ``10101010``
+    the identity order draws 115 characters and the winning order 44.  The
+    permuted slot names are a consequence of choosing the order, not the
+    source of the saving -- orders that share a drawing measure exactly the
+    same size.
+
+    Asserting that is what gives this teeth.  A future change that made the
+    reorder cosmetic -- permuting names while emitting one drawing -- would
+    still pass every correctness test in this class and fail here.
+    """
     from itertools import permutations
 
     from esolangs.tools.boolean import parameterized
@@ -175,7 +242,7 @@ def test_a_permuting_generator_changes_its_drawing() -> None:
 
 
 class TestParameterizedBIO:
-    r"""Input-by-substitution generators for the no-input language BIO."""
+    """Input-by-substitution generators for the no-input language BIO."""
 
     def run_bio(self, prog: str, bits: list[int]) -> str:
         from tests.interpreters.runner import run_program
@@ -184,7 +251,7 @@ class TestParameterizedBIO:
         return run_program(run, prog, "".join(f"{b}\n" for b in bits))
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        r"""Fill the template the way the example harness does."""
+        """Fill the template the way the example harness does."""
         from esolangs.tools.boolean.examples import _fill_bio
 
         return _fill_bio(tpl, bits)
@@ -201,7 +268,7 @@ class TestParameterizedBIO:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every instantiated input produces the truth-table result."""
+        """Every instantiated input produces the truth-table result."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.bio(table)
@@ -211,7 +278,7 @@ class TestParameterizedBIO:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        r"""The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.bio("0110")
@@ -219,7 +286,7 @@ class TestParameterizedBIO:
         assert "{X1}" in template
 
     def test_each_input_is_stored_once(self) -> None:
-        r"""The packing scheme embeds each input exactly once."""
+        """The packing scheme embeds each input exactly once."""
 
         from esolangs.tools.boolean import parameterized
 
@@ -229,7 +296,8 @@ class TestParameterizedBIO:
             assert len(re.findall(r"\{X\d+\}", template)) == n
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
-        r"""A zero pads against the unread ``z``, so the program's length does."""
+        """A zero pads against the unread ``z``, so the program's length
+        does not reveal the inputs."""
         from esolangs.tools.boolean.examples import _fill_bio
 
         for n in (1, 2, 3):
@@ -243,7 +311,7 @@ class TestParameterizedBIO:
                 ), f"n={n} input {i}"
 
     def test_padding_never_touches_a_read_register(self) -> None:
-        r"""``z`` is inert: the generator emits no command that reads it."""
+        """``z`` is inert: the generator emits no command that reads it."""
         from esolangs.tools.boolean import parameterized
 
         for n in (1, 2, 3):
@@ -252,7 +320,7 @@ class TestParameterizedBIO:
 
 
 class TestParameterizedBack:
-    r"""Input-by-substitution generators for the no-input language Back."""
+    """Input-by-substitution generators for the no-input language Back."""
 
     def run_back(self, prog: str, n: int) -> str:
         # pylint: disable=duplicate-code
@@ -267,13 +335,13 @@ class TestParameterizedBack:
         return io.getvalue().split()[n]
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        r"""Fill the template the way the example harness does."""
+        """Fill the template the way the example harness does."""
         from esolangs.tools.boolean.examples import _fill_back
 
         return _fill_back(tpl, bits)
 
     def test_program_length_is_the_same_for_every_input(self) -> None:
-        r"""Both bits cost one command, so the size reveals nothing."""
+        """Both bits cost one command, so the size reveals nothing."""
         from esolangs.tools.boolean import parameterized
         from esolangs.tools.boolean.examples import _fill_back
 
@@ -301,7 +369,7 @@ class TestParameterizedBack:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every instantiated input produces the truth-table result."""
+        """Every instantiated input produces the truth-table result."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.back(table)
@@ -312,7 +380,7 @@ class TestParameterizedBack:
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
-        r"""Every table up to three inputs produces the right result."""
+        """Every table up to three inputs produces the right result."""
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
@@ -324,7 +392,7 @@ class TestParameterizedBack:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        r"""The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.back("0110")
@@ -332,7 +400,7 @@ class TestParameterizedBack:
         assert "{X1}" in template
 
     def test_each_input_is_stored_once(self) -> None:
-        r"""Each input is embedded once in the tape load, not re-embedded."""
+        """Each input is embedded once in the tape load, not re-embedded."""
 
         from esolangs.tools.boolean import parameterized
 
@@ -342,7 +410,7 @@ class TestParameterizedBack:
             assert len(re.findall(r"\{X\d+\}", template)) == n
 
     def test_tree_uses_tape_decision_nodes(self) -> None:
-        r"""The decision tree routes via '+\' nodes and a down-transition."""
+        """The decision tree routes via '+\\' nodes and a down-transition."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.back("0110")
@@ -350,7 +418,14 @@ class TestParameterizedBack:
         assert "*" in template  # leaves halt.
 
     def test_input_reordering_folds_a_scattered_table(self) -> None:
-        r"""The tree splits in whichever order folds most, not load order."""
+        """The tree splits in whichever order folds most, not load order.
+
+        ``10101010`` depends on its last input alone, so it folds nothing
+        loaded in order and everything once that input sits in cell 0.  It
+        reaches the cheap shape and lands far under the table that folds
+        under no order at all; the two one-dependency tables differ only by
+        the walk that carries the pointer, two characters a step.
+        """
         from esolangs.tools.boolean import parameterized
 
         scattered = len(parameterized.back("10101010"))
@@ -361,7 +436,19 @@ class TestParameterizedBack:
         assert abs(scattered - aligned) < 0.2 * parity
 
     def test_input_reordering_never_grows_a_template(self) -> None:
-        r"""No table comes out larger than its identity build."""
+        """No table comes out larger than its identity build.
+
+        ``best_input_order`` builds the identity first and keeps it on a
+        tie, so reordering can only ever shrink a template.  Checked against
+        ``_back_ordered`` at the identity rather than against a stored
+        number, so it stays true as the construction changes.
+
+        Note this is *not* "parity keeps the identity build".  It used to
+        be, while the load emitted no walk; now that the units are emitted
+        in reverse name order, some orders spend a shorter walk than the
+        identity does, and parity shrinks 126 to 118 without folding
+        anything.  The invariant that survives is the one-sided one.
+        """
         from esolangs.tools.boolean import parameterized
 
         for table in ("01101001", "10101010", "11110000", "00111100", "10010110"):
@@ -374,7 +461,14 @@ class TestParameterizedBack:
         ["10101010", "11001100", "01011010", "00111100", "10010110"],
     )
     def test_reordered_templates_compute_the_table(self, table: str) -> None:
-        r"""A reordered template still computes its function."""
+        """A reordered template still computes its function.
+
+        Back's node is ``+\\>`` -- test the current cell, *then* advance --
+        so level ``k`` tests cell ``k``, one lower than the generators whose
+        node steps first.  Loading an input into the wrong cell computes a
+        different function rather than failing to draw, so only running it
+        catches the slip.
+        """
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.back(table)
@@ -384,7 +478,20 @@ class TestParameterizedBack:
             assert got == table[combo], f"{table} inputs {bits}"
 
     def test_reordering_pays_a_walk_and_keeps_name_order(self) -> None:
-        r"""A permuted load spends rows on the walk, and keeps its slots sorted."""
+        """A permuted load spends rows on the walk, and keeps its slots sorted.
+
+        This is the trade Back deliberately takes.  Filling in *cell* order
+        -- putting ``{X perm[c]}`` in cell ``c`` -- emits no walk and is a
+        few percent smaller, but leaves the placeholders out of name order,
+        which no other generator in this module does.  Loading in name order
+        and walking the pointer costs about two characters a step and keeps
+        the templates uniform.
+
+        Both halves are pinned here, because either alone would be wrong: a
+        build with no walk cannot be reordering at all, and one whose slots
+        left sequence would have taken the other side of the trade without
+        the docstring being updated.
+        """
         from itertools import permutations
 
         from esolangs.tools.boolean import parameterized
@@ -404,7 +511,20 @@ class TestParameterizedBack:
         assert walked > 0
 
     def test_placeholders_run_in_name_order_while_still_reordering(self) -> None:
-        r"""Back reorders through the *walk*, not through its slot order."""
+        """Back reorders through the *walk*, not through its slot order.
+
+        The load emits ``{X0}``..``{Xn-1}`` in sequence whatever the input
+        order, and the reorder lives in the ``>``/``<`` runs that carry the
+        pointer to each input's cell.  Both halves matter: dropping the
+        walk would leave the order inert, and permuting the names instead
+        would emit the slots out of sequence, which every other generator in
+        this module avoids.
+
+        The units are emitted in reverse name order because the load is
+        drawn bottom-to-top up column 0, so the template's *text* reads them
+        backwards -- loading input ``n-1`` first is what puts ``{X0}`` first
+        on the page.
+        """
 
         from esolangs.tools.boolean import parameterized
 
@@ -424,7 +544,13 @@ class TestParameterizedBack:
         assert walked > 0
 
     def test_reordering_keeps_the_equal_width_embedding(self) -> None:
-        r"""Reordered loads still cost the same for either bit."""
+        """Reordered loads still cost the same for either bit.
+
+        The walk goes before an input's ``-``/``{Xi}`` pair and never
+        between its halves, so the primer and the placeholder stay one
+        unit and both bits still cost the same two rows.  Splitting them
+        would let the template's height reveal an input.
+        """
         from esolangs.tools.boolean import parameterized
         from esolangs.tools.boolean.examples import _fill_back
 
@@ -438,7 +564,7 @@ class TestParameterizedBack:
 
 
 class TestParameterizedNoComment:
-    r"""Input-by-substitution boolean generator for the no-input language."""
+    """Input-by-substitution boolean generator for the no-input language NoComment."""
 
     def run_nocomment(self, prog: str, tape: int | None = None) -> str:
         from esolangs.interpreters.tape_based.nocomment import _TAPE, run
@@ -472,7 +598,7 @@ class TestParameterizedNoComment:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every instantiated input produces the truth-table result."""
+        """Every instantiated input produces the truth-table result."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.nocomment(table)
@@ -483,7 +609,7 @@ class TestParameterizedNoComment:
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
-        r"""Every table up to three inputs produces the right result."""
+        """Every table up to three inputs produces the right result."""
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
@@ -495,7 +621,7 @@ class TestParameterizedNoComment:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        r"""The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.nocomment("0110")
@@ -503,7 +629,7 @@ class TestParameterizedNoComment:
         assert "{X1}" in template
 
     def test_program_structure(self) -> None:
-        r"""A one-bit template computes the index then skips to the output."""
+        """A one-bit template computes the index then skips to the output."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.nocomment("10")
@@ -514,7 +640,7 @@ class TestParameterizedNoComment:
         assert template.count("o") == 1
 
     def test_four_input_works(self) -> None:
-        r"""A dense four-input table assembles and runs correctly."""
+        """A dense four-input table assembles and runs correctly."""
         from esolangs.tools.boolean import parameterized
 
         for combo in range(16):
@@ -557,12 +683,25 @@ class TestParameterizedNoComment:
         ],
     )
     def test_wide_arity_is_exact(self, n: int) -> None:
-        r"""Past a byte-sized index the composed-skip decode still computes the."""
+        """Past a byte-sized index the composed-skip decode still computes the table.
+
+        A single ``s`` cannot carry an index past 255, which is what caps
+        the narrow path at eight inputs.  Composing skips lifts that, so
+        these arities must be exactly right on *every* input, not merely
+        renderable -- each table below is run through the interpreter for
+        all ``2**n`` combinations.
+        """
         self._check_wide_arity(n, range(2**n))
 
     @pytest.mark.slow  # ~3s: the same decode at n=11,.
     def test_the_widest_arity_is_exact_on_sampled_rows(self) -> None:
-        r"""The n=11 decode is checked where a stage boundary can go wrong."""
+        """The n=11 decode is checked where a stage boundary can go wrong.
+
+        The rows are chosen rather than swept: every single-bit index, the
+        all-zero and all-one rows, and both sides of each byte boundary --
+        which is where a composed skip hands off between stages -- plus a
+        stride through the rest so no region goes unvisited.
+        """
         n = 11
         rows = {0, 2**n - 1}
         rows.update(1 << i for i in range(n))
@@ -572,7 +711,7 @@ class TestParameterizedNoComment:
         self._check_wide_arity(n, sorted(rows))
 
     def _check_wide_arity(self, n: int, rows: Iterable[int]) -> None:
-        r"""Run the four probe tables at arity ``n`` over ``rows``."""
+        """Run the four probe tables at arity ``n`` over ``rows``."""
         from esolangs.tools.boolean import parameterized
 
         tables = {
@@ -590,7 +729,12 @@ class TestParameterizedNoComment:
                 assert got == table[combo], f"{name} n={n} inputs {bits}"
 
     def test_narrow_path_needs_a_byte_sized_index(self) -> None:
-        r"""The single-skip decode covers exactly the arities whose index fits."""
+        """The single-skip decode covers exactly the arities whose index fits a byte.
+
+        Derived from the interpreter's cell range rather than pinned: the
+        skip amount is peeked off the stack and everything there came from a
+        byte-sized cell, so the widest single-skip index is 255.
+        """
         from esolangs.tools.boolean.parameterized import (
             _NOCOMMENT_NARROW_MAX,
             _NOCOMMENT_SKIP_MAX,
@@ -600,7 +744,13 @@ class TestParameterizedNoComment:
         assert 2 ** (_NOCOMMENT_NARROW_MAX + 1) - 1 > _NOCOMMENT_SKIP_MAX
 
     def test_cap_is_the_tape_not_the_skip(self) -> None:
-        r"""The remaining cap is the interpreter's tape, and it is derived."""
+        """The remaining cap is the interpreter's tape, and it is derived.
+
+        The refusal must name the tape, and the boundary must be wherever
+        the layout stops fitting -- so the largest arity that builds is
+        found by asking, not asserted as a literal, and the next one up
+        must raise.
+        """
         from esolangs.interpreters.tape_based.nocomment import _TAPE
         from esolangs.tools.boolean import parameterized
         from esolangs.tools.boolean.parameterized import _NOCOMMENT_NARROW_MAX
@@ -621,7 +771,15 @@ class TestParameterizedNoComment:
         assert "tape" in str(caught.value)
 
     def test_a_bigger_tape_lifts_the_cap(self) -> None:
-        r"""The cap is the tape size, so a bigger tape moves it -- and still."""
+        """The cap is the tape size, so a bigger tape moves it -- and still computes.
+
+        The arity the default refuses is built against a larger tape and run
+        on an interpreter given that same size, which is what makes this a
+        lifted bound rather than a longer program that nothing can execute.
+        A spot-check of inputs, not the sweep: :meth:`test_wide_arity_is_exact`
+        already runs every combination at the arities the default reaches, and
+        ``2**12`` runs of a 51k-command program is far too slow for the suite.
+        """
         from esolangs.interpreters.tape_based.nocomment import _TAPE
         from esolangs.tools.boolean import parameterized
 
@@ -639,7 +797,7 @@ class TestParameterizedNoComment:
 
 
 class TestParameterizedLamfunc:
-    r"""Input-by-substitution boolean generator for the no-input language."""
+    """Input-by-substitution boolean generator for the no-input language Lamfunc."""
 
     def run_lamfunc(self, prog: str) -> str:
         from esolangs.interpreters.io import ScriptedIO
@@ -674,7 +832,7 @@ class TestParameterizedLamfunc:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every instantiated input produces the truth-table result."""
+        """Every instantiated input produces the truth-table result."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.lamfunc(table)
@@ -685,7 +843,7 @@ class TestParameterizedLamfunc:
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
-        r"""Every table up to three inputs produces the right result."""
+        """Every table up to three inputs produces the right result."""
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
@@ -697,7 +855,7 @@ class TestParameterizedLamfunc:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        r"""The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.lamfunc("0110")
@@ -705,7 +863,7 @@ class TestParameterizedLamfunc:
         assert "{X1}" in template
 
     def test_each_input_is_stored_once(self) -> None:
-        r"""The store-once scheme embeds each input exactly once."""
+        """The store-once scheme embeds each input exactly once."""
 
         from esolangs.tools.boolean import parameterized
 
@@ -715,7 +873,7 @@ class TestParameterizedLamfunc:
             assert len(re.findall(r"\{X\d+\}", template)) == n
 
     def test_constant_table_is_a_leaf(self) -> None:
-        r"""A constant table emits the stores plus a single p with no branching."""
+        """A constant table emits the stores plus a single p with no branching."""
         from esolangs.tools.boolean import parameterized
 
         assert parameterized.lamfunc("0000") == "vs v0 {X0} vs v1 {X1} p 0"
@@ -723,7 +881,7 @@ class TestParameterizedLamfunc:
 
 
 class TestParameterizedBitdeque:
-    r"""Input-by-substitution boolean generator for the no-input language."""
+    """Input-by-substitution boolean generator for the no-input language Bitdeque."""
 
     def run_bitdeque(self, prog: str) -> str:
         from esolangs.interpreters.io import ScriptedIO
@@ -759,7 +917,7 @@ class TestParameterizedBitdeque:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every instantiated input produces the truth-table result."""
+        """Every instantiated input produces the truth-table result."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.bitdeque(table)
@@ -770,7 +928,7 @@ class TestParameterizedBitdeque:
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
-        r"""Every table up to three inputs produces the right result."""
+        """Every table up to three inputs produces the right result."""
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
@@ -782,7 +940,7 @@ class TestParameterizedBitdeque:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        r"""The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.bitdeque("0110")
@@ -790,7 +948,7 @@ class TestParameterizedBitdeque:
         assert "{X1}" in template
 
     def test_constant_table_is_a_leaf(self) -> None:
-        r"""A constant table emits a drain-and-push leaf with no branching."""
+        """A constant table emits a drain-and-push leaf with no branching."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.bitdeque("0000")
@@ -799,7 +957,11 @@ class TestParameterizedBitdeque:
 
 
 class TestParameterizedRam0:
-    r"""Input-by-substitution boolean generator for the no-input language."""
+    """Input-by-substitution boolean generator for the no-input language RAM0.
+
+    RAM0 prints a full state dump at halt; the generator's answer is the
+    final ``z`` value, read from the dump's ``z: N`` line.
+    """
 
     def run_ram0(self, prog: str) -> str:
 
@@ -840,7 +1002,7 @@ class TestParameterizedRam0:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every instantiated input produces the truth-table result."""
+        """Every instantiated input produces the truth-table result."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.ram0(table)
@@ -851,7 +1013,7 @@ class TestParameterizedRam0:
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
-        r"""Every table up to three inputs produces the right result."""
+        """Every table up to three inputs produces the right result."""
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
@@ -863,7 +1025,7 @@ class TestParameterizedRam0:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        r"""The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.ram0("0110")
@@ -871,7 +1033,7 @@ class TestParameterizedRam0:
         assert "{X1}" in template
 
     def test_constant_table_is_a_leaf(self) -> None:
-        r"""A constant table emits a single leaf with no branching."""
+        """A constant table emits a single leaf with no branching."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.ram0("0000")
@@ -880,7 +1042,11 @@ class TestParameterizedRam0:
 
 
 class TestParameterizedMinskySwap:
-    r"""Input-by-substitution boolean generator for the no-input language."""
+    """Input-by-substitution boolean generator for the no-input language Minsky Swap.
+
+    Minsky Swap prints the two registers at halt; the generator's answer is
+    stored in ``reg[1]``, so it is the second number of the dump line.
+    """
 
     def run_minsky_swap(self, prog: str) -> str:
         from esolangs.interpreters.io import ScriptedIO
@@ -926,7 +1092,7 @@ class TestParameterizedMinskySwap:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every instantiated input produces the truth-table result."""
+        """Every instantiated input produces the truth-table result."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.minsky_swap(table)
@@ -937,7 +1103,7 @@ class TestParameterizedMinskySwap:
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
-        r"""Every table up to three inputs produces the right result."""
+        """Every table up to three inputs produces the right result."""
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
@@ -949,7 +1115,7 @@ class TestParameterizedMinskySwap:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        r"""The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.minsky_swap("0110")
@@ -960,7 +1126,14 @@ class TestParameterizedMinskySwap:
     def test_examples_fill_sets_either_bit_in_either_position(
         self, bits: tuple[int, int]
     ) -> None:
-        r"""``_fill_minsky_swap`` spells a set bit above the LSB too."""
+        """``_fill_minsky_swap`` spells a set bit above the LSB too.
+
+        The catalogue entry runs one fixed pair, ``(0, 1)``, which leaves
+        the non-LSB always zero -- so its weighted ``"+" * weight`` block
+        is never emitted there.  Each pair below is run, not merely built,
+        because a wrong weight or pad would still produce a plausible
+        string.
+        """
         from esolangs.tools.boolean import minsky_swap
         from esolangs.tools.boolean.examples import AND2, _fill_minsky_swap
 
@@ -968,7 +1141,11 @@ class TestParameterizedMinskySwap:
         assert self.run_minsky_swap(program) == AND2[(bits[0] << 1) | bits[1]]
 
     def test_examples_fill_weights_the_non_lsb(self) -> None:
-        r"""A set non-LSB is its weight in ``+`` then a pad to the block size."""
+        """A set non-LSB is its weight in ``+`` then a pad to the block size.
+
+        The pad keeps every block the same even length, which is what stops
+        the register pointer drifting; ``"+*+*"`` is the LSB's exception.
+        """
         from esolangs.tools.boolean import minsky_swap
         from esolangs.tools.boolean.examples import AND2, _fill_minsky_swap
 
@@ -978,7 +1155,14 @@ class TestParameterizedMinskySwap:
 
 
 class TestParameterizedArrowQueue:
-    r"""Input-by-substitution boolean generator for the no-input language."""
+    """Input-by-substitution boolean generator for the no-input language ArrowQueue.
+
+    ArrowQueue has no output, so the generator's answer is read from the
+    termination convention: an instantiated program halts for a ``0`` table
+    entry and loops forever for a ``1`` entry.  The run is bounded by
+    state-cycle detection (the queue stays bounded on the sustaining rings),
+    so the repeated-snapshot proof reports the ``1`` cases immediately.
+    """
 
     def run_arrowqueue(self, prog: str) -> str:
         from esolangs.interpreters.grid_based.arrowqueue import _Machine
@@ -1006,7 +1190,7 @@ class TestParameterizedArrowQueue:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every instantiated input halts or loops per its table entry."""
+        """Every instantiated input halts or loops per its table entry."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.arrowqueue(table)
@@ -1017,7 +1201,7 @@ class TestParameterizedArrowQueue:
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
-        r"""Every table up to three inputs produces the right result."""
+        """Every table up to three inputs produces the right result."""
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
@@ -1029,7 +1213,7 @@ class TestParameterizedArrowQueue:
                 assert got == table[combo], f"{table} inputs {bits}"
 
     def test_random_tables(self) -> None:
-        r"""Seeded random tables through five inputs produce the right result."""
+        """Seeded random tables through five inputs produce the right result."""
         from esolangs.tools.boolean import parameterized
 
         random.seed(13)
@@ -1043,7 +1227,7 @@ class TestParameterizedArrowQueue:
                     assert got == table[combo], f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        r"""The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.arrowqueue("0110")
@@ -1059,7 +1243,11 @@ class TestParameterizedArrowQueue:
         ],
     )
     def test_constant_subtrees_fold(self, table: str, mixed: str) -> None:
-        r"""A constant subtree emits one drained leaf, not a full branch set."""
+        """A constant subtree emits one drained leaf, not a full branch set.
+
+        The comparison table has the same ones-count, so a shorter template
+        means the tree folded rather than that something else shrank.
+        """
         from esolangs.tools.boolean import parameterized
 
         assert len(parameterized.arrowqueue(table)) < len(
@@ -1078,7 +1266,7 @@ class TestParameterizedArrowQueue:
         ],
     )
     def test_folded_tables_past_three_inputs(self, table: str, n: int) -> None:
-        r"""Folded leaves stay correct deeper than the exhaustive n <= 3 sweep."""
+        """Folded leaves stay correct deeper than the exhaustive n <= 3 sweep."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.arrowqueue(table)
@@ -1088,7 +1276,15 @@ class TestParameterizedArrowQueue:
             assert got == table[combo], f"inputs {bits}"
 
     def test_folded_one_leaf_drains_the_bits_it_skipped(self) -> None:
-        r"""The drain is required: a ring needs the queue it expects."""
+        """The drain is required: a ring needs the queue it expects.
+
+        A folded ``1`` leaf pops a direction at each of its ring's corners
+        and requires exactly ``R, D, L, U``.  Without the drains, the bits
+        the skipped branches never popped sit ahead of those components, the
+        corners pop the wrong directions, the ring does not close, and the
+        program halts -- reporting ``0`` for a ``1`` entry.  Dropping the
+        drains here must therefore break the table.
+        """
         from esolangs.tools.boolean.parameterized import _TREE_1, _drained_leaf
 
         undrained = _drained_leaf("1", 0)  # no drains at all.
@@ -1103,7 +1299,7 @@ class TestParameterizedArrowQueue:
         assert sum(row.count("+") for row in drained) == 4 + 2  # ring + drains.
 
     def test_folded_zero_leaf_needs_no_drain(self) -> None:
-        r"""A ``0`` leaf halts by leaving the grid, which the queue cannot stop."""
+        """A ``0`` leaf halts by leaving the grid, which the queue cannot stop."""
         from esolangs.tools.boolean import parameterized
         from esolangs.tools.boolean.parameterized import _TREE_0, _drained_leaf
 
@@ -1120,7 +1316,14 @@ class TestParameterizedArrowQueue:
                 assert self.run_arrowqueue(self.instantiate(template, bits)) == "0"
 
     def test_folding_never_grows_a_program(self) -> None:
-        r"""No instantiated program is larger than its unfolded equivalent."""
+        """No instantiated program is larger than its unfolded equivalent.
+
+        A fold that costs characters is not a fold.  AND-2 briefly regressed
+        (124 to 128 bytes) when ``0`` leaves were drained too: a folded
+        ``00`` half gained a staircase where the branch pair it replaced was
+        cheaper, and the extra column blocked ``_compact``.  This pins the
+        whole n <= 2 space, where such a regression showed up.
+        """
         from esolangs.tools.boolean.parameterized import (
             _TREE_0,
             _TREE_1,
@@ -1129,7 +1332,7 @@ class TestParameterizedArrowQueue:
         )
 
         def unfolded(values: list[str]) -> list[str]:
-            r"""The pre-fold construction: a branch per level, never collapsed."""
+            """The pre-fold construction: a branch per level, never collapsed."""
             if len(values) == 2:
                 return _connect(
                     _TREE_1 if values[0] == "1" else _TREE_0,
@@ -1148,7 +1351,11 @@ class TestParameterizedArrowQueue:
                 ), table
 
     def test_fold_keeps_equal_width_embedding(self) -> None:
-        r"""Every instantiation of a folded template is the same length."""
+        """Every instantiation of a folded template is the same length.
+
+        The fold shrinks the tree, which is shared by all instantiations, so
+        the program's size still cannot leak which bits were embedded.
+        """
         from esolangs.tools.boolean import parameterized
 
         for table, n in (("1111", 2), ("1100", 2), ("11110000", 3)):
@@ -1164,7 +1371,19 @@ class TestParameterizedArrowQueue:
             assert len(sizes) == 1, f"{table}: {sizes}"
 
     def test_bare_ring_is_entry_sensitive(self) -> None:
-        r"""A bare ring sustains on right-entry and *halts* on down-entry."""
+        """A bare ring sustains on right-entry and *halts* on down-entry.
+
+        The two ways a subtree is entered are not interchangeable, which is
+        the sharpest edge in the construction: the tree's top level is
+        entered heading down at column 1, while every recursive subtree is
+        entered heading right at its own ``(0, 0)``.  A bare
+        :data:`_TREE_1` only loops under the second.  Pinned because a
+        refactor that "simplified" the top-level entry to hand a bare ring
+        the down-entry would silently turn every constant-``1`` table into
+        a halt -- reporting ``0`` for every entry.
+
+        See ``docs/generators/arrowqueue_generator.md`` (lemmas L2/L2'/L4).
+        """
         from esolangs.interpreters.grid_based.arrowqueue import _Machine
         from esolangs.tools.boolean.parameterized import _TREE_1
         from esolangs.vm import run_until_halt_or_cycle
@@ -1180,7 +1399,14 @@ class TestParameterizedArrowQueue:
         assert verdict((0, 1, 1, rdlu)) == "0"  # down-entry: it does not.
 
     def test_constant_one_never_tops_out_as_a_bare_ring(self) -> None:
-        r"""The top-level tree always carries a drain, so down-entry is safe."""
+        """The top-level tree always carries a drain, so down-entry is safe.
+
+        What makes the entry-sensitivity above harmless: a constant table
+        folds to ``_drained_leaf(v, n)`` with ``n >= 1`` (a one-entry table
+        is refused), so the top-level leaf's first ``+`` sits at ``(0, 1)``
+        -- exactly where the header's descent lands -- and the bare ring
+        appears only nested at column offset 3, where entry is rightward.
+        """
         from esolangs.tools.boolean.parameterized import (
             _TREE_1,
             _drained_leaf,
@@ -1197,7 +1423,7 @@ class TestParameterizedArrowQueue:
 
 
 class TestParameterizedBfpda:
-    r"""Input-by-substitution boolean generator for the no-input language."""
+    """Input-by-substitution boolean generator for the no-input language BF-PDA."""
 
     def run_bfpda(self, prog: str) -> str:
         from esolangs.interpreters.io import ScriptedIO
@@ -1208,13 +1434,13 @@ class TestParameterizedBfpda:
         return io_.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        r"""Fill the template the way the example harness does."""
+        """Fill the template the way the example harness does."""
         from esolangs.tools.boolean.examples import _fill_bfpda
 
         return _fill_bfpda(tpl, bits)
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
-        r"""The setter is four characters whichever bit it carries."""
+        """The setter is four characters whichever bit it carries."""
         from esolangs.tools.boolean.examples import _fill_bfpda
 
         for n in (1, 2, 3):
@@ -1244,7 +1470,7 @@ class TestParameterizedBfpda:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every instantiated input produces the truth-table result."""
+        """Every instantiated input produces the truth-table result."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.bfpda(table)
@@ -1255,7 +1481,7 @@ class TestParameterizedBfpda:
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
-        r"""Every table up to three inputs produces the right result."""
+        """Every table up to three inputs produces the right result."""
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
@@ -1267,7 +1493,7 @@ class TestParameterizedBfpda:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        r"""The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.bfpda("0110")
@@ -1275,7 +1501,7 @@ class TestParameterizedBfpda:
         assert "{X1}" in template
 
     def test_program_structure(self) -> None:
-        r"""Each input is embedded once (pre-loaded), not re-embedded per node."""
+        """Each input is embedded once (pre-loaded), not re-embedded per node."""
 
         from esolangs.tools.boolean import parameterized
 
@@ -1287,7 +1513,7 @@ class TestParameterizedBfpda:
         assert len(re.findall(r"\{X\d+\}", template)) == 2  # n embeds.
 
     def test_leaf_print_is_balanced(self) -> None:
-        r"""A leaf pops the remaining bits, prints the answer, and pops it."""
+        """A leaf pops the remaining bits, prints the answer, and pops it."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.bfpda("10")  # NOT: one-leaf prints 1.
@@ -1296,7 +1522,7 @@ class TestParameterizedBfpda:
 
 
 class TestParameterizedHomeRow:
-    r"""Input-by-substitution boolean generator for the no-input language."""
+    """Input-by-substitution boolean generator for the no-input language Home Row."""
 
     def run_home_row(self, prog: str) -> str:
         from esolangs.interpreters.io import ScriptedIO
@@ -1307,13 +1533,13 @@ class TestParameterizedHomeRow:
         return io_.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        r"""Fill the template the way the example harness does."""
+        """Fill the template the way the example harness does."""
         from esolangs.tools.boolean.examples import _fill_home_row
 
         return _fill_home_row(tpl, bits)
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
-        r"""The setter is two characters whichever bit it carries."""
+        """The setter is two characters whichever bit it carries."""
         from esolangs.tools.boolean.examples import _fill_home_row
 
         for n in (1, 2, 3):
@@ -1343,7 +1569,7 @@ class TestParameterizedHomeRow:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every instantiated input produces the truth-table result."""
+        """Every instantiated input produces the truth-table result."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.home_row(table)
@@ -1354,7 +1580,7 @@ class TestParameterizedHomeRow:
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
-        r"""Every table up to three inputs produces the right result."""
+        """Every table up to three inputs produces the right result."""
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
@@ -1366,7 +1592,7 @@ class TestParameterizedHomeRow:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_five_inputs_sample(self) -> None:
-        r"""A sample of dense five-input tables, past the removed n <= 2 cap."""
+        """A sample of dense five-input tables, past the removed n <= 2 cap."""
         import random
 
         from esolangs.tools.boolean import parameterized
@@ -1382,7 +1608,7 @@ class TestParameterizedHomeRow:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        r"""The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.home_row("0110")
@@ -1402,7 +1628,7 @@ class TestParameterizedHomeRow:
 
 
 class TestParameterizedCOD:
-    r"""Input-by-substitution boolean generator for the no-input language."""
+    """Input-by-substitution boolean generator for the no-input language COD."""
 
     def run_cod(self, prog: str) -> str:
         from esolangs.interpreters.grid_based.cod import run
@@ -1439,7 +1665,7 @@ class TestParameterizedCOD:
         ],
     )
     def test_truth_table(self, table: str) -> None:
-        r"""Every instantiated input produces the truth-table result."""
+        """Every instantiated input produces the truth-table result."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.cod(table)
@@ -1449,7 +1675,7 @@ class TestParameterizedCOD:
             assert got == f"{table[combo]}", f"table {table} inputs {bits}"
 
     def test_all_two_input_tables(self) -> None:
-        r"""Every one of the sixteen two-input tables produces the right result."""
+        """Every one of the sixteen two-input tables produces the right result."""
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(16):
@@ -1462,7 +1688,17 @@ class TestParameterizedCOD:
 
     @pytest.mark.slow  # 1.1s: all 256 three-input.
     def test_all_three_input_tables(self) -> None:
-        r"""Every one of the 256 three-input tables produces the right result."""
+        """Every one of the 256 three-input tables produces the right result.
+
+        Unlike the two-input template, whose forks always split directly
+        into leaves, the three-input template has forks whose zero-branch
+        is itself an internal node -- so a cod can rejoin an earlier
+        junction's row after a deeper fork, and that junction's own reset
+        gauntlet is what stops it from circulating forever instead of
+        halting.  This test is the only thing that would have caught that
+        class of bug (a "backflow" cod wandering junctions indefinitely),
+        since it is invisible from reading the grid.
+        """
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(256):
@@ -1474,7 +1710,7 @@ class TestParameterizedCOD:
                 assert got == f"{table[combo]}", f"table {table} inputs {bits}"
 
     def test_program_always_terminates_with_one_value(self) -> None:
-        r"""Every run prints exactly one value and leaves no cod alive."""
+        """Every run prints exactly one value and leaves no cod alive."""
         from esolangs.interpreters.grid_based.cod import _Machine
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.tools.boolean import parameterized
@@ -1494,7 +1730,7 @@ class TestParameterizedCOD:
             assert len(io_.getvalue()) == 1
 
     def test_three_input_program_always_terminates_with_one_value(self) -> None:
-        r"""Every three-input run prints exactly one value and halts."""
+        """Every three-input run prints exactly one value and halts."""
         from esolangs.interpreters.grid_based.cod import _Machine
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.tools.boolean import parameterized
@@ -1514,7 +1750,7 @@ class TestParameterizedCOD:
             assert len(io_.getvalue()) == 1
 
     def test_template_is_input_independent(self) -> None:
-        r"""The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.cod("0110")
@@ -1522,7 +1758,7 @@ class TestParameterizedCOD:
         assert "{X1}" in template
 
     def test_each_input_is_embedded_once(self) -> None:
-        r"""The routing embeds each input exactly once, not per leaf."""
+        """The routing embeds each input exactly once, not per leaf."""
 
         from esolangs.tools.boolean import parameterized
 
@@ -1544,7 +1780,20 @@ class TestParameterizedCOD:
     def test_the_template_has_exact_dimensions(
         self, table: str, rows: int, columns: int
     ) -> None:
-        r"""The drawing's extents, per table."""
+        """The drawing's extents, per table.
+
+        COD's template is a grid of boxes: walls sized from their contents,
+        rows padded to a common width, blocks stacked and joined.  Every
+        one of those is arithmetic on a length, and getting one wrong
+        leaves a *working* program -- the cod still routes to the same
+        leaf, the box is just a character wider or the padding lands on
+        the other side.  The truth-table sweeps in this class read the
+        printed bit and see none of it.
+
+        ``11110000`` is the reduction case: it depends on one of its three
+        inputs and draws at 8 by 20 where a real three-input table needs
+        17 by 96.
+        """
         from esolangs.tools.boolean import parameterized
 
         grid = parameterized.cod(table).split("\n")
@@ -1552,7 +1801,13 @@ class TestParameterizedCOD:
         assert max(len(row) for row in grid) == columns
 
     def test_a_dead_box_wall_frames_its_contents(self) -> None:
-        r"""The wall is two wider than the names it encloses."""
+        """The wall is two wider than the names it encloses.
+
+        One name gives ``~~~`` and two give ``~~~~``: a wall that grew or
+        shrank by one would still draw a box, and the cod would still be
+        trapped in it, since what stops the cod is meeting a wall at all
+        rather than the wall's length.
+        """
         from esolangs.tools.boolean.cod import _cod_dead_box
 
         one = _cod_dead_box((0,)).split("\n")
@@ -1562,7 +1817,7 @@ class TestParameterizedCOD:
         assert two == ["~~~~", "~{X0}{X1}~", "~~~~"]
 
     def test_the_grid_uses_only_cod_characters(self) -> None:
-        r"""Nothing but the language's glyphs, the slots, and layout space."""
+        """Nothing but the language's glyphs, the slots, and layout space."""
         from esolangs.tools.boolean import parameterized
 
         allowed = set(" ()+-012<>X{}~\n")
@@ -1570,7 +1825,7 @@ class TestParameterizedCOD:
             assert set(parameterized.cod(table)) <= allowed, table
 
     def test_no_row_carries_trailing_space(self) -> None:
-        r"""Rows are trimmed, so a row's length is its content's length."""
+        """Rows are trimmed, so a row's length is its content's length."""
         from esolangs.tools.boolean import parameterized
 
         for table in ("01", "0110", "01101001"):
@@ -1578,7 +1833,15 @@ class TestParameterizedCOD:
                 assert row == row.rstrip(), (table, repr(row))
 
     def test_a_table_ignoring_inputs_takes_the_reduced_build(self) -> None:
-        r"""The reduction is kept only when it is strictly shorter."""
+        """The reduction is kept only when it is strictly shorter.
+
+        Both builds compute the table, so no truth-table assertion can see
+        which was taken; the choice is a single length comparison.  Of the
+        276 tables through three inputs, 46 have a reduction available at
+        all.  The lengths are exact rather than bounded: a bound catches an
+        inflating mutant only when the inflation happens to cross it, and
+        says nothing about one that changes the drawing without growing it.
+        """
         from esolangs.tools.boolean import parameterized
 
         for table in ("11110000", "00001111", "10101010"):
@@ -1586,14 +1849,14 @@ class TestParameterizedCOD:
         assert len(parameterized.cod("01101001")) == 1504
 
     def test_constant_table_rejected(self) -> None:
-        r"""n == 0 (a single-entry table, no inputs) is not supported."""
+        """n == 0 (a single-entry table, no inputs) is not supported."""
         from esolangs.tools.boolean import parameterized
 
         with pytest.raises(ValueError, match="n >= 1"):
             parameterized.cod("0")
 
     def test_four_input_tables(self) -> None:
-        r"""n == 4 (beyond the old n <= 3 cap) produces the right result."""
+        """n == 4 (beyond the old n <= 3 cap) produces the right result."""
         from esolangs.tools.boolean import parameterized
 
         for table in ("1111111011111110", "0110100110010110", "1000000000000000"):
@@ -1605,7 +1868,7 @@ class TestParameterizedCOD:
 
     @pytest.mark.parametrize("table", ["10", "01", "00", "11"])
     def test_one_input_truth_table(self, table: str) -> None:
-        r"""n == 1 has no fork of its own: a bare entry into the leaf cascade."""
+        """n == 1 has no fork of its own: a bare entry into the leaf cascade."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.cod(table)
@@ -1616,7 +1879,13 @@ class TestParameterizedCOD:
             assert got == f"{table[x0]}", f"table {table} input {x0}"
 
     def test_a_width_turns_the_drawing_a_quarter_turn(self) -> None:
-        r"""Turning beats banding, because the blocks are joined left to right."""
+        """Turning beats banding, because the blocks are joined left to right.
+
+        Banding trades width for height one block at a time; turning trades
+        the whole drawing's width for its height at once, and the width
+        becomes the *tallest* block rather than the widest.  At five inputs
+        that is 65 columns against banding's 148.
+        """
         from esolangs.tools.boolean import cod as cod_module
 
         for table in ("0110", "01101001", "0110100110010110"):
@@ -1640,7 +1909,20 @@ class TestParameterizedCOD:
                     assert got.strip() == table[combo], (table, width, bits)
 
     def test_the_turn_re_attaches_every_print(self) -> None:
-        r"""``---`` prints only as a *horizontal* run touching an edge."""
+        """``---`` prints only as a *horizontal* run touching an edge.
+
+        Turned, each of the cascade's ``2 ** n`` prints would be three
+        vertical dashes -- three ``-`` removals -- and the cod would die
+        with nothing printed, which is the worst way for this to be wrong.
+        So each gets a corridor to a ``---`` at the left edge, and there
+        must still be one per table row.
+
+        The run has to be *exactly* three: the interpreter only counts a
+        run of three, so a fourth dash would turn a print into four
+        removals.  (Those runs stack vertically down column 0, which is
+        fine -- prints are found by scanning rows, and no cod ever swims
+        down that column; each arrives heading west and prints at once.)
+        """
         from esolangs.tools.boolean import cod as cod_module
 
         table = "01101001"
@@ -1654,7 +1936,7 @@ class TestParameterizedCOD:
 
 
 class TestEvalBoolean:
-    r"""Input-by-substitution boolean generator for the no-input language."""
+    """Input-by-substitution boolean generator for the no-input language Eval."""
 
     def run_eval(self, prog: str) -> str:
         from esolangs.interpreters.io import ScriptedIO
@@ -1665,13 +1947,13 @@ class TestEvalBoolean:
         return io_.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        r"""Fill the template the way the example harness does."""
+        """Fill the template the way the example harness does."""
         from esolangs.tools.boolean.examples import _fill_eval
 
         return _fill_eval(tpl, bits)
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
-        r"""The setter is two characters whichever bit it carries."""
+        """The setter is two characters whichever bit it carries."""
         from esolangs.tools.boolean.examples import _fill_eval
 
         for n in (1, 2, 3):
@@ -1702,7 +1984,7 @@ class TestEvalBoolean:
         ],
     )
     def test_truth_table(self, table: str, n: int) -> None:
-        r"""Every instantiated input produces the truth-table result."""
+        """Every instantiated input produces the truth-table result."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.eval(table)
@@ -1713,7 +1995,7 @@ class TestEvalBoolean:
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
-        r"""Every table up to three inputs produces the right result."""
+        """Every table up to three inputs produces the right result."""
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
@@ -1725,7 +2007,14 @@ class TestEvalBoolean:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_constant_subtrees_fold_in_place(self) -> None:
-        r"""A constant subtree becomes a leaf; its slots empty but remain."""
+        """A constant subtree becomes a leaf; its slots empty but remain.
+
+        The heap is positional -- a node's ``;`` run is a function of its
+        own index and its children sit at pinned offsets -- so the folded
+        subtree cannot be *removed* without shifting every later index.
+        The slots stay and are emptied instead, which is why the string
+        count never changes while the program still gets shorter.
+        """
         from esolangs.tools.boolean import parameterized
 
         full = parameterized.eval("10010110")
@@ -1736,7 +2025,12 @@ class TestEvalBoolean:
         assert '""' in folded
 
     def test_folding_keeps_both_bits_equal_width(self) -> None:
-        r"""Folding shrinks the template, never one instantiation."""
+        """Folding shrinks the template, never one instantiation.
+
+        The embedding's whole point is that ``len(program)`` cannot reveal
+        the inputs.  A fold that depended on the bits would reintroduce
+        exactly that leak, so this pins equal width on folded tables too.
+        """
         from esolangs.tools.boolean import parameterized
 
         for table in ("11111111", "11110000", "11001100", "0001"):
@@ -1753,7 +2047,7 @@ class TestEvalBoolean:
             assert len(widths) == 1, f"{table} leaks its inputs: {widths}"
 
     def test_template_is_input_independent(self) -> None:
-        r"""The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.eval("0110")
@@ -1761,7 +2055,7 @@ class TestEvalBoolean:
         assert "{X1}" in template
 
     def test_heap_tree_structure(self) -> None:
-        r"""The template is a flat heap tree pushed BFS-order then reversed."""
+        """The template is a flat heap tree pushed BFS-order then reversed."""
         from esolangs.tools.boolean import parameterized
 
         template = parameterized.eval("0110")
@@ -1779,7 +2073,12 @@ class TestEvalBoolean:
         assert template.endswith('"0.""0+.""0+.""0."*!')
 
     def test_reordering_only_shrinks(self) -> None:
-        r"""No table is longer than the arrangement staging already produces."""
+        """No table is longer than the arrangement staging already produces.
+
+        The candidates are sorted by op cost with the free arrangement
+        first and the comparison is strict, so a table no reorder helps
+        emits exactly what it emitted before.
+        """
         from esolangs.tools.boolean import parameterized
         from esolangs.tools.boolean.helpers import permute_truth_table
         from esolangs.tools.boolean.parameterized import _eval_ordered
@@ -1797,7 +2096,7 @@ class TestEvalBoolean:
         assert improved == 114
 
     def test_reorder_cost_selects_the_emitted_template(self) -> None:
-        r"""The pricing model matches every candidate and picks the shortest."""
+        """The pricing model matches every candidate and picks the shortest."""
         from esolangs.tools import boolean
         from esolangs.tools.boolean.helpers import permute_truth_table
         from esolangs.tools.boolean.parameterized import (
@@ -1819,7 +2118,14 @@ class TestEvalBoolean:
                 assert len(boolean.eval(table)) == min(costs)
 
     def test_reorder_ops_run_outside_the_placeholders(self) -> None:
-        r"""The rearrangement is emitted code, not a change to the fills."""
+        """The rearrangement is emitted code, not a change to the fills.
+
+        This is what makes it a reorder rather than a relabelling: the
+        ``{Xi}`` blocks keep their slots and the harness fills them exactly
+        as before, while the emitted program gains ops that rearrange the
+        stack its nodes pop from.  Equal-width embedding therefore still
+        holds, since nothing inside a placeholder moved.
+        """
         from esolangs.tools.boolean import parameterized
         from esolangs.tools.boolean.examples import _fill_eval
 
@@ -1834,7 +2140,13 @@ class TestEvalBoolean:
         assert len(widths) == 1  # every fill the same length.
 
     def test_stack_ops_reach_every_arrangement(self) -> None:
-        r"""Two stacks with a reverse and a cross-move permute the bits."""
+        """Two stacks with a reverse and a cross-move permute the bits.
+
+        ``~`` switches stacks, ``*`` reverses the active one and ``=`` moves
+        its top across; the pair is a spindle, so the three compose to reach
+        every arrangement at n <= 4.  Unlike Forþ's ``o``, ``*`` is usable
+        here because the staging leaves the bits alone on that stack.
+        """
         from math import factorial
 
         from esolangs.tools.boolean.parameterized import _eval_stack_programs
@@ -1845,7 +2157,13 @@ class TestEvalBoolean:
         assert _eval_stack_programs(3)[(0, 1, 2)] == ""
 
     def test_reorder_catalog_invariants(self) -> None:
-        r"""The built words are capped, deduplicated and (length, ~<*<=)-sorted."""
+        """The built words are capped, deduplicated and (length, ~<*<=)-sorted.
+
+        The sort order is required: ``_eval_stack_programs`` folds the
+        words first-claim-wins, so cheapest-first is what makes every
+        claimed string minimal, and the ``~`` < ``*`` < ``=`` tie order is
+        what keeps the fold byte-identical to the search it replaced.
+        """
         from esolangs.tools.boolean.parameterized import (
             _EVAL_MAX_OPS,
             _eval_reorders,
@@ -1860,7 +2178,14 @@ class TestEvalBoolean:
         assert keys == sorted(keys)
 
     def test_reorder_words_are_the_capped_reachable_set(self) -> None:
-        r"""Every built word replays, and the built set is exactly the cap's."""
+        """Every built word replays, and the built set is exactly the cap's.
+
+        The construction admits words the old catalog never listed -- longer
+        spellings of arrangements a shorter word already claims -- so the
+        pin is on what survives the fold, not on the raw word list.  The
+        count that must hold is the arrangement count: 735 from ``n == 12``
+        on, which is where the catalog froze.
+        """
         from esolangs.tools.boolean.parameterized import _eval_stack_programs
 
         assert len(_eval_stack_programs(12)) == 735
@@ -1869,7 +2194,15 @@ class TestEvalBoolean:
         assert len(_eval_stack_programs(4)) == 24
 
     def test_reorder_catalog_matches_search(self) -> None:
-        r"""The catalog fold reproduces the search it replaced, byte for byte."""
+        """The catalog fold reproduces the search it replaced, byte for byte.
+
+        The breadth-first walk over (tree stack, input stack, active stack)
+        that used to run inside ``_eval_stack_programs`` lives on here as
+        the specification.  Equality is asserted on the item *lists*, not
+        the dicts: the shipped fold must claim the same arrangements with
+        the same op strings in the same order, because ``eval``'s stable
+        sort breaks total-length ties by that order.
+        """
         from collections import deque
 
         from esolangs.tools.boolean.parameterized import (
@@ -1920,7 +2253,7 @@ class TestEvalBoolean:
             assert list(_eval_stack_programs(n).items()) == list(searched(n).items())
 
     def test_scales_to_more_inputs(self) -> None:
-        r"""The heap tree grows to any n (spot-checked at n = 6)."""
+        """The heap tree grows to any n (spot-checked at n = 6)."""
         from esolangs.tools.boolean import parameterized
 
         n = 6
@@ -1935,7 +2268,19 @@ class TestEvalBoolean:
 
 @pytest.mark.slow  # 2.6s: every fill of every.
 def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
-    r"""No fill may spell a 0 shorter than a 1, or the length leaks the."""
+    """No fill may spell a 0 shorter than a 1, or the length leaks the input.
+
+    A program whose length depends on its inputs reveals them without being
+    read: an earlier BIO embedding ran to 236/240/244/248 characters for the
+    four ``n == 2`` instantiations, so ``len(program)`` alone recovered the
+    bits.  Every ``_fill_*`` therefore pads the two sides to equal width, an
+    invariant stated on :func:`~esolangs.tools.boolean.helpers.instantiate`
+    and enforced here.
+
+    The check is per-generator rather than global: fills legitimately differ
+    from each other in width, but for one generator and one table every
+    instantiation must come out the same length.
+    """
     import itertools
 
     from esolangs.tools.boolean import examples as ex
@@ -1968,7 +2313,26 @@ def test_fills_embed_a_zero_and_a_one_at_equal_width() -> None:
 # pylint: disable=duplicate-code
 @pytest.mark.medium
 class TestParameterizedOneTwoThree:
-    r"""Input-by-substitution boolean generator for the no-input language."""
+    """Input-by-substitution boolean generator for the no-input language 123.
+
+    123's ``2`` reads real stdin, so a decision tree cannot read its inputs;
+    the generator embeds them instead, ``1`` for a one and ``2`` for a zero.
+    Like ArrowQueue the answer is the termination convention -- halt for a
+    ``0`` entry, loop for a ``1`` -- decided by state-cycle detection.
+
+    ``docs/walls.md`` had this route capped at the monotone tables.  That
+    ceiling was the displacement-neutral ``12``/``21`` setter's, not the
+    language's: the +-1 fill used here breaks position lockstep, so XOR and
+    NAND come out too and all sixteen two-input tables are covered.
+
+    Every arity is *constructed* -- the stored plan tables that used to
+    serve ``n <= 3`` are retired (see git history).  Small arities build
+    in ``one_two_three`` from a bare-fill seed and frozen separation
+    schedules; wider tables go through ``one_two_three_construct``
+    unchanged.  Both routes replay every row on the real interpreter
+    before returning a template, and the sweeps here re-check every
+    ``n <= 3`` row against a per-command run of the interpreter.
+    """
 
     def run(self, program: str) -> str:
         return one_two_three_result(program)
@@ -1982,7 +2346,7 @@ class TestParameterizedOneTwoThree:
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_all_small_tables(self, n: int) -> None:
-        r"""Every one-, two- and three-input table halts or loops per its entry."""
+        """Every one-, two- and three-input table halts or loops per its entry."""
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(2 ** (2**n)):
@@ -1994,7 +2358,12 @@ class TestParameterizedOneTwoThree:
                 assert got == table[combo], (table, bits)
 
     def test_the_tables_walls_md_called_unreachable(self) -> None:
-        r"""XOR and NAND build, against the recorded monotone ceiling."""
+        """XOR and NAND build, against the recorded monotone ceiling.
+
+        These are the two the monotonicity argument specifically forbids: a
+        set bit can only add a pass under the neutral setter, so the looping
+        set is upward-closed and neither table can appear.  Both are here.
+        """
         from esolangs.tools.boolean import parameterized
 
         for table in ("0110", "1110", "1001", "1000"):
@@ -2006,7 +2375,15 @@ class TestParameterizedOneTwoThree:
             assert got == table
 
     def test_no_row_diverges(self) -> None:
-        r"""No emitted row marches the pointer right forever."""
+        """No emitted row marches the pointer right forever.
+
+        ``run_until_halt_or_cycle`` never returns on unbounded growth, so a
+        template with such a row would hang the suite rather than report a 1.
+        Every looping row must therefore revisit a state, which this checks
+        by bounding the pointer: a run that neither halts nor cycles within
+        the budget, while pushing the pointer past the program, is exactly
+        the shape that must not ship.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.one_two_three import _Machine
         from esolangs.tools.boolean import parameterized
@@ -2032,7 +2409,20 @@ class TestParameterizedOneTwoThree:
                         pytest.fail(f"{code!r} neither halts nor revisits a state")
 
     def test_batched_gate_agrees_with_the_interpreter(self) -> None:
-        r"""The construction's replay gate matches a per-command run."""
+        """The construction's replay gate matches a per-command run.
+
+        ``_replay_verdict`` executes a maximal ``1``/``2`` run at a time in
+        closed form instead of one command at a time, which is what makes
+        the gate affordable on a six-input template (95s to 0.28s at five
+        inputs).  That batching is only safe if it decides exactly what the
+        real interpreter decides, so every row of every emitted template through
+        three inputs is checked both ways here -- against a per-command run
+        of :class:`_Machine`, not against the builder's own model, which
+        shares no code with either.
+
+        Divergence is the case worth pinning: a batched cycle detector that
+        sampled the wrong events could miss a loop and call it a halt.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.one_two_three import _Machine
         from esolangs.tools.boolean import parameterized
@@ -2064,7 +2454,24 @@ class TestParameterizedOneTwoThree:
 
     @pytest.mark.slow
     def test_the_replay_gate_agrees_on_programs_it_did_not_build(self) -> None:
-        r"""The batched executor is checked against arbitrary 123 code."""
+        """The batched executor is checked against arbitrary 123 code.
+
+        ``_replay_verdict`` is a general 123 interpreter -- it batches
+        maximal runs into closed form -- but every other test drives it on
+        programs the construction *built*, which are a narrow, well-behaved
+        shape: the pointer stays in range, the reads never fire, the loops
+        are the ones the plan laid.  An executor that is wrong outside that
+        shape agrees on all of them and still ships.
+
+        Random programs over the three commands close that.  The comparison
+        is against a per-command run of :class:`_Machine`, which shares no
+        code with the batching, and both sides are treated alike: a program
+        that reads stdin, or that neither halts nor repeats a state inside
+        the budget, is skipped rather than counted as a disagreement.
+
+        Sampled at a fixed seed so a failure is reproducible; the baseline
+        is 177 comparable programs and zero disagreements.
+        """
         import random
 
         from esolangs.interpreters.io import ScriptedIO
@@ -2072,7 +2479,7 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.boolean.one_two_three_construct import _replay_verdict
 
         def stepwise(code: str) -> str | None:
-            r"""The interpreter's own verdict, or None if it is not comparable."""
+            """The interpreter's own verdict, or None if it is not comparable."""
             machine = _Machine(code, ScriptedIO(""))
             seen = set()
             for _ in range(20_000):
@@ -2104,7 +2511,15 @@ class TestParameterizedOneTwoThree:
         assert compared == 177
 
     def test_the_construction_emits_an_exact_template(self) -> None:
-        r"""``construct`` itself, pinned -- not the small route."""
+        """``construct`` itself, pinned -- not the small route.
+
+        The two exact-template tests above go through
+        ``parameterized.one_two_three``, which sends ``n <= 3`` to the
+        separation-law route and never enters this module at all.  So the
+        wider construction had no golden of its own, and a plan that
+        emitted three bytes more per table, or two fewer, changed nothing
+        any test compared.
+        """
         from esolangs.tools.boolean.one_two_three_construct import construct
 
         assert construct("01") == (
@@ -2113,14 +2528,21 @@ class TestParameterizedOneTwoThree:
         )
 
     def test_the_constructed_lengths_are_stable_over_three_inputs(self) -> None:
-        r"""Total emitted bytes over every three-input table."""
+        """Total emitted bytes over every three-input table.
+
+        The paint flag and the separation law move a handful of bytes
+        per table without changing a verdict, so no single table is a
+        reliable witness -- ``00111000`` moves by two and ``11111111`` by
+        two the other way.  The sum over the sweep is, and it is the same
+        shape of assertion the small route already carries.
+        """
         from esolangs.tools.boolean.one_two_three_construct import construct
 
         total = sum(len(construct(format(value, "08b"))) for value in range(256))
         assert total == 206791
 
     def test_slots_run_in_name_order(self) -> None:
-        r"""Every emitted template embeds {X0} before {X1}."""
+        """Every emitted template embeds {X0} before {X1}."""
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(16):
@@ -2129,7 +2551,7 @@ class TestParameterizedOneTwoThree:
             assert template.index("{X0}") < template.index("{X1}"), table
 
     def test_both_bits_embed_at_the_same_width(self) -> None:
-        r"""A zero and a one embed at equal width, so length leaks nothing."""
+        """A zero and a one embed at equal width, so length leaks nothing."""
         from esolangs.tools.boolean import parameterized
 
         for table_int in range(16):
@@ -2141,7 +2563,19 @@ class TestParameterizedOneTwoThree:
             assert len(sizes) == 1, (table, sizes)
 
     def test_a_wider_table_is_constructed(self) -> None:
-        r"""A four-input table builds through the constructed route."""
+        """A four-input table builds through the constructed route.
+
+        This used to assert a :class:`ValueError`: the recorded reason was
+        that an inert embed shifts the pointer phase the plan decodes.
+        That bound the phase-decode shape, not the language — the
+        constructed route re-synchronizes every instantiation's pointer
+        after each embed (see ``one_two_three_construct``) — so the gate
+        fell.  Every row of the template is replayed here on the real
+        interpreter, the same execution gate the generator itself applies
+        before returning.  A build that drains the deterministic work
+        budget still raises rather than emitting; ``docs/limitations.md``
+        records the coverage.
+        """
         from esolangs.tools.boolean import parameterized
 
         table = "0000000000000000"
@@ -2166,14 +2600,32 @@ class TestParameterizedOneTwoThree:
         ],
     )
     def test_three_inputs_take_the_small_route(self, table: str, length: int) -> None:
-        r"""``n == 3`` builds from the separation law, not the wide route."""
+        """``n == 3`` builds from the separation law, not the wide route.
+
+        Both routes emit a *correct* template, so every truth-table
+        assertion above passes either way and the choice is invisible to
+        them.  It is worth a great deal though: swept over all 256
+        three-input tables, the wide constructor's template is larger on
+        every one of them, from 1.86x up to 9.55x (``00000010`` is 94 bytes
+        small against 898 wide).  These lengths pin the routing boundary at
+        ``n > 3``.
+        """
         from esolangs.tools.boolean import parameterized
 
         assert len(parameterized.one_two_three(table)) == length
 
     @pytest.mark.slow
     def test_the_separation_law_is_the_least_mean(self) -> None:
-        r"""The law's constants are re-derived, not trusted."""
+        """The law's constants are re-derived, not trusted.
+
+        ``_LAWS`` claims one selection rule at every arity: over constant
+        walk seeds and alternating pure-test displacement vectors, the
+        law with the least mean template length.  This re-runs that sweep
+        at ``n <= 2`` and checks the shipped constants win it, so a
+        hand-edited constant fails here rather than shipping quietly.
+        ``n == 3`` is left to the exhaustive build sweep -- its domain is
+        13 laws over 256 tables, minutes rather than seconds.
+        """
         from itertools import product
 
         from esolangs.tools.boolean.one_two_three import (
@@ -2188,7 +2640,12 @@ class TestParameterizedOneTwoThree:
         )
 
         def prototype(n: int, walk: int, disps: tuple[int, ...]) -> object:
-            r"""Replay one candidate law, or ``None`` if it does not fit."""
+            """Replay one candidate law, or ``None`` if it does not fit.
+
+            A candidate that walks a row off the ring raises exactly as a
+            build would; here that only means "not this law", so the
+            raise is caught rather than propagated.
+            """
             # pylint: disable=duplicate-code
             # pylint: disable=duplicate-code
             # pylint: disable=duplicate-code
@@ -2257,7 +2714,12 @@ class TestParameterizedOneTwoThree:
             assert (best_walk, best_disps) == _LAWS[n], (n, ranked[:3])
 
     def test_the_wide_route_is_bigger_where_they_overlap(self) -> None:
-        r"""The small route earns its place at the arity they share."""
+        """The small route earns its place at the arity they share.
+
+        The routing boundary is only defensible if the two constructions
+        are actually compared at an arity both can serve, which this does
+        directly rather than through the emitted length above.
+        """
         from esolangs.tools.boolean.one_two_three import one_two_three
         from esolangs.tools.boolean.one_two_three_construct import construct
 
@@ -2272,7 +2734,16 @@ class TestParameterizedOneTwoThree:
         ],
     )
     def test_the_emitted_template_is_exact(self, table: str, template: str) -> None:
-        r"""The construction is deterministic down to the byte."""
+        """The construction is deterministic down to the byte.
+
+        ``_construct_small`` builds one prototype per arity, so there is
+        no candidate field and no tie-break: the emission is a function
+        of the law and the table alone.  Pinning two templates exactly is
+        what turns "deterministic" from a claim into a check -- a change
+        to the law's constants, or to the order its tests fire in, moves
+        these bytes even where it leaves every truth-table assertion
+        passing.
+        """
         from esolangs.tools.boolean import parameterized
 
         assert parameterized.one_two_three(table) == template
@@ -2280,7 +2751,20 @@ class TestParameterizedOneTwoThree:
     def test_the_paint_pass_is_only_run_when_something_was_painted(
         self,
     ) -> None:
-        r"""``b.test()`` after the paints is conditional, and the flag varies."""
+        """``b.test()`` after the paints is conditional, and the flag varies.
+
+        Of the 276 tables through three inputs, 10 need no paint at all,
+        so the flag is genuinely two-valued rather than a constant
+        dressed as one.  Forcing it either way leaves every template
+        correct -- the extra or missing test costs or saves commands
+        without changing the verdict -- so only the emitted size sees it.
+        The total is asserted rather than one table because the flag's
+        effect is spread across the whole sweep; it also pins the
+        separation law's price, 55238 characters against the retired
+        schedules' 43020 and the wide constructor's 211102 -- the law
+        gives up 1.28x to delete the table and keeps 3.8x over the route
+        that needs none.
+        """
         from esolangs.tools.boolean import parameterized
 
         total = 0
@@ -2291,7 +2775,17 @@ class TestParameterizedOneTwoThree:
         assert total == 55238
 
     def test_a_seed_with_even_positions_is_refused(self) -> None:
-        r"""The junky verdict rejects a seed whose rows are not distinct odd."""
+        """The junky verdict rejects a seed whose rows are not distinct odd.
+
+        The paint offsets are collision-free only because every live row
+        sits at a distinct *odd* position -- two rows sharing an offset
+        would have to sit one cell apart, which odd-and-distinct forbids.
+        So the precondition is what the collision-freedom argument rests
+        on.  The shipped law separates to odd positions at every arity,
+        so no build reaches the raise; the state is constructed here
+        instead, which is what keeps the guard checked rather than
+        merely asserted.
+        """
         from esolangs.tools.boolean.one_two_three import (
             _WORK_BUDGET,
             ConstructError,
@@ -2310,7 +2804,16 @@ class TestParameterizedOneTwoThree:
         assert str(caught.value) == "verdict precondition: positions not distinct odd"
 
     def test_every_pipeline_stage_fires_on_one_table(self) -> None:
-        r"""A single table exercises each stage the docstring describes."""
+        """A single table exercises each stage the docstring describes.
+
+        ``00111000`` has 1-rows above 0-rows, so its build takes the
+        shield paints as well as the embed, separation, kill, and
+        endgame — a witness that every stage is on a real trajectory,
+        not only inferred from ``construct()``'s success.  The paints
+        go through ``_paint_all``, which emits the whole campaign at
+        once; ``_paint`` itself is the small-arity route's, covered by
+        ``test_paint_marks_one_cell_and_restores_every_position``.
+        """
         from esolangs.tools.boolean import one_two_three_construct as construct_mod
 
         called: set[str] = set()
@@ -2343,7 +2846,15 @@ class TestParameterizedOneTwoThree:
             assert self.run(program) == "00111000"[combo], bits
 
     def test_the_searched_routes_worst_tables_build_at_once(self) -> None:
-        r"""The tables that starved the searched verdict are ordinary now."""
+        """The tables that starved the searched verdict are ordinary now.
+
+        ``1000110011010101`` burned a whole four-input budget under one
+        mark geometry and ``0100000011001001`` exhausted the other —
+        the pair that forced the old geometry probe.  The planned
+        verdict never anchors a test on a mark cell, so a single
+        geometry serves both; each build is checked row by row on the
+        interpreter.
+        """
         from esolangs.tools.boolean.one_two_three_construct import construct
 
         for table in ("1000110011010101", "0100000011001001"):
@@ -2356,7 +2867,14 @@ class TestParameterizedOneTwoThree:
 
     @pytest.mark.slow  # one four-input template, all.
     def test_a_dense_four_input_sweep_witness_stays_exact(self) -> None:
-        r"""Pin one mixed table from the exhaustive constructor sweep."""
+        """Pin one mixed table from the exhaustive constructor sweep.
+
+        The exhaustive four-input sweep was a one-shot script rather than
+        a suite entry -- 65536 tables is far past what a run can pay.  This
+        one-table witness keeps its execution gate local: all sixteen rows
+        must halt or revisit an exact interpreter
+        state with the table's verdict, never pass through a fuel limit.
+        """
         from esolangs.tools.boolean.one_two_three_construct import construct
 
         table = "1100010001000111"
@@ -2367,7 +2885,13 @@ class TestParameterizedOneTwoThree:
             assert self.run(program) == table[combo], (table, bits)
 
     def test_paint_marks_one_cell_and_restores_every_position(self) -> None:
-        r"""``_paint(k)`` flips exactly cell ``pos + k`` per row, in place."""
+        """``_paint(k)`` flips exactly cell ``pos + k`` per row, in place.
+
+        The shield algebra rests on this: two walk-descend blocks whose
+        stripes cancel everywhere but the top cell.  Checked across rows
+        at distinct positions with junk tapes, for the ``k == 1`` short
+        form and a spread of wider offsets.
+        """
         from esolangs.tools.boolean.one_two_three_construct import (
             _RING,
             _WORK_BUDGET,
@@ -2390,7 +2914,14 @@ class TestParameterizedOneTwoThree:
                 assert t1 == t0 ^ (1 << (p0 + k + _RING)), k
 
     def test_the_verdict_checks_its_position_preconditions(self) -> None:
-        r"""A state violating the parity law raises instead of emitting."""
+        """A state violating the parity law raises instead of emitting.
+
+        The shield algebra needs every live position distinct and odd;
+        separation has delivered that at every probed arity, but the
+        verdict re-checks rather than assumes, so a wider arity that
+        ever broke the parity would raise — never hand out a template
+        whose fates the plan cannot vouch for.
+        """
         from esolangs.tools.boolean.one_two_three_construct import (
             _WORK_BUDGET,
             ConstructError,
@@ -2415,7 +2946,13 @@ class TestParameterizedOneTwoThree:
         _verdict(all_zero, "00")  # no 1-rows: nothing to prove,.
 
     def test_an_exhausted_work_budget_is_declined(self) -> None:
-        r"""A table that would build still raises once the work runs out."""
+        """A table that would build still raises once the work runs out.
+
+        ``_work`` is deterministic (simulated commands, not wall clock),
+        so shrinking :data:`_WORK_BUDGET` reproduces the exhausted-budget
+        branch instantly and exactly -- the same path a genuinely
+        unconvergent search would take, without paying for one.
+        """
         from esolangs.tools.boolean import one_two_three_construct as construct_mod
 
         original_budget = construct_mod._WORK_BUDGET  # noqa: SLF001
@@ -2427,7 +2964,16 @@ class TestParameterizedOneTwoThree:
             construct_mod._WORK_BUDGET = original_budget  # noqa: SLF001
 
     def test_normalize_reports_a_live_locked_ring(self) -> None:
-        r"""Four distinct rows pinned to all four ring cells cannot escape."""
+        """Four distinct rows pinned to all four ring cells cannot escape.
+
+        ``_normalize`` steps every live row together (one shared ``1`` or
+        ``2`` per round), so four *different* rows already sitting one
+        each on -1, -2, -3 and 0 never converge on a single move: the
+        round that frees the -3 row re-occupies -4 -> 0 while another
+        stays put, so the occupied set does not shrink.  This is a
+        contrived state (real builds keep all rows in lockstep), but the
+        function must still terminate on it rather than spin.
+        """
         from esolangs.tools.boolean.one_two_three_construct import (
             ConstructError,
             _Builder,
@@ -2451,7 +2997,13 @@ class TestParameterizedOneTwoThree:
             _normalize(b)
 
     def test_close_reports_no_clean_cell_in_range(self) -> None:
-        r"""A row TRUE on every cell in the search window has no exit."""
+        """A row TRUE on every cell in the search window has no exit.
+
+        ``_close`` walks right looking for a position where every live
+        row is simultaneously on a FALSE cell; a row whose tape covers
+        the whole search window can never supply one, so the search
+        must give up rather than walk forever.
+        """
         from esolangs.tools.boolean.one_two_three_construct import (
             ConstructError,
             _Builder,
@@ -2474,7 +3026,13 @@ class TestParameterizedOneTwoThree:
             _close(b)
 
     def test_fixpoint_reports_a_non_converging_rerun(self) -> None:
-        r"""A segment that never revisits a state within the cap gives up."""
+        """A segment that never revisits a state within the cap gives up.
+
+        A dense tape lets a single ``2`` keep the row TRUE at every
+        position while it marches right forever, so the rerun neither
+        escapes nor repeats within the fixpoint cap -- the shape a
+        genuinely diverging candidate segment would take.
+        """
         from esolangs.tools.boolean.one_two_three_construct import (
             ConstructError,
             _Builder,
@@ -2496,7 +3054,7 @@ class TestParameterizedOneTwoThree:
             b.fixpoint(row)
 
     def test_test_reports_a_kill_that_escapes(self) -> None:
-        r"""``test(kills=...)`` requires every named victim to provably loop."""
+        """``test(kills=...)`` requires every named victim to provably loop."""
         from esolangs.tools.boolean.one_two_three_construct import (
             ConstructError,
             _Builder,
@@ -2518,7 +3076,13 @@ class TestParameterizedOneTwoThree:
             b.test(kills=frozenset({(0,)}))
 
     def test_test_reports_a_kill_that_never_fires(self) -> None:
-        r"""``test(kills=...)`` refuses a close where a victim tested FALSE."""
+        """``test(kills=...)`` refuses a close where a victim tested FALSE.
+
+        A kill whose victim never lands on a TRUE cell would silently
+        leave the row alive; the close must report it instead, because
+        every adopted kill claims one specific row is now provably
+        looping.
+        """
         from esolangs.tools.boolean.one_two_three_construct import (
             ConstructError,
             _Builder,
@@ -2539,7 +3103,7 @@ class TestParameterizedOneTwoThree:
             b.test(kills=frozenset({(0,)}))
 
     def test_test_reports_an_unintended_loop(self) -> None:
-        r"""A plain ``test()`` requires every TRUE row to escape, not loop."""
+        """A plain ``test()`` requires every TRUE row to escape, not loop."""
         from esolangs.tools.boolean.one_two_three_construct import (
             ConstructError,
             _Builder,
@@ -2564,7 +3128,14 @@ class TestParameterizedOneTwoThree:
             b.test()
 
     def test_an_empty_table_is_declined(self) -> None:
-        r"""A table implying zero inputs raises rather than building nothing."""
+        """A table implying zero inputs raises rather than building nothing.
+
+        ``"1"`` is a well-formed truth table of length ``2**0``, so it
+        clears the power-of-two check and is refused on arity instead.
+        123 used to carry its own message for this; the rule is now the
+        shared validator's, since every boolean generator owes it (see
+        ``test_boolean_contract``), so this asserts the shared wording.
+        """
         from esolangs.tools.boolean import parameterized
 
         # pylint: disable=duplicate-code
@@ -2577,7 +3148,12 @@ class TestParameterizedOneTwoThree:
         )
 
     def test_out_of_order_slots_are_refused(self) -> None:
-        r"""The name-order invariant is asserted, not assumed."""
+        """The name-order invariant is asserted, not assumed.
+
+        Every table the generator builds satisfies it, so the guard is
+        reachable only by handing the helper a body that violates it -- which
+        is what a mistyped plan would look like.
+        """
         from esolangs.tools.boolean.one_two_three import _in_name_order
 
         assert _in_name_order("{X0}{X1}", 2) == "{X0}{X1}"
@@ -2589,7 +3165,7 @@ class TestParameterizedOneTwoThree:
         )
 
     def test_each_input_is_embedded_once(self) -> None:
-        r"""Each placeholder appears exactly once, and no {Ci} appears."""
+        """Each placeholder appears exactly once, and no {Ci} appears."""
 
         from esolangs.tools.boolean import parameterized
 
@@ -2602,7 +3178,14 @@ class TestParameterizedOneTwoThree:
                 assert not re.findall(r"\{C(\d+)\}", template), table
 
     def test_every_batched_run_charges_the_work_budget(self) -> None:
-        r"""Each closed form in ``_exec_run`` has to stop on a drained budget."""
+        """Each closed form in ``_exec_run`` has to stop on a drained budget.
+
+        The batched paths exist so a long run costs O(1) instead of ``w``
+        trips through ``_exec_char``, but the budget counts *simulated
+        commands* and must not depend on which path ran them.  Each case
+        below is the shape that selects one path, with the budget set just
+        under what that path is about to charge.
+        """
         from esolangs.tools.boolean.one_two_three_construct import (
             _exec_char,
             _exec_run,
@@ -2637,7 +3220,16 @@ class TestParameterizedOneTwoThree:
     def test_the_endgame_parks_survivors_and_reports_a_state_it_cannot(
         self,
     ) -> None:
-        r"""Parking is what makes a template halt, so failing it must raise."""
+        """Parking is what makes a template halt, so failing it must raise.
+
+        A state with no survivors is already parked.  Four occupied residues
+        mod 4 take the ring round -- rows of equal residue land on the same
+        cell and fuse, so a class has to be freed before the descent can
+        collapse them.  The convergence allowance is ``64 * 2**n + 64``
+        passes, and a builder carrying a small ``n`` beside rows spread far
+        wider than that ``n`` implies is what outlasts it: the guard is a
+        real exit, not decoration.
+        """
         from esolangs.tools.boolean.one_two_three_construct import (
             _WORK_BUDGET,
             ConstructError,
@@ -2675,7 +3267,9 @@ class TestParameterizedOneTwoThree:
     def test_a_stage_refusal_surfaces_as_a_value_error(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        r"""A stage that cannot prove its move is reported, never worked around."""
+        """A stage that cannot prove its move is reported, never worked
+        around -- the alternative is emitting a template no stage proved.
+        """
         from esolangs.tools.boolean import one_two_three_construct as module
 
         def refuse(*_: object, **__: object) -> None:
@@ -2686,7 +3280,15 @@ class TestParameterizedOneTwoThree:
             module.construct("0110")
 
     def test_a_looping_row_reads_as_a_one(self) -> None:
-        r"""A 1-row is decided by cycle detection, not by halting."""
+        """A 1-row is decided by cycle detection, not by halting.
+
+        A 1-row does not halt -- it is the loop the kill built -- so the
+        verdict comes from Brent's cycle detection rather than from the
+        machine stopping.  Both readings of that row are pinned here: the
+        real interpreter's, which is the shipped contract, and
+        :func:`_replay_verdict`'s, the in-module executor the suite uses
+        elsewhere.  They must agree, and the 1-row must be the looping one.
+        """
         from esolangs.tools.boolean.one_two_three_construct import (
             _replay_verdict,
             construct,
@@ -2699,7 +3301,11 @@ class TestParameterizedOneTwoThree:
             assert _replay_verdict(program) == "01"[bit], bit
 
     def test_a_spread_of_three_input_tables_builds(self) -> None:
-        r"""A stride-17 sample of the 256 three-input tables all build."""
+        """A stride-17 sample of the 256 three-input tables all build.
+
+        The planned verdict claims totality by argument; this spread is
+        the fast in-suite witness (the slow suite sweeps every table).
+        """
         from esolangs.tools.boolean.one_two_three_construct import construct
 
         built = 0
@@ -2712,7 +3318,14 @@ class TestParameterizedOneTwoThree:
         assert built == 16
 
     def test_the_remaining_batched_run_and_token_paths(self) -> None:
-        r"""``2`` from inside the ring batches too, and a plain token is a char."""
+        """``2`` from inside the ring batches too, and a plain token is a char.
+
+        The ring case is decided by its first step -- -1 and -2 land on 0 --
+        after which the rest is a plain right-walk, and it charges the budget
+        like every other closed form.  ``apply_token`` resolves a ``{Xi}``
+        fill against the row's own bits; a plain token is passed straight
+        through.
+        """
         from esolangs.tools.boolean.one_two_three_construct import (
             _WORK_BUDGET,
             _Builder,
@@ -2734,7 +3347,14 @@ class TestParameterizedOneTwoThree:
         assert b.rows[0].pos == -1
 
     def test_a_two_at_minus_three_is_refused_rather_than_reading_stdin(self) -> None:
-        r"""``2`` at -3 would read real input, so the move is rejected."""
+        """``2`` at -3 would read real input, so the move is rejected.
+
+        The harness runs on an empty script, so a read is fatal rather than
+        merely wrong -- the builder has to decline the candidate that
+        reached this cell instead of emitting it.  The neighbouring
+        positions are the contrast: -2 lands on 0 (printing a junk byte no
+        snapshot sees) and anything else is a plain step right.
+        """
         from esolangs.tools.boolean.one_two_three_construct import (
             _WORK_BUDGET,
             ConstructError,
@@ -2760,7 +3380,14 @@ class TestParameterizedOneTwoThree:
         assert steps.pos == 5
 
     def test_closing_walks_only_when_a_row_sits_on_a_true_cell(self) -> None:
-        r"""``_close`` emits the walk it needs and nothing when already clean."""
+        """``_close`` emits the walk it needs and nothing when already clean.
+
+        A fresh builder starts every row on cell 0 with a blank tape, which
+        is already a FALSE cell, so the close is free.  Flipping cell 0
+        first forces the walk, and the emitted ``2``s are what carry every
+        row to a clean cell -- emitting none there would leave the next
+        segment starting on a TRUE cell.
+        """
         from esolangs.tools.boolean.one_two_three_construct import (
             _RING,
             _WORK_BUDGET,
@@ -2787,7 +3414,13 @@ class TestParameterizedOneTwoThree:
         )
 
     def test_replaying_twos_handles_the_empty_walk_and_the_stdin_cell(self) -> None:
-        r"""A zero-width run is a no-op; a run starting at -3 is refused."""
+        """A zero-width run is a no-op; a run starting at -3 is refused.
+
+        ``_replay_twos`` re-derives the interpreter's rule for ``2`` without
+        the builder's model, so it owns the same stdin refusal ``_exec_char``
+        does -- reached here by starting a real run on the cell rather than
+        by walking onto it.
+        """
         from esolangs.tools.boolean.one_two_three_construct import (
             ConstructError,
             _replay_twos,
@@ -2803,7 +3436,13 @@ class TestParameterizedOneTwoThree:
     def test_replaying_a_verdict_skips_commandless_and_unknown_characters(
         self,
     ) -> None:
-        r"""Only ``1`` and ``2`` are commands; everything else is a NOP."""
+        """Only ``1`` and ``2`` are commands; everything else is a NOP.
+
+        A program with no command at all never starts the walk and halts
+        with no output, which is the ``"0"`` verdict.  A program that mixes
+        commands with other characters has to step over them rather than
+        treating them as a run -- so the two spellings agree.
+        """
         from esolangs.tools.boolean.one_two_three_construct import _replay_verdict
 
         assert _replay_verdict("") == "0"
@@ -2814,7 +3453,14 @@ class TestParameterizedOneTwoThree:
 
 
 def test_nocomment_wide_declines_when_the_plan_outgrows_the_skip() -> None:
-    r"""Past fifteen inputs the summand plan leaves no room to widen."""
+    """Past fifteen inputs the summand plan leaves no room to widen.
+
+    ``room`` is what is left of a byte-sized skip once the guarded
+    contribution's move-add-return block is paid for, and it goes negative at
+    ``n == 15`` -- the plan stays at its one-cell form rather than being
+    re-planned wider.  The build then stops on the tape limit, which is the
+    reachable end of this path: the cell it would need is past 4096.
+    """
     from esolangs.tools.boolean import parameterized
 
     table = "0" * (2**15 - 1) + "1"
@@ -2823,10 +3469,22 @@ def test_nocomment_wide_declines_when_the_plan_outgrows_the_skip() -> None:
 
 
 class TestConstructorWorkBudget:
-    r"""Two paths that lost their exerciser with the text generators."""
+    """Two paths that lost their exerciser with the text generators.
+
+    The constructor's work budget and its per-row fill resolution were
+    reached by the exhaustive four-input sweep, which was a one-shot script
+    rather than a suite entry.  Both are live code, so they are driven
+    directly here.
+    """
 
     def test_a_fill_token_resolves_to_the_row_own_bit(self) -> None:
-        r"""A tuple token is an input fill: the row decides its character."""
+        """A tuple token is an input fill: the row decides its character.
+
+        ``_row_runs`` resolves it once per row rather than on every replay,
+        so the bit it reads has to be the row's own -- a fill resolved
+        against the wrong row spells the wrong program for that row alone,
+        which no aggregate length check would catch.
+        """
         from esolangs.tools.boolean.one_two_three_construct import (
             _ONE,
             _ZERO,
@@ -2840,7 +3498,7 @@ class TestConstructorWorkBudget:
         assert _row_runs(zero, [("x", 0)]) == [(_ZERO, 1)]
 
     def test_a_fill_coalesces_with_the_run_beside_it(self) -> None:
-        r"""Adjacent equal characters become one run, fills included."""
+        """Adjacent equal characters become one run, fills included."""
         from esolangs.tools.boolean.one_two_three_construct import (
             _ONE,
             _Row,
@@ -2851,7 +3509,12 @@ class TestConstructorWorkBudget:
         assert _row_runs(row, [_ONE * 2, ("x", 0)]) == [(_ONE, 3)]
 
     def test_painting_past_the_budget_is_refused(self) -> None:
-        r"""``_paint_all`` prices its whole paint before writing any of it."""
+        """``_paint_all`` prices its whole paint before writing any of it.
+
+        The budget is what stops a construction running away; charging for
+        the paint up front is what makes the refusal cheap rather than
+        something noticed a million commands later.
+        """
         from esolangs.tools.boolean.one_two_three_construct import (
             _Builder,
             _paint_all,

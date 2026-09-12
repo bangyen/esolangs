@@ -1,1 +1,1 @@
-r"""Fuzz and cross-interpreter robustness suites."""
+"""Fuzz and cross-interpreter robustness suites."""

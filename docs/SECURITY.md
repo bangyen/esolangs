@@ -8,12 +8,12 @@ The latest release on PyPI and the current `main` branch.
 
 Interpreters execute untrusted programs by design, so a program producing wrong output, looping forever, or exhausting memory is a correctness bug.
 
-In scope for a security report is anything that escapes the interpreter:.
+In scope for a security report is anything that escapes the interpreter:
 
-- executing arbitrary code on the host, or reading or writing files outside what a run was given.
-- a crash in a native reference interpreter (`extra/assembly/`) that indicates memory unsafety.
-- code execution through the CLI's file or language arguments.
-- a compromise in the release pipeline or a published artifact.
+- executing arbitrary code on the host, or reading or writing files outside what a run was given
+- a crash in a native reference interpreter (`extra/assembly/`) that indicates memory unsafety
+- code execution through the CLI's file or language arguments
+- a compromise in the release pipeline or a published artifact
 
 ## Reporting
 

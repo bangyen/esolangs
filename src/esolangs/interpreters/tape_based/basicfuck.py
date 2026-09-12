@@ -1,4 +1,52 @@
-r"""Interpreter for Basicfuck."""
+"""Interpreter for Basicfuck.
+
+A source-level language compiled to cells by the interpreter itself.  A
+``#basicfuck t=.. r=.. o=..`` directive sets the tape size, cell range, and
+overflow behavior (``wrap``/``halt``/``nearest``); ``#allocate`` names the
+variables (plain ``X`` or array ``X->n``).  ``X += Y`` / ``X -= Y`` add or
+subtract a constant or another variable, ``if``/``while (X) { ... }`` branch
+and loop (with an optional ``!`` negating the condition), ``write <- X``
+prints X as a byte, ``read -> X`` stores the next input byte, and ``X->n``
+indexes into an allocated array.  ``//`` comments are stripped.
+
+Semantics:
+- malformed programs (a bad directive, identifier, token, syntax, or a tape
+  too small for the allocations) raise :class:`ValueError`;
+- a ``halt`` underflow/overflow raises :class:`HaltError`, while ``wrap``
+  and ``nearest`` bound the cell instead;
+- an array access past the allocation (``X->n`` beyond the array) raises
+  :class:`HaltError`, and the cross-check exits 3 too (it used to be
+  undefined out-of-bounds memory);
+- ``read -> X`` stores the first byte of a line and raises
+  :class:`EOFError` when input runs out, where the cross-check exits with
+  status 3.
+
+The interpreter runs on a :class:`_Machine` (the compiled instructions, the
+tape, and an explicit frame stack for the nested if/while scopes), so it is
+step-capable: ``step()`` executes one instruction and ``halted`` is true once
+no frame remains.  A while loop whose body never changes its condition is a
+finite-state cycle the state-cycle hang detector can prove (an empty body
+loop is a no-op step whose repeated snapshot proves a hang); the ``run()``
+backstop stays for the unbounded-growth class (a loop whose body keeps
+growing a tape cell).
+
+The execution model is a pure function over an immutable ``_State``: the
+tape cells and the frame stack.  :func:`_advance` maps one state to the next
+and never edits what it is given; :meth:`_Machine.step` rebinds the two
+fields from what it returned, so the mutation lives in exactly one place.
+A frame becomes a tuple rather than a class, which is what lets the whole
+stack go into ``snapshot`` as a value.
+
+Threading the tape is affordable here, unlike Grapheme's stack, because it
+cannot grow: ``#allocate`` fixes its size before the first instruction
+runs, so a rebuilt tape costs a constant set by the program text rather
+than by how long the program has been running.  The corpus times a hot loop
+on both sides of the change to keep that claim honest.
+
+The overflow limits and the mode are not state.  They come off the
+directive line and never change, so they are handed to the transition
+rather than carried in it.
+"""
 
 from __future__ import annotations
 
@@ -19,7 +67,7 @@ _NAME_ONLY = re.compile(_NAME + r"(?:->\d+)?$")
 
 
 def _index(key: str, var: list[tuple[str, int]]) -> int:
-    r"""Return the tape offset of ``key`` (``X`` or ``X->n``)."""
+    """Return the tape offset of ``key`` (``X`` or ``X->n``)."""
     ind = 0
     if "->" in key:
         name, _, idx = key.partition("->")
@@ -34,7 +82,7 @@ def _index(key: str, var: list[tuple[str, int]]) -> int:
 
 
 def _parse_allocate(line: str) -> tuple[list[tuple[str, int]], list[int]]:
-    r"""Parse the ``#allocate`` line into (variables, initial tape cells)."""
+    """Parse the ``#allocate`` line into (variables, initial tape cells)."""
     if not _ALLOCATE.fullmatch(line):
         raise ValueError("Missing/Invalid identifiers.")
     var: list[tuple[str, int]] = []
@@ -52,7 +100,7 @@ def _parse_allocate(line: str) -> tuple[list[tuple[str, int]], list[int]]:
 
 
 def _lexer(program: str) -> list[str]:
-    r"""Tokenize the body into names, numbers, and punctuation."""
+    """Tokenize the body into names, numbers, and punctuation."""
     tokens: list[str] = []
     i = 0
     n = len(program)
@@ -98,7 +146,14 @@ def _lexer(program: str) -> list[str]:
 
 
 def _parser(tokens: list[str], var: list[tuple[str, int]]) -> tuple[int, ...]:
-    r"""Compile the tokens to the flat instruction tuple the machine runs."""
+    """Compile the tokens to the flat instruction tuple the machine runs.
+
+    Prefix notation: ``+=`` -1, ``-=`` -2, ``if``
+    -3, ``while`` -4, ``write`` -5, ``read`` -6, ``!`` -7, ``{`` -8, ``}``
+    -9; nonnegative numbers are variable tape offsets and constants below -9
+    are encoded as ``-2n-9`` (odd) / ``2n-10`` (even) for positive/negative
+    ``n``.
+    """
     result: list[int] = []
     ind = 0
     size = len(tokens)
@@ -197,31 +252,37 @@ type _State = tuple[_Cells, tuple[_Frame, ...]]
 
 
 def _frame(prog: tuple[int, ...]) -> _Frame:
-    r"""Build a fresh frame for ``prog``, at its start and owning no loop."""
+    """Build a fresh frame for ``prog``, at its start and owning no loop."""
     return (prog, 0, False, -1, False, None)
 
 
 def _read_cell(cells: _Cells, index: int) -> int:
-    r"""Read a tape cell, rejecting an index outside the allocation."""
+    """Read a tape cell, rejecting an index outside the allocation."""
     if not 0 <= index < len(cells):
         raise HaltError("tape index out of bounds")
     return cells[index]
 
 
 def _write_cell(cells: _Cells, index: int, value: int) -> _Cells:
-    r"""Return ``cells`` with one cell replaced, bounds-checked."""
+    """Return ``cells`` with one cell replaced, bounds-checked."""
     if not 0 <= index < len(cells):
         raise HaltError("tape index out of bounds")
     return (*cells[:index], value, *cells[index + 1 :])
 
 
 def _cond_of(cells: _Cells, frame: _Frame, cond_pos: int, *, neg: bool) -> bool:
-    r"""Evaluate the condition at ``cond_pos`` in ``frame``'s code."""
+    """Evaluate the condition at ``cond_pos`` in ``frame``'s code."""
     return bool(_read_cell(cells, frame[0][cond_pos])) ^ neg
 
 
 def _finalize(state: _State) -> _State:
-    r"""Pop completed frames, re-running a while body while it holds."""
+    """Pop completed frames, re-running a while body while it holds.
+
+    Only the top frame can be finished at a time; a loop body that still
+    has its condition met starts a fresh pass (finalized by a later step,
+    so an empty body is a no-op step whose repeated snapshot proves a
+    hang).
+    """
     cells, frames = state
     while frames:
         prog, ptr, _, _, _, _ = frames[-1]
@@ -237,7 +298,7 @@ def _finalize(state: _State) -> _State:
 
 
 def _clamp(value: int, bot: int, top: int, mode: str) -> int:
-    r"""Apply the directive's overflow rule to an out-of-range value."""
+    """Apply the directive's overflow rule to an out-of-range value."""
     if value < bot:
         if mode == "h":
             raise HaltError("Underflow error.")
@@ -250,7 +311,7 @@ def _clamp(value: int, bot: int, top: int, mode: str) -> int:
 
 
 def _scan_body(prog: tuple[int, ...], start: int) -> int:
-    r"""Return the index of the ``}`` closing the block opened at ``start``."""
+    """Return the index of the ``}`` closing the block opened at ``start``."""
     end = start
     pair = 1
     while pair != 0:
@@ -270,7 +331,15 @@ def _advance(
     mode: str,
     byte: int | None = None,
 ) -> tuple[_State, str | None]:
-    r"""Execute one instruction of the active frame."""
+    """Execute one instruction of the active frame.
+
+    Pure: it reads ``state`` and returns a new one, and reaches no ``IO``.
+    A ``write`` reports the character it would print and a ``read``'s byte
+    arrives as ``byte``.
+
+    The overflow limits arrive as arguments rather than as state: they come
+    off the directive line and never change.
+    """
     cells, frames = _finalize(state)
     if not frames:
         return (cells, frames), None
@@ -339,10 +408,16 @@ def _advance(
 
 
 class _Machine:
-    r"""Per-run Basicfuck state: the compiled code, tape, and frame stack."""
+    """Per-run Basicfuck state: the compiled code, tape, and frame stack.
+
+    ``step()`` executes one instruction of the active frame; ``halted`` is
+    true once no frame remains.  A while loop whose body never changes its
+    condition is a finite-state cycle the state-cycle hang detector can
+    prove.  The VM and the hang detector expose this object.
+    """
 
     def __init__(self, code: str, io: IO) -> None:
-        r"""Parse and compile ``code`` and start the top-level frame."""
+        """Parse and compile ``code`` and start the top-level frame."""
         self.io = io
         lines = code.split("\n")
         directive = lines[0] if lines else ""
@@ -380,7 +455,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        r"""Whether every scope has completed."""
+        """Whether every scope has completed."""
         return not self.frames
 
     # The VM's language-shaped.
@@ -388,27 +463,38 @@ class _Machine:
 
     @property
     def ip(self) -> int | None:
-        r"""The current instruction position."""
+        """The current instruction position."""
         return self.frames[-1][1] if self.frames else None
 
     @property
     def memory(self) -> list[int]:
-        r"""The addressable cells."""
+        """The addressable cells."""
         return list(self.cells)
 
     @property
     def stack(self) -> list[object]:
-        r"""No stack in this language."""
+        """No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        r"""Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection."""
         # A frame is already a tuple of.
         # in as it stands rather than.
         return (self.cells, self.frames, self.io.position())
 
     def step(self) -> None:
-        r"""Execute one instruction of the active frame."""
+        """Execute one instruction of the active frame.
+
+        The two ports live here rather than in the transition: this is the
+        shell.  A ``read``'s byte is taken before the transition runs and a
+        ``write``'s character is printed after it.
+
+        Whether this instruction reads is decided from the frame the
+        transition will actually run, which is the one left after finishing
+        any completed frames -- not the one on top now.  A ``read`` sitting
+        first in a loop body would otherwise be missed on the lap that
+        re-enters it.
+        """
         if self.halted:
             return
 
@@ -426,7 +512,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    r"""Run a Basicfuck program."""
+    """Run a Basicfuck program."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

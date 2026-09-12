@@ -1,1 +1,1 @@
-r"""Tests for the generators in esolangs.tools."""
+"""Tests for the generators in esolangs.tools."""

@@ -1,4 +1,4 @@
-r"""Execution tests for Super SNUSP and its boolean generator."""
+"""Execution tests for Super SNUSP and its boolean generator."""
 
 from itertools import product
 
@@ -13,7 +13,7 @@ from tests.interpreters.runner import run_program
 
 
 def run_super(program: str, stdin: str = "") -> str:
-    r"""Run a grid program and return its captured output."""
+    """Run a grid program and return its captured output."""
     return run_program(run, program.splitlines(), stdin)
 
 
@@ -48,18 +48,18 @@ def test_decimal_io_and_output() -> None:
 
 
 def test_character_and_decimal_loads_mix_in_one_program() -> None:
-    r"""Letters load as ``H.``, other bytes as decimal literals, in one run."""
+    """Letters load as ``H.``, other bytes as decimal literals, in one run."""
     program = '"H.e.l..o.44.32.W.o.r.l.d.33.10.0.255.'
     assert run_super(program) == "Hello, World!\n\x00\xff"
 
 
 def test_a_decrement_is_shorter_than_reloading_a_nearby_byte() -> None:
-    r"""After a double quote (34), ``!`` is one decrement and output."""
+    """After a double quote (34), ``!`` is one decrement and output."""
     assert run_super('"34.(.') == '"!'
 
 
 def test_a_bare_mode_switch_outputs_nothing() -> None:
-    r"""``"`` alone sets character mode and halts; the empty program raises."""
+    """``"`` alone sets character mode and halts; the empty program raises."""
     assert run_super('"') == ""
 
 
@@ -107,7 +107,7 @@ def test_four_input_generator_executes(table: str) -> None:
 
 
 def test_generator_reduces_unused_inputs_but_reads_them() -> None:
-    r"""Projection saves ANF work without leaving stream input behind."""
+    """Projection saves ANF work without leaving stream input behind."""
     reduced = super_snusp("00001111")  # depends only on the first.
     parity = super_snusp("01101001")
     assert reduced.count(",") == 3
@@ -143,7 +143,13 @@ def test_generator_rejects_invalid_table() -> None:
 def test_the_integer_root_at_its_boundaries(
     value: int, degree: int, expected: int
 ) -> None:
-    r"""``ROOT``'s guards turn on values the wiki's programs never reach."""
+    """``ROOT``'s guards turn on values the wiki's programs never reach.
+
+    The opcode is exercised only through whole programs -- a square root
+    of 4225 and an odd root of a negative -- so zero, a degree of one, and
+    the difference between an exact power and the value just above it were
+    never asked for.
+    """
     assert _floor_root(value, degree) == expected
 
 
@@ -151,7 +157,7 @@ def test_the_integer_root_at_its_boundaries(
 def test_the_integer_root_refuses_what_it_cannot_answer(
     value: int, degree: int
 ) -> None:
-    r"""A non-positive degree, and an even root of a negative value."""
+    """A non-positive degree, and an even root of a negative value."""
     with pytest.raises(HaltError):
         _floor_root(value, degree)
 
@@ -227,7 +233,7 @@ def test_empty_program_is_rejected() -> None:
 
 
 def test_advance_short_circuits_once_the_cursor_has_left_the_grid() -> None:
-    r"""A done state is its own successor, so the shell can stop on it."""
+    """A done state is its own successor, so the shell can stop on it."""
     done = (0, 0, 0, 0, (), (), False, True)
     assert _advance(done, ['"']) == (done, None)
 
@@ -244,7 +250,13 @@ def test_advance_short_circuits_once_the_cursor_has_left_the_grid() -> None:
 def test_advance_refuses_an_input_the_shell_did_not_supply(
     command: str, offset: int | None
 ) -> None:
-    r"""The shell always supplies these, so only a direct call reaches the."""
+    """The shell always supplies these, so only a direct call reaches the guard.
+
+    ``step`` reads a byte for ``,``, a number for ``@`` and a draw for ``=``
+    before it calls the transition, and its own ``EOFError`` arrives first at
+    a real end of input.  The guards are the pure function's contract with
+    any other caller, and this is what holds them.
+    """
     state = (0, 0, 0, 0, ((0, 5),), (1,), False, False)
     with pytest.raises(HaltError):
         _advance(state, [command], random_offset=offset)

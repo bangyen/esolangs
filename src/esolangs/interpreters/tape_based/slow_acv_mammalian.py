@@ -1,4 +1,21 @@
-r"""Interpreter for SLOW ACV MAMMALIAN."""
+"""Interpreter for SLOW ACV MAMMALIAN.
+
+SEED/CONFLAGRATE operate on all 23 arrays, EXCRETE/CONSUME/FISSION/DIGEST on
+the current one, SPRINT moves the pointer, LEAPFROG jumps, ACCEPT reads a byte
+of input, and PRONOUNCE prints the accumulator as a byte.
+
+The wiki defines SPRINT with a too-large ``x`` as a NOP (it does nothing when
+the array has fewer than ``x`` variables), which this interpreter follows;
+LEAPFROG with a negative jump target is undefined by the wiki, so the
+interpreter halts instead of jumping.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
+
+The interpreter runs on a :class:`_Machine` (the 23 arrays, pointer,
+accumulator, and token cursor), so it is step-capable: ``step()`` executes
+one token and ``halted`` is true once the cursor reaches the end of the
+token stream.
+"""
 
 import functools
 import operator
@@ -23,7 +40,19 @@ type _State = tuple[_Arrays, int, int, int, bool]
 
 
 def _total(op: int, arrays: _Arrays) -> _Arrays:
-    r"""Return ``arrays`` after SEED (``op == 0``) or CONFLAGRATE."""
+    """Return ``arrays`` after SEED (``op == 0``) or CONFLAGRATE.
+
+    SEED adds each array's one-based index to its head, modulo a byte, and
+    skips an empty array.  CONFLAGRATE flattens all 23 into one run, walks
+    it from both ends at once, and cuts the result back into the original
+    lengths -- so it moves values across array boundaries, which is why it
+    cannot work array by array.
+
+    The pairing arithmetic is deliberately asymmetric and only partly
+    reduced: the larger side loses ``x // y`` with no wrap, the smaller
+    gains ``y % x`` while the far end loses it.  Cells can leave ``0..255``
+    that way, and reproducing that is the point.
+    """
     if not op:
         # Spelled as a loop rather than.
         # SEED is the whole cost of a.
@@ -62,7 +91,17 @@ def _total(op: int, arrays: _Arrays) -> _Arrays:
 
 
 def _partial(op: int, curr: tuple[int, ...], acc: int) -> tuple[tuple[int, ...], int]:
-    r"""Return the current array and accumulator after one array op."""
+    """Return the current array and accumulator after one array op.
+
+    EXCRETE (2) appends the accumulator as a byte and clears it, CONSUME
+    (3) pops the middle cell into the accumulator, FISSION (4) halves that
+    same cell and hangs the halves off both ends, and DIGEST (anything
+    else) folds the array into the accumulator with XOR.
+
+    The middle is ``(len - 1) // 2``, the lower of the two on an even
+    length.  CONSUME and FISSION have nothing to take from an empty array,
+    so both leave the state alone rather than faulting.
+    """
     if op == 2:
         return ((*curr, acc % 256), 0)
     if op == 3:
@@ -101,7 +140,24 @@ _OPCODE = {name: op for op, name in enumerate(_INS)}
 
 
 def _advance(state: _State, n: int, byte: int | None = None) -> _State:
-    r"""Return the state after executing the token with opcode ``n``."""
+    """Return the state after executing the token with opcode ``n``.
+
+    Pure: it reads ``state`` and returns a new one.  It takes no ``io``
+    argument, so PRONOUNCE changes nothing but the cursor -- printing is
+    the caller's business -- and ACCEPT's byte arrives as ``byte``, already
+    read and already XORed against nothing, since the accumulator it mixes
+    with lives here.
+
+    Two positional rules survive from the original and are required:
+
+    * SPRINT's guard is ``acc < len(curr)``, which a *negative*
+      accumulator also passes, and the index that follows then counts from
+      the far end.  Guarding that away would change which array a program
+      lands on.
+    * LEAPFROG jumps to ``acc - head - 1`` and then takes the trailing
+      advance like every other token, so the cursor ends at ``target + 1``.
+      A negative target halts instead, with the cursor left where it was.
+    """
     arrays, ptr, acc, ind, halted = state
     curr = arrays[ptr]
 
@@ -130,7 +186,7 @@ def _advance(state: _State, n: int, byte: int | None = None) -> _State:
 
 
 class _Machine:
-    r"""One SLOW ACV MAMMALIAN run: the 23 arrays, pointer, acc, and cursor."""
+    """One SLOW ACV MAMMALIAN run: the 23 arrays, pointer, acc, and cursor."""
 
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
@@ -141,7 +197,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        r"""Whether a negative LEAPFROG fired or the cursor reached the end."""
+        """Whether a negative LEAPFROG fired or the cursor reached the end."""
         return self._halted_by_command or self.ind >= len(self.tokens)
 
     # The VM's language-shaped.
@@ -149,21 +205,21 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        r"""The current instruction position."""
+        """The current instruction position."""
         return self.ind
 
     @property
     def memory(self) -> list[int]:
-        r"""The addressable cells."""
+        """The addressable cells."""
         return list(self.lst[self.ptr])
 
     @property
     def stack(self) -> list[object]:
-        r"""The stack."""
+        """The stack."""
         return [row for arr in self.lst for row in arr]
 
     def snapshot(self) -> tuple[object, ...]:
-        r"""Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection."""
         return (
             self.ind,
             self.lst,
@@ -175,7 +231,7 @@ class _Machine:
 
     @property
     def _state(self) -> _State:
-        r"""The machine's fields as the value the transitions work on."""
+        """The machine's fields as the value the transitions work on."""
         return (
             self.lst,
             self.ptr,
@@ -185,11 +241,24 @@ class _Machine:
         )
 
     def _restore(self, state: _State) -> None:
-        r"""Write a transition's result back onto the machine's fields."""
+        """Write a transition's result back onto the machine's fields.
+
+        The fields are this class's published shape -- tests seed ``lst``
+        and read ``ind`` -- so they stay; the one assignment a step makes
+        is here rather than scattered through the rules above.  ``lst``
+        needs no conversion: the field holds the same nested tuple the
+        transition returns.
+        """
         self.lst, self.ptr, self.acc, self.ind, self._halted_by_command = state
 
     def step(self) -> None:
-        r"""Execute one token, advancing (or jumping) the cursor."""
+        """Execute one token, advancing (or jumping) the cursor.
+
+        The two ports live here rather than in the transition: this is the
+        shell, so it is where an effect belongs.  ACCEPT's byte is read
+        here and handed over, and PRONOUNCE prints the accumulator the
+        transition is about to carry forward unchanged.
+        """
         if self.halted:
             return
         n = _OPCODE[self.tokens[self.ind]]
@@ -206,7 +275,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    r"""Run a SLOW ACV MAMMALIAN program."""
+    """Run a SLOW ACV MAMMALIAN program."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

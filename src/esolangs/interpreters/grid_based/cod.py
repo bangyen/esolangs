@@ -1,4 +1,75 @@
-r"""Interpreter for COD."""
+r"""Interpreter for COD.
+
+COD programs are a 2D grid of "waves" (``~``, walls) and "water" (passable
+cells).  A cod is a moving instruction pointer with an unbounded signed
+integer value, starting at 0.  Commands, executed when a cod passes over
+them:
+
+- ``+`` duplicates the cod; ``-`` removes it.
+- ``)``/``(`` increment/decrement the cod's value.
+- ``<`` removes the cod if its value is zero.
+- ``_`` reacts only to upward motion: a cod moving up is sent back down iff
+  its value is nonzero; otherwise it is a no-op.
+- ``---`` (three dashes with nothing between, touching the left or right
+  edge) prints the cod's value -- with no separator, per the wiki's bare
+  "output the cod's value" -- and removes it; the same three characters
+  anywhere else are three separate ``-`` removals.
+- ``...`` (three periods with nothing between, touching the top or bottom
+  edge) reads a number from stdin into the cod's value; elsewhere it is
+  ignored (water).
+
+The wiki's own truth-machine example does contain a valid ``...``: column 2,
+rows 0-2, touching the top edge, which :func:`_edge_dot_cells` accepts.  (The
+dots in the neighbouring columns do not break it -- the spec's "without any
+waves or other characters in between" constrains the run along its own
+column.)
+
+Each of the three dot cells is its own read, so the read count depends on how
+a cod meets the run: crossing horizontally enters one cell and reads once,
+while turning *into* the column reads three times for what the spec calls a
+single command.  A generator wanting one read per input must cross
+horizontally.
+
+A cod continues straight when its forward cell is open.  When forward is
+blocked, it considers every other open cell except the one it just left: one
+open cell is a forced turn, none is a dead end (it reverses), and two or more
+is a random junction.  ``+`` is different: it counts the open cells *besides*
+the one the cod entered from (so on a straight corridor, "2 branches" means
+forward and back, i.e. no real fork) and splits deterministically among the
+forward-facing options — this matches the wiki's "if there are two branches,
+one will continue and one will go back; if there are three, they will each
+go different forward branches" (the fourth "otherwise random" case cannot
+occur on a rectangular grid, where at most three cells besides the entry
+exist).  The program terminates once no cod remains.
+
+Malformed programs -- an unknown instruction, no ``>`` start marker, more
+than one of them, or a start that is fully enclosed -- raise
+:class:`ValueError`.  A read also raises :class:`ValueError` when the line
+it is given is not an integer, since a read parses its line as a number.
+
+``run()`` has no local step cap: a cod with nowhere to die simply keeps
+swimming, the same growth class ``+[>+]`` hits in brainfuck, and
+``esolangs.run(timeout=)`` is the uniform backstop for that class across
+every language here, not a per-interpreter bound.  An earlier version of
+this docstring argued COD's own ``limit`` was different in kind --
+"duration, not guard" -- because raising past it would turn the wiki's
+truth machine, which loops forever by design, into an error.  That
+argument does not survive execution: the truth machine's partial output
+lives in ``io`` as it is printed, so a caller stopping the loop after
+``timeout`` still has every character printed so far, exactly as
+Polynomial and Decleq's callers do.  A caller wanting to tell "still
+running" from "every cod died" steps the machine itself and reads
+``halted``.
+
+The wiki does not say what a read does once stdin is exhausted.  ``EOF``
+propagates here rather than being taken as a value: a cod's value is an
+unbounded signed integer, so there is no in-band number that could stand
+for "no input" the way a zero byte does in a byte-celled language, and
+inventing one would make an exhausted read indistinguishable from reading
+a real 0.  The move onto the dot is committed before the read is taken, so
+the machine's state stays consistent when the port raises -- a cod that
+died reading sits on the dot it swam to, not the cell behind it.
+"""
 
 import sys
 from collections.abc import Sequence
@@ -26,7 +97,7 @@ _COMMANDS = set("+-)(<_")
 
 
 def _edge_dash_cells(grid: Sequence[str]) -> set[tuple[int, int]]:
-    r"""Cells belonging to a ``---`` run that touches the left or right."""
+    """Cells belonging to a ``---`` run that touches the left or right edge."""
     width = len(grid[0]) if grid else 0
     cells: set[tuple[int, int]] = set()
     for r, row in enumerate(grid):
@@ -44,7 +115,7 @@ def _edge_dash_cells(grid: Sequence[str]) -> set[tuple[int, int]]:
 
 
 def _edge_dot_cells(grid: Sequence[str]) -> set[tuple[int, int]]:
-    r"""Cells belonging to a ``...`` run that touches the top or bottom."""
+    """Cells belonging to a ``...`` run that touches the top or bottom edge."""
     height = len(grid)
     width = len(grid[0]) if grid else 0
     cells: set[tuple[int, int]] = set()
@@ -64,7 +135,11 @@ def _edge_dot_cells(grid: Sequence[str]) -> set[tuple[int, int]]:
 
 @dataclass(frozen=True)
 class _Cod:
-    r"""A single instruction pointer: position, heading, and value."""
+    """A single instruction pointer: position, heading, and value.
+
+    Frozen, because the cods *are* the state: a step maps each one forward
+    into zero, one, or several successors rather than editing it in place.
+    """
 
     r: int
     c: int
@@ -73,21 +148,21 @@ class _Cod:
 
 
 def _cell(grid: Sequence[str], r: int, c: int) -> str:
-    r"""Return the character at ``(r, c)``; off the grid reads as water."""
+    """Return the character at ``(r, c)``; off the grid reads as water."""
     if r < 0 or r >= len(grid) or c < 0 or c >= len(grid[0]):
         return "~"
     return grid[r][c]
 
 
 def _open(grid: Sequence[str], r: int, c: int) -> bool:
-    r"""Whether a cod can swim into ``(r, c)``."""
+    """Whether a cod can swim into ``(r, c)``."""
     return _cell(grid, r, c) != "~"
 
 
 def _open_dirs(
     grid: Sequence[str], r: int, c: int, exclude: _Direction | None = None
 ) -> list[_Direction]:
-    r"""Return the headings out of ``(r, c)`` that are not water."""
+    """Return the headings out of ``(r, c)`` that are not water."""
     return [
         d
         for d, (dr, dc) in _DIRS.items()
@@ -100,14 +175,14 @@ def _open_dirs(
 # : list -- Eval's shape, for.
 @dataclass(frozen=True)
 class _Print:
-    r"""Write a cod's value."""
+    """Write a cod's value."""
 
     value: int
 
 
 @dataclass(frozen=True)
 class _Read:
-    r"""Take a number; the cod that asked is at ``index`` in the new list."""
+    """Take a number; the cod that asked is at ``index`` in the new list."""
 
     index: int
 
@@ -141,7 +216,16 @@ def _step_cod(
     dots: AbstractSet[tuple[int, int]],
     turn: int | None,
 ) -> tuple[list[_Cod], list[_Effect]]:
-    r"""Return the cods that follow ``cod``, and what it wants done."""
+    """Return the cods that follow ``cod``, and what it wants done.
+
+    Pure: it reads its arguments and returns a description.  A cod that
+    reaches a dash on the border prints and dies, one that reaches a dot
+    reads, one that meets a bare dash or a failed zero-test dies, and one
+    that meets a junction becomes several.
+
+    ``turn`` is the caller's draw, used only when more than one way out is
+    open; everything else about the move is decided here.
+    """
     dr, dc = _DIRS[cod.d]
     if _open(grid, cod.r + dr, cod.c + dc):
         move_dir = cod.d
@@ -185,7 +269,15 @@ def _step_cod(
 
 
 class _Machine:
-    r"""Per-run COD state: the grid and every live cod."""
+    """Per-run COD state: the grid and every live cod.
+
+    ``step()`` advances every live cod by one cell and executes the command
+    it lands on; ``halted`` is true once no cod remains.  Randomness (a
+    genuine multi-way junction, or a ``+`` split beyond three branches,
+    which cannot occur on a rectangular grid) is drawn for real by
+    default; ``rng`` overrides it for reproducible stepping (the VM and
+    tests), and is the shared hook every random language here uses.
+    """
 
     # : The seed a reproducible run.
     # : language, not to whoever is.
@@ -259,7 +351,12 @@ class _Machine:
 
     @property
     def ip(self) -> tuple[int, ...]:
-        r"""Every live cod's ``(row, col, heading, value)``, flattened."""
+        """Every live cod's ``(row, col, heading, value)``, flattened.
+
+        A COD program can have several cods running at once, so there is no
+        single cursor: they are sorted for a stable order and concatenated,
+        with the heading coded as its index into ``_DIRS`` above.
+        """
         order = list(_DIRS)
         cods = sorted(
             (cod.r, cod.c, order.index(cod.d), cod.value) for cod in self.cods
@@ -268,16 +365,16 @@ class _Machine:
 
     @property
     def memory(self) -> list[int]:
-        r"""Each live cod's carried value."""
+        """Each live cod's carried value."""
         return [cod.value for cod in self.cods]
 
     @property
     def stack(self) -> list[object]:
-        r"""No stack in this language."""
+        """No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        r"""Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection."""
         return (
             tuple(sorted((cod.r, cod.c, cod.d, cod.value) for cod in self.cods)),
             self.io.position(),
@@ -289,18 +386,42 @@ class _Machine:
     # carries: a read declines.
 
     def branching_snapshot(self) -> _BranchState:
-        r"""Return the pre-launch start state for a branching search."""
+        """Return the pre-launch start state for a branching search.
+
+        A start marker with more than one way out draws its heading in the
+        constructor, so that draw belongs to the search rather than to the
+        machine that already made it.  ``None`` marks the cod as unlaunched
+        and :meth:`branching_successors` opens it into every open direction;
+        a marker with exactly one exit has no choice to quantify over, and a
+        grid with no cod at all is simply halted.
+        """
         return None if self._launch else self.cods
 
     def branching_halted(self, state: object) -> bool:
-        r"""Report whether ``state`` has no cod left."""
+        """Report whether ``state`` has no cod left.
+
+        The unlaunched state is never halted: it stands for a cod waiting
+        for its heading, which is a whole run ahead rather than an empty
+        pond.
+        """
         cods = cast(_BranchState, state)
         return cods is not None and not cods
 
     def branching_successors(
         self, state: object, _limit: int
     ) -> tuple[_BranchState, ...] | None:
-        r"""Return the state for every draw this tick could make."""
+        """Return the state for every draw this tick could make.
+
+        Mirrors :meth:`step`, which advances *every* live cod in one public
+        step and draws separately for each one that is blocked.  So a tick's
+        outcomes are the product of the per-cod choices, not one choice --
+        the successors are built by extending a frontier of partial ticks,
+        one cod at a time, exactly as the step walks them in order.
+
+        A read returns ``None`` rather than being forked: the sibling ticks
+        would have to share one input cursor.  Prints are dropped, since
+        output cannot change what a later cod does.
+        """
         cods = cast(_BranchState, state)
         if cods is None:
             launch = self._launch
@@ -345,17 +466,25 @@ class _Machine:
 
     @property
     def _state(self) -> _State:
-        r"""The complete changing state at a cod-tick boundary."""
+        """The complete changing state at a cod-tick boundary."""
         return self.cods
 
     def _restore(self, state: _State) -> None:
-        r"""Write a tick transition back onto the machine shell."""
+        """Write a tick transition back onto the machine shell."""
         self.cods = state
 
     # -- stepping.
 
     def step(self) -> None:
-        r"""Advance every live cod by one cell, executing what it lands on."""
+        """Advance every live cod by one cell, executing what it lands on.
+
+        The ports live here rather than in the transition: this is the
+        shell.  A cod that reaches a dash on the border prints, and one
+        that reaches a dot reads -- both in cod order, so a step with
+        several live cods writes what they write in the order they are
+        carried.  A junction's draw is made here too, and only when more
+        than one way out is open.
+        """
         state = self._state
         if not state:
             return
@@ -388,7 +517,7 @@ class _Machine:
 
 
 def run(code: str, io: IO, rng: Randomness | None = None) -> None:
-    r"""Run a COD program until no cod remains."""
+    """Run a COD program until no cod remains."""
     machine = _Machine(code, io, rng=rng)
     while not machine.halted:
         machine.step()

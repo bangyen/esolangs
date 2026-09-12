@@ -1,4 +1,18 @@
-r"""Unit tests for the ROTfuck interpreter."""
+"""Unit tests for the ROTfuck interpreter.
+
+The rotation makes a raw program's characters drift along ``+-><,.[]``, so
+the interesting property is that a position ``i`` whose source character is
+the ``i``-fold inverse rotation of a command executes exactly that command
+when the pointer reaches it.  ``build`` encodes a sequence of *effective*
+commands that way, letting the tests read like plain brainfuck while pinning
+the rotation semantics.
+
+Brackets match dynamically: when a ``[`` or ``]`` fires it rotates the
+program first and then seeks for its partner in the rotated program, so
+partners need not (and usually do not) exist at the same positions in the
+source.  A bracket that fires with no partner in the rotated program is a
+runtime error.
+"""
 
 import contextlib
 
@@ -17,7 +31,11 @@ _CHAIN = "+-><,.[]"
 
 
 def build(commands: str) -> str:
-    r"""Encode ``commands`` as a ROTfuck program."""
+    """Encode ``commands`` as a ROTfuck program.
+
+    The character at position ``i`` is the ``i``-fold inverse rotation of
+    the command it should execute when the pointer reaches it.
+    """
     return "".join(_CHAIN[(_CHAIN.index(c) - i) % 8] for i, c in enumerate(commands))
 
 
@@ -49,16 +67,28 @@ class TestTape:
         assert run_program(build("++>++<.>.>")) == "\x02\x02"
 
     def test_left_clamped(self) -> None:
-        r"""< at the left edge does nothing (matches the Brainfuck semantics)."""
+        """< at the left edge does nothing (matches the Brainfuck semantics)."""
         assert run_program(build("<<.")) == "\x00"
 
     def test_right_moves_one_cell_each_time(self) -> None:
-        r"""``>`` advances the pointer rather than setting it."""
+        """``>`` advances the pointer rather than setting it.
+
+        A pointer that jumped to a fixed cell still prints the same values
+        while every write lands where it is read -- so the test has to mark
+        one cell and then print a *different* one.  Here cell 1 is set to
+        2 and two further moves put the pointer on cell 3, which is empty:
+        a pointer that returned to 1 would print the mark instead.
+        """
         assert run_program(build(">++>>.")) == "\x00"
         assert run_program(build(">>>+.")) == "\x01"
 
     def test_minus_decrements_the_current_cell(self) -> None:
-        r"""``-`` is its own command, distinct from the other seven."""
+        """``-`` is its own command, distinct from the other seven.
+
+        The wrap test reaches 0 by adding 256 times, so ``-`` was only ever
+        seen through a cell that was already going to be zero.  One
+        decrement from a fresh cell gives 255, which nothing else does.
+        """
         assert run_program(build("-.")) == "\xff"
         assert run_program(build("--.")) == "\xfe"
 
@@ -68,7 +98,16 @@ class TestTape:
         assert run_program("xyz") == ""
 
     def test_comments_do_not_rotate_the_program(self) -> None:
-        r"""A comment is passed over, not executed, so it does not rotate."""
+        """A comment is passed over, not executed, so it does not rotate.
+
+        The spec rotates "every time an instruction is executed", and a
+        comment character is not an instruction.  Only a *mid-program*
+        comment can show this: a trailing one cannot affect output that
+        has already been printed, which is why the case above passes
+        either way.  Here the comments sit between the ``+`` and the
+        ``.``, so a comment that rotated would advance the ``.`` along
+        the cycle and print the wrong byte (or turn it into a bracket).
+        """
         expected = run_program(build("+."))
         assert expected == "\x01"
         for comment in ("x", "xxx", "   ", "\n", "hello world"):
@@ -82,7 +121,15 @@ class TestIO:
         assert run_program(build(",>,<.>."), "A\nB") == "AB"
 
     def test_an_input_character_above_255_is_taken_modulo_256(self) -> None:
-        r"""``,`` writes a cell, so it reduces as ``+`` and ``-`` do."""
+        """``,`` writes a cell, so it reduces as ``+`` and ``-`` do.
+
+        Only a code point above 255 reaches this: an ASCII character is
+        already its own residue, so the echo above cannot tell a reduced
+        read from an unreduced one.  It used to be unreduced, putting the
+        raw code point on the 8-bit tape the module documents, and leaving
+        the cell disagreeing with itself -- ``,+`` reduced where ``,``
+        alone did not.
+        """
         assert run_program(build(",."), "Ā") == "\x00"
         assert run_program(build(",."), "ā") == "\x01"
         assert run_program(build(",+."), "Ā") == "\x01"
@@ -95,27 +142,39 @@ class TestIO:
 
 class TestBrackets:
     def test_wiki_cat_example_runs(self) -> None:
-        r"""The wiki's `,[` cat no longer errors: the ] finds a [ dynamically."""
+        """The wiki's `,[` cat no longer errors: the ] finds a [ dynamically."""
         assert run_program(",[", "x") == ""
 
     def test_backward_jump_fires_in_rotated_program(self) -> None:
-        r"""A ] fires, rotates, and jumps back to a [ found in the result."""
+        """A ] fires, rotates, and jumps back to a [ found in the result.
+
+        In ``+<.]>`` the fired ``]`` first jumps back to the ``[`` of ``[+``
+        and later to the ``[`` of ``[-<.``: neither partner exists in the
+        source, so a static match (as a raw brainfuck would do) has no
+        target at all.
+        """
         assert run_program("+<.]>", "x") == ""
 
     def test_forward_skip_over_nested_bracket(self) -> None:
-        r"""A skipped ``[`` seeks its partner past a nested ``[``."""
+        """A skipped ``[`` seeks its partner past a nested ``[``."""
         assert run_program("[[.].]") == ""
 
     def test_forward_skip_passes_a_nested_closer(self) -> None:
-        r"""The scan steps over a ``]`` that closes the *inner* pair."""
+        """The scan steps over a ``]`` that closes the *inner* pair.
+
+        ``[[.].]`` above enters at depth 1 and meets its partner first; here
+        the skipped ``[`` opens over a nested pair, so the first ``]`` the
+        scan reaches is at depth 2 and must not end it.  The program prints
+        after the skipped body, which a scan that stopped early would miss.
+        """
         assert run_program(build(".[[+-")) == "\x00"
 
     def test_backward_jump_over_nested_bracket(self) -> None:
-        r"""A fired ``]`` jumps back across a nested ``]`` in the rotation."""
+        """A fired ``]`` jumps back across a nested ``]`` in the rotation."""
         assert run_program("<+..>[]") == "\x01"
 
     def test_unmatched_bracket_halts_when_executed(self) -> None:
-        r"""A fired bracket with no partner in the rotated program errors."""
+        """A fired bracket with no partner in the rotated program errors."""
         with pytest.raises(HaltError):
             run_program("[.]")
         with pytest.raises(HaltError):
@@ -126,18 +185,33 @@ class TestBrackets:
             run_program("[")
 
     def test_unmatched_bracket_that_never_runs_is_fine(self) -> None:
-        r"""Unbalanced sources are legal; only execution matters."""
+        """Unbalanced sources are legal; only execution matters."""
         assert run_program(build(".")) == "\x00"
 
     def test_a_nested_opener_is_counted_when_no_partner_exists(self) -> None:
-        r"""The seek counts nesting even on the way to failing."""
+        """The seek counts nesting even on the way to failing.
+
+        Both seeks are usually watched through a jump that *succeeds*,
+        where a miscounted opener still tends to land on some closer.
+        These programs have no partner at all, so the count is the only
+        thing that decides -- a seek that ignores a nested opener, or that
+        pins its depth at one, finds a false partner and the program runs
+        on instead of halting.
+        """
         with pytest.raises(HaltError):
             run_program(build("[[+"))
         with pytest.raises(HaltError):
             run_program(build("+[<.]"))
 
     def test_the_partnerless_bracket_message_names_which_one_fired(self) -> None:
-        r"""Each direction reports its own bracket, and the text is pinned."""
+        """Each direction reports its own bracket, and the text is pinned.
+
+        The cases above only check that *something* halted, so the two
+        messages were free to be rewritten or swapped -- and a bare
+        ``HaltError`` with no message at all reads the same to
+        ``pytest.raises``.  Asserting the string separates the forward seek
+        from the backward one.
+        """
         with pytest.raises(HaltError) as caught:
             run_program(build("["))
         assert str(caught.value) == "an executed '[' has no bracket partner"
@@ -171,7 +245,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
-    r"""The shared empty-program shape, with this language's data."""
+    """The shared empty-program shape, with this language's data."""
 
     run = staticmethod(run_program)
     machine = staticmethod(_machine)

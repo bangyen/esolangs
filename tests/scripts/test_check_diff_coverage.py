@@ -1,4 +1,21 @@
-r"""The touched-file gate holds branches to the rule it holds lines to."""
+"""The touched-file gate holds branches to the rule it holds lines to.
+
+``scripts/check_diff_coverage.py`` fails a branch that leaves a statement no
+test runs in a file it touched.  It does the same for a *branch* that only
+ever goes one way, which is a different failure: the line executed, so the
+line check passes, and only the arc records that the other side was never
+taken.
+
+The unit is the file, not the hunk: the diff picks which files are judged and
+the whole file is then judged, so an uncovered line or one-sided arc anywhere
+in a touched file fails.  That is deliberate -- checking only the added lines
+let a fix land beside uncovered code and pass, which is how a file drifts
+while every individual change looks clean.
+
+Fail-open still matters as much as the check itself: a run that collected no
+branch data must skip the arc check rather than fail every file for lacking
+it.
+"""
 
 import importlib.util
 import json
@@ -14,7 +31,7 @@ SCRIPT = REPO_ROOT / "scripts" / "check_diff_coverage.py"
 
 
 def load_script() -> Any:
-    r"""Import the gate as a module, mirroring the other script tests."""
+    """Import the gate as a module, mirroring the other script tests."""
     spec = importlib.util.spec_from_file_location("check_diff_coverage", SCRIPT)
     assert spec is not None
     assert spec.loader is not None
@@ -30,7 +47,12 @@ def run_gate(
     *,
     partial: bool = False,
 ) -> tuple[int, str]:
-    r"""Run ``main`` against a stubbed diff and stubbed coverage payload."""
+    """Run ``main`` against a stubbed diff and stubbed coverage payload.
+
+    The two inputs the gate reads from the outside -- the branch diff and the
+    coverage JSON -- are replaced, so the test pins the gate's own decision
+    rather than whatever the repository happens to look like.
+    """
     gate = load_script()
     gate._added_lines = lambda _base: added  # noqa: SLF001
     gate._diff_base = lambda: "BASE"  # noqa: SLF001
@@ -61,7 +83,7 @@ def record(
     executed_branches: list[list[int]] | None = None,
     missing_branches: list[list[int]] | None = None,
 ) -> dict[str, Any]:
-    r"""Build one file's coverage record in the shape ``coverage json``."""
+    """Build one file's coverage record in the shape ``coverage json`` emits."""
     got: dict[str, Any] = {
         "executed_lines": executed,
         "missing_lines": missing,
@@ -79,7 +101,7 @@ PATH = "src/esolangs/demo.py"
 
 class TestAddedBranches:
     def test_an_added_one_sided_branch_fails(self, tmp_path: Path) -> None:
-        r"""The line ran, so only the arc can report the untaken side."""
+        """The line ran, so only the arc can report the untaken side."""
         files = {
             PATH: record(
                 [10, 11],
@@ -95,7 +117,7 @@ class TestAddedBranches:
         assert "line 10 never continues to line 12" in out
 
     def test_an_untaken_exit_is_named_as_one(self, tmp_path: Path) -> None:
-        r"""Coverage spells "never left the function" as a negative target."""
+        """Coverage spells "never left the function" as a negative target."""
         files = {
             PATH: record(
                 [10],
@@ -112,7 +134,13 @@ class TestAddedBranches:
     def test_an_untaken_arc_outside_the_diff_still_fails_the_file(
         self, tmp_path: Path
     ) -> None:
-        r"""Touching a file answers for its one-sided branches too."""
+        """Touching a file answers for its one-sided branches too.
+
+        This is the case the whole-file rule exists for: the branch edited
+        line 10 and left a one-sided arc at line 40 alone.  Judging only the
+        added lines passed it, which is how an uncovered arc survives every
+        individual change that walks past it.
+        """
         files = {
             PATH: record(
                 [10, 40],
@@ -145,14 +173,18 @@ class TestAddedBranches:
 
 class TestWithoutBranchData:
     def test_a_line_only_run_skips_the_arc_check(self, tmp_path: Path) -> None:
-        r"""``pytest --cov`` without ``--cov-branch`` must still pass the gate."""
+        """``pytest --cov`` without ``--cov-branch`` must still pass the gate.
+
+        The record carries no ``num_branches``, so there is nothing to judge
+        -- failing here would block every run that did not ask for arcs.
+        """
         files = {PATH: record([10, 11], [])}
         code, out = run_gate(tmp_path, files, {PATH: {10, 11}})
         assert code == 0
         assert "branch(es)" not in out
 
     def test_an_uncovered_line_still_fails(self, tmp_path: Path) -> None:
-        r"""The line rule is unchanged by the arc rule."""
+        """The line rule is unchanged by the arc rule."""
         files = {PATH: record([10], [11])}
         code, out = run_gate(tmp_path, files, {PATH: {10, 11}})
         assert code == 1
@@ -163,7 +195,7 @@ class TestPartial:
     def test_partial_reports_an_untaken_branch_without_failing(
         self, tmp_path: Path
     ) -> None:
-        r"""A subset run cannot tell an untaken arc from a deselected test."""
+        """A subset run cannot tell an untaken arc from a deselected test."""
         files = {
             PATH: record(
                 [10],
@@ -182,7 +214,11 @@ class TestPartial:
 class TestTheGateRuns:
     @pytest.mark.slow
     def test_the_script_executes_against_the_real_repository(self) -> None:
-        r"""A smoke test that the module's own wiring still runs end to end."""
+        """A smoke test that the module's own wiring still runs end to end.
+
+        It is fail-open by design, so the exit code is not asserted -- only
+        that invoking it neither crashes nor hangs.
+        """
         got = subprocess.run(
             [sys.executable, str(SCRIPT), "--partial"],
             capture_output=True,
@@ -199,7 +235,12 @@ class TestCoverageJsonShape:
     # 1.6s: it shells out to a real.
     @pytest.mark.slow
     def test_the_stub_matches_what_coverage_actually_emits(self) -> None:
-        r"""The stubbed record above has to look like the real payload."""
+        """The stubbed record above has to look like the real payload.
+
+        A test built on an invented shape would keep passing while the gate
+        read fields coverage does not emit, so the field names are checked
+        against a real ``coverage json`` document once.
+        """
         got = subprocess.run(
             [
                 sys.executable,

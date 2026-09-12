@@ -1,4 +1,38 @@
-r"""Interpreter for BFStack."""
+"""Interpreter for BFStack.
+
+Brainfuck-style commands on a stack: > pushes 0, < pops, + and - adjust the
+top, . prints it, , pushes a byte of input, and [ ] loop while the top is
+nonzero.  A pop or output on an empty stack is invalid and halts the program.
+
+The execution model is a pure function over an immutable ``_State``:
+:func:`_advance` maps a state and a command to the next state, and never
+mutates what it is given.  It takes no ``io`` argument at all, so it is
+total and side-effect free by construction rather than by inspection.  Both
+stacks are tuples, so a state is a value that can be stored, compared, and
+hashed as it stands.
+
+Keeping the transition *total* takes one extra piece here, because six of
+BFStack's commands can fail on an empty stack.  :func:`_needs_operand` says
+which commands require one, so the shell can reject an invalid step before
+calling the transition -- rather than the transition having a raise in six
+branches.  The scan for a matching ``]`` can likewise fail, so
+:func:`_forward` returns ``None`` for an unmatched ``[`` and the shell
+turns that into the error.
+
+:class:`_Machine` is the mutable shell the interpreter protocol requires.
+It holds one ``_State`` and rebinds it each step, so the mutation lives in
+exactly one assignment and every rule about what BFStack *does* stays in
+the pure layer.
+
+The wiki does not specify the cell width for ``+``/``-``; this interpreter
+wraps at 8 bits (mod 256).  It also raises :class:`EOFError` on exhausted
+input, :class:`HaltError` on an invalid empty-stack operation, and
+:class:`ValueError` on an unmatched ``[``.
+
+``step()`` executes one command and ``halted`` is true once the cursor
+reaches the end of the code, making a ``[`` loop whose top never zeroes a
+finite-state cycle the state cycle detector can prove.
+"""
 
 from __future__ import annotations
 
@@ -28,12 +62,17 @@ _NEEDS_OPERAND = frozenset("<+-.[")
 
 
 def _needs_operand(char: str) -> bool:
-    r"""Whether ``char`` requires a non-empty data stack to run."""
+    """Whether ``char`` requires a non-empty data stack to run."""
     return char in _NEEDS_OPERAND
 
 
 def _forward(code: str, ind: int) -> int | None:
-    r"""Return the position of the ``]`` matching the ``[`` at ``ind``."""
+    """Return the position of the ``]`` matching the ``[`` at ``ind``.
+
+    ``None`` when the bracket is unmatched, which the caller turns into a
+    :class:`ValueError` -- returning it rather than raising is what keeps
+    the transition below free of error cases.
+    """
     match = 1
     while match:
         ind += 1
@@ -47,7 +86,19 @@ def _forward(code: str, ind: int) -> int | None:
 
 
 def _advance(state: _State, code: str, byte: int | None = None) -> _State:
-    r"""Return the state after executing the command at the cursor."""
+    """Return the state after executing the command at the cursor.
+
+    Pure, and total: every command it can be handed has a defined successor
+    state, because the shell has already rejected the empty-stack cases and
+    resolved the unmatched-bracket one.  It takes no ``io`` argument, so
+    ``.`` and ``,`` are the caller's business -- ``.`` changes no state at
+    all, and ``,``'s byte arrives as ``byte``, already read.
+
+    ``]`` jumps to one before the position the matching ``[`` pushed, so
+    the shared increment below lands back *on* the ``[`` and re-tests it.
+    Anything that is not a command is a comment and falls through to that
+    same increment.
+    """
     ind, stk, lst = state
     char = code[ind]
     if char == ">":
@@ -75,10 +126,17 @@ def _advance(state: _State, code: str, byte: int | None = None) -> _State:
 
 
 class _Machine:
-    r"""A BFStack run: one immutable ``_State``, rebound per step."""
+    """A BFStack run: one immutable ``_State``, rebound per step.
+
+    The protocol the rest of the library expects (``step``, ``halted``,
+    ``snapshot``, and the ``stk``/``lst``/``ind`` attributes) is mutable by
+    construction, so this class supplies it.  All it does is hold the
+    current state and the code; the rules themselves are the pure functions
+    above.
+    """
 
     def __init__(self, code: str, io: IO) -> None:
-        r"""Start with an empty data stack and loop stack."""
+        """Start with an empty data stack and loop stack."""
         self.io = io
         self.code = code
         # ``halted`` is read twice per.
@@ -103,7 +161,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        r"""Whether the cursor has reached the end of the code."""
+        """Whether the cursor has reached the end of the code."""
         return self.state[0] >= self.size
 
     # The VM's language-shaped view.
@@ -112,30 +170,35 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        r"""The code cursor."""
+        """The code cursor."""
         return self.state[0]
 
     @property
     def memory(self) -> list[int]:
-        r"""BFStack addresses no cells; its store is the stack."""
+        """BFStack addresses no cells; its store is the stack."""
         return []
 
     @property
     def stack(self) -> list[int]:
-        r"""The data stack, bottom first."""
+        """The data stack, bottom first."""
         # A list, because that is the.
         # It is a fresh one every time.
         # into a running machine -- the.
         return list(self.state[1])
 
     def snapshot(self) -> tuple[object, ...]:
-        r"""Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection."""
         # Both stacks are already.
         ind, stk, lst = self.state
         return (stk, lst, ind, self.io.position())
 
     def step(self) -> None:
-        r"""Execute one command, advancing the cursor."""
+        """Execute one command, advancing the cursor.
+
+        The two I/O effects and all three error cases live here rather than
+        in the transition: this is the shell, so it is where an effect or a
+        raise belongs, and it leaves :func:`_advance` total.
+        """
         if self.halted:
             return
         ind, stk, lst = self.state
@@ -163,7 +226,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    r"""Run a BFStack program, halting on an invalid empty-stack operation."""
+    """Run a BFStack program, halting on an invalid empty-stack operation."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

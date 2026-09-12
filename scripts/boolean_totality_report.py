@@ -1,4 +1,22 @@
-r"""Classify each boolean generator by the machinery it actually."""
+"""Classify each boolean generator by the machinery it actually reaches.
+
+What keeps the totality table in ``docs/proofs.md`` honest: it is the set
+of rows that goes stale silently, since a generator gaining a loop or a
+refusal looks exactly like one that always had neither.  Re-run this when
+that table is in question and diff the two columns against it.
+
+Module-level grep is too coarse: one module holds a dozen generators and
+they do not share callees.  This walks the call graph from each
+generator's own function and reports every unbounded loop and every raise
+inside the reachable set.
+
+Resolution is *import-aware*, which is the whole difficulty.  A name-only
+graph links any call to every definition sharing its name, and the private
+helpers here collide across modules -- it put Minifuck inside 123's
+constructor, which Minifuck does not import.  A name is resolved here to a
+definition in the caller's own module, or to the module the caller's
+``from ... import`` names, and to nothing otherwise.
+"""
 
 import ast
 import importlib
@@ -38,7 +56,7 @@ for info in pkgutil.iter_modules(boolean.__path__):
 
 
 def calls(node: ast.AST) -> set[str]:
-    r"""Every name this function calls, by attribute or plain name."""
+    """Every name this function calls, by attribute or plain name."""
     out: set[str] = set()
     for sub in ast.walk(node):
         if isinstance(sub, ast.Call):
@@ -51,7 +69,7 @@ def calls(node: ast.AST) -> set[str]:
 
 
 def resolve(module: str, name: str) -> Key | None:
-    r"""Where a call to ``name`` inside ``module`` lands, if anywhere here."""
+    """Where a call to ``name`` inside ``module`` lands, if anywhere here."""
     if (module, name) in NODES:
         return module, name
     origin = IMPORTS[module].get(name)
@@ -61,7 +79,7 @@ def resolve(module: str, name: str) -> Key | None:
 
 
 def reach(start: Key) -> set[Key]:
-    r"""Every (module, function) reachable from ``start`` inside the."""
+    """Every (module, function) reachable from ``start`` inside the package."""
     seen: set[Key] = set()
     stack = [start]
     while stack:
@@ -78,7 +96,7 @@ def reach(start: Key) -> set[Key]:
 
 
 def unbounded(node: ast.AST) -> int:
-    r"""How many ``while True`` loops sit inside this function."""
+    """How many ``while True`` loops sit inside this function."""
     return sum(
         isinstance(sub, ast.While)
         and isinstance(sub.test, ast.Constant)
@@ -97,7 +115,13 @@ for info in pkgutil.iter_modules(boolean.__path__):
 
 
 def raised(module: str, node: ast.AST) -> set[tuple[str, int, bool]]:
-    r"""Raise sites: exception name, line, and whether a pragma calls it."""
+    """Raise sites: exception name, line, and whether a pragma calls it dead.
+
+    ``# pragma: no cover`` beside a raise is the code's own claim that the
+    site is unreachable -- which is exactly a totality claim, made where
+    the guard is.  It can sit on the ``raise`` line or on the closing
+    paren of a multi-line one, so the whole statement's span is scanned.
+    """
     out: set[tuple[str, int, bool]] = set()
     src = LINES[module]
     for sub in ast.walk(node):

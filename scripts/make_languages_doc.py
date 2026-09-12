@@ -1,4 +1,11 @@
-r"""Generate docs/languages.md and the README's Implemented Languages."""
+"""Generate docs/languages.md and the README's Implemented Languages list.
+
+Walks the registry to produce the language capability matrix
+(docs/languages.md) and the grouped, wiki-linked language list in the
+README, so neither page goes stale the way a hand-maintained list would.
+Every column derives from the registry or a capability set -- never from
+which files happen to sit in examples/.
+"""
 
 import pathlib
 import textwrap
@@ -68,17 +75,21 @@ _BOOLEAN_COUNT_END = "<!-- BOOLEAN-COUNT:END -->"
 
 
 def _wiki_name(name: str) -> str:
-    r"""Return the esolangs wiki page title for the displayed language name."""
+    """Return the esolangs wiki page title for the displayed language name."""
     return name
 
 
 def _wiki_link(name: str) -> str:
-    r"""Return the language's wiki URL, built by the registry so the two."""
+    """Return the language's wiki URL, built by the registry so the two agree.
+
+    This used to build its own slug, which meant the README and
+    ``describe`` each had a copy of the same escaping bug.
+    """
     return wiki_url(_wiki_name(name))
 
 
 def _source_link(name: str) -> str:
-    r"""Return the GitHub URL of the language's Python interpreter."""
+    """Return the GitHub URL of the language's Python interpreter."""
     module = RUNNERS[name][0]
     path = module.replace(".", "/")
     return (
@@ -88,7 +99,13 @@ def _source_link(name: str) -> str:
 
 
 def _template_list() -> str:
-    r"""Return the parameterized languages as one wrapped Markdown line."""
+    """Return the parameterized languages as one wrapped Markdown line.
+
+    Derived from the registry rather than written out.  The hand-kept
+    version named fifteen languages and three different subsets appeared in
+    three documents; the two it left out (123 and Home Row) emit a `{Xi}`
+    slot like the rest.
+    """
     ids = parameterized_ids()
     names = sorted(name for name, lang in LANGUAGES.items() if lang.id in ids)
     return textwrap.fill(", ".join(names) + ".", width=72)
@@ -104,7 +121,7 @@ def _capabilities(name: str) -> dict[str, bool]:
 
 
 def render() -> str:
-    r"""Render the languages documentation table as Markdown."""
+    """Render the languages documentation table as Markdown."""
     lines = [
         "# Language capabilities",
         "",
@@ -164,7 +181,14 @@ def render() -> str:
 
 
 def render_languages_section() -> str:
-    r"""Render the README's Implemented Languages section between the."""
+    """Render the README's Implemented Languages section between the markers.
+
+    Each language with an in-repo interpreter is grouped by the interpreter's
+    category, sorted by display name, and linked to both its esolangs wiki
+    page and the interpreter's source file on GitHub.  The ``<summary>``
+    count and the pointer to the capability matrix are generated too, so they
+    stay in sync.
+    """
     out: list[str] = [
         f"<summary>Show all {len(RUNNERS)} languages</summary>",
         "",
@@ -191,7 +215,14 @@ def render_languages_section() -> str:
 
 
 def render_examples_section() -> str:
-    r"""Render the README's Examples paragraph between the markers."""
+    """Render the README's Examples paragraph between the markers.
+
+    The count is the number of registered boolean generators, taken from
+    the registry rather than from ``ls examples/`` -- the same rule the rest
+    of this script follows.  A separate sync test already pins that every
+    generator has its committed file, so the registry is the source that
+    cannot drift.
+    """
     return "\n".join(
         [
             "Ready-to-run programs are committed under [`examples/`](examples/):",
@@ -204,7 +235,7 @@ def render_examples_section() -> str:
 
 
 def render_boolean_count_section() -> str:
-    r"""Render the README's boolean-generator count between the markers."""
+    """Render the README's boolean-generator count between the markers."""
     return "\n".join(
         [
             "The truth table is a binary string of length `2**n`,"
@@ -219,7 +250,7 @@ def render_boolean_count_section() -> str:
 
 
 def update_readme() -> None:
-    r"""Rewrite the generated sections of README.md between their markers."""
+    """Rewrite the generated sections of README.md between their markers."""
     path = ROOT / "README.md"
     text = path.read_text()
     for start, end, render in (

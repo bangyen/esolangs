@@ -1,4 +1,37 @@
-r"""Interpreter for %^2^-1."""
+"""Interpreter for %^2^-1.
+
+A single accumulator holding the magnitude ``x`` of a value ``10^x`` (the
+wiki's workaround for avoiding huge numbers; the magnitude starts at 0).
+``s``/``i`` subtract 2/3 (divide by 100/1000), ``m`` doubles (square), ``p``
+negates (reciprocate), ``'`` zeroes it (set to 1), ``l``/``e`` print it
+(decimal / as a byte), ``n`` reads one byte of input, and ``t`` rewinds to
+the start of the program when the magnitude is nonzero.  The magnitude is
+reset to zero whenever it exceeds 3003 (before each command).
+
+The execution model is a pure function over an immutable ``_State``:
+:func:`_advance` maps a state and a command to the next state, and never
+mutates what it is given.  It takes no ``io`` argument at all, so it is
+total and side-effect free by construction rather than by inspection.
+
+The state is two integers, so it is already a value that can be stored,
+compared, and hashed as it stands -- which is what ``snapshot`` returns
+directly rather than rebuilding.  Unlike the brainfuck tape there is
+nothing to copy, so the immutability costs nothing here.
+
+:class:`_Machine` is the mutable shell the interpreter protocol requires
+(``esolangs.vm`` wraps it and ``run_until_halt_or_cycle`` steps it).  It
+holds one ``_State`` and rebinds it each step, so the mutation lives in
+exactly one assignment and every rule about what %^2^-1 *does* stays in the
+pure layer.  The effects three commands have -- ``l``/``e``'s printing and
+``n``'s read -- are done by ``step`` before it calls the pure transition:
+effects in the shell, rules in the core.
+
+Semantics:
+- ``e`` prints the low byte, and ``l`` prints the signed magnitude;
+- ``n`` raises :class:`EOFError` when input runs out, where the cross-check
+  exits with status 3;
+- ``t`` on a nonzero magnitude loops the program forever (the only loop).
+"""
 
 from __future__ import annotations
 
@@ -27,13 +60,40 @@ type _State = tuple[int, int]
 
 
 def _reset(state: _State) -> _State:
-    r"""Return ``state`` with an over-3003 accumulator zeroed."""
+    """Return ``state`` with an over-3003 accumulator zeroed.
+
+    The magnitude is clamped before each command, and both the transition
+    and the shell's prints need the clamped value, so the rule is defined
+    here once rather than spelled out in each of them.
+    """
     ind, acc = state
     return (ind, 0) if acc > 3003 else state
 
 
 def _advance(state: _State, code: str) -> _State:
-    r"""Return the state after executing the command at the code position."""
+    """Return the state after executing the command at the code position.
+
+    Pure: it reads ``state`` and returns a new one, and every command that
+    is not I/O is decided entirely here.  It takes no ``io`` argument, so
+    ``l``, ``e``, and ``n`` are necessarily the caller's business; this
+    function sees only what they leave behind -- the two prints change no
+    state at all, and ``n``'s byte arrives already in the accumulator.
+
+    The over-3003 reset is applied *before* the command, which is where the
+    original loop applied it: a command reads the already-reset accumulator,
+    so ``m`` on 4000 doubles 0, not 4000.  :func:`_reset` is the single
+    definition of that rule -- the shell calls it too, because the prints
+    must report the same reset value this transition will act on.
+
+    ``t`` is the one command that does not fall through to the shared
+    increment -- on a nonzero accumulator it rewinds to position 0, and
+    position 0 is where the next command must be read from, not 1.  On a
+    zero accumulator it is inert and advances like anything else.
+
+    Anything that is not a command is a comment and falls through to the
+    shared increment, which is what makes the code position advance exactly
+    once per call.
+    """
     ind, acc = _reset(state)
     char = code[ind]
     if char == "s":
@@ -54,10 +114,17 @@ def _advance(state: _State, code: str) -> _State:
 
 
 class _Machine:
-    r"""A %^2^-1 run: one immutable ``_State``, rebound per step."""
+    """A %^2^-1 run: one immutable ``_State``, rebound per step.
+
+    The protocol the rest of the library expects (``step``, ``halted``,
+    ``snapshot``, and the ``ind``/``acc`` attributes) is mutable by
+    construction, so this class supplies it.  All it does is hold the
+    current state and the two constants a transition needs; the rules
+    themselves are the pure function above.
+    """
 
     def __init__(self, code: str, io: IO) -> None:
-        r"""Store ``code`` and start the accumulator at zero."""
+        """Store ``code`` and start the accumulator at zero."""
         self.io = io
         self.code = code
         # ``halted`` is read twice per.
@@ -79,7 +146,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        r"""Whether the cursor has reached the end of the program."""
+        """Whether the cursor has reached the end of the program."""
         return self.state[0] >= self.size
 
     # The VM's language-shaped.
@@ -87,27 +154,40 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        r"""The current instruction position."""
+        """The current instruction position."""
         return self.state[0]
 
     @property
     def memory(self) -> list[int]:
-        r"""The addressable cells."""
+        """The addressable cells."""
         return [self.state[1]]
 
     @property
     def stack(self) -> list[object]:
-        r"""No stack in this language."""
+        """No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        r"""Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection."""
         # The state as it stands: it is.
         # returned before the split,.
         return self.state
 
     def step(self) -> None:
-        r"""Execute one command, resetting the accumulator first if too large."""
+        """Execute one command, resetting the accumulator first if too large.
+
+        The three I/O commands are done here rather than in a function of
+        their own: this is the shell, so it is where an effect belongs, and
+        it keeps :func:`_advance` reachable in one call per step.  ``l`` and
+        ``e`` write and change no state; ``n`` reads and leaves the byte in
+        the accumulator, so the pure transition then runs on what they left
+        behind and never needs the ``io`` object at all.
+
+        The prints must report the *reset* accumulator, since they read it
+        before :func:`_advance` runs, so this goes through :func:`_reset`
+        first -- the same function the transition uses, rather than a second
+        copy of the rule.
+        """
         if self.state[0] >= self.size:
             return
         state = _reset(self.state)
@@ -123,7 +203,7 @@ class _Machine:
 
 
 def run(code: str, io: IO) -> None:
-    r"""Run a %^2^-1 program."""
+    """Run a %^2^-1 program."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

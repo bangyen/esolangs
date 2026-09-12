@@ -1,4 +1,22 @@
-r"""Screen every boolean generator for input-reordering upside at n=3."""
+"""Screen every boolean generator for input-reordering upside at n=3.
+
+For each registry language with a boolean generator: build all 256
+three-input tables once, then report ``100 * (1 - sum(min)/sum(identity))``
+where ``min`` is the shortest build over the 6 input orders.  The n=3
+table space is closed under input permutation, so the permuted builds are
+lookups, not builds.  This metric reproduces the deleted ledger's verified
+figures exactly (dig 19.8, flowchart 17.1, modulous 16.4, arrowqueue 12.4).
+
+Premise, checked by execution 2026-09: the program built for
+``permute_truth_table(t, p)``, fed input ``k`` = bit ``p[k]`` of the row,
+prints ``t[row]`` -- 288 runs over polynomial and brainfuck via the
+suite's runners, all 6 orders, every row of three tables.
+
+A figure bounds what wiring an order search could buy; it is not a
+shipped saving, and for an already-wired generator it is residual the
+search cannot reach from inside the fixed input convention.  The verdict
+classes live in ``docs/roadmap.md``.
+"""
 
 from itertools import permutations
 from time import perf_counter
@@ -11,7 +29,11 @@ PERMS = list(permutations(range(3)))
 
 
 def screen(gen: object) -> tuple[float, int, float] | None:
-    r"""Return (upside %, tables improved, seconds), or None if all."""
+    """Return (upside %, tables improved, seconds), or None if all rejected.
+
+    ``ValueError`` marks an arity a generator does not cover and skips the
+    table; anything else is a real failure and propagates.
+    """
     assert callable(gen)
     sizes: dict[str, int | None] = {}
     start = perf_counter()
@@ -40,7 +62,7 @@ def screen(gen: object) -> tuple[float, int, float] | None:
 
 
 def main() -> None:
-    r"""Screen the registry and print one row per language, best first."""
+    """Screen the registry and print one row per language, best first."""
     rows = []
     for key, lang in sorted(LANGUAGES.items()):
         if lang.boolean is None:

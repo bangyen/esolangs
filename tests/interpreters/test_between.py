@@ -1,4 +1,11 @@
-r"""Unit tests for the Between interpreter."""
+"""Unit tests for the Between interpreter.
+
+Between is a goto-based language: each line is ``<arg1><operation><arg2>``
+over string, integer, variable, condition, and none values.  The tests cover
+the value types, the operations, the goto control flow, and the documented
+spec-gap decisions (0-indexed addresses, doubled-apostrophe strings, comment
+lines, integer-zero variable initialization).
+"""
 
 from typing import ClassVar
 
@@ -12,7 +19,7 @@ from tests.interpreters.runner import run_program
 
 
 def run_and_capture(code: str, inputs: list[str] | None = None) -> str:
-    r"""Run a Between program, which this file writes as one string."""
+    """Run a Between program, which this file writes as one string."""
     return run_program(
         run,
         code.splitlines(),
@@ -76,7 +83,14 @@ class TestOperations:
         assert run_and_capture("||3|*|4||p.") == "12"
 
     def test_operands_on_both_sides_may_be_variables(self) -> None:
-        r"""Either side of an operation can be a name needing resolution."""
+        """Either side of an operation can be a name needing resolution.
+
+        Elsewhere at least one operand is a literal, so the lookup that
+        turns a name into a value was never exercised on both sides of the
+        same operation -- and an operand left unresolved is not a value of
+        any usable type.  Each operation is driven with variables in both
+        slots.
+        """
         decl = "'x'v.\n[x]s|3|\n'y'v.\n[y]s|2|\n"
         assert run_and_capture(decl + "|[x]*[y]|p.") == "6"
         assert run_and_capture(decl + "|[x]+[y]|p.") == "5"
@@ -88,7 +102,7 @@ class TestOperations:
             run_and_capture("'a'*|2|")
 
     def test_convert_integer_to_string(self) -> None:
-        r"""C on an integer yields a string, usable only as a discarded value."""
+        """C on an integer yields a string, usable only as a discarded value."""
         assert run_and_capture("'v'v.\n[v]s|12|\n[v]c.") == ""
 
     def test_convert_string_to_integer(self) -> None:
@@ -176,7 +190,7 @@ class TestControlFlow:
             run_and_capture("|1|f|2|")
 
     def test_0_indexed_addresses(self) -> None:
-        r"""Line 2 is the third instruction, so goto 2 prints 'two'."""
+        """Line 2 is the third instruction, so goto 2 prints 'two'."""
         code = "'one'p.\n|3|f.\n'two'p.\n'three'p."
         assert run_and_capture(code) == "onethree"
 
@@ -186,12 +200,28 @@ class TestParsing:
         assert run_and_capture("'can''t'p.") == "can't"
 
     def test_a_string_that_is_only_an_escaped_apostrophe(self) -> None:
-        r"""``''''`` is one apostrophe, and the tightest case for the scan."""
+        """``''''`` is one apostrophe, and the tightest case for the scan.
+
+        ``'can''t'`` has letters on both sides of the pair, so the scan
+        reaches it already inside the literal and leaves it with more to
+        read.  Here the pair is the whole content: the scan meets it
+        immediately after the opening quote, and mistaking either half for
+        the terminator ends the string early.
+        """
         assert run_and_capture("''''p.") == "'"
         assert run_and_capture("''p.") == ""
 
     def test_a_nested_instruction_still_reaches_the_output(self) -> None:
-        r"""An instruction inside an expression prints where it stands."""
+        """An instruction inside an expression prints where it stands.
+
+        Every print and read elsewhere sits at the top level, so the
+        output and input handles ``_eval`` threads down for a *nested*
+        instruction are never used -- which leaves them free to be
+        dropped from any of the arithmetic arms.  Here the enclosing
+        ``s`` rejects what the nested ``p`` evaluates to, but the ``5``
+        is written before that happens, and it is written through the
+        handle the thread carries.
+        """
         io = ScriptedIO("")
         with pytest.raises(HaltError, match="expected an integer expression"):
             run("'v'v.\n[v]s||5|p.|\n[v]p.".splitlines(), io)
@@ -232,7 +262,7 @@ class TestParsing:
             run_and_capture("|[a]+[b|p.")
 
     def test_malformed_unbalanced_group(self) -> None:
-        r"""A group whose inner expression ends on the wrong closer."""
+        """A group whose inner expression ends on the wrong closer."""
         with pytest.raises(ValueError, match="unbalanced"):
             run_and_capture("(|1|=|1|]")
 
@@ -242,7 +272,13 @@ class TestParsing:
 
     @pytest.mark.parametrize("code", ["|.+.", "(.+.", "|.=.", "(.=."])
     def test_malformed_group_running_to_end_of_line(self, code: str) -> None:
-        r"""A group whose expression ends the line has no closer left to read."""
+        """A group whose expression ends the line has no closer left to read.
+
+        The inner expression consumes the whole line, so the index of the
+        closer is one past the end -- the bound has to be checked before
+        the character is, or the miss reads off the string and comes back
+        as an ``IndexError`` instead of a rejection.
+        """
         with pytest.raises(ValueError, match="unbalanced"):
             run_and_capture(code)
 
@@ -321,14 +357,14 @@ class TestErrors:
 
     @pytest.mark.parametrize(("code", "message"), MESSAGES)
     def test_rejection_message_is_exact(self, code: str, message: str) -> None:
-        r"""Each rejection says exactly what it says, start to end."""
+        """Each rejection says exactly what it says, start to end."""
         with pytest.raises((HaltError, ValueError)) as caught:
             run_and_capture(code)
         assert str(caught.value) == message
 
 
 def test_a_whole_program_runs_end_to_end() -> None:
-    r"""The shortest program that prints: one string, one ``p``, and a."""
+    """The shortest program that prints: one string, one ``p``, and a fall-off."""
     assert run_and_capture("'Hi'p.") == "Hi"
 
 
@@ -339,7 +375,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(SnapshotContract):
-    r"""The shared shapes, with this language's own programs."""
+    """The shared shapes, with this language's own programs."""
 
     machine = staticmethod(_machine)
     stepping_program: ClassVar[list[str]] = ["'x'v.", "[x]s|7|"]

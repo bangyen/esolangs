@@ -1,4 +1,41 @@
-r"""Interpreter for Container."""
+"""Interpreter for Container.
+
+The first line declares rules: ``name = initial`` or a bare ``name``, and
+following indented lines attach conditional deltas (``n cond``) to the most
+recent container.  Each tick updates every container by its satisfied rules;
+PRINT outputs OUT as a byte when it turns on, the empty-named container reads
+a line of input into the IN container when it fires, and EXIT halts the
+program.
+
+A rule line before any container declaration is a malformed program and is
+rejected with :class:`ValueError`; an empty program halts immediately.
+
+Exhausted input raises :class:`EOFError` (the repo-wide convention).
+
+The interpreter runs on a :class:`_Machine` (the containers, their current
+values, and the exit code once EXIT fires), so it is step-capable:
+``step()`` executes one full tick and ``halted`` is true once EXIT fires.
+:func:`run` returns the EXIT code (``None`` if EXIT never fired) instead
+of exiting the process, so a halt is a value the caller receives rather
+than a ``SystemExit`` the library throws at it.
+
+The execution model is a pure function over an immutable ``_State``:
+:func:`_advance` maps a state and the container rules to the next state,
+and never mutates what it is given.  It takes no ``io`` argument at all, so
+it is total and side-effect free by construction rather than by inspection.
+
+A tick is where this language differs from the others in the series.  Every
+container updates at once from the *old* values, and then three things --
+PRINT's output, the empty container's read, and EXIT -- fire on comparisons
+between the old and new values.  So the shell computes what the tick will
+produce, does the two effects, and hands the read byte to the transition,
+which is what actually builds the next state.
+
+:class:`_Machine` is the mutable shell the interpreter protocol requires.
+It holds one ``_State`` and rebinds it each step, so the mutation lives in
+exactly one assignment and every rule about what Container *does* stays in
+the pure layer.
+"""
 
 from __future__ import annotations
 
@@ -26,7 +63,7 @@ type _State = tuple[_Vars, tuple[str, ...], int | None, int]
 
 
 def _get(variables: _Vars, name: str) -> int:
-    r"""Return the value of container ``name``."""
+    """Return the value of container ``name``."""
     for key, value in variables:
         if key == name:
             return value
@@ -41,31 +78,35 @@ def _get(variables: _Vars, name: str) -> int:
 
 
 def _has(variables: _Vars, name: str) -> bool:
-    r"""Whether a container named ``name`` was declared."""
+    """Whether a container named ``name`` was declared."""
     return any(key == name for key, _ in variables)
 
 
 def _tick(obj: list[Con], variables: _Vars) -> _Vars:
-    r"""Return every container's value after one update, in name order."""
+    """Return every container's value after one update, in name order.
+
+    All of them update from the same old values, which is what makes a tick
+    simultaneous rather than sequential.
+    """
     old = dict(variables)
     return tuple(sorted((o.name, o.update(old)) for o in obj))
 
 
 class Con:
-    r"""A named container whose rules add deltas to its value each tick."""
+    """A named container whose rules add deltas to its value each tick."""
 
     def __init__(self, name: str) -> None:
-        r"""Create a container with the given ``name`` and no rules."""
+        """Create a container with the given ``name`` and no rules."""
         self.name = name
         self.rules: list[tuple[int, str]] = []
 
     def add(self, cond: str) -> None:
-        r"""Append a rule ``n cond`` that adds ``n`` when ``cond`` holds."""
+        """Append a rule ``n cond`` that adds ``n`` when ``cond`` holds."""
         n, c = cond.split()
         self.rules.append((int(n), c))
 
     def update(self, var: dict[str, int]) -> int:
-        r"""Return the value after applying every satisfied rule."""
+        """Return the value after applying every satisfied rule."""
 
         def val(s: str) -> int:
             if s in var:
@@ -88,10 +129,10 @@ class Con:
 
 
 class _Machine:
-    r"""Per-run Container state: the containers, their values, and EXIT."""
+    """Per-run Container state: the containers, their values, and EXIT."""
 
     def __init__(self, code: list[str], io: IO) -> None:
-        r"""Parse ``code`` into containers and start every value at rest."""
+        """Parse ``code`` into containers and start every value at rest."""
         self.io = io
         self.obj: list[Con] = []
         start: dict[str, int] = {}
@@ -119,27 +160,27 @@ class _Machine:
 
     @property
     def var(self) -> dict[str, int]:
-        r"""The container values, by name."""
+        """The container values, by name."""
         return dict(self.state[0])
 
     @property
     def queue(self) -> list[str]:
-        r"""The input characters read but not yet consumed."""
+        """The input characters read but not yet consumed."""
         return list(self.state[1])
 
     @property
     def exit_code(self) -> int | None:
-        r"""The code EXIT halted with, or None while the run continues."""
+        """The code EXIT halted with, or None while the run continues."""
         return self.state[2]
 
     @property
     def tick(self) -> int:
-        r"""How many ticks have run."""
+        """How many ticks have run."""
         return self.state[3]
 
     @property
     def halted(self) -> bool:
-        r"""Whether EXIT has fired, or there was nothing to evaluate."""
+        """Whether EXIT has fired, or there was nothing to evaluate."""
         return self.state[2] is not None or not self.obj
 
     # The VM's language-shaped.
@@ -147,28 +188,35 @@ class _Machine:
 
     @property
     def ip(self) -> int:
-        r"""The current instruction position."""
+        """The current instruction position."""
         return self.state[3]
 
     @property
     def memory(self) -> list[int]:
-        r"""The addressable cells."""
+        """The addressable cells."""
         # The values are kept in name.
         return [value for _name, value in self.state[0]]
 
     @property
     def stack(self) -> list[object]:
-        r"""No stack in this language."""
+        """No stack in this language."""
         return []
 
     def snapshot(self) -> tuple[object, ...]:
-        r"""Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection."""
         variables, queue, exit_code, _tick_count = self.state
         return (variables, queue, exit_code)
         # tick is excluded: it counts.
 
     def step(self) -> None:
-        r"""Execute one full tick, updating every container's value."""
+        """Execute one full tick, updating every container's value.
+
+        The tick is computed first, because all three of the things that
+        can happen -- PRINT's output, the read, and EXIT -- compare the old
+        values against the new ones.  :func:`_ports` decides the first two
+        from that comparison and :func:`_advance` the third; this performs
+        what they report and hands the read's byte on.
+        """
         if self.halted:
             return
         variables, queue, _exit, _count = self.state
@@ -191,14 +239,26 @@ class _Machine:
 
 
 def _rises(variables: _Vars, new: _Vars, name: str) -> bool:
-    r"""Whether ``name`` goes from zero to nonzero across a tick."""
+    """Whether ``name`` goes from zero to nonzero across a tick.
+
+    A container fires on the rising edge, which is why both its old and
+    its new value matter.  EXIT is the exception and is decided in
+    :func:`_advance`: it fires on any *change*, so that a program can exit
+    with zero.
+    """
     return (
         _has(variables, name) and _get(variables, name) == 0 and bool(_get(new, name))
     )
 
 
 def _ports(variables: _Vars, new: _Vars) -> tuple[int | None, bool]:
-    r"""Return what the tick wants done: a byte to print, and whether to."""
+    """Return what the tick wants done: a byte to print, and whether to read.
+
+    Pure: it compares the two ticks and reports.  The shell performs both,
+    which keeps the rules for *when* a container fires here with the rest
+    of the language rather than beside the ``io`` calls that carry them
+    out.  ``PRINT`` prints OUT modulo 128, and only when OUT exists.
+    """
     output = None
     if _rises(variables, new, "PRINT") and _has(variables, "OUT"):
         output = _get(new, "OUT") % (1 << 7)
@@ -211,7 +271,17 @@ def _advance(
     queue: tuple[str, ...],
     byte: int | None,
 ) -> _State:
-    r"""Return the state a tick lands on."""
+    """Return the state a tick lands on.
+
+    Pure: it reads ``state`` and returns a new one.  ``new`` is the tick the
+    shell already computed, ``queue`` what is left of the input after any
+    read, and ``byte`` the character that read took -- so the two effects
+    are already done and only their consequences arrive here.
+
+    A read writes its byte into IN, overriding whatever the tick computed
+    for that container.  EXIT halts when its value *changes*, and the value
+    it changed to is the code, which is why a program can exit with zero.
+    """
     variables, _queue, exit_code, count = state
     if byte is not None:
         new = tuple(sorted({**dict(new), "IN": byte}.items()))
@@ -221,7 +291,13 @@ def _advance(
 
 
 def run(code: list[str], io: IO) -> int | None:
-    r"""Run a Container program by ticking its rules until EXIT fires."""
+    """Run a Container program by ticking its rules until EXIT fires.
+
+    Returns the EXIT code, or ``None`` if the program ended without one.
+    EXIT is Container's *normal* halt, not an invalid operation, so it
+    returns like every other interpreter here rather than raising.  Only
+    the ``__main__`` block below turns the code into a process exit.
+    """
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

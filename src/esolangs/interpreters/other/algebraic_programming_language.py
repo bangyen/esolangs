@@ -1,4 +1,74 @@
-r"""Interpreter for Algebraic Programming Language."""
+"""Interpreter for Algebraic Programming Language.
+
+An algebra-shaped language with no input command and no output command.
+A program is a series of lines: a line *containing* ``=`` is a definition
+(a variable, a function ``F(x) = ...``, or a custom operator ``a ~ b =
+...``), and a line without one is *executed*, its result printed to
+STDOUT.  Every lowercase variable appearing on an executed line is read
+from user input, so reading is a side effect of naming a variable and
+printing is a side effect of having a line to evaluate.  The only data
+type is a number.
+
+Branching is short-circuit evaluation.  ``&`` and ``|`` skip their
+right-hand side, and ``$`` (return) may *be* that side, so ``x & $0``
+returns 0 exactly when ``x`` is truthy -- the wiki's own spelling of
+"not", and the only conditional the language has.  Looping is the same
+mechanism recursing: the wiki's truth machine is ``x? = x & x?``.
+
+Decisions for gaps in the wiki spec (documented):
+
+- **Input binding is a pre-scan.**  The spec says variables are "set
+  initially to user input in the order they first appear in the line",
+  so this interpreter binds every unbound lowercase variable on an
+  executed line *before* evaluating it, in left-to-right order of first
+  appearance.  Evaluating lazily would let a short-circuit skip a read
+  and consume input in an order the spec's own worked example (``a + b +
+  d`` then ``c + e + b`` asking for ``a, b, d, c, e``) contradicts.
+  Bindings persist across lines, which is what makes that example ask
+  for ``b`` once.
+- **Truthiness and the value of a short-circuit.**  The wiki pins only
+  the false case ("false -> 0 or 0.0").  Zero is false and every other
+  number is true; ``&`` returns its right operand when the left is
+  truthy and ``0`` otherwise, and ``|`` returns its left operand when
+  that is truthy and its right otherwise.  This is the reading that
+  makes the wiki's ``WHILE`` example terminate.
+- **Printing.**  An executed line prints its result followed by a
+  newline; an integral value prints without a trailing ``.0`` (so the
+  Hello-World example prints ``72``, not ``72.0``).  A line whose
+  evaluation returns via a top-level ``$`` still prints.
+- **Numbers.**  Values are Python ``int`` where a computation stays
+  integral and ``float`` once division or a fractional literal makes it
+  otherwise, so the unbounded integers the wiki's Turing-completeness
+  argument relies on are unbounded here.
+- **EOF** while binding a variable raises :class:`EOFError`, as the
+  Brainfuck interpreter does; a line that is not a number raises
+  :class:`~esolangs.exceptions.HaltError`.
+- Malformed programs raise :class:`ValueError`: an unparsable
+  expression, an unknown name, an unbalanced ``()`` or ``{}``, a
+  definition whose left-hand side is not a variable, call, or operator
+  pattern, a call with the wrong argument count, and the wiki's own
+  ``1(2)`` (bracket multiplication is invalid syntax).
+- Division or modulo by zero, and ``0 ** -1``, raise
+  :class:`~esolangs.exceptions.HaltError`.
+- **An uppercase name defined without parentheses** (``F = 7``) is a
+  nullary function, called as ``F()``.  The wiki only writes ``F() =
+  123``, but its own rule that a bare-variable left-hand side is an
+  assignment is restricted to *lowercase* names, so this is the reading
+  that leaves the uppercase case meaning something.  Printing a function
+  rather than calling it is an invalid operation
+  (:class:`~esolangs.exceptions.HaltError`), since the only printable
+  values are numbers.
+
+``_Machine`` evaluates on an explicit stack of :class:`_Frame` objects
+rather than by Python recursion, because in this language recursion *is*
+the loop.  A ``step()`` that evaluated a whole line would never return on
+``n?``, the frame stack would never be observed growing, and
+:func:`~esolangs.vm.run_until_halt_or_ancestor` would have nothing to
+step between.  Each frame holds one call's expression and a cursor into
+its sub-evaluations, so ``step()`` advances exactly one node and a
+recursion pushes one frame per lap -- the granularity the ancestor check
+needs to prove ``x? = x & x?`` hangs.
+"""
 
 from __future__ import annotations
 
@@ -45,22 +115,34 @@ _RESERVED = set("+-*/%&|()={}$ \t,")
 
 
 def _is_lower(char: str) -> bool:
-    r"""Whether ``char`` is a variable/argument letter (any script)."""
+    """Whether ``char`` is a variable/argument letter (any script)."""
     return char.isalpha() and char.islower()
 
 
 def _is_upper(char: str) -> bool:
-    r"""Whether ``char`` is a function-name letter (any script)."""
+    """Whether ``char`` is a function-name letter (any script)."""
     return char.isalpha() and char.isupper()
 
 
 def _is_symbol(char: str) -> bool:
-    r"""Whether ``char`` may appear in a custom operator's name."""
+    """Whether ``char`` may appear in a custom operator's name."""
     return not char.isalnum() and not char.isspace() and char not in _RESERVED
 
 
 class _Definition:
-    r"""A named function or custom operator, with its parameters and body."""
+    """A named function or custom operator, with its parameters and body.
+
+    ``body`` is the list of expressions a call evaluates in order; all but
+    the last print, and the last is the return value, unless a ``$``
+    returns earlier.  ``name`` is the function's letters or the operator's
+    symbol pattern, which is what makes both callable through one node.
+
+    ``control`` marks, per statement, whether a ``$`` appears anywhere in
+    it.  Such a statement never prints: the wiki says ``x & $0`` "will
+    never output x", and with ``x`` false the ``&`` yields x itself, so
+    only suppressing the whole statement makes that true.  The test is
+    syntactic because the false case never *evaluates* the ``$``.
+    """
 
     def __init__(self, name: str, params: list[str], body: list[_Node]) -> None:
         self.name = name
@@ -69,7 +151,7 @@ class _Definition:
         self.control = [_contains_return(node) for node in body]
 
     def __repr__(self) -> str:
-        r"""Show the name and arity; frame keys are built from this."""
+        """Show the name and arity; frame keys are built from this."""
         return f"<{self.name}/{len(self.params)}>"
 
 
@@ -77,7 +159,13 @@ class _Definition:
 
 
 def _tokens(line: str) -> list[str]:
-    r"""Split ``line`` into number, letter, and symbol tokens."""
+    """Split ``line`` into number, letter, and symbol tokens.
+
+    Operator symbols are *not* merged into runs: ``~a`b``c~`` is a pattern
+    of single symbols around its arguments, and the parser matches them
+    one at a time, so keeping them separate is what lets a multi-symbol
+    pattern be recognised at all.
+    """
     out: list[str] = []
     ind = 0
     while ind < len(line):
@@ -103,7 +191,7 @@ def _tokens(line: str) -> list[str]:
 
 
 def _number(word: str) -> _Number:
-    r"""Parse a numeric literal, keeping integers exact."""
+    """Parse a numeric literal, keeping integers exact."""
     return float(word) if "." in word else int(word)
 
 
@@ -111,7 +199,18 @@ def _number(word: str) -> _Number:
 
 
 class _Parser:
-    r"""A recursive-descent parser for one expression."""
+    """A recursive-descent parser for one expression.
+
+    Precedence, lowest first: ``|``, ``&``, ``+``/``-``, ``*``/``/``/``%``,
+    ``**`` (right-associative), unary ``-`` and ``$``, then custom
+    operators, calls, and brackets.  The wiki says custom operators bind
+    tighter than everything except brackets and functions, which is where
+    :meth:`_postfix` sits.
+
+    Parsing is by Python recursion over the *program text*, which is
+    bounded by the line's length; only *evaluation* uses the explicit
+    stack, because only evaluation can recurse without bound.
+    """
 
     def __init__(self, tokens: list[str], defs: dict[str, _Definition]) -> None:
         self.tokens = tokens
@@ -119,30 +218,39 @@ class _Parser:
         self.ind = 0
 
     def peek(self) -> str | None:
-        r"""Return the next token, or None at the end of the expression."""
+        """Return the next token, or None at the end of the expression."""
         return self.tokens[self.ind] if self.ind < len(self.tokens) else None
 
     def take(self) -> str:
-        r"""Consume and return the next token."""
+        """Consume and return the next token.
+
+        Every call site has already established that a token is there:
+        the precedence levels and ``_unary`` peek before consuming,
+        ``_try_pattern`` returns None on a mismatch before taking, and
+        the loops in ``_atom`` and ``_arguments`` carry the end check in
+        their own conditions.  So there is no unreachable "ran out"
+        branch here -- ``_atom`` raises that message where it *can*
+        happen.
+        """
         word = self.tokens[self.ind]
         self.ind += 1
         return word
 
     def expect(self, word: str) -> None:
-        r"""Consume ``token`` or fail as malformed."""
+        """Consume ``token`` or fail as malformed."""
         if self.peek() != word:
             raise ValueError(f"expected {word!r}")
         self.ind += 1
 
     def parse(self) -> _Node:
-        r"""Parse the whole token list, rejecting a trailing remainder."""
+        """Parse the whole token list, rejecting a trailing remainder."""
         node = self.expr()
         if self.peek() is not None:
             raise ValueError(f"trailing input at {self.peek()!r}")
         return node
 
     def expr(self) -> _Node:
-        r"""Parse at the lowest precedence (``|``)."""
+        """Parse at the lowest precedence (``|``)."""
         return self._binary(0)
 
     # ``|`` then ``&`` then.
@@ -150,7 +258,7 @@ class _Parser:
     _LEVELS: tuple[tuple[str, ...], ...] = (("|",), ("&",), ("+", "-"), ("*", "/", "%"))
 
     def _binary(self, level: int) -> _Node:
-        r"""Parse a left-associative level of the precedence ladder."""
+        """Parse a left-associative level of the precedence ladder."""
         if level == len(self._LEVELS):
             return self._power()
         node = self._binary(level + 1)
@@ -165,7 +273,7 @@ class _Parser:
             node = ("bin", word, node, self._binary(level + 1))
 
     def _at_power(self) -> bool:
-        r"""Whether the cursor sits on a ``**`` rather than a ``*``."""
+        """Whether the cursor sits on a ``**`` rather than a ``*``."""
         return (
             self.ind + 1 < len(self.tokens)
             and self.tokens[self.ind] == "*"
@@ -173,7 +281,7 @@ class _Parser:
         )
 
     def _power(self) -> _Node:
-        r"""Parse ``**``, which is right-associative."""
+        """Parse ``**``, which is right-associative."""
         base = self._unary()
         if self._at_power():
             self.take()
@@ -182,7 +290,7 @@ class _Parser:
         return base
 
     def _unary(self) -> _Node:
-        r"""Parse unary ``-``, the ``$`` return operator, and prefix operators."""
+        """Parse unary ``-``, the ``$`` return operator, and prefix operators."""
         word = self.peek()
         if word == "-":
             self.take()
@@ -193,14 +301,21 @@ class _Parser:
         return self._operand()
 
     def _operand(self) -> _Node:
-        r"""Parse a prefix operator, or an atom with its trailing operators."""
+        """Parse a prefix operator, or an atom with its trailing operators."""
         prefix = self._match_operator(None)
         if prefix is not None:
             return prefix
         return self._postfix()
 
     def _postfix(self) -> _Node:
-        r"""Parse an atom followed by any custom operators applying to it."""
+        """Parse an atom followed by any custom operators applying to it.
+
+        A custom operator is matched by walking its stored pattern against
+        the token stream: the pattern alternates symbols and argument
+        slots, and a *leading* slot is the atom already parsed.  Longer
+        patterns are tried first so ``^a^b^c^`` wins over a shorter one
+        that would otherwise match its opening ``^``.
+        """
         node = self._atom()
         while True:
             match = self._match_operator(node)
@@ -209,14 +324,19 @@ class _Parser:
             node = match
 
     def _operators(self) -> list[_Definition]:
-        r"""Return the custom operators, longest pattern first."""
+        """Return the custom operators, longest pattern first."""
         return sorted(
             (d for d in self.defs.values() if "\0" in d.name),
             key=lambda d: -len(d.name),
         )
 
     def _match_operator(self, left: _Node | None) -> _Node | None:
-        r"""Try each custom operator pattern at the cursor; None if none fit."""
+        """Try each custom operator pattern at the cursor; None if none fit.
+
+        ``left`` is the operand already parsed for an infix or postfix
+        operator, and None when looking for a *prefix* one, whose pattern
+        opens with a symbol and so takes nothing from its left.
+        """
         for definition in self._operators():
             leading = definition.name.startswith("\0")
             if leading != (left is not None):
@@ -231,7 +351,12 @@ class _Parser:
     def _try_pattern(
         self, definition: _Definition, left: _Node | None
     ) -> list[_Node] | None:
-        r"""Match ``definition``'s pattern, with ``left`` filling a leading."""
+        r"""Match ``definition``'s pattern, with ``left`` filling a leading slot.
+
+        The pattern is the operator's stored name with ``\0`` marking each
+        argument slot; a leading slot is the operand already parsed, so it
+        consumes no tokens.
+        """
         pattern = definition.name
         args: list[_Node] = []
         ind = 0
@@ -260,7 +385,7 @@ class _Parser:
         return args
 
     def _atom(self) -> _Node:
-        r"""Parse a literal, name, call, or bracketed expression."""
+        """Parse a literal, name, call, or bracketed expression."""
         word = self.peek()
         if word is None:
             raise ValueError("unexpected end of expression")
@@ -296,7 +421,7 @@ class _Parser:
         raise ValueError(f"unexpected token {word!r}")
 
     def _arguments(self) -> list[_Node]:
-        r"""Parse a parenthesised, comma-separated argument list."""
+        """Parse a parenthesised, comma-separated argument list."""
         self.expect("(")
         args: list[_Node] = []
         if self.peek() != ")":
@@ -308,7 +433,7 @@ class _Parser:
         return args
 
     def _implied(self, node: _Node) -> _Node:
-        r"""Fold implied multiplication (``ab`` is ``a * b``) onto ``node``."""
+        """Fold implied multiplication (``ab`` is ``a * b``) onto ``node``."""
         while True:
             word = self.peek()
             if word is None or not _is_lower(word):
@@ -318,7 +443,11 @@ class _Parser:
 
 
 def _split_definition(line: str) -> tuple[str, str] | None:
-    r"""Split a definition line into its left and right sides."""
+    """Split a definition line into its left and right sides.
+
+    A line is a definition when it has an ``=`` outside brackets.  The
+    body may open a ``{`` block, which the caller joins before parsing.
+    """
     depth = 0
     for ind, char in enumerate(line):
         if char in "({":
@@ -331,7 +460,14 @@ def _split_definition(line: str) -> tuple[str, str] | None:
 
 
 def _parse_lhs(lhs: str) -> tuple[str, list[str]]:
-    r"""Parse a definition's left-hand side into a name and parameters."""
+    r"""Parse a definition's left-hand side into a name and parameters.
+
+    Three shapes: a bare variable (``n = 123``), a function with
+    parentheses (``F(x) = ...``), and a custom operator pattern
+    (``a ~ b = ...``, ``a@ = ...``), whose name records its symbols with
+    ``\0`` standing in for each argument slot so the parser can match it
+    against the token stream.
+    """
     # The surrounding whitespace is.
     # back in an error message only.
     lhs = lhs.strip()
@@ -386,7 +522,12 @@ def _parse_lhs(lhs: str) -> tuple[str, list[str]]:
 
 
 def _blocks(code: str) -> list[str]:
-    r"""Join a program's physical lines into logical ones."""
+    """Join a program's physical lines into logical ones.
+
+    A ``{`` opens a multiline body that runs to its matching ``}``, so the
+    lines between them belong to the definition rather than being executed
+    on their own.  Blank lines are dropped.
+    """
     out: list[str] = []
     pending = ""
     depth = 0
@@ -406,7 +547,7 @@ def _blocks(code: str) -> list[str]:
 
 
 def _body(rhs: str, defs: dict[str, _Definition]) -> list[_Node]:
-    r"""Parse a definition's right-hand side into its list of statements."""
+    """Parse a definition's right-hand side into its list of statements."""
     text = rhs.strip()
     if text.startswith("{"):
         if not text.endswith("}"):
@@ -426,7 +567,19 @@ def _body(rhs: str, defs: dict[str, _Definition]) -> list[_Node]:
 
 
 class _Frame:
-    r"""One call in progress: its body, its bindings, and its cursor."""
+    """One call in progress: its body, its bindings, and its cursor.
+
+    ``work`` is an explicit stack of (node, resolved-operands) pairs
+    standing in for what Python recursion would keep on its own stack, so
+    a single ``step()`` resolves one node and returns.  ``stmt`` indexes
+    the definition's body, since a multiline function prints every
+    statement but its last.
+
+    ``printing`` marks the synthetic frame wrapping an *executed line*,
+    whose result goes to STDOUT; ``assign`` names the variable an
+    assignment line binds instead.  Both are false/None for an ordinary
+    call, whose value simply returns to its caller.
+    """
 
     def __init__(
         self,
@@ -446,13 +599,13 @@ class _Frame:
         self.assign = assign
 
     def __repr__(self) -> str:
-        r"""Identify the frame by its function and cursor."""
+        """Identify the frame by its function and cursor."""
         return f"<frame {self.fn.name} @{self.stmt}>"
 
 
 @dataclass
 class _State:
-    r"""Every changing value in an Algebraic Programming Language run."""
+    """Every changing value in an Algebraic Programming Language run."""
 
     defs: dict[str, _Definition]
     globals: dict[str, object]
@@ -463,7 +616,13 @@ class _State:
 
 
 class _Machine:
-    r"""The run state: the definitions, the globals, and the call stack."""
+    """The run state: the definitions, the globals, and the call stack.
+
+    A program is a list of logical lines; ``self.line`` is the cursor into
+    the executed ones.  A definition line binds a name and advances.  An
+    executed line binds its free variables from input, then evaluates on
+    the frame stack, printing the result when the stack empties.
+    """
 
     # : The wiki gives no bound;.
     # : runaway expression cannot.
@@ -507,7 +666,7 @@ class _Machine:
 
     @property
     def halted(self) -> bool:
-        r"""Whether every line has been executed and no frame is live."""
+        """Whether every line has been executed and no frame is live."""
         return self.line >= len(self.lines) and not self.frames
 
     # : ``ip`` starts with a line.
@@ -516,12 +675,18 @@ class _Machine:
 
     @property
     def ip(self) -> tuple[int, ...]:
-        r"""The line cursor followed by each live frame's statement index."""
+        """The line cursor followed by each live frame's statement index."""
         return (self.line, *(f.stmt for f in self.frames))
 
     @property
     def memory(self) -> list[int]:
-        r"""The global bindings' integral values, in name order."""
+        """The global bindings' integral values, in name order.
+
+        APL has no addressable store; the nearest thing is the set of
+        variables input has bound, which is what a reader wants to see.
+        Non-integral values are truncated towards zero and function values
+        are reported as 0, since this view is typed ``list[int]``.
+        """
         return [
             int(v) if isinstance(v, (int, float)) else 0
             for _, v in sorted(self.globals.items())
@@ -529,11 +694,24 @@ class _Machine:
 
     @property
     def stack(self) -> list[object]:
-        r"""The live call stack, outermost first."""
+        """The live call stack, outermost first."""
         return list(self.frames)
 
     def snapshot(self) -> tuple[object, ...]:
-        r"""Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection.
+
+        Bindings go through ``repr`` because a value may be a
+        :class:`_Definition`, which is not meaningfully hashable; the
+        input cursor is included so a loop that keeps reading is never
+        mistaken for a repeat.
+
+        The work stack is captured *by content*, not by depth.  Recording
+        only its length made two genuinely different states compare equal
+        -- one operand of ``1 + 1`` resolved versus both -- and the cycle
+        detector called a halting program a hang.  A node is identified
+        by ``id``, which is stable because the parse tree is built once
+        and never rewritten.
+        """
         return (
             self.line,
             tuple(sorted((k, repr(v)) for k, v in self.globals.items())),
@@ -555,7 +733,15 @@ class _Machine:
         )
 
     def frame_entry_key(self, frame: object) -> tuple[object, ...]:
-        r"""Return what ``frame`` is about to run, for the ancestor check."""
+        """Return what ``frame`` is about to run, for the ancestor check.
+
+        Two frames with equal keys replay each other, so the key is the
+        function, its bindings, and the input cursor.  The input position
+        carries the soundness: a recursion whose base case waits on an
+        unread line enters with identical bindings every lap and is one
+        read from returning, not looping.  See
+        :func:`esolangs.vm.run_until_halt_or_ancestor`.
+        """
         if not isinstance(frame, _Frame):
             raise AssertionError("isinstance(frame, _Frame)")
         return (
@@ -567,7 +753,7 @@ class _Machine:
     # -- stepping.
 
     def step(self) -> None:
-        r"""Advance the program by one definition, read, or expression node."""
+        """Advance the program by one definition, read, or expression node."""
         if self.halted:
             return
         if self.frames:
@@ -576,7 +762,7 @@ class _Machine:
         self._start_line()
 
     def _start_line(self) -> None:
-        r"""Consume one logical line: define a name, or begin evaluating."""
+        """Consume one logical line: define a name, or begin evaluating."""
         text = self.lines[self.line]
         self.line += 1
         split = _split_definition(text)
@@ -611,19 +797,24 @@ class _Machine:
         printing: bool = False,
         assign: str | None = None,
     ) -> None:
-        r"""Push a frame for ``definition`` and queue its first statement."""
+        """Push a frame for ``definition`` and queue its first statement."""
         frame = _Frame(definition, args, printing=printing, assign=assign)
         frame.work.append((definition.body[0], []))
         self.frames.append(frame)
 
     def _bind_inputs(self, node: _Node) -> None:
-        r"""Bind every unbound variable in ``node`` from input, in order."""
+        """Bind every unbound variable in ``node`` from input, in order.
+
+        The spec's example asks for ``a, b, d, c, e`` across two lines,
+        which is first-appearance order with bindings persisting, so the
+        walk is left-to-right and skips names already bound.
+        """
         for name in _free_variables(node):
             if name not in self.globals:
                 self.globals[name] = self._read_number()
 
     def _read_number(self) -> _Number:
-        r"""Read one line of input as a number."""
+        """Read one line of input as a number."""
         text = self.io.input_str().strip()
         if not text:
             return 0
@@ -633,7 +824,7 @@ class _Machine:
             raise HaltError(f"input {text!r} is not a number") from exc
 
     def _step_frame(self, frame: _Frame) -> None:
-        r"""Resolve one node of ``frame``'s current expression."""
+        """Resolve one node of ``frame``'s current expression."""
         self._steps += 1
         if self._steps > self._WORK_LIMIT:
             raise HaltError("expression exceeded the evaluation budget")
@@ -675,7 +866,7 @@ class _Machine:
         self._step_call(frame, node, done)
 
     def _lookup(self, frame: _Frame, name: str) -> object:
-        r"""Resolve a variable against the frame's locals, then the globals."""
+        """Resolve a variable against the frame's locals, then the globals."""
         if name in frame.locals:
             return frame.locals[name]
         if name in self.globals:
@@ -683,17 +874,30 @@ class _Machine:
         raise ValueError(f"unknown variable {name!r}")
 
     def _lookup_function(self, name: str) -> object:
-        r"""Resolve a bare uppercase name to the definition it refers to."""
+        """Resolve a bare uppercase name to the definition it refers to.
+
+        Only the globals are searched.  A ``ref`` node's name is
+        uppercase by construction and every parameter is validated
+        lowercase, so a bare name can never be a local; a *parameter*
+        holding a function is called as ``c()``, which resolves through
+        ``_step_call``'s own locals lookup instead.
+        """
         if name in self.defs:
             return self.defs[name]
         raise ValueError(f"unknown function {name!r}")
 
     def _descend(self, frame: _Frame, node: _Node) -> None:
-        r"""Queue ``node`` as the next sub-evaluation of the current one."""
+        """Queue ``node`` as the next sub-evaluation of the current one."""
         frame.work.append((node, []))
 
     def _step_binary(self, frame: _Frame, node: _Bin, done: list[object]) -> None:
-        r"""Resolve one stage of a binary operator, short-circuiting & and |."""
+        """Resolve one stage of a binary operator, short-circuiting & and |.
+
+        ``&`` and ``|`` evaluate their left side first and skip the right
+        entirely when it cannot change the answer, which is what makes
+        ``x & $0`` a conditional: the ``$`` on the right never runs unless
+        ``x`` is truthy.
+        """
         op = node[1]
         if not done:
             self._descend(frame, node[2])
@@ -717,7 +921,7 @@ class _Machine:
         self._resolve(frame, _arith(op, _as_number(left), _as_number(right)))
 
     def _step_call(self, frame: _Frame, node: _Call, done: list[object]) -> None:
-        r"""Evaluate a call's arguments, then push the callee's frame."""
+        """Evaluate a call's arguments, then push the callee's frame."""
         name, args = node[1], node[2]
         if len(done) < len(args):
             self._descend(frame, args[len(done)])
@@ -737,14 +941,14 @@ class _Machine:
         self._push(definition, dict(zip(definition.params, done, strict=True)))
 
     def _resolve(self, frame: _Frame, value: object) -> None:
-        r"""Finish the innermost node, handing ``value`` to its parent."""
+        """Finish the innermost node, handing ``value`` to its parent."""
         frame.work.pop()
         frame.value = value
         if frame.work:
             frame.work[-1][1].append(value)
 
     def _advance(self, frame: _Frame) -> None:
-        r"""Move to the frame's next statement, or return from it."""
+        """Move to the frame's next statement, or return from it."""
         if not frame.returned and frame.stmt + 1 < len(frame.fn.body):
             # Every statement but the last.
             # MULTILINE example -- unless.
@@ -757,7 +961,7 @@ class _Machine:
         self._pop(frame)
 
     def _pop(self, frame: _Frame) -> None:
-        r"""Return the frame's value to its caller, printing or assigning it."""
+        """Return the frame's value to its caller, printing or assigning it."""
         value = frame.value
         self.frames.pop()
         if frame.assign is not None:
@@ -772,33 +976,39 @@ class _Machine:
             parent.work[-1][1].append(value)
 
     def _print(self, value: object) -> None:
-        r"""Write one result, formatted the way the wiki's examples read."""
+        """Write one result, formatted the way the wiki's examples read."""
         number = _as_number(value)
         text = str(number) if isinstance(number, int) else _format_float(number)
         self.io.print_str(text + "\n")
 
 
 def _format_float(value: float) -> str:
-    r"""Render a float, dropping a trailing ``.0`` from an integral one."""
+    """Render a float, dropping a trailing ``.0`` from an integral one."""
     return str(int(value)) if value.is_integer() else str(value)
 
 
 def _truthy(value: object) -> bool:
-    r"""Whether ``value`` is true: every number but zero, and any function."""
+    """Whether ``value`` is true: every number but zero, and any function."""
     if isinstance(value, _Definition):
         return True
     return _as_number(value) != 0
 
 
 def _as_number(value: object) -> _Number:
-    r"""Coerce a value to a number, refusing a function."""
+    """Coerce a value to a number, refusing a function."""
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise HaltError(f"expected a number, got {value!r}")
     return value
 
 
 def _arith(op: str, left: _Number, right: _Number) -> _Number:
-    r"""Apply one arithmetic operator, keeping integers exact."""
+    """Apply one arithmetic operator, keeping integers exact.
+
+    ``op`` is one of the six the parser emits for a ``bin`` node other
+    than ``&``/``|``, which short-circuit and never reach here.  The
+    parser is the only producer, so ``**`` is the fallthrough rather
+    than a tested case followed by an unreachable "unknown operator".
+    """
     if op == "+":
         return left + right
     if op == "-":
@@ -822,7 +1032,7 @@ def _arith(op: str, left: _Number, right: _Number) -> _Number:
 
 
 def _contains_return(node: _Node) -> bool:
-    r"""Whether ``$`` appears anywhere in ``node``; see."""
+    """Whether ``$`` appears anywhere in ``node``; see :class:`_Definition`."""
     if node[0] == "ret":
         return True
     if node[0] == "neg":
@@ -835,7 +1045,7 @@ def _contains_return(node: _Node) -> bool:
 
 
 def _free_variables(node: _Node) -> list[str]:
-    r"""List the variables in ``node``, in order of first appearance."""
+    """List the variables in ``node``, in order of first appearance."""
     out: list[str] = []
 
     def walk(current: _Node) -> None:
@@ -859,7 +1069,7 @@ def _free_variables(node: _Node) -> list[str]:
 
 
 def run(code: str, io: IO) -> None:
-    r"""Run an APL program, printing the result of every executed line."""
+    """Run an APL program, printing the result of every executed line."""
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()

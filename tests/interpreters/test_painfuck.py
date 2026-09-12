@@ -1,4 +1,4 @@
-r"""Unit tests for the Painfuck interpreter."""
+"""Unit tests for the Painfuck interpreter."""
 
 import importlib
 
@@ -34,13 +34,19 @@ def _encode(targets: str) -> str:
 
 
 class _Coin:
-    r"""A source that answers every draw with one value."""
+    """A source that answers every draw with one value.
+
+    ``y`` flips a coin to decide whether to skip, and pinning it used to
+    mean patching ``secrets.randbelow`` for the whole process.  ``run``
+    now forwards a source, so the pin is an argument to the run under
+    test rather than a global.
+    """
 
     def __init__(self, value: int) -> None:
         self._value = value
 
     def randbelow(self, upper: int) -> int:
-        r"""Return the fixed value, checking the bound admits it."""
+        """Return the fixed value, checking the bound admits it."""
         if upper <= 0:
             raise ValueError(f"upper bound must be positive, got {upper}")
         return self._value % upper
@@ -71,17 +77,37 @@ class TestPainfuck:
         assert run_program("pphue") == "\x02"  # 4 // 2 = 2.
 
     def test_half_truncates_a_negative_toward_zero(self) -> None:
-        r"""Halving rounds toward zero, which only shows below it."""
+        """Halving rounds toward zero, which only shows below it.
+
+        Python's ``//`` rounds *down*, so a negative cell needs the sign
+        handled separately -- and the positive case cannot tell that
+        handling from its absence.  Seven subtractions give -7, whose half
+        is -3: flooring would give -4, and dropping the sign 3.  An odd
+        value is essential, since an even one halves the same either way.
+        """
         assert run_program("ssssssshoe") == "-3"
         assert run_program("ssshoe") == "-1"  # -3 -> -1, not -2.
 
     def test_the_pointer_moves_by_two_right_and_one_left(self) -> None:
-        r"""``r`` and ``l`` move by their own distances, from where they are."""
+        """``r`` and ``l`` move by their own distances, from where they are.
+
+        Marking a single cell cannot show either distance -- the write and
+        the read land together wherever the pointer went.  This marks three
+        cells with different values (2 at cell 0, 4 at cell 2, 6 at cell 4)
+        so each position prints something only that position holds: two
+        ``r`` moves reach the 6, and two ``l`` moves back from there reach
+        the 4 rather than the 6 or the 2.
+        """
         assert run_program("prpprpppoe") == "6"
         assert run_program("prpprppplloe") == "4"
 
     def test_growing_the_tape_fills_with_zeros(self) -> None:
-        r"""``r`` past the end appends empty cells, not marked ones."""
+        """``r`` past the end appends empty cells, not marked ones.
+
+        The cells the pointer skips are created by the growth, so their
+        value is the growth's -- and every test read the cell it had just
+        written.  Cell 3 is only ever created, never written.
+        """
         assert run_program("prpprppploe") == "0"
         assert run_program("prroe") == "0"
 
@@ -118,7 +144,13 @@ class TestPainfuck:
         assert run_program("ptpue") == "\n"
 
     def test_repeat_previous_with_nothing_before_it(self) -> None:
-        r"""A leading ``t`` has no earlier command, so it repeats nothing."""
+        """A leading ``t`` has no earlier command, so it repeats nothing.
+
+        The backward scan walks off the start of the program rather than
+        finding a command, and execution carries on: the ``u`` still prints
+        the untouched cell.  A ``t`` preceded only by more ``t``s is the
+        same case, since the scan skips those looking for a real command.
+        """
         assert run_program("tue") == "\x00"
         assert run_program("t") == ""
 
@@ -138,12 +170,31 @@ class TestPainfuck:
         assert run_program("pvpu") == "\x02"
 
     def test_random_skip(self) -> None:
-        r"""``y`` skips the next command on a coin flip; pin both outcomes."""
+        """``y`` skips the next command on a coin flip; pin both outcomes.
+
+        The source is handed to ``run`` rather than patched into
+        ``secrets``: the coin belongs to this run, and a global patch would
+        also silence any other draw the process made.
+        """
         assert run_program("pyu", coin=1) == ""
         assert run_program("pyu", coin=0) == "\x02"
 
     def test_repeated_skip_decides_each_repeat_separately(self) -> None:
-        r"""A repeated ``y`` flips once per repeat, not once for the run."""
+        """A repeated ``y`` flips once per repeat, not once for the run.
+
+        ``y`` binds forward to the next command like ``c`` and ``v``, so
+        ``cyp`` repeats ``p`` seven times with each application gated by
+        its own coin: all tails runs every one (14, the same as the ``cp``
+        that has no ``y`` at all), all heads drops every one (0), and a
+        real coin spreads over ``{0, 2, ..., 14}``.
+
+        The pinned ends are what separate this from the two readings the
+        docstring rejects.  Deciding once for the whole run would cap all
+        tails at 2, since a single non-skip runs ``p`` once; rebinding
+        without per-repeat checks -- the retired cross-check ran the bound
+        command for the repeats left after the first heads, so all heads
+        gave 12 rather than 0.
+        """
         assert run_program("cypoe", coin=0) == "14"  # every repeat survives.
         assert run_program("cypoe", coin=1) == "0"  # every repeat dropped.
         assert run_program("cpoe", coin=0) == "14"  # a y-free run matches.
@@ -171,7 +222,14 @@ class TestStepMachine:
         assert machine.ind == 2
 
     def test_the_vm_view_reports_the_tape_and_the_loop_stack(self) -> None:
-        r"""``ip``/``memory``/``stack`` are the shared names over painfuck's."""
+        """``ip``/``memory``/``stack`` are the shared names over painfuck's state.
+
+        ``stack`` is the loop stack here, which is the one that actually
+        carries something -- so an open loop is stepped into to see it fill
+        and the matching close to see it drain.  The source is encoded
+        first, like every other program in this file: the interpreter reads
+        the Caesar-shifted text, not these letters.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.painfuck import _Machine
 
@@ -185,7 +243,19 @@ class TestStepMachine:
         assert (machine.ip, machine.stack) == (1, [])
 
     def test_an_eof_read_still_writes_back_what_the_step_spent(self) -> None:
-        r"""EOF propagates, but the cursor the step already moved is kept."""
+        """EOF propagates, but the cursor the step already moved is kept.
+
+        The core re-runs the whole step once the shell has a value, so the
+        shell holds the state from *before* it.  On EOF there is no value
+        and nothing to re-run -- yet the original interpreter had already
+        advanced past the read command and spent one repeat before it
+        raised, so the shell writes that much back by hand.  Without it a
+        caller that catches the EOFError sees a machine still parked on the
+        read, and a resumed run would execute it twice.
+
+        Both spellings raise: ``i`` reads a number and ``j`` a byte, and
+        each is retried through the same port.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.painfuck import _Machine
 
@@ -197,7 +267,18 @@ class TestStepMachine:
             assert machine.ind == 1, prog  # advanced past the read, not.
 
     def test_a_fault_keeps_what_the_step_already_did(self) -> None:
-        r"""A ``_Halted`` fault writes its effects and state back before."""
+        """A ``_Halted`` fault writes its effects and state back before raising.
+
+        Same reason as the EOF path above, for the other way a step can end
+        early: the core raises out of the middle of a step, carrying the
+        state and any effects it had accumulated, and the shell replays
+        them so the machine is left where the original interpreter left it
+        rather than back at the start of the step.
+
+        Both raise sites are covered -- ``i`` handed something that is not a
+        number, and a ``b`` with nothing on the loop stack, which is the one
+        that carries a message.
+        """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.painfuck import _Machine
 
@@ -212,7 +293,13 @@ class TestStepMachine:
         assert loose.ind == 1
 
     def test_growing_the_tape_leaves_an_addressable_pointer_alone(self) -> None:
-        r"""``_grow`` returns the tape untouched when the pointer already fits."""
+        """``_grow`` returns the tape untouched when the pointer already fits.
+
+        Every program here walks right one cell at a time, so the tape is
+        always grown by exactly the cell being stepped onto and the
+        already-addressable case never came up.  Called directly: the guard
+        is what keeps a re-visit from re-extending the tape.
+        """
         from esolangs.interpreters.tape_based.painfuck import _grow
 
         tape = (1, 2, 3)
@@ -221,18 +308,26 @@ class TestStepMachine:
         assert _grow(tape, 4) == (1, 2, 3, 0, 0)  # past the end, so extended.
 
     def test_skipping_a_loop_steps_over_a_nested_one(self) -> None:
-        r"""A zero cell skips to the loop's own 'b', not to a nested one."""
+        """A zero cell skips to the loop's own 'b', not to a nested one."""
         # cell 0 is zero, so the outer.
         # pair must be consumed as a.
         assert run_program("aabbue") == "\x00"
 
 
 class TestRepeatCollapsing:
-    r"""The closed forms `_advance` uses instead of looping `rep` times."""
+    """The closed forms `_advance` uses instead of looping `rep` times.
+
+    ``c`` multiplies the repeat count by 7 and ``t`` by 3, so a step can ask
+    for millions of iterations of one command; the affine ones are computed
+    directly instead.  Each has to agree with the loop it replaces, which is
+    what these assert -- against explicit iteration rather than against a
+    second interpreter, since ``y`` makes a two-machine differential
+    nondeterministic and unable to prove anything.
+    """
 
     @staticmethod
     def _iterate(op: str, tape: tuple[int, ...], ptr: int, rep: int) -> tuple:
-        r"""Apply ``op`` ``rep`` times, one step at a time."""
+        """Apply ``op`` ``rep`` times, one step at a time."""
         from esolangs.interpreters.tape_based.painfuck import _set, _trunc2
 
         for _ in range(rep):
@@ -284,7 +379,16 @@ class TestRepeatCollapsing:
             )
 
     def test_a_repeated_loop_command_decides_once(self) -> None:
-        r"""``a``/``b`` are jumps, so repeating one changes nothing."""
+        """``a``/``b`` are jumps, so repeating one changes nothing.
+
+        The wiki defines them as "go to the matching b if the value is zero"
+        and "go back to the matching a if it is not" -- decisions, not
+        accumulations, and nothing between two iterations of a repeat
+        changes the cell they read.  The loop stack is how this interpreter
+        finds the matching bracket, not part of the language, so a repeated
+        ``a`` must not push once per iteration and leave a loop that needs
+        as many ``b``s to close.
+        """
         from esolangs.interpreters.tape_based.painfuck import _advance
 
         entered = None
@@ -317,7 +421,18 @@ class TestRepeatCollapsing:
         ],
     )
     def test_a_c_run_absorbs_the_t_run_after_it(self, prog: str, runs: int) -> None:
-        r"""A ``t`` run after a ``c`` run repeats *the ``c``*."""
+        """A ``t`` run after a ``c`` run repeats *the ``c``*.
+
+        ``t`` repeats the command before it, and before a ``t`` that follows
+        a ``c`` run is that ``c``.  The ``c`` has already applied once, so
+        the run adds ``3 ** len`` more applications of it rather than
+        replacing them -- ``ct`` is four ``c``s, ``7 ** 4``, not the three
+        that counting the one already spent would give.
+
+        Both runs are read at dispatch.  Letting the ``t`` execute on its
+        own instead meant handing a count backward to a command already
+        gone, and no such handoff makes ``pt`` and ``ct`` both right.
+        """
         from esolangs.interpreters.tape_based.painfuck import _advance
 
         state = ((0,), (), 0, 0, 1)
@@ -331,7 +446,15 @@ class TestRepeatCollapsing:
     def test_a_t_run_repeats_three_to_its_length_times(
         self, prog: str, runs: int
     ) -> None:
-        r"""``t...`` is one count of ``3 ** len``, as ``c...`` is of ``7 **``."""
+        """``t...`` is one count of ``3 ** len``, as ``c...`` is of ``7 **``.
+
+        The cursor has to clear the whole run: leaving it inside made each
+        later ``t`` a step of its own that walked back over the ones before
+        it, so ``ptt`` ran its ``p`` three *then* nine times -- the
+        geometric sum 1+3+9 rather than 1+9.  The generator of the day
+        solved for that sum, and so only produced correct programs against
+        it.
+        """
         from esolangs.interpreters.tape_based.painfuck import _advance
 
         tape: tuple[int, ...] = (0,)
@@ -349,7 +472,12 @@ class TestRepeatCollapsing:
     def test_a_bare_t_still_repeats_the_previous_command(
         self, prog: str, trace: list[int]
     ) -> None:
-        r"""The forward read is only for a ``t`` reached from a ``c`` run."""
+        """The forward read is only for a ``t`` reached from a ``c`` run.
+
+        A ``t`` with an ordinary command behind it keeps walking backward,
+        which is the operator's whole meaning; ``pt`` is ``p`` then three
+        more ``p``.
+        """
         from esolangs.interpreters.tape_based.painfuck import _advance
 
         tape: tuple[int, ...] = (0,)
@@ -363,7 +491,12 @@ class TestRepeatCollapsing:
         assert seen == trace
 
     def test_halving_truncates_toward_zero_not_down(self) -> None:
-        r"""The one collapse a plain ``//`` would get wrong."""
+        """The one collapse a plain ``//`` would get wrong.
+
+        ``_trunc2`` truncates toward zero, so ``-7`` halved twice is ``-1``;
+        flooring would give ``-2``.  The shift has to match the loop for
+        every negative that does not divide exactly.
+        """
         from esolangs.interpreters.tape_based.painfuck import _advance
 
         state = ((-7,), (), 0, 0, 2)
@@ -380,7 +513,7 @@ def _machine(code: object) -> object:
 
 
 class TestContract(EmptyProgramContract, SnapshotContract, CycleContract):
-    r"""The shared empty-program shape, with this language's data."""
+    """The shared empty-program shape, with this language's data."""
 
     run = staticmethod(run_program)
     machine = staticmethod(_machine)

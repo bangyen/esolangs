@@ -1,4 +1,4 @@
-r"""Unit tests for the Fargo interpreter."""
+"""Unit tests for the Fargo interpreter."""
 
 import pytest
 
@@ -35,12 +35,25 @@ class TestBuiltins:
         assert run_program("% 0 1\n% 0 0\n$") == "0"
 
     def test_setting_one_bit_leaves_the_others_alone(self) -> None:
-        r"""Each ``%`` adds to the number rather than replacing it."""
+        """Each ``%`` adds to the number rather than replacing it.
+
+        Every case above sets a single bit, where writing the number
+        outright and folding the bit into it give the same answer.  Two
+        bits tell them apart: 1 and 2 together read 3, where an assignment
+        would leave only whichever was set last.
+        """
         assert run_program("% 0 1\n% 1 1\n$") == "3"
         assert run_program("% 1 1\n% 0 1\n$") == "3"
 
     def test_clearing_a_bit_leaves_the_others_alone(self) -> None:
-        r"""Clearing picks out its own bit, which bit 0 cannot show."""
+        """Clearing picks out its own bit, which bit 0 cannot show.
+
+        The mask that clears bit ``n`` is built by shifting, and at bit 0
+        a shift either way gives the same mask -- so the existing case
+        passes whichever direction it shifts.  Clearing bit 1 out of 3
+        leaves 1; a mask built by shifting the wrong way clears nothing
+        and leaves 3.
+        """
         assert run_program("% 0 1\n% 1 1\n% 1 0\n$") == "1"
 
     def test_shifts(self) -> None:
@@ -48,7 +61,14 @@ class TestBuiltins:
         assert run_program("% 0 < 10\n$") == "1"  # 2 >> 1 = 1.
 
     def test_shifts_move_exactly_one_place(self) -> None:
-        r"""Pin the distance, which ``%`` alone cannot see."""
+        """Pin the distance, which ``%`` alone cannot see.
+
+        ``%`` writes only the *low bit* of its value, so ``1 << 1`` and
+        ``1 << 2`` both leave bit 0 clear and look alike.  Indexing an
+        array by the shifted number reads the whole value instead: this
+        array answers 1 at index 2 and 0 at index 4, so a one-place shift
+        and a two-place shift give different output.
+        """
         # elements, by index: 0 0 1 0 0.
         arr = "+[] +[] +[] +[] [] 0 [] 0 [] 1 [] 0 [] 0"
         assert run_program(f"% 0 [?] {arr} > 1\n$") == "1"  # 1 << 1 == 2.
@@ -64,7 +84,13 @@ class TestBuiltins:
         assert run_program("% 0 ^ 1 0\n$") == "1"
 
     def test_binary_operators_read_both_arguments(self) -> None:
-        r"""Each operand must come from its own position."""
+        """Each operand must come from its own position.
+
+        A binary operator that read one argument twice would still agree
+        on every *symmetric* case, so these are the asymmetric ones: for
+        AND and OR the two orders of ``1``/``0`` must agree with each
+        other and disagree with the doubled operand.
+        """
         assert run_program("% 0 & 0 1\n$") == "0"
         assert run_program("% 0 & 1 0\n$") == "0"
         assert run_program("% 0 | 1 0\n$") == "1"
@@ -74,7 +100,12 @@ class TestBuiltins:
         assert run_program("% 0 [?] +[] [] 1 [] 0 1\n$") == "0"
 
     def test_writes_and_prints_evaluate_to_zero(self) -> None:
-        r"""``%`` and ``$`` return 0, which is what keeps output write-only."""
+        """``%`` and ``$`` return 0, which is what keeps output write-only.
+
+        The recursion check omits the output number from a frame's key on
+        exactly this basis, so a nonzero return here would quietly make
+        that unsound.  ``|`` exposes the value ``%`` hands back.
+        """
         assert run_program("% 0 | 0 % 1 1\n$") == "2"
         assert run_program("% 0 | 0 $\n$") == "00"
 
@@ -103,7 +134,12 @@ class TestBuiltins:
         assert run_program("% 0 : 1 1\n$") == "1"
 
     def test_conditional_nested_in_a_call_yields_its_body_s_value(self) -> None:
-        r"""``:`` becomes the call it runs, so its value is that call's."""
+        """``:`` becomes the call it runs, so its value is that call's.
+
+        Only visible when the ``:`` sits *inside* another call: at the top
+        level a spare value has nowhere to go, but here ``%`` is waiting
+        for it and would otherwise fire on a stray 0 before ``g`` ran.
+        """
         assert run_program("g | 1 0\n% 0 : 1 g\n$") == "1"
         assert run_program("g | 1 0\n% 0 : 0 g\n$") == "0"
 
@@ -121,17 +157,17 @@ class TestSyntax:
         assert run_program("​% 0 1\n$") == "1"
 
     def test_a_second_hash_stays_inside_the_comment(self) -> None:
-        r"""Only the first ``#`` divides code from comment."""
+        """Only the first ``#`` divides code from comment."""
         assert run_program("% 0 1 # a # b # c\n$") == "1"
 
     def test_a_token_may_end_in_a_colon(self) -> None:
-        r"""The raw mark is a *prefix*; a trailing colon is part of the name."""
+        """The raw mark is a *prefix*; a trailing colon is part of the name."""
         defs, _ = _parse_program("f: x | x 0\nf: 1\n$\n")
         assert list(defs) == ["f:"]
         assert run_program("f: x | x 0\n% 0 f: 1\n$") == "1"
 
     def test_only_zero_and_one_are_literal_digits(self) -> None:
-        r"""``2`` is a name, not a number, so it is never a literal."""
+        """``2`` is a name, not a number, so it is never a literal."""
         assert not _is_literal("2")
         assert not _is_literal("")
         assert _is_literal("101")
@@ -168,13 +204,26 @@ class TestSyntax:
         assert run_program("setter % 0 1\n: 1 :setter\n$") == "1"
 
     def test_a_bare_colon_is_the_builtin_not_a_parameter(self) -> None:
-        r"""``:`` names the conditional, so it starts the code."""
+        """``:`` names the conditional, so it starts the code.
+
+        Only ``:name`` marks a raw function; stripping the mark from a
+        bare ``:`` would leave nothing and make the language's only
+        conditional parse as an ordinary parameter name.
+        """
         defs, _ = _parse_program("count n : n count < n\n$\n")
         assert defs["count"].params == ("n",)
         assert defs["count"].code == (":", "n", "count", "<", "n")
 
     def test_a_one_character_name_still_takes_the_raw_mark(self) -> None:
-        r"""``:s`` is the shortest raw reference there is."""
+        """``:s`` is the shortest raw reference there is.
+
+        The mark is recognised by a ``:`` prefix *and* a length past one,
+        the length being what keeps a bare ``:`` -- the conditional --
+        from reading as a raw reference to the empty name.  The tests
+        either side use a seven-character name and the bare colon, so the
+        boundary between them was never written: requiring one character
+        more would make ``:s`` an ordinary call instead.
+        """
         assert run_program("s % 0 1\n: 1 :s\n$") == "1"
         assert run_program("apply c : 1 c\ns % 0 1\napply :s\n$") == "1"
 
@@ -182,11 +231,20 @@ class TestSyntax:
         assert run_program("apply c : 1 c\nsetter % 0 1\napply :setter\n$") == "1"
 
     def test_a_bound_zero_arity_function_runs_in_argument_position(self) -> None:
-        r"""Outside a raw slot, a bound function is called, not passed on."""
+        """Outside a raw slot, a bound function is called, not passed on.
+
+        ``c`` holds ``setter``, and ``|`` wants a value, so ``c`` runs and
+        its side effect lands before the ``$``.
+        """
         assert run_program("use c | c 0\nsetter % 0 1\nuse :setter\n$") == "1"
 
     def test_a_self_call_takes_its_own_arity(self) -> None:
-        r"""A recursive name is sized from the definition being parsed."""
+        """A recursive name is sized from the definition being parsed.
+
+        It is not in ``self.defs`` yet while its own body is checked, so
+        the one-outer-call count has to reach for the parameters it is in
+        the middle of gathering.
+        """
         defs, _ = _parse_program("loop n | n loop n\n$\n")
         assert defs["loop"].params == ("n",)
         # Accepted: ``|`` owes 2, ``n``.
@@ -201,7 +259,7 @@ class TestSyntax:
 
 
 class TestWikiExamples:
-    r"""The page's truth machine, including its zero-width spaces."""
+    """The page's truth machine, including its zero-width spaces."""
 
     WIKI = "one ​^ $ one\n​% 0 @ 0\n: @ 0 one\n$\n"
 
@@ -231,17 +289,27 @@ class TestWikiExamples:
             run_program("f x & x\n$\n")
 
     def test_an_undefined_name_in_a_body_supplies_a_value(self) -> None:
-        r"""It cannot be a call, so the count treats it as one value."""
+        """It cannot be a call, so the count treats it as one value.
+
+        Whether it *resolves* is a runtime question -- here it completes
+        ``&``'s arguments, so the definition is well-formed and only a
+        call to ``f`` would raise.
+        """
         run_program("f x & x nope\n$\n")
 
     def test_redefinition_is_unreachable_rather_than_rejected(self) -> None:
-        r"""The wiki calls it an error; the grammar makes it unwritable."""
+        """The wiki calls it an error; the grammar makes it unwritable.
+
+        A line whose first token is already defined parses as a *call*, so
+        the second ``f`` here calls the first rather than redefining it --
+        there is no way to express the error the spec names.
+        """
         defs, calls = _parse_program("f | 1 0\nf | 0 0\n$\n")
         assert list(defs) == ["f"]
         assert calls == [("f", "|", "0", "0"), ("$",)]
 
     def test_one_outer_call_binds_definitions_not_call_lines(self) -> None:
-        r"""A top-level line may hold several complete calls."""
+        """A top-level line may hold several complete calls."""
         assert run_program("% 0 1\n$ $\n") == "11"
 
 
@@ -324,7 +392,7 @@ class TestMachine:
 
     @staticmethod
     def _states(code: str, stdin: str = "0\n") -> list[object]:
-        r"""Every snapshot one run passes through, halt included."""
+        """Every snapshot one run passes through, halt included."""
         machine = _Machine(code, ScriptedIO(stdin))
         seen: list[object] = []
         for _ in range(200):
@@ -335,7 +403,15 @@ class TestMachine:
         return seen
 
     def test_snapshot_separates_the_state_it_claims_to_carry(self) -> None:
-        r"""Each field matters, so a run's states are all distinct."""
+        """Each field matters, so a run's states are all distinct.
+
+        The cycle detector's soundness rests on the snapshot being
+        *complete*: a field it drops is a difference two runs can hide
+        behind.  These three pairs differ only in a frame's bindings, its
+        pending arguments, and its result respectively -- the parts that
+        are captured through ``repr()`` and so are easiest to hollow out
+        without any output changing.
+        """
         assert self._states("f x | x 0\nf 1\n$\n") != self._states(
             "f x | x 0\nf 0\n$\n"
         ), "bindings do not reach the snapshot"
@@ -347,12 +423,17 @@ class TestMachine:
         ), "a frame's result does not reach the snapshot"
 
     def test_every_step_of_a_run_has_its_own_state(self) -> None:
-        r"""No two steps collide, so nothing is a spurious cycle."""
+        """No two steps collide, so nothing is a spurious cycle."""
         seen = self._states("f x | x 0\nf 1\n$\n")
         assert len(set(seen)) == len(seen)
 
     def test_frame_entry_key_separates_differing_bindings(self) -> None:
-        r"""Two calls of one function with different arguments differ."""
+        """Two calls of one function with different arguments differ.
+
+        The ancestor check calls a frame a replay when its key matches an
+        ancestor's, so bindings dropped from the key would make an
+        ordinary recursion look like a hang.
+        """
         machine = _Machine("f x | x 0\nf 1\n$\n", ScriptedIO("0\n"))
         keys = []
         while not machine.halted:
