@@ -74,6 +74,17 @@ class TestUnsquare:
     def test_read_blank_lines_reprompt(self) -> None:
         assert run_program("iPo", "\n\n7\n") == "\x00"
 
+    def test_a_whitespace_only_line_counts_as_blank(self) -> None:
+        """The re-prompt is on ``strip()``, not on emptiness.
+
+        ``test_read_blank_lines_reprompt`` prints the *accumulator*, which
+        is 0 whatever ``i`` pushed, so it cannot see what was read -- and
+        its lines are genuinely empty, which both readings skip.  Printing
+        what ``i`` pushed, from a line of spaces, is what separates them: a
+        reader stopping at ``not line`` takes the space itself.
+        """
+        assert run_program("io", "   \n7\n") == "7"
+
     def test_print_letter(self) -> None:
         assert run_program("+" * 32 + "Po") == "@"
 
@@ -99,9 +110,35 @@ class TestUnsquare:
         assert run_program("io", chr(0x10FFFF)) == "\U0010ffff"
         assert run_program("+xxxx+xxxxxxxxxxxxxxxPo") == "1114112"
 
+    def test_a_negative_is_masked_before_it_is_judged(self) -> None:
+        """``o`` tests the low 32 bits, but falls back to the whole value.
+
+        The only negative anywhere else is -2, whose low 32 bits are
+        4294967294 -- far outside the code-point range, so it prints as a
+        decimal and the mask never shows.  ``-`` then 31 ``x`` makes
+        -4294967296, whose low 32 bits are 0, and that prints as a
+        character.  An interpreter treating every negative as unprintable
+        passed the whole file.
+        """
+        assert run_program("-" + "x" * 31 + "Po") == "\x00"
+
     def test_loop_skips_when_acc_01(self) -> None:
+        """Both 0 and 1 skip the body -- and the 1 needs arranging.
+
+        Neither ``O`` nor ``I`` touches the accumulator, so the two cases
+        below are both the *zero* one and the 1 in this test's name went
+        untested: an interpreter skipping only on zero passed the whole
+        file.  Getting a 1 into the accumulator takes pushing one and
+        popping it back with ``A``.
+
+        In ``OIA>A<Po`` the accumulator is 1 at the ``>``, so the body is
+        skipped, the 0 that ``O`` pushed stays put, and ``P`` pushes the
+        still-1 accumulator for ``o`` to print.  Entering instead would run
+        the ``A``, which pops that 0 into the accumulator and prints 0.
+        """
         assert run_program("O>I<") == ""
         assert run_program("I>I<") == ""
+        assert run_program("OIA>A<Po") == "\x01"
 
     def test_skipped_loop_counts_nested_brackets(self) -> None:
         # the accumulator starts at 0, so the leading > skips its body; the
@@ -155,6 +192,41 @@ class TestStepMachine:
         machine.step()
         assert machine.stack == (ord("h"),)
 
+    def test_memory_views_the_accumulator_not_the_stack(self) -> None:
+        """``memory`` is the accumulator; ``stack`` is the stack.
+
+        ``state_views`` lists both, but the shared contract only checks
+        that each name resolves and that *some* view moves over the run,
+        which ``ind`` alone satisfies -- so ``memory`` returning the data
+        stack, the exact aliasing that contract is named for, passed.
+        ``+I`` leaves the two holding different things, which is what makes
+        the difference visible.
+        """
+        from esolangs.interpreters.stack_based.unsquare import _Machine
+
+        machine = _Machine("+I", ScriptedIO())
+        for _ in range(2):
+            machine.step()
+        assert machine.memory == [2]  # the accumulator
+        assert machine.stack == (1,)  # what I pushed
+
+    def test_an_unmatched_bracket_leaves_the_machine_halted(self) -> None:
+        """The cursor is moved to the end before the error is raised.
+
+        ``test_error_unmatched_brackets`` checks the message, and the
+        machine it came from is thrown away by ``run_program``.  But the
+        placement is deliberate: the scan that fails has walked to the end
+        of the code, and a caller that catches the HaltError should find a
+        halted machine rather than one still sitting on the bracket.
+        """
+        from esolangs.interpreters.stack_based.unsquare import _Machine
+
+        machine = _Machine(">", ScriptedIO())
+        with pytest.raises(HaltError, match=r"^unmatched >$"):
+            machine.step()
+        assert machine.halted
+        assert machine.ind == 1
+
     def test_step_after_halt_is_a_noop(self) -> None:
         from esolangs.interpreters.stack_based.unsquare import _Machine
 
@@ -191,4 +263,25 @@ class TestContract(CycleContract, InputCursorContract, StateViewContract):
     # while the jump stack stays empty -- which is the point: they are
     # separate slots, not one field read under four names.
     state_views = ("ind", "acc", "stack", "jumps", "ip", "memory")
-    viewing_program = "Io"
+    # The loop test's own program: it moves the accumulator, the jump
+    # stack, and the data stack, where "Io" moved only the last.
+    viewing_program = "++>Po-<"
+
+
+class TestStateViewValues:
+    """The named views read the slots they claim, not one another.
+
+    The shared contract checks that each view *moves*; which slot it moves
+    with is this file's business, because only this file knows which of its
+    names could be confused for each other.  A value pinned at a step where
+    they hold different things is what a rewiring would change.
+    """
+
+    def test_acc_and_jumps_are_their_own_slots(self) -> None:
+        """Six steps into the loop all four hold different things."""
+        machine = _machine("++>Po-<")
+        for _ in range(6):
+            machine.step()
+        assert machine.acc == 2  # decremented once inside the body
+        assert machine.jumps == (1,)  # the > that was entered
+        assert machine.stack == (4,)  # what P pushed on the first pass

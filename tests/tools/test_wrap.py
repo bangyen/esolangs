@@ -17,6 +17,7 @@ must come back unwrapped rather than subtly broken.
 """
 
 import re
+from dataclasses import replace
 
 import pytest
 
@@ -25,15 +26,19 @@ from esolangs.registry import LANGUAGES, canonical_id
 from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.boolean.examples import BooleanExample
 from esolangs.tools.wrap import (
+    _PCT_HEADER_END,
     DEFAULT_WIDTH,
     MULTILINE,
     WRAPPERS,
     _bio,
+    _bitdeque,
     _cell_width,
     _polynomial,
+    _qoibl,
     _six_five,
     _span,
     _taglate,
+    takes_width,
     wrap_chars,
     wrap_grid,
     wrap_program,
@@ -45,23 +50,87 @@ from esolangs.tools.wrap import (
 # where a test needs *a* program rather than the language's own example.
 TABLE = "0110"
 
+# A third width, narrower than any a reader would ask for, because a broken
+# wrapper is not broken at every width.  Whether a break lands inside a
+# multi-character token depends on where the width happens to put it, so a
+# wrapper can be wrong and still pass at both conventional widths: Bitdeque
+# answered 1 instead of 0 at 12 and 13 while 11, 14, 40 and 80 were all
+# correct, and the three registered since (Lamfunc, RAM0, Jaune) each broke
+# under wrap_chars at some width between 10 and 50 while passing at 80.
+# Sweeping a dozen widths per language belongs in a scratch harness; one odd
+# width in the suite is what keeps the class from coming back.
+NARROW_WIDTH = 13
+
 # Languages that must never be *reflowed*, and why.  Not a restatement of
 # the implementation: each was verified to break (or to be meaningless) when
 # newlines are inserted, so the table is the record of that finding.
+#
+# The eight below NoComment were found the same way, by inserting a newline
+# at every position of the language's own boolean program and running each
+# one.  Grapheme, CV(N)(C), Fargo and Super SNUSP have no safe position at
+# all; Alight has only the very end, where the newline adds an empty row
+# rather than splitting anything.  Minsky Swap has six, but none a wrapper
+# could use: five sit inside its leading ``****`` run and the sixth is the
+# end of the program, so there is nowhere between two statements to break.
+# Either way there is no token rule to find and no narrower width that
+# would help.  They are recorded because "we tried and it cannot be done"
+# is worth as much as a wrapper, and because each is a long line that
+# otherwise looks like an oversight -- CV(N)(C) reaches 1162 columns at
+# n == 4 and Super SNUSP 286.
+#
+# Four of them are already covered by a general rule and named anyway,
+# because each has a *specific* reason worth keeping rather than deriving
+# again.  Alight and Super SNUSP are 2D, where a newline is a row: Alight's
+# commands are words walked out cell by cell, so a row end cuts one in
+# half, and Super SNUSP's pointer walks a grid, so a break relocates code
+# rather than reflowing it.  (The older reason given here -- that with no
+# start marker it enters at the bottom right -- is true of the language but
+# not of these programs, which all begin with an explicit ``"``.)  Both now
+# take a width themselves, by folding on their own turns and mirrors; that
+# is the independence the paragraph below is about.  function x(y) and the
+# Algebraic Programming Language are line-structured source rather than
+# grids -- the first takes one indented statement per line, the second
+# decides a line's *meaning* by whether it contains an ``=``, so a break
+# does not reflow a line but turns one line into two with different jobs.
+#
+# Unwrappable is not the same as unbounded, and the two memberships are
+# independent: a language here may still take a width by *emitting* a
+# narrower program, which is what function x(y) does by naming its
+# subtrees.  What this table says is only that :func:`wrap_program` must
+# not touch the finished text -- the reasons above are why a break is
+# destructive, and those hold whatever the generator learns to do.
 UNWRAPPABLE = {
     "nocomment": "a newline is an unrecognized command, a load error",
+    "grapheme": "every character must be A-Z, so a newline is a load error",
+    "cvnc": "the source must syllabify and a newline is in no syllable",
+    "fargo": "its newlines already separate statements",
+    "minsky_swap": "its second line is absolute offsets into its first",
+    "alight": "a command is a word walked cell by cell; a row end cuts it",
+    "super_snusp": "a row is a grid row; a break moves code, it does not reflow",
+    "function_x_y": "its statements are one per line, and indented",
+    "algebraic_programming_language": "a line with '=' defines, one without runs",
 }
 
 # These are 2D too, and wrap_program must not touch them either -- but each
 # honours a width itself by *laying its program out* to fit rather than by
 # ignoring it, so they belong here rather than in UNWRAPPABLE.  LaserFuck's
 # loop layout is tied to the beam's track and cannot fold, so a loop program
-# wider than the width is re-emitted as the (foldable) linear form; Dig
-# folds its segments over several row pairs.
-WIDTH_HONOURING = {
-    "laserfuck": "falls back to the foldable linear form",
-    "dig": "folds its segments over several row pairs",
-}
+# wider than the width is re-emitted as the (foldable) linear form.
+#
+# Derived from :func:`takes_width` rather than written out, for the reason
+# ``esolangs.tools.boolean.BOOLEAN`` is derived from the registry: the
+# hand-written table had drifted both ways.  It omitted Streetcode, which
+# really does take a width.  And it named Dig, which at the time took only
+# a truth table and returned the same program whatever width was asked for
+# -- the 2-input table below was inside 80 columns either way, which is
+# what let it pass.  Dig has since grown a real one, so that entry would be
+# right today for a reason the table never had; a derived table cannot make
+# either mistake in the first place.
+WIDTH_HONOURING = sorted(
+    lang.id
+    for lang in LANGUAGES.values()
+    if lang.boolean is not None and takes_width(lang.boolean)
+)
 
 # The boolean example for each language, keyed by the language id rather
 # than the example's stem.  The two differ ("6-5" against ``six_five``), and
@@ -113,7 +182,11 @@ def _replaces_a_space(name: str) -> bool:
     character and fixed-token wrappers insert a newline where there was no
     separator at all.  Undoing the wrap therefore differs between the two.
     """
-    return WRAPPERS[LANGUAGES[name].id] in (wrap_space_delimited, _polynomial)
+    return WRAPPERS[LANGUAGES[name].id] in (
+        wrap_space_delimited,
+        _polynomial,
+        _bitdeque,
+    )
 
 
 def _is_grid(name: str) -> bool:
@@ -144,7 +217,7 @@ def _run(name: str, program: str) -> str:
 
 
 @pytest.mark.parametrize("name", WRAPPED)
-@pytest.mark.parametrize("width", [40, DEFAULT_WIDTH])
+@pytest.mark.parametrize("width", [NARROW_WIDTH, 40, DEFAULT_WIDTH])
 def test_wrapped_program_prints_the_same(name: str, width: int) -> None:
     """A wrapped program behaves exactly as the unwrapped one behaves."""
     example = _example(name)
@@ -152,7 +225,7 @@ def test_wrapped_program_prints_the_same(name: str, width: int) -> None:
 
 
 @pytest.mark.parametrize("name", WRAPPED)
-@pytest.mark.parametrize("width", [40, DEFAULT_WIDTH])
+@pytest.mark.parametrize("width", [NARROW_WIDTH, 40, DEFAULT_WIDTH])
 def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
     """Wrapping preserves the token sequence exactly.
 
@@ -181,10 +254,22 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
         return
     # BIO indents by nesting depth, and its commands carry no separator at
     # all -- the whole program is one whitespace-delimited token, so the
-    # token check above says nothing about it.  Stripping the indent off
-    # each line and rejoining must give the original back exactly.
+    # token check above says nothing about it.  What must survive is the
+    # command text; BIO's own parse rejoins across whitespace before reading
+    # it, so a program the wrapper breaks where a space already stood is the
+    # same program even though the space is gone.  Comparing with all
+    # whitespace removed says exactly that, where stripping only the indent
+    # asserted the spacing too and failed at a width that happened to break
+    # on one.
     if WRAPPERS[LANGUAGES[name].id] is _bio:
-        assert "".join(line.strip() for line in wrapped.split("\n")) == plain
+        assert "".join(wrapped.split()) == "".join(plain.split())
+        return
+    # Qoibl is multi-line with no structural first line: every line is a
+    # statement and every one folds, so what must survive is the token
+    # sequence across the whole program, exactly as for the grid wrappers.
+    # Its newlines replace spaces, so splitting on whitespace recovers it.
+    if WRAPPERS[LANGUAGES[name].id] is _qoibl:
+        assert wrapped.split() == plain.split()
         return
     # Taglate's first line is a structural queue seed the wrapper must leave
     # alone; only the commands below it are reflowed.
@@ -199,6 +284,14 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
     # there the newline turns back into that space; every other wrapper
     # inserts the newline between two adjacent commands, so it just goes
     # away.  Either way no command may be dropped, reordered, or split.
+    # Polynomial now breaks in both places -- between two terms, where a
+    # space was, and *inside* a coefficient, where nothing was -- so no
+    # single substitution restores it.  Its parser deletes whitespace
+    # before reading, so the invariant that means anything there is that
+    # the two agree once whitespace is gone.
+    if WRAPPERS[LANGUAGES[name].id] is _polynomial:
+        assert re.sub(r"\s", "", wrapped) == re.sub(r"\s", "", plain)
+        return
     restored = wrapped.replace("\n", " ") if _replaces_a_space(name) else wrapped
     assert restored.replace("\n", "") == plain
 
@@ -207,22 +300,17 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
 def test_wrapping_respects_the_width(name: str) -> None:
     """No line exceeds the width, unless a single token already does.
 
-    Polynomial's big-integer coefficients are longer than 80 characters and
-    cannot be broken without changing the number, so such a token gets a
-    line of its own rather than being split.  Its unbreakable unit is the
-    ``sign term`` pair rather than the bare term -- splitting the two is
-    what stranded a lone ``+`` on a line -- so a line holding one runs two
-    characters past the term's own length, and the allowance below follows
-    the wrapper rather than the whitespace.
+    Polynomial used to need an allowance here -- its coefficients run to
+    thousands of digits and were held to be unbreakable, so a line carrying
+    one overran by the width of the sign as well.  They are breakable: the
+    interpreter deletes whitespace before parsing, so a newline between two
+    digits is not in the number.  Polynomial now meets the width like
+    everything else, and :func:`test_polynomial_meets_the_width_it_is_given`
+    holds it to that at four widths rather than just this one.
     """
     wrapped = _example(name).build(DEFAULT_WIDTH)
-    signed = WRAPPERS[LANGUAGES[name].id] is _polynomial
     for line in wrapped.split("\n"):
-        tokens = line.split()
-        longest_token = max((len(t) for t in tokens), default=0)
-        if signed and tokens and tokens[0] in ("+", "-"):
-            # The sign and the space that keeps it attached to its term.
-            longest_token += 2
+        longest_token = max((len(t) for t in line.split()), default=0)
         assert len(line) <= max(DEFAULT_WIDTH, longest_token)
 
 
@@ -248,13 +336,260 @@ def test_every_wrapper_actually_fires(name: str) -> None:
     raw = example.build(width=None)
     if example.build(40) != raw:
         return
+    structural = LANGUAGES[name].id in MULTILINE
     for arity in range(1, 5):
         grown = generate(name, _table(arity))
-        if "\n" in grown or len(grown) <= 40:
+        # A newline disqualifies a grown program only where it means layout.
+        # A :data:`MULTILINE` language starts with a structural row its
+        # wrapper keeps and folds the rest, so the question there is whether
+        # wrapping adds *more* rows, not whether any exist -- and whether the
+        # part it may fold is itself long enough to need a break.  Measuring
+        # the whole program instead stops the search at the first arity whose
+        # *header* pushes it past the width, which for %^2^-1 is an arity
+        # whose body is still thirteen characters.
+        foldable = grown.split("\n", 1)[1] if structural else grown
+        if ("\n" in grown and not structural) or len(foldable) <= 40:
             continue
-        assert "\n" in generate(name, _table(arity), 40), f"{name}: wrapper never fired"
+        narrowed = generate(name, _table(arity), 40)
+        assert narrowed.count("\n") > grown.count("\n"), f"{name}: wrapper never fired"
         return
     pytest.fail(f"{name}: no table up to 4 inputs produced a program long enough")
+
+
+@pytest.mark.parametrize("name", WRAPPED)
+def test_every_wrapper_fires_on_a_template_too(name: str) -> None:
+    """A parameterized language's *template* must wrap, not just its program.
+
+    :func:`~esolangs.generate` hands the wrapper what the generator
+    returned, and for a parameterized language that is the template, ``{Xi}``
+    placeholders and all.  A token rule that does not know about ``{Xi}``
+    fails to tile it, and the wrappers here answer that by returning the
+    program untouched -- which reads as "it fits" and is not.
+
+    :func:`test_every_wrapper_actually_fires` cannot see this: it tries the
+    language's own example first and returns as soon as *that* wraps, and an
+    example is filled before it is wrapped.  BIO passed that way while
+    ``generate`` gave back a single 3466-column line at eight inputs.
+    """
+    example = _example(name)
+    if example.fill is None:
+        pytest.skip(f"{name} is not parameterized; its template is its program")
+    for arity in range(1, 5):
+        template = generate(name, _table(arity))
+        if "\n" in template or len(template) <= 40:
+            continue
+        assert generate(name, _table(arity), 40) != template, (
+            f"{name}: the wrapper left the template untouched"
+        )
+        return
+    pytest.skip(f"{name}: no table up to 4 inputs gives a template long enough")
+
+
+@pytest.mark.parametrize("name", WRAPPED)
+def test_no_width_breaks_a_placeholder(name: str) -> None:
+    """No width may put a line break through the middle of a ``{Xi}``.
+
+    ``fill`` finds a placeholder by string replace, so a newline inside one
+    leaves it unfilled and the program reads the two halves as commands.
+
+    This is a *different* question from the one
+    :func:`test_every_wrapper_fires_on_a_template_too` asks, and the reason
+    both exist: that test wants the wrapper to do something, this one wants
+    what it does to be harmless.  Tiling does not give the second for free
+    -- a ``.`` alternative tiles a placeholder one character at a time, so
+    the tokens still cover the program and the packing is still free to
+    break it.  Six languages did, at widths up to 118, and every one of
+    them satisfied the tiling check while doing it.
+
+    The width sweep is exhaustive rather than sampled because the fault is
+    a coincidence between the width and where the placeholder happens to
+    fall: Eval survives 40 and fails 10, so any fixed pair of widths is a
+    coin toss.
+    """
+    example = _example(name)
+    if example.fill is None:
+        pytest.skip(f"{name} is not parameterized; it has no placeholder")
+    for arity in range(1, 4):
+        template = generate(name, _table(arity))
+        placeholders = [f"{{X{i}}}" for i in range(arity) if f"{{X{i}}}" in template]
+        for width in range(4, 121):
+            wrapped = generate(name, _table(arity), width)
+            for placeholder in placeholders:
+                assert wrapped.count(placeholder) == template.count(placeholder), (
+                    f"{name}: width {width} at {arity} inputs broke {placeholder}"
+                )
+
+
+# Tables the generators take a *different path* on than parity.  The
+# committed examples are all AND2, and the sweeps above grow parity, so
+# between them they exercise two shapes -- and a wrapper is exercised by the
+# shape of the program, not by the table directly.  Sophie's else-block bug
+# needed a table that puts an if-block beside an else-block, which neither
+# AND2 nor parity produces at three inputs; majority does.
+_OTHER_TABLES = {"majority": "00010111", "mixed": "11111001"}
+
+# Long enough that a run which has not finished is looping, short enough
+# that eight of them are not a wait.  123 answers by *looping forever* for a
+# one, so a timeout is one of the behaviours being compared rather than a
+# failure -- what must match is that the wrapped program loops exactly where
+# the unwrapped one does.
+_RUN_TIMEOUT = 5.0
+
+
+def _behaviour(name: str, program: str, stdin: str) -> str:
+    """What ``program`` does, as a value: its output, or how it failed."""
+    try:
+        return run(name, program, stdin, timeout=_RUN_TIMEOUT)
+    except Exception as exc:
+        return f"{type(exc).__name__}: {exc}"
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("name", WRAPPED)
+@pytest.mark.parametrize("shape", sorted(_OTHER_TABLES))
+def test_wrapping_holds_on_a_table_the_examples_do_not_cover(
+    name: str, shape: str
+) -> None:
+    """Wrapping still preserves behaviour on a bigger, differently-shaped table.
+
+    The other execution sweep runs one short AND2 program per language,
+    which is too small to exercise a token rule: three wrappers shipped
+    broken behind it.  Bitdeque separated ``GOTO`` from its target, Minifuck
+    let a ``[`` skip a newline instead of the instruction after it, and
+    Sophie split ``#$1`` and then detached an else-block.  Each answered
+    with a wrong number or nothing at all, and each was green.
+
+    So this drives every wrapper over a three-input table at the width that
+    caught all three, on every input combination, and asks the only question
+    that matters: does the wrapped program still do what the unwrapped one
+    does?  Marked slow -- it is a few hundred interpreter runs.
+    """
+    example = _example(name)
+    table = _OTHER_TABLES[shape]
+    for combo in range(8):
+        bits = tuple(int(b) for b in format(combo, "03b"))
+        variant = replace(
+            example,
+            table=table,
+            bits=bits if example.fill else (),
+            inputs=() if example.fill else tuple(str(b) for b in bits),
+        )
+        plain = variant.build(width=None)
+        wrapped = variant.build(NARROW_WIDTH)
+        if wrapped == plain:
+            continue
+        stdin = "".join(f"{line}\n" for line in variant.inputs)
+        assert _behaviour(name, wrapped, stdin) == _behaviour(name, plain, stdin), (
+            f"{name}: wrapping changed the answer on the {shape} table, inputs {bits}"
+        )
+
+
+# Tables and widths for the two generators that lay themselves out.  The
+# widths reach well below what either can build, which is the point: the
+# narrow end is where a layout generator has to decide what to do when the
+# width cannot be met, and the test above this comment only ever asked for
+# widths every program already fitted.
+_HONOUR_TABLES = {
+    "parity1": "01",
+    "parity2": "0110",
+    "parity3": "01101001",
+    "majority3": "00010111",
+}
+_HONOUR_WIDTHS = (10, 20, 40, 80)
+
+
+def _columns(program: str) -> int:
+    """The width of the widest row of ``program``."""
+    return max(len(line) for line in program.split("\n"))
+
+
+def _laid_out(name: str, table: str, bits: str, width: int | None) -> str:
+    """``name``'s program for ``table`` and ``bits``, laid out to ``width``.
+
+    Goes through the language's own example rather than calling the
+    generator, because a width-honouring generator may also be
+    *parameterized*: WII2D has no input command, so what it returns is a
+    template whose ``{Xi}`` placeholders the example's ``fill`` replaces.
+    Running the template instead would not fail -- the interpreter reads
+    ``{`` and ``X`` as no-ops and a digit as a load -- it would quietly
+    compute something unrelated, identically for every width, and the
+    comparison would pass without ever testing a fold.
+    """
+    example = EXAMPLE_BY_ID[LANGUAGES[name].id]
+    variant = replace(
+        example,
+        table=table,
+        bits=tuple(int(bit) for bit in bits) if example.fill else (),
+        inputs=() if example.fill else tuple(bits),
+    )
+    return variant.build(width)
+
+
+@pytest.mark.parametrize("name", WIDTH_HONOURING)
+def test_width_honouring_layout_meets_any_width_it_can(name: str) -> None:
+    """The layout fits the width whenever the generator can build it that narrow.
+
+    Neither generator can build arbitrarily narrow -- LaserFuck's beam needs
+    a margin cell to turn in, Streetcode's tree has a span its rows cannot
+    fold below -- and both *raise* a width under that floor to it rather
+    than refusing, which :func:`~esolangs.generate` documents as the
+    behaviour of asking for a width no generator can meet.
+
+    So the bound is stated against the floor rather than absolutely, and the
+    floor is *measured* rather than tabulated (asking for width 1 yields the
+    narrowest program the generator has), because a table of floor constants
+    is the kind that drifts: LaserFuck's are 12, 18, 24 and 30 columns at one
+    through four inputs and Streetcode's 21, 33, 44 and 52, both growing six
+    columns an input, and none of that belongs pinned in a test.
+    """
+    language = next(lang for lang in LANGUAGES.values() if lang.id == name)
+    for label, table in _HONOUR_TABLES.items():
+        arity = len(table).bit_length() - 1
+        bits = "0" * arity
+        narrowest = _columns(_laid_out(language.name, table, bits, 1))
+        for width in _HONOUR_WIDTHS:
+            columns = _columns(_laid_out(language.name, table, bits, width))
+            assert columns <= max(width, narrowest), (
+                f"{name}: {label} at width {width} came out {columns} columns, "
+                f"wider than both the width and its {narrowest}-column floor"
+            )
+
+
+@pytest.mark.parametrize("name", WIDTH_HONOURING)
+def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:
+    """Laying the program out to a width does not change what it computes.
+
+    The bound was the only thing asserted of these two for a long time, and
+    a bound is the easier half: a generator that folds a beam or a
+    boustrophedon is *rewriting the program*, so a fold that mis-routes is a
+    wrong answer, not a ragged edge.  Nothing ran them.
+
+    The compact form is the reference rather than a recomputed truth table,
+    for the same reason the wrap sweeps compare against the unwrapped
+    program: what must hold is that the layout is irrelevant to the result,
+    which is exactly "these two programs do the same thing".
+    """
+    language = next(lang for lang in LANGUAGES.values() if lang.id == name)
+    example = EXAMPLE_BY_ID[language.id]
+    relaid = 0
+    for label, table in _HONOUR_TABLES.items():
+        arity = len(table).bit_length() - 1
+        for combo in range(2**arity):
+            bits = format(combo, f"0{arity}b")
+            # A parameterized generator embeds its inputs and reads nothing.
+            stdin = "" if example.fill else "".join(f"{bit}\n" for bit in bits)
+            compact = _laid_out(language.name, table, bits, None)
+            expected = _behaviour(language.name, compact, stdin)
+            for width in _HONOUR_WIDTHS:
+                folded = _laid_out(language.name, table, bits, width)
+                relaid += folded != compact
+                assert _behaviour(language.name, folded, stdin) == expected, (
+                    f"{name}: laying {label} out to width {width} changed the "
+                    f"answer for inputs {bits}"
+                )
+    # A generator that stopped laying anything out would pass every
+    # assertion above by comparing the compact form against itself.
+    assert relaid, f"{name}: no width produced a different layout"
 
 
 @pytest.mark.parametrize("name", sorted(UNWRAPPABLE))
@@ -266,7 +601,7 @@ def test_unwrappable_languages_are_untouched(name: str) -> None:
     assert wrap_program(program, language.id, 4) == program
 
 
-@pytest.mark.parametrize("name", sorted(WIDTH_HONOURING))
+@pytest.mark.parametrize("name", WIDTH_HONOURING)
 def test_width_honouring_languages_respect_the_width(name: str) -> None:
     """A generator that lays itself out really does fit the width given.
 
@@ -281,7 +616,7 @@ def test_width_honouring_languages_respect_the_width(name: str) -> None:
     pin the layout, not the width.
     """
     language = next(lang for lang in LANGUAGES.values() if lang.id == name)
-    assert language.id not in WRAPPERS, WIDTH_HONOURING[name]
+    assert language.id not in WRAPPERS, f"{name} both lays out and reflows"
     assert language.boolean is not None
     for width in (40, 80, 94):
         program = generate(language.name, TABLE, width)
@@ -374,34 +709,53 @@ def test_polynomial_never_strands_a_sign_on_its_own_line() -> None:
     assert not [line for line in program.split("\n") if line.strip() in ("+", "-")]
 
 
-def test_polynomial_puts_one_term_on_each_line() -> None:
-    """The layout: every line is exactly one term, sign included.
+def test_polynomial_starts_a_term_only_on_a_line_of_its_own() -> None:
+    """The layout: a term starts a line, and only ever at the start of one.
 
     A packed line would hold however many terms happened to fit, so its
     breaks would fall where the arithmetic landed rather than between two
-    things a reader wants separated.
+    things a reader wants separated.  A term too wide for the line carries
+    over onto further rows, so not every line *is* a term any more -- but no
+    line holds the end of one term and the start of another.
     """
     program = generate("Polynomial", TABLE, DEFAULT_WIDTH)
     lines = program.split("\n")
-    # Line 1 is ``f(x) = <term>``; every other line is ``<sign> <term>``.
+    # Line 1 is ``f(x) = <term>``: ``f(x)``, ``=`` and the unsigned term.
     assert lines[0].startswith("f(x) = ")
-    # ``f(x)``, ``=`` and the unsigned leading term.
     assert len(lines[0].split()) == 3
-    assert all(len(line.split()) == 2 for line in lines[1:])
+    for line in lines[1:]:
+        # Either a line that starts a term -- ``<sign> <term>`` -- or a row
+        # carrying the previous one over, which is one unbroken run.
+        assert len(line.split()) == (2 if line.startswith(("+ ", "- ")) else 1)
 
 
-def test_polynomial_continuation_lines_start_with_their_sign() -> None:
-    """Every line but the first opens with the sign of its term."""
+def test_polynomial_carries_a_term_over_without_inventing_a_sign() -> None:
+    """A row continuing a term is bare: the sign belongs to the term's start.
+
+    This is what keeps the two kinds of row apart for a reader, now that a
+    line is not always a whole term.
+    """
     program = generate("Polynomial", TABLE, DEFAULT_WIDTH)
-    lines = program.split("\n")
-    assert all(line.startswith(("+ ", "- ")) for line in lines[1:])
+    carried = [
+        line for line in program.split("\n")[1:] if not line.startswith(("+ ", "- "))
+    ]
+    assert carried, "the table is too small to fold a term -- pick a wider one"
+    assert all(line.strip() and " " not in line for line in carried)
 
 
-def test_polynomial_wrap_is_undone_by_swapping_newlines_for_spaces() -> None:
-    """The wrap only moves separators, so the program is byte-identical."""
+def test_polynomial_wrap_is_undone_by_deleting_whitespace() -> None:
+    """The wrap only inserts newlines, so the parsed program is unchanged.
+
+    Not "newlines become spaces" any more: a break between two terms lands
+    where a space was, but a break inside a coefficient lands where nothing
+    was, so no single substitution undoes both.  The interpreter deletes
+    whitespace before parsing, which is what makes the second legal, and is
+    the comparison that means something.
+    """
     plain = generate("Polynomial", TABLE)
     wrapped = generate("Polynomial", TABLE, DEFAULT_WIDTH)
-    assert wrapped.replace("\n", " ") == plain
+    assert wrapped != plain
+    assert re.sub(r"\s", "", wrapped) == re.sub(r"\s", "", plain)
 
 
 def test_polynomial_keeps_the_header_with_the_first_term() -> None:
@@ -409,14 +763,19 @@ def test_polynomial_keeps_the_header_with_the_first_term() -> None:
     assert _polynomial("f(x) = x^2 - 3x + 7", 80).split("\n")[0] == "f(x) = x^2"
 
 
-def test_polynomial_layout_does_not_depend_on_the_width() -> None:
-    """One term to a line whatever the width -- it is only the on/off switch.
+def test_polynomial_meets_the_width_it_is_given() -> None:
+    """Every row fits, at every width -- the coefficients fold too.
 
-    The terms of any interesting program outrun any width, so packing them
-    to one would be a layout that changed with a number nobody chose.
+    This replaces a test asserting the opposite, that the layout ignored
+    its width.  That was true while a term was indivisible, and a term is
+    not: ``_parse_program`` deletes whitespace before it reads, so a
+    newline between two digits is gone by the time the number is built.
+    The widest row on the dense eight-input table was 5954 characters.
     """
     program = generate("Polynomial", TABLE)
-    assert _polynomial(program, 40) == _polynomial(program, 200)
+    for width in (13, 40, 80, 200):
+        for line in _polynomial(program, width).split("\n"):
+            assert len(line) <= width
 
 
 def test_polynomial_keeps_an_oversized_term_with_its_sign() -> None:
@@ -442,6 +801,70 @@ def test_polynomial_keeps_a_sign_with_no_term_to_attach_to() -> None:
     ``- `` -- so this is only the helper staying total.
     """
     assert _polynomial("f(x) = x + - 7", 80) == "f(x) = x\n+\n- 7"
+
+
+def test_pct_header_terminator_matches_the_generator() -> None:
+    """:mod:`wrap` spells %^2^-1's header terminator; the generator owns it.
+
+    It is spelled rather than imported so that :mod:`wrap`, which otherwise
+    needs nothing but the standard library, does not pull the whole
+    ``esolangs.tools.boolean`` package in.  That is only safe with something
+    holding the two copies together.
+    """
+    from esolangs.tools.boolean.pct_squared_minus_one import _HEADER_END
+
+    assert _PCT_HEADER_END == _HEADER_END
+
+
+def test_pct_folds_its_header_to_the_width() -> None:
+    """The header meets the width, at every arity -- it is not kept whole.
+
+    It used to be, on the grounds that it was structural.  It is structural
+    to ``fill``, which is *ours*, not to the interpreter, which never sees a
+    header -- so the template format changed and the header folds.  1407
+    columns at eight inputs, and it did not shrink with a narrower width
+    because nothing folded it.
+
+    A declaration is 175 characters and does not shrink with ``n``, so a
+    wrapper that broke only *between* declarations would still be over 80 at
+    every arity here.  That is why this checks the width rather than merely
+    checking that something folded.
+    """
+    for arity in (2, 4, 6):
+        template = generate("%^2^-1", _table(arity))
+        for width in (40, 80):
+            wrapped = generate("%^2^-1", _table(arity), width)
+            assert _PCT_HEADER_END in wrapped, "the header and body ran together"
+            for line in wrapped.split("\n"):
+                assert len(line) <= width, f"{arity} inputs, width {width}: {len(line)}"
+        assert len(template.split("\n")[0]) > 80 or arity == 2
+
+
+def test_pct_fill_is_unchanged_by_where_the_header_folded() -> None:
+    """However the header is folded, the filled program is byte-identical.
+
+    ``fill`` discards the header's newlines before reading it, which is what
+    lets the wrapper break *inside* a declaration -- and what keeps the two
+    branches of a setter equal width in text as well as in commands.
+
+    The folds below deliberately include ones that land mid-declaration and
+    mid-branch, not just at a ``;``: those are the ones the stripping is
+    for, and a fold only at ``;`` would pass without it.
+    """
+    from esolangs.tools.boolean.pct_squared_minus_one import _HEADER_END, fill
+
+    for arity in (2, 4):
+        template = generate("%^2^-1", _table(arity))
+        header, _, body = template.partition(_HEADER_END)
+        for every in (7, 23, 174, 175):
+            refolded = (
+                "\n".join(header[i : i + every] for i in range(0, len(header), every))
+                + _HEADER_END
+                + body
+            )
+            for combo in range(2**arity):
+                bits = [(combo >> (arity - 1 - i)) & 1 for i in range(arity)]
+                assert fill(refolded, bits) == fill(template, bits)
 
 
 def test_wrap_grid_right_aligns_into_columns() -> None:

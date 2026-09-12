@@ -747,6 +747,71 @@ class TestFlowchart:
         with pytest.raises(ValueError, match="power-of-two"):
             boolean.flowchart("011")
 
+    def test_a_width_stacks_the_tree_onto_one_column(self) -> None:
+        """A narrower drawing is the same tree, separated by rows not columns.
+
+        Neither branch may simply continue down -- a switch entered
+        travelling down sends 1 east and 0 west -- so both are caught by
+        corners and routed, and only running it says the routing kept every
+        path on its own leaf.
+        """
+        for table in ("0110", "01101001", "0110100110010110"):
+            n = len(table).bit_length() - 1
+            flat = boolean.flowchart(table)
+            wide = max(len(row) for row in flat.splitlines())
+            floor = max(len(row) for row in boolean.flowchart(table, 1).splitlines())
+            assert floor < wide, f"{table} never narrows"
+            for width in (1, 12, 20, wide):
+                narrow = boolean.flowchart(table, width)
+                columns = max(len(row) for row in narrow.splitlines())
+                assert columns <= max(width, floor), (table, width, columns)
+                for combo in range(2**n):
+                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    got = run_flowchart(narrow, [str(b) for b in bits])
+                    assert got == table[combo], (table, width, bits)
+
+    def test_stacking_costs_rows_and_stops_tracking_the_table(self) -> None:
+        """The stacked drawing is ``n + 5`` columns whatever the table.
+
+        That is the whole of the trade: the flat drawing gives every leaf a
+        column and grows as ``2 ** n``, and stacking puts every node on one
+        column and grows as ``2 ** n`` in *rows* instead.
+        """
+        for n in (2, 3, 4):
+            table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
+            flat = boolean.flowchart(table)
+            stacked = boolean.flowchart(table, 1)
+            assert max(len(row) for row in stacked.splitlines()) == n + 5, n
+            assert max(len(row) for row in flat.splitlines()) == 5 * 2**n, n
+            assert len(stacked.splitlines()) > len(flat.splitlines()), n
+        # A table that folds to a single leaf is already as wide as one
+        # ``(( ))``, and stacking spends a corridor column per level on top
+        # of that -- so there the flat drawing is the narrower of the two
+        # and asking for any width keeps it.
+        assert boolean.flowchart("1111", 1) == boolean.flowchart("1111")
+
+    def test_a_stacked_corridor_belongs_to_its_depth(self) -> None:
+        """Depth ``d``'s zero-branch falls down column ``d``, and nothing else.
+
+        That is what makes the corridors crossing-free: everything below a
+        node is deeper, and so further east, while the rail that reaches
+        the corridor runs on the switch's own row, above every descendant.
+        So the left ``n`` columns carry only line, never a node -- a rail
+        reaching a further-left corridor does pass through them -- and no
+        cell ever has to be a ``┼``, which is the check that says a rail and
+        a corridor never meet.
+        """
+        table = "0110100110010110"
+        n = 4
+        drawing = boolean.flowchart(table, 1)
+        rows = drawing.splitlines()
+        width = max(len(row) for row in rows)
+        grid = [row.ljust(width) for row in rows]
+        for x in range(n):
+            column = {row[x] for row in grid} - {" "}
+            assert column <= set("│┌└─"), (x, column)
+        assert "┼" not in drawing, "a rail crossed a corridor"
+
 
 class TestBetween:
     @pytest.mark.parametrize(
@@ -1296,6 +1361,63 @@ class TestClockwise:
             for table_int in range(2 ** (2**n)):
                 table = format(table_int, f"0{2**n}b")
                 assert len(boolean.clockwise(table)) <= unfolded, table
+
+    def test_a_width_stacks_the_tree_and_it_still_computes(self) -> None:
+        """A narrower ring is the same function, laid out down instead of across.
+
+        Stacking moves a level's separation from columns into rows, so the
+        two subtrees no longer share a bottom row -- which is the whole of
+        what could go wrong, since the ring used to close through one.  The
+        answer is what says it did not.
+        """
+        for table in ("01101001", "0110100110010110", "00010111"):
+            n = len(table).bit_length() - 1
+            flat = boolean.clockwise(table)
+            wide = max(len(row) for row in flat.splitlines())
+            for width in (8, 10, 14, 20):
+                narrow = boolean.clockwise(table, width)
+                columns = max(len(row) for row in narrow.splitlines())
+                floor = max(
+                    len(row) for row in boolean.clockwise(table, 1).splitlines()
+                )
+                assert columns <= max(width, floor), (table, width, columns)
+                if columns < wide:
+                    assert len(narrow.splitlines()) > len(flat.splitlines()), (
+                        f"{table} at {width} narrowed without spending rows"
+                    )
+                for combo in range(2**n):
+                    bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                    assert run_clockwise(narrow, bits) == table[combo], (
+                        table,
+                        width,
+                        bits,
+                    )
+
+    def test_stacked_leaves_leave_by_rows_of_their_own(self) -> None:
+        """A stacked tree's leaves finish on different rows, and column 0 closes.
+
+        The flat ring funnels every leaf along one shared bottom row into
+        the corner.  Stacking breaks that by construction -- a leaf below
+        another ends lower -- so the exits are per-row instead: each ends at
+        a ``!`` in column 0, which only turns a path whose accumulator the
+        leaf's own ``S`` left at zero, and the ``+`` above it puts the
+        accumulator back so the climb passes the exits above without
+        turning on them.
+        """
+        table = "01101001"
+        flat = boolean.clockwise(table)
+        stacked = boolean.clockwise(table, 10)
+
+        def exit_rows(program: str) -> list[int]:
+            rows = program.splitlines()
+            return sorted({y for y, row in enumerate(rows) if row[:1] == "!"})
+
+        assert len(exit_rows(flat)) == 1, "a flat ring closes through one row"
+        assert len(exit_rows(stacked)) > 1, "stacking must spread the exits"
+        for y in exit_rows(stacked):
+            assert stacked.splitlines()[y - 1][:1] == "+", (
+                f"exit row {y} has no '+' above it to re-arm the climb"
+            )
 
 
 class TestTaglate:
@@ -2370,6 +2492,73 @@ class TestAlgebraicProgrammingLanguage:
         with pytest.raises(ValueError, match="a one-entry table is a constant"):
             boolean.algebraic_programming_language("0")
 
+    def test_a_width_spreads_the_sum_over_definitions(self) -> None:
+        """A narrower program is the same sum, named a piece at a time.
+
+        The language prints *every* executed line, so the sum cannot be
+        split across several; what it can be split across is definitions,
+        which are not executed.  The answer is what says the pieces still
+        add up.
+        """
+        for table in ("0110", "01101001", "0110100110010110"):
+            n = len(table).bit_length() - 1
+            flat = boolean.algebraic_programming_language(table)
+            wide = max(len(row) for row in flat.splitlines())
+            floor = max(
+                len(row)
+                for row in boolean.algebraic_programming_language(table, 1).splitlines()
+            )
+            for width in (1, 25, 40, 60, wide):
+                narrow = boolean.algebraic_programming_language(table, width)
+                columns = max(len(row) for row in narrow.splitlines())
+                assert columns <= max(width, floor), (table, width, columns)
+                for combo in range(2**n):
+                    got = self._run(narrow, n, combo)
+                    assert got == table[combo] + "\n", (table, width, combo)
+
+    def test_the_executed_line_still_names_every_input(self) -> None:
+        """Naming a term moves it off the one line that reads.
+
+        A variable is read by appearing on an executed line, and the
+        interpreter binds every unbound one there before evaluating.  A
+        term hoisted into a definition therefore takes its variables out of
+        the reading, and the prefix is what puts them back -- in order, and
+        contributing nothing, since ``a & ... & 0`` is 0 either way.
+        """
+        table = "0110100110010110"
+        narrow = boolean.algebraic_programming_language(table, 30)
+        # the ``!x`` header is the first four lines and its body sits inside
+        # braces; past it, a line without an ``=`` is one that runs, and
+        # there must be exactly one however much was hoisted
+        lines = narrow.splitlines()
+        assert lines[:4] == ["!x = {", "x & $0", "$1", "}"], lines[:4]
+        executed = [line for line in lines[4:] if "=" not in line]
+        assert len(executed) == 1, executed
+        line = executed[0]
+        assert line.startswith("(a & b & c & d & 0) | "), line
+        # and every input is still read exactly once, in order
+        assert [ch for ch in line if ch in "abcd"] == ["a", "b", "c", "d"]
+
+    def test_narrowing_below_the_floor_does_not_widen(self) -> None:
+        """Asking for less than it can do returns its narrowest, not a worse one.
+
+        Splitting below the floor lengthens the names rather than the
+        lines, and the executed line carries two names -- so an unclamped
+        fold made width 1 come out *wider* than width 20.  The floor is
+        what a smaller request is raised to.
+        """
+        for table in ("11111111", "0110100110010110", "01111111"):
+            widths = [
+                max(
+                    len(row)
+                    for row in boolean.algebraic_programming_language(
+                        table, w
+                    ).splitlines()
+                )
+                for w in (1, 5, 10, 20)
+            ]
+            assert len(set(widths)) == 1, (table, widths)
+
 
 class TestAlgebraicProgrammingLanguageShapes:
     """The structural corners of the minterm expansion, at four inputs.
@@ -2509,3 +2698,43 @@ class TestFunctionXY:
         # a nullary table is a constant, not a boolean function
         with pytest.raises(ValueError, match="at least one input"):
             boolean.function_x_y("0")
+
+    def test_a_width_names_the_subtrees_and_it_still_computes(self) -> None:
+        """A narrower program is the same tree with its nesting spread down.
+
+        The ternary is one statement, so its width is the whole tree until
+        a subtree is bound to a name.  What has to hold is that naming an
+        arm -- which evaluates it whether or not it is taken, where the
+        ternary would not have -- computes the same function; the arms are
+        literals and comparisons of already-read variables, so it does.
+        """
+        for table in ("0110", "01101001", "0110100110010110"):
+            n = len(table).bit_length() - 1
+            flat = boolean.function_x_y(table)
+            wide = max(len(row) for row in flat.splitlines())
+            floor = max(len(row) for row in boolean.function_x_y(table, 1).splitlines())
+            assert floor < wide, f"{table} never narrows"
+            for width in (1, 30, 45, 80, wide):
+                narrow = boolean.function_x_y(table, width)
+                columns = max(len(row) for row in narrow.splitlines())
+                assert columns <= max(width, floor), (table, width, columns)
+                for combo in range(2**n):
+                    bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                    got = run_function_x_y(narrow, bits)
+                    assert got == table[combo], (table, width, bits)
+
+    def test_naming_a_subtree_keeps_the_reads_out_of_it(self) -> None:
+        """The reads stay above the tree, one per input, however much is named.
+
+        Hoisting is only safe because the arms have nothing to evaluate
+        twice.  A ``[~]`` inside a named subtree would break that -- it
+        would read whether or not its branch was taken -- so the count of
+        reads is what pins the property down.
+        """
+        table = "0110100110010110"
+        for width in (None, 1, 30, 80):
+            program = boolean.function_x_y(table, width)
+            lines = program.splitlines()
+            reads = [line for line in lines if "[~]" in line]
+            assert reads == [f"var b{i}: [~]" for i in range(4)], width
+            assert program.count("[~]") == 4, width

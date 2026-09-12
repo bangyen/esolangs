@@ -1878,6 +1878,62 @@ class TestParameterizedCOD:
             got = self.run_cod(self.instantiate(template, [x0]))
             assert got == f"{table[x0]}", f"table {table} input {x0}"
 
+    def test_a_width_turns_the_drawing_a_quarter_turn(self) -> None:
+        """Turning beats banding, because the blocks are joined left to right.
+
+        Banding trades width for height one block at a time; turning trades
+        the whole drawing's width for its height at once, and the width
+        becomes the *tallest* block rather than the widest.  At five inputs
+        that is 65 columns against banding's 148.
+        """
+        from esolangs.tools.boolean import cod as cod_module
+
+        for table in ("0110", "01101001", "0110100110010110"):
+            n = len(table).bit_length() - 1
+            zeros = [0] * n
+            flat = self.instantiate(cod_module(table), zeros)
+            wide = max(len(row) for row in flat.splitlines())
+            turned = self.instantiate(cod_module(table, 1), zeros)
+            floor = max(len(row) for row in turned.splitlines())
+            assert floor == 2 ** (n + 1) + 1, (table, floor)
+            assert floor < wide, table
+            for width in (1, 20, 40, 80, wide):
+                template = cod_module(table, width)
+                columns = max(
+                    len(row) for row in self.instantiate(template, zeros).splitlines()
+                )
+                assert columns <= max(width, floor), (table, width, columns)
+                for combo in range(2**n):
+                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    got = self.run_cod(self.instantiate(template, bits))
+                    assert got.strip() == table[combo], (table, width, bits)
+
+    def test_the_turn_re_attaches_every_print(self) -> None:
+        """``---`` prints only as a *horizontal* run touching an edge.
+
+        Turned, each of the cascade's ``2 ** n`` prints would be three
+        vertical dashes -- three ``-`` removals -- and the cod would die
+        with nothing printed, which is the worst way for this to be wrong.
+        So each gets a corridor to a ``---`` at the left edge, and there
+        must still be one per table row.
+
+        The run has to be *exactly* three: the interpreter only counts a
+        run of three, so a fourth dash would turn a print into four
+        removals.  (Those runs stack vertically down column 0, which is
+        fine -- prints are found by scanning rows, and no cod ever swims
+        down that column; each arrives heading west and prints at once.)
+        """
+        from esolangs.tools.boolean import cod as cod_module
+
+        table = "01101001"
+        turned = self.instantiate(cod_module(table, 1), [0, 0, 0])
+        rows = turned.splitlines()
+        prints = [row for row in rows if row.startswith("-")]
+        assert len(prints) == len(table), (len(prints), len(table))
+        for row in prints:
+            assert row.startswith("---"), row
+            assert not row.startswith("----"), row
+
 
 class TestEvalBoolean:
     """Input-by-substitution boolean generator for the no-input language Eval."""
