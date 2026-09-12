@@ -26,7 +26,6 @@ class Test123:
         assert run_program(" \n abc \n") == ""
 
     def test_generated_letter(self) -> None:
-        """The generator's program for 'A' outputs 'A' and halts."""
         assert run_program("212222222112112112112112112112112\n1") == "A"
 
     def test_unknown_chars_are_nops(self) -> None:
