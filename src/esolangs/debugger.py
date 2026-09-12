@@ -474,7 +474,7 @@ class Debugger:
         ``run()`` raises it again.  This paragraph used to say "needs no
         ``except`` beside it" without that qualification, which is the
         advice that breaks on the most ordinary mistake a session makes.
-        :meth:`~esolangs.cli` ``debug`` catches it and prints
+        The CLI's ``debug`` catches it and prints
         ``stopped: raised``; see :data:`STOP_REASONS`.  The
         timeout is checked in the same place as a breakpoint rather than
         through a signal, so it needs no main thread and leaves the machine
