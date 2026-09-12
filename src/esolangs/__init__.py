@@ -118,6 +118,7 @@ __all__ = [
     "make_vm",
     "read_answer",
     "run",
+    "spec",
     "verify",
 ]
 
@@ -900,6 +901,32 @@ def _width_effect(lang: Any) -> str:
     if lang.boolean is not None and _takes_width(lang.boolean):
         return "layout"
     return "wrap" if lang.id in WRAPPERS else "none"
+
+
+def spec(language: str) -> str:
+    """Return the interpreter's own description of ``language``.
+
+    Every one of the 69 interpreters carries a module docstring giving the
+    command table and -- more useful -- where this implementation *differs*
+    from the wiki page, which is the thing no wiki page can tell you.  They
+    run from 200 to 9700 characters and the median is around 2400, so they
+    are the best documentation the package has for writing a program.
+
+    Nothing pointed at them.  ``docs/`` has a capability matrix and two
+    per-language notes, neither a spec; ``describe`` reported
+    ``interpreter: stack_based.unsquare`` with no hint that it names an
+    importable module whose ``__doc__`` is what you want; and every CLI
+    subcommand except ``run`` and ``debug`` is about truth tables.  A
+    reader who came to this package with a program rather than a truth
+    table found the content by guessing at ``importlib``.
+
+    Read rather than stored, so it cannot drift from the interpreter it
+    describes.
+    """
+    name = resolve(language)
+    module = RUNNERS[name][0]
+    interpreter = importlib.import_module("esolangs.interpreters." + module)
+    return (interpreter.__doc__ or "").strip()
 
 
 def encode_inputs(

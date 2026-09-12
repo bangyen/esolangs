@@ -6,6 +6,7 @@ skipped the refusals ``run`` had just gained, and the seventeen template
 languages left unreachable by a fix that pointed a CLI user at a Python call.
 """
 
+import importlib
 import json
 import re
 import subprocess
@@ -2486,3 +2487,72 @@ class TestWikiUrlsAreUsable:
         readme = (Path(__file__).parents[1] / "README.md").read_text()
         assert "https://esolangs.org/wiki/%25%5E2%5E-1" in readme
         assert "https://esolangs.org/wiki/%^2^-1" not in readme
+
+
+class TestTheSpecIsReachable:
+    """The best documentation here was reachable only by guessing.
+
+    Every one of the 69 interpreters carries a module docstring with the
+    command table and, more usefully, where this implementation differs
+    from the wiki page.  Nothing pointed at them: ``docs/`` has a
+    capability matrix and two per-language notes, neither a spec, and
+    ``describe`` reported ``interpreter: stack_based.unsquare`` -- an
+    import path with no hint that importing it was the point.  A reader who
+    arrived with a program rather than a truth table found it by reaching
+    for ``importlib``.
+    """
+
+    def test_every_language_has_one(self) -> None:
+        """The claim the feature rests on: there is something to show."""
+        for name in esolangs.list_languages():
+            assert len(esolangs.spec(name)) > 200, name
+
+    def test_it_is_the_interpreter_that_is_read(self) -> None:
+        """Read, not stored, so it cannot drift from what it describes."""
+        module = importlib.import_module(
+            "esolangs.interpreters." + str(esolangs.describe("Unsquare")["interpreter"])
+        )
+        assert esolangs.spec("Unsquare") == (module.__doc__ or "").strip()
+
+    def test_it_resolves_a_name_like_everything_else(self) -> None:
+        """A spelling that works everywhere else has to work here."""
+        assert esolangs.spec("BRAINFUCK") == esolangs.spec("brainfuck")
+        assert esolangs.spec(" Unsquare ") == esolangs.spec("Unsquare")
+        with pytest.raises(esolangs.UnknownLanguageError):
+            esolangs.spec("nosuchlang")
+
+    def test_the_cli_prints_it(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """And prints the text, not a record with the text in it."""
+        out, _err = call_both(["describe", "--spec", "Unsquare"], capsys)
+        assert out.strip() == esolangs.spec("Unsquare")
+
+    def test_json_and_spec_together_give_a_field(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A caller scripting it wants the record *and* the prose."""
+        out, _err = call_both(["describe", "--json", "--spec", "brainfuck"], capsys)
+        payload = json.loads(out)
+        assert payload["spec"] == esolangs.spec("brainfuck")
+        assert payload["name"] == "brainfuck"
+
+    def test_the_plain_output_points_at_it(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A flag nobody can find is a flag nobody has."""
+        out, _err = call_both(["describe", "brainfuck"], capsys)
+        assert "esolangs describe --spec brainfuck" in out
+
+    def test_the_pointer_names_the_resolved_name(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """Copying the line has to work, which means the canonical spelling."""
+        out, _err = call_both(["describe", "BRAINFUCK"], capsys)
+        assert "--spec brainfuck" in out
+
+    def test_it_still_refuses_an_unknown_language(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The flag must not become a way past the error path."""
+        with pytest.raises(SystemExit):
+            call_main(["describe", "--spec", "nosuchlang"], capsys)
+        assert "nosuchlang" in capsys.readouterr().err
