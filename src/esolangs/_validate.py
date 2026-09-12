@@ -138,3 +138,35 @@ def check_bits(bits: object, what: str = "bits") -> list[int]:
             )
         raise ArgumentError(f"{what} must each be 0 or 1, got {list(bits)!r}")
     return list(bits)
+
+
+#: The most cells an interpreter will grow its store to.
+#:
+#: Sixteen million is far past anything a generated program addresses and
+#: far short of what hurts: the store is a tuple of Python ints, so this
+#: is already hundreds of megabytes.
+_MAX_CELLS = 1 << 24
+
+
+def check_address(addr: int, language: str) -> int:
+    """Return ``addr``, refusing one no store should be grown to.
+
+    Three interpreters took an address straight from the program text and
+    allocated it.  ``run("S*bleq", "100000000000000000000 0 0")`` came
+    back as ``OverflowError: cannot fit 'int' into an index-sized
+    integer`` and one order of magnitude down as ``MemoryError`` -- both
+    escaping the package's promise that a deliberate failure is an
+    ``EsolangError``, and neither stoppable by ``timeout``, since the
+    allocation is one step.
+
+    Refused *before* allocating rather than caught after: on a machine
+    with more headroom the smaller case thrashes instead of raising.
+    """
+    from esolangs.exceptions import InterpreterLimitError
+
+    if addr > _MAX_CELLS:
+        raise InterpreterLimitError(
+            f"{language} would have to grow its store to {addr + 1} cells, "
+            f"past the {_MAX_CELLS}-cell limit this interpreter allocates"
+        )
+    return addr

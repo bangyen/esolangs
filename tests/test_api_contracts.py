@@ -15,6 +15,7 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
@@ -732,3 +733,176 @@ class TestTheVersionIsResolvedWhenAsked:
             check=True,
         )
         assert result.stdout.strip() == f"esolangs {esolangs.__version__}"
+
+
+class TestTheVmPathRefusesLikeRunDoes:
+    """``run`` translated an interpreter's exceptions and the VM did not.
+
+    So the package's one promise -- every deliberate failure derives from
+    ``EsolangError`` -- held on one of the two ways to execute a program
+    and not the other.  ``make_vm("brainfuck", "]")`` leaked a bare
+    ``ValueError``, for 48 of the 69 languages.
+    """
+
+    JUNK = ("]", "}", ")", "ZZZ", "[", "\x00")
+
+    @pytest.mark.parametrize("entry", ["make_vm", "make_debugger"])
+    def test_a_malformed_program_is_a_program_error(self, entry: str) -> None:
+        """The one-character case, on the language it was reported for."""
+        with pytest.raises(esolangs.ProgramError, match="unmatched"):
+            getattr(esolangs, entry)("brainfuck", "]")
+
+    def test_no_language_leaks_anything_else(self) -> None:
+        """All 69 against six kinds of junk, both entry points.
+
+        Swept rather than sampled because the leak was *per interpreter* --
+        every one that validates its program text had it, and which those
+        are is not something a caller can predict.
+        """
+        escapes = []
+        for name in esolangs.list_languages():
+            for junk in self.JUNK:
+                for entry in ("make_vm", "make_debugger"):
+                    try:
+                        getattr(esolangs, entry)(name, junk)
+                    except esolangs.EsolangError:
+                        pass
+                    except Exception as exc:
+                        escapes.append((name, entry, junk, type(exc).__name__))
+        assert not escapes, escapes[:5]
+
+    def test_the_two_paths_agree_on_the_class(self) -> None:
+        """Not merely "both raise" -- both raise the *same* thing."""
+        for entry in (esolangs.make_vm, esolangs.make_debugger):
+            with pytest.raises(esolangs.ProgramError) as stepped:
+                entry("brainfuck", "]")
+            with pytest.raises(esolangs.ProgramError) as ran:
+                esolangs.run("brainfuck", "]")
+            assert str(stepped.value) == str(ran.value)
+
+    def test_a_recursion_limit_is_an_interpreter_limit(self) -> None:
+        """Ninety open parens raised a bare ``RecursionError`` from ``step``.
+
+        ``run`` on the identical program was already clean, so the depth
+        guard existed on one path only.
+        """
+        vm = esolangs.make_vm("Algebraic Programming Language", "(" * 90)
+        with pytest.raises(esolangs.InterpreterLimitError):
+            vm.step()
+
+
+class TestAnAddressIsNotAllocatedOnTrust:
+    """Three interpreters grew a store to whatever the program named.
+
+    ``run("S*bleq", "100000000000000000000 0 0")`` came back as
+    ``OverflowError: cannot fit 'int' into an index-sized integer``, and
+    one order of magnitude down as ``MemoryError`` -- both escaping
+    ``EsolangError``, and neither stoppable by ``timeout``, because the
+    allocation is a single step.
+    """
+
+    HUGE: ClassVar[list[tuple[str, str]]] = [
+        ("S*bleq", "100000000000000000000 0 0"),
+        ("S*bleq", "1000000000000000000 0 0"),
+        ("Decleq", "1 100000000000000000000"),
+        ("ZTOALC L", "2\nu = [99999999999999999999]"),
+    ]
+
+    @pytest.mark.parametrize(("language", "program"), HUGE)
+    def test_it_is_refused_cleanly(self, language: str, program: str) -> None:
+        """Refused before allocating, so a bigger machine thrashes no worse."""
+        with pytest.raises(esolangs.InterpreterLimitError, match="grow its store"):
+            esolangs.run(language, program, "", 2)
+
+    def test_an_ordinary_address_still_grows(self) -> None:
+        """A cap that refused real programs would be worse than the bug."""
+        assert esolangs.run("S*bleq", "20 0 0", "", 5) == ""
+        assert esolangs.evaluate("Decleq", "0110", timeout=30) == "0110"
+        assert esolangs.evaluate("S*bleq", "0110", timeout=30) == "0110"
+        assert esolangs.evaluate("ZTOALC L", "0110", timeout=30) == "0110"
+
+
+class TestDecleqNegativeAddressing:
+    """A write past the left end escaped as a bare ``IndexError``."""
+
+    def test_it_halts_instead_of_leaking(self) -> None:
+        """Four characters, reduced from a 20,000-character random program."""
+        with pytest.raises(esolangs.HaltError, match="past the left end"):
+            esolangs.run("Decleq", "4 -8", "", 2)
+
+    def test_the_documented_negative_write_is_unchanged(self) -> None:
+        """Indexing from the right is deliberate and pinned elsewhere.
+
+        Left alone: growing leftwards instead would turn a terminating
+        program into a non-terminating one, which is the reason it works
+        this way.
+        """
+        vm = esolangs.make_vm("Decleq", "0 -1 3")
+        vm.step()
+        assert list(vm.memory)[:3] == [0, -1, -1]
+
+    def test_the_asymmetry_is_documented(self) -> None:
+        """A read of -1 is 0 and a write to -1 lands on the last cell.
+
+        Both halves are deliberate and together they mean a program can
+        write where it cannot read -- which was in a *function* docstring,
+        so ``spec`` never showed it.
+        """
+        spec = esolangs.spec("Decleq")
+        assert "negative" in spec.lower()
+        assert "read back" in spec or "cannot read" in spec
+
+
+class TestThePathGuardKnowsMoreThanTxt:
+    """It tested for a literal ``.txt`` and nothing else.
+
+    So ``prog.bf`` -- the natural extension for this package's flagship
+    language -- and ``/etc/hosts`` were executed as source, which is the
+    exact failure the guard exists to prevent.
+    """
+
+    @pytest.mark.parametrize(
+        "argument",
+        [
+            "prog.bf",
+            "prog.py",
+            "prog.TXT",
+            "prog.txt",
+            "/etc/hosts",
+            "~/prog.txt",
+            "./prog.b",
+            "../x.dat",
+            "a/b/c.json",
+        ],
+    )
+    def test_a_path_shaped_string_is_refused(self, argument: str) -> None:
+        """Rooted, or ending in a short extension, and only path characters."""
+        with pytest.raises(esolangs.ProgramError, match="looks like a path"):
+            esolangs.run("brainfuck", argument, "", 5)
+
+    @pytest.mark.parametrize("program", ["+++.", ".", "..", "---.", ">>++<<--."])
+    def test_a_real_program_still_runs(self, program: str) -> None:
+        """``.`` and ``..`` are legal brainfuck and must not be mistaken."""
+        esolangs.run("brainfuck", program, "", 5)
+
+    @pytest.mark.parametrize("program", ["~~", "~*+", ".", "..", "-", "a/b/c"])
+    def test_a_hand_written_program_is_not_mistaken(self, program: str) -> None:
+        """``~~`` is two ArrowQueue commands and was refused.
+
+        My first version of this rule counted a leading ``~`` as rooted,
+        which is right for ``~/`` and wrong for a language that spells a
+        command with a tilde.  The suite caught it; the generated-program
+        sweep below did not, because these are hand-written and no
+        generator emits them.  Only ``~/`` is rooted now.
+        """
+        assert not esolangs._looks_like_a_path(program), program  # noqa: SLF001
+
+    def test_no_generated_program_is_mistaken(self) -> None:
+        """The widened rule is only safe while this holds."""
+        mistaken = []
+        for name in esolangs.list_languages():
+            for table in ("01", "0110"):
+                program = esolangs.generate(name, table)
+                if esolangs._looks_like_a_path(program):  # noqa: SLF001
+                    mistaken.append((name, table))
+        assert not mistaken, mistaken

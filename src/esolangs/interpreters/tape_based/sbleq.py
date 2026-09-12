@@ -35,6 +35,7 @@ at EOF (per the wiki); malformed programs raise :class:`ValueError`.
 
 import sys
 
+from esolangs._validate import check_address
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_int_memory as _parse
 
@@ -80,6 +81,7 @@ def _write(state: _State, addr: int, value: int) -> _State:
     mem, ip, halted = state
     if addr >= 0:
         if addr >= len(mem):
+            check_address(addr, "S*bleq")
             mem = (*mem, *([0] * (addr + 1 - len(mem))))
         return ((*mem[:addr], value, *mem[addr + 1 :]), ip, halted)
     if addr == -1:

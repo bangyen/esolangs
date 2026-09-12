@@ -1821,6 +1821,10 @@ def main() -> None:
     ordinary thing to type, and closing the pipe before the first write
     left ``Exception ignored while flushing sys.stdout`` on the terminal
     and exit 120.
+
+    Anything else is a bug in this package rather than in the program
+    being run, and exits 70 with a one-line report instead of a
+    traceback.
     """
     try:
         _dispatch()
@@ -1841,6 +1845,20 @@ def main() -> None:
 
         os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
         sys.exit(120)
+    except Exception as exc:
+        # Every *deliberate* failure is an ``EsolangError`` and is handled
+        # where it happens; anything reaching here is a bug in this
+        # package.  That used to mean the reader got a traceback -- an
+        # out-of-range address in three interpreters raised ``OverflowError``
+        # straight through ``main``.  A traceback is the right signal that
+        # something is broken and the wrong thing to hand a user, so it
+        # becomes a one-line report and an exit code nothing else uses.
+        sys.stderr.write(
+            f"internal error: {type(exc).__name__}: {exc}\n"
+            f"This is a bug in esolangs, not in your program; please report "
+            f"it with the command you ran.\n"
+        )
+        sys.exit(70)
 
 
 def _dispatch() -> None:
