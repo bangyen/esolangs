@@ -12,7 +12,7 @@ help:
     @echo "  test-full    - Every check, whole tree"
     @echo "  test-quick   - Tier 1: pre-commit + pytest, fast band only (~8s pytest)"
     @echo "  test-mid     - Tier 2: pytest, fast + medium (execution and subprocess) (~25s)"
-    @echo "  test-py      - pytest only (10325 tests, -n auto; all three tiers)"
+    @echo "  test-py      - pytest only (-n auto; all three tiers)"
     @echo "  test-line    - extra/line suites with pytest only (~3s)"
     @echo "  test-anchor  - ztoalc anchor table check (~3.2s)"
     @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
