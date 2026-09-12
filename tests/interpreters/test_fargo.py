@@ -12,8 +12,8 @@ from esolangs.interpreters.other.fargo import (
 )
 from esolangs.vm import run_until_halt_or_ancestor, run_until_halt_or_cycle
 
-# The wiki's truth machine,.
-# renders inside the first two.
+# The wiki's truth machine, verbatim apart from the zero-width spaces it
+# renders inside the first two lines (kept in TestWikiExamples below).
 TRUTH_MACHINE = "one ^ $ one\n% 0 @ 0\n: @ 0 one\n$\n"
 
 
@@ -57,8 +57,8 @@ class TestBuiltins:
         assert run_program("% 0 1\n% 1 1\n% 1 0\n$") == "1"
 
     def test_shifts(self) -> None:
-        assert run_program("% 0 > 1\n$") == "0"  # 1 << 1 = 2, bit 0 is 0.
-        assert run_program("% 0 < 10\n$") == "1"  # 2 >> 1 = 1.
+        assert run_program("% 0 > 1\n$") == "0"  # 1 << 1 = 2, bit 0 is 0
+        assert run_program("% 0 < 10\n$") == "1"  # 2 >> 1 = 1
 
     def test_shifts_move_exactly_one_place(self) -> None:
         """Pin the distance, which ``%`` alone cannot see.
@@ -69,11 +69,11 @@ class TestBuiltins:
         array answers 1 at index 2 and 0 at index 4, so a one-place shift
         and a two-place shift give different output.
         """
-        # elements, by index: 0 0 1 0 0.
+        # elements, by index: 0 0 1 0 0
         arr = "+[] +[] +[] +[] [] 0 [] 0 [] 1 [] 0 [] 0"
-        assert run_program(f"% 0 [?] {arr} > 1\n$") == "1"  # 1 << 1 == 2.
-        assert run_program(f"% 0 [?] {arr} < 100\n$") == "1"  # 4 >> 1 == 2.
-        # and the shift really moves:.
+        assert run_program(f"% 0 [?] {arr} > 1\n$") == "1"  # 1 << 1 == 2
+        assert run_program(f"% 0 [?] {arr} < 100\n$") == "1"  # 4 >> 1 == 2
+        # and the shift really moves: unshifted, index 1 answers 0
         assert run_program(f"% 0 [?] {arr} 1\n$") == "0"
 
     def test_bitwise_operators(self) -> None:
@@ -95,7 +95,7 @@ class TestBuiltins:
         assert run_program("% 0 & 1 0\n$") == "0"
         assert run_program("% 0 | 1 0\n$") == "1"
         assert run_program("% 0 | 0 1\n$") == "1"
-        # `+[] x y` concatenates in.
+        # `+[] x y` concatenates in order, so index 0 comes from the left.
         assert run_program("% 0 [?] +[] [] 1 [] 0 0\n$") == "1"
         assert run_program("% 0 [?] +[] [] 1 [] 0 1\n$") == "0"
 
@@ -110,13 +110,13 @@ class TestBuiltins:
         assert run_program("% 0 | 0 $\n$") == "00"
 
     def test_input_bits_are_lsb_first(self) -> None:
-        # 6 is 0b110: bit 0 is 0, bits.
+        # 6 is 0b110: bit 0 is 0, bits 1 and 2 are 1.
         assert run_program("% 0 @ 0\n$", "6\n") == "0"
         assert run_program("% 0 @ 1\n$", "6\n") == "1"
         assert run_program("% 0 @ 10\n$", "6\n") == "1"
 
     def test_literals_are_binary(self) -> None:
-        # 101 is 5, so bit 0 of the.
+        # 101 is 5, so bit 0 of the output becomes bit 0 of the input 5.
         assert run_program("% 0 @ 0\n$", "5\n") == "1"
         assert run_program("% 101 1\n$") == "32"
 
@@ -144,7 +144,7 @@ class TestBuiltins:
         assert run_program("g | 1 0\n% 0 : 0 g\n$") == "0"
 
     def test_conditional_with_a_builtin_body(self) -> None:
-        # ``$`` is zero-arity, so it is.
+        # ``$`` is zero-arity, so it is a legal body and prints when run.
         assert run_program("% 0 1\n: 1 $\n") == "1"
         assert run_program("% 0 1\n: 0 $\n") == ""
 
@@ -171,13 +171,13 @@ class TestSyntax:
         assert not _is_literal("2")
         assert not _is_literal("")
         assert _is_literal("101")
-        # a definition named ``2``.
+        # a definition named ``2`` therefore parses as a definition
         defs, _ = _parse_program("2 x | x 0\n$\n")
         assert list(defs) == ["2"]
 
     def test_definition_splits_arguments_from_code(self) -> None:
-        # ``^`` is a builtin, so it.
-        # arguments; ``dbl x > x``.
+        # ``^`` is a builtin, so it starts the code and ``one`` takes no
+        # arguments; ``dbl x > x`` takes one, since ``>`` is the first
         # defined name after it.
         defs, calls = _parse_program("dbl x > x\n% 1 dbl 1\n$\n")
         assert defs["dbl"].params == ("x",)
@@ -190,8 +190,8 @@ class TestSyntax:
         assert defs["one"].code == ("^", "$", "one")
 
     def test_user_function_is_called_with_its_arguments(self) -> None:
-        # The parameters must precede.
-        # would declare *none*, since.
+        # The parameters must precede the first defined name: ``pick & x y``
+        # would declare *none*, since the builtin ``&`` starts the code.
         assert run_program("pick x y & x y\n% 0 pick 1 1\n$") == "1"
         assert run_program("pick x y & x y\n% 0 pick 1 0\n$") == "0"
 
@@ -247,12 +247,12 @@ class TestSyntax:
         """
         defs, _ = _parse_program("loop n | n loop n\n$\n")
         assert defs["loop"].params == ("n",)
-        # Accepted: ``|`` owes 2, ``n``.
+        # Accepted: ``|`` owes 2, ``n`` and the self-call supply them.
         run_program("loop n | n loop n\n$\n")
 
     def test_a_repeated_parameter_name_starts_the_code(self) -> None:
-        # ``x`` is already a defined.
-        # begins the code rather than.
+        # ``x`` is already a defined name by its second appearance, so it
+        # begins the code rather than declaring a second parameter.
         defs, _ = _parse_program("f x x\n$\n")
         assert defs["f"].params == ("x",)
         assert defs["f"].code == ("x",)
@@ -284,7 +284,7 @@ class TestWikiExamples:
             run_program("myFn\n")
 
     def test_a_body_still_owing_arguments_is_malformed(self) -> None:
-        # ``&`` wants two and the body.
+        # ``&`` wants two and the body supplies one.
         with pytest.raises(ValueError, match="no outer call"):
             run_program("f x & x\n$\n")
 
@@ -319,19 +319,19 @@ class TestErrors:
             run_program("% 0 nope 1\n")
 
     def test_a_call_left_wanting_arguments(self) -> None:
-        # ``%`` takes two and the line.
-        # substring search, so the.
+        # ``%`` takes two and the line supplies one.  ``match=`` is a
+        # substring search, so the whole message is compared too.
         with pytest.raises(ValueError, match="wants more args") as caught:
             run_program("% 0\n$\n")
         assert str(caught.value) == "call wants more args"
 
     def test_calling_a_parameter_bound_to_a_plain_value(self) -> None:
-        # ``c`` sits in ``:``'s body.
+        # ``c`` sits in ``:``'s body slot but was given the number 1.
         with pytest.raises(HaltError, match="non-function argument"):
             run_program("apply c : 1 c\napply 1\n$\n")
 
     def test_conditional_body_taking_arguments(self) -> None:
-        # ``<`` needs an argument and.
+        # ``<`` needs an argument and ``:`` has none to give it.
         with pytest.raises(HaltError, match="takes 1 argument"):
             run_program("% 0 : 1 <\n$\n")
 
@@ -350,7 +350,7 @@ class TestErrors:
 
 class TestInput:
     def test_input_is_read_once_before_the_program_begins(self) -> None:
-        # No ``@`` anywhere, yet the.
+        # No ``@`` anywhere, yet the input line is still consumed.
         io = ScriptedIO("3\n")
         run("% 0 1\n$\n", io)
         assert io.position() == 1
@@ -362,8 +362,8 @@ class TestInput:
         assert run_program("% 0 @ 0\n$", "banana\n") == "0"
 
     def test_a_negative_input_number_indexes_as_two_s_complement(self) -> None:
-        # -3 is ...11101, so bit 0 is 1.
-        # can never be negative, which.
+        # -3 is ...11101, so bit 0 is 1 and bit 1 is 0.  The index itself
+        # can never be negative, which is why neither is guarded.
         assert run_program("% 0 @ 0\n$", "-3\n") == "1"
         assert run_program("% 0 @ 1\n$", "-3\n") == "0"
 
@@ -449,8 +449,8 @@ class TestMachine:
         assert keys != others
 
     def test_frame_entry_key_ignores_the_output_number(self) -> None:
-        # The output number is.
-        # in what they have printed are.
+        # The output number is write-only, so two frames that differ only
+        # in what they have printed are correctly seen as replays.
         machine = _Machine(TRUTH_MACHINE, ScriptedIO("1\n"))
         keys = []
         while len(keys) < 2:

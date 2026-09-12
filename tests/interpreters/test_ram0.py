@@ -45,14 +45,14 @@ def run_with_timeout(func: Callable[..., Any], timeout_seconds: int = 5) -> Any:
         _TestTimeoutError: If the function doesn't complete within the timeout
 
     """
-    # Set up signal handler for.
+    # Set up signal handler for timeout
     old_handler = signal.signal(signal.SIGALRM, timeout_handler)
     signal.alarm(timeout_seconds)
 
     try:
         return func()
     finally:
-        # Restore original signal.
+        # Restore original signal handler and cancel alarm
         signal.alarm(0)
         signal.signal(signal.SIGALRM, old_handler)
 
@@ -65,7 +65,7 @@ class TestRAM0BasicCommands:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A A A Z", io=IO())  # Increment z to 3, then zero.
+                run("A A A Z", io=IO())  # Increment z to 3, then zero it
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -76,7 +76,7 @@ class TestRAM0BasicCommands:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A A A", io=IO())  # Increment z three times.
+                run("A A A", io=IO())  # Increment z three times
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -87,7 +87,7 @@ class TestRAM0BasicCommands:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A A A N", io=IO())  # z=3, then copy to n.
+                run("A A A N", io=IO())  # z=3, then copy to n
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -98,11 +98,13 @@ class TestRAM0BasicCommands:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A A N A A A S A A L", io=IO())  # Store 5 at address 2, then.
+                run(
+                    "A A N A A A S A A L", io=IO()
+                )  # Store 5 at address 2, then load from address 7 (uninitialized)
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        # L loads from uninitialized.
+        # L loads from uninitialized address, returns 0
         assert output == "z: 0\nn: 2\nram: {\n    2: 5\n}"
 
     def test_s_command_store_to_memory(self) -> None:
@@ -110,7 +112,7 @@ class TestRAM0BasicCommands:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A A N A A A S", io=IO())  # Store 5 at address 2.
+                run("A A N A A A S", io=IO())  # Store 5 at address 2
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -121,11 +123,11 @@ class TestRAM0BasicCommands:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("C A", io=IO())  # Skip A if z is zero (it is).
+                run("C A", io=IO())  # Skip A if z is zero (it is)
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        # A should be skipped.
+        # A should be skipped
         assert output == "z: 0\nn: 0\nram: {}"
 
     def test_c_command_no_skip_when_nonzero(self) -> None:
@@ -133,11 +135,13 @@ class TestRAM0BasicCommands:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A C A", io=IO())  # z=1, then conditionally skip.
+                run(
+                    "A C A", io=IO()
+                )  # z=1, then conditionally skip A (should not skip)
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        # A should not be skipped.
+        # A should not be skipped
         assert output == "z: 2\nn: 0\nram: {}"
 
 
@@ -149,11 +153,11 @@ class TestRAM0ControlFlow:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A 3 A A", io=IO())  # Jump to instruction 3,.
+                run("A 3 A A", io=IO())  # Jump to instruction 3, skipping second A
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        # All three A commands executed.
+        # All three A commands executed (goto doesn't skip as expected)
         assert output == "z: 3\nn: 0\nram: {}"
 
 
@@ -165,7 +169,9 @@ class TestRAM0MemoryOperations:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A N A S A A N A A S", io=IO())  # Store 2 at address 1, 6 at.
+                run(
+                    "A N A S A A N A A S", io=IO()
+                )  # Store 2 at address 1, 6 at address 4
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -176,7 +182,9 @@ class TestRAM0MemoryOperations:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A N A S A A A N S", io=IO())  # Store 2 at address 1, then.
+                run(
+                    "A N A S A A A N S", io=IO()
+                )  # Store 2 at address 1, then store 5 at address 5
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -187,7 +195,7 @@ class TestRAM0MemoryOperations:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A A A L", io=IO())  # Load from address 3.
+                run("A A A L", io=IO())  # Load from address 3 (uninitialized)
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -202,7 +210,7 @@ class TestRAM0RegisterInteractions:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A A A N A A", io=IO())  # z=5, n=3.
+                run("A A A N A A", io=IO())  # z=5, n=3
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -213,7 +221,7 @@ class TestRAM0RegisterInteractions:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A A A N A", io=IO())  # z=4, n=3.
+                run("A A A N A", io=IO())  # z=4, n=3
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -254,7 +262,7 @@ class TestRAM0EdgeCases:
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        # Only A command executes, but.
+        # Only A command executes, but L command loads from uninitialized address
         assert output == "z: 0\nn: 0\nram: {}"
 
     def test_comments_in_code(self) -> None:
@@ -273,11 +281,11 @@ class TestRAM0EdgeCases:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A A 0 A", io=IO())  # Should terminate before last.
+                run("A A 0 A", io=IO())  # Should terminate before last A
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        # All A commands execute.
+        # All A commands execute
         assert output == "z: 3\nn: 0\nram: {}"
 
     def test_large_goto_number(self) -> None:
@@ -285,11 +293,11 @@ class TestRAM0EdgeCases:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                run("A 999 A", io=IO())  # Jump to non-existent.
+                run("A 999 A", io=IO())  # Jump to non-existent instruction
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        # Should terminate after first.
+        # Should terminate after first A
         assert output == "z: 1\nn: 0\nram: {}"
 
 
@@ -301,10 +309,10 @@ class TestRAM0MathematicalOperations:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                # Create a counter that counts.
+                # Create a counter that counts to 3
                 run(
                     "A A A N S A A A N S A A A N S", io=IO()
-                )  # Store 3, 6, 9 at addresses 3,.
+                )  # Store 3, 6, 9 at addresses 3, 6, 9
             return f.getvalue()
 
         output = run_with_timeout(test_func)
@@ -315,12 +323,12 @@ class TestRAM0MathematicalOperations:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                # z=5, n=5, then store 8 at.
+                # z=5, n=5, then store 8 at address 5, then load from address 13
                 run("A A A A A N A A A S A A A A A N L", io=IO())
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        # Load from uninitialized.
+        # Load from uninitialized address 13
         assert output == "z: 0\nn: 13\nram: {\n    5: 8\n}"
 
 
@@ -332,12 +340,12 @@ class TestRAM0Integration:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                # Complex program: store.
+                # Complex program: store values, load them, perform operations
                 run("A A N A A A S A A A N A A A A S A A L A A A L", io=IO())
             return f.getvalue()
 
         output = run_with_timeout(test_func)
-        # Final result after loading.
+        # Final result after loading from uninitialized addresses
         assert output == "z: 0\nn: 8\nram: {\n    2: 5,\n    8: 12\n}"
 
     def test_memory_initialization_pattern(self) -> None:
@@ -345,7 +353,7 @@ class TestRAM0Integration:
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
-                # Initialize memory locations.
+                # Initialize memory locations with values
                 run("A N S A A N S A A A N S A A A A N S A A A A A N S", io=IO())
             return f.getvalue()
 
@@ -426,7 +434,7 @@ class TestStepMachine:
         machine = _Machine("A Z C A A", IO())
         while not machine.halted:
             machine.step()
-        # exactly one A was skipped:.
+        # exactly one A was skipped: skipping none leaves 2, skipping both 0
         assert machine.z == 1
 
     def test_state_is_dumped_only_once(self) -> None:
@@ -441,13 +449,13 @@ class TestStepMachine:
         machine = _Machine("A", ScriptedIO(""))
         while not machine.halted:
             machine.step()
-        machine.step()  # dumps.
-        machine.step()  # must not dump again.
+        machine.step()  # dumps
+        machine.step()  # must not dump again
         assert machine.io.getvalue() == "z: 1\nn: 0\nram: {}"
 
     def test_loop_is_detected_as_a_cycle(self) -> None:
-        # Z1: Z zeroes z (already zero,.
-        # token 1 sets ind back to 0 --.
+        # Z1: Z zeroes z (already zero, a net no-op), then the goto to
+        # token 1 sets ind back to 0 -- a genuine state cycle, not
         # unbounded growth.
         from esolangs.interpreters.register_based.ram0 import _Machine
         from esolangs.vm import run_until_halt_or_cycle
@@ -469,10 +477,10 @@ class TestContract(SnapshotContract, CycleContract, StateViewContract):
     stepping_program = "A"
     halting_program = "ZA"
     looping_program = "Z1"
-    # `Z` zeroes the accumulator.
-    # `z` move while `n` stays put.
+    # `Z` zeroes the accumulator and `A` increments it, so the cursor and
+    # `z` move while `n` stays put -- three slots, not one read thrice.
     state_views = ("ind", "z", "n", "ip", "memory")
-    # `S` is what moves `n`; "ZA".
+    # `S` is what moves `n`; "ZA" left it at its initial value.
     viewing_program = "A N S"
 
 

@@ -64,8 +64,8 @@ def find(code: Sequence[Sequence[str | int | float]], ind: int) -> int:
     while num:
         if not 0 <= ind < len(code):
             raise ValueError(f"unmatched {op}")
-        # A blank line parses to no.
-        # scan for the partner has to.
+        # A blank line parses to no tokens and ``step`` skips it, so the
+        # scan for the partner has to skip it too rather than read a
         # command out of it.
         if line := code[ind]:
             if line[0] == op:
@@ -89,9 +89,9 @@ def _as_number(value: str) -> int | float | None:
         return int(value)
     whole, dot, frac = value.partition(".")
     if dot and whole.isdigit() and frac.isdigit():
-        # Only a spelling that survives.
-        # float back without the.
-        # print as "2.5" and silently.
+        # Only a spelling that survives the round trip: ``str`` renders a
+        # float back without the written leading zeros, so "02.5" would
+        # print as "2.5" and silently lose a character the program wrote.
         number = float(value)
         if str(number) == value:
             return number
@@ -112,18 +112,18 @@ def _number(value: str | int | float, op: str) -> int | float:
     return value
 
 
-# : One instant of a run:.
-# : the line cursor, the.
-# :.
-# : The program is state rather.
-# : ``$name`` is replaced by.
-# : ``loop`` counts down by.
+#: One instant of a run: ``(code, ind, var, skip)`` -- the parsed program,
+#: the line cursor, the variables, and the suppression flag.
+#:
+#: The program is state rather than a fixed text, for two reasons: a
+#: ``$name`` is replaced by its value in the line that used it, and
+#: ``loop`` counts down by rewriting its own count.  ``snapshot`` already
 #: carried it for that reason.
-# :.
-# : ``skip`` is carried because.
-# : because it can be observed:.
-# : clears it before returning,.
-# : It is kept exactly as it.
+#:
+#: ``skip`` is carried because the field exists and the guard reads it, not
+#: because it can be observed: a zero ``loop`` sets it and the same step
+#: clears it before returning, so no step has ever started with it true.
+#: It is kept exactly as it was rather than quietly dropped.
 type _Line = tuple[str | int | float, ...]
 type _Code = tuple[_Line, ...]
 type _Vars = Mapping[str, int | float | str]
@@ -190,9 +190,9 @@ def _advance(state: _State, answer: str | None = None) -> _State:
     c = code[ind]
 
     if c and not skip:
-        # Already resolved by the.
-        # rejected below for its shape.
-        # is what the original left.
+        # Already resolved by the caller, and already written back: a line
+        # rejected below for its shape keeps the values it was given, which
+        # is what the original left behind when it validated after
         # rewriting.
         op = c[0]
 
@@ -252,7 +252,7 @@ class _Machine:
         """Whether the cursor has reached the end of the program."""
         return self.ind >= len(self.code)
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: Named variables + line cursor; ip the line, memory
     # the vars.
 
     @property
@@ -321,15 +321,15 @@ class _Machine:
 
         answer = None
         if line and not skip:
-            # Resolve once, here, and hand.
-            # rewrite produced: the values.
-            # out to be malformed, exactly.
+            # Resolve once, here, and hand the transition the state that
+            # rewrite produced: the values stand even if the command turns
+            # out to be malformed, exactly as they did before.
             line = _resolve(line, var)
             code = (*code[:ind], line, *code[ind + 1 :])
             state = (code, ind, var, skip)
-            # Commit the rewrite now, not.
-            # malformed command raises out.
-            # had already written these.
+            # Commit the rewrite now, not after the transition returns: a
+            # malformed command raises out of _advance, and the original
+            # had already written these values into the line by then.
             self.code = [list(row) for row in code]
             if line[0] == "print":
                 self.io.print_str("".join(map(str, line[1:])))

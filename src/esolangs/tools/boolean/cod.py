@@ -101,10 +101,10 @@ def _cod_fork_box(n: int, k: int) -> str:
     forward_row = forward_row.rjust(width)
     side_row = side_row.rjust(width)
 
-    # The two forks (entry and.
-    # wall row is open at those.
-    # the west wall column the.
-    # the entry marker there.
+    # The two forks (entry and exit) sit on the forward row; the middle
+    # wall row is open at those same columns, offset by one to account for
+    # the west wall column the forward row itself does not have (it has
+    # the entry marker there instead).
     fork_cols = [i + 1 for i, ch in enumerate(forward_row) if ch == "+"]
     middle_row = "".join(" " if c in fork_cols else "~" for c in range(width + 2))
 
@@ -169,12 +169,12 @@ def _cod_cascade(n: int, table: str) -> str:
     """
     tree_rows = _cod_tree(n, table).split("\n")
 
-    # Wrap the tree in a west wall.
-    # need only the one column;.
-    # since the tree's own left.
-    # row (each leaf sits one.
-    # leaf row's own new left cell.
-    # the shaft down from Phase 1's.
+    # Wrap the tree in a west wall column.  The top and bottom wall rows
+    # need only the one column; every leaf-tree row in between needs two,
+    # since the tree's own left edge already steps in by one column per
+    # row (each leaf sits one column deeper than the last).  The first
+    # leaf row's own new left cell is open water instead of wall -- it is
+    # the shaft down from Phase 1's last exit -- so it alone gets "  "
     # rather than "~ ".
     first, *middle, last = tree_rows
     wrapped_middle = [("  " if i == 0 else "~ ") + row for i, row in enumerate(middle)]
@@ -195,9 +195,9 @@ def _cod_combine(blocks: list[str]) -> str:
     )
 
 
-# A ``{Xi}`` placeholder is.
-# the fill replaces it with.
-# cells, so a template row is.
+# A ``{Xi}`` placeholder is written as four characters but *is* one cell:
+# the fill replaces it with ``)`` or a space.  Every measurement below is in
+# cells, so a template row is read through this rather than by ``len``.
 _COD_CELL = re.compile(r"\{X\d+\}|.")
 
 
@@ -206,7 +206,7 @@ def _cod_cells(block: str) -> list[list[str]]:
     return [_COD_CELL.findall(row) for row in block.split("\n")]
 
 
-# Five columns for a rotated.
+# Five columns for a rotated box plus one for the riser that climbs back.
 _COD_STRIDE = 6
 
 
@@ -258,7 +258,7 @@ def _cod_rotated(n: int, truth_table: str) -> str:
     construction.
     """
     boxes = [_cod_rotate_cw(_cod_fork_box(n, k + 1)) for k in range(n - 1)]
-    height = max(len(box) for box in boxes) + 2  # a top and a bottom corridor.
+    height = max(len(box) for box in boxes) + 2  # a top and a bottom corridor
     cascade_col = _COD_STRIDE * (n - 1)
     grid = [["~"] * cascade_col for _ in range(height)]
 
@@ -269,16 +269,16 @@ def _cod_rotated(n: int, truth_table: str) -> str:
             for c, char in enumerate(row):
                 grid[r + 1][base + c] = char
         for r in range(len(box) + 1, height - 1):
-            grid[r][entry] = " "  # drop the exit column to the.
+            grid[r][entry] = " "  # drop the exit column to the bottom corridor
         for c in range(entry, riser + 1):
-            grid[height - 1][c] = " "  # bottom corridor, east to the.
-        # The last riser stops at row 1.
-        # the others carry on to the.
+            grid[height - 1][c] = " "  # bottom corridor, east to the riser
+        # The last riser stops at row 1 to enter the cascade heading east;
+        # the others carry on to the top corridor row.
         for r in range(0 if k < n - 2 else 1, height - 1):
             grid[r][riser] = " "
         if k < n - 2:
             for c in range(riser, base + _COD_STRIDE + 4):
-                grid[0][c] = " "  # top corridor, east to the.
+                grid[0][c] = " "  # top corridor, east to the next entry
 
     for c in range(4):
         grid[0][c] = " "
@@ -286,12 +286,12 @@ def _cod_rotated(n: int, truth_table: str) -> str:
 
     cascade = _cod_cascade(n, truth_table).split("\n")
     cascade[1] = "{X" + str(n - 1) + "}" + cascade[1][1:]
-    # Pad in *cells* and with wall.
-    # shrinks by three when the.
-    # stops touching the right edge.
-    # since ``_edge_dash_cells``.
-    # wall would open water the.
-    # cod escapes its shaft; the.
+    # Pad in *cells* and with wall.  In characters, a row holding a ``{Xi}``
+    # shrinks by three when the template is filled, and a leaf's ``---`` then
+    # stops touching the right edge -- which disables every print silently,
+    # since ``_edge_dash_cells`` simply finds nothing.  Blanks rather than
+    # wall would open water the cascade is built assuming is solid, and the
+    # cod escapes its shaft; the interpreter itself pads short rows with wall.
     cells = [len(_COD_CELL.findall(row)) for row in cascade]
     cwidth = max(cells)
     cascade = [
@@ -354,7 +354,7 @@ def _cod_turned(program: str) -> str:
     height = len(rows)
     width = max(len(row) for row in rows)
     grid = [row + [" "] * (width - len(row)) for row in rows]
-    # Clockwise, so a cod swimming.
+    # Clockwise, so a cod swimming east ends up swimming south.
     turned = [[grid[height - 1 - j][i] for j in range(height)] for i in range(width)]
     columns = sorted(
         (
@@ -472,33 +472,33 @@ def cod(truth_table: str, width: int | None = None) -> str:
     """
     n = _validate_truth_table(truth_table)
 
-    # A table that ignores some of.
-    # cost is the leaf cascade --.
-    # -- so dropping an input.
-    # table's program, rename its.
-    # the rest in sealed boxes.
-    # it so every ``{Xi}`` still.
+    # A table that ignores some of its inputs is a smaller table, and COD's
+    # cost is the leaf cascade -- ``2**n - 1`` blocks whatever the table says
+    # -- so dropping an input roughly halves the program.  Build the reduced
+    # table's program, rename its slots to the inputs that survived, and park
+    # the rest in sealed boxes (:func:`_cod_dead_box`) placed either side of
+    # it so every ``{Xi}`` still appears exactly once, in ascending order.
     used = essential_inputs(truth_table, n) or [0]
-    # A *gapped* dependency set.
-    # core's slots around the.
-    # and breaking name order, so.
-    # declines a gapped set.
+    # A *gapped* dependency set (inputs 0 and 2 but not 1) would emit the
+    # core's slots around the ignored one, leaving ``{X2}`` before ``{X1}``
+    # and breaking name order, so the set is widened to its span.  Taglate
+    # declines a gapped set outright instead, because there the widened
     # table would ghost-pad itself.
-    # .
-    # Widening is not guaranteed to.
-    # ``2**len(used)`` while the.
-    # per ignored input, so a span.
-    # No table measured here comes.
-    # construction forbids it, and.
-    # reduced build is measured.
-    # the ``shortest``-of-N.
-    # box cost more per input is.
+    #
+    # Widening is not guaranteed to pay: the span's cascade grows as
+    # ``2**len(used)`` while the dead boxes it buys back save only one cell
+    # per ignored input, so a span that is wide but sparse recovers little.
+    # No table measured here comes out longer, but nothing in the
+    # construction forbids it, and the check is two comparisons -- so the
+    # reduced build is measured against the full one and the shorter kept,
+    # the ``shortest``-of-N precedent.  A future change that makes the dead
+    # box cost more per input is exactly what this guard is for.
     used = list(range(used[0], used[-1] + 1))
     reduced = None
     if len(used) < n:
         core = cod(read_at(truth_table, used, n))
-        # Rename through a private.
-        # place could collide with a.
+        # Rename through a private marker: rewriting ``{X0}`` to ``{X2}`` in
+        # place could collide with a ``{X2}`` this loop has not reached yet.
         for slot in reversed(range(len(used))):
             core = core.replace("{X" + str(slot) + "}", f"\x01{used[slot]}\x02")
         core = re.sub(r"\x01(\d+)\x02", lambda m: "{X" + m.group(1) + "}", core)
@@ -521,17 +521,17 @@ def cod(truth_table: str, width: int | None = None) -> str:
 
     full = _cod_combine(blocks)
     if width is not None and _cod_width(full) > width:
-        # Two shapes to choose between,.
-        # trades width for height a.
-        # whole drawing's width for its.
-        # blocks are joined left to.
-        # width becomes the tallest.
+        # Two shapes to choose between, and the narrowest wins.  Banding
+        # trades width for height a block at a time; *turning* trades the
+        # whole drawing's width for its height at once, and since the
+        # blocks are joined left to right that is the better trade -- the
+        # width becomes the tallest block rather than the widest.
         return _cod_turned(full)
-    # Three shapes now, and the.
-    # (:func:`_cod_rotated`).
-    # away -- 1.29x there, 3.67x at.
-    # corridors cost more than the.
-    # comparison rather than a.
+    # Three shapes now, and the shortest wins.  The rotated layout
+    # (:func:`_cod_rotated`) overtakes the flat one at four inputs and pulls
+    # away -- 1.29x there, 3.67x at eight -- but *loses* at three, where the
+    # corridors cost more than the blank rows they remove, so this stays a
+    # comparison rather than a replacement.
     candidates = [full]
     if reduced is not None:
         candidates.append(reduced)

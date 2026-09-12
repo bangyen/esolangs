@@ -7,10 +7,10 @@ from itertools import permutations
 
 from esolangs.exceptions import GeneratorCapError
 
-# rotfuck and six_five each own.
-# per-position rotation, an.
-# dimensional keeps one for its.
-# here so this module stays the.
+# rotfuck and six_five each own a file because their construction (a
+# per-position rotation, an assembler) dwarfs the rest of the category, and
+# dimensional keeps one for its pinned-dimension moves; they are re-exported
+# here so this module stays the import site the package and tests already use.
 from esolangs.tools.boolean.dimensional import dimensional, dimensional_tree
 from esolangs.tools.boolean.helpers import (
     _ASCII_ONE,
@@ -132,10 +132,10 @@ def brainif(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     entries: list[_Entry] = []
-    # The answer byte goes on cell.
-    # far end back down.
-    # are still zero, where one.
-    # cell -- no digit is around to.
+    # The answer byte goes on cell 0 and the inputs above it, read from the
+    # far end back down.  Building first means stepping out over cells that
+    # are still zero, where one ``if 0 move right`` advances exactly one
+    # cell -- no digit is around to fire the next line as well.
     entries += [_Cmd(f"if {v} increment") for v in range(_ASCII_ZERO)]
     entries.append(_Cmd(f"if {_ASCII_ZERO} move right"))
     entries += [_Cmd("if 0 move right") for _ in range(n - 1)]
@@ -146,11 +146,11 @@ def brainif(truth_table: str) -> str:
         """Emit the subtree for ``rows``, entered with the pointer on cell n-k+1."""
         rest = n - (k - 1)
         if rest == 0 or len({truth_table[row] for row in rows}) == 1:
-            # Consume the inputs this path.
-            # the pointer the rest of the.
-            # answer is a 1 and join the.
-            # a program whose input count.
-            # a caller feeding several.
+            # Consume the inputs this path never branched on, which walks
+            # the pointer the rest of the way home; then add one iff the
+            # answer is a 1 and join the tail.  Reading them is not optional:
+            # a program whose input count depended on its table would desync
+            # a caller feeding several programs from one stream.
             out: list[_Entry] = []
             for _ in range(rest):
                 out.append(_Cmd("if 0 input"))
@@ -161,9 +161,9 @@ def brainif(truth_table: str) -> str:
             out.append(_Cmd(f"if {_ASCII_ZERO} goto OUT0"))
             out.append(_Cmd(f"if {_ASCII_ONE} goto OUT0"))
             return out
-        # Level ``k`` reads input ``k -.
-        # bit it selects is the table's.
-        # the reads are in input order.
+        # Level ``k`` reads input ``k - 1`` into cell ``n - k + 1``, so the
+        # bit it selects is the table's usual most-significant-first one --
+        # the reads are in input order even though the pointer walks down.
         g0 = [row for row in rows if ((row >> (n - k)) & 1) == 0]
         g1 = [row for row in rows if ((row >> (n - k)) & 1) == 1]
         l0, l1 = counter[0], counter[0] + 1
@@ -181,15 +181,15 @@ def brainif(truth_table: str) -> str:
         ]
 
     entries += build(list(range(2**n)), 1)
-    # One shared tail: the answer.
-    # this is two lines rather than.
+    # One shared tail: the answer cell already holds the byte to print, so
+    # this is two lines rather than a climb per digit.
     entries.append(_Out(0))
     entries.append(_Cmd(f"if {_ASCII_ZERO} output"))
     entries.append(_Cmd(f"if {_ASCII_ONE} output"))
     entries.append(_End())
 
-    # resolve labels from the.
-    # no line, so the marker's.
+    # resolve labels from the actual line sequence (the "out" markers emit
+    # no line, so the marker's target is the next line that does)
     labels: dict[int, int] = {}
     out_labels: dict[int, int] = {}
     line_no = 0
@@ -210,8 +210,8 @@ def brainif(truth_table: str) -> str:
         if isinstance(entry, _Cmd):
             text = entry.text
             if "goto OUT" in text:
-                # keep the line's own guard: a.
-                # cell holding 48 or 49, so it.
+                # keep the line's own guard: a leaf reaches the tail from a
+                # cell holding 48 or 49, so it emits one goto for each
                 guard, target = text.split(" goto OUT")
                 text = f"{guard} goto {out_labels[int(target)]}"
             lines.append(text)
@@ -222,10 +222,10 @@ def brainif(truth_table: str) -> str:
         elif isinstance(entry, _Out):
             continue
         else:
-            # _End, the trailing blank line.
-            # than a fifth ``isinstance``.
-            # ``_Entry`` without a branch.
-            # this to ``_End``, and a wider.
+            # _End, the trailing blank line.  Spelled as the fallback rather
+            # than a fifth ``isinstance`` so that adding a variant to
+            # ``_Entry`` without a branch here is a type error: mypy narrows
+            # this to ``_End``, and a wider union would not narrow.
             _: _End = entry
             lines.append("")
     return "\n".join(lines)
@@ -247,9 +247,9 @@ def circlefuck(truth_table: str) -> str:
     A subtree whose rows all agree folds to a leaf; see
     :func:`circlefuck_byte`, which both share.
     """
-    # Validated here rather than.
-    # a *byte* table, where a.
-    # carry the boolean generators'.
+    # Validated here rather than left to ``circlefuck_byte``: that one takes
+    # a *byte* table, where a single entry is a legal constant, so it cannot
+    # carry the boolean generators' "at least one input" rule.
     _validate_truth_table(truth_table)
     return circlefuck_byte([_ASCII_ZERO + int(bit) for bit in truth_table])
 
@@ -394,7 +394,7 @@ def _circlefuck_ordered(truth_table: list[int], perm: tuple[int, ...]) -> str:
         emit(",")
         prog.extend("-" * _ASCII_ZERO)
         emit(">")
-    prog.pop()  # the trailing ">" would leave.
+    prog.pop()  # the trailing ">" would leave the pointer past the last input
 
     def move(source: int, target: int) -> None:
         """Walk the pointer from cell ``source`` to cell ``target``."""
@@ -422,16 +422,16 @@ def _circlefuck_ordered(truth_table: list[int], perm: tuple[int, ...]) -> str:
             emit("@")
             return
         if len({truth_table[r] for r in span(k, row)}) == 1:
-            # Every row this subtree could.
-            # would branch on cannot change.
-            # unconditional, above the.
-            # consumes its input the same.
-            # .
-            # The ``[-]`` is what a.
-            # emitted inside each ``[`` on.
-            # its value on a cleared cell.
-            # levels and so must clear the.
-            # pointer still holds an input.
+            # Every row this subtree could reach agrees, so the bits it
+            # would branch on cannot change the answer.  The reads are
+            # unconditional, above the tree, so a folded program still
+            # consumes its input the same way an unfolded one does.
+            #
+            # The ``[-]`` is what a full-depth leaf relies on: it is
+            # emitted inside each ``[`` on the way down, so a leaf builds
+            # its value on a cleared cell.  A folded leaf skips those
+            # levels and so must clear the cell itself -- without this the
+            # pointer still holds an input bit and every one-valued input
             # prints one too high.
             emit("[-]")
             build(-1, row, cell)
@@ -440,12 +440,12 @@ def _circlefuck_ordered(truth_table: list[int], perm: tuple[int, ...]) -> str:
         move(cell, target)
         emit("[")
         emit("[-]")
-        # Both arms leave the pointer.
-        # each arm re-aims from.
-        # the tested cell, so the loop.
-        # reached with the pointer back.
-        # returns it.
-        # before the branch is what.
+        # Both arms leave the pointer wherever the deeper level put it, but
+        # each arm re-aims from ``target`` itself: the ``[-]`` above cleared
+        # the tested cell, so the loop runs at most once and the ``]`` is
+        # reached with the pointer back under our control only if the arm
+        # returns it.  Emitting the walk inside each arm rather than once
+        # before the branch is what keeps the two arms independent.
         build(k - 1, row + 2 ** (n - 1 - k), target)
         emit("]")
         build(k - 1, row, target)
@@ -478,26 +478,26 @@ def brainfuck(truth_table: str) -> str:
     return bf_tree(truth_table)
 
 
-# : Digits :func:`factor`.
-# : measured worst case at ten.
-# : printing once below itself,.
-# : cut by 4.3x together: n=10.
-# : n=10 dense to 77278 (was.
-# : construction with room and.
-# : Past it the caller passes.
-# :.
-# : The budget is deliberately.
-# : worst case: n=11 parity now.
-# : 952366 and was refused.
-# : is what an arity lift would.
-# : question for the contract.
-# :.
-# : Sized to the construction's.
-# : boolean suite currently.
-# : a five-input suite and.
-# : n=6, so the budget had to.
-# : one does not.
-# : case, and an n=6 program.
+#: Digits :func:`factor` renders without being asked twice.  Sized from the
+#: measured worst case at ten inputs, which the tree's two size changes --
+#: printing once below itself, and dropping the complement construction --
+#: cut by 4.3x together: n=10 parity encodes to 104659 digits (was 454832),
+#: n=10 dense to 77278 (was 328772).  So this clears the whole reach of the
+#: construction with room and still names a ceiling rather than removing one.
+#: Past it the caller passes ``max_digits`` and says how big is fine.
+#:
+#: The budget is deliberately left at 500000 rather than tightened to the new
+#: worst case: n=11 parity now encodes to 219455 digits where it used to need
+#: 952366 and was refused outright, so the headroom this constant already had
+#: is what an arity lift would spend.  Whether n=11 is *supported* is a
+#: question for the contract sweep, not for this constant.
+#:
+#: Sized to the construction's reach rather than to whatever arity the
+#: boolean suite currently sweeps, deliberately: the old 16000 was pinned to
+#: a five-input suite and became the *only* thing stopping this generator at
+#: n=6, so the budget had to be re-argued the moment the sweep moved.  This
+#: one does not.  Raising it costs 2.8s and 78MB at the ten-input worst
+#: case, and an n=6 program built past the old ceiling executes correctly on
 #: all 64 rows.
 _DEFAULT_MAX_DIGITS = 500_000
 
@@ -568,9 +568,9 @@ def factor(truth_table: str, *, max_digits: int = _DEFAULT_MAX_DIGITS) -> str:
     conversion just to reject it.
     """
     number = _factor_encode(brainfuck(truth_table))
-    # Estimated from the bit length.
-    # up, so it never.
-    # integer without paying for.
+    # Estimated from the bit length (``log10(2) ~= 0.30103``) and rounded
+    # up, so it never *under*-counts: the point is to reject an oversized
+    # integer without paying for the conversion that would size it exactly.
     digits = int(number.bit_length() * 0.30103) + 1
     if digits > max_digits:
         raise GeneratorCapError(
@@ -581,7 +581,7 @@ def factor(truth_table: str, *, max_digits: int = _DEFAULT_MAX_DIGITS) -> str:
     limit = sys.get_int_max_str_digits()
     if digits <= limit:
         return str(number)
-    # Process-global, so it is.
+    # Process-global, so it is borrowed for the render and handed back.
     sys.set_int_max_str_digits(digits + 1)
     try:
         return str(number)
@@ -603,8 +603,8 @@ def three_d_brainfuck(truth_table: str) -> str:
     return brainfuck(truth_table).translate(str.maketrans("><", "ew"))
 
 
-# The interpreter's two.
-# scans them: Painfuck source.
+# The interpreter's two substitution cycles, in the order the cross-check
+# scans them: Painfuck source is pre-shifted here so the trans table recovers
 # the intended commands.
 _CYCLES = ("pevkjzwr", "yuctsobqihald")
 
@@ -646,8 +646,8 @@ def painfuck(truth_table: str) -> str:
                 k += 1
                 break
         else:
-            # every command the brainfuck.
-            # in _CYCLES, so this branch is.
+            # every command the brainfuck generator emits maps to a command
+            # in _CYCLES, so this branch is unreachable by construction
             raise ValueError(
                 f"Painfuck command {char!r} is not in a cycle"
             )  # pragma: no cover
@@ -724,8 +724,8 @@ def _basicfuck_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         return [f"{indent}out += {_ASCII_ZERO + value} ;\n{indent}write <- out ;\n"]
 
     def node(level: int, zero: list[str], one: list[str], _at: int) -> list[str]:
-        # The one-side is emitted.
-        # neighbour, so the two arms.
+        # The one-side is emitted first: a failed ``if`` falls through to its
+        # neighbour, so the two arms are independent and their order is free.
         indent = "  " * level
         var = f"a{perm[level] + 1}"
         return [
@@ -813,8 +813,8 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
     nxtbase = vbase + n
     del d48
 
-    # (a operand, b operand, kind,.
-    # offsets made absolute below,.
+    # (a operand, b operand, kind, kind's argument); ``a``/``b`` are data
+    # offsets made absolute below, and ``kind`` picks how ``c`` is filled.
     reads: list[tuple[int, int, str, int]] = [
         (vbase + i, -2, "nxt", i) for i in range(n)
     ]
@@ -828,10 +828,10 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
         one: list[tuple[int, int, str, int]],
         at: int,
     ) -> list[tuple[int, int, str, int]]:
-        # A branch spends one.
-        # one-side starts just past.
-        # The walker hands that index.
-        # reserved a slot and.
+        # A branch spends one instruction before either subtree, so the
+        # one-side starts just past this node and its whole zero subtree.
+        # The walker hands that index down, which is what the old build
+        # reserved a slot and backpatched to get.
         target = 3 * (at + 1 + len(zero))
         return [(vbase + perm[level], neg49, "one", target), *zero, *one]
 
@@ -847,8 +847,8 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
     onebase = nxtbase + n
     data_base = 3 * len(instructions)
 
-    # ``one`` instructions carry.
-    # holds those targets in the.
+    # ``one`` instructions carry their absolute target, and the data block
+    # holds those targets in the order the emit loop meets them.
     ones: list[int] = []
 
     cells: list[int] = []
@@ -874,37 +874,37 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
     return " ".join(map(str, cells))
 
 
-# ROTfuck rotates the whole.
-# decision tree does not.
-# the *rotated* program, at a.
-# The construction below is the.
-# interpreter: each ``[`` body.
-# brackets), and the closing.
-# encoded so that the.
-# .
-# A block is ``[ body ]`` at.
-# satisfies ``len(body) + 1 ≡ 0.
-# .
-# - skip path (cell == 0): the.
-# ``]`` at depth 1, and lands.
-# - body path (cell != 0): the.
-# ends on the tested cell,.
-# shows ``rot^len(body)(']')``.
-# does not fire on the nonzero.
+# ROTfuck rotates the whole program after every command, so a brainfuck-style
+# decision tree does not survive: the bracket that fires seeks its partner in
+# the *rotated* program, at a rotation state that depends on the step count.
+# The construction below is the discovered escape, verified against the
+# interpreter: each ``[`` body is a *straight-line* ``+-><``-only block (no
+# brackets), and the closing ``]`` is a phantom character whose position is
+# encoded so that the ``[``-fire seek finds it at the right rotation state.
+#
+# A block is ``[ body ]`` at positions ``p``..``q`` where ``len(body)``
+# satisfies ``len(body) + 1 ≡ 0 (mod 8)``:
+#
+# - skip path (cell == 0): the ``[`` fires, rotates once, seeks forward for
+#   ``]`` at depth 1, and lands at ``q + 1`` with rotation state ``p + 1``;
+# - body path (cell != 0): the body runs (straight-line, pointer starts and
+#   ends on the tested cell, which stays nonzero), and at ``q`` the phantom
+#   shows ``rot^len(body)(']')`` = ``'['`` (since ``len(body) ≡ 7``), which
+#   does not fire on the nonzero cell, so it advances to ``q + 1`` with state
 #   ``q + 1 ≡ p + 1 (mod 8)``.
-# .
-# Both paths therefore.
-# so the rest of the program.
-# relative offset ``j`` must.
-# the ``[``-fire seek (at state.
-# .
-# The generator is a.
-# indirection: each input bit.
-# (cell ``n + i``, set to 1).
-# ``mc_k``; one block per.
-# ``2n + 1 + 2**n + k``) iff.
-# input is ``k``; and blocks.
-# result cell, which is printed.
+#
+# Both paths therefore re-converge at ``q + 1`` in the same rotation state,
+# so the rest of the program can be encoded position-wise.  A body command at
+# relative offset ``j`` must also satisfy ``rot^{-j}(cmd)`` not a bracket, so
+# the ``[``-fire seek (at state ``p + 1``) sees no bracket inside the body.
+#
+# The generator is a branch-free minterm sum over an idempotent-zeroing
+# indirection: each input bit ``b_i`` (cell ``i``) and its complement ``c_i``
+# (cell ``n + i``, set to 1) guard blocks that count mismatches into cells
+# ``mc_k``; one block per minterm then zeroes ``m_k`` (cell
+# ``2n + 1 + 2**n + k``) iff ``mc_k != 0``, so ``m_k == 1`` exactly when the
+# input is ``k``; and blocks guarded by the ``1``-rows accumulate into the
+# result cell, which is printed as ``48 + r``.
 
 
 def jaune(truth_table: str) -> str:
@@ -983,8 +983,8 @@ def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         return ">" * (to - frm) if to >= frm else "<" * (frm - to)
 
     stored = stored_inputs(truth_table, perm)
-    # Reads run in input order;.
-    # the kept bits occupy a.
+    # Reads run in input order; only a stored input advances the pointer, so
+    # the kept bits occupy a contiguous block from cell 0.
     cell_of: dict[int, int] = {}
     reads = ""
     slot = 0
@@ -994,10 +994,10 @@ def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
             cell_of[i] = slot
             slot += 1
             reads += ">"
-    # A clobbered read leaves its.
-    # reads finish on is blank only.
-    # whole-table constant prints.
-    # more when the final read.
+    # A clobbered read leaves its value under the pointer, so the cell the
+    # reads finish on is blank only when the last read advanced off it.  A
+    # whole-table constant prints from there and needs it zero, so step once
+    # more when the final read clobbered -- and the entry cell moves with it.
     scratch = slot
     if n and (n - 1) not in stored:
         reads += ">"
@@ -1014,10 +1014,10 @@ def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     ) -> str:
         if level == n or len(set(truth_table[lo:hi])) == 1:
             return leaf(truth_table[lo], held, end)
-        # A clobbered input has no cell.
-        # answer, so the two halves of.
-        # descending into either one is.
-        # half, which keeps the row.
+        # A clobbered input has no cell to test.  Its bit cannot change the
+        # answer, so the two halves of this span are value-identical and
+        # descending into either one is the same function -- take the zero
+        # half, which keeps the row span halving in step with the level.
         if perm[level] not in cell_of:
             return node(level + 1, lo, (lo + hi) // 2, entry, held, end)
         cell = cell_of[perm[level]]
@@ -1076,13 +1076,13 @@ def jaune_multiply() -> str:
         out.append(s)
 
     move(4)
-    cmd("1+")  # cell 4 = 1: the unconditional.
-    # read the first operand until.
+    cmd("1+")  # cell 4 = 1: the unconditional loop-back trigger
+    # read the first operand until '*': label 1 at cell 4
     cmd("1:")
     move(1)
     cmd("v")
-    cmd("6+")  # '*' is 42, so ord-48 == -6;.
-    cmd("2!")  # a zero (the sentinel) exits.
+    cmd("6+")  # '*' is 42, so ord-48 == -6; +6 zeroes it
+    cmd("2!")  # a zero (the sentinel) exits to label 2
     cmd("6-")
     move(0)
     cmd("#")
@@ -1092,16 +1092,16 @@ def jaune_multiply() -> str:
     move(0)
     cmd("&")
     move(4)
-    cmd("1?")  # always jump back to label 1.
-    cmd("2:")  # first operand done; the '*'.
+    cmd("1?")  # always jump back to label 1
+    cmd("2:")  # first operand done; the '*' was read at cell 1
     pos = 1
     move(4)
-    # read the second operand until.
+    # read the second operand until '#': label 4 at cell 4
     cmd("4:")
     move(1)
     cmd("v")
-    cmd("13+")  # '#' is 35, so ord-48 == -13;.
-    cmd("3!")  # a zero (the sentinel) exits.
+    cmd("13+")  # '#' is 35, so ord-48 == -13; +13 zeroes it
+    cmd("3!")  # a zero (the sentinel) exits to label 3
     cmd("13-")
     move(2)
     cmd("#")
@@ -1111,11 +1111,11 @@ def jaune_multiply() -> str:
     move(2)
     cmd("&")
     move(4)
-    cmd("4?")  # always jump back to label 4.
-    cmd("3:")  # second operand done; the '#'.
+    cmd("4?")  # always jump back to label 4
+    cmd("3:")  # second operand done; the '#' was read at cell 1
     pos = 1
     move(2)
-    # multiply: while cell 2 != 0:.
+    # multiply: while cell 2 != 0: cell 3 += cell 0; cell 2 -= 1
     cmd("5:")
     cmd("6!")
     move(0)
@@ -1140,7 +1140,7 @@ def _suffolk_candidate_cost(truth_table: str, wanted: str, *, invert: bool) -> i
     reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
     width = len(used)
 
-    # ``const(gap, value)`` is.
+    # ``const(gap, value)`` is ``value`` copies of ``'>' * gap + '!'``.
     cost = 2 * _ASCII_ONE
     for i in range(n):
         gap = 2 + i
@@ -1209,21 +1209,21 @@ def suffolk(truth_table: str) -> str:
         return (">" * gap + "!") * value
 
     if len({*truth_table}) == 1:
-        # A constant table needs no.
-        # interface: skipping them.
-        # stream.
+        # A constant table needs no minterms, but the reads are the language's
+        # interface: skipping them leaves the caller's bits unread on the input
+        # stream.  Read each input into its own scratch cell and discard it.
         reads = "".join(
             const(2 + i, _ASCII_ZERO) + ">" * (2 + i) + "," + "!" for i in range(n)
         )
         return const(1, _ASCII_ONE + int(truth_table[0])) + reads + ">" + "<" + "."
 
-    # A table that ignores some of.
-    # minterm costs one literal.
-    # selected row -- so dropping.
-    # rows that remain.
-    # is read into its own scratch.
-    # is exactly what the constant.
-    # input.
+    # A table that ignores some of its inputs is a smaller table, and a
+    # minterm costs one literal walk *per input* on top of one block per
+    # selected row -- so dropping an input removes rows and shortens the
+    # rows that remain.  The reads stay, one ``,`` per input; an ignored one
+    # is read into its own scratch cell and never used as a literal, which
+    # is exactly what the constant branch above already does for *every*
+    # input.  This is that branch generalized from "no essential inputs" to
     # "the ones that matter".
     used = essential_inputs(truth_table, n) or [0]
     reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
@@ -1235,17 +1235,17 @@ def suffolk(truth_table: str) -> str:
         With ``invert`` the sum answers the *complement* of the table, so
         the print stage has to flip it back.
         """
-        # Cell 1 holds the print.
-        # re-walks the gap once per.
-        # cheapest cell there is: 49.
-        # where the same constant out.
-        # several hundred and swamp.
+        # Cell 1 holds the print stage's additive constant.  ``const``
+        # re-walks the gap once per unit, so this has to live at the
+        # cheapest cell there is: 49 units at cell 1 costs 98 characters,
+        # where the same constant out past the minterm cells would cost
+        # several hundred and swamp what the complement saves.
         body = const(1, _ASCII_ONE)
-        # cells 2..2+n-1: complement of.
+        # cells 2..2+n-1: complement of each input bit (1 - bit)
         for i in range(n):
             gap = 2 + i
             body += const(gap, _ASCII_ZERO) + ">" * gap + "," + "!"
-        # cells 2+n..2+2n-1: the raw.
+        # cells 2+n..2+2n-1: the raw bit, recovered from the complement
         for i in range(n):
             gap = 2 + i
             raw_gap = 2 + n + i
@@ -1256,8 +1256,8 @@ def suffolk(truth_table: str) -> str:
         for row in range(2**width):
             if reduced[row] != wanted:
                 continue
-            # Slot ``s`` carries original.
-            # and raw cells were laid down.
+            # Slot ``s`` carries original input ``used[s]``, whose complement
+            # and raw cells were laid down at the full arity above.
             bits = [(row >> (width - 1 - s)) & 1 for s in range(width)]
             literals = [
                 (2 + used[s]) if v else (2 + n + used[s]) for s, v in enumerate(bits)
@@ -1269,22 +1269,22 @@ def suffolk(truth_table: str) -> str:
 
         if not invert:
             body += "".join(">" * c + "<" for c in cells)
-            body += ">" + "<"  # add the constant cell.
+            body += ">" + "<"  # add the constant cell
             return body + "."
-        # ``S`` is 1 exactly when the.
-        # ``0``, so the answer is ``1 -.
-        # and ``!`` computes ``max(0,.
-        # with 49 and hit with ``acc =.
-        # makes ``acc = 50 - S`` and.
-        # clamp never bites, since.
-        # ``S`` is 1 exactly when the.
-        # to ``0``, so the answer is.
-        # ``max(0, cell + 1 - acc)``,.
-        # reading it back makes ``acc =.
-        # ``chr(acc - 1)``) prints.
-        # ``'0'`` for S == 1.
-        # Preloading 48 instead is the.
-        # print's ``- 1`` and ``!``'s.
+        # ``S`` is 1 exactly when the inputs match a row the table sends to
+        # ``0``, so the answer is ``1 - S``.  ``.`` prints ``chr(acc - 1)``
+        # and ``!`` computes ``max(0, cell + 1 - acc)``, so a cell preloaded
+        # with 49 and hit with ``acc = S`` holds ``50 - S``; reading it back
+        # makes ``acc = 50 - S`` and the print emits ``chr(49 - S)``.  The
+        # clamp never bites, since ``S`` is 0 or 1.
+        # ``S`` is 1 exactly when the inputs match a row the table sends
+        # to ``0``, so the answer is ``1 - S``.  ``!`` computes
+        # ``max(0, cell + 1 - acc)``, so cell 1's 49 becomes ``50 - S``;
+        # reading it back makes ``acc = 50 - S`` and ``.`` (which emits
+        # ``chr(acc - 1)``) prints ``chr(49 - S)`` -- ``'1'`` for S == 0 and
+        # ``'0'`` for S == 1.  The clamp never bites, since ``S`` is 0 or 1.
+        # Preloading 48 instead is the off-by-one that prints ``'/'``: the
+        # print's ``- 1`` and ``!``'s ``+ 1`` both have to be counted.
         body += "".join(">" * c + "<" for c in cells)
         body += ">" + "!"
         body += ">" + "<"
@@ -1292,7 +1292,7 @@ def suffolk(truth_table: str) -> str:
 
     plain_cost = _suffolk_candidate_cost(truth_table, "1", invert=False)
     flipped_cost = _suffolk_candidate_cost(truth_table, "0", invert=True)
-    # ``min((plain, flipped),.
+    # ``min((plain, flipped), key=len)`` previously retained plain on ties.
     return (
         evaluate("1", invert=False)
         if plain_cost <= flipped_cost

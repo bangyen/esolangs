@@ -220,11 +220,11 @@ class TestDigEdgeCases:
         from esolangs.interpreters.io import ScriptedIO
 
         def heading_after(digit: str) -> int:
-            # "#" steers overground, so no.
-            # heading right and reads the.
+            # "#" steers overground, so no "$" -- the mole starts at (0, 0)
+            # heading right and reads the cell below the "#" at (0, 1).
             machine = _Machine([" #  ", f" {digit}  "], ScriptedIO(""))
-            machine.step()  # the blank the mole starts on.
-            machine.step()  # "#".
+            machine.step()  # the blank the mole starts on
+            machine.step()  # "#"
             return machine.move
 
         straight = heading_after("2")
@@ -244,15 +244,15 @@ class TestDigEdgeCases:
         from esolangs.interpreters.io import ScriptedIO
 
         def mole_after(digit: str) -> int:
-            # "%" is a work command, so "$".
-            # budget first; it reads the 1.
+            # "%" is a work command, so "$" has to open the underground
+            # budget first; it reads the 1 below it, leaving room for one.
             machine = _Machine(["$%  ", f"1{digit}  "], ScriptedIO(""))
-            machine.step()  # "$" loads the work budget.
-            machine.step()  # "%" selects.
+            machine.step()  # "$" loads the work budget
+            machine.step()  # "%" selects
             return machine.mole
 
-        assert mole_after("1") == 10  # newline.
-        assert mole_after("0") == 32  # space.
+        assert mole_after("1") == 10  # newline
+        assert mole_after("0") == 32  # space
         for digit in "23456789":
             assert mole_after(digit) == 0, digit
 
@@ -263,11 +263,11 @@ class TestStepMachine:
 
         machine = _Machine([">$5:", " 2 "], IO())
         assert (machine.row, machine.col, machine.move, machine.mole) == (0, 0, 1, 0)
-        machine.step()  # > keeps facing right.
+        machine.step()  # > keeps facing right
         assert (machine.row, machine.col, machine.move) == (0, 1, 1)
-        machine.step()  # $ digs: reads the adjacent.
+        machine.step()  # $ digs: reads the adjacent digit (5) as the count
         assert machine.num == 5
-        machine.step()  # 5 sets the mole and consumes.
+        machine.step()  # 5 sets the mole and consumes one count
         assert (machine.mole, machine.num) == (5, 4)
 
     def test_the_read_lands_in_the_mole(self) -> None:
@@ -279,7 +279,7 @@ class TestStepMachine:
         from esolangs.interpreters.grid_based.dig import _Machine
 
         machine = _Machine([">$=:", " 2 "], ScriptedIO("A"))
-        for _ in range(3):  # move over, dig, read.
+        for _ in range(3):  # move over, dig, read
             machine.step()
         assert machine.mole == ord("A")
 
@@ -306,4 +306,4 @@ class TestContract(CycleContract, InputCursorContract):
     reader = staticmethod(_reader)
     reading_program: ClassVar[list[str]] = [">$=:", " 2 "]
     reading_stdin = "A"
-    steps_before_read = 2  # move over, dig, and only then.
+    steps_before_read = 2  # move over, dig, and only then read

@@ -58,7 +58,7 @@ _KEYWORDS = frozenset({"LET", "POINT", "IF", "BREAK", "END"})
 _OPERATORS = frozenset({"+", "-", "*", "/"})
 _OPERANDS = frozenset({"input", "name", "num"})
 
-# A token:.
+# A token: ("keyword"|"name"|"num"|"op", text) or ("input"|"assign", "").
 Token = tuple[str, str]
 
 Let = tuple[Literal["let"], str, list[Token]]
@@ -224,19 +224,19 @@ def _structure(stmts: list[Statement]) -> dict[int, tuple[int, bool]]:
     return ends
 
 
-# : The variable store, as a.
-# : returns a new one rather.
+#: The variable store, as a mapping.  A value, not a record: the transition
+#: returns a new one rather than editing the one it was handed.
 type _Vars = Mapping[str, int]
 
-# : The open loop frames,.
+#: The open loop frames, innermost last: ``(label, the POINT's index)``.
 type _Frames = tuple[tuple[str, int], ...]
 
-# : The ``?`` port.
-# : expression holding several.
+#: The ``?`` port.  A callback rather than a pre-read list, because an
+#: expression holding several of them reads each as the evaluation reaches
 #: it -- see :func:`_eval`.
 type _Read = Callable[[], int]
 
-# : One instant of a run:.
+#: One instant of a run: ``(variables, frames, pc)``.
 type _State = tuple[_Vars, _Frames, int]
 
 
@@ -323,7 +323,7 @@ def _advance(
         pos = _frame_index(frames, stmt[1])
         return (variables, frames[:pos], frames[pos][1])
 
-    # if_break.
+    # if_break
     _, var, label = stmt
     if var not in variables:
         raise HaltError(f"undefined variable {var!r}")
@@ -344,10 +344,10 @@ class _Machine:
     repeated snapshot is a *proof* that a deterministic run loops forever.
     """
 
-    # : Whether the variables are.
-    # : belongs to the language,.
-    # : its loop with one more.
-    # : ``halted`` has driven the.
+    #: Whether the variables are written on the step *after* the halt.  It
+    #: belongs to the language, not to whoever is stepping it: ``run`` ends
+    #: its loop with one more ``step()``, so a caller who stops at
+    #: ``halted`` has driven the program correctly and still holds none of
     #: its output.
     dumps_on_the_post_halt_step = True
 
@@ -358,8 +358,8 @@ class _Machine:
         :class:`HaltError`s fire during ``step`` instead.
         """
         self.io = io
-        # Out of ``snapshot``: the dump.
-        # compares states of a running.
+        # Out of ``snapshot``: the dump is the shell's, and the detector
+        # compares states of a running machine.
         self._dumped = False
         lines = code.splitlines() if isinstance(code, str) else code
         stmts: list[Statement] = []
@@ -383,7 +383,7 @@ class _Machine:
         """Whether the end-of-run variable dump has already been printed."""
         return self._dumped
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: Variable store + loop frames; ip is the statement
     # cursor.
 
     @property
@@ -454,7 +454,7 @@ def run(code: str | list[str], io: IO) -> None:
     machine = _Machine(code, io)
     while not machine.halted:
         machine.step()
-    machine.step()  # the post-halt step prints the.
+    machine.step()  # the post-halt step prints the variables
 
 
 if __name__ == "__main__":

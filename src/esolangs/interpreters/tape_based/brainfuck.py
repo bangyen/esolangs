@@ -38,39 +38,39 @@ import sys
 from esolangs.interpreters.brackets import match_brackets as matches
 from esolangs.interpreters.io import IO
 
-# : One instant of a run:.
-# : position, the pointer, the.
-# : the pointer.
-# : one rather than editing one.
+#: One instant of a run: ``(ind, ptr, tape, acc, dirty)`` -- the code
+#: position, the pointer, the tape, and a write buffer for the cell under
+#: the pointer.  A value, not a record: every transition below returns a new
+#: one rather than editing one in place, and the tape is a ``tuple`` for the
 #: same reason.
-# :.
-# : ``acc`` always holds the.
-# : ``dirty`` is set,.
-# : tape is brought back up to.
-# : that leaves the cell goes.
-# : ``-`` cost one tape rebuild.
-# : commands real generated.
-# : averaging 3.8 and reaching.
-# :.
-# : The stale window is.
-# : property both commit first,.
-# : tape.
-# : ``snapshot`` returns, and a.
-# : committed) would make a.
-# :.
-# : A plain tuple rather than a.
-# : unpacking in the functions.
-# : ``NamedTuple.__new__`` is.
-# : C-level -- measured 2.7x.
-# :.
-# : The code and its bracket.
-# : changes during a run, so.
-# : value the cycle detector.
+#:
+#: ``acc`` always holds the true value of the cell under the pointer.  While
+#: ``dirty`` is set, ``tape[ptr]`` is stale and ``acc`` is the truth; the
+#: tape is brought back up to date by :func:`_committed`, which every path
+#: that leaves the cell goes through.  This is what makes a run of ``+`` or
+#: ``-`` cost one tape rebuild instead of one per command -- 58% of the
+#: commands real generated programs execute are ``+``/``-``, in runs
+#: averaging 3.8 and reaching 49.
+#:
+#: The stale window is invisible from outside: ``snapshot`` and the ``tape``
+#: property both commit first, so an observer always sees one canonical
+#: tape.  That is not just for tidiness -- the cycle detector hashes what
+#: ``snapshot`` returns, and a logical state with two spellings (dirty and
+#: committed) would make a real repeat look like a new state.
+#:
+#: A plain tuple rather than a ``NamedTuple``: the fields are read by
+#: unpacking in the functions that use them, so the names bought little, and
+#: ``NamedTuple.__new__`` is Python-level where the tuple constructor is
+#: C-level -- measured 2.7x slower to build, at one build per step.
+#:
+#: The code and its bracket map are deliberately *not* in here.  Neither
+#: changes during a run, so carrying them would put constant data in every
+#: value the cycle detector stores.  They are parameters to the transition
 #: functions instead.
-# :.
-# : The field order starts.
-# : ``snapshot`` returns, and.
-# : buffer existed.
+#:
+#: The field order starts ``ind, ptr, tape`` because that is the order
+#: ``snapshot`` returns, and it returned exactly those three before the
+#: buffer existed.  Reordering would silently reorder every snapshot.
 type _State = tuple[int, int, tuple[int, ...], int, bool]
 
 
@@ -122,15 +122,15 @@ def _advance(state: _State, code: str, brackets: dict[int, int]) -> _State:
     ind, ptr, tape, acc, dirty = state
     char = code[ind]
     if char == "+":
-        # The buffered cell absorbs the.
+        # The buffered cell absorbs the write; the tape is not touched.
         acc = (acc + 1) % 256
         dirty = True
     elif char == "-":
         acc = (acc - 1) % 256
         dirty = True
     elif char == ">":
-        # Leaving the cell, so the.
-        # the right end grows the tape.
+        # Leaving the cell, so the buffer is discharged first.  A ``>`` past
+        # the right end grows the tape by one zero cell.
         tape = _committed(state)
         dirty = False
         ptr += 1
@@ -138,17 +138,17 @@ def _advance(state: _State, code: str, brackets: dict[int, int]) -> _State:
             tape = (*tape, 0)
         acc = tape[ptr]
     elif char == "<":
-        # ``<`` at the left edge is.
-        # clamped move never leaves the.
+        # ``<`` at the left edge is clamped rather than an error, and a
+        # clamped move never leaves the cell, so it must not commit either.
         if ptr:
             tape = _committed(state)
             dirty = False
             ptr -= 1
             acc = tape[ptr]
     elif (char == "[" and acc == 0) or (char == "]" and acc != 0):
-        # The test reads the buffer,.
-        # or not the tape has caught up.
-        # the test inverted, and the.
+        # The test reads the buffer, which is the cell's true value whether
+        # or not the tape has caught up.  Both brackets are one rule with
+        # the test inverted, and the jump lands on the partner: the
         # increment below steps past it.
         ind = brackets[ind]
     return (ind + 1, ptr, tape, acc, dirty)
@@ -168,21 +168,21 @@ class _Machine:
         self.code = code
         self.io = io
         self.brackets = matches(code)
-        # ``halted`` is read twice per.
-        # once by ``step``'s guard --.
-        # rather than recomputed on.
+        # ``halted`` is read twice per command -- once by ``run``'s loop and
+        # once by ``step``'s guard -- so the length is taken once here
+        # rather than recomputed on every one of those reads.
         self.size = len(code)
         self.state: _State = (0, 0, (0,), 0, False)
 
-    # The language's own names,.
-    # on the current state rather.
+    # The language's own names, which ``factor.py`` reads.  They are views
+    # on the current state rather than fields of their own, so there is one
     # place a step can change.
-    # .
-    # ``tape`` and ``snapshot``.
-    # An observer must never see.
-    # one the program has actually.
-    # detector hashes snapshots --.
-    # spelling, or a real repeat.
+    #
+    # ``tape`` and ``snapshot`` commit the write buffer before reporting.
+    # An observer must never see the stale window: the tape it gets is the
+    # one the program has actually written, and -- because the cycle
+    # detector hashes snapshots -- one logical state must have exactly one
+    # spelling, or a real repeat would not compare equal to itself.
 
     @property
     def tape(self) -> tuple[int, ...]:
@@ -209,9 +209,9 @@ class _Machine:
     def halted(self) -> bool:
         return self.state[0] >= self.size
 
-    # The VM's language-shaped.
-    # tape.
-    # buffer like every other.
+    # The VM's language-shaped view: Tape + pointer; ip is the code cursor, memory the
+    # tape.  ``memory`` goes through ``tape``, so it commits the write
+    # buffer like every other observer.
 
     @property
     def ip(self) -> int:
@@ -230,11 +230,11 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The committed tape, not the.
-        # repeat that ignores consumed.
-        # and ``dirty`` are.
-        # representation of the tape,.
-        # them would give one logical.
+        # The committed tape, not the raw one, plus the input cursor: a
+        # repeat that ignores consumed input is not a real cycle.  ``acc``
+        # and ``dirty`` are deliberately absent -- they are a
+        # representation of the tape, not state of their own, and including
+        # them would give one logical state two hashes.
         ind, ptr = self.state[0], self.state[1]
         return (ind, ptr, _committed(self.state), self.io.position())
 
@@ -260,14 +260,14 @@ class _Machine:
         if char == ".":
             self.io.print_char(chr(acc))
         elif char == ",":
-            # Reduced, like every other.
-            # returns a whole code point,.
-            # U+00FF used to put that code.
-            # 8-bit tape: ``,.``.
-            # 128512.
-            # unreduced until arithmetic.
-            # emoji while ``,+.`` printed.
-            # ``(byte or 0) % 256`` for.
+            # Reduced, like every other write to a cell.  ``input_char``
+            # returns a whole code point, so an input line starting above
+            # U+00FF used to put that code point straight into a cell on an
+            # 8-bit tape: ``,.`` round-tripped an emoji, and the tape held
+            # 128512.  Worse, the value was inconsistent with itself --
+            # unreduced until arithmetic touched it, so ``,.`` printed the
+            # emoji while ``,+.`` printed ``\x01``.  CVNC already reads
+            # ``(byte or 0) % 256`` for this reason.
             state = (ind, ptr, tape, self.io.input_char() % 256, True)
         self.state = _advance(state, self.code, self.brackets)
 

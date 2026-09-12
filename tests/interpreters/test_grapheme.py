@@ -28,22 +28,22 @@ def run_program(code: str, stdin: str = "") -> str:
 
 class TestModes:
     def test_stringmode(self) -> None:
-        # E HELLOWORLD E Y -> the E's.
+        # E HELLOWORLD E Y -> the E's terminate the string, dropping one E
         assert run_program("EHLLOWORLDEY") == "HLLOWORLD"
 
     def test_stringmode_accumulates_to_end(self) -> None:
-        # no closing E: the string is.
+        # no closing E: the string is flushed at end of program
         assert run_program("EAY") == ""
 
     def test_intmode(self) -> None:
-        # F A F -> 10; F B F -> 20; A.
+        # F A F -> 10; F B F -> 20; A adds; Y prints
         assert run_program("FAFFBFAY") == "30"
 
     def test_intmode_empty_is_zero(self) -> None:
         assert run_program("FFY") == "0"
 
     def test_funcmode(self) -> None:
-        # H Y H makes a function of Y;.
+        # H Y H makes a function of Y; I runs it on the pushed 10
         assert run_program("FAFHYHIE") == "10"
 
     def test_an_unterminated_mode_is_flushed_when_its_frame_ends(self) -> None:
@@ -55,9 +55,9 @@ class TestModes:
         *called* body in a mode puts the value where the caller can print
         it, one per mode.
         """
-        assert run_program("HEABHIY") == "AB"  # string.
-        assert run_program("HFABHIY") == "120"  # int.
-        assert run_program("EHABEGNY") == "AB"  # function, via N.
+        assert run_program("HEABHIY") == "AB"  # string
+        assert run_program("HFABHIY") == "120"  # int
+        assert run_program("EHABEGNY") == "AB"  # function, via N
 
 
 class TestArithmetic:
@@ -71,7 +71,7 @@ class TestArithmetic:
         assert run_program("FCFFBFRY") == "1"
 
     def test_string_math_uses_ords(self) -> None:
-        # "A" (65) + "A" (65) = 130.
+        # "A" (65) + "A" (65) = 130
         assert run_program("EAEEAEAY") == "130"
 
 
@@ -89,8 +89,8 @@ class TestStack:
         assert run_program("EAEM") == ""
 
     def test_truthiness_to_number(self) -> None:
-        assert run_program("FAFTY") == "0"  # 10 is truthy -> push 0.
-        assert run_program("FFTY") == "1"  # 0 is falsy -> push 1.
+        assert run_program("FAFTY") == "0"  # 10 is truthy -> push 0
+        assert run_program("FFTY") == "1"  # 0 is falsy -> push 1
 
 
 class TestStrings:
@@ -98,11 +98,11 @@ class TestStrings:
         assert run_program("EAEOY") == "1"
 
     def test_int_to_string(self) -> None:
-        # 10 -> digits 1,0 -> "AJ".
+        # 10 -> digits 1,0 -> "AJ"
         assert run_program("FAFNY") == "AJ"
 
     def test_string_to_int(self) -> None:
-        # J on "AJ" parses.
+        # J on "AJ" parses intmode-style: A=1, J=10 -> (0+1)*10=10, (10+10)*10=200
         assert run_program("EAJEJY") == "200"
 
     def test_function_to_string(self) -> None:
@@ -136,11 +136,11 @@ class TestFunctions:
         assert run_program("FAFHYHZ") == "10"
 
     def test_z_repeats_until_the_stack_empties(self) -> None:
-        # K duplicates the 10, so the Z.
+        # K duplicates the 10, so the Z body runs twice before the stack empties
         assert run_program("FAFKHYHZ") == "1010"
 
     def test_q_conditional_execution(self) -> None:
-        # truthy 10 on the stack, fn Y:.
+        # truthy 10 on the stack, fn Y: Q pops fn and the 10, then Y pops empty
         with pytest.raises(HaltError, match="popped"):
             run_program("FAFHYHQ")
 
@@ -155,34 +155,34 @@ class TestConditionalsThatDoNothing:
     """
 
     def test_q_ignores_a_value_that_is_not_a_function(self) -> None:
-        # Q pops two integers rather.
-        # no body to run; the third.
+        # Q pops two integers rather than a function and a test, so there is
+        # no body to run; the third copy is what Y prints.
         assert run_program("FAFKKQY") == "10"
 
     def test_v_does_not_jump_when_the_test_is_truthy(self) -> None:
-        # V pops a truthy value, so the.
+        # V pops a truthy value, so the pc is left alone and Y still runs.
         assert run_program("FAFKKVY") == "10"
 
     def test_z_ignores_a_value_that_is_not_a_function(self) -> None:
-        # Z needs a function to loop.
+        # Z needs a function to loop over; an integer leaves the stack as is.
         assert run_program("FAFKZY") == "10"
 
 
 class TestSkips:
     def test_u_skips_when_falsy(self) -> None:
-        # [10, 0]: U pops 0 (falsy) and.
+        # [10, 0]: U pops 0 (falsy) and skips the K, so Y prints the 10
         assert run_program("FAFFFUKY") == "10"
 
     def test_u_does_not_skip_when_truthy(self) -> None:
-        # [0, 10]: U pops 10 (truthy),.
+        # [0, 10]: U pops 10 (truthy), K duplicates the 0, Y prints it
         assert run_program("FFFAFUKY") == "0"
 
     def test_x_skips_next_when_falsy(self) -> None:
-        # [10, 0]: X pops 0 (falsy) and.
+        # [10, 0]: X pops 0 (falsy) and skips the K, so Y prints the 10
         assert run_program("FAFFFXKY") == "10"
 
     def test_x_skips_after_next_when_truthy(self) -> None:
-        # [0, 10]: X pops 10 (truthy),.
+        # [0, 10]: X pops 10 (truthy), Y prints the 0, then the K is skipped
         assert run_program("FFFAFXYK") == "0"
 
     def test_the_command_u_skips_is_one_that_would_have_printed(self) -> None:
@@ -193,8 +193,8 @@ class TestSkips:
         same either way -- so an inverted skip passes both.  Skipping the
         ``Y`` itself is the difference.
         """
-        assert run_program("FAFFFUY") == ""  # falsy: the Y is skipped.
-        assert run_program("FBFFAFUY") == "20"  # truthy: the Y runs.
+        assert run_program("FAFFFUY") == ""  # falsy: the Y is skipped
+        assert run_program("FBFFAFUY") == "20"  # truthy: the Y runs
 
     def test_x_resumes_two_commands_on(self) -> None:
         """After the one command it lets through, ``X`` skips exactly one.
@@ -203,8 +203,8 @@ class TestSkips:
         skipping it and running it off the end look alike.  Following it
         with more code shows where execution comes back.
         """
-        # [10, 20, 30]: X pops the.
-        # and the last Y prints the 10.
+        # [10, 20, 30]: X pops the truthy 30, Y prints 20, the K is skipped,
+        # and the last Y prints the 10 that is still underneath.
         assert run_program("FAFFBFFCFXYKY") == "2010"
 
     def test_x_can_open_the_body_it_governs(self) -> None:
@@ -215,7 +215,7 @@ class TestSkips:
         likely to mistake for "nothing pending" -- but the main program
         can never put ``X`` there, since it would pop an empty stack.
         """
-        # the body is XYK: X pops the.
+        # the body is XYK: X pops the 20, Y prints the 10, the K is skipped
         assert run_program("FAFFBFHXYKHI") == "10"
 
 
@@ -248,11 +248,11 @@ class TestErrors:
         from esolangs.interpreters.stack_based.grapheme import _Machine
 
         machine = _Machine("FAFY", ScriptedIO())
-        assert machine.ip == (0,)  # one frame, at its start.
+        assert machine.ip == (0,)  # one frame, at its start
         while not machine.halted:
             machine.step()
         assert machine.io.getvalue() == "10"
-        # every frame has popped, so ip.
+        # every frame has popped, so ip falls back to where the program ends
         assert machine.ip == (len("FAFY"),)
 
         with pytest.raises(ValueError, match="uppercase"):
@@ -276,10 +276,10 @@ class TestEdgeCases:
         assert run_program("FFNY") == "J"
 
     def test_truthiness_of_strings_and_functions(self) -> None:
-        assert run_program("EAETY") == "0"  # "A" truthy -> push 0.
-        assert run_program("EETY") == "1"  # "" falsy -> push 1.
-        assert run_program("HABHTY") == "0"  # nonempty function truthy.
-        assert run_program("HHTY") == "1"  # empty function falsy.
+        assert run_program("EAETY") == "0"  # "A" truthy -> push 0
+        assert run_program("EETY") == "1"  # "" falsy -> push 1
+        assert run_program("HABHTY") == "0"  # nonempty function truthy
+        assert run_program("HHTY") == "1"  # empty function falsy
 
     def test_i_pushes_back_a_non_function(self) -> None:
         assert run_program("FAFIY") == "10"
@@ -301,8 +301,8 @@ class TestEdgeCases:
         program, which ends the frame whichever way it went; a jump of one
         that lands on a later command is what fixes the direction.
         """
-        # [20, 1, 0]: V pops the falsy.
-        # that would otherwise discard.
+        # [20, 1, 0]: V pops the falsy 0 and the offset 1, skipping the M
+        # that would otherwise discard the 20 before Y prints it
         assert run_program("FBFFFTFFVMY") == "20"
 
     def test_a_z_lap_starts_with_nothing_pending(self) -> None:
@@ -313,7 +313,7 @@ class TestEdgeCases:
         command partway through it.  The suite's ``Z`` bodies are one or
         two commands long, too short to reach such a position.
         """
-        # four values, and a body of.
+        # four values, and a body of four commands: dup, drop, drop, print
         assert run_program("FAFFBFFCFFDFHKMMYHZ") == "3010"
 
     def test_a_call_does_not_repeat_itself(self) -> None:
@@ -323,8 +323,8 @@ class TestEdgeCases:
         and a set one part ways only when the stack outlives the body --
         which is exactly what this program leaves behind.
         """
-        # 10 and 20 on the stack, the.
-        # returns; the 10 is still.
+        # 10 and 20 on the stack, the function prints one of them and
+        # returns; the 10 is still there, and must not restart the body
         assert run_program("FAFFBFHYHI") == "20"
 
     def test_the_last_command_leaves_the_machine_halted(self) -> None:
@@ -344,8 +344,8 @@ class TestEdgeCases:
 
     def test_recursion_is_not_artificially_capped(self) -> None:
         """A 501-deep finite call chain follows the language's unbounded stack."""
-        # the body decrements the.
-        # again through Q while the.
+        # the body decrements the count, keeps a copy, and calls itself
+        # again through Q while the copy is nonzero
         program = "H" + "FFTBKFAFDQ" + "H" + "FAFC" + "FAFD" + "G"
         assert run_program("FEZF" + program) == ""
         assert run_program("FEZF" + "FFT" + "A" + program) == ""

@@ -43,27 +43,27 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.brackets import unmatched
 from esolangs.interpreters.io import IO
 
-# : One instant of a run:.
-# : data pointer, the tape, and.
-# :.
-# : ``done`` is state because.
-# : pointer reaching an ``@``.
-# : the tape is circular, so.
-# :.
-# : ``done`` stays out of.
-# : plus the input cursor, in.
+#: One instant of a run: ``(ind, ptr, cells, done)`` -- the code cursor, the
+#: data pointer, the tape, and whether ``@`` has halted the run.
+#:
+#: ``done`` is state because halting here is a decision a cell makes -- the
+#: pointer reaching an ``@`` -- rather than a position the cursor passes:
+#: the tape is circular, so there is no end to run off.
+#:
+#: ``done`` stays out of ``snapshot``, which reports the three live fields
+#: plus the input cursor, in the order it always returned them.
 type _State = tuple[int, int, tuple[int, ...], bool]
 
-# : The one change a cell makes.
-# : cell, ``("insert", i, 0)``.
-# : removes that cell, and.
-# : applied so that recording a.
+#: The one change a cell makes to the tape: ``("set", i, value)`` writes a
+#: cell, ``("insert", i, 0)`` grows the tape at ``i``, ``("delete", i, 0)``
+#: removes that cell, and ``None`` leaves the tape alone.  Named rather than
+#: applied so that recording a write does not copy the tape -- see
 #: :func:`_advance`.
 type _Edit = tuple[str, int, int] | None
 
-# : What executing one cell.
-# : already wrapped against the.
-# : apply the edit and store.
+#: What executing one cell did: ``(ind, ptr, done, edit)``.  The cursors are
+#: already wrapped against the length the edit produces, so the shell can
+#: apply the edit and store the cursors without recomputing anything.
 type _Move = tuple[int, int, bool, _Edit]
 
 
@@ -115,8 +115,8 @@ def find(code: Sequence[int], ind: int, ptr: int) -> int:
         ind = (ind + mode) % num
         sym = chr(code[ind])
         if ind == start:
-            # The walk wraps the ring and.
-            # no partner is the one it set.
+            # The walk wraps the ring and comes back, so the bracket with
+            # no partner is the one it set out from.
             raise unmatched(char, start)
         if sym == "[":
             match += 1
@@ -166,16 +166,16 @@ def _advance(
     elif char == "-":
         edit = ("set", ptr, (cells[ptr] - 1) % 256)
     elif char == ",":
-        # Reduced like ``+`` and ``-``.
-        # code point, so an input line.
-        # that code point into a cell.
-        # 0..255 -- and left it.
-        # ``+`` reduced what ``,`` had.
+        # Reduced like ``+`` and ``-`` above: ``input_char`` returns a whole
+        # code point, so an input line starting above U+00FF otherwise put
+        # that code point into a cell the two arithmetic arms keep in
+        # 0..255 -- and left it disagreeing with itself, since the next
+        # ``+`` reduced what ``,`` had not.
         edit = ("set", ptr, (byte if byte is not None else 0) % 256)
     elif char in "[]":
         ind = find(cells, ind, ptr)
     elif char == "@":
-        # The run stops on the ``@``.
+        # The run stops on the ``@`` itself, without wrapping past it.
         return (ind, ptr, True, None)
     elif char == "#":
         ind += 1
@@ -206,17 +206,17 @@ class _Machine:
         cells = parse(code)
         if not cells:
             raise ValueError("Circlefuck program cannot be empty")
-        # The shell owns the tape as a.
-        # assignment rather than a.
-        # copies it, so nothing outside.
+        # The shell owns the tape as a mutable list: a write is one
+        # assignment rather than a rebuilt tuple.  Every observer below
+        # copies it, so nothing outside this class can reach the list.
         self._cells = cells
         self._ind = 0
         self._ptr = 0
         self._done = False
 
-    # The language's own names.
-    # out the list the shell.
-    # under it and one logical.
+    # The language's own names.  Each copies the tape rather than handing
+    # out the list the shell mutates, so an observer's view never changes
+    # under it and one logical state keeps one spelling.
 
     @property
     def state(self) -> _State:
@@ -241,7 +241,7 @@ class _Machine:
         """Whether the pointer hit ``@``."""
         return self._done
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: Self-modifying circular tape + cursor; ip cursor,
     # memory cells.
 
     @property
@@ -261,10 +261,10 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # A tuple copy of the tape, not.
-        # snapshots across steps, and a.
-        # it and make a real repeat.
-        # is the one this returned.
+        # A tuple copy of the tape, not the list itself: the detector holds
+        # snapshots across steps, and a live reference would mutate under
+        # it and make a real repeat compare unequal to itself.  The order
+        # is the one this returned before ``done`` joined the state.
         return (tuple(self._cells), self._ind, self._ptr, self.io.position())
 
     def step(self) -> None:
@@ -280,7 +280,7 @@ class _Machine:
         char = chr(cells[self._ind])
         byte = None
         if char == "}" and len(cells) == 1:
-            # Deleting the last cell would.
+            # Deleting the last cell would leave nothing to run.
             raise HaltError(
                 "'}' deletes the current cell and this is the last one, "
                 "so there would be no program left to run"

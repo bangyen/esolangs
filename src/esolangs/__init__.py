@@ -1,8 +1,5 @@
 """Public API for the esolangs package.
 
-See ``test_hi``, ``test_cat_echoes_until_its_input_runs_out``, and
-``test_truth_machine_prints_zero_once_and_halts``.
-
 Provides ``generate`` (produce a program computing a truth table),
 ``instantiate`` (fill a parameterized generator's ``{Xi}`` slots), ``run``
 (execute a program through an interpreter), ``make_vm`` (a step-and-inspect
@@ -66,23 +63,23 @@ from esolangs.registry import (
     wiki_url,
 )
 
-# Imported private: it takes a.
-# a caller reaching for.
-# every language in the.
-# ``describe(...)["width_aware"].
+# Imported private: it takes a *generator function*, not a language name, so
+# a caller reaching for ``esolangs.takes_width("LaserFuck")`` got False for
+# every language in the registry, contradicting both its own docstring and
+# ``describe(...)["width_aware"]`` -- which is the question they were asking.
 from esolangs.tools.wrap import WRAPPERS, wrap_program
 from esolangs.tools.wrap import takes_width as _takes_width
 from esolangs.vm import VM, machine_traits, make_vm
 
 
-# : Read from the installed.
-# : hand-kept copy said 0.1.0.
-# : named a release that does.
+#: Read from the installed distribution rather than written here: the
+#: hand-kept copy said 0.1.0 while the package was 0.2.0, so ``--version``
+#: named a release that does not exist.  The fallback covers a source tree
 #: that was never installed.
-# : Read on first access rather.
-# : drags in ``email.parser``.
-# : of this package's 56ms.
-# : most callers never read.
+#: Read on first access rather than on import.  ``importlib.metadata``
+#: drags in ``email.parser`` to parse a wheel's metadata, and measured 23ms
+#: of this package's 56ms import -- two fifths of it, spent on a string
+#: most callers never read.  PEP 562 defers it to whoever asks.
 def __getattr__(name: str) -> str:
     """Resolve ``__version__`` lazily; everything else is a normal miss."""
     if name != "__version__":
@@ -92,16 +89,16 @@ def __getattr__(name: str) -> str:
     try:
         version = importlib.metadata.version("esolangs")
     except importlib.metadata.PackageNotFoundError:  # pragma: no cover - CI installs
-        # A source tree that was never.
+        # A source tree that was never installed.
         version = "0.0.0+unknown"
     globals()["__version__"] = version
     return version
 
 
-# : The public surface.
-# : ``Callable``,.
-# : alongside the six functions.
-# : from the outside which was.
+#: The public surface.  Without it ``dir(esolangs)`` advertised ``Any``,
+#: ``Callable``, ``importlib``, ``pathlib``, ``signal`` and ``threading``
+#: alongside the six functions anyone wants, and there was no way to tell
+#: from the outside which was which.
 __all__ = [
     "ANSWER_MODES",
     "INPUT_SHAPES",
@@ -151,23 +148,23 @@ def __dir__() -> list[str]:
     return sorted(__all__)
 
 
-# : The committed example.
-# :.
-# : They used to sit at the.
-# : wheel: ``parents[2]`` is.
-# : above ``site-packages``.
-# : no examples at all -- and.
-# : ``examples/`` that happened.
+#: The committed example programs, shipped inside the package.
+#:
+#: They used to sit at the repository root, which put them outside the
+#: wheel: ``parents[2]`` is the repo root from a checkout and the directory
+#: above ``site-packages`` from an install, so an installed copy reported
+#: no examples at all -- and could in principle have globbed an unrelated
+#: ``examples/`` that happened to sit there.  Inside the package the path
 #: is the same either way.
 _EXAMPLES = pathlib.Path(__file__).resolve().parent / "examples"
 
-# An unfilled input slot in a.
-# only for the languages whose.
-# in several of the others, so.
+# An unfilled input slot in a parameterized generator's template.  Matched
+# only for the languages whose generator emits one: ``{`` is a live command
+# in several of the others, so a blanket search would refuse real programs.
 _SLOT = re.compile(r"\{X\d+\}")
 _SLOT_INDEX = re.compile(r"\{X(\d+)\}")
 
-# Interpreter module family ->.
+# Interpreter module family -> state model name.
 _STATE_MODELS = {
     "register_based": "register",
     "tape_based": "tape",
@@ -261,15 +258,15 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
     if width is not None and _takes_width(fn):
         return str(fn(truth_table, width))
     if lang.id in parameterized_ids():
-        # A template wraps like.
-        # width broke a slot in half --.
-        # starting the next -- and the.
-        # instantiable, so ``generate.
-        # one input slot where the.
-        # rules rather than here:.
-        # (:data:`~esolangs.tools.wrap._.
-        # inside one.
-        # parameterized languages with.
+        # A template wraps like anything else.  It did not use to: a narrow
+        # width broke a slot in half -- ``{X`` ending one line and ``1}``
+        # starting the next -- and the template silently stopped being
+        # instantiable, so ``generate --width 10 "Home Row" 0110`` reported
+        # one input slot where the table has two.  The fix is in the token
+        # rules rather than here: ``{Xi}`` is one token in every wrapper
+        # (:data:`~esolangs.tools.wrap._PLACEHOLDER`), so no width can land
+        # inside one.  Skipping the wrap instead would leave the eleven
+        # parameterized languages with a ``width`` that quietly did nothing.
         plain = str(fn(truth_table))
         return _Template(wrap_program(plain, lang.id, width), resolved, plain)
     return wrap_program(str(fn(truth_table)), lang.id, width)
@@ -322,12 +319,12 @@ def instantiate(
     check_width(width)
     name = resolve(language)
     if truth_table is not None and not _is_template_for(template, name, truth_table):
-        # The provenance check a tag.
-        # language, so filling one.
-        # *hand-written* string is.
-        # a file), and.
-        # substituted into it and.
-        # Given the table it should.
+        # The provenance check a tag cannot make.  A template carries its
+        # language, so filling one language's as another is refused -- but a
+        # *hand-written* string is untagged by design (a tag cannot survive
+        # a file), and `instantiate("Minifuck", "hello {X0}", [1])` happily
+        # substituted into it and returned something that ran to nothing.
+        # Given the table it should have come from, that is decidable.
         raise TemplateError(
             f"this is not the template generate({name!r}, {truth_table!r}) "
             f"returns, so filling it would produce a program that does not "
@@ -355,10 +352,10 @@ def instantiate(
     wanted = len({int(slot) for slot in _SLOT_INDEX.findall(template)})
     if len(bits) != wanted:
         if wanted == 0:
-            # The count is true and answers.
-            # ways of getting here -- an.
-            # instantiate() has already.
-            # so the message names both.
+            # The count is true and answers a question nobody asked.  Both
+            # ways of getting here -- an ordinary program, and a template
+            # instantiate() has already filled -- look the same from here,
+            # so the message names both rather than guessing.
             raise TemplateError(
                 f"this {name} text has no {{Xi}} slots to fill: it is either "
                 f"an ordinary program or a template instantiate() has already "
@@ -374,32 +371,32 @@ def instantiate(
             f"this {name} template has {wanted} input slot"
             f"{'' if wanted == 1 else 's'}, but {given}"
         )
-    # Reflowed from the template.
-    # .
-    # ``wrap_program`` declines to.
-    # newlines, since for most.
-    # something it put there.
-    # always has them, so.
-    # -- a width here was inert for.
-    # which is exactly the call.
-    # Filling the unwrapped source.
-    # program it needs, and the.
+    # Reflowed from the template *before* its width, when there is one.
+    #
+    # ``wrap_program`` declines to reflow a program that already has
+    # newlines, since for most languages a newline is layout rather than
+    # something it put there.  After ``generate(table, width)`` a template
+    # always has them, so re-wrapping the filled program did nothing at all
+    # -- a width here was inert for all seventeen parameterized languages,
+    # which is exactly the call this function's docstring recommends.
+    # Filling the unwrapped source instead gives the wrapper the single-line
+    # program it needs, and the answer is the same either way because the
     # slots are in the same places.
-    # .
-    # Only for the languages a.
-    # -- COD, WII2D -- lays its.
-    # and has no wrapper here, so.
-    # the one to fill and.
+    #
+    # Only for the languages a wrapper actually reflows.  A layout language
+    # -- COD, WII2D -- lays its *template* out to the width in the generator
+    # and has no wrapper here, so for those the width-laid-out template is
+    # the one to fill and unwrapping it would throw the layout away.
     source: str = template
     if width is not None and LANGUAGES[name].id in WRAPPERS:
         source = getattr(template, "unwrapped", template)
     return wrap_program(fill(source, bits), LANGUAGES[name].id, width)
 
 
-# : Characters a filename is.
+#: Characters a filename is made of, and a program mostly is not.
 _PATH_CHARS = re.compile(r"^[\w./\\~-]+$")
 
-# : A short extension, which is.
+#: A short extension, which is what makes a bare name look like a file.
 _PATH_EXTENSION = re.compile(r"\.[A-Za-z0-9]{1,5}$")
 
 
@@ -508,16 +505,16 @@ def check_program(
         try:
             program = pathlib.Path(program).read_text(encoding="utf-8").rstrip("\n")
         except FileNotFoundError as exc:
-            # Split from the OSError clause.
-            # Path can write ``except.
+            # Split from the OSError clause below so a caller who passed a
+            # Path can write ``except FileNotFoundError`` and have it work.
             raise ProgramNotFoundError(f"cannot read {program}: {exc}") from exc
         except OSError as exc:
             raise ProgramError(f"cannot read {program}: {exc}") from exc
         except UnicodeDecodeError as exc:
-            # Named separately because it.
-            # ``OSError``, so the clause.
-            # PNG raised a bare.
-            # where every other unreadable.
+            # Named separately because it is a ``ValueError``, not an
+            # ``OSError``, so the clause above never caught it: a Path to a
+            # PNG raised a bare ``UnicodeDecodeError`` from inside pathlib
+            # where every other unreadable file is a ``ProgramError``.
             raise ProgramError(
                 f"cannot read {program}: not text (invalid UTF-8 at byte {exc.start})"
             ) from exc
@@ -527,12 +524,12 @@ def check_program(
             f"{type(program).__name__}"
         )
     if not isinstance(stdin, str):
-        # ArgumentError, not.
-        # ProgramError says "a program.
-        # for its language".
-        # ArgumentError all along, so.
-        # disagreed with it -- and a.
-        # in ``except ArgumentError``.
+        # ArgumentError, not ProgramError: the stdin is not the program, and
+        # ProgramError says "a program could not be loaded: it is malformed
+        # for its language".  ``check_stdin`` filed the identical fault as an
+        # ArgumentError all along, so the four entry points that reach here
+        # disagreed with it -- and a caller who wrapped their bad-stdin guard
+        # in ``except ArgumentError`` caught it for one function and missed
         # it for the other four.
         raise ArgumentError(
             f"stdin must be a string, got {type(stdin).__name__}; "
@@ -613,20 +610,20 @@ def run(
         threading.current_thread() is threading.main_thread()
         and hasattr(signal, "SIGALRM")
     ):
-        # Checked here rather than.
-        # from the run itself is the.
+        # Checked here rather than inside ``_run`` so that every ValueError
+        # from the run itself is the interpreter refusing the program, and
         # can be re-raised as one.
-        # .
-        # The message used to stop.
-        # caller on a worker thread.
-        # timeout that raises, or.
-        # out already exist and neither.
-        # .
-        # Deliberately *not* a silent.
-        # execution paths for one.
-        # one came to disagree in the.
-        # ``tests/test_stepping_parity.p.
-        # caller cannot see is worse.
+        #
+        # The message used to stop after the constraint, which left a
+        # caller on a worker thread with two options and no third: a
+        # timeout that raises, or ``None`` that runs forever.  Both routes
+        # out already exist and neither was mentioned.
+        #
+        # Deliberately *not* a silent fallback to the stepping path.  Two
+        # execution paths for one function is how the step route and this
+        # one came to disagree in the first place -- which is why
+        # ``tests/test_stepping_parity.py`` exists -- and a divergence a
+        # caller cannot see is worse than a refusal they can read.
         raise ArgumentError(
             "the timeout guard uses SIGALRM and needs a Unix main thread; "
             "off it, either bound the run cooperatively with "
@@ -635,10 +632,10 @@ def run(
             "with timeout=None -- they settle a diverging row by proving "
             "the loop rather than waiting for it"
         )
-    # No guard on the lookup:.
-    # registry, and every.
-    # that reaches here is always.
-    # here re-raised the error.
+    # No guard on the lookup: ``resolve`` raises for a name outside the
+    # registry, and every registered language has an interpreter, so a name
+    # that reaches here is always in ``RUNNERS``.  The guard that used to sit
+    # here re-raised the error ``resolve`` had already raised.
     name = resolve(language)
     module, split = RUNNERS[name]
     program = check_program(name, program, stdin)
@@ -651,17 +648,17 @@ def run(
     try:
         _run(run_fn, program_args, io_obj, timeout)
     except RecursionError as exc:
-        # An interpreter that recurses.
-        # enough program, and the bare.
-        # exception in the package that.
-        # written to the documented.
-        # .
-        # The message used to end "this.
-        # large", which was not true:.
-        # raising it made the same.
-        # fired for and its tokenizer.
-        # remaining reach of this.
-        # per construct -- and the.
+        # An interpreter that recurses runs out of Python stack on a large
+        # enough program, and the bare ``RecursionError`` was the only
+        # exception in the package that escaped ``EsolangError``.  A sweep
+        # written to the documented handler crashed on it.
+        #
+        # The message used to end "this interpreter cannot carry one that
+        # large", which was not true: the limit is CPython's, and a caller
+        # raising it made the same program run.  Qoibl was the language this
+        # fired for and its tokenizer carries its own stack now, so the
+        # remaining reach of this handler is any interpreter that recurses
+        # per construct -- and the honest thing to tell that caller is where
         # the limit actually lives.
         raise InterpreterLimitError(
             f"the {name} interpreter recursed deeper than CPython's stack "
@@ -670,18 +667,18 @@ def run(
             f"the limit if this interpreter's depth grows with program size"
         ) from exc
     except ValueError as exc:
-        # The interpreters signal a.
-        # ValueError, one per language.
-        # a ProgramError keeps those.
-        # true: `except EsolangError`.
-        # which is the handler an.
+        # The interpreters signal a malformed program with a plain
+        # ValueError, one per language and each well worded.  Re-raising as
+        # a ProgramError keeps those words and makes the package's promise
+        # true: `except EsolangError` around user-supplied source now holds,
+        # which is the handler an embedder actually writes.
         raise _keeping_output(ProgramError(str(exc)), io_obj) from exc
     except EsolangError as exc:
-        # A halt, a timeout, an.
-        # badly, which is exactly the.
-        # worth keeping.
-        # hanging off it are untouched,.
-        # traceback rather than.
+        # A halt, a timeout, an exhausted input: the program ran and stopped
+        # badly, which is exactly the case where what it printed first is
+        # worth keeping.  Re-raised as itself, so the class and everything
+        # hanging off it are untouched, and a bare ``raise`` keeps the
+        # traceback rather than starting a new one from here.
         _keeping_output(exc, io_obj)
         raise
     _warn_about_surplus(name, io_obj)
@@ -702,19 +699,19 @@ def _warn_about_stdin(name: str, stdin: str) -> None:
     advice, so the strict path and the advisory path cannot disagree.
     """
     if not stdin:
-        # An empty stdin is "I am not.
-        # legitimate thing to do with.
-        # tests run sixty-nine programs.
-        # warned about all of them.
-        # reads anyway and gets a.
-        # counts, where there is no.
+        # An empty stdin is "I am not feeding this anything", which is a
+        # legitimate thing to do with an arbitrary program -- the protocol
+        # tests run sixty-nine programs that way.  Judging it by *shape*
+        # warned about all of them.  The case that matters, a program that
+        # reads anyway and gets a value, is decided after the run from the
+        # counts, where there is no guessing: see below.
         return
     if not describe(name)["reads_input"]:
-        # A language that embeds its.
-        # ``evaluate`` passes "" for.
-        # nothing here to be wrong.
-        # outright, which is right for.
-        # just noise, and it fired once.
+        # A language that embeds its inputs is *given* no stdin by design --
+        # ``evaluate`` passes "" for all seventeen of them -- so there is
+        # nothing here to be wrong.  ``check_stdin`` refuses the pair
+        # outright, which is right for a caller who asked; as advice it was
+        # just noise, and it fired once per row of every template language.
         return
     try:
         check_stdin(name, stdin)
@@ -792,23 +789,23 @@ def _warn_about_surplus(name: str, io_obj: ScriptedIO) -> None:
             stacklevel=3,
         )
     if io_obj.past_end and describe(name)["eof_is_a_value"]:
-        # The exact signal, and the one.
-        # for input that was not there.
-        # languages ``eof_is_a_value``.
-        # forty-five the read raises.
-        # the wrong answer those seven.
-        # program answers a different.
+        # The exact signal, and the one worth having most: this run asked
+        # for input that was not there and *kept going*.  Only the seven
+        # languages ``eof_is_a_value`` marks reach here -- for the other
+        # forty-five the read raises and nothing below runs -- and this is
+        # the wrong answer those seven produce in silence: an underfed
+        # program answers a different row, and a program given no stdin at
         # all answers row 0.
-        # .
-        # Counted rather than inferred.
-        # the underfeed case, where.
+        #
+        # Counted rather than inferred from ``supplied == 0``: that missed
+        # the underfeed case, where some input was supplied and the reads
         # past the end came after it.
-        # .
-        # Gated on ``eof_is_a_value``.
-        # always a mistake: Suffolk's.
-        # out of input -- it is that.
-        # halts rather than taking a.
-        # warned about every correct.
+        #
+        # Gated on ``eof_is_a_value`` because reading past the end is not
+        # always a mistake: Suffolk's generated programs end *by* running
+        # out of input -- it is that language's documented stop, and it
+        # halts rather than taking a value -- so counting the read alone
+        # warned about every correct Suffolk run there is.
         warnings.warn(
             f"{name} read past the end of its input {io_obj.past_end} time(s) "
             f"and took a value each time rather than stopping; the answer is "
@@ -842,62 +839,62 @@ def _run_timed_signal(
     timeout: float,
 ) -> None:
     """Run ``run_fn`` under a ``SIGALRM`` wall-clock guard (main thread only)."""
-    # Whether an arriving alarm.
-    # handler fires between two.
-    # in the cleanup below -- so.
-    # teardown and skip the rest of.
-    # handler unrestored.
-    # disposition, which is to.
-    # the interpreter outright.
-    # exception, which is the worst.
-    # .
-    # Clearing it is a single.
+    # Whether an arriving alarm still means "the run is overrunning".  The
+    # handler fires between two bytecodes -- *any* two, including the ones
+    # in the cleanup below -- so without this it could raise into its own
+    # teardown and skip the rest of it, leaving the timer armed and the old
+    # handler unrestored.  A later alarm then arrived with SIGALRM's default
+    # disposition, which is to terminate the process: a short timeout killed
+    # the interpreter outright roughly one run in three, no traceback and no
+    # exception, which is the worst way for a guard against hanging to fail.
+    #
+    # Clearing it is a single store, so the cleanup cannot be interrupted by
     # the thing it is cleaning up.
     armed = True
 
     def _timeout_handler(_signum: int, _frame: object) -> None:
-        # coverage cannot trace a raise.
+        # coverage cannot trace a raise inside a signal handler
         if not armed:  # pragma: no cover - a late alarm, not an overrun
             return
         raise ExecutionTimeoutError(
             f"execution exceeded the {timeout}-second timeout"
         )  # pragma: no cover
 
-    # The caller's alarm, saved and.
-    # theirs, so a.
-    # with zero seconds left and.
+    # The caller's alarm, saved and put back.  Arming our own cancels
+    # theirs, so a ``signal.alarm(30)`` set before a timed run came back
+    # with zero seconds left and would never have fired.
     old = signal.signal(signal.SIGALRM, _timeout_handler)
     pending = signal.setitimer(signal.ITIMER_REAL, timeout)[0]
     try:
         run_fn(program, io_obj)
     finally:
         armed = False
-        # Ignore the signal *first*,.
-        # back.
-        # already be in flight when the.
-        # after ``old`` is restored --.
-        # disposition -- SIGALRM's.
-        # process**.
-        # outright about one run in.
-        # 142, which is the worst way.
-        # .
-        # ``SIG_IGN`` is installed at.
-        # this window is discarded.
-        # .
-        # One window remains by design:.
-        # ``run_fn`` returning and the.
-        # handler and raises, reporting.
-        # finished.
-        # it would need the handler to.
-        # -- a flag read from a signal.
+        # Ignore the signal *first*, then disarm, then put the old handler
+        # back.  Disarming first looks sufficient and is not: an alarm can
+        # already be in flight when the run finishes, and if it is delivered
+        # after ``old`` is restored -- and ``old`` is the default
+        # disposition -- SIGALRM's default action is to **terminate the
+        # process**.  It did: a very short timeout killed the interpreter
+        # outright about one run in ten, no traceback, no exception, exit
+        # 142, which is the worst way for a guard against hanging to fail.
+        #
+        # ``SIG_IGN`` is installed at the C level, so an alarm arriving in
+        # this window is discarded rather than reaching that default.
+        #
+        # One window remains by design: an alarm delivered between
+        # ``run_fn`` returning and the line below still finds the custom
+        # handler and raises, reporting a timeout for a run that had just
+        # finished.  That is an exception rather than a death, and closing
+        # it would need the handler to know whether the run was still going
+        # -- a flag read from a signal handler, to save a caller from a
         # timeout they did set.
         signal.signal(signal.SIGALRM, signal.SIG_IGN)
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, old)
         if pending:
-            # Whatever was left of the.
-            # -- the run's own duration is.
-            # fires late is a great deal.
+            # Whatever was left of the caller's alarm, resumed.  Not exact
+            # -- the run's own duration is not deducted -- but a timer that
+            # fires late is a great deal better than one silently cancelled.
             signal.setitimer(signal.ITIMER_REAL, pending)
 
 
@@ -988,11 +985,11 @@ def describe(language: str) -> LanguageInfo:
     module = RUNNERS.get(name)
     family = module[0].split(".")[0] if module else None
     stem = example_stems().get(lang.id, lang.id)
-    # Absolute.
-    # recipe this package.
-    # ["examples"][0]))`` -- work.
-    # ``chdir`` away it is ``cannot.
-    # and for anyone who.
+    # Absolute.  These were relative to the repository root, which made the
+    # recipe this package advertises -- ``run(lang, Path(describe(lang)
+    # ["examples"][0]))`` -- work from one directory and nowhere else: a
+    # ``chdir`` away it is ``cannot read examples/boolean/brainfuck.txt``,
+    # and for anyone who pip-installed there is no such directory at all.
     examples = sorted(str(p) for p in _EXAMPLES.glob(f"*/{stem}.txt"))
     traits = machine_traits(name)
     parameterized = lang.id in parameterized_ids()
@@ -1005,9 +1002,9 @@ def describe(language: str) -> LanguageInfo:
         "boolean_generator": lang.boolean is not None,
         "parameterized": parameterized,
         "reads_input": lang.boolean is not None and not parameterized,
-        # Derived, not recomputed: this.
-        # expression _width_effect().
-        # disagreeing about the same.
+        # Derived, not recomputed: this was a second copy of the very
+        # expression _width_effect() evaluates, so the two could drift into
+        # disagreeing about the same language.
         "width_aware": _width_effect(lang) == "layout",
         "width_effect": _width_effect(lang),
         "input_encoding": example.alphabet if example else ("0", "1"),
@@ -1016,11 +1013,11 @@ def describe(language: str) -> LanguageInfo:
         "answer_pattern": example.answer_pattern if example else "",
         "answer_encoding": example.answer_values if example else ("0", "1"),
         "answer_convention": (example.note or None) if example else None,
-        # Spelled out rather than.
-        # a ``dict[str, bool]``, which.
-        # ``**``-expansion of, so the.
-        # renamed or dropped trait.
-        # keeps the four in step with.
+        # Spelled out rather than ``**machine_traits(name)``: that returns
+        # a ``dict[str, bool]``, which a TypedDict cannot verify a
+        # ``**``-expansion of, so the merge would have silently accepted a
+        # renamed or dropped trait.  ``test_describe_agrees_with_the_machine``
+        # keeps the four in step with what the VM reports.
         "self_halts": traits["self_halts"],
         "dumps_on_the_post_halt_step": traits["dumps_on_the_post_halt_step"],
         "steppable_to_answer": traits["steppable_to_answer"],
@@ -1052,8 +1049,8 @@ def _width_effect(lang: Any) -> str:
     """
     from esolangs.tools.wrap import WRAPPERS
 
-    # One expression rather than an.
-    # case: every registered.
+    # One expression rather than an early return for the generator-less
+    # case: every registered language has a generator, so that return was a
     # line no input could reach.
     if lang.boolean is not None and _takes_width(lang.boolean):
         return "layout"
@@ -1077,10 +1074,10 @@ def spec(language: str) -> str:
     interpreter = importlib.import_module("esolangs.interpreters." + module)
     text = (interpreter.__doc__ or "").strip()
     if not text:
-        # ``-OO`` strips docstrings, so.
-        # a silent wrong answer from.
-        # "read rather than stored, so.
-        # worth an abort, not an empty.
+        # ``-OO`` strips docstrings, so this returned ``""`` for all 69 --
+        # a silent wrong answer from the function whose whole promise is
+        # "read rather than stored, so it cannot drift".  Nothing to say is
+        # worth an abort, not an empty string that looks like an answer.
         raise ProgramError(
             f"{name}'s spec is its interpreter's docstring, and this "
             f"interpreter has none -- Python was started with -OO (or "
@@ -1107,8 +1104,8 @@ def encode_inputs(
     arity.  A language that embeds its inputs in the program reads no
     stdin at all and is refused here -- use :func:`instantiate`.
     """
-    # Every registered language has.
-    # always finds one;.
+    # Every registered language has a committed example, so the lookup
+    # always finds one; ``example_stems`` covers all 69 and a test pins that.
     name = resolve(language)
     example = _example_for(LANGUAGES[name].id)
     if example.fill is not None:
@@ -1117,10 +1114,10 @@ def encode_inputs(
             f"there is nothing to encode; pass the bits to instantiate() "
             f"instead"
         )
-    # Checked for the same reason.
-    # is not caught downstream.
-    # a different row of the table,.
-    # no sign that anything went.
+    # Checked for the same reason ``instantiate`` checks it: a 2 or a "1"
+    # is not caught downstream.  It encodes as a 1 and the program answers
+    # a different row of the table, which is the wrong answer arriving with
+    # no sign that anything went astray.
     bits = check_bits(bits, "bits")
     if truth_table is not None:
         from esolangs.tools.boolean.helpers import _validate_truth_table
@@ -1148,17 +1145,17 @@ def encode_inputs(
     return "".join(f"{digit}\n" for digit in digits)
 
 
-# : The three ways a language.
-# : a generic caller branches.
-# : :data:`STOP_REASONS` and.
-# : branches on ``answer_mode``.
-# : magic string, which is the.
+#: The three ways a language hands back its answer, as data.  The closed set
+#: a generic caller branches on, exported for the same reason
+#: :data:`STOP_REASONS` and :data:`TERMINATION_OUTCOMES` are: a verifier that
+#: branches on ``answer_mode`` otherwise has to spell ``"termination"`` as a
+#: magic string, which is the one thing those two constants exist to stop.
 ANSWER_MODES: tuple[str, ...] = ("output", "dump", "termination")
 
-# : The four stdin layouts,.
-# : ``line_per_bit_padded``.
-# : ``one_line`` puts every bit.
-# : decimal number whose bits.
+#: The four stdin layouts, likewise.  ``line_per_bit`` is the rule;
+#: ``line_per_bit_padded`` prepends a zero line for an odd input count,
+#: ``one_line`` puts every bit on one line, and ``row_index`` sends a single
+#: decimal number whose bits are the inputs.
 INPUT_SHAPES: tuple[str, ...] = (
     "line_per_bit",
     "line_per_bit_padded",
@@ -1204,22 +1201,22 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
         raise ArgumentError(f"stdin must be a string, got {type(stdin).__name__}")
     shape = str(facts["input_shape"])
     zero, one = facts["input_encoding"]
-    # ``splitlines``, which is what.
-    # into the lines it hands over.
-    # program will read.
-    # ``strip`` silently dropped a.
-    # counted nor alphabet-checked.
-    # as an input bit.
-    # XOR of two zeros is 0, with.
-    # already decided there was.
+    # ``splitlines``, which is what :class:`ScriptedIO` uses to cut stdin
+    # into the lines it hands over -- so this counts exactly the lines the
+    # program will read.  It was ``stdin.strip().split("\n")``, and the
+    # ``strip`` silently dropped a *leading or trailing blank line*: neither
+    # counted nor alphabet-checked here, while the interpreter consumed it
+    # as an input bit.  ``run("brainfuck", xor, "\n\n")`` answered 1 where
+    # XOR of two zeros is 0, with no warning, because this function had
+    # already decided there was nothing there.
     lines = stdin.splitlines()
     wanted = None
     if truth_table is not None:
         wanted = _validate_shape_for_evaluate(truth_table)
         if shape == "line_per_bit_padded" and wanted % 2 and wanted > 1:
-            # Taglate's pad is a digit the.
-            # an odd input count above one.
-            # the shape, which is where.
+            # Taglate's pad is a digit the program reads like any other, so
+            # an odd input count above one costs an extra line.  Read off
+            # the shape, which is where that fact already lives.
             wanted += 1
 
     if shape == "row_index":
@@ -1228,16 +1225,16 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
                 f"{name} reads one decimal row index, but stdin is {stdin.strip()!r}"
             )
         if len(lines[0]) > 1 and lines[0][0] == "0":
-            # A decimal row index never has.
-            # almost always the bit string.
-            # 16-row program parses as.
-            # row 2.
-            # is one line and is in range.
-            # it, which is why the rule is.
-            # The bit-string reading is.
-            # bits.
-            # to explain a leading zero.
-            # of the function whose whole.
+            # A decimal row index never has a leading zero, so this is
+            # almost always the bit string typed out: `0010` fed to a
+            # 16-row program parses as *ten* and answers row 10 instead of
+            # row 2.  Neither a count nor a range check catches it -- ten
+            # is one line and is in range -- and no table is needed to see
+            # it, which is why the rule is shaped this way.
+            # The bit-string reading is only offered when the digits *are*
+            # bits.  ``int(x, 2)`` on ``'02'`` raises, so the message meant
+            # to explain a leading zero crashed on one -- a traceback out
+            # of the function whose whole job is to refuse cleanly.
             if not set(lines[0]) - {"0", "1"}:
                 raise ArgumentError(
                     f"{name} reads one decimal row index, and {lines[0]!r} "
@@ -1264,13 +1261,13 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
             raise ArgumentError(
                 f"{name} wants {wanted} bits on its one line, got {len(lines[0])}"
             )
-        # Per *character*, because for.
-        # and the alphabet check below.
-        # to return past.
-        # declared alphabet enforced.
-        # "999", table)`` was accepted,.
-        # different row of the table.
-        # what this function exists to.
+        # Per *character*, because for this shape a character is a bit --
+        # and the alphabet check below is per line, which this branch used
+        # to return past.  So the one language with this shape had its
+        # declared alphabet enforced nowhere: ``check_stdin("Clockwise",
+        # "999", table)`` was accepted, and the program answered a
+        # different row of the table with nothing said, which is exactly
+        # what this function exists to prevent.
         astray = [char for char in lines[0] if char not in (zero, one)]
         if astray:
             raise ArgumentError(
@@ -1281,10 +1278,10 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
         return
     stray = [line for line in lines if line not in (zero, one)]
     if stray:
-        # Phrased around the alphabet.
-        # the useful half is what this.
-        # a reader who fed 0/1 lines to.
-        # tally of how many lines were.
+        # Phrased around the alphabet rather than the stray count, because
+        # the useful half is what this language *does* spell its bits with:
+        # a reader who fed 0/1 lines to Grapheme needs '%' and 'A', not a
+        # tally of how many lines were wrong.
         raise ArgumentError(
             f"{name} spells its bits {zero!r} and {one!r}, and {len(stray)} "
             f"stdin line(s) are outside that -- the first is {stray[0]!r}"
@@ -1337,16 +1334,16 @@ def read_answer(language: str, output: str) -> str:
         return "1"
     if raw == zero:
         return "0"
-    # For a pattern language the.
-    # which is the right thing to.
-    # hand a reader wondering where.
-    # is the plain-language half.
-    # in parentheses, so neither.
+    # For a pattern language the regex used to be the *whole* explanation,
+    # which is the right thing to hand a maintainer and nothing at all to
+    # hand a reader wondering where the answer was supposed to be.  The note
+    # is the plain-language half and already exists; the pattern follows it
+    # in parentheses, so neither reader loses.
     where = "in its final state" if example.answer_pattern else "as the last character"
-    # The note whenever there is.
-    # languages: Back, Minsky Swap.
-    # read by last character, so.
-    # of the mechanism and no.
+    # The note whenever there is one, not just for the two pattern
+    # languages: Back, Minsky Swap and LaserFuck dump their state and are
+    # read by last character, so "as the last character" is a true account
+    # of the mechanism and no account at all of where the answer lives.
     detail = f" -- {example.note}" if example.note else ""
     if example.answer_pattern:
         detail += f" (matched with {example.answer_pattern!r})"
@@ -1356,20 +1353,20 @@ def read_answer(language: str, output: str) -> str:
     )
 
 
-# : Not a stop reason.
-# : reads like a sibling of it;.
-# : *debugger* stopped, and.
+#: Not a stop reason.  It sits beside :data:`STOP_REASONS` in ``dir()`` and
+#: reads like a sibling of it; it is not one.  A stop reason says why a
+#: *debugger* stopped, and this says how one of the three answer-by-running
 #: languages spells its answer.
-# :.
-# : The two outcomes an.
-# : order.
-# : answer 0 and index 1 the.
-# : which way round the.
-# :.
-# : Exported because a caller.
-# : vocabulary and there was.
-# : tuple into their own code.
-# : :data:`STOP_REASONS` was.
+#:
+#: The two outcomes an ``answer_mode`` of ``"termination"`` reports, in the
+#: order ``describe(...)["answer_encoding"]`` gives them: index 0 is the
+#: answer 0 and index 1 the answer 1, so ``encoding.index("diverges")`` is
+#: which way round the polarity goes.
+#:
+#: Exported because a caller writing the generic round trip needs the
+#: vocabulary and there was nowhere to read it: one reader hand-copied this
+#: tuple into their own code and said so, which is the same gap
+#: :data:`STOP_REASONS` was added to close for the debugger.
 TERMINATION_OUTCOMES: tuple[str, str] = ("halts", "diverges")
 
 
@@ -1397,13 +1394,13 @@ class _Default:
 
 _DEFAULT = _Default()
 
-# : A termination-answering.
-# : :func:`evaluate` pays this.
-# : carry that convention, so.
+#: A termination-answering language proves a 1 by *not* halting, so
+#: :func:`evaluate` pays this once for every such row.  Three languages
+#: carry that convention, so the floor is real and small.
 _TERMINATION_TIMEOUT = 5.0
 
-# : The bound on an ordinary.
-# : to hold anything to a.
+#: The bound on an ordinary row.  Generous: it exists to stop a hang, not
+#: to hold anything to a schedule.
 _ROW_TIMEOUT = 30.0
 
 
@@ -1433,11 +1430,11 @@ def evaluate(
     A failure carries the row it happened on as an exception note, and
     whatever the program printed first as ``partial_output``.
     """
-    # Checked here, not only inside.
-    # machine itself and never.
-    # service was refused for.
-    # "diverges" for the other.
-    # different table depending on.
+    # Checked here, not only inside ``run``: the termination path drives the
+    # machine itself and never reaches ``run``, so a bound too small to
+    # service was refused for sixty-six languages and silently read as
+    # "diverges" for the other three -- the same argument answering a
+    # different table depending on which kind of language it was.
     if not isinstance(timeout, _Default):
         check_timeout(timeout)
     facts = describe(language)
@@ -1448,21 +1445,21 @@ def evaluate(
     if isinstance(timeout, _Default):
         bound = _TERMINATION_TIMEOUT if terminating else _ROW_TIMEOUT
     else:
-        # An explicit ``None`` means.
-        # :func:`run` -- and it is the.
-        # wall-clock guard is a.
-        # here in a way it would not be.
-        # program this runs is one it.
-        # are settled by a repeated.
+        # An explicit ``None`` means *unbounded*, the way it does in
+        # :func:`run` -- and it is the escape hatch for a thread, since the
+        # wall-clock guard is a ``SIGALRM`` and needs the main one.  Safe
+        # here in a way it would not be for arbitrary programs: every
+        # program this runs is one it generated, and the three that diverge
+        # are settled by a repeated state rather than a clock.
         bound = timeout
-    # The width goes to whichever.
-    # template that is.
-    # token any wrapper knows and a.
+    # The width goes to whichever call builds the runnable text: for a
+    # template that is ``instantiate`` below, since a ``{Xi}`` slot is not a
+    # token any wrapper knows and a break inside one destroys it.
     program = generate(name, truth_table, None if facts["parameterized"] else width)
     if terminating:
-        # Which of halting and.
-        # ``("halts", "diverges")`` for.
-        # rather than assuming it is.
+        # Which of halting and diverging means 1, as data.  It is
+        # ``("halts", "diverges")`` for all three, but reading the order
+        # rather than assuming it is what keeps this branch language-free.
         encoding = list(facts["answer_encoding"])
         diverges_is = str(encoding.index("diverges"))
         halts_is = str(encoding.index("halts"))
@@ -1481,15 +1478,15 @@ def evaluate(
             else:
                 answers.append(read_answer(name, run(name, source, stdin, bound)))
         except EsolangError as exc:
-            # Which row, as a note rather.
-            # here do not share a.
-            # takes two counts and builds.
-            # with a longer string would.
-            # .
-            # Without this a failure on a.
-            # something exceeded the bound,.
-            # "row 900 is" are different.
-            # The bits are here too, since.
+            # Which row, as a note rather than a new exception: the classes
+            # here do not share a constructor -- ``InputExhaustedError``
+            # takes two counts and builds its own message -- so re-raising
+            # with a longer string would mean knowing all of them.
+            #
+            # Without this a failure on a 1024-row table said only that
+            # something exceeded the bound, and "row 0 is pathological" and
+            # "row 900 is" are different problems with the same message.
+            # The bits are here too, since they are what makes the row
             # reproducible in one call.
             exc.add_note(
                 f"while evaluating row {row} of {len(truth_table)} "
@@ -1533,8 +1530,8 @@ def _terminates(
     from esolangs.vm import run_until_halt_or_cycle
 
     machine = make_vm(name, source, stdin)
-    # A box, because ``_run``.
-    # it drove -- which is right.
+    # A box, because ``_run`` exists to apply the timeout and discards what
+    # it drove -- which is right for ``run``, whose result is the io buffer.
     verdict: list[bool] = []
 
     def _drive(*_args: object) -> None:
@@ -1543,23 +1540,23 @@ def _terminates(
     try:
         _run(_drive, source, ScriptedIO(""), bound)
     except ExecutionTimeoutError:  # pragma: no cover - see below
-        # No cycle inside the bound:.
-        # old answer, and still the.
-        # .
-        # Not reached by any table the.
-        # trying to: these programs.
-        # so even a one-millisecond.
-        # can fire.
-        # a loop that grows without.
-        # own docstring asks callers to.
+        # No cycle inside the bound: unbounded growth, or simply slow.  The
+        # old answer, and still the right one.
+        #
+        # Not reached by any table the suite runs, and not for want of
+        # trying to: these programs revisit a state inside a hundred steps,
+        # so even a one-millisecond bound proves the cycle before the clock
+        # can fire.  It stays because the detector only proves *cycles* --
+        # a loop that grows without bound never repeats a state -- and its
+        # own docstring asks callers to keep a clock for that case.
         return diverges
     except InputExhaustedError:  # pragma: no cover - see below
-        # Reading past the end is how.
-        # .
-        # Not reachable through.
-        # itself and so never.
-        # one ending a *cycle* search.
-        # caller passing its own stdin.
+        # Reading past the end is how some of these stop; that is a halt.
+        #
+        # Not reachable through :func:`evaluate`, which encodes every row
+        # itself and so never underfeeds one -- kept because this is the
+        # one ending a *cycle* search cannot see coming, and a future
+        # caller passing its own stdin would hit it.
         return halts
     return halts if verdict and verdict[0] else diverges
 

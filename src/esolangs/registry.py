@@ -21,14 +21,14 @@ from urllib.parse import quote
 from esolangs.exceptions import UnknownLanguageError
 from esolangs.tools import boolean as _boolean
 
-# Display names whose canonical.
-# (a name whose meaning is lost.
+# Display names whose canonical id cannot be produced by the slug rules
+# (a name whose meaning is lost by stripping its symbols, like ``%^2^-1``).
 _CANONICAL_OVERRIDES = {
     "%^2^-1": "pct_squared_minus_one",
-    # The parentheses are part of.
-    # of the CV(N)(C) syllable --.
-    # separators and yields.
-    # pronounced as one word, so.
+    # The parentheses are part of the name -- they mark the optional slots
+    # of the CV(N)(C) syllable -- so the slug rule turns them into
+    # separators and yields "cv_n_c".  The language is written and
+    # pronounced as one word, so the underscores are noise.
     "CV(N)(C)": "cvnc",
 }
 
@@ -46,20 +46,20 @@ _DIGIT_WORDS = {
 }
 
 
-# : How close a miss has to be.
-# :.
-# : 0.6 offered ``Sophie`` for.
-# : a wrong guess sends the.
-# : Measured rather than picked.
-# : names, 0.6 and 0.65 both.
-# : suggests nothing for any of.
-# : ``hello``, ``python``,.
-# : costing real rescues.
-# : measurement, re-run rather.
-# : that trade and fails if.
-# :.
-# : Shared with the CLI's.
-# : own copy of the number.
+#: How close a miss has to be before it is offered as "did you mean".
+#:
+#: 0.6 offered ``Sophie`` for ``nope``, which is worse than saying nothing:
+#: a wrong guess sends the reader off to check a language they never meant.
+#: Measured rather than picked -- across 298 single-edit typos of the 69
+#: names, 0.6 and 0.65 both rescue 291, while 0.65 is the lowest value that
+#: suggests nothing for any of ``nope``, ``zzzz``, ``xyz``, ``qqqqqq``,
+#: ``hello``, ``python``, ``asdf``, ``test`` and ``foo``.  0.7 starts
+#: costing real rescues.  ``TestASuggestionIsWorthLessThanSilence`` is the
+#: measurement, re-run rather than quoted -- it recomputes both halves of
+#: that trade and fails if this number stops being the best one.
+#:
+#: Shared with the CLI's option-name suggester, which had drifted to its
+#: own copy of the number under a docstring promising they were the same.
 SUGGESTION_CUTOFF = 0.65
 
 
@@ -72,26 +72,26 @@ def canonical_id(name: str) -> str:
     (``6-5`` -> ``six_five``).  A couple of names that no slug can capture
     are pinned in :data:`_CANONICAL_OVERRIDES`.
     """
-    # Matched case-insensitively:.
-    # so an exact-key lookup made.
-    # could not match on case --.
-    # and became ``cv_n_c``, which.
-    # name (``BRAINFUCK``,.
-    # Stripped before anything else.
-    # non-alphanumerics and strip.
-    # tolerated a stray surrounding.
-    # exact one, and the two names.
-    # exact two that did not.
-    # through to ``cv_n_c``,.
-    # CV(N)(C)?" -- an invisible.
+    # Matched case-insensitively: the override is keyed by the display name,
+    # so an exact-key lookup made ``CV(N)(C)`` the one language ``resolve``
+    # could not match on case -- ``cv(n)(c)`` fell through to the slug rules
+    # and became ``cv_n_c``, which is nothing's id.  Every other awkward
+    # name (``BRAINFUCK``, ``s*bleq``, ``forþ``) was already tolerant.
+    # Stripped before anything else.  The slug rules below collapse runs of
+    # non-alphanumerics and strip the result, so 67 of the 69 names already
+    # tolerated a stray surrounding space -- but the override lookup is an
+    # exact one, and the two names that need an override were therefore the
+    # exact two that did not.  ``CV(N)(C) `` was the bad one: it fell
+    # through to ``cv_n_c``, matched nothing, and came back as "did you mean
+    # CV(N)(C)?" -- an invisible diff and no way forward.
     name = name.strip()
     folded = {key.casefold(): value for key, value in _CANONICAL_OVERRIDES.items()}
     if name.casefold() in folded:
         return folded[name.casefold()]
-    # Lowercased *before* the.
-    # lowercase characters, so.
-    # through to the punctuation.
-    # display name whose upper-case.
+    # Lowercased *before* the transliterations, not after: they name
+    # lowercase characters, so ``FORÞ`` kept its uppercase thorn, fell
+    # through to the punctuation rule and came out ``for`` -- the one
+    # display name whose upper-case spelling did not resolve.
     s = name.lower().replace("~", "_tilde").replace("þ", "th").replace("*", "")
     s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c))
@@ -102,12 +102,12 @@ def canonical_id(name: str) -> str:
     return s
 
 
-# A generator:.
-# Most take only the table; the.
-# dimensions (LaserFuck, which.
-# ``width`` bounding the.
-# fact the way a single long.
-# with the table alone, which.
+# A generator: ``generator(truth_table)`` returns a program computing it.
+# Most take only the table; the few that lay their program out in two
+# dimensions (LaserFuck, which folds its beam's track) also accept a
+# ``width`` bounding the columns, since a shape cannot be reflowed after the
+# fact the way a single long line can.  ``...`` keeps both arities callable
+# with the table alone, which is how every width-less caller invokes them.
 Generator = Callable[..., str]
 
 
@@ -588,21 +588,21 @@ LANGUAGES: dict[str, Language] = {
 }
 
 
-# Generator function name ->.
-# the name of its function (e.g.
-# .
-# This used to have a twin.
-# written over that twin.
-# than failing.
-# sixteen boolean generators.
-# Keying only by ``boolean``.
+# Generator function name -> Language, so tests can look a generator up by
+# the name of its function (e.g. ``six_five`` for "6-5").
+#
+# This used to have a twin keyed by the *text* generator's name, and a sweep
+# written over that twin silently skipped every boolean-only language rather
+# than failing.  That is how Jaune's table-dependent input count survived:
+# sixteen boolean generators were invisible to the read-count contract test.
+# Keying only by ``boolean`` leaves nothing to pick the wrong map from.
 BY_BOOLEAN: dict[str, Language] = {
     lang.boolean.__name__: lang
     for lang in LANGUAGES.values()
     if lang.boolean is not None
 }
 
-# Display name -> (interpreter.
+# Display name -> (interpreter module, split lines).
 RUNNERS: dict[str, tuple[str, bool]] = {
     name: (lang.interpreter, lang.split)
     for name, lang in LANGUAGES.items()
@@ -668,20 +668,20 @@ def parameterized_ids() -> frozenset[str]:
     return frozenset(_fills())
 
 
-# Canonical id -> display name,.
+# Canonical id -> display name, the index :func:`resolve` matches against.
 _BY_ID: dict[str, str] = {lang.id: name for name, lang in LANGUAGES.items()}
 
 
-# : Characters a wiki slug may.
-# :.
-# : RFC 3986 lets a path.
-# : so parentheses, ``*``,.
-# : better link than.
-# : here is the point: ``%`` is.
-# : neither set, so ``%^2^-1``.
-# :.
-# : ``%^2`` is not a.
-# : raw bytes is served by a.
+#: Characters a wiki slug may keep as themselves.
+#:
+#: RFC 3986 lets a path segment carry the unreserved set and the sub-delims,
+#: so parentheses, ``*``, ``~`` and ``-`` stay readable -- ``CV(N)(C)`` is a
+#: better link than ``CV%28N%29%28C%29`` and both resolve.  What is *not*
+#: here is the point: ``%`` is the escape character itself and ``^`` is in
+#: neither set, so ``%^2^-1`` went out as
+#: ``https://esolangs.org/wiki/%^2^-1``, which esolangs.org answers 400 --
+#: ``%^2`` is not a percent-escape.  Non-ASCII is escaped too: ``Forþ`` as
+#: raw bytes is served by a browser and refused by a strict client.
 _WIKI_SAFE = "_-.~()*!'+,;=:@&$"
 
 
@@ -713,10 +713,10 @@ def resolve(name: str) -> str:
     closest registered spellings.
     """
     if not isinstance(name, str):
-        # Checked before.
-        # answer a ``None`` language.
-        # attribute 'replace'`` -- the.
-        # that escaped as an internal.
+        # Checked before ``canonical_id`` touches it, which would otherwise
+        # answer a ``None`` language with ``'NoneType' object has no
+        # attribute 'replace'`` -- the one wrong-type argument in the API
+        # that escaped as an internal AttributeError.
         raise UnknownLanguageError(
             f"expected a language name, got {type(name).__name__}"
         )

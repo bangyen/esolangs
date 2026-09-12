@@ -1,1 +1,1 @@
-r"""Test suite for the esolangs package."""
+"""Test suite for the esolangs package."""

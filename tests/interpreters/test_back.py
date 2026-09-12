@@ -135,14 +135,14 @@ class TestStepMachine:
         machine = _Machine(["-*"], ScriptedIO())
         assert (machine.row, machine.col, machine.a, machine.b) == (0, 0, 0, 1)
         assert machine.tape == (0,)
-        machine.step()  # - flips the current bit.
+        machine.step()  # - flips the current bit
         assert machine.tape == (1,)
-        machine.step()  # * halts the beam.
+        machine.step()  # * halts the beam
         assert machine.halted
-        assert machine.io.getvalue() == ""  # the dump is the next step's.
-        machine.step()  # the post-halt step prints the.
+        assert machine.io.getvalue() == ""  # the dump is the next step's
+        machine.step()  # the post-halt step prints the tape
         assert machine.io.getvalue() == "1"
-        machine.step()  # stepping again is a no-op;.
+        machine.step()  # stepping again is a no-op; the dump fires once
         assert machine.io.getvalue() == "1"
         assert machine.row == 0
 
@@ -158,9 +158,9 @@ class TestStepMachine:
 
         machine = _Machine(["<-*"], ScriptedIO())
         assert machine.cell == 0
-        machine.step()  # "<" with nowhere to go.
+        machine.step()  # "<" with nowhere to go
         assert machine.cell == 0
-        machine.step()  # "-" flips the cell the.
+        machine.step()  # "-" flips the cell the pointer stayed on
         assert machine.tape[0] == 1, "the flip landed on cell 0"
 
     def test_moving_right_grows_the_tape_only_at_its_end(self) -> None:
@@ -174,17 +174,17 @@ class TestStepMachine:
 
         machine = _Machine([">>*"], ScriptedIO())
         assert machine.tape == (0,)
-        machine.step()  # past the end: the tape grows.
+        machine.step()  # past the end: the tape grows
         assert machine.tape == (0, 0)
-        machine.step()  # past the new end: it grows.
+        machine.step()  # past the new end: it grows again
         assert machine.tape == (0, 0, 0)
 
-        # Re-entering a cell that.
+        # Re-entering a cell that already exists leaves the tape alone.
         revisit = _Machine(["><>*"], ScriptedIO())
-        revisit.step()  # ">" grows to two cells.
+        revisit.step()  # ">" grows to two cells
         assert revisit.tape == (0, 0)
-        revisit.step()  # "<" back to cell 0.
-        revisit.step()  # ">" onto the cell that.
+        revisit.step()  # "<" back to cell 0
+        revisit.step()  # ">" onto the cell that already exists
         assert revisit.tape == (0, 0), "no cell appended for known ground"
 
 

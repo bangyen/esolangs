@@ -92,7 +92,7 @@ def test_erode_keeps_only_fully_surrounded_ink() -> None:
     drawing made of 1px strokes.
     """
     block = Mask.from_rows(["###", "###", "###"])
-    # The centre is the only pixel.
+    # The centre is the only pixel with all 8 neighbours inside the block.
     assert list(block.erode().nonzero()) == [(1, 1)]
 
     line = Mask.from_rows(["...", "###", "..."])

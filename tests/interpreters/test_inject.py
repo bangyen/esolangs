@@ -48,12 +48,12 @@ WIKI_TRUTH_MACHINE = "\n".join(
     ]
 )
 
-# A corrected truth machine:.
-# interpreter's module.
-# forever on "1".
-# because that module pulls in.
-# not inline -- a module-level.
-# any mutant runs.
+# A corrected truth machine: the wiki's own is inverted (see the
+# interpreter's module docstring).  Halts on "0" after printing it, loops
+# forever on "1".  Defined here rather than imported from ``tests.samples``
+# because that module pulls in the registry, which the mutation bundle does
+# not inline -- a module-level import of it fails collection there before
+# any mutant runs.  ``tests.samples`` imports this name instead.
 INJECT_TRUTH_MACHINE = "\n".join(
     [
         "readto data",
@@ -130,11 +130,11 @@ class TestWikiExamples:
         """
         from esolangs.vm import run_until_halt_or_cycle
 
-        # On "1" it halts after a.
+        # On "1" it halts after a single print -- the 0 case's behaviour.
         assert _run(WIKI_TRUTH_MACHINE, "1\n") == "1\n"
 
-        # On "0" it loops forever --.
-        # revisits a state, so it is.
+        # On "0" it loops forever -- the 1 case's behaviour -- and the loop
+        # revisits a state, so it is provable rather than merely slow.
         io = ScriptedIO("0\n")
         assert not run_until_halt_or_cycle(_Machine(WIKI_TRUTH_MACHINE, io))
 
@@ -277,8 +277,8 @@ class TestCommands:
                 "empty;",
             ]
         )
-        # The pointer sits in both.
-        # which re-runs "send b" only.
+        # The pointer sits in both blocks; ``skip`` returns to ``inner``,
+        # which re-runs "send b" only -- never "send a" a second time.
         machine = _Machine(program, ScriptedIO(""))
         for _ in range(24):
             if machine.halted:
@@ -306,11 +306,11 @@ class TestCommands:
                 "mark;",
             ]
         )
-        # The ``skip`` is inside both;.
-        # the first ``send``, so the.
-        # reaches the second one.
-        # same on output, so the.
-        # to the jump and read the.
+        # The ``skip`` is inside both; returning to ``narrow`` re-runs only
+        # the first ``send``, so the output is a stream of M and never
+        # reaches the second one.  Returning to ``wide`` would look the
+        # same on output, so the landing line is what separates them: step
+        # to the jump and read the pointer.
         machine = _Machine(program, ScriptedIO(""))
         while machine.lines[machine.ind].strip() != "skip":
             machine.step()
@@ -381,10 +381,10 @@ class TestSnapshot(SnapshotContract):
 
 class TestStateView(StateViewContract):
     machine = staticmethod(_machine)
-    # Inject's cursor is a *line*.
-    # block's line count, so the.
+    # Inject's cursor is a *line* index and its memory is each labelled
+    # block's line count, so the two are different shapes over one program.
     state_views: ClassVar[tuple[str, ...]] = ("ip", "memory")
-    # HELLO_WORLD moves only the.
+    # HELLO_WORLD moves only the cursor; this one writes the store too.
     viewing_program: ClassVar[list[str]] = [
         "data;",
         "data;",
@@ -396,8 +396,8 @@ class TestStateView(StateViewContract):
 class TestCycle(CycleContract):
     machine = staticmethod(_machine)
     halting_program: ClassVar[str] = HELLO_WORLD
-    # The corrected truth machine's.
-    # with the input already.
+    # The corrected truth machine's "1" branch: it re-enters the loop block
+    # with the input already consumed, so the state repeats exactly.
     looping_program: ClassVar[str] = "\n".join(
         ["loop;", "send data", "skip", "loop;", "data;", "x", "data;"]
     )

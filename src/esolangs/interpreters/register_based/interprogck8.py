@@ -68,15 +68,15 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.randomness import Randomness, draw
 
-_TRUE, _FALSE = 84, 81  # ASCII "T" and "Q", what.
+_TRUE, _FALSE = 84, 81  # ASCII "T" and "Q", what ``{values...}`` stores
 
-# : Fixed ``developer`` output.
-# : printing this module's own.
-# : on disk, which no test.
+#: Fixed ``developer`` output.  The spec calls it implementation-dependent;
+#: printing this module's own text would make every run depend on the file
+#: on disk, which no test could pin.
 _DEVELOPER = "Interprogck8\n"
 
-# : The nullary commands,.
-# : ``mathroundtofloor`` floors.
+#: The nullary commands, mapping a line to what it does to the accumulator.
+#: ``mathroundtofloor`` floors an integer plus 0.5, which is the integer.
 _ARITH: dict[str, int] = {"@nd": 1, "@nt": -1, "@id": 10, "@dd": -10}
 _LOAD: dict[str, int] = {"NnNn": 0, "nNnN": 65, "Empty_": 32}
 _NOPS = frozenset({"X", "x", "mathroundtofloor"})
@@ -155,7 +155,7 @@ def _call(state: _State) -> _State:
     if state.slot is None:
         raise HaltError("no current function to execute")
     state = _advance_cursor(state)
-    if not state.slot:  # an empty body is a call that.
+    if not state.slot:  # an empty body is a call that returns at once
         return state
     return replace(state, frames=(*state.frames, (state.slot, 0)))
 
@@ -298,8 +298,8 @@ def _advance(
         acc = reads[0]
     elif line == "DownAccLines":
         if state.frames:
-            # The pointer inside a function.
-            # program line, so "skip down N.
+            # The pointer inside a function body is a frame index, not a
+            # program line, so "skip down N lines" names nothing.
             raise HaltError("DownAccLines inside a function body")
         nxt = state.ip + 1 + acc
         if nxt > len(state.lines):
@@ -307,7 +307,7 @@ def _advance(
     elif line == "<":
         return _capture(state), None
     elif line == ">":
-        pass  # a stray closer outside a.
+        pass  # a stray closer outside a captured body is a no-op
     elif line == "EXE":
         return _call(replace(state, acc=acc)), None
     elif line == "IFT":
@@ -338,8 +338,8 @@ def _advance(
     return _advance_cursor(state), out
 
 
-# : A ``_State`` flattened for.
-# : without the output the.
+#: A ``_State`` flattened for the branching search: the same five fields,
+#: without the output the search deliberately drops.
 type _BranchState = tuple[
     tuple[str, ...],
     int,
@@ -410,8 +410,8 @@ class _Machine:
     def halted(self) -> bool:
         return self.state.halted
 
-    # : ``ip`` starts with a line.
-    # : with each open frame's.
+    #: ``ip`` starts with a line number rather than a cell or an offset,
+    #: with each open frame's index after it.
     ip_shape = "line"
 
     @property
@@ -434,10 +434,10 @@ class _Machine:
         s = self.state
         return (s.lines, s.ip, s.acc, s.slot, s.frames, self.io.position())
 
-    # The branching-search protocol.
-    # instructions, so a hang proof.
-    # than the one a source.
-    # declines instead of forking,.
+    # The branching-search protocol.  ``[a b]`` and ``~`` are the two random
+    # instructions, so a hang proof has to hold over *every* draw rather
+    # than the one a source happened to make.  A line that reads input
+    # declines instead of forking, the way COD's does: sibling branches
     # cannot share one input cursor.
 
     def branching_snapshot(self) -> tuple[object, ...]:
@@ -467,8 +467,8 @@ class _Machine:
         try:
             reached = _outcomes(current)
         except HaltError:
-            # A line the run cannot execute.
-            # ending the search: an.
+            # A line the run cannot execute ends this branch rather than
+            # ending the search: an unreachable neighbour is not a hang.
             return ()
         return tuple(
             (nxt.lines, nxt.ip, nxt.acc, nxt.slot, nxt.frames) for nxt in reached
@@ -477,13 +477,13 @@ class _Machine:
     def step(self) -> None:
         """Execute one line; the two ports live here and nowhere else."""
         if self.halted:
-            return  # a step past the end is a.
+            return  # a step past the end is a no-op, not an index error
         line = self.state.current
         reads = []
         for kind in _read_kinds(line):
-            # ``u``'s EmptyInputError is.
-            # error here rather than the.
-            # of input is the different.
+            # ``u``'s EmptyInputError is the spec's, so an empty line is an
+            # error here rather than the repo's usual read-as-0; running out
+            # of input is the different case and still raises EOFError.
             val = self.io.input_str()
             if not val:
                 raise HaltError("EmptyInputError: empty input")

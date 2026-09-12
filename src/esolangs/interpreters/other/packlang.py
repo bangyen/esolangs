@@ -105,38 +105,38 @@ from collections.abc import Callable
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# There is no recursion ceiling.
-# recursing natively, so a.
-# heap and never touches.
-# it is what ``esolangs.run``'s.
-# reasoning ``grapheme.py`` and.
+# There is no recursion ceiling.  A call pushes a frame rather than
+# recursing natively, so a runaway program grows the frame list on the
+# heap and never touches Python's stack.  That class revisits no state, so
+# it is what ``esolangs.run``'s wall-clock ``timeout`` is for -- the same
+# reasoning ``grapheme.py`` and ``function_x_y.py`` record.
 
-# : Statement opcodes.
-# : function, with the two jump.
-# : is an index increment and.
-_PRINT = "print"  # charPut(expr).
-_READ = "read"  # charGet(lvalue).
+#: Statement opcodes.  A program is parsed into a flat tuple of these per
+#: function, with the two jump targets resolved at parse time, so stepping
+#: is an index increment and no tree walk survives into the run.
+_PRINT = "print"  # charPut(expr)
+_READ = "read"  # charGet(lvalue)
 _INIT = "init"
 _INCR = "incr"
 _DECR = "decr"
-_JUMP_UNLESS = "jz"  # If/While guard: jump when the.
-_JUMP = "jmp"  # While back-edge.
-_VALUE = "val"  # a bare expression statement:.
+_JUMP_UNLESS = "jz"  # If/While guard: jump when the expression is false
+_JUMP = "jmp"  # While back-edge
+_VALUE = "val"  # a bare expression statement: the function's return value
 
-# : An expression node: a tag.
-# : Heterogeneous by nature, so.
-# : :func:`_node` and.
+#: An expression node: a tag followed by names, literals, or sub-nodes.
+#: Heterogeneous by nature, so the slots are narrowed at use by
+#: :func:`_node` and :func:`_int` rather than modelled per tag.
 type _Expr = tuple[object, ...]
 
-# : One variable: its name and.
+#: One variable: its name and its value.  Arrays hold a tuple of values;
 #: scalars a single int.
 type _Slot = tuple[str, object]
 type _Store = tuple[_Slot, ...]
 
-# : The whole run state as a.
-# : store, and the function's.
-# : for a run, so it is not.
-# : with names, and.
+#: The whole run state as a value: the statement cursor, the variable
+#: store, and the function's value so far.  The parsed program is constant
+#: for a run, so it is not part of the state; :class:`_Frame` is this tuple
+#: with names, and :meth:`_Frame.key` is the tuple itself.
 type _State = tuple[int, _Store, int]
 
 
@@ -159,8 +159,8 @@ class _Type:
     ) -> None:
         self.low = low
         self.high = high
-        # Default wrapping is modular,.
-        # output implies for a plain.
+        # Default wrapping is modular, which is what ``charPut``'s byte
+        # output implies for a plain Integer and a Char.
         self.under = high if under is None else under
         self.over = low if over is None else over
         self.length = length
@@ -300,7 +300,7 @@ class _Parser:
         if got != word:
             raise ValueError(f"expected {word!r}, got {got!r}")
 
-    # -- types.
+    # -- types ---------------------------------------------------------
 
     def parse_type(self) -> _Type:
         """Parse a datatype, including its parenthesized parameters."""
@@ -323,13 +323,13 @@ class _Parser:
             self.expect("(")
             inner = self.parse_type()
             self.expect(")")
-            # A pointer is stored as the.
-            # takes an address, and.
-            # behaves identically either.
+            # A pointer is stored as the value it refers to: no example
+            # takes an address, and charGet's "variable or pointer" case
+            # behaves identically either way.
             return inner
         if name in ("Integer", "Char", "String"):
-            # String is a byte sequence;.
-            # the wiki, it is an array.
+            # String is a byte sequence; with no literal syntax for one on
+            # the wiki, it is an array whose length a declaration fixes.
             return _Type() if name != "String" else _Type(length=0)
         raise ValueError(f"unknown datatype {name!r}")
 
@@ -346,7 +346,7 @@ class _Parser:
             raise ValueError(f"expected a number, got {word!r}")
         return int(word)
 
-    # -- expressions.
+    # -- expressions ---------------------------------------------------
 
     def expression(self) -> tuple[object, ...]:
         """Parse ``a ^ b`` (left-associative) into a postfix tuple."""
@@ -374,8 +374,8 @@ class _Parser:
             raise ValueError(f"unexpected token {word!r} in an expression")
         if self.peek() == "(":
             self.next_token()
-            # ``myArray(length)`` is.
-            # so ``length`` here is the.
+            # ``myArray(length)`` is spelled exactly like that on the wiki,
+            # so ``length`` here is the keyword, not a variable named so.
             if self.peek() == "length":
                 self.next_token()
                 self.expect(")")
@@ -387,12 +387,12 @@ class _Parser:
                     self.next_token()
                     args.append(self.expression())
             self.expect(")")
-            # An index and a call are.
-            # depends on the name, so it is.
+            # An index and a call are spelled identically; which one it is
+            # depends on the name, so it is resolved at run time.
             return ("apply", word, tuple(args))
         return ("var", word)
 
-    # -- statements.
+    # -- statements ----------------------------------------------------
 
     def lvalue(self) -> tuple[str, tuple[object, ...] | None]:
         """Parse a target: a name, optionally with an index."""
@@ -444,22 +444,22 @@ class _Parser:
             out.append([_JUMP, top])
             out[patch][2] = len(out)
             return
-        # A declaration inside a.
+        # A declaration inside a function body: a type followed by a name.
         if word is not None and word in _DATATYPES and self.is_declaration():
             declared = self.parse_type()
             name = self.next_token()
             self.expect(";")
             local_types[name] = declared
             return
-        # Otherwise an expression.
-        # call or the function's.
+        # Otherwise an expression statement, which may be a charPut/charGet
+        # call or the function's trailing return value.
         expr = self.expression()
         self.expect(";")
         if expr[0] == "apply" and expr[1] in ("charPut", "charGet"):
             args = expr[2]
-            # ``_primary`` always builds an.
-            # so this narrowing cannot.
-            # and would be a malformed tree.
+            # ``_primary`` always builds an "apply" with a tuple of nodes,
+            # so this narrowing cannot fail; it is spelled for the checker
+            # and would be a malformed tree rather than a bad program.
             if not isinstance(args, tuple):
                 raise AssertionError("isinstance(args, tuple)")
             if expr[1] == "charPut":
@@ -471,8 +471,8 @@ class _Parser:
             if not isinstance(target, tuple) or target[0] not in ("var", "apply"):
                 raise ValueError("charGet takes exactly one variable")
             name = str(target[1])
-            # ``charGet(a(i))`` reads into.
-            # the sole argument of the.
+            # ``charGet(a(i))`` reads into an array element; the index is
+            # the sole argument of the "apply" the parser built for it.
             index = None
             if target[0] == "apply":
                 slots = target[2]
@@ -506,7 +506,7 @@ class _Parser:
 
 
 _DATATYPES = frozenset({"Integer", "Char", "String", "Array", "Pointer"})
-# : The built-in package every.
+#: The built-in package every example depends on for its two IO functions.
 _IO_PACKAGE = "IO"
 
 
@@ -581,10 +581,10 @@ def _member(
     if parser.peek() == ":":
         parser.next_token()
         while True:
-            # ``Type name`` is a value.
-            # ``Integer a, Integer b``); a.
-            # the function uses.
-            # spelled differently on the.
+            # ``Type name`` is a value parameter (the dependency example's
+            # ``Integer a, Integer b``); a bare name is a package variable
+            # the function uses (PlusOrMinus's ``: code``).  The two are
+            # spelled differently on the wiki and mean different things.
             if parser.peek() in _DATATYPES:
                 param_type = parser.parse_type()
                 param = parser.next_token()
@@ -630,8 +630,8 @@ def _entry(program: _Program, order: list[str]) -> _Function:
         ]
         if len(candidates) == 1:
             return candidates[0]
-    # A parameterless function.
-    # own function takes a.
+    # A parameterless function anywhere, as the last resort: PlusOrMinus's
+    # own function takes a parameter, so such a program has no entry.
     raise ValueError("program has no parameterless entry function")
 
 
@@ -778,7 +778,7 @@ def _pending_call(
             return found
     name = str(node[1])
     if any(slot == name for slot, _ in store):
-        return None  # an array index, evaluated in.
+        return None  # an array index, evaluated in place
     return node
 
 
@@ -862,7 +862,7 @@ def _advance(
         stmt = frame.func.body[frame.pc]
     op = stmt[0]
     store = frame.store
-    # Name resolution is done from.
+    # Name resolution is done from the running function's own package.
     package = frame.func.package
     pc = frame.pc + 1
     out: str | None = None
@@ -910,8 +910,8 @@ def _advance(
             pc = _int(stmt[2])
     elif op == _JUMP:
         pc = _int(stmt[1])
-    # Every opcode the parser emits.
-    # exhaustive and this last test.
+    # Every opcode the parser emits has an arm above, so the chain is
+    # exhaustive and this last test never falls through.
     elif op == _VALUE:  # pragma: no branch
         result = _evaluate(_node(stmt[1]), store, program, package)
 
@@ -951,9 +951,9 @@ def _write(
     return _set(store, name, update(_int(value)))
 
 
-# : Where each statement kind.
-# : The three write opcodes.
-# : itself be a call; ``_JUMP``.
+#: Where each statement kind keeps the expression a call can hide in.
+#: The three write opcodes carry an array index at slot 2, which may
+#: itself be a call; ``_JUMP`` alone carries none.
 _EXPR_SLOT = {
     _PRINT: 1,
     _JUMP_UNLESS: 1,
@@ -985,7 +985,7 @@ def _resolved(frame: _Frame) -> tuple[object, ...]:
         return stmt
     slot = _EXPR_SLOT.get(str(stmt[0]))
     if slot is None:  # pragma: no cover - only _JUMP lacks a slot, and a
-        # jump never has a pending.
+        # jump never has a pending call, so the check above returns first
         return stmt
     parts = list(stmt)
     parts[slot] = frame.pending
@@ -1007,7 +1007,7 @@ class _Machine:
         self.io = io
         self.program = _parse(code)
         entry = self.program.entry
-        # _parse raises when a program.
+        # _parse raises when a program has no entry, so this cannot be None.
         if entry is None:
             raise AssertionError("entry is not None")
         self.frames = [_Frame(entry, _initial_store(entry, self.program))]
@@ -1052,11 +1052,11 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # Every frame's cursor, store.
-        # through resolving the calls.
-        # input position -- a repeat.
-        # real cycle.
-        # returns, so it is built fresh.
+        # Every frame's cursor, store and result, plus how far each has got
+        # through resolving the calls in its current statement, plus the
+        # input position -- a repeat that ignores consumed input is not a
+        # real cycle.  ``pending`` is by value: it is rewritten as each call
+        # returns, so it is built fresh rather than fixed at parse time.
         return (
             tuple(
                 (frame.key(), repr(frame.pending), frame.returned)
@@ -1089,11 +1089,11 @@ class _Machine:
         prepared = _resolved(frame)
         result, out, wants_read = _advance(frame, self.program, None, prepared)
         if wants_read:
-            # ``input_char`` reads a line.
-            # already gives a blank line.
-            # ``tests/interpreters/test_inpu.
-            # callee reaches this the same.
-            # its statements are stepped,.
+            # ``input_char`` reads a line and takes its first byte, and
+            # already gives a blank line the package-wide 0 that
+            # ``tests/interpreters/test_input_convention.py`` pins.  A
+            # callee reaches this the same way the entry function does:
+            # its statements are stepped, so the shell is right here.
             byte = self.io.input_char()
             result, out, _ = _advance(frame, self.program, byte, prepared)
         result.pending = None
@@ -1115,8 +1115,8 @@ class _Machine:
         package = frame.func.package
         if frame.returned is not None:
             call = _pending_call(working, frame.store, self.program, package)
-            # A value is waiting only.
-            # so the same search finds it.
+            # A value is waiting only because a call was found and stepped,
+            # so the same search finds it again here.
             if call is not None:  # pragma: no branch
                 working = _substitute(working, call, frame.returned)
             frame.returned = None

@@ -73,18 +73,18 @@ class _Frame:
     loop: bool = False
 
 
-# : One instant of a run:.
-# : operand stack, the scope.
-# : stack, and whether the.
-# :.
-# : The frames are the reason.
-# : and all three bracket forms.
-# : whenever it finishes with a.
-# : because a called scope runs.
-# :.
-# : ``error`` is state and not.
-# : scope the way completing it.
-# : mean the run failed.
+#: One instant of a run: ``(stack, table, frames, error)`` -- the shared
+#: operand stack, the scope table ``{`` fills and ``;`` calls, the frame
+#: stack, and whether the *top-level* scope aborted.
+#:
+#: The frames are the reason this is a stack rather than a cursor: ``;``
+#: and all three bracket forms push one, and a ``[`` body is re-pushed
+#: whenever it finishes with a nonzero top.  A frame carries its own code,
+#: because a called scope runs text that is not the program's.
+#:
+#: ``error`` is state and not an exception: an abort ends the innermost
+#: scope the way completing it would, and only at the top level does it
+#: mean the run failed.  ``run`` reads it after the loop.
 type _Frames = tuple[_Frame, ...]
 type _State = tuple[tuple[int, ...], dict[int, str], _Frames, bool]
 
@@ -155,8 +155,8 @@ def _scan(frame: _Frame, add: str, sub: str) -> tuple[str, int] | None:
             match += 1
         elif inner == sub:
             match -= 1
-        # Tested after the advance, so.
-        # closing bracket rather than.
+        # Tested after the advance, so the cursor ends one *past* the
+        # closing bracket rather than on it.
         if match == 0:
             break
     return (frame.code[start + 1 : pc - 1], pc)
@@ -180,7 +180,7 @@ def _advance(state: _State, line: str | None = None) -> _State:
         return state
     frame = frames[-1]
     if frame.pc >= len(frame.code):
-        return state  # a finished pass (an empty.
+        return state  # a finished pass (an empty loop body) is a no-op step
 
     char = frame.code[frame.pc]
     frames = (*frames[:-1], _at(frame, frame.pc + 1))
@@ -196,7 +196,7 @@ def _advance(state: _State, line: str | None = None) -> _State:
     if char == "~":
         return ((*stack[:-1], ~_top(stack)), table, frames, error)
     if char == ".":
-        # The print already happened in.
+        # The print already happened in the shell; this only pops.
         _top(stack)
         return (stack[:-1], table, frames, error)
     if char == ",":
@@ -215,8 +215,8 @@ def _advance(state: _State, line: str | None = None) -> _State:
         sub = ")" if char == "(" else "]" if char == "[" else "}"
         found = _scan(frame, char, sub)
         if found is None:
-            # The scan walked to the end.
-            # left the cursor there before.
+            # The scan walked to the end without closing, and the original
+            # left the cursor there before aborting.
             ended = (stack, table, (*frames[:-1], _at(frame, len(frame.code))), error)
             return _abort(ended)
         scope, pc = found
@@ -236,8 +236,8 @@ def _advance(state: _State, line: str | None = None) -> _State:
             return _abort(state)
         two, one = stack[-1], stack[-2]
         rest = stack[:-2]
-        # Both operands are consumed.
-        # zero-divisor abort leaves the.
+        # Both operands are consumed before the divisor is tested, so a
+        # zero-divisor abort leaves the stack without them.
         popped = (rest, table, frames, error)
         if char == "+":
             return ((*rest, _wrap32(one + two)), table, frames, error)
@@ -253,7 +253,7 @@ def _advance(state: _State, line: str | None = None) -> _State:
             if two == 0:
                 return _abort(popped)
             return ((*rest, _wrap32(_trunc_mod(one, two))), table, frames, error)
-        # The arm admits only.
+        # The arm admits only ``+-*/%v`` and the other five are handled, so
         # this is ``v``: the swap.
         return ((*rest, two, one), table, frames, error)
     return state
@@ -275,9 +275,9 @@ class _Machine:
         self.stack: tuple[int, ...] = ()
         self.table: dict[int, str] = {}
         self.frames: tuple[_Frame, ...] = (_Frame(code),)
-        self.error = False  # the top-level scope aborted.
-        # Where the top-level frame.
-        # report a position after that.
+        self.error = False  # the top-level scope aborted (status 3)
+        # Where the top-level frame ends, kept because ``ip`` still has to
+        # report a position after that frame has been popped.
         self._length = len(code)
 
     @property
@@ -285,13 +285,13 @@ class _Machine:
         """Whether every scope has completed."""
         return not self.frames
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: a stack language with a frame stack and
     # no addressable cells.
 
-    # : ``ip`` is a position, but.
+    #: ``ip`` is a position, but not one on the source text: each live frame's pc,
     #: outermost first.
-    # : Declared rather than left.
-    # : classified is a missing.
+    #: Declared rather than left to the default so that a tuple nobody has
+    #: classified is a missing answer instead of this one.
     ip_shape = "opaque"
 
     @property
@@ -371,13 +371,13 @@ class _Machine:
         if frames and frames[-1].pc < len(frames[-1].code):
             char = frames[-1].code[frames[-1].pc]
 
-        # The cursor moves past the.
-        # the original had already.
-        # raised -- an empty stack, or.
-        # the advance up front.
-        # .
-        # A bracket walks further than.
-        # condition is tested, so a.
+        # The cursor moves past the command before the command runs, and
+        # the original had already written that when anything it did
+        # raised -- an empty stack, or the input port at EOF.  Committing
+        # the advance up front reproduces that for every route out.
+        #
+        # A bracket walks further than one place: its scan runs before the
+        # condition is tested, so a raise afterwards leaves the cursor past
         # the whole body.
         stack, table, frames, error = state
         if frames and frames[-1].pc < len(frames[-1].code):

@@ -95,13 +95,13 @@ class TestStepMachine:
 
         machine = _Machine("+.@", ScriptedIO())
         assert (machine.ind, machine.ptr, machine.cells) == (0, 0, (43, 46, 64))
-        machine.step()  # + sets the cell.
+        machine.step()  # + sets the cell
         assert machine.cells == (44, 46, 64)
-        machine.step()  # .
+        machine.step()  # . prints it
         assert machine.io.getvalue() == ","
-        machine.step()  # @ halts.
+        machine.step()  # @ halts
         assert machine.halted
-        machine.step()  # stepping a halted machine is.
+        machine.step()  # stepping a halted machine is a no-op
         assert machine.ind == 2
 
     def test_move_right(self) -> None:
@@ -186,8 +186,8 @@ class TestStepMachine:
         from esolangs.interpreters.tape_based.circlefuck import _Machine
 
         machine = _Machine("+{+.@", ScriptedIO())
-        machine.step()  # + raises cell 0.
-        machine.step()  # { inserts a zero before it.
+        machine.step()  # + raises cell 0
+        machine.step()  # { inserts a zero before it and steps past both
         assert machine.ind == 3
         assert machine.cells == (0, 44, 123, 43, 46, 64)
 
@@ -208,9 +208,9 @@ class TestStepMachine:
         before = machine.state
         assert before == (0, 0, (43, 46, 64), False)
 
-        machine.step()  # + raises cell 0 from 43 to 44.
+        machine.step()  # + raises cell 0 from 43 to 44
         assert machine.state == (1, 0, (44, 46, 64), False)
-        # The earlier reading is a.
+        # The earlier reading is a copy, so the write did not reach it.
         assert before == (0, 0, (43, 46, 64), False)
 
     def test_delete_last_cell_halts(self) -> None:
@@ -221,8 +221,8 @@ class TestStepMachine:
 
         with pytest.raises(HaltError):
             run_and_capture("}")
-        # a pop that would leave the.
-        # leaking an IndexError.
+        # a pop that would leave the pointer out of bounds wraps instead of
+        # leaking an IndexError
         with pytest.raises(HaltError):
             run_and_capture("<}}@")
 

@@ -98,10 +98,10 @@ import sys
 
 from esolangs.interpreters.io import IO
 
-# : The whole run state as a.
-# : real language's is bigger.
-# : but it stays a *value*, so.
-# : transition below can return.
+#: The whole run state as a value: the code cursor and the data cell.  A
+#: real language's is bigger -- a tape, a stack, a grid and a pointer --
+#: but it stays a *value*, so that ``snapshot`` can hand it out and the
+#: transition below can return a new one rather than editing one in place.
 type _State = tuple[int, int]
 
 
@@ -121,13 +121,13 @@ def _advance(
     ind, data = state
     c = code[ind]
     out = None
-    if c == "+":  # placeholder: increment the.
+    if c == "+":  # placeholder: increment the data cell
         data = (data + 1) % 256
-    elif c == ".":  # placeholder: print the data.
+    elif c == ".":  # placeholder: print the data cell
         out = chr(data)
-    elif c in ",;" and byte is not None:  # store the byte the shell read.
+    elif c in ",;" and byte is not None:  # store the byte the shell read
         data = byte
-    # add the language's real.
+    # add the language's real instructions here
     return (ind + 1, data), out
 
 
@@ -162,8 +162,8 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # Every field ``step`` can.
-        # that ignores consumed input.
+        # Every field ``step`` can change, plus the input cursor: a repeat
+        # that ignores consumed input is not a real cycle.
         return (self.ind, self.data, self.io.position())
 
     def step(self) -> None:
@@ -180,24 +180,24 @@ class _Machine:
         """
         c = self.code[self.ind]
 
-        # A read is decided from the.
-        # before the transition, which.
+        # A read is decided from the command about to run, and taken
+        # before the transition, which receives the byte as an argument.
         byte = None
         if c == ",":
             byte = self.io.input_char()
         elif c == ";":
-            # ``input_char`` handles the.
-            # ``input_str`` hands back the.
-            # (the user pressed Enter), so.
-            # Enter is an IndexError.
-            # different case, and still.
+            # ``input_char`` handles the empty line itself, but
+            # ``input_str`` hands back the raw line: an empty one is legal
+            # (the user pressed Enter), so guard before indexing or a bare
+            # Enter is an IndexError.  Running out of input is the
+            # different case, and still raises EOFError.
             val = self.io.input_str()
             byte = ord(val[0]) if val else None
 
         self._state, out = _advance(self._state, self.code, byte)
 
-        # A write reports what the.
-        # transition itself performs no.
+        # A write reports what the transition decided to print; the
+        # transition itself performs no output.
         if out is not None:
             self.io.print_char(out)
 

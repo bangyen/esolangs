@@ -1,21 +1,42 @@
-r"""One tiny program per registry language, and the stdin it needs."""
+"""One tiny program per registry language, and the stdin it needs.
 
-# The corrected Inject truth.
-# tests: the mutation bundle.
-# importing the program from.
-# mutant ran.
+The per-language test files each grew their own copy of the same protocol
+checks -- a snapshot can be hashed, a step past the halt is a no-op,
+stepping to completion matches ``run``, and a halting program is proven to
+halt.  Those checks say nothing about the language; they say that the
+language's adapter honours the VM protocol.  Written once per file they
+are sixty-odd near-identical bodies differing only in which ``_Machine``
+to import and which program to hand it -- the shape a table plus a sweep
+replaces.
+
+:data:`SAMPLES` is that table: for every name in
+:data:`~esolangs.registry.RUNNERS`, the smallest program that reaches the
+language's halt, and the stdin it reads on the way (``""`` for the ones
+that read nothing).  The programs are *tiny* deliberately -- a generated
+one is the wrong input here, since the sweep runs each entry to completion
+and some languages take tens of thousands of steps.
+
+``TestSamplesCoverEveryLanguage`` locks the table against the registry, so
+a language added without an entry fails there rather than being silently
+skipped.
+"""
+
+# The corrected Inject truth machine lives beside the interpreter's own
+# tests: the mutation bundle does not inline this module, so a test file
+# importing the program from here would fail collection there before any
+# mutant ran.  Defined there, imported here.
 from tests.interpreters.test_inject import INJECT_TRUTH_MACHINE
 
-# The wiki's street shape: a.
-# southern lane, walled all.
-# the CPth cell, ``O`` prints.
+# The wiki's street shape: a two-wide road with the instructions in the
+# southern lane, walled all round.  ``C`` starts the car, ``^`` increments
+# the CPth cell, ``O`` prints it, ``;`` halts.
 STREETCODE = "+-----+\n|     |\n|C^^O;|\n+-----+"
 
-# The same street, writing.
-# CP right without touching the.
+# The same street, writing cells 0 and 2 and stepping over cell 1: "=" moves
+# CP right without touching the cell it leaves.
 STREETCODE_GAP = "+------+\n|      |\n|C^==^;|\n+------+"
 
-# The wiki's truth machine:.
+# The wiki's truth machine: read a bit, and on 0 print it once and halt.
 FLOWCHART_TRUTH_MACHINE = "\n".join(
     [
         "       ( )──┐        ",
@@ -27,7 +48,7 @@ FLOWCHART_TRUTH_MACHINE = "\n".join(
     ]
 )
 
-# The wiki's cat: the upper.
+# The wiki's cat: the upper loop reads bits onto a deque, the lower pops
 # them back off and prints them.
 FLOWCHART_CAT = "\n".join(
     [
@@ -48,8 +69,8 @@ FLOWCHART_CAT = "\n".join(
     ]
 )
 
-# The wiki's prime tester,.
-# gates whose output bit is set.
+# The wiki's prime tester, repaired: a four-bit input port drives a tree of
+# gates whose output bit is set for exactly the primes below 16.
 CIRCUIT_PRIME_TESTER = "\n".join(
     [
         "       .~..",
@@ -69,38 +90,38 @@ CIRCUIT_PRIME_TESTER = "\n".join(
 
 
 def bits_of(value: int) -> str:
-    r"""Return ``value`` as four input lines, most significant bit first."""
+    """Return ``value`` as four input lines, most significant bit first."""
     return "\n".join(format(value, "04b")) + "\n"
 
 
-# Languages whose ``run``.
-# Their interpreters end.
-# one more ``machine.step()``.
-# the halt writes what run.
-# no-op step is the second one.
-# .
-# This is a fact about the.
-# to learn it: each of the.
-# ``dumps_on_the_post_halt_step.
-# :attr:`esolangs.vm.VM.dumps_on.
-# mechanism.
-# .
-# **Do not derive this set from.
-# and reading the attribute.
-# reason not to:.
-# compares the declaration.
-# its halt and stepping once.
-# flag in both directions.
-# flag to itself, so a language.
-# keep a trait nobody rechecked.
-# .
-# Parsing the interpreters for.
-# dump sites are uniform (all.
-# the *timing* is not visible.
-# guarded ``step`` and is.
-# is external and its.
-# this answer without building.
-# any more cheaply than the.
+# Languages whose ``run`` writes its output on the step *after* the halt.
+# Their interpreters end ``while not machine.halted: machine.step()`` with
+# one more ``machine.step()`` to dump the final registers, so "stepping to
+# the halt writes what run writes" is false for them by design, and the
+# no-op step is the second one past the halt, not the first.
+#
+# This is a fact about the language, so a caller does not have to come here
+# to learn it: each of the seven declares
+# ``dumps_on_the_post_halt_step = True`` on its ``_Machine``, and
+# :attr:`esolangs.vm.VM.dumps_on_the_post_halt_step` reports it -- the same
+# mechanism ``reproducible_seed`` uses, for the same reason.
+#
+# **Do not derive this set from that flag.**  Importing every ``_Machine``
+# and reading the attribute reproduces these names exactly, which is the
+# reason not to: ``test_the_dump_convention_matches_what_the_vm_reports``
+# compares the declaration against the *behaviour*, driving a machine to
+# its halt and stepping once more, and it compares this set against the
+# flag in both directions.  A derived set would make that test compare the
+# flag to itself, so a language whose dump moved back into ``run`` would
+# keep a trait nobody rechecked.  The duplication is the check.
+#
+# Parsing the interpreters for the shape instead does not work either: the
+# dump sites are uniform (all seven guard on the halt inside ``step``) but
+# the *timing* is not visible in that shape -- A Painter Ant has the same
+# guarded ``step`` and is deliberately absent here, because ``interrupt``
+# is external and its ``halted`` is always False.  The sweep also needs
+# this answer without building a machine, which an AST pass would not give
+# any more cheaply than the import does.
 DUMPS_ON_THE_POST_HALT_STEP = frozenset(
     {
         "Minsky Swap",
@@ -113,47 +134,47 @@ DUMPS_ON_THE_POST_HALT_STEP = frozenset(
     }
 )
 
-# Languages with no self-halt.
-# outside and a VM stepped on.
-# protocol is wrong here --.
-# to, so these are carried for.
-# .
-# Each of the two declares.
-# :attr:`esolangs.vm.VM.self_hal.
-# obvious ``while not.
-# How each one is stopped from.
-# is where the machine that.
-# reasons the one above does,.
-# ``test_the_halting_convention_.
-# against the traits in both.
+# Languages with no self-halt at all: ``esolangs.run`` stops them from
+# outside and a VM stepped on its own runs forever.  Nothing about the VM
+# protocol is wrong here -- there is simply no halt for a sweep to drive
+# to, so these are carried for the checks that do not need one.
+#
+# Each of the two declares ``self_halts = False`` on its ``_Machine``, and
+# :attr:`esolangs.vm.VM.self_halts` reports it, so a caller writing the
+# obvious ``while not vm.halted: vm.step()`` can ask instead of hanging.
+# How each one is stopped from outside is recorded next to the trait, which
+# is where the machine that does it lives.  The set stays for the same two
+# reasons the one above does, and
+# ``test_the_halting_convention_matches_what_the_vm_reports`` locks it
+# against the traits in both directions.
 NEVER_SELF_HALTS = frozenset({"A Painter Ant", "Suffolk"})
 
-# Languages whose ``step()``.
-# machine, rather than.
-# .
-# This set is kept, empty,.
-# once held nine languages --.
-# Modulous, Point Break, Qoibl,.
-# indexed off the end of its.
-# fifteen hand-written copies.
-# happened to cover none of.
-# because the check was written.
-# .
-# All nine now carry the ``if.
-# interpreters already had.
-# _recorded`` compares this set.
-# directions, so a language.
-# rejoining a list nobody.
+# Languages whose ``step()`` raises when called on an already-halted
+# machine, rather than returning without doing anything.
+#
+# This set is kept, empty, because it is what holds the fix in place.  It
+# once held nine languages -- brainfuck, Eval, Factor, Dimensional,
+# Modulous, Point Break, Qoibl, S*bleq and Grapheme -- each of which
+# indexed off the end of its own program when stepped past its halt.  The
+# fifteen hand-written copies of ``test_step_after_halt_is_a_noop``
+# happened to cover none of them, so the inconsistency survived precisely
+# because the check was written per file instead of swept.
+#
+# All nine now carry the ``if self.halted: return`` guard the other fifty
+# interpreters already had.  ``test_the_post_halt_step_raises_only_where
+# _recorded`` compares this set against what actually raises, in both
+# directions, so a language that regressed would fail rather than quietly
+# rejoining a list nobody rechecks.
 RAISES_ON_THE_POST_HALT_STEP: frozenset[str] = frozenset()
 
-# LaserFuck's ``run`` draws the.
-# is not pinned, so its output.
-# cannot be compared against a.
-# ``test_dump_output_matches_int.
-# sides with the same heading;.
+# LaserFuck's ``run`` draws the laser's initial heading at random when it
+# is not pinned, so its output is not a function of the program alone and
+# cannot be compared against a separately-built VM.  ``test_vm.py``'s
+# ``test_dump_output_matches_interpreter`` handles this by building both
+# sides with the same heading; the sweep just leaves the comparison to it.
 NONDETERMINISTIC_AGAINST_RUN = frozenset({"LaserFuck"})
 
-# language -> (program, stdin).
+# language -> (program, stdin)
 SAMPLES: dict[str, tuple[str, str]] = {
     "123": ("3231", ""),
     "3D Brainfuck": ("+.", ""),
@@ -183,12 +204,12 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Circuit Diagram": (CIRCUIT_PRIME_TESTER, bits_of(7)),
     "Clockwise": ("+;S;S;S;S;S;+;R\nR             R", ""),
     "Collatz Multiverse": ("x = negativeOne x + negativeOne, DO PRINT.", ""),
-    # Every Container program with.
-    # VM test asserts exactly that.
-    # is the one that reaches a.
+    # Every Container program with a container in it runs forever (its own
+    # VM test asserts exactly that of "A=0:\n+1 A>=0"); the empty program
+    # is the one that reaches a halt.
     "Container": ("", ""),
-    # The wiki's truth machine,.
-    # branch loops forever, so the.
+    # The wiki's truth machine, which halts only on a zero: the "1"
+    # branch loops forever, so the halting input is the one to sweep.
     "CV(N)(C)": ("soθɰ̊oθʋi", "0\n"),
     "Decleq": ("-2 5 9 9 9 65 0 0", ""),
     "Dig": (">$5:\n 2 ", ""),
@@ -203,8 +224,8 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "function x(y)": ("function f()\n[[~]]", "a\n"),
     "Grapheme": ("FAFY", ""),
     "Home Row": ("ak;", ""),
-    # A corrected truth machine.
-    # interpreter's module.
+    # A corrected truth machine (the wiki's own is inverted -- see the
+    # interpreter's module docstring), on the input that halts: the "1"
     # branch loops forever.
     "Inject": (INJECT_TRUTH_MACHINE, "0\n"),
     "Interprogck8": ("nNnN\ndiv", ""),

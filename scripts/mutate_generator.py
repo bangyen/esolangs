@@ -93,19 +93,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-# Test-support modules the.
-# ``tests.interpreters.runner``.
-# interpreters through, so a.
-# ``tests.raises`` is a helper.
-# .
-# ``tests.raises`` was missing.
-# keeping: every suite in.
-# there, but.
-# suite failed to import and.
-# is the reason this cost.
-# support module fails.
-# ``tests/tools`` a silently.
-# generators against the.
+# Test-support modules the suites import that are not themselves tests.
+# ``tests.interpreters.runner`` is what ``boolean_runners`` drives the
+# interpreters through, so a generator's output can be executed, and
+# ``tests.raises`` is a helper the generator suites import at module scope.
+#
+# ``tests.raises`` was missing once, and the way it surfaced is worth
+# keeping: every suite in ``tests/tools`` is copied, so the *file* was
+# there, but ``tests/raises.py`` sits one level up and was not -- so the
+# suite failed to import and the baseline gate stopped the run.  That gate
+# is the reason this cost minutes rather than a wrong number: a missing
+# support module fails collection, and with ``tests_dir`` pointing at
+# ``tests/tools`` a silently uncollected suite would have scored its
+# generators against the remaining ones alone.
 _TOOLS_SUPPORT = (
     Path("tests/__init__.py"),
     Path("tests/raises.py"),
@@ -113,11 +113,11 @@ _TOOLS_SUPPORT = (
     Path("tests/interpreters/runner.py"),
 )
 
-# The root suites' own reach.
-# wholesale by the layout, so.
-# along on their own; what does.
-# ``samples`` imports a truth.
-# which is why one of those is.
+# The root suites' own reach outside ``tests/``.  ``tests/*.py`` is copied
+# wholesale by the layout, so ``samples``, ``raises`` and ``conftest`` come
+# along on their own; what does not is the subpackage they reach into --
+# ``samples`` imports a truth machine out of an interpreter's *test* file,
+# which is why one of those is here rather than only its helpers.
 _CORE_SUPPORT = (
     Path("tests/interpreters/__init__.py"),
     Path("tests/interpreters/runner.py"),
@@ -153,15 +153,15 @@ class _Kind:
         skip_tests: frozenset[str] = frozenset(),
     ) -> None:
         self.name = name
-        self.pkg_rel = pkg_rel  # under src/esolangs, e.g.
-        self.tests_rel = tests_rel  # e.g.
+        self.pkg_rel = pkg_rel  # under src/esolangs, e.g. "tools/boolean"
+        self.tests_rel = tests_rel  # e.g. "tests/tools"
         self.support = support
-        # Whether the suite reaches.
+        # Whether the suite reaches scripts/.
         self.needs_scripts = needs_scripts
-        # Suites that cannot run.
-        # they anchor to the.
-        # importable.
-        # no exceptions is the goal,.
+        # Suites that cannot run against a *copy* of the package, because
+        # they anchor to the repository's own layout rather than to what is
+        # importable.  Kept as small and as named as possible: a glob with
+        # no exceptions is the goal, and every name here owes a reason.
         self.skip_tests = skip_tests
 
     @property
@@ -177,9 +177,9 @@ class _Kind:
 
     def dotted(self, module: str) -> str:
         """Return the dotted module name a target resolves to."""
-        # An empty ``pkg_rel`` is the.
-        # the rest of the top-of-stack.
-        # would ask for.
+        # An empty ``pkg_rel`` is the package root itself, where ``vm`` and
+        # the rest of the top-of-stack modules live; joining it blindly
+        # would ask for ``esolangs..vm``.
         parts = ["esolangs", *self.pkg_rel.split("/"), module]
         return ".".join(part for part in parts if part)
 
@@ -189,59 +189,59 @@ class _Kind:
         return "/".join(part for part in parts if part)
 
 
-# Keyed by the name the CLI.
+# Keyed by the name the CLI takes.
 _KINDS = {
     "boolean": _Kind("boolean", "tools/boolean", "tests/tools", _TOOLS_SUPPORT),
-    # The modules directly under.
-    # package -- ``wrap`` and the.
-    # files, so the ``boolean``.
+    # The modules directly under ``esolangs.tools`` rather than in a family
+    # package -- ``wrap`` and the layout helpers.  The glob picks up only
+    # files, so the ``boolean`` subpackage is not swept in twice.
     "tools": _Kind("tools", "tools", "tests/tools", _TOOLS_SUPPORT),
-    # The package root: ``vm``,.
-    # .
-    # These are the modules.
-    # *bundle* -- an interpreter.
-    # dependency-closed file -- and.
-    # interpreter into the VM or.
-    # sit at the top of that stack.
-    # would mean inlining the.
+    # The package root: ``vm``, ``debug``, ``tui``, ``cli``, ``registry``.
+    #
+    # These are the modules ``mutate_one`` cannot reach.  It mutates a
+    # *bundle* -- an interpreter inlined with its shared modules into one
+    # dependency-closed file -- and says so: tests that reach past the
+    # interpreter into the VM or the registry cannot run against one.  These
+    # sit at the top of that stack rather than at a leaf, so bundling one
+    # would mean inlining the package.  Not bundling is exactly what this
     # harness already does.
-    # .
-    # They satisfy the same two.
-    # imports cleanly on its own,.
-    # docstring warns about fires.
-    # ``paths_to_mutate``, which is.
+    #
+    # They satisfy the same two preconditions as the other kinds: each
+    # imports cleanly on its own, and the import-time trampoline the
+    # docstring warns about fires only for a module named in
+    # ``paths_to_mutate``, which is one target at a time.
     "core": _Kind(
         "core",
         "",
         "tests",
         _CORE_SUPPORT,
-        # One suite reads the.
-        # ``test_interpreter_conventions.
-        # as a directory to ask a.
-        # copied tree does not have and.
-        # .
-        # The README-reading suites are.
-        # instead -- see the symlink in.
-        # them check that the README.
-        # target of this kind.
-        # measuring the thing they.
-        # These are the root suite's.
-        # a class rather than a list of.
-        # about the checkout -- the.
-        # package is declared, that.
-        # and a copied work directory.
-        # no ``core`` module, and.
-        # temporary directory into a.
-        # .
-        # The suites that merely *read*.
-        # those are given the file,.
-        # subject is the file or the.
-        # ``test_answer_plumbing`` is.
-        # worth keeping separate: it.
-        # millisecond bound, and this.
-        # for the stats pass and.
-        # A wall-clock margin measured.
-        # that, and a timing flake.
+        # One suite reads the *repository* rather than the package:
+        # ``test_interpreter_conventions`` walks ``src/esolangs/interpreters``
+        # as a directory to ask a question about source shape, which the
+        # copied tree does not have and which covers no ``core`` module.
+        #
+        # The README-reading suites are *not* here.  They are given the file
+        # instead -- see the symlink in ``_prepare`` -- because several of
+        # them check that the README documents the CLI, and ``cli`` is a
+        # target of this kind.  Skipping them would have quietly stopped
+        # measuring the thing they cover.
+        # These are the root suite's *repository* meta-tests, and they are
+        # a class rather than a list of accidents: each asserts something
+        # about the checkout -- the shape of the interpreter tree, how the
+        # package is declared, that every test a docstring cites exists --
+        # and a copied work directory is none of those things.  They cover
+        # no ``core`` module, and linking a file or two cannot make a
+        # temporary directory into a repository.
+        #
+        # The suites that merely *read* a repository file are not here;
+        # those are given the file, above.  The difference is whether the
+        # subject is the file or the checkout.
+        # ``test_answer_plumbing`` is here for a different reason and it is
+        # worth keeping separate: it times a termination proof against a
+        # millisecond bound, and this harness runs its suite under tracing
+        # for the stats pass and alongside three other mutants after it.
+        # A wall-clock margin measured on an idle machine does not survive
+        # that, and a timing flake would be scored as a kill.
         skip_tests=frozenset(
             {
                 "test_interpreter_conventions.py",
@@ -255,41 +255,41 @@ _KINDS = {
 
 _FAMILIES = tuple(_KINDS)
 
-# The per-test alarm turns a.
-# fails it.
-# ``(estimate + 1) * 30``.
-# of a second.
-# that RLIMIT, which is what.
-# every suite in tests/tools,.
-# minute-long baseline would.
-# alarm that looks like.
-# direction: failing a.
-# earned, which is worse than.
-# measured, not guessed: over.
-# deselected, 2135 tests run in.
-# 20s is nearly seven times the.
-# RLIMIT.
-# bound to hold -- see.
-# ceiling is dropped rather.
+# The per-test alarm turns a mutant that *hangs* the suite into one that
+# fails it.  Both are kills, but a hang costs mutmut's whole
+# ``(estimate + 1) * 30`` CPU-second RLIMIT where a failure costs a fraction
+# of a second.  Paying off therefore requires the alarm to come in under
+# that RLIMIT, which is what the ceiling is for: the baseline here covers
+# every suite in tests/tools, so ``elapsed * _ALARM_FACTOR`` off a
+# minute-long baseline would sit far above the limit and never fire -- an
+# alarm that looks like protection and is dead code.  The floor is the other
+# direction: failing a slow-but-passing test reports a kill no mutation
+# earned, which is worse than an alarm that rarely fires.  The ceiling is
+# measured, not guessed: over the whole of tests/tools with the slow tests
+# deselected, 2135 tests run in 39s and the slowest single one is 2.98s, so
+# 20s is nearly seven times the worst case while staying well under the
+# RLIMIT.  The slow tests have to be deselected in configuration for that
+# bound to hold -- see :func:`_pytest_args` -- so under ``--slow`` the
+# ceiling is dropped rather than applied to tests it was not measured over.
 _ALARM_FACTOR = 10.0
 _MIN_ALARM = 5.0
 _MAX_ALARM = 20.0
 
-# How long the unmutated suite.
-# Higher than ``mutate_one``'s.
-# whole boolean corpus for that.
+# How long the unmutated suite may take before the run is called stuck.
+# Higher than ``mutate_one``'s 120s: a generator's selected suites are the
+# whole boolean corpus for that family, where an interpreter's was one file.
 _BASELINE_TIMEOUT = 600.0
 
-# Below this share of mutants.
-# than reported -- the mutants.
-# ``mutate_one``: a suite worth.
+# Below this share of mutants killed, the run is treated as broken rather
+# than reported -- the mutants did not run.  Same reasoning as
+# ``mutate_one``: a suite worth mutating does not miss nine mutants in ten.
 _MIN_KILL_RATE = 0.1
 
 
-# Modules in a family package.
-# re-export surface and.
-# holds generation logic worth.
-# here: it is shared machinery.
+# Modules in a family package that are not generators.  ``__init__`` is the
+# re-export surface and ``__main__`` a ``python -m`` entry point; neither
+# holds generation logic worth a mutant.  ``helpers`` is deliberately *not*
+# here: it is shared machinery the output depends on, so it is a real
 # target.
 _NON_TARGETS = frozenset({"__init__", "__main__"})
 
@@ -378,7 +378,7 @@ def _test_files(kind: _Kind) -> list[str]:
     )
 
 
-# A decorator line on a class,.
+# A decorator line on a class, and the class statement it applies to.
 _DECORATED_CLASS = re.compile(
     r"^(?P<decorators>(?:@[^\n(]+(?:\([^\n]*\))?\n)+)class (?P<name>\w+)", re.M
 )
@@ -417,16 +417,16 @@ def _undecorate_classes(target: Path) -> list[str]:
     if not moved:
         return []
 
-    # The rewrite only works for a.
-    # is still importing.
-    # that constructs one has.
-    # ``registry.py`` builds.
-    # fails with "Language() takes.
-    # what went wrong.
-    # .
-    # Moving the calls up to each.
-    # problem: a decorator naming.
-    # then run before that class.
+    # The rewrite only works for a class the module does not *use* while it
+    # is still importing.  The calls below go at the end, so a module body
+    # that constructs one has already run against the undecorated class --
+    # ``registry.py`` builds ``LANGUAGES`` out of ``Language(...)`` and
+    # fails with "Language() takes no arguments", which says nothing about
+    # what went wrong.  Refuse with the reason instead.
+    #
+    # Moving the calls up to each class body would trade this for a worse
+    # problem: a decorator naming another class in the same module would
+    # then run before that class exists.
     built = {entry.split(" to ")[1] for entry in moved}
     for node in ast.parse(text).body:
         for inner in ast.walk(node):
@@ -443,8 +443,8 @@ def _undecorate_classes(target: Path) -> list[str]:
                     "This module's classes cannot be mutated by this harness."
                 )
 
-    # The calls go at the end of.
-    # defined, innermost decorator.
+    # The calls go at the end of the module, after every class body has been
+    # defined, innermost decorator first -- the order the syntax applies them.
     applied = "\n".join(
         f"{name} = {decorator}({name})"
         for entry in moved
@@ -531,11 +531,11 @@ if _budget and not _STATS_PASS:
             signal.setitimer(signal.ITIMER_REAL, 0)
 '''
 
-# mutmut parses each file into.
-# runs in spawned children on.
-# interpreter startup, which is.
-# The generator modules are.
-# lines), so this matters more.
+# mutmut parses each file into an AST to build its mutants, and the parsing
+# runs in spawned children on macOS -- so the limit has to be raised at
+# interpreter startup, which is what a sitecustomize on PYTHONPATH does.
+# The generator modules are much larger than an interpreter (%^2^-1 is 3337
+# lines), so this matters more here than it did there.
 _SITECUSTOMIZE = "import sys\n\nsys.setrecursionlimit(50000)\n"
 
 
@@ -594,46 +594,46 @@ def _prepare(
     tests = _test_files(kind)
     tools = proj / kind.tests_rel
     tools.mkdir(parents=True, exist_ok=True)
-    # Every module in the test.
-    # suites: the ones that are not.
-    # import (``boolean_runners``,.
-    # missing one fails collection.
+    # Every module in the test directory is copied, not just the selected
+    # suites: the ones that are not tests are helpers the selected suites
+    # import (``boolean_runners``, the APA trace and proof checkers), and a
+    # missing one fails collection rather than a mutant.
     for path in kind.tests_dir.glob("*.py"):
-        # A skipped suite is left out.
-        # merely unselected.
-        # *directory*, so a file that.
-        # it however carefully the.
-        # failed stats pass scores.
+        # A skipped suite is left out of the tree entirely rather than
+        # merely unselected.  mutmut's stats pass is configured with the
+        # *directory*, so a file that cannot run here would be collected by
+        # it however carefully the runner command names the others -- and a
+        # failed stats pass scores every mutant zero.
         if path.name in kind.skip_tests:
             continue
         shutil.copy(path, tools / path.name)
     (tools / "conftest.py").write_text(_CONFTEST)
 
-    # Several suites read a shipped.
-    # fixtures.
-    # lands in proj for the.
-    # so both need the link.
+    # Several suites read a shipped example, and the APA checkers read the
+    # fixtures.  Both are resolved relative to the test file's parents, which
+    # lands in proj for the baseline and in mutants/ for the mutation runs --
+    # so both need the link.  Link rather than copy: nothing here is mutated.
     for base in (proj, proj / "mutants"):
         base.mkdir(parents=True, exist_ok=True)
         (base / "examples").symlink_to(ROOT / "examples")
-        # A suite that reaches scripts/.
-        # file's parents, which lands.
-        # mutmut chdirs into mutants/.
-        # run, so the link has to exist.
-        # copied: nothing under.
+        # A suite that reaches scripts/ resolves it relative to the test
+        # file's parents, which lands in the work dir rather than the repo.
+        # mutmut chdirs into mutants/ for the stats pass and every mutant
+        # run, so the link has to exist under both roots.  Linked, not
+        # copied: nothing under scripts/ is mutated.
         if kind.needs_scripts and not (base / "scripts").exists():
             (base / "scripts").symlink_to(ROOT / "scripts")
-        # Several root suites check.
-        # does, resolving it from the.
-        # Linking it is better than.
-        # they cover ``cli``, which is.
-        # .
-        # ``pyproject.toml`` is.
-        # worth keeping: this harness.
-        # ``proj/pyproject.toml``, so a.
-        # through into the repository's.
-        # the real ``pyproject.toml``.
-        # wanted it is skipped below.
+        # Several root suites check that the README documents what the CLI
+        # does, resolving it from the test file's parents the same way.
+        # Linking it is better than skipping those suites: they run, and
+        # they cover ``cli``, which is a target of this kind.
+        #
+        # ``pyproject.toml`` is deliberately *not* linked, and the reason is
+        # worth keeping: this harness writes its mutmut configuration to
+        # ``proj/pyproject.toml``, so a symlink there is a write straight
+        # through into the repository's own file.  Linking it once replaced
+        # the real ``pyproject.toml`` with a mutmut config.  The suite that
+        # wanted it is skipped below instead.
         if not (base / "README.md").exists():
             (base / "README.md").symlink_to(ROOT / "README.md")
     (proj / "tests" / "fixtures").symlink_to(ROOT / "tests" / "fixtures")
@@ -648,28 +648,28 @@ def _prepare(
         )
 
     runner = _runner_command(kind, tests)
-    # In addopts rather than in the.
-    # stats pass -- which supplies.
+    # In addopts rather than in the runner's arguments, so that mutmut's
+    # stats pass -- which supplies its own -- deselects these too.
     addopts = "" if slow else 'addopts = ["-m", "not slow"]\n'
     (proj / "pyproject.toml").write_text(
         "[tool.mutmut]\n"
         f'paths_to_mutate = ["{rel_target}"]\n'
-        # mutmut copies only what it.
-        # the package and the tests.
-        # every mutant dies on an.
+        # mutmut copies only what it mutates into mutants/, so the rest of
+        # the package and the tests have to be carried across explicitly or
+        # every mutant dies on an import the baseline resolves fine.
         'also_copy = ["esolangs/", "tests/"]\n'
         "backup = false\n"
         f'runner = "{runner}"\n'
-        # The kind's own directory.
-        # pass collects this path.
-        # wider path sweeps in tests.
+        # The kind's own directory rather than ``tests``.  mutmut's stats
+        # pass collects this path ignoring the runner's own arguments, so a
+        # wider path sweeps in tests that cannot resolve from the work
         # directory.
         f'tests_dir = ["{kind.tests_rel}"]\n'
         "\n"
-        # The work dir has its own.
-        # does not apply and the.
-        # -- ``--strict-markers`` is.
-        # mark still warns on every one.
+        # The work dir has its own pyproject, so the repo's pytest config
+        # does not apply and the markers the suites use must be re-declared
+        # -- ``--strict-markers`` is not in force here, but an unregistered
+        # mark still warns on every one of thousands of mutant runs.
         "[tool.pytest.ini_options]\n"
         "markers = [\n"
         '    "slow: marks tests as slow",\n'
@@ -707,9 +707,9 @@ def _check_shadowing(proj: Path, family: str, module: str) -> None:
     )
     if got.returncode != 0:
         raise SystemExit(f"could not import {dotted} from the work dir:\n{got.stderr}")
-    # Both sides are resolved.
-    # is handed out as ``/var/...``.
-    # which compares unequal while.
+    # Both sides are resolved before comparing: on macOS the temp directory
+    # is handed out as ``/var/...`` and reported back as ``/private/var/...``,
+    # which compares unequal while naming the same file.
     resolved = Path(got.stdout.strip()).resolve()
     if not resolved.is_relative_to(proj.resolve()):
         raise SystemExit(
@@ -798,12 +798,12 @@ def main() -> int:
             print(baseline.stdout[-3000:])
             raise SystemExit("the selected tests fail before any mutation")
 
-        # The ceiling is derived from.
-        # it only applies while the.
-        # ``--slow`` they are not, and.
-        # tests the flag asks for --.
-        # under mutmut's tracing.
-        # is what ``mutate_one`` does.
+        # The ceiling is derived from the fast suite's worst single test, so
+        # it only applies while the slow tests are deselected.  Under
+        # ``--slow`` they are not, and capping at 20s would fail the very
+        # tests the flag asks for -- the 4s Minifuck build runs far longer
+        # under mutmut's tracing.  There the budget is left uncapped, which
+        # is what ``mutate_one`` does at every run.
         budget = max(_MIN_ALARM, elapsed * _ALARM_FACTOR)
         if not args.slow:
             budget = min(_MAX_ALARM, budget)
@@ -823,12 +823,12 @@ def main() -> int:
             check=False,
         )
 
-        # mutmut reports a failed stats.
-        # it still leaves a complete.
-        # initial 0 -- which scores as.
-        # the failure it is.
-        # case; this catches a partial.
-        # leaving a plausible-looking.
+        # mutmut reports a failed stats pass on stdout and exits nonzero, but
+        # it still leaves a complete ``.meta`` whose every exit code is the
+        # initial 0 -- which scores as "everything survived" rather than as
+        # the failure it is.  ``_MIN_KILL_RATE`` below catches the total
+        # case; this catches a partial one, and names the cause instead of
+        # leaving a plausible-looking percentage to be believed.
         if "failed to collect stats" in mutation.stdout:
             print(mutation.stdout[-3000:] or mutation.stderr[-3000:])
             raise SystemExit(
@@ -842,8 +842,8 @@ def main() -> int:
         if not total:
             raise SystemExit("no mutants were generated")
         if killed < total * _MIN_KILL_RATE:
-            # An exit code still at its.
-            # reported, which a suite that.
+            # An exit code still at its initial 0 means that mutant never
+            # reported, which a suite that passes its baseline cannot cause.
             print(mutation.stdout[-3000:] or mutation.stderr[-3000:])
             raise SystemExit(
                 f"only {killed} of {total} mutants killed with a passing "

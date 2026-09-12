@@ -42,15 +42,15 @@ from dataclasses import dataclass, field
 
 import png
 
-# One grid unit in output.
-# scale for a single straight.
+# One grid unit in output pixels.  The wiki's own images use roughly this
+# scale for a single straight run between kinks.
 _UNIT = 20
 
-# Cardinal headings as (dy, dx).
-# combine a heading with the.
-# they move one step forward.
-# true 45-degree kink measured.
-# middle run was `(-1, 1)` per.
+# Cardinal headings as (dy, dx) unit vectors in grid space.  Diagonal jogs
+# combine a heading with the perpendicular ("right"/"left") direction, so
+# they move one step forward *and* one step sideways at once -- matching the
+# true 45-degree kink measured from the wiki's images (e.g. the `+` opcode's
+# middle run was `(-1, 1)` per step: forward and right together), not two
 # separate orthogonal legs.
 _FORWARD = (1, 0)
 
@@ -100,37 +100,37 @@ def _rotate(d: tuple[int, int], heading: tuple[int, int]) -> tuple[int, int]:
     """Rotate a direction defined relative to "forward" onto ``heading``."""
     dy, dx = d
     hy, hx = heading
-    # Forward (1, 0) maps to.
+    # Forward (1, 0) maps to heading; right/left rotate along with it.
     ly, lx = _turn_left(heading)
     return hy * dy + ly * dx, hx * dy + lx * dx
 
 
-# Each opcode is a sequence of.
-# relative to the cursor's.
-# breakdown measured.
-# _UNIT-sized steps.
-# every one of.
-# template:.
-# .
-# * `+`/`-` (Lineanim4.png,.
-# sideways connector --.
-# diagonal leg's *length in.
-# 1: Lineanim6.png shows three.
-# 3 units long, not three.
-# measuring its diagonal run at.
-# and `_OPS["-"]` below are.
-# built by :func:`_op_segments`.
-# others -- see.
-# `count` from consecutive.
-# * `>`/`<`/`i`/`o`.
-# sideways* connector (no.
-# `_horiz_left`) bridging their.
-# distinguishes them from the.
-# diagonal leg than `>`/`<`.
-# than Lineanim7.png's by.
-# rows).
-# wiki example showing it, and.
-# kink even back-to-back with.
+# Each opcode is a sequence of (relative_direction, run_length) segments,
+# relative to the cursor's current heading, replaying the run-length
+# breakdown measured pixel-by-pixel from the wiki's own reference images at
+# _UNIT-sized steps.  Two distinct kink families, confirmed by measuring
+# every one of Lineanim4/5/6/7/8/10/11.png rather than assuming a shared
+# template:
+#
+# * `+`/`-` (Lineanim4.png, Lineanim5.png) are a single diagonal jog with no
+#   sideways connector -- `vertical(2) -> diagonal(1) -> vertical(2)`.  Their
+#   diagonal leg's *length in units is the run's opcode count*, not a fixed
+#   1: Lineanim6.png shows three consecutive `+` as one continuous diagonal
+#   3 units long, not three separate kinks stitched together (confirmed by
+#   measuring its diagonal run at exactly 3x a single `+`'s).  `_OPS["+"]`
+#   and `_OPS["-"]` below are therefore templates over a `count` parameter,
+#   built by :func:`_op_segments` rather than being a fixed list like the
+#   others -- see :func:`_Cursor.emit_op`, which is what actually supplies
+#   `count` from consecutive same-op runs in the node chain.
+# * `>`/`<`/`i`/`o` (Lineanim7/8/10/11.png) additionally have a short *pure
+#   sideways* connector (no forward motion at all -- see `_horiz_right`/
+#   `_horiz_left`) bridging their diagonal leg(s), which is what visually
+#   distinguishes them from the plain `+`/`-` kink; `i`/`o` have one more
+#   diagonal leg than `>`/`<` (confirmed: Lineanim10.png's path is taller
+#   than Lineanim7.png's by almost exactly one extra unit-diagonal's worth of
+#   rows).  Unlike `+`/`-`, repeats of these are never merged -- there is no
+#   wiki example showing it, and each is always drawn as its own fixed-size
+#   kink even back-to-back with an identical one.
 _OPS: dict[str, list[tuple[tuple[int, int], int]]] = {
     ">": [
         (_FORWARD, 2),
@@ -182,13 +182,13 @@ class _Cursor:
     heading: tuple[int, int]
     strokes: list[list[tuple[int, int]]] = field(default_factory=list)
     _current: list[tuple[int, int]] = field(default_factory=list)
-    # Every pixel any stroke has.
-    # being laid out -- shared by.
-    # cursor `branch()` creates.
-    # check a constructed loop-back.
-    # trunk, not just its own.
-    # occupancy tracking is off --.
-    # measuring dry runs, whose.
+    # Every pixel any stroke has drawn so far, across the *whole* program
+    # being laid out -- shared by reference among a cursor and every child
+    # cursor `branch()` creates from it, so `_layout`'s drift guard can
+    # check a constructed loop-back against ink from sibling arms and the
+    # trunk, not just its own cursor's strokes.  `None` (the default) means
+    # occupancy tracking is off -- the case for `_subtree_extent`'s
+    # measuring dry runs, whose construction is deterministic and needs no
     # guard.
     occupied: set[tuple[int, int]] | None = None
 
@@ -297,26 +297,26 @@ def chain(*ops: str) -> Node:
     return head
 
 
-# The only opcodes whose.
-# stretched kink rather than.
-# `_OPS` comment in this module.
-# there is no wiki example.
+# The only opcodes whose consecutive repeats visually merge into one
+# stretched kink rather than drawing separately, back to back (see the
+# `_OPS` comment in this module -- confirmed against Lineanim6.png, and
+# there is no wiki example showing merged >/</i/o).
 _MERGEABLE = {"+", "-"}
 
-# How many *grid cells* of.
-# itself and any unrelated.
-# One cell here is `_UNIT`.
-# works entirely in cursor-grid.
+# How many *grid cells* of empty space a loop-back's path must keep between
+# itself and any unrelated existing ink, beyond simply not overlapping it.
+# One cell here is `_UNIT` raster pixels of real separation, since layout
+# works entirely in cursor-grid space and `render` scales to pixels only
 # when rasterizing.
-# .
-# Non-overlap alone is not.
-# rasterize into one.
-# pixel to each side of its.
-# and an ordinary point becomes.
-# puts those off-centre rays.
-# `test_bf_to_line.py`'s.
-# abutting cells); at 1 none.
-# do not catch the difference.
+#
+# Non-overlap alone is not enough: two *abutting* strokes share no cell but
+# rasterize into one 2-cell-wide ribbon, and `lattice._band_lit` probes one
+# pixel to each side of its ray, so it reads the neighbour as a lit direction
+# and an ordinary point becomes a spurious 3-lit `"fork"`.  One cell of gap
+# puts those off-centre rays back on background.  At 0 every program in
+# `test_bf_to_line.py`'s `TestStrokeSeparation` develops adjacency (up to 76
+# abutting cells); at 1 none does, and the ordinary output-asserting suites
+# do not catch the difference -- see ``docs/line_tooling.md``.
 _CLEARANCE = 1
 
 
@@ -333,85 +333,85 @@ def _leg_cells(
     return cells
 
 
-# Length (in grid units) of the.
-# branch point.
-# `_RETURN_STEM_T` from the.
-# the landing diagonal fits.
+# Length (in grid units) of the stem `_layout` walks into a `?` node's own
+# branch point.  A loop-back lands strictly inside this run (at
+# `_RETURN_STEM_T` from the vertex), so the stem must be long enough that
+# the landing diagonal fits between its two real vertices.
 _STEM_LEN = 10
 
 
-# Length of a loop-back's final.
-# 6 here is 120 raster pixels,.
+# Length of a loop-back's final *diagonal* landing leg, in *grid cells* (so
+# 6 here is 120 raster pixels, comfortably longer than `lattice.star`'s own
 # 15px probe).
-# .
-# The diagonal arrival is.
-# return path is cardinal, and.
-# run, so a cardinal final.
-# stem -- and a perpendicular.
-# arrival direction plus the.
-# signature `lattice._classify`.
-# then read the loop-back merge.
-# execute the reconnection as a.
-# diagonally lights that same.
-# to it, which `_classify`.
-# what `simulate._compile`'s.
-# matches how the wiki's own.
-# loop-body arm arrives at its.
-# .
-# Being *longer* than the probe.
-# probe must find a full,.
-# merge point lights that third.
-# `"merge"`.
-# reading only the stem's own.
-# bend, which the walker sails.
+#
+# The diagonal arrival is required. Every other leg of a
+# return path is cardinal, and the stem being landed on is itself a cardinal
+# run, so a cardinal final approach is necessarily *perpendicular* to the
+# stem -- and a perpendicular touch-down onto a straight run lights the
+# arrival direction plus the stem's own two directions: the T-branch
+# signature `lattice._classify` calls a real `"fork"`.  The extractor would
+# then read the loop-back merge as a conditional turn, and `simulate` would
+# execute the reconnection as a branch instead of a jump.  Arriving
+# diagonally lights that same stem pair plus a direction *not* perpendicular
+# to it, which `_classify` calls `"merge"` -- stopping the stroke as a leaf,
+# what `simulate._compile`'s `find_merge` rescues into a `goto`.  This
+# matches how the wiki's own hand-drawn fixtures reconnect (`addition.png`'s
+# loop-body arm arrives at its stem on a diagonal).
+#
+# Being *longer* than the probe is what makes this work, not shorter: the
+# probe must find a full, unbroken band segment along the diagonal so the
+# merge point lights that third direction and `lattice._classify` reads
+# `"merge"`.  A diagonal too short to fill the probe leaves the merge point
+# reading only the stem's own two directions -- an ordinary `"straight"`
+# bend, which the walker sails through, continuing down the stem instead of
 # stopping the stroke as a leaf.
 _DIAGONAL_APPROACH = 6
 
 
-# Minimum gap (grid units) a.
-# the safety margin added on.
-# .
-# This used to be the whole.
-# is blind to how much ink a.
-# measures each subtree's real.
-# ``docs/line_tooling.md``.
+# Minimum gap (grid units) a fork arm runs before laying out its content, and
+# the safety margin added on top of whatever :func:`_arm_spacing` measures.
+#
+# This used to be the whole story: arms were sized by a fork *count*, which
+# is blind to how much ink a subtree lays down.  :func:`_arm_spacing` now
+# measures each subtree's real extent instead (see :func:`_subtree_extent`);
+# ``docs/line_tooling.md`` records what the halving got right and where the
 # count failed.
-# .
-# What remains here is a floor,.
-# back barely at all still.
-# trunk.
-# every program in all three.
-# at 20/8/5/3/2/1, and with.
-# no longer the constant that.
+#
+# What remains here is a floor, not a scaling law -- a subtree that reaches
+# back barely at all still needs sibling arms not to start flush against the
+# trunk.  5 is deliberately small: it was lowered from 20 when a sweep showed
+# every program in all three suites still extracting and executing correctly
+# at 20/8/5/3/2/1, and with extent-based spacing carrying the real work it is
+# no longer the constant that decides whether a drawing fits.
 _BRANCH_SPACING = 5
 
 
-# Width, in grid cells, of the.
-# an arm -- see.
-# `goto`-carrying arm, and.
-# :func:`_loop_return_legs` a.
-# _GOTO_CORRIDOR`` = 8 cells.
-# .
-# Not a chosen number: a fixed.
-# depth-3 work and removed.
-# measured.
-# own stroke, plus `_CLEARANCE`.
-# the expression rather than.
+# Width, in grid cells, of the corridor one loop-back's path needs to pass
+# an arm -- see :func:`_arm_spacing`, which reserves one of these on any
+# `goto`-carrying arm, and whose floor-plus-corridor sum is what guarantees
+# :func:`_loop_return_legs` a bay at least ``_BRANCH_SPACING +
+# _GOTO_CORRIDOR`` = 8 cells wide between body content and the trunk axis.
+#
+# Not a chosen number: a fixed `_GOTO_CHANNEL` constant was tried during the
+# depth-3 work and removed because it guessed at a quantity nothing had
+# measured.  This is the swath a drawn path actually blocks: one cell of its
+# own stroke, plus `_CLEARANCE` of mandated gap on either side.  Written as
+# the expression rather than its value so that changing `_CLEARANCE` moves
 # the corridors with it.
 _GOTO_CORRIDOR = 1 + 2 * _CLEARANCE
 
 
-# Memoized `_subtree_extent`.
-# .
-# Measuring is a full dry-run.
-# that themselves contain.
-# exponential in nesting depth:.
-# program (no output after two.
-# .
-# Cleared at the start of every.
-# global, because `id()` is.
-# between two renders can have.
-# next one, which a persistent.
+# Memoized `_subtree_extent` results for one `render()` call, keyed by node id.
+#
+# Measuring is a full dry-run `_layout`, and every fork asks about subtrees
+# that themselves contain forks, so without memoization the work is
+# exponential in nesting depth: an unmemoized version stalled on a depth-3
+# program (no output after two minutes, vs well under a second memoized).
+#
+# Cleared at the start of every `render()` rather than living as a permanent
+# global, because `id()` is only unique among *live* objects: a `Node` freed
+# between two renders can have its address reused by an unrelated node in the
+# next one, which a persistent cache would answer with the dead node's extent.
 _EXTENT_CACHE: dict[int, tuple[int, int, int, int]] = {}
 
 
@@ -537,26 +537,26 @@ def _arm_spacing(arm: Node | None) -> int:
     """
     if arm is None:
         return _BRANCH_SPACING
-    # Measured in the arm's own.
-    # travels, so anything at.
-    # *behind* the subtree's entry.
-    # in the canonical frame avoids.
+    # Measured in the arm's own frame, "forward" is the direction the arm
+    # travels, so anything at negative forward-extent is content sitting
+    # *behind* the subtree's entry point -- back toward the trunk.  Taking it
+    # in the canonical frame avoids reasoning about rotated signs at all.
     min_forward, _, _, _ = _subtree_extent(arm)
     corridors = _GOTO_CORRIDOR if _has_goto(arm) else 0
     return _BRANCH_SPACING + max(-min_forward, 0) + corridors
 
 
-# Offset, in grid cells, at.
-# its body's bounding box.
-# `_CLEARANCE` = 1 against ink.
+# Offset, in grid cells, at which a constructed loop-back ring runs outside
+# its body's bounding box.  2 is the smallest offset whose cells satisfy
+# `_CLEARANCE` = 1 against ink sitting exactly on the box edge (the cell
 # between is empty).
 _RING_OFFSET = _CLEARANCE + 1
 
-# The fixed stem offset a.
-# vertex (so `_STEM_LEN -.
-# interior offset works -- the.
-# geometry, so unlike the.
-# choice in -- and the midpoint.
+# The fixed stem offset a constructed loop-back lands on, from the fork
+# vertex (so `_STEM_LEN - _RETURN_STEM_T` cells past `stem_start`).  Any
+# interior offset works -- the construction reserves its whole landing
+# geometry, so unlike the removed router's offset scan nothing can wall one
+# choice in -- and the midpoint keeps the diagonal clear of both stem ends.
 _RETURN_STEM_T = _STEM_LEN // 2
 
 
@@ -612,9 +612,9 @@ def _loop_return_legs(
     entry_pt = (vertex[0] + a_h[0] * arm_run, vertex[1] + a_h[1] * arm_run)
     y0, y1, x0, x1 = _subtree_extent(target.nonzero)
 
-    # `start` in the canonical.
-    # frame's axes (+y = a_h, +x =.
-    # orthonormal, so projection.
+    # `start` in the canonical frame: project the world offset onto the
+    # frame's axes (+y = a_h, +x = turn_left(a_h); the rotation is
+    # orthonormal, so projection inverts `_rotate` exactly).
     ly, lx = _turn_left(a_h)
     off = (start[0] - entry_pt[0], start[1] - entry_pt[1])
     ey = off[0] * a_h[0] + off[1] * a_h[1]
@@ -629,35 +629,35 @@ def _loop_return_legs(
     far_y = y1 + _RING_OFFSET
     lo_x = x0 - _RING_OFFSET
     hi_x = x1 + _RING_OFFSET
-    # The bay must clear both the.
-    # span; `_arm_spacing`'s floor.
-    # goto-carrying arm, so a.
-    # arm the corridor term never.
+    # The bay must clear both the trunk axis and the diagonal's own lateral
+    # span; `_arm_spacing`'s floor + corridor guarantees this for any
+    # goto-carrying arm, so a failure here means a hand-built graph whose
+    # arm the corridor term never saw.
     if bay_y < axis_y + _DIAGONAL_APPROACH:
         return None
 
     tgt_x = _STEM_LEN - _RETURN_STEM_T
     approach = (axis_y + _DIAGONAL_APPROACH, tgt_x + _DIAGONAL_APPROACH)
 
-    # Waypoints around the ring,.
-    # rear corner `(bay_y, hi_x)`.
-    # arm stroke at x = 0 (every.
+    # Waypoints around the ring, always entering the bay line via the
+    # rear corner `(bay_y, hi_x)` so the bay is never traversed across the
+    # arm stroke at x = 0 (every bay segment used lies at x >= 1).
     pts: list[tuple[int, int]] = [(ey, ex)]
-    if on_x and ex == x1:  # rear side: out, then down to.
+    if on_x and ex == x1:  # rear side: out, then down to the bay corner
         pts += [(ey, hi_x), (bay_y, hi_x)]
-    elif on_y and ey == y1:  # far side: out, over the.
+    elif on_y and ey == y1:  # far side: out, over the far-rear corner, down
         pts += [(far_y, ex), (far_y, hi_x), (bay_y, hi_x)]
-    elif on_x and ex == x0:  # vertex-ward side: the long.
+    elif on_x and ex == x0:  # vertex-ward side: the long way around
         pts += [(ey, lo_x), (far_y, lo_x), (far_y, hi_x), (bay_y, hi_x)]
-    else:  # bay side.
+    else:  # bay side
         if ex == 0:
-            # The escape would land exactly.
+            # The escape would land exactly on the arm stroke's own line.
             return None
         if ex >= 1:
             pts += [(bay_y, ex)]
         else:
-            # Left of the arm stroke: the.
-            # take the long way around the.
+            # Left of the arm stroke: the direct bay run would cross it, so
+            # take the long way around the ring.
             pts += [(bay_y, ex), (bay_y, lo_x), (far_y, lo_x), (far_y, hi_x)]
             pts += [(bay_y, hi_x)]
     pts += [(bay_y, approach[1]), approach]
@@ -739,29 +739,29 @@ def _layout(
                 count += 1
         cursor.emit_op(op, count)
         if node.goto is not None:
-            # Flush the in-progress.
-            # going any further, so.
-            # treats the body just drawn.
+            # Flush the in-progress stroke's pixels into `occupied` before
+            # going any further, so whatever draws the loop-back from here
+            # treats the body just drawn (including this call's own final
             # kink) as real ink.
             cursor.finish()
-            # The constructed return path.
-            # Drawn *here*, in both real.
-            # nesting unbounded: a dry run.
-            # reports extents that contain.
-            # room for them exactly as it.
-            # already be in `entries`.
-            # graph, where a goto ends its.
-            # measured in isolation lacks.
-            # precisely the ink the.
+            # The constructed return path -- see :func:`_loop_return_legs`.
+            # Drawn *here*, in both real and measuring mode, is what makes
+            # nesting unbounded: a dry run that draws its subtree's returns
+            # reports extents that contain them, so every ancestor reserves
+            # room for them exactly as it does for content.  The target must
+            # already be in `entries` (always true for a compiled brainfuck
+            # graph, where a goto ends its own fork's body chain; a subtree
+            # measured in isolation lacks its own outermost fork, which is
+            # precisely the ink the *caller's* frame draws instead).
             legs = None
             if id(node.goto) in entries:
                 legs = _loop_return_legs((cursor.y, cursor.x), node.goto, entries)
             if legs is not None and cursor.occupied is not None:
-                # Drift guard, real mode only:.
-                # consults ink, so a violated.
-                # outside the compiled.
-                # than drawn through existing.
-                # first cell is the body's own.
+                # Drift guard, real mode only: the construction never
+                # consults ink, so a violated premise (a hand-built graph
+                # outside the compiled invariants) must be caught rather
+                # than drawn through existing strokes.  Overlap-only -- the
+                # first cell is the body's own tip and the last is the stem
                 # merge, both legitimately ink.
                 cells = _leg_cells((cursor.y, cursor.x), legs)
                 if any(c in cursor.occupied for c in cells[1:-1]):
@@ -772,16 +772,16 @@ def _layout(
                 cursor.finish()
                 return
             if measuring:
-                # No constructed return (the.
-                # measured subtree): stop here,.
-                # semantics of extents require.
+                # No constructed return (the goto's target is outside this
+                # measured subtree): stop here, exactly as the pre-return
+                # semantics of extents require -- the owner's frame draws it.
                 return
-            # A goto whose return path.
-            # a hand-built graph outside.
-            # an ancestor fork whose body.
-            # off its own box perimeter).
-            # invariant that survives from.
-            # never draw a reconnection.
+            # A goto whose return path cannot be constructed only exists in
+            # a hand-built graph outside the compiled invariants (target not
+            # an ancestor fork whose body chain the goto ends, or a body end
+            # off its own box perimeter).  Failing loudly here is the
+            # invariant that survives from the removed search-based router:
+            # never draw a reconnection through existing ink and let the
             # extractor misread it.
             raise ValueError(
                 "loop-back could not be constructed for this goto -- its "
@@ -930,9 +930,9 @@ def render(
     way, so a drawing damaged past recovery still fails loudly instead of
     yielding a wrong program.
     """
-    # See `_EXTENT_CACHE`: keyed by.
-    # it describes.
-    # from `root` for as long as.
+    # See `_EXTENT_CACHE`: keyed by `id()`, so it must not outlive the nodes
+    # it describes.  Clearing per render keeps every cached node reachable
+    # from `root` for as long as its entry exists.
     _EXTENT_CACHE.clear()
     occupied: set[tuple[int, int]] = set()
     cursor = _Cursor(0, 0, start_heading, occupied=occupied)

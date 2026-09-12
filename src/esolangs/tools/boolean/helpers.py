@@ -14,18 +14,18 @@ from itertools import permutations
 
 from esolangs.exceptions import TruthTableError
 
-# ``ord("0")``.
-# result prints as.
-# generator that reads or.
-# of ``+`` or ``-`` reads as a.
+# ``ord("0")``.  Input digits arrive as 48/49 from a byte-oriented read, and a
+# result prints as ``_ASCII_ZERO + bit``, so this offset appears in every
+# generator that reads or writes a digit.  Named because a bare ``48`` in a run
+# of ``+`` or ``-`` reads as a magic number.
 _ASCII_ZERO = 48
-_ASCII_ONE = _ASCII_ZERO + 1  # ``ord("1")``, the digit the.
+_ASCII_ONE = _ASCII_ZERO + 1  # ``ord("1")``, the digit the other branch prints
 
-# Largest input count.
-# search builds ``n!`` programs.
-# is the product of two.
-# 64-row table (milliseconds),.
-# would be 479 million.
+# Largest input count :func:`best_input_order` searches exhaustively.  The
+# search builds ``n!`` programs of ``O(2**n)`` characters each, so the work
+# is the product of two factorial-ish terms: 6 inputs is 720 builds of a
+# 64-row table (milliseconds), 7 is 5040, and Dimensional's 12-input table
+# would be 479 million.  Above this the order is picked greedily instead.
 _ORDER_SEARCH_MAX = 6
 
 
@@ -64,21 +64,21 @@ def _validate_shape(truth_table: str) -> int:
     than refused.  Minifuck's ``_solve`` is the one caller -- its public
     entry still validates in full, so the relaxation never reaches an API.
     """
-    # The alphabet is checked first.
-    # complaint: ``01a`` is three.
-    # answered it with "must have a.
-    # and never mentioned the ``a``.
-    # .
-    # Spelled as a set difference.
-    # order search revalidates the.
-    # runs ~720 times per call at.
-    # 2**n shows up (0.86s of the.
+    # The alphabet is checked first because it is the more specific
+    # complaint: ``01a`` is three characters, so a length-first order
+    # answered it with "must have a power-of-two number of entries, got 3"
+    # and never mentioned the ``a`` that was actually wrong.
+    #
+    # Spelled as a set difference rather than ``all(c in "01" ...)``: the
+    # order search revalidates the same table once per candidate, so this
+    # runs ~720 times per call at n=6 and a per-character Python loop over
+    # 2**n shows up (0.86s of the n=6 registry sweep).
     if set(truth_table) - {"0", "1"}:
-        # The *argument*, plus which.
-        # printed ``sorted(set(...))``,.
-        # was told "got 'enos'" -- a.
-        # reads like a shell-quoting.
-        # validator in ``encode``.
+        # The *argument*, plus which character is wrong and where.  This
+        # printed ``sorted(set(...))``, so someone who typed ``nonsense``
+        # was told "got 'enos'" -- a string they had never seen, which
+        # reads like a shell-quoting bug rather than a typo.  The sibling
+        # validator in ``encode`` echoed the argument all along.
         bad = next((i, c) for i, c in enumerate(truth_table) if c not in {"0", "1"})
         raise TruthTableError(
             f"truth table must contain only '0' and '1', got {truth_table!r} "
@@ -86,10 +86,10 @@ def _validate_shape(truth_table: str) -> int:
         )
     n = len(truth_table).bit_length() - 1
     if len(truth_table) != 2**n:
-        # The likeliest first error.
-        # them to do the arithmetic.
-        # this is the cold path -- the.
-        # at n=6, but only ever raises.
+        # The likeliest first error anyone gets, and the rule alone leaves
+        # them to do the arithmetic.  The brackets are cheap here because
+        # this is the cold path -- the check itself runs ~720 times per call
+        # at n=6, but only ever raises once.
         between = (
             f"; {len(truth_table)} is between {2**n} "
             f"({n} input{'' if n == 1 else 's'}) and "
@@ -266,11 +266,11 @@ def read_at(truth_table: str, inputs: tuple[int, ...] | list[int], n: int) -> st
     projects tables it has already validated, and revalidating a narrowed
     table here would check the wrong width.
     """
-    # The row indices are built by.
-    # each row's bits: slot ``k``.
-    # appending ``o | mask`` after.
-    # That is O(2**k) list work.
-    # doubling because the order.
+    # The row indices are built by doubling rather than by re-scattering
+    # each row's bits: slot ``k`` is the next-most-significant bit, so
+    # appending ``o | mask`` after ``o`` extends the list in row order.
+    # That is O(2**k) list work against O(2**k * k) bit tests -- worth the
+    # doubling because the order search calls this once per candidate.
     originals = [0]
     for i in inputs:
         mask = 1 << (n - 1 - i)
@@ -456,14 +456,14 @@ def best_input_order(
         greedy = _greedy_input_order(truth_table, n)
         orders = [] if greedy == identity else [greedy]
 
-    # An empty candidate means.
-    # stack reader reaches only.
-    # it cannot stack comes back.
-    # winning on length 0.
-    # and gets the plain behaviour.
-    # this: it searched for a.
-    # had none.
-    # reorder at all, so it is no.
+    # An empty candidate means "this order could not be built" -- Forth's
+    # stack reader reaches only some arrangements of the bits, so an order
+    # it cannot stack comes back empty -- and it is skipped rather than
+    # winning on length 0.  A build that always succeeds never returns one,
+    # and gets the plain behaviour.  (ZTOALC L was the original reason for
+    # this: it searched for a collision-free line placement and some orders
+    # had none.  It now constructs a branch-free lookup instead and does not
+    # reorder at all, so it is no longer an example.)
     best = build(truth_table, identity)
     for perm in orders:
         candidate = build(permute_truth_table(truth_table, perm), perm)
@@ -487,12 +487,12 @@ def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
     """
     order: list[int] = []
     remaining = list(range(n))
-    # Blocks of rows still to be.
-    # that agree on every input.
+    # Blocks of rows still to be separated: each is a list of row indices
+    # that agree on every input chosen so far.
     blocks = [list(range(2**n))]
-    # The loop always leaves by the.
-    # separates every row, so.
-    # latest, and ``remaining`` is.
+    # The loop always leaves by the ``break`` below: picking every input
+    # separates every row, so ``blocks`` is empty on the last pass at the
+    # latest, and ``remaining`` is never the condition that ends it.
     while remaining:  # pragma: no branch - always exits via the break
         best_input = remaining[0]
         best_score = -1
@@ -517,21 +517,21 @@ def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
                 [r for r in block if not r & bit],
                 [r for r in block if r & bit],
             ):
-                # A block that is already.
+                # A block that is already constant needs no further splitting.
                 if half and len({truth_table[r] for r in half}) > 1:
                     split.append(half)
         blocks = split
         if not blocks:
-            # Everything below folds; the.
-            # keep it ascending to stay.
+            # Everything below folds; the rest of the order cannot matter, so
+            # keep it ascending to stay closest to the identity.
             order.extend(remaining)
             break
     return tuple(order)
 
 
-# The walker only concatenates.
-# inside one, so a token is.
-# for most generators, an.
+# The walker only concatenates tokens and measures runs of them, never looks
+# inside one, so a token is whatever the caller finds convenient: a string
+# for most generators, an instruction tuple for S*bleq.
 type Leaf[Token] = Callable[[int, int], list[Token]]
 type Node[Token] = Callable[[int, list[Token], list[Token], int], list[Token]]
 
@@ -618,10 +618,10 @@ def decision_tree_tokens[Token](
     width = parent_width if callable(parent_width) else lambda _level: parent_width
 
     def walk(level: int, lo: int, hi: int, at: int) -> list[Token]:
-        # ``count`` over the span.
-        # the constant test runs at.
-        # candidates, and it is also.
-        # off, which the set built.
+        # ``count`` over the span rather than a set comprehension over it:
+        # the constant test runs at every node of every one of the n!
+        # candidates, and it is also skipped entirely when ``collapse`` is
+        # off, which the set built unconditionally.
         if level == n or (
             collapse and truth_table.count(truth_table[lo], lo, hi) == hi - lo
         ):
@@ -712,17 +712,17 @@ def _decision_tree_program(
         cells.append(right * delta if delta >= 0 else left * -delta)
         pos = target
 
-    # read bits b_i at cell 2i,.
+    # read bits b_i at cell 2i, leaving the flag cells (1, 3, ...) zero
     for i in range(n):
         cells.append(",")
-        # ``append`` of the run, not.
-        # is 48 long and the join sees.
-        # order search pays the.
+        # ``append`` of the run, not ``extend`` over its characters: the run
+        # is 48 long and the join sees the same text either way, but the
+        # order search pays the per-character list work n! times.
         cells.append("-" * _ASCII_ZERO)
         if i < n - 1:
             move(pos + 2)
 
-    # decision tree: node i entered.
+    # decision tree: node i entered at cell 2i, exits at cell 2i+1
     result = 2 * n
 
     def constant(i: int, combo: int) -> str | None:
@@ -747,9 +747,9 @@ def _decision_tree_program(
         """
         value = constant(i + 1, combo)
         if value is None:
-            # A subtree is entered at the.
-            # ``2 * perm[i + 1]`` --.
-            # identity, so the target is.
+            # A subtree is entered at the cell holding *its* input, which is
+            # ``2 * perm[i + 1]`` -- adjacent only when the order is the
+            # identity, so the target is computed rather than stepped over.
             move(2 * perm[i + 1])
             node(i + 1, combo)
         elif value == "1":
@@ -768,16 +768,16 @@ def _decision_tree_program(
         flag = bit + 1
         one = combo | (1 << (n - 1 - i))
         move(flag)
-        cells.append("+")  # flag = 1, pending.
+        cells.append("+")  # flag = 1, pending
         move(bit)
-        cells.append("[-")  # one-side: if b_i, and clear.
+        cells.append("[-")  # one-side: if b_i, and clear it so this ] exits
         move(flag)
-        cells.append("-")  # the one-side ran, so the.
+        cells.append("-")  # the one-side ran, so the zero-side must not
         branch(i, one)
         move(bit)
         cells.append("]")
         move(flag)
-        cells.append("[-")  # zero-side: the flag survived,.
+        cells.append("[-")  # zero-side: the flag survived, so b_i was 0
         branch(i, combo)
         move(flag)
         cells.append("]")
@@ -785,9 +785,9 @@ def _decision_tree_program(
     move(2 * perm[0])
     node(0, 0)
 
-    # One print, below the tree.
-    # the result cell, so the ASCII.
-    # every leaf -- which is what.
+    # One print, below the tree.  Exactly one leaf fires, leaving 0 or 1 in
+    # the result cell, so the ASCII offset is paid once here instead of at
+    # every leaf -- which is what the whole tree used to spend most of its
     # characters on.
     move(result)
     cells.append("+" * _ASCII_ZERO)
@@ -795,10 +795,10 @@ def _decision_tree_program(
     return "".join(cells)
 
 
-# The build plan for every.
-# ``(needed, decompositions)``.
-# constants (beyond k1/k2).
-# maps each such constant to.
+# The build plan for every Collatz Multiverse constant: ``_PLAN[n]`` is
+# ``(needed, decompositions)`` where ``needed`` is the smallest set of
+# constants (beyond k1/k2) required to build ``k n`` and ``decompositions``
+# maps each such constant to the ``(b, a, c)`` it is built from.
 _PLAN: dict[int, tuple[frozenset[int], dict[int, tuple[int, int, int]]]] = {
     1: (frozenset(), {}),
     2: (frozenset(), {}),

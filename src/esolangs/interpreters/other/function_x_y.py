@@ -63,20 +63,20 @@ from typing import Final
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# A value is an integer or a.
+# A value is an integer or a string (the language's two datatypes).
 type _Value = int | str
 
-# An expression node.
-# frame stack embeds nodes and.
+# An expression node.  A tuple tree rather than a class hierarchy: the
+# frame stack embeds nodes and ``snapshot`` has to hash it.
 type _Expr = tuple[object, ...]
 
-# Binary operators, longest.
-# ``/``.
-# since the spec's own spelling.
+# Binary operators, longest first so ``<=`` wins over ``<`` and ``//`` over
+# ``/``.  The wiki spells the comparison ``=>``; ``>=`` is not accepted,
+# since the spec's own spelling is unambiguous.
 _BINARY: Final = ("//", "<=", "=>", "==", "!=", "+", "-", "*", "/", "<", ">")
 
-# Precedence: BDMAS, so.
-# addition and subtraction, and.
+# Precedence: BDMAS, so division and multiplication bind tighter than
+# addition and subtraction, and comparison is looser than all arithmetic.
 _PRECEDENCE: Final = {
     "<": 0,
     ">": 0,
@@ -95,12 +95,12 @@ _COMPOUND: Final = {"+&": "+", "-&": "-", "*&": "*", "/&": "/"}
 
 _NAME: Final = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
-# Deepest expression nesting.
-# the source, so unbounded.
-# parentheses did.
-# rather than a.
-# nests past 3, and.
-# the recursion the language is.
+# Deepest expression nesting the parser accepts.  The parser recurses over
+# the source, so unbounded nesting overflows Python's stack -- 300 nested
+# parentheses did.  A program past this is malformed (:class:`ValueError`)
+# rather than a ``RecursionError`` escaping as a crash; no wiki example
+# nests past 3, and *evaluation* depth is unbounded regardless, which is
+# the recursion the language is actually about.
 _MAX_NESTING: Final = 50
 
 
@@ -409,8 +409,8 @@ def _binary(op: str, left: _Value, right: _Value) -> _Value:
     if op == "!=":
         return int(left != right)
     if isinstance(left, str) or isinstance(right, str):
-        # ``+`` concatenates when.
-        # other arithmetic have no.
+        # ``+`` concatenates when either side is a string; ordering and the
+        # other arithmetic have no wiki-defined meaning on one.
         if op == "+":
             return f"{left}{right}"
         raise HaltError(f"cannot apply {op!r} to a string")
@@ -430,19 +430,19 @@ def _binary(op: str, left: _Value, right: _Value) -> _Value:
         return left * right
     if right == 0:
         raise HaltError("division by zero")
-    # ``/`` is integer division per.
-    # same operation ``//``; both.
+    # ``/`` is integer division per the wiki, and its FizzBuzz spells the
+    # same operation ``//``; both land here.
     return int(left / right) if (left < 0) != (right < 0) else left // right
 
 
-# A frame is ``(function index,.
-# ``todo`` is the tuple of.
-# hashable and ``snapshot`` can.
+# A frame is ``(function index, statement index, variables, todo)``:
+# ``todo`` is the tuple of pending evaluation steps, so the whole stack is
+# hashable and ``snapshot`` can hand it to the cycle detector.
 type _Frame = tuple[int, int, tuple[tuple[str, _Value], ...], tuple[_Expr, ...]]
 
-# : The whole run state as a.
-# : stack the finished operands.
-# : recursion, held here rather.
+#: The whole run state as a value: the evaluation-frame stack and the value
+#: stack the finished operands land on.  The frames are the language's own
+#: recursion, held here rather than on Python's stack, which is what leaves
 #: the depth unbounded.
 type _State = tuple[tuple[_Frame, ...], tuple[_Value, ...]]
 
@@ -469,7 +469,7 @@ class _Machine:
                     f"so its parameter {name!r} needs a default"
                 )
             variables.append((name, _const(default)))
-        # The entry frame: the first.
+        # The entry frame: the first function, called with no arguments.
         self.frames: tuple[_Frame, ...] = ((0, 0, tuple(variables), ()),)
         self.stack: list[_Value] = []
 
@@ -479,15 +479,15 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The frame stack is tuples.
-        # cursor rides along because a.
+        # The frame stack is tuples throughout, so it hashes; the input
+        # cursor rides along because a repeat that ignores consumed input
         # is not a real cycle.
         return (self.frames, tuple(self.stack), self.io.position())
 
-    # : ``ip`` is a position, but.
+    #: ``ip`` is a position, but not one on the source text: each frame's (function,
     #: statement), root-to-leaf.
-    # : Declared rather than left.
-    # : classified is a missing.
+    #: Declared rather than left to the default so that a tuple nobody has
+    #: classified is a missing answer instead of this one.
     ip_shape = "opaque"
 
     @property
@@ -519,8 +519,8 @@ class _Machine:
         if want == "line":
             byte = self.io.input_str()
         elif want == "char":
-            # ``input_char`` returns 0 for.
-            # no ``if val:`` guard; running.
+            # ``input_char`` returns 0 for an empty line itself, so it needs
+            # no ``if val:`` guard; running out of input still raises EOFError.
             byte = chr(self.io.input_char())
 
         self.frames, self.stack, out = _advance(
@@ -575,15 +575,15 @@ def _advance(
     without bound, so rebuilding it per step would be quadratic.
     """
     if not stack:
-        # Stepping a halted machine is.
-        # contract steps past the halt.
+        # Stepping a halted machine is a no-op, not an error: the cycle
+        # contract steps past the halt to prove exactly that.
         return stack, values, None
     func_i, stmt_i, variables, todo = stack[-1]
     func = functions[func_i]
 
     if not todo:
-        # No expression in flight:.
-        # by falling off the end (the.
+        # No expression in flight: start the next statement, or return 0
+        # by falling off the end (the wiki's default return value).
         if stmt_i >= len(func.body):
             return _return(stack, values, 0)
         return (
@@ -612,7 +612,7 @@ def _advance(
                 return (*stack[:-1], frame), [*values, value], None
         raise HaltError(f"undefined variable {name!r}")
     if kind == "bare":
-        # A statement evaluated for.
+        # A statement evaluated for effect: run it, then drop its value.
         after = (*rest, ("drop",), _sub(node, 1))
         return (*stack[:-1], (func_i, stmt_i, variables, after)), values, None
     if kind == "drop":
@@ -635,14 +635,14 @@ def _advance(
         return scheduling(("print_do", node[2]), _sub(node, 1)), values, None
     if kind == "print_do":
         value = values[-1]
-        # ``[a]`` prints with a.
-        # used as a value yields 0, the.
+        # ``[a]`` prints with a newline, ``` `a ``` without one.  A print
+        # used as a value yields 0, the wiki's default.
         out = f"{value}\n" if node[1] else str(value)
         return (*stack[:-1], frame), [*values[:-1], 0], out
     if kind == "if":
         return scheduling(("if_do", node[2], node[3]), _sub(node, 1)), values, None
     if kind == "if_do":
-        # Lazily: exactly one arm is.
+        # Lazily: exactly one arm is scheduled, so FizzBuzz's printing arms
         # do not both fire.
         arm = _sub(node, 1 if _truthy(values[-1]) else 2)
         return scheduling(arm), values[:-1], None
@@ -665,8 +665,8 @@ def _advance(
         args = node[2] if kind == "call" else node[1]
         if not isinstance(args, tuple):
             raise AssertionError("isinstance(args, tuple)")
-        # The two leading slots are.
-        # node's operands from index 2,.
+        # The two leading slots are ignored: ``_push_operands`` reads a
+        # node's operands from index 2, the shape ``bin`` and ``call`` share.
         enter = ("enter", target, len(args))
         return _push_operands(stack, values, frame, ("x", "x", *args), enter)
     if kind == "enter":
@@ -724,7 +724,7 @@ def _return(
 ) -> tuple[tuple[_Frame, ...], list[_Value], str | None]:
     """Pop the current frame, leaving its value for the caller."""
     outer = stack[:-1]
-    # The entry frame's value is.
+    # The entry frame's value is discarded: nothing called it.
     return outer, ([*values, value] if outer else values), None
 
 

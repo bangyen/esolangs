@@ -37,13 +37,13 @@ from esolangs.interpreters.tape_based.brainfuck import _Machine as _BFMachine
 
 _RESIDUE = {1: ">", 2: "<", 3: "+", 4: "-", 5: ".", 6: ",", 7: "[", 8: "]"}
 
-# : Factor has no execution.
+#: Factor has no execution state beyond the Brainfuck machine it decodes to.
 type _State = _BFMachine
 
 
-# : How far :func:`_factorint`.
-# : while the residue is still.
-# : ceiling on the primes it.
+#: How far :func:`_factorint` extends its sieve at a time.  It keeps going
+#: while the residue is still composite, so this is a batch size and not a
+#: ceiling on the primes it will find.
 _SIEVE_CHUNK = 20000
 
 
@@ -127,12 +127,12 @@ def _factorint(number: int) -> dict[int, int]:
         divided = False
         for prime in sympy.sieve.primerange(start, stop):
             if number == 1:
-                # The chunk finished the number.
-                # test, and the root check.
+                # The chunk finished the number off; nothing is left to
+                # test, and the root check below would read 1 as a factor.
                 break
             if prime * prime > number:
-                # Nothing below the root.
-                # prime -- the one case worth.
+                # Nothing below the root divides it, so the residue is
+                # prime -- the one case worth taking without ``isprime``.
                 factors[number] = factors.get(number, 0) + 1
                 return factors
             while not number % prime:
@@ -142,24 +142,24 @@ def _factorint(number: int) -> dict[int, int]:
         if number == 1:
             break
         if divided:
-            # The sieve is still finding.
-            # pay ``isprime`` on a residue.
+            # The sieve is still finding factors, so widen it rather than
+            # pay ``isprime`` on a residue that is plainly composite.
             start = stop
             continue
-        # A barren chunk: every.
-        # the residue's primality is.
-        # only once per value, since.
-        # otherwise re-ask the same.
+        # A barren chunk: every remaining factor is above the sieve, so
+        # the residue's primality is finally worth the BPSW test -- but
+        # only once per value, since consecutive barren chunks would
+        # otherwise re-ask the same question at the same full width.
         if number != checked:
             checked = number
             if sympy.isprime(number):
                 factors[number] = factors.get(number, 0) + 1
                 return factors
-        # Composite, with every factor.
-        # only sound move: handing it.
-        # make the barren chunk a.
-        # large composite that sends.
-        # minutes -- the very failure.
+        # Composite, with every factor above the sieve.  Widening is the
+        # only sound move: handing it to ``sympy.factorint`` here would
+        # make the barren chunk a ceiling, and a ceiling's leftover is the
+        # large composite that sends ``factorint`` to Pollard rho for
+        # minutes -- the very failure the chunked sieve exists to avoid.
         start = stop
     return factors
 
@@ -195,7 +195,7 @@ class _Machine:
     def halted(self) -> bool:
         return self.bf.halted
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: Decoded brainfuck machine; ip the cursor, memory
     # the tape.
 
     @property
@@ -213,10 +213,10 @@ class _Machine:
         """No stack in this language."""
         return []
 
-    # The growth detector's view,.
-    # Factor has no execution.
-    # to brainfuck and runs that --.
-    # for.
+    # The growth detector's view, forwarded like everything else here.
+    # Factor has no execution semantics of its own -- it decodes a numeral
+    # to brainfuck and runs that -- so it inherits brainfuck's eligibility
+    # for ``esolangs.vm._TapeMachine`` exactly, rather than making a claim
     # of its own.
 
     @property

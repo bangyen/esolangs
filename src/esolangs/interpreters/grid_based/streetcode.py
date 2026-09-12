@@ -102,31 +102,31 @@ from typing import Literal, NamedTuple, NewType, assert_never, cast
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# The alphabet a wall form is.
-# wall character, and ``.`` a.
-# see that :func:`_matches`.
-# pattern character that no.
+# The alphabet a wall form is written in: ``?`` matches any cell, ``W`` a
+# wall character, and ``.`` a non-wall.  Naming the three lets the checker
+# see that :func:`_matches` handles every one, so it needs no arm for a
+# pattern character that no form contains.
 _Pattern = Literal["?", "W", "."]
 
-# The four compass headings the.
-# heading distinct from the.
-# plain strings, so a mix-up is.
+# The four compass headings the car drives under.  Naming them keeps a
+# heading distinct from the cell characters and form patterns that are also
+# plain strings, so a mix-up is a type error, not a silent lookup against
 # the wrong alphabet.
 _Heading = Literal["N", "E", "S", "W"]
 
-# What a junction detector.
-# offers, counting the one the.
-# all.
-# corridor and a five-way needs.
-# lets the checker reject an.
-# ``_Pattern`` does for the.
-# rather than an enum:.
-# (``not.
+# What a junction detector reports: the number of roads the drawn shape
+# offers, counting the one the car came in on, or 0 for no junction at
+# all.  Only 0, 3 and 4 are reachable -- a "two-way junction" is a
+# corridor and a five-way needs a fifth direction -- so naming the three
+# lets the checker reject an arm for a count that cannot occur, as
+# ``_Pattern`` does for the form alphabet.  The values stay plain ints
+# rather than an enum: ``_junction_kind`` is used as a truth value
+# (``not self._junction_kind(...)``) and 0 has to keep meaning false.
 _Junction = Literal[0, 3, 4]
 
-# Which way a merge latch.
-# under.
-# unreachable, not merely.
+# Which way a merge latch turns, relative to the heading it was taken
+# under.  These two are the whole space: straight and reverse are
+# unreachable, not merely unobserved -- see ``docs/streetcode.md``.
 _Turn = Literal["left", "right"]
 
 
@@ -140,11 +140,11 @@ class _Mouth(NamedTuple):
     and the hug suppression in :func:`_heading_from_junction`).
     """
 
-    # Perpendicular distance from.
+    # Perpendicular distance from the car to the wall carrying the mouth.
     dist: int
-    # Depth along the direction of.
+    # Depth along the direction of travel of the ``+`` nearer the car.
     near: int
-    # Depth along the direction of.
+    # Depth along the direction of travel of the ``+`` further along.
     far: int
 
     @property
@@ -165,15 +165,15 @@ class _Merge(NamedTuple):
     See ``_Machine.__init__``.
     """
 
-    # The cell the car must reach.
+    # The cell the car must reach before the turn is made.
     target_row: int
     target_col: int
-    # Which way it turns there,.
+    # Which way it turns there, relative to ``latched_heading``.
     turn: _Turn
-    # The heading the latch was.
+    # The heading the latch was taken under; a turn in between voids it.
     latched_heading: _Heading
-    # Whether the latch came from a.
-    # the branch condition is.
+    # Whether the latch came from a crossing mouth, which decides whether
+    # the branch condition is re-read on arrival.
     crossing: bool
 
     @property
@@ -209,12 +209,12 @@ class _Latches(NamedTuple):
     its signature.
     """
 
-    # Set when a junction turn is.
+    # Set when a junction turn is detected but not yet reached (phase 1).
     merge: "_Merge | None"
-    # Set after that turn, while.
+    # Set after that turn, while the new road's right-hand wall has not
     # yet picked up (phase 2).
     merging_heading: _Heading | None
-    # Steps of ordinary right-hand.
+    # Steps of ordinary right-hand hugging still to be suppressed.
     skip_hug: int
 
 
@@ -250,32 +250,32 @@ class _State(NamedTuple):
         return _Car(self.row, self.col, self.heading)
 
 
-# An open cell the flood fill.
-# Only that fill mints these,.
-# of them sits on the border of.
-# are all on the grid, and a.
-# The distinction is.
-# coordinate where one of these.
-# unchecked read in ``_block``.
-# proof.
-# up to ``_MOUTH_MAX_DEPTH``.
-# which is what ``_at`` and its.
+# An open cell the flood fill in ``_validate_width`` reached from ``C``.
+# Only that fill mints these, and ``_validate_enclosed`` then proves none
+# of them sits on the border of the grid -- so the eight neighbours of one
+# are all on the grid, and a read anchored on it needs no bounds test.
+# The distinction is provenance, not shape: mypy will not accept a plain
+# coordinate where one of these is asked for, which is what keeps the
+# unchecked read in ``_block`` reachable only from cells carrying that
+# proof.  It says nothing about reads further out -- the mouth scans look
+# up to ``_MOUTH_MAX_DEPTH`` cells away and legitimately run off the grid,
+# which is what ``_at`` and its ``'?'`` sentinel remain for.
 _ReachableCell = NewType("_ReachableCell", tuple[int, int])
-# The car stops here on.
-# ``None`` a probe returns when.
-# is a malformed street.
-# two were once spelled alike,.
-# were indistinguishable.
-# :meth:`_Machine.step` treat a.
-# would have to be, rather than.
+# The car stops here on purpose: the square is ``;``.  Distinct from the
+# ``None`` a probe returns when the movement rules run out of road, which
+# is a malformed street ``_validate_total`` rejects at construction.  The
+# two were once spelled alike, so a wedged street and a deliberate stop
+# were indistinguishable downstream; keeping them apart is what lets
+# :meth:`_Machine.step` treat a surviving ``None`` as the validator bug it
+# would have to be, rather than halting quietly on it.
 _Halt = Literal["halt"]
-# A state's successors, keyed.
-# one step: the arrival cell.
+# A state's successors, keyed by the two branch bits movement can read in
+# one step: the arrival cell and the post-instruction cell, in that order.
 _Edges = dict[tuple[int, int], "_State | _Halt | None"]
 
-# No merge in progress and.
-# with, and the ones it is.
-# the reset is one value rather.
+# No merge in progress and nothing to suppress: the latches a car starts
+# with, and the ones it is reset to whenever a 'U' clears them.  Named so
+# the reset is one value rather than three assignments that have to agree.
 _NO_LATCHES = _Latches(merge=None, merging_heading=None, skip_hug=0)
 
 _HEADINGS: tuple[_Heading, ...] = ("N", "E", "S", "W")
@@ -287,29 +287,29 @@ _DELTA: dict[_Heading, tuple[int, int]] = {
 }
 _WALLS = frozenset("+-|")
 
-# What a read off the edge of.
-# form, glyph and mouth scans.
-# wall) and not any glyph a.
-# ``_Grid.open_at`` tests the.
-# this is a wall, because off.
+# What a read off the edge of the drawing returns.  Not a wall (so the
+# form, glyph and mouth scans see nothing there rather than a phantom
+# wall) and not any glyph a program can contain, so it matches no rule.
+# ``_Grid.open_at`` tests the bounds itself rather than asking whether
+# this is a wall, because off the grid is not drivable either.
 _VOID = "?"
 
-# What a drivable square does.
-# the spec defines maps to one.
-# space, and any character the.
-# which is what makes the set.
-# undefined characters here.
-# lets :meth:`_Machine.step` be.
-# chain of comparisons with a.
-# .
-# The fold is of the *meaning*,.
-# as drawn (see.
-# stray ink off the street and.
-# street is a no-op; the same.
-# program, and the two are told.
+# What a drivable square does when the car runs it.  Closed: every glyph
+# the spec defines maps to one of these, and everything else -- ``C``,
+# space, and any character the language does not use -- maps to ``NOP``,
+# which is what makes the set closed rather than open-ended.  Folding the
+# undefined characters here rather than at the point of dispatch is what
+# lets :meth:`_Machine.step` be exhaustive over a finite set instead of a
+# chain of comparisons with a silent fallthrough at the end.
+#
+# The fold is of the *meaning*, not the character: a cell keeps the glyph
+# as drawn (see :class:`_Grid`), because ``_validate_connected`` rejects
+# stray ink off the street and names the glyph it found.  A ``#`` on the
+# street is a no-op; the same ``#`` beside the street is a malformed
+# program, and the two are told apart by where it is, not by what it does.
 _Op = Literal["NOP", "INC", "DEC", "RIGHT", "LEFT", "IN", "OUT", "TURN", "HALT"]
 
-# The spec's instruction.
+# The spec's instruction glyphs, keyed by the glyph.  Anything absent is
 # a no-op; see ``_Op``.
 _OPS: dict[str, _Op] = {
     "^": "INC",
@@ -322,20 +322,20 @@ _OPS: dict[str, _Op] = {
     ";": "HALT",
 }
 
-# How far perpendicular to the.
-# the wall a side road opens.
-# the far lane's wall can sit.
+# How far perpendicular to the direction of travel ``_road_mouth`` looks for
+# the wall a side road opens through: a two-way street is two cells wide, so
+# the far lane's wall can sit two cells out, and 3 covers that with a cell to
 # spare.
 _MOUTH_MAX_DIST = 3
 
-# How far along the direction.
-# ``+`` closing a road's mouth.
-# puts the floor at 5 -- at 4.
-# being seen and three tests.
-# 7 is that floor plus slack.
-# Raising it is not.
-# high a scan runs past the box.
-# bound nothing.
+# How far along the direction of travel ``_road_mouth`` will look for the
+# ``+`` closing a road's mouth.  Sweeping the value against the test suite
+# puts the floor at 5 -- at 4 the mouths of the wider drawn junctions stop
+# being seen and three tests fail -- while 5 and up are indistinguishable.
+# 7 is that floor plus slack for mouths wider than anything drawn so far.
+# Raising it is not conservatively safer: the bound is two-sided, since too
+# high a scan runs past the box it is reading and pairs up two ``+`` that
+# bound nothing.  ``docs/streetcode.md`` has the worked example.
 _MOUTH_MAX_DEPTH = 7
 
 
@@ -344,8 +344,8 @@ def _rotate(form: tuple[_Pattern, ...]) -> tuple[_Pattern, ...]:
     return tuple(form[i] for i in (6, 3, 0, 7, 4, 1, 8, 5, 2))
 
 
-# The pattern alphabet keyed by.
-# validated into _Pattern.
+# The pattern alphabet keyed by its own spelling, so a written form is
+# validated into _Pattern characters rather than asserted to be them.
 _PATTERNS: dict[str, _Pattern] = {"?": "?", "W": "W", ".": "."}
 
 
@@ -358,19 +358,19 @@ def _rotations(form: str) -> list[tuple[_Pattern, ...]]:
     return out
 
 
-# The legal wall structure.
-# matched up to rotation; see.
-# wall character, ``.`` is open.
-# .
-# corner: ?W.
-# W.
-# .
-# .
-# The corner's cells are ``W``.
-# rotation does not have to.
-# covers the outside of a.
-# to the outer wall and the.
-# boxes packed flush against.
+# The legal wall structure around a drivable cell, as three-by-three forms
+# matched up to rotation; see ``_Machine._validate_walls``.  ``W`` is any
+# wall character, ``.`` is open ground, and ``?`` is anything at all.
+#
+#     corner: ?W?      wall: ?W?      intersection: W..
+#             W..            ...                    ...
+#             ?..            ...                    ...
+#
+# The corner's cells are ``W`` rather than ``+``, ``-`` and ``|`` so that a
+# rotation does not have to swap the two wall glyphs, and so that one form
+# covers the outside of a corner, the inside of one (where the arms belong
+# to the outer wall and the corner to an island), and the corners of two
+# boxes packed flush against each other.
 _WALL_FORMS = [
     *_rotations("?W?W..?.."),
     *_rotations("?W?......"),
@@ -386,8 +386,8 @@ def _matches(block: tuple[str, ...], form: tuple[_Pattern, ...]) -> bool:
         if want == "W":
             if actual not in _WALLS:
                 return False
-        # ``want`` is "." here: the.
-        # there is nothing left to fall.
+        # ``want`` is "." here: the alphabet has no fourth character, so
+        # there is nothing left to fall through to.
         elif actual in _WALLS:
             return False
     return True
@@ -442,16 +442,16 @@ class _Grid:
         self.width = max(len(row) for row in rows)
         self._rows = [row.ljust(self.width) for row in rows]
         self.height = len(self._rows)
-        # Memo shared by the geometry.
-        # drawing never changes during.
-        # the drawing* from a given car.
-        # time it is asked.
-        # re-derive the shape, the.
-        # the car revisits squares, so.
-        # ``tests/fixtures/streetcode_he.
-        # rules run 3242/12734/5864.
-        # states -- between 4.5 and.
-        # ``__setitem__`` clears it,.
+        # Memo shared by the geometry rules (see :func:`_geometric`).  The
+        # drawing never changes during a run, so a question answered *about
+        # the drawing* from a given car has the same answer every later
+        # time it is asked.  It is asked a lot: the steering phases each
+        # re-derive the shape, the choices and the merge from scratch, and
+        # the car revisits squares, so over the ring program in
+        # ``tests/fixtures/streetcode_hello.txt`` the
+        # rules run 3242/12734/5864 times from only 727/1235/702 distinct
+        # states -- between 4.5 and 10.3 calls of every ten are a repeat.
+        # ``__setitem__`` clears it, since a redrawn row is a different
         # drawing.
         self._geometry: dict[tuple[str, tuple[object, ...]], object] = {}
 
@@ -688,9 +688,9 @@ def _initial_heading(grid: _Grid, start: tuple[int, int]) -> _Heading:
             continue
         if grid.open_at(*_ahead(row, col, heading)):
             return heading
-    # No heading has both a wall on.
-    # (e.g.
-    # this program will hit on its.
+    # No heading has both a wall on the right and open ground ahead
+    # (e.g. an isolated cell): fall back to South, matching the halt
+    # this program will hit on its very first movement attempt anyway.
     return "S"
 
 
@@ -731,18 +731,18 @@ def _road_mouth(grid: _Grid, car: _Car, side: _Heading) -> _Mouth | None:
         )
 
     for dist in range(1, _MOUTH_MAX_DIST + 1):
-        # The two `+` bounding a mouth.
-        # distance.
-        # the `+` immediately behind.
-        # side road is the one.
-        # could actually turn into.
-        # earlier, while the closing.
-        # car decline a turn it has not.
-        # into that very road by the.
-        # A mouth is still the car's to.
-        # driven clear of the gap:.
-        # cornered straight into the.
-        # junction head-on), level with.
+        # The two `+` bounding a mouth sit at the same perpendicular
+        # distance.  The car must be level with the mouth's near edge --
+        # the `+` immediately behind it, so the first open cell of the
+        # side road is the one alongside -- for the road to be one it
+        # could actually turn into.  Detecting the same mouth a cell
+        # earlier, while the closing `+` is still alongside, would let the
+        # car decline a turn it has not yet reached and then be dragged
+        # into that very road by the ordinary right-hand hug a step later.
+        # A mouth is still the car's to decide about while it has not yet
+        # driven clear of the gap: ``near`` may sit one cell behind (it
+        # cornered straight into the mouth without ever meeting the
+        # junction head-on), level with the car, or one cell ahead.
         near = next(
             (
                 d
@@ -759,12 +759,12 @@ def _road_mouth(grid: _Grid, car: _Car, side: _Heading) -> _Mouth | None:
                     return _Mouth(dist=dist, near=near, far=far)
                 break
         if any(grid[pos(d, dist)] in _WALLS for d in (-1, 0, 1)):
-            # This line is the wall the car.
-            # carries no mouth it could.
-            # sits behind that wall, not on.
-            # stop looking: a `+` pair.
-            # other corridor's geometry,.
-            # would fire in the middle of.
+            # This line is the wall the car is driving along, and it
+            # carries no mouth it could turn into.  Anything further out
+            # sits behind that wall, not on a road reachable from here, so
+            # stop looking: a `+` pair sighted through solid wall is some
+            # other corridor's geometry, and treating it as a junction
+            # would fire in the middle of an ordinary bend.
             return None
     return None
 
@@ -806,8 +806,8 @@ def _crossing_mouth(grid: _Grid, car: _Car) -> bool:
     """
     if not _open_toward(grid, car, car.heading):
         return False
-    # Level with both `+` -- one.
-    # one step earlier and it has.
+    # Level with both `+` -- one step further and they are behind the car,
+    # one step earlier and it has not reached the intersection yet.
     left = _plus_dist(grid, car, _left(car.heading))
     right = _plus_dist(grid, car, _right(car.heading))
     return left is not None and right is not None and left != right
@@ -844,10 +844,10 @@ def _junction_kind(grid: _Grid, car: _Car) -> _Junction:
     ``docs/limitations.md``.
     """
     kind = _junction_shape(grid, car)
-    # A drawn junction is only a.
-    # it offers are roads the car.
-    # :func:`_road_deep`);.
-    # boundary, and ordinary.
+    # A drawn junction is only a choice when at least two of the roads
+    # it offers are roads the car could actually drive down (see
+    # :func:`_road_deep`); otherwise the shape is a bend or a lane
+    # boundary, and ordinary wall-following handles it.
     return kind if len(_junction_choices(grid, car)) >= 2 else 0
 
 
@@ -858,16 +858,16 @@ def _junction_shape(grid: _Grid, car: _Car) -> _Junction:
     ahead_open = _open_toward(grid, car, heading)
     left_mouth = _road_mouth(grid, car, _left(heading)) is not None
     right_mouth = _road_mouth(grid, car, _right(heading)) is not None
-    # Counting the road behind the.
-    # to one side with open road.
-    # sides make it a four-way when.
-    # and a three-way T whose.
+    # Counting the road behind the car, which is always drivable, a branch
+    # to one side with open road ahead is a three-way; branches to both
+    # sides make it a four-way when the car can also continue straight,
+    # and a three-way T whose crossbar it is driving into when it cannot.
     if left_mouth and right_mouth:
         return 4 if ahead_open else 3
     if left_mouth or right_mouth:
         return 3 if ahead_open else 0
-    # Met head-on -- the car is.
-    # rather than past it (see.
+    # Met head-on -- the car is driving out through the mouth itself
+    # rather than past it (see :func:`_crossing_mouth`).
     return 3 if _crossing_mouth(grid, car) else 0
 
 
@@ -916,9 +916,9 @@ def _lane_merge_target(
     near, far = mouth.near, mouth.far
     d_row, d_col = _DELTA[car.heading]
     depth = far - 1 if _right(new_heading) == car.heading else near + 1
-    # d_row/d_col is a unit vector.
-    # that component picks out the.
-    # while the perpendicular.
+    # d_row/d_col is a unit vector with exactly one nonzero component;
+    # that component picks out the travel-axis coordinate to advance,
+    # while the perpendicular coordinate stays fixed at the car's own.
     if d_row:
         return car.row + depth * d_row, car.col
     return car.row, car.col + depth * d_col
@@ -943,17 +943,17 @@ def _junction_choices(grid: _Grid, car: _Car) -> list[_Heading]:
     heading = car.heading
     roads = []
     crossing = _crossing_mouth(grid, car)
-    # Crossing a mouth head-on, the.
-    # is open", because a.
-    # from inside the mouth.
-    # *are* the road being joined.
-    # not yet drivable --.
-    # ahead, so a junction fires as.
-    # is open instead fills that.
-    # the two-wide street the car.
-    # junction the drawing never.
-    # wall-following brings it.
-    # re-detects and the cell is.
+    # Crossing a mouth head-on, the branch below takes "whichever way
+    # is open", because a perpendicular road's extent cannot be probed
+    # from inside the mouth.  That is sound only while the open sides
+    # *are* the road being joined.  When a side road is detected but
+    # not yet drivable -- _road_mouth anchors a mouth up to one cell
+    # ahead, so a junction fires as the car arrives -- taking whatever
+    # is open instead fills that road's slot with the oncoming lane of
+    # the two-wide street the car is already on, and the car decides a
+    # junction the drawing never offered.  Defer: ordinary
+    # wall-following brings it level with the gap, where the same mouth
+    # re-detects and the cell is read there.
     if crossing:
         for side in (_left(heading), _right(heading)):
             if _road_mouth(grid, car, side) is not None and not _open_toward(
@@ -962,11 +962,11 @@ def _junction_choices(grid: _Grid, car: _Car) -> list[_Heading]:
                 return []
     for side in (_left(heading), heading, _right(heading)):
         if crossing:
-            # Driving out through a mouth.
-            # side are the main road the.
-            # perpendicular to the car, so.
-            # from inside the mouth (two.
-            # its far wall): take whichever.
+            # Driving out through a mouth head-on, the roads to either
+            # side are the main road the branch joins.  That road runs
+            # perpendicular to the car, so its extent cannot be probed
+            # from inside the mouth (two cells out crosses it and hits
+            # its far wall): take whichever way is open.
             if _open_toward(grid, car, side):
                 roads.append(side)
         elif _road_deep(grid, car, side) and _lawful_turn(grid, car, side):
@@ -1032,10 +1032,10 @@ class _Steer(NamedTuple):
     latches: _Latches
 
 
-# What one phase answers before.
-# decision if it made one, and.
-# ``_Steer | None`` because a.
-# a latch off (a merge.
+# What one phase answers before ``_choose_heading`` sorts it out: the
+# decision if it made one, and the latches either way.  The pair is not a
+# ``_Steer | None`` because a phase that declines may still have written
+# a latch off (a merge abandoned mid-approach), and that write has to
 # survive into the next phase.
 _Phase = tuple["_Heading | None", _Latches]
 
@@ -1072,61 +1072,61 @@ def _heading_from_merge_target(
         return None, latches
     new_heading = merge.new_heading
     heading = car.heading
-    # A 'U' during the approach.
-    # not wait forever for a cell.
-    # is what keeps a divert from.
-    # rest of the run (see.
-    # ``test_diverting_before_the_ta.
+    # A 'U' during the approach turns the car around, and the latch must
+    # not wait forever for a cell it no longer visits: abandoning it here
+    # is what keeps a divert from disabling junction detection for the
+    # rest of the run (see
+    # ``test_diverting_before_the_target_abandons_the_merge_latch``).
     if heading != merge.latched_heading:
         return None, latches._replace(merge=None)
     if car.at != merge.target:
-        # Still approaching the lane.
-        # Hold the latched heading.
-        # right-hand hug peel the car.
-        # being joined is open on that.
-        # would otherwise turn early.
+        # Still approaching the lane where the turn will be made.
+        # Hold the latched heading rather than letting an ordinary
+        # right-hand hug peel the car away mid-approach -- the road
+        # being joined is open on that side by definition, so the hug
+        # would otherwise turn early and never reach the target.
         if _open_toward(grid, car, heading):
             return heading, latches
         return None, latches._replace(merge=None)
 
     latches = latches._replace(merge=None)
-    # Re-read the branch condition.
-    # value the latch was taken.
-    # real cells, and an ``I`` or.
-    # what the CPth cell holds.
-    # arriving at the lane where.
-    # spec's choice is about the.
-    # turn (``arrival_cell``), not.
-    # instruction has run: a square.
-    # sets CP up for the road being.
-    # must not double as the.
-    # The roads were established at.
-    # lies alongside or behind the.
-    # re-detects): the choice is.
-    # carrying straight on, ordered.
-    # Rank the latched turn against.
-    # same left-to-right order the.
-    # re-read cannot silently.
-    # about which road is.
-    # under a turn away from.
+    # Re-read the branch condition here rather than trusting the
+    # value the latch was taken under: the approach drives over
+    # real cells, and an ``I`` or ``=`` along the way can change
+    # what the CPth cell holds between detecting the junction and
+    # arriving at the lane where the turn is actually made.  The
+    # spec's choice is about the cell as the car *arrives* at the
+    # turn (``arrival_cell``), not after this square's own
+    # instruction has run: a square on the turning lane commonly
+    # sets CP up for the road being taken, and that preparation
+    # must not double as the decision of which road to take.
+    # The roads were established at detection time (the mouth now
+    # lies alongside or behind the car, so it no longer
+    # re-detects): the choice is between the latched turn and
+    # carrying straight on, ordered as they were then.
+    # Rank the latched turn against carrying straight on in the
+    # same left-to-right order the junction was read in, so the
+    # re-read cannot silently disagree with the original choice
+    # about which road is "leftmost".  The latch is only ever set
+    # under a turn away from ``latched_heading``, so the two roads
     # are always distinct.
-    # A *side* mouth is re-read at.
-    # drove the approach as.
-    # there is the one the spec's.
-    # mouth was decided at the.
-    # with both ``+`` when it chose.
-    # lane is only lane positioning.
-    # Re-reading there lets an.
-    # (a ``^`` on the way to the.
-    # already made, which is the.
-    # as the decision" the arrival.
+    # A *side* mouth is re-read at the turning square: the car
+    # drove the approach as ordinary road, so the cell it finds
+    # there is the one the spec's choice is about.  A *crossing*
+    # mouth was decided at the mouth itself -- the car was level
+    # with both ``+`` when it chose -- and the run out to the far
+    # lane is only lane positioning for a road already taken.
+    # Re-reading there lets an instruction on the positioning run
+    # (a ``^`` on the way to the lane) overturn a choice that was
+    # already made, which is the same "preparation must not double
+    # as the decision" the arrival read exists to prevent.
     if not merge.crossing:
-        # Left-to-right as the driver.
-        # before carrying straight on,.
-        # latch stores which of the two.
-        # read off the record rather.
-        # headings -- the comparison.
-        # second spelling of the same.
+        # Left-to-right as the driver sees it: a left turn comes
+        # before carrying straight on, a right turn after.  The
+        # latch stores which of the two it is, so this ordering is
+        # read off the record rather than recomputed from the
+        # headings -- the comparison that used to stand here was a
+        # second spelling of the same fact, free to disagree.
         choices = (
             [new_heading, merge.latched_heading]
             if merge.turn == "left"
@@ -1161,42 +1161,42 @@ def _heading_from_junction(
         return None, latches
 
     roads = _junction_choices(grid, car)
-    # A junction that fired (see.
-    # at least two roads: a mouth.
-    # straight ahead, and a.
+    # A junction that fired (see ``_junction_kind``) always offers
+    # at least two roads: a mouth on either side counts alongside
+    # straight ahead, and a crossing mouth counts the open sides.
     new_heading = roads[0] if current_cell == 0 else roads[1]
     turning = new_heading != heading
-    # A turn's destination is open.
-    # "sighted too early" case left.
-    # mouth anchors its near ``+``.
-    # fire before the car is level.
-    # stepped into the wall the.
-    # a guard at this point).
-    # (fc58258): every road.
-    # either ``_road_deep``, whose.
-    # on the crossing branch --.
-    # condition became.
-    # ``no cover`` pragma and why.
-    # over the corpus.
-    # in 857 corpus programs.
-    # 3.6M brute-forced (grid, car).
-    # is enforced; keep the.
-    # .
-    # Lane merging applies only to.
-    # continuing straight is not a.
-    # mouth is not bounded by real.
+    # A turn's destination is open by construction, so there is no
+    # "sighted too early" case left to defer here.  There was one: a
+    # mouth anchors its near ``+`` up to a cell ahead, so a junction can
+    # fire before the car is level with the gap, and the turn then
+    # stepped into the wall the mouth opens through (fixed in 701de45 by
+    # a guard at this point).  What retired the guard was ``_road_deep``
+    # (fc58258): every road ``_junction_choices`` offers now passes
+    # either ``_road_deep``, whose first test is that very cell, or --
+    # on the crossing branch -- ``_open_toward`` directly.  The guard's
+    # condition became unsatisfiable, which is why it carried a
+    # ``no cover`` pragma and why deleting it moves no drive-state graph
+    # over the corpus.  Searched for a witness before removing it: none
+    # in 857 corpus programs (including 701de45's own fixture) nor in
+    # 3.6M brute-forced (grid, car) states.  ``_road_deep`` is where this
+    # is enforced; keep the first-cell test in it.
+    #
+    # Lane merging applies only to a turn onto a detected side road:
+    # continuing straight is not a turn at all, and a road whose
+    # mouth is not bounded by real wall arms has no lanes to land in.
     if turning and _crossing_mouth(grid, car):
-        # Emerging head-on from a.
-        # car has to cross that road to.
-        # for the same reason a side-on.
-        # right-hand side" applies to.
-        # on until the wall ahead stops.
+        # Emerging head-on from a branch onto the road it joins: the
+        # car has to cross that road to its far lane before turning,
+        # for the same reason a side-on turn merges -- "drive on the
+        # right-hand side" applies to the road being joined too.  Run
+        # on until the wall ahead stops it, then turn.
         target = car.at
         d_row, d_col = _DELTA[heading]
         while grid.open_at(target[0] + d_row, target[1] + d_col):
             target = target[0] + d_row, target[1] + d_col
-        # ``_crossing_mouth``.
-        # open, so the loop above.
+        # ``_crossing_mouth`` guarantees the cell straight ahead is
+        # open, so the loop above always advances at least one cell.
         return None, latches._replace(
             merge=_Merge(
                 target_row=target[0],
@@ -1206,9 +1206,9 @@ def _heading_from_junction(
                 crossing=True,
             )
         )
-    # The mouth is looked up once.
-    # to re-find it and guard.
-    # out, so the lookup and the.
+    # The mouth is looked up once and handed to both helpers: each used
+    # to re-find it and guard against a miss the other had already ruled
+    # out, so the lookup and the guard were both duplicated.
     mouth = _road_mouth(grid, car, new_heading)
     if turning and mouth is not None and _lane_bounded(grid, car, new_heading, mouth):
         target = _lane_merge_target(car, new_heading, mouth)
@@ -1225,26 +1225,26 @@ def _heading_from_junction(
         return new_heading, latches
 
     if not turning:
-        # Carrying straight on past a.
-        # for exactly as many cells as.
-        # so the car drives past the.
-        # instead of being steered into.
-        # further, so the turn.
-        # is an ordinary corner, not.
-        # happens.
-        # one cell as the car.
-        # ever extended, never.
+        # Carrying straight on past a side road: suppress the hug
+        # for exactly as many cells as that road's mouth is wide,
+        # so the car drives past the branch it just declined
+        # instead of being steered into it a step later -- and no
+        # further, so the turn immediately after the mouth (which
+        # is an ordinary corner, not the declined road) still
+        # happens.  The same mouth can be detected from more than
+        # one cell as the car approaches, so the countdown is only
+        # ever extended, never restarted shorter.
         declined = [h for h in roads if h != heading]
         mouth = _road_mouth(grid, car, declined[0])
         if mouth is not None and mouth.near <= 0:
-            # Suppress the hug across the.
-            # gap opens immediately beside.
-            # -- those are the cells where.
-            # would otherwise steer it into.
-            # declined.
-            # ordinary wall-following still.
-            # the wall until it arrives,.
-            # is behind it, so nothing.
+            # Suppress the hug across the mouth, but only when the
+            # gap opens immediately beside the car (``near <= 0``)
+            # -- those are the cells where the fallen-away wall
+            # would otherwise steer it into the road it just
+            # declined.  When the gap starts further ahead,
+            # ordinary wall-following still holds the car against
+            # the wall until it arrives, and by then the junction
+            # is behind it, so nothing needs suppressing.
             latches = latches._replace(skip_hug=max(latches.skip_hug, mouth.width))
     return new_heading, latches
 
@@ -1253,11 +1253,11 @@ def _heading_from_hug(grid: _Grid, car: _Car, latches: _Latches) -> _Phase:
     """Ordinary right-hand wall-following, the default movement rule."""
     heading = car.heading
     if latches.skip_hug > 0:
-        # Drive past the declined.
-        # hugging the wall that has.
-        # straight ahead still turns.
-        # the same as being pulled into.
-        # the countdown carries on so.
+        # Drive past the declined branch: keep going straight rather than
+        # hugging the wall that has fallen away beside the car.  A wall
+        # straight ahead still turns the car -- rounding a corner is not
+        # the same as being pulled into the road it chose against -- but
+        # the countdown carries on so the rest of the mouth stays skipped.
         latches = latches._replace(skip_hug=latches.skip_hug - 1)
         if _open_toward(grid, car, heading):
             return heading, latches
@@ -1349,12 +1349,12 @@ def _drive(
     if op == "TURN":
         reversed_car = car.facing(_opposite(car.heading))
         lane = reversed_car.ahead(_right(reversed_car.heading))
-        # A street with no opposite.
-        # violation ``step`` raises.
+        # A street with no opposite lane is the late-detected width
+        # violation ``step`` raises ``HaltError`` for; it is not a
         # state the car drives on to.
         if not grid.open_at(*lane):
             return None
-        # A 'U' clears the latches, the.
+        # A 'U' clears the latches, the same reset ``step`` applies.
         return _State(*lane, reversed_car.heading, _NO_LATCHES)
 
     steer = _choose_heading(grid, car, state.latches, arrival_cell, current_cell)
@@ -1402,46 +1402,46 @@ class _Machine:
             raise ValueError(
                 f"Streetcode program must have exactly one C, found {len(starts)}"
             )
-        # The whole of the machine's.
-        # movement rules speak in:.
-        # and the three latches the.
-        # ``step`` hands this to.
-        # out, so the value looked up.
-        # machine's own rather than one.
-        # .
-        # The latches (see.
-        # ``merge`` is set when a.
-        # reached (phase 1, driving to.
-        # turning); ``merging_heading``.
-        # new road's right-hand wall.
-        # suppressing the immediate.
-        # ``None`` outside an.
-        # steps of ordinary right-hand.
-        # after a junction chose to.
-        # the declined road's mouth is.
-        # looks, so without it the car.
-        # just chose against on the.
+        # The whole of the machine's steering state, as the one record the
+        # movement rules speak in: where the car is, which way it points,
+        # and the three latches the steering phases carry between steps.
+        # ``step`` hands this to :func:`_drive` and stores back what comes
+        # out, so the value looked up in the drive-state graph is the
+        # machine's own rather than one assembled to match it.
+        #
+        # The latches (see :func:`_choose_heading` and :class:`_Latches`):
+        # ``merge`` is set when a junction turn is detected but not yet
+        # reached (phase 1, driving to the new road's lane before
+        # turning); ``merging_heading`` is set after that turn while the
+        # new road's right-hand wall has not yet picked up (phase 2,
+        # suppressing the immediate right-hand-hug re-turn).  Both are
+        # ``None`` outside an in-progress merge.  ``skip_hug`` counts
+        # steps of ordinary right-hand hugging still to be suppressed
+        # after a junction chose to carry straight on past a side road:
+        # the declined road's mouth is open ground exactly where the hug
+        # looks, so without it the car would be steered into the road it
+        # just chose against on the very next step.
         self._state = _State(
             *starts[0], _initial_heading(self.grid, starts[0]), _NO_LATCHES
         )
         self.cp = 0
-        # The tape, as a value: an.
-        # follow rather than writing.
-        # far CP has travelled, which a.
-        # so rebuilding it per write is.
-        # quadratic a growable stack.
+        # The tape, as a value: an instruction returns the cells that
+        # follow rather than writing into a dict.  It is bounded by how
+        # far CP has travelled, which a program grows one cell at a time,
+        # so rebuilding it per write is a constant rather than the
+        # quadratic a growable stack would cost.
         self.cells: Mapping[int, int] = {}
         self._done = False
-        # The enumerated drive-state.
-        # graph to consult: a program.
-        # (``_validate_width`` exempts.
-        # interpreter's own fixtures.
-        # :func:`_drive` directly in.
-        # filled the graph, so the.
+        # The enumerated drive-state graph, or ``None`` when there is no
+        # graph to consult: a program whose geometry is not a street
+        # (``_validate_width`` exempts those) or one whose validation the
+        # interpreter's own fixtures have patched out.  ``step`` calls
+        # :func:`_drive` directly in that case -- the same function that
+        # filled the graph, so the answer does not depend on which way it
         # was reached.
         self._graph: dict[_State, _Edges] | None = None
-        # Last, because.
-        # over the grid and so needs.
+        # Last, because ``_validate_total`` drives the real movement rules
+        # over the grid and so needs every field they touch to exist.
         self._validate(starts[0])
 
     @property
@@ -1451,10 +1451,10 @@ class _Machine:
 
     # The VM's language-shaped view.
 
-    # : ``ip`` is a cell of the.
-    # : parts are a row and a.
-    # : this a caller cannot tell.
-    # : stack, which look identical.
+    #: ``ip`` is a cell of the program's own rectangle: the first two
+    #: parts are a row and a column, and the rest is a heading.  Without
+    #: this a caller cannot tell the pair from a call depth or a frame
+    #: stack, which look identical and mean somewhere else entirely.
     ip_shape = "grid"
 
     @property
@@ -1485,11 +1485,11 @@ class _Machine:
         """No stack in this language."""
         return []
 
-    # Where the car is, as.
-    # it.
-    # to *move* the car states the.
-    # :meth:`place`, so a machine.
-    # three coordinates from one.
+    # Where the car is, as read-only views onto the one record that holds
+    # it.  They are reads and not writes on purpose: a caller that wants
+    # to *move* the car states the whole position at once through
+    # :meth:`place`, so a machine can never be left holding two of the
+    # three coordinates from one place and the third from another.
 
     @property
     def row(self) -> int:
@@ -1694,9 +1694,9 @@ class _Machine:
         """
         self._graph = self._drive_states(start)
         for state, edges in self._graph.items():
-            # ``;`` reports itself as.
-            # deliberate stop no longer has.
-            # re-reading the square:.
+            # ``;`` reports itself as ``"halt"`` rather than ``None``, so a
+            # deliberate stop no longer has to be told from a wedge by
+            # re-reading the square: ``None`` now means only the one thing.
             if any(successor is None for successor in edges.values()):
                 raise ValueError(
                     f"the car cannot drive out of {(state.row, state.col)} heading"
@@ -1738,8 +1738,8 @@ class _Machine:
         for successor in edges.values():
             if successor is None or successor == "halt":
                 continue
-            # A step drives one cell along.
-            # car teleporting, which no.
+            # A step drives one cell along one axis.  Anything else is the
+            # car teleporting, which no movement rule is allowed to do.
             steps = abs(successor.row - state.row) + abs(successor.col - state.col)
             if steps != 1:
                 raise AssertionError(
@@ -1754,9 +1754,9 @@ class _Machine:
                     f" floor: {self.grid[successor.row, successor.col]!r}"
                 )
         merge = state.latches.merge
-        # A latch whose heading no.
-        # step (see.
-        # stale by construction and.
+        # A latch whose heading no longer matches is abandoned on the next
+        # step (see :meth:`_heading_from_merge_target`), so its target is
+        # stale by construction and describes no geometry to check.
         if merge is None or state.heading != merge.latched_heading:
             return
         if not self.grid.open_at(merge.target_row, merge.target_col):
@@ -1765,9 +1765,9 @@ class _Machine:
                 f" {merge.target}, which is not open floor:"
                 f" {self.grid[merge.target_row, merge.target_col]!r}"
             )
-        # The approach does not change.
-        # ahead along the latched.
-        # never behind a car that can.
+        # The approach does not change lane, so the target sits straight
+        # ahead along the latched heading -- never off to one side, and
+        # never behind a car that can only drive forwards onto it.
         d_row, d_col = _DELTA[merge.latched_heading]
         off_row, off_col = merge.target_row - state.row, merge.target_col - state.col
         if off_row * d_col - off_col * d_row != 0:
@@ -1814,10 +1814,10 @@ class _Machine:
         it is a two-wide street of length three seen sideways, which is the
         deliberate boundary of the rule.
         """
-        # No walls → not a street.
+        # No walls → not a street network (e.g. ["C","U"] or ["C"])
         if not any(ch in _WALLS for row in self.grid for ch in row):
             return None
-        # BFS reachable open cells from.
+        # BFS reachable open cells from C (open = not a wall)
         from collections import deque
 
         sr, sc = start
@@ -1828,12 +1828,12 @@ class _Machine:
             r, c = q.popleft()
             for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
                 nr, nc = r + dr, c + dc
-                # No bounds test: off the grid.
-                # so the fill cannot walk out.
+                # No bounds test: off the grid is not open (see ``_Grid``),
+                # so the fill cannot walk out of the drawing.
                 if self.grid.open_at(nr, nc) and (nr, nc) not in visited:
                     visited.add(_ReachableCell((nr, nc)))
                     q.append(_ReachableCell((nr, nc)))
-        # Isolated single cell is not a.
+        # Isolated single cell is not a street
         if len(visited) <= 1:
             return None
         violation = self._width_violation(visited)
@@ -1913,15 +1913,15 @@ class _Machine:
         for cell in reachable:
             r, c = cell
             block = self._block(cell)
-            # A street is two cells wide,.
-            # within one of it; a wall-free.
-            # wider than two, which the.
+            # A street is two cells wide, so every reachable cell has a wall
+            # within one of it; a wall-free neighbourhood means an interior
+            # wider than two, which the width check has already rejected.
             if not any(ch in _WALLS for ch in block):  # pragma: no cover
                 continue
-            # The two-wide check runs first.
-            # shape found so far -- a wall.
-            # one-wide stub, which it.
-            # as the independent check the.
+            # The two-wide check runs first and rejects every malformed
+            # shape found so far -- a wall that stops short leaves a
+            # one-wide stub, which it catches as a dead end.  This stands
+            # as the independent check the forms were written to be.
             if not any(  # pragma: no cover - the width check rejects these first
                 _matches(block, form) for form in _WALL_FORMS
             ):
@@ -2074,21 +2074,21 @@ class _Machine:
             self._done = True
             return
 
-        # The driving state as the car.
-        # Read into a local because an.
-        # but never the car, its.
-        # before the lookup; so this is.
-        # happens.
-        # separate fields to match what.
+        # The driving state as the car arrives, for the graph lookup below.
+        # Read into a local because an instruction moves CP and the tape
+        # but never the car, its heading or the latches, and ``U`` returns
+        # before the lookup; so this is still the state when the lookup
+        # happens.  It is the machine's own record, not one rebuilt from
+        # separate fields to match what the graph is keyed by.
         state = self._state
 
-        # The cell as the car arrives,.
-        # A junction decision is about.
-        # branches on this rather than.
-        # the tape: the ``=`` painted.
-        # the road ahead, and must not.
-        # a per-step value, so it is.
-        # kept on the machine, where it.
+        # The cell as the car arrives, before this square's instruction runs.
+        # A junction decision is about the road the car is arriving at, so it
+        # branches on this rather than on whatever the square itself does to
+        # the tape: the ``=`` painted on a turning square moves CP to set up
+        # the road ahead, and must not also decide which road that is.  It is
+        # a per-step value, so it is passed to ``_choose_heading`` rather than
+        # kept on the machine, where it would look like part of the state the
         # cycle detector snapshots.
         arrival_cell = self._cell()
 
@@ -2099,9 +2099,9 @@ class _Machine:
         elif op == "RIGHT":
             self.cp += 1
         elif op == "LEFT":
-            # Clamped, not an error: CP is.
-            # quantity that cannot go lower.
-            # docstring for why this fills.
+            # Clamped, not an error: CP is unsigned, and an unsigned
+            # quantity that cannot go lower saturates.  See the module
+            # docstring for why this fills the spec's gap the way the rest
             # of the package does.
             self.cp = max(0, self.cp - 1)
         elif op == "IN":
@@ -2113,25 +2113,25 @@ class _Machine:
             except ValueError:
                 raise HaltError from None
         elif op == "TURN":
-            # Streets are two-way and two.
-            # right: after turning around,.
-            # one now on its right, so the.
-            # is this step's movement, and.
-            # step like any cell the car.
-            # would leave the car in the.
-            # left, and the right-hand hug.
-            # right turns -- back onto the.
-            # cancelling the U-turn.
+            # Streets are two-way and two wide, and the car drives on the
+            # right: after turning around, the lane it belongs in is the
+            # one now on its right, so the U-turn ends there -- that slide
+            # is this step's movement, and the lane cell is executed next
+            # step like any cell the car drives onto.  Turning in place
+            # would leave the car in the oncoming lane, driving on the
+            # left, and the right-hand hug then "corrects" that with two
+            # right turns -- back onto the original heading one lane over,
+            # cancelling the U-turn.  The heading changed, so every latch
             # keyed to the old one is void.
-            # .
-            # The manoeuvre itself is.
-            # because the drive-state.
-            # through it here is what keeps.
-            # about where a U-turn ends,.
-            # drift.
-            # spec allows, so there is.
-            # rule answers ``None``, and.
-            # runtime rather than a.
+            #
+            # The manoeuvre itself is :func:`_drive`, which models ``U``
+            # because the drive-state search has to predict it too; going
+            # through it here is what keeps the run and the graph agreeing
+            # about where a U-turn ends, rather than two spellings free to
+            # drift.  A street with no opposite lane is narrower than the
+            # spec allows, so there is nowhere legal to end the turn: the
+            # rule answers ``None``, and that is a malformed street met at
+            # runtime rather than a manoeuvre with a sensible fallback.
             turned = _drive(self.grid, state, arrival_cell, arrival_cell)
             if turned is None or turned == "halt":
                 raise HaltError(
@@ -2142,33 +2142,33 @@ class _Machine:
             self._state = turned
             return
         elif op == "NOP":
-            # ``C``, space, and every.
-            # fold to NOP (see ``_Op``), so.
-            # it out rather than falling.
-            # the type checker's.
+            # ``C``, space, and every character the spec does not define all
+            # fold to NOP (see ``_Op``), so there is nothing to do.  Spelling
+            # it out rather than falling through lets the ``else`` below be
+            # the type checker's exhaustiveness proof.
             pass
         else:
-            # Unreachable, and checked to.
-            # arms exhaust the rest of.
-            # ``Never``.
-            # the type check rather than.
+            # Unreachable, and checked to be: ``HALT`` returned above and the
+            # arms exhaust the rest of ``_Op``, so mypy narrows this to
+            # ``Never``.  A glyph added to ``_Op`` without an arm here fails
+            # the type check rather than silently behaving as a no-op.
             assert_never(op)
 
-        # Where the car goes next was.
-        # at construction, so the.
-        # rather than a re-run of the.
-        # two branch bits are the same.
-        # makes -- the arrival cell and.
-        # and only their zero-ness is.
-        # only tests movement applies.
-        # .
-        # A miss falls through to.
-        # graph in the first place: a.
-        # street has no graph to.
-        # a latch by hand and reach a.
-        # Cached or computed, the.
-        # arguments -- the lookup is a.
-        # second implementation that.
+        # Where the car goes next was worked out for every reachable state
+        # at construction, so the ordinary case is a dictionary lookup
+        # rather than a re-run of the mouth scans and junction rules.  The
+        # two branch bits are the same two reads :func:`_choose_heading`
+        # makes -- the arrival cell and the cell after this square ran --
+        # and only their zero-ness is asked for, because those are the
+        # only tests movement applies to them (see :meth:`_drive_states`).
+        #
+        # A miss falls through to :func:`_drive`, which is what filled the
+        # graph in the first place: a machine whose geometry is not a
+        # street has no graph to consult, and a test can set a heading or
+        # a latch by hand and reach a state the search never enumerated.
+        # Cached or computed, the answer is the same function of the same
+        # arguments -- the lookup is a memo of :func:`_drive`, not a
+        # second implementation that could drift from it.
         current_cell = self._cell()
         edges = None if self._graph is None else self._graph.get(state)
         successor = (
@@ -2182,15 +2182,15 @@ class _Machine:
             return
         if successor is None:
             if edges is None:
-                # No graph vouched for this.
-                # is the car's ordinary dead.
+                # No graph vouched for this state, so running out of road
+                # is the car's ordinary dead end: stop.
                 self._done = True
                 return
-            # ``_validate_total`` rejects a.
-            # so reaching one here means.
-            # disagree -- a bug in this.
-            # that stops.
-            # a truncated run as though it.
+            # ``_validate_total`` rejects a street with a wedged state,
+            # so reaching one here means the graph and the validator
+            # disagree -- a bug in this module rather than a program
+            # that stops.  Halting quietly would hide it and hand back
+            # a truncated run as though it were the answer.
             raise AssertionError(
                 f"no successor for {(self.row, self.col)} heading"
                 f" {self.heading}: the drive-state graph outlived"

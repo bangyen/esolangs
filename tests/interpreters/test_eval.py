@@ -57,7 +57,7 @@ class TestEval:
             state.step()
         assert state.ind == 3
 
-        state.step()  # the literal at index 3: past.
+        state.step()  # the literal at index 3: past the closing quote
         assert state.ind == 6
         assert state.stk[state.ptr] == ("a",)
 
@@ -203,15 +203,15 @@ class TestFrames:
             state.step()
             steps += 1
         assert state.io.getvalue() == "0"
-        # literal, !, then 0 and .
+        # literal, !, then 0 and . inside the frame, then two pops.
         assert steps > 2, "the nested program's commands are steps of their own"
 
     def test_the_frame_stack_deepens_inside_a_nested_program(self) -> None:
         """``ip`` reports the depth, which a bare cursor could not."""
         state = _Machine('"0."!', ScriptedIO(""))
-        state.step()  # the literal.
+        state.step()  # the literal
         assert state.ip[0] == 1
-        state.step()  # `!` pushes the nested program.
+        state.step()  # `!` pushes the nested program
         assert state.ip[0] == 2, "the nested program is a frame of its own"
 
     def test_endless_recursion_is_proved_rather_than_crashing(self) -> None:
@@ -226,7 +226,7 @@ class TestFrames:
         looping = _Machine('"0+.^!"^0+?!0.', ScriptedIO(""))
         assert run_until_halt_or_ancestor(looping) is False
 
-        # A nested program that does.
+        # A nested program that does terminate still reports as halting.
         finite = _Machine('"0."!', ScriptedIO(""))
         assert run_until_halt_or_ancestor(finite) is True
 
@@ -247,13 +247,13 @@ class TestFrames:
 
 class TestStepMachine:
     def test_the_empty_program_starts_halted(self) -> None:
-        # `step` has no halted guard of.
-        # which is what the VM's run.
+        # `step` has no halted guard of its own -- the caller checks first,
+        # which is what the VM's run loop does.
         assert _Machine("", IO()).halted
 
     def test_snapshot_is_hashable_and_tracks_progress(self) -> None:
         state = _Machine("0+.", IO())
         before = state.snapshot()
-        hash(before)  # must not raise.
+        hash(before)  # must not raise
         state.step()
         assert state.snapshot() != before

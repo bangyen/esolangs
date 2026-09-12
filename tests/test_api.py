@@ -1,4 +1,4 @@
-r"""Tests for the public package API."""
+"""Tests for the public package API."""
 
 import pytest
 
@@ -9,7 +9,7 @@ from esolangs.tools import boolean
 
 @pytest.mark.parametrize("language", ["Sophie", "Circlefuck", "BFStack"])
 def test_generate_computes_its_table(language: str) -> None:
-    r"""XOR, executed on all four rows -- the program, not just its text."""
+    """XOR, executed on all four rows -- the program, not just its text."""
     program = esolangs.generate(language, "0110")
     for row, expected in enumerate("0110"):
         stdin = "".join(f"{bit}\n" for bit in format(row, "02b"))
@@ -39,13 +39,13 @@ def test_unknown_language_raises() -> None:
 
 
 def test_run_eof_when_input_runs_out() -> None:
-    program = boolean.circlefuck("10")  # reads one input bit.
+    program = boolean.circlefuck("10")  # reads one input bit
     with pytest.raises(EOFError):
         esolangs.run("Circlefuck", program, stdin="")
 
 
 def test_run_timeout_halts_runaway_program() -> None:
-    r"""A program that never halts raises HaltError once the timeout."""
+    """A program that never halts raises HaltError once the timeout elapses."""
     from esolangs.exceptions import HaltError
 
     with pytest.raises(HaltError, match="timeout"):
@@ -65,7 +65,7 @@ def test_run_timeout_must_be_positive() -> None:
 
 
 def test_run_timeout_requires_main_thread() -> None:
-    r"""The SIGALRM guard needs a Unix main thread; elsewhere timeout is."""
+    """The SIGALRM guard needs a Unix main thread; elsewhere timeout is refused."""
     import threading
 
     out: list[BaseException | None] = [None]
@@ -112,7 +112,12 @@ def test_describe_language_without_interpreter() -> None:
 def test_generate_refuses_a_language_with_no_generator(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    r"""A registered language may have no generator, and must say so."""
+    """A registered language may have no generator, and must say so.
+
+    Every language currently has one, so this guard has no live instance --
+    which is exactly why it is pinned here rather than left to be noticed
+    the first time a generator-less language is registered.
+    """
     from dataclasses import replace
 
     from esolangs.registry import LANGUAGES

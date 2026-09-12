@@ -45,13 +45,13 @@ sys.path.insert(0, str(_ROOT / "src"))
 from esolangs.exceptions import EsolangError
 from esolangs.vm import make_vm, run_until_halt
 
-# Exceptions an interpreter is.
-# .
-# ``RecursionError`` was here.
-# ``exceptions.py`` or any doc.
-# It let a *host* limit escape.
-# that needed it have since.
-# stack, and Forbin converts.
+# Exceptions an interpreter is allowed to raise at the API boundary.
+#
+# ``RecursionError`` was here from this script's first commit, undefended by
+# ``exceptions.py`` or any doc -- the one entry with no documented backing.
+# It let a *host* limit escape as an interpreter's answer.  Both languages
+# that needed it have since been fixed: Eval runs nested programs on a frame
+# stack, and Forbin converts the one natively-recursive path it has left.
 ALLOWED = (EsolangError, ValueError, EOFError, SystemExit)
 
 GENERIC = [
@@ -119,44 +119,44 @@ GENERIC = [
     "out",
     "in",
     "\u00b2",
-    "\u0661",  # digits str.isdigit accepts.
+    "\u0661",  # digits str.isdigit accepts but int() will not
     "9" * 40,
     "z" * 40,
     "\n".join(["1"] * 8),
 ]
 
-# Programs are bounded by.
-# programs for a grid or beam.
-# 14 generic fragments do, for.
-# spends its whole budget.
-# a 2-second timeout is ten.
-# reproducible -- it does not.
-# it, so it cannot time out a.
+# Programs are bounded by *steps*, not by a wall clock.  Most malformed
+# programs for a grid or beam language loop forever by construction (11 of
+# 14 generic fragments do, for Back and Circlefuck), so a wall-clock bound
+# spends its whole budget waiting for those: at 300 hanging programs, even
+# a 2-second timeout is ten minutes.  A step cap ends them at once, and is
+# reproducible -- it does not shift with the speed of the machine running
+# it, so it cannot time out a slow-but-valid program and call it a leak.
 _STEP_CAP = int(os.environ.get("LEAKSWEEP_STEP_CAP", 0)) or 20000
 
-# : Caps the sweep walks,.
-# :.
-# : Halting is monotone in the.
-# : finishes at 20000 and never.
-# : exact rather than a.
-# : expensive languages are.
-# : run to the ceiling, and.
-# : a sweep's cost.
-# : unchanged; only the number.
+#: Caps the sweep walks, cheapest first, retrying only what is still running.
+#:
+#: Halting is monotone in the cap, so a program that finishes at 10 steps
+#: finishes at 20000 and never needs rerunning -- which is what makes this
+#: exact rather than a heuristic.  Almost everything halts immediately: the
+#: expensive languages are expensive because a handful of *their* mutants
+#: run to the ceiling, and paying that ceiling for all 336 runs was most of
+#: a sweep's cost.  The last rung is ``_STEP_CAP``, so the depth reached is
+#: unchanged; only the number of runs that pay for it is.
 _CAP_LADDER = (10, 100, 1000, _STEP_CAP)
 
-# The cap is not what makes.
-# help: the slow languages cost.
-# (COD, Factor, Painfuck,.
-# subprocess timeout is what.
-# `make_vm` factorizes before a.
-# SIGALRM cannot land on.
-# few runs pay it.
+# The cap is not what makes `--all` expensive, and lowering it would not
+# help: the slow languages cost per *step*, not per step count.  Four of them
+# (COD, Factor, Painfuck, Suptiftam) exceed any cap worth setting, and the
+# subprocess timeout is what actually bounds them -- Factor because
+# `make_vm` factorizes before a single step runs, in uninterruptible C a
+# SIGALRM cannot land on.  The cap stays 20000, and the ladder above means
+# few runs pay it.  Measurements in ``docs/verification_tooling.md``.
 
-# Four inputs, not a dozen: the.
-# are no input at all, a blank.
-# spellings of "a digit".
-# and the sweep runs every.
+# Four inputs, not a dozen: the distinctions that actually change a read
+# are no input at all, a blank line, a digit, and a non-digit.  Extra
+# spellings of "a digit" multiply the sweep without reaching new code --
+# and the sweep runs every program against every one of these.
 STDINS = ["", "\n", "0\n1\n", "abc"]
 
 
@@ -169,18 +169,18 @@ def mutate(text: str, rng: random.Random, n: int = 12) -> list[str]:
         kind = rng.randrange(4)
         i = rng.randrange(len(text))
         if kind == 0:
-            out.append(text[:i])  # truncate.
+            out.append(text[:i])  # truncate
         elif kind == 1:
-            out.append(text[:i] + text[i + 1 :])  # drop a char.
+            out.append(text[:i] + text[i + 1 :])  # drop a char
         elif kind == 2:
-            out.append(text[:i] + text[i] * 2 + text[i + 1 :])  # double a char.
+            out.append(text[:i] + text[i] * 2 + text[i + 1 :])  # double a char
         else:
             out.append(text[:i] + rng.choice(",.[]{}()$0az") + text[i:])
     return out
 
 
-# The scoping rule (which files.
-# shared with.
+# The scoping rule (which files changed, and what forces a full sweep) is
+# shared with scripts/verify.py, so both agree on when a narrowed run is safe.
 sys.path.insert(0, str(_ROOT / "scripts"))
 from _scope import SHARED_INTERPRETER as _SHARED
 from _scope import changed_files as _changed_files
@@ -221,24 +221,24 @@ def _drive(lang: str, program: str, stdin: str, cap: int) -> bool:
     return run_until_halt(make_vm(lang, program, stdin), cap)
 
 
-# : Wall-clock a language's.
-# :.
-# : Sized from measurement, not.
-# : in 102.9s *combined*, and.
-# : at 4.7s.
-# : machine without letting a.
-# : exceed it (COD, Factor,.
-# : are unbounded work, and no.
+#: Wall-clock a language's worker gets before the parent kills it.
+#:
+#: Sized from measurement, not from caution: 60 of the 64 languages finish
+#: in 102.9s *combined*, and the slowest that finishes at all is AddSubJump
+#: at 4.7s.  30s is therefore ~6x the real maximum -- room for a slower
+#: machine without letting a wedged language cost minutes.  The four that
+#: exceed it (COD, Factor, Painfuck, Suptiftam) are not slow-but-valid: they
+#: are unbounded work, and no larger number collects them.
 _LANG_TIMEOUT = 30.0
 
-# : How many language workers.
-# : count: each worker is a.
-# : this to the machine.
-# : laptop beside everything.
-# : slow language (Factor burns.
-# : which is most of the win.
-# : on a machine with cores to.
-# : which is what to use when.
+#: How many language workers run at once.  Deliberately **2**, not the core
+#: count: each worker is a separate process doing pure CPU work, so scaling
+#: this to the machine saturates it -- and this script runs on a developer's
+#: laptop beside everything else they are doing.  Two is enough to stop one
+#: slow language (Factor burns its whole timeout) from stalling the queue,
+#: which is most of the win.  Raise it deliberately with ``LEAKSWEEP_JOBS``
+#: on a machine with cores to spare; ``LEAKSWEEP_JOBS=1`` is sequential,
+#: which is what to use when reading a live transcript.
 _JOBS = max(1, int(os.environ.get("LEAKSWEEP_JOBS", 0)) or 2)
 
 
@@ -289,8 +289,8 @@ def _sweep_one(lang: str, progs: list[str]) -> tuple[int, list[dict[str, str]]]:
                             "stdin": stdin,
                         }
                     )
-        # Only what is still running.
-        # resolved too, and drops out.
+        # Only what is still running escalates; a raised exception is
+        # resolved too, and drops out with the ones that halted.
         pending = still
         if not pending:
             break
@@ -321,8 +321,8 @@ def _run_worker(lang: str) -> tuple[float, str, _Report | None]:
             check=False,
         )
     except subprocess.TimeoutExpired:
-        # SIGKILL lands without needing.
-        # whole reason this runs out of.
+        # SIGKILL lands without needing a bytecode boundary, which is the
+        # whole reason this runs out of process.
         return time.time() - t0, "TIMEOUT", None
     elapsed = time.time() - t0
     if proc.returncode != 0 or not proc.stdout.strip():
@@ -351,7 +351,7 @@ def _worker(target: str) -> None:
 
     rng = random.Random(1234)
     progs: list[str] = []
-    for lang in langs:  # replay in order so the corpus.
+    for lang in langs:  # replay in order so the corpus matches the parent's
         got = _corpus(lang, examples, rng)
         if lang == target:
             progs = got
@@ -380,7 +380,7 @@ def main() -> None:
         print("nothing to check (pass --all to sweep the whole registry)")
         return
 
-    # RUNNERS is keyed by display.
+    # RUNNERS is keyed by display name; the example files by canonical id.
     slug_of = {name: canonical_id(name) for name in langs}
     by_slug: dict[str, list[str]] = {}
     for d in ("boolean",):
@@ -393,32 +393,32 @@ def main() -> None:
     findings: dict[str, list[dict[str, str]]] = {}
     counts: dict[str, int] = {}
 
-    # Drawn here, in order, purely.
-    # worker's own replay: one.
-    # so the corpus is only.
-    # Doing it before the pool.
+    # Drawn here, in order, purely to keep this generator in step with each
+    # worker's own replay: one generator feeds every language in sequence,
+    # so the corpus is only reproducible if the draws happen in that order.
+    # Doing it before the pool keeps the parallel section free of shared
     # mutable state.
     rng = random.Random(1234)
     for lang in langs:
         _corpus(lang, examples, rng)
 
     timeouts: list[str] = []
-    # Workers are independent.
-    # threads only because each.
-    # keeps a language that burns.
+    # Workers are independent processes, so they overlap freely; the pool is
+    # threads only because each task does nothing but wait on one.  This also
+    # keeps a language that burns its whole timeout from delaying the rest.
     with cf.ThreadPoolExecutor(max_workers=_JOBS) as pool:
         futures = {pool.submit(_run_worker, lang): lang for lang in langs}
         done = {}
         for fut in cf.as_completed(futures):
             lang = futures[fut]
             done[lang] = fut.result()
-            # Progress as it lands.
-            # this is so a long sweep shows.
-            # language that is still out.
+            # Progress as it lands.  The ordered report below is the record;
+            # this is so a long sweep shows it is alive, and names the
+            # language that is still out when it is not.
             done_msg = f"  .. {lang} ({len(done)}/{len(langs)})"
             print(done_msg, file=sys.stderr, flush=True)
-    # Reported in registry order.
-    # of the sweep produce the same.
+    # Reported in registry order rather than completion order, so two runs
+    # of the sweep produce the same transcript.
     for lang in langs:
         elapsed, status, result = done[lang]
         if result is None:

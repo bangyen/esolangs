@@ -33,7 +33,7 @@ import random
 import sys
 from pathlib import Path
 
-# Run as a script (not under.
+# Run as a script (not under pytest), the repo root is not on the path.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from esolangs.tools.boolean.a_painter_ant import (

@@ -141,8 +141,8 @@ class TestStepMachine:
         assert machine.exit_code == 0
 
     def test_loop_is_detected_as_a_cycle(self) -> None:
-        # A oscillates 0 -> 1 -> 0.
-        # state cycle since the.
+        # A oscillates 0 -> 1 -> 0 forever with no EXIT rule: a genuine
+        # state cycle since the containers' values repeat exactly.
         from esolangs.interpreters.other.container import _Machine
         from esolangs.vm import run_until_halt_or_cycle
 
@@ -154,7 +154,7 @@ class TestStepMachine:
 
         machine = _Machine([], IO())
         assert machine.halted
-        machine.step()  # stepping a halted machine is.
+        machine.step()  # stepping a halted machine is a no-op
         assert machine.tick == 0
 
     def test_each_tick_counts_once(self) -> None:
@@ -199,11 +199,11 @@ class TestContract(SnapshotContract, StateViewContract):
 
     machine = staticmethod(_machine)
     stepping_program: ClassVar[list[str]] = ["A=0:", "+1 A>=0"]
-    # `queue` is the input read but.
-    # never fills -- it is read.
-    # containers' values) is what.
+    # `queue` is the input read but not yet consumed, which this program
+    # never fills -- it is read either side regardless, and `memory` (the
+    # containers' values) is what the tick moves.
     state_views: ClassVar[tuple[str, ...]] = ("queue", "ip", "memory")
     viewing_program: ClassVar[list[str]] = ["A=0:", "+1 A>=0"]
-    # No program in this file moves.
+    # No program in this file moves the queue view; it stays empty
     # for the whole run.
     constant_views: ClassVar[frozenset[str]] = frozenset({"queue"})

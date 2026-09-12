@@ -60,8 +60,8 @@ from typing import Literal, cast
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# A frame is always in one of.
-# checker prove the dispatch.
+# A frame is always in one of three phases; naming them lets the type
+# checker prove the dispatch below is exhaustive.
 _Phase = Literal["scan", "gather", "body"]
 
 
@@ -140,16 +140,16 @@ class _Thunk:
         self.end = end
 
 
-# : Everything that can sit in.
-# : result.
-# : a bare token that names.
-# : it as a variable name, and.
-# : ``_Thunk`` until it is.
-# :.
-# : Spelling it out is what.
-# : ``bool`` being a subclass.
-# : parsing and by the.
-# : need no defensive ``bool``.
+#: Everything that can sit in an argument list, a variable, or a frame's
+#: result.  Numbers and functions are the values a program computes with;
+#: a bare token that names nothing stays a ``str`` so ``vs``/``vg`` can use
+#: it as a variable name, and an unevaluated ``i`` branch rides along as a
+#: ``_Thunk`` until it is selected.
+#:
+#: Spelling it out is what keeps ``bool`` from smuggling itself in through
+#: ``bool`` being a subclass of ``int``: the values below are produced by
+#: parsing and by the builtins, none of which returns one, so the coercions
+#: need no defensive ``bool`` arm.
 _Value = int | str | _Func | _Thunk
 
 
@@ -205,9 +205,9 @@ def _lookup(name: str, defs: dict[str, _Def]) -> _Func:
     if name in defs:
         d = defs[name]
         return _Func(name, len(d.params), d.body, d.params)
-    # Both call sites test.
-    # here is a bug in that guard.
-    # undefined -- which is.
+    # Both call sites test membership before calling, so an unknown name
+    # here is a bug in that guard rather than a program calling something
+    # undefined -- which is reported, as a HaltError, where it is noticed.
     raise AssertionError(f"_lookup of unknown name {name!r}")
 
 
@@ -270,11 +270,11 @@ def _apply_builtin(
         return (1 if args[0] == args[1] else 0), vars_, None
     if fn.name == "cb":
         x, y = _as_int(args[0]), _as_int(args[1])
-        # No Lamfunc value is ever.
-        # digits to parse, and the.
-        # and a binary concatenation,.
-        # non-negatives.
-        # program asking for something.
+        # No Lamfunc value is ever negative: a literal has to be all
+        # digits to parse, and the arithmetic builtins are ``>>``, ``&``
+        # and a binary concatenation, which are closed over the
+        # non-negatives.  So a negative here is a bug in this file, not a
+        # program asking for something undefined.
         if x < 0 or y < 0:
             raise AssertionError("cb of a negative number is undefined")
         return (int(bin(x)[2:] + bin(y)[2:], 2) if (x or y) else 0), vars_, None
@@ -286,26 +286,26 @@ def _apply_builtin(
         return args[1], {**vars_, str(args[0]): args[1]}, None
     if fn.name == "vg":
         return vars_.get(str(args[0]), 0), vars_, None
-    # Callers only reach this with.
-    # bug in the dispatch above.
+    # Callers only reach this with a name from _BUILTINS, so a miss is a
+    # bug in the dispatch above rather than a malformed program.
     raise AssertionError(f"unexpected non-user builtin {fn.name!r}")
 
 
-# : The variable store.
-# : no closures over live.
-# : parameter shadowing is.
+#: The variable store.  A flat mapping -- Lamfunc has no scope chain and
+#: no closures over live scopes -- so it threads as a value, and a call's
+#: parameter shadowing is handled by each body frame's own ``saved``.
 type _Vars = Mapping[str, _Value]
 
-# : What a step wants done to.
-# : the frames to push after.
-# : shell, because Lamfunc.
-# : unbounded by design -- the.
-# : 4002 frames -- so.
-# : call depth.
+#: What a step wants done to the frame stack: how many frames to pop, and
+#: the frames to push after that.  The stack itself stays a list in the
+#: shell, because Lamfunc pushes a frame per call and its depth is
+#: unbounded by design -- the interpreter's own deep-recursion test reaches
+#: 4002 frames -- so rebuilding it per step would be quadratic in the
+#: call depth.  Grapheme's value stack is reported for the same reason.
 type _StackFx = tuple[int, tuple[_Frame, ...]]
 
-# : What a whole step produced:.
-# : top-level cursor that.
+#: What a whole step produced: the stack effects, the variables and
+#: top-level cursor that follow, and anything printed.
 type _Outcome = tuple[_StackFx, _Vars, int, str | None]
 
 
@@ -352,19 +352,19 @@ def _deliver(
     """
     pops = 1
     while True:
-        # Indexed rather than sliced:.
-        # Lamfunc's depth is unbounded,.
-        # deep unwind quadratic in the.
-        # chain, the slice cost 0.42s.
+        # Indexed rather than sliced: ``view`` is the whole call stack and
+        # Lamfunc's depth is unbounded, so slicing it per lap would make a
+        # deep unwind quadratic in the depth.  Measured on a 6000-deep call
+        # chain, the slice cost 0.42s against 0.04s.
         depth = len(view) - pops
         if depth <= 0:
-            # Top level: the cursor.
-            # absorbs the remaining.
-            # arguments -- a fresh "gather".
-            # function, whose own remaining.
-            # ``given`` prefix _dispatch.
-            # This can chain: a.
-            # arguments the same way until.
+            # Top level: the cursor advances, and a partial application
+            # absorbs the remaining top-level tokens as its outstanding
+            # arguments -- a fresh "gather" frame for the same still-partial
+            # function, whose own remaining arity is reused and whose
+            # ``given`` prefix _dispatch merges back in once it completes.
+            # This can chain: a still-partial result absorbs further
+            # arguments the same way until the arity is satisfied or the
             # tokens run out.
             ind += consumed
             pushes: tuple[_Frame, ...] = ()
@@ -373,10 +373,10 @@ def _deliver(
             return (pops, pushes), vars_, ind, None
         caller = view[depth - 1]
         if caller.awaiting_result:
-            # the child's value IS the.
-            # branch, or a call's body.
-            # already reflects its full.
-            # the child's consumed (a.
+            # the child's value IS the caller's own result (i's forced
+            # branch, or a call's body finishing) -- the caller's own pos
+            # already reflects its full consumption in its own tokens, so
+            # the child's consumed (a different token context) is unused
             consumed = caller.pos - caller.start
             pops += 1
             continue
@@ -392,12 +392,12 @@ def _deliver(
                 caller, awaiting=False, result=value, pos=caller.pos + consumed
             )
         else:
-            # "scan" never awaits a pushed.
-            # phase bookkeeping rather than.
+            # "scan" never awaits a pushed child, so this is a bug in the
+            # phase bookkeeping rather than anything a program can cause.
             raise AssertionError(f"unexpected caller phase {caller.phase!r}")
-        # ``grown`` replaces the.
-        # the shell removes ``pops``.
-        # what it is given, and the.
+        # ``grown`` replaces the caller, so the caller is popped too:
+        # the shell removes ``pops`` frames from the top and pushes
+        # what it is given, and the caller is one of the removed.
         return (pops + 1, (grown,)), vars_, ind, None
 
 
@@ -453,15 +453,15 @@ def _gather(
         return _dispatch(frame, view, fn, vars_, ind, main)
     tokens, pos = frame.tokens, frame.pos
     if pos >= len(tokens):
-        # partial application: not.
+        # partial application: not enough tokens left for the remaining args
         value = _partial(fn, list(frame.args))
         return _deliver(view, value, pos - frame.start, vars_, ind, main)
-    # vs/vg take their variable.
+    # vs/vg take their variable NAME as a literal token, never a value
     if fn.name in ("vs", "vg") and not frame.args:
         grown = replace(frame, args=(*frame.args, tokens[pos]), pos=pos + 1)
         return (1, (grown,)), vars_, ind, None
-    # i is lazy in its second and.
-    # is evaluated, via a pushed.
+    # i is lazy in its second and third arguments: only the chosen branch
+    # is evaluated, via a pushed frame once i is dispatched.
     if fn.name == "i" and len(frame.args) >= 1:
         end = _scan(tokens, pos, defs, vars_)
         grown = replace(frame, args=(*frame.args, _Thunk(tokens, pos, end)), pos=end)
@@ -506,8 +506,8 @@ def _dispatch(
             view, value, frame.pos - frame.start, vars_, ind, main
         )
         return (pops, pushes), vars_, ind, output
-    # a user-defined function: bind.
-    # push a body frame to run it.
+    # a user-defined function: bind params to args in a fresh scope and
+    # push a body frame to run it
     params = target.params or []
     saved = tuple((p, vars_.get(p)) for p in params)
     vars_ = {**vars_, **dict(zip(params, args, strict=True))}
@@ -602,7 +602,7 @@ class _Machine:
         """Whether the top-level cursor has run off the call sequence."""
         return self.ind >= len(self.main) and not self.frames
 
-    # The VM's language-shaped.
+    # The VM's language-shaped view: Prefix-call evaluator; ip is the top-level token
     # cursor.
 
     @property
@@ -691,20 +691,20 @@ class _Machine:
         if self.halted:
             return
         if not self.frames:
-            # the previous top-level call.
-            # application); start.
+            # the previous top-level call finished plainly (not a partial
+            # application); start evaluating the next one
             self.frames.append(_Frame(self.main, self.ind, start=self.ind))
             return
 
         (pops, pushes), variables, ind, output = _advance(
             self.frames, self.variables, self.ind, self.defs, self.main
         )
-        # Every transition finishes at.
+        # Every transition finishes at least one frame, so `pops` is >= 1.
         del self.frames[len(self.frames) - pops :]
         self.frames.extend(pushes)
-        # Held as returned, not copied:.
-        # fresh mapping for any step.
-        # again would be a per-step.
+        # Held as returned, not copied: the transition already built a
+        # fresh mapping for any step that changed one, so copying it
+        # again would be a per-step cost in the size of the store.
         self.variables = variables
         self.ind = ind
         if output is not None:

@@ -29,12 +29,12 @@ type _State = tuple[
 type _Effect = tuple[str, int] | None
 
 
-# : The most outcomes one ``=``.
-# : the span between two.
-# : command can ask for more.
-# : deliberately a property of.
-# : remaining budget: that.
-# : make the same program.
+#: The most outcomes one ``=`` may open in a branching search.  Its range is
+#: the span between two runtime values rather than a fixed coin, so a single
+#: command can ask for more states than any search wants to hold.  This is
+#: deliberately a property of the transition rather than the caller's
+#: remaining budget: that budget shrinks as the search proceeds, which would
+#: make the same program decidable or not depending on when it was reached.
 _EQUAL_FANOUT = 256
 
 
@@ -226,10 +226,10 @@ class _Machine:
     def halted(self) -> bool:
         return self.state[7]
 
-    # : ``ip`` is a cell of the.
-    # : parts are a row and a.
-    # : this a caller cannot tell.
-    # : stack, which look identical.
+    #: ``ip`` is a cell of the program's own rectangle: the first two
+    #: parts are a row and a column, and the rest is a heading.  Without
+    #: this a caller cannot tell the pair from a call depth or a frame
+    #: stack, which look identical and mean somewhere else entirely.
     ip_shape = "grid"
 
     @property
@@ -247,10 +247,10 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         return (*self.state, self.io.position())
 
-    # The all-random-outcomes.
-    # machine -- ``done`` included.
-    # unchanged, minus the input.
-    # below rather than forked, and.
+    # The all-random-outcomes search.  ``_State`` is already the whole
+    # machine -- ``done`` included -- so the branching state is that value
+    # unchanged, minus the input cursor ``snapshot`` adds: input is declined
+    # below rather than forked, and output cannot affect a later command.
 
     def branching_snapshot(self) -> _State:
         """Return the current state as the search's starting point."""

@@ -47,10 +47,10 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_int_memory as _parse
 
-# The largest memory a run will.
-# list backing them is not:.
-# would satisfy, so the run.
-# spending the box's memory.
+# The largest memory a run will grow.  Cell values are unbounded, but the
+# list backing them is not: past this the allocation is one no machine
+# would satisfy, so the run halts instead of raising OverflowError (or
+# spending the box's memory finding out).
 _MAX_MEMORY = 1 << 24
 
 _IO = -1
@@ -60,24 +60,24 @@ _FUM = -9
 _SPECIAL = set(range(_FUM, _IO + 1))
 
 
-# : One instant of a run:.
-# : self-modifying store, the.
-# : flag-update mode.
-# : a new one rather than.
+#: One instant of a run: ``(memory, ip, cf, zf, nf, vf, fum)`` -- the
+#: self-modifying store, the instruction pointer, the four flags, and the
+#: flag-update mode.  A value, not a record: every transition below returns
+#: a new one rather than editing one in place, and the memory is copied on
 #: write for the same reason.
-# :.
-# : The memory is in the state.
-# : rewrites it as it runs.
-# : the store, and ``halted``.
+#:
+#: The memory is in the state rather than beside it because this language
+#: rewrites it as it runs *and* can extend it: a write past the end grows
+#: the store, and ``halted`` compares the pointer against the current
 #: length.
-# :.
-# : It is *sparse* --.
-# : addresses a program uses.
-# : writing cell 999999.
-# : zero.
-# : what ``halted`` and the.
-# : off the container.
-# : is what freezes it for the.
+#:
+#: It is *sparse* -- ``(non-zero cells, allocated length)`` -- because the
+#: addresses a program uses are unrelated to how many cells it fills: one
+#: writing cell 999999 allocates a million and leaves all but a handful
+#: zero.  The length is carried explicitly because it stays semantic (it is
+#: what ``halted`` and the allocation cap test) and can no longer be read
+#: off the container.  A ``dict`` is unhashable, so :meth:`_Machine.snapshot`
+#: is what freezes it for the cycle detector.
 type _Cells = tuple[dict[int, int], int]
 type _State = tuple[_Cells, int, int, int, int, int, int]
 
@@ -237,8 +237,8 @@ class _Machine:
         self.io = io
         self.state: _State = (_pack(list(_parse(code))), 0, 0, 0, 0, 0, 0)
 
-    # The language's own names.
-    # than fields of their own, so.
+    # The language's own names.  They are views on the current state rather
+    # than fields of their own, so there is one place a step can change.
 
     @property
     def memory(self) -> list[int]:
@@ -283,8 +283,8 @@ class _Machine:
         (_cells, length), ip = self.state[0], self.state[1]
         return ip < 0 or ip >= length
 
-    # The VM's language-shaped.
-    # pointer.
+    # The VM's language-shaped view: self-modifying memory + instruction
+    # pointer.  ``ip`` and ``memory`` above already *are* the view, so only
     # the empty stack needs saying.
 
     @property
@@ -294,15 +294,15 @@ class _Machine:
 
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
-        # The state as it stands plus.
-        # ignores consumed input is not.
-        # .
-        # The sparse store's dict is.
-        # follows insertion, so equal.
-        # orders would freeze.
-        # the key depend on the.
-        # than a frozenset because a.
-        # processes, which the mutation.
+        # The state as it stands plus the input cursor: a repeat that
+        # ignores consumed input is not a real cycle.
+        #
+        # The sparse store's dict is unhashable and its iteration order
+        # follows insertion, so equal memories reached by different write
+        # orders would freeze differently.  Sorting the items is what makes
+        # the key depend on the contents alone -- and sorted items rather
+        # than a frozenset because a frozenset's repr is unstable across
+        # processes, which the mutation baselines compare.
         (cells, length) = self.state[0]
         return (
             tuple(sorted(cells.items())),

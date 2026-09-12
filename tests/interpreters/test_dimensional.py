@@ -99,7 +99,7 @@ class TestDimensional:
             dim.run("*xyz*]", IO())
         with pytest.raises(ValueError, match="unmatched"):
             dim.run("*xyz*[", IO())
-        # and a balanced pair past the.
+        # and a balanced pair past the comment still loops
         assert run_and_capture("*xyz*=03[.-]") == "\x03\x02\x01"
 
     def test_coordinate_read_clear(self) -> None:
@@ -190,11 +190,11 @@ class TestDimensional:
                 machine.step()
             return machine.tape.axis
 
-        assert axis_after("+.") == 2  # the default, with no $AXIS at.
+        assert axis_after("+.") == 2  # the default, with no $AXIS at all
         assert axis_after("$2+.") == 2
         assert axis_after("$3+.") == 3
         assert axis_after("$9+.") == 9
-        # values below 2 clamp: there.
+        # values below 2 clamp: there is no 1-pointer (a documented choice)
         assert axis_after("$1+.") == 2
         assert axis_after("$0+.") == 2
 
@@ -231,10 +231,10 @@ class TestDimensional:
     @pytest.mark.parametrize(
         ("table", "n"),
         [
-            ("01", 1),  # NOT.
-            ("0110", 2),  # XOR.
-            ("0001", 2),  # AND.
-            ("11111110", 3),  # NAND3.
+            ("01", 1),  # NOT
+            ("0110", 2),  # XOR
+            ("0001", 2),  # AND
+            ("11111110", 3),  # NAND3
             ("1111111100000000", 4),
         ],
     )
