@@ -3445,9 +3445,11 @@ def _solve(truth_table: str) -> str:
     # There are no such tables left.  :func:`_mux` carried an arity gate at
     # the time, so everything above five landed here; that gate is gone (see
     # :data:`_MUX_MIN_ARITY`), and every one of the route's six ``None``-sites
-    # closes by an argument uniform in ``n`` --
-    # ``docs/generators/minifuck_generator.md``, "Is
-    # ``_mux`` total?".  So the generator is total: this raise says the
+    # closes by an argument uniform in ``n``.  The section this used to cite,
+    # "Is ``_mux`` total?" in ``docs/generators/minifuck_generator.md``, did
+    # not survive that file's condensing; ``docs/proofs.md`` carries the claim
+    # now, for this generator and the other 68.  So the generator is total on
+    # the arities that document states: this raise says the
     # totality argument has been broken by a change, and the message names the
     # table that broke it.
     raise ValueError(f"the Minifuck boolean generator could not build {truth_table!r}")

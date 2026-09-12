@@ -901,6 +901,52 @@ def test_arity_caps_are_still_caps() -> None:
             fn(make(cap + 1))
 
 
+# Every table of arity one, two and three: 4 + 16 + 256 = 276 of them.  The
+# sweep above sees two tables per arity, so a generator that refuses some
+# *third* shape -- an all-but-one-row table, a table whose fold leaves one
+# essential input, a single minterm -- passes it and fails here.  This is the
+# exhaustive-domain half, and n <= 3 is the last arity where exhaustive is a
+# thing one can afford: n=4 is 65536 tables per generator.
+#
+# It is the executable witness `docs/proofs.md` names for the totality
+# entries.  A structural argument says a generator returns on every table of
+# every arity; this checks the whole domain at the arities where "whole" is
+# reachable, which is what stops the argument from resting on its own prose.
+#
+# 4.7s serial across all 69, no generator over 1.8s -- pct-squared-minus-one
+# is the top, Factor 0.25s, the other 67 under 0.6s each.
+_EXHAUSTIVE_ARITY = 3
+
+
+def _all_tables(arity: int) -> list[str]:
+    """Every truth table of every arity from one up to ``arity``."""
+    return [
+        format(k, f"0{2**n}b")
+        for n in range(1, arity + 1)
+        for k in range(2 ** (2**n))
+    ]
+
+
+@pytest.mark.parametrize("name", sorted(BY_BOOLEAN))
+def test_every_generator_is_total_on_every_small_table(name: str) -> None:
+    """Every generator returns a program for *every* table up to three inputs.
+
+    Totality, on the domain where it can be checked outright rather than
+    argued: no table in it raises, and none yields the empty string.  A
+    generator that refuses one table in 276 is not total, and the two-shape
+    sweep above would not see it -- ``_dense`` and ``_parity`` are two
+    points, and the constructions here fold, complement and reorder, so
+    which table is hardest is not a property either point has.
+
+    Non-empty rather than correct: a returned program is what the claim is
+    about.  ``test_every_generator_runs_what_it_builds`` is what runs one.
+    """
+    fn = getattr(boolean, name)
+    for table in _all_tables(_EXHAUSTIVE_ARITY):
+        program = str(fn(table))
+        assert program, f"{name} built an empty program for {table!r}"
+
+
 def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
     """Nothing above k2 is needed, so the plan sieve is never entered.
 
