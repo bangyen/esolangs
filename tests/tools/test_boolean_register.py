@@ -5,10 +5,13 @@ AddSubJump, Collatz Multiverse, Sophie, Dig, Qoibl, Polynomial, and Point
 Break.
 """
 
+import random
+
 import pytest
 
 import esolangs
 from esolangs.tools import boolean
+from esolangs.tools.boolean.helpers import _ASCII_ONE, _ASCII_ZERO
 from esolangs.tools.boolean.register import (
     _DIG_BRANCH,
     _DIG_RETURN,
@@ -958,3 +961,103 @@ class TestPointBreak:
     def test_bad_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.point_break("0123")
+
+
+def _depth_zero_labels(program: str) -> list[int]:
+    """Every ``@$N`` block label at the top level of ``program``.
+
+    Sophie dispatches by setting the accumulator with ``#$N`` and falling
+    through the top-level ``@$N{...}`` blocks, so two blocks sharing an
+    ``N`` means the first also fires.  48 and 49 are excluded: those are the
+    bit tests, which are not dispatch labels.
+    """
+    labels: list[int] = []
+    depth = index = 0
+    while index < len(program):
+        char = program[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+        elif char == "@" and depth == 0 and program[index + 1 : index + 2] == "$":
+            end = index + 2
+            while end < len(program) and program[end].isdigit():
+                end += 1
+            value = int(program[index + 2 : end])
+            if value not in (_ASCII_ZERO, _ASCII_ONE):
+                labels.append(value)
+            index = end
+            continue
+        index += 1
+    return labels
+
+
+class TestSophieLabelsAreUnique:
+    """Two blocks with one label make the first fire on the way past.
+
+    Labels used to come from two bands chosen by level parity, on the
+    reasoning that a fired block leaves a *next*-level label in the
+    accumulator which no remaining test in the chain can match.  That is
+    true of consecutive levels and consecutive levels are not the relation
+    that matters: unshared states are inlined, so a single top-level block
+    carries jumps originating at several depths, and levels 2 and 4 -- same
+    parity, same band -- were both targets from inside it.  Level 2 is
+    emitted first, so a jump meant for level 4 ran level 2 first and read
+    inputs the caller never supplied.
+
+    The failure is *shape*-dependent, not size-dependent, which is why it
+    survived: Sophie is correct on all 65536 tables at n <= 4, and collides
+    on 35% of random tables at n=7.
+    """
+
+    #: The smallest table that collides, found by exhaustive search upward.
+    MINIMAL = "00000000000000010000000100000100"
+
+    def test_the_minimal_colliding_table_computes(self) -> None:
+        """It raised ``read past the end of input: 5 lines supplied, read 6``."""
+        assert boolean.sophie(self.MINIMAL)  # builds, and always did
+        for combo in range(32):
+            bits = [(combo >> (4 - i)) & 1 for i in range(5)]
+            got = run_sophie(boolean.sophie(self.MINIMAL), [str(b) for b in bits])
+            assert got == self.MINIMAL[combo], bits
+
+    def test_the_minimal_table_has_no_duplicate_label(self) -> None:
+        """Its program carried two ``@$1`` blocks."""
+        labels = _depth_zero_labels(boolean.sophie(self.MINIMAL))
+        assert len(labels) == len(set(labels)), labels
+
+    @pytest.mark.parametrize("n", [5, 6, 7, 8])
+    def test_no_table_collides_at_any_arity(self, n: int) -> None:
+        """A structural check, so it reaches arities executing cannot afford.
+
+        Sampled rather than exhaustive, with a fixed seed: at n=8 the old
+        scheme collided on 88% of random tables, so twenty is ample to
+        catch a regression and cheap enough to run every time.  The shapes
+        that first exposed this are included by name, since a random sample
+        is exactly what missed it for so long.
+        """
+        rng = random.Random(n)
+        tables = ["".join(rng.choice("01") for _ in range(2**n)) for _ in range(20)]
+        tables.append("".join(str(int(bin(r).count("1") == 1)) for r in range(2**n)))
+        for table in tables:
+            labels = _depth_zero_labels(boolean.sophie(table))
+            assert len(labels) == len(set(labels)), (n, table)
+
+    def test_a_label_is_never_a_bit_value(self) -> None:
+        """48 and 49 are what a read leaves behind, so a block cannot own one.
+
+        Nothing else is reserved -- the interpreter parses a label as a
+        plain digit run -- so this is the whole constraint, and it binds
+        only once the count climbs past 47.
+        """
+        for n in (6, 7, 8):
+            table = "".join(str(int(bin(r).count("1") == 1)) for r in range(2**n))
+            labels = _depth_zero_labels(boolean.sophie(table))
+            assert _ASCII_ZERO not in labels
+            assert _ASCII_ONE not in labels
+
+    def test_the_scan_can_actually_see_a_duplicate(self) -> None:
+        """The positive control: a checker that never fires guards nothing."""
+        assert _depth_zero_labels("@$1{;}@$1{;}") == [1, 1]
+        assert _depth_zero_labels("@$1{@$1{;}}") == [1]  # nested is not top level
+        assert _depth_zero_labels(";@$48{#$48,&}{#$49,&}") == []  # bit tests only
