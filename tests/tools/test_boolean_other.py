@@ -25,8 +25,6 @@ from tests.tools.boolean_runners import (
     run_function_x_y,
     run_inject,
     run_laserfuck,
-    run_myscript,
-    run_nevermind,
     run_suptiftam,
     run_taglate,
     run_ztoalc,
@@ -860,39 +858,6 @@ class TestBetween:
     def test_bad_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.between("0123")
-
-
-class TestNevermind:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1000000000000000", 4),  # AND4
-        ],
-    )
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.nevermind(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_nevermind(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    def test_structure(self) -> None:
-        """A one-input function reads one input and branches on it."""
-        program = boolean.nevermind("10")
-        assert program.startswith("input,?")
-        assert "if,$a,==,0" in program
-        assert program.count("endif") == 2
-
-    def test_constant_subtrees_fold(self) -> None:
-        """A constant slice prints its answer instead of branching further."""
-        assert boolean.nevermind("11111111").count("print,") == 1
-        assert boolean.nevermind("11110000").count("print,") == 2
-        assert boolean.nevermind("10010110").count("print,") == 8  # no fold
 
 
 class TestContainer:
@@ -2271,37 +2236,6 @@ class TestLaserFuck:
         """
         program = boolean.laserfuck("01101001", 8)
         assert run_laserfuck(program, ["0", "0", "0"], 3) == "0"
-
-
-class TestMyScript:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("01", 1),  # identity
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("1000000000000000", 4),  # AND4
-        ],
-    )
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.myscript(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_myscript(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    def test_constant_subtrees_fold(self) -> None:
-        """A constant slice says its answer instead of branching further."""
-        assert boolean.myscript("11111111").count("say") == 1
-        assert boolean.myscript("11110000").count("say") == 2
-        assert boolean.myscript("10010110").count("say") == 8  # parity: no fold
 
 
 class TestGeneratorEdgePaths:

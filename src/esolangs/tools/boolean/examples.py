@@ -595,7 +595,6 @@ def _register() -> None:
             note="an executed line prints its result, so the answer ends in a newline",
         ),
         "alight": _reader(b.alight, "grid_based.alight", split=True),
-        "basicfuck": _reader(b.basicfuck, "tape_based.basicfuck"),
         "between": _reader(b.between, "register_based.between", split=True),
         "bfstack": _reader(b.bfstack, "stack_based.bfstack"),
         "bit~": _reader(b.bit_tilde, "tape_based.bit_tilde"),
@@ -647,7 +646,6 @@ def _register() -> None:
         "decleq": _reader(b.decleq, "register_based.decleq"),
         "dig": _reader(b.dig, "grid_based.dig", split=True),
         "dimensional": _reader(b.dimensional, "tape_based.dimensional"),
-        "dinac": _reader(b.dinac, "other.dinac"),
         "factor": _reader(b.factor, "tape_based.factor"),
         # Fargo reads one *number* before the program starts, not a bit per
         # line, and ``@ k`` indexes that number's bits.  The boolean
@@ -695,12 +693,6 @@ def _register() -> None:
             ),
         ),
         "modulous": _reader(b.modulous, "stack_based.modulous"),
-        "myscript": _reader(b.myscript, "register_based.myscript"),
-        "nevermind": _reader(
-            b.nevermind,
-            "register_based.nevermind",
-            split=True,
-        ),
         "packlang": _reader(b.packlang, "other.packlang"),
         "painfuck": _reader(b.painfuck, "tape_based.painfuck"),
         "point-break": _reader(

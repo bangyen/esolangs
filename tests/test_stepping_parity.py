@@ -202,7 +202,7 @@ class TestTheEofTraitIsOnTheVmToo:
 
     def test_the_wrapper_reports_it(self) -> None:
         """Same value from both, or one of them is lying."""
-        for name in ("DINAC", "brainfuck"):
+        for name in ("Flowchart", "brainfuck"):
             program = esolangs.generate(name, "0110")
             stdin = esolangs.encode_inputs(name, [0, 1], "0110")
             vm = esolangs.make_vm(name, program, stdin)

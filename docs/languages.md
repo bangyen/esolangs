@@ -58,7 +58,6 @@ fold reaches generic twelve- and thirteen-input tables.
 | BFStack | yes | yes |  |
 | BIO | yes | yes | yes |
 | Back | yes | yes | yes |
-| Basicfuck | yes | yes |  |
 | Between | yes | yes |  |
 | Bitdeque | yes | yes | yes |
 | BrainIf | yes | yes |  |
@@ -69,7 +68,6 @@ fold reaches generic twelve- and thirteen-input tables.
 | Clockwise | yes | yes |  |
 | Collatz Multiverse | yes | yes |  |
 | Container | yes | yes |  |
-| DINAC | yes | yes |  |
 | Decleq | yes | yes |  |
 | Dig | yes | yes |  |
 | Dimensional | yes | yes |  |
@@ -89,8 +87,6 @@ fold reaches generic twelve- and thirteen-input tables.
 | Minifuck | yes | yes | yes |
 | Minsky Swap | yes | yes | yes |
 | Modulous | yes | yes |  |
-| MyScript | yes | yes |  |
-| Nevermind | yes | yes |  |
 | NoComment | yes | yes | yes |
 | Packlang | yes | yes |  |
 | Painfuck | yes | yes |  |

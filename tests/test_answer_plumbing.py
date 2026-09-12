@@ -580,7 +580,7 @@ class TestWhatHappensWhenAProgramIsUnderfed:
 
     def test_the_trait_is_reported_by_describe(self) -> None:
         """A caller must be able to learn this without underfeeding one."""
-        assert esolangs.describe("DINAC")["eof_is_a_value"] is True
+        assert esolangs.describe("Flowchart")["eof_is_a_value"] is True
         assert esolangs.describe("brainfuck")["eof_is_a_value"] is False
 
     def test_clockwise_is_not_marked_because_it_never_reads_past_an_end(
@@ -817,7 +817,7 @@ class TestRunSaysWhenStdinLooksWrong:
         the supplied length: an underfeed supplies some input and runs off
         the end after it, which a ``supplied == 0`` test misses entirely.
         """
-        for name in ("Circuit Diagram", "DINAC", "Flowchart", "S*bleq"):
+        for name in ("Circuit Diagram", "Flowchart", "S*bleq"):
             program = esolangs.generate(name, "10010110")
             short = esolangs.encode_inputs(name, [1, 0])
             with pytest.warns(UserWarning, match="past the end"):

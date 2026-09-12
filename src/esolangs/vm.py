@@ -937,13 +937,12 @@ class VM(Protocol):
         **The tuple's arity is the language's own and is not stable within
         a run.**  This used to promise ``(x, y, heading)``, which is three
         of them: at the start of a run the registry also has 1-, 2-, 4- and
-        6-tuples, and *eight* languages change shape as they go -- so a
+        6-tuples, and *six* languages change shape as they go -- so a
         caller must read the shape rather than assume one.
 
-        The eight, measured by stepping each to its halt:
+        The six, measured by stepping each to its halt:
 
-        * to ``None``: Basicfuck (from an ``int``), Flowchart, MyScript,
-          Super SNUSP
+        * to ``None``: Flowchart, Super SNUSP
         * to an empty tuple: ``function x(y)``
         * growing and shrinking again: the Algebraic Programming Language
           between 1, 2 and 3, Forþ between 1, 2 and 3, and **COD through
@@ -972,10 +971,10 @@ class VM(Protocol):
         heading, a phase -- and is not described here.
 
         **The row-then-column rule is about those ten and no others.**
-        Twenty languages report a tuple: the other ten are not grid
+        Nineteen languages report a tuple: the other nine are not grid
         languages at all -- 3D Brainfuck and Back are tape machines, Eval,
-        Forþ and Grapheme stack ones, Interprogck8 and MyScript register
-        ones, and APL, Forbin and ``function x(y)`` are their own thing.
+        Forþ and Grapheme stack ones, Interprogck8 a register one,
+        and APL, Forbin and ``function x(y)`` are their own thing.
         Half of those report a bare ``(0,)``.  Their components are the
         language's own and mean whatever that language needs, so a 4-tuple
         from Back is not a coordinate in row-major order and nothing here
@@ -1006,7 +1005,7 @@ class VM(Protocol):
         and ``test_a_positional_ip_says_what_it_counts`` enforces it.  The
         shapes that are neither a cell nor a line -- a frame stack whose
         parts are one position each (Forth, Grapheme, Forbin), a depth
-        paired with a cursor (MyScript, Eval), a 3-D point and heading (3D
+        paired with a cursor (Eval), a 3-D point and heading (3D
         Brainfuck) -- all look exactly like a ``(row, col)`` and cannot be
         told from one by their values.  Reading them as a cell names a real
         character that is not the one running, so saying ``"opaque"`` is a

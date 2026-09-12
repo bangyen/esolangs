@@ -1696,48 +1696,6 @@ class TestJaune:
                 assert got == str(a * b), f"{a} * {b}"
 
 
-class TestBasicfuck:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("01", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1111111111111111", 4),  # constant one
-        ],
-    )
-    def test_program_shape(self, table: str, n: int) -> None:
-        """The program declares its cells, reads n inputs, and prints once."""
-        program = boolean.basicfuck(table)
-        assert program.startswith("#basicfuck t=unbounded r=0~255 o=wrap")
-        assert (
-            program.splitlines()[1]
-            == "#allocate " + ", ".join(f"a{i}" for i in range(1, n + 1)) + ", out"
-        )
-        assert program.count("read ->") == n  # one read per input
-        # One leaf per *constant slice*, not per row: the tree folds a
-        # subtree whose rows agree, so a table with no constant slice above
-        # a single row (parity) still spends 2**n leaves while a constant
-        # table spends one.
-        assert program.count("write <- out ;") == _leaves(table)
-
-    def test_constant_subtrees_fold(self) -> None:
-        """A constant slice emits one leaf instead of branching further."""
-        assert boolean.basicfuck("1" * 16).count("write <- out ;") == 1
-        assert boolean.basicfuck("11110000").count("write <- out ;") == 2
-        # parity has no constant slice above one row, so nothing folds
-        assert boolean.basicfuck("10010110").count("write <- out ;") == 8
-
-    def test_decision_tree(self) -> None:
-        """Each internal node branches both ways with the wiki's if!(...)."""
-        program = boolean.basicfuck("0110")
-        assert program.count("if (a1) {") == 1
-        assert program.count("if !(a1) {") == 1
-        assert program.count("if (a2) {") == 2
-        assert program.count("if !(a2) {") == 2
-
-
 class TestSbleq:
     @pytest.mark.parametrize(
         ("table", "n"),

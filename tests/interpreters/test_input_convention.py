@@ -151,7 +151,6 @@ def test_the_scan_finds_the_guards_that_are_really_there() -> None:
     found = {name for name, src in _interpreter_sources() if _blank_line_guards(src)}
     assert {
         "Alight",
-        "DINAC",
         "Jaune",
         "LaserFuck",
         "Streetcode",
@@ -291,7 +290,6 @@ _EOF_IS_A_HALT: dict[str, str] = {
     "fargo": "the interpreter reads before the program starts",
     "circuit_diagram": "resolves its inputs while laying the grid",
     "flowchart": "reads at the switch, which a program without one skips",
-    "dinac": "its reads are guarded, so a missing line is a zero",
     "s*bleq": "a failed read leaves the cell alone and the program runs on",
 }
 

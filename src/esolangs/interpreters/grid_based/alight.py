@@ -72,7 +72,7 @@ operation.
   That holds inside a called function too: a call *pushes* a walker rather
   than running the callee in the caller's step, so a callee that rings
   forever reaches ``snapshot`` on every command and is proved the same
-  way.  ``lamfunc.py`` and ``dinac.py`` frame calls for the same reason.
+  way.  ``lamfunc.py`` frames calls for the same reason.
 """
 
 import sys

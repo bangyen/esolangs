@@ -14,7 +14,7 @@ the next core, and never mutates what it is given.
 
 ``!`` evaluates a string as a program.  That nested program runs on an
 explicit *frame stack* rather than through Python recursion: ``!`` pushes a
-frame and returns, and the next ``step()`` continues inside it.  MyScript's
+frame and returns, and the next ``step()`` continues inside it.  Lamfunc's
 machine is built the same way, and for the same reasons.
 
 Doing it this way is what makes nesting visible to the rest of the library.

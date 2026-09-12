@@ -284,25 +284,25 @@ class TestTheDebuggerWarnsAboutStdinToo:
     """
 
     def test_the_debugger_says_what_run_says(self) -> None:
-        """DINAC under-fed: one line to a two-input program."""
-        program = esolangs.generate("DINAC", "0110")
+        """Flowchart under-fed: one line to a two-input program."""
+        program = esolangs.generate("Flowchart", "0110")
         with pytest.warns(esolangs.InputMismatchWarning, match="read past the end"):
-            esolangs.run("DINAC", program, "1\n", 10)
+            esolangs.run("Flowchart", program, "1\n", 10)
         with pytest.warns(esolangs.InputMismatchWarning, match="read past the end"):
-            esolangs.make_debugger("DINAC", program, "1\n").run(timeout=10)
+            esolangs.make_debugger("Flowchart", program, "1\n").run(timeout=10)
 
     def test_a_correct_input_stays_silent(self) -> None:
         """A warning that fires on correct input is worth less than none."""
-        program = esolangs.generate("DINAC", "0110")
-        stdin = esolangs.encode_inputs("DINAC", [1, 0], "0110")
+        program = esolangs.generate("Flowchart", "0110")
+        stdin = esolangs.encode_inputs("Flowchart", [1, 0], "0110")
         with warnings.catch_warnings():
             warnings.simplefilter("error")
-            esolangs.make_debugger("DINAC", program, stdin).run(timeout=10)
+            esolangs.make_debugger("Flowchart", program, stdin).run(timeout=10)
 
     def test_it_is_said_once(self) -> None:
         """``run`` on a halted machine returns at once; re-warning is noise."""
-        program = esolangs.generate("DINAC", "0110")
-        debugger = esolangs.make_debugger("DINAC", program, "1\n")
+        program = esolangs.generate("Flowchart", "0110")
+        debugger = esolangs.make_debugger("Flowchart", program, "1\n")
         with pytest.warns(esolangs.InputMismatchWarning):
             debugger.run(timeout=10)
         with warnings.catch_warnings():

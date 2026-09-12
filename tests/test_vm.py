@@ -696,27 +696,6 @@ class TestFactor:
         assert vm.halted
 
 
-class TestBasicfuck:
-    def test_tape_and_cursor(self) -> None:
-        prog = "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\n"
-        vm = esolangs.make_vm("Basicfuck", prog + "a += 65;\nwrite <- a ;")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
-        vm.step()  # a += 65
-        assert vm.memory == [65]
-        vm.step()  # write prints a
-        assert vm.output == "A"
-        vm.step()  # the finished frame is finalized
-        assert vm.halted
-
-    def test_while_loop_restarts_the_body(self) -> None:
-        prog = "#basicfuck t=unbounded r=0~255 o=wrap\n#allocate a\n"
-        vm = esolangs.make_vm("Basicfuck", prog + "a += 3;\nwhile (a) { a -= 1; }")
-        for _ in range(8):
-            vm.step()
-        assert vm.memory == [0]
-        assert vm.halted
-
-
 class TestPainfuck:
     def test_tape_and_cursor(self) -> None:
         vm = esolangs.make_vm("Painfuck", "pp")
@@ -840,17 +819,6 @@ class TestContainer:
         assert not vm.halted
 
 
-class TestNevermind:
-    def test_named_variables_and_cursor(self) -> None:
-        vm = esolangs.make_vm("Nevermind", "make,x,5\nprint,$x")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [], [])
-        vm.step()  # make,x,5 stores x = 5
-        assert (vm.ip, vm.memory) == (1, [5])
-        vm.step()  # print,$x resolves $x and prints it
-        assert vm.halted
-        assert vm.output == "5"
-
-
 class TestBFPDA:
     def test_bit_stack_and_cursor(self) -> None:
         vm = esolangs.make_vm("BF-PDA", "<@.")
@@ -937,36 +905,6 @@ class TestBetween:
         assert vm.output == "3"
         vm.step()  # .x. exits
         assert vm.halted
-
-
-class TestMyScript:
-    def test_frame_position_and_scope(self) -> None:
-        """Positions, variables and operands, stepped one evaluation at a time.
-
-        A statement is several steps rather than one: its expression is
-        scheduled, evaluated, and only then does the statement finish.  That
-        finer granularity is the point of the frame stack -- it is what lets
-        a statement inside a call be observed at all -- so this walks to each
-        assertion rather than assuming a step per line.
-        """
-
-        def run_to(vm: object, predicate: object, limit: int = 50) -> None:
-            for _ in range(limit):
-                if predicate():  # type: ignore[operator]
-                    return
-                vm.step()  # type: ignore[attr-defined]
-            raise AssertionError("predicate never held")
-
-        vm = esolangs.make_vm("MyScript", "var a is 5\nsay a")
-        assert vm.ip == (1, 0)
-        assert vm.memory == []
-        assert vm.stack == []
-        run_to(vm, lambda: vm.memory == [5])  # a is declared
-        assert vm.ip == (1, 1)
-        run_to(vm, lambda: vm.output == "5")  # say a
-        run_to(vm, lambda: vm.halted)  # the root frame pops
-        assert vm.ip is None  # the frame stack has emptied
-        assert vm.memory == []
 
 
 class TestLamfunc:
@@ -1756,23 +1694,6 @@ class TestRunUntilHaltOrCycle:
 
         # |0|f. is an unconditional goto back to line 0
         machine = _Machine(["|0|f."], ScriptedIO())
-        assert run_until_halt_or_cycle(machine) is False
-
-    def test_myscript_halting_run_returns_true(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.myscript import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine("say 5", ScriptedIO())
-        assert run_until_halt_or_cycle(machine) is True
-
-    def test_myscript_looping_run_is_detected_as_a_cycle(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.myscript import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        # while yes never becomes false; the body's own state never changes
-        machine = _Machine("while yes,\n  var x is 1", ScriptedIO())
         assert run_until_halt_or_cycle(machine) is False
 
     def test_lamfunc_halting_run_returns_true(self) -> None:
@@ -2660,10 +2581,6 @@ class TestFactory:
         ("NoComment", "ciio"),
         ("3D Brainfuck", "+."),
         ("Factor", "15"),
-        (
-            "Basicfuck",
-            "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\na += 65;\nwrite <- a ;",
-        ),
         ("Painfuck", "pp"),
         ("bit~", "~("),
         ("Collatz Multiverse", "x = negativeOne x + negativeOne, DO PRINT."),
