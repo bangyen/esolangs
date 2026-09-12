@@ -10,7 +10,7 @@ which files happen to sit in examples/.
 import pathlib
 import textwrap
 
-from esolangs.registry import LANGUAGES, RUNNERS, parameterized_ids
+from esolangs.registry import LANGUAGES, RUNNERS, parameterized_ids, wiki_url
 from esolangs.tools.boolean import BOOLEAN
 
 ROOT = pathlib.Path(__file__).parents[1]
@@ -79,8 +79,13 @@ def _wiki_name(name: str) -> str:
     return name
 
 
-def _wiki_slug(name: str) -> str:
-    return _wiki_name(name).replace(" ", "_")
+def _wiki_link(name: str) -> str:
+    """Return the language's wiki URL, built by the registry so the two agree.
+
+    This used to build its own slug, which meant the README and
+    ``describe`` each had a copy of the same escaping bug.
+    """
+    return wiki_url(_wiki_name(name))
 
 
 def _source_link(name: str) -> str:
@@ -202,7 +207,7 @@ def render_languages_section() -> str:
         out.append("")
         for name in sorted(groups[prefix]):
             out.append(
-                f"- [{_wiki_name(name)}](https://esolangs.org/wiki/{_wiki_slug(name)})"
+                f"- [{_wiki_name(name)}]({_wiki_link(name)})"
                 f" ([code]({_source_link(name)}))"
             )
         out.append("")

@@ -17,6 +17,16 @@ operand are invalid: they halt the program with
 :class:`~esolangs.exceptions.HaltError`, and a malformed token (a missing
 required argument) is rejected with :class:`ValueError`.
 
+**Unknown commands and stray text are refused, and that is a choice.**  The
+wiki says only that "a module is a command surrounded by square brackets"
+and never says what an implementation should do with anything else, so
+there is no spec to follow here.  Both used to be silent: ``[PRTINT]`` -- a
+plausible slip for ``[PRT INT]`` -- ran as nothing at all, and ``[PSH INT
+1[END]`` dropped the unbalanced first half and ran the second, each exiting
+0 having printed nothing.  A program that does nothing and reports success
+is the worst answer to a typo, so both raise now.  A reader who wants a
+comment has ``[]``, which the empty-token rule already skips.
+
 Exhausted input raises :class:`EOFError` (the repo-wide convention).
 """
 
@@ -31,6 +41,32 @@ from esolangs.interpreters.randomness import Randomness, draw
 
 #: A command is a bracketed group, which may hold one quoted string.
 _TOKEN = re.compile(r'\[([^\[\]\"]*("[^"]*")?)]')
+
+
+def _reject_stray_text(code: str) -> None:
+    """Refuse anything outside a bracketed command.
+
+    ``findall`` skips whatever does not match, so an unbalanced bracket
+    simply vanished: ``[PSH INT 1[END]`` lost its first half and ran
+    ``END``, exiting 0 with nothing printed and nothing said.  Whitespace
+    between commands is fine and everything else is a mistake -- the wiki
+    describes no comment syntax, and ``[]`` is already a skipped token for
+    anyone who wants one.
+    """
+    end = 0
+    stray: list[str] = []
+    for match in _TOKEN.finditer(code):
+        gap = code[end : match.start()].strip()
+        if gap:
+            stray.append(gap)
+        end = match.end()
+    if tail := code[end:].strip():
+        stray.append(tail)
+    if stray:
+        raise ValueError(
+            f"{stray[0]!r} is outside any [command]; Modulous reads only "
+            f"bracketed commands, so this would have been dropped silently"
+        )
 
 
 #: One instant of a run: ``(stk, var, ind)`` -- the data stack, the four
@@ -93,7 +129,8 @@ class _Machine:
         self.var = {f"VAR{k}": 0 for k in range(1, 5)}
         self.ind = 0
         self.io = io
-        self.tokens = tuple(k[0] for k in _TOKEN.findall(code))
+        self.tokens = tuple(k.group(1) for k in _TOKEN.finditer(code))
+        _reject_stray_text(code)
         self._halted = False
         self.rng = rng
 
@@ -231,7 +268,16 @@ class _Machine:
             if "+" in mod or "-" in mod:
                 core, halted = self._state
                 self._restore((_var_arith(core, mod), halted))
-            return
+                return
+            # Not a command and not variable arithmetic.  This used to
+            # ``return``, so ``[PRTINT]`` -- a plausible slip for ``[PRT
+            # INT]`` -- ran as nothing at all: the program exited 0 having
+            # printed nothing, which is the worst answer to a typo.
+            raise ValueError(
+                f"[{mod}] is not a Modulous command: {arg[0]!r} is not one of "
+                f"{', '.join(sorted(_DISPATCH))}, and a bare VARn+k or VARn-k "
+                f"is the only other thing a command can be"
+            )
 
         value: str | int | None = None
         if arg[0] == "PRT":
@@ -257,7 +303,7 @@ class _Machine:
 def _top(stk: tuple[int, ...]) -> int:
     """Return the top of the stack, halting on an empty stack."""
     if not stk:
-        raise HaltError
+        raise HaltError("the stack is empty, so there is no top value to read")
     return stk[-1]
 
 
@@ -271,7 +317,8 @@ def _operand(arg: list[str], n: int) -> str:
 def _named(var: Mapping[str, int], name: str) -> int:
     """Return the value of ``name``, halting when it is not a variable."""
     if name not in var:
-        raise HaltError
+        known = ", ".join(sorted(var)) or "none are defined yet"
+        raise HaltError(f"{name} is not a defined variable ({known})")
     return var[name]
 
 
@@ -346,7 +393,8 @@ def _swp(core: _Core, _mod: str, _arg: list[str], _value: str | int | None) -> _
     """Move the second value to the top."""
     stk, var, ind = core
     if len(stk) < 2:
-        raise HaltError
+        were = "is 1" if len(stk) == 1 else f"are {len(stk)}"
+        raise HaltError(f"SWP needs two values on the stack and there {were}")
     return ((*stk[:-2], stk[-1], stk[-2]), var, ind)
 
 
@@ -392,7 +440,7 @@ def _rnd(core: _Core, _mod: str, arg: list[str], value: str | int | None) -> _Co
     stk, var, ind = core
     n = int(_operand(arg, 1))
     if n < 1:
-        raise HaltError
+        raise HaltError(f"RND needs an upper bound of at least 1, got {n}")
     return ((*stk, int(value) if value is not None else 0), var, ind)
 
 

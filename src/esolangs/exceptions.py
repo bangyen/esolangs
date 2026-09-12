@@ -13,6 +13,20 @@ holds.
 class EsolangError(Exception):
     """Base class for errors from the esolangs package."""
 
+    #: What the program had already written when this was raised.
+    #:
+    #: A program that prints and *then* fails had printed something, and
+    #: :func:`esolangs.run` used to drop it: the exception went up and the
+    #: buffer went out of scope, so a Modulous program that prints ``Hi``
+    #: and then pops an empty stack gave a caller nothing at all -- while
+    #: the debugger, driving the same interpreter, showed ``output: 'Hi'``.
+    #: For someone debugging their own program the bytes before the failure
+    #: are most of the diagnosis.
+    #:
+    #: Empty for every error raised before the program ran, which is most
+    #: of them.
+    partial_output: str = ""
+
 
 class HaltError(EsolangError):
     """An interpreter halted on an invalid operation.
