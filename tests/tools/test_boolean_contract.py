@@ -41,7 +41,7 @@ _TABLES = ["00000000", "01101001"]
 # The set is empty.  ``minifuck`` was its last member, at 14.9s of the
 # sweep's 18.0s, and left on 2026-09-06 when the emitter stopped stepping
 # its straight runs one character at a time: the entry now measures 0.03s
-# against the one-second budget.  ``docs/minifuck_generator.md`` has the
+# against the one-second budget.  ``docs/generators/minifuck_generator.md`` has the
 # full ledger of what entered and left this set, with the measurement
 # behind each.
 _SEARCHING_GENERATORS_REGRESSED: frozenset[str] = frozenset()

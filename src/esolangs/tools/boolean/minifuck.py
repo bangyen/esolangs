@@ -70,7 +70,7 @@ _POOL = (0, 0, 1, 1, 0, 0, 0)
 #
 # **Several numbers in this module are this one wearing different hats**, and
 # spelling them as literals hid a relationship the totality argument in
-# ``docs/minifuck_generator.md`` turns on.  What derives from it:
+# ``docs/generators/minifuck_generator.md`` turns on.  What derives from it:
 #
 # * the accumulator floor -- ``_endgame`` refuses ``acc < _POOL_WIDTH``,
 #   because the accumulator has to sit past the pool;
@@ -1076,7 +1076,7 @@ _Staging = tuple[int, int, int | str, int]
 #   one slice.  Hamming weight does predict a *rate* -- 78.4% reachable at
 #   weight 2 and 14 against 18.8% at weight 8 -- but no weight class is
 #   empty, so nothing licenses declining early.  See
-#   ``docs/minifuck_generator.md``.
+#   ``docs/generators/minifuck_generator.md``.
 #
 #   An earlier version of this note said the map "behaves like a hash" and
 #   cannot be indexed at all, which overstated that evidence: it predates
@@ -2356,14 +2356,16 @@ def _staged(truth_table: str, n: int) -> str | None:
 # replaced the tuple with :data:`_MUX_MIN_ARITY` is that "nothing in the
 # construction is aware of ``n``" stopped being an observation and became an
 # argument: every one of the route's six refusal sites closes uniformly in
-# ``n`` (``docs/minifuck_generator.md``, "Is ``_mux`` total?").  Sampled end to end: 200
+# ``n`` (``docs/generators/minifuck_generator.md``, "Is ``_mux`` total?").  Sampled end
+# to end: 200
 # of 200 fully-essential five-input tables build and print all 32 rows
 # correctly on the shipped interpreter, five-input XOR among them, at about
 # 0.14s each.  Six inputs is the arity the gate used to refuse and it builds
 # the same way: the two tables that raised in 0.000s before the lift emit 4040
 # and 3993 characters in 41.6s and 53.8s, and a fixed fully-essential table
 # prints all 64 rows on the shipped interpreter in
-# :meth:`test_no_arity_is_gated`.  ``docs/minifuck_generator.md`` carries the wider run,
+# :meth:`test_no_arity_is_gated`.  ``docs/generators/minifuck_generator.md`` carries the
+# wider run,
 # 448 of 448 rows correct at five, six and seven inputs.
 #
 # The route sits *after* the staged families in :func:`_solve`, so every
@@ -2386,7 +2388,8 @@ _MUX_GUARD = _MUX_BASE - 8
 # The lowest arity the route is offered.  There is no upper bound: this used
 # to be a tuple ``(2, 3, 4, 5)`` recording the arities that had been
 # *verified*, and the route declined outside it in 0.0s -- a configuration
-# gate, not a construction that failed.  ``docs/minifuck_generator.md`` ("Is ``_mux``
+# gate, not a construction that failed.  ``docs/generators/minifuck_generator.md`` ("Is
+# ``_mux``
 # total?") now closes all six of the route's ``None``-sites with arguments
 # that carry no residual ``n``: the separation is affine and injective by the
 # constant 24-cell saturation margin plus the strict non-overlap the halving
@@ -2554,7 +2557,7 @@ def _mux_separate(n: int) -> _Joint | None:
     #
     # Neither check fires at any arity -- which is the point of deriving the
     # separation rather than searching for one, and is argued uniformly in
-    # `n` in ``docs/minifuck_generator.md`` under "Is ``_mux`` total?" -- so
+    # `n` in ``docs/generators/minifuck_generator.md`` under "Is ``_mux`` total?" -- so
     # both refusals are the guard against a future weighting that breaks the
     # construction, not a live path.
     if any(m.dead for m in j.ms) or len(set(j.ptrs())) != 2**n:
@@ -3442,7 +3445,8 @@ def _solve(truth_table: str) -> str:
     # There are no such tables left.  :func:`_mux` carried an arity gate at
     # the time, so everything above five landed here; that gate is gone (see
     # :data:`_MUX_MIN_ARITY`), and every one of the route's six ``None``-sites
-    # closes by an argument uniform in ``n`` -- ``docs/minifuck_generator.md``, "Is
+    # closes by an argument uniform in ``n`` --
+    # ``docs/generators/minifuck_generator.md``, "Is
     # ``_mux`` total?".  So the generator is total: this raise says the
     # totality argument has been broken by a change, and the message names the
     # table that broke it.

@@ -39,8 +39,11 @@ def _documents() -> dict[str, str]:
     found = {"README.md": (ROOT / "README.md").read_text(), "usage": USAGE}
     for name, text in HELP.items():
         found[f"{name} --help"] = text
-    for doc in sorted((ROOT / "docs").glob("*.md")):
-        found[f"docs/{doc.name}"] = doc.read_text()
+    # Recursive: a doc moved into a subfolder must not silently leave this
+    # sweep.  The key is the path relative to ROOT, not the bare name, so two
+    # files sharing a name in different folders cannot collide into one entry.
+    for doc in sorted((ROOT / "docs").rglob("*.md")):
+        found[str(doc.relative_to(ROOT))] = doc.read_text()
     return found
 
 
