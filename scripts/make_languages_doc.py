@@ -141,7 +141,7 @@ def render() -> str:
     lines = [
         "# Language capabilities",
         "",
-        "Generated from `esolangs/registry.py` by",
+        "Generated from `src/esolangs/registry.py` by",
         "`scripts/make_languages_doc.py`; do not edit by hand.",
         "",
         "## Columns",
