@@ -173,6 +173,11 @@ addopts = [
     "2",
 ]
 markers = [
+    # The top tier, and the only one CI deselects.  353 of 10865 tests that
+    # cost 467s of a 552s suite locally at two workers -- 85% of the time for
+    # 3% of the tests -- so per-PR CI runs `-m "not slow"` and
+    # `.github/workflows/weekly.yml` runs the whole suite on a schedule.
+    # `just test` and `just test-full` do not deselect it locally.
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     # The middle tier.  The rule is behavioural, not a stopwatch reading: a
     # test is `medium` if it runs a generated program through an interpreter
@@ -180,7 +185,7 @@ markers = [
     # seconds -- the inner loop keeps every generator's structural assertion
     # and every interpreter's own unit tests, and pays for execution once a
     # commit is in sight.  `just test-quick` deselects it; `just test` and CI
-    # do not.
+    # do not -- CI stops at the `slow` band above.
     "medium: runs a generated program or a subprocess (deselect for the inner loop)",
     "integration: marks tests as integration tests",
     "interpreter: marks tests for specific interpreters",

@@ -139,22 +139,30 @@ jobs:
       if: matrix.python-version == '3.14'
       # The local default is a fixed, modest worker count so developer laptops
       # keep cores free; CI has the box to itself, so ask for all of them.
+      # `-n auto` is already every vCPU the runner has -- xdist falls back to
+      # `os.cpu_count()` because psutil is not a dependency here -- so there
+      # is no worker count left to raise.  What made this job slow was the
+      # `slow` band: 353 of 10865 tests that measure, locally at two workers,
+      # 467s of a 552s suite -- 85% of the time for 3% of the tests.  Those
+      # moved to `.github/workflows/weekly.yml`; this runs fast and `medium`.
       #
       # `--cov-branch` is free on this leg (see the table above) and the gate
       # below needs the arcs.
-      run: uv run pytest -n auto --cov --cov-branch --cov-report=xml --cov-report=term-missing
+      run: uv run pytest -n auto -m "not slow" --cov --cov-branch --cov-report=xml --cov-report=term-missing
 
-    # Strict here, unlike the local pre-push run: this job runs the whole
-    # suite, so an uncovered added line or one-sided added branch cannot be
-    # blamed on a deselected test.  The gate is still fail-open about data it
-    # does not have -- see its module docstring.
-    - name: Check changed-line and changed-branch coverage
+    # `--partial`, and this is the cost of moving the `slow` band weekly: the
+    # run above no longer selects every test, so an uncovered line here may
+    # simply be covered by a test that did not run.  The gate therefore
+    # reports and does not fail, which is what `--partial` is for -- it was
+    # written for exactly this selection.  The blocking version is the
+    # command it prints, and the weekly job is where the whole suite runs.
+    - name: Report changed-line and changed-branch coverage
       if: matrix.python-version == '3.14'
-      run: uv run python scripts/check_diff_coverage.py
+      run: uv run python scripts/check_diff_coverage.py --partial
 
     - name: Test with pytest
       if: matrix.python-version != '3.14'
-      run: uv run pytest -n auto
+      run: uv run pytest -n auto -m "not slow"
 
 
   generated-docs:

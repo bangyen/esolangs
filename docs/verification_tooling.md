@@ -30,6 +30,24 @@ against 84.8s, with `pytest` itself 111.3s against 48.3s for the same
 tests.  The win is the busy machine -- idle, four xdist workers and two
 sweep workers roughly fit the eight performance cores.
 
+## What CI runs
+
+| Trigger | Selection | Coverage gate |
+| --- | --- | --- |
+| push, pull request | `-m "not slow"`, on 3.12/3.13/3.14 | reports (`--partial`) |
+| Mondays 06:00 UTC, or by hand | the whole suite, same three | none -- it is diff-scoped, and a scheduled run on `main` has no merge base |
+
+The split is a wall-time call, not a confidence one.  Measured locally at
+two workers: `-m "not slow"` is 10314 tests in 85s, `-m slow` is 335 in
+467s -- 85% of the suite's time for 3% of its tests.  There is no worker
+count to raise: `-n auto` is already every vCPU the runner has, since psutil
+is absent and xdist falls back to `os.cpu_count()`.
+
+The cost is that `check_diff_coverage.py` reports instead of failing on a
+PR: with a subset selected, an uncovered line may just belong to a test
+that did not run.  The blocking form is the local command that report
+prints.
+
 ## Notes
 
 - Python 3.14 makes branch coverage inexpensive through `sys.monitoring`.

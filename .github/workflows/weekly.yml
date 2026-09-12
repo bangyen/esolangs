@@ -1,0 +1,67 @@
+name: Weekly full suite
+
+# The `slow` band, which per-PR CI deselects.  353 of 10865 tests that cost,
+# locally at two workers, 467s of a 552s suite -- arity sweeps, whole-table
+# verifications and the twelve-input cap checks, the tests whose cost is the
+# point.  Running them on every push bought a fast signal on the work least
+# likely to regress between commits; running them weekly keeps the signal and
+# gives PR authors back the wall time.
+#
+# Two things about `schedule:` worth knowing before relying on it.  It only
+# fires on the default branch, so this file does nothing until it is on
+# `main`.  And GitHub disables scheduled workflows after 60 days with no
+# repository activity, then emails the owner -- `workflow_dispatch` is here
+# so the suite can always be run by hand, including from a branch.
+
+on:
+  schedule:
+    # Mondays, 06:00 UTC.  Off the hour would be likelier to start on time --
+    # GitHub queues scheduled runs and the top of the hour is the busiest
+    # slot -- but nothing here is time-sensitive to the minute.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+# Same trap as ci.yml: `.python-version` pins 3.14 and a bare `uv run`
+# re-reads it, deletes the synced venv and re-creates it without
+# `--extra dev`.  The explicit `uv sync` below is the single authority.
+env:
+  UV_NO_SYNC: "1"
+
+jobs:
+  slow:
+    runs-on: ubuntu-latest
+    # The band is 7m46s locally at two workers; CI is slower per core, and a
+    # timeout that trips on an ordinary run is worse than no timeout.
+    timeout-minutes: 45
+    strategy:
+      # One failing interpreter should not cancel the evidence from the
+      # others -- on a weekly run there is no queue to protect.
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v7
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v7
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: uv sync --extra dev --python ${{ matrix.python-version }}
+
+    # The whole suite, not `-m slow`: running the band alone would leave the
+    # fast tests unexercised at these interpreters for a week, and they are
+    # the cheap part of the bill.
+    #
+    # No coverage gate here.  `check_diff_coverage.py` is diff-scoped -- it
+    # judges the files a *branch* touches -- and a scheduled run on `main`
+    # has no merge base, so the gate would skip and print nothing useful.
+    # Per-PR CI reports it with `--partial`; the blocking form is the local
+    # command that report prints.
+    - name: Test with pytest (full suite, including the slow band)
+      run: uv run pytest -n auto
