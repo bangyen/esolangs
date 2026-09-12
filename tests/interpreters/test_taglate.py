@@ -6,7 +6,10 @@ rotate/discard, loops, character I/O, the ``j`` counter trick, and the
 Google Translate URL ``t`` command).
 """
 
+import importlib
 from typing import ClassVar
+
+import pytest
 
 import esolangs
 from esolangs.exceptions import HaltError
@@ -220,3 +223,59 @@ class TestContract(SnapshotContract, CycleContract):
     stepping_program: ClassVar[list[str]] = ["abc", "i"]
     halting_program: ClassVar[list[str]] = ["abc", "i"]
     looping_program: ClassVar[list[str]] = ["1", "gy", "gz"]
+
+
+class TestTheTwoQueueLanguagesDifferOnPurpose:
+    """Both silently accepted nonsense; only one of them meant to.
+
+    A reader found ``PUSH FROB PUSH`` running as two pushes and ``qqq``
+    running as nothing, and filed them together as one gap in the queue
+    family.  They are not the same: Bitdeque's swallow was neither
+    documented nor tested and its commands are upper-case *words*, so a
+    lower-case program vanished entirely; Taglate's is pinned by four tests
+    that reason about it.  So one changed and the other got written down,
+    and this is the pair that says which is which.
+    """
+
+    def test_bitdeque_refuses_a_word_it_does_not_know(self) -> None:
+        """``findall`` kept what matched and dropped the rest in silence."""
+        with pytest.raises(esolangs.ProgramError, match="not a Bitdeque command"):
+            esolangs.run("Bitdeque", "PUSH FROB PUSH", "", 5)
+
+    def test_bitdeque_refuses_the_lower_case_program(self) -> None:
+        """The whole language was a no-op for anyone who guessed the case.
+
+        Case-sensitivity had never been written down either, so this exited
+        0 having done nothing -- indistinguishable from a program that
+        legitimately prints nothing.
+        """
+        with pytest.raises(esolangs.ProgramError, match="upper case"):
+            esolangs.run("Bitdeque", "push invert push", "", 5)
+
+    def test_bitdeque_still_runs_a_real_program(self) -> None:
+        """Three refusals are worth nothing if the valid case broke."""
+        assert esolangs.run("Bitdeque", "PUSH INVERT PUSH", "", 5) == "0 1"
+
+    def test_taglate_still_skips_a_non_command(self) -> None:
+        """Deliberately unchanged, and the docstring now says why.
+
+        The wiki says only that the command lines are "filled with a bunch
+        of commands, all lowercase letters" and never says what else may
+        appear, so skipping is a choice rather than a bug -- and it is one
+        this interpreter made on purpose, with tests that reason about the
+        cursor advancing rather than looping.
+        """
+        assert esolangs.run("Taglate", "1\nix", "", 5) == "1"
+        assert esolangs.run("Taglate", "1\ngi", "", 5) == "1"
+
+    def test_taglate_says_it_skips(self) -> None:
+        """A surprising choice is only defensible while it is documented.
+
+        This is the whole of the fix on Taglate's side: the behaviour was
+        already deliberate, and the docstring's own "decisions for gaps in
+        the wiki spec" list did not include it.
+        """
+        module = importlib.import_module("esolangs.interpreters.queue_based.taglate")
+        doc = module.__doc__ or ""
+        assert "is **skipped**" in doc
+        assert "Bitdeque, the other" in doc

@@ -10,6 +10,11 @@ prints its registers), the deque contents are printed when the program ends
 -- space-separated on one line.  Both the choice to print and the format are
 this interpreter's, not the spec's.
 
+Commands are upper case, and a word that is not one of the six is a
+malformed program rather than a comment, rejected with :class:`ValueError`:
+the tokenizer used to keep what it recognised and drop the rest in silence,
+so a lower-case program ran as nothing and exited 0.
+
 The wiki says GOTO goes to the Nth operation but does not pin down the
 indexing; this interpreter treats N as 0-based (GOTO 2 lands on the third
 command, skipping the GOTO itself), matching its reference test.
@@ -88,6 +93,35 @@ def _advance(state: _State, sym: str) -> _State:
     return (ind + 1, reg, deq, rendered)
 
 
+def _reject_stray_text(code: str, pattern: re.Pattern[str]) -> None:
+    """Refuse a word that is not one of the six commands.
+
+    ``findall`` keeps what matches and says nothing about the rest, so
+    ``PUSH FROB PUSH`` ran as two pushes and ``push invert push`` -- the
+    same program in lower case -- ran as nothing at all and exited 0.  The
+    commands are upper case and that had never been written down either,
+    so the whole language was a silent no-op for anyone who guessed wrong.
+
+    A program that does nothing and reports success is the worst answer to
+    a typo, and Bitdeque has six commands, so there is no plausible reading
+    where a seventh word is deliberate.
+    """
+    end = 0
+    for match in pattern.finditer(code):
+        if stray := code[end : match.start()].strip():
+            raise ValueError(
+                f"{stray.split()[0]!r} is not a Bitdeque command; the "
+                f"commands are INJECT, PUSH, EJECT, POP, INVERT and GOTO n, "
+                f"in upper case"
+            )
+        end = match.end()
+    if tail := code[end:].strip():
+        raise ValueError(
+            f"{tail.split()[0]!r} is not a Bitdeque command; the commands "
+            f"are INJECT, PUSH, EJECT, POP, INVERT and GOTO n, in upper case"
+        )
+
+
 class _Machine:
     """Per-run Bitdeque state: the token cursor, register, and deque.
 
@@ -108,6 +142,7 @@ class _Machine:
         self.io = io
         lst = ("INJECT", "PUSH", "EJECT", "POP", "INVERT", r"GOTO *(\d+)")
         join = f"({'|'.join(lst)})"
+        _reject_stray_text(code, re.compile(join))
         self.tokens = re.findall(join, code)
         # ``halted`` is read twice per token -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.

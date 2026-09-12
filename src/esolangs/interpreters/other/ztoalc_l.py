@@ -321,7 +321,16 @@ class _Machine:
             raise ValueError("ZTOALC L program cannot be empty")
         self.io = io
         self.code = code
-        self.state = _State(int(code[0]), {})
+        try:
+            pointer = int(code[0])
+        except ValueError:
+            # ``int`` said "invalid literal for int() with base 10: 'hello'",
+            # which names neither the language nor what line 1 is for.
+            raise ValueError(
+                f"line 1 holds the initial pointer and must be a number, "
+                f"got {code[0]!r}"
+            ) from None
+        self.state = _State(pointer, {})
 
     @property
     def ptr(self) -> int:

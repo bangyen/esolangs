@@ -38,9 +38,9 @@ Documented decisions for gaps the wiki leaves open:
   one line") and is specified to terminate on empty input, which happens
   only if a blank line leaves nothing behind.
 * **A label line, a blank line, and any line whose first word is not a
-  command all execute as no-ops** when control flows through them.  Both
-  the truth machine (which falls through the ``0`` block's bare ``0``)
-  depends on this.  It is the
+  command all execute as no-ops** when control flows through them.  The
+  truth machine depends on this, falling through the ``0`` block's bare
+  ``0``.  It is the
   namesake command working as designed: ``readto`` and ``inject`` write
   arbitrary text into blocks that control can later flow through, so the
   dispatch is "a command word runs, everything else is text".
