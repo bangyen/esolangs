@@ -16,6 +16,7 @@ reads the declaration rather than carrying a name.
 from __future__ import annotations
 
 import pathlib
+from collections.abc import Callable
 
 import pytest
 
@@ -206,3 +207,72 @@ class TestTheEofTraitIsOnTheVmToo:
             stdin = esolangs.encode_inputs(name, [0, 1], "0110")
             vm = esolangs.make_vm(name, program, stdin)
             assert vm.eof_is_a_value == esolangs.describe(name)["eof_is_a_value"]
+
+
+#: The arity and shapes the *execution* sweep uses, so the two agree.
+_WIDER_ARITY = 6
+
+#: Four rows rather than all 64.  A step/run divergence is a property of
+#: the program, not of the row -- Grapheme's and Sophie's showed on every
+#: row that reached the broken construct -- so sampling buys the arity and
+#: the second shape for a sixteenth of the cost.
+_WIDER_ROWS = (0, 1, 32, 63)
+
+
+def _one_hot(n: int) -> str:
+    """1 exactly where one input is set."""
+    return "".join(str(int(bin(row).count("1") == 1)) for row in range(2**n))
+
+
+def _one_minterm(n: int) -> str:
+    """A single 1, which makes every input essential at minimum size."""
+    return "1" + "0" * (2**n - 1)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    "make", [_one_minterm, _one_hot], ids=["one_minterm", "one_hot"]
+)
+def test_stepping_agrees_at_a_wider_arity_and_shape(
+    make: Callable[[int], str],
+) -> None:
+    """The sweep above uses ``0110`` -- two inputs, one shape.
+
+    That is the coordinate this package's generator bugs kept hiding in:
+    Grapheme was invisible because execution stopped at four inputs while
+    building went to ten, and Sophie survived the fix because the new
+    execution sweep varied a single table *shape*.  Stepping parity is the
+    same kind of claim -- the two paths *can* disagree, which is why this
+    file exists -- and it was checked at one arity on one table.
+
+    260 comparisons in 3.7s, so the blind spot cost less to close than to
+    argue about.
+    """
+    table = make(_WIDER_ARITY)
+    disagreed = []
+    checked = 0
+    for name in esolangs.list_languages():
+        facts = esolangs.describe(name)
+        if not facts["steppable_to_answer"]:
+            continue
+        if facts["answer_mode"] == "termination":
+            continue
+        program = esolangs.generate(name, table)
+        for row in _WIDER_ROWS:
+            bits = [(row >> (_WIDER_ARITY - 1 - i)) & 1 for i in range(_WIDER_ARITY)]
+            if facts["parameterized"]:
+                source, stdin = esolangs.instantiate(name, program, bits), ""
+            else:
+                source, stdin = program, esolangs.encode_inputs(name, bits, table)
+            want = esolangs.run(name, source, stdin, timeout=30)
+            try:
+                got = _drive(esolangs.make_vm(name, source, stdin))
+            except esolangs.EsolangError as exc:
+                disagreed.append(f"{name} row {row}: stepping raised {exc!r}")
+                continue
+            checked += 1
+            if got != want:
+                disagreed.append(f"{name} row {row}: stepped {got!r} ran {want!r}")
+    assert not disagreed, "\n".join(disagreed)
+    # A filter that quietly excluded everything would leave this vacuous.
+    assert checked == 65 * len(_WIDER_ROWS), checked
