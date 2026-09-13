@@ -175,9 +175,6 @@ class _State:
         return tuple(tuple(row) if row is not None else None for row in self._rows)
 
 
-# -- parsing ---------------------------------------------------------------
-
-
 def _tokenize(line: str) -> list[_Token]:
     """Split one statement line into tokens."""
     tokens: list[_Token] = []
@@ -452,9 +449,6 @@ def _parse(
     return functions, top
 
 
-# -- runtime ---------------------------------------------------------------
-
-
 def _lookup(
     name: str,
     state: _State,
@@ -690,6 +684,23 @@ def _scope_key(scope: dict[str, object]) -> tuple[tuple[str, tuple[object, ...]]
 
 class _Machine:
     """One Suptiftam run: the parsed program, state, cursor, and call stack."""
+
+    #: Whether a read past the end of the input yields a *value* here
+    #: rather than raising.  Six languages do; the other 59 raise
+    #: :class:`~esolangs.exceptions.InputExhaustedError`, which is the
+    #: package norm and what :func:`esolangs.run` documents; this one does
+    #: not, so an underfed program answers a different row of its table
+    #: instead of refusing, and a caller has no way to tell from the output
+    #: that it happened.
+    #:
+    #: Declared rather than changed.  The zero-beyond-input convention was
+    #: audited against every wiki page and settled deliberately
+    #: (``docs/limitations.md``, Interpreter conventions); rewriting it
+    #: would be a decision about what these languages *mean*, not a fix.
+    #: What was wrong was that nothing said so, so the promise ``run`` made
+    #: was false for seven languages and a generic caller could not find
+    #: out which.
+    eof_is_a_value = True
 
     def __init__(self, code: str, io: IO) -> None:
         functions, top = _parse(code.splitlines())

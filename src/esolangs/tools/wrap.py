@@ -27,32 +27,6 @@ rather than a blanket post-processing pass:
   them to a width costs more than the ragged right edge it saves, so a
   language whose own idiom is one-statement-per-line is left alone even
   when reflowing it would be safe.
-- Basicfuck is excluded for the same reason as Forbin rather than a
-  semantic one, and the distinction is worth recording because its
-  *program* does not reflow while its *body* does.  Its first two lines are
-  structural -- the ``#basicfuck`` directive and the ``#allocate`` list are
-  read by position -- but everything below them is whitespace-delimited
-  source that packs to a width and still runs, verified on both committed
-  examples down to 20 columns.  Only whole tokens may move: ``wrap_chars``
-  splits ``write <- X`` and the program stops loading, so this would be a
-  :data:`MULTILINE` wrapper over :func:`wrap_space_delimited`, not the
-  character one.  It stays unwrapped because packing ``X += Y`` and
-  ``while (X) { ... }`` into dense rows is minification of a structured
-  source language, the opposite of the readability wrapping exists to serve.
-  A ``//`` comment is not the obstacle it looks like either: it packs as a
-  single token that forces its line to end there, which is what it already
-  does, and comment text too long for one line splits across several, each
-  re-prefixed with ``//``.  Verified with comments injected into the
-  committed example down to 30 columns.  So nothing mechanical stands in the
-  way -- the exclusion is a readability judgement about minifying source,
-  and only that.
-- MyScript builds its output from string literals like the languages
-  :data:`_QUOTE_LITERAL` covers, but its boolean program's newlines are
-  structural (its blocks are indented and its interpreter reads them), so it
-  cannot be wrapped by making the literal one token the way Eval is.  It is
-  excluded until a wrapper understanding its block layout exists; being safe
-  today only because its programs come out under one line is not the same as
-  being wrappable.
 
 ROTfuck used to belong on that list: its interpreter rotated the program on
 *every* character the pointer passed, comments included, so an inserted
@@ -165,8 +139,9 @@ def shortest(*candidates: str) -> str:
     encoding against a delta one -- and which shape wins depends on the input,
     not on the language.  Rather than predict the winner, those generators
     build every shape and emit the smallest, a rule the test suite pins in
-    several places (``test_streetcode_emits_the_shorter_of_ring_and_street``
-    and the ``len(program) <= ...`` bounds in the generator suites).
+    several places (``test_the_emitted_program_has_an_exact_length`` for
+    Streetcode, whose docstring notes nothing else there measures size at
+    all, and the ``len(program) <= ...`` bounds in the generator suites).
 
     This names that rule so a reader meets it as a decision rather than
     re-deriving it from a ``min`` with a ``key``.  Ties keep the first
@@ -762,7 +737,7 @@ _PCT_COMMAND = r"."
 # so that a single newline inside either part is that part's own fold.
 #
 # Spelled here rather than imported, because importing it would pull the whole
-# ``esolangs.tools.boolean`` package -- thirty-odd generator modules -- into a
+# ``esolangs.tools`` package -- thirty-odd generator modules -- into a
 # module that otherwise needs nothing but the standard library.  The generator
 # owns the value (``pct_squared_minus_one._HEADER_END``) and a test asserts the
 # two agree, so the duplication cannot drift silently.

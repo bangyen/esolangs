@@ -818,6 +818,23 @@ class _Machine:
     wiring values but different latches are not the same state.
     """
 
+    #: Whether a read past the end of the input yields a *value* here
+    #: rather than raising.  Six languages do; the other 59 raise
+    #: :class:`~esolangs.exceptions.InputExhaustedError`, which is the
+    #: package norm and what :func:`esolangs.run` documents; this one does
+    #: not, so an underfed program answers a different row of its table
+    #: instead of refusing, and a caller has no way to tell from the output
+    #: that it happened.
+    #:
+    #: Declared rather than changed.  The zero-beyond-input convention was
+    #: audited against every wiki page and settled deliberately
+    #: (``docs/limitations.md``, Interpreter conventions); rewriting it
+    #: would be a decision about what these languages *mean*, not a fix.
+    #: What was wrong was that nothing said so, so the promise ``run`` made
+    #: was false for seven languages and a generic caller could not find
+    #: out which.
+    eof_is_a_value = True
+
     def __init__(self, code: list[str], io: IO) -> None:
         """Parse ``code`` and read the input its ``-n-`` ports call for."""
         self.io = io
@@ -892,10 +909,17 @@ class _Machine:
     def ip(self) -> None:
         """Always ``None``: nothing moves through a Circuit Diagram.
 
+        The machine declares ``ip_shape = "opaque"`` below for the same
+        reason: there is no position, so there is nowhere on the drawing a
+        breakpoint could name, and a caller must not be offered one.
+
         ``step()`` advances one generation of the whole drawing at once, so
         there is no instruction position to report.
         """
         return None
+
+    #: Never a place in the source, because it is never anything at all.
+    ip_shape = "opaque"
 
     @property
     def memory(self) -> list[int]:

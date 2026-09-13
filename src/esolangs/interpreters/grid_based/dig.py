@@ -57,7 +57,10 @@ def _value(code: tuple[str, ...], row: int, col: int, size: int) -> int:
             val = code[row + d_row][col + d_col]
             if val.isdigit():
                 return int(val)
-    raise HaltError
+    raise HaltError(
+        f"the operator at row {row}, column {col} has no digit beside it "
+        f"to use as its operand"
+    )
 
 
 def _write(code: tuple[str, ...], row: int, col: int, text: str) -> tuple[str, ...]:
@@ -107,7 +110,7 @@ def _advance(
             mole *= _value(code, row, col, size)
         elif char == "/":
             if (n := _value(code, row, col, size)) == 0:
-                raise HaltError
+                raise HaltError(f"division by zero at row {row}, column {col}")
             mole //= n
         elif char == ";":
             code = _write(code, row, col, str(mole))
@@ -177,6 +180,12 @@ class _Machine:
     # the instruction position is where the mole is *and* which way it faces
     # -- a bare index would not say where the next step lands.  ``memory`` is
     # the one value the mole carries; there is no stack.
+
+    #: ``ip`` is a cell of the program's own rectangle: the first two
+    #: parts are a row and a column, and the rest is a heading.  Without
+    #: this a caller cannot tell the pair from a call depth or a frame
+    #: stack, which look identical and mean somewhere else entirely.
+    ip_shape = "grid"
 
     @property
     def ip(self) -> tuple[int, ...]:

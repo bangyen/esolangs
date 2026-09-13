@@ -34,6 +34,8 @@ from __future__ import annotations
 
 import io as _stdlib_io
 
+from esolangs.exceptions import InputExhaustedError
+
 
 class IO:
     """Routes interpreter output and input through pluggable primitives.
@@ -47,15 +49,11 @@ class IO:
         """Create an IO with no pending prompt newline."""
         self._newline = False
 
-    # -- low-level seam: override in subclasses -----------------------
-
     def _read(self, prompt: str) -> str:
         return input(prompt)
 
     def _write(self, value: object) -> None:
         print(value, end="")
-
-    # -- output -------------------------------------------------------
 
     def print_str(self, text: str) -> None:
         r"""Write ``text`` as-is, adding no trailing newline of its own.
@@ -91,8 +89,6 @@ class IO:
     # interpreters that used to reach for it were, in every case, adding a
     # newline that no spec asked for.  Writing ``print_str(text + "\n")``
     # keeps that decision visible at the call site.
-
-    # -- input --------------------------------------------------------
 
     def input_str(self, prompt: str = "Input: ") -> str:
         """Read a whole line of input, returning it without the newline."""
@@ -150,15 +146,51 @@ class ScriptedIO(IO):
     def __init__(self, stdin: str = "") -> None:
         """Read input from ``stdin`` and capture all output internally."""
         super().__init__()
-        self._lines = iter(stdin.splitlines())
+        self._supplied = stdin.splitlines()
+        self._lines = iter(self._supplied)
         self._reads = 0
+        self._past_end = 0
         self._buffer = _stdlib_io.StringIO()
+
+    @property
+    def reads(self) -> int:
+        """How many lines the program has taken so far."""
+        return self._reads
+
+    @property
+    def past_end(self) -> int:
+        """How many reads went past the end of the supplied input.
+
+        Counted even though the read raises, because seven languages catch
+        that raise and carry on with a value -- and for them this is the
+        only record that it happened.  ``reads`` deliberately does not
+        include these: it counts lines actually taken.
+        """
+        return self._past_end
+
+    @property
+    def supplied(self) -> int:
+        """How many lines were handed to it.
+
+        Public so a caller can notice the program read fewer than it was
+        given.  Only the opposite direction was ever reported, by the
+        exception a read past the end raises -- which already carried both
+        numbers.
+        """
+        return len(self._supplied)
 
     def _read(self, _prompt: str) -> str:
         try:
             value = next(self._lines)
         except StopIteration:
-            raise EOFError from None
+            # An InputExhaustedError *is* an EOFError, so the repo-wide
+            # convention every interpreter documents -- and Suffolk's run
+            # loop detects -- is unchanged.  What it adds is the message:
+            # a bare EOFError() reaches the caller as the empty string,
+            # which cannot say that the program wanted more input than the
+            # caller passed, or how much it had.
+            self._past_end += 1
+            raise InputExhaustedError(self._reads, len(self._supplied)) from None
         self._reads += 1
         return value
 

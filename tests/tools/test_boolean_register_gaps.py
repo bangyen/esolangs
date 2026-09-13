@@ -5,7 +5,7 @@ declines a table that ignores none -- there is nothing to drain, and the
 plain DAG already spells it.
 """
 
-from esolangs.tools.boolean.register import (
+from esolangs.tools.register import (
     _polynomial_drained_dag,
     _polynomial_drained_dag_cost,
 )

@@ -22,7 +22,7 @@ from itertools import permutations
 from time import perf_counter
 
 from esolangs.registry import LANGUAGES
-from esolangs.tools.boolean.helpers import permute_truth_table
+from esolangs.tools.helpers import permute_truth_table
 
 TABLES = [format(i, "08b") for i in range(256)]
 PERMS = list(permutations(range(3)))

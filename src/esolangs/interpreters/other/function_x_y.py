@@ -484,6 +484,12 @@ class _Machine:
         # is not a real cycle.
         return (self.frames, tuple(self.stack), self.io.position())
 
+    #: ``ip`` is a position, but not one on the source text: each frame's (function,
+    #: statement), root-to-leaf.
+    #: Declared rather than left to the default so that a tuple nobody has
+    #: classified is a missing answer instead of this one.
+    ip_shape = "opaque"
+
     @property
     def ip(self) -> tuple[int, ...]:
         """Each active frame's ``(function, statement)``, root-to-leaf.

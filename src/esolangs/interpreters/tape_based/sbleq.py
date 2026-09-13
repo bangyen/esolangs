@@ -35,6 +35,7 @@ at EOF (per the wiki); malformed programs raise :class:`ValueError`.
 
 import sys
 
+from esolangs._validate import check_address
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_int_memory as _parse
 
@@ -80,6 +81,7 @@ def _write(state: _State, addr: int, value: int) -> _State:
     mem, ip, halted = state
     if addr >= 0:
         if addr >= len(mem):
+            check_address(addr, "S*bleq")
             mem = (*mem, *([0] * (addr + 1 - len(mem))))
         return ((*mem[:addr], value, *mem[addr + 1 :]), ip, halted)
     if addr == -1:
@@ -120,6 +122,23 @@ def _advance(state: _State, store: str, byte: int | None = None) -> _State:
 
 
 class _Machine:
+    #: Whether a read past the end of the input yields a *value* here
+    #: rather than raising.  Six languages do; the other 59 raise
+    #: :class:`~esolangs.exceptions.InputExhaustedError`, which is the
+    #: package norm and what :func:`esolangs.run` documents; this one does
+    #: not, so an underfed program answers a different row of its table
+    #: instead of refusing, and a caller has no way to tell from the output
+    #: that it happened.
+    #:
+    #: Declared rather than changed.  The zero-beyond-input convention was
+    #: audited against every wiki page and settled deliberately
+    #: (``docs/limitations.md``, Interpreter conventions); rewriting it
+    #: would be a decision about what these languages *mean*, not a fix.
+    #: What was wrong was that nothing said so, so the promise ``run`` made
+    #: was false for seven languages and a generic caller could not find
+    #: out which.
+    eof_is_a_value = True
+
     def __init__(self, code: str, io: IO, store: str = "a") -> None:
         """Build a machine over the cells ``code`` parses to.
 

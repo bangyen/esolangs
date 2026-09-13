@@ -410,6 +410,10 @@ class _Machine:
     def halted(self) -> bool:
         return self.state.halted
 
+    #: ``ip`` starts with a line number rather than a cell or an offset,
+    #: with each open frame's index after it.
+    ip_shape = "line"
+
     @property
     def ip(self) -> int | tuple[int, ...]:
         """The instruction position: the line, plus each open frame's index."""

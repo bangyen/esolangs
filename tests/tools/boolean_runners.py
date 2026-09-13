@@ -319,12 +319,6 @@ def run_brainif(program: str, inputs: list[str]) -> str:
     return run_program(run, program.splitlines(), _stdin(inputs))
 
 
-def run_nevermind(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.register_based.nevermind import run
-
-    return run_program(run, program.splitlines(), _stdin(inputs))
-
-
 def run_container(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.other.container import run
 
@@ -379,12 +373,6 @@ def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
     # negative, which dump() skips, so the tape prints as exactly the answer
     # -- no filtering needed, and asserting on the raw output is stricter.
     return buffer.getvalue()
-
-
-def run_myscript(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.register_based.myscript import run
-
-    return run_program(run, program, _stdin(inputs))
 
 
 def run_function_x_y(program: str, inputs: list[str]) -> str:

@@ -30,8 +30,6 @@ def machine(code: str) -> _Machine:
     return _Machine(code, ScriptedIO(""))
 
 
-# -- the wiki's own examples -------------------------------------------
-
 # Reproduced from https://esolangs.org/wiki/Function_x(y) verbatim, except
 # where a note says otherwise.
 HELLO = 'function helloWorld()\n["Hello, World!"]'
@@ -113,9 +111,6 @@ class TestWikiExamples:
         )
         with pytest.raises(ValueError, match="ternary"):
             run(verbatim, ScriptedIO(""))
-
-
-# -- expressions --------------------------------------------------------
 
 
 class TestExpressions:
@@ -280,7 +275,8 @@ class TestErrors:
         self, code: str, reason: str
     ) -> None:
         """The reason is pinned: "any ValueError" would also pass a parser
-        that had started refusing every program."""
+        that had started refusing every program.
+        """
         with pytest.raises(ValueError, match=reason):
             run(code, ScriptedIO(""))
 

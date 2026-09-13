@@ -1,6 +1,6 @@
 """Unit tests for the Minifuck boolean generator.
 
-Covers :mod:`esolangs.tools.boolean.minifuck`, split out of
+Covers :mod:`esolangs.tools.minifuck`, split out of
 ``test_boolean_parameterized.py``: Minifuck is one language's solver and the
 largest single block of those tests.
 
@@ -16,7 +16,7 @@ from unittest.mock import patch
 
 import pytest
 
-from esolangs.tools.boolean.helpers import essential_inputs
+from esolangs.tools.helpers import essential_inputs
 
 
 def _unreachable(*_args: object, **_kwargs: object) -> None:
@@ -65,7 +65,7 @@ def test_minifuck_slots_run_in_name_order() -> None:
     whose slot order can leave sequence.  A table needing the search takes
     tens of seconds and cannot exercise this.
     """
-    from esolangs.tools.boolean import parameterized
+    from esolangs.tools import parameterized
 
     for table in ("11001100", "10101010", "01010101", "00001111"):
         slots = _slot_order(parameterized.minifuck, table)
@@ -113,8 +113,8 @@ def test_minifuck_reconverged_tables_compute_their_function() -> None:
     """
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.minifuck import run
-    from esolangs.tools.boolean import parameterized
-    from esolangs.tools.boolean.examples import _fill_minifuck
+    from esolangs.tools import parameterized
+    from esolangs.tools.examples import _fill_minifuck
 
     for table in ("01010101", "10101010"):
         template = parameterized.minifuck(table)
@@ -139,7 +139,7 @@ def test_minifuck_reconvergence_declines_outside_one_or_two_essentials() -> None
     back on -- both decline up front rather than searching.
     """
 
-    from esolangs.tools.boolean.minifuck import _reconverged
+    from esolangs.tools.minifuck import _reconverged
 
     assert _reconverged("01", [], 1) is None
     assert _reconverged("01011010", [0, 1, 2], 3) is None
@@ -162,9 +162,9 @@ def test_minifuck_single_essential_falls_past_the_degenerate_lookup() -> None:
 
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.minifuck import run
-    from esolangs.tools.boolean.examples import _fill_minifuck
+    from esolangs.tools.examples import _fill_minifuck
 
-    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+    module = importlib.import_module("esolangs.tools.minifuck")
 
     for table in ("01010101", "10101010"):
         assert module.essential_inputs(table, 3) == [2]
@@ -185,7 +185,8 @@ def test_minifuck_single_essential_falls_past_the_degenerate_lookup() -> None:
 def test_minifuck_builds_five_input_xor() -> None:
     """Five-input XOR builds from a staging and prints all 32 rows.
 
-    This is the table the arity turns on.  ``docs/minifuck_generator.md`` records XOR as
+    This is the table the arity turns on.  ``the relevant generator tests``
+    records XOR as
     the four-input table the searches could not build, and at five inputs a
     fully-essential table has no search that reaches it at all -- so a
     result here is a staging result or it is nothing.
@@ -197,8 +198,8 @@ def test_minifuck_builds_five_input_xor() -> None:
     """
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.minifuck import run
-    from esolangs.tools.boolean import parameterized
-    from esolangs.tools.boolean.examples import _fill_minifuck
+    from esolangs.tools import parameterized
+    from esolangs.tools.examples import _fill_minifuck
 
     table = "".join(str(bin(r).count("1") & 1) for r in range(32))
     template = parameterized.minifuck(table)
@@ -241,7 +242,7 @@ def test_the_fused_column_walk_matches_the_one_at_a_time_derivation() -> None:
     values, including the unreachable ones where the sweep omits the key and
     the oracle returns None.
     """
-    from esolangs.tools.boolean.minifuck import (
+    from esolangs.tools.minifuck import (
         _MAX_ACC,
         _column_sweep,
         _derived_plans,
@@ -264,7 +265,7 @@ def test_the_fused_column_walk_matches_the_one_at_a_time_derivation() -> None:
     # statements and only this call is guaranteed to do the derivation --
     # which is what the assertion below is for.
     _derived_plans.cache_clear()
-    with patch("esolangs.tools.boolean.minifuck._column_sweep", spy):
+    with patch("esolangs.tools.minifuck._column_sweep", spy):
         _derived_plans(2, ("0110",))
 
     assert captured, "the build derived no columns, so nothing was compared"
@@ -285,7 +286,7 @@ def test_the_fused_column_walk_matches_the_one_at_a_time_derivation() -> None:
     # that touches it is a repeat that missed.
     joint, cell7 = captured[0]
     first = _printed_column(joint, 9, cell7)
-    with patch("esolangs.tools.boolean.minifuck._find_pool", _unreachable):
+    with patch("esolangs.tools.minifuck._find_pool", _unreachable):
         assert _printed_column(joint, 9, cell7) == first
 
 
@@ -307,7 +308,7 @@ def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
     """
     import re
 
-    from esolangs.tools.boolean.minifuck import _FLIP, _embed
+    from esolangs.tools.minifuck import _FLIP, _embed
 
     for n in (2, 3):
         plain = _embed(n).template()
@@ -333,7 +334,7 @@ def test_the_coverage_population_is_its_stated_definition() -> None:
     The holdout is the pin: a wrong population of a coincidentally similar
     size would not put the single miss on the table the comment names.
     """
-    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+    module = importlib.import_module("esolangs.tools.minifuck")
 
     def complement(table: str) -> str:
         return "".join("1" if c == "0" else "0" for c in table)
@@ -375,7 +376,7 @@ def test_the_constraint_query_matches_the_index() -> None:
     import importlib
     import random
 
-    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+    module = importlib.import_module("esolangs.tools.minifuck")
 
     rng = random.Random(17)
     for n in (2, 3):
@@ -425,7 +426,7 @@ def test_the_constraint_query_matches_the_index_where_inserts_live() -> None:
     import importlib
     import random
 
-    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+    module = importlib.import_module("esolangs.tools.minifuck")
 
     rng = random.Random(23)
     for n, width in ((4, 2000), (5, 400)):
@@ -450,7 +451,7 @@ def test_the_batched_planned_bits_match() -> None:
     at a time, so the per-accumulator function stays as the specification
     and every plan the staged arities actually build is walked both ways.
     """
-    from esolangs.tools.boolean.minifuck import (
+    from esolangs.tools.minifuck import (
         _BASE,
         _MAX_ACC,
         _insert_suffixes,
@@ -500,7 +501,7 @@ def test_minifuck_five_input_plans_are_derived_per_table() -> None:
     at most those targets rather than a whole-arity map.
     """
 
-    from esolangs.tools.boolean.minifuck import (
+    from esolangs.tools.minifuck import (
         _INSERT_ARITIES,
         _STAGED_ARITIES,
         _derived_plans,
@@ -517,6 +518,8 @@ def test_minifuck_five_input_plans_are_derived_per_table() -> None:
     assert set(plans) <= {table, complement}
 
 
+# 3.2s over 129 tests: runs the generated program.
+@pytest.mark.medium
 class TestParameterizedMinifuck:
     """Input-by-substitution boolean generator for Minifuck.
 
@@ -538,7 +541,7 @@ class TestParameterizedMinifuck:
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
         """Fill the template the way the example harness does."""
-        from esolangs.tools.boolean.examples import _fill_minifuck
+        from esolangs.tools.examples import _fill_minifuck
 
         return _fill_minifuck(tpl, bits)
 
@@ -567,7 +570,7 @@ class TestParameterizedMinifuck:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
         template = parameterized.minifuck(table)
         for combo in range(2**n):
@@ -580,7 +583,8 @@ class TestParameterizedMinifuck:
 
         A wall once recorded NAND, NOR and XNOR as unreachable.  It does not
         hold either way round: embedding lifts it, which is what this checks,
-        and ``docs/minifuck_generator.md`` now also records a *reading* construction
+        and ``the relevant generator tests`` now also records a
+        *reading* construction
         verifying all sixteen -- the searches behind the original claim were
         length-bounded well below what it needs.
 
@@ -588,7 +592,7 @@ class TestParameterizedMinifuck:
         rather than a search, so all sixteen build in about a second
         together where they used to cost 2.5-9s each.
         """
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
         for table_int in range(16):
             table = format(table_int, "04b")
@@ -610,9 +614,9 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         # The searches these used to stub are gone; assert that structurally
         # instead of patching them, then build as before.
@@ -643,7 +647,7 @@ class TestParameterizedMinifuck:
         finds the second member of each pair as readily as the first.
         """
 
-        from esolangs.tools.boolean.minifuck import (
+        from esolangs.tools.minifuck import (
             _MAX_ACC,
             _MAX_BRACKETS,
             _SEPS,
@@ -679,7 +683,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         checked = 0
         # The searches these used to stub are gone; assert that structurally
@@ -730,8 +734,8 @@ class TestParameterizedMinifuck:
         table -- so the cheap half of the claim is kept by probing the
         staging derivation directly, which still declines in 0.000s.
         """
-        from esolangs.tools.boolean import parameterized
-        from esolangs.tools.boolean.minifuck import (
+        from esolangs.tools import parameterized
+        from esolangs.tools.minifuck import (
             _STAGED_ARITIES,
             _derive_staging,
             _staged,
@@ -757,7 +761,8 @@ class TestParameterizedMinifuck:
         """XOR4 builds without searching, and computes its function.
 
         Four inputs is the arity the insert family was added for, and XOR is
-        the pointed case: ``docs/minifuck_generator.md`` records it as the four-input
+        the pointed case: ``the relevant generator tests`` records it
+        as the four-input
         table the searches fail on.  The searches are stubbed to raise, so a
         table that builds here built from a staging.
 
@@ -779,7 +784,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         table = "0110100110010110"  # XOR4, the recorded search failure
         # The searches these used to stub are gone; assert that structurally
@@ -817,7 +822,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         separated = module._mux_separate(4)  # noqa: SLF001
         positions = separated.ptrs()
@@ -859,7 +864,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         seen: list[object] = []
         real = module._mux_probe  # noqa: SLF001
@@ -899,7 +904,7 @@ class TestParameterizedMinifuck:
 
         Six is the first arity the old ``_MUX_ARITIES = (2, 3, 4, 5)``
         declined, and it declined in **0.000s** -- a configuration gate, not
-        a construction that failed.  ``docs/minifuck_generator.md``
+        a construction that failed.  ``the relevant generator tests``
         ("Is ``_mux`` total?") closes all six of the route's refusal sites
         with arguments carrying no
         residual ``n``, and the gate is now the floor
@@ -918,9 +923,9 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        from esolangs.tools.boolean.helpers import essential_inputs
+        from esolangs.tools.helpers import essential_inputs
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
         assert module._MUX_MIN_ARITY == 2  # noqa: SLF001
 
         n = 6
@@ -959,7 +964,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         assert module._STAGING_BUDGET is None  # noqa: SLF001
 
@@ -996,7 +1001,7 @@ class TestParameterizedMinifuck:
         import importlib
         from collections import Counter
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         index = module._staging_index(4)  # noqa: SLF001
         counts = Counter((entry[0], entry[1]) for entry in index.values())
@@ -1014,7 +1019,7 @@ class TestParameterizedMinifuck:
         finite general budget.  Patch both values to make the dispatch, not
         their current equal ``None`` spelling, observable.
         """
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_STAGING_BUDGET", None)
@@ -1041,7 +1046,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         table = "0110100110010110"  # XOR4, which the staged route places
         original = module._STAGING_BUDGET  # noqa: SLF001
@@ -1082,7 +1087,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         orphan = "1101000011010000"  # no staging in the enumeration prints it
         original = module._STAGING_BUDGET  # noqa: SLF001
@@ -1121,7 +1126,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         original = module._STAGING_BUDGET  # noqa: SLF001
         try:
@@ -1158,7 +1163,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         table = "01001100001110000110000011001011"
         module._derived_plans.cache_clear()  # noqa: SLF001
@@ -1187,7 +1192,7 @@ class TestParameterizedMinifuck:
         import importlib
         import time
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         for arity in (2, 3, 4, 5):
             start = time.monotonic()
@@ -1200,14 +1205,14 @@ class TestParameterizedMinifuck:
     def test_five_input_tables_build_and_print_every_row(self) -> None:
         """A five-input table builds through the sculpted route and runs.
 
-        Five-input XOR is the pointed one: ``docs/minifuck_generator.md``
+        Five-input XOR is the pointed one: ``the relevant generator tests``
         records it as a table no search here builds at all.  Every row is
         run on the shipped interpreter, because a template that emits
         without computing would otherwise pass silently.
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         table = "01101001100101101001011001101001"  # five-input XOR
         template = module._mux(table, 5)  # noqa: SLF001
@@ -1236,7 +1241,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         searched = []
         # The searches these used to stub are gone; assert that structurally
@@ -1265,7 +1270,7 @@ class TestParameterizedMinifuck:
         split, which is easy to undo by looping over ``_SEPS`` out of habit.
         """
 
-        from esolangs.tools.boolean.minifuck import (
+        from esolangs.tools.minifuck import (
             _SCAN_SEPS,
             _SEPS,
             _stagings,
@@ -1301,7 +1306,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         for table_int in range(16):
             table = format(table_int, "04b")
@@ -1325,7 +1330,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         codes = module._POOL_CODES  # noqa: SLF001
         assert codes, "the pool list should not be empty"
@@ -1416,7 +1421,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         seen: list[tuple[object, int, int]] = []
         real = module._find_pool  # noqa: SLF001
@@ -1468,7 +1473,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         # The anchor: the derivation must reproduce these exactly, in order.
         assert module._POOL_CODES == (  # noqa: SLF001
@@ -1520,7 +1525,7 @@ class TestParameterizedMinifuck:
         at 1 rather than 2, so the core spreads marks instead of moving one.
         """
 
-        from esolangs.tools.boolean.minifuck import _POOL_CODES, _Sim
+        from esolangs.tools.minifuck import _POOL_CODES, _Sim
 
         core = "[[[<["
 
@@ -1596,7 +1601,7 @@ class TestParameterizedMinifuck:
         import importlib
         import re
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
         codes = module._POOL_CODES  # noqa: SLF001
 
         def out_of_order() -> int:
@@ -1694,7 +1699,7 @@ class TestParameterizedMinifuck:
         let one mapping serve all of them.
         """
 
-        from esolangs.tools.boolean.minifuck import _degenerate_cells
+        from esolangs.tools.minifuck import _degenerate_cells
 
         written_down = {
             "const1": 1,
@@ -1726,7 +1731,7 @@ class TestParameterizedMinifuck:
         gets while every other test still passed.
         """
 
-        from esolangs.tools.boolean.minifuck import (
+        from esolangs.tools.minifuck import (
             _MAX_ACC,
             _MAX_BRACKETS,
             _SEPS,
@@ -1792,7 +1797,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         with (
             patch.object(module, "_staged", lambda *_a, **_k: None),
@@ -1824,7 +1829,7 @@ class TestParameterizedMinifuck:
         either side so neither the stub nor the real run is served stale.
         """
 
-        from esolangs.tools.boolean.minifuck import (
+        from esolangs.tools.minifuck import (
             _STAGED_ARITIES,
             _derived_plans,
             _Joint,
@@ -1859,7 +1864,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         # Two essential inputs with the ignored one leading, so the route
         # takes its projection branch -- the one that replays an inner
@@ -1900,7 +1905,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         table, n = "0101", 2  # input 1 alone decides it; input 0 is ignored
         essential = essential_inputs(table, n)
@@ -1924,7 +1929,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         for ignored in range(1, 7):
             joint = module._Joint(ignored)  # noqa: SLF001
@@ -1946,7 +1951,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         table = "1010000110011011"
         built = module._mux(table, 4)  # noqa: SLF001
@@ -1988,7 +1993,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         chains, pools = module._slice_chains(4, sep_index, settle)  # noqa: SLF001
         base = module._embed(  # noqa: SLF001
@@ -2045,7 +2050,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         for arity in (2, 3):
             index = module._staging_index(arity)  # noqa: SLF001
@@ -2083,7 +2088,7 @@ class TestParameterizedMinifuck:
         import importlib
         import random
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         random.seed(20260902)
         wide = [format(value, "016b") for value in range(65536)]
@@ -2115,7 +2120,7 @@ class TestParameterizedMinifuck:
         enumeration that has no entries to give.
         """
 
-        from esolangs.tools.boolean.minifuck import (
+        from esolangs.tools.minifuck import (
             _STAGED_ARITIES,
             _derive_staging,
             _derived_plans,
@@ -2151,7 +2156,7 @@ class TestParameterizedMinifuck:
         import importlib
         import random
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
         codes = module._POOL_CODES  # noqa: SLF001
         width = module._POOL_WIDTH  # noqa: SLF001
         ptr_max = module._POOL_PTR_MAX  # noqa: SLF001
@@ -2216,7 +2221,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
         codes = module._POOL_CODES  # noqa: SLF001
         ptr_max = module._POOL_PTR_MAX  # noqa: SLF001
 
@@ -2257,7 +2262,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
         ptr_max = module._POOL_PTR_MAX  # noqa: SLF001
 
         outside = module._Sim(512)  # noqa: SLF001
@@ -2288,7 +2293,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         seen: list[tuple[object, int, int]] = []
         real = module._find_pool  # noqa: SLF001
@@ -2349,7 +2354,7 @@ class TestParameterizedMinifuck:
         longer produces stagings at all.
         """
 
-        from esolangs.tools.boolean.minifuck import (
+        from esolangs.tools.minifuck import (
             _BASE,
             _SEPS,
             _clamp,
@@ -2405,7 +2410,7 @@ class TestParameterizedMinifuck:
         construction without exercising a distinct path.  The current
         combined check takes 0.12s serially, so it belongs in the fast suite.
         """
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
         template = parameterized.minifuck("0110")
         assert "{X0}" in template
@@ -2426,7 +2431,7 @@ class TestParameterizedMinifuck:
         first eight cells as one byte -- emitting that character, or
         killing the row if the byte is zero.
         """
-        from esolangs.tools.boolean.minifuck import _Sim
+        from esolangs.tools.minifuck import _Sim
 
         dead = _Sim(16)
         dead.dead = True
@@ -2482,7 +2487,7 @@ class TestParameterizedMinifuck:
 
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.minifuck import run
-        from esolangs.tools.boolean.minifuck import _Sim
+        from esolangs.tools.minifuck import _Sim
 
         rng = random.Random(20260902)
         printed = deaths = skips = 0
@@ -2534,7 +2539,7 @@ class TestParameterizedMinifuck:
         """
         import random
 
-        from esolangs.tools.boolean.minifuck import _Sim
+        from esolangs.tools.minifuck import _Sim
 
         rng = random.Random(20260906)
         skips = walks_cascaded = clamped = 0
@@ -2599,11 +2604,11 @@ class TestParameterizedMinifuck:
         import random
 
         from esolangs.interpreters.tape_based.minifuck import _step
-        from esolangs.tools.boolean.minifuck_sim import _runs, _Sim
+        from esolangs.tools.minifuck_sim import _runs, _Sim
 
         # The package re-exports the generator function under the
         # submodule's name, so the module comes through importlib.
-        m = importlib.import_module("esolangs.tools.boolean.minifuck")
+        m = importlib.import_module("esolangs.tools.minifuck")
 
         def reference(row: _Sim, code: str) -> None:
             """The retired stepper: one ``_step`` call per character."""
@@ -2691,8 +2696,8 @@ class TestParameterizedMinifuck:
         itself drives the comparison, with every emission checked both ways
         as it happens.
         """
-        from esolangs.tools.boolean import minifuck_sim
-        from esolangs.tools.boolean.minifuck import minifuck
+        from esolangs.tools import minifuck_sim
+        from esolangs.tools.minifuck import minifuck
 
         real_emit = minifuck_sim._Joint.emit  # noqa: SLF001
         checked = [0]
@@ -2737,7 +2742,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
 
         def retired(joint: object, truth_table: str, acc: int) -> object:
             """The replaced trial loop, verbatim."""
@@ -2803,7 +2808,7 @@ class TestParameterizedMinifuck:
         one leftward channel, and it is not this one -- so a leftward
         target is refused rather than silently ignored.
         """
-        from esolangs.tools.boolean.minifuck import _clamp, _embed, _walk_to
+        from esolangs.tools.minifuck import _clamp, _embed, _walk_to
 
         spread = _embed(2)
         with pytest.raises(ValueError, match="converged pointer"):
@@ -2821,7 +2826,7 @@ class TestParameterizedMinifuck:
         carries the inputs -- so the pool search declines outright until a
         clamp has brought them back together.
         """
-        from esolangs.tools.boolean.minifuck import _clamp, _embed, _find_pool
+        from esolangs.tools.minifuck import _clamp, _embed, _find_pool
 
         spread = _embed(2)
         assert len(set(spread.ptrs())) > 1, "the embed should leave rows apart"
@@ -2843,8 +2848,8 @@ class TestParameterizedMinifuck:
 
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
-        from esolangs.tools.boolean.minifuck import _clamp, _embed, _endgame
+        module = importlib.import_module("esolangs.tools.minifuck")
+        from esolangs.tools.minifuck import _clamp, _embed, _endgame
 
         joint = _embed(2)
         _clamp(joint)
@@ -2870,7 +2875,7 @@ def test_insert_pass_stops_as_soon_as_its_last_target_is_placed() -> None:
     """
     import importlib
 
-    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+    module = importlib.import_module("esolangs.tools.minifuck")
 
     table = "0100110110100101"
     plans = module._derived_plans(4, (table,))  # noqa: SLF001
@@ -2883,7 +2888,7 @@ def test_mux_refuses_below_its_minimum_arity() -> None:
     """``_mux`` separates rows, which needs at least two of them to separate."""
     import importlib
 
-    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+    module = importlib.import_module("esolangs.tools.minifuck")
 
     assert module._MUX_MIN_ARITY == 2  # noqa: SLF001
     assert module._mux("01", 1) is None  # noqa: SLF001
@@ -2899,7 +2904,7 @@ def test_the_scout_distrusts_states_its_summary_cannot_speak_for() -> None:
     """
     import importlib
 
-    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+    module = importlib.import_module("esolangs.tools.minifuck")
 
     base = module._mux_separate(2)  # noqa: SLF001
     positions = base.ptrs()
@@ -2932,7 +2937,7 @@ def test_the_probe_simulates_when_the_parity_law_declines() -> None:
     """
     import importlib
 
-    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+    module = importlib.import_module("esolangs.tools.minifuck")
 
     torn = module._mux_separate(2).fork()  # noqa: SLF001
     torn.ms[0].tape ^= 1 << 3
@@ -2953,7 +2958,7 @@ def test_the_probe_frame_refuses_codes_outside_its_key() -> None:
     """
     import importlib
 
-    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+    module = importlib.import_module("esolangs.tools.minifuck")
 
     byte = module._mux_separate(2).ms[0].tape & module._POOL_MASK  # noqa: SLF001
     assert module._probe_frame("[", byte) is None  # noqa: SLF001
@@ -2973,9 +2978,9 @@ def test_the_weight_law_matches_the_parsed_runs() -> None:
     import importlib
     import random
 
-    from esolangs.tools.boolean.minifuck_sim import _runs, _Sim
+    from esolangs.tools.minifuck_sim import _runs, _Sim
 
-    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+    module = importlib.import_module("esolangs.tools.minifuck")
 
     rng = random.Random(20260910)
     applied = refused = 0
@@ -3045,7 +3050,7 @@ def test_the_rewind_law_matches_the_parsed_runs() -> None:
     """
     import random
 
-    from esolangs.tools.boolean.minifuck_sim import _runs, _Sim
+    from esolangs.tools.minifuck_sim import _runs, _Sim
 
     rng = random.Random(20260911)
     fused = fell_back = 0
@@ -3113,7 +3118,7 @@ def _rule_arities() -> list[int]:
     """
     import importlib
 
-    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+    module = importlib.import_module("esolangs.tools.minifuck")
     first = module._MUX_RULE_ARITY  # noqa: SLF001
     return sorted({first, 10}) if first <= 10 else [first]
 
@@ -3136,7 +3141,7 @@ def test_the_rule_spelling_matches_the_real_sculpt(n: int) -> None:
     import importlib
     import random
 
-    module = importlib.import_module("esolangs.tools.boolean.minifuck")
+    module = importlib.import_module("esolangs.tools.minifuck")
 
     rng = random.Random(20260914)
     table = format(rng.getrandbits(2**n), f"0{2**n}b")
@@ -3179,8 +3184,8 @@ def test_ten_input_builds_print_on_the_interpreter() -> None:
 
     from esolangs.interpreters.io import ScriptedIO
     from esolangs.interpreters.tape_based.minifuck import run
-    from esolangs.tools.boolean import minifuck
-    from esolangs.tools.boolean.examples import _fill_minifuck
+    from esolangs.tools import minifuck
+    from esolangs.tools.examples import _fill_minifuck
 
     digest = hashlib.sha256(b"dense:10").digest()
     bits: list[str] = []

@@ -61,7 +61,6 @@ class TestRAM0BasicCommands:
     """Test basic RAM0 command functionality."""
 
     def test_z_command_zero_register(self) -> None:
-        """Test Z command sets z register to 0."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -72,7 +71,6 @@ class TestRAM0BasicCommands:
         assert output == "z: 0\nn: 0\nram: {}"
 
     def test_a_command_increment(self) -> None:
-        """Test A command increments z register."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -83,7 +81,6 @@ class TestRAM0BasicCommands:
         assert output == "z: 3\nn: 0\nram: {}"
 
     def test_n_command_copy_z_to_n(self) -> None:
-        """Test N command copies z register to n register."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -94,7 +91,6 @@ class TestRAM0BasicCommands:
         assert output == "z: 3\nn: 3\nram: {}"
 
     def test_l_command_load_from_memory(self) -> None:
-        """Test L command loads value from RAM at address z."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -108,7 +104,6 @@ class TestRAM0BasicCommands:
         assert output == "z: 0\nn: 2\nram: {\n    2: 5\n}"
 
     def test_s_command_store_to_memory(self) -> None:
-        """Test S command stores z register value to RAM at address n."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -119,7 +114,6 @@ class TestRAM0BasicCommands:
         assert output == "z: 5\nn: 2\nram: {\n    2: 5\n}"
 
     def test_c_command_conditional_skip(self) -> None:
-        """Test C command skips next instruction when z is zero."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -131,7 +125,6 @@ class TestRAM0BasicCommands:
         assert output == "z: 0\nn: 0\nram: {}"
 
     def test_c_command_no_skip_when_nonzero(self) -> None:
-        """Test C command does not skip when z is nonzero."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -149,7 +142,6 @@ class TestRAM0ControlFlow:
     """Test RAM0 control flow operations."""
 
     def test_goto_command_jump(self) -> None:
-        """Test goto command jumps to specified instruction."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -165,7 +157,6 @@ class TestRAM0MemoryOperations:
     """Test RAM0 memory read/write operations."""
 
     def test_multiple_memory_locations(self) -> None:
-        """Test storing values at multiple memory locations."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -178,7 +169,6 @@ class TestRAM0MemoryOperations:
         assert output == "z: 6\nn: 4\nram: {\n    1: 2,\n    4: 6\n}"
 
     def test_memory_overwrite(self) -> None:
-        """Test overwriting memory locations."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -191,7 +181,6 @@ class TestRAM0MemoryOperations:
         assert output == "z: 5\nn: 5\nram: {\n    1: 2,\n    5: 5\n}"
 
     def test_load_from_uninitialized_memory(self) -> None:
-        """Test loading from uninitialized memory returns 0."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -206,7 +195,6 @@ class TestRAM0RegisterInteractions:
     """Test interactions between z and n registers."""
 
     def test_register_independence(self) -> None:
-        """Test that z and n registers are independent."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -217,7 +205,6 @@ class TestRAM0RegisterInteractions:
         assert output == "z: 5\nn: 3\nram: {}"
 
     def test_n_register_preserves_z(self) -> None:
-        """Test that N command preserves z register value."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -232,7 +219,6 @@ class TestRAM0EdgeCases:
     """Test RAM0 edge cases and error conditions."""
 
     def test_empty_program(self) -> None:
-        """Test that empty program produces no output."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -243,7 +229,6 @@ class TestRAM0EdgeCases:
         assert output == "z: 0\nn: 0\nram: {}"
 
     def test_whitespace_only(self) -> None:
-        """Test that whitespace-only program produces default output."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:
@@ -254,7 +239,6 @@ class TestRAM0EdgeCases:
         assert output == "z: 0\nn: 0\nram: {}"
 
     def test_invalid_commands_ignored(self) -> None:
-        """Test that invalid commands are ignored by regex."""
 
         def test_func() -> str:
             with redirect_stdout(io.StringIO()) as f:

@@ -5,7 +5,7 @@ import importlib
 import pytest
 
 from esolangs.interpreters.io import IO
-from esolangs.tools.boolean.tape import dimensional as bool_gen
+from esolangs.tools.tape import dimensional as bool_gen
 from tests.interpreters.contract import SnapshotContract
 from tests.interpreters.runner import run_program
 from tests.raises import raises_message

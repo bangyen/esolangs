@@ -12,8 +12,8 @@ import pytest
 
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.register_based.interprogck8 import _Machine
-from esolangs.tools.boolean import interprogck8
-from esolangs.tools.boolean.interprogck8 import (
+from esolangs.tools import interprogck8
+from esolangs.tools.interprogck8 import (
     _REACH,
     _check,
     _emit,
@@ -135,13 +135,19 @@ class TestExpress:
         table = _dense_table(6)
         # By name: the package re-exports the generator under the module's
         # own name, so a plain import binds the function, not the module.
-        module = importlib.import_module("esolangs.tools.boolean.interprogck8")
+        module = importlib.import_module("esolangs.tools.interprogck8")
         with monkeypatch.context() as patch:
             patch.setattr(module, "_MEADOW_LEAST", 2)
             patch.setattr(module, "_MEADOW_MOST", 2)
             patch.setattr(module, "_REPAIRS", -1)
-            with pytest.raises(ValueError, match="no rung slot"):
+            with pytest.raises(ValueError, match="no rung slot") as caught:
                 interprogck8(table)
+        # The user-facing half.  The window and the label are the thing to
+        # debug from and stay; on their own they told a caller neither the
+        # arity, nor that anything was capped, nor where the cap is -- which
+        # is what the three sibling caps lead with.
+        assert "10 inputs" in str(caught.value)
+        assert "this table has 6" in str(caught.value)
         # ...and the real meadows still build the same table.
         assert interprogck8(table)
 

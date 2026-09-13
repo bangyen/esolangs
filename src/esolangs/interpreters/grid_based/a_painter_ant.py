@@ -179,6 +179,20 @@ class _Machine:
     #: Brent's cycle detector, then the render.
     self_halts = False
 
+    #: Whether stepping ever reaches the answer.  Uniquely here, no: the
+    #: answer is the rendered grid *after* the walk is proven periodic, and
+    #: a stepping caller is by definition always mid-walk.  Three million
+    #: steps leave ``halted`` false and ``output`` empty, which reads as a
+    #: hang and is really a category error -- ``self_halts = False`` alone
+    #: does not say so, since Suffolk carries it too and does write its
+    #: answer while being stepped.
+    #:
+    #: So the flag exists to be consulted rather than discovered: a caller
+    #: driving this language by :meth:`step` should call
+    #: :func:`esolangs.run` instead, which owns the cycle proof and the
+    #: render.
+    steppable_to_answer = False
+
     def __init__(
         self,
         code: str,

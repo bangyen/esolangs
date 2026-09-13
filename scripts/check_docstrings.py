@@ -25,7 +25,7 @@ def _categories() -> list[str]:
     fails *silently*: a category missing from it is skipped, so its modules
     pass the gate by never being checked at all.  This listing once omitted
     ``grid_based`` and ``queue_based``, exempting 12 interpreters and hiding
-    three real violations.  ``tools/boolean/__init__.py`` derives its
+    three real violations.  ``tools/__init__.py`` derives its
     ``BOOLEAN`` set from the registry for the same reason.
     """
     interpreters = os.path.join(ROOT, "interpreters")

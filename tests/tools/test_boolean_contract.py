@@ -8,13 +8,22 @@ import contextlib
 import hashlib
 import importlib
 import re
+from collections.abc import Callable
 
 import pytest
 
-import esolangs.tools.boolean as boolean
+import esolangs
+import esolangs.tools as boolean
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import BY_BOOLEAN, LANGUAGES
+from esolangs.tools.helpers import essential_inputs
 from esolangs.vm import run_until_halt_or_cycle
+
+# Every sweep here runs an interpreter over a generated program -- the whole
+# file is the execution gate -- so the module is `medium` and the inner loop
+# leaves it out.  42.9s of the fast band's 193.8s was this file alone.  The
+# per-param `slow` marks below still apply on top.
+pytestmark = pytest.mark.medium
 
 # One constant table against one that folds nothing.  A generator loses reads
 # by *folding*, so the comparison needs a table that folds completely and one
@@ -38,7 +47,7 @@ _TABLES = ["00000000", "01101001"]
 # The set is empty.  ``minifuck`` was its last member, at 14.9s of the
 # sweep's 18.0s, and left on 2026-09-06 when the emitter stopped stepping
 # its straight runs one character at a time: the entry now measures 0.03s
-# against the one-second budget.  ``docs/minifuck_generator.md`` has the
+# against the one-second budget.  ``the relevant generator tests`` has the
 # full ledger of what entered and left this set, with the measurement
 # behind each.
 _SEARCHING_GENERATORS_REGRESSED: frozenset[str] = frozenset()
@@ -209,34 +218,31 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
     assert not missing, (
         f"these languages export a boolean generator but are absent from "
         f"BOOLEAN, so describe() reports boolean_generator=False for them: "
-        f"{sorted(missing)} -- add them to BOOLEAN in tools/boolean/__init__.py"
+        f"{sorted(missing)} -- add them to BOOLEAN in tools/__init__.py"
     )
     stale = boolean.BOOLEAN - set(exported.values())
     assert not stale, (
         f"BOOLEAN names these languages but the package exports no generator "
         f"resolving to them: {sorted(stale)} -- remove them from BOOLEAN, or "
-        f"export the generator from tools/boolean/__init__.py"
+        f"export the generator from tools/__init__.py"
     )
 
 
 # The tree generators that pick their input split order by measuring, and the
 # builder that emits one fixed order, so a test can compare the two.
 def _reordering_generators() -> list[object]:
-    from esolangs.tools.boolean.helpers import _decision_tree_program
-    from esolangs.tools.boolean.other import (
+    from esolangs.tools.helpers import _decision_tree_program
+    from esolangs.tools.other import (
         _between_ordered,
         _forbin_ordered,
-        _myscript_ordered,
-        _nevermind_ordered,
     )
-    from esolangs.tools.boolean.parameterized import (
+    from esolangs.tools.parameterized import (
         _bitdeque_ordered,
         _lamfunc_ordered,
         _ram0_ordered,
     )
-    from esolangs.tools.boolean.tape import (
+    from esolangs.tools.tape import (
         _ASCII_ZERO,
-        _basicfuck_ordered,
         _circlefuck_ordered,
         _jaune_ordered,
     )
@@ -256,9 +262,6 @@ def _reordering_generators() -> list[object]:
         ("between", boolean.between, _between_ordered),
         ("lamfunc", boolean.lamfunc, _lamfunc_ordered),
         ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
-        ("myscript", boolean.myscript, _myscript_ordered),
-        ("nevermind", boolean.nevermind, _nevermind_ordered),
-        ("basicfuck", boolean.basicfuck, _basicfuck_ordered),
         (
             "circlefuck",
             boolean.circlefuck,
@@ -331,7 +334,7 @@ def test_reordering_shrinks_the_tables_it_should(
 
 def test_reorder_permutation_preserves_the_function() -> None:
     """Permuting the table renames the inputs without changing the function."""
-    from esolangs.tools.boolean.helpers import permute_truth_table
+    from esolangs.tools.helpers import permute_truth_table
 
     table = "01101001"
     n = 3
@@ -349,7 +352,7 @@ def test_wide_tables_skip_the_exhaustive_search() -> None:
     ``12!`` is 479 million orders; an uncapped search never returns.  The
     greedy fallback still may not emit more than the identity order does.
     """
-    from esolangs.tools.boolean.helpers import _ORDER_SEARCH_MAX, _decision_tree_program
+    from esolangs.tools.helpers import _ORDER_SEARCH_MAX, _decision_tree_program
 
     n = _ORDER_SEARCH_MAX + 2
     table = "0" * (2**n - 1) + "1"
@@ -368,7 +371,7 @@ def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
     last input, which the greedy pick fronts.
     """
     from esolangs.interpreters.tape_based.brainfuck import run
-    from esolangs.tools.boolean.helpers import _greedy_input_order
+    from esolangs.tools.helpers import _greedy_input_order
     from tests.interpreters.runner import run_program
 
     n = 7
@@ -398,7 +401,7 @@ def test_the_greedy_order_is_the_documented_one() -> None:
     no order helps.  94 of the 256 three-input tables get a non-identity
     order, so the two rules are separable here rather than only in theory.
     """
-    from esolangs.tools.boolean.helpers import _greedy_input_order
+    from esolangs.tools.helpers import _greedy_input_order
 
     # Tables the heuristic reorders, and the order it picks.
     assert _greedy_input_order("00000101", 3) == (0, 2, 1)
@@ -439,7 +442,7 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
     """
     from itertools import permutations
 
-    from esolangs.tools.boolean.helpers import _decision_tree_program
+    from esolangs.tools.helpers import _decision_tree_program
 
     lengths = {
         perm: len(_decision_tree_program("00010111", ">", "<", perm))
@@ -623,8 +626,8 @@ def test_a_malformed_table_is_refused_in_the_shared_words(
 
     The sibling above pins that a nullary table is refused; this pins the
     other two rejections, and pins them by wording rather than by type.  All
-    69 generators route these through
-    :func:`~esolangs.tools.boolean.helpers._validate_truth_table`, so the
+    65 generators route these through
+    :func:`~esolangs.tools.helpers._validate_truth_table`, so the
     message is uniform today -- a generator that grows its own validator
     keeps raising ``ValueError`` and passes every other check while telling
     the caller something different from its 68 siblings.
@@ -715,7 +718,7 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 # Every boolean generator builds a table at n <= _MAX_ARITY.  Ten inputs:
 # the whole registry was swept at n=1..10 on both shapes, and exactly one
 # generator falls short -- WII2D, dense only, recorded below.  Every other
-# one of the 69 builds both shapes at n=10.
+# one of the 65 builds both shapes at n=10.
 #
 # Ten is here because it was made affordable, not because the cost was
 # waved through.  This sweep stopped at five for a long time, then briefly
@@ -764,7 +767,7 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 # of program text.  That memory, not the time, is what keeps the band split:
 # n <= _QUICK_ARITY runs in the default gate and the rest is marked slow.
 # Both bands assert the same thing; splitting them keeps the fast gate at
-# the 69 items and ~3s it had when this swept to five.
+# the 65 items and ~3s it had when this swept to five.
 _MAX_ARITY = 10
 _QUICK_ARITY = 5
 
@@ -788,7 +791,7 @@ _ARITY_BANDS = (
 #   decode ratchets -- live count crawls 512 -> 475 over 19 steps while the
 #   bit length doubles every step, reaching 1.09M bits, the 19th step alone
 #   144s -- and refuses on the magnitude bound instead.  It is a wall of the
-#   exactly-once embed convention; ``docs/walls.md`` carries the curve.
+#   exactly-once embed convention; ``the limitations ledger`` carries the curve.
 #
 # Two generators that used to be here are gone, and both of those refusals
 # were the *construction's* limit rather than the language's:
@@ -892,6 +895,50 @@ def test_arity_caps_are_still_caps() -> None:
             fn(make(cap + 1))
 
 
+# Every table of arity one, two and three: 4 + 16 + 256 = 276 of them.  The
+# sweep above sees two tables per arity, so a generator that refuses some
+# *third* shape -- an all-but-one-row table, a table whose fold leaves one
+# essential input, a single minterm -- passes it and fails here.  This is the
+# exhaustive-domain half, and n <= 3 is the last arity where exhaustive is a
+# thing one can afford: n=4 is 65536 tables per generator.
+#
+# It is the executable witness `the relevant tests` names for the totality
+# entries.  A structural argument says a generator returns on every table of
+# every arity; this checks the whole domain at the arities where "whole" is
+# reachable, which is what stops the argument from resting on its own prose.
+#
+# 4.3s serial across all 65, no generator over 1.8s -- pct-squared-minus-one
+# is the top at 1.71s, and the other 64 are under 0.6s each.
+_EXHAUSTIVE_ARITY = 3
+
+
+def _all_tables(arity: int) -> list[str]:
+    """Every truth table of every arity from one up to ``arity``."""
+    return [
+        format(k, f"0{2**n}b") for n in range(1, arity + 1) for k in range(2 ** (2**n))
+    ]
+
+
+@pytest.mark.parametrize("name", sorted(BY_BOOLEAN))
+def test_every_generator_is_total_on_every_small_table(name: str) -> None:
+    """Every generator returns a program for *every* table up to three inputs.
+
+    Totality, on the domain where it can be checked outright rather than
+    argued: no table in it raises, and none yields the empty string.  A
+    generator that refuses one table in 276 is not total, and the two-shape
+    sweep above would not see it -- ``_dense`` and ``_parity`` are two
+    points, and the constructions here fold, complement and reorder, so
+    which table is hardest is not a property either point has.
+
+    Non-empty rather than correct: a returned program is what the claim is
+    about.  ``test_every_generator_runs_what_it_builds`` is what runs one.
+    """
+    fn = getattr(boolean, name)
+    for table in _all_tables(_EXHAUSTIVE_ARITY):
+        program = str(fn(table))
+        assert program, f"{name} built an empty program for {table!r}"
+
+
 def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
     """Nothing above k2 is needed, so the plan sieve is never entered.
 
@@ -899,9 +946,159 @@ def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
     extends; a caller wanting nothing larger gets those four lines and no
     build plan at all.
     """
-    from esolangs.tools.boolean.helpers import _cm_constants
+    from esolangs.tools.helpers import _cm_constants
 
     lines = _cm_constants([1, 2])
     assert len(lines) == 4
     assert all(line.endswith("NOT PRINT.") for line in lines)
     assert _cm_constants([]) == lines
+
+
+# The build sweep above proves every generator *returns* a program up to ten
+# inputs.  It never runs one, and for four years nothing else ran one past
+# four inputs either.  Grapheme's variable keys collided with two of its own
+# command characters from slot 5 onward, so from six essential inputs it
+# emitted a program its own interpreter could not execute -- and the sweep
+# saw a healthy non-empty string every time.
+#
+# The property that matters is not table *size* but how many inputs are
+# *essential*: a dense n=9 table that folds down to one input exercises one
+# slot and sails through.  A single-minterm table is the cheap way to force
+# all n of them -- its one 1 makes every input matter, while the program
+# stays small enough to execute.  Grapheme n=9 costs 0.18s that way against
+# 11.7s for an all-essential random table, which is the difference between a
+# test and a nightly job.
+#
+# n=6 is the floor that would have caught the bug and is affordable for all
+# 65: 13.4s of work in total, no language over 4.3s, and none excluded.
+# Restoring the old key alphabet makes this fail, which is the only
+# evidence that the arity is high enough.
+# There is deliberately no exclusion table here -- an empty one is the
+# finding, and if a language ever needs to be added, it needs a reason and a
+# cost beside it like ``_ARITY_CAPPED`` carries.
+#
+# A wider probe backs the choice rather than a hunch: 517 evaluations over
+# the whole registry, both shapes, n=5..8, found zero further failures of this
+# kind, so Grapheme was the only one.  22 language/arity pairs were too
+# expensive to reach and are *unchecked*, not passing.
+_ONE_MINTERM_ARITY = 6
+
+
+def _one_minterm(n: int) -> str:
+    """A single 1, which makes every input essential at minimum size."""
+    return "1" + "0" * (2**n - 1)
+
+
+def _one_hot(n: int) -> str:
+    """1 exactly where one input is set.
+
+    The second shape, and it is here because one minterm was not enough.
+    Sophie emitted programs that read ``n + 1`` inputs and died on their own
+    generator's output, and this sweep did not see it: parity, dense, a
+    single minterm, majority and a mux all passed at n=6, and one-hot
+    failed.  Arity was never the missing coordinate -- Sophie is clean on
+    every one of the 65536 tables at n <= 4 and collides on 35% of random
+    tables at n=7 -- so a second *shape* buys what a seventh input does not.
+
+    It costs 30.5s of work across the 65, against 13.4s for one minterm.  A
+    third shape was measured and dropped: a 2-CNF at n=6 costs 67.2s, 37s of
+    it Circuit Diagram alone, and caught nothing this does not.
+    """
+    return "".join(str(int(bin(row).count("1") == 1)) for row in range(2**n))
+
+
+#: The table shapes every generator's *output* is executed against.
+_EXEC_SHAPES = (("one_minterm", _one_minterm), ("one_hot", _one_hot))
+
+
+@pytest.mark.parametrize(
+    "make", [make for _, make in _EXEC_SHAPES], ids=[s for s, _ in _EXEC_SHAPES]
+)
+@pytest.mark.parametrize("name", sorted(esolangs.list_languages()))
+def test_every_generator_runs_what_it_builds(
+    name: str, make: Callable[[int], str]
+) -> None:
+    """Build a table using all six inputs, execute it, and check every row.
+
+    Parameterized per language rather than looped so that a failure names
+    the one that broke instead of stopping at the first.
+    """
+    table = make(_ONE_MINTERM_ARITY)
+    assert esolangs.evaluate(name, table, timeout=30) == table
+
+
+@pytest.mark.parametrize(
+    "make", [make for _, make in _EXEC_SHAPES], ids=[s for s, _ in _EXEC_SHAPES]
+)
+def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> None:
+    """The guards above are worthless if their tables fold.
+
+    This is the assumption the whole sweep rests on, and it is one line to
+    check, so it is checked rather than asserted in a comment.
+    """
+    table = make(_ONE_MINTERM_ARITY)
+    assert len(essential_inputs(table, _ONE_MINTERM_ARITY)) == _ONE_MINTERM_ARITY
+
+
+#: What ``docs/limitations.md`` says the expensive generators cost, as
+#: ``(n=8 size, n=9 size, growth per input)``.  Sizes are exact because a
+#: program's length is deterministic for a fixed generator and table; the
+#: ratio carries a band because it drifts a little with arity.
+#:
+#: Timings are deliberately absent.  The document states a few and calls
+#: them approximate, and asserting one here would fail whenever the machine
+#: is busy -- which, on a suite that runs four workers, is always.
+_DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
+    "Circuit Diagram": (609_526, 1_609_864, 2.6),
+    "COD": (942_692, 3_668_705, 3.9),
+    "ROTfuck": (86_605, 194_945, 2.3),
+    "Polynomial": (3_383_048, 10_896_883, 3.2),
+    "SLOW ACV MAMMALIAN": (1_672_368, 3_380_418, 2.0),
+    "bit~": (31_076, 69_005, 2.2),
+    "123": (219_937, 752_570, 3.4),
+    "Factor": (17_613, 36_339, 2.1),
+}
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("name", sorted(_DOCUMENTED_SIZES))
+def test_the_expensive_generators_grow_as_documented(name: str) -> None:
+    """``docs/limitations.md`` tells a reader whether n=11 is affordable.
+
+    It answers that with a growth law rather than an ``estimate()`` API,
+    because the generators the question is about have no cap arithmetic to
+    consult -- Circuit Diagram, COD and ROTfuck never refuse -- so an
+    estimator for them would be a hand-fitted size model, which is the kind
+    of frozen table this repository turns back into a rule.  A rule in prose
+    is only worth having if it is checked, so this is the check.
+
+    n=9 is the ceiling here on purpose: it was chosen when Circuit Diagram
+    was 60MB there and 306MB at n=10, and a test that allocates a third of
+    a gigabyte to confirm a documented number is a worse trade than the
+    number being one arity smaller.  Five of these eight have since shrunk
+    by between 2.4x and 15x -- Circuit Diagram is 1.6MB at n=9 now -- but
+    n=9 stays, because the growth law is what is being checked and one more
+    arity does not check it better.
+    """
+    at_eight, at_nine, ratio = _DOCUMENTED_SIZES[name]
+    assert len(esolangs.generate(name, _dense(8))) == at_eight
+    assert len(esolangs.generate(name, _dense(9))) == at_nine
+    assert at_nine / at_eight == pytest.approx(ratio, abs=0.35)
+
+
+@pytest.mark.slow
+def test_nothing_else_is_anywhere_near_that_big() -> None:
+    """The document's "every other generator is under 600KB at n=9".
+
+    A claim about the *rest* of the registry is the half a table of named
+    languages cannot make, and it is the half that decides whether a reader
+    has to think about size at all.  The first draft said "under a megabyte"
+    and two generators were over it, which is why this exists.
+    """
+    biggest = max(
+        (len(esolangs.generate(name, _dense(9))), name)
+        for name in esolangs.list_languages()
+        if name not in _DOCUMENTED_SIZES
+    )
+    assert biggest[0] < 600_000, biggest
+    assert biggest[1] == "A Painter Ant"

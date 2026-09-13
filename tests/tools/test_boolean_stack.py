@@ -1,13 +1,15 @@
 """Unit tests for the stack-based boolean generators.
 
-Covers the generators in :mod:`esolangs.tools.boolean.stack`: Grapheme,
+Covers the generators in :mod:`esolangs.tools.stack`: Grapheme,
 Forþ, Modulous, BFStack, and Unsquare.
 """
 
 import pytest
 
-from esolangs.tools import boolean
-from esolangs.tools.boolean.helpers import permute_truth_table
+import esolangs
+from esolangs import tools as boolean
+from esolangs.tools import stack
+from esolangs.tools.helpers import permute_truth_table
 from tests.tools.boolean_runners import (
     run_bfstack,
     run_forth,
@@ -23,7 +25,7 @@ def _grapheme_counted_side(table: str, n: int) -> str:
     that side.  Kept here rather than in the generator: it is the thing the
     generator is asserted to beat, not something it should be able to emit.
     """
-    from esolangs.tools.boolean.stack import _grapheme_head, _grapheme_side
+    from esolangs.tools.stack import _grapheme_head, _grapheme_side
 
     head, reduced, width = _grapheme_head(table, n)
     zeros = reduced.count("0")
@@ -170,7 +172,7 @@ class TestForth:
         it would be dead code the program never calls, so the node count
         must fall to exactly the surviving frontier.
         """
-        from esolangs.tools.boolean.stack import _forth_const
+        from esolangs.tools.stack import _forth_const
 
         program = boolean.forth("1" * 8)
         for m in range(3, 15):  # every node below the two root children
@@ -184,7 +186,7 @@ class TestForth:
         first with ties keeping it.  Pinning against that build is what
         proves the search cannot churn an emission it does not shorten.
         """
-        from esolangs.tools.boolean.stack import _forth_ordered
+        from esolangs.tools.stack import _forth_ordered
 
         natural = (2, 1, 0)
         improved = 0
@@ -208,7 +210,7 @@ class TestForth:
         times as many at n == 5, which is what keeps the saving from
         collapsing as ``n`` grows.
         """
-        from esolangs.tools.boolean.stack import _forth_stack_programs
+        from esolangs.tools.stack import _forth_stack_programs
 
         # The reachable *set* has a closed form, which is what pins the
         # search: after each read the new bit is on top, and the only
@@ -233,7 +235,7 @@ class TestForth:
         rather than ``3**n``: the enumeration walks every combination and
         drops the ones that would sink a bit past the bottom of the stack.
         """
-        from esolangs.tools.boolean.stack import _forth_stack_programs, _sink_top
+        from esolangs.tools.stack import _forth_stack_programs, _sink_top
 
         assert len(_forth_stack_programs(1)) == 1  # nothing to rearrange
         assert len(_forth_stack_programs(2)) == 2  # the second bit may swap
@@ -253,7 +255,7 @@ class TestForth:
         in the wrong places, which is why this returns rather than falling
         through to the tree.
         """
-        from esolangs.tools.boolean.stack import (
+        from esolangs.tools.stack import (
             _forth_ordered,
             _forth_stack_programs,
         )
@@ -273,7 +275,7 @@ class TestForth:
 
     def test_const_large(self) -> None:
         """Constants above 225 need multiple base-15 digits."""
-        from esolangs.tools.boolean.stack import _forth_const
+        from esolangs.tools.stack import _forth_const
 
         assert _forth_const(0) == "0"
         assert len(_forth_const(300)) > len(_forth_const(48))
@@ -289,7 +291,7 @@ class TestForth:
         last single digit, 15 rolls over, and 225 is the first three-digit
         constant.
         """
-        from esolangs.tools.boolean.stack import _forth_const
+        from esolangs.tools.stack import _forth_const
 
         assert _forth_const(14) == "E"
         assert _forth_const(15) == "1F*0+"
@@ -309,8 +311,8 @@ class TestForth:
         """
         import random
 
-        from esolangs.tools.boolean.helpers import permute_truth_table
-        from esolangs.tools.boolean.stack import (
+        from esolangs.tools.helpers import permute_truth_table
+        from esolangs.tools.stack import (
             _forth_order_length,
             _forth_ordered,
             _forth_permuted_bits,
@@ -443,7 +445,7 @@ class TestUnsquare:
         alone -- what it produced before reordering existed, never worse,
         just unimproved -- and this pins that only one program is built.
         """
-        from esolangs.tools.boolean.helpers import _ORDER_SEARCH_MAX
+        from esolangs.tools.helpers import _ORDER_SEARCH_MAX
 
         n = _ORDER_SEARCH_MAX + 1
         table = "01" * (2 ** (n - 1))
@@ -460,7 +462,7 @@ class TestUnsquare:
         first with ties keeping it, so a table no reorder helps emits
         exactly what it emitted before.
         """
-        from esolangs.tools.boolean.stack import (
+        from esolangs.tools.stack import (
             _unsquare_stack_programs,
             _unsquare_tree,
         )
@@ -484,7 +486,7 @@ class TestUnsquare:
 
     def test_reorder_cost_selects_the_emitted_program(self) -> None:
         """The pricing model matches every candidate and picks the shortest."""
-        from esolangs.tools.boolean.stack import (
+        from esolangs.tools.stack import (
             _unsquare_cost,
             _unsquare_stack_programs,
             _unsquare_tree,
@@ -515,7 +517,7 @@ class TestUnsquare:
         choice per read past the first.  Forþ's stack has the same count for
         the same reason, reached through different ops.
         """
-        from esolangs.tools.boolean.stack import _unsquare_stack_programs
+        from esolangs.tools.stack import _unsquare_stack_programs
 
         for n in range(2, 7):
             assert len(_unsquare_stack_programs(n)) == 2 * 3 ** (n - 2)
@@ -574,3 +576,69 @@ class TestUnsquare:
         """Only the characters Unsquare reads are emitted."""
         for table in ("10", "0110", "0001", "11111110"):
             assert set(boolean.unsquare(table)) <= set("+-<>AIOPSiox"), table
+
+
+class TestGraphemeKeysAvoidItsOwnAlphabet:
+    """Two variable keys collided with the language, and only one raised.
+
+    Both were invisible to the arity sweep in
+    ``tests/tools/test_boolean_contract.py``, which builds every generator
+    to ten inputs but never runs what it builds.  ``boolean.grapheme``
+    returned a healthy-looking program for all of these.
+    """
+
+    @staticmethod
+    def _one_minterm(n: int) -> str:
+        """A table whose single 1 makes every one of its ``n`` inputs matter."""
+        return "1" + "0" * (2**n - 1)
+
+    def test_no_key_letter_is_the_int_mode_delimiter(self) -> None:
+        """``F`` framed the key, so it could not also be the digit inside it."""
+        assert "F" not in stack._GRAPHEME_KEY_LETTERS  # noqa: SLF001
+
+    def test_no_key_letter_aliases_the_constant(self) -> None:
+        """The normalizing 65 owns key 90, and a slot must not store over it."""
+        keys = [
+            stack._grapheme_slot_key(slot)  # noqa: SLF001
+            for slot in range(len(stack._GRAPHEME_KEY_LETTERS))  # noqa: SLF001
+        ]
+        assert stack._GRAPHEME_CONST_KEY not in keys  # noqa: SLF001
+        assert len(set(keys)) == len(keys)
+
+    @pytest.mark.parametrize("n", [6, 7, 8, 9])
+    def test_a_table_using_every_input_still_computes(self, n: int) -> None:
+        """Six essential inputs reached slot 5, and slot 5's key was ``FFF``.
+
+        Under the old alphabet six raised ``ProgramError: Grapheme produced
+        no answer this could read`` and seven raised ``HaltError: G needs a
+        string or a function``.  Five and below were always fine, at any
+        arity, because the wall stood at essential inputs rather than table
+        size -- a dense n=9 table that folds to one input never saw it.
+        """
+        table = self._one_minterm(n)
+        assert esolangs.evaluate("Grapheme", table, timeout=60) == table
+
+    def test_parity_at_six_inputs_computes(self) -> None:
+        """Parity is the table with nothing to fold, so all six slots are live."""
+        table = "".join(str(bin(row).count("1") & 1) for row in range(64))
+        assert esolangs.evaluate("Grapheme", table, timeout=60) == table
+
+    def test_the_constant_alias_returned_a_wrong_answer(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The positive control, and the reason ``I`` is filtered out.
+
+        Dropping only ``F`` leaves ``I`` at slot 7 holding key 90 -- the
+        constant's.  That collision does not raise: eight essential inputs
+        still come out right, because slot 7 is read last and nothing reads
+        the constant after it.  Nine is where the clobbered 65 is read back
+        and the table comes out wrong, quietly.  Without this control the
+        ``I`` skip looks like superstition.
+        """
+        monkeypatch.setattr(
+            stack,
+            "_GRAPHEME_KEY_LETTERS",
+            [letter for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" if letter != "F"],
+        )
+        table = self._one_minterm(9)
+        assert esolangs.evaluate("Grapheme", table, timeout=60) != table

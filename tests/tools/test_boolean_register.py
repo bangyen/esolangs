@@ -1,15 +1,18 @@
 """Unit tests for the register-based boolean generators.
 
-Covers the generators in :mod:`esolangs.tools.boolean.register`: Decleq,
+Covers the generators in :mod:`esolangs.tools.register`: Decleq,
 AddSubJump, Collatz Multiverse, Sophie, Dig, Qoibl, Polynomial, and Point
 Break.
 """
 
+import random
+
 import pytest
 
 import esolangs
-from esolangs.tools import boolean
-from esolangs.tools.boolean.register import (
+from esolangs import tools as boolean
+from esolangs.tools.helpers import _ASCII_ONE, _ASCII_ZERO
+from esolangs.tools.register import (
     _DIG_BRANCH,
     _DIG_RETURN,
     _DIG_STRIDE,
@@ -164,6 +167,8 @@ class TestQoibl:
         assert "ry ye ry" not in program
 
 
+# 4.2s over 72 tests: runs the generated program.
+@pytest.mark.medium
 class TestPolynomial:
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -215,7 +220,7 @@ class TestPolynomial:
         of n == 10 by construction, and the dense fixture sits under it
         with room that is measured, not assumed.
         """
-        from esolangs.tools.boolean.register import _POLYNOMIAL_MAX_INSTRS
+        from esolangs.tools.register import _POLYNOMIAL_MAX_INSTRS
 
         states = [min(2**k, 2 ** (2 ** (10 - k))) for k in range(11)]
         assert 7 * sum(states[:10]) + 5 * states[10] - 1 == _POLYNOMIAL_MAX_INSTRS
@@ -282,7 +287,7 @@ class TestPolynomial:
 
     def test_dag_cost_mirrors_its_emitter(self) -> None:
         """``_polynomial_hybrid_cost`` prices a residual through this."""
-        from esolangs.tools.boolean.register import _polynomial_dag_cost
+        from esolangs.tools.register import _polynomial_dag_cost
 
         for n in range(1, 4):
             for value in range(1 << (1 << n)):
@@ -295,7 +300,7 @@ class TestPolynomial:
         The dispatch screens on the cost before rendering, so a drift here
         silently skips a table the emitter would have shortened.
         """
-        from esolangs.tools.boolean.register import (
+        from esolangs.tools.register import (
             _polynomial_hybrid,
             _polynomial_hybrid_cost,
         )
@@ -317,7 +322,7 @@ class TestPolynomial:
         hybrid collapses to a leaf before reaching it and comes out
         shorter (5 instructions against 10 at n == 1).
         """
-        from esolangs.tools.boolean.register import _polynomial_hybrid
+        from esolangs.tools.register import _polynomial_hybrid
 
         for n in range(1, 4):
             for value in range(1 << (1 << n)):
@@ -337,7 +342,7 @@ class TestPolynomial:
         candidate.  Every table at n <= 3 needs at most 6; a slack fitted
         there would emit the worse program at n == 4, which reaches 9.
         """
-        from esolangs.tools.boolean.register import (
+        from esolangs.tools.register import (
             _POLYNOMIAL_SCREEN_SLACK,
             _polynomial_assemble,
             _polynomial_hybrid,
@@ -378,7 +383,7 @@ class TestPolynomial:
         the n == 3 corpus these tables render 24-30% shorter, and no table
         grows.
         """
-        from esolangs.tools.boolean.register import _polynomial_hybrid
+        from esolangs.tools.register import _polynomial_hybrid
 
         assert len(_polynomial_hybrid(table, 1)) < len(_polynomial_tree(table))
         program = boolean.polynomial(table)
@@ -395,7 +400,7 @@ class TestPolynomial:
         0 either way, so the rows with a 1 in the drained bit are the ones
         that matter here.
         """
-        from esolangs.tools.boolean.register import _polynomial_drained_dag
+        from esolangs.tools.register import _polynomial_drained_dag
 
         table = "0000010100000101"  # ignores its first input
         assert _polynomial_drained_dag(table) is not None
@@ -414,7 +419,7 @@ class TestPolynomial:
         later instructions consume larger primes.  The dispatch compares
         *rendered* programs, so they keep the tree's emission.
         """
-        from esolangs.tools.boolean.register import (
+        from esolangs.tools.register import (
             _polynomial_assemble,
             _polynomial_hybrid,
         )
@@ -588,7 +593,7 @@ class TestDig:
         check has to refuse it -- a silent pass here would mean it was
         licensing nothing at all.
         """
-        from esolangs.tools.boolean import register
+        from esolangs.tools import register
 
         monkeypatch.setattr(register, "_DIG_BAND", _DIG_STRIDE)
         for table in ("0110", "10010110", "0110100110010110"):
@@ -602,7 +607,7 @@ class TestDig:
 class TestSophie:
     def test_hybrid_subsumes_both_routes(self) -> None:
         """The hybrid is no longer than either prior construction through n=3."""
-        from esolangs.tools.boolean.register import _sophie_hybrid
+        from esolangs.tools.register import _sophie_hybrid
 
         improved = 0
         for n in range(1, 4):
@@ -958,3 +963,103 @@ class TestPointBreak:
     def test_bad_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="only '0' and '1'"):
             boolean.point_break("0123")
+
+
+def _depth_zero_labels(program: str) -> list[int]:
+    """Every ``@$N`` block label at the top level of ``program``.
+
+    Sophie dispatches by setting the accumulator with ``#$N`` and falling
+    through the top-level ``@$N{...}`` blocks, so two blocks sharing an
+    ``N`` means the first also fires.  48 and 49 are excluded: those are the
+    bit tests, which are not dispatch labels.
+    """
+    labels: list[int] = []
+    depth = index = 0
+    while index < len(program):
+        char = program[index]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+        elif char == "@" and depth == 0 and program[index + 1 : index + 2] == "$":
+            end = index + 2
+            while end < len(program) and program[end].isdigit():
+                end += 1
+            value = int(program[index + 2 : end])
+            if value not in (_ASCII_ZERO, _ASCII_ONE):
+                labels.append(value)
+            index = end
+            continue
+        index += 1
+    return labels
+
+
+class TestSophieLabelsAreUnique:
+    """Two blocks with one label make the first fire on the way past.
+
+    Labels used to come from two bands chosen by level parity, on the
+    reasoning that a fired block leaves a *next*-level label in the
+    accumulator which no remaining test in the chain can match.  That is
+    true of consecutive levels and consecutive levels are not the relation
+    that matters: unshared states are inlined, so a single top-level block
+    carries jumps originating at several depths, and levels 2 and 4 -- same
+    parity, same band -- were both targets from inside it.  Level 2 is
+    emitted first, so a jump meant for level 4 ran level 2 first and read
+    inputs the caller never supplied.
+
+    The failure is *shape*-dependent, not size-dependent, which is why it
+    survived: Sophie is correct on all 65536 tables at n <= 4, and collides
+    on 35% of random tables at n=7.
+    """
+
+    #: The smallest table that collides, found by exhaustive search upward.
+    MINIMAL = "00000000000000010000000100000100"
+
+    def test_the_minimal_colliding_table_computes(self) -> None:
+        """It raised ``read past the end of input: 5 lines supplied, read 6``."""
+        assert boolean.sophie(self.MINIMAL)  # builds, and always did
+        for combo in range(32):
+            bits = [(combo >> (4 - i)) & 1 for i in range(5)]
+            got = run_sophie(boolean.sophie(self.MINIMAL), [str(b) for b in bits])
+            assert got == self.MINIMAL[combo], bits
+
+    def test_the_minimal_table_has_no_duplicate_label(self) -> None:
+        """Its program carried two ``@$1`` blocks."""
+        labels = _depth_zero_labels(boolean.sophie(self.MINIMAL))
+        assert len(labels) == len(set(labels)), labels
+
+    @pytest.mark.parametrize("n", [5, 6, 7, 8])
+    def test_no_table_collides_at_any_arity(self, n: int) -> None:
+        """A structural check, so it reaches arities executing cannot afford.
+
+        Sampled rather than exhaustive, with a fixed seed: at n=8 the old
+        scheme collided on 88% of random tables, so twenty is ample to
+        catch a regression and cheap enough to run every time.  The shapes
+        that first exposed this are included by name, since a random sample
+        is exactly what missed it for so long.
+        """
+        rng = random.Random(n)
+        tables = ["".join(rng.choice("01") for _ in range(2**n)) for _ in range(20)]
+        tables.append("".join(str(int(bin(r).count("1") == 1)) for r in range(2**n)))
+        for table in tables:
+            labels = _depth_zero_labels(boolean.sophie(table))
+            assert len(labels) == len(set(labels)), (n, table)
+
+    def test_a_label_is_never_a_bit_value(self) -> None:
+        """48 and 49 are what a read leaves behind, so a block cannot own one.
+
+        Nothing else is reserved -- the interpreter parses a label as a
+        plain digit run -- so this is the whole constraint, and it binds
+        only once the count climbs past 47.
+        """
+        for n in (6, 7, 8):
+            table = "".join(str(int(bin(r).count("1") == 1)) for r in range(2**n))
+            labels = _depth_zero_labels(boolean.sophie(table))
+            assert _ASCII_ZERO not in labels
+            assert _ASCII_ONE not in labels
+
+    def test_the_scan_can_actually_see_a_duplicate(self) -> None:
+        """The positive control: a checker that never fires guards nothing."""
+        assert _depth_zero_labels("@$1{;}@$1{;}") == [1, 1]
+        assert _depth_zero_labels("@$1{@$1{;}}") == [1]  # nested is not top level
+        assert _depth_zero_labels(";@$48{#$48,&}{#$49,&}") == []  # bit tests only

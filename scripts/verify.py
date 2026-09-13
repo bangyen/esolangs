@@ -3,7 +3,7 @@
 Everything that can be checked on a dev machine without a Linux host:
 
 1. pre-commit (lint, format, types) and pytest (the test suite)
-2. bandit (via uv) and the ``extra/line`` suites (via uv, which supplies the
+2. bandit (via uv) and the ``tests/interpreters`` suites (via uv, which supplies the
    image libraries the package itself does not depend on)
 
 ``.githooks/pre-push`` and ``just test`` both run this script.
@@ -24,7 +24,7 @@ A default run also leaves work to CI where CI already covers it: the steps in
 ``FULL_ONLY`` (the ZTOALC anchor table, which CI's lint job re-derives) and
 the ``slow`` marker in both test suites -- pytest's (the fuzzers' divergence-detection
 tests, which CI runs by that same marker and errors on if they skip) and
-extra/line's (its two 5.2s render round trips, which CI's ``line`` job runs
+tests/interpreters's (its two 5.2s render round trips, which CI's ``line`` job runs
 unfiltered).  ``--full``, ``just test-full``, and an explicit ``--only`` all
 still run them.
 
@@ -101,7 +101,7 @@ FULL_ONLY = frozenset(
 
 # Named once: the step table, STEP_SCOPE and the slow-marker filter all refer
 # to this step, and a typo in any of them would silently stop matching.
-LINE_STEP = "extra/line suites (uv)"
+LINE_STEP = "Line interpreter suites"
 
 # How often the long step reports that it is still going.  Short enough that
 # the wait never looks stalled, long enough that a normal run prints only a
@@ -139,7 +139,7 @@ def _line_addopts(env: dict[str, str]) -> str:
 # matter or it guards the whole tree.  Prefixes are repo-relative.
 STEP_SCOPE: dict[str, tuple[str, ...]] = {
     "bandit": ("src/",),
-    LINE_STEP: ("extra/line/",),
+    LINE_STEP: ("tests/interpreters/",),
     # The check re-derives the anchor table and diffs it against the committed
     # file, importing nothing from the interpreters -- so the only things that
     # can break it are the generator script and the table itself.  Scoping to
@@ -159,12 +159,12 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     # The lemmas import the generator and nothing else, so only it and the
     # script itself can break them.
     "arrowqueue lemmas": (
-        "src/esolangs/tools/boolean/parameterized.py",
+        "src/esolangs/tools/parameterized.py",
         "scripts/arrowqueue_lemmas.py",
     ),
     # The sieve reads only the ceiling constant and its own source.
     "ztoalc slot record": (
-        "src/esolangs/tools/boolean/ztoalc_l.py",
+        "src/esolangs/tools/ztoalc_l.py",
         "scripts/ztoalc_slot_record.py",
     ),
     # Only an interpreter (or the sweep itself) can introduce a leak.
@@ -189,7 +189,7 @@ STEPS = [
     # silently rather than breaking, so if this ever feels slow again check
     # the interpreter before the tests: coverage says so on stderr with a
     # `no-sysmon` CoverageWarning.  Both timing tables are in
-    # ``docs/verification_tooling.md``.
+    # ``the verification history``.
     ("pytest", [*PY, "-m", "pytest", "-q", "--cov", "--cov-branch", "--cov-report="]),
     ("bandit", ["uv", "run", "--with", "bandit", "bandit", "-r", "src", "-q"]),
     (
@@ -199,18 +199,14 @@ STEPS = [
         # The in-project run cannot show that.
         LINE_STEP,
         [
-            "uv",
-            "run",
-            "--isolated",
-            "--no-project",
-            "--directory",
-            "extra/line",
-            "--with",
+            *PY,
+            "-m",
             "pytest",
-            "--with",
-            "pytest-xdist",
-            "pytest",
-            ".",
+            "tests/line/test_bf_to_line.py",
+            "tests/line/test_line_boolean.py",
+            "tests/line/test_mask.py",
+            "tests/line/test_png.py",
+            "tests/line/test_simulate.py",
             "-q",
         ],
     ),
@@ -249,7 +245,7 @@ STEPS = [
         "single-interpreter installer",
         [*PY, "scripts/verify_install_one.py"],
     ),
-    # Twelve named lemmas behind docs/arrowqueue_generator.md, each pinning
+    # Twelve named lemmas behind the relevant generator tests, each pinning
     # one finite fact the total-over-every-arity proof rests on.  0.8s, so
     # it is a gate rather than the by-hand check the A Painter Ant proof
     # has to be (`just apa-proof`, 5m40s).
@@ -268,7 +264,7 @@ STEPS = [
     # The contract exceptions.py states, executed: no interpreter may leak a
     # raw Python error to its caller.  Bare, it checks only the languages
     # this branch touched, which is why it is affordable here; CI runs
-    # --all (69 languages, 68s).
+    # --all (65 languages, 68s).
     (
         "exception leaks",
         [*PY, "scripts/verify_no_exception_leaks.py"],
@@ -686,7 +682,7 @@ def main() -> int:
         # everything -- a tooling change, an unreadable diff -- should still
         # not pay for them.
         #
-        # The extra/line suites carry the same marker on their two 5.2s tests
+        # The tests/interpreters suites carry the same marker on their two 5.2s tests
         # (the eight-level nesting round trip and the n=5 parity table), which
         # are 10.4s of that step's 12.8s.  CI's `line` job runs that suite
         # unfiltered on every push, so deselecting them here trades no
@@ -702,16 +698,26 @@ def main() -> int:
             # skips it; CI runs `pre-commit run --all-files` with no SKIP
             # (ci.yml:28), so the hook still guards the config itself.
             step_env = dict(step_env, SKIP="mypy")
-        if only is None and not full:
-            if name == "pytest":
-                cmd = [*cmd, "-m", "not slow"]
-            elif name == LINE_STEP:
-                # Not argv: the command ends in `pytest . -q` under `uv run
-                # --isolated`, so an appended flag would land after the path
-                # argument and be read by uv's pytest, not composed with the
-                # rest of the step's own options.  PYTEST_ADDOPTS is applied
-                # by pytest itself wherever it ends up running.
-                step_env = dict(env, PYTEST_ADDOPTS=_line_addopts(env))
+        if only is None and name == "pytest":
+            # A default run leaves the whole slow band to CI.  A --full run
+            # takes the band but not the two `weekly` probes inside it,
+            # which are 142.6s of its ~182s and are sampled once a week by
+            # `.github/workflows/weekly.yml` -- which runs bare `pytest`
+            # rather than this script, so it is unaffected by either flag.
+            #
+            # Appended to argv rather than set in `addopts`, because pytest
+            # *prepends* addopts: a default there would sit before the
+            # caller's own `-m` and lose to it, and `just test-quick`'s
+            # `-m 'not slow and not medium'` would then re-admit the band it
+            # exists to skip.
+            cmd = [*cmd, "-m", "not weekly" if full else "not slow"]
+        if only is None and not full and name == LINE_STEP:
+            # Not argv: the command ends in `pytest . -q` under `uv run
+            # --isolated`, so an appended flag would land after the path
+            # argument and be read by uv's pytest, not composed with the
+            # rest of the step's own options.  PYTEST_ADDOPTS is applied
+            # by pytest itself wherever it ends up running.
+            step_env = dict(env, PYTEST_ADDOPTS=_line_addopts(env))
         if shutil.which("uv") is None and ("bandit" in name or "(uv)" in name):
             print(f"[skip] {name}: uv not installed")
             continue
