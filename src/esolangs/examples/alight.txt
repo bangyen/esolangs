@@ -1,12 +1,33 @@
-begin;var a;var i;var r;inp a;set i a-48;inp a;set i i*2+a-48;;;;;;;;turn right;
-                                                                               t
-                                                                               u
-                                                                               r
-                                                                               n
-                                                                                
-                                                                               r
-                                                                               i
-                                                                               g
-                                                                               h
-                                                                               t
-                                             ;dne;r tuo;}5.0+i ,"1000"{ta r tes;
+begin;var a;var i;var r;inp a;;;turn right;
+                                          t
+                                          u
+                                          r
+                                          n
+
+                                          r
+                                          i
+                                          g
+                                          h
+                                          t
+;tfel nrut;84-a+2*i i tes;a pni;84-a i tes;
+t
+u
+r
+n
+
+l
+e
+f
+t
+;set r at{"0001", i+0.5};out r;;turn right;
+                                          t
+                                          u
+                                          r
+                                          n
+
+                                          r
+                                          i
+                                          g
+                                          h
+                                          t
+                                      ;dne;

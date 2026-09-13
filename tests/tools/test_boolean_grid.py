@@ -2101,12 +2101,7 @@ class TestSuperSNUSP:
 
 
 class TestAlightWidth:
-    """Alight's boustrophedon, which is the only way its line can fold.
-
-    A command is a word walked cell by cell, so a row end cuts one in half
-    and no after-the-fact reflow can touch it.  What the generator has that
-    a wrapper does not is ``turn``.
-    """
+    """Alight minimizes its longer dimension under the width bound."""
 
     @staticmethod
     def _run(program: str, bits: list[str]) -> str:
@@ -2115,88 +2110,49 @@ class TestAlightWidth:
         stdin = "".join(f"{bit}\n" for bit in bits)
         return esolangs.run("Alight", program, stdin=stdin, timeout=5.0).strip()
 
-    def test_a_width_folds_the_walk_and_it_still_computes(self) -> None:
-        """The folded walk computes what the straight one did."""
+    def test_a_width_turns_the_straight_walk_vertical(self) -> None:
+        """A narrow program is one column and has no padding."""
         for table in ("0110", "01101001", "0110100110010110"):
             n = len(table).bit_length() - 1
             flat = boolean.alight(table)
             wide = max(len(row) for row in flat.splitlines())
-            floor = max(len(row) for row in boolean.alight(table, 1).splitlines())
-            assert floor < wide, f"{table} never narrows"
+            assert max(len(row) for row in boolean.alight(table, 1).splitlines()) == 1
             for width in (1, 40, 60, wide):
                 narrow = boolean.alight(table, width)
                 columns = max(len(row) for row in narrow.splitlines())
-                assert columns <= max(width, floor), (table, width, columns)
+                assert columns <= width, (table, width, columns)
                 for combo in range(2**n):
                     bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                     assert self._run(narrow, bits) == table[combo], (table, width)
 
-    def test_splitting_the_literal_takes_the_floor_off_the_table(self) -> None:
-        """The literal was the floor; chunking it means the arity no longer is.
-
-        A string is one token of one command, so an unsplit table literal
-        makes the floor ``2 ** n`` -- 48, 64, 96, 160 columns at n=4..7,
-        doubling with every input even though the flat program's width
-        barely grows.  Split into guarded chunks, the floor is one chunk
-        plus its guard and the turn they share a row with, which the width
-        picks: it stops tracking ``n`` altogether.
-        """
-        floors = {}
-        for n in (4, 5, 6, 7):
-            table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
-            narrow = boolean.alight(table, 1)
-            floors[n] = max(len(row) for row in narrow.splitlines())
-            # the unsplit literal alone would have been wider than this
-            literal = len(f'set r at{{"{table}", i+0.5}};')
-            assert floors[n] < literal or n == 4, (n, floors[n], literal)
-        assert max(floors.values()) - min(floors.values()) <= 4, floors
-
     def test_a_width_is_met_at_every_arity(self) -> None:
-        """Which is what splitting the literal buys: 80 columns holds at n=7.
-
-        Unsplit, the literal alone put n=6 at 96 columns however narrow the
-        request.
-        """
+        """Every requested width holds at every practical arity."""
         for n in (4, 5, 6, 7):
             table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
             for width in (60, 80):
                 narrow = boolean.alight(table, width)
                 assert max(len(row) for row in narrow.splitlines()) <= width, (n, width)
 
-    def test_a_chunk_and_its_guard_stay_on_one_row(self) -> None:
-        """``skip`` guards the *next command along the heading*.
+    @pytest.mark.parametrize(
+        ("table", "width", "dimensions"),
+        [
+            ("0001", 30, (1, 75)),
+            ("0001", 40, (36, 43)),
+            ("0001", 80, (43, 33)),
+            ("01101001", 80, (43, 43)),
+            ("0110100110010110", 80, (49, 43)),
+        ],
+    )
+    def test_the_longer_dimension_is_minimal(
+        self, table: str, width: int, dimensions: tuple[int, int]
+    ) -> None:
+        """Pin each transition between the vertical and folded optima."""
+        rows = boolean.alight(table, width).splitlines()
+        assert (max(map(len, rows)), len(rows)) == dimensions
 
-        A fold between the two would leave the ``skip`` skipping the turn
-        instead of the lookup, and the walk would carry straight on off the
-        grid.  So the pair is one unit to the folder, and the check is that
-        every ``skip`` has its lookup after it on the same row -- read in
-        the direction that row runs.
-        """
-        table = "".join(str(bin(i).count("1") % 2) for i in range(64))
-        rows = boolean.alight(table, 60).splitlines()
-        seen = 0
-        for row in rows:
-            for text in (row, row[::-1]):
-                for index in range(len(text) - 4):
-                    if text[index : index + 4] == "skip":
-                        seen += 1
-                        assert "set r at{" in text[index:], text
-        assert seen, "no guarded chunk in the drawing"
-
-    def test_a_folded_row_keeps_the_space_inside_its_turn(self) -> None:
-        """``turn right`` has a space, and a vertical turn writes it as a cell.
-
-        Stripping a row's trailing blank -- which is what every other
-        generator here does -- deletes that space and the walk reads
-        ``turnright``.  So rows are trimmed to their last *written* cell
-        instead, and a row whose only content is that blank stays a blank.
-        """
-        narrow = boolean.alight("0110100110010110", 40)
-        rows = narrow.splitlines()
-        assert any(row.strip() == "" and row != "" for row in rows), (
-            "the turn's own space was stripped away"
-        )
-        assert "turnright" not in narrow.replace("\n", "")
+    def test_width_must_have_one_column(self) -> None:
+        with pytest.raises(ValueError, match="at least 1"):
+            boolean.alight("0001", 0)
 
 
 class TestSuperSNUSPWidth:
