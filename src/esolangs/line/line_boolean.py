@@ -143,7 +143,7 @@ def line_boolean(truth_table: str) -> Node:
 if __name__ == "__main__":
     import sys
 
-    from .render import render
+    from render import render
 
     tt = sys.argv[1] if len(sys.argv) > 1 else "0001"
     out_path = sys.argv[2] if len(sys.argv) > 2 else "line_bool_out.png"

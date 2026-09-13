@@ -21,10 +21,10 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.interpreters.line.extract import extract
-from esolangs.interpreters.line.line_boolean import line_boolean
-from esolangs.interpreters.line.render import render
-from esolangs.interpreters.line.simulate import IO, compile_program, run_compiled
+from esolangs.line.extract import extract
+from esolangs.line.line_boolean import line_boolean
+from esolangs.line.render import render
+from esolangs.line.simulate import IO, compile_program, run_compiled
 
 
 def _io(inputs: list[int]) -> tuple[IO, list[int]]:

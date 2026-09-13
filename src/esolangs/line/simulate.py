@@ -361,7 +361,7 @@ def run(
 if __name__ == "__main__":
     import sys
 
-    from .extract import extract
+    from extract import extract
 
     result = extract(sys.argv[1])
     final_tape = run(result)

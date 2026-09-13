@@ -73,17 +73,7 @@ def main() -> int:
     checked: set[str] = set()
     for category in _categories():
         directory = os.path.join(ROOT, "interpreters", category)
-        if category in module_to_name:
-            checked.add(category)
-            issues = _check(
-                os.path.join(directory, "__init__.py"), module_to_name[category]
-            )
-            if issues:
-                failures += 1
-                print(f"{category}: " + "; ".join(issues))
         for filename in sorted(os.listdir(directory)):
-            if category in module_to_name:
-                continue
             if not filename.endswith(".py") or filename.startswith("_"):
                 continue
             module = f"{category}.{filename[:-3]}"
