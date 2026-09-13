@@ -28,9 +28,11 @@ from esolangs.line.extract import (
     crop_to_content,
     detect_scale,
     extract,
+    find_cursor,
     load_binary,
 )
 from esolangs.line.lattice import _DIRS, Stroke, Vertex
+from esolangs.line.mask import Mask, from_grey
 from esolangs.line.png import read_grey
 from esolangs.line.render import Node, chain, render
 from esolangs.line.simulate import IO, run
@@ -51,6 +53,32 @@ def _io(inputs: list[int]) -> tuple[IO, list[int]]:
     outputs: list[int] = []
     values: Iterator[int] = iter(inputs)
     return IO(read=values.__next__, write=outputs.append), outputs
+
+
+class TestCursorSelection:
+    """Cursor detection refuses images whose start cannot be determined."""
+
+    def test_two_arrowheads_are_ambiguous(self) -> None:
+        """Two complete drawings supply two equally plausible cursors."""
+        drawing = from_grey(render(chain("+")).pixels)
+        offset = drawing.width + 10
+        mask = Mask(
+            drawing.height,
+            drawing.width * 2 + 10,
+            [row | (row << offset) for row in drawing.rows],
+        )
+        with pytest.raises(ValueError, match="ambiguous cursor: found 2"):
+            find_cursor(mask)
+
+    def test_larger_non_arrow_blob_does_not_hide_cursor(self) -> None:
+        """Shape, not component size alone, selects the sole arrowhead."""
+        drawing = from_grey(render(chain("+")).pixels)
+        rows = list(drawing.rows)
+        square = ((1 << 12) - 1) << (drawing.width + 4)
+        for y in range(2, 14):
+            rows[y] |= square
+        mask = Mask(drawing.height, drawing.width + 16, rows)
+        assert find_cursor(mask).x < drawing.width
 
 
 class TestBasicOps:

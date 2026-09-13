@@ -227,16 +227,11 @@ def _ink_neighbor_count(mask: Mask, y: int, x: int) -> int:
     return count
 
 
-def _largest_thick_region(thick: Mask) -> Mask:
-    """Find the biggest 8-connected component of ``thick``, as a mask.
-
-    Replaces ``ndimage.label`` plus an argmax over ``ndimage.sum``: only the
-    single largest component is ever wanted, so the components are flood-filled
-    one at a time and only the best-so-far is kept.
-    """
+def _thick_regions(thick: Mask) -> list[Mask]:
+    """Return the 8-connected components of ``thick``, largest first."""
     h, w = thick.shape
     seen = Mask(h, w)
-    best: list[tuple[int, int]] = []
+    components: list[list[tuple[int, int]]] = []
     for sy, sx in thick.nonzero():
         if seen[sy, sx]:
             continue
@@ -257,12 +252,14 @@ def _largest_thick_region(thick: Mask) -> Mask:
                     ):
                         seen[ny, nx] = True
                         frontier.append((ny, nx))
-        if len(component) > len(best):
-            best = component
-    core = Mask(h, w)
-    for y, x in best:
-        core[y, x] = True
-    return core
+        components.append(component)
+    regions = []
+    for component in sorted(components, key=len, reverse=True):
+        region = Mask(h, w)
+        for y, x in component:
+            region[y, x] = True
+        regions.append(region)
+    return regions
 
 
 @dataclass
@@ -289,10 +286,8 @@ _BLOB_NEIGHBOR_MIN = 3
 # unchanged, and was already deliberately
 # wide of that measured range -- it exists to catch a blob that is not
 # triangular at all (a solid square rejects at 1.0; two crossing strokes at
-# a shallow angle either erode away entirely or produce a long
-# thin sliver well under 0.25), not to pick between two genuinely
-# arrowhead-shaped candidates, which this check cannot and does not attempt
-# to disambiguate (see find_cursor's docstring).
+# a shallow angle either erode away entirely or produce a long thin sliver
+# well under 0.25). Multiple blobs inside it are explicitly ambiguous.
 _FILL_RATIO_RANGE = (0.25, 0.75)
 
 
@@ -303,6 +298,39 @@ def _fill_ratio(blob: Mask) -> float:
         return 0.0
     top, left, bottom, right = bounds
     return blob.sum() / ((bottom - top + 1) * (right - left + 1))
+
+
+def _cursor_candidate(mask: Mask, core: Mask) -> Cursor:
+    """Grow one eroded component into its full blob and locate its centre."""
+    core_pixels = list(core.nonzero())
+    cy = sum(y for y, _ in core_pixels) / len(core_pixels)
+    cx = sum(x for _, x in core_pixels) / len(core_pixels)
+
+    h, w = mask.shape
+    visited = set(core_pixels)
+    frontier = list(visited)
+    while frontier:
+        y, x = frontier.pop()
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if dy == 0 and dx == 0:
+                    continue
+                ny, nx = y + dy, x + dx
+                if (ny, nx) in visited:
+                    continue
+                if (
+                    0 <= ny < h
+                    and 0 <= nx < w
+                    and mask[ny, nx]
+                    and _ink_neighbor_count(mask, ny, nx) >= _BLOB_NEIGHBOR_MIN
+                ):
+                    visited.add((ny, nx))
+                    frontier.append((ny, nx))
+
+    blob = Mask(h, w)
+    for y, x in visited:
+        blob[y, x] = True
+    return Cursor(float(cy), float(cx), blob)
 
 
 def find_cursor(mask: Mask) -> Cursor:
@@ -331,58 +359,28 @@ def find_cursor(mask: Mask) -> Cursor:
     place a human eye would call "where the arrowhead ends" -- typically
     within a pixel of the triangle's true boundary.
 
-    "Largest thick region" is otherwise an unchecked assumption: a drawing
-    with any other filled shape, or two strokes crossing at a shallow
-    enough angle to read as locally thick, would silently make this pick
-    the wrong region with no error (confirmed with a synthetic two-triangle
-    image -- it deterministically returns whichever triangle is bigger,
-    correct or not).  The size ranking cannot be fixed by shape alone when
-    two candidates are both genuinely triangular; what a shape check *can*
-    catch is the winning candidate not looking like an arrowhead at all
-    (see :data:`_FILL_RATIO_RANGE`), so that case raises instead of
-    returning a silently wrong cursor.
+    Every thick component is checked rather than trusting the largest. Exactly
+    one arrowhead-shaped blob is required: no plausible candidate raises the
+    shape error, while two or more raise an ambiguity error instead of choosing
+    by size when the image supplies no basis for that choice.
     """
     thick = mask.erode()
     if not thick.any():
         raise ValueError("no cursor (thick/filled region) found in image")
-    core = _largest_thick_region(thick)
-    core_pixels = list(core.nonzero())
-    cy = sum(y for y, _ in core_pixels) / len(core_pixels)
-    cx = sum(x for _, x in core_pixels) / len(core_pixels)
-
-    h, w = mask.shape
-    visited = set(core.nonzero())
-    frontier = list(visited)
-    while frontier:
-        y, x = frontier.pop()
-        for dy in (-1, 0, 1):
-            for dx in (-1, 0, 1):
-                if dy == 0 and dx == 0:
-                    continue
-                ny, nx = y + dy, x + dx
-                if (ny, nx) in visited:
-                    continue
-                if (
-                    0 <= ny < h
-                    and 0 <= nx < w
-                    and mask[ny, nx]
-                    and _ink_neighbor_count(mask, ny, nx) >= _BLOB_NEIGHBOR_MIN
-                ):
-                    visited.add((ny, nx))
-                    frontier.append((ny, nx))
-
-    blob = Mask(h, w)
-    for y, x in visited:
-        blob[y, x] = True
-
-    ratio = _fill_ratio(blob)
+    candidates = [_cursor_candidate(mask, core) for core in _thick_regions(thick)]
     low, high = _FILL_RATIO_RANGE
-    if not low <= ratio <= high:
+    plausible = [c for c in candidates if low <= _fill_ratio(c.blob) <= high]
+    if len(plausible) > 1:
         raise ValueError(
-            f"largest thick region does not look like an arrowhead "
-            f"(fill ratio {ratio:.2f}, expected {low:.2f}-{high:.2f})"
+            f"ambiguous cursor: found {len(plausible)} arrowhead-shaped regions"
         )
-    return Cursor(float(cy), float(cx), blob)
+    if plausible:
+        return plausible[0]
+    ratio = _fill_ratio(candidates[0].blob)
+    raise ValueError(
+        f"largest thick region does not look like an arrowhead "
+        f"(fill ratio {ratio:.2f}, expected {low:.2f}-{high:.2f})"
+    )
 
 
 # Stroke/Vertex and the star-probe walker itself now live in lattice.py (see
