@@ -7,9 +7,6 @@ Only live work belongs here. Completed findings and negative results go to
 
 Implement the surveyed candidates in this order:
 
-- Vandevelo: resurrected from the old walls.  Compile tables as formulas from
-  `Inp`, `::` and negation, then prove that lazy self-reference detects the
-  selected loop without rejecting terminating evaluation.
 - Nopstacle: conditional on a parameterized halt-versus-loop generator.  Its
   no-I/O model is admissible, but the construction is the work, not an
   interpreter-only addition.

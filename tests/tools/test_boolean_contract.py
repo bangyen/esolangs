@@ -468,6 +468,7 @@ _MINTERM_SHAPED = {
     "algebraic_programming_language",
     "bfstack",
     "container",
+    "vandevelo",
 }
 
 # Neither model describes these.  ``wii2d`` is a route search over a grid,

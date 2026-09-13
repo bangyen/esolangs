@@ -1,0 +1,4 @@
+i0 ~> Inp?
+i1 ~> Inp?
+loop -> loop?
+i0? != Nil? :: i1? != Nil? :: loop?
