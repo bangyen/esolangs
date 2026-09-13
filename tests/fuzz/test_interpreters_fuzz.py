@@ -38,7 +38,6 @@ from tests.samples import SAMPLES
 FUZZ = {
     "queue_based.bitdeque": "PUSHINJECTEJECTPOPINVERT",
     "register_based.minsky_swap": "+~*",
-    "other.lamfunc": "p eq i cb lb fb vs vg F . x 0 1",
 }
 
 # ArrowQueue, back, Between, Jaune, Point Break, and RAM0 are

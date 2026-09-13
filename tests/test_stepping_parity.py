@@ -111,7 +111,7 @@ class TestSteppingReachesTheSameAnswer:
         assert not disagreed, "\n".join(disagreed)
         # 65 languages, less A Painter Ant and the three that answer by
         # diverging, times four rows.
-        assert checked == 61 * 4, checked
+        assert checked == 57 * 4, checked
 
     def test_suffolk_no_longer_disagrees_with_itself(self) -> None:
         """``run`` answered and the debugger raised, for the same call."""
@@ -275,4 +275,4 @@ def test_stepping_agrees_at_a_wider_arity_and_shape(
                 disagreed.append(f"{name} row {row}: stepped {got!r} ran {want!r}")
     assert not disagreed, "\n".join(disagreed)
     # A filter that quietly excluded everything would leave this vacuous.
-    assert checked == 61 * len(_WIDER_ROWS), checked
+    assert checked == 57 * len(_WIDER_ROWS), checked

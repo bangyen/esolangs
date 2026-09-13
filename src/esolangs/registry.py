@@ -169,13 +169,6 @@ LANGUAGES: dict[str, Language] = {
         id="bf_pda",
         interpreter="stack_based.bf_pda",
     ),
-    "Between": Language(
-        "Between",
-        "register_based.between",
-        boolean=_boolean.between,
-        id="between",
-        split=True,
-    ),
     "brainfuck": Language(
         "brainfuck",
         "tape_based.brainfuck",
@@ -314,12 +307,6 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.forbin,
         id="forbin",
     ),
-    "function x(y)": Language(
-        "function x(y)",
-        "other.function_x_y",
-        boolean=_boolean.function_x_y,
-        id="function_x_y",
-    ),
     "Grapheme": Language(
         "Grapheme",
         boolean=_boolean.grapheme,
@@ -350,12 +337,6 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.jaune,
         id="jaune",
         interpreter="tape_based.jaune",
-    ),
-    "Lamfunc": Language(
-        "Lamfunc",
-        boolean=_boolean.lamfunc,
-        id="lamfunc",
-        interpreter="other.lamfunc",
     ),
     "LaserFuck": Language(
         "LaserFuck",
@@ -411,13 +392,6 @@ LANGUAGES: dict[str, Language] = {
         "register_based.polynomial",
         boolean=_boolean.polynomial,
         id="polynomial",
-    ),
-    "Point Break": Language(
-        "Point Break",
-        boolean=_boolean.point_break,
-        id="point_break",
-        interpreter="register_based.point_break",
-        split=True,
     ),
     "Qoibl": Language(
         "Qoibl",
@@ -475,12 +449,6 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.suffolk",
         boolean=_boolean.suffolk,
         id="suffolk",
-    ),
-    "Suptiftam": Language(
-        "Suptiftam",
-        "other.suptiftam",
-        boolean=_boolean.suptiftam,
-        id="suptiftam",
     ),
     "3x": Language(
         "3x",

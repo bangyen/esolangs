@@ -278,7 +278,7 @@ class TestConventionsAreDiscoverable:
         )
         assert got == XOR
 
-    @pytest.mark.parametrize("name", ["123", "ArrowQueue", "Point Break", "Fargo"])
+    @pytest.mark.parametrize("name", ["123", "ArrowQueue", "Fargo"])
     def test_a_language_that_needs_explaining_explains_itself(self, name: str) -> None:
         """Termination-as-answer and Fargo's row index are not guessable."""
         assert esolangs.describe(name)["answer_convention"]
@@ -695,7 +695,7 @@ class TestTheThreadRefusalNamesAWayThrough:
         ``None`` terminates rather than hanging -- which is what makes it a
         real answer to "how do I do this off the main thread".
         """
-        for language in ("123", "ArrowQueue", "Point Break"):
+        for language in ("123", "ArrowQueue"):
             outcome = self._off_thread(
                 lambda language=language: esolangs.evaluate(  # type: ignore[misc]
                     language, "0110", timeout=None
