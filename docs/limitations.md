@@ -26,9 +26,11 @@ unaccounted pixels rather than returning a different program.
 ## Boolean generators
 
 Parameterized generators embed inputs in the program. `%^2^-1` cannot compute
-a two-input function from runtime input. Input reordering has no useful effect
-on A Painter Ant, Alight, Container, Grapheme, Home Row, or Packlang; do not
-reopen this with a blind search.
+a two-input function from runtime input. Its screened reorder requires a
+permuted template or fill mapping; with both fixed, interleaving only lengthens
+the identity template. Input reordering has no useful effect on A Painter Ant,
+Alight, Container, Grapheme, Home Row, or Packlang; do not reopen this with a
+blind search.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
