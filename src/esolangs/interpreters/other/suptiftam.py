@@ -686,7 +686,7 @@ class _Machine:
     """One Suptiftam run: the parsed program, state, cursor, and call stack."""
 
     #: Whether a read past the end of the input yields a *value* here
-    #: rather than raising.  Forty-five of the sixty-nine raise
+    #: rather than raising.  Six languages do; the other 59 raise
     #: :class:`~esolangs.exceptions.InputExhaustedError`, which is the
     #: package norm and what :func:`esolangs.run` documents; this one does
     #: not, so an underfed program answers a different row of its table

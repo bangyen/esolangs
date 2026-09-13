@@ -51,7 +51,7 @@ recorded as such.
 
 `scripts/screen_input_reorder.py` is permanent and re-run.  It measures, at
 n=3 over all 256 tables, the shortest build over the six input orders
-against the identity's, for all 70 registry languages -- the deleted
+against the identity's, for all 65 registry languages -- the deleted
 59-generator ledger's method (`46a32c85`).  It re-runs in ~4s, so **re-run
 it rather than citing this list** once a generator moves.
 
