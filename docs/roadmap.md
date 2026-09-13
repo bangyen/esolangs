@@ -18,21 +18,6 @@ Implement the surveyed candidates in this order:
   Derive a planar wire-and-bridge layout and execute the generator before
   implementing the full interpreter.
 
-## Curation: the prune to 60
-
-65 languages now.  The prune to 65 removed the four ordinary imperative
-languages in costume (DINAC, MyScript, Basicfuck, Nevermind); the
-criterion, the bands below it, and the floor are in
-[limitations](limitations.md#curation).
-
-The second band reached 60: Suptiftam, Lamfunc, `function x(y)`, Between,
-and Point Break were ordinary imperative or functional languages with shared
-decision-tree shims and no downstream consumer.
-
-Do not take the band below it (60 -> 55) on this criterion: it cuts family
-duplicates rather than costume, which is a different argument and is
-recorded as such.
-
 ## Conditional follow-up
 
 - **Reorder EGL inputs.**  EGL hoists every read into addressable one-hot cells,
