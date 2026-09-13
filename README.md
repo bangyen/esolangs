@@ -95,7 +95,7 @@ the page.  [usage](docs/usage.md#debugging) names every key.
 Ready-to-run programs are committed under [`examples/`](examples/):
 `examples/` holds a truth-table program for each of the 65
 languages with a boolean generator.  It regenerates via
-`scripts/write_examples.py`.
+`scripts/generate.py examples`.
 
 <!-- EXAMPLES:END -->
 
@@ -223,7 +223,7 @@ tables.
 `esolangs list --details` marks which languages have one (`gen`), which
 return a template (`tmpl`), and which have a committed example (`ex`); add
 `--json` for an object per language.  Regenerate the committed examples
-with `python scripts/write_examples.py`.
+with `python scripts/generate.py examples`.
 
 ## Contributing
 

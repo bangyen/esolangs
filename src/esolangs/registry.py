@@ -619,7 +619,7 @@ def wiki_url(name: str) -> str:
     """Return the esolangs.org page for a language's display name.
 
     One function because there were two constructions -- :func:`describe`
-    built the URL inline and ``scripts/make_languages_doc.py`` built it
+    built the URL inline and ``scripts/generate.py docs`` built it
     again for the README -- so the same broken link shipped in both, and a
     fix to either would have left the other wrong.
     """

@@ -4,7 +4,7 @@ Committed examples are exact parameterized-generator output, verified by
 `tests/scripts/test_examples.py`. Refresh them with:
 
 ```bash
-python scripts/write_examples.py
+python scripts/generate.py examples
 ```
 
 Keep command boundaries intact when wrapping to 80 columns. Do not wrap grids,

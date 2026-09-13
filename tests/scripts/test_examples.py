@@ -78,7 +78,7 @@ def test_boolean_example_matches_generator(name: str) -> None:
 
     The counterpart of :func:`test_example_files_match_generator` for the
     boolean examples; refresh them with
-    ``python scripts/write_examples.py boolean``. The file ends with a
+    ``python scripts/generate.py examples boolean``. The file ends with a
     single POSIX newline.
     """
     path = BASE_DIR / "examples" / f"{name}.txt"
@@ -87,7 +87,7 @@ def test_boolean_example_matches_generator(name: str) -> None:
 
 
 def test_the_manifest_matches_what_the_script_would_write() -> None:
-    """The committed table is what ``write_examples.py`` produces today.
+    """The committed table is what ``generate.py examples`` produces today.
 
     The programs beside it have had this check all along and the table
     describing them had none, so a note added to one language left the
@@ -97,11 +97,12 @@ def test_the_manifest_matches_what_the_script_would_write() -> None:
     without it and the gate stayed green.
     """
     sys.path.insert(0, str(BASE_DIR / "scripts"))
-    from write_examples import boolean_manifest_text
+    from esolangs.tools._generate_examples import boolean_manifest_text
 
     path = BASE_DIR / "examples" / "MANIFEST.md"
     assert path.read_text(encoding="utf-8") == boolean_manifest_text(), (
-        "examples/MANIFEST.md is stale; run `python scripts/write_examples.py boolean`"
+        "examples/MANIFEST.md is stale; run "
+        "`python scripts/generate.py examples boolean`"
     )
 
 
