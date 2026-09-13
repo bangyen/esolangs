@@ -7,8 +7,6 @@ Only live work belongs here. Completed findings and negative results go to
 
 Implement the surveyed candidates in this order:
 
-- B-tapemark: admit it once a named boolean construction is derived; the
-  interpreter spec and its character-I/O examples are otherwise sufficient.
 - Vandevelo: resurrected from the old walls.  Compile tables as formulas from
   `Inp`, `::` and negation, then prove that lazy self-reference detects the
   selected loop without rejecting terminating evaluation.
@@ -20,7 +18,7 @@ Implement the surveyed candidates in this order:
   conditional on a derived and executed parameterized halt-versus-loop
   generator.
 
-Alight, EGL, function x(y), Packlang and
+Alight, B-tapemark, EGL, function x(y), Packlang and
 Interprogck8 are implemented; Pinyin is rejected, and DINAC was
 implemented and then pruned (see below).  Both outcomes are
 recorded in [limitations](limitations.md) -- Pinyin's routing pinned and its

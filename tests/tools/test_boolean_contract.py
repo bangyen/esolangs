@@ -475,12 +475,11 @@ _MINTERM_SHAPED = {
 # at all: ``jaune_multiply`` takes no argument (it multiplies two decimal
 # numbers, a fixed program), and ``circlefuck_byte`` takes a *byte* table.
 #
-# ``slow_acv_mammalian`` is a tree, but a deliberately *unfolded*
-# one, so the folding discriminator does not apply to it.  Its nodes are
-# what read the input -- the branch condition is the bit ``ACCEPT`` just
-# appended -- so collapsing a constant subtree would drop that subtree's
-# reads and break the read-count contract above.  The tree therefore stays
-# uniform depth ``n`` and its size tracks ``2**n`` whatever the table says.
+# ``slow_acv_mammalian`` and ``b_tapemark`` are trees, but deliberately
+# *unfolded* ones, so the folding discriminator does not apply.  Their nodes
+# read the input, so collapsing a constant subtree would drop that subtree's
+# reads and break the read-count contract above.  Both trees therefore stay
+# at uniform depth ``n`` and track ``2**n`` whatever the table says.
 #
 # ``minifuck`` is a search too, and of the same kind as ``wii2d``: it emits
 # whatever code it can *see* produce the table's column, so the program has
@@ -543,6 +542,7 @@ _REDUCING = {
 # the same reason: lookup size does not track table shape.)
 _UNSHAPED = {
     "alight",
+    "b_tapemark",
     "wii2d",
     "minifuck",
     "ztoalc_l",
