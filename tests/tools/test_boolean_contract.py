@@ -534,9 +534,10 @@ _REDUCING = {
     "super_snusp",
 }
 
-# ``nopstacle`` is likewise a branch-free lookup: its prototype specializes
-# the selected row while filling the input slots, then emits one halt/diverge
-# gadget, so every table of one arity has the same template length.
+# ``crement`` and ``nopstacle`` are likewise branch-free lookups: their
+# prototypes specialize the selected row while filling the input slots, then
+# emit one halt/diverge gadget, so every table of one arity has the same
+# template length.
 #
 # ``alight`` is a branch-free lookup of the same class as
 # ``ztoalc_l``: the inputs are folded into a row index by Horner's
@@ -548,6 +549,7 @@ _REDUCING = {
 _UNSHAPED = {
     "alight",
     "b_tapemark",
+    "crement",
     "nopstacle",
     "wii2d",
     "minifuck",
