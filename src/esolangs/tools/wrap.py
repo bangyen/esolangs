@@ -206,8 +206,10 @@ def wrap_grid(program: str, width: int) -> str:
     return _wrap_grid(tokens, width, _cell_width(tokens))
 
 
-def _wrap_grid(tokens: list[str], width: int, cell: int) -> str:
-    """Right-align ``tokens`` on a lattice whose base cell is ``cell``."""
+def _wrap_grid(
+    tokens: list[str], width: int, cell: int, *, left_aligned: bool = False
+) -> str:
+    """Align ``tokens`` on a lattice whose base cell is ``cell``."""
     # A row of k cells is k cells plus the k-1 single spaces between them.
     per_row = max(1, (width + 1) // (cell + 1))
     lines: list[str] = []
@@ -216,16 +218,17 @@ def _wrap_grid(tokens: list[str], width: int, cell: int) -> str:
     for token in tokens:
         span = _span(len(token), cell)
         if row and used + span > per_row:
-            lines.append(" ".join(row))
+            lines.append(" ".join(row).rstrip())
             row, used = [], 0
-        # A token spanning k cells is right-aligned across the whole span:
-        # its k cells plus the k-1 separators they absorb.
-        row.append(token.rjust(span * cell + span - 1))
+        # A token spanning k cells occupies its k cells plus the k-1 separators
+        # they absorb.
+        slot = span * cell + span - 1
+        row.append(token.ljust(slot) if left_aligned else token.rjust(slot))
         used += span
     # The loop ends by appending, and an empty ``tokens`` returned above, so
     # ``row`` always holds the last row by the time it is flushed here.
     if row:  # pragma: no branch - never empty; see above
-        lines.append(" ".join(row))
+        lines.append(" ".join(row).rstrip())
     return "\n".join(lines)
 
 
@@ -240,7 +243,7 @@ def _mammalian(program: str, width: int) -> str:
     tokens = program.split()
     if not tokens:
         return program
-    return _wrap_grid(tokens, width, 4)
+    return _wrap_grid(tokens, width, 4, left_aligned=True)
 
 
 def _cell_width(tokens: list[str]) -> int:
