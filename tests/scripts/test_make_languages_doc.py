@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "scripts" / "make_languages_doc.py"
+SCRIPT = REPO_ROOT / "src" / "esolangs" / "tools" / "_generate_docs.py"
 README = REPO_ROOT / "README.md"
 USAGE_DOC = REPO_ROOT / "docs" / "usage.md"
 

@@ -146,7 +146,7 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     # `interpreters/` instead both ran it for every unrelated interpreter edit
     # and missed a hand-edit of the table, the one case it exists to catch.
     "ztoalc anchor table is reproducible": (
-        "scripts/make_ztoalc_table.py",
+        "scripts/generate.py",
         "src/esolangs/tools/ztoalc_starts.py",
     ),
     "duplicate-code check (pylint)": ("src/esolangs/", "scripts/", "tests/"),
@@ -201,7 +201,7 @@ STEPS = [
     ),
     (
         "ztoalc anchor table is reproducible",
-        [*PY, "scripts/make_ztoalc_table.py", "--check"],
+        [*PY, "scripts/generate.py", "ztoalc", "--check"],
     ),
     (
         # pylint's R0801 reports similar blocks across files, catching

@@ -2777,7 +2777,7 @@ class TestWikiUrlsAreUsable:
     ``%^2`` is not a percent-escape, so the link was broken for the one
     language whose name starts with the escape character.  The same URL was
     a markdown link in README.md, built by a *second* copy of the slug
-    logic in ``scripts/make_languages_doc.py`` -- so fixing either alone
+    logic in ``scripts/generate.py docs`` -- so fixing either alone
     would have left the other wrong.
     """
 
