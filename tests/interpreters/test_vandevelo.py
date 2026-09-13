@@ -3,7 +3,7 @@
 import pytest
 
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.interpreters.other.vandevelo import _Machine, run
+from esolangs.interpreters.other.vandevelo import _advance, _Machine, run
 from esolangs.vm import run_until_halt_or_cycle
 
 
@@ -14,6 +14,16 @@ def _halts(program: str, stdin: str = "") -> bool:
 def test_strict_input_and_short_circuit() -> None:
     program = "x ~> Inp?\nx? == Nil? :: y?\n"
     assert _halts(program, "1\n")
+
+
+def test_transition_is_a_pure_function_of_immutable_state() -> None:
+    machine = _Machine("x ~> Nil?", ScriptedIO())
+    initial = machine.state
+    advanced = _advance(initial, machine.statements)
+
+    assert _advance(initial, machine.statements) == advanced
+    assert machine.state is initial
+    assert hash(initial)
 
 
 def test_lazy_self_reference_is_a_cycle_only_when_selected() -> None:
