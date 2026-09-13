@@ -996,15 +996,16 @@ def test_wrap_grid_never_straddles_a_row_boundary() -> None:
 
 
 def test_mammalian_uses_seed_sized_cells() -> None:
-    """SEED is one cell; every longer command spans whole cells."""
+    """Every command starts on the SEED-sized lattice."""
     wrapped = _mammalian(
         "SEED SEED DIGEST ACCEPT LEAPFROG PRONOUNCE CONFLAGRATE SEED", 39
     )
     assert wrapped.split("\n") == [
-        "SEED SEED    DIGEST    ACCEPT  LEAPFROG",
-        "PRONOUNCE    CONFLAGRATE SEED",
+        "SEED SEED DIGEST    ACCEPT    LEAPFROG",
+        "PRONOUNCE CONFLAGRATE    SEED",
     ]
-    assert [row.rfind("SEED") % 5 for row in wrapped.split("\n")] == [0, 0]
+    for row in wrapped.split("\n"):
+        assert all(match.start() % 5 == 0 for match in re.finditer(r"\S+", row))
 
 
 def test_indented_wrapper_preserves_blocks_and_folds_within_a_line() -> None:
