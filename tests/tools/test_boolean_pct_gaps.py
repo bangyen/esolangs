@@ -11,7 +11,7 @@ from typing import ClassVar
 
 import pytest
 
-from esolangs.tools.boolean.pct_squared_minus_one import (
+from esolangs.tools.pct_squared_minus_one import (
     _COFACTOR_BRIDGE_POINTS,
     _centred_setter,
     _cofactor_done,
@@ -168,7 +168,7 @@ class TestInterleavedFinalPair:
         route; the first reduce is the compaction, and failing it is what
         the guard answers.
         """
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         with monkeypatch.context() as patch:
             patch.setattr(module, "_fold_reduce", lambda *_a, **_k: None)
             assert _interleaved_final_pair("0011" * (2**13 // 4), 13) is None
@@ -189,7 +189,7 @@ class TestInterleavedFinalPair:
         The same table builds when every planner answers (above), so the
         None here is the guard firing rather than the table being hard.
         """
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         with monkeypatch.context() as patch:
             patch.setattr(module, planner, lambda *_a, **_k: None)
             assert _interleaved_final_pair("0011" * 4, 4) is None
@@ -204,7 +204,7 @@ class TestInterleavedFinalPair:
         first one inside the row loop, and poisoning that one lands the
         point outside the workspace.
         """
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         original = module._apply  # noqa: SLF001
         calls = [0]
 
@@ -225,7 +225,7 @@ class TestInterleavedFinalPair:
         same value: the second one to arrive carries a different class and
         the collision check refuses it.
         """
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         original = module._apply  # noqa: SLF001
         calls = [0]
 
@@ -241,7 +241,7 @@ class TestInterleavedFinalPair:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """No ladder lays the prefix inside the workspace footprint."""
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         with monkeypatch.context() as patch:
             # A narrow ladder too wide for the workspace sends the choice
             # to the packed one, which then declines.
@@ -268,7 +268,7 @@ class TestInterleavedFoldRefusals:
     def test_an_unplannable_final_stage_refuses(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         with monkeypatch.context() as patch:
             patch.setattr(module, "_fold_plan", lambda *_a, **_k: None)
             assert _interleaved_fold(self.TABLE, 4) is None
@@ -277,7 +277,7 @@ class TestInterleavedFoldRefusals:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """The cofactor bridge is what releases equal suffixes early."""
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         with monkeypatch.context() as patch:
             patch.setattr(module, "_fold_to_cofactors", lambda *_a, **_k: None)
             assert _interleaved_fold(self.TABLE, 4) is None
@@ -294,7 +294,7 @@ class TestNoLadderServed:
         Emitting nothing beats emitting a program for another function,
         which is what this last-resort guard is for.
         """
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         with monkeypatch.context() as patch:
             patch.setattr(module, "_fold", lambda *_a, **_k: None)
             patch.setattr(module, "_interleaved_fold", lambda *_a, **_k: None)

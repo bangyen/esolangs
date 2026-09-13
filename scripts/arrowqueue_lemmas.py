@@ -21,7 +21,7 @@ import random
 import sys
 
 from esolangs.interpreters.grid_based.arrowqueue import _advance, _Machine
-from esolangs.tools.boolean.parameterized import (
+from esolangs.tools.parameterized import (
     _FIRST_ONE,
     _FIRST_ZERO,
     _MIDDLE,

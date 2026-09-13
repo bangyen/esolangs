@@ -1,6 +1,6 @@
 """Unit tests for the %^2^-1 boolean generator.
 
-Covers :mod:`esolangs.tools.boolean.pct_squared_minus_one`, split out of
+Covers :mod:`esolangs.tools.pct_squared_minus_one`, split out of
 ``test_boolean_parameterized.py``: the generator derives its programs through
 several ordered constructions and its tests are the second-largest block
 there.
@@ -12,7 +12,7 @@ import time
 
 import pytest
 
-from esolangs.tools import boolean
+from esolangs import tools as boolean
 
 
 class TestParameterizedPctSquaredMinusOne:
@@ -38,7 +38,7 @@ class TestParameterizedPctSquaredMinusOne:
         return io.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools.boolean.examples import _fill_pct_squared_minus_one
+        from esolangs.tools.examples import _fill_pct_squared_minus_one
 
         return _fill_pct_squared_minus_one(tpl, bits)
 
@@ -61,7 +61,7 @@ class TestParameterizedPctSquaredMinusOne:
     )
     def test_truth_table(self, table: str, n: int) -> None:
         """Every instantiated input produces the truth-table result."""
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
         template = parameterized.pct_squared_minus_one(table)
         for combo in range(2**n):
@@ -76,7 +76,7 @@ class TestParameterizedPctSquaredMinusOne:
     @pytest.mark.parametrize("n", [1, 2])
     def test_all_small_tables(self, n: int) -> None:
         """Every table up to two inputs produces the right result."""
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
         for table_int in range(2 ** (2**n)):
             table = format(table_int, f"0{2**n}b")
@@ -88,7 +88,7 @@ class TestParameterizedPctSquaredMinusOne:
 
     def test_instantiations_share_a_length(self) -> None:
         """All four programs are the same length, so none leaks its inputs."""
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
         template = parameterized.pct_squared_minus_one("0110")
         lengths = {
@@ -98,7 +98,7 @@ class TestParameterizedPctSquaredMinusOne:
 
     def test_template_is_input_independent(self) -> None:
         """The template has {Xi} placeholders, not hardcoded bits."""
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
         template = parameterized.pct_squared_minus_one("0110")
         assert "{X0}" in template
@@ -112,7 +112,7 @@ class TestParameterizedPctSquaredMinusOne:
         bounds: the bits arrive by substitution, so the read that overwrites
         the accumulator never runs.
         """
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
         for table_int in range(16):
             template = parameterized.pct_squared_minus_one(format(table_int, "04b"))
@@ -133,7 +133,7 @@ class TestParameterizedPctSquaredMinusOne:
         wipe happens depends on the inputs.  That is a branch realised
         arithmetically in a language whose only jump target is position 0.
         """
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
         for index in range(2**n):
             table = "".join("1" if i == index else "0" for i in range(2**n))
@@ -150,7 +150,7 @@ class TestParameterizedPctSquaredMinusOne:
         one-character ``'`` erase, whose odd shortfall has no ``pp`` padding,
         is never what a setter spells.
         """
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
         n = 4
         template = parameterized.pct_squared_minus_one("1" + "0" * (2**n - 1))
@@ -170,7 +170,7 @@ class TestParameterizedPctSquaredMinusOne:
         ``OR``-``n`` and ``NAND``-``n`` are the complements of subcubes and
         build by appending that one three-character negation.
         """
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
         tables = {
             "and": "0" * (2**n - 1) + "1",
@@ -191,7 +191,7 @@ class TestParameterizedPctSquaredMinusOne:
         their setters are the identity on both branches -- which is what makes
         the coverage wider than the single-minterm family.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import _cascade
+        from esolangs.tools.pct_squared_minus_one import _cascade
 
         # The cascade is asked directly rather than through the generator,
         # which now falls back to the composed-affine path when no subcube
@@ -228,8 +228,8 @@ class TestParameterizedPctSquaredMinusOne:
         and neither does its complement.  It composes from one affine setter
         per input instead, which is the construction that lifts the cap.
         """
-        from esolangs.tools.boolean import parameterized
-        from esolangs.tools.boolean.pct_squared_minus_one import _cascade
+        from esolangs.tools import parameterized
+        from esolangs.tools.pct_squared_minus_one import _cascade
 
         table = "01101001"
         assert _cascade(table, 3) is None, "parity is not a subcube"
@@ -245,7 +245,7 @@ class TestParameterizedPctSquaredMinusOne:
         The branches are respelled to a common width rather than padded with
         ``pp``, so this checks the property the respelling is there to keep.
         """
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
         template = parameterized.pct_squared_minus_one("01101001")
         lengths = {
@@ -266,7 +266,7 @@ class TestParameterizedPctSquaredMinusOne:
         construction that grew coverage by emitting a wrong program fails
         rather than raising the count.
         """
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
         for value in range(256):
             table = format(value, "08b")
@@ -296,7 +296,7 @@ class TestParameterizedPctSquaredMinusOne:
         Parity is the case the popcount ladder serves: every weight is one, so
         the span is ``n`` units rather than ``2**n - 1``.
         """
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
         table = "0110100110010110"
         template = parameterized.pct_squared_minus_one(table)
@@ -316,7 +316,7 @@ class TestParameterizedPctSquaredMinusOne:
         different classes cannot compute the table.  The planner has to reject
         it rather than emit a program for the wrong function.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import (
+        from esolangs.tools.pct_squared_minus_one import (
             _deep_plan,
             _deep_values,
         )
@@ -344,7 +344,7 @@ class TestParameterizedPctSquaredMinusOne:
         popcount ladder spans only ``n * 256`` and merges the rows such a table
         already agrees on.
         """
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
         majority = "".join("1" if bin(r).count("1") >= 3 else "0" for r in range(32))
         template = parameterized.pct_squared_minus_one(majority)
@@ -368,7 +368,7 @@ class TestParameterizedPctSquaredMinusOne:
         order changes.  This table is the smallest that *needs* the escape,
         so it pins the mechanism rather than merely exercising the path.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import _HEADER_END, _fold
+        from esolangs.tools.pct_squared_minus_one import _HEADER_END, _fold
 
         table = "00000101"
         template = _fold(table, 3)
@@ -398,7 +398,7 @@ class TestParameterizedPctSquaredMinusOne:
         cost; the dispatch reaches it by falling through the same refusal.
         The template is executed on all 32 rows at equal fill length.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import _fold
+        from esolangs.tools.pct_squared_minus_one import _fold
 
         table = "11011111100100101001101110111000"
         template = _fold(table, 5)
@@ -421,7 +421,7 @@ class TestParameterizedPctSquaredMinusOne:
         outright, and the rows are executed rather than merely planned,
         because a plan that does not compute is not a fix.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import _fold
+        from esolangs.tools.pct_squared_minus_one import _fold
 
         table = "01010101000101111111010101011110"
         template = _fold(table, 5)
@@ -448,7 +448,7 @@ class TestParameterizedPctSquaredMinusOne:
         fits, and the two answer bytes sit at different distances from the
         limit -- so they do not take that loop the same number of times.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import _fold
+        from esolangs.tools.pct_squared_minus_one import _fold
 
         table = bit * 8
         template = _fold(table, 3)
@@ -489,7 +489,7 @@ class TestParameterizedPctSquaredMinusOne:
         and computes the wrong function is the failure this is here to
         catch, so every row runs and the fills stay one width.
         """
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
         n = (len(table) - 1).bit_length()
         template = parameterized.pct_squared_minus_one(table)
@@ -516,7 +516,7 @@ class TestParameterizedPctSquaredMinusOne:
         being taken, not a deep band that quietly started serving it) and
         that the dispatch returns what the fold returns.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import (
+        from esolangs.tools.pct_squared_minus_one import (
             _deep_band,
             _fold,
             pct_squared_minus_one,
@@ -537,7 +537,7 @@ class TestParameterizedPctSquaredMinusOne:
         its sum filter -- hours at twelve inputs -- so this test hanging
         rather than failing is what removing the gate looks like.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import _deep_band
+        from esolangs.tools.pct_squared_minus_one import _deep_band
 
         parity = "".join(str(bin(r).count("1") & 1) for r in range(2**12))
         assert _deep_band(parity, 12) is None
@@ -558,7 +558,7 @@ class TestParameterizedPctSquaredMinusOne:
         excluded for a while, and that was an artefact of the enumeration
         this path used to run rather than a property of the model.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import _affine
+        from esolangs.tools.pct_squared_minus_one import _affine
 
         def complement(bits: str) -> str:
             return "".join("1" if c == "0" else "0" for c in bits)
@@ -605,7 +605,7 @@ class TestParameterizedPctSquaredMinusOne:
         served by the deep band at 3054 characters while this path builds it
         in well under a hundred.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import _affine
+        from esolangs.tools.pct_squared_minus_one import _affine
 
         for table in ("01011010", "10100101"):
             template = _affine(table, 3)
@@ -628,7 +628,7 @@ class TestParameterizedPctSquaredMinusOne:
         calls it at three only.  Declining rather than guessing keeps the
         two facts in one place.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import _affine
+        from esolangs.tools.pct_squared_minus_one import _affine
 
         assert _affine("0110", 2) is None
         assert _affine("0110100110010110", 4) is None
@@ -641,7 +641,7 @@ class TestParameterizedPctSquaredMinusOne:
         the 1-set agreeing on some inputs and free on the rest, so the count
         of ones is ``2 ** (free inputs)``.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import _cascade
+        from esolangs.tools.pct_squared_minus_one import _cascade
 
         def is_subcube(table: str) -> bool:
             ones = [row for row in range(8) if table[row] == "1"]
@@ -680,7 +680,7 @@ class TestParameterizedPctSquaredMinusOne:
         the budget, at ``sum(units) * 256`` past the limit, which is why
         :func:`_deep_weightings` drops those rather than trying them.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import (
+        from esolangs.tools.pct_squared_minus_one import (
             _cross_class_diffs,
             _deep_plan,
             _deep_values,
@@ -714,7 +714,7 @@ class TestParameterizedPctSquaredMinusOne:
         exactly there -- sum 12, span 3072 -- which is what makes the budget
         a derivation rather than a tuning knob.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import (
+        from esolangs.tools.pct_squared_minus_one import (
             _BAND_UNIT,
             _LIMIT,
             _deep_weightings,
@@ -734,7 +734,7 @@ class TestParameterizedPctSquaredMinusOne:
         expensive refusal is skipped while the tables it really does build
         still take its (much shorter) programs.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import _deep_band
+        from esolangs.tools.pct_squared_minus_one import _deep_band
 
         parity = "".join(str(bin(r).count("1") % 2) for r in range(32))
         majority = "".join("1" if bin(r).count("1") >= 3 else "0" for r in range(32))
@@ -756,8 +756,8 @@ class TestParameterizedPctSquaredMinusOne:
         threshold, so the argument does not bind.  Executed on all eight rows
         rather than asserted structurally.
         """
-        from esolangs.tools.boolean import parameterized
-        from esolangs.tools.boolean.pct_squared_minus_one import _affine, _cascade
+        from esolangs.tools import parameterized
+        from esolangs.tools.pct_squared_minus_one import _affine, _cascade
 
         table = "00010111"
         # The other two paths really do refuse it, so this pins the ladder.
@@ -786,7 +786,7 @@ class TestParameterizedPctSquaredMinusOne:
         the spelling depth makes this fail rather than silently making dead
         code live.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import (
+        from esolangs.tools.pct_squared_minus_one import (
             _WIDE_A_VALS,
             _WIDE_B_VALS,
             _spellings_by_width,
@@ -813,7 +813,7 @@ class TestParameterizedPctSquaredMinusOne:
         without changing what is reachable, so a set-only assertion would
         not see it.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import (
+        from esolangs.tools.pct_squared_minus_one import (
             _WIDE_A_LIMIT,
             _WIDE_A_VALS,
             _wide_a_vals,
@@ -1016,7 +1016,7 @@ class TestParameterizedPctSquaredMinusOne:
             (4, 11): ("psmmip", "mpssmip"),
             (4, 12): ("mpiimp", "pimmp"),
         }
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         assert module._spell_bases() == frozen  # noqa: SLF001
 
     def test_every_derived_spelling_behaves_at_every_width(self) -> None:
@@ -1028,7 +1028,7 @@ class TestParameterizedPctSquaredMinusOne:
         just the bases: every entry of every map's width dict is run over
         the admission window and must land on ``a*x + b`` exactly.
         """
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         for a in module._WIDE_A_VALS:  # noqa: SLF001
             for b in module._WIDE_B_VALS:  # noqa: SLF001
                 for width, code in module._spellings_by_width(  # noqa: SLF001
@@ -1048,7 +1048,7 @@ class TestParameterizedPctSquaredMinusOne:
         Both inputs must land on the same value, which is what makes it a
         constant rather than merely a steep slope.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import _affine_code, _apply
+        from esolangs.tools.pct_squared_minus_one import _affine_code, _apply
 
         code = _affine_code(0, 5)
         assert code is not None
@@ -1070,7 +1070,7 @@ class TestParameterizedPctSquaredMinusOne:
         the interpreter would let a future tail shape be validated against
         a machine that does not exist.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import _LIMIT, _apply
+        from esolangs.tools.pct_squared_minus_one import _LIMIT, _apply
 
         assert _apply(10, "s") == 8  # s subtracts 2
         assert _apply(10, "i") == 7  # i subtracts 3
@@ -1100,7 +1100,7 @@ class TestParameterizedPctSquaredMinusOne:
         the clearest case that no tail can separate -- ``l`` prints one
         accumulator, so identical inputs cannot print differently.
         """
-        from esolangs.tools.boolean.pct_squared_minus_one import _tail_for
+        from esolangs.tools.pct_squared_minus_one import _tail_for
 
         assert _tail_for(-5, -5) is None
         assert _tail_for(1, 0) is not None, "the trivial pair still works"
@@ -1121,8 +1121,8 @@ class TestParameterizedPctSquaredMinusOne:
 
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
-        from esolangs.tools.boolean.pct_squared_minus_one import _derive
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
+        from esolangs.tools.pct_squared_minus_one import _derive
 
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_solution", lambda *_a, **_k: None)
@@ -1139,7 +1139,7 @@ class TestPctSquaredHelpers:
 
     @staticmethod
     def module():
-        return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        return importlib.import_module("esolangs.tools.pct_squared_minus_one")
 
     def test_sub_of_width_rejects_an_unreachable_split(self) -> None:
         """A width too narrow to spell ``k`` has no ``i``/``s`` split."""
@@ -1650,7 +1650,7 @@ class TestPctSquaredHelpers:
                 ("u", 2, "cmax"),
             ),
         }
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         assert {k for k in mined if module._fold_served(*k)} == set(mined)  # noqa: SLF001
         for key, plan in mined.items():
             assert module._fold_skeleton(*key) == plan, key  # noqa: SLF001
@@ -1703,7 +1703,7 @@ class TestPctInterleavedFold:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.pct_squared_minus_one import run
 
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         table = "00001111"  # X1 creates equal suffix cofactors before X2
         template = module._interleaved_fold(table, 3)  # noqa: SLF001
         assert template is not None
@@ -1733,7 +1733,7 @@ class TestPctInterleavedFold:
         ``None``, never a partial template a caller might emit.  That a
         build *computes* its table is the sibling's job.
         """
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         built = 0
         for value in range(256):
             table = format(value, "08b")
@@ -1760,7 +1760,7 @@ class TestPctInterleavedFold:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.pct_squared_minus_one import run
 
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         for value in range(256):
             table = format(value, "08b")
             template = module._interleaved_fold(table, 3)  # noqa: SLF001
@@ -1782,7 +1782,7 @@ class TestPctInterleavedFold:
         which is the failure the guards exist to prevent, and no amount of
         row replay would reveal it if the build never returned.
         """
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         built = 0
         for value in range(0, 2**16, 16):
             table = format(value, "016b")
@@ -1809,7 +1809,7 @@ class TestPctInterleavedFold:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.pct_squared_minus_one import run
 
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         n = 12
         # XOR of the first two bits: it is neither a cascade subcube nor a
         # threshold, and the all-row fold cannot lay its 4096 positions.
@@ -1837,7 +1837,7 @@ class TestPctFoldEmitter:
 
     @staticmethod
     def emitter(table: str = "01", n: int = 1):
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         return module._FoldEmitter(table, n)  # noqa: SLF001
 
     def test_a_zero_step_emits_nothing(self) -> None:
@@ -1877,7 +1877,7 @@ class TestPctFoldEmitter:
         ceiling therefore ends up *under* where it started while still
         landing on the byte.
         """
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
 
         for start, expected in ((0, 48), (2900, 2864)):
             em = self.emitter("0", 0)
@@ -1898,7 +1898,7 @@ class TestPctFoldEmitter:
         first and recomputes the distance from the new bottom.  A victim
         one lower needs no preshift, which is what separates the two.
         """
-        module = importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         limit = module._LIMIT  # noqa: SLF001
 
         def rise_from(victim_top: int) -> list[str]:
@@ -1926,7 +1926,7 @@ class TestPctFoldMoves:
 
     @staticmethod
     def module():
-        return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        return importlib.import_module("esolangs.tools.pct_squared_minus_one")
 
     def test_a_collision_across_classes_is_not_a_merge(self) -> None:
         """Two points at one value are indistinguishable forever after.
@@ -1996,7 +1996,7 @@ class TestPctFoldPlanners:
 
     @staticmethod
     def module():
-        return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        return importlib.import_module("esolangs.tools.pct_squared_minus_one")
 
     #: Four points, alternating classes: not already finished, and small
     #: enough that the rules answer quickly.
@@ -2093,7 +2093,7 @@ class TestPctFoldPlan:
 
     @staticmethod
     def module():
-        return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        return importlib.import_module("esolangs.tools.pct_squared_minus_one")
 
     def test_the_pre_pass_stops_when_no_bottom_wipe_is_offered(self) -> None:
         """Extent that no minimum-relocation wipe can clear ends the plan.
@@ -2265,8 +2265,8 @@ class TestPctFoldPlan:
         """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.pct_squared_minus_one import run
-        from esolangs.tools.boolean import parameterized
-        from esolangs.tools.boolean.examples import _fill_pct_squared_minus_one
+        from esolangs.tools import parameterized
+        from esolangs.tools.examples import _fill_pct_squared_minus_one
 
         n = 10
         table = "".join(
@@ -2297,8 +2297,8 @@ class TestPctFoldPlan:
 
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.pct_squared_minus_one import run
-        from esolangs.tools.boolean import parameterized
-        from esolangs.tools.boolean.examples import _fill_pct_squared_minus_one
+        from esolangs.tools import parameterized
+        from esolangs.tools.examples import _fill_pct_squared_minus_one
 
         n = 11
         rng = random.Random(11011)
@@ -2321,8 +2321,8 @@ class TestPctFoldPlan:
 
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.pct_squared_minus_one import run
-        from esolangs.tools.boolean import parameterized
-        from esolangs.tools.boolean.examples import _fill_pct_squared_minus_one
+        from esolangs.tools import parameterized
+        from esolangs.tools.examples import _fill_pct_squared_minus_one
 
         rng = random.Random(1)
         table = "".join(rng.choice("01") for _ in range(2**12))
@@ -2355,8 +2355,8 @@ class TestPctFoldPlan:
 
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.register_based.pct_squared_minus_one import run
-        from esolangs.tools.boolean import parameterized
-        from esolangs.tools.boolean.examples import _fill_pct_squared_minus_one
+        from esolangs.tools import parameterized
+        from esolangs.tools.examples import _fill_pct_squared_minus_one
 
         rng = random.Random(13)
         table = "".join(rng.choice("01") for _ in range(2**13))
@@ -2400,7 +2400,7 @@ class TestPctAffineSolver:
 
     @staticmethod
     def module():
-        return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        return importlib.import_module("esolangs.tools.pct_squared_minus_one")
 
     def test_the_shorter_of_cascade_and_affine_ships(self) -> None:
         """The cascade is usually shorter at three inputs, but not always.
@@ -2492,7 +2492,7 @@ class TestPctAffineBand:
 
     @staticmethod
     def module():
-        return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        return importlib.import_module("esolangs.tools.pct_squared_minus_one")
 
     def test_the_shipped_budget_stops_before_both_skips(self) -> None:
         """The premise: at 12 candidates neither guard is reached.
@@ -2561,7 +2561,7 @@ class TestPctFoldSkeletonResolver:
 
     @staticmethod
     def module():
-        return importlib.import_module("esolangs.tools.boolean.pct_squared_minus_one")
+        return importlib.import_module("esolangs.tools.pct_squared_minus_one")
 
     #: One point: whichever way it is wiped, nothing survives.
     LONE = ((0, 0, "a", frozenset({0})),)

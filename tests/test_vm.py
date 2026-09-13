@@ -2917,7 +2917,7 @@ class TestViews:
         import contextlib
 
         from esolangs.registry import LANGUAGES, canonical_id
-        from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
+        from esolangs.tools.examples import BOOLEAN_EXAMPLES
 
         # An example is keyed by the language's slug, its stem, or the slug
         # of its display name, so all three are tried -- matching on only

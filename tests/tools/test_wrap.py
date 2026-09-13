@@ -23,8 +23,8 @@ import pytest
 
 from esolangs import generate, run
 from esolangs.registry import LANGUAGES, canonical_id
-from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
-from esolangs.tools.boolean.examples import BooleanExample
+from esolangs.tools.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
+from esolangs.tools.examples import BooleanExample
 from esolangs.tools.wrap import (
     _PCT_HEADER_END,
     DEFAULT_WIDTH,
@@ -118,7 +118,7 @@ UNWRAPPABLE = {
 # wider than the width is re-emitted as the (foldable) linear form.
 #
 # Derived from :func:`takes_width` rather than written out, for the reason
-# ``esolangs.tools.boolean.BOOLEAN`` is derived from the registry: the
+# ``esolangs.tools.BOOLEAN`` is derived from the registry: the
 # hand-written table had drifted both ways.  It omitted Streetcode, which
 # really does take a width.  And it named Dig, which at the time took only
 # a truth table and returned the same program whatever width was asked for
@@ -656,7 +656,8 @@ def test_between_is_no_longer_wrapped_and_still_computes_its_table() -> None:
     producer left; the width is now a no-op for it, and the program must
     still compute its table.
     """
-    from esolangs.tools import boolean
+
+    from esolangs import tools as boolean
 
     assert "between" not in WRAPPERS
     for table, bits in (("01", 1), ("0110", 2), ("01101001", 3)):
@@ -819,10 +820,10 @@ def test_pct_header_terminator_matches_the_generator() -> None:
 
     It is spelled rather than imported so that :mod:`wrap`, which otherwise
     needs nothing but the standard library, does not pull the whole
-    ``esolangs.tools.boolean`` package in.  That is only safe with something
+    ``esolangs.tools`` package in.  That is only safe with something
     holding the two copies together.
     """
-    from esolangs.tools.boolean.pct_squared_minus_one import _HEADER_END
+    from esolangs.tools.pct_squared_minus_one import _HEADER_END
 
     assert _PCT_HEADER_END == _HEADER_END
 
@@ -862,7 +863,7 @@ def test_pct_fill_is_unchanged_by_where_the_header_folded() -> None:
     mid-branch, not just at a ``;``: those are the ones the stripping is
     for, and a fold only at ``;`` would pass without it.
     """
-    from esolangs.tools.boolean.pct_squared_minus_one import _HEADER_END, fill
+    from esolangs.tools.pct_squared_minus_one import _HEADER_END, fill
 
     for arity in (2, 4):
         template = generate("%^2^-1", _table(arity))

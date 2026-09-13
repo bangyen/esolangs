@@ -24,10 +24,10 @@ import inspect
 import pkgutil
 from collections import defaultdict
 
-import esolangs.tools.boolean as boolean
+import esolangs.tools as boolean
 from esolangs.registry import BY_BOOLEAN
 
-PACKAGE = "esolangs.tools.boolean"
+PACKAGE = "esolangs.tools"
 Key = tuple[str, str]
 Func = ast.FunctionDef | ast.AsyncFunctionDef
 

@@ -104,7 +104,7 @@ class TestInProcess:
     def test_run_feeds_stdin(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        from esolangs.tools import boolean
+        from esolangs import tools as boolean
 
         program = tmp_path / "prog.txt"
         program.write_text(boolean.circlefuck("1101"))

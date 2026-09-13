@@ -13,10 +13,10 @@ from collections.abc import Callable
 import pytest
 
 import esolangs
-import esolangs.tools.boolean as boolean
+import esolangs.tools as boolean
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import BY_BOOLEAN, LANGUAGES
-from esolangs.tools.boolean.helpers import essential_inputs
+from esolangs.tools.helpers import essential_inputs
 from esolangs.vm import run_until_halt_or_cycle
 
 # Every sweep here runs an interpreter over a generated program -- the whole
@@ -218,30 +218,30 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
     assert not missing, (
         f"these languages export a boolean generator but are absent from "
         f"BOOLEAN, so describe() reports boolean_generator=False for them: "
-        f"{sorted(missing)} -- add them to BOOLEAN in tools/boolean/__init__.py"
+        f"{sorted(missing)} -- add them to BOOLEAN in tools/__init__.py"
     )
     stale = boolean.BOOLEAN - set(exported.values())
     assert not stale, (
         f"BOOLEAN names these languages but the package exports no generator "
         f"resolving to them: {sorted(stale)} -- remove them from BOOLEAN, or "
-        f"export the generator from tools/boolean/__init__.py"
+        f"export the generator from tools/__init__.py"
     )
 
 
 # The tree generators that pick their input split order by measuring, and the
 # builder that emits one fixed order, so a test can compare the two.
 def _reordering_generators() -> list[object]:
-    from esolangs.tools.boolean.helpers import _decision_tree_program
-    from esolangs.tools.boolean.other import (
+    from esolangs.tools.helpers import _decision_tree_program
+    from esolangs.tools.other import (
         _between_ordered,
         _forbin_ordered,
     )
-    from esolangs.tools.boolean.parameterized import (
+    from esolangs.tools.parameterized import (
         _bitdeque_ordered,
         _lamfunc_ordered,
         _ram0_ordered,
     )
-    from esolangs.tools.boolean.tape import (
+    from esolangs.tools.tape import (
         _ASCII_ZERO,
         _circlefuck_ordered,
         _jaune_ordered,
@@ -334,7 +334,7 @@ def test_reordering_shrinks_the_tables_it_should(
 
 def test_reorder_permutation_preserves_the_function() -> None:
     """Permuting the table renames the inputs without changing the function."""
-    from esolangs.tools.boolean.helpers import permute_truth_table
+    from esolangs.tools.helpers import permute_truth_table
 
     table = "01101001"
     n = 3
@@ -352,7 +352,7 @@ def test_wide_tables_skip_the_exhaustive_search() -> None:
     ``12!`` is 479 million orders; an uncapped search never returns.  The
     greedy fallback still may not emit more than the identity order does.
     """
-    from esolangs.tools.boolean.helpers import _ORDER_SEARCH_MAX, _decision_tree_program
+    from esolangs.tools.helpers import _ORDER_SEARCH_MAX, _decision_tree_program
 
     n = _ORDER_SEARCH_MAX + 2
     table = "0" * (2**n - 1) + "1"
@@ -371,7 +371,7 @@ def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
     last input, which the greedy pick fronts.
     """
     from esolangs.interpreters.tape_based.brainfuck import run
-    from esolangs.tools.boolean.helpers import _greedy_input_order
+    from esolangs.tools.helpers import _greedy_input_order
     from tests.interpreters.runner import run_program
 
     n = 7
@@ -401,7 +401,7 @@ def test_the_greedy_order_is_the_documented_one() -> None:
     no order helps.  94 of the 256 three-input tables get a non-identity
     order, so the two rules are separable here rather than only in theory.
     """
-    from esolangs.tools.boolean.helpers import _greedy_input_order
+    from esolangs.tools.helpers import _greedy_input_order
 
     # Tables the heuristic reorders, and the order it picks.
     assert _greedy_input_order("00000101", 3) == (0, 2, 1)
@@ -442,7 +442,7 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
     """
     from itertools import permutations
 
-    from esolangs.tools.boolean.helpers import _decision_tree_program
+    from esolangs.tools.helpers import _decision_tree_program
 
     lengths = {
         perm: len(_decision_tree_program("00010111", ">", "<", perm))
@@ -627,7 +627,7 @@ def test_a_malformed_table_is_refused_in_the_shared_words(
     The sibling above pins that a nullary table is refused; this pins the
     other two rejections, and pins them by wording rather than by type.  All
     65 generators route these through
-    :func:`~esolangs.tools.boolean.helpers._validate_truth_table`, so the
+    :func:`~esolangs.tools.helpers._validate_truth_table`, so the
     message is uniform today -- a generator that grows its own validator
     keeps raising ``ValueError`` and passes every other check while telling
     the caller something different from its 68 siblings.
@@ -946,7 +946,7 @@ def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
     extends; a caller wanting nothing larger gets those four lines and no
     build plan at all.
     """
-    from esolangs.tools.boolean.helpers import _cm_constants
+    from esolangs.tools.helpers import _cm_constants
 
     lines = _cm_constants([1, 2])
     assert len(lines) == 4

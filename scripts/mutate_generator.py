@@ -40,10 +40,9 @@ import-time trampoline in ``registry``/``lamfunc`` before mutmut has set
 ``mutmut.config``.  Neither applies here.  Only the *target* file is in
 ``paths_to_mutate``, so only it gets trampolines; every other module is
 copied verbatim and imports normally.  The generator modules also import
-cleanly on their own -- ``esolangs.tools.boolean.*`` reaches only
+cleanly on their own -- ``esolangs.tools.*`` reaches only
 ``helpers``, ``wrap``, ``_polynomial``, ``laserfuck_layout`` and
-``ztoalc_starts``.  None of them do work at import time, which is what lets
-both kinds share this layout.
+``ztoalc_starts``.  None of them do work at import time.
 
 So the layout is the package itself, copied whole into a work directory
 that shadows the editable install because the runner's cwd leads
@@ -70,8 +69,8 @@ helpers, laserfuck, other, register, stack, streetcode, super_snusp, tape
 where it is unambiguous; see :func:`_parse_target`.
 
 Usage:
-    python scripts/mutate_generator.py boolean/register
-    python scripts/mutate_generator.py boolean/streetcode
+    python scripts/mutate_generator.py tools/register
+    python scripts/mutate_generator.py tools/streetcode
     python scripts/mutate_generator.py dimensional --keep   # leave the work dir
 
 Requires: mutmut==3.7.0, the same pin ``mutate_one`` documents.
@@ -153,7 +152,7 @@ class _Kind:
         skip_tests: frozenset[str] = frozenset(),
     ) -> None:
         self.name = name
-        self.pkg_rel = pkg_rel  # under src/esolangs, e.g. "tools/boolean"
+        self.pkg_rel = pkg_rel  # under src/esolangs, e.g. "tools"
         self.tests_rel = tests_rel  # e.g. "tests/tools"
         self.support = support
         # Whether the suite reaches scripts/.
@@ -191,10 +190,6 @@ class _Kind:
 
 # Keyed by the name the CLI takes.
 _KINDS = {
-    "boolean": _Kind("boolean", "tools/boolean", "tests/tools", _TOOLS_SUPPORT),
-    # The modules directly under ``esolangs.tools`` rather than in a family
-    # package -- ``wrap`` and the layout helpers.  The glob picks up only
-    # files, so the ``boolean`` subpackage is not swept in twice.
     "tools": _Kind("tools", "tools", "tests/tools", _TOOLS_SUPPORT),
     # The package root: ``vm``, ``debug``, ``tui``, ``cli``, ``registry``.
     #
@@ -306,11 +301,10 @@ def _modules(family: str) -> list[str]:
 def _parse_target(target: str) -> tuple[str, str]:
     """Return the (family, module) a CLI target names, or raise.
 
-    Accepts ``boolean/streetcode`` and the bare ``streetcode``.  A bare name
+    Accepts ``tools/streetcode`` and the bare ``streetcode``.  A bare name
     is resolved against every kind, which makes it an error rather than a
-    silent choice when more than one matches -- ``helpers`` is in both
-    ``tools`` and ``tools/boolean``.  Bare names that are unambiguous still
-    work, so ``mutate_generator.py minifuck`` needs no qualifier.
+    silent choice when more than one matches.  Bare names that are unambiguous
+    still work, so ``mutate_generator.py minifuck`` needs no qualifier.
     """
     if "/" in target:
         family, _, module = target.partition("/")
@@ -348,7 +342,7 @@ def _test_files(kind: _Kind) -> list[str]:
     selection rules were tried, and each one under-reported:
 
     * **By import.**  A suite that imports
-      ``esolangs.tools.boolean.<module>`` can kill its mutants -- but most
+      ``esolangs.tools.<module>`` can kill its mutants -- but most
       suites do not import the module at all.  They import the *package*
       and reach the generator through its re-export (``boolean.laserfuck``),
       which no import scan can see.  Measured over the 27 generator
@@ -743,7 +737,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
         "module",
-        help="generator module as family/module, e.g. boolean/streetcode.  A "
+        help="generator module as family/module, e.g. tools/streetcode.  A "
         "bare name works where only one family defines it",
     )
     parser.add_argument(

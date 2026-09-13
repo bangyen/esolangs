@@ -1122,7 +1122,7 @@ def encode_inputs(
     # no sign that anything went astray.
     bits = check_bits(bits, "bits")
     if truth_table is not None:
-        from esolangs.tools.boolean.helpers import _validate_truth_table
+        from esolangs.tools.helpers import _validate_truth_table
 
         if not isinstance(truth_table, str):
             raise TruthTableError(
@@ -1586,7 +1586,7 @@ def _validate_shape_for_evaluate(truth_table: str) -> int:
     needs the arity *before* that happens -- and a bad table reported by
     whichever generator ran first named the generator rather than the table.
     """
-    from esolangs.tools.boolean.helpers import _validate_truth_table
+    from esolangs.tools.helpers import _validate_truth_table
 
     if not isinstance(truth_table, str):
         raise TruthTableError(
@@ -1602,7 +1602,7 @@ def _example_for(language_id: str) -> Any:
     Deferred like the rest of the example lookups: ``examples`` imports the
     registry, so importing it at module scope would close a cycle.
     """
-    from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
+    from esolangs.tools.examples import BOOLEAN_EXAMPLES
 
     stem = example_stems().get(language_id)
     return BOOLEAN_EXAMPLES.get(stem) if stem is not None else None

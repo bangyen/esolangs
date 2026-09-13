@@ -14,7 +14,7 @@ from esolangs.interpreters.io import ScriptedIO
 from esolangs.interpreters.other.lamfunc import run as lamfunc_run
 from esolangs.interpreters.other.packlang import _Parser
 from esolangs.interpreters.stack_based.three_x import run as three_x_run
-from esolangs.tools.boolean.laserfuck import laserfuck
+from esolangs.tools.laserfuck import laserfuck
 from tests.interpreters.runner import run_program
 
 

@@ -601,7 +601,7 @@ class TestStreetcodeCrossingMouthDecision:
         # fragments of this shape do not validate as street networks on
         # their own, which is why the case is pinned through a real
         # program rather than a cut-down grid.
-        from esolangs.tools.boolean import streetcode as gen
+        from esolangs.tools import streetcode as gen
 
         machine = _Machine(gen("00110100").split("\n"), ScriptedIO("1\n0\n1\n"))
         grid = machine.grid

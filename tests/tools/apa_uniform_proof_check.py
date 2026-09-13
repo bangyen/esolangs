@@ -36,7 +36,7 @@ from pathlib import Path
 # Run as a script (not under pytest), the repo root is not on the path.
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from esolangs.tools.boolean.a_painter_ant import (
+from esolangs.tools.a_painter_ant import (
     _bit_is_horizontal,
     _bit_move,
     _instantiate_apa,

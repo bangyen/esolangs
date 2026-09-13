@@ -1,7 +1,7 @@
 """Unit tests for the single-language boolean generators.
 
-Covers the generators in :mod:`esolangs.tools.boolean.other` and
-:mod:`esolangs.tools.boolean.ztoalc_l`, plus the shared validation and
+Covers the generators in :mod:`esolangs.tools.other` and
+:mod:`esolangs.tools.ztoalc_l`, plus the shared validation and
 helper edge paths exercised across generator modules.
 """
 
@@ -11,8 +11,9 @@ import random
 
 import pytest
 
+from esolangs import tools as boolean
 from esolangs.interpreters.io import IO
-from esolangs.tools import boolean, laserfuck_layout
+from esolangs.tools import laserfuck_layout
 from tests.tools.boolean_runners import (
     run_algebraic_programming_language,
     run_between,
@@ -139,7 +140,7 @@ class TestInject:
         the disjunct is known to be belt-and-braces rather than assumed to
         be required.
         """
-        from esolangs.tools.boolean.inject import _tree
+        from esolangs.tools.inject import _tree
 
         calls: list[tuple[str, int, int]] = []
 
@@ -224,7 +225,7 @@ class TestSuptiftam:
 
     def test_bit_names_extend_beyond_the_alphabet(self) -> None:
         """Identifiers are alphabetical, so past 'z' the names grow a prefix."""
-        from esolangs.tools.boolean.other import _suptiftam_bit
+        from esolangs.tools.other import _suptiftam_bit
 
         assert _suptiftam_bit(0) == "b"
         assert _suptiftam_bit(24) == "z"
@@ -334,7 +335,7 @@ class TestCvnc:
         generator raises rather than emit one, and the reach is chosen so
         that no arity it can practically be asked for trips the guard.
         """
-        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        module = importlib.import_module("esolangs.tools.cvnc")
         reach = module._HALT_REACH  # noqa: SLF001
 
         # parity is the table that folds nothing, so it is the worst case
@@ -350,9 +351,9 @@ class TestCvnc:
         The reach is far past any table worth generating, so the guard is
         reached by shrinking it rather than by building a vast table.
         """
-        # ``esolangs.tools.boolean.cvnc`` resolves to the re-exported
+        # ``esolangs.tools.cvnc`` resolves to the re-exported
         # *function*, so the module has to be fetched by name.
-        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        module = importlib.import_module("esolangs.tools.cvnc")
         monkeypatch.setattr(module, "_HALT_REACH", 10)
         with pytest.raises(ValueError, match="outgrew"):
             module.cvnc("01")
@@ -383,7 +384,7 @@ class TestCvnc:
         assert program.count("ɰ̊o") == 1
         # The unreordered node-read tree over the same table folds only at the
         # bottom, so it costs a leaf per row.
-        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        module = importlib.import_module("esolangs.tools.cvnc")
         unreordered = module._tree("10101010", 0)  # noqa: SLF001
         assert unreordered.count("fu") == 8
         assert len(program) < len(unreordered)
@@ -414,7 +415,7 @@ class TestCvnc:
         nasals and the per-node fetch are paid for with no fold to show for
         them, and the node-read tree must still be the one returned.
         """
-        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        module = importlib.import_module("esolangs.tools.cvnc")
         for value in range(2**8):
             table = bin(value)[2:].zfill(8)
             assert len(boolean.cvnc(table)) <= len(module._tree(table, 0))  # noqa: SLF001
@@ -429,7 +430,7 @@ class TestCvnc:
         order declines. Substituting some other program would let it win on
         a length it never paid.
         """
-        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        module = importlib.import_module("esolangs.tools.cvnc")
         # (0, 2, 1, 3) is the smallest non-unimodal permutation.
         assert module._deque_schedule((0, 2, 1, 3)) is None  # noqa: SLF001
         assert module._stored_candidate("0" * 16, (0, 2, 1, 3)) == ""  # noqa: SLF001
@@ -459,7 +460,7 @@ class TestCvnc:
         24 at four, 252 of 720 at six) and they are the whole observable,
         so they are asserted rather than sampled.
         """
-        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        module = importlib.import_module("esolangs.tools.cvnc")
 
         served = sum(
             1
@@ -482,9 +483,9 @@ class TestCvnc:
         order, so calling ``_ordered_candidate`` on the unpermuted one and
         taking the best is a different quantity, and gives a different set.
         """
-        from esolangs.tools.boolean.helpers import best_input_order
+        from esolangs.tools.helpers import best_input_order
 
-        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        module = importlib.import_module("esolangs.tools.cvnc")
 
         tied = []
         for value in range(2**8):
@@ -509,7 +510,7 @@ class TestCvnc:
         construction rests on -- a pop from the wrong end reads another
         input's bit and the tree tests the wrong variable.
         """
-        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        module = importlib.import_module("esolangs.tools.cvnc")
 
         for n in (2, 3, 4):
             for perm in itertools.permutations(range(n)):
@@ -539,7 +540,7 @@ class TestCvnc:
         last rather than a bit the tree chose.  Without the ``cə`` the leaf
         climbs from that and prints one too many for a 1 input.
         """
-        module = importlib.import_module("esolangs.tools.boolean.cvnc")
+        module = importlib.import_module("esolangs.tools.cvnc")
         program = module._ordered("00", (0,))  # noqa: SLF001
         assert program is not None
         assert "cə" in program
@@ -969,7 +970,7 @@ class TestZtoalc:
         and a subset of the trajectory's positions is still visited in
         trajectory order, so skipping the large values changes nothing.
         """
-        from esolangs.tools.boolean.ztoalc_l import _commands, _slots
+        from esolangs.tools.ztoalc_l import _commands, _slots
 
         for table in ("0110", "1010001000011000", "0110100110010110"):
             n = len(table).bit_length() - 1
@@ -991,7 +992,7 @@ class TestZtoalc:
         used peaks superexponentially instead, which is what capped the
         generator at eight inputs.
         """
-        from esolangs.tools.boolean.ztoalc_l import (
+        from esolangs.tools.ztoalc_l import (
             _MAX_LINES,
             _slots,
             _usable_values,
@@ -1055,7 +1056,7 @@ class TestZtoalc:
         """A table needing more slots than any committed anchor is refused."""
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.ztoalc_l")
+        module = importlib.import_module("esolangs.tools.ztoalc_l")
 
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "ANCHORS", [(1, 2), (8, 6)])
@@ -1072,7 +1073,7 @@ class TestZtoalc:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.ztoalc_l")
+        module = importlib.import_module("esolangs.tools.ztoalc_l")
 
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_MAX_LINES", 8)
@@ -1088,7 +1089,7 @@ class TestZtoalc:
         seven-input constant table emits exactly eight commands, so the
         bound is a real case.
         """
-        from esolangs.tools.boolean.ztoalc_l import _commands, _slots
+        from esolangs.tools.ztoalc_l import _commands, _slots
 
         assert len(_commands("0" * 128, 7)) == 8
         assert _slots(8)[0] == 6
@@ -1105,7 +1106,7 @@ class TestZtoalc:
         neither, so they are compared whole.  ``_slots`` is exercised
         directly because no valid table lands just past the bound.
         """
-        from esolangs.tools.boolean.ztoalc_l import (
+        from esolangs.tools.ztoalc_l import (
             _MAX_LINES,
             _slots,
             _usable_values,
@@ -1131,7 +1132,7 @@ class TestZtoalc:
         lines at all -- the interpreter reads past-the-end as blank -- and
         the emitted size is the largest slot, not the trajectory's peak.
         """
-        from esolangs.tools.boolean.ztoalc_l import _commands, _slots
+        from esolangs.tools.ztoalc_l import _commands, _slots
 
         table = "0110"
         program = boolean.ztoalc_l(table)
@@ -1165,7 +1166,7 @@ class TestZtoalc:
         cost at most ``2**(n - 2)`` (256) plus a decode block capped at
         ``1 + 16 + 32``.
         """
-        from esolangs.tools.boolean.ztoalc_l import _commands
+        from esolangs.tools.ztoalc_l import _commands
 
         for n in (2, 3):
             for table_int in range(2 ** (2**n)):
@@ -1186,7 +1187,7 @@ class TestZtoalc:
         ``u[0]`` to exist, because ``t``'s elements default to 0 and
         ``u[t[s]]`` must reach an array, not an int.
         """
-        from esolangs.tools.boolean.ztoalc_l import _commands
+        from esolangs.tools.ztoalc_l import _commands
 
         cmds = _commands("01101001", 3)  # parity: chunks 0110, 1001
         assert [c for c in cmds if c.startswith("u = ")] == ["u = [16]"]
@@ -1566,7 +1567,7 @@ class TestThreeX:
 
     def test_reordering_only_shrinks(self) -> None:
         """No table comes out longer than the identity order's program."""
-        from esolangs.tools.boolean.other import _three_x_ordered
+        from esolangs.tools.other import _three_x_ordered
 
         for i in range(256):
             table = format(i, "08b")
@@ -1580,7 +1581,7 @@ class TestThreeX:
         so reordering can only shrink a program, never churn one.  A constant
         table has no override blocks at all, so no order can beat it.
         """
-        from esolangs.tools.boolean.other import _three_x_ordered
+        from esolangs.tools.other import _three_x_ordered
 
         for table in ("0" * 8, "1" * 8):
             assert boolean.three_x(table) == _three_x_ordered(table, (0, 1, 2))
@@ -1592,7 +1593,7 @@ class TestThreeX:
         in when the reads happen: every build reads its ``n`` inputs up front,
         one ``?`` each, whatever order the tree tests them in.
         """
-        from esolangs.tools.boolean.other import _three_x_ordered
+        from esolangs.tools.other import _three_x_ordered
 
         table = "00010111"
         for perm in ((0, 1, 2), (2, 1, 0), (1, 2, 0)):
@@ -1608,7 +1609,7 @@ class TestThreeX:
 
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.stack_based.three_x import run
-        from esolangs.tools.boolean.other import _three_x_ordered
+        from esolangs.tools.other import _three_x_ordered
 
         def permuted(table: str, perm: tuple[int, ...]) -> str:
             out = []
@@ -1671,7 +1672,7 @@ class TestThreeX:
 
     def test_digit_constant_encodings(self) -> None:
         """The base-3 digit seeds are the closed-form minimal programs."""
-        from esolangs.tools.boolean import other
+        from esolangs.tools import other
 
         assert other._const(0) == "333x"  # noqa: SLF001
         assert other._const(1) == "3333x3x"  # noqa: SLF001
@@ -1679,7 +1680,7 @@ class TestThreeX:
 
     def test_base_three_digits_accumulate(self) -> None:
         """Each base-3 digit past the first appends the 3v+d affine step."""
-        from esolangs.tools.boolean import other
+        from esolangs.tools import other
 
         # 12 is "110" in base 3: seed 1, then d=1, then d=0.  Each transform
         # adds exactly one `#` (the swap before the `x`), and no seed has one.
@@ -1689,7 +1690,7 @@ class TestThreeX:
 
     def test_formula_scales_logarithmically(self) -> None:
         """The closed form grows with the digit count, not the value."""
-        from esolangs.tools.boolean import other
+        from esolangs.tools import other
 
         small, large = other._const(100), other._const(1_000_000)  # noqa: SLF001
         assert len(small) < 120  # 100 is "10201": 5 digits
@@ -1781,7 +1782,7 @@ class TestLaserFuck:
 
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
-        module = importlib.import_module("esolangs.tools.boolean.laserfuck")
+        module = importlib.import_module("esolangs.tools.laserfuck")
         real = module._laserfuck_build  # noqa: SLF001
 
         for n, table, orders in (
@@ -2243,7 +2244,7 @@ class TestGeneratorEdgePaths:
 
     def test_parameterized_validation(self) -> None:
         """bio/back reject malformed truth tables."""
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
         with pytest.raises(ValueError, match="power-of-two"):
             parameterized.bio("011")
@@ -2265,7 +2266,7 @@ class TestGeneratorEdgePaths:
         ``_six_five_nav`` was retired with the arithmetic kernel; the folded
         leaf's own hop to cell 1 is a literal ``13``.
         """
-        from esolangs.tools.boolean.six_five import _six_five_const
+        from esolangs.tools.six_five import _six_five_const
 
         assert _six_five_const(5) == "5"
         assert _six_five_const(11) == "65"
@@ -2276,7 +2277,7 @@ class TestGeneratorEdgePaths:
         ``0-9`` then ``A-Z`` is every character 6-5 reads as a number, which
         caps a 7n/8n operand at 35; past that there is nothing to emit.
         """
-        from esolangs.tools.boolean.six_five import (
+        from esolangs.tools.six_five import (
             _SIX_FIVE_MAX_LABEL,
             _six_five_label,
         )
@@ -2303,7 +2304,7 @@ class TestGeneratorEdgePaths:
         directions, so every arm here is live -- including the equal case,
         which occurs 2,296 times and must emit nothing at all.
         """
-        from esolangs.tools.boolean.six_five import _six_five_move
+        from esolangs.tools.six_five import _six_five_move
 
         assert _six_five_move(2, 2) == ""
         assert _six_five_move(0, 1) == "13"
@@ -2324,7 +2325,7 @@ class TestGeneratorEdgePaths:
         spellable.  ``_six_five_label`` marks that limit, so the two are
         asserted against each other rather than against a repeated literal.
         """
-        from esolangs.tools.boolean.six_five import (
+        from esolangs.tools.six_five import (
             _SIX_FIVE_MAX_LABEL,
             _six_five_label,
         )
@@ -2543,7 +2544,7 @@ class TestAlgebraicProgrammingLanguageShapes:
         ascends, so a name appended out of sequence would silently swap
         two inputs rather than fail.
         """
-        from esolangs.tools.boolean.algebraic_programming_language import _NAMES
+        from esolangs.tools.algebraic_programming_language import _NAMES
 
         assert list(_NAMES) == sorted(_NAMES)
         assert len(set(_NAMES)) == len(_NAMES)
