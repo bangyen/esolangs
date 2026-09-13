@@ -9,6 +9,8 @@ Interpreters and boolean-circuit generators for 65 esoteric languages.
 
 [usage](docs/usage.md) is the caller's guide -- the exported functions, the
 four odd input shapes, templates, reading an answer back, the debugger.
+[architecture](docs/architecture.md) shows how the registry, generators,
+interpreters, and answer extraction connect.
 [roadmap](docs/roadmap.md) tracks live work and
 [limitations](docs/limitations.md) records contracts.
 
