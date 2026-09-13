@@ -3,29 +3,6 @@
 Only live work belongs here. Completed findings and negative results go to
 [limitations](limitations.md).
 
-## New interpreters
-
-Implement the surveyed candidates in this order:
-
-- Nopstacle: conditional on a parameterized halt-versus-loop generator.  Its
-  no-I/O model is admissible, but the construction is the work, not an
-  interpreter-only addition.
-- Crement: resurrected from the old walls.  Its deterministic self-modifying
-  machine and two-counter construction are sufficient, but admission remains
-  conditional on a derived and executed parameterized halt-versus-loop
-  generator.
-
-Alight, B-tapemark, EGL, function x(y), Packlang and
-Interprogck8 are implemented; Pinyin is rejected, and DINAC was
-implemented and then pruned (see below).  Both outcomes are
-recorded in [limitations](limitations.md) -- Pinyin's routing pinned and its
-two-input program priced at 4 characters, but its triples did not pin: the
-page's own selection rule reroutes 8 of 23 Hello, world! characters, and its
-truth machine on input 1 is unreachable under all 384 readings.
-
-The list refills by survey rather than by waiting.  APL arrived that way and
-is implemented, with its own boolean generator.
-
 ## Line
 
 Boolean generation has no resource wall: twelve inputs round-trip within the
@@ -38,7 +15,7 @@ not subtree sharing or a denser layout.
 
 ## Curation: the prune to 60
 
-60 languages now.  The prune to 65 removed the four ordinary imperative
+65 languages now.  The prune to 65 removed the four ordinary imperative
 languages in costume (DINAC, MyScript, Basicfuck, Nevermind); the
 criterion, the bands below it, and the floor are in
 [limitations](limitations.md#curation).
