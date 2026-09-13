@@ -13,7 +13,7 @@ import importlib.util
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "scripts" / "mutate_one.py"
+SCRIPT = REPO_ROOT / "scripts" / "mutate.py"
 
 
 def load_script() -> object:

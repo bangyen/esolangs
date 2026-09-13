@@ -110,7 +110,7 @@ test-bandit *args:
 # they split into two arguments -- `just mutate "Point Break"` failed with
 # `unrecognized arguments: Break`, for every one of the twelve.
 mutate language *args:
-    {{PYTHON}} scripts/mutate_one.py "{{language}}" {{args}}
+    {{PYTHON}} scripts/mutate.py interpreter "{{language}}" {{args}}
 
 # the same for one generator, named family/module after where it lives under
 # src/esolangs/tools (e.g. just mutate-gen boolean/register).  A bare name
@@ -124,7 +124,7 @@ mutate language *args:
 # cannot reach: it mutates a dependency-closed bundle, and they sit at the
 # top of the stack rather than at a leaf.
 mutate-gen module *args:
-    {{PYTHON}} scripts/mutate_generator.py {{module}} {{args}}
+    {{PYTHON}} scripts/mutate.py generator {{module}} {{args}}
 
 # re-check the A Painter Ant uniform-in-n proof (5m40s, single-threaded)
 # Not in `just test` or CI: it is longer than the whole suite, and what it

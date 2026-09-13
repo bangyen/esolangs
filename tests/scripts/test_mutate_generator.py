@@ -18,7 +18,7 @@ import importlib.util
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "scripts" / "mutate_generator.py"
+SCRIPT = REPO_ROOT / "tests" / "tools" / "mutate_generator.py"
 TOOLS_TESTS = REPO_ROOT / "tests" / "tools"
 
 
@@ -154,7 +154,7 @@ class TestAlarmBudget:
         a partial one, and it names the cause instead of leaving a
         plausible-looking percentage to be believed.
         """
-        source = (REPO_ROOT / "scripts" / "mutate_generator.py").read_text()
+        source = (REPO_ROOT / "tests" / "tools" / "mutate_generator.py").read_text()
         assert '"failed to collect stats" in mutation.stdout' in source
 
 
