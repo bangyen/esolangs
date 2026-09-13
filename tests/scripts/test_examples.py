@@ -81,7 +81,7 @@ def test_boolean_example_matches_generator(name: str) -> None:
     ``python scripts/write_examples.py boolean``. The file ends with a
     single POSIX newline.
     """
-    path = BASE_DIR / "examples" / "boolean" / f"{name}.txt"
+    path = BASE_DIR / "examples" / f"{name}.txt"
     expected = BOOLEAN_GENERATED[name].build().rstrip("\n") + "\n"
     assert path.read_text(encoding="utf-8") == expected
 
@@ -99,16 +99,15 @@ def test_the_manifest_matches_what_the_script_would_write() -> None:
     sys.path.insert(0, str(BASE_DIR / "scripts"))
     from write_examples import boolean_manifest_text
 
-    path = BASE_DIR / "examples" / "boolean" / "MANIFEST.md"
+    path = BASE_DIR / "examples" / "MANIFEST.md"
     assert path.read_text(encoding="utf-8") == boolean_manifest_text(), (
-        "examples/boolean/MANIFEST.md is stale; "
-        "run `python scripts/write_examples.py boolean`"
+        "examples/MANIFEST.md is stale; run `python scripts/write_examples.py boolean`"
     )
 
 
 def test_boolean_examples_cover_every_committed_file() -> None:
-    """Every file in examples/boolean is accounted for, and vice versa."""
-    on_disk = {p.stem for p in (BASE_DIR / "examples" / "boolean").glob("*.txt")}
+    """Every file in examples is accounted for, and vice versa."""
+    on_disk = {p.stem for p in (BASE_DIR / "examples").glob("*.txt")}
     assert on_disk == set(BOOLEAN_GENERATED) | set(HAND_WRITTEN)
 
 
@@ -129,12 +128,10 @@ def test_halt_convention_examples_halt(name: str) -> None:
     proves divergence immediately instead of after an arbitrary wait.
     """
     program = (
-        (BASE_DIR / "examples" / "boolean" / f"{name}.txt")
-        .read_text(encoding="utf-8")
-        .rstrip("\n")
+        (BASE_DIR / "examples" / f"{name}.txt").read_text(encoding="utf-8").rstrip("\n")
     )
     assert _halts(name, program, list(BOOLEAN_GENERATED[name].inputs)), (
-        f"examples/boolean/{name}.txt holds the looping branch; the committed "
+        f"examples/{name}.txt holds the looping branch; the committed "
         f"program must be the halting one or the suite hangs running it"
     )
 
@@ -246,9 +243,7 @@ def _prove_halt(vm: object) -> bool:
 def test_boolean_example(name: str) -> None:
     _module, inputs, expected, _splitlines, _kwargs = BOOLEAN_EXAMPLES[name]
     program = (
-        (BASE_DIR / "examples" / "boolean" / f"{name}.txt")
-        .read_text(encoding="utf-8")
-        .rstrip("\n")
+        (BASE_DIR / "examples" / f"{name}.txt").read_text(encoding="utf-8").rstrip("\n")
     )
     vm = make_vm(VM_LANGUAGE[_module], program, "".join(f"{line}\n" for line in inputs))
     if name == "a-painter-ant":
@@ -265,7 +260,7 @@ def test_boolean_example(name: str) -> None:
         # to be wrapped in ``pytest.raises``.  The exhausted read is a halt
         # now -- which is what ``run`` always treated it as -- so it takes
         # the common path and the branch is gone.
-        assert _prove_halt(vm), f"examples/boolean/{name}.txt does not reach its halt"
+        assert _prove_halt(vm), f"examples/{name}.txt does not reach its halt"
         # A few state-dumping languages deliberately write on the first step
         # after their halt.  That step is otherwise a no-op, so taking it for
         # every VM exactly matches each interpreter's public ``run`` behavior.

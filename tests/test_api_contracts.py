@@ -147,10 +147,10 @@ class TestRunTakesSource:
     def test_a_path_string_is_refused(self) -> None:
         """It used to execute the filename and print a null byte."""
         with pytest.raises(ProgramError, match="looks like a path"):
-            esolangs.run("brainfuck", "examples/boolean/brainfuck.txt")
+            esolangs.run("brainfuck", "examples/brainfuck.txt")
 
     def test_a_path_object_is_read(self) -> None:
-        path = ROOT / "examples" / "boolean" / "brainfuck.txt"
+        path = ROOT / "examples" / "brainfuck.txt"
         assert esolangs.run("brainfuck", path, stdin="0\n1\n", timeout=30) == "0"
 
     def test_a_real_program_is_never_mistaken_for_one(self) -> None:
@@ -611,7 +611,7 @@ class TestAMistypedPathIsNotRunAsAProgram:
         something filename-shaped would fail here rather than becoming
         unrunnable in the field.
         """
-        for path in sorted(pathlib.Path("examples/boolean").glob("*.txt")):
+        for path in sorted(pathlib.Path("examples").glob("*.txt")):
             text = path.read_text()
             assert not ("\n" not in text and text.endswith(".txt")), path.name
 

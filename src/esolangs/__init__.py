@@ -979,7 +979,7 @@ def describe(language: str) -> LanguageInfo:
     :func:`~esolangs.vm.machine_traits`.
 
     ``examples`` lists the committed programs for the language, which
-    ship with the package; ``examples/boolean/MANIFEST.md`` beside them
+    ship with the package; ``examples/MANIFEST.md`` beside them
     says what each one computes.
     """
     name = resolve(language)
@@ -990,9 +990,9 @@ def describe(language: str) -> LanguageInfo:
     # Absolute.  These were relative to the repository root, which made the
     # recipe this package advertises -- ``run(lang, Path(describe(lang)
     # ["examples"][0]))`` -- work from one directory and nowhere else: a
-    # ``chdir`` away it is ``cannot read examples/boolean/brainfuck.txt``,
+    # ``chdir`` away it is ``cannot read examples/brainfuck.txt``,
     # and for anyone who pip-installed there is no such directory at all.
-    examples = sorted(str(p) for p in _EXAMPLES.glob(f"*/{stem}.txt"))
+    examples = sorted(str(p) for p in _EXAMPLES.glob(f"{stem}.txt"))
     traits = machine_traits(name)
     parameterized = lang.id in parameterized_ids()
     example = _example_for(lang.id)

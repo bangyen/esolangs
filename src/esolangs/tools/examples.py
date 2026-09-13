@@ -1,6 +1,6 @@
 """The committed boolean example programs, as data.
 
-``examples/boolean`` holds one program per language whose boolean generator
+``examples`` holds one program per language whose boolean generator
 can be verified end to end.  This module is the single source of truth for
 those files: each
 :class:`BooleanExample` records the generator, the truth table, and the input
@@ -74,7 +74,7 @@ AND2 = "0001"
 
 @dataclass(frozen=True)
 class BooleanExample:
-    """How one committed ``examples/boolean`` program is built and run.
+    """How one committed ``examples`` program is built and run.
 
     ``generator`` is called with ``table`` to produce the program (or, when
     ``fill`` is set, the template that ``fill`` instantiates with ``bits``).
@@ -885,7 +885,7 @@ _register()
 # hand-written one: it read its inputs at runtime, the construction the old,
 # removed generator used, and was kept as the only committed record of that
 # reading model.  Minifuck's shipped generator is parameterized and embeds
-# its inputs, so ``examples/boolean/minifuck.txt`` is now generated like
+# its inputs, so ``examples/minifuck.txt`` is now generated like
 # every other file and the reading model survives as prose in
 # ``the relevant generator tests`` rather than as a program nothing produces.
 #

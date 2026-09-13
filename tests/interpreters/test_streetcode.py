@@ -387,7 +387,7 @@ class TestStreetcodeAmbiguousTurns:
         root = Path(__file__).resolve().parents[2]
         for path in (
             "tests/fixtures/streetcode_hello.txt",
-            "examples/boolean/streetcode.txt",
+            "examples/streetcode.txt",
         ):
             code = (root / path).read_text().split("\n")
             if code and code[-1] == "":
@@ -427,7 +427,7 @@ class TestStreetcodeAmbiguousTurns:
         root = Path(__file__).resolve().parents[2]
         for path, expected in (
             ("tests/fixtures/streetcode_hello.txt", 384),
-            ("examples/boolean/streetcode.txt", 268),
+            ("examples/streetcode.txt", 268),
         ):
             code = (root / path).read_text().split("\n")
             if code and code[-1] == "":
@@ -1323,7 +1323,7 @@ class TestStreetcodeStreetWidth:
 
     @pytest.mark.parametrize(
         "path",
-        ["tests/fixtures/streetcode_hello.txt", "examples/boolean/streetcode.txt"],
+        ["tests/fixtures/streetcode_hello.txt", "examples/streetcode.txt"],
     )
     def test_shipped_examples_are_accepted(self, path: str) -> None:
         """The repo's own programs must survive the check."""
@@ -1805,7 +1805,7 @@ class TestStreetcodeDriveStates:
 
     @pytest.mark.parametrize(
         "path",
-        ["tests/fixtures/streetcode_hello.txt", "examples/boolean/streetcode.txt"],
+        ["tests/fixtures/streetcode_hello.txt", "examples/streetcode.txt"],
     )
     def test_mouth_depth_bound_does_not_change_the_driving(self, path: str) -> None:
         """``_MOUTH_MAX_DEPTH`` is pinned by behaviour, not by its scans.
@@ -2000,7 +2000,7 @@ class TestStreetcodeGraphBackedStepping:
 
     @pytest.mark.parametrize(
         "path",
-        ["tests/fixtures/streetcode_hello.txt", "examples/boolean/streetcode.txt"],
+        ["tests/fixtures/streetcode_hello.txt", "examples/streetcode.txt"],
     )
     def test_the_shipped_examples_agree(self, path: str) -> None:
         root = Path(__file__).resolve().parents[2]
