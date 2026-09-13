@@ -657,7 +657,7 @@ def run(
         io_obj = ScriptedIO(stdin)
         _run(run_fn, program, io_obj, timeout)
         return io_obj.getvalue()
-    program = check_program(name, program, stdin)
+    program = check_program(name, cast(str | os.PathLike[str], program), stdin)
     run_fn = importlib.import_module("esolangs.interpreters." + module).run
     io_obj = ScriptedIO(stdin)
     program_args: str | list[str] = program.splitlines() if split else program
@@ -836,7 +836,7 @@ def _warn_about_surplus(name: str, io_obj: ScriptedIO) -> None:
 
 def _run(
     run_fn: Callable[..., Any],
-    program: str | list[str],
+    program: Any,
     io_obj: ScriptedIO,
     timeout: float | None,
 ) -> None:
@@ -853,7 +853,7 @@ def _run(
 
 def _run_timed_signal(
     run_fn: Callable[..., Any],
-    program: str | list[str],
+    program: Any,
     io_obj: ScriptedIO,
     timeout: float,
 ) -> None:
