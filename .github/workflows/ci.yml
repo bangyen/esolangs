@@ -69,7 +69,7 @@ jobs:
     # Re-derives the ZTOALC anchor table, checks its 395-capacity claim, and
     # diffs the anchors against the committed file.
     - name: Check ZTOALC derivations
-      run: uv run python scripts/make_ztoalc_table.py --check
+      run: uv run python scripts/generate.py ztoalc --check
 
   test:
     runs-on: ubuntu-latest
@@ -169,10 +169,10 @@ jobs:
 
     - name: Check generated documentation
       run: |
-        uv run python scripts/make_languages_doc.py
+        uv run python scripts/generate.py docs
         if ! git diff --exit-code README.md docs/usage.md; then
           echo "Generated documentation is out of date. Run:"
-          echo "  uv run python scripts/make_languages_doc.py"
+          echo "  uv run python scripts/generate.py docs"
           exit 1
         fi
 

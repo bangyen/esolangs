@@ -13,7 +13,7 @@ import esolangs
 from esolangs.registry import LANGUAGES, RUNNERS, wiki_url
 from esolangs.tools import BOOLEAN
 
-ROOT = pathlib.Path(__file__).parents[1]
+ROOT = pathlib.Path(__file__).parents[3]
 # Extra source files that are support modules, not implementations: they are
 # globbed alongside the languages but have no display name (an unknown
 # implementation file still fails loudly).
@@ -167,7 +167,7 @@ def render_examples_section() -> str:
             "Ready-to-run programs are committed under [`examples/`](examples/):",
             f"`examples/` holds a truth-table program for each of the {len(BOOLEAN)}",
             "languages with a boolean generator.  It regenerates via",
-            "`scripts/write_examples.py`.",
+            "`scripts/generate.py examples`.",
         ]
     )
 
@@ -332,8 +332,10 @@ def update_readme() -> None:
     path.write_text(text)
 
 
-if __name__ == "__main__":
+def main() -> int:
+    """Write every generated documentation section."""
     update_readme()
     print("updated the generated sections of README.md")
     update_usage()
     print("updated the generated tables of docs/usage.md")
+    return 0
