@@ -97,7 +97,7 @@ queue and the rest are commands, so its wrapper keeps that seed on its own
 row and folds only what follows.  :data:`MULTILINE` names the languages
 whose wrappers handle their own newlines that way.
 
-Most wrappers only decide *where* the newlines go.  Two also decide where
+Most wrappers only decide *where* the newlines go.  Two layouts also decide where
 the tokens sit within a line, each following the shape its language's
 programs actually have.  :func:`_bio` indents a nested BIO program two
 spaces per loop level, since the boolean generator nests one loop per
@@ -114,7 +114,9 @@ Polynomial gets its own wrapper for a related reason: its one-character
 tokens are the ``+`` and ``-`` between terms, and :func:`_polynomial` glues
 each to the term it signs so no line is just a sign.  That wrapper then puts
 one term to a line rather than packing them to the width, for the reason its
-docstring gives.
+docstring gives.  SLOW ACV MAMMALIAN uses the same grid layout with a fixed
+four-character cell: its long ``SEED`` runs form the visible structure, while
+the other command words span whole cells.
 
 :data:`WRAPPERS` maps a language id to the wrapper it needs; a language
 absent from it is not wrapped.  :func:`wrap_program` is the entry point the
@@ -192,7 +194,11 @@ def wrap_grid(program: str, width: int) -> str:
     tokens = program.split()
     if not tokens:
         return program
-    cell = _cell_width(tokens)
+    return _wrap_grid(tokens, width, _cell_width(tokens))
+
+
+def _wrap_grid(tokens: list[str], width: int, cell: int) -> str:
+    """Right-align ``tokens`` on a lattice whose base cell is ``cell``."""
     # A row of k cells is k cells plus the k-1 single spaces between them.
     per_row = max(1, (width + 1) // (cell + 1))
     lines: list[str] = []
@@ -212,6 +218,20 @@ def wrap_grid(program: str, width: int) -> str:
     if row:  # pragma: no branch - never empty; see above
         lines.append(" ".join(row))
     return "\n".join(lines)
+
+
+def _mammalian(program: str, width: int) -> str:
+    """Wrap Mammalian on four-character cells, one cell per ``SEED``.
+
+    ``SEED`` is the construction's unit: it forms nearly all long runs in a
+    generated program.  The other command words span two or three cells, so
+    every following ``SEED`` returns to the same lattice without padding all
+    cells to the longest word.
+    """
+    tokens = program.split()
+    if not tokens:
+        return program
+    return _wrap_grid(tokens, width, 4)
 
 
 def _cell_width(tokens: list[str]) -> int:
@@ -850,10 +870,9 @@ WRAPPERS = {
     # 123 is single-character commands throughout -- its trailing ``1`` is a
     # terminator, not a structural line -- so any position is a legal break.
     "one_two_three": wrap_chars,
-    # SLOW ACV MAMMALIAN's commands are whole words (``SEED``, ``SPRINT``,
-    # ``DIGEST``), so it wraps on whitespace like the numeric languages;
-    # breaking by character count would split a word and change the program.
-    "slow_acv_mammalian": wrap_space_delimited,
+    # SLOW ACV MAMMALIAN's ``SEED`` runs are its visible unit, so four-character
+    # cells align them while its longer command words span whole cells.
+    "slow_acv_mammalian": _mammalian,
     # Space-delimited too, and the space is the only safe break: Lamfunc's
     # ``vs``/``vg``/``0b1`` and RAM0's operands (``L C 19``) are multi-
     # character tokens that a character wrap splits.  RAM0's numbers are

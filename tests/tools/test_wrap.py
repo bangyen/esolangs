@@ -33,6 +33,7 @@ from esolangs.tools.wrap import (
     _bio,
     _bitdeque,
     _cell_width,
+    _mammalian,
     _polynomial,
     _six_five,
     _span,
@@ -253,7 +254,7 @@ def _is_grid(name: str) -> bool:
     single one the other space-delimited wrappers leave.  Undoing that wrap
     means collapsing whitespace, not swapping one character for another.
     """
-    return WRAPPERS[LANGUAGES[name].id] is wrap_grid
+    return WRAPPERS[LANGUAGES[name].id] in (wrap_grid, _mammalian)
 
 
 def _run(name: str, program: str) -> str:
@@ -984,6 +985,18 @@ def test_wrap_grid_never_straddles_a_row_boundary() -> None:
     assert wrapped.split("\n") == ["11 22", " 1234567 33"]
     # The token stayed whole -- that is the guarantee being made here.
     assert "1234567" in wrapped.split("\n")[1]
+
+
+def test_mammalian_uses_seed_sized_cells() -> None:
+    """SEED is one cell; every longer command spans whole cells."""
+    wrapped = _mammalian(
+        "SEED SEED DIGEST ACCEPT LEAPFROG PRONOUNCE CONFLAGRATE SEED", 39
+    )
+    assert wrapped.split("\n") == [
+        "SEED SEED    DIGEST    ACCEPT  LEAPFROG",
+        "PRONOUNCE    CONFLAGRATE SEED",
+    ]
+    assert [row.rfind("SEED") % 5 for row in wrapped.split("\n")] == [0, 0]
 
 
 def test_wrap_chars_breaks_anywhere() -> None:
