@@ -62,6 +62,7 @@ from dataclasses import dataclass, replace
 
 from esolangs.registry import Generator, canonical_id
 from esolangs.tools.a_painter_ant import _instantiate_apa
+from esolangs.tools.crement import instantiate_crement
 from esolangs.tools.helpers import instantiate
 from esolangs.tools.nopstacle import instantiate_nopstacle
 from esolangs.tools.parameterized import _instantiate_arrowqueue
@@ -573,6 +574,11 @@ def _fill_nopstacle(template: str, bits: list[int]) -> str:
     return instantiate_nopstacle(template, bits)
 
 
+def _fill_crement(template: str, bits: list[int]) -> str:
+    """Specialize the prototype's table for one embedded input row."""
+    return instantiate_crement(template, bits)
+
+
 # Example file stem -> how that example is built and run.  Stems match the
 # language's display name lowercased with spaces as dashes.
 BOOLEAN_EXAMPLES: dict[str, BooleanExample] = {}
@@ -867,6 +873,18 @@ def _register() -> None:
             note=(
                 "Nopstacle answers by termination: a local repeated state "
                 "halts for 0 and crossing repeated copies forever is 1"
+            ),
+        ),
+        "crement": _embedded(
+            b.crement,
+            "other.crement",
+            _fill_crement,
+            answer_mode="termination",
+            answer_values=("halts", "diverges"),
+            expected="",
+            note=(
+                "Crement answers by termination: a false jump halts for 0 "
+                "and a positive self-jump diverges for 1"
             ),
         ),
     }

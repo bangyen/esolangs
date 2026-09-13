@@ -5,18 +5,14 @@ from itertools import product
 import pytest
 
 from esolangs.exceptions import TruthTableError
+from esolangs.interpreters.other.crement import _Machine
 from esolangs.tools.crement import crement, instantiate_crement
+from esolangs.vm import run_until_halt_or_cycle
 
 
 def _result(program: str) -> str:
-    """Execute the generated one-instruction Crement program."""
-    _opcode, address, data = program.split()
-    pc = 0
-    seen: set[int] = set()
-    while pc == 0 and pc not in seen:
-        seen.add(pc)
-        pc = int(address) if int(data) > 0 else pc + 1
-    return "1" if pc in seen else "0"
+    """Return the termination answer from the registered interpreter."""
+    return "0" if run_until_halt_or_cycle(_Machine(program)) else "1"
 
 
 @pytest.mark.parametrize(
