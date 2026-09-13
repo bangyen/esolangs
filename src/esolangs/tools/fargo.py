@@ -84,7 +84,53 @@ def _term(mask: int, n: int) -> str:
     return "& " * (len(reads) - 1) + " ".join(reads)
 
 
-def fargo(truth_table: str) -> str:
+def _name(index: int) -> str:
+    """Return a short lowercase Fargo definition name."""
+    out = ""
+    while True:
+        index, digit = divmod(index, 26)
+        out = chr(ord("a") + digit) + out
+        if not index:
+            return out
+        index -= 1
+
+
+def _factored(masks: list[int], constant: int, n: int) -> str:
+    """Return the ANF as short nullary definitions and one output call."""
+    lines: list[str] = []
+
+    def define(expression: str) -> str:
+        name = _name(len(lines))
+        lines.append(f"{name} {expression}")
+        return name
+
+    used = {i for mask in masks for i in range(n) if mask >> i & 1}
+    reads = {i: define(f"@ {i:b}") for i in sorted(used)}
+
+    def combine(parts: list[str], op: str) -> str:
+        while len(parts) > 1:
+            joined: list[str] = []
+            for i in range(0, len(parts) - 1, 2):
+                joined.append(define(f"{op} {parts[i]} {parts[i + 1]}"))
+            if len(parts) % 2:
+                joined.append(parts[-1])
+            parts = joined
+        return parts[0]
+
+    terms = [
+        combine(
+            [reads[i] for i in range(n) if mask >> i & 1],
+            "&",
+        )
+        for mask in masks
+    ]
+    if constant:
+        terms.insert(0, "1")
+    result = combine(terms, "^")
+    return "\n".join([*lines, f"% 0 {result}", "$", ""])
+
+
+def fargo(truth_table: str, width: int | None = None) -> str:
     """Build a Fargo program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -100,7 +146,8 @@ def fargo(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     coeffs = _anf_coefficients(truth_table)
-    terms = [_term(mask, n) for mask in range(1 << n) if coeffs[mask] and mask]
+    masks = [mask for mask in range(1 << n) if coeffs[mask] and mask]
+    terms = [_term(mask, n) for mask in masks]
     constant = coeffs[0]
     if not terms:
         return f"% 0 {constant}\n$\n"
@@ -109,4 +156,7 @@ def fargo(truth_table: str) -> str:
     if constant:
         terms.insert(0, "1")
     expression = "^ " * (len(terms) - 1) + " ".join(terms)
-    return f"% 0 {expression}\n$\n"
+    compact = f"% 0 {expression}\n$\n"
+    if width is None or max(map(len, compact.splitlines())) <= width:
+        return compact
+    return _factored(masks, constant, n)

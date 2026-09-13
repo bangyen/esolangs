@@ -34,7 +34,6 @@ from esolangs.tools.wrap import (
     _bitdeque,
     _cell_width,
     _polynomial,
-    _qoibl,
     _six_five,
     _span,
     _taglate,
@@ -103,11 +102,39 @@ UNWRAPPABLE = {
     "nocomment": "a newline is an unrecognized command, a load error",
     "grapheme": "every character must be A-Z, so a newline is a load error",
     "cvnc": "the source must syllabify and a newline is in no syllable",
-    "fargo": "its newlines already separate statements",
-    "minsky_swap": "its second line is absolute offsets into its first",
+    "fargo": "each physical line is one command; expressions have no continuation",
+    "minsky_swap": "only line 1 is code; line 2 gives its numeric jump distances",
     "alight": "a command is a word walked cell by cell; a row end cuts it",
     "super_snusp": "a row is a grid row; a break moves code, it does not reflow",
     "algebraic_programming_language": "a line with '=' defines, one without runs",
+    "arrowqueue": "the queue and decision tree occupy fixed grid coordinates",
+    "back": "the beam path and embedded input occupy fixed grid coordinates",
+    "brainif": "each line is one instruction and goto targets are line numbers",
+    "collatz_multiverse": "each line is one complete register assignment",
+    "container": "each line declares a container or one of its rules",
+    "inject": "blocks and executable commands are delimited by source lines",
+    "interprogck8": "each line is an instruction and relative jumps count lines",
+    "ztoalc_l": "line numbers are the program's Collatz trajectory slots",
+}
+
+# The narrower claim needed by the registry audit: these generators currently
+# take no width and cannot be safely reflowed afterwards.  Keep it separate
+# from UNWRAPPABLE, which also contains self-laying grids such as Alight.  A
+# stale exception must fail below when its generator learns to honour width.
+WIDTH_EXCEPTIONS = {
+    name: UNWRAPPABLE[name]
+    for name in (
+        "arrowqueue",
+        "back",
+        "collatz_multiverse",
+        "container",
+        "cvnc",
+        "grapheme",
+        "inject",
+        "interprogck8",
+        "minsky_swap",
+        "nocomment",
+    )
 }
 
 # These are 2D too, and wrap_program must not touch them either -- but each
@@ -148,6 +175,36 @@ WRAPPED = sorted(
     and lang.id in WRAPPERS
     and lang.id in EXAMPLE_BY_ID
 )
+
+
+def test_every_boolean_generator_has_a_width_policy() -> None:
+    """Every generator reflows, lays itself out, or records why it cannot.
+
+    Derived from the registry so a new generator enters this audit without a
+    hand-written catalogue update.  ``UNWRAPPABLE`` may overlap self-layout,
+    but ``WIDTH_EXCEPTIONS`` may not: Alight cannot be reflowed after generation
+    but can build a different grid when it receives ``width`` itself.
+    """
+    boolean_ids = {
+        language.id for language in LANGUAGES.values() if language.boolean is not None
+    }
+    missing = {
+        language.id
+        for language in LANGUAGES.values()
+        if language.boolean is not None
+        and language.id not in WRAPPERS
+        and not takes_width(language.boolean)
+        and language.id not in WIDTH_EXCEPTIONS
+    }
+    assert missing == set()
+    assert set(UNWRAPPABLE) <= boolean_ids
+    assert set(WIDTH_EXCEPTIONS) <= set(UNWRAPPABLE)
+    assert all(reason.strip() for reason in UNWRAPPABLE.values())
+    assert all(
+        not takes_width(language.boolean)
+        for language in LANGUAGES.values()
+        if language.id in WIDTH_EXCEPTIONS and language.boolean is not None
+    )
 
 
 def _table(arity: int) -> str:
@@ -263,11 +320,10 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
     if WRAPPERS[LANGUAGES[name].id] is _bio:
         assert "".join(wrapped.split()) == "".join(plain.split())
         return
-    # Qoibl is multi-line with no structural first line: every line is a
-    # statement and every one folds, so what must survive is the token
-    # sequence across the whole program, exactly as for the grid wrappers.
-    # Its newlines replace spaces, so splitting on whitespace recovers it.
-    if WRAPPERS[LANGUAGES[name].id] is _qoibl:
+    # These are multi-line with no structural first line. Their parsers see
+    # whitespace-delimited tokens across the whole source, so flattening and
+    # repacking may move every original line break.
+    if LANGUAGES[name].id in {"qoibl", "forbin", "packlang"}:
         assert wrapped.split() == plain.split()
         return
     # Taglate's first line is a structural queue seed the wrapper must leave

@@ -6,9 +6,10 @@ from esolangs.tools.helpers import _validate_truth_table
 __all__ = ["crement", "instantiate_crement"]
 
 _PREFIX = "* Crement Boolean prototype"
+_WIDTH = "* width "
 
 
-def crement(truth_table: str) -> str:
+def crement(truth_table: str, width: int | None = None) -> str:
     """Build a template specialized by :func:`instantiate_crement`.
 
     Crement has no input instruction, so the template records the table and
@@ -17,15 +18,19 @@ def crement(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     slots = "".join(f"{{X{i}}}" for i in range(n))
-    return f"{_PREFIX}\n* {truth_table}\n* {slots}"
+    template = f"{_PREFIX}\n* {truth_table}\n* {slots}"
+    return template if width is None else f"{template}\n{_WIDTH}{width}"
 
 
 def instantiate_crement(template: str, bits: list[int]) -> str:
     """Specialize a Crement prototype template for ``bits``."""
     lines = template.splitlines()
-    if len(lines) != 3 or lines[0] != _PREFIX:
+    if len(lines) not in (3, 4) or lines[0] != _PREFIX:
         raise ValueError("not a Crement Boolean prototype template")
-    table_line, slots_line = lines[1:]
+    table_line, slots_line = lines[1:3]
+    constrained = len(lines) == 4 and lines[3].startswith(_WIDTH)
+    if len(lines) == 4 and not constrained:
+        raise ValueError("malformed Crement width")
     if not table_line.startswith("* ") or not slots_line.startswith("* "):
         raise ValueError("malformed Crement Boolean prototype template")
     truth_table = table_line[2:]
@@ -36,4 +41,8 @@ def instantiate_crement(template: str, bits: list[int]) -> str:
         raise TruthTableError(f"expected {n} Boolean input bits, got {bits!r}")
 
     row = sum(bit << (n - 1 - index) for index, bit in enumerate(bits))
-    return "+J 0 1" if truth_table[row] == "1" else "+J 0 0"
+    instruction = "+J 0 1" if truth_table[row] == "1" else "+J 0 0"
+    if constrained:
+        return instruction
+    encoded_bits = "".join(map(str, bits))
+    return f"{instruction}\n* table {truth_table}\n* bits {encoded_bits}"

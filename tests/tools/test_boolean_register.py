@@ -486,10 +486,7 @@ class TestDig:
     def test_a_constant_table_is_one_line(self) -> None:
         """Nothing to branch on, so the whole grid is a single leaf."""
         program = boolean.dig("1111")
-        assert [line for line in program.split("\n") if line.strip()] == [
-            "'",
-            ">$5~~1:@",
-        ]
+        assert program.split("\n") == ["'", ">$5~~1:@"]
 
     def test_constant_subtrees_prune_their_rows(self) -> None:
         """A folded node's descendants are never written.
@@ -505,6 +502,7 @@ class TestDig:
         assert sum(1 for r in folded.split("\n") if r.strip()) < sum(
             1 for r in full.split("\n") if r.strip()
         )
+        assert all(row.strip() for row in folded.splitlines())
 
     def test_a_long_read_run_chains_its_windows(self) -> None:
         """Past nine cells the ``$`` runs chain rather than growing a digit.

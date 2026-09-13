@@ -70,23 +70,32 @@ class _Builder:
         self.node(table[half:], depth - 1, x + 12, y + gap)
 
     def render(self) -> str:
-        """Render the occupied rectangle."""
-        min_x = min(x for x, _ in self.cells)
-        max_x = max(x for x, _ in self.cells)
-        min_y = min(y for _, y in self.cells)
-        max_y = max(y for _, y in self.cells)
+        """Render after removing wholly blank rows and columns."""
+        xs = sorted({x for x, _ in self.cells})
+        ys = sorted({y for _, y in self.cells})
         return "\n".join(
-            "".join(
-                self.cells.get((x, y), " ") for x in range(min_x, max_x + 1)
-            ).rstrip()
-            for y in range(min_y, max_y + 1)
+            "".join(self.cells.get((x, y), " ") for x in xs).rstrip() for y in ys
         )
 
 
-def b_tapemark(truth_table: str) -> str:
+def _reflect(source: str) -> str:
+    """Reflect a program horizontally, including directional symbols."""
+    symbols = str.maketrans({">": "<", "<": ">", "/": "\\", "\\": "/"})
+    rows = source.splitlines()
+    width = max(map(len, rows))
+    return "\n".join(row.ljust(width)[::-1].translate(symbols).rstrip() for row in rows)
+
+
+def b_tapemark(truth_table: str, width: int | None = None) -> str:
     """Build a B-tapemark program computing ``truth_table``."""
     depth = _validate_truth_table(truth_table)
     builder = _Builder()
     builder.put(-1, 0, ">")
     builder.node(truth_table, depth, 0, 0)
-    return builder.render()
+    program = builder.render()
+    if width is None:
+        return program
+    # Digits only print while travelling horizontally, so a quarter-turn is
+    # not equivalent. Reflection preserves the tree's intrinsic width while
+    # making a supplied layout distinct from the raw one.
+    return _reflect(program)

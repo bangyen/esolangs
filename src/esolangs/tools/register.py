@@ -763,9 +763,11 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
         raise AssertionError("the start marker's cell is taken")
     cells[0, 0] = "'"
     span = max(col for _, col in cells) + 1
-    grid = [[" "] * span for _ in range(total)]
+    rows = sorted({row for row, _ in cells})
+    grid = [[" "] * span for _ in rows]
+    row_index = {row: i for i, row in enumerate(rows)}
     for (row, col), char in cells.items():
-        grid[row][col] = char
+        grid[row_index[row]][col] = char
     # Rows are painted into a rectangle of blanks, but the mole never walks
     # past the last command on a row, so the trailing filler is inert and is
     # trimmed rather than committed.

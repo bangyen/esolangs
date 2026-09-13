@@ -888,6 +888,11 @@ WRAPPERS = {
     # One statement a line, each of space-separated tokens, and a newline
     # between two tokens is just whitespace -- so each line folds on its own.
     "qoibl": _qoibl,
+    # Both parsers treat every newline as ordinary whitespace.  Flattening
+    # and repacking their existing space-delimited tokens preserves even the
+    # punctuation attached to identifiers and braces.
+    "forbin": wrap_space_delimited,
+    "packlang": wrap_space_delimited,
 }
 
 
@@ -901,7 +906,9 @@ WRAPPERS = {
 # but every one is a statement, so its wrapper folds each separately rather
 # than reflowing the program as one stream.  The language would not notice
 # the difference -- a newline is whitespace to it -- but the reader would.
-MULTILINE = frozenset({"taglate", "pct_squared_minus_one", "qoibl"})
+MULTILINE = frozenset(
+    {"taglate", "pct_squared_minus_one", "qoibl", "forbin", "packlang"}
+)
 
 
 def takes_width(fn: Callable[..., str]) -> bool:

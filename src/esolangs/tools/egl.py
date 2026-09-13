@@ -3,7 +3,7 @@
 from esolangs.tools.helpers import _validate_truth_table
 
 
-def egl(truth_table: str) -> str:
+def egl(truth_table: str, width: int | None = None) -> str:
     """Build an EGL program computing ``truth_table``.
 
     Each input becomes adjacent ``not-bit`` and ``bit`` one-hot cells.  A
@@ -29,4 +29,12 @@ def egl(truth_table: str) -> str:
         one = guard(3 * depth + 2, tree(table[half:], depth + 1))
         return zero + one
 
-    return f"{origin + 1},1:" + reads + tree(truth_table, 0)
+    header = f"{origin + 1},1:"
+    body = reads + tree(truth_table, 0)
+    if width is None:
+        return header + body
+    room = max(1, width)
+    first = max(0, room - len(header))
+    rows = [header + body[:first]]
+    rows.extend(body[start : start + room] for start in range(first, len(body), room))
+    return "\n".join(rows)
