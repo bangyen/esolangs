@@ -1382,7 +1382,7 @@ class TestParameterizedArrowQueue:
         the down-entry would silently turn every constant-``1`` table into
         a halt -- reporting ``0`` for every entry.
 
-        See ``docs/generators/arrowqueue_generator.md`` (lemmas L2/L2'/L4).
+        See ``the relevant generator tests`` (lemmas L2/L2'/L4).
         """
         from esolangs.interpreters.grid_based.arrowqueue import _Machine
         from esolangs.tools.boolean.parameterized import _TREE_1
@@ -2320,7 +2320,7 @@ class TestParameterizedOneTwoThree:
     Like ArrowQueue the answer is the termination convention -- halt for a
     ``0`` entry, loop for a ``1`` -- decided by state-cycle detection.
 
-    ``docs/walls.md`` had this route capped at the monotone tables.  That
+    ``the limitations ledger`` had this route capped at the monotone tables.  That
     ceiling was the displacement-neutral ``12``/``21`` setter's, not the
     language's: the +-1 fill used here breaks position lockstep, so XOR and
     NAND come out too and all sixteen two-input tables are covered.

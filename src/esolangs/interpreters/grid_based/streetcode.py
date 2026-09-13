@@ -4,7 +4,7 @@ A car drives a 2D network of two-way, two-character-wide streets, running
 the instruction under it at every cell; memory is an unbounded list of
 signed integer cells under an unsigned cell pointer (CP).
 
-``docs/streetcode.md`` is the spec of record for this interpreter and is
+``the implementation`` is the spec of record for this interpreter and is
 not repeated here: it carries the language summary, and -- since the
 `wiki page <https://esolangs.org/wiki/Streetcode>`_ never spells out the
 geometry behind "drive on the right-hand side" or its
@@ -126,7 +126,7 @@ _Junction = Literal[0, 3, 4]
 
 # Which way a merge latch turns, relative to the heading it was taken
 # under.  These two are the whole space: straight and reverse are
-# unreachable, not merely unobserved -- see ``docs/streetcode.md``.
+# unreachable, not merely unobserved -- see ``the implementation``.
 _Turn = Literal["left", "right"]
 
 
@@ -159,7 +159,7 @@ class _Merge(NamedTuple):
     The latch holds *which way it turns* rather than the heading it turns
     to, so a merge's two direction fields are different types and cannot be
     built swapped; :attr:`new_heading` recovers the destination.  See
-    ``docs/streetcode.md`` for why both were once a :data:`_Heading`.
+    ``the implementation`` for why both were once a :data:`_Heading`.
 
     ``None`` (rather than an instance) means no merge is in progress.
     See ``_Machine.__init__``.
@@ -335,7 +335,7 @@ _MOUTH_MAX_DIST = 3
 # 7 is that floor plus slack for mouths wider than anything drawn so far.
 # Raising it is not conservatively safer: the bound is two-sided, since too
 # high a scan runs past the box it is reading and pairs up two ``+`` that
-# bound nothing.  ``docs/streetcode.md`` has the worked example.
+# bound nothing.  ``the implementation`` has the worked example.
 _MOUTH_MAX_DEPTH = 7
 
 
@@ -1280,7 +1280,7 @@ def _choose_heading(
     right-hand lane of the road it is turning onto, and after turning
     keeps driving straight until that new road's right-hand wall
     actually picks up, before resuming ordinary wall-following (see
-    :class:`_Merge`, :class:`_Latches` and ``docs/streetcode.md``).
+    :class:`_Merge`, :class:`_Latches` and ``the implementation``).
     Both latches are abandoned -- falling back to plain wall-following
     -- the moment anything about the approach stops matching what was
     latched: a heading change (e.g. a 'U') during the approach, or a
@@ -1368,7 +1368,7 @@ class _Machine:
 
     ``step()`` executes the cell under the car, then drives it one cell
     further using the wall-following/junction rules described in
-    ``docs/streetcode.md``; ``halted`` is true once ``;`` runs or
+    ``the implementation``; ``halted`` is true once ``;`` runs or
     the car reaches a true dead end with nowhere left to go.  The VM and the
     state-cycle hang detector expose this object.
 

@@ -18,7 +18,7 @@ from esolangs.tools import boolean
 class TestParameterizedPctSquaredMinusOne:
     """Input-by-substitution boolean generator for %^2^-1.
 
-    The wall proved for %^2^-1 (``docs/proofs.md``) shows no program
+    The wall proved for %^2^-1 (``the relevant tests``) shows no program
     that *reads* its inputs computes XOR or AND at any length.  That bounds
     the reading model, not the language: these programs embed their bits
     instead, so the read that erases the accumulator never happens, and

@@ -6,7 +6,7 @@ body:
     id: language
     attributes:
       label: Language
-      description: Which esolang, as named in docs/languages.md.
+      description: Which esolang, as named by `esolangs list`.
       placeholder: brainfuck
     validations:
       required: true
