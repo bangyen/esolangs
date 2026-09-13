@@ -4,6 +4,7 @@ from esolangs.tools.algebraic_programming_language import algebraic_programming_
 from esolangs.tools.alight import alight
 from esolangs.tools.circuit_diagram import circuit_diagram
 from esolangs.tools.cvnc import cvnc
+from esolangs.tools.egl import egl
 from esolangs.tools.fargo import fargo
 from esolangs.tools.inject import inject
 from esolangs.tools.interprogck8 import interprogck8
@@ -99,6 +100,7 @@ __all__ = [
     "dig",
     "dimensional",
     "dimensional_tree",
+    "egl",
     "eval",
     "factor",
     "fargo",

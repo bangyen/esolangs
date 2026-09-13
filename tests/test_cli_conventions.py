@@ -3287,7 +3287,7 @@ class TestCheckStdinSaysWhatItCanActuallyCheck:
         }
         assert [n for n, s in shapes.items() if s == "one_line"] == ["Clockwise"]
         assert [n for n, s in shapes.items() if s == "row_index"] == ["Fargo"]
-        assert sum(s == "line_per_bit" for s in shapes.values()) == 57
+        assert sum(s == "line_per_bit" for s in shapes.values()) == 58
 
     def test_a_one_line_language_does_catch_a_stray_line(self) -> None:
         """Which is why the help can still claim a shape check at all."""
@@ -3312,13 +3312,13 @@ class TestExamplesShipWithThePackage:
     """
 
     def test_every_language_reports_one(self) -> None:
-        """Sixty-five languages, sixty-five committed programs."""
+        """Every implemented language reports a committed program."""
         populated = [
             name
             for name in esolangs.list_languages()
             if esolangs.describe(name)["examples"]
         ]
-        assert len(populated) == 60
+        assert len(populated) == 61
 
     def test_every_reported_path_exists(self) -> None:
         """A path reported and absent is worse than none reported."""
