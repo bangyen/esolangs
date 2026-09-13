@@ -6,6 +6,7 @@ import pytest
 
 import esolangs
 from esolangs.exceptions import UnknownLanguageError
+from tests.samples import SAMPLES
 
 
 class TestBreakpoints:
@@ -217,6 +218,30 @@ class TestARunFinishesTheDump:
             for name in esolangs.list_languages()
             if esolangs.describe(name)["dumps_on_the_post_halt_step"]
         ]
+
+    def test_a_breakpoint_can_fire_on_the_dump_step_itself(self) -> None:
+        """``run`` reports the breakpoint, not ``"halted"``, when it does.
+
+        The dump step is taken *inside* the halt branch, and the branch
+        re-checks the breakpoints after taking it -- so on these seven the
+        answer and the last chance to stop on it arrive together.  Without
+        that re-check a ``break_on_output`` for the dumped text could never
+        fire at all, since the text does not exist until the step that the
+        halt branch takes on the caller's behalf.
+
+        Minsky Swap prints its two registers; every one of the seven
+        behaves the same way here, and this pins the arm rather than the
+        language.
+        """
+        program, stdin = SAMPLES["Minsky Swap"]
+        plain = esolangs.make_debugger("Minsky Swap", program, stdin)
+        assert plain.run(timeout=10) == "halted"
+        assert plain.output
+
+        stopped = esolangs.make_debugger("Minsky Swap", program, stdin)
+        stopped.break_on_output(plain.output)
+        assert stopped.run(timeout=10) == "breakpoint"
+        assert stopped.output == plain.output
 
     def test_the_set_is_the_seven(self) -> None:
         """Named from the registry, and not the six of a *different* set.

@@ -40,8 +40,8 @@ _DIGIT_WORDS = {
 #:
 #: 0.6 offered ``Sophie`` for ``nope``, which is worse than saying nothing:
 #: a wrong guess sends the reader off to check a language they never meant.
-#: Measured rather than picked -- across 298 single-edit typos of the 69
-#: names, 0.6 and 0.65 both rescue 291, while 0.65 is the lowest value that
+#: Measured rather than picked -- across 294 single-edit typos of the 65
+#: names, 0.6 and 0.65 both rescue 285, while 0.65 is the lowest value that
 #: suggests nothing for any of ``nope``, ``zzzz``, ``xyz``, ``qqqqqq``,
 #: ``hello``, ``python``, ``asdf``, ``test`` and ``foo``.  0.7 starts
 #: costing real rescues.  ``TestASuggestionIsWorthLessThanSilence`` is the
@@ -61,7 +61,7 @@ def canonical_id(name: str) -> str:
     # and became ``cv_n_c``, which is nothing's id.  Every other awkward
     # name (``BRAINFUCK``, ``s*bleq``, ``forþ``) was already tolerant.
     # Stripped before anything else.  The slug rules below collapse runs of
-    # non-alphanumerics and strip the result, so 67 of the 69 names already
+    # non-alphanumerics and strip the result, so 63 of the 65 names already
     # tolerated a stray surrounding space -- but the override lookup is an
     # exact one, and the two names that need an override were therefore the
     # exact two that did not.  ``CV(N)(C) `` was the bad one: it fell
@@ -551,8 +551,8 @@ def example_stems() -> dict[str, str]:
     same way :meth:`~esolangs.tools.boolean.examples.BooleanExample.build`
     does keeps the two spellings from drifting: a stem with no language, or
     a language with no stem, shows up as a missing key rather than as a
-    silently empty example list, which is how 19 of the 69 came to report
-    none.
+    silently empty example list, which is how a fifth of the registry came
+    to report none.
 
     The import is deferred because ``examples`` imports this module; the
     map is wanted only when someone asks for a description, so paying for
@@ -582,7 +582,7 @@ def _fills() -> dict[str, Callable[[str, list[int]], str]]:
     Row, whose generator emits ``{X0}`` all the same, and the three
     hand-kept lists in the docs each named a different subset.  ``fill`` is
     the only spelling that matches what the generators actually emit -- 17
-    languages, checked against a ``{Xi}`` search over all 69.
+    languages, checked against a ``{Xi}`` search over all 65.
     """
     from esolangs.tools.boolean import examples as _examples
 

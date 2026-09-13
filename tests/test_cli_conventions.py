@@ -2548,7 +2548,7 @@ class TestJsonOutput:
         assert "nosuchlang" in capsys.readouterr().err
 
     def test_list_json_is_the_names(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """Same order, same 69."""
+        """Same order, same 65."""
         out, _err = call_both(["list", "--json"], capsys)
         assert json.loads(out) == esolangs.list_languages()
 
@@ -2814,7 +2814,7 @@ class TestWikiUrlsAreUsable:
         )
 
     def test_every_url_is_a_valid_path(self) -> None:
-        """No unescaped ``%`` or ``^`` anywhere in the 69, which is the rule."""
+        """No unescaped ``%`` or ``^`` anywhere in the 65, which is the rule."""
         for name in esolangs.list_languages():
             url = str(esolangs.describe(name)["wiki_url"])
             slug = url.removeprefix("https://esolangs.org/wiki/")
@@ -2832,7 +2832,7 @@ class TestWikiUrlsAreUsable:
 class TestTheSpecIsReachable:
     """The best documentation here was reachable only by guessing.
 
-    Every one of the 69 interpreters carries a module docstring with the
+    Every one of the 65 interpreters carries a module docstring with the
     command table and, more usefully, where this implementation differs
     from the wiki page.  Nothing pointed at them: ``docs/`` has a
     capability matrix and two per-language notes, neither a spec, and
@@ -3185,7 +3185,7 @@ class TestTheTopLevelUsageKeepsUp:
 class TestPrintedCommandsCanBePasted:
     """The tool emitted commands it cannot itself parse.
 
-    Twelve of the 69 names contain a space, and ``describe`` ends with
+    Twelve of the 65 names contain a space, and ``describe`` ends with
     ``esolangs describe --spec A Painter Ant`` while the template hint
     offers ``esolangs generate --bits <bits> A Painter Ant <table>``.
     Copy-pasting either gives ``unexpected argument: 'Painter'``.
@@ -3258,7 +3258,7 @@ class TestAnswerProvesRatherThanWaits:
 
 class TestCheckStdinSaysWhatItCanActuallyCheck:
     """Its help listed "the wrong number of lines" among what it catches
-    without ``--table``.  For 67 of the 69 it cannot.
+    without ``--table``.  For 63 of the 65 it cannot.
 
     Without a table it judges *shape*, and for a line-per-bit language a
     shape is not a count: one line, three lines and none at all are

@@ -270,7 +270,7 @@ class TestTheVerifierIsShipped:
 
     @pytest.mark.slow
     def test_every_language_verifies(self) -> None:
-        """69/69, through the public function rather than a local copy."""
+        """65/65, through the public function rather than a local copy."""
         failed = [
             n for n in esolangs.list_languages() if not esolangs.verify(n, "0110")
         ]
@@ -429,8 +429,13 @@ class TestEveryAuditedCapIsCatchable:
             esolangs.evaluate("NoComment", "01" * (1 << 11))
 
     @pytest.mark.slow
+    @pytest.mark.weekly
     def test_nothing_escapes_the_contract_at_twelve_inputs(self) -> None:
-        """A periodic table, so the generators that blow up stay small."""
+        """A periodic table, so the generators that blow up stay small.
+
+        73.6s, the most expensive test in the suite, so it runs weekly
+        rather than on every ``test-full``; see the ``weekly`` marker.
+        """
         table = "0010" * (1 << 10)
         escaped = []
         for name in esolangs.list_languages():
@@ -573,10 +578,10 @@ class TestWhatHappensWhenAProgramIsUnderfed:
             if not esolangs.describe(name)["parameterized"]
             and self._underfed(name)[0] == "raised"
         )
-        # 43 of the 52 that read stdin, measured.  Pinned exactly, so that
+        # 40 of the 48 that read stdin, measured.  Pinned exactly, so that
         # a change which quietly moves a language out of the norm shows up
         # here rather than in a docstring nobody re-derives.
-        assert raised == 43
+        assert raised == 40
 
     def test_the_trait_is_reported_by_describe(self) -> None:
         """A caller must be able to learn this without underfeeding one."""
@@ -1566,7 +1571,7 @@ class TestABadStdinIsAnArgumentFault:
 
 
 class TestASurroundingSpaceResolves:
-    """67 of 69 names already tolerated one, and the two that did not.
+    """63 of 65 names already tolerated one, and the two that did not.
 
     ``canonical_id`` collapses runs of non-alphanumerics and strips the
     result, so a stray space fell out for almost every name.  The override
@@ -1577,7 +1582,7 @@ class TestASurroundingSpaceResolves:
 
     @pytest.mark.parametrize("pad", [" {}", "{} ", " {} ", "\t{}\n"])
     def test_every_language_tolerates_surrounding_space(self, pad: str) -> None:
-        """All 69, because the two that failed were not the obvious two."""
+        """All 65, because the two that failed were not the obvious two."""
         for name in esolangs.list_languages():
             assert esolangs.describe(pad.format(name))["name"] == name
 
@@ -1674,7 +1679,7 @@ class TestASuggestionIsWorthLessThanSilence:
     A wrong guess is worse than none: it sends the reader off to check a
     language they never meant.  0.65 is the lowest cutoff that suggests
     nothing for any of the junk below, and it rescues exactly as many real
-    typos as 0.6 did -- 291 of 298 single-edit slips across the 69 names.
+    typos as 0.6 did -- 285 of 294 single-edit slips across the 65 names.
     0.7 starts costing rescues.
 
     The numbers are recomputed below rather than quoted, so the constant
@@ -1907,7 +1912,7 @@ class TestEvaluateTakesAWidth:
     """
 
     def test_every_language_survives_a_wrap(self) -> None:
-        """All 69, because a wrapper that broke one would break it quietly.
+        """All 65, because a wrapper that broke one would break it quietly.
 
         1.8s for the set at two inputs, which is the whole point of doing it
         here rather than leaving it to a caller who has to write the loop.

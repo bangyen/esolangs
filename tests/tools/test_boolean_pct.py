@@ -2337,13 +2337,19 @@ class TestPctFoldPlan:
             assert io.getvalue() == table[row], row
         assert len(widths) == 1, widths
 
-    @pytest.mark.slow  # packed prefix + sixteen-class compaction: ~60s to plan
+    @pytest.mark.slow  # packed prefix + sixteen-class compaction: ~69s to plan
+    @pytest.mark.weekly
     def test_interleaved_fold_builds_a_generic_thirteen_input_table(self) -> None:
         """The packed prefix ladder compacts to its cofactors before laying.
 
         Thirteen inputs need the eleven-input packed ladder, whose unit gaps
         jam the conveyor; the pre-lay compaction to at most sixteen cofactor
         points, and the collision-free split total, are what this exercises.
+
+        69.1s, second-most expensive in the suite, so it runs weekly rather
+        than on every ``test-full``; see the ``weekly`` marker.  It is the
+        executable witness for the thirteen-input reach that `walls.md` and
+        `limitations.md` both claim, so it is deferred, never dropped.
         """
         import random
 

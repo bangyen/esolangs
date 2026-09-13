@@ -33,7 +33,7 @@ read as though it were.
 
 ## Totality of the boolean generators
 
-**The claim.** For each of the 69 boolean generators `g` and each truth
+**The claim.** For each of the 65 boolean generators `g` and each truth
 table `t` of length `2**n` with `1 <= n <= 10`, the call `g(t)` terminates
 and returns a non-empty program -- with one pinned exception, WII2D on a
 dense-shaped table at `n == 10`, whose cap `_ARITY_CAPPED` records and
@@ -56,7 +56,7 @@ terminates, and no raise fires inside the domain.
 
 ### Termination
 
-Sixty-one of the 69 reach no unbounded loop at all.  Their work is bounded
+Fifty-seven of the 65 reach no unbounded loop at all.  Their work is bounded
 recursion on the decision tree -- `decision_tree_tokens`, `decision_tree_program`,
 or a hand-written post-order walk -- whose measure is `n - level`, strictly
 decreasing at every recursive call, so a walk makes at most `2**(n+1) - 1`
@@ -123,7 +123,7 @@ Three sweeps in `tests/tools/test_boolean_contract.py`, and they cover
 different halves of the claim:
 
 - `test_every_generator_is_total_on_every_small_table` -- *every* table at
-  `n <= 3`, all 276, through all 69.  The exhaustive-domain half, and `n == 3`
+  `n <= 3`, all 276, through all 65.  The exhaustive-domain half, and `n == 3`
   is the last arity where exhaustive is affordable: `n == 4` is 65536 tables
   per generator. 4.7s serial, no generator over 1.8s.
 - `test_every_generator_builds_up_to_ten_inputs` -- two shapes, dense and
@@ -150,7 +150,6 @@ what has to be shown not to fire, beyond the shape guard every row carries.
 | Alight | `_alight_folded` | a run walked off the left edge |
 | ArrowQueue | bounded | -- |
 | Back | bounded | -- |
-| Basicfuck | bounded | -- |
 | Between | bounded | -- |
 | BF-PDA | bounded | -- |
 | BFStack | bounded | -- |
@@ -169,7 +168,6 @@ what has to be shown not to fire, beyond the shape guard every row carries.
 | Decleq | bounded | -- |
 | Dig | bounded | a placement invariant |
 | Dimensional | bounded | -- |
-| DINAC | bounded | -- |
 | Eval | bounded | the free stack arrangement is missing (pragma'd) |
 | Factor | bounded | cap: the encoded integer's digit budget |
 | Fargo | bounded | -- |
@@ -187,8 +185,6 @@ what has to be shown not to fire, beyond the shape guard every row carries.
 | Minifuck | bounded | the totality tripwire, and the pool/frame invariants |
 | Minsky Swap | bounded | -- |
 | Modulous | bounded | -- |
-| MyScript | bounded | -- |
-| Nevermind | bounded | -- |
 | NoComment | bounded | cap: a cell past the interpreter's tape |
 | 123 | `_normalize` | construction refusal (pragma'd); slots in name order |
 | Packlang | bounded | -- |
