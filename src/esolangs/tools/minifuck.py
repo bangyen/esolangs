@@ -1,9 +1,10 @@
 """Build Minifuck Boolean templates by input substitution.
 
-Each input is embedded once at equal width. The staged and sculpted routes
-derive candidates, verify every instantiated row with the joint simulator, and
-raise rather than emit an unverified program. The simulator laws are pinned
-differentially against the interpreter.
+Each input is embedded once at equal width. The construction derives one
+program, verifies every instantiated row with the joint simulator, and raises
+rather than emit an unverified program. The simulator laws are pinned
+differentially against the interpreter; the retired enumerations remain as
+test oracles only.
 """
 
 import re
@@ -788,24 +789,32 @@ def _degenerate(truth_table: str, n: int) -> str | None:
     inputs is a ``k``-input problem whatever its arity, so four of the
     fourteen three-input orbits are handled here for free.
 
-    This route is now **entirely a lookup**.  A column search used to sit
-    below the cell reads, for the projections of a *later* input the read-off
-    cells do not hold -- six tables at ``n <= 4``: ``X2`` and its complement
-    at three inputs, ``X2``/``X3`` and theirs at four.  All six build through
-    :func:`_mux` in milliseconds and print every row on the shipped
-    interpreter, and :func:`_solve` runs that route directly after this one,
-    so declining is strictly better than searching: the caller reaches a
-    construction rather than a sweep.  A ``fixed_cells_only`` flag that let
-    the name-order caller skip the search went with it.
+    The accumulator is named by the embed law: cell 16 prints ``b0``, cell 19
+    prints ``~b1``, and a constant stands at 16 for the nullary embed or 17
+    otherwise.  The first table bit decides whether the direct or complemented
+    read is needed.  Later projections decline to :func:`_mux`.
     """
+    essential = essential_inputs(truth_table, n)
+    if len(essential) > 1:
+        return None
+    if not essential:
+        acc = _BASE if n == 0 else _BASE + 1
+        direct = truth_table[0] == ("1" if n == 0 else "0")
+    elif essential[0] == 0:
+        acc = _BASE
+        direct = truth_table[0] == "0"
+    elif essential[0] == 1:
+        acc = _BASE + 3
+        direct = truth_table[0] == "1"
+    else:
+        return None
+
     base = _embed(n, sep=_SEP)
     _clamp(base)
-
-    for acc in _degenerate_cells(n).values():
-        hit = _try_print(base, truth_table, acc)
-        if hit is not None:
-            return hit.template()
-    return None
+    _canonical_endgame(base, acc, direct=direct)
+    if base.printed() != list(truth_table):  # pragma: no cover - the law is exact
+        raise AssertionError("the degenerate rule printed the wrong column")
+    return base.template()
 
 
 def _project(truth_table: str, essential: list[int], n: int) -> str:
@@ -2632,6 +2641,25 @@ def _sculpt_pool_code(cell7: int) -> str | None:
     return _SCULPT_POOL_CODE if cell7 == 0 else None
 
 
+def _canonical_endgame(j: _Joint, acc: int, *, direct: bool) -> None:
+    """Print ``acc`` from the canonical pool state by the named orientation."""
+    if acc < _POOL_WIDTH:
+        raise ValueError("accumulator must sit past the pool")
+    if any(
+        m.dead or m.skip or m.ptr != 0 or (m.tape & _POOL_MASK) != _POOL_MASK ^ 1
+        for m in j.ms
+    ):
+        raise AssertionError("the construction did not reach its canonical pool state")
+    j.emit(_SCULPT_POOL_CODE)
+    _walk_to(j, acc - 1)
+    j.emit(_READS[1] if direct else _READS[0])
+    j.emit("<" * (acc - (_POOL_WIDTH - 1)))
+    for cell in range(_POOL_WIDTH):
+        if len(set(j.col(cell))) != 1:
+            raise AssertionError(f"pool cell {cell} is input-dependent")
+    j.emit("[x.")
+
+
 @cache
 def _probe_frame(code: str, byte: int) -> tuple[int, int] | None:
     """Return ``(landed, parity)`` for ``code`` run from a converged row.
@@ -3072,76 +3100,28 @@ def _mux_scout(
     raise AssertionError("the scout lost its own winner")  # pragma: no cover
 
 
-#: The arity where the sculpt sweep leaves the build path.  Below this every
-#: ``(accumulator, orientation)`` is priced and the shortest build wins, and
-#: the corpus is byte-identical under that contest.  From here the scout's
-#: own cost curve makes the contest the build, so the accumulator is picked
-#: by rule instead: the **largest legal one**, which is the combination the
-#: scout prices first because its rounds are cheapest (a round costs
-#: ``3 * (frontier - acc + 1) + 1``, so the top of the range minimises every
-#: rewind).  It loses no coverage: printability is decided by the frame
-#: constants, which do not depend on the accumulator, and the rewind guard
-#: is loosest exactly at the top of the range, so the rule's combination
-#: builds iff any does.
-#:
-#: The rule trades length for the contest's cost, so the line sits at the
-#: arity where the contest stops being affordable rather than at the one
-#: where the trade is cheapest.  The Pascal inverse moved that line: cold,
-#: both shapes, the contest costs 0.23s at eight inputs and 1.8s at nine;
-#: dense costs 13.8s at ten.  Nine is now cheaper than the old payable-eight
-#: contest, while ten is again the registry's dominant sweep cost.
-#:
-#: Against the sweep's winner the top accumulator builds dense +11.6% at
-#: eight inputs, +6.4% at nine and +1.8% at ten, and at every one of those
-#: arities parity picks the very same combination.  So drawing the line here
-#: costs exactly one dense entry (+1.8% at ten) and leaves everything at
-#: nine and below byte-identical to the contest.  Drawing it one lower would
-#: buy 1.8s for a larger dense regression; at eight it would save only 0.23s
-#: and cost still more.
-_MUX_RULE_ARITY = 10
-
-
-def _mux_plan_tail(
-    base: _Joint, acc: int, rewinds: list[int], *, direct: bool
-) -> tuple[str, str]:
-    """Spell the sculpt the scout priced, from its recorded rewinds.
+def _mux_plan_tail(base: _Joint, acc: int, rewinds: list[int]) -> tuple[str, str]:
+    """Spell the fixed sculpt from its derived rewinds.
 
     With the rewinds in firing order every emitted part is a constant of
     the frame: a round is ``<``/``[x`` runs of its rewind and a trailing
     ``x``, the clamp is ``highest + 1`` (rounds move no pointer), and the
-    endgame's pool code, walk, read and rewind are fixed by ``acc`` and the
-    pool byte -- the same constants the scout priced the combination over.
+    endgame's pool code, direct read, walk and rewind are fixed by ``acc``.
     Returns ``(rounds, suffix)``, the tail after ``base``'s own template
     split where :func:`_mux_replays` switches laws.
 
-    Nothing ships on this spelling alone: :func:`_mux` replays it over
-    every row and accepts on the printed digits, and its length is checked
-    against the scout's independent prediction.
+    Nothing ships on this spelling alone: :func:`_mux` replays it over every
+    row and accepts on the printed digits.
     """
     byte = base.ms[0].tape & _POOL_MASK
+    if byte != _POOL_MASK ^ 1:  # pragma: no cover - separation fixes the byte
+        raise AssertionError("the separation changed the canonical pool byte")
     frame = _probe_frame(_SCULPT_POOL_CODE, byte)
-    if frame is None:  # pragma: no cover - the scout priced through this frame
-        raise AssertionError("no probe frame for a priced combination")
-    codes = tuple(_POOL_CODES)
-    slice0 = _pool_slice(codes, 0, skip=False)
-    g = 0 if direct else 1
-    for read, cell7 in (
-        (_READS[0], 0),
-        (_READS[0], 1),
-        (_READS[1], 0),
-        (_READS[1], 1),
-    ):
-        chosen = slice0.get((byte, cell7))
-        if chosen is None:
-            continue
-        end_frame = _probe_frame(codes[chosen[0]], byte)
-        if end_frame is None or end_frame[0] != chosen[1]:  # pragma: no cover
-            raise AssertionError("the endgame frame drifted from the pool slice")
-        if g ^ frame[1] ^ end_frame[1] == (0 if read == _READS[1] else 1):
-            code, landed = codes[chosen[0]], chosen[1]
-            break
-    else:  # pragma: no cover - the scout's winner matched the same trial
-        raise AssertionError("the priced combination has no matching read")
+    if frame is None:  # pragma: no cover - the fixed code has a frame
+        raise AssertionError("the fixed pool code has no frame")
+    landed, parity = frame
+    if parity != 1:  # pragma: no cover - the direct rule depends on this offset
+        raise AssertionError("the fixed pool code changed its parity")
     highest = max(base.ptrs())
     rounds: list[str] = []
     for rewind in rewinds:
@@ -3152,9 +3132,9 @@ def _mux_plan_tail(
         (
             "x",
             "<" * (highest + 1),
-            code,
+            _SCULPT_POOL_CODE,
             "[x" * (acc - 1 - landed),
-            read,
+            _READS[1],
             "<" * (acc - (_POOL_WIDTH - 1)),
             "[x.",
         )
@@ -3186,8 +3166,7 @@ def _mux_replays(
 def _mux_sweep(base: _Joint, truth_table: str, n: int, accs: range) -> str | None:
     """Sculpt every combination for real and keep the shortest build.
 
-    The specification :func:`_mux_scout` is held to, and the fallback when
-    it cannot summarise the base or its replayed winner disagrees.  The
+    The retired specification :func:`_mux_scout` is held to.  The
     seed probe settles which orientations can be sculpted at all --
     ``cell7 == 1`` is answered by no code -- and also hands the sculpt its
     ``hint``, which is how the loop always read.
@@ -3208,38 +3187,13 @@ def _mux_sweep(base: _Joint, truth_table: str, n: int, accs: range) -> str | Non
 
 
 def _mux(truth_table: str, n: int) -> str | None:
-    """Build by separating the rows, then sculpting the column they print.
+    """Build by one closed rule: top accumulator, direct orientation.
 
-    **Every combination is tried and the shortest program wins.**  This used
-    to return the first ``(C, orientation, read)`` that printed, and that is
-    a poor choice for length: a sculpting round costs ``3 * K + 1``
-    characters for a rewind of ``K = frontier - C + 1``, so the accumulator
-    decides the price of every round the table needs, and the cheapest one is
-    not the first.  Taking the first ascending accumulator measured a mean of
-    1046 characters over sampled four-input tables; descending measured 700
-    and the minimum over all of them 595, a **43% reduction**.  The curve is
-    not monotone in either direction -- sampled tables put their minimum at
-    the top, the bottom and the middle -- so there is no cheap rule to prefer
-    over measuring, and measuring is what this does.
-
-    The measuring is the scout's.  Sculpting every combination for real
-    priced the sweep at ``2**3n`` law applications -- 178 cold seconds at
-    eight inputs, 97% of a cold seven-input profile -- so :func:`_mux_scout`
-    prices them all in closed form.  The winner's Pascal plan is spelled
-    directly and replayed over every row; a replay that misses the scout's
-    exact predicted length falls back to :func:`_mux_sweep`, as does a base
-    state the scout refuses to summarise.  The emitted program stays
-    byte-identical to the old round loop below the rule boundary.
-
-    Nothing about *which* tables build changes: a combination that stalls
-    still contributes nothing, and this returns None exactly when the old
-    loop did, having priced the same set.
-
-    From :data:`_MUX_RULE_ARITY` the contest itself is the build's cost,
-    so the accumulator is named rather than measured -- see that constant
-    for the rule, the trade and the coverage argument.  Only the orientation
-    is still priced there (a real contest: 21 to 21 over sampled eight-input
-    tables, worth up to 24%).
+    The largest legal accumulator minimises every rewind and satisfies the
+    guard whenever any accumulator can.  Either orientation spans every
+    target column, so the direct one names the answer without a contest.  The
+    Pascal inverse derives its rounds; the spelling is replayed over every row
+    and a disagreement aborts instead of falling back to an enumeration.
     """
     if n < _MUX_MIN_ARITY:
         return None
@@ -3249,38 +3203,44 @@ def _mux(truth_table: str, n: int) -> str | None:
         # construction does not trip at any arity -- see the pragmas there.
         # This is that refusal reaching its caller.
         return None  # pragma: no cover - the separation never refuses
-    positions = base.ptrs()
-    lowest, highest = min(positions), max(positions)
-    # ``+ 1`` past the rewind guard's ``_POOL_WIDTH``, which is what makes the
-    # guard exactly tight rather than slack -- see the constant's own comment.
-    accs = range(highest - lowest + _POOL_WIDTH + 1, lowest - 1)
-    recorded: dict[tuple[int, bool], list[int]] = {}
-    if n >= _MUX_RULE_ARITY:
-        # The rule replaces the contest: one combination, the largest legal
-        # accumulator.  The scout still prices it exactly -- its refusals,
-        # its trust check and its predicted length all carry over -- it is
-        # just no longer asked to price the other ~2 * len(accs) - 1.
-        accs = range(accs.stop - 1, accs.stop)
-    winner, trusted = _mux_scout(base, truth_table, n, accs, recorded)
-    if not trusted:
-        # The separation's state defeats the shadow's summary: not observed
-        # at any arity -- the base is canonical by construction -- so this
-        # is the guard against a future separation the scout cannot price.
-        return _mux_sweep(base, truth_table, n, accs)
-    if winner is None:
-        return None
-    acc, direct, predicted = winner
-    widths = recorded.get((acc, direct))
-    if widths is not None:
-        rounds, suffix = _mux_plan_tail(base, acc, widths, direct=direct)
-        spelled = base.template() + rounds + suffix
-        if len(spelled) == predicted and _mux_replays(
-            base, widths, suffix, truth_table
-        ):
-            return spelled
-    # The plan, spelling and replay disagreeing is a bug in the trio; the
-    # sweep is the exact spelling, so answer from it rather than raise.
-    return _mux_sweep(base, truth_table, n, accs)  # pragma: no cover
+    ms = base.ms
+    if any(m.dead or m.skip for m in ms):  # pragma: no cover - separation is exact
+        raise AssertionError("the separation left an unrunnable row")
+    byte = ms[0].tape & _POOL_MASK
+    if byte != _POOL_MASK ^ 1 or any((m.tape & _POOL_MASK) != byte for m in ms):
+        raise AssertionError("the separation did not preserve the canonical pool")
+    frame = _probe_frame(_SCULPT_POOL_CODE, byte)
+    if frame is None:  # pragma: no cover - the fixed code has a frame
+        raise AssertionError("the fixed pool code has no frame")
+
+    ptrs = base.ptrs()
+    order = sorted(range(len(ptrs)), key=lambda row: ptrs[row], reverse=True)
+    ptrs_s = [ptrs[row] for row in order]
+    if any(a - b != 1 for a, b in pairwise(ptrs_s)):
+        raise AssertionError("the separation did not leave consecutive pointers")
+    tapes_s = [ms[row].tape for row in order]
+    want = [int(truth_table[row]) for row in order]
+    acc = min(ptrs) - 2
+    mask = ((1 << (acc + 1)) - 1) ^ _POOL_MASK
+    parities = [(tape & mask).bit_count() & 1 for tape in tapes_s]
+    planned = _mux_round_plan(
+        tapes_s,
+        ptrs_s,
+        parities,
+        want,
+        acc,
+        flip=frame[1],
+        guard=min(ptrs) - _POOL_WIDTH,
+        round_limit=None,
+    )
+    if planned is None:  # pragma: no cover - the top accumulator is always legal
+        raise AssertionError("the fixed mux rule refused its own table")
+    rewinds, _cost = planned
+    rounds, suffix = _mux_plan_tail(base, acc, rewinds)
+    spelled = base.template() + rounds + suffix
+    if not _mux_replays(base, rewinds, suffix, truth_table):
+        raise AssertionError("the fixed mux rule printed the wrong table")
+    return spelled
 
 
 def _lift_leaves_name_order(essential: list[int], n: int) -> bool:
@@ -3339,14 +3299,10 @@ def _solve(truth_table: str) -> str:
     raised rather than returning a program that has not been seen to print
     the table.
 
-    Cached, because at four inputs and above the derivation is what
-    this module costs -- seconds to tens of seconds a table, against
-    effectively zero to *run* the program it returns.  Below that nothing
-    searches at all: two and three inputs are derived from the staging
-    enumeration and the sculpted route, and all 276 tables up to three inputs
-    build in about three and a half seconds together.  The build is
-    deterministic in ``truth_table`` and the result is an immutable string,
-    so repeat calls are free either way.
+    Cached because the build is deterministic in ``truth_table`` and the
+    result is an immutable string.  No route enumerates candidate programs:
+    projection, the degenerate cell law, and the fixed mux construction name
+    the emitted program directly.
     """
     n = _validate_shape(truth_table)
 
@@ -3357,77 +3313,23 @@ def _solve(truth_table: str) -> str:
     # table with a narrow core is as cheap as that core.
     essential = essential_inputs(truth_table, n)
     if len(essential) < n:
-        # Projecting is much the cheaper route, but it emits the ignored
-        # inputs after the ``.``, which leaves name order whenever an ignored
-        # index sits below an essential one.  ``_embed`` already lays every
-        # slot down in ascending order, so solving at the *full* arity is
-        # in-order by construction -- try it first for exactly the tables the
-        # lift would disorder, and only when it is the cheap closed-form
-        # path.  A table with two or more essential inputs is not: measured
-        # at n == 3, ``00000101`` ran the old searches for 132 seconds and
-        # still failed, against seconds to project.  Coverage comes first, so
-        # a miss here falls through to the projection rather than raising.
-        # The attempt is a fixed-cell lookup, which is where every table it
-        # wins is won; the column search that used to sit behind it is gone,
-        # so this is cheap by construction rather than by a flag.
+        # Projection is cheaper, but appending ignored inputs after the print
+        # disorders their names when one lies below an essential input.  The
+        # full-arity mux embeds every slot in order, so that case uses it.
         if _lift_leaves_name_order(essential, n):
-            if len(essential) <= 1:
-                in_order = _degenerate(truth_table, n)
-                if in_order is not None:
-                    return in_order
-            reconverged = _reconverged(truth_table, essential, n)
-            if reconverged is not None:
-                return reconverged
-            # **The last ten out-of-order tables are sorted here.**
-            #
-            # Ten three-input tables used to emit ``{X0}{X2}{X1}``, all with
-            # the same shape: the ignored input is the *middle* one.  The two
-            # routes above cannot sort those -- emitting the ignored setter
-            # first does not help when it already follows ``{X0}``, and
-            # reconvergence drives every row to one state, so it cannot
-            # collapse ``x1`` while preserving ``x0``.  Searched to depth 14,
-            # no reset exists.  The comment that recorded this closed with
-            # "sorting those needs the solver to assign names".
-            #
-            # It does not.  :func:`_mux` lays every slot down in ascending
-            # order at the *full* arity and never projects, so it emits in
-            # name order by construction -- and it does not care that the
-            # table ignores an input, because it sculpts the printed column
-            # row by row rather than reading a column the ignored bit would
-            # have disturbed.  Measured: all ten come back ascending and
-            # print every row correctly on the shipped interpreter.
-            #
-            # It goes *after* the two cheap routes because it is the more
-            # expensive one and they already sort everything they reach; what
-            # is left here is exactly the residue they cannot.
             sculpted = _mux(truth_table, n)
             if sculpted is not None:
                 return sculpted
         inner = _solve(_project(truth_table, essential, n))
         return _lift(inner, essential, n)
 
-    # At most one essential input means a constant or a (negated) projection,
-    # and the embed already holds every one of those as a column -- so the
-    # answer is a cell lookup rather than a search.
-    if len(essential) <= 1:
+    # Nullary and unary inner solves use the embed's named standing column.
+    if n < _MUX_MIN_ARITY:
         degenerate = _degenerate(truth_table, n)
         if degenerate is not None:
             return degenerate
 
-    # A planned staging is the cheapest route by far, so it goes first.  Two
-    # and three inputs are both complete -- the enumeration closes two, and
-    # the enumeration plus the sculpted route closes three -- so nothing ever
-    # runs below four inputs.  A miss at a wider arity falls through to the
-    # searches below.
-    derived = _staged(truth_table, n)
-    if derived is not None:
-        return derived
-
-    # The sculpted route: it closes four inputs (all 3652 tables the staged
-    # families miss, interpreter-verified) at milliseconds a table, and it is
-    # the last route -- **it is expected to build every table at every
-    # arity**, so the raise below is a guard rather than a branch the
-    # generator is meant to take.
+    # The one total construction for every non-degenerate inner solve.
     sculpted = _mux(truth_table, n)
     if sculpted is not None:
         return sculpted

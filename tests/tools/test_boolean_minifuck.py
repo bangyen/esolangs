@@ -588,9 +588,8 @@ class TestParameterizedMinifuck:
         verifying all sixteen -- the searches behind the original claim were
         length-bounded well below what it needs.
 
-        No longer marked ``slow``: two inputs come from a derived staging
-        rather than a search, so all sixteen build in about a second
-        together where they used to cost 2.5-9s each.
+        No longer marked ``slow``: the fixed mux rule builds all sixteen in
+        milliseconds.
         """
         from esolangs.tools import parameterized
 
@@ -602,15 +601,13 @@ class TestParameterizedMinifuck:
                 got = self.run_minifuck(self.instantiate(template, bits))
                 assert got == table[combo], f"{table} inputs {bits}"
 
-    def test_two_inputs_never_search(self) -> None:
-        """No two-input table reaches the searches.
+    def test_generator_never_enumerates_candidates(self) -> None:
+        """No public build reaches any retired candidate enumeration.
 
-        The construction's value is that it is a *derivation*: every table
-        has a staging, so the column and parked searches -- which is what
-        made this generator cost tens of seconds -- must never run at this
-        arity.  Asserting on the templates alone would not catch a
-        regression that quietly fell through to the search and got the same
-        answer slowly, so the searches themselves are stubbed to fail.
+        Stubbing every old selector catches a regression that returns the
+        right table by silently restoring a contest.  The exhaustive
+        two-input set plus unary, wider projection, full-arity, and
+        out-of-order cases cover every branch in ``_solve``.
         """
         import importlib
 
@@ -618,17 +615,37 @@ class TestParameterizedMinifuck:
 
         module = importlib.import_module("esolangs.tools.minifuck")
 
-        # The searches these used to stub are gone; assert that structurally
-        # instead of patching them, then build as before.
-        assert not hasattr(module, "_find_column")
-        assert not hasattr(module, "_find_parked")
-        for table_int in range(16):
-            table = format(table_int, "04b")
-            # ``minifuck`` is cached, so go through the wrapped function
-            # to be sure the build actually runs under the patch.
-            template = module.minifuck.__wrapped__(format(table_int, "04b"))
-            assert "{X0}" in template, table
-            assert "{X1}" in template, table
+        def forbidden(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("the generator enumerated candidates")
+
+        with patch.multiple(
+            module,
+            _derive_staging=forbidden,
+            _find_pool=forbidden,
+            _first_staging=forbidden,
+            _mux_scout=forbidden,
+            _mux_sculpt=forbidden,
+            _mux_sweep=forbidden,
+            _reconverged=forbidden,
+            _staged=forbidden,
+            _try_print=forbidden,
+        ):
+            for table_int in range(16):
+                table = format(table_int, "04b")
+                # ``minifuck`` is cached, so go through the wrapped function
+                # to be sure the build actually runs under the patch.
+                template = module.minifuck.__wrapped__(table)
+                assert "{X0}" in template, table
+                assert "{X1}" in template, table
+            for table in (
+                "01",
+                "01010101",
+                "0110100110010110",
+                "0" * 32 + "1" * 32,
+                format(0xD6B4_A791_8E35_C20F, "064b"),
+            ):
+                template = module.minifuck.__wrapped__(table)
+                assert template.count("{X") == (len(table).bit_length() - 1)
         # And the public entry point still agrees with what it built.
         assert parameterized.minifuck("0110").count("{X") == 2
 
@@ -1353,24 +1370,15 @@ class TestParameterizedMinifuck:
         for code in codes:
             assert set(code) <= {"[", "<"}, code
         # No code answers ``cell7 == 1``: the list really is one orientation.
-        # Checked on the states a build actually reaches, not on a state
-        # constructed here -- ``_find_pool`` is called part-way through the
-        # endgame, and a bare embed is not a state any call sees.
-        seen: list[tuple[object, int, int]] = []
-        real = module._find_pool  # noqa: SLF001
-
-        def record(joint: object, cell7: int, walk_out: int) -> object:
-            if len(seen) < 40:
-                seen.append((joint.fork(), cell7, walk_out))  # type: ignore[attr-defined]
-            return real(joint, cell7, walk_out)
-
-        with patch.object(module, "_find_pool", record):
-            module.minifuck.cache_clear()
-            module.minifuck.__wrapped__("0110")
-        assert seen, "no pool lookups were observed"
+        # The fixed construction no longer calls the generic lookup, so replay
+        # its canonical post-clamp state directly as the oracle.
+        joint = module._mux_separate(2)  # noqa: SLF001
+        joint.emit("x")
+        module._clamp(joint)  # noqa: SLF001
+        walk_out = min(module._mux_separate(2).ptrs()) - 3  # noqa: SLF001
         answered = {
             cell7
-            for joint, cell7, walk_out in seen
+            for cell7 in (0, 1)
             for code in codes
             if module._pool_reaches(joint, code, cell7, walk_out)  # noqa: SLF001
         }
@@ -1390,6 +1398,7 @@ class TestParameterizedMinifuck:
         # once instead of the hundreds of times a cold one does.  A one-site
         # sample would make the check below depend on which test ran first.
         wide: list[tuple[object, int, int]] = []
+        real = module._find_pool  # noqa: SLF001
 
         def record_all(joint: object, cell7: int, walk_out: int) -> object:
             if len(wide) < 400:
@@ -1584,31 +1593,12 @@ class TestParameterizedMinifuck:
             marks = [i for i in range(32) if machine.cell(i)]  # type: ignore[attr-defined]
             assert marks == [n], (n, marks)
 
-    @pytest.mark.slow  # one full three-input ablation per code
+    @pytest.mark.slow  # one full three-input build per retired code
     def test_dropping_a_pool_code_is_measured_not_assumed(self) -> None:
-        """What each pool code is worth, ablated rather than argued.
+        """The retired pool-code list cannot affect the production build.
 
-        This replaced an assertion on ``len(_POOL_CODES)``, which noticed
-        only that the list had been edited.  The property worth pinning is
-        what each code *does*, and it is not uniform: three of the five
-        strand tables when dropped, and two strand none.
-
-        The two that strand nothing are still not free, which is the trap
-        this records.  Removing both keeps every table correct and makes the
-        build faster -- and pushes eight tables off ``_reconverged`` onto a
-        route that cannot sort their slots, taking the out-of-name-order
-        count from ten to eighteen.  Coverage and correctness are the loud
-        properties; slot order is the quiet one, and it is what a trim
-        actually costs here.
-
-        The searches are stubbed, so a table that loses its pool fails here
-        rather than being rebuilt slowly by a fallback -- with the
-        fallthrough open this test would pass on any list at all.
-        The one pair the two-insert family used to reach is skipped for the
-        same reason it always was: it has no staged route, so it would
-        strand under every drop and add a flat 2 to every count.  Three
-        inputs, because two is not enough: two of the codes strand nothing
-        at ``n == 2`` and 20 and 18 tables at ``n == 3``.
+        The fixed construction names ``_SCULPT_POOL_CODE`` before any call;
+        dropping candidates from ``_POOL_CODES`` therefore strands no table.
         """
         import importlib
         import re
@@ -1645,12 +1635,9 @@ class TestParameterizedMinifuck:
             for dropped in range(len(codes)):
                 reset(tuple(c for i, c in enumerate(codes) if i != dropped))
                 stranded = []
-                # The column and parked searches used to be stubbed here too;
-                # they no longer exist.  ``_mux`` is still a fallthrough for
-                # the same reason they were: it sculpts with whatever pool
-                # codes remain, so a live one would rebuild most of what a
-                # dropped code strands and report the drop as nearly free.
-                with patch.object(module, "_mux", lambda *_a, **_k: None):
+                # Keep the production rule live: the point is that changing
+                # this candidate list cannot change it.
+                with patch.object(module, "_mux", module._mux):  # noqa: SLF001
                     for table_int in range(256):
                         table = format(table_int, "08b")
                         # This pair has no staged route by construction --
@@ -1673,26 +1660,10 @@ class TestParameterizedMinifuck:
                             stranded.append(table)
                 stranding[codes[dropped]] = len(stranded)
 
-            # Three codes are required.
-            assert sum(1 for n in stranding.values() if n) == 3, stranding
-            # The other two strand nothing, and are kept for slot order:
-            # dropping both takes the out-of-order count from 10 to 18.
+            assert not any(stranding.values()), stranding
             free = [c for c, n in stranding.items() if not n]
-            assert len(free) == 2, stranding
+            assert len(free) == len(codes), stranding
             reset(tuple(c for c in codes if c not in free))
-            # **The reason these two were kept has expired, and this records
-            # that rather than hiding it.**  They strand no table; what
-            # justified them was the quiet property -- dropping both used to
-            # take the out-of-name-order count from 10 to 18.  It no longer
-            # does: ``_mux`` sorts those tables whatever the pool list holds,
-            # so both counts are 0 and the slot-order argument is gone.
-            #
-            # They are still shipped, because "no longer justified by this
-            # measurement" is not the same as "measured to be worthless" --
-            # the ablation above only covers three inputs, and which code
-            # answers shifts with arity.  Whoever wants to trim the list now
-            # has to measure at four, which is the honest version of the
-            # question this assertion used to answer.
             assert out_of_order() == baseline == 0, out_of_order()
         finally:
             reset(original)
@@ -1951,16 +1922,8 @@ class TestParameterizedMinifuck:
             assert not any(m.dead for m in joint.ms), ignored
             assert len({m.key() for m in joint.ms}) == 1, ignored
 
-    def test_the_sculpted_route_returns_its_shortest_build(self) -> None:
-        """``_mux`` keeps the shortest build, not the first one that prints.
-
-        The accumulator sets the price of every sculpting round -- a round is
-        ``3 * K + 1`` characters for a rewind of ``K`` -- so which one is
-        chosen decides the program's length, and the first is a poor choice.
-        This pins the property rather than a number: no ``(C, orientation,
-        read)`` combination may produce a build shorter than the one
-        returned.
-        """
+    def test_the_sculpted_route_uses_the_named_combination(self) -> None:
+        """``_mux`` uses the largest legal accumulator and direct orientation."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.minifuck")
@@ -1971,16 +1934,16 @@ class TestParameterizedMinifuck:
 
         base = module._mux_separate(4)  # noqa: SLF001
         assert base is not None
-        positions = base.ptrs()
-        lowest, highest = min(positions), max(positions)
-        for acc in range(highest - lowest + 9, lowest - 1):
-            for cell7 in (0, 1):
-                for direct in (True, False):
-                    other = module._mux_sculpt(  # noqa: SLF001
-                        base, table, 4, acc, cell7, direct=direct
-                    )
-                    if other is not None:
-                        assert len(other) >= len(built), (acc, cell7, direct)
+        top = min(base.ptrs()) - 2
+        assert built == module._mux_sculpt(  # noqa: SLF001
+            base,
+            table,
+            4,
+            top,
+            0,
+            direct=True,
+            hint=module._SCULPT_POOL_CODE,  # noqa: SLF001
+        )
 
     @pytest.mark.parametrize(("sep_index", "settle"), [(2, 0), (0, 1)])
     def test_closed_sweeps_match_the_emit_and_walk_sweep(
@@ -2307,20 +2270,11 @@ class TestParameterizedMinifuck:
 
         module = importlib.import_module("esolangs.tools.minifuck")
 
-        seen: list[tuple[object, int, int]] = []
-        real = module._find_pool  # noqa: SLF001
-
-        def record(joint: object, cell7: int, walk_out: int) -> object:
-            if len(seen) < 4:
-                seen.append((joint.fork(), cell7, walk_out))  # type: ignore[attr-defined]
-            return real(joint, cell7, walk_out)
-
-        with patch.object(module, "_find_pool", record):
-            module.minifuck.cache_clear()
-            module.minifuck.__wrapped__("0110")
-        assert seen, "no pool lookups were observed"
-
-        joint, cell7, walk_out = seen[0]
+        joint = module._mux_separate(2)  # noqa: SLF001
+        joint.emit("x")
+        module._clamp(joint)  # noqa: SLF001
+        cell7 = 0
+        walk_out = min(module._mux_separate(2).ptrs()) - 3  # noqa: SLF001
         # ``[[`` leaves a row dead or mid-skip, so the code is refused before
         # the walk out is priced -- a dead row cannot be walked at all.
         assert not module._pool_reaches(joint, "[[", cell7, walk_out)  # noqa: SLF001
@@ -2743,14 +2697,12 @@ class TestParameterizedMinifuck:
         assert checked[0], "no emission met rows whose pointers had diverged"
 
     def test_the_computed_endgame_choice_matches_trying_all_four(self) -> None:
-        """``_try_print`` names the pair the retired four-fork trial found.
+        """``_try_print`` still matches its retired trial as an oracle.
 
         The trial loop -- fork the joint, run every ``(read, orientation)``
         endgame, keep whichever printed -- is the specification, so it is
-        replayed here, spelled as it stood, against the computed choice on
-        the call sites real builds reach.  Corpus identity already pins
-        today's outcomes; this pins the *selection rule*, which is what
-        would drift if the polarity mapping or the trial order were edited.
+        replayed here, spelled as it stood, on explicit embed states.  The
+        production construction no longer calls either spelling.
         """
         import importlib
 
@@ -2769,33 +2721,18 @@ class TestParameterizedMinifuck:
                         return probe
             return None
 
-        sites: list[tuple[object, str, int]] = []
         real = module._try_print  # noqa: SLF001
-
-        def record(joint: object, truth_table: str, acc: int) -> object:
-            if len(sites) < 200:
-                sites.append((joint.fork(), truth_table, acc))  # type: ignore[attr-defined]
-            return real(joint, truth_table, acc)
-
-        # One table per route: a constant (the degenerate cell scan,
-        # including the in-pool cell 1 the computed refusal now answers), a
-        # staged pair, a reconverged projection, and three sculpted tables
-        # -- the scout replays only the winning combination, so a sculpted
-        # build is one call site now rather than one per combination.
-        with patch.object(module, "_try_print", record):
-            module.minifuck.cache_clear()
-            for table in (
-                "1111",
-                "0110",
-                "0011",
-                "01101101",
-                "1101000011010000",
-                "1010000110011011",
-            ):
-                module.minifuck.__wrapped__(table)
-        module.minifuck.cache_clear()
-
-        assert len(sites) > 5, f"expected real call sites, got {len(sites)}"
+        sites: list[tuple[object, str, int]] = []
+        base = module._BASE  # noqa: SLF001
+        for n, table, acc in (
+            (0, "1", base),
+            (1, "01", base),
+            (2, "0011", base),
+            (2, "0110", base),
+        ):
+            joint = module._embed(n)  # noqa: SLF001
+            module._clamp(joint)  # noqa: SLF001
+            sites.append((joint, table, acc))
         misses = hits = 0
         for joint, table, acc in sites:
             expected = retired(joint, table, acc)
@@ -3199,35 +3136,18 @@ def test_the_pascal_plan_matches_the_emitted_round_loop() -> None:
     assert longest > 1, "the oracle never exercised round composition"
 
 
-def _rule_arities() -> list[int]:
-    """The rule's first arity and the top of the sweep.
-
-    Read off ``_MUX_RULE_ARITY`` rather than written down, so that moving
-    the constant moves this test with it.  A hard-coded boundary silently
-    stops testing the boundary the moment the line is redrawn -- which is
-    exactly what happened when the rule was pulled back from eight to nine.
-    """
-    import importlib
-
-    module = importlib.import_module("esolangs.tools.minifuck")
-    first = module._MUX_RULE_ARITY  # noqa: SLF001
-    return sorted({first, 10}) if first <= 10 else [first]
-
-
 @pytest.mark.slow  # the rule build plus the retired sculpt, ~4s at ten
-@pytest.mark.parametrize("n", _rule_arities())
+@pytest.mark.parametrize("n", [2, 10])
 def test_the_rule_spelling_matches_the_real_sculpt(n: int) -> None:
-    """From ``_MUX_RULE_ARITY`` the spelled build is the sculpt's bytes.
+    """The fixed rule's spelling is the direct top sculpt's bytes.
 
     The rule names the combination; the spelling must then be exactly what
     :func:`_mux_sculpt` emits at that combination, so the retired machinery
     is run once here as the oracle.  Byte equality is the whole claim --
     the replay acceptance inside ``_mux`` already checked the prints.
 
-    Both the rule's own first arity and the top of the sweep are checked: a
-    spelling that drifted at the boundary would otherwise be caught only by
-    the fallback, which answers correctly and silently restores the
-    contest's cost.
+    The smallest and widest tested arities pin both ends without restoring
+    the retired contest.
     """
     import importlib
     import random
@@ -3241,21 +3161,13 @@ def test_the_rule_spelling_matches_the_real_sculpt(n: int) -> None:
 
     base = module._mux_separate(n)  # noqa: SLF001
     top = min(base.ptrs()) - 2
-    winner, trusted = module._mux_scout(  # noqa: SLF001
-        base.fork(), table, n, range(top, top + 1)
-    )
-    assert trusted
-    assert winner is not None
-    acc, direct, predicted = winner
-    assert acc == top
-    assert len(built) == predicted
     sculpted = module._mux_sculpt(  # noqa: SLF001
         base,
         table,
         n,
-        acc,
+        top,
         0,
-        direct=direct,
+        direct=True,
         hint=module._SCULPT_POOL_CODE,  # noqa: SLF001
     )
     assert built == sculpted

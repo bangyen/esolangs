@@ -122,74 +122,52 @@ class TestScoutPricesNothing:
             )
 
 
-class TestMuxFallsBackToTheSweep:
-    """Both routes from the priced winner back to sculpting for real.
+class TestMuxUsesOneRule:
+    """The production mux names one combination and aborts on disagreement."""
 
-    The sweep is the spelling the scout is held to, so each fallback must
-    answer with exactly the program the trusted path answers with -- a
-    fallback that returned something *else* would be a second construction,
-    not a safety net.
-    """
-
-    def test_the_sweep_answers_what_the_scout_priced(self) -> None:
-        """Sculpting every combination picks the build the scout predicts."""
+    def test_the_rule_matches_the_sculpt_oracle(self) -> None:
+        """The top accumulator's direct sculpt is the rule's exact spelling."""
         module = importlib.import_module("esolangs.tools.minifuck")
         for n, table in ((2, "0110"), (2, "0001"), (3, "01101001")):
-            base, accs = _scout_setup(module, n)
-            expected = module._mux(table, n)  # noqa: SLF001
-            assert expected is not None, f"n={n} must build for this to pin anything"
-            assert module._mux_sweep(base, table, n, accs) == expected  # noqa: SLF001
+            base, _accs = _scout_setup(module, n)
+            built = module._mux(table, n)  # noqa: SLF001
+            top = min(base.ptrs()) - 2
+            assert built == module._mux_sculpt(  # noqa: SLF001
+                base,
+                table,
+                n,
+                top,
+                0,
+                direct=True,
+                hint=module._SCULPT_POOL_CODE,  # noqa: SLF001
+            )
 
-    def test_an_untrusted_scout_sends_mux_to_the_sweep(
+    def test_the_scout_and_sweep_are_not_on_the_build_path(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A scout that refuses to summarise still yields the same program."""
+        """Retired candidate contests cannot affect the fixed construction."""
         module = importlib.import_module("esolangs.tools.minifuck")
         expected = module._mux("0110", 2)  # noqa: SLF001
         assert expected is not None
+
+        def forbidden(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("the fixed construction enumerated candidates")
 
         with monkeypatch.context() as patch:
-            patch.setattr(module, "_mux_scout", lambda *_a: (None, False))
+            patch.setattr(module, "_mux_scout", forbidden)
+            patch.setattr(module, "_mux_sweep", forbidden)
             assert module._mux("0110", 2) == expected  # noqa: SLF001
 
-    def test_a_replay_that_misses_its_predicted_length_falls_back(
+    def test_a_replay_disagreement_aborts(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """The winner's replay disagreeing answers from the sweep instead.
-
-        Only the replay is broken.  The sweep that follows uses the emitted
-        sculpt loop instead, so it still has an independent path to answer.
-        """
+        """An invariant failure cannot silently restore the enumeration."""
         module = importlib.import_module("esolangs.tools.minifuck")
-        expected = module._mux("0110", 2)  # noqa: SLF001
-        assert expected is not None
-
-        real = module._mux_sculpt  # noqa: SLF001
-        calls = []
-
-        def record_sculpt(*args: object, **kwargs: object) -> str | None:
-            calls.append(1)
-            return real(*args, **kwargs)
 
         with monkeypatch.context() as patch:
             patch.setattr(module, "_mux_replays", lambda *_a: False)
-            patch.setattr(module, "_mux_sculpt", record_sculpt)
-            assert module._mux("0110", 2) == expected  # noqa: SLF001
-        assert len(calls) > 1, "the sweep must sculpt after the bad replay"
-
-    def test_a_scout_that_priced_nothing_returns_empty_handed(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Priced nothing *and* trusted is a refusal, not a fallback.
-
-        The two None returns are read differently: untrusted goes to the
-        sweep, trusted means every combination was skipped on its merits
-        and there is nothing for the sweep to find either.
-        """
-        module = importlib.import_module("esolangs.tools.minifuck")
-        with monkeypatch.context() as patch:
-            patch.setattr(module, "_mux_scout", lambda *_a: (None, True))
-            assert module._mux("0110", 2) is None  # noqa: SLF001
+            with pytest.raises(AssertionError, match="printed the wrong table"):
+                module._mux("0110", 2)  # noqa: SLF001
 
 
 class TestProbeFrameAndColumns:
