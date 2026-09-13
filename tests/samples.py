@@ -188,6 +188,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "BF-PDA": ("<@.", ""),
     "BFStack": (">+.", ""),
     "Back": ("-*", ""),
+    "B-tapemark": (">OK!", ""),
     "BIO": ("0ox;0ix{1ox;};1ix;", ""),
     "bit~": ("~(", ""),
     "Bitdeque": ("PUSH INVERT", ""),

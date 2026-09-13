@@ -2,6 +2,7 @@
 
 from esolangs.tools.algebraic_programming_language import algebraic_programming_language
 from esolangs.tools.alight import alight
+from esolangs.tools.b_tapemark import b_tapemark
 from esolangs.tools.circuit_diagram import circuit_diagram
 from esolangs.tools.cvnc import cvnc
 from esolangs.tools.egl import egl
@@ -78,6 +79,7 @@ __all__ = [
     "algebraic_programming_language",
     "alight",
     "arrowqueue",
+    "b_tapemark",
     "back",
     "between",
     "bf_tree",
