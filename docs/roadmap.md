@@ -3,6 +3,10 @@
 Only live work belongs here. Completed findings and negative results go to
 [limitations](limitations.md).
 
+## New interpreters
+
+The candidate list is empty.
+
 ## Line
 
 Boolean generation has no resource wall: twelve inputs round-trip within the
