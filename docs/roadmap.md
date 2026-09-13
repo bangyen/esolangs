@@ -18,12 +18,6 @@ Implement the surveyed candidates in this order:
   Derive a planar wire-and-bridge layout and execute the generator before
   implementing the full interpreter.
 
-## Line
-
-Boolean generation has no resource wall: twelve inputs round-trip within the
-projected time and memory budget. Future performance work belongs in extraction,
-not subtree sharing or a denser layout.
-
 ## Curation: the prune to 60
 
 65 languages now.  The prune to 65 removed the four ordinary imperative
