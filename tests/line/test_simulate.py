@@ -18,10 +18,12 @@ from __future__ import annotations
 
 import signal
 from collections.abc import Iterator
+from inspect import signature
 from pathlib import Path
 
 import pytest
 
+from esolangs.line import lattice
 from esolangs.line.extract import (
     crop_to_content,
     detect_scale,
@@ -37,6 +39,12 @@ from esolangs.line.simulate import IO, run
 # fixtures resolve no matter where pytest is invoked from.
 FIXTURES = str(Path(__file__).parents[1] / "fixtures" / "line")
 INVALID_FIXTURES = Path(__file__).parents[1] / "fixtures" / "line_invalid"
+
+
+def test_lattice_probe_length_is_derived_from_unit() -> None:
+    """The star probe keeps its quarter-unit clearance at smaller units."""
+    default = signature(lattice.star).parameters["length"].default
+    assert default == max(1, lattice.UNIT * 3 // 4)
 
 
 def _io(inputs: list[int]) -> tuple[IO, list[int]]:

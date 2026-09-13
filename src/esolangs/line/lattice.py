@@ -90,6 +90,11 @@ def _ink(mask: Mask, y: int, x: int) -> bool:
 # measure a pixel or two off it in practice.
 UNIT = 20
 
+# Stay one quarter-unit inside the nominal corner spacing.  At UNIT=20 this
+# preserves the measured 15px probe; deriving it keeps the same clearance when
+# a smaller lattice unit is introduced.
+_PROBE_LENGTH = max(1, UNIT * 3 // 4)
+
 # Upper bound on how long a single walked segment is allowed to be before
 # _walk_segment gives up rather than looping indefinitely on a corrupted or
 # unexpected image.  Not a small multiple of UNIT: a merged run of several
@@ -114,7 +119,7 @@ def _band_lit(mask: Mask, y: int, x: int, direction: int) -> bool:
     return any(_ink(mask, y + pdy * k, x + pdx * k) for k in (-1, 0, 1))
 
 
-def star(mask: Mask, y: int, x: int, length: int = 15) -> set[int]:
+def star(mask: Mask, y: int, x: int, length: int = _PROBE_LENGTH) -> set[int]:
     """Which of the 8 directions have a real band segment from this vertex.
 
     ``length`` only needs to be shorter than the shortest real segment
@@ -123,7 +128,7 @@ def star(mask: Mask, y: int, x: int, length: int = 15) -> set[int]:
     discarded exact-match design); the default comfortably clears every
     real segment length measured on both wiki fixtures (all >= 19px)
     without risking running past a short real segment into whatever
-    happens to follow it.
+    happens to follow it. The default is three quarters of :data:`UNIT`.
     """
     lit = set()
     for idx, (dy, dx) in enumerate(_DIRS):
