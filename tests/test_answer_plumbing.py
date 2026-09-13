@@ -231,7 +231,7 @@ class TestExamplePathsWorkFromAnywhere:
     def test_the_advertised_recipe_runs_from_another_directory(
         self, tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A chdir away it was ``cannot read examples/boolean/brainfuck.txt``."""
+        """A chdir away it was ``cannot read examples/brainfuck.txt``."""
         example = pathlib.Path(str(esolangs.describe("brainfuck")["examples"][0]))
         monkeypatch.chdir(tmp_path)
         assert esolangs.run("brainfuck", example, "1\n0\n", timeout=20)

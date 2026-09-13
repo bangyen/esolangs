@@ -26,7 +26,7 @@ from esolangs import cli
 from esolangs.cli import HELP, USAGE, main
 from tests.test_cli import _FakeStdin, _program, call_main, run_cli
 
-EXAMPLES = Path(__file__).parents[1] / "examples" / "boolean"
+EXAMPLES = Path(__file__).parents[1] / "examples"
 
 
 #: The bound a test gives a program it expects to *not finish*.  These
@@ -3356,7 +3356,7 @@ class TestExamplesShipWithThePackage:
     def test_the_manifest_is_beside_them(self) -> None:
         """It is what says which table each program computes."""
         root = pathlib.Path(esolangs.__file__).resolve().parent
-        assert (root / "examples" / "boolean" / "MANIFEST.md").is_file()
+        assert (root / "examples" / "MANIFEST.md").is_file()
 
     def test_the_root_symlink_still_resolves(self) -> None:
         """The repository reads the way it always did.
