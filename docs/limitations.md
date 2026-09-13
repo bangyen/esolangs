@@ -32,6 +32,13 @@ the identity template. Input reordering has no useful effect on A Painter Ant,
 Alight, Container, Grapheme, Home Row, or Packlang; do not reopen this with a
 blind search.
 
+`scripts/screen_input_reorder.py` measures the size of permuted-table builds,
+not an admissible reorder under the fixed input-template and fill contract.
+Interprogck8, Dig, Flowchart, BrainIf, Sophie, and SLOW ACV MAMMALIAN must test
+stream inputs in read order; BF-PDA must consume its fixed stack order. No
+instruction-only wire is derived for 123, Minifuck, WII2D, or COD. ArrowQueue's
+conditional re-enqueue route remains open.
+
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
 | Interprogck8 | 10 | 10 | Cost policy: dense n=11 builds only with 1,445 repairs and a 1.2 MB program. |

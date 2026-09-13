@@ -28,57 +28,6 @@ Do not take the band below it (60 -> 55) on this criterion: it cuts family
 duplicates rather than costume, which is a different argument and is
 recorded as such.
 
-## Research: take what the reordering screen names
-
-`scripts/screen_input_reorder.py` is permanent and re-run.  It measures, at
-n=3 over all 256 tables, the shortest build over the six input orders
-against the identity's, for all 65 registry languages -- the deleted
-59-generator ledger's method (`46a32c85`).  It re-runs in ~4s, so **re-run
-it rather than citing this list** once a generator moves.
-
-Its metric reproduces every prior figure still verified at HEAD exactly (dig
-19.8%, flowchart 17.1%, modulous 16.4%, arrowqueue 12.4%), and its premise
-is executed rather than assumed: 288 runs over polynomial and brainfuck, all
-six orders, every row of three tables.
-
-Unwired, with real upside:
-
-| Generator | Upside | Generator | Upside |
-| --- | --- | --- | --- |
-| Interprogck8 | 21.1% | 123 | 13.0% |
-| Dig | 19.8% | BF-PDA | 12.6% |
-| Flowchart | 17.1% | ArrowQueue | 12.4% |
-| Minifuck | 13.1% | Sophie | 8.1% |
-| BrainIf | 4.9% | WII2D | 5.1% |
-| SLOW ACV MAMMALIAN | 3.2% | COD | 3.2% |
-
-Everything else screens under 3%; every wired generator screens at 3.1%
-residual (Back) or less.  COD's is concentrated in 12 of 256 tables.
-ArrowQueue has its own entry below.
-
-Three figures moved with their generators, and one verdict was lost:
-
-| Generator | Was | Now | Cause |
-| --- | --- | --- | --- |
-| Polynomial | 25.1% | 15.9% | the dense rework, `22f0dce9`..`57caea1d` |
-| Sophie | 16.4% | 8.1% | the subfunction merge, `cbca1f46` |
-| COD | 0% | 3.2% | the dependency reduction, `a25f266f` |
-
-Polynomial and Modulous have no input-order route to pursue. Dig and
-Flowchart are grid placements, so need 2D layout surgery rather than a
-renamed branch operand.
-
-**For the no-input languages the wire may be renaming.**  Their inputs are
-substituted rather than read from a stream, so building the permuted table
-and renaming `{Xi}` slots would reach the screened figure without any build
-entering a permuted frame -- untested.
-
-Where a build *must* enter one, the trap stands: a generator that validates
-its own output during construction needs that check frame-mapped, or it
-rejects every correct placement and reports a clean 0.00%.  ZTOALC L did
-exactly that, and wii2d's budget machinery is the next likely instance.  **A
-0% where the screen shows upside is a diagnosis, not a verdict.**
-
 ## Conditional follow-up
 
 - **WII2D's exactly-once embed convention.**  Dense n=10 is a wall of the
