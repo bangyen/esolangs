@@ -3349,8 +3349,8 @@ class TestExamplesShipWithThePackage:
         declared = re.search(r"^esolangs = \[(.+?)\]", config, re.M)
         assert declared, "no package-data entry for esolangs"
         patterns = declared.group(1)
-        assert "examples/*/*.txt" in patterns
-        assert "examples/*/*.md" in patterns
+        assert "examples/*.txt" in patterns
+        assert "examples/*/*.txt" not in patterns
 
     def test_the_manifest_is_beside_them(self) -> None:
         """It is what says which table each program computes."""

@@ -249,6 +249,10 @@ class TestPackageSurface:
         for name in esolangs.__all__:
             assert hasattr(esolangs, name), name
 
+    def test_check_runnable_is_public(self) -> None:
+        """Its contract says callers besides ``run`` should use it."""
+        assert "check_runnable" in esolangs.__all__
+
     def test_stdlib_imports_are_not_advertised(self) -> None:
         for leaked in ("importlib", "pathlib", "signal", "threading", "Any"):
             assert leaked not in esolangs.__all__
