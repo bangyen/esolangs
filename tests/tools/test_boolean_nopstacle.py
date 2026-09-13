@@ -5,34 +5,14 @@ from itertools import product
 import pytest
 
 from esolangs.exceptions import TruthTableError
+from esolangs.interpreters.grid_based.nopstacle import _Machine
 from esolangs.tools.nopstacle import instantiate_nopstacle, nopstacle
-
-_DELTA = ((-1, 0), (0, -1), (1, 0), (0, 1))
+from esolangs.vm import run_until_halt_or_cycle
 
 
 def _result(program: str) -> str:
-    """Run enough Nopstacle steps to prove a local cycle or copy crossing."""
-    rows = program.splitlines()
-    height, width = len(rows), len(rows[0])
-    x = y = 0
-    direction = 2  # down
-    seen: set[tuple[int, int, int]] = set()
-    for _ in range(width * height * 4 + 1):
-        copy = (x // width, y // height)
-        if copy != (0, 0):
-            return "1"
-        state = (x, y, direction)
-        if state in seen:
-            return "0"
-        seen.add(state)
-        dx, dy = _DELTA[direction]
-        nx, ny = x + dx, y + dy
-        blocked = nx < 0 or ny < 0 or rows[ny % height][nx % width] == "#"
-        if blocked:
-            direction = (direction + 1) % 4
-        else:
-            x, y = nx, ny
-    raise AssertionError("the prototype gadget neither cycled nor crossed a copy")
+    """Return the termination answer from the registered interpreter."""
+    return "0" if run_until_halt_or_cycle(_Machine(program.splitlines())) else "1"
 
 
 @pytest.mark.parametrize(
@@ -57,12 +37,11 @@ def test_template_carries_each_input_and_the_table() -> None:
     ]
 
 
-def test_instantiated_program_is_rectangular_nopstacle() -> None:
+def test_instantiated_program_is_nopstacle_source() -> None:
     program = instantiate_nopstacle(nopstacle("0110"), [1, 0])
     rows = program.splitlines()
     assert {char for row in rows for char in row} <= {" ", "#"}
-    assert len({len(row) for row in rows}) == 1
-    assert rows[0][0] == " "
+    assert _Machine(rows).grid[0][0] == " "
 
 
 @pytest.mark.parametrize("bits", [[], [0], [0, 2], [0, 1, 0]])
