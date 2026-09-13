@@ -142,6 +142,7 @@ _NOT_SWEPT: dict[str, str] = {
     # Answers by halting or looping forever rather than by printing, so
     # there is no output to compare a row against.
     "123": "answers by termination, not by output",
+    "vandevelo": "answers by termination, not by output",
     # The dumping languages print their whole final state -- a tape, a
     # register list, a queue, a RAM map -- and which part of that dump is
     # the answer is a fact about the language, not a suffix a sweep can

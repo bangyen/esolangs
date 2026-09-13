@@ -93,7 +93,7 @@ the page.  [usage](docs/usage.md#debugging) names every key.
 <!-- EXAMPLES:START -->
 
 Ready-to-run programs are committed under [`examples/`](examples/):
-`examples/` holds a truth-table program for each of the 62
+`examples/` holds a truth-table program for each of the 63
 languages with a boolean generator.  It regenerates via
 `scripts/generate.py examples`.
 
@@ -104,7 +104,7 @@ languages with a boolean generator.  It regenerates via
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 62 languages</summary>
+<summary>Show all 63 languages</summary>
 
 ### Grid-based Languages
 
@@ -196,6 +196,7 @@ Languages that don't fit into the above categories.
 - [Forbin](https://esolangs.org/wiki/Forbin) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/forbin.py))
 - [Inject](https://esolangs.org/wiki/Inject) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/inject.py))
 - [Packlang](https://esolangs.org/wiki/Packlang) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/packlang.py))
+- [Vandevelo](https://esolangs.org/wiki/Vandevelo) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/vandevelo.py))
 - [ZTOALC L](https://esolangs.org/wiki/ZTOALC_L) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/other/ztoalc_l.py))
 
 <!-- IMPLEMENTED:END -->
@@ -211,7 +212,7 @@ Boolean generators accept a most-significant-input-first binary truth table.
 <!-- BOOLEAN-COUNT:START -->
 
 The truth table is a binary string of length `2**n`, most-significant input
-first; its length implies `n`, so it isn't passed separately.  62 of the
+first; its length implies `n`, so it isn't passed separately.  63 of the
 languages have such a generator, some covering only a documented subset of
 tables.
 

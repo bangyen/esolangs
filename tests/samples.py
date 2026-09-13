@@ -246,6 +246,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Suffolk": ("!" * 66 + "<.", ""),
     "Taglate": ("abc\ni", ""),
     "Unsquare": ("Io", ""),
+    "Vandevelo": ("Nil?", ""),
     "WII2D": (">~.\n!", ""),
     "ZTOALC L": ("10\nprint 65", ""),
 }
