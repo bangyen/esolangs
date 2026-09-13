@@ -42,13 +42,6 @@ recorded as such.
   correctly.  Generalize that prototype through `best_input_order` and keep
   the identity on ties.
 
-- **WII2D's exactly-once embed convention.**  Dense n=10 is a wall of the
-  convention, not the machine: a per-node re-embed does dense n=10 in 14432
-  characters and dense n=13 in 146540, every row executed.  Re-examine the
-  convention only if the arity ever matters -- it is fenced by the invariant
-  in `tests/tools/test_boolean_parameterized.py`, and Dotlang and 2dFish
-  were removed rather than exempted from it.
-
 - **Minifuck's mux round loop.**  The rest of the sculpt closed (pool code
   in `5b35c66b`, the named accumulator from nine); the round loop did not,
   and is *measured* not to.  Over 36864 round transitions at exhaustive n=3
