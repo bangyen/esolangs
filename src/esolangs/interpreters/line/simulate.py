@@ -98,7 +98,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from extract import DEFAULT_UNIT, OpCall, Stroke, Vertex, classify_ops
+from .extract import DEFAULT_UNIT, OpCall, Stroke, Vertex, classify_ops
 
 
 @dataclass
