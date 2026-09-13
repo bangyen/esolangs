@@ -30,7 +30,7 @@ INTERPRETER_DIR = Path(__file__).parents[2] / "src" / "esolangs" / "interpreters
 # categories in a tuple that omitted ``grid_based``, so eleven interpreters
 # -- every grid language -- were silently exempt from a file whose docstring
 # claims to cover "every interpreter".  It is the same hole
-# ``scripts/check_docstrings.py`` had, where a stale category tuple exempted
+# the retired docstring script had, where a stale category tuple exempted
 # twelve of sixty-three interpreters and three real violations sat behind
 # it.  A walk that discovers the tree cannot acquire that hole again, which
 # is why ``tests/test_interpreter_conventions.py`` already reads the tree

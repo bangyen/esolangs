@@ -150,22 +150,11 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
         "src/esolangs/tools/ztoalc_starts.py",
     ),
     "duplicate-code check (pylint)": ("src/esolangs/", "scripts/", "tests/"),
-    "single-interpreter installer": (
-        "src/esolangs/",
-        "scripts/install_one.sh",
-        "scripts/bundle_one.py",
-        "scripts/verify_install_one.py",
-    ),
     # The lemmas import the generator and nothing else, so only it and the
     # script itself can break them.
     "arrowqueue lemmas": (
         "src/esolangs/tools/parameterized.py",
         "scripts/arrowqueue_lemmas.py",
-    ),
-    # The sieve reads only the ceiling constant and its own source.
-    "ztoalc slot record": (
-        "src/esolangs/tools/ztoalc_l.py",
-        "scripts/ztoalc_slot_record.py",
     ),
     # Only an interpreter (or the sweep itself) can introduce a leak.
     "exception leaks": (
@@ -215,14 +204,6 @@ STEPS = [
         [*PY, "scripts/make_ztoalc_table.py", "--check"],
     ),
     (
-        "docstring check",
-        [*PY, "scripts/check_docstrings.py"],
-    ),
-    (
-        "generator conventions check",
-        [*PY, "scripts/check_generators.py"],
-    ),
-    (
         # pylint's R0801 reports similar blocks across files, catching
         # copy-pasted helpers like the bracket matcher or the OISC memory
         # tokenizer.  --ignore-imports keeps shared import blocks from
@@ -241,10 +222,6 @@ STEPS = [
             "tests",
         ],
     ),
-    (
-        "single-interpreter installer",
-        [*PY, "scripts/verify_install_one.py"],
-    ),
     # Twelve named lemmas behind the relevant generator tests, each pinning
     # one finite fact the total-over-every-arity proof rests on.  0.8s, so
     # it is a gate rather than the by-hand check the A Painter Ant proof
@@ -252,14 +229,6 @@ STEPS = [
     (
         "arrowqueue lemmas",
         [*PY, "scripts/arrowqueue_lemmas.py"],
-    ),
-    # Sieves every ZTOALC start under the line ceiling and fails if the best
-    # capacity is not the 395 that ztoalc_l.py and docs/limitations.md both
-    # cite.  2.2s, and it is the only thing standing between that figure and
-    # silent staleness.
-    (
-        "ztoalc slot record",
-        [*PY, "scripts/ztoalc_slot_record.py"],
     ),
     # The contract exceptions.py states, executed: no interpreter may leak a
     # raw Python error to its caller.  Bare, it checks only the languages

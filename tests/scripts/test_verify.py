@@ -146,12 +146,10 @@ CI = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 def _signature(cmd: list[str]) -> str:
     """The token that identifies one ``STEPS`` command inside ``ci.yml``.
 
-    A step is identified by what it *runs*, not by its display name: the two
-    files name the same check differently ("docstring check" against "Check
-    interpreter docstrings"), so matching on names would pin the prose and
-    miss the thing that matters.  ``--directory`` comes before ``--with``
-    because the line step carries both and its directory is the distinctive
-    half; a bare ``-q`` tail is not distinctive at all.
+    A step is identified by what it *runs*, not by its display name. Matching
+    names would pin prose rather than the thing that matters. ``--directory``
+    comes before ``--with`` because the line step carries both and its
+    directory is the distinctive half; a bare ``-q`` tail is not distinctive.
     """
     joined = " ".join(cmd)
     found = re.search(r"scripts/[a-z_0-9]+\.py", joined)

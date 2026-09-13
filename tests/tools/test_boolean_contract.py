@@ -637,7 +637,7 @@ def test_a_malformed_table_is_refused_in_the_shared_words(
     string"`` for ``"0123"`` and ``"needs at least one input: a power-of-two
     length"`` for ``"011"``, and nothing in the suite noticed.  These two
     messages were pinned per generator in four files and packlang was in
-    none of them; ``scripts/check_generators.py`` checks the signature, not
+    none of them; the generator-convention test checks the signature, not
     the words.
 
     The second assertion is what catches that ``"011"`` case, and is the

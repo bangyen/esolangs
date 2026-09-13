@@ -18,10 +18,11 @@ which is why the three records past the sieve are absent (9780657630 keeps
 
 Usage:
     python scripts/make_ztoalc_table.py          # rewrite ztoalc_starts.py
-    python scripts/make_ztoalc_table.py --check  # verify it matches the file
+    python scripts/make_ztoalc_table.py --check  # verify the table and capacity record
 """
 
 import sys
+from array import array
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -100,6 +101,23 @@ def anchors() -> list[tuple[int, int]]:
     return table
 
 
+def slot_record(cap: int) -> tuple[int, int]:
+    """Return the greatest trajectory capacity at or below ``cap``."""
+    counts = array("i", [0]) * (cap + 1)
+    counts[2] = 1
+    best, best_start = 1, 2
+    for start in range(3, cap + 1):
+        value, count = start, 0
+        while value >= start:
+            if value <= cap:
+                count += 1
+            value = value // 2 if value % 2 == 0 else 3 * value + 1
+        counts[start] = count + counts[value]
+        if counts[start] > best:
+            best, best_start = counts[start], start
+    return best, best_start
+
+
 def write_module(table: list[tuple[int, int]]) -> None:
     """Write ``ztoalc_starts.py``."""
     lines = [
@@ -125,7 +143,7 @@ def write_module(table: list[tuple[int, int]]) -> None:
 
 
 def main() -> int:
-    """Regenerate the table, or verify it is current with ``--check``."""
+    """Regenerate the table, or check it and the cited capacity record."""
     table = anchors()
     if "--check" in sys.argv:
         namespace: dict[str, object] = {}
@@ -134,6 +152,11 @@ def main() -> int:
             print(f"[FAIL] {OUT} is stale: regenerate with {Path(sys.argv[0]).name}")
             return 1
         print(f"[ok] {OUT} matches the derived anchors ({len(table)} entries)")
+        record, start = slot_record(_MAX_LINES)
+        print(f"record capacity under {_MAX_LINES}: {record} (start {start})")
+        if record != 395:
+            print("[FAIL] the 395 cited in ztoalc_l.py and limitations.md is stale")
+            return 1
         return 0
     write_module(table)
     return 0
