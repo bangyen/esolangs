@@ -6,6 +6,13 @@ can fail to line up, and a program reaching every one of them is far
 harder to write than the triples themselves.
 """
 
+from unittest.mock import patch
+
+import pytest
+
+import esolangs
+from esolangs import vm as vm_module
+from esolangs.exceptions import InterpreterLimitError, ProgramError
 from esolangs.vm import _climbs_forever
 
 # Three visits, ten steps apart, whose values climb by a constant 1 with
@@ -44,3 +51,61 @@ class TestClimbsForever:
         """The step repeats, but a slack sinking toward zero will flip."""
         slacks: list[int | None] = [5] * 10 + [3] * 11
         assert _climbs_forever(CLIMBING, slacks) is False
+
+
+class TestTheArmsThatTranslateWhatAnInterpreterRaises:
+    """``make_vm`` and ``step`` promise every deliberate failure is ours.
+
+    Each arm here is reached only when an interpreter raises something the
+    wrapper has to restate, so none of them is on a path an ordinary
+    program takes.  Patched rather than provoked: a language that raises
+    ``ProgramError`` from its constructor today may not tomorrow, and a
+    test that silently stops exercising the arm is worse than one that
+    says what it is doing.
+    """
+
+    @staticmethod
+    def _adapter(fault: BaseException) -> object:
+        def build(*_args: object, **_kwargs: object) -> object:
+            raise fault
+
+        return build
+
+    def test_a_program_error_from_the_loader_passes_through(self) -> None:
+        """Already ours, so it is re-raised rather than wrapped twice."""
+        planted = ProgramError("unmatched something")
+        with (
+            patch.dict(
+                vm_module._VM_ADAPTERS,  # noqa: SLF001 - the arm is private
+                {"brainfuck": self._adapter(planted)},
+            ),
+            pytest.raises(ProgramError) as exc,
+        ):
+            esolangs.make_vm("brainfuck", "+")
+        assert exc.value is planted
+
+    def test_a_recursion_error_from_the_loader_becomes_a_limit(self) -> None:
+        """A loader that recurses past CPython's stack is a limit, not a bug."""
+        with (
+            patch.dict(
+                vm_module._VM_ADAPTERS,  # noqa: SLF001 - the arm is private
+                {"brainfuck": self._adapter(RecursionError())},
+            ),
+            pytest.raises(InterpreterLimitError, match="recursed deeper"),
+        ):
+            esolangs.make_vm("brainfuck", "+")
+
+    def test_a_program_error_from_a_step_passes_through(self) -> None:
+        """The same promise one layer down, where the machine is running."""
+        machine = esolangs.make_vm("brainfuck", "+++")
+        planted = ProgramError("bad instruction")
+
+        def boom() -> None:
+            raise planted
+
+        with (
+            patch.object(machine._machine, "step", boom),  # noqa: SLF001 - the arm
+            pytest.raises(ProgramError) as exc,
+        ):
+            machine.step()
+        assert exc.value is planted

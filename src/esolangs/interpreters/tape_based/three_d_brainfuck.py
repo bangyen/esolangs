@@ -160,6 +160,12 @@ class _Machine:
     # here is the position *and* the heading, and one name cannot be both.
     # ``ap`` keeps its own name: it is the array pointer, not this.
 
+    #: ``ip`` is a position, but not one on the source text: a 3-D point and a 3-D
+    #: heading.
+    #: Declared rather than left to the default so that a tuple nobody has
+    #: classified is a missing answer instead of this one.
+    ip_shape = "opaque"
+
     @property
     def ip(self) -> tuple[int, ...]:
         """The instruction pointer's position and heading, flattened.

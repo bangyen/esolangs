@@ -8,7 +8,7 @@ from esolangs.exceptions import HaltError
 from esolangs.interpreters.grid_based.super_snusp import _advance, _floor_root, run
 from esolangs.interpreters.io import IO, ScriptedIO
 from esolangs.interpreters.randomness import FirstDraw
-from esolangs.tools.boolean.super_snusp import super_snusp
+from esolangs.tools.super_snusp import super_snusp
 from tests.interpreters.runner import run_program
 
 

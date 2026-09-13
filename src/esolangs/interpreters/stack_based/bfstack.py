@@ -204,9 +204,12 @@ class _Machine:
         ind, stk, lst = self.state
         char = self.code[ind]
         if _needs_operand(char) and not stk:
-            raise HaltError
+            raise HaltError(
+                f"{char!r} at position {ind} needs a value on the stack and "
+                f"the stack is empty"
+            )
         if char == "]" and not lst:
-            raise HaltError
+            raise HaltError(f"']' at position {ind} closes a loop that never opened")
         if char == "[" and not stk[-1] and _forward(self.code, ind) is None:
             # The original scanned the cursor to the end before it noticed
             # the bracket was unmatched, leaving the machine halted.  A

@@ -1,21 +1,15 @@
-"""Single source of truth for the languages the package supports.
+"""Registry of language metadata, used by the API, tools, and tests."""
 
-Each :class:`Language` describes a language's generators (if any), its
-interpreter (if any), and how a program is handed to that interpreter. The
-public API, the tools, and the test suite all derive from this table, so
-adding a language is a one-place change.
-
-:func:`canonical_id` turns a language's display (wiki) name into its
-canonical internal identifier, so the two are derived, not maintained in
-parallel.
-"""
-
+import difflib
 import re
 import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import cache
+from urllib.parse import quote
 
-from esolangs.tools import boolean as _boolean
+from esolangs import tools as _boolean
+from esolangs.exceptions import UnknownLanguageError
 
 # Display names whose canonical id cannot be produced by the slug rules
 # (a name whose meaning is lost by stripping its symbols, like ``%^2^-1``).
@@ -42,19 +36,47 @@ _DIGIT_WORDS = {
 }
 
 
-def canonical_id(name: str) -> str:
-    """Return the canonical internal identifier for a language's display name.
+#: How close a miss has to be before it is offered as "did you mean".
+#:
+#: 0.6 offered ``Sophie`` for ``nope``, which is worse than saying nothing:
+#: a wrong guess sends the reader off to check a language they never meant.
+#: Measured rather than picked -- across 294 single-edit typos of the 65
+#: names, 0.6 and 0.65 both rescue 285, while 0.65 is the lowest value that
+#: suggests nothing for any of ``nope``, ``zzzz``, ``xyz``, ``qqqqqq``,
+#: ``hello``, ``python``, ``asdf``, ``test`` and ``foo``.  0.7 starts
+#: costing real rescues.  ``TestASuggestionIsWorthLessThanSilence`` is the
+#: measurement, re-run rather than quoted -- it recomputes both halves of
+#: that trade and fails if this number stops being the best one.
+#:
+#: Shared with the CLI's option-name suggester, which had drifted to its
+#: own copy of the number under a docstring promising they were the same.
+SUGGESTION_CUTOFF = 0.65
 
-    The id is a valid-Python-identifier slug: lowercase, ASCII, non-ASCII
-    letters transliterated (``þ`` -> ``th``), ``~`` spelled out as
-    ``tilde``, ``*`` dropped, and digit-leading names expanded to words
-    (``6-5`` -> ``six_five``).  A couple of names that no slug can capture
-    are pinned in :data:`_CANONICAL_OVERRIDES`.
-    """
-    if name in _CANONICAL_OVERRIDES:
-        return _CANONICAL_OVERRIDES[name]
-    s = name.replace("~", "_tilde").replace("þ", "th").replace("*", "")
-    s = unicodedata.normalize("NFKD", s.lower())
+
+def canonical_id(name: str) -> str:
+    """Return a display name's slug, using :data:`_CANONICAL_OVERRIDES` when needed."""
+    # Matched case-insensitively: the override is keyed by the display name,
+    # so an exact-key lookup made ``CV(N)(C)`` the one language ``resolve``
+    # could not match on case -- ``cv(n)(c)`` fell through to the slug rules
+    # and became ``cv_n_c``, which is nothing's id.  Every other awkward
+    # name (``BRAINFUCK``, ``s*bleq``, ``forþ``) was already tolerant.
+    # Stripped before anything else.  The slug rules below collapse runs of
+    # non-alphanumerics and strip the result, so 63 of the 65 names already
+    # tolerated a stray surrounding space -- but the override lookup is an
+    # exact one, and the two names that need an override were therefore the
+    # exact two that did not.  ``CV(N)(C) `` was the bad one: it fell
+    # through to ``cv_n_c``, matched nothing, and came back as "did you mean
+    # CV(N)(C)?" -- an invisible diff and no way forward.
+    name = name.strip()
+    folded = {key.casefold(): value for key, value in _CANONICAL_OVERRIDES.items()}
+    if name.casefold() in folded:
+        return folded[name.casefold()]
+    # Lowercased *before* the transliterations, not after: they name
+    # lowercase characters, so ``FORÞ`` kept its uppercase thorn, fell
+    # through to the punctuation rule and came out ``for`` -- the one
+    # display name whose upper-case spelling did not resolve.
+    s = name.lower().replace("~", "_tilde").replace("þ", "th").replace("*", "")
+    s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c))
     s = re.sub(r"[^a-z0-9]+", "_", s).strip("_")
     if s and s[0].isdigit():
@@ -74,35 +96,7 @@ Generator = Callable[..., str]
 
 @dataclass(frozen=True)
 class Language:
-    """Metadata for one language.
-
-    ``id`` is the language's canonical internal identifier: the slug
-    :func:`canonical_id` produces from the display name, used for the
-    interpreter module, the generator function, and the test file, so every
-    internal reference to a language uses the same token.
-
-    ``boolean`` is the language's generator, which may be None: it produces
-    a program computing a truth table.
-    :data:`~esolangs.tools.boolean.BOOLEAN` is derived from it, so
-    registering a generator here is the whole of adding one, with no second
-    list to keep in step.
-
-    ``interpreter`` is the dotted module under
-    ``esolangs.interpreters`` that runs programs (None if the executable
-    lives elsewhere, e.g. in extra/).  ``split`` passes the program split
-    into lines to the interpreter.
-
-    There is deliberately no field for extra ``run()`` arguments.  One
-    existed -- ``kwargs``, carried through :data:`RUNNERS` and unpacked by
-    ``esolangs.run`` -- and no language ever set it, so every call was
-    ``run_fn(program, io)`` with an empty dict threaded through three
-    functions to get there.  The eleven interpreters that take a further
-    argument all default it, and the callers that pass one are the tests
-    and the ``__main__`` blocks, which call the interpreter's ``run``
-    directly and never come through here.  ``esolangs.tools.boolean.
-    examples`` keeps its own ``kwargs`` because that one is used.
-
-    """
+    """Language name, interpreter, source shape, id, and optional generator."""
 
     name: str
     interpreter: str | None = None
@@ -174,12 +168,6 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.bfpda,
         id="bf_pda",
         interpreter="stack_based.bf_pda",
-    ),
-    "Basicfuck": Language(
-        "Basicfuck",
-        "tape_based.basicfuck",
-        boolean=_boolean.basicfuck,
-        id="basicfuck",
     ),
     "Between": Language(
         "Between",
@@ -288,12 +276,6 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.dimensional",
         boolean=_boolean.dimensional,
         id="dimensional",
-    ),
-    "DINAC": Language(
-        "DINAC",
-        "other.dinac",
-        boolean=_boolean.dinac,
-        id="dinac",
     ),
     "Eval": Language(
         "Eval",
@@ -405,19 +387,6 @@ LANGUAGES: dict[str, Language] = {
         "stack_based.modulous",
         boolean=_boolean.modulous,
         id="modulous",
-    ),
-    "MyScript": Language(
-        "MyScript",
-        "register_based.myscript",
-        boolean=_boolean.myscript,
-        id="myscript",
-    ),
-    "Nevermind": Language(
-        "Nevermind",
-        "register_based.nevermind",
-        boolean=_boolean.nevermind,
-        id="nevermind",
-        split=True,
     ),
     "NoComment": Language(
         "NoComment",
@@ -569,3 +538,124 @@ RUNNERS: dict[str, tuple[str, bool]] = {
     for name, lang in LANGUAGES.items()
     if lang.interpreter
 }
+
+
+@cache
+def example_stems() -> dict[str, str]:
+    """Return canonical id -> the ``examples/`` filename stem, per language.
+
+    The stems are dash-separated display names (``a-painter-ant``), while
+    every internal reference is the underscored :func:`canonical_id` slug
+    (``a_painter_ant``), and a few match neither by hand (``6-5``,
+    ``pct-squared-minus-one``).  Deriving the map from the example table the
+    same way :meth:`~esolangs.tools.examples.BooleanExample.build`
+    does keeps the two spellings from drifting: a stem with no language, or
+    a language with no stem, shows up as a missing key rather than as a
+    silently empty example list, which is how a fifth of the registry came
+    to report none.
+
+    The import is deferred because ``examples`` imports this module; the
+    map is wanted only when someone asks for a description, so paying for
+    it then costs nothing at import time.
+    """
+    from esolangs.tools import examples as _examples
+
+    return {
+        canonical_id(stem.replace("-", " ")): stem
+        for stem in set(_examples.BOOLEAN_EXAMPLES) | set(_examples.HAND_WRITTEN)
+    }
+
+
+@cache
+def _fills() -> dict[str, Callable[[str, list[int]], str]]:
+    """Return canonical id -> the substitution that instantiates a template.
+
+    A *parameterized* generator returns a program with ``{Xi}`` slots rather
+    than one that reads its inputs, and the slots are filled with that
+    language's own code for setting an input.  Each committed example
+    already carries that substitution as its ``fill``, so this is the
+    existing recipe exposed rather than a second list to keep in step.
+
+    Membership here is the definition of "parameterized" used everywhere in
+    the package, and it is derived rather than written down for a measured
+    reason: the same set taken from ``parameterized.__all__`` omits Home
+    Row, whose generator emits ``{X0}`` all the same, and the three
+    hand-kept lists in the docs each named a different subset.  ``fill`` is
+    the only spelling that matches what the generators actually emit -- 17
+    languages, checked against a ``{Xi}`` search over all 65.
+    """
+    from esolangs.tools import examples as _examples
+
+    return {
+        canonical_id(stem.replace("-", " ")): example.fill
+        for stem, example in _examples.BOOLEAN_EXAMPLES.items()
+        if example.fill is not None
+    }
+
+
+def parameterized_ids() -> frozenset[str]:
+    """Return the canonical ids whose boolean generator emits a template."""
+    return frozenset(_fills())
+
+
+# Canonical id -> display name, the index :func:`resolve` matches against.
+_BY_ID: dict[str, str] = {lang.id: name for name, lang in LANGUAGES.items()}
+
+
+#: Characters a wiki slug may keep as themselves.
+#:
+#: RFC 3986 lets a path segment carry the unreserved set and the sub-delims,
+#: so parentheses, ``*``, ``~`` and ``-`` stay readable -- ``CV(N)(C)`` is a
+#: better link than ``CV%28N%29%28C%29`` and both resolve.  What is *not*
+#: here is the point: ``%`` is the escape character itself and ``^`` is in
+#: neither set, so ``%^2^-1`` went out as
+#: ``https://esolangs.org/wiki/%^2^-1``, which esolangs.org answers 400 --
+#: ``%^2`` is not a percent-escape.  Non-ASCII is escaped too: ``Forþ`` as
+#: raw bytes is served by a browser and refused by a strict client.
+_WIKI_SAFE = "_-.~()*!'+,;=:@&$"
+
+
+def wiki_url(name: str) -> str:
+    """Return the esolangs.org page for a language's display name.
+
+    One function because there were two constructions -- :func:`describe`
+    built the URL inline and ``scripts/make_languages_doc.py`` built it
+    again for the README -- so the same broken link shipped in both, and a
+    fix to either would have left the other wrong.
+    """
+    slug = quote(name.replace(" ", "_"), safe=_WIKI_SAFE)
+    return f"https://esolangs.org/wiki/{slug}"
+
+
+def resolve(name: str) -> str:
+    """Return the registered display name matching ``name``.
+
+    An exact hit wins.  Otherwise the name is matched by its
+    :func:`canonical_id`, which makes the lookup case- and
+    punctuation-insensitive: ``Brainfuck``, ``brainfuck`` and ``BRAINFUCK``
+    all reach the one registered ``brainfuck``.  That the display names mix
+    conventions (``brainfuck``, ``Suffolk``, ``bit~``) is exactly why -- a
+    caller cannot guess which one a given language follows, and being told
+    "unknown language" for a name that is plainly in ``esolangs list`` is
+    the wrong answer to a question of spelling.
+
+    A name matching nothing raises :class:`UnknownLanguageError` naming the
+    closest registered spellings.
+    """
+    if not isinstance(name, str):
+        # Checked before ``canonical_id`` touches it, which would otherwise
+        # answer a ``None`` language with ``'NoneType' object has no
+        # attribute 'replace'`` -- the one wrong-type argument in the API
+        # that escaped as an internal AttributeError.
+        raise UnknownLanguageError(
+            f"expected a language name, got {type(name).__name__}"
+        )
+    if name in LANGUAGES:
+        return name
+    match = _BY_ID.get(canonical_id(name))
+    if match is not None:
+        return match
+    close = difflib.get_close_matches(
+        canonical_id(name), _BY_ID, n=2, cutoff=SUGGESTION_CUTOFF
+    )
+    raise UnknownLanguageError(name, tuple(_BY_ID[c] for c in close))

@@ -190,10 +190,6 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "BFStack": (">+.", ""),
     "Back": ("-*", ""),
     "BIO": ("0ox;0ix{1ox;};1ix;", ""),
-    "Basicfuck": (
-        "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\na += 65;\nwrite <- a ;",
-        "",
-    ),
     "Between": ("'a'v.\n[a]s|3|\n[a]p.\n.x.", ""),
     "bit~": ("~(", ""),
     "Bitdeque": ("PUSH INVERT", ""),
@@ -214,7 +210,6 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Decleq": ("-2 5 9 9 9 65 0 0", ""),
     "Dig": (">$5:\n 2 ", ""),
     "Dimensional": ("+.+.+.", ""),
-    "DINAC": ("OUT 'a", ""),
     "Eval": ("0+.", ""),
     "Factor": ("15", ""),
     "Fargo": ("$", "0\n"),
@@ -235,8 +230,6 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Minifuck": (".", ""),
     "Minsky Swap": ("+", ""),
     "Modulous": ("[PSH INT 5][DUP][PRT INT]", ""),
-    "MyScript": ("var a is 5\nsay a", ""),
-    "Nevermind": ("make,x,5\nprint,$x", ""),
     "NoComment": ("ciio", ""),
     "Packlang": (
         "Package : IO {\n  Integer main {\n    charPut(65);\n    0;\n  }\n} p;",

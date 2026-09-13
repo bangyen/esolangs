@@ -129,7 +129,8 @@ class TestSpecialAddresses:
 
     def test_write_past_end_extends_memory_and_breaks(self) -> None:
         """Writing past the program end extends memory; a negative target
-        (here held in mem[3]) halts execution."""
+        (here held in mem[3]) halts execution.
+        """
         assert run_bounded("10 0 3 -1 0 0 0") == ""
 
     def test_invalid_address_rejected(self) -> None:
@@ -235,7 +236,8 @@ class TestMemoryState:
 
     def test_exhausted_input_reads_as_zero(self) -> None:
         """With no input left the subtraction uses 0, which leaves the cell
-        unchanged rather than shifting it by one."""
+        unchanged rather than shifting it by one.
+        """
         assert self.final("0 -2 3 -3 0 6 9", stdin="")[0][0] == 0
 
 

@@ -12,14 +12,25 @@ Every registered interpreter exposes a ``step()``/``halted`` state object,
 so every language in the registry can be wrapped; only an unregistered name
 is refused.
 
-Two of the languages' conventions defeat the obvious driving loop, so the
+Three of the languages' conventions defeat the obvious driving loop, so the
 :class:`VM` reports them rather than leaving a caller to find out:
-``self_halts`` is ``False`` where ``halted`` never becomes true, and
+``self_halts`` is ``False`` where ``halted`` never becomes true,
 ``dumps_on_the_post_halt_step`` is ``True`` where the output is written on
-the step after the halt.  ``while not vm.halted: vm.step()`` hangs on the
-first group and returns ``""`` on the second, and neither is discoverable
-from the protocol alone.  A hang detector below is the other way to drive
-the first group, and takes the bound off the caller entirely.
+the step after the halt, and ``steppable_to_answer`` is ``False`` where no
+number of steps reaches the answer at all.  ``while not vm.halted:
+vm.step()`` hangs on the first group and returns ``""`` on the second, and
+neither is discoverable from the protocol alone.  A hang detector below is
+the other way to drive the first group, and takes the bound off the caller
+entirely.
+
+The third group has one member, A Painter Ant, and it is not a hang that a
+bound fixes: the language is an unconditional infinite loop whose answer is
+the *painted grid* once the ant's walk provably repeats, so
+:func:`esolangs.run` proves the cycle and renders, and stepping -- which
+can only ever be mid-walk -- has nothing to read.  Three million steps
+produce ``halted=False`` and ``output=''``.  That is a property of the
+language rather than a defect to route around, so it is stated as one:
+a caller that steps consults the flag and uses :func:`esolangs.run`.
 
 The five hang detectors here -- :func:`run_until_halt_or_cycle`,
 :func:`run_until_halt_or_all_branches_cycle`,
@@ -40,12 +51,18 @@ That is the loop every consumer of :func:`make_vm` was writing itself.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable, Hashable, Sequence
+from functools import cache
 from typing import Any, Protocol, cast, runtime_checkable
 
-from esolangs.exceptions import UnknownLanguageError
+from esolangs.exceptions import (
+    InterpreterLimitError,
+    ProgramError,
+    UnknownLanguageError,
+)
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.registry import RUNNERS
+from esolangs.registry import RUNNERS, resolve
 
 
 @runtime_checkable
@@ -65,7 +82,18 @@ class _StepMachine(Protocol):
         """Whether the machine has finished executing."""
 
     def snapshot(self) -> Hashable:
-        """Return the complete internal state, hashable for cycle detection."""
+        """Return the complete internal state, hashable for cycle detection.
+
+        **Opaque, and language-shaped.**  What the tuple holds is whatever
+        that interpreter's state is -- a tape and two cursors here, a grid
+        and a heading there -- so the positions are not a schema and are not
+        named: there is no arrangement that would mean the same thing across
+        sixty-five machines.  It exists to be compared and hashed, which is
+        what a cycle detector needs and all it needs.
+
+        Read ``ip``, ``memory``, ``stack`` and ``output`` for state a caller
+        can interpret; those *are* uniform and documented individually.
+        """
 
 
 @runtime_checkable
@@ -305,7 +333,7 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
     :func:`run_until_halt_or_growth` handles on a tape, where the growing
     state is cells rather than frames -- and it is why recursive languages
     keep a wall-clock backstop, one that deadlocks under ``pytest --cov``
-    (see ``docs/walls.md``).
+    (see ``the limitations ledger``).
 
     This is the narrower check that class allows.  Rather than comparing
     whole-machine states across time, it compares each newly-pushed frame
@@ -547,10 +575,20 @@ def run_until_halt_or_growth(machine: _TapeMachine | VM, limit: int = 100_000) -
             waves[ip] = (current, ptr, 1, 0)
         else:
             before, low, power, length = checkpoint
-            # The backstop for a drifting baseline, and live: ablating the
-            # origins arm above leaves `+[>+]` proved by this one instead.
-            # With that arm in place it always proves the hang first, so
-            # nothing reaches this return.
+            # The backstop for a drifting baseline.  Nothing reaches this
+            # return, and the reason is stronger than the old comment here
+            # claimed: measured by ablation, each of the three arms proves
+            # every growth program in the suite *on its own*, and with all
+            # three disabled every one goes undecided.  They are not a
+            # pipeline but three independent certificates.
+            #
+            # That is also why a mutation sweep leaves this whole block
+            # alive: mutating one arm's bookkeeping cannot change a verdict
+            # the other two reach anyway.  Those survivors are the
+            # redundancy, not a missing test, and the redundancy is kept --
+            # the corpus is a handful of brainfuck programs, and an arm
+            # idle on all of them may still be the only one that decides a
+            # shape nobody has written down yet.
             if _grows_forever(before, current, low):  # pragma: no cover - see above
                 return False
             length += 1
@@ -797,7 +835,7 @@ class _SteppableMachine(Protocol):
 
     Deliberately smaller than :class:`_StepMachine`: driving a machine to
     its halt never calls ``snapshot()``, and requiring one would exclude
-    the very callers this is for.  :class:`~esolangs.debug.Debugger` is the
+    the very callers this is for.  :class:`~esolangs.debugger.Debugger` is the
     case that matters -- it forwards ``step``/``halted`` and records a
     watch on the way, but keeps no snapshot of its own.
     """
@@ -824,7 +862,7 @@ def run_until_halt(
     when it was still going when the run stopped.
 
     Every consumer of :func:`make_vm` was writing this loop out again --
-    ``tests/test_vm_protocol.py`` and :meth:`~esolangs.debug.Debugger.run`
+    ``tests/test_vm_protocol.py`` and :meth:`~esolangs.debugger.Debugger.run`
     among them -- with a different budget each time and a different thing
     done on overrun: an ``AssertionError``, a silent return, a ``False``.
     Those differences are real and stay with the callers.  What is shared is the
@@ -867,7 +905,18 @@ class VM(Protocol):
         """Execute one command, advancing the machine."""
 
     def snapshot(self) -> Hashable:
-        """Return the complete state used by cycle detection."""
+        """Return the internal state cycle detection compares, hashable.
+
+        Internal, not everything: ``output`` is excluded, so two snapshots
+        can compare equal across a step that wrote something -- which the
+        post-halt dump step does on seven languages.  That is what the loop
+        proof needs and is sound for it, since equal internal state means
+        the same future; it is not a full state diff.
+
+        Said here as well as on :meth:`~esolangs.debugger.Debugger.snapshot`
+        because this is the copy a caller holding a VM reads, and "complete
+        state" on its own invites the other reading.
+        """
 
     @property
     def halted(self) -> bool:
@@ -879,11 +928,58 @@ class VM(Protocol):
 
     @property
     def ip(self) -> int | tuple[int, ...] | None:
-        """The current code/instruction position, or (position, direction).
+        """The current code/instruction position, language-shaped.
 
         A linear language's ``ip`` is an index into its program; a 2D
-        language's is the moving agent's ``(x, y, heading)``; a language
-        whose agent has been consumed reports ``None``.
+        language's is a coordinate tuple; a language whose agent has been
+        consumed reports ``None``.
+
+        **The tuple's arity is the language's own and is not stable within
+        a run.**  This used to promise ``(x, y, heading)``, which is three
+        of them: at the start of a run the registry also has 1-, 2-, 4- and
+        6-tuples, and *six* languages change shape as they go -- so a
+        caller must read the shape rather than assume one.
+
+        The six, measured by stepping each to its halt:
+
+        * to ``None``: Flowchart, Super SNUSP
+        * to an empty tuple: ``function x(y)``
+        * growing and shrinking again: the Algebraic Programming Language
+          between 1, 2 and 3, Forþ between 1, 2 and 3, and **COD through
+          4, 8, 12 and 16 before ending at 0**
+
+        So the arities a run can actually present are 0, 1, 2, 3, 4, 6, 8,
+        12 and 16.  Sizing anything to the largest *initial* arity is the
+        mistake this paragraph exists to prevent, and the paragraph itself
+        used to invite it: it said six languages and named COD as going to
+        an empty tuple, when COD's shape mostly *grows* and reaches four
+        times the width the enumeration stopped at.
+        :meth:`~esolangs.debugger.Debugger.break_at` checks the kind for
+        exactly this reason, and deliberately does not check the arity.
+
+        **What the leading components mean is stable even though the arity
+        is not: they are row then column, never x then y.**  A reader
+        asking which way round had to work it out by construction, and the
+        paragraph above -- correctly refusing to promise a *shape* -- reads
+        as though the order were unknowable too.  It is not: of the ten
+        grid languages that report a coordinate, Alight and Super SNUSP lay
+        their programs on a single row, so the only move they can make is
+        along the column, and the *second* component is what changes; Dig,
+        Flowchart, LaserFuck and Streetcode each begin by moving
+        vertically, and the *first* is what changes.  The rest agree.
+        Anything past the second component is the language's own -- a
+        heading, a phase -- and is not described here.
+
+        **The row-then-column rule is about those ten and no others.**
+        Nineteen languages report a tuple: the other nine are not grid
+        languages at all -- 3D Brainfuck and Back are tape machines, Eval,
+        Forþ and Grapheme stack ones, Interprogck8 a register one,
+        and APL, Forbin and ``function x(y)`` are their own thing.
+        Half of those report a bare ``(0,)``.  Their components are the
+        language's own and mean whatever that language needs, so a 4-tuple
+        from Back is not a coordinate in row-major order and nothing here
+        says it is.  ``describe(...)["state_model"]`` is what separates the
+        two groups.
         """
 
     @property
@@ -895,26 +991,212 @@ class VM(Protocol):
         """The stack, or ``[]`` where the language has none."""
 
     @property
+    def ip_shape(self) -> str:
+        """How to read :attr:`ip` as a place in the source, if at all.
+
+        ``"offset"``, the default, means a plain int counting characters
+        into the program text, which is what most of the registry reports
+        and why they declare nothing.  ``"grid"`` means the first two parts
+        are a row and a column, with any rest a heading.  ``"line"`` means
+        the first part is a line number.  ``"opaque"`` means the position
+        is real but is not a place in the source.
+
+        Every machine reporting a *tuple* declares one of the last three,
+        and ``test_a_positional_ip_says_what_it_counts`` enforces it.  The
+        shapes that are neither a cell nor a line -- a frame stack whose
+        parts are one position each (Forth, Grapheme, Forbin), a depth
+        paired with a cursor (Eval), a 3-D point and heading (3D
+        Brainfuck) -- all look exactly like a ``(row, col)`` and cannot be
+        told from one by their values.  Reading them as a cell names a real
+        character that is not the one running, so saying ``"opaque"`` is a
+        deliberate answer rather than an omission, and an undeclared tuple
+        stays a question nobody has answered.
+        """
+
+    @property
+    def views(self) -> tuple[tuple[str, str], ...]:
+        """The machine's own named state, as ``(name, text)`` pairs.
+
+        Every interpreter here re-exposes its private ``_State`` slots as
+        named properties -- ``acc``, ``ptr``, ``ind``, and the rest -- and
+        those names are the language's own vocabulary for what it is doing.
+        They are found rather than listed: the views *are* the property
+        descriptors on the machine's class, so reading them off it cannot
+        fall out of step with the interpreters the way a table here would.
+
+        Excluded are the five views every language already offers and the
+        machinery around them; what is left is what this language chose to
+        name.  Two names reading one slot -- ``ind`` and ``ip`` usually do --
+        are both shown, because which pair share a slot on purpose is the
+        language's business and hiding one would be a guess.
+        """
+
+    @property
     def self_halts(self) -> bool:
         """Whether the program can reach a halt of its own.
 
-        ``False`` for the two languages whose ``halted`` is always
-        ``False`` -- A Painter Ant and Suffolk -- so the obvious
-        ``while not vm.halted: vm.step()`` never returns on them.  A
-        caller driving one has to bound the run itself: a hang detector
-        above, or :func:`esolangs.run`'s ``timeout``.
+        ``False`` where the *language* has no halt of its own, so a caller
+        driving one has to bound the run itself: a hang detector above, or
+        :func:`esolangs.run`'s ``timeout``.
+
+        **It does not promise that a given program runs forever**, and this
+        used to say ``while not vm.halted: vm.step()`` never returns, flatly.
+        Suffolk refutes that: it has no halt instruction, and it ends when a
+        read runs out of input, so the loop returns after 757 steps on a
+        generated truth-table program and never on one that reads nothing.
+        A Painter Ant is the other ``False`` and does run forever.  So the
+        two disagree about the very sentence the trait was described by, and
+        what they share is the thing worth saying -- neither *program text*
+        contains a halt, so the bound has to come from outside.
+
+        Read as a warning rather than a guarantee: ``False`` means bound the
+        run, ``True`` means you need not.  A caller that wants to know
+        whether a particular program stops has to ask the program, and
+        :meth:`snapshot` is how -- a repeated state proves the loop.
+
+        No count here, and none below.  This used to say "the two
+        languages" and its sibling "the four languages"; the sibling was
+        wrong -- seven carry it -- because a trait is added by editing an
+        interpreter and the tally lives in a different file.  A number in
+        prose is a second copy of something the registry already knows, so
+        the way to keep it true is not to write it:
+        ``[n for n in list_languages() if describe(n)["self_halts"]]``
+        cannot drift.
         """
 
     @property
     def dumps_on_the_post_halt_step(self) -> bool:
         """Whether the output arrives on the step *after* the halt.
 
-        ``True`` for the four languages whose ``run`` ends its loop with
-        one more ``step()`` to dump the final tape or registers.  A caller
-        that stops at ``halted`` has driven such a program correctly and
-        still holds ``""``; one further ``step()`` writes what ``run``
-        writes, and the no-op step is the one after that.
+        ``True`` where a language's ``run`` ends its loop with one more
+        ``step()`` to dump the final tape or registers.  A caller that stops
+        at ``halted`` has driven such a program correctly and still holds
+        ``""``; one further ``step()`` writes what ``run`` writes, and the
+        no-op step is the one after that.
         """
+
+    @property
+    def eof_is_a_value(self) -> bool:
+        """Whether a read past the end of the input yields a value here.
+
+        The norm is to raise :class:`~esolangs.exceptions.InputExhaustedError`
+        and most languages do.  ``True`` marks the ones that take the
+        exhausted read as a value instead, so an underfed program answers a
+        different row of its table rather than refusing -- which is a wrong
+        answer with nothing in the output to show for it.
+
+        Reported rather than changed: the zero-beyond-input convention was
+        audited against the wiki pages and settled on purpose.  What was
+        actually broken is that :func:`esolangs.run` promised the exception
+        for every language, and a caller had no way to learn which ones
+        it does not come from.
+
+        **Two languages are not either of those two outcomes**, and the flag
+        cannot say so on its own.  Fed one line short of what it wants:
+
+        * **Alight** is ``True`` and does not carry on.  The sentinel
+          reaches its arithmetic and it halts with ``cannot apply '+' to
+          2.0 and 'eof'`` -- a refusal, which is the safe half of the two
+          outcomes but not the one this flag names.
+        * **Suffolk** is ``False`` and does not raise.  The exhausted read
+          *ends* the program, so it comes back halted with no output and no
+          warning.  That is written down under :attr:`self_halts`, which
+          says Suffolk "ends when a read runs out of input" -- the same fact
+          under a different trait, and not the one a reader checks here.
+
+        Everything else is exactly what the flag says: of the fifty-two
+        languages that read stdin, forty-four of the forty-five ``False``
+        ones raise, and six of the seven ``True`` ones answer a different
+        row and warn with
+        :class:`~esolangs.exceptions.InputMismatchWarning`.  Swept, not
+        sampled -- and swept with an input one line short rather than an
+        empty one, which is a different question: several languages diverge
+        on empty stdin instead of reaching the read at all.
+
+        (45 + 7 = 52.  This said six and five, which does not add up to the
+        fifty-two in the same sentence -- the kind of claim that refutes
+        itself without needing to be measured, and the third count in this
+        file to go wrong.  :attr:`self_halts` argues against writing one
+        down at all, and it is not wrong.)
+        """
+
+    @property
+    def steppable_to_answer(self) -> bool:
+        """Whether stepping this language ever reaches the answer.
+
+        ``False`` for A Painter Ant alone, and not for want of a bigger
+        budget: the answer is the grid rendered *after* the ant's walk is
+        proven periodic, so a stepping caller -- always mid-walk -- has
+        nothing to read no matter how long it goes.  Three million steps
+        leave ``halted`` false and ``output`` empty.
+
+        Distinct from ``self_halts``, which Suffolk also carries and which
+        does not imply this: Suffolk writes its answer while being stepped.
+        A caller that steps should consult this and fall back to
+        :func:`esolangs.run`, which owns the cycle proof and the render.
+        """
+
+
+#: The names a caller already has by other means, so they are not repeated
+#: as "the machine's own".  Five are the views every language offers and the
+#: rest are machinery -- the snapshot hooks the cycle provers use, and the
+#: traits below.  Everything else a machine exposes as a property is state
+#: it chose to name, which is exactly what a reader wants to see.
+_NOT_A_VIEW = frozenset(
+    {
+        "ip",
+        "memory",
+        "stack",
+        "output",
+        "halted",
+        "snapshot",
+        "branching_snapshot",
+        "branching_halted",
+        "branching_successors",
+        "frame_entry_key",
+        "self_halts",
+        "steppable_to_answer",
+        "dumps_on_the_post_halt_step",
+        "eof_is_a_value",
+        "ip_shape",
+        "reproducible_seed",
+    }
+)
+
+#: How many items of a sequence view to show before counting the rest.  A
+#: tape can be thousands of cells, and rendering one to text per step would
+#: cost more than running the program.
+_VIEW_ITEMS = 8
+
+
+def _read_view(machine: object, name: str) -> str | None:
+    """Return ``machine.name`` as short text, or ``None`` if it cannot be read.
+
+    A property that raises is not a view of anything -- several describe
+    state that only exists once a run has begun -- and one broken name must
+    not take the whole set down with it.  The failure is answered with
+    ``None`` rather than a bare ``continue`` at the call site so that
+    skipping is a value the caller tests, not control flow hidden in a
+    handler.
+    """
+    try:
+        value = getattr(machine, name)
+    except Exception:
+        return None
+    return _abbreviate(value)
+
+
+def _abbreviate(value: object) -> str:
+    """Render ``value`` short enough to sit on one row.
+
+    A long sequence is cut *before* it is turned into text rather than
+    after: a four-thousand-cell tape formatted in full and then truncated
+    would be the most expensive thing the stepper does.
+    """
+    if isinstance(value, (list, tuple)) and len(value) > _VIEW_ITEMS:
+        return f"{type(value)(value[:_VIEW_ITEMS])!r} +{len(value) - _VIEW_ITEMS} more"
+    text = repr(value)
+    return text if len(text) <= 60 else text[:57] + "..."
 
 
 class _DelegatingVM:
@@ -938,10 +1220,16 @@ class _DelegatingVM:
 
     _machine: _StepMachineWithShape
 
-    def __init__(self, program: str | list[str], stdin: str = "") -> None:
-        """Create a VM for ``program`` reading input from ``stdin``."""
+    def __init__(self, stdin: str = "") -> None:
+        """Create the input stream every subclass's machine reads from.
+
+        The program is deliberately not taken here.  Each subclass builds
+        its own machine and hands the source straight to it, in the shape
+        that language wants -- text or lines -- so a copy kept at this level
+        was written and never read by anything.  A mutation sweep is what
+        found it: replacing the argument with ``None`` changed no test.
+        """
         self._io = ScriptedIO(stdin)
-        self._program = program
 
     @property
     def output(self) -> str:
@@ -952,7 +1240,33 @@ class _DelegatingVM:
         return self._machine.halted
 
     def step(self) -> None:
-        self._machine.step()
+        """Execute one instruction, translating what the interpreter raises.
+
+        :func:`esolangs.run` turns an interpreter's bare ``ValueError``
+        into a :class:`~esolangs.exceptions.ProgramError` and its
+        ``RecursionError`` into an
+        :class:`~esolangs.exceptions.InterpreterLimitError`, and the VM
+        path did neither -- so the package's one promise, that every
+        deliberate failure derives from ``EsolangError``, held on one of
+        the two ways to execute a program and not the other.  Ninety open
+        parens in Algebraic Programming Language raised a bare
+        ``RecursionError`` here and a clean ``InterpreterLimitError``
+        through ``run``.
+
+        A ``try`` costs nothing when nothing is raised, so the hot loop is
+        unaffected.
+        """
+        try:
+            self._machine.step()
+        except RecursionError as exc:
+            raise InterpreterLimitError(
+                f"the {type(self).__name__} interpreter recursed deeper than "
+                f"CPython's stack limit allows on this program"
+            ) from exc
+        except ProgramError:
+            raise
+        except ValueError as exc:
+            raise ProgramError(str(exc)) from exc
 
     def snapshot(self) -> Hashable:
         """Return the underlying machine's complete state."""
@@ -986,11 +1300,37 @@ class _DelegatingVM:
         return bool(getattr(self._machine, "self_halts", True))
 
     @property
+    def ip_shape(self) -> str:
+        return str(getattr(self._machine, "ip_shape", "offset"))
+
+    @property
+    def views(self) -> tuple[tuple[str, str], ...]:
+        machine = self._machine
+        found = []
+        for name, attribute in sorted(vars(type(machine)).items()):
+            if name.startswith("_") or name in _NOT_A_VIEW:
+                continue
+            if not isinstance(attribute, property):
+                continue
+            text = _read_view(machine, name)
+            if text is not None:
+                found.append((name, text))
+        return tuple(found)
+
+    @property
     def dumps_on_the_post_halt_step(self) -> bool:
         return bool(getattr(self._machine, "dumps_on_the_post_halt_step", False))
 
+    @property
+    def steppable_to_answer(self) -> bool:
+        return bool(getattr(self._machine, "steppable_to_answer", True))
 
-def _derived_adapter(language: str) -> type[_DelegatingVM]:
+    @property
+    def eof_is_a_value(self) -> bool:
+        return bool(getattr(self._machine, "eof_is_a_value", False))
+
+
+def _derived_adapter(language: str) -> Callable[[str, str], _DelegatingVM]:
     """Build the adapter for a language whose wrapper is pure boilerplate.
 
     Once an interpreter describes its own shape, most adapters differ only
@@ -1007,10 +1347,22 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
     is left.
     """
     module_path, split = RUNNERS[language]
+    # Bound to another name first: a class body cannot read the enclosing
+    # function's ``language`` while binding a class attribute of that name.
+    display_name = language
 
     class _Derived(_DelegatingVM):
+        #: The registry's display name for this adapter's language.
+        #:
+        #: Only the derived class can know it -- ``_DelegatingVM`` is built
+        #: from a program and a stdin and never sees a name -- and the
+        #: debugger needs it to ask ``describe`` whether a read past the end
+        #: of input is a value for this language, which is the difference
+        #: between a wrong answer and an exception.
+        language = display_name
+
         def __init__(self, program: str, stdin: str = "") -> None:
-            super().__init__(program, stdin)
+            super().__init__(stdin)
             import importlib
             import inspect
 
@@ -1047,25 +1399,99 @@ def _derived_adapter(language: str) -> type[_DelegatingVM]:
 # so every one gets a derived adapter and an unregistered name is the only
 # thing that raises UnknownLanguageError.  The set is read off ``RUNNERS``
 # rather than listed again here: a second copy of every name is a
-# second thing to keep in step, and
-# ``test_every_registry_language_has_a_vm_adapter`` existed only to catch
-# the two drifting apart.  Building an adapter imports nothing -- the
+# second thing to keep in step, and the test that used to guard the pair
+# existed only to catch the two drifting apart, so deriving the dict
+# retired it.  Building an adapter imports nothing -- the
 # interpreter is imported inside the adapter's ``__init__`` -- so this
 # stays as lazy as the hand-written table was.
-_VM_ADAPTERS: dict[str, type[_DelegatingVM]] = {
+# Typed as what it is used as -- a factory taking the program and the input
+# -- rather than as the base class.  A derived adapter takes both, while
+# ``_DelegatingVM`` itself takes only the input: the program never belonged
+# at that level, since each subclass hands the source straight to its own
+# machine in the shape that language wants.
+_VM_ADAPTERS: dict[str, Callable[[str, str], _DelegatingVM]] = {
     name: _derived_adapter(name) for name in RUNNERS
 }
 
 
-def make_vm(language: str, program: str, stdin: str = "") -> VM:
+@cache
+def machine_traits(language: str) -> dict[str, bool]:
+    """Return ``language``'s three driving traits without running anything.
+
+    The same ``self_halts`` / ``dumps_on_the_post_halt_step`` /
+    ``steppable_to_answer`` a :class:`VM` exposes, read off the interpreter's
+    state *class* rather than an instance, so :func:`esolangs.describe` can
+    report them.  It could not before: the traits were reachable only
+    through a VM, which needs a program, which for seventeen languages needs
+    the bits -- so a caller deciding *how to drive* a language had to first
+    build the thing it was deciding about.
+
+    The defaults match the wrapper's, and for the same reason: they are the
+    common case, so the fifty-odd languages that follow it declare nothing
+    and only the exceptions carry a line.
+    """
+    import importlib
+
+    # No membership check beyond ``resolve``: it only ever returns a name in
+    # the registry, and the registry and ``RUNNERS`` are the same 65 names,
+    # so a second guard here would be a line no input can reach.
+    name = resolve(language)
+    module = importlib.import_module(f"esolangs.interpreters.{RUNNERS[name][0]}")
+    state = getattr(module, "_Machine")  # noqa: B009
+    return {
+        "self_halts": bool(getattr(state, "self_halts", True)),
+        "dumps_on_the_post_halt_step": bool(
+            getattr(state, "dumps_on_the_post_halt_step", False)
+        ),
+        "steppable_to_answer": bool(getattr(state, "steppable_to_answer", True)),
+        "eof_is_a_value": bool(getattr(state, "eof_is_a_value", False)),
+    }
+
+
+def make_vm(language: str, program: str | os.PathLike[str], stdin: str = "") -> VM:
     """Return a step-and-inspect wrapper around ``language``'s interpreter.
 
     The wrapper exposes ``step()``, ``halted``, ``output``, ``ip``,
     ``memory``, and ``stack`` between commands.  ``stdin`` is fed to the
-    program line by line, like :func:`esolangs.run`.  Every registered
-    language is step-capable, so only a name outside the registry raises
-    :class:`UnknownLanguageError`.
+    program line by line, like :func:`esolangs.run`.  The name is resolved
+    case-insensitively by :func:`~esolangs.registry.resolve`, as everywhere
+    else in the API; every registered language is step-capable, so only a
+    name outside the registry raises :class:`UnknownLanguageError`.
+
+    The program and ``stdin`` are checked exactly as :func:`esolangs.run`
+    checks them, and for the same reason: stepping is the *other* way to
+    execute a program.  An unfilled ``{Xi}`` template ran here all the way
+    to a confident ``output: '0'`` and was reported as an answer, and a
+    ``None`` program raised ``'NoneType' is not a container or iterable``
+    from inside an interpreter rather than being named at the boundary.
+
+    ``program`` may be a :class:`~pathlib.Path`, exactly as ``run`` allows.
+    The check was already shared; its *return value* was not, so a path was
+    validated -- read off disk, and found to be a fine program -- and then
+    handed to the interpreter unread, which met it with ``'PosixPath'
+    object is not iterable``.  Checking a value and using it have to be the
+    same expression or they drift, which is the whole argument for
+    :mod:`esolangs._validate`.
     """
-    if language not in _VM_ADAPTERS:
+    from esolangs import check_program
+
+    name = resolve(language)
+    if name not in _VM_ADAPTERS:
         raise UnknownLanguageError(language)
-    return _VM_ADAPTERS[language](program, stdin)
+    source = check_program(name, program, stdin)
+    try:
+        return _VM_ADAPTERS[name](source, stdin)
+    except RecursionError as exc:
+        raise InterpreterLimitError(
+            f"the {name} interpreter recursed deeper than CPython's stack "
+            f"limit allows while loading this program "
+            f"({len(source)} characters)"
+        ) from exc
+    except ProgramError:
+        raise
+    except ValueError as exc:
+        # Most interpreters parse in their constructor and signal a
+        # malformed program with a plain ``ValueError``.  ``run``
+        # re-raises those as ``ProgramError``; this did not, so
+        # ``make_vm("brainfuck", "]")`` leaked one -- across most of the registry.
+        raise ProgramError(str(exc)) from exc

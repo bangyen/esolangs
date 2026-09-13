@@ -1,6 +1,7 @@
 """Tests for the step-and-inspect VM wrapper."""
 
 import contextlib
+import re
 
 import pytest
 
@@ -695,27 +696,6 @@ class TestFactor:
         assert vm.halted
 
 
-class TestBasicfuck:
-    def test_tape_and_cursor(self) -> None:
-        prog = "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\n"
-        vm = esolangs.make_vm("Basicfuck", prog + "a += 65;\nwrite <- a ;")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [0], [])
-        vm.step()  # a += 65
-        assert vm.memory == [65]
-        vm.step()  # write prints a
-        assert vm.output == "A"
-        vm.step()  # the finished frame is finalized
-        assert vm.halted
-
-    def test_while_loop_restarts_the_body(self) -> None:
-        prog = "#basicfuck t=unbounded r=0~255 o=wrap\n#allocate a\n"
-        vm = esolangs.make_vm("Basicfuck", prog + "a += 3;\nwhile (a) { a -= 1; }")
-        for _ in range(8):
-            vm.step()
-        assert vm.memory == [0]
-        assert vm.halted
-
-
 class TestPainfuck:
     def test_tape_and_cursor(self) -> None:
         vm = esolangs.make_vm("Painfuck", "pp")
@@ -839,17 +819,6 @@ class TestContainer:
         assert not vm.halted
 
 
-class TestNevermind:
-    def test_named_variables_and_cursor(self) -> None:
-        vm = esolangs.make_vm("Nevermind", "make,x,5\nprint,$x")
-        assert (vm.ip, vm.memory, vm.stack) == (0, [], [])
-        vm.step()  # make,x,5 stores x = 5
-        assert (vm.ip, vm.memory) == (1, [5])
-        vm.step()  # print,$x resolves $x and prints it
-        assert vm.halted
-        assert vm.output == "5"
-
-
 class TestBFPDA:
     def test_bit_stack_and_cursor(self) -> None:
         vm = esolangs.make_vm("BF-PDA", "<@.")
@@ -936,36 +905,6 @@ class TestBetween:
         assert vm.output == "3"
         vm.step()  # .x. exits
         assert vm.halted
-
-
-class TestMyScript:
-    def test_frame_position_and_scope(self) -> None:
-        """Positions, variables and operands, stepped one evaluation at a time.
-
-        A statement is several steps rather than one: its expression is
-        scheduled, evaluated, and only then does the statement finish.  That
-        finer granularity is the point of the frame stack -- it is what lets
-        a statement inside a call be observed at all -- so this walks to each
-        assertion rather than assuming a step per line.
-        """
-
-        def run_to(vm: object, predicate: object, limit: int = 50) -> None:
-            for _ in range(limit):
-                if predicate():  # type: ignore[operator]
-                    return
-                vm.step()  # type: ignore[attr-defined]
-            raise AssertionError("predicate never held")
-
-        vm = esolangs.make_vm("MyScript", "var a is 5\nsay a")
-        assert vm.ip == (1, 0)
-        assert vm.memory == []
-        assert vm.stack == []
-        run_to(vm, lambda: vm.memory == [5])  # a is declared
-        assert vm.ip == (1, 1)
-        run_to(vm, lambda: vm.output == "5")  # say a
-        run_to(vm, lambda: vm.halted)  # the root frame pops
-        assert vm.ip is None  # the frame stack has emptied
-        assert vm.memory == []
 
 
 class TestLamfunc:
@@ -1757,23 +1696,6 @@ class TestRunUntilHaltOrCycle:
         machine = _Machine(["|0|f."], ScriptedIO())
         assert run_until_halt_or_cycle(machine) is False
 
-    def test_myscript_halting_run_returns_true(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.myscript import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine("say 5", ScriptedIO())
-        assert run_until_halt_or_cycle(machine) is True
-
-    def test_myscript_looping_run_is_detected_as_a_cycle(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.myscript import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        # while yes never becomes false; the body's own state never changes
-        machine = _Machine("while yes,\n  var x is 1", ScriptedIO())
-        assert run_until_halt_or_cycle(machine) is False
-
     def test_lamfunc_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.other.lamfunc import _Machine
@@ -1801,6 +1723,44 @@ class TestRunUntilHaltOrCycle:
 
         machine = _Machine("F loop - loop\nloop", ScriptedIO())
         assert run_until_halt_or_ancestor(machine) is False
+
+    def test_a_machine_already_halted_is_reported_as_halting(self) -> None:
+        """The loop is never entered, and the answer is still ``True``.
+
+        Every other path returns from inside the walk, so the ``return``
+        after it is reached only by a machine that arrived finished.  A
+        sweep found it free to say ``False`` -- which would report a
+        program that has already run to completion as a hang.
+        """
+        from esolangs.vm import run_until_halt, run_until_halt_or_cycle
+
+        vm = esolangs.make_vm("brainfuck", "++")
+        run_until_halt(vm)
+        assert vm.halted
+        assert run_until_halt_or_cycle(vm) is True
+
+    def test_the_ancestor_bound_counts_pushes_exactly(self) -> None:
+        """The limit is in pushed frames, and it is pinned at its edge.
+
+        This program repeats an ancestor on its *third* push, so two is one
+        short and three is exactly enough.  Nothing passed a limit before,
+        which left the whole counter free: a sweep could start it at one,
+        step it by two, or compare with ``<=``, and every existing test
+        still passed because all of them use the generous default.
+
+        The undecided side matters as much as the decided one.  A bound
+        that never fires turns a program this cannot decide into an
+        infinite loop rather than a ``TimeoutError``, which is the failure
+        the docstring's "never silently reported as halting" is about.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.other.lamfunc import _Machine
+        from esolangs.vm import run_until_halt_or_ancestor
+
+        code = "F loop - loop\nloop"
+        with pytest.raises(TimeoutError, match="undecided after 2 pushed frames"):
+            run_until_halt_or_ancestor(_Machine(code, ScriptedIO()), 2)
+        assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO()), 3) is False
 
     def test_lamfunc_changing_call_binding_halts(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -2354,6 +2314,50 @@ class TestTheDetectorsTakeAVM:
         assert _clamps_hold([None, 1], [1, None]) is False
         assert _clamps_hold([1], [1, 1]) is False
 
+        # Zero is the boundary itself, and every comparison here is written
+        # against it, so it is the one value that separates ``>= 0`` from
+        # ``> 0`` -- a mutation sweep found four readings of these lines
+        # that no case above could tell apart.
+        assert _clamps_hold([0], [5]) is True
+        assert _clamps_hold([0], [0]) is True
+        # A slack that does not move at all holds: the conditions refuse
+        # *drift* toward a flip, and standing still is not drift.
+        assert _clamps_hold([3], [3]) is True
+        assert _clamps_hold([-3], [-3]) is True
+        # A pair that both clamped is skipped, not a verdict on the rest:
+        # the laps after it still have to agree.
+        assert _clamps_hold([None, 5], [None, 3]) is False
+        assert _clamps_hold([None], [None]) is True
+
+    @pytest.mark.parametrize(
+        ("detector", "role"),
+        [
+            ("run_until_halt_or_all_branches_cycle", "branch-enumerable"),
+            ("run_until_halt_or_ancestor", "framed"),
+            ("run_until_halt_or_growth", "a tape machine"),
+            ("run_until_halt_or_value_growth", "an affine machine"),
+        ],
+    )
+    def test_a_detector_names_the_thing_the_language_is_not(
+        self, detector: str, role: str
+    ) -> None:
+        """The refusal says which sub-protocol was missing, not just that one was.
+
+        ``_unwrap``'s whole point is that the interesting failure is "this
+        language has no such thing" rather than "wrong type": a machine
+        without frames does not recurse, one without a tape has nothing to
+        grow.  The role is the only part of the message carrying that, and
+        nothing pinned it -- a sweep found every detector's wording free to
+        change.  Sophie has none of the four.
+        """
+        import esolangs.vm as module
+
+        # The class is named as well as the role: "wrong type" alone is the
+        # message this function exists to improve on, so both halves are
+        # pinned -- the sweep found each free to change on its own.
+        with pytest.raises(TypeError, match=f"_SophieVM is not {re.escape(role)}:"):
+            getattr(module, detector)(esolangs.make_vm("Sophie", ""))
+
     def test_the_value_growth_detector_refuses_a_bounded_language(self) -> None:
         """Brainfuck's cells wrap, so a climb there is a cycle, not a proof.
 
@@ -2524,7 +2528,9 @@ class TestRunUntilHalt:
 
 class TestFactory:
     def test_unknown_language_raises(self) -> None:
-        with pytest.raises(UnknownLanguageError):
+        # Naming the language it refused is the whole use of the message to
+        # a caller who passed it by mistake, and it was unpinned.
+        with pytest.raises(UnknownLanguageError, match="NoSuchLanguage"):
             esolangs.make_vm("NoSuchLanguage", "+")
 
     def test_registered_language_without_an_adapter_raises(
@@ -2575,10 +2581,6 @@ class TestFactory:
         ("NoComment", "ciio"),
         ("3D Brainfuck", "+."),
         ("Factor", "15"),
-        (
-            "Basicfuck",
-            "#basicfuck t=1 r=0~255 o=nearest\n#allocate a\na += 65;\nwrite <- a ;",
-        ),
         ("Painfuck", "pp"),
         ("bit~", "~("),
         ("Collatz Multiverse", "x = negativeOne x + negativeOne, DO PRINT."),
@@ -2813,3 +2815,138 @@ class TestEveryLanguageIsSteppable:
 
         assert Seeded(0).randbelow(1) == 0
         assert FirstDraw(1).randbelow(1) == 0
+
+
+class TestViews:
+    """The machine's own named state, found rather than listed."""
+
+    def test_it_finds_the_names_the_machine_gives_its_state(self) -> None:
+        vm = esolangs.make_vm("brainfuck", "+++")
+        vm.step()
+        assert dict(vm.views)["ptr"] == "0"
+        assert dict(vm.views)["ind"] == "1"
+
+    def test_it_leaves_out_what_every_language_already_offers(self) -> None:
+        vm = esolangs.make_vm("brainfuck", "+++")
+        named = dict(vm.views)
+        for standard in ("ip", "memory", "stack", "output", "halted"):
+            assert standard not in named
+
+    def test_it_leaves_out_the_traits_and_the_snapshot_hooks(self) -> None:
+        vm = esolangs.make_vm("brainfuck", "+++")
+        named = dict(vm.views)
+        for machinery in ("snapshot", "self_halts", "ip_shape"):
+            assert machinery not in named
+
+    def test_a_language_whose_state_is_all_standard_names_nothing(self) -> None:
+        # Not every machine keeps anything beyond the common five, and an
+        # empty result is the right answer rather than a failure.
+        assert esolangs.make_vm("Sophie", "").views == ()
+
+    def test_a_long_sequence_is_cut_before_it_is_formatted(self) -> None:
+        # A tape can be thousands of cells; the view has to be short, and
+        # cheap to produce, at every step.
+        from esolangs.vm import _abbreviate
+
+        text = _abbreviate(list(range(4096)))
+        assert len(text) < 80
+        assert "+4088 more" in text
+
+    def test_a_short_sequence_is_shown_whole(self) -> None:
+        from esolangs.vm import _abbreviate
+
+        assert _abbreviate([1, 2, 3]) == "[1, 2, 3]"
+
+    def test_a_sequence_of_exactly_the_limit_is_shown_whole(self) -> None:
+        """The cut is one *past* the limit, not at it.
+
+        Pinned at the edge because that is the only length where the two
+        readings differ; a sweep found a widened comparison here passing
+        every other test in this class.
+        """
+        from esolangs.vm import _VIEW_ITEMS, _abbreviate
+
+        assert "more" not in _abbreviate(list(range(_VIEW_ITEMS)))
+        assert "more" in _abbreviate(list(range(_VIEW_ITEMS + 1)))
+
+    def test_a_long_scalar_is_truncated(self) -> None:
+        from esolangs.vm import _abbreviate
+
+        assert len(_abbreviate("x" * 500)) <= 60
+
+    def test_the_scalar_cut_is_pinned_at_its_edge(self) -> None:
+        """Sixty characters survive whole; sixty-one is cut.
+
+        The length measured is the *repr*, not the value -- a 58-character
+        string reprs to 60 with its quotes -- and asserting only that a
+        500-character value comes back short says nothing about where the
+        edge is, which a sweep found free to move either way.
+        """
+        from esolangs.vm import _abbreviate
+
+        assert _abbreviate("x" * 58) == repr("x" * 58)
+        assert len(repr("x" * 58)) == 60
+        cut = _abbreviate("x" * 59)
+        assert cut.endswith("...")
+        assert len(cut) == 60
+
+    def test_a_view_that_raises_is_skipped_rather_than_fatal(self) -> None:
+        """One broken property must not take the whole screen down."""
+        from esolangs.vm import _DelegatingVM
+
+        class _Machine:
+            @property
+            def fine(self) -> int:
+                return 7
+
+            @property
+            def broken(self) -> int:
+                raise RuntimeError("no")
+
+        vm = esolangs.make_vm("brainfuck", "+")
+        object.__setattr__(vm, "_machine", _Machine())
+        assert _DelegatingVM.views.fget(vm) == (("fine", "7"),)
+
+    def test_every_language_can_be_asked_on_a_real_program(self) -> None:
+        """No interpreter's properties raise when read as views.
+
+        Driven from the committed examples rather than an empty program,
+        because several languages reject one -- and an empty program would
+        not reach the state the views describe anyway.
+        """
+        import contextlib
+
+        from esolangs.registry import LANGUAGES, canonical_id
+        from esolangs.tools.examples import BOOLEAN_EXAMPLES
+
+        # An example is keyed by the language's slug, its stem, or the slug
+        # of its display name, so all three are tried -- matching on only
+        # one silently skips a third of the registry.
+        known = set(esolangs.list_languages())
+        by_id: dict[str, str] = {}
+        for name, lang in LANGUAGES.items():
+            for key in (lang.id, name, canonical_id(name), name.lower()):
+                by_id.setdefault(key, name)
+        checked = 0
+        for eid, example in BOOLEAN_EXAMPLES.items():
+            name = (
+                by_id.get(eid)
+                or by_id.get(example.stem)
+                or by_id.get(canonical_id(eid.replace("-", " ")))
+            )
+            if name is None or name not in known:
+                continue
+            stdin = "".join(line + "\n" for line in example.inputs)
+            vm = esolangs.make_vm(name, example.build(), stdin)
+            assert all(isinstance(part, str) for view in vm.views for part in view), (
+                name
+            )
+            # Again once the machine has moved, since a view reads state
+            # that the initial one may not have reached.
+            with contextlib.suppress(Exception):
+                vm.step()
+            assert all(isinstance(part, str) for view in vm.views for part in view), (
+                name
+            )
+            checked += 1
+        assert checked > 50, f"only reached {checked} languages"

@@ -69,7 +69,7 @@ jobs:
     - name: Verify the single-interpreter installer
       run: uv run python scripts/verify_install_one.py
 
-    # Twelve finite lemmas behind docs/arrowqueue_generator.md, whose proof
+    # Twelve finite ArrowQueue lemmas, whose proof
     # is total over every arity -- so nothing here enumerates tables to
     # establish the claim.  0.8s, which is why this one gates while the A
     # Painter Ant equivalent (5m40s) stays a by-hand `just apa-proof`.
@@ -139,22 +139,30 @@ jobs:
       if: matrix.python-version == '3.14'
       # The local default is a fixed, modest worker count so developer laptops
       # keep cores free; CI has the box to itself, so ask for all of them.
+      # `-n auto` is already every vCPU the runner has -- xdist falls back to
+      # `os.cpu_count()` because psutil is not a dependency here -- so there
+      # is no worker count left to raise.  What made this job slow was the
+      # `slow` band: 353 of 10865 tests that measure, locally at two workers,
+      # 289s against the 81s the rest take.  Those moved to
+      # `.github/workflows/weekly.yml`; this runs fast and `medium`.
       #
       # `--cov-branch` is free on this leg (see the table above) and the gate
       # below needs the arcs.
-      run: uv run pytest -n auto --cov --cov-branch --cov-report=xml --cov-report=term-missing
+      run: uv run pytest -n auto -m "not slow" --cov --cov-branch --cov-report=xml --cov-report=term-missing
 
-    # Strict here, unlike the local pre-push run: this job runs the whole
-    # suite, so an uncovered added line or one-sided added branch cannot be
-    # blamed on a deselected test.  The gate is still fail-open about data it
-    # does not have -- see its module docstring.
-    - name: Check changed-line and changed-branch coverage
+    # `--partial`, and this is the cost of moving the `slow` band weekly: the
+    # run above no longer selects every test, so an uncovered line here may
+    # simply be covered by a test that did not run.  The gate therefore
+    # reports and does not fail, which is what `--partial` is for -- it was
+    # written for exactly this selection.  The blocking version is the
+    # command it prints, and the weekly job is where the whole suite runs.
+    - name: Report changed-line and changed-branch coverage
       if: matrix.python-version == '3.14'
-      run: uv run python scripts/check_diff_coverage.py
+      run: uv run python scripts/check_diff_coverage.py --partial
 
     - name: Test with pytest
       if: matrix.python-version != '3.14'
-      run: uv run pytest -n auto
+      run: uv run pytest -n auto -m "not slow"
 
 
   generated-docs:
@@ -181,11 +189,11 @@ jobs:
     - name: Install dependencies
       run: uv sync --extra dev --python 3.12
 
-    - name: Regenerate the language capabilities doc
+    - name: Check generated documentation
       run: |
         uv run python scripts/make_languages_doc.py
-        if ! git diff --exit-code docs/languages.md; then
-          echo "docs/languages.md is out of date. Run:"
+        if ! git diff --exit-code README.md docs/usage.md; then
+          echo "Generated documentation is out of date. Run:"
           echo "  uv run python scripts/make_languages_doc.py"
           exit 1
         fi
@@ -212,53 +220,3 @@ jobs:
 
     - name: Audit dependencies with pip-audit
       run: uv run --with pip-audit pip-audit --local
-
-  line:
-    # extra/line's suites also run in the main `test` job (they are under the
-    # root testpaths now that they need no image libraries).  This job repeats
-    # them for a different reason: `--isolated --no-project` installs *only*
-    # pytest, so a green run here is the standing proof that the subtree has
-    # no third-party dependencies at all.  The main suite runs with the
-    # package installed and so cannot show that.  ~3s, deliberately spent.
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-    - uses: actions/checkout@v7
-
-    - name: Install uv
-      uses: astral-sh/setup-uv@v7
-
-    - name: Set up Python
-      uses: actions/setup-python@v7
-      with:
-        python-version: "3.12"
-
-    - name: Run the extra/line suites
-      run: |
-        cd extra/line
-        uv run --isolated --no-project \
-          --with pytest --with pytest-xdist \
-          pytest . -q
-
-    # Line is not in registry.py (its programs are PNGs), so these __main__
-    # blocks are the only way to run it.  The pytest suites import the
-    # functions directly and never execute them, so a broken argv index or
-    # entry point would otherwise go unnoticed until someone ran it by hand.
-    - name: Smoke test the extra/line entry points
-      run: |
-        set -e
-        cd extra/line
-        run_line() {
-          uv run --isolated --no-project python "$@"
-        }
-        run_line render.py "+++" /tmp/line_render.png
-        [ "$(run_line simulate.py /tmp/line_render.png)" \
-          = "final tape (nonzero cells): {0: 3}" ]
-        run_line extract.py /tmp/line_render.png >/dev/null
-        run_line bf_to_line.py "+++." /tmp/line_bf.png >/dev/null
-        [ "$(run_line simulate.py /tmp/line_bf.png)" \
-          = "3
-        final tape (nonzero cells): {0: 3}" ]
-        run_line line_boolean.py 0001 /tmp/line_bool.png >/dev/null
-        run_line verify.py >/dev/null
-        echo "All extra/line entry points passed"

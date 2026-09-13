@@ -28,6 +28,7 @@ import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
+from esolangs._validate import check_address
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
@@ -42,7 +43,10 @@ def _is_int(tok: str) -> bool:
 def _as_int(value: Value) -> int:
     """Require ``value`` to be an integer, halting on an array."""
     if not isinstance(value, int):
-        raise HaltError
+        raise HaltError(
+            f"a number is required here, but the value is an array "
+            f"of {len(value)} elements"
+        )
     return value
 
 
@@ -116,10 +120,17 @@ def _atom(
     """
     if not exp:
         raise ValueError("missing expression")
+    if pos >= len(exp):
+        # ``x[`` reaches here with ``pos`` past the end, and ``exp[pos]``
+        # below raised a bare ``IndexError`` -- the one exception in this
+        # interpreter that escaped the package's hierarchy entirely.
+        raise ValueError(f"{exp!r} ends where an expression was expected")
     if exp[pos] == "[":
         size, pos = _eval(exp, pos + 1, var, read)
-        pos += 1  # the closing ']'
-        return [0] * _as_int(size), pos
+        pos = _closing(exp, pos)
+        cells = _as_int(size)
+        check_address(cells, "ZTOALC L")
+        return [0] * cells, pos
     j = pos
     while j < len(exp) and exp[j] not in "[]":
         j += 1
@@ -130,7 +141,28 @@ def _atom(
         return int(tok), j
     if tok in var:
         return var[tok], j
-    raise HaltError
+    if not tok:
+        # ``x[]``.  Empty is a *malformed program* rather than a lookup
+        # that failed, and the module docstring says so -- it used to be
+        # reported as an undefined variable named ``''``.
+        raise ValueError(f"{exp!r} has an empty index at position {pos}")
+    raise HaltError(
+        f"{exp!r} uses {tok!r} at position {pos}, which is not 'input', "
+        f"a number, or a defined variable"
+    )
+
+
+def _closing(exp: str, pos: int) -> int:
+    """Step past the ``]`` closing an index, refusing a missing one.
+
+    This was ``pos += 1  # the closing ']'`` at both call sites, taken on
+    faith.  So ``x[1`` -- which the module docstring names as a malformed
+    program -- parsed as though the bracket were there and ran to a normal
+    answer, byte-identical to the well-formed ``x[1]``.
+    """
+    if pos >= len(exp) or exp[pos] != "]":
+        raise ValueError(f"{exp!r} is missing the ']' closing an index")
+    return pos + 1
 
 
 def _eval(
@@ -145,12 +177,15 @@ def _eval(
     value, pos = _atom(exp, pos, var, read)
     while pos < len(exp) and exp[pos] == "[":
         index, pos = _eval(exp, pos + 1, var, read)
-        pos += 1  # the closing ']'
+        pos = _closing(exp, pos)
         if not isinstance(value, list):
-            raise HaltError
+            raise HaltError(f"{exp!r} indexes {value}, which is a number, not an array")
         i = _as_int(index)
         if i < 0 or i >= len(value):
-            raise HaltError
+            raise HaltError(
+                f"index {i} in {exp!r} is out of range for an array "
+                f"of {len(value)} elements"
+            )
         value = value[i]
     return value, pos
 
@@ -213,7 +248,7 @@ def _advance_line(
     """
     p = ptr - 1
     if p < 0:
-        raise HaltError
+        raise HaltError(f"the pointer is at line {ptr}, before the first line")
     ins = code[p] if p < len(code) else ""
     lst = ins.split()
     effects: list[_Effect] = []
@@ -223,7 +258,10 @@ def _advance_line(
     elif lst[0] == "print":
         value = _as_int(_val(_operand(lst, 1), var, read))
         if not 0 <= value <= 0x10FFFF:
-            raise HaltError
+            raise HaltError(
+                f"'print' on line {ptr} writes {value} as a character, "
+                f"outside 0..1114111"
+            )
         effects.append(_Print(value))
     elif lst[0] == "jump":
         if _as_int(_val(_operand(lst, 2), var, read)):
@@ -286,7 +324,16 @@ class _Machine:
             raise ValueError("ZTOALC L program cannot be empty")
         self.io = io
         self.code = code
-        self.state = _State(int(code[0]), {})
+        try:
+            pointer = int(code[0])
+        except ValueError:
+            # ``int`` said "invalid literal for int() with base 10: 'hello'",
+            # which names neither the language nor what line 1 is for.
+            raise ValueError(
+                f"line 1 holds the initial pointer and must be a number, "
+                f"got {code[0]!r}"
+            ) from None
+        self.state = _State(pointer, {})
 
     @property
     def ptr(self) -> int:
@@ -350,15 +397,27 @@ class _Machine:
         target, _ = _atom(effect.name, 0, self.var, _no_read)
         for i in effect.indexes[:-1]:
             if not isinstance(target, list):
-                raise HaltError
+                raise HaltError(
+                    f"storing into {effect.name!r}: index {i} applies to "
+                    f"{target}, a number, not an array"
+                )
             if i < 0 or i >= len(target):
-                raise HaltError
+                raise HaltError(
+                    f"storing into {effect.name!r}: index {i} is out of range "
+                    f"for an array of {len(target)} elements"
+                )
             target = target[i]
         if not isinstance(target, list):
-            raise HaltError
+            raise HaltError(
+                f"storing into {effect.name!r}: index {effect.indexes[-1]} "
+                f"applies to {target}, a number, not an array"
+            )
         i = effect.indexes[-1]
         if i < 0 or i >= len(target):
-            raise HaltError
+            raise HaltError(
+                f"storing into {effect.name!r}: index {i} is out of range "
+                f"for an array of {len(target)} elements"
+            )
         target[i] = effect.value
 
     def step(self) -> None:

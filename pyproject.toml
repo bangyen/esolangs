@@ -60,7 +60,11 @@ include = ["esolangs*"]
 exclude = ["tests*", "examples*", "docs*"]
 
 [tool.setuptools.package-data]
-esolangs = ["py.typed"]
+# The example programs ship with the package.  They lived at the repository
+# root, which left them out of the wheel, so `describe(...)["examples"]` was
+# populated from a checkout and empty from an install, with nothing to say
+# which you had.
+esolangs = ["py.typed", "examples/*.md", "examples/*/*.txt", "examples/*/*.md"]
 
 [tool.ruff]
 target-version = "py312"
@@ -109,7 +113,7 @@ ignore = [
 # includes tests/samples.py, which is otherwise language-agnostic but
 # holds one CV(N)(C) program in its per-language table.
 "src/esolangs/interpreters/other/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
-"src/esolangs/tools/boolean/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
+"src/esolangs/tools/cvnc.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/interpreters/test_cvnc.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
 "tests/samples.py" = ["D", "N802", "RUF001", "RUF002", "RUF003"]
 
@@ -139,14 +143,7 @@ module = ["sympy"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-# extra/line is collected alongside tests/ even though it is not a package:
-# its modules import each other as flat top-level names, which resolves
-# because pytest prepends a rootdir-less test file's own directory to
-# sys.path.  That does mean names like `png` and `mask` become importable
-# package-wide during a test session, so a third-party module of either name
-# would shadow -- neither is currently a dependency, and `src/` imports
-# nothing by those names.
-testpaths = ["tests", "extra/line"]
+testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -155,19 +152,53 @@ addopts = [
     "--strict-config",
     "--verbose",
     "--tb=short",
-    # Four workers.  Re-measured on the fast run ("-m 'not slow'") on a
-    # 10-core machine (8 performance): 33.4s serial, 23.3s at 2, 13.8s at 4,
-    # 13.1s at 6, 15.4s at 8.  The suite has grown broader and shorter-tailed
-    # than when this was set to 2 -- no single test dominates, so the work
-    # divides -- and the curve is flat past 4 and turns back up at 8, where
-    # the workers outnumber the performance cores.  Four takes nearly all the
-    # available speedup while leaving cores free.
-    # Override per-run with "-n auto", "-n 2", or "-n 0" on the command line.
+    # Four workers.  This was two, on the argument that a higher count
+    # saturates a 10-core machine and makes the desktop unusable while the
+    # suite runs -- the cost that actually gets paid on an interactive box.
+    # Four is the revision of that trade, not its abandonment: it leaves
+    # six cores, and the band that pays for it is the whole-suite run.
+    # Measured on the same tree and the same test set: `just test-full`
+    # spent 363.7s in pytest at two workers and 251.3s at four, 400s of
+    # wall against 290s.  Deferring the `weekly` marker took it to 212.9s.
+    # The tier split below is what keeps the inner loop cheap either way:
+    # it is the `fast` band, 48.7s of test time rather than the 193.8s it
+    # was when every execution sweep and subprocess ran on every invocation.
+    # CI passes "-n auto" explicitly, so it is unaffected by this default.
+    # Override per-run with "-n auto", "-n 8", or "-n 0" on the command line.
     "-n",
     "4",
 ]
 markers = [
+    # The top tier, and the only one CI deselects.  353 of 10865 tests that
+    # cost 289s locally at two workers against the 81s the other 10314 take,
+    # so per-PR CI runs `-m "not slow"` and
+    # `.github/workflows/weekly.yml` runs the whole suite on a schedule.
+    # `just test` and `just test-full` do not deselect it locally.
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    # A tier above `slow`, and a cost tier rather than a kind: two tests are
+    # 142.6s of the slow band's ~182s at four workers, and the other 347 are
+    # ~40s between them.  Measured with `--durations=0`, not estimated.
+    #
+    # Both are high-arity probes of a claim documented elsewhere -- every
+    # generator raising only `EsolangError` at twelve inputs, and `%^2^-1`
+    # reaching a generic thirteen-input table -- so they are evidence for
+    # `walls.md` and `limitations.md` and are not deletable.  What they are
+    # not is *per-run* evidence: neither has ever failed on a change that
+    # the rest of the band passed, and both probe an arity nothing else in
+    # the suite reaches, so a week is the right sampling interval.
+    #
+    # `just test-full` and per-PR CI deselect this; `.github/workflows/
+    # weekly.yml` runs bare `pytest -n auto` and so picks it up by
+    # deselecting nothing.  Run one by hand with `-m weekly`.
+    "weekly: the two high-arity probes, left to the weekly workflow",
+    # The middle tier.  The rule is behavioural, not a stopwatch reading: a
+    # test is `medium` if it runs a generated program through an interpreter
+    # or drives the CLI (or git) as a subprocess.  That is what costs whole
+    # seconds -- the inner loop keeps every generator's structural assertion
+    # and every interpreter's own unit tests, and pays for execution once a
+    # commit is in sight.  `just test-quick` deselects it; `just test` and CI
+    # do not -- CI stops at the `slow` band above.
+    "medium: runs a generated program or a subprocess (deselect for the inner loop)",
     "integration: marks tests as integration tests",
     "interpreter: marks tests for specific interpreters",
 ]

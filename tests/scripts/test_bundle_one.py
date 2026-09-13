@@ -12,10 +12,12 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
+
 import esolangs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import LANGUAGES, RUNNERS, canonical_id
-from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
+from esolangs.tools.examples import BOOLEAN_EXAMPLES
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "bundle_one.py"
@@ -143,6 +145,8 @@ class TestBundleMatchesPackage:
             assert callable(expected.run), name
 
 
+# 2.9s over 18 tests: shells out to the bundler.
+@pytest.mark.medium
 class TestBundleDetails:
     def test_sympy_required_note(self, tmp_path: Path) -> None:
         """Factor's bundle tells the user sympy is required."""

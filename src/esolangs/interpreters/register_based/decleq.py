@@ -8,6 +8,16 @@ the instruction at address ``pc`` is the three cells
 ``memory[pc]..memory[pc+2]``, so the common countdown idiom is ``x x next``
 (decrement ``x``, jump to ``next`` when it reaches zero).
 
+Addressing is asymmetric, and both halves are deliberate.  A *read* out of
+range -- negative or past the end -- is zero, so untouched memory behaves
+as zeros.  A *write* past the right end grows the store; a write to a
+negative address indexes from the right, as a subscript would, because
+growing leftwards would turn a terminating program into a non-terminating
+one.  So a program can write to ``-1`` and read back ``0``: the write
+lands on the last cell and the read does not go looking for it.  A write
+further left than the store is long halts with
+:class:`~esolangs.exceptions.HaltError`.
+
 The execution model is a pure function over an immutable ``_State``:
 :func:`_advance` maps a state to the next state, and never mutates what it
 is given.  It takes no ``io`` argument at all, so it is total and
@@ -54,6 +64,8 @@ this interpreter would only have duplicated it.
 
 from __future__ import annotations
 
+from esolangs._validate import check_address
+from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 from esolangs.interpreters.memory import parse_int_memory as _parse
 
@@ -104,12 +116,17 @@ def _written(memory: tuple[int, ...], addr: int, value: int) -> tuple[int, ...]:
     instead turns a terminating program into a non-terminating one.
     """
     if addr < 0:
-        # IndexError on an empty or too-short store, exactly as a list
-        # subscript would raise, which callers above treat as a real error.
         if addr < -len(memory):
-            raise IndexError("list assignment index out of range")
+            # This used to be a bare ``IndexError``, which escaped the
+            # package's one promise: ``run("Decleq", "4 -8")`` reached a
+            # caller as a raw traceback rather than an ``EsolangError``.
+            raise HaltError(
+                f"address {addr} is {-addr - len(memory)} cells past the "
+                f"left end of a {len(memory)}-cell store"
+            )
         addr += len(memory)
     elif addr >= len(memory):
+        check_address(addr, "Decleq")
         memory = (*memory, *([0] * (addr + 1 - len(memory))))
     return (*memory[:addr], value, *memory[addr + 1 :])
 

@@ -51,8 +51,6 @@ from typing import Literal, NoReturn
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
 
-# -- parser ---------------------------------------------------------------
-
 # The parse tree, as tuples discriminated by their first element.  Four
 # families, because the grammar has four: a value, a for-loop pattern, the
 # spec that heads a for-loop, and a statement.  They nest -- a statement
@@ -351,9 +349,6 @@ class _Parser:
             fn = _Function(name, params)
             fn.body, fn.nested = self._block()
             funcs[fn.name] = fn
-
-
-# -- runtime --------------------------------------------------------------
 
 
 class _BitReader:
@@ -754,6 +749,12 @@ class _Machine:
 
     # The VM's language-shaped view: a call-frame language whose store is
     # the innermost frame's integer locals.
+
+    #: ``ip`` is a position, but not one on the source text: each live frame's statement
+    #: position.
+    #: Declared rather than left to the default so that a tuple nobody has
+    #: classified is a missing answer instead of this one.
+    ip_shape = "opaque"
 
     @property
     def ip(self) -> tuple[int, ...]:

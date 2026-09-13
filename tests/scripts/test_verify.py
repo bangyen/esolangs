@@ -1,7 +1,7 @@
 """The local gate may skip work, but only work CI is known to redo.
 
 ``scripts/verify.py`` deselects the ``slow`` marker from a default run in both
-test suites -- pytest's and ``extra/line``'s -- on the standing argument that
+test suites -- pytest's and Line's -- on the standing argument that
 CI runs those tests on every push, so skipping them locally costs no coverage.
 That argument only holds while the skip is exactly as narrow as it claims, so
 the two halves are pinned here: the filter must reach the line step *and* it
@@ -15,6 +15,8 @@ import re
 import sys
 import tomllib
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "verify.py"
@@ -206,6 +208,10 @@ class TestCiRedoesEveryLocalStep:
             assert _signature(by_name[name]) in workflow, name
 
 
+# 6.2s over 9 tests: spawns real subprocesses to time the steps.
+@pytest.mark.medium
+# 6.2s over 9 tests: spawns real subprocesses to time the steps.
+@pytest.mark.medium
 class TestHeavyStepsAreNotRunInPytestsShadow:
     """The shadow is only free for steps that use one core.
 

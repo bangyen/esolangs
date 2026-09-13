@@ -6,7 +6,7 @@ slots the boolean generator's placement can use.  Any start's capacity
 equals that of its first trajectory value under the ceiling, so sieving
 every start up to the ceiling is exhaustive over *all* starts.
 
-Backs the 395 record cited in ``esolangs.tools.boolean.ztoalc_l`` and
+Backs the 395 record cited in ``esolangs.tools.ztoalc_l`` and
 ``docs/limitations.md``: the committed anchors offer 386, the best start
 anywhere offers 395, so lifting n=11 (587 dense / 545 parity commands)
 needs a higher ceiling, not a better anchor.
@@ -21,7 +21,7 @@ Usage:
 import sys
 from array import array
 
-from esolangs.tools.boolean.ztoalc_l import _MAX_LINES
+from esolangs.tools.ztoalc_l import _MAX_LINES
 
 
 def sieve(cap: int) -> tuple[int, int]:

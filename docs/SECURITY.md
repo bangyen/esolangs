@@ -1,35 +1,23 @@
 # Security policy
 
-## Supported versions
+Supported: the latest PyPI release and `main`.  Older versions are not.
 
-The latest release on PyPI and the current `main` branch. There are no
-maintenance branches for older versions.
+## Scope
 
-## What is in scope
-
-Interpreters execute untrusted programs by design, so a program producing
-wrong output, looping forever, or exhausting memory is a correctness bug.
-Open a normal issue for those.
-
-In scope for a security report is anything that escapes the interpreter:
+In scope is anything that escapes the interpreter:
 
 - executing arbitrary code on the host, or reading or writing files outside
-  what a run was given
-- a crash in a native reference interpreter (`extra/assembly/`) that
-  indicates memory unsafety
-- code execution through the CLI's file or language arguments
-- a compromise in the release pipeline or a published artifact
+  what a run was given;
+- code execution through the CLI's file or language arguments;
+- a compromise in the release pipeline or a published artifact.
+
+Out of scope: wrong output, loops and resource exhaustion.  Those are
+correctness bugs -- open a normal issue.
 
 ## Reporting
 
-Report privately through GitHub's
-[security advisory form](https://github.com/bangyen/esolangs/security/advisories/new),
-not a public issue.
+Use GitHub's private [security advisory
+form](https://github.com/bangyen/esolangs/security/advisories/new).  Include
+the language, the smallest reproducer, the version and the impact.
 
-Please include the language, the smallest program that shows it, the commit or
-released version, and what the program achieved that it should not have been
-able to.
-
-Expect an acknowledgement within a week. This is a personal project
-maintained in spare time, so a fix may take longer; you will get an honest
-estimate rather than silence.
+Expect acknowledgement within a week; a fix may take longer.

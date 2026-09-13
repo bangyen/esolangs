@@ -36,7 +36,7 @@ class TestNoComment:
         assert run_and_capture("c" + "i" * 65 + "o") == "A"
 
     def test_cell_clears(self) -> None:
-        """c resets the cell, so a following o prints a NUL."""
+        """C resets the cell, so a following o prints a NUL."""
         assert run_and_capture("ciio") == "\x02"
         assert run_and_capture("co") == "\x00"
 
@@ -113,19 +113,19 @@ class TestNoComment:
         assert buffer.getvalue() == "A"
 
     def test_stack_push_pop(self) -> None:
-        """n pushes the cell; f pops into it."""
+        """N pushes the cell; f pops into it."""
         assert run_and_capture("c" + "i" * 65 + "n" + "f" + "o") == "A"
         assert run_and_capture("c" + "i" * 65 + "n" + "r" + "f" + "o") == "A"
         assert run_and_capture("c" + "i" * 65 + "n" + "n" + "f" + "f" + "o") == "A"
 
     def test_skip_forward(self) -> None:
-        """s skips X commands forward when the current cell is nonzero."""
+        """S skips X commands forward when the current cell is nonzero."""
         # cell = 2, push 2: skip the two i's, print cell 2
         assert run_and_capture("cii" + "n" + "s" + "ii" + "o") == "\x02"
         assert run_and_capture("ci" + "n" + "s" + "i" + "o") == "\x01"
 
     def test_jump_back(self) -> None:
-        """b jumps back X-1 and loops until the cell reaches zero.
+        """B jumps back X-1 and loops until the cell reaches zero.
 
         The suite reached ``b`` only through the out-of-range error, so a
         backward jump was never actually taken.  Here ``n`` pushes 2 and the
@@ -137,7 +137,7 @@ class TestNoComment:
         assert run_and_capture("ciindbdo") == "\xff"
 
     def test_jump_needs_a_nonzero_cell(self) -> None:
-        """s and b do nothing when the current cell is zero.
+        """S and b do nothing when the current cell is zero.
 
         Both jumps are guarded on the cell *and* the stack, and every test
         ran them with both satisfied -- so requiring either one alone would
@@ -148,7 +148,7 @@ class TestNoComment:
         assert run_and_capture("cbo") == "\x00"
 
     def test_jump_needs_a_stacked_value(self) -> None:
-        """s and b do nothing when the stack is empty.
+        """S and b do nothing when the stack is empty.
 
         Nothing is pushed here, so the jump has no distance to read: it is
         skipped silently rather than raising, and the following commands

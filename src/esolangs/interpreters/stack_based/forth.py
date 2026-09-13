@@ -92,7 +92,7 @@ type _State = tuple[tuple[int, ...], dict[int, str], _Frames, bool]
 def _top(stack: tuple[int, ...]) -> int:
     """Return the top of ``stack``, halting when there is none."""
     if not stack:
-        raise HaltError
+        raise HaltError("the stack is empty, so there is no top value to read")
     return stack[-1]
 
 
@@ -288,6 +288,12 @@ class _Machine:
     # The VM's language-shaped view: a stack language with a frame stack and
     # no addressable cells.
 
+    #: ``ip`` is a position, but not one on the source text: each live frame's pc,
+    #: outermost first.
+    #: Declared rather than left to the default so that a tuple nobody has
+    #: classified is a missing answer instead of this one.
+    ip_shape = "opaque"
+
     @property
     def ip(self) -> tuple[int, ...]:
         """Each live frame's pc, outermost first.
@@ -398,7 +404,7 @@ def run(code: str, io: IO) -> None:
     while not machine.halted:
         machine.step()
     if machine.error:
-        raise HaltError
+        raise HaltError("the top-level scope aborted, which Forþ reports as status 3")
 
 
 if __name__ == "__main__":

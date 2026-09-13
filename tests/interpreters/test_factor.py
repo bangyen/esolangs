@@ -120,7 +120,8 @@ class TestStepMachine:
 
 class TestLongPrograms:
     """A Factor program is one integer, so CPython's digit guard caps the
-    language rather than the interpreter."""
+    language rather than the interpreter.
+    """
 
     def test_a_program_past_cpythons_digit_limit_still_parses(self) -> None:
         """4300 digits is a DoS guard on int/str, not a Factor rule.
@@ -209,8 +210,8 @@ class TestFactorint:
         import re
         import time
 
+        from esolangs import tools as boolean_tools
         from esolangs.interpreters.tape_based.factor import _factorint
-        from esolangs.tools import boolean as boolean_tools
 
         program = str(boolean_tools.factor("0110100110010110"))
         number = int(re.sub(r"[^0-9]", "", program))

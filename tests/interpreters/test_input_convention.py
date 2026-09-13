@@ -151,7 +151,6 @@ def test_the_scan_finds_the_guards_that_are_really_there() -> None:
     found = {name for name, src in _interpreter_sources() if _blank_line_guards(src)}
     assert {
         "Alight",
-        "DINAC",
         "Jaune",
         "LaserFuck",
         "Streetcode",
@@ -291,7 +290,6 @@ _EOF_IS_A_HALT: dict[str, str] = {
     "fargo": "the interpreter reads before the program starts",
     "circuit_diagram": "resolves its inputs while laying the grid",
     "flowchart": "reads at the switch, which a program without one skips",
-    "dinac": "its reads are guarded, so a missing line is a zero",
     "s*bleq": "a failed read leaves the cell alone and the program runs on",
 }
 
@@ -304,14 +302,14 @@ def test_every_eof_exemption_names_a_real_language(name: str) -> None:
     deselects; comparing it against the registry is what stops an entry
     outliving the language it describes.
     """
-    from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
+    from esolangs.tools.examples import BOOLEAN_EXAMPLES
 
     assert name in BOOLEAN_EXAMPLES
 
 
 def _reading_languages() -> list[str]:
     """The examples whose programs read their inputs from the stream."""
-    from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
+    from esolangs.tools.examples import BOOLEAN_EXAMPLES
 
     return sorted(
         name
@@ -336,7 +334,7 @@ def test_running_out_of_input_reaches_the_caller(name: str) -> None:
     language that swallowed the EOF would answer a missing line with the
     same byte as an empty one, and the two would stop being distinct.
     """
-    from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
+    from esolangs.tools.examples import BOOLEAN_EXAMPLES
 
     example = BOOLEAN_EXAMPLES[name]
     module = importlib.import_module("esolangs.interpreters." + example.interpreter)

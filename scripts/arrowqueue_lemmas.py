@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Executed lemma checks behind ``docs/arrowqueue_generator.md``.
+"""Executed lemma checks behind ``the relevant generator tests``.
 
 The proof there is total over every arity, so nothing in this file
 enumerates truth tables to establish the claim -- each check pins one
@@ -21,7 +21,7 @@ import random
 import sys
 
 from esolangs.interpreters.grid_based.arrowqueue import _advance, _Machine
-from esolangs.tools.boolean.parameterized import (
+from esolangs.tools.parameterized import (
     _FIRST_ONE,
     _FIRST_ZERO,
     _MIDDLE,
