@@ -1,10 +1,4 @@
-"""The generated language docs stay in sync with the registry.
-
-``scripts/make_languages_doc.py`` derives both docs/languages.md and the
-README's Implemented Languages section from the registry, so neither is
-hand-maintained.  These tests pin that contract: running the generator must
-leave both committed files unchanged.
-"""
+"""Generated README and usage sections stay in sync with the registry."""
 
 import importlib.util
 import re
@@ -13,7 +7,6 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "scripts" / "make_languages_doc.py"
 README = REPO_ROOT / "README.md"
-LANGUAGES_DOC = REPO_ROOT / "docs" / "languages.md"
 USAGE_DOC = REPO_ROOT / "docs" / "usage.md"
 
 
@@ -200,9 +193,3 @@ def test_boolean_set_names_are_registered() -> None:
     """Every language marked boolean in the matrix is a registered language."""
     module = load_script()
     assert set(module.LANGUAGES) >= module.BOOLEAN
-
-
-def test_languages_doc_is_in_sync() -> None:
-    """Regenerating the capability matrix leaves it unchanged."""
-    module = load_script()
-    assert LANGUAGES_DOC.read_text() == module.render()

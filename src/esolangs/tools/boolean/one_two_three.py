@@ -22,7 +22,7 @@ construction: the printing route reaches exactly the eight affine tables at
 XNOR) and cannot express AND.  Termination escapes that bound because the
 verdict accumulates over passes instead of reading one cell.
 
-``docs/walls.md`` recorded the termination route as capped in turn, at the
+``the limitations ledger`` recorded the termination route as capped in turn, at the
 *monotone* tables, for a verified union of nine of the sixteen.  That
 ceiling belongs to the displacement-neutral ``12``/``21`` setter it fixed,
 not to the language: under that setter every instantiation stays in

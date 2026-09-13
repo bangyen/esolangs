@@ -187,7 +187,7 @@ def test_every_boolean_generator_has_an_example() -> None:
 
 
 # The boolean examples demonstrate a language's boolean-function capability
-# that is not an I/O truth machine (see docs/walls.md).  They are derived
+# that is not an I/O truth machine (see the limitations ledger).  They are derived
 # from ``esolangs.tools.boolean.examples``, which records for each committed
 # program the generator, truth table, and input combination that produced it
 # -- so the files stay in sync with the generators.
@@ -220,7 +220,7 @@ def _prove_halt(vm: object) -> bool:
     pushes a frame per call, a tape that gains a cell per lap -- never
     repeats one, so on those the exact-state prover does not run long, it
     *cannot terminate*, and a broken example would hang the suite instead
-    of failing it.  ``docs/walls.md`` carries the measured instance: a
+    of failing it.  ``the limitations ledger`` carries the measured instance: a
     Suptiftam program short of its input grows the snapshot about 32 bytes
     per step, and holding those states OOM-killed the probe, while the
     ancestor prover answered in under a second.

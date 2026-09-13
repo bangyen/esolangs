@@ -189,7 +189,7 @@ STEPS = [
     # silently rather than breaking, so if this ever feels slow again check
     # the interpreter before the tests: coverage says so on stderr with a
     # `no-sysmon` CoverageWarning.  Both timing tables are in
-    # ``docs/verification_tooling.md``.
+    # ``the verification history``.
     ("pytest", [*PY, "-m", "pytest", "-q", "--cov", "--cov-branch", "--cov-report="]),
     ("bandit", ["uv", "run", "--with", "bandit", "bandit", "-r", "src", "-q"]),
     (
@@ -249,7 +249,7 @@ STEPS = [
         "single-interpreter installer",
         [*PY, "scripts/verify_install_one.py"],
     ),
-    # Twelve named lemmas behind docs/generators/arrowqueue_generator.md, each pinning
+    # Twelve named lemmas behind the relevant generator tests, each pinning
     # one finite fact the total-over-every-arity proof rests on.  0.8s, so
     # it is a gate rather than the by-hand check the A Painter Ant proof
     # has to be (`just apa-proof`, 5m40s).

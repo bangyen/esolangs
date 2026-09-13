@@ -9,8 +9,8 @@ Interpreters and boolean-circuit generators for 65 esoteric languages.
 
 [usage](docs/usage.md) is the caller's guide -- the exported functions, the
 four odd input shapes, templates, reading an answer back, the debugger.
-[roadmap](docs/roadmap.md) tracks live work, [limitations](docs/limitations.md)
-records contracts, and the rest of [`docs/`](docs/README.md) is indexed there.
+[roadmap](docs/roadmap.md) tracks live work and
+[limitations](docs/limitations.md) records contracts.
 
 Start with the [CLI](#command-line), [Python API](#python-api), or
 [contribution guide](docs/CONTRIBUTING.md).
@@ -105,8 +105,6 @@ languages with a boolean generator.  It regenerates via
 <!-- IMPLEMENTED:START -->
 
 <summary>Show all 65 languages</summary>
-
-The full capability matrix (generators, boolean support, examples) is in [`docs/languages.md`](docs/languages.md).
 
 ### Grid-based Languages
 

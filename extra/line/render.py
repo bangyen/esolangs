@@ -316,7 +316,7 @@ _MERGEABLE = {"+", "-"}
 # puts those off-centre rays back on background.  At 0 every program in
 # `test_bf_to_line.py`'s `TestStrokeSeparation` develops adjacency (up to 76
 # abutting cells); at 1 none does, and the ordinary output-asserting suites
-# do not catch the difference -- see ``docs/line_tooling.md``.
+# do not catch the difference -- see ``the Line tests``.
 _CLEARANCE = 1
 
 
@@ -374,7 +374,7 @@ _DIAGONAL_APPROACH = 6
 # This used to be the whole story: arms were sized by a fork *count*, which
 # is blind to how much ink a subtree lays down.  :func:`_arm_spacing` now
 # measures each subtree's real extent instead (see :func:`_subtree_extent`);
-# ``docs/line_tooling.md`` records what the halving got right and where the
+# ``the Line tests`` records what the halving got right and where the
 # count failed.
 #
 # What remains here is a floor, not a scaling law -- a subtree that reaches
@@ -509,7 +509,7 @@ def _arm_spacing(arm: Node | None) -> int:
     automatically, and their lateral spans spread along the perpendicular
     axis, where the boxes cannot meet at all.  Adding a lateral term anyway
     amplified geometrically with depth (7760x3800 vs ~1600 at depth 3); see
-    ``docs/line_tooling.md``.
+    ``the Line tests``.
 
     :data:`_BRANCH_SPACING` is the floor and the safety margin, so a subtree
     that reaches back barely at all still gets a real gap.
@@ -528,7 +528,7 @@ def _arm_spacing(arm: Node | None) -> int:
     bay and parents reserve room for it through the measured extent.
     Dropping the old per-goto multiplier shrank nested areas 17% at depth 4
     to 44% at depth 10 with every program still round-tripping; see
-    ``docs/line_tooling.md``.
+    ``the Line tests``.
 
     The term is added to the arm being measured, once, and only for arms
     carrying a `goto` -- unlike the harmful lateral term above, which applied

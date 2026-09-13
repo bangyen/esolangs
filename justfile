@@ -131,8 +131,7 @@ mutate-gen module *args:
 
 # re-check the A Painter Ant uniform-in-n proof (5m40s, single-threaded)
 # Not in `just test` or CI: it is longer than the whole suite, and what it
-# guards -- the motif table behind docs/generators/a_painter_ant_uniform_proof.md --
-# only moves when APA's head, body or routing does.  Run it then.
+# guards only APA's head, body, or routing. Run it when those move.
 apa-proof:
     {{PYTHON}} tests/tools/apa_uniform_proof_check.py
 

@@ -10,7 +10,7 @@ loops by a proven state revisit for a 1.
 Why this is possible at all
 ---------------------------
 
-``docs/walls.md`` recorded the wider arities as open because "the pointer
+``the limitations ledger`` recorded the wider arities as open because "the pointer
 phase *is* the computed value, so a trailing inert embed shifts the very
 quantity the plan decodes."  That objection binds the phase-decode shape
 the searched plans use, not the language: after each embed the two fill

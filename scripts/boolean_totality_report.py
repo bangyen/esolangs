@@ -1,6 +1,6 @@
 """Classify each boolean generator by the machinery it actually reaches.
 
-What keeps the totality table in ``docs/proofs.md`` honest: it is the set
+What keeps the totality table in ``the relevant tests`` honest: it is the set
 of rows that goes stale silently, since a generator gaining a loop or a
 refusal looks exactly like one that always had neither.  Re-run this when
 that table is in question and diff the two columns against it.
