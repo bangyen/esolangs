@@ -199,7 +199,8 @@ def normalize_scale(mask: Mask) -> Mask:
     # because they all are -- so which pixel within the block is taken does not
     # matter, only that the sample lands inside one.
     bounds = mask.bounds()
-    assert bounds is not None  # detect_scale returned > 1, so there is ink
+    if bounds is None:
+        raise AssertionError("detect_scale found an inked mask without bounds")
     top, left, _, _ = bounds
     return mask.subsample(scale, top % scale, left % scale)
 
@@ -438,7 +439,8 @@ def _direction_runs(vertices: list[Vertex]) -> list[tuple[int, int]]:
     runs: list[tuple[int, int]] = []
     for i in range(len(vertices) - 1):
         v0, v1 = vertices[i], vertices[i + 1]
-        assert v0.heading is not None
+        if v0.heading is None:
+            raise AssertionError("walker produced a vertex without a heading")
         length = max(abs(v1.y - v0.y), abs(v1.x - v0.x))
         runs.append((v0.heading, length))
     return runs
@@ -746,7 +748,8 @@ def _redraw(vertex_lists: list[list[Vertex]], mask: Mask) -> Mask:
     for vertices in vertex_lists:
         for i in range(len(vertices) - 1):
             v0, v1 = vertices[i], vertices[i + 1]
-            assert v0.heading is not None
+            if v0.heading is None:
+                raise AssertionError("walker produced a vertex without a heading")
             dy, dx = _DIRS[v0.heading]
             py, px = v0.y, v0.x
             canvas[py, px] = True

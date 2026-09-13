@@ -34,5 +34,5 @@ def run(program: Raster, io: ScriptedIO) -> None:
     stroke = extract_mask(from_grey([bytearray(row) for row in program.rows]))
     _run(
         stroke,
-        IO(read=lambda: int(io.read()), write=lambda value: io.write(str(value))),
+        IO(read=io.input_num, write=io.print_num),
     )
