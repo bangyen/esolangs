@@ -5,18 +5,7 @@ Only live work belongs here. Completed findings and negative results go to
 
 ## New interpreters
 
-Implement the surveyed candidates in this order:
-
-- **[Qwhy](https://esolangs.org/wiki/Qwhy).**  Its diagonal queue machine has a
-  deterministic subset when `x` is absent, character input/output, two value
-  branches, wrapping and self-modification.  Admission is conditional on a
-  loop-less boolean construction: build 48 before `{`, subtract the input
-  character, and route `X`'s zero/nonzero diagonals into a decision tree.
-- **[Sir. Cut](https://esolangs.org/wiki/Sir._Cut).**  Its prioritized circuit
-  scheduler, bit input memory and logic gates can express a minterm network,
-  with seven fixed output bits and the result bit spelling ASCII `0`/`1`.
-  Derive a planar wire-and-bridge layout and execute the generator before
-  implementing the full interpreter.
+The candidate list is empty.
 
 ## Conditional follow-up
 
