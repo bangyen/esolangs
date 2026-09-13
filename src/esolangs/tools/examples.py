@@ -63,6 +63,7 @@ from dataclasses import dataclass, replace
 from esolangs.registry import Generator, canonical_id
 from esolangs.tools.a_painter_ant import _instantiate_apa
 from esolangs.tools.helpers import instantiate
+from esolangs.tools.nopstacle import instantiate_nopstacle
 from esolangs.tools.parameterized import _instantiate_arrowqueue
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
@@ -567,6 +568,11 @@ def _fill_arrowqueue(template: str, bits: list[int]) -> str:
     return _instantiate_arrowqueue(template, bits)
 
 
+def _fill_nopstacle(template: str, bits: list[int]) -> str:
+    """Specialize the prototype's table for one embedded input row."""
+    return instantiate_nopstacle(template, bits)
+
+
 # Example file stem -> how that example is built and run.  Stems match the
 # language's display name lowercased with spaces as dashes.
 BOOLEAN_EXAMPLES: dict[str, BooleanExample] = {}
@@ -848,6 +854,19 @@ def _register() -> None:
                 "committed.  The headings printed are its interpreter-only "
                 "queue dump, which the verdict does not read: the answer is "
                 "that the program halted at all"
+            ),
+        ),
+        "nopstacle": _embedded(
+            b.nopstacle,
+            "grid_based.nopstacle",
+            _fill_nopstacle,
+            answer_mode="termination",
+            answer_values=("halts", "diverges"),
+            expected="",
+            split=True,
+            note=(
+                "Nopstacle answers by termination: a local repeated state "
+                "halts for 0 and crossing repeated copies forever is 1"
             ),
         ),
     }

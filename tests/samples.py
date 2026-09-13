@@ -229,6 +229,7 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Minsky Swap": ("+", ""),
     "Modulous": ("[PSH INT 5][DUP][PRT INT]", ""),
     "NoComment": ("ciio", ""),
+    "Nopstacle": (" #\n##", ""),
     "Packlang": (
         "Package : IO {\n  Integer main {\n    charPut(65);\n    0;\n  }\n} p;",
         "",
