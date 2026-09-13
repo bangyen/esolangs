@@ -178,9 +178,20 @@ class TestWikiFixtures:
         run(extract(f"{FIXTURES}/multiplication.png"), io=io)
         assert outputs == [expected]
 
+    def test_antialiased_scan(self) -> None:
+        """Softened 3px strokes retain their program and arithmetic."""
+        path = Path(FIXTURES) / "addition_antialiased_3x.png"
+        levels = {level for row in read_grey(path.read_bytes()) for level in row}
+        assert len(levels) == 12
+        stroke = extract(str(path))
+        for a, b in ((3, 2), (0, 5), (7, 3)):
+            io, outputs = _io([a, b])
+            run(stroke, io=io)
+            assert outputs == [a + b]
+
 
 def test_antialiased_resample_is_rejected() -> None:
-    """A subpixel-shifted scan fails loudly instead of changing the program."""
+    """A resample that erases the stroke core fails instead of changing it."""
     path = INVALID_FIXTURES / "addition_antialiased.png"
     levels = {level for row in read_grey(path.read_bytes()) for level in row}
     assert len(levels) == 194

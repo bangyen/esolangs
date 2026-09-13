@@ -18,9 +18,10 @@
 (45 languages), `grid` (11), `line` (2), or `opaque` (7); undeclared tuple
 positions are refused. `opaque` positions have no program mark.
 
-Line extraction requires a lossless or pixel-replicated PNG. A one-third-pixel
-shift followed by anti-aliased resampling leaves 194 grey levels and is rejected
-with 921 unaccounted pixels; it does not silently return a different program.
+Line extraction accepts anti-aliased PNGs while strokes retain a connected dark
+core; the 3px scan fixture executes addition correctly. A one-third-pixel shift
+of a 1px stroke followed by resampling erases that core and is rejected with 921
+unaccounted pixels rather than returning a different program.
 
 ## Boolean generators
 

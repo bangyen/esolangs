@@ -43,6 +43,9 @@ from .mask import Mask
 def load_binary(path: str) -> Mask:
     """Load a PNG as a boolean ink mask (True = black/foreground).
 
+    Greyscale anti-aliasing is thresholded at mid-grey, so softened edges are
+    accepted while a dark, connected stroke core remains.
+
     PNG only, deliberately -- see ``the Line tests``.  A file in any
     other format is refused with a message naming what to do about it rather
     than a bare signature complaint, since "convert it to PNG" is the whole
