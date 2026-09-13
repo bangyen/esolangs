@@ -5,7 +5,17 @@ Only live work belongs here. Completed findings and negative results go to
 
 ## New interpreters
 
-The candidate list is empty.  Alight, function x(y), Packlang and
+Implement the surveyed two-dimensional candidates in this order:
+
+- EGL: the first target; its deterministic grid, numeric I/O and examples fit
+  the package.  Derive and execute a boolean generator with the interpreter.
+- B-tapemark: admit it once a named boolean construction is derived; the
+  interpreter spec and its character-I/O examples are otherwise sufficient.
+- Nopstacle: conditional on a parameterized halt-versus-loop generator.  Its
+  no-I/O model is admissible, but the construction is the work, not an
+  interpreter-only addition.
+
+Alight, function x(y), Packlang and
 Interprogck8 are implemented; Pinyin is rejected, and DINAC was
 implemented and then pruned (see below).  Both outcomes are
 recorded in [limitations](limitations.md) -- Pinyin's routing pinned and its
