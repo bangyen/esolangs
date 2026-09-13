@@ -90,7 +90,7 @@ Seventeen languages embed the inputs in the program rather than reading
 them, so `generate` returns a template with a `{Xi}` slot per input. Fill
 it with `esolangs.instantiate(language, template, bits)`; running one
 unfilled is refused. `esolangs list --details` marks them `tmpl` and
-[languages.md](languages.md#parameterized-generators) lists them.
+identifies each one.
 
 ## Reading the answer
 
