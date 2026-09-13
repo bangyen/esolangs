@@ -38,6 +38,7 @@ that row is actually spelled for the language.
 | `cod.txt` | COD | `0001` | `01` | embedded 01 | '0' |
 | `collatz-multiverse.txt` | Collatz Multiverse | `0001` | `01` | 0 1 | '0' |
 | `container.txt` | Container | `0001` | `01` | 0 1 | '0' |
+| `crement.txt` | Crement | `0001` | `01` | embedded 01 | (nothing) |
 | `cvnc.txt` | CV(N)(C) | `0001` | `01` | 0 1 | '0' |
 | `decleq.txt` | Decleq | `0001` | `01` | 0 1 | '0' |
 | `dig.txt` | Dig | `0001` | `01` | 0 1 | '0' |
@@ -90,6 +91,7 @@ that row is actually spelled for the language.
 - **clockwise** -- Clockwise reads all its input bits in one go, so they go on one line -- one character per bit, not a line per bit, and not seven bits packed into a character: that packing is real but is on the output side. A line per bit, or a packed one, is read as a different row and answered wrongly
 - **cod** -- COD has no runtime input and no I/O but a printed number
 - **container** -- Container prints the answer like any other reader; it also ends by calling sys.exit(0) rather than returning, which matters to a harness driving it but not to reading the result
+- **crement** -- Crement answers by termination: a false jump halts for 0 and a positive self-jump diverges for 1
 - **fargo** -- Fargo reads one number whose bits are the inputs, so the committed input is the row index rather than a bit per line
 - **grapheme** -- Grapheme's generator normalizes each input line with ord(line[0]) - 65 and then maps zero to 1, so its input bits are spelled % and A: 'A' is a 1 and every other first character is a 0, which means a 0/1 line reads as 0 and the program answers the all-zeros row. The second step is not optional prose -- ord('A') - 65 is 0, so the subtraction alone says the opposite
 - **inject** -- send terminates each line, so the answer ends in a newline
