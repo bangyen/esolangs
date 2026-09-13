@@ -28,29 +28,14 @@ not subtree sharing or a denser layout.
 
 ## Curation: the prune to 60
 
-65 languages now.  The prune to 65 removed the four ordinary imperative
+60 languages now.  The prune to 65 removed the four ordinary imperative
 languages in costume (DINAC, MyScript, Basicfuck, Nevermind); the
 criterion, the bands below it, and the floor are in
 [limitations](limitations.md#curation).
 
-**Live: the second band, 65 -> 60.**  It exhausts the same criterion --
-Suptiftam, Lamfunc, `function x(y)`, Between, Point Break.  All five are
-ordinary imperative or functional languages whose generator is a shared
-decision-tree shim in `other.py` or `parameterized.py`, so no construction
-goes with them.
-
-Two costs to pay before taking it, neither a blocker:
-
-- **Suptiftam is the worked example** for the program whose unbounded frame
-  growth is what `run_until_halt_or_ancestor` decides and
-  `run_until_halt_or_cycle` cannot.  It is also one of the six languages
-  where an exhausted read is a *value*.  Re-point both at another language
-  that defines `frame_entry_key` before deleting it, the way the prune to
-  65 re-pointed three tests at Flowchart.
-- **The 0%-upside list** in [limitations](limitations.md) names Point Break
-  and Suptiftam among the eight generators the reorder screen closes.  The
-  list is re-run, not cited, so it will shrink on its own -- but the
-  sentence's count needs the same edit.
+The second band reached 60: Suptiftam, Lamfunc, `function x(y)`, Between,
+and Point Break were ordinary imperative or functional languages with shared
+decision-tree shims and no downstream consumer.
 
 Do not take the band below it (60 -> 55) on this criterion: it cuts family
 duplicates rather than costume, which is a different argument and is

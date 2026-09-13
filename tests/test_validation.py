@@ -194,7 +194,7 @@ class TestBitsAreBits:
 class TestTerminationPolarityIsData:
     """The one convention a zero-branch verifier still had to hardcode."""
 
-    @pytest.mark.parametrize("name", ["123", "ArrowQueue", "Point Break"])
+    @pytest.mark.parametrize("name", ["123", "ArrowQueue"])
     def test_the_polarity_is_reported(self, name: str) -> None:
         facts = esolangs.describe(name)
         assert facts["answer_mode"] == "termination"

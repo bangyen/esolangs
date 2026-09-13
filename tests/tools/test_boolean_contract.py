@@ -232,13 +232,9 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 # builder that emits one fixed order, so a test can compare the two.
 def _reordering_generators() -> list[object]:
     from esolangs.tools.helpers import _decision_tree_program
-    from esolangs.tools.other import (
-        _between_ordered,
-        _forbin_ordered,
-    )
+    from esolangs.tools.other import _forbin_ordered
     from esolangs.tools.parameterized import (
         _bitdeque_ordered,
-        _lamfunc_ordered,
         _ram0_ordered,
     )
     from esolangs.tools.tape import (
@@ -259,8 +255,6 @@ def _reordering_generators() -> list[object]:
             lambda t, p: _decision_tree_program(t, ">0", "<0", p),
         ),
         ("ram0", boolean.ram0, _ram0_ordered),
-        ("between", boolean.between, _between_ordered),
-        ("lamfunc", boolean.lamfunc, _lamfunc_ordered),
         ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
         (
             "circlefuck",
@@ -534,11 +528,9 @@ _REDUCING = {
     "collatz_multiverse",
     "home_row",
     "nocomment",
-    "point_break",
     "qoibl",
     "rotfuck",
     "suffolk",
-    "suptiftam",
     "super_snusp",
 }
 

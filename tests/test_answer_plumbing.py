@@ -607,7 +607,7 @@ class TestTheTerminationVocabularyIsExported:
 
     def test_it_matches_what_describe_reports(self) -> None:
         """The same two strings, in the order the polarity is read from."""
-        for name in ("123", "ArrowQueue", "Point Break"):
+        for name in ("123", "ArrowQueue"):
             assert (
                 esolangs.describe(name)["answer_encoding"]
                 == esolangs.TERMINATION_OUTCOMES
@@ -956,7 +956,7 @@ class TestTheApiNameListsCannotDriftAgain:
 class TestDivergenceIsProvenNotWaitedOut:
     """A repeated state settles it exactly, and in milliseconds."""
 
-    @pytest.mark.parametrize("name", ["123", "ArrowQueue", "Point Break"])
+    @pytest.mark.parametrize("name", ["123", "ArrowQueue"])
     @pytest.mark.parametrize("table", ["0110", "00011011"])
     def test_the_proven_answer_is_the_table(self, name: str, table: str) -> None:
         """The answers must be the ones the clock used to give, exactly."""
@@ -1051,7 +1051,7 @@ class TestTheTerminationProofFallsBackToTheClock:
 
     def test_the_answers_match_what_the_clock_used_to_give(self) -> None:
         """The proof must not have changed any verdict, only the cost."""
-        for name in ("123", "ArrowQueue", "Point Break"):
+        for name in ("123", "ArrowQueue"):
             assert esolangs.evaluate(name, "0110") == "0110"
 
 

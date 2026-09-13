@@ -26,11 +26,6 @@ from tests.tools.boolean_oracles import (
     _sophie_tree,
 )
 from tests.tools.boolean_runners import (
-    _PB_CONSTANTS,
-    _PB_TABLES,
-    _pb_combo_bits,
-    _pb_random_tables,
-    point_break_result,
     run_addsubjump,
     run_addsubjump_from,
     run_collatz_multiverse,
@@ -873,96 +868,6 @@ class TestDecleq:
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                 got = run_decleq(program, [str(b) for b in bits])
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
-
-
-class TestPointBreak:
-    @pytest.mark.parametrize(("table", "n"), sorted(_PB_TABLES.items()))
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination halts or loops per its table entry."""
-        program = boolean.point_break(table)
-        for combo in range(2**n):
-            got = point_break_result(program, _pb_combo_bits(combo, n))
-            assert got == table[combo], f"inputs {_pb_combo_bits(combo, n)}"
-
-    @pytest.mark.parametrize("table", _PB_CONSTANTS)
-    def test_constant_tables(self, table: str) -> None:
-        """A constant table skips the tree but still consumes its inputs.
-
-        The body may shrink to the bare template -- there is no sum to
-        build -- but the reads are the interface: a program whose input
-        count depended on its truth table would leave the caller's
-        remaining bits on the stream for whatever ran next.  These tables
-        take the short-circuit path that bypasses the tree entirely, so
-        they are where a lost read would hide.
-        """
-        import contextlib
-
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.point_break import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        n = len(table).bit_length() - 1
-        program = boolean.point_break(table)
-        for combo in range(2**n):
-            got = point_break_result(program, _pb_combo_bits(combo, n))
-            assert got == table[combo], (
-                f"table {table} inputs {_pb_combo_bits(combo, n)}"
-            )
-        io = ScriptedIO("0\n" * (n + 4))
-        with contextlib.suppress(Exception, SystemExit):
-            run_until_halt_or_cycle(_Machine(program.splitlines(), io))
-        assert io.position() == n, (
-            f"table {table} consumed {io.position()} inputs, expected {n}"
-        )
-
-    def test_random_tables(self) -> None:
-        for table in _pb_random_tables():
-            n = len(table).bit_length() - 1
-            program = boolean.point_break(table)
-            for combo in range(2**n):
-                got = point_break_result(program, _pb_combo_bits(combo, n))
-                assert got == table[combo], (
-                    f"table {table} inputs {_pb_combo_bits(combo, n)}"
-                )
-
-    def test_program_structure(self) -> None:
-        """One read per input, complemented bits, a minterm sum, the template."""
-        program = boolean.point_break("0110").splitlines()
-        assert program[:3] == ["LET a:=1", "LET b:=?", "LET c:=?"]
-        assert program[3:5] == ["LET d:=a-b", "LET e:=a-c"]
-        assert sum(":=?" in line for line in program) == 2  # one read per input
-        assert program.count("LET f:=f+g") == 2  # one minterm per 1 row
-        assert program[-3:] == ["POINT loop", "IF h BREAK loop", "END loop"]
-
-    def test_a_dense_table_sums_its_zero_rows(self) -> None:
-        """More ones than zeros costs less summed the other way.
-
-        The guard breaks the loop on a nonzero, so it is already the
-        complement of the answer -- which makes inverting free here: the
-        complemented sum *is* the guard, and the ``one-f`` subtraction is
-        dropped rather than added to.
-        """
-        dense = boolean.point_break("11111110").splitlines()
-        sparse = boolean.point_break("00000001").splitlines()
-        # one minterm each: summing the dense table's ones would be seven
-        assert dense.count("LET h:=h+i") == 1
-        assert sparse.count("LET h:=h+i") == 1
-        # the dense one aliases the guard instead of subtracting for it
-        assert "LET j:=h" in dense
-        assert "LET j:=a-h" in sparse
-        for table in ("11111110", "00000001"):
-            program = boolean.point_break(table)
-            for combo in range(8):
-                bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
-                assert point_break_result(program, bits) == table[combo]
-
-    def test_mismatched_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="power-of-two"):
-            boolean.point_break("011")
-
-    def test_bad_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.point_break("0123")
 
 
 def _depth_zero_labels(program: str) -> list[int]:

@@ -129,7 +129,6 @@ DUMPS_ON_THE_POST_HALT_STEP = frozenset(
         "Bitdeque",
         "LaserFuck",
         "ArrowQueue",
-        "Point Break",
         "Back",
     }
 )
@@ -190,7 +189,6 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "BFStack": (">+.", ""),
     "Back": ("-*", ""),
     "BIO": ("0ox;0ix{1ox;};1ix;", ""),
-    "Between": ("'a'v.\n[a]s|3|\n[a]p.\n.x.", ""),
     "bit~": ("~(", ""),
     "Bitdeque": ("PUSH INVERT", ""),
     "BrainIf": ("if 0 output", ""),
@@ -216,7 +214,6 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Flowchart": (FLOWCHART_TRUTH_MACHINE, "0\n"),
     "Forbin": ("main { x = 1; }", ""),
     "Forþ": ("65.", ""),
-    "function x(y)": ("function f()\n[[~]]", "a\n"),
     "Grapheme": ("FAFY", ""),
     "Home Row": ("ak;", ""),
     # A corrected truth machine (the wiki's own is inverted -- see the
@@ -225,7 +222,6 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Inject": (INJECT_TRUTH_MACHINE, "0\n"),
     "Interprogck8": ("nNnN\ndiv", ""),
     "Jaune": ("++^", ""),
-    "Lamfunc": ("p 5", ""),
     "LaserFuck": ("ÿ   x\n    +\n    o", ""),
     "Minifuck": (".", ""),
     "Minsky Swap": ("+", ""),
@@ -236,7 +232,6 @@ SAMPLES: dict[str, tuple[str, str]] = {
         "",
     ),
     "Painfuck": ("pp", ""),
-    "Point Break": ("LET zero:=0", "0"),
     "Polynomial": ("f(x) = x^2+4", ""),
     "Qoibl": ("we y we yyeeee we\ntt qe y qe tt", ""),
     "RAM0": ("ZA", ""),
@@ -247,7 +242,6 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Streetcode": (STREETCODE, ""),
     "Super SNUSP": ('"65.', ""),
     "Suffolk": ("!" * 66 + "<.", ""),
-    "Suptiftam": ("x=7", ""),
     "Taglate": ("abc\ni", ""),
     "Unsquare": ("Io", ""),
     "WII2D": (">~.\n!", ""),

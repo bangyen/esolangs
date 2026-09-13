@@ -22,8 +22,8 @@ positions are refused. `opaque` positions have no program mark.
 
 Parameterized generators embed inputs in the program. `%^2^-1` cannot compute
 a two-input function from runtime input. Input reordering has no useful effect
-on A Painter Ant, Alight, Container, Grapheme, Home Row, Packlang, Point Break,
-or Suptiftam; do not reopen this with a blind search.
+on A Painter Ant, Alight, Container, Grapheme, Home Row, or Packlang; do not
+reopen this with a blind search.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
@@ -43,12 +43,12 @@ Uncapped dense-program sizes at n=8/n=9: Polynomial 3.38/10.90 MB, COD
 
 ## Curation
 
-The collection has 65 languages. The floor is 31: the languages that own a
+The collection has 60 languages. The floor is 31: the languages that own a
 generator construction, Polynomial and Modulous for their walls, and
 brainfuck for Factor's decoder. The 69→65 cut removed DINAC, MyScript,
 Basicfuck, and Nevermind: ordinary imperative languages with shared-shim
-generators and no downstream consumer. The live second band is in the
-[roadmap](roadmap.md).
+generators and no downstream consumer. The second band removed Suptiftam,
+Lamfunc, `function x(y)`, Between, and Point Break on the same criterion.
 
 ## Specification decisions
 

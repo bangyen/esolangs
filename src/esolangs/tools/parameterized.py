@@ -42,7 +42,6 @@ __all__ = [
     "cod",
     "eval",
     "instantiate",
-    "lamfunc",
     "minifuck",
     "minsky_swap",
     "nocomment",
@@ -1139,57 +1138,6 @@ def bfpda(truth_table: str) -> str:
         return "[>" + ">" + sub1 + "<]>[>" + sub0 + "<]>"
 
     return head + node(0, list(range(2**n)))
-
-
-def lamfunc(truth_table: str) -> str:
-    """Build a Lamfunc template for the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    Lamfunc has no input command, so this is a parameterized generator: the
-    template's ``{Xi}`` placeholders become the binary literal for each input
-    bit, and the harness instantiates one program per input combination.
-
-    Each input is stored once in a variable (``vs v{i} {Xi}``), so the inputs
-    are embedded exactly ``n`` times; the decision tree then reads each bit
-    back with ``vg v{i}`` instead of re-embedding it at every node.  The tree
-    is a chain of ``i`` builtins — ``i x y z`` returns ``y`` when ``x`` is
-    nonzero else ``z`` — with ``p 0``/``p 1`` at the leaves printing the
-    table's result as binary.  A subtree whose table slice is a constant
-    collapses to a single leaf, so constant rows emit no branching.
-
-    **The tree splits on its inputs in whichever order emits the shortest
-    program** (:func:`~esolangs.tools.helpers.best_input_order`),
-    since whether a subtree collapses depends on which rows it covers, which
-    the split order decides.  Reading a bit back is by *name*, so the reorder
-    costs nothing here: the ``vs v{i} {Xi}`` head still stores input ``i`` in
-    ``v{i}``, and only the variable a node names changes.
-    """
-    return best_input_order(truth_table, _lamfunc_ordered)
-
-
-def _lamfunc_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order's Lamfunc template; see :func:`lamfunc`.
-
-    ``truth_table`` is already permuted, so the ``lo``/``hi`` row span is
-    in the permuted frame; ``perm`` is spent only on the variable a node
-    reads back, ``v{perm[level]}``.
-    """
-    n = _validate_truth_table(truth_table)
-
-    def node(level: int, lo: int, hi: int) -> str:
-        results = {truth_table[k] for k in range(lo, hi)}
-        if level == n or len(results) == 1:
-            return f"p {results.pop()}"
-        mid = (lo + hi) // 2
-        # i x y z returns y when x is nonzero else z: y is the one-case
-        return (
-            f"i vg v{perm[level]} {node(level + 1, mid, hi)} {node(level + 1, lo, mid)}"
-        )
-
-    head = " ".join(f"vs v{i} {{X{i}}}" for i in range(n))
-    return head + " " + node(0, 0, 2**n)
 
 
 def bitdeque(truth_table: str) -> str:

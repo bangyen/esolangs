@@ -2608,7 +2608,7 @@ class TestTheTimeoutIsABackstopNotAPerRowCost:
     #: Sixteen rows, half of them 1s, on a language that answers by diverging.
     TABLE = "0110100110010110"
 
-    @pytest.mark.parametrize("language", ["123", "ArrowQueue", "Point Break"])
+    @pytest.mark.parametrize("language", ["123", "ArrowQueue"])
     def test_a_generous_bound_is_not_paid_per_row(self, language: str) -> None:
         """Thirty seconds a row would be minutes; the proof makes it instant."""
         start = time.perf_counter()
@@ -2799,7 +2799,6 @@ class TestWikiUrlsAreUsable:
             ("CV(N)(C)", "CV(N)(C)"),
             ("S*bleq", "S*bleq"),
             ("bit~", "bit~"),
-            ("function x(y)", "function_x(y)"),
             ("SLOW ACV MAMMALIAN", "SLOW_ACV_MAMMALIAN"),
         ],
     )
@@ -3220,7 +3219,7 @@ class TestPrintedCommandsCanBePasted:
     ) -> None:
         """All twelve, since one unquoted survivor is the whole bug again."""
         spaced = [n for n in esolangs.list_languages() if " " in n]
-        assert len(spaced) == 12
+        assert len(spaced) == 10
         for name in spaced:
             out, _err = call_both(["describe", name], capsys)
             assert f'--spec "{name}"' in out, name
@@ -3236,7 +3235,7 @@ class TestAnswerProvesRatherThanWaits:
     ``verify`` and never reached here.
     """
 
-    @pytest.mark.parametrize("language", ["123", "ArrowQueue", "Point Break"])
+    @pytest.mark.parametrize("language", ["123", "ArrowQueue"])
     def test_a_diverging_row_is_settled_quickly(self, language: str) -> None:
         """A generous bound must not be paid; it is the backstop, not the clock."""
         start = time.perf_counter()
@@ -3288,7 +3287,7 @@ class TestCheckStdinSaysWhatItCanActuallyCheck:
         }
         assert [n for n, s in shapes.items() if s == "one_line"] == ["Clockwise"]
         assert [n for n, s in shapes.items() if s == "row_index"] == ["Fargo"]
-        assert sum(s == "line_per_bit" for s in shapes.values()) == 62
+        assert sum(s == "line_per_bit" for s in shapes.values()) == 57
 
     def test_a_one_line_language_does_catch_a_stray_line(self) -> None:
         """Which is why the help can still claim a shape check at all."""
@@ -3319,7 +3318,7 @@ class TestExamplesShipWithThePackage:
             for name in esolangs.list_languages()
             if esolangs.describe(name)["examples"]
         ]
-        assert len(populated) == 65
+        assert len(populated) == 60
 
     def test_every_reported_path_exists(self) -> None:
         """A path reported and absent is worse than none reported."""
