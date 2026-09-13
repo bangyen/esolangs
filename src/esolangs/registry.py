@@ -263,6 +263,12 @@ LANGUAGES: dict[str, Language] = {
         id="container",
         split=True,
     ),
+    "Crement": Language(
+        "Crement",
+        "other.crement",
+        boolean=_boolean.crement,
+        id="crement",
+    ),
     "Dig": Language(
         "Dig",
         "grid_based.dig",
