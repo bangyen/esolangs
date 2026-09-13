@@ -166,8 +166,7 @@ def render_examples_section() -> str:
     return "\n".join(
         [
             "Ready-to-run programs are committed under [`examples/`](examples/):",
-            f"`examples/` holds a truth-table program for each of the"
-            f" {len(BOOLEAN)}",
+            f"`examples/` holds a truth-table program for each of the {len(BOOLEAN)}",
             "languages with a boolean generator.  It regenerates via",
             "`scripts/write_examples.py`.",
         ]

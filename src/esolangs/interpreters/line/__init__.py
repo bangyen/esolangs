@@ -1,4 +1,8 @@
-"""Line image-program source and interpreter adapter."""
+"""Line image-program source and interpreter adapter.
+
+Line reads decimal input lines; EOF raises ``EOFError``.  It raises
+``ValueError`` for malformed rasters.
+"""
 
 from dataclasses import dataclass
 
