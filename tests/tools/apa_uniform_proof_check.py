@@ -2,7 +2,7 @@
 
 Run:  just apa-proof   (or python tests/tools/apa_uniform_proof_check.py)
 
-Each check corresponds to a lemma in docs/generators/a_painter_ant_uniform_proof.md.
+Each check corresponds to a lemma in the relevant generator tests.
 
 **Run it by hand when A Painter Ant's head, body, or routing changes** --
 that is what invalidates the motif table, and re-running this is how it is
@@ -21,7 +21,7 @@ and mypy checks ``scripts`` but not ``tests``.
 What it buys over the suite is the *uniform-in-n* half.  The checked-in
 tests cover the shipped behaviour at the arities they can enumerate; this
 reduces "all tables at every arity" to a finite computation, in the style of
-docs/proofs.md: the arity-dependent part is arithmetic over signed sums of
+the relevant tests: the arity-dependent part is arithmetic over signed sums of
 distinct powers of two (L1, L2), and the behavioural part is confined to a
 bounded window whose vocabulary does not grow with n (L3, L4).
 """

@@ -38,13 +38,13 @@ from mask import Mask
 
 # This module runs on the standard library alone.  Pillow, numpy, scipy and
 # scikit-image were each removed, and PNG-only is a deliberate narrowing --
-# see ``docs/line_tooling.md`` for the measurements behind all five decisions.
+# see ``the Line tests`` for the measurements behind all five decisions.
 
 
 def load_binary(path: str) -> Mask:
     """Load a PNG as a boolean ink mask (True = black/foreground).
 
-    PNG only, deliberately -- see ``docs/line_tooling.md``.  A file in any
+    PNG only, deliberately -- see ``the Line tests``.  A file in any
     other format is refused with a message naming what to do about it rather
     than a bare signature complaint, since "convert it to PNG" is the whole
     of the fix and a lossy format was never a good home for 1px strokes

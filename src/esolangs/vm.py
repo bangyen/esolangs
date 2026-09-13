@@ -333,7 +333,7 @@ def run_until_halt_or_ancestor(machine: _FramedMachine | VM, limit: int = 64) ->
     :func:`run_until_halt_or_growth` handles on a tape, where the growing
     state is cells rather than frames -- and it is why recursive languages
     keep a wall-clock backstop, one that deadlocks under ``pytest --cov``
-    (see ``docs/walls.md``).
+    (see ``the limitations ledger``).
 
     This is the narrower check that class allows.  Rather than comparing
     whole-machine states across time, it compares each newly-pushed frame

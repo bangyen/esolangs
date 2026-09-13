@@ -47,7 +47,7 @@ _TABLES = ["00000000", "01101001"]
 # The set is empty.  ``minifuck`` was its last member, at 14.9s of the
 # sweep's 18.0s, and left on 2026-09-06 when the emitter stopped stepping
 # its straight runs one character at a time: the entry now measures 0.03s
-# against the one-second budget.  ``docs/generators/minifuck_generator.md`` has the
+# against the one-second budget.  ``the relevant generator tests`` has the
 # full ledger of what entered and left this set, with the measurement
 # behind each.
 _SEARCHING_GENERATORS_REGRESSED: frozenset[str] = frozenset()
@@ -791,7 +791,7 @@ _ARITY_BANDS = (
 #   decode ratchets -- live count crawls 512 -> 475 over 19 steps while the
 #   bit length doubles every step, reaching 1.09M bits, the 19th step alone
 #   144s -- and refuses on the magnitude bound instead.  It is a wall of the
-#   exactly-once embed convention; ``docs/walls.md`` carries the curve.
+#   exactly-once embed convention; ``the limitations ledger`` carries the curve.
 #
 # Two generators that used to be here are gone, and both of those refusals
 # were the *construction's* limit rather than the language's:
@@ -902,7 +902,7 @@ def test_arity_caps_are_still_caps() -> None:
 # exhaustive-domain half, and n <= 3 is the last arity where exhaustive is a
 # thing one can afford: n=4 is 65536 tables per generator.
 #
-# It is the executable witness `docs/proofs.md` names for the totality
+# It is the executable witness `the relevant tests` names for the totality
 # entries.  A structural argument says a generator returns on every table of
 # every arity; this checks the whole domain at the arities where "whole" is
 # reachable, which is what stops the argument from resting on its own prose.

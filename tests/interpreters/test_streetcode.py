@@ -648,7 +648,7 @@ class TestStreetcodeLaneMerge:
         ]
 
     def test_merge_lands_in_the_right_hand_lane(self) -> None:
-        # Ground-truth trace (user-confirmed, see docs/streetcode.md):
+        # Ground-truth trace (user-confirmed, see the implementation):
         # the car hugs column 1 south through rows 0-3 (its own lane),
         # then turns East at row 3 -- the right-hand lane of the new
         # east-west road relative to heading East -- not row 2, and not

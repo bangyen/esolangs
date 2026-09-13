@@ -72,7 +72,7 @@ class TestMultiply:
     It reads two sentinel-delimited decimal operands -- the digits of the
     first, a ``*`` line, the digits of the second, a ``#`` line -- and prints
     their product.  The construction handles any operand length, so the
-    generator takes no digit-count parameter (see docs/walls.md).
+    generator takes no digit-count parameter (see the limitations ledger).
     """
 
     def test_multiplies_two_operands(self) -> None:

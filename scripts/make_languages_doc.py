@@ -1,10 +1,4 @@
-"""Generate docs/languages.md, docs/usage.md's tables, and README sections.
-
-Walks the registry to produce the language capability matrix
-(docs/languages.md) and the grouped, wiki-linked language list in the
-README, so neither page goes stale the way a hand-maintained list would.
-Every column derives from the registry or a capability set -- never from
-which files happen to sit in examples/.
+"""Generate docs/usage.md's tables and README sections from the registry.
 
 The two docs/usage.md blocks exist because the facts in them used to be
 *prose* policed by regex, in three documents at once.  A rendered table
@@ -14,10 +8,9 @@ to hold them, which is why the gates could stop matching wording.
 
 import pathlib
 import re
-import textwrap
 
 import esolangs
-from esolangs.registry import LANGUAGES, RUNNERS, parameterized_ids, wiki_url
+from esolangs.registry import LANGUAGES, RUNNERS, wiki_url
 from esolangs.tools.boolean import BOOLEAN
 
 ROOT = pathlib.Path(__file__).parents[1]
@@ -130,102 +123,16 @@ def _source_link(name: str) -> str:
     )
 
 
-def _template_list() -> str:
-    """Return the parameterized languages as one wrapped Markdown line.
-
-    Derived from the registry rather than written out.  The hand-kept
-    version named fifteen languages and three different subsets appeared in
-    three documents; the two it left out (123 and Home Row) emit a `{Xi}`
-    slot like the rest.
-    """
-    ids = parameterized_ids()
-    names = sorted(name for name, lang in LANGUAGES.items() if lang.id in ids)
-    return textwrap.fill(", ".join(names) + ".", width=72)
-
-
-def _capabilities(name: str) -> dict[str, bool]:
-    lang = LANGUAGES.get(name)
-    return {
-        "interpreter": lang.interpreter is not None if lang else False,
-        "boolean": name in BOOLEAN,
-        "template": lang is not None and lang.id in parameterized_ids(),
-    }
-
-
-def render() -> str:
-    """Render the languages documentation table as Markdown."""
-    lines = [
-        "# Language capabilities",
-        "",
-        "Generated from `src/esolangs/registry.py` by",
-        "`scripts/make_languages_doc.py`; do not edit by hand.",
-        "",
-        "## Columns",
-        "",
-        "**Python** means an in-repo interpreter under `esolangs.interpreters`.",
-        "**Boolean** marks the boolean-function generators.",
-        "**Template** marks the parameterized ones -- see below.",
-        "",
-        "## Parameterized generators",
-        "",
-        "A parameterized generator embeds the input bits in a template with",
-        "one `{Xi}` slot per input, rather than returning a program that",
-        "reads them. `esolangs.generate` returns that template; fill it with",
-        "`esolangs.instantiate(language, template, bits)`, which is what the",
-        "committed `examples/` programs are built by, or from the command",
-        "line with `esolangs generate --bits 10 <language> <table>`. Running",
-        "one unfilled raises `TemplateError`; filling the slots by hand does",
-        "not work, since each language spells a set-input its own way.",
-        "",
-        f"The {len(parameterized_ids())} of them are marked **Template** in the",
-        "matrix below:",
-        "",
-        _template_list(),
-        "",
-        "Most have no input command at all. The exceptions are COD, Minifuck,",
-        "123, Home Row and %^2^-1, where an embedded input is the supported",
-        "Boolean-generator route: %^2^-1 cannot compute a two-input function",
-        "from runtime input, and COD's edge input would require horizontal",
-        "routing.",
-        "",
-        "## How %^2^-1 reaches its tables",
-        "",
-        "The generator combines subcube, affine, threshold, band, and fold",
-        "constructions. It is exhaustive through four inputs; the fold reaches",
-        "sampled generic tables through eleven inputs, and the interleaved",
-        "fold reaches generic twelve- and thirteen-input tables.",
-        "",
-        "## The matrix",
-        "",
-        "| Language | Python | Boolean | Template |",
-        "| --- | :---: | :---: | :---: |",
-    ]
-    for name in sorted(LANGUAGES):
-        c = _capabilities(name)
-        lines.append(
-            f"| {name} | {'yes' if c['interpreter'] else ''} | "
-            f"{'yes' if c['boolean'] else ''} | "
-            f"{'yes' if c['template'] else ''} |"
-        )
-    lines += ["", "The `esolangs` command lists the languages with Python support:"]
-    lines += ["", "```bash", "esolangs list", "```", ""]
-    return "\n".join(lines)
-
-
 def render_languages_section() -> str:
     """Render the README's Implemented Languages section between the markers.
 
     Each language with an in-repo interpreter is grouped by the interpreter's
     category, sorted by display name, and linked to both its esolangs wiki
     page and the interpreter's source file on GitHub.  The ``<summary>``
-    count and the pointer to the capability matrix are generated too, so they
-    stay in sync.
+    count is generated too, so it stays in sync.
     """
     out: list[str] = [
         f"<summary>Show all {len(RUNNERS)} languages</summary>",
-        "",
-        "The full capability matrix (generators, boolean support, examples)"
-        " is in [`docs/languages.md`](docs/languages.md).",
         "",
     ]
     groups: dict[str, list[str]] = {prefix: [] for prefix, _, _ in _README_HEADINGS}
@@ -427,11 +334,6 @@ def update_readme() -> None:
 
 
 if __name__ == "__main__":
-    out = ROOT / "docs" / "languages.md"
-    out.parent.mkdir(exist_ok=True)
-    out.write_text(render())
-    count = len(LANGUAGES)
-    print(f"wrote {out} ({count} languages)")
     update_readme()
     print("updated the generated sections of README.md")
     update_usage()

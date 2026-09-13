@@ -887,7 +887,7 @@ _register()
 # reading model.  Minifuck's shipped generator is parameterized and embeds
 # its inputs, so ``examples/boolean/minifuck.txt`` is now generated like
 # every other file and the reading model survives as prose in
-# ``docs/generators/minifuck_generator.md`` rather than as a program nothing produces.
+# ``the relevant generator tests`` rather than as a program nothing produces.
 #
 # The mechanism is kept rather than deleted: it costs one empty dict and is
 # what a future committed-but-ungenerated program would use.

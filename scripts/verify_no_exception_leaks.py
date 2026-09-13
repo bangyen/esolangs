@@ -151,7 +151,7 @@ _CAP_LADDER = (10, 100, 1000, _STEP_CAP)
 # subprocess timeout is what actually bounds them -- Factor because
 # `make_vm` factorizes before a single step runs, in uninterruptible C a
 # SIGALRM cannot land on.  The cap stays 20000, and the ladder above means
-# few runs pay it.  Measurements in ``docs/verification_tooling.md``.
+# few runs pay it.  Measurements in ``the verification history``.
 
 # Four inputs, not a dozen: the distinctions that actually change a read
 # are no input at all, a blank line, a digit, and a non-digit.  Extra

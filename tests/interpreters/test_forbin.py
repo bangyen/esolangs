@@ -873,7 +873,7 @@ class TestForbinAncestorHangDetection:
     whole-machine snapshot grows forever and never repeats.  Every Forbin
     hang is in that unbounded-growth class, which is why this language had
     no hang test at all and leaned on the wall-clock backstop -- the one
-    that deadlocks under ``pytest --cov`` (see ``docs/walls.md``).
+    that deadlocks under ``pytest --cov`` (see ``the limitations ledger``).
 
     :func:`walk_until_halt_or_ancestor` is the narrower check that class
     allows: a frame entering the same function, with the same bindings, at
@@ -899,7 +899,7 @@ class TestForbinAncestorHangDetection:
     def test_a_flipping_argument_still_repeats(self) -> None:
         """``f !x`` alternates, so the second lap re-enters the first's state.
 
-        ``docs/walls.md`` notes that a genuinely changing argument would
+        ``the limitations ledger`` notes that a genuinely changing argument would
         slip through.  Forbin's only datatype is bits, so an argument that
         changes still has to come back around, and the key repeats within
         two frames.
