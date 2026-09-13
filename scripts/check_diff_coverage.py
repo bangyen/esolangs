@@ -5,7 +5,7 @@ you answer for all of it, not only the lines you added.
 
 This is deliberately stronger than checking the added lines alone, which is what
 this script used to do.  That earlier rule was chosen when eight files under
-``tools/boolean/`` carried pre-existing misses and billing a one-line fix for
+``tools/`` carried pre-existing misses and billing a one-line fix for
 closing debts it did not create seemed unfair.  That debt is now paid: the
 tree measures 100% line coverage, so a whole-file gate bills nobody for
 anything -- it only keeps the number there.  The failure the weaker rule

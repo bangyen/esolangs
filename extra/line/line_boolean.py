@@ -23,7 +23,7 @@ that combination's table entry there with ``+`` (0 or 1 increments), and
 printing it with ``o``.
 
 Matches this repo's existing boolean generators' calling convention (e.g.
-``esolangs.tools.boolean.tape.brainfuck``): ``truth_table`` is a binary
+``esolangs.tools.tape.brainfuck``): ``truth_table`` is a binary
 string of length ``2**n`` indexed by the inputs, most significant first.
 
 **Practical size limit**: ``render.py``'s ``_layout`` spaces sibling fork
@@ -75,7 +75,7 @@ def _validate_truth_table(truth_table: str) -> int:
 
     A valid table has ``2**n`` binary entries, so ``n`` is recovered from
     the length (a power of two) rather than taken as a separate parameter --
-    matching every boolean generator in ``esolangs.tools.boolean``.
+    matching every boolean generator in ``esolangs.tools``.
     """
     n = len(truth_table).bit_length() - 1
     if len(truth_table) != 2**n:
