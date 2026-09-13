@@ -5,7 +5,18 @@ Only live work belongs here. Completed findings and negative results go to
 
 ## New interpreters
 
-The candidate list is empty.
+Implement the surveyed candidates in this order:
+
+- **[Qwhy](https://esolangs.org/wiki/Qwhy).**  Its diagonal queue machine has a
+  deterministic subset when `x` is absent, character input/output, two value
+  branches, wrapping and self-modification.  Admission is conditional on a
+  loop-less boolean construction: build 48 before `{`, subtract the input
+  character, and route `X`'s zero/nonzero diagonals into a decision tree.
+- **[Sir. Cut](https://esolangs.org/wiki/Sir._Cut).**  Its prioritized circuit
+  scheduler, bit input memory and logic gates can express a minterm network,
+  with seven fixed output bits and the result bit spelling ASCII `0`/`1`.
+  Derive a planar wire-and-bridge layout and execute the generator before
+  implementing the full interpreter.
 
 ## Line
 
@@ -29,6 +40,13 @@ duplicates rather than costume, which is a different argument and is
 recorded as such.
 
 ## Conditional follow-up
+
+- **Reorder EGL inputs.**  EGL hoists every read into addressable one-hot cells,
+  so a tree can test cell `perm[depth]` while the `x` commands remain in stream
+  order.  Exhaustive n=3 measurement over all 256 tables gives 61304 -> 53592
+  total characters (12.6%); all 2048 rows of the shortest candidates execute
+  correctly.  Generalize that prototype through `best_input_order` and keep
+  the identity on ties.
 
 - **WII2D's exactly-once embed convention.**  Dense n=10 is a wall of the
   convention, not the machine: a per-node re-embed does dense n=10 in 14432
