@@ -23,6 +23,7 @@ that row is actually spelled for the language.
 | `algebraic-programming-language.txt` | Algebraic Programming Language | `0001` | `01` | 0 1 | '0\n' |
 | `alight.txt` | Alight | `0001` | `01` | 0 1 | '0' |
 | `arrowqueue.txt` | ArrowQueue | `0001` | `01` | embedded 01 | '1 0 1 2 3' |
+| `b-tapemark.txt` | B-tapemark | `0001` | `01` | 0 1 | '0' |
 | `back.txt` | Back | `0001` | `01` | embedded 01 | '1 0 0' |
 | `bf-pda.txt` | BF-PDA | `0001` | `01` | embedded 01 | '0' |
 | `bfstack.txt` | BFStack | `0001` | `01` | 0 1 | '0' |

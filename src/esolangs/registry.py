@@ -163,6 +163,12 @@ LANGUAGES: dict[str, Language] = {
         interpreter="tape_based.back",
         split=True,
     ),
+    "B-tapemark": Language(
+        "B-tapemark",
+        boolean=_boolean.b_tapemark,
+        id="b_tapemark",
+        interpreter="grid_based.b_tapemark",
+    ),
     "BF-PDA": Language(
         "BF-PDA",
         boolean=_boolean.bfpda,

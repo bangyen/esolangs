@@ -66,7 +66,7 @@ esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0\n1\n0\n1\n'
 | Grapheme | `line_per_bit` | `%`/`A` | `'A\n%\nA\n'` |
 | Taglate | `line_per_bit_padded` | `0`/`1` | `'0\n1\n0\n1\n'` |
 
-The other 41 that read stdin take one `0`/`1` line per bit -- `'1\n0\n1\n'`.
+The other 42 that read stdin take one `0`/`1` line per bit -- `'1\n0\n1\n'`.
 The remaining 16 read no stdin at all: their inputs are
 embedded by `instantiate`.  Call `encode_inputs` rather than reading a row off
 this table; it is generated from `describe`, and so is the table.

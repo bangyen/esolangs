@@ -586,6 +586,7 @@ def _register() -> None:
             note="an executed line prints its result, so the answer ends in a newline",
         ),
         "alight": _reader(b.alight, "grid_based.alight", split=True),
+        "b-tapemark": _reader(b.b_tapemark, "grid_based.b_tapemark"),
         "bfstack": _reader(b.bfstack, "stack_based.bfstack"),
         "bit~": _reader(b.bit_tilde, "tape_based.bit_tilde"),
         "brainfuck": _reader(b.brainfuck, "tape_based.brainfuck"),
