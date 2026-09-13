@@ -29,12 +29,14 @@ from esolangs.line.extract import (
     load_binary,
 )
 from esolangs.line.lattice import _DIRS, Stroke, Vertex
+from esolangs.line.png import read_grey
 from esolangs.line.render import Node, chain, render
 from esolangs.line.simulate import IO, run
 
 # Anchored to this file rather than the working directory, so the wiki
 # fixtures resolve no matter where pytest is invoked from.
 FIXTURES = str(Path(__file__).parents[1] / "fixtures" / "line")
+INVALID_FIXTURES = Path(__file__).parents[1] / "fixtures" / "line_invalid"
 
 
 def _io(inputs: list[int]) -> tuple[IO, list[int]]:
@@ -175,6 +177,15 @@ class TestWikiFixtures:
         io, outputs = _io([a, b])
         run(extract(f"{FIXTURES}/multiplication.png"), io=io)
         assert outputs == [expected]
+
+
+def test_antialiased_resample_is_rejected() -> None:
+    """A subpixel-shifted scan fails loudly instead of changing the program."""
+    path = INVALID_FIXTURES / "addition_antialiased.png"
+    levels = {level for row in read_grey(path.read_bytes()) for level in row}
+    assert len(levels) == 194
+    with pytest.raises(ValueError, match="left 921 source pixels unaccounted"):
+        extract(str(path))
 
 
 def _build_decrement_loop() -> Stroke:

@@ -18,6 +18,10 @@
 (45 languages), `grid` (11), `line` (2), or `opaque` (7); undeclared tuple
 positions are refused. `opaque` positions have no program mark.
 
+Line extraction requires a lossless or pixel-replicated PNG. A one-third-pixel
+shift followed by anti-aliased resampling leaves 194 grey levels and is rejected
+with 921 unaccounted pixels; it does not silently return a different program.
+
 ## Boolean generators
 
 Parameterized generators embed inputs in the program. `%^2^-1` cannot compute
