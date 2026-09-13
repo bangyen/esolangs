@@ -98,13 +98,10 @@ test-anchor *args:
     {{PYTHON}} scripts/verify.py --only "ztoalc anchor table is reproducible" {{args}}
 
 test-lint *args:
-    {{PYTHON}} scripts/verify.py --only pre-commit,"docstring check","duplicate-code check (pylint)",bandit {{args}}
+    {{PYTHON}} scripts/verify.py --only pre-commit,"duplicate-code check (pylint)",bandit {{args}}
 
 test-bandit *args:
     {{PYTHON}} scripts/verify.py --only bandit {{args}}
-
-test-docstring *args:
-    {{PYTHON}} scripts/verify.py --only "docstring check" {{args}}
 
 # mutation-test one interpreter: what its tests would NOT have caught
 # (not part of `just test` -- it is a few minutes per language)

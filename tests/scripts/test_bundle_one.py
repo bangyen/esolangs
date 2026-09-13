@@ -7,9 +7,15 @@ things that make that useful: the bundle compiles for every language, and
 running it produces exactly what the packaged interpreter produces.
 """
 
+import functools
 import importlib
 import importlib.util
+import shutil
+import subprocess
 import sys
+import tempfile
+import threading
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
@@ -184,3 +190,47 @@ class TestBundleDetails:
         # The bundle reads through the interactive IO, which writes an
         # "Input: " prompt per read; the program's own output follows them.
         assert result.stdout == "Input: Input: 1"
+
+
+def test_install_one_downloads_and_runs_a_bundle() -> None:
+    """The public shell installer fetches and runs representative bundles."""
+    if shutil.which("curl") is None:
+        pytest.skip("curl is not installed")
+
+    class QuietHandler(SimpleHTTPRequestHandler):
+        """Serve the checkout without logging individual requests."""
+
+        def log_message(self, _format: str, *args: object) -> None:
+            pass
+
+    handler = functools.partial(QuietHandler, directory=str(REPO_ROOT))
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    cases = {
+        "brainfuck": ("++++++++[>++++++++<-]>.", "@"),
+        "Factor": ("21666143160021789415877957258569906604219402892572113", "A"),
+        "3D Brainfuck": ("+" * 72 + ".", "H"),
+    }
+    try:
+        for language, (program, expected) in cases.items():
+            with tempfile.TemporaryDirectory() as directory:
+                workdir = Path(directory)
+                result = subprocess.run(
+                    ["sh", str(REPO_ROOT / "scripts/install_one.sh"), language],
+                    cwd=workdir,
+                    env={"ESOLANGS_BASE": f"http://127.0.0.1:{server.server_port}"},
+                    capture_output=True,
+                    text=True,
+                )
+                assert result.returncode == 0, result.stderr
+                program_path = workdir / "program.txt"
+                program_path.write_text(program)
+                bundle = next(workdir.glob("esolangs_*.py"))
+                output = subprocess.run(
+                    [sys.executable, str(bundle), str(program_path)],
+                    capture_output=True,
+                    text=True,
+                )
+                assert output.stdout == expected
+    finally:
+        server.shutdown()
