@@ -15,7 +15,8 @@ def _result(program: str, bits: tuple[int, ...]) -> str:
 
 def test_xor_executes_every_generated_row() -> None:
     program = vandevelo("0110")
-    assert "".join(_result(program, bits) for bits in product(range(2), repeat=2)) == "0110"
+    results = (_result(program, bits) for bits in product(range(2), repeat=2))
+    assert "".join(results) == "0110"
 
 
 def test_constant_still_reads_every_input() -> None:
