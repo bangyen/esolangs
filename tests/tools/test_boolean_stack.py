@@ -1,15 +1,15 @@
 """Unit tests for the stack-based boolean generators.
 
-Covers the generators in :mod:`esolangs.tools.boolean.stack`: Grapheme,
+Covers the generators in :mod:`esolangs.tools.stack`: Grapheme,
 Forþ, Modulous, BFStack, and Unsquare.
 """
 
 import pytest
 
 import esolangs
-from esolangs.tools import boolean
-from esolangs.tools.boolean import stack
-from esolangs.tools.boolean.helpers import permute_truth_table
+from esolangs import tools as boolean
+from esolangs.tools import stack
+from esolangs.tools.helpers import permute_truth_table
 from tests.tools.boolean_runners import (
     run_bfstack,
     run_forth,
@@ -25,7 +25,7 @@ def _grapheme_counted_side(table: str, n: int) -> str:
     that side.  Kept here rather than in the generator: it is the thing the
     generator is asserted to beat, not something it should be able to emit.
     """
-    from esolangs.tools.boolean.stack import _grapheme_head, _grapheme_side
+    from esolangs.tools.stack import _grapheme_head, _grapheme_side
 
     head, reduced, width = _grapheme_head(table, n)
     zeros = reduced.count("0")
@@ -172,7 +172,7 @@ class TestForth:
         it would be dead code the program never calls, so the node count
         must fall to exactly the surviving frontier.
         """
-        from esolangs.tools.boolean.stack import _forth_const
+        from esolangs.tools.stack import _forth_const
 
         program = boolean.forth("1" * 8)
         for m in range(3, 15):  # every node below the two root children
@@ -186,7 +186,7 @@ class TestForth:
         first with ties keeping it.  Pinning against that build is what
         proves the search cannot churn an emission it does not shorten.
         """
-        from esolangs.tools.boolean.stack import _forth_ordered
+        from esolangs.tools.stack import _forth_ordered
 
         natural = (2, 1, 0)
         improved = 0
@@ -210,7 +210,7 @@ class TestForth:
         times as many at n == 5, which is what keeps the saving from
         collapsing as ``n`` grows.
         """
-        from esolangs.tools.boolean.stack import _forth_stack_programs
+        from esolangs.tools.stack import _forth_stack_programs
 
         # The reachable *set* has a closed form, which is what pins the
         # search: after each read the new bit is on top, and the only
@@ -235,7 +235,7 @@ class TestForth:
         rather than ``3**n``: the enumeration walks every combination and
         drops the ones that would sink a bit past the bottom of the stack.
         """
-        from esolangs.tools.boolean.stack import _forth_stack_programs, _sink_top
+        from esolangs.tools.stack import _forth_stack_programs, _sink_top
 
         assert len(_forth_stack_programs(1)) == 1  # nothing to rearrange
         assert len(_forth_stack_programs(2)) == 2  # the second bit may swap
@@ -255,7 +255,7 @@ class TestForth:
         in the wrong places, which is why this returns rather than falling
         through to the tree.
         """
-        from esolangs.tools.boolean.stack import (
+        from esolangs.tools.stack import (
             _forth_ordered,
             _forth_stack_programs,
         )
@@ -275,7 +275,7 @@ class TestForth:
 
     def test_const_large(self) -> None:
         """Constants above 225 need multiple base-15 digits."""
-        from esolangs.tools.boolean.stack import _forth_const
+        from esolangs.tools.stack import _forth_const
 
         assert _forth_const(0) == "0"
         assert len(_forth_const(300)) > len(_forth_const(48))
@@ -291,7 +291,7 @@ class TestForth:
         last single digit, 15 rolls over, and 225 is the first three-digit
         constant.
         """
-        from esolangs.tools.boolean.stack import _forth_const
+        from esolangs.tools.stack import _forth_const
 
         assert _forth_const(14) == "E"
         assert _forth_const(15) == "1F*0+"
@@ -311,8 +311,8 @@ class TestForth:
         """
         import random
 
-        from esolangs.tools.boolean.helpers import permute_truth_table
-        from esolangs.tools.boolean.stack import (
+        from esolangs.tools.helpers import permute_truth_table
+        from esolangs.tools.stack import (
             _forth_order_length,
             _forth_ordered,
             _forth_permuted_bits,
@@ -445,7 +445,7 @@ class TestUnsquare:
         alone -- what it produced before reordering existed, never worse,
         just unimproved -- and this pins that only one program is built.
         """
-        from esolangs.tools.boolean.helpers import _ORDER_SEARCH_MAX
+        from esolangs.tools.helpers import _ORDER_SEARCH_MAX
 
         n = _ORDER_SEARCH_MAX + 1
         table = "01" * (2 ** (n - 1))
@@ -462,7 +462,7 @@ class TestUnsquare:
         first with ties keeping it, so a table no reorder helps emits
         exactly what it emitted before.
         """
-        from esolangs.tools.boolean.stack import (
+        from esolangs.tools.stack import (
             _unsquare_stack_programs,
             _unsquare_tree,
         )
@@ -486,7 +486,7 @@ class TestUnsquare:
 
     def test_reorder_cost_selects_the_emitted_program(self) -> None:
         """The pricing model matches every candidate and picks the shortest."""
-        from esolangs.tools.boolean.stack import (
+        from esolangs.tools.stack import (
             _unsquare_cost,
             _unsquare_stack_programs,
             _unsquare_tree,
@@ -517,7 +517,7 @@ class TestUnsquare:
         choice per read past the first.  Forþ's stack has the same count for
         the same reason, reached through different ops.
         """
-        from esolangs.tools.boolean.stack import _unsquare_stack_programs
+        from esolangs.tools.stack import _unsquare_stack_programs
 
         for n in range(2, 7):
             assert len(_unsquare_stack_programs(n)) == 2 * 3 ** (n - 2)

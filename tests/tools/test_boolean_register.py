@@ -1,6 +1,6 @@
 """Unit tests for the register-based boolean generators.
 
-Covers the generators in :mod:`esolangs.tools.boolean.register`: Decleq,
+Covers the generators in :mod:`esolangs.tools.register`: Decleq,
 AddSubJump, Collatz Multiverse, Sophie, Dig, Qoibl, Polynomial, and Point
 Break.
 """
@@ -10,9 +10,9 @@ import random
 import pytest
 
 import esolangs
-from esolangs.tools import boolean
-from esolangs.tools.boolean.helpers import _ASCII_ONE, _ASCII_ZERO
-from esolangs.tools.boolean.register import (
+from esolangs import tools as boolean
+from esolangs.tools.helpers import _ASCII_ONE, _ASCII_ZERO
+from esolangs.tools.register import (
     _DIG_BRANCH,
     _DIG_RETURN,
     _DIG_STRIDE,
@@ -220,7 +220,7 @@ class TestPolynomial:
         of n == 10 by construction, and the dense fixture sits under it
         with room that is measured, not assumed.
         """
-        from esolangs.tools.boolean.register import _POLYNOMIAL_MAX_INSTRS
+        from esolangs.tools.register import _POLYNOMIAL_MAX_INSTRS
 
         states = [min(2**k, 2 ** (2 ** (10 - k))) for k in range(11)]
         assert 7 * sum(states[:10]) + 5 * states[10] - 1 == _POLYNOMIAL_MAX_INSTRS
@@ -287,7 +287,7 @@ class TestPolynomial:
 
     def test_dag_cost_mirrors_its_emitter(self) -> None:
         """``_polynomial_hybrid_cost`` prices a residual through this."""
-        from esolangs.tools.boolean.register import _polynomial_dag_cost
+        from esolangs.tools.register import _polynomial_dag_cost
 
         for n in range(1, 4):
             for value in range(1 << (1 << n)):
@@ -300,7 +300,7 @@ class TestPolynomial:
         The dispatch screens on the cost before rendering, so a drift here
         silently skips a table the emitter would have shortened.
         """
-        from esolangs.tools.boolean.register import (
+        from esolangs.tools.register import (
             _polynomial_hybrid,
             _polynomial_hybrid_cost,
         )
@@ -322,7 +322,7 @@ class TestPolynomial:
         hybrid collapses to a leaf before reaching it and comes out
         shorter (5 instructions against 10 at n == 1).
         """
-        from esolangs.tools.boolean.register import _polynomial_hybrid
+        from esolangs.tools.register import _polynomial_hybrid
 
         for n in range(1, 4):
             for value in range(1 << (1 << n)):
@@ -342,7 +342,7 @@ class TestPolynomial:
         candidate.  Every table at n <= 3 needs at most 6; a slack fitted
         there would emit the worse program at n == 4, which reaches 9.
         """
-        from esolangs.tools.boolean.register import (
+        from esolangs.tools.register import (
             _POLYNOMIAL_SCREEN_SLACK,
             _polynomial_assemble,
             _polynomial_hybrid,
@@ -383,7 +383,7 @@ class TestPolynomial:
         the n == 3 corpus these tables render 24-30% shorter, and no table
         grows.
         """
-        from esolangs.tools.boolean.register import _polynomial_hybrid
+        from esolangs.tools.register import _polynomial_hybrid
 
         assert len(_polynomial_hybrid(table, 1)) < len(_polynomial_tree(table))
         program = boolean.polynomial(table)
@@ -400,7 +400,7 @@ class TestPolynomial:
         0 either way, so the rows with a 1 in the drained bit are the ones
         that matter here.
         """
-        from esolangs.tools.boolean.register import _polynomial_drained_dag
+        from esolangs.tools.register import _polynomial_drained_dag
 
         table = "0000010100000101"  # ignores its first input
         assert _polynomial_drained_dag(table) is not None
@@ -419,7 +419,7 @@ class TestPolynomial:
         later instructions consume larger primes.  The dispatch compares
         *rendered* programs, so they keep the tree's emission.
         """
-        from esolangs.tools.boolean.register import (
+        from esolangs.tools.register import (
             _polynomial_assemble,
             _polynomial_hybrid,
         )
@@ -593,7 +593,7 @@ class TestDig:
         check has to refuse it -- a silent pass here would mean it was
         licensing nothing at all.
         """
-        from esolangs.tools.boolean import register
+        from esolangs.tools import register
 
         monkeypatch.setattr(register, "_DIG_BAND", _DIG_STRIDE)
         for table in ("0110", "10010110", "0110100110010110"):
@@ -607,7 +607,7 @@ class TestDig:
 class TestSophie:
     def test_hybrid_subsumes_both_routes(self) -> None:
         """The hybrid is no longer than either prior construction through n=3."""
-        from esolangs.tools.boolean.register import _sophie_hybrid
+        from esolangs.tools.register import _sophie_hybrid
 
         improved = 0
         for n in range(1, 4):

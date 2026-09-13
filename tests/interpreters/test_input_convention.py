@@ -302,14 +302,14 @@ def test_every_eof_exemption_names_a_real_language(name: str) -> None:
     deselects; comparing it against the registry is what stops an entry
     outliving the language it describes.
     """
-    from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
+    from esolangs.tools.examples import BOOLEAN_EXAMPLES
 
     assert name in BOOLEAN_EXAMPLES
 
 
 def _reading_languages() -> list[str]:
     """The examples whose programs read their inputs from the stream."""
-    from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
+    from esolangs.tools.examples import BOOLEAN_EXAMPLES
 
     return sorted(
         name
@@ -334,7 +334,7 @@ def test_running_out_of_input_reaches_the_caller(name: str) -> None:
     language that swallowed the EOF would answer a missing line with the
     same byte as an empty one, and the two would stop being distinct.
     """
-    from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
+    from esolangs.tools.examples import BOOLEAN_EXAMPLES
 
     example = BOOLEAN_EXAMPLES[name]
     module = importlib.import_module("esolangs.interpreters." + example.interpreter)

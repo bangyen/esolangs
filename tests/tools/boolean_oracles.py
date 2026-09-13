@@ -13,8 +13,8 @@ constructions without building them, and there is no longer a choice to make.
 # These independent construction oracles deliberately mirror generated programs.
 # pylint: disable=duplicate-code
 
-from esolangs.tools.boolean.helpers import _ASCII_ZERO, _validate_truth_table
-from esolangs.tools.boolean.register import _polynomial_states
+from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
+from esolangs.tools.register import _polynomial_states
 
 #: Label bands for the *pure* DAG below, which the shipped generator no
 #: longer shares.
@@ -27,7 +27,7 @@ from esolangs.tools.boolean.register import _polynomial_states
 #: The shipped generator inlines unshared states, so one top-level block
 #: carries jumps originating at many depths, two same-parity levels are both
 #: targets from inside it, and the earlier one fires first.  See
-#: :func:`~esolangs.tools.boolean.register.sophie_labels`.
+#: :func:`~esolangs.tools.register.sophie_labels`.
 _SOPHIE_BANDS = ((1, 20), (21, 40))
 
 

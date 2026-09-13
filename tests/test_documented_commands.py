@@ -221,8 +221,8 @@ def test_every_qualified_reference_resolves() -> None:
     most likely to rot, because it names a path that moves when code does.
 
     One was broken when this was written:
-    ``esolangs.tools.boolean.examples.bio``, for a generator that lives at
-    ``esolangs.tools.boolean.bio`` -- the reader is sent to the module that
+    ``esolangs.tools.examples.bio``, for a generator that lives at
+    ``esolangs.tools.bio`` -- the reader is sent to the module that
     registers the examples rather than the one with the function in it.
     """
     targets: dict[str, set[str]] = {}

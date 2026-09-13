@@ -72,7 +72,7 @@ def _check_boolean(name: str, fn: Callable[..., Any]) -> list[str]:
 
 def main() -> int:
     """Check the generators; return a nonzero exit on violations."""
-    from esolangs.tools import boolean as boolean_pkg
+    from esolangs import tools as boolean_pkg
 
     failures = 0
     for name, fn in _public(boolean_pkg):

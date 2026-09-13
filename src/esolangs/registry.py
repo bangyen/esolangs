@@ -8,8 +8,8 @@ from dataclasses import dataclass
 from functools import cache
 from urllib.parse import quote
 
+from esolangs import tools as _boolean
 from esolangs.exceptions import UnknownLanguageError
-from esolangs.tools import boolean as _boolean
 
 # Display names whose canonical id cannot be produced by the slug rules
 # (a name whose meaning is lost by stripping its symbols, like ``%^2^-1``).
@@ -548,7 +548,7 @@ def example_stems() -> dict[str, str]:
     every internal reference is the underscored :func:`canonical_id` slug
     (``a_painter_ant``), and a few match neither by hand (``6-5``,
     ``pct-squared-minus-one``).  Deriving the map from the example table the
-    same way :meth:`~esolangs.tools.boolean.examples.BooleanExample.build`
+    same way :meth:`~esolangs.tools.examples.BooleanExample.build`
     does keeps the two spellings from drifting: a stem with no language, or
     a language with no stem, shows up as a missing key rather than as a
     silently empty example list, which is how a fifth of the registry came
@@ -558,7 +558,7 @@ def example_stems() -> dict[str, str]:
     map is wanted only when someone asks for a description, so paying for
     it then costs nothing at import time.
     """
-    from esolangs.tools.boolean import examples as _examples
+    from esolangs.tools import examples as _examples
 
     return {
         canonical_id(stem.replace("-", " ")): stem
@@ -584,7 +584,7 @@ def _fills() -> dict[str, Callable[[str, list[int]], str]]:
     the only spelling that matches what the generators actually emit -- 17
     languages, checked against a ``{Xi}`` search over all 65.
     """
-    from esolangs.tools.boolean import examples as _examples
+    from esolangs.tools import examples as _examples
 
     return {
         canonical_id(stem.replace("-", " ")): example.fill

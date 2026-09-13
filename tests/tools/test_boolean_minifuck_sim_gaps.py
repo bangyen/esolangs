@@ -1,6 +1,6 @@
 """Minifuck simulator paths the generator's own runs never take."""
 
-from esolangs.tools.boolean.minifuck_sim import _Joint, _Sim
+from esolangs.tools.minifuck_sim import _Joint, _Sim
 
 
 class TestJointEmit:

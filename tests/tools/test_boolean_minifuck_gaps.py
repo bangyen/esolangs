@@ -4,7 +4,7 @@ import importlib
 
 import pytest
 
-from esolangs.tools.boolean.minifuck import _BASE, _CHAIN_CAP, _Chain
+from esolangs.tools.minifuck import _BASE, _CHAIN_CAP, _Chain
 
 
 class TestChainExtent:
@@ -46,7 +46,7 @@ class TestStagingIndexBudget:
         counts must grow with the budget, and each smaller index must be a
         sub-map of the larger -- a prefix, not a different walk.
         """
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
         indexes = []
         for budget in (200, 7600, 20_000):
             module._staging_index.cache_clear()  # noqa: SLF001
@@ -85,7 +85,7 @@ class TestScoutPricesNothing:
         every code answers, so the byte is forged -- identically in every
         row, since rows disagreeing inside the pool is a different refusal.
         """
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
         base, accs = _scout_setup(module, 2)
 
         forged = base.fork()
@@ -110,7 +110,7 @@ class TestScoutPricesNothing:
         separation puts them -- so the disagreement is injected: the scout
         must come back untrusted, sending ``_mux`` to the sweep.
         """
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
         base, accs = _scout_setup(module, 2)
         assert module._mux_scout(base, "0110", 2, accs)[1]  # noqa: SLF001
 
@@ -133,7 +133,7 @@ class TestMuxFallsBackToTheSweep:
 
     def test_the_sweep_answers_what_the_scout_priced(self) -> None:
         """Sculpting every combination picks the build the scout predicts."""
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
         for n, table in ((2, "0110"), (2, "0001"), (3, "01101001")):
             base, accs = _scout_setup(module, n)
             expected = module._mux(table, n)  # noqa: SLF001
@@ -144,7 +144,7 @@ class TestMuxFallsBackToTheSweep:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A scout that refuses to summarise still yields the same program."""
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
         expected = module._mux("0110", 2)  # noqa: SLF001
         assert expected is not None
 
@@ -161,7 +161,7 @@ class TestMuxFallsBackToTheSweep:
         since the sweep that follows sculpts through the same function and
         needs it working to answer at all.
         """
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
         expected = module._mux("0110", 2)  # noqa: SLF001
         assert expected is not None
 
@@ -188,7 +188,7 @@ class TestMuxFallsBackToTheSweep:
         sweep, trusted means every combination was skipped on its merits
         and there is nothing for the sweep to find either.
         """
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
         with monkeypatch.context() as patch:
             patch.setattr(module, "_mux_scout", lambda *_a: (None, True))
             assert module._mux("0110", 2) is None  # noqa: SLF001
@@ -209,12 +209,12 @@ class TestProbeFrameAndColumns:
         242 leaves the region's cells alone but changes what sits above it,
         which the frame cannot describe.
         """
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
         assert module._probe_frame(".[[...[<", 242) is None  # noqa: SLF001
 
     def test_the_columns_decline_an_accumulator_inside_the_pool(self) -> None:
         """Below the region there is no window to take a parity over."""
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
         base = module._mux_separate(2)  # noqa: SLF001
         assert module._sculpt_columns(base, module._POOL_WIDTH) is None  # noqa: SLF001
 
@@ -225,7 +225,7 @@ class TestProbeFrameAndColumns:
         byte refuses each -- the column by falling back to simulation, the
         scout by distrusting itself.
         """
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
         base, accs = _scout_setup(module, 2)
         assert module._probe_frame(module._SCULPT_POOL_CODE, 242) is None  # noqa: SLF001
 
@@ -241,7 +241,7 @@ class TestProbeFrameAndColumns:
         self,
     ) -> None:
         """``cell7 == 1`` is spelled by no pool code, so the probe has none."""
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
         base = module._mux_separate(2)  # noqa: SLF001
         assert module._sculpt_pool_code(1) is None  # noqa: SLF001
         assert module._mux_probe_sim(base, module._POOL_WIDTH + 4, 1) is None  # noqa: SLF001
@@ -255,7 +255,7 @@ class TestProbeFrameAndColumns:
         the second is broken here, since the first refusing is the separate
         guard above.
         """
-        module = importlib.import_module("esolangs.tools.boolean.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck")
         base, accs = _scout_setup(module, 2)
         real = module._probe_frame  # noqa: SLF001
         seen: list[str] = []
