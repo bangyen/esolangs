@@ -387,6 +387,13 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.nocomment,
         id="nocomment",
     ),
+    "Nopstacle": Language(
+        "Nopstacle",
+        "grid_based.nopstacle",
+        boolean=_boolean.nopstacle,
+        id="nopstacle",
+        split=True,
+    ),
     "Packlang": Language(
         "Packlang",
         "other.packlang",

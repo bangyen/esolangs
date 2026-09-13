@@ -48,7 +48,8 @@ def instantiate_nopstacle(template: str, bits: list[int]) -> str:
     encoded_bits = "".join("#" if bit else " " for bit in bits)
     width = max(2, len(encoded_table), len(encoded_bits))
     return "\n".join(
-        (
+        line.rstrip()
+        for line in (
             f" {selector}".ljust(width),
             "##".ljust(width),
             encoded_table.ljust(width),
