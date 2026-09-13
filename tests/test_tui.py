@@ -961,6 +961,31 @@ class TestWatch:
         history = History("brainfuck", "+", "")
         assert history.trace(0, 0, 10) == (0,)
 
+    def test_a_zero_span_asks_for_nothing_and_gets_it(self) -> None:
+        """The window can be empty from the *span* side, not just the frames.
+
+        ``first`` is derived from ``last`` and the span, so a span of zero
+        puts it one past ``last`` -- an empty window rather than a negative
+        slice, which would silently read from the wrong end.
+        """
+        history = History("brainfuck", "+++", "")
+        history.at(3)
+        assert history.trace(0, 3, 0) == ()
+
+    def test_a_history_with_no_frames_at_all_traces_nothing(self) -> None:
+        """The other empty: retained frames gone rather than window empty.
+
+        ``test_an_empty_history_traces_nothing`` does not reach this -- a
+        fresh ``History`` already holds its first frame, so it returns that
+        one value.  Dropping the frames is what leaves the guard with
+        nothing to slice, and it must answer ``()`` rather than index into
+        an empty list.
+        """
+        history = History("brainfuck", "+++", "")
+        history.at(3)
+        history._frames = []  # noqa: SLF001 - the state the guard exists for
+        assert history.trace(0, 3, 10) == ()
+
     def test_the_row_shows_the_values(self) -> None:
         screen = render(_frame("+", 0), watch=(0, (0, 1, 2, 3)))
         assert "cell 0: 0 1 2 3" in screen
