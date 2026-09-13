@@ -107,7 +107,6 @@ UNWRAPPABLE = {
     "minsky_swap": "its second line is absolute offsets into its first",
     "alight": "a command is a word walked cell by cell; a row end cuts it",
     "super_snusp": "a row is a grid row; a break moves code, it does not reflow",
-    "function_x_y": "its statements are one per line, and indented",
     "algebraic_programming_language": "a line with '=' defines, one without runs",
 }
 
@@ -646,27 +645,6 @@ def test_no_width_is_unchanged(name: str) -> None:
     lang = LANGUAGES[name]
     assert lang.boolean is not None
     assert generate(name, TABLE) == lang.boolean(TABLE)
-
-
-def test_between_is_no_longer_wrapped_and_still_computes_its_table() -> None:
-    """Between's wrapper went with the text generators that fed it.
-
-    Its own programs are one instruction per line and none reaches a
-    readable width, so the bespoke statement-splitting wrapper had no
-    producer left; the width is now a no-op for it, and the program must
-    still compute its table.
-    """
-
-    from esolangs import tools as boolean
-
-    assert "between" not in WRAPPERS
-    for table, bits in (("01", 1), ("0110", 2), ("01101001", 3)):
-        program = boolean.between(table)
-        for width in (5, 20, 40):
-            assert wrap_program(program, "between", width) == program
-        for row, expected in enumerate(table):
-            stdin = "".join(b + "\n" for b in format(row, f"0{bits}b"))
-            assert run("Between", program, stdin) == expected
 
 
 def test_clockwise_is_never_reflowed() -> None:

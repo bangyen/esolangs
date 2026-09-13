@@ -16,17 +16,14 @@ from esolangs.interpreters.io import IO
 from esolangs.tools import laserfuck_layout
 from tests.tools.boolean_runners import (
     run_algebraic_programming_language,
-    run_between,
     run_clockwise,
     run_container,
     run_cvnc,
     run_fargo,
     run_flowchart,
     run_forbin_boolean,
-    run_function_x_y,
     run_inject,
     run_laserfuck,
-    run_suptiftam,
     run_taglate,
     run_ztoalc,
 )
@@ -164,74 +161,6 @@ class TestInject:
         assert _tree("01101001", 0, 3, state, (0, 1, 2)) == _tree(
             "01101001", 0, 3, {"leaves": 0, "blocks": 0}, (0, 1, 2)
         )
-
-
-class TestSuptiftam:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("01", 1),  # identity
-            ("10", 1),  # NOT
-            ("00", 1),  # constant zero
-            ("11", 1),  # constant one
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("1110", 2),  # NAND
-            ("11111110", 3),  # NAND3
-            ("01101001", 3),  # XOR3
-            ("1000000000000000", 4),  # AND4
-            ("1111111111111111", 4),  # constant one
-        ],
-    )
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.suptiftam(table)
-        for combo in range(2**n):
-            bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-            got = run_suptiftam(program, bits)
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    def test_minterm_structure(self) -> None:
-        """The program reads one row per input and sums the minterms."""
-        program = boolean.suptiftam("0001")
-        assert program.startswith("sum=0\np=1\nfd mulStep :x")
-        assert program.count("%-[read]22%") == 2  # one normalized read per input
-        assert program.count("down(:read:)") == 2
-        assert program.endswith("term=sum")
-
-    def test_constant_tables_skip_the_minterms(self) -> None:
-        """A constant-zero table has no minterm rows at all."""
-        program = boolean.suptiftam("0000")
-        assert "mulStep(:p:)if(p)" not in program
-
-    def test_a_dense_table_is_summed_over_its_zeros(self) -> None:
-        """More ones than zeros costs less summed the other way and inverted.
-
-        An all-ones table is the interesting case: it complements to no
-        minterms at all, leaving ``sum`` at 0, and the inversion turns that
-        into the 1 it should print -- so it needs no special-casing the way
-        a gate-network generator's constant table does.
-        """
-        assert "term=%-[1]sum%" in boolean.suptiftam("1111")
-        assert "mulStep(:p:)if(p)" not in boolean.suptiftam("1111")
-        assert "term=sum" in boolean.suptiftam("0001")  # sparse: drawn directly
-        # and both still compute their table
-        for table in ("1111", "11111110"):
-            n = len(table).bit_length() - 1
-            program = boolean.suptiftam(table)
-            for combo in range(2**n):
-                bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-                assert run_suptiftam(program, bits) == table[combo]
-
-    def test_bit_names_extend_beyond_the_alphabet(self) -> None:
-        """Identifiers are alphabetical, so past 'z' the names grow a prefix."""
-        from esolangs.tools.other import _suptiftam_bit
-
-        assert _suptiftam_bit(0) == "b"
-        assert _suptiftam_bit(24) == "z"
-        assert _suptiftam_bit(25) == "bb"
-        assert _suptiftam_bit(49) == "bz"
-        assert _suptiftam_bit(50) == "bbb"
 
 
 class TestForbinBoolean:
@@ -810,55 +739,6 @@ class TestFlowchart:
             column = {row[x] for row in grid} - {" "}
             assert column <= set("│┌└─"), (x, column)
         assert "┼" not in drawing, "a rail crossed a corridor"
-
-
-class TestBetween:
-    @pytest.mark.parametrize(
-        ("table", "n"),
-        [
-            ("10", 1),  # NOT
-            ("0110", 2),  # XOR
-            ("0001", 2),  # AND
-            ("11111110", 3),  # NAND3
-            ("1111111111111111", 4),  # constant one
-        ],
-    )
-    def test_truth_table(self, table: str, n: int) -> None:
-        """Every input combination produces the truth-table result."""
-        program = boolean.between(table)
-        for combo in range(2**n):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = run_between(program, [str(b) for b in bits])
-            assert got == str(int(table[combo])), f"inputs {bits}"
-
-    def test_program_structure(self) -> None:
-        """One declare/read/normalize triplet per input, one branch per node."""
-        program = boolean.between("0110")
-        lines = program.splitlines()
-        assert lines[:3] == ["'0'v.", "[0]i.", "[0]s|[0]c.|"]
-        # XOR has no constant slice above a single row, so nothing folds and
-        # every combination keeps its own leaf.
-        assert lines.count(".x.") == 4
-
-    def test_constant_subtrees_fold(self) -> None:
-        """A constant slice becomes one leaf instead of branching further.
-
-        The jump addresses come from a second walk over the tree, so this
-        also covers the two walks agreeing: a leaf count that matched while
-        the addresses did not would still run the wrong branch, which
-        :meth:`test_truth_table` would catch.
-        """
-        assert boolean.between("11111111").count(".x.") == 1
-        assert boolean.between("11110000").count(".x.") == 2
-        assert boolean.between("10010110").count(".x.") == 8  # parity: no fold
-
-    def test_mismatched_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="power-of-two"):
-            boolean.between("011")
-
-    def test_bad_table_rejected(self) -> None:
-        with pytest.raises(ValueError, match="only '0' and '1'"):
-            boolean.between("0123")
 
 
 class TestContainer:
@@ -2562,128 +2442,3 @@ class TestAlgebraicProgrammingLanguageShapes:
 
         assert list(_NAMES) == sorted(_NAMES)
         assert len(set(_NAMES)) == len(_NAMES)
-
-
-class TestFunctionXY:
-    """A nested-ternary decision tree over inputs read up front."""
-
-    @staticmethod
-    def _check(table: str) -> None:
-        """Execute the program on every row and compare with the table."""
-        n = len(table).bit_length() - 1
-        program = boolean.function_x_y(table)
-        for combo in range(2**n):
-            bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-            assert run_function_x_y(program, bits) == table[combo], (
-                f"table {table} inputs {bits}"
-            )
-
-    @pytest.mark.parametrize(
-        "table",
-        [
-            "01",  # identity
-            "10",  # NOT
-            "00",  # constant zero
-            "11",  # constant one
-            "0001",  # AND
-            "0111",  # OR
-            "0110",  # XOR
-            "1110",  # NAND
-            "01101001",  # XOR3
-            "11111110",  # NAND3
-            "1000000000000000",  # AND4
-            "0110100110010110",  # parity4: nothing folds
-        ],
-    )
-    def test_truth_table(self, table: str) -> None:
-        self._check(table)
-
-    @pytest.mark.parametrize("n", [1, 2, 3])
-    def test_every_table_of_small_arity(self, n: int) -> None:
-        """Exhaustive over all ``2**(2**n)`` tables, not a sample."""
-        for value in range(2 ** (2**n)):
-            self._check(bin(value)[2:].zfill(2**n))
-
-    @pytest.mark.parametrize("n", [4, 5])
-    def test_a_sample_of_wider_tables(self, n: int) -> None:
-        """The claimed arities run; 2**16 and 2**32 tables are sampled."""
-        rng = random.Random(n)
-        for _ in range(12):
-            table = "".join(rng.choice("01") for _ in range(2**n))
-            self._check(table)
-
-    def test_a_constant_table_still_reads_every_input(self) -> None:
-        """The reads are the interface, so a constant must not skip them.
-
-        This is the boolean contract's rule; pinned here on the emission
-        because the contract sweep only compares two tables' read counts.
-        """
-        for table in ("0000", "1111"):
-            program = boolean.function_x_y(table)
-            assert program.count("[~]") == 2
-            # and it still answers correctly
-            assert run_function_x_y(program, ["0", "0"]) == table[0]
-
-    def test_a_constant_table_folds_to_a_literal(self) -> None:
-        """Nothing branches when the whole table is one value."""
-        program = boolean.function_x_y("1111")
-        assert "<" not in program.split("\n")[-1].replace('`"1"', "")
-        assert program.endswith('`"1"')
-
-    def test_the_tree_folds_a_constant_subtree(self) -> None:
-        """``0011`` depends only on the second input, so one test suffices."""
-        program = boolean.function_x_y("0011")
-        assert program.count("==") == 1
-
-    def test_reads_stay_in_input_order(self) -> None:
-        """Reordering moves which input a node tests, never the reads."""
-        program = boolean.function_x_y("0110100110010110")
-        reads = [ln for ln in program.split("\n") if ln.startswith("var ")]
-        assert reads == [f"var b{i}: [~]" for i in range(4)]
-
-    def test_a_malformed_table_is_refused(self) -> None:
-        with pytest.raises(ValueError, match="power-of-two"):
-            boolean.function_x_y("011")
-        # a nullary table is a constant, not a boolean function
-        with pytest.raises(ValueError, match="at least one input"):
-            boolean.function_x_y("0")
-
-    def test_a_width_names_the_subtrees_and_it_still_computes(self) -> None:
-        """A narrower program is the same tree with its nesting spread down.
-
-        The ternary is one statement, so its width is the whole tree until
-        a subtree is bound to a name.  What has to hold is that naming an
-        arm -- which evaluates it whether or not it is taken, where the
-        ternary would not have -- computes the same function; the arms are
-        literals and comparisons of already-read variables, so it does.
-        """
-        for table in ("0110", "01101001", "0110100110010110"):
-            n = len(table).bit_length() - 1
-            flat = boolean.function_x_y(table)
-            wide = max(len(row) for row in flat.splitlines())
-            floor = max(len(row) for row in boolean.function_x_y(table, 1).splitlines())
-            assert floor < wide, f"{table} never narrows"
-            for width in (1, 30, 45, 80, wide):
-                narrow = boolean.function_x_y(table, width)
-                columns = max(len(row) for row in narrow.splitlines())
-                assert columns <= max(width, floor), (table, width, columns)
-                for combo in range(2**n):
-                    bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
-                    got = run_function_x_y(narrow, bits)
-                    assert got == table[combo], (table, width, bits)
-
-    def test_naming_a_subtree_keeps_the_reads_out_of_it(self) -> None:
-        """The reads stay above the tree, one per input, however much is named.
-
-        Hoisting is only safe because the arms have nothing to evaluate
-        twice.  A ``[~]`` inside a named subtree would break that -- it
-        would read whether or not its branch was taken -- so the count of
-        reads is what pins the property down.
-        """
-        table = "0110100110010110"
-        for width in (None, 1, 30, 80):
-            program = boolean.function_x_y(table, width)
-            lines = program.splitlines()
-            reads = [line for line in lines if "[~]" in line]
-            assert reads == [f"var b{i}: [~]" for i in range(4)], width
-            assert program.count("[~]") == 4, width

@@ -79,8 +79,6 @@ def _empty_machine(module: str, io: IO) -> object:
         state = _Machine(io=io)
         state.code = []
         return state
-    if module == "esolangs.interpreters.register_based.point_break":
-        from esolangs.interpreters.register_based.point_break import _Machine
 
         return _Machine("", io)
     if module == "esolangs.interpreters.stack_based.forth":
@@ -219,12 +217,8 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.other.ztoalc_l import _Machine
 
         return _Machine([], io)
-    if module == "esolangs.interpreters.register_based.between":
-        from esolangs.interpreters.register_based.between import _Machine
 
         return _Machine([], io)
-    if module == "esolangs.interpreters.other.lamfunc":
-        from esolangs.interpreters.other.lamfunc import _Machine
 
         return _Machine("", io)
     if module == "esolangs.interpreters.other.cvnc":
@@ -241,8 +235,6 @@ def _empty_machine(module: str, io: IO) -> object:
         from esolangs.interpreters.other.forbin import _Machine
 
         return _Machine("main {}", io)
-    if module == "esolangs.interpreters.other.suptiftam":
-        from esolangs.interpreters.other.suptiftam import _Machine
 
         return _Machine("", io)
     raise KeyError(module)
@@ -258,7 +250,6 @@ _STEP_MACHINES = {
     "esolangs.interpreters.stack_based.eval",
     "esolangs.interpreters.stack_based.modulous",
     "esolangs.interpreters.register_based.qoibl",
-    "esolangs.interpreters.register_based.point_break",
     "esolangs.interpreters.stack_based.forth",
     "esolangs.interpreters.register_based.addsubjump",
     "esolangs.interpreters.queue_based.bitdeque",
@@ -292,12 +283,9 @@ _STEP_MACHINES = {
     "esolangs.interpreters.tape_based.jaune",
     "esolangs.interpreters.tape_based.slow_acv_mammalian",
     "esolangs.interpreters.other.ztoalc_l",
-    "esolangs.interpreters.register_based.between",
-    "esolangs.interpreters.other.lamfunc",
     "esolangs.interpreters.other.cvnc",
     "esolangs.interpreters.other.fargo",
     "esolangs.interpreters.other.forbin",
-    "esolangs.interpreters.other.suptiftam",
 }
 
 

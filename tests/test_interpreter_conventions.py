@@ -63,7 +63,6 @@ _MAY_REACH_IO = frozenset(
     {
         ("other/forbin.py", "_BitReader.read"),
         ("other/forbin.py", "_call"),
-        ("other/suptiftam.py", "_State._read_cell"),
     }
 )
 

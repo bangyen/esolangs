@@ -24,7 +24,6 @@ that row is actually spelled for the language.
 | `alight.txt` | Alight | `0001` | `01` | 0 1 | '0' |
 | `arrowqueue.txt` | ArrowQueue | `0001` | `01` | embedded 01 | '1 0 1 2 3' |
 | `back.txt` | Back | `0001` | `01` | embedded 01 | '1 0 0' |
-| `between.txt` | Between | `0001` | `01` | 0 1 | '0' |
 | `bf-pda.txt` | BF-PDA | `0001` | `01` | embedded 01 | '0' |
 | `bfstack.txt` | BFStack | `0001` | `01` | 0 1 | '0' |
 | `bio.txt` | BIO | `0001` | `01` | embedded 01 | '0' |
@@ -48,13 +47,11 @@ that row is actually spelled for the language.
 | `flowchart.txt` | Flowchart | `0001` | `01` | 0 1 | '0' |
 | `forbin.txt` | Forbin | `0001` | `01` | 0 1 | '0' |
 | `forþ.txt` | Forþ | `0001` | `01` | 0 1 | '0' |
-| `function-x(y).txt` | function x(y) | `0001` | `01` | 0 1 | '0' |
 | `grapheme.txt` | Grapheme | `0001` | `01` | % A | '0' |
 | `home-row.txt` | Home Row | `0001` | `01` | embedded 01 | '0' |
 | `inject.txt` | Inject | `0001` | `01` | 0 1 | '0\n' |
 | `interprogck8.txt` | Interprogck8 | `0001` | `01` | 0 1 | '0' |
 | `jaune.txt` | Jaune | `0001` | `01` | 0 1 | '0' |
-| `lamfunc.txt` | Lamfunc | `0001` | `01` | embedded 01 | '0' |
 | `laserfuck.txt` | LaserFuck | `0001` | `01` | 0 1 | '0' |
 | `minifuck.txt` | Minifuck | `0001` | `01` | embedded 01 | '0' |
 | `minsky-swap.txt` | Minsky Swap | `0001` | `01` | embedded 01 | '0 0' |
@@ -63,7 +60,6 @@ that row is actually spelled for the language.
 | `packlang.txt` | Packlang | `0001` | `01` | 0 1 | '0' |
 | `painfuck.txt` | Painfuck | `0001` | `01` | 0 1 | '0' |
 | `pct-squared-minus-one.txt` | %^2^-1 | `0001` | `01` | embedded 01 | '0' |
-| `point-break.txt` | Point Break | `0001` | `01` | 0 1 | '1 0 1 1 0 0 0 1' |
 | `polynomial.txt` | Polynomial | `0001` | `01` | 0 1 | '0' |
 | `qoibl.txt` | Qoibl | `0001` | `01` | 0 1 | '0' |
 | `ram0.txt` | RAM0 | `0001` | `01` | embedded 01 | 'z: 0\nn: 1\nram: {\n    0: 0,\n    1: 1\n}' |
@@ -74,7 +70,6 @@ that row is actually spelled for the language.
 | `streetcode.txt` | Streetcode | `0001` | `01` | 0 1 | '0' |
 | `suffolk.txt` | Suffolk | `0001` | `01` | 0 1 | '0' |
 | `super-snusp.txt` | Super SNUSP | `0001` | `01` | 0 1 | '0' |
-| `suptiftam.txt` | Suptiftam | `0001` | `01` | 0 1 | '0' |
 | `taglate.txt` | Taglate | `0001` | `01` | 0 1 | '0' |
 | `unsquare.txt` | Unsquare | `0001` | `01` | 0 1 | '0' |
 | `wii2d.txt` | WII2D | `0001` | `01` | embedded 01 | '0' |
@@ -96,6 +91,5 @@ that row is actually spelled for the language.
 - **inject** -- send terminates each line, so the answer ends in a newline
 - **laserfuck** -- the initial heading is random by spec, so the example pins the source it is drawn from: seed 0 draws heading 3
 - **minsky-swap** -- Minsky Swap has no output instruction and dumps its registers at halt; the answer is the second one
-- **point-break** -- Point Break answers by termination -- it halts for a 0 result and loops forever for a 1, so only the halting branch is committed.  The numbers printed are its interpreter-only variable dump, which the verdict does not read: the answer is that the program halted at all
 - **ram0** -- RAM0 has no output instruction and dumps its whole state at halt; the answer is the 'z' register
 - **taglate** -- Taglate takes a line per bit like most languages, but an odd input count above 1 is padded with a leading zero it reads like any other digit: an n=3 program wants four lines. Feeding three exhausts its input; padding at the end instead answers every row whose top bit is set wrongly

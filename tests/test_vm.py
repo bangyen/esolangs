@@ -13,7 +13,6 @@ from esolangs.vm import VM
 # live in the table rather than being spelled twice.
 from .samples import (
     CIRCUIT_PRIME_TESTER,
-    DUMPS_ON_THE_POST_HALT_STEP,
     FLOWCHART_CAT,
     FLOWCHART_TRUTH_MACHINE,
     SAMPLES,
@@ -229,25 +228,6 @@ class TestCOD:
         vm.step()  # (2,3,N) -> (1,3,N): enters the junction cell
         vm.step()  # forward (N) blocked: resolves to 'E'
         assert vm.ip == (1, 4, 2, 0)  # heading 2 == E
-
-
-class TestPointBreak:
-    def test_statement_cursor_and_variables(self) -> None:
-        vm = esolangs.make_vm(
-            "Point Break",
-            "LET x:=2+3\nPOINT loop\nIF x BREAK loop\nEND loop",
-        )
-        assert vm.ip == 0
-        assert vm.memory == []
-        vm.step()
-        assert vm.ip == 1
-        assert vm.memory == [5]
-        vm.step()
-        assert vm.ip == 2
-        assert vm.stack == []
-        vm.step()  # IF x BREAK loop fires (x=5) and exits past the END
-        assert vm.halted
-        assert vm.output == ""
 
 
 class TestArrowQueue:
@@ -892,32 +872,6 @@ class TestZtoalcL:
         assert vm.output == "A"
 
 
-class TestBetween:
-    def test_counter_and_variables(self) -> None:
-        vm = esolangs.make_vm("Between", "'a'v.\n[a]s|3|\n[a]p.\n.x.")
-        assert (vm.ip, vm.memory) == (0, [])
-        assert vm.stack == []
-        vm.step()  # declares variable 'a' = 0
-        assert vm.memory == [0]
-        vm.step()  # [a]s|3| stores 3 into a
-        assert (vm.ip, vm.memory) == (2, [3])
-        vm.step()  # prints a
-        assert vm.output == "3"
-        vm.step()  # .x. exits
-        assert vm.halted
-
-
-class TestLamfunc:
-    def test_token_cursor_and_variables(self) -> None:
-        vm = esolangs.make_vm("Lamfunc", "p 5")
-        assert vm.ip == 0
-        assert vm.memory == []
-        assert vm.stack == []
-        while not vm.halted:
-            vm.step()
-        assert vm.output == "101"
-
-
 class TestForbin:
     def test_locals_and_cursor(self) -> None:
         vm = esolangs.make_vm("Forbin", "main { x = 1; }")
@@ -942,18 +896,6 @@ class TestForbin:
         vm.step()  # f's body is exhausted; the frame pops
         assert vm.ip == (1,)
         vm.step()  # main's body is exhausted; the frame pops
-        assert vm.halted
-
-
-class TestSuptiftam:
-    def test_globals_and_cursor(self) -> None:
-        vm = esolangs.make_vm("Suptiftam", "x=7")
-        assert vm.ip == 0
-        assert vm.memory == []
-        assert vm.stack == []
-        vm.step()
-        assert vm.ip == 1
-        assert vm.memory == [7]
         assert vm.halted
 
 
@@ -992,25 +934,6 @@ class TestFargo:
 
 
 class TestRunUntilHaltOrCycle:
-    def test_halting_run_returns_true(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.point_break import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine("LET zero:=0", ScriptedIO())
-        assert run_until_halt_or_cycle(machine) is True
-
-    def test_looping_run_is_detected_as_a_cycle(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.point_break import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine(
-            "LET zero:=0\nPOINT loop\nIF zero BREAK loop\nEND loop",
-            ScriptedIO(),
-        )
-        assert run_until_halt_or_cycle(machine) is False
-
     def test_wii2d_all_random_turns_can_be_proved_to_loop(self) -> None:
         """Every heading from ``?`` returns to this two-cell ring.
 
@@ -1546,30 +1469,6 @@ class TestRunUntilHaltOrCycle:
                 PainfuckMachine(_painfuck_source("ccy"), ScriptedIO()), limit=4
             )
 
-    def test_input_cursor_is_part_of_the_snapshot(self) -> None:
-        """A loop that reads fresh input each pass is not a false cycle.
-
-        The program re-reads ``n`` on every pass, so the cursor, variables,
-        and frames repeat while the input cursor advances; were the input
-        position absent from the snapshot, this would be misreported as a
-        cycle before the program reached its nonzero input and halted.
-        """
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.point_break import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        program = "POINT loop\nLET n:=?\nIF n BREAK loop\nEND loop"
-        machine = _Machine(program, ScriptedIO("0\n0\n1"))
-        assert run_until_halt_or_cycle(machine) is True
-
-    def test_snapshot_with_plain_io(self) -> None:
-        """A source with no cursor reports position 0 in the snapshot."""
-        from esolangs.interpreters.io import IO
-        from esolangs.interpreters.register_based.point_break import _Machine
-
-        machine = _Machine("LET zero:=0", IO())
-        assert machine.snapshot() == (0, (), (), 0)
-
     def test_sbleq_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.sbleq import _Machine
@@ -1679,51 +1578,6 @@ class TestRunUntilHaltOrCycle:
         machine = _Machine(["2", "jump x 1", "jump x 1"], ScriptedIO())
         assert run_until_halt_or_cycle(machine) is False
 
-    def test_between_halting_run_returns_true(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.between import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine([".x."], ScriptedIO())
-        assert run_until_halt_or_cycle(machine) is True
-
-    def test_between_looping_run_is_detected_as_a_cycle(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.register_based.between import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        # |0|f. is an unconditional goto back to line 0
-        machine = _Machine(["|0|f."], ScriptedIO())
-        assert run_until_halt_or_cycle(machine) is False
-
-    def test_lamfunc_halting_run_returns_true(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.other.lamfunc import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine("p 5", ScriptedIO())
-        assert run_until_halt_or_cycle(machine) is True
-
-    def test_lamfunc_recursive_halting_run_returns_true(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.other.lamfunc import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        # loop halves x each call until it reaches 0; a real, terminating
-        # recursion whose call sits inside i's lazy branch, not just a flat
-        # top-level program
-        code = "F loop x - i x loop fb x 0\nloop 0b1000"
-        machine = _Machine(code, ScriptedIO())
-        assert run_until_halt_or_cycle(machine) is True
-
-    def test_lamfunc_replayed_call_is_detected_as_an_ancestor(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.other.lamfunc import _Machine
-        from esolangs.vm import run_until_halt_or_ancestor
-
-        machine = _Machine("F loop - loop\nloop", ScriptedIO())
-        assert run_until_halt_or_ancestor(machine) is False
-
     def test_a_machine_already_halted_is_reported_as_halting(self) -> None:
         """The loop is never entered, and the answer is still ``True``.
 
@@ -1738,39 +1592,6 @@ class TestRunUntilHaltOrCycle:
         run_until_halt(vm)
         assert vm.halted
         assert run_until_halt_or_cycle(vm) is True
-
-    def test_the_ancestor_bound_counts_pushes_exactly(self) -> None:
-        """The limit is in pushed frames, and it is pinned at its edge.
-
-        This program repeats an ancestor on its *third* push, so two is one
-        short and three is exactly enough.  Nothing passed a limit before,
-        which left the whole counter free: a sweep could start it at one,
-        step it by two, or compare with ``<=``, and every existing test
-        still passed because all of them use the generous default.
-
-        The undecided side matters as much as the decided one.  A bound
-        that never fires turns a program this cannot decide into an
-        infinite loop rather than a ``TimeoutError``, which is the failure
-        the docstring's "never silently reported as halting" is about.
-        """
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.other.lamfunc import _Machine
-        from esolangs.vm import run_until_halt_or_ancestor
-
-        code = "F loop - loop\nloop"
-        with pytest.raises(TimeoutError, match="undecided after 2 pushed frames"):
-            run_until_halt_or_ancestor(_Machine(code, ScriptedIO()), 2)
-        assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO()), 3) is False
-
-    def test_lamfunc_changing_call_binding_halts(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.other.lamfunc import _Machine
-        from esolangs.vm import run_until_halt_or_ancestor
-
-        # The lazy branch re-enters loop with a smaller x, so identical
-        # evaluator continuations must not be mistaken for recursive calls.
-        code = "F loop x - i x loop fb x 0\nloop 0b1000"
-        assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO())) is True
 
     def test_forbin_halting_run_returns_true(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -1790,41 +1611,6 @@ class TestRunUntilHaltOrCycle:
         # repeat before the finite range is exhausted
         machine = _Machine("main { for i:0..1 { x = 0; } }", ScriptedIO())
         assert run_until_halt_or_cycle(machine) is True
-
-    def test_suptiftam_halting_run_returns_true(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.other.suptiftam import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        machine = _Machine("x=7", ScriptedIO())
-        assert run_until_halt_or_cycle(machine) is True
-
-    def test_suptiftam_replayed_call_is_detected_as_an_ancestor(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.other.suptiftam import _Machine
-        from esolangs.vm import run_until_halt_or_ancestor
-
-        code = "\n".join(["fd loop :x", "loop(:x:)", "fi", "loop(:1:)"])
-        assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO())) is False
-
-    def test_suptiftam_changing_global_halts(self) -> None:
-        from esolangs.interpreters.io import ScriptedIO
-        from esolangs.interpreters.other.suptiftam import _Machine
-        from esolangs.vm import run_until_halt_or_ancestor
-
-        # The argument is unchanged, but the global countdown makes each
-        # call distinct and reaches the condition's base case.
-        code = "\n".join(
-            [
-                "n=3",
-                "fd loop :x",
-                "n=%-[n]1%",
-                "loop(:x:)if(n)",
-                "fi",
-                "loop(:0:)",
-            ]
-        )
-        assert run_until_halt_or_ancestor(_Machine(code, ScriptedIO())) is True
 
     def test_forth_replayed_scope_is_detected_as_an_ancestor(self) -> None:
         from esolangs.interpreters.io import ScriptedIO
@@ -2197,23 +1983,6 @@ class TestTheDetectorsTakeAVM:
     that always returned ``True`` would pass a halting-only test.
     """
 
-    def test_the_cycle_detector_takes_a_vm(self) -> None:
-        """A ``VM`` forwards ``step``/``halted``/``snapshot``.
-
-        It therefore satisfies ``_StepMachine`` on its own and is stepped
-        directly -- ``_unwrap`` returns it untouched rather than reaching
-        for the machine inside.
-        """
-        from esolangs.vm import make_vm, run_until_halt_or_cycle
-
-        halting = make_vm("Point Break", "LET zero:=0")
-        assert run_until_halt_or_cycle(halting) is True
-
-        looping = make_vm(
-            "Point Break", "LET zero:=0\nPOINT loop\nIF zero BREAK loop\nEND loop"
-        )
-        assert run_until_halt_or_cycle(looping) is False
-
     def test_the_branching_detector_takes_a_vm(self) -> None:
         """The adapter's seeded ``rng`` must not narrow the search.
 
@@ -2371,26 +2140,6 @@ class TestTheDetectorsTakeAVM:
         with pytest.raises(TypeError, match="affine machine"):
             run_until_halt_or_value_growth(make_vm("brainfuck", "+[>+]"))
 
-    def test_a_language_without_the_surface_raises_type_error(self) -> None:
-        """A missing surface is a wrong question, not a hang verdict.
-
-        Point Break neither recurses nor draws at random, so it has no
-        ``frames`` and no ``branching_successors``.  Returning a verdict
-        there would be answering about state the language does not have,
-        so both detectors refuse rather than report.
-        """
-        from esolangs.vm import (
-            make_vm,
-            run_until_halt_or_all_branches_cycle,
-            run_until_halt_or_ancestor,
-        )
-
-        with pytest.raises(TypeError, match="framed"):
-            run_until_halt_or_ancestor(make_vm("Point Break", "LET zero:=0"))
-
-        with pytest.raises(TypeError, match="branch-enumerable"):
-            run_until_halt_or_all_branches_cycle(make_vm("Point Break", "LET zero:=0"))
-
     def test_an_object_that_is_neither_raises_type_error(self) -> None:
         """The unwrap looks one level deep, and no further."""
         from esolangs.vm import run_until_halt_or_cycle
@@ -2547,58 +2296,6 @@ class TestFactory:
         monkeypatch.delitem(_VM_ADAPTERS, "brainfuck")
         with pytest.raises(UnknownLanguageError):
             esolangs.make_vm("brainfuck", "+")
-
-
-@pytest.mark.parametrize(
-    ("language", "program"),
-    [
-        ("brainfuck", "+++[>+++<-]>."),
-        ("S*bleq", "-3 11 3"),
-        ("Dimensional", "+.+.+."),
-        ("Grapheme", "FAFY"),
-        ("Qoibl", "we y we yyeeee we\ntt qe y qe tt"),
-        ("Eval", "0+."),
-        ("Modulous", "[PSH INT 5][DUP][PRT INT]"),
-        ("Point Break", "LET zero:=0"),
-        ("ArrowQueue", "~*+"),
-        ("123", "3231"),
-        ("Clockwise", "+;S;S;S;S;S;+;R\nR             R"),
-        ("Dig", ">$5:\n 2 "),
-        ("WII2D", ">~.\n!"),
-        ("Forþ", "65."),
-        ("AddSubJump", "-1 1 0 -7"),
-        ("Bitdeque", "PUSH INVERT"),
-        ("BrainIf", "if 0 output"),
-        ("Minifuck", "."),
-        ("Taglate", "abc\ni"),
-        ("ROTfuck", "."),
-        ("Circlefuck", "+.@"),
-        ("BFStack", ">+."),
-        ("Decleq", "-2 5 9 9 9 65 0 0"),
-        ("6-5", "55A"),
-        ("Back", "-*"),
-        ("BIO", "0ox;0ix{1ox;};1ix;"),
-        ("NoComment", "ciio"),
-        ("3D Brainfuck", "+."),
-        ("Factor", "15"),
-        ("Painfuck", "pp"),
-        ("bit~", "~("),
-        ("Collatz Multiverse", "x = negativeOne x + negativeOne, DO PRINT."),
-        ("Polynomial", "f(x) = x^2+4"),
-        ("Streetcode", STREETCODE),
-    ],
-)
-def test_vm_output_matches_run(language: str, program: str) -> None:
-    """Stepping a VM to completion matches running the interpreter directly."""
-    try:
-        expected = esolangs.run(language, program)
-    except EOFError:
-        pytest.skip(f"{language} needs input")
-    vm = esolangs.make_vm(language, program)
-    _run_all(vm)
-    if language in DUMPS_ON_THE_POST_HALT_STEP:
-        vm.step()  # the dump, which run performs after its own loop
-    assert vm.output == expected
 
 
 class TestEveryLanguageIsSteppable:

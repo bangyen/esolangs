@@ -309,15 +309,6 @@ def _fill_nocomment(template: str, bits: list[int]) -> str:
     )
 
 
-def _fill_lamfunc(template: str, bits: list[int]) -> str:
-    # each {Xi} fills a `vs v{i}` store with the binary literal
-    return instantiate(
-        template,
-        bits,
-        lambda _i, b: "0b" + str(b),
-    )
-
-
 def _fill_bitdeque(template: str, bits: list[int]) -> str:
     # The register flips after every load block, and the load pushes the
     # inputs in name order, so bit i is pushed at load position i with the
@@ -595,7 +586,6 @@ def _register() -> None:
             note="an executed line prints its result, so the answer ends in a newline",
         ),
         "alight": _reader(b.alight, "grid_based.alight", split=True),
-        "between": _reader(b.between, "register_based.between", split=True),
         "bfstack": _reader(b.bfstack, "stack_based.bfstack"),
         "bit~": _reader(b.bit_tilde, "tape_based.bit_tilde"),
         "brainfuck": _reader(b.brainfuck, "tape_based.brainfuck"),
@@ -663,7 +653,6 @@ def _register() -> None:
         "flowchart": _reader(b.flowchart, "grid_based.flowchart", split=True),
         "forbin": _reader(b.forbin, "other.forbin"),
         "forþ": _reader(b.forth, "stack_based.forth"),
-        "function-x(y)": _reader(b.function_x_y, "other.function_x_y"),
         "grapheme": _reader(
             b.grapheme,
             "stack_based.grapheme",
@@ -695,20 +684,6 @@ def _register() -> None:
         "modulous": _reader(b.modulous, "stack_based.modulous"),
         "packlang": _reader(b.packlang, "other.packlang"),
         "painfuck": _reader(b.painfuck, "tape_based.painfuck"),
-        "point-break": _reader(
-            b.point_break,
-            "register_based.point_break",
-            answer_mode="termination",
-            answer_values=("halts", "diverges"),
-            expected="1 0 1 1 0 0 0 1",
-            note=(
-                "Point Break answers by termination -- it halts for a 0 "
-                "result and loops forever for a 1, so only the halting "
-                "branch is committed.  The numbers printed are its "
-                "interpreter-only variable dump, which the verdict does not "
-                "read: the answer is that the program halted at all"
-            ),
-        ),
         "polynomial": _reader(b.polynomial, "register_based.polynomial"),
         "qoibl": _reader(b.qoibl, "register_based.qoibl", split=True),
         "rotfuck": _reader(b.rotfuck, "tape_based.rotfuck"),
@@ -720,7 +695,6 @@ def _register() -> None:
         "streetcode": _reader(b.streetcode, "grid_based.streetcode", split=True),
         "super-snusp": _reader(b.super_snusp, "grid_based.super_snusp", split=True),
         "suffolk": _reader(b.suffolk, "tape_based.suffolk"),
-        "suptiftam": _reader(b.suptiftam, "other.suptiftam"),
         "taglate": _reader(
             b.taglate,
             "queue_based.taglate",
@@ -793,7 +767,6 @@ def _register() -> None:
         ),
         "eval": _embedded(b.eval, "stack_based.eval", _fill_eval),
         "home-row": _embedded(b.home_row, "tape_based.home_row", _fill_home_row),
-        "lamfunc": _embedded(b.lamfunc, "other.lamfunc", _fill_lamfunc),
         "minifuck": _embedded(b.minifuck, "tape_based.minifuck", _fill_minifuck),
         "minsky-swap": _embedded(
             b.minsky_swap,
