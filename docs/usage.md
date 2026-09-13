@@ -76,8 +76,8 @@ this table; it is generated from `describe`, and so is the table.
 
 A shape the checker cannot tell apart from a legitimate one still answers
 the wrong row, which is why the encoder is the interface and the table is
-only a reference. `examples/boolean/MANIFEST.md` lists every language's
-input column.
+only a reference. [`src/esolangs/examples/MANIFEST.md`](../src/esolangs/examples/MANIFEST.md)
+lists every language's input column.
 
 Stdin is checked against the shape and alphabet a language declares:
 `esolangs run` warns, `esolangs run --judge` refuses, and
