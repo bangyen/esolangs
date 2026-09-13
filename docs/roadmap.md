@@ -7,8 +7,6 @@ Only live work belongs here. Completed findings and negative results go to
 
 Implement the surveyed candidates in this order:
 
-- EGL: the first target; its deterministic grid, numeric I/O and examples fit
-  the package.  Derive and execute a boolean generator with the interpreter.
 - B-tapemark: admit it once a named boolean construction is derived; the
   interpreter spec and its character-I/O examples are otherwise sufficient.
 - Vandevelo: resurrected from the old walls.  Compile tables as formulas from
@@ -22,7 +20,7 @@ Implement the surveyed candidates in this order:
   conditional on a derived and executed parameterized halt-versus-loop
   generator.
 
-Alight, function x(y), Packlang and
+Alight, EGL, function x(y), Packlang and
 Interprogck8 are implemented; Pinyin is rejected, and DINAC was
 implemented and then pruned (see below).  Both outcomes are
 recorded in [limitations](limitations.md) -- Pinyin's routing pinned and its
