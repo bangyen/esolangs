@@ -21,12 +21,10 @@ rather than a blanket post-processing pass:
   newlines as row separators, so a newline moves code to another row.
 - NoComment has no comment syntax at all -- an unrecognized character is a
   load error, and that includes ``\n``.
-- Forbin would tolerate a reflow -- its interpreter reads whitespace, not
-  lines -- but its ``out`` statements sit one per line inside a ``main {}``
-  block, and that layout is how the language is meant to be read.  Packing
-  them to a width costs more than the ragged right edge it saves, so a
-  language whose own idiom is one-statement-per-line is left alone even
-  when reflowing it would be safe.
+- Forbin and Packlang tolerate reflow -- their interpreters read whitespace,
+  not lines -- but their statements sit on indented lines inside braces.
+  Their wrapper preserves those lines and only folds one that exceeds the
+  requested width.
 
 ROTfuck used to belong on that list: its interpreter rotated the program on
 *every* character the pointer passed, comments included, so an inserted
@@ -162,6 +160,17 @@ def wrap_space_delimited(program: str, width: int) -> str:
     breaking it would change the program.
     """
     return _join_tokens(program.split(), width, separator=" ")
+
+
+def _indented(program: str, width: int) -> str:
+    """Wrap each source line separately, preserving its leading indentation."""
+    lines: list[str] = []
+    for line in program.split("\n"):
+        indent = line[: len(line) - len(line.lstrip())]
+        content = line[len(indent) :]
+        wrapped = wrap_space_delimited(content, max(1, width - len(indent)))
+        lines.extend(indent + part for part in wrapped.split("\n"))
+    return "\n".join(lines)
 
 
 def wrap_grid(program: str, width: int) -> str:
@@ -907,11 +916,11 @@ WRAPPERS = {
     # One statement a line, each of space-separated tokens, and a newline
     # between two tokens is just whitespace -- so each line folds on its own.
     "qoibl": _qoibl,
-    # Both parsers treat every newline as ordinary whitespace.  Flattening
-    # and repacking their existing space-delimited tokens preserves even the
-    # punctuation attached to identifiers and braces.
-    "forbin": wrap_space_delimited,
-    "packlang": wrap_space_delimited,
+    # Both parsers treat every newline as ordinary whitespace, but their
+    # generators already emit indented blocks.  Keep those statement lines
+    # and fold only an individual line that exceeds the requested width.
+    "forbin": _indented,
+    "packlang": _indented,
 }
 
 
