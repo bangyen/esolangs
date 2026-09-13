@@ -16,6 +16,16 @@ truth machine on input 1 is unreachable under all 384 readings.
 The list refills by survey rather than by waiting.  APL arrived that way and
 is implemented, with its own boolean generator.
 
+## Line
+
+Boolean generation has no resource wall: twelve inputs round-trip within the
+projected time and memory budget. Future performance work belongs in extraction,
+not subtree sharing or a denser layout.
+
+- Validate extraction on anti-aliased camera or scan input.
+- Derive the lattice probe length from `UNIT` before supporting smaller units.
+- Define behavior for genuinely ambiguous arrowheads.
+
 ## Curation: the prune to 60
 
 65 languages now.  The prune to 65 removed the four ordinary imperative
