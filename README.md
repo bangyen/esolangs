@@ -1,6 +1,8 @@
 # Esolang Interpreters
 
 [![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org)
+[![CI](https://github.com/bangyen/esolangs/actions/workflows/ci.yml/badge.svg)](https://github.com/bangyen/esolangs/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/esolangs.svg)](https://pypi.org/project/esolangs/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 Interpreters and boolean-circuit generators for 65 esoteric languages.
@@ -224,8 +226,22 @@ tables.
 
 `esolangs list --details` marks which languages have one (`gen`), which
 return a template (`tmpl`), and which have a committed example (`ex`); add
-`--json` for an object per language.  Regenerate the committed examples
-with `python scripts/generate.py examples`.
+`--json` for structured output:
+
+```bash
+esolangs list --details --json | jq '.[] | select(.name == "Sophie")'
+```
+
+```json
+{
+  "name": "Sophie",
+  "boolean_generator": true,
+  "parameterized": false,
+  "has_example": true
+}
+```
+
+Regenerate the committed examples with `python scripts/generate.py examples`.
 
 ## Contributing
 
