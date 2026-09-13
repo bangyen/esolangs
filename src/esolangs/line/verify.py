@@ -8,7 +8,7 @@ regressions in either ``render.py`` or ``extract.py`` show up as a nonzero
 exit code without needing to reach for a debugger or a one-off script.
 
 Usage:
-    python -m esolangs.interpreters.line.verify
+    python -m esolangs.line.verify
 """
 
 import sys

@@ -106,7 +106,6 @@ class Language:
 
 
 LANGUAGES: dict[str, Language] = {
-    "Line": Language("Line", "line", id="line"),
     "AddSubJump": Language(
         "AddSubJump",
         "register_based.addsubjump",

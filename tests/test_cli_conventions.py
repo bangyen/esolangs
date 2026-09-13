@@ -3367,7 +3367,7 @@ class TestExamplesShipWithThePackage:
         """
         link = pathlib.Path(__file__).parents[1] / "examples"
         assert link.is_dir()
-        assert (link / "boolean" / "brainfuck.txt").is_file()
+        assert (link / "brainfuck.txt").is_file()
         assert (
             link.resolve()
             == pathlib.Path(esolangs.__file__).resolve().parent / "examples"

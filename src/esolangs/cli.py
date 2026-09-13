@@ -39,7 +39,6 @@ a traceback should mean.
 from __future__ import annotations
 
 import json
-import pathlib
 import sys
 import threading
 import warnings
@@ -1846,6 +1845,7 @@ def _run(rest: list[str]) -> None:
     rest = [arg for arg in rest if arg != "--judge"]
     _check_count("run", rest, 2)
     language, path = rest[0], rest[1]
+    program = _read_program(path, timeout)
     # Resolved *before* stdin is read.  It was after, so
     # `esolangs run NotALang prog.txt` with stdin held open blocked forever
     # without ever saying the language was unknown -- the one thing it could
@@ -1857,11 +1857,6 @@ def _run(rest: list[str]) -> None:
     except EsolangError as exc:
         _fail(str(exc))
         raise  # pragma: no cover - unreachable; _fail exits
-    # Line source is a PNG, not UTF-8 program text.  Passing the path through
-    # lets the public API decode it into a Raster at its input boundary.
-    program = (
-        pathlib.Path(path) if facts["name"] == "Line" else _read_program(path, timeout)
-    )
     stdin = _read_stdin(timeout, _stdin_hint(facts))
     if mode == "termination" and timeout is None:
         if judge:
@@ -1996,16 +1991,15 @@ def _run(rest: list[str]) -> None:
     # get from an empty file or the wrong path.  Say so on a terminal, where
     # the alternative is a blank line and no way to tell the two apart; a
     # pipe still receives exactly the empty output.
-    if isinstance(program, str) and not program.strip():
+    if not program.strip():
         # Legal, and almost never what was meant: an empty file is what you
         # get from a redirect that failed or a generate that was never run.
         # Said on stderr, so a pipeline still receives the empty output.
         _note(f"note: {path} is empty, so there was no program to run")
     if not output and sys.stdout.isatty():
-        empty = isinstance(program, str) and not program.strip()
         sys.stderr.write(
             f"{language}: the program ran and printed nothing"
-            f"{' (the file is empty)' if empty else ''}\n"
+            f"{' (the file is empty)' if not program.strip() else ''}\n"
         )
 
 

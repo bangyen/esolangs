@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.interpreters.line import png
+from esolangs.line import png
 
 FIXTURES = Path(__file__).parents[1] / "fixtures" / "line"
 
@@ -340,7 +340,7 @@ def test_a_jpeg_is_refused_with_a_usable_message(tmp_path: Path) -> None:
     is the one wrong-format case likely enough to be worth a message that
     says what to do next instead of "bad signature".
     """
-    from esolangs.interpreters.line import extract
+    from esolangs.line import extract
 
     path = tmp_path / "drawing.jpg"
     # A JPEG start-of-image plus APP0, which is all the sniff looks at.

@@ -34,7 +34,6 @@ _EXTRA_WIKI = {
 # on a 2D surface) > stack > queue > tape > register (the imperative
 # default) > other.
 _README_HEADINGS = [
-    ("line", "Image Languages", "Languages whose source is a raster image."),
     (
         "grid_based",
         "Grid-based Languages",
@@ -166,7 +165,8 @@ def render_examples_section() -> str:
     return "\n".join(
         [
             "Ready-to-run programs are committed under [`examples/`](examples/):",
-            f"`examples/` holds a truth-table program for each of the {len(BOOLEAN)}",
+            f"`examples/` holds a truth-table program for each of the"
+            f" {len(BOOLEAN)}",
             "languages with a boolean generator.  It regenerates via",
             "`scripts/write_examples.py`.",
         ]

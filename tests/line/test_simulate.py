@@ -22,15 +22,15 @@ from pathlib import Path
 
 import pytest
 
-from esolangs.interpreters.line.extract import (
+from esolangs.line.extract import (
     crop_to_content,
     detect_scale,
     extract,
     load_binary,
 )
-from esolangs.interpreters.line.lattice import _DIRS, Stroke, Vertex
-from esolangs.interpreters.line.render import Node, chain, render
-from esolangs.interpreters.line.simulate import IO, run
+from esolangs.line.lattice import _DIRS, Stroke, Vertex
+from esolangs.line.render import Node, chain, render
+from esolangs.line.simulate import IO, run
 
 # Anchored to this file rather than the working directory, so the wiki
 # fixtures resolve no matter where pytest is invoked from.
