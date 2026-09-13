@@ -5,7 +5,7 @@
 | Page | What it answers |
 | --- | --- |
 | [usage](usage.md) | how to generate, feed and judge a program from Python or the shell |
-| [languages](languages.md) | which of the 69 has a generator, a template, an example -- generated from `src/esolangs/registry.py` by `scripts/make_languages_doc.py`, which also fills usage.md's two tables |
+| [languages](languages.md) | which of the 65 has a generator, a template, an example -- generated from `src/esolangs/registry.py` by `scripts/make_languages_doc.py`, which also fills usage.md's two tables |
 | [CONTRIBUTING](CONTRIBUTING.md) | what a new language has to satisfy |
 
 ## The three ledgers

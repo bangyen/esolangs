@@ -92,8 +92,8 @@ class Debugger:
         arity within a run**.  :meth:`break_at` is the reason to care:
         it is a method of this class and using it correctly depends on
         what shape this reports.  :attr:`~esolangs.vm.VM.ip` has the
-        rules -- row before column for the grid ten, the other ten that
-        report tuples meaning something else entirely, and the eight
+        rules -- row before column for the grid ten, the other nine that
+        report tuples meaning something else entirely, and the six
         that change shape mid-run.
         """
         return self.vm.ip
@@ -385,7 +385,7 @@ class Debugger:
         step after the halt, so refusing to take it left ``output`` empty
         with the machine finished, and the only way through was to reach
         past this class and call ``self.vm.step()``.  A debugger-driven
-        verifier scored 62/69 on that alone.
+        verifier scored 58/65 on that alone.
 
         No count here.  This said "six languages", and six is the size of a
         *different* set -- the one ``answer_mode == "dump"`` picks out,

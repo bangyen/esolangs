@@ -1074,7 +1074,7 @@ def spec(language: str) -> str:
     interpreter = importlib.import_module("esolangs.interpreters." + module)
     text = (interpreter.__doc__ or "").strip()
     if not text:
-        # ``-OO`` strips docstrings, so this returned ``""`` for all 69 --
+        # ``-OO`` strips docstrings, so this returned ``""`` for all 65 --
         # a silent wrong answer from the function whose whole promise is
         # "read rather than stored, so it cannot drift".  Nothing to say is
         # worth an abort, not an empty string that looks like an answer.
@@ -1105,7 +1105,7 @@ def encode_inputs(
     stdin at all and is refused here -- use :func:`instantiate`.
     """
     # Every registered language has a committed example, so the lookup
-    # always finds one; ``example_stems`` covers all 69 and a test pins that.
+    # always finds one; ``example_stems`` covers all 65 and a test pins that.
     name = resolve(language)
     example = _example_for(LANGUAGES[name].id)
     if example.fill is not None:
