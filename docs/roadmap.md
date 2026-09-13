@@ -1,7 +1,7 @@
 # Roadmap
 
-Only live work belongs here.  Completed findings and negative results go to
-[walls](walls.md) and [limitations](limitations.md).
+Only live work belongs here. Completed findings and negative results go to
+[limitations](limitations.md).
 
 ## New interpreters
 
@@ -21,7 +21,7 @@ is implemented, with its own boolean generator.
 65 languages now.  The prune to 65 removed the four ordinary imperative
 languages in costume (DINAC, MyScript, Basicfuck, Nevermind); the
 criterion, the bands below it, and the floor are in
-[limitations](limitations.md#curation-what-the-collection-can-afford-to-lose).
+[limitations](limitations.md#curation).
 
 **Live: the second band, 65 -> 60.**  It exhausts the same criterion --
 Suptiftam, Lamfunc, `function x(y)`, Between, Point Break.  All five are
@@ -31,13 +31,12 @@ goes with them.
 
 Two costs to pay before taking it, neither a blocker:
 
-- **Suptiftam is the worked example** in [walls](walls.md)'s
-  verification-boundaries section -- the program whose unbounded frame
+- **Suptiftam is the worked example** for the program whose unbounded frame
   growth is what `run_until_halt_or_ancestor` decides and
   `run_until_halt_or_cycle` cannot.  It is also one of the six languages
   where an exhausted read is a *value*.  Re-point both at another language
   that defines `frame_entry_key` before deleting it, the way the prune to
-  65 re-pointed three tests at Flowchart, or the wall loses its evidence.
+  65 re-pointed three tests at Flowchart.
 - **The 0%-upside list** in [limitations](limitations.md) names Point Break
   and Suptiftam among the eight generators the reorder screen closes.  The
   list is re-run, not cited, so it will shrink on its own -- but the
@@ -84,9 +83,9 @@ Three figures moved with their generators, and one verdict was lost:
 | Sophie | 16.4% | 8.1% | the subfunction merge, `cbca1f46` |
 | COD | 0% | 3.2% | the dependency reduction, `a25f266f` |
 
-Polynomial's and Modulous's language walls stand ([walls](walls.md)); Dig
-and Flowchart are grid placements, so 2D layout surgery rather than renaming
-a branch operand.
+Polynomial and Modulous have no input-order route to pursue. Dig and
+Flowchart are grid placements, so need 2D layout surgery rather than a
+renamed branch operand.
 
 **For the no-input languages the wire may be renaming.**  Their inputs are
 substituted rather than read from a stream, so building the permuted table
@@ -106,8 +105,7 @@ exactly that, and wii2d's budget machinery is the next likely instance.  **A
   characters and dense n=13 in 146540, every row executed.  Re-examine the
   convention only if the arity ever matters -- it is fenced by the invariant
   in `tests/tools/test_boolean_parameterized.py`, and Dotlang and 2dFish
-  were removed rather than exempted from it.  The audit is in
-  [walls](walls.md#wii2d-a-wall-of-the-embed-convention).
+  were removed rather than exempted from it.
 
 - **Minifuck's mux round loop.**  The rest of the sculpt closed (pool code
   in `5b35c66b`, the named accumulator from nine); the round loop did not,
@@ -133,4 +131,4 @@ exactly that, and wii2d's budget machinery is the next likely instance.  **A
   the partner maps `d -> amount - d` with the amount free in the window --
   a derived, unbuilt alignment controller.  Build it only if a ~20x
   thirteen-input build cost (~430k plan ops, ~8MB templates, ~226 ops per
-  merge) is acceptable; the walls around it are in [walls](walls.md).
+  merge) is acceptable.
