@@ -13,7 +13,6 @@ Boolean generation has no resource wall: twelve inputs round-trip within the
 projected time and memory budget. Future performance work belongs in extraction,
 not subtree sharing or a denser layout.
 
-- Validate extraction on anti-aliased camera or scan input.
 - Derive the lattice probe length from `UNIT` before supporting smaller units.
 - Define behavior for genuinely ambiguous arrowheads.
 
