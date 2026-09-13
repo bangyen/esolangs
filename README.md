@@ -93,7 +93,7 @@ the page.  [usage](docs/usage.md#debugging) names every key.
 <!-- EXAMPLES:START -->
 
 Ready-to-run programs are committed under [`examples/`](examples/):
-`examples/boolean/` holds a truth-table program for each of the 65
+`examples/` holds a truth-table program for each of the 65
 languages with a boolean generator.  It regenerates via
 `scripts/write_examples.py`.
 
