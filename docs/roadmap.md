@@ -45,13 +45,12 @@ Unwired, with real upside:
 
 | Generator | Upside | Generator | Upside |
 | --- | --- | --- | --- |
-| `%^2^-1` | 36.3% | 123 | 13.0% |
-| Interprogck8 | 21.1% | BF-PDA | 12.6% |
-| Dig | 19.8% | ArrowQueue | 12.4% |
-| Flowchart | 17.1% | Sophie | 8.1% |
-| Minifuck | 13.1% | WII2D | 5.1% |
-| BrainIf | 4.9% | COD | 3.2% |
-| SLOW ACV MAMMALIAN | 3.2% | | |
+| Interprogck8 | 21.1% | 123 | 13.0% |
+| Dig | 19.8% | BF-PDA | 12.6% |
+| Flowchart | 17.1% | ArrowQueue | 12.4% |
+| Minifuck | 13.1% | Sophie | 8.1% |
+| BrainIf | 4.9% | WII2D | 5.1% |
+| SLOW ACV MAMMALIAN | 3.2% | COD | 3.2% |
 
 Everything else screens under 3%; every wired generator screens at 3.1%
 residual (Back) or less.  COD's is concentrated in 12 of 256 tables.
