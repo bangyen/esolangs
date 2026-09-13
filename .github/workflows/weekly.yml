@@ -59,6 +59,13 @@ jobs:
     # fast tests unexercised at these interpreters for a week, and they are
     # the cheap part of the bill.
     #
+    # Bare `pytest` is also what makes this the *only* runner that sees the
+    # `weekly` marker.  `scripts/verify.py` appends `-m "not weekly"` on a
+    # --full run and `-m "not slow"` otherwise, so the two high-arity probes
+    # -- the twelve-input escape contract and `%^2^-1`'s thirteen-input fold,
+    # 142.6s between them -- reach a machine here and nowhere else.  Deleting
+    # this step's plainness silently retires both.
+    #
     # No coverage gate here.  `check_diff_coverage.py` is diff-scoped -- it
     # judges the files a *branch* touches -- and a scheduled run on `main`
     # has no merge base, so the gate would skip and print nothing useful.

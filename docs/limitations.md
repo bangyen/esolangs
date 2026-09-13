@@ -13,6 +13,8 @@ structural arguments are in [walls](walls.md).
   section per generator that moved
 - [Expensive but uncapped](#expensive-but-uncapped) -- growth laws for the
   generators that never refuse
+- [Curation](#curation-what-the-collection-can-afford-to-lose) -- the prune
+  to 65, the bands below it, and the floor at 31
 - [Assessed and rejected](#assessed-and-rejected) -- Streetcode lowering,
   Pinyin
 - [Spec and engine boundaries](#spec-and-engine-boundaries) -- where a wiki
@@ -26,12 +28,12 @@ structural arguments are in [walls](walls.md).
   raises `HaltError`.
 - Character input is line-delimited: one line supplies one character.
 - A blank line reads as `0`, and that `0` is **chosen** everywhere.  Audited
-  against the current page of all eight sites that reach it -- the six
-  guards `test_input_convention.py` finds by AST (Alight, DINAC, Jaune,
+  against the current page of all seven sites that reach it -- the five
+  guards `test_input_convention.py` finds by AST (Alight, Jaune,
   LaserFuck, Streetcode, Suffolk), plus Dig, which zeroes its mole by
   leaving the read unset, and Packlang, which takes `io.input_char`
-  directly.  Two pages specify the opposite and are knowingly overridden:
-  DINAC "Empty input returns \n", Packlang "Empty input returns a
+  directly.  One page specifies the opposite and is knowingly overridden:
+  Packlang "Empty input returns a
   newline".  Five say nothing about an empty read.  Suffolk alone names the
   value -- "At EOF, instead set the internal state integer to 0" -- but that
   is EOF, which is a *stop* here rather than a state change, so it
@@ -64,7 +66,7 @@ can mark is a boundary, not a bug list, and it follows from what `ip`
 A machine declares `ip_shape`, read by `getattr` like `self_halts`.  The
 census over the committed examples, at the current page:
 
-- **`offset` (48).** A plain int counting characters.  The default, which is
+- **`offset` (45).** A plain int counting characters.  The default, which is
   why these declare nothing.
 - **`grid` (11).** The first two parts are a row and a column, any rest a
   heading.  COD flattens one four-tuple per live cod, so the width varies
@@ -72,17 +74,18 @@ census over the committed examples, at the current page:
 - **`line` (2).** Algebraic Programming Language and Interprogck8 start
   their position with a line number.  The **whole line** is marked, because a
   line is all they distinguish -- no column is available to be right about.
-- **`opaque` (8).** 3D Brainfuck, Circuit Diagram, Eval, Forbin, Forþ,
-  Grapheme, MyScript, function x(y).  These have a position that is not a
+- **`opaque` (7).** 3D Brainfuck, Circuit Diagram, Eval, Forbin, Forþ,
+  Grapheme, function x(y).  These have a position that is not a
   place in the source: a frame stack of one cursor per frame, a call depth
   paired with a cursor, a 3-D point and heading, or -- Circuit Diagram --
   nothing at all, since a generation advances the whole drawing.  **Nothing
   is marked**, and the header's raw `ip` is what makes the absence legible.
 
-Six of those eight were marked in the *wrong* place until the trait existed:
-a frame stack and a cell are both tuples of small ints landing inside the
-rectangle, so a fit-probe cannot separate them and the classification came
-from reading all twenty `ip` implementations.  **Being in range is not being
+Most of those seven were marked in the *wrong* place until the trait
+existed: a frame stack and a cell are both tuples of small ints landing
+inside the rectangle, so a fit-probe cannot separate them and the
+classification came from reading every `ip` implementation that reports
+one.  **Being in range is not being
 right.** An undeclared tuple is therefore refused rather than guessed at,
 and `"opaque"` is a declaration so that "nobody has classified this" stays
 distinct from "somebody did, and the answer is nowhere".
@@ -136,7 +139,7 @@ measured true.
 
 ## Boolean generator caps
 
-Current caps are deliberate.  Measured ceilings, from a sweep of all 69
+Current caps are deliberate.  Measured ceilings, from a sweep of all 65
 boolean generators over n=1..10 against a dense pseudo-random table and
 parity -- both shapes, since several generators cover one and refuse the
 other at the same arity:
@@ -478,6 +481,66 @@ run, so an estimator for them would be a per-language size model fitted to
 measurements -- a frozen table, kept by hand, drifting behind the
 generators it claims to describe.  The growth laws above answer the same
 question and a test keeps them true.
+
+## Curation: what the collection can afford to lose
+
+69 languages became 65.  The question this answers is not "which are worst"
+but "which cost the most and teach the least", and the test is the one the
+transpilers were deleted under: 2069 lines that served nothing.
+
+**The criterion, in one line:** an ordinary imperative language in costume
+-- most interpreter code per unit of esoterica, a generator that is a
+shared decision-tree shim rather than a construction, and nothing
+downstream that depends on it.
+
+**Taken (69 -> 65).** DINAC (980 interpreter lines, a statically typed
+indentation-structured Python-alike), MyScript (737, a JavaScript reskin
+with first-class functions and arrays), Basicfuck (524, a structured
+C-like source compiled to cells -- the brainfuck association is the name),
+Nevermind (353, BASIC with renamed keywords).  4725 lines of interpreter
+and test, ~190 of shim, no construction lost.
+
+### How much further it goes
+
+The floor is **31**: the 22 languages that own a generator module, the six
+the reorder screen still shows upside on (Dig, Flowchart, BF-PDA,
+ArrowQueue, Sophie, BrainIf), Polynomial and Modulous for their language
+walls, and brainfuck, which Factor's decoder delegates to.  Below 31 a
+shipped construction goes with the language.  `notes` is not the ledger --
+re-derive the set from `LANGUAGES` and the generator module of each entry,
+which is what makes it checkable.
+
+| Target | Cut | What it costs |
+| --- | --- | --- |
+| 65 | DINAC, MyScript, Basicfuck, Nevermind | nothing |
+| 60 | Suptiftam, Lamfunc, `function x(y)`, Between, Point Break | nothing; exhausts the criterion |
+| 55 | Factor, 3D Brainfuck, Home Row, S*bleq, Decleq | family redundancy only |
+| 50 | Jaune, Circlefuck, Suffolk, Back, Container | breadth |
+
+**60 is the end of the criterion.**  Past it the argument changes, and
+saying so is the point of the table: 55 cuts *duplicates* -- brainfuck
+re-encoded (Factor) or dimension-bumped (3D Brainfuck, Home Row), and two
+of the six OISC/register machines where AddSubJump, RAM0, Minsky Swap and
+Collatz Multiverse already cover the shape.  50 cuts languages that are
+genuinely distinct and merely cheap to lose; Container's tick-based
+dataflow model is the one to argue about first.
+
+45, 40 and 35 are reachable from the 19 left over, but only
+arithmetically.  Every *construction* survives to 31; shipped
+**optimization** work does not, and it starts going at 55 -- Factor's
+barren-chunk gate took its decode from 60.0s to 0.041s a row, and bit~'s
+fixed scratch window is a 16-65x rework sitting in the leftover pool.  At
+35 this is a set of constructions, not a survey of languages, which is a
+different repository.
+
+**Two traps, both hit while taking the first band.**  A language can be
+load-bearing without appearing in any list of results: three tests used
+DINAC as the *vehicle* for a feature that outlives it (the debugger's
+input-mismatch warning, `describe`'s `eof_is_a_value`, and the VM's copy of
+that trait), and they were re-pointed at Flowchart rather than dropped.
+And a prose count is a dependency: `vm.py`'s ip-shape census, the
+empty-input audit above, and the `opaque` list all name languages by hand
+and all needed re-measuring.  Grep the display name, not just the id.
 
 ## Assessed and rejected
 

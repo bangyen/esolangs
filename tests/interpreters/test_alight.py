@@ -304,6 +304,20 @@ class TestErrors:
         with pytest.raises(HaltError, match="walked off the grid"):
             run(["begin;;;"], ScriptedIO())
 
+    def test_naming_an_undeclared_variable_is_a_runtime_error(self) -> None:
+        """``out``/``inp`` take an *existing* name, and say so when it is not.
+
+        A well-formed name that was never ``var``-declared is a runtime
+        failure rather than a load one: the grid parses, the walker reaches
+        the command, and only then is there nothing to read.  That is the
+        HaltError/ValueError split this class is about, on the one command
+        pair that resolves a name instead of creating it.
+        """
+        with pytest.raises(HaltError, match="no such variable: 'c'"):
+            run(["begin;out c;end;"], ScriptedIO("1\n"))
+        with pytest.raises(HaltError, match="no such variable: 'c'"):
+            run(["begin;inp c;end;"], ScriptedIO("1\n"))
+
     def test_an_unknown_command_is_malformed(self) -> None:
         with pytest.raises(ValueError, match="unknown command"):
             run(["begin;frobnicate x;end;"], ScriptedIO())

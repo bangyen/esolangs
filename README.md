@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-Interpreters and boolean-circuit generators for 69 esoteric languages.
+Interpreters and boolean-circuit generators for 65 esoteric languages.
 `generate` takes a truth table and returns a program computing it;
 `verify` runs that program on every row and checks what it answers.
 

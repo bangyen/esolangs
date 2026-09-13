@@ -1,7 +1,7 @@
 """The step path and :func:`esolangs.run` must agree, or say why they cannot.
 
 A third blind pass drove the languages through the debugger instead of
-through ``run`` and scored 62 of 69, which is the interesting number: the
+through ``run`` and scored 58 of 65, which is the interesting number: the
 seven it lost were not wrong answers but *unreachable* ones.  Six kept their
 answer on the step after the halt and :meth:`Debugger.step` refused to take
 it; the seventh, Suffolk, returned the right answer from ``run`` and raised
@@ -82,7 +82,7 @@ class TestSteppingReachesTheSameAnswer:
 
     @pytest.mark.slow
     def test_every_steppable_language_agrees_with_run(self) -> None:
-        """62/69 was six refused dump steps and one raise, not seven wrong bits."""
+        """58/65 was six refused dump steps and one raise, not seven wrong bits."""
         table = "0110"
         disagreed = []
         # Counted, because a filter that quietly excluded everything would
@@ -109,9 +109,9 @@ class TestSteppingReachesTheSameAnswer:
                 if got != want:
                     disagreed.append(f"{name} row {row}: stepped {got!r} ran {want!r}")
         assert not disagreed, "\n".join(disagreed)
-        # 69 languages, less A Painter Ant and the three that answer by
+        # 65 languages, less A Painter Ant and the three that answer by
         # diverging, times four rows.
-        assert checked == 65 * 4, checked
+        assert checked == 61 * 4, checked
 
     def test_suffolk_no_longer_disagrees_with_itself(self) -> None:
         """``run`` answered and the debugger raised, for the same call."""
@@ -275,4 +275,4 @@ def test_stepping_agrees_at_a_wider_arity_and_shape(
                 disagreed.append(f"{name} row {row}: stepped {got!r} ran {want!r}")
     assert not disagreed, "\n".join(disagreed)
     # A filter that quietly excluded everything would leave this vacuous.
-    assert checked == 65 * len(_WIDER_ROWS), checked
+    assert checked == 61 * len(_WIDER_ROWS), checked

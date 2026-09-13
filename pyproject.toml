@@ -159,18 +159,21 @@ addopts = [
     "--strict-config",
     "--verbose",
     "--tb=short",
-    # Two workers.  Not a throughput choice -- a higher count saturates a
-    # 10-core machine and makes the desktop unusable while the suite runs,
-    # which is the cost that actually gets paid on an interactive box.  What
-    # makes two tolerable is the tier split below: the inner loop is the
-    # `fast` band, 48.7s of test time rather than the 193.8s it was when
-    # every execution sweep and subprocess ran on every invocation, so two
-    # workers clear it in roughly the time four used to need for eight times
-    # the work.
+    # Four workers.  This was two, on the argument that a higher count
+    # saturates a 10-core machine and makes the desktop unusable while the
+    # suite runs -- the cost that actually gets paid on an interactive box.
+    # Four is the revision of that trade, not its abandonment: it leaves
+    # six cores, and the band that pays for it is the whole-suite run.
+    # Measured on the same tree and the same test set: `just test-full`
+    # spent 363.7s in pytest at two workers and 251.3s at four, 400s of
+    # wall against 290s.  Deferring the `weekly` marker took it to 212.9s.
+    # The tier split below is what keeps the inner loop cheap either way:
+    # it is the `fast` band, 48.7s of test time rather than the 193.8s it
+    # was when every execution sweep and subprocess ran on every invocation.
     # CI passes "-n auto" explicitly, so it is unaffected by this default.
     # Override per-run with "-n auto", "-n 8", or "-n 0" on the command line.
     "-n",
-    "2",
+    "4",
 ]
 markers = [
     # The top tier, and the only one CI deselects.  353 of 10865 tests that
@@ -179,6 +182,22 @@ markers = [
     # `.github/workflows/weekly.yml` runs the whole suite on a schedule.
     # `just test` and `just test-full` do not deselect it locally.
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    # A tier above `slow`, and a cost tier rather than a kind: two tests are
+    # 142.6s of the slow band's ~182s at four workers, and the other 347 are
+    # ~40s between them.  Measured with `--durations=0`, not estimated.
+    #
+    # Both are high-arity probes of a claim documented elsewhere -- every
+    # generator raising only `EsolangError` at twelve inputs, and `%^2^-1`
+    # reaching a generic thirteen-input table -- so they are evidence for
+    # `walls.md` and `limitations.md` and are not deletable.  What they are
+    # not is *per-run* evidence: neither has ever failed on a change that
+    # the rest of the band passed, and both probe an arity nothing else in
+    # the suite reaches, so a week is the right sampling interval.
+    #
+    # `just test-full` and per-PR CI deselect this; `.github/workflows/
+    # weekly.yml` runs bare `pytest -n auto` and so picks it up by
+    # deselecting nothing.  Run one by hand with `-m weekly`.
+    "weekly: the two high-arity probes, left to the weekly workflow",
     # The middle tier.  The rule is behavioural, not a stopwatch reading: a
     # test is `medium` if it runs a generated program through an interpreter
     # or drives the CLI (or git) as a subprocess.  That is what costs whole

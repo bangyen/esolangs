@@ -268,7 +268,7 @@ STEPS = [
     # The contract exceptions.py states, executed: no interpreter may leak a
     # raw Python error to its caller.  Bare, it checks only the languages
     # this branch touched, which is why it is affordable here; CI runs
-    # --all (69 languages, 68s).
+    # --all (65 languages, 68s).
     (
         "exception leaks",
         [*PY, "scripts/verify_no_exception_leaks.py"],
@@ -702,16 +702,26 @@ def main() -> int:
             # skips it; CI runs `pre-commit run --all-files` with no SKIP
             # (ci.yml:28), so the hook still guards the config itself.
             step_env = dict(step_env, SKIP="mypy")
-        if only is None and not full:
-            if name == "pytest":
-                cmd = [*cmd, "-m", "not slow"]
-            elif name == LINE_STEP:
-                # Not argv: the command ends in `pytest . -q` under `uv run
-                # --isolated`, so an appended flag would land after the path
-                # argument and be read by uv's pytest, not composed with the
-                # rest of the step's own options.  PYTEST_ADDOPTS is applied
-                # by pytest itself wherever it ends up running.
-                step_env = dict(env, PYTEST_ADDOPTS=_line_addopts(env))
+        if only is None and name == "pytest":
+            # A default run leaves the whole slow band to CI.  A --full run
+            # takes the band but not the two `weekly` probes inside it,
+            # which are 142.6s of its ~182s and are sampled once a week by
+            # `.github/workflows/weekly.yml` -- which runs bare `pytest`
+            # rather than this script, so it is unaffected by either flag.
+            #
+            # Appended to argv rather than set in `addopts`, because pytest
+            # *prepends* addopts: a default there would sit before the
+            # caller's own `-m` and lose to it, and `just test-quick`'s
+            # `-m 'not slow and not medium'` would then re-admit the band it
+            # exists to skip.
+            cmd = [*cmd, "-m", "not weekly" if full else "not slow"]
+        if only is None and not full and name == LINE_STEP:
+            # Not argv: the command ends in `pytest . -q` under `uv run
+            # --isolated`, so an appended flag would land after the path
+            # argument and be read by uv's pytest, not composed with the
+            # rest of the step's own options.  PYTEST_ADDOPTS is applied
+            # by pytest itself wherever it ends up running.
+            step_env = dict(env, PYTEST_ADDOPTS=_line_addopts(env))
         if shutil.which("uv") is None and ("bandit" in name or "(uv)" in name):
             print(f"[skip] {name}: uv not installed")
             continue

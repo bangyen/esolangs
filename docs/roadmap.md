@@ -5,8 +5,9 @@ Only live work belongs here.  Completed findings and negative results go to
 
 ## New interpreters
 
-The candidate list is empty.  DINAC, Alight, function x(y), Packlang and
-Interprogck8 are implemented; Pinyin is rejected.  Both outcomes are
+The candidate list is empty.  Alight, function x(y), Packlang and
+Interprogck8 are implemented; Pinyin is rejected, and DINAC was
+implemented and then pruned (see below).  Both outcomes are
 recorded in [limitations](limitations.md) -- Pinyin's routing pinned and its
 two-input program priced at 4 characters, but its triples did not pin: the
 page's own selection rule reroutes 8 of 23 Hello, world! characters, and its
@@ -14,6 +15,37 @@ truth machine on input 1 is unreachable under all 384 readings.
 
 The list refills by survey rather than by waiting.  APL arrived that way and
 is implemented, with its own boolean generator.
+
+## Curation: the prune to 60
+
+65 languages now.  The prune to 65 removed the four ordinary imperative
+languages in costume (DINAC, MyScript, Basicfuck, Nevermind); the
+criterion, the bands below it, and the floor are in
+[limitations](limitations.md#curation-what-the-collection-can-afford-to-lose).
+
+**Live: the second band, 65 -> 60.**  It exhausts the same criterion --
+Suptiftam, Lamfunc, `function x(y)`, Between, Point Break.  All five are
+ordinary imperative or functional languages whose generator is a shared
+decision-tree shim in `other.py` or `parameterized.py`, so no construction
+goes with them.
+
+Two costs to pay before taking it, neither a blocker:
+
+- **Suptiftam is the worked example** in [walls](walls.md)'s
+  verification-boundaries section -- the program whose unbounded frame
+  growth is what `run_until_halt_or_ancestor` decides and
+  `run_until_halt_or_cycle` cannot.  It is also one of the six languages
+  where an exhausted read is a *value*.  Re-point both at another language
+  that defines `frame_entry_key` before deleting it, the way the prune to
+  65 re-pointed three tests at Flowchart, or the wall loses its evidence.
+- **The 0%-upside list** in [limitations](limitations.md) names Point Break
+  and Suptiftam among the eight generators the reorder screen closes.  The
+  list is re-run, not cited, so it will shrink on its own -- but the
+  sentence's count needs the same edit.
+
+Do not take the band below it (60 -> 55) on this criterion: it cuts family
+duplicates rather than costume, which is a different argument and is
+recorded as such.
 
 ## Research: take what the reordering screen names
 

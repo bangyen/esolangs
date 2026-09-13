@@ -88,7 +88,7 @@ class _StepMachine(Protocol):
         that interpreter's state is -- a tape and two cursors here, a grid
         and a heading there -- so the positions are not a schema and are not
         named: there is no arrangement that would mean the same thing across
-        sixty-nine machines.  It exists to be compared and hashed, which is
+        sixty-five machines.  It exists to be compared and hashed, which is
         what a cycle detector needs and all it needs.
 
         Read ``ip``, ``memory``, ``stack`` and ``output`` for state a caller
@@ -1433,7 +1433,7 @@ def machine_traits(language: str) -> dict[str, bool]:
     import importlib
 
     # No membership check beyond ``resolve``: it only ever returns a name in
-    # the registry, and the registry and ``RUNNERS`` are the same 69 names,
+    # the registry, and the registry and ``RUNNERS`` are the same 65 names,
     # so a second guard here would be a line no input can reach.
     name = resolve(language)
     module = importlib.import_module(f"esolangs.interpreters.{RUNNERS[name][0]}")
@@ -1493,5 +1493,5 @@ def make_vm(language: str, program: str | os.PathLike[str], stdin: str = "") -> 
         # Most interpreters parse in their constructor and signal a
         # malformed program with a plain ``ValueError``.  ``run``
         # re-raises those as ``ProgramError``; this did not, so
-        # ``make_vm("brainfuck", "]")`` leaked one -- for 48 of the 69.
+        # ``make_vm("brainfuck", "]")`` leaked one -- across most of the registry.
         raise ProgramError(str(exc)) from exc
