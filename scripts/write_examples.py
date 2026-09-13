@@ -1,7 +1,7 @@
 """Write the committed examples from their generators.
 
 Every committed example is exactly what its generator produces today: the
-boolean programs under ``examples/boolean`` come from the boolean generators.
+boolean programs under ``examples`` come from the boolean generators.
 ``tests/scripts/test_examples.py`` asserts that; run this script to refresh
 the files after a generator changes.
 
@@ -128,9 +128,9 @@ def write_boolean_manifest() -> None:
     out.  Nothing checked the manifest at all until then, so a note added
     to a language left the committed table describing the one before it.
     """
-    path = EXAMPLES / "boolean" / "MANIFEST.md"
+    path = EXAMPLES / "MANIFEST.md"
     path.write_text(boolean_manifest_text(), encoding="utf-8")
-    print(f"wrote     examples/boolean/{path.name}")
+    print(f"wrote     examples/{path.name}")
 
 
 SETS = {
@@ -140,7 +140,7 @@ SETS = {
 
 def write_set(name: str) -> None:
     """Write one example directory from its generators, reporting each file."""
-    directory = EXAMPLES / name
+    directory = EXAMPLES
     directory.mkdir(parents=True, exist_ok=True)
     for stem, generated in SETS[name]():
         path = directory / f"{stem}.txt"
@@ -151,7 +151,7 @@ def write_set(name: str) -> None:
         existing = path.read_text(encoding="utf-8") if path.exists() else None
         path.write_text(program, encoding="utf-8")
         status = "unchanged" if existing == program else "wrote"
-        print(f"{status:9} examples/{name}/{stem}.txt")
+        print(f"{status:9} examples/{stem}.txt")
     if name == "boolean":
         write_boolean_manifest()
 
