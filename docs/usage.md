@@ -28,6 +28,7 @@ steps rather than the result, they are `generate`, `encode_inputs`, `run`,
 <!-- PUBLIC-API:START -->
 
 - `esolangs.check_program` -- return `program` as source, having checked what can be checked here
+- `esolangs.check_runnable` -- reject a program that is a path or an unfilled template
 - `esolangs.check_stdin` -- refuse `stdin` that cannot be what `language` wants to read
 - `esolangs.describe` -- return a structured description of `language`
 - `esolangs.encode_inputs` -- return the stdin that feeds `bits` to a `language` program

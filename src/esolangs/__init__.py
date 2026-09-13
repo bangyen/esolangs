@@ -10,7 +10,8 @@ summary), and ``list_languages``.
 ``encode_inputs`` and ``read_answer`` are the two halves of feeding a
 program and judging what it printed; ``check_stdin`` says whether stdin is
 what a language wants before anything runs; ``check_program`` applies the
-load-time checks on their own.
+load-time checks on their own; ``check_runnable`` rejects source that is
+actually a path or an unfilled template.
 
 ``evaluate`` and ``verify`` are the round trip those compose into: they
 generate a program for a truth table, run it on every row, and return the
@@ -122,6 +123,7 @@ __all__ = [
     "TruthTableError",
     "UnknownLanguageError",
     "check_program",
+    "check_runnable",
     "check_stdin",
     "describe",
     "encode_inputs",
