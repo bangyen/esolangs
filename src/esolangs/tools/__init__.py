@@ -4,6 +4,7 @@ from esolangs.tools.algebraic_programming_language import algebraic_programming_
 from esolangs.tools.alight import alight
 from esolangs.tools.b_tapemark import b_tapemark
 from esolangs.tools.circuit_diagram import circuit_diagram
+from esolangs.tools.crement import crement
 from esolangs.tools.cvnc import cvnc
 from esolangs.tools.egl import egl
 from esolangs.tools.fargo import fargo
@@ -99,6 +100,7 @@ __all__ = [
     "cod",
     "collatz_multiverse",
     "container",
+    "crement",
     "cvnc",
     "decleq",
     "dig",
