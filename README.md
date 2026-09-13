@@ -12,7 +12,10 @@ four odd input shapes, templates, reading an answer back, the debugger.
 [roadmap](docs/roadmap.md) tracks live work, [limitations](docs/limitations.md)
 records contracts, and the rest of [`docs/`](docs/README.md) is indexed there.
 
-## Use
+Start with the [CLI](#command-line), [Python API](#python-api), or
+[contribution guide](docs/CONTRIBUTING.md).
+
+## Command line
 
 ```bash
 just install-dev                 # installs into ./.venv
@@ -27,6 +30,8 @@ esolangs generate brainfuck 0110 > bf.txt
 printf '0\n1\n' | esolangs debug --steps 20 --watch-cell 0 brainfuck bf.txt
 just test
 ```
+
+## Python API
 
 ```python
 import esolangs
