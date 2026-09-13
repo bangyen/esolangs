@@ -5,15 +5,22 @@ Only live work belongs here. Completed findings and negative results go to
 
 ## New interpreters
 
-Implement the surveyed two-dimensional candidates in this order:
+Implement the surveyed candidates in this order:
 
 - EGL: the first target; its deterministic grid, numeric I/O and examples fit
   the package.  Derive and execute a boolean generator with the interpreter.
 - B-tapemark: admit it once a named boolean construction is derived; the
   interpreter spec and its character-I/O examples are otherwise sufficient.
+- Vandevelo: resurrected from the old walls.  Compile tables as formulas from
+  `Inp`, `::` and negation, then prove that lazy self-reference detects the
+  selected loop without rejecting terminating evaluation.
 - Nopstacle: conditional on a parameterized halt-versus-loop generator.  Its
   no-I/O model is admissible, but the construction is the work, not an
   interpreter-only addition.
+- Crement: resurrected from the old walls.  Its deterministic self-modifying
+  machine and two-counter construction are sufficient, but admission remains
+  conditional on a derived and executed parameterized halt-versus-loop
+  generator.
 
 Alight, function x(y), Packlang and
 Interprogck8 are implemented; Pinyin is rejected, and DINAC was
