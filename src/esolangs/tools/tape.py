@@ -93,7 +93,7 @@ class _End:
 _Entry = _Cmd | _If | _MoveLeft | _Out | _End
 
 
-def brainif(truth_table: str) -> str:
+def brainif(truth_table: str, width: int | None = None) -> str:
     """Build a BrainIf program computing the given truth table.
 
     ``truth_table`` is a binary string of length 2**n indexed by the inputs
@@ -227,6 +227,17 @@ def brainif(truth_table: str) -> str:
             # this to ``_End``, and a wider union would not narrow.
             _: _End = entry
             lines.append("")
+    if width is not None and any(len(line) > width for line in lines):
+        # The interpreter recognizes commands by substring, so these are the
+        # language's short spellings, not abbreviations invented by the
+        # generator.  Line count is unchanged; the resolved goto targets stay
+        # valid.
+        lines = [
+            line.replace("increment", "inc")
+            .replace("move right", "right")
+            .replace("move left", "left")
+            for line in lines
+        ]
     return "\n".join(lines)
 
 

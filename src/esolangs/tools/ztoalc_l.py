@@ -132,7 +132,7 @@ def _slots(length: int) -> tuple[int, list[int]]:
     )
 
 
-def ztoalc_l(truth_table: str) -> str:
+def ztoalc_l(truth_table: str, width: int | None = None) -> str:
     """Build a ZTOALC L program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -164,6 +164,9 @@ def ztoalc_l(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     cmds = _commands(truth_table, n)
+    if width is not None and "r = u[t[s]][v]" in cmds and width < 14:
+        at = cmds.index("r = u[t[s]][v]")
+        cmds[at : at + 1] = ["r = t[s]", "r = u[r]", "r = r[v]"]
     start, slots = _slots(len(cmds))
     lines = [""] * max(slots)
     lines[0] = str(start)

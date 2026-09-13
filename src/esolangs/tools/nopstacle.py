@@ -6,9 +6,10 @@ from esolangs.tools.helpers import _validate_truth_table
 __all__ = ["instantiate_nopstacle", "nopstacle"]
 
 _PREFIX = "Nopstacle Boolean prototype\n"
+_WIDTH = "width "
 
 
-def nopstacle(truth_table: str) -> str:
+def nopstacle(truth_table: str, width: int | None = None) -> str:
     """Build a template specialized by :func:`instantiate_nopstacle`.
 
     Nopstacle has no input instruction, so the template carries the truth
@@ -21,7 +22,8 @@ def nopstacle(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     slots = "".join(f"{{X{i}}}" for i in range(n))
-    return f"{_PREFIX}{truth_table}\n{slots}"
+    template = f"{_PREFIX}{truth_table}\n{slots}"
+    return template if width is None else f"{template}\n{_WIDTH}{width}"
 
 
 def instantiate_nopstacle(template: str, bits: list[int]) -> str:
@@ -32,9 +34,12 @@ def instantiate_nopstacle(template: str, bits: list[int]) -> str:
     and halts; with a space there it turns right and crosses copies forever.
     """
     lines = template.splitlines()
-    if len(lines) != 3 or lines[0] != _PREFIX.rstrip("\n"):
+    if len(lines) not in (3, 4) or lines[0] != _PREFIX.rstrip("\n"):
         raise ValueError("not a Nopstacle Boolean prototype template")
-    truth_table, slots = lines[1:]
+    truth_table, slots = lines[1:3]
+    constrained = len(lines) == 4 and lines[3].startswith(_WIDTH)
+    if len(lines) == 4 and not constrained:
+        raise ValueError("malformed Nopstacle width")
     n = _validate_truth_table(truth_table)
     expected_slots = "".join(f"{{X{i}}}" for i in range(n))
     if slots != expected_slots:
@@ -44,6 +49,8 @@ def instantiate_nopstacle(template: str, bits: list[int]) -> str:
 
     row = sum(bit << (n - 1 - i) for i, bit in enumerate(bits))
     selector = "#" if truth_table[row] == "0" else " "
+    if constrained:
+        return f" {selector}\n##".rstrip()
     encoded_table = truth_table.replace("0", " ").replace("1", "#")
     encoded_bits = "".join("#" if bit else " " for bit in bits)
     width = max(2, len(encoded_table), len(encoded_bits))

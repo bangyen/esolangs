@@ -40,8 +40,17 @@ def test_three_input_tables(table: str) -> None:
 
 def test_measured_sizes() -> None:
     assert [len(tools.b_tapemark("0" * (2**n))) for n in range(1, 5)] == [
-        78,
-        420,
-        1440,
-        4152,
+        72,
+        356,
+        1204,
+        3460,
     ]
+
+
+def test_render_has_no_blank_axis() -> None:
+    """Straight corridors do not retain wholly empty rows or columns."""
+    rows = tools.b_tapemark("01101001").splitlines()
+    width = max(map(len, rows))
+    grid = [row.ljust(width) for row in rows]
+    assert all(row.strip() for row in grid)
+    assert all(any(row[col] != " " for row in grid) for col in range(width))
