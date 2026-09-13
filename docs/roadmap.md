@@ -42,14 +42,6 @@ recorded as such.
   correctly.  Generalize that prototype through `best_input_order` and keep
   the identity on ties.
 
-- **Minifuck's mux round loop.**  The rest of the sculpt closed (pool code
-  in `5b35c66b`, the named accumulator from nine); the round loop did not,
-  and is *measured* not to.  Over 36864 round transitions at exhaustive n=3
-  no round moved a row above the frontier, but 27656 moved one below it, so
-  the post-fix column is not predictable without walking.  Reopen only with
-  a rule for the `_mux_probe` cascade -- now 69% of the build -- not a wider
-  search.
-
 - **ArrowQueue reusable drain.**  Ship the verified deep-fold drain only if
   a proof makes folding meaningfully testable at `n >= 5`; current coverage
   does not reach its crossover.
