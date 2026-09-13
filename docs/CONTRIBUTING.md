@@ -4,6 +4,9 @@ Add stable, deterministic languages verifiable through this repository's I/O
 model.  Each needs a generator, or a documented reason one is impossible --
 record rejections in [limitations](limitations.md).
 
+Read the [architecture overview](architecture.md) for how registration,
+generation, execution, and answer extraction connect.
+
 ## Layout
 
 | Path | Holds |
