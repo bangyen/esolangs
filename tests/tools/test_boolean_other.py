@@ -1080,22 +1080,36 @@ class TestZtoalc:
             with pytest.raises(ValueError, match="at or below 8"):
                 module.ztoalc_l("0110")
 
-    def test_the_anchor_fits_a_length_landing_on_its_capacity(self) -> None:
-        """A capacity bound is inclusive: ``capacity == length`` still fits.
+    def test_the_anchor_fits_a_length_landing_on_its_interval_end(self) -> None:
+        """An interval bound is inclusive: ``length == end`` still fits.
 
         An off-by-one at the bound silently takes the next anchor -- a
-        working program, but a needlessly larger one.  Start 6 keeps
-        exactly eight usable values (its whole trajectory), and a
-        seven-input constant table emits exactly eight commands, so the
-        bound is a real case.
+        working program, but a needlessly larger one.  Row ``(7, 6)`` ends
+        at seven, and a seven-input constant table emits eight commands, so
+        both sides of the bound are real cases.
         """
         from esolangs.tools.ztoalc_l import _commands, _slots
 
         assert len(_commands("0" * 128, 7)) == 8
-        assert _slots(8)[0] == 6
-        assert _slots(9)[0] == 18
+        assert _slots(7)[0] == 6
+        assert _slots(8)[0] == 9
         # The smallest anchor, to show the lookup is not simply constant.
         assert _slots(1)[0] == 2
+
+    def test_a_roomier_anchor_does_not_win_by_having_room(self) -> None:
+        """Selection is by ``end``, not by the first anchor with the room.
+
+        Start 9 holds 19 usable values, so a first-fit scan would answer
+        every length up to 19 with it -- but at 13 commands start 18 ends
+        on a lower line.  This is the whole point of ``end``: ignoring it
+        cost up to 2.7x at ``n == 8`` and 1.8-2.3x at ``n == 9``.
+        """
+        from esolangs.tools.ztoalc_l import _MAX_LINES, _slots, _usable_values
+
+        assert len(_usable_values(9, _MAX_LINES)) >= 13
+        assert _slots(12)[0] == 9
+        assert _slots(13)[0] == 18
+        assert max(_slots(13)[1]) < max(sorted(_usable_values(9, _MAX_LINES))[:13])
 
     def test_the_refusal_names_the_length_and_the_capacity(self) -> None:
         """The refusal reports the request and the committed ceiling.
