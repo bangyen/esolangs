@@ -41,6 +41,7 @@ that row is actually spelled for the language.
 | `decleq.txt` | Decleq | `0001` | `01` | 0 1 | '0' |
 | `dig.txt` | Dig | `0001` | `01` | 0 1 | '0' |
 | `dimensional.txt` | Dimensional | `0001` | `01` | 0 1 | '0' |
+| `egl.txt` | EGL | `0001` | `01` | 0 1 | '0' |
 | `eval.txt` | Eval | `0001` | `01` | embedded 01 | '0' |
 | `factor.txt` | Factor | `0001` | `01` | 0 1 | '0' |
 | `fargo.txt` | Fargo | `0001` | `01` | 1 | '0' |

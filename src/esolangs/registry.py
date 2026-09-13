@@ -270,6 +270,12 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.dimensional,
         id="dimensional",
     ),
+    "EGL": Language(
+        "EGL",
+        "grid_based.egl",
+        boolean=_boolean.egl,
+        id="egl",
+    ),
     "Eval": Language(
         "Eval",
         "stack_based.eval",
