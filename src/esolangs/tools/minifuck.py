@@ -10,6 +10,7 @@ import re
 from bisect import bisect_left
 from collections.abc import Callable, Iterator
 from functools import cache
+from itertools import pairwise
 
 from esolangs.tools.helpers import (
     _validate_shape,
@@ -2819,20 +2820,86 @@ def _mux_sculpt(
     return None if hit is None else hit.template()
 
 
-# Bit-reversal per byte, for reversing a row's tape about its pointer.
-_REV_BYTE = bytes(int(f"{value:08b}"[::-1], 2) for value in range(256))
+def _pascal_parity_row(n: int) -> int:
+    """Return row ``n`` of Pascal's triangle modulo two as a bitvector.
 
-
-def _rev_bits(value: int, width: int) -> int:
-    """Return the low ``width`` bits of ``value``, reversed.
-
-    Byte-reversed via the table, then shifted down by the padding: cheap
-    enough to reverse every row's tape once per build.
+    Lucas' theorem says its set positions are exactly the submasks of ``n``.
+    Multiplying the corresponding ``(1 + x**bit)`` factors therefore spells
+    the row with one shift per set bit, without a coefficient loop or table.
     """
-    size = (width + 7) // 8
-    low = value & ((1 << width) - 1)
-    full = int.from_bytes(low.to_bytes(size, "little").translate(_REV_BYTE), "big")
-    return full >> (size * 8 - width)
+    row = 1
+    bit = 1
+    while bit <= n:
+        if n & bit:
+            row ^= row << bit
+        bit <<= 1
+    return row
+
+
+def _mux_round_plan(
+    tapes: list[int],
+    ptrs: list[int],
+    parities: list[int],
+    want: list[int],
+    acc: int,
+    *,
+    flip: int,
+    guard: int,
+    round_limit: int | None,
+) -> tuple[list[int], int] | None:
+    """Return the sculpt's rewinds and their cost by the Pascal inverse.
+
+    The pointers are consecutive and sorted high to low.  For row ``i``,
+    cells ``acc-i .. acc`` form a vector ordered low to high.  A round fired
+    at earlier row ``h`` replaces its suffix ``h..i`` by one plus its prefix
+    XOR.  Its inverse is first difference on that suffix.
+
+    Let ``c[q]`` count fired rounds through row ``q``.  In the product of
+    those inverse differences, entry ``(i, q)`` is
+    ``binomial(c[q], i-q) mod 2``: choose which differences supply the
+    ``i-q`` downward steps.  Lucas' theorem makes that coefficient the bit
+    test ``(i-q) & ~c[q] == 0``.  Building the inverse one row at a time and
+    summing its columns gives the parity after every prior round directly;
+    no round is replayed on a later row.
+
+    A fired round's affine one contributes Pascal row ``selected`` at its
+    position.  ``round_limit`` reproduces the scout's strict length prune;
+    None also preserves the sculpt's rewind guard.
+    """
+    inverse_rows: list[int] = []
+    selected_through: list[int] = []
+    selected = 0
+    bias = 0
+    parity_functional = 0
+    rewinds: list[int] = []
+    cost = 0
+    for i, (tape, base_parity, target) in enumerate(
+        zip(tapes, parities, want, strict=True)
+    ):
+        inverse = 1 << i
+        for q, count in enumerate(selected_through):
+            distance = i - q
+            if distance & ~count == 0:
+                inverse ^= inverse_rows[q]
+        inverse_rows.append(inverse)
+        parity_functional ^= inverse
+
+        local = (tape >> (acc - i)) & ((1 << (i + 1)) - 1)
+        outside = base_parity ^ (local.bit_count() & 1)
+        got = flip ^ outside ^ (((local ^ bias) & parity_functional).bit_count() & 1)
+        if got != target:
+            rewind = ptrs[i] - acc + 1
+            round_cost = 3 * rewind + 1
+            if rewind > guard or (
+                round_limit is not None and cost + round_cost > round_limit
+            ):
+                return None
+            rewinds.append(rewind)
+            cost += round_cost
+            bias ^= _pascal_parity_row(selected) << i
+            selected += 1
+        selected_through.append(selected)
+    return rewinds, cost
 
 
 def _mux_scout(
@@ -2850,31 +2917,31 @@ def _mux_scout(
     ``trusted`` False means the base defeats the shadow's summary and the
     caller must run the sweep itself.
 
-    The shadow replays the sculpt loop in closed form.  The pointers never
-    move between rounds -- a round's ``<`` and ``[x`` runs are a round trip
-    -- so each row is its tape alone, the probe column is the parity law
-    :func:`_sculpt_columns` states, and a round is the walk law applied to
-    each row's rewind window.  The frontier strictly descends (a round
-    leaves every higher row's cells ``8..acc`` untouched and complements the
-    frontier row's carry), so rows above it are settled and skipped, and the
-    endgame's read, pool code and lengths are fixed by the frame constants
-    -- which is what prices a combination without building it.
+    The shadow solves the sculpt loop by its Pascal inverse.  Consecutive
+    pointers make the rounds a triangular system: reversing one round is
+    first difference, so Lucas' theorem names every coefficient of the
+    product from the number of earlier rounds.  :func:`_mux_round_plan`
+    obtains the whole firing sequence without replaying a round on any later
+    row.  The endgame's read, pool code and lengths are fixed by the frame
+    constants, which prices a combination without building it.
 
-    Two exactnesses make the answer the sweep's own.  The guard, cap and
-    refusal sites are reproduced one for one, so a combination fails here
-    exactly when its sculpt returns None.  And a combination is abandoned
-    only when its running length strictly exceeds the best completed one, so
-    it can no longer finish at or below it -- ties complete, and the winner
-    is chosen over exact lengths in sweep order.  The one live check: the
-    first column is computed both ways, and a disagreement distrusts the
-    whole scout rather than shipping from the law.
+    Two exactnesses make the answer the sweep's own.  The rewind guard and
+    refusal sites are reproduced one for one; the old cap is discharged
+    because the triangular solve visits each row once.  A combination is
+    abandoned only when its running length strictly exceeds the best
+    completed one, so it can no longer finish at or below it -- ties
+    complete, and the winner is chosen over exact lengths in sweep order.
+    The one live check: the first column is computed both ways, and a
+    disagreement distrusts the whole scout rather than shipping from the
+    law.
 
     ``rewinds_out``, when given, collects each completed combination's
     rewinds in firing order -- the one fact beyond the length that
-    :func:`_mux_rule_tail` needs to spell the build without sculpting it.
+    :func:`_mux_plan_tail` needs to spell the build without sculpting it.
     Recording is free (the pending list already holds them), and leaving
     the parameter off prices exactly as before.
     """
+    del n  # the Pascal inverse has no arity-specific step
     ms = base.ms
     if any(m.dead or m.skip for m in ms):
         return None, False
@@ -2909,15 +2976,11 @@ def _mux_scout(
     order = sorted(range(rows), key=lambda r: ptrs[r], reverse=True)
     ptrs_s = [ptrs[r] for r in order]
     want_s = [want[r] for r in order]
-    # Each row's tape reversed about its own pointer -- bit ``j`` is cell
-    # ``ptr - j`` -- so every row's rewind window is its low ``K`` bits
-    # whatever its pointer, the prefix XOR runs as maskless right shifts,
-    # and the parity delta is a shift and a popcount.  Built once: the
-    # combinations all start from this state, and ints never mutate.
-    base_tapes = [_rev_bits(ms[r].tape, ptrs[r] + 1) for r in order]
+    if any(a - b != 1 for a, b in pairwise(ptrs_s)):
+        return None, False
+    tapes_s = [ms[r].tape for r in order]
     base_len = len(base.template())
     guard = lowest - _POOL_WIDTH
-    cap = 2**n + 4
     checked = False
     best: int | None = None
     lengths: dict[tuple[int, bool], int] = {}
@@ -2927,21 +2990,16 @@ def _mux_scout(
     # bottom after a handful of rounds.  The order prices; it never picks.
     parities: list[int] | None = None
     for acc in reversed(accs):
-        # Each row's parity over cells ``8..acc`` of the *base* state --
-        # cells ``8..acc`` of a reversed row start ``ptr - acc`` bits up and
-        # run ``acc - 7`` wide.  Walked down one accumulator at a time: the
-        # window loses its top cell, so the parity flips by that one bit.
-        shifts = [p - acc for p in ptrs_s]
+        # Each row's parity over cells ``8..acc`` of the base state.  Walked
+        # down one accumulator at a time: the window loses its top cell, so
+        # its parity flips by that one bit.
         if parities is None:
             pmask = (1 << (acc - _POOL_WIDTH + 1)) - 1
-            parities = [
-                ((t >> s) & pmask).bit_count() & 1
-                for t, s in zip(base_tapes, shifts, strict=True)
-            ]
+            parities = [((t >> _POOL_WIDTH) & pmask).bit_count() & 1 for t in tapes_s]
         else:
             parities = [
-                par ^ ((t >> (s - 1)) & 1)
-                for par, t, s in zip(parities, base_tapes, shifts, strict=True)
+                par ^ ((t >> (acc + 1)) & 1)
+                for par, t in zip(parities, tapes_s, strict=True)
             ]
         for direct in (True, False):
             g = 0 if direct else 1
@@ -2987,57 +3045,22 @@ def _mux_scout(
                 if simmed is None or fast is None or fast != simmed[0]:
                     return None, False
                 checked = True
-            # Rounds reach a row lazily, when the frontier scan reads it.
-            # The scan never revisits a row -- one that agrees is settled
-            # (rows above the frontier keep their parity, the invariant
-            # above) and one that disagrees is the frontier, whose fix is
-            # the round itself -- so each row replays the rounds pending at
-            # its one examination, and rows below wherever a combination is
-            # abandoned never pay for the rounds above them at all.
-            aborted = False
-            settled = 0
-            pending: list[tuple[int, int]] = []
-            for _ in range(cap):
-                i = settled
-                while i < rows:
-                    t = base_tapes[i]
-                    got = flip ^ parities[i]
-                    s = shifts[i]
-                    for width, wmask in pending:
-                        win = t & wmask
-                        carr = win
-                        span = 1
-                        while span < width:
-                            carr ^= carr >> span
-                            span <<= 1
-                        delta = win ^ carr ^ wmask
-                        t ^= delta
-                        got ^= (delta >> s).bit_count() & 1
-                    if got != want_s[i]:
-                        break
-                    i += 1
-                if i == rows:
-                    break
-                frontier = ptrs_s[i]
-                rewind = frontier - acc + 1
-                if rewind > guard or (
-                    best is not None and total + 3 * rewind + 1 > best
-                ):
-                    aborted = True
-                    break
-                total += 3 * rewind + 1
-                pending.append((rewind, (1 << rewind) - 1))
-                settled = i + 1
-            else:  # pragma: no cover - the cap cannot be reached
-                # A round sets ``settled = i + 1`` with ``i >= settled``, so
-                # ``settled`` strictly increases and at most ``rows`` rounds
-                # run against a cap of ``rows + 4``.  The cap is the guard
-                # against that invariant breaking, not a budget in use.
-                aborted = True
-            if not aborted:
+            planned = _mux_round_plan(
+                tapes_s,
+                ptrs_s,
+                parities,
+                want_s,
+                acc,
+                flip=flip,
+                guard=guard,
+                round_limit=None if best is None else best - total,
+            )
+            if planned is not None:
+                pending, round_cost = planned
+                total += round_cost
                 lengths[(acc, direct)] = total
                 if rewinds_out is not None:
-                    rewinds_out[(acc, direct)] = [width for width, _ in pending]
+                    rewinds_out[(acc, direct)] = pending
                 if best is None or total < best:
                     best = total
     if best is None:
@@ -3052,8 +3075,7 @@ def _mux_scout(
 #: The arity where the sculpt sweep leaves the build path.  Below this every
 #: ``(accumulator, orientation)`` is priced and the shortest build wins, and
 #: the corpus is byte-identical under that contest.  From here the scout's
-#: own cost curve makes the contest the build -- 16.4s of a 16.7s dense
-#: build at nine inputs, 201s of 203s at ten -- so the accumulator is picked
+#: own cost curve makes the contest the build, so the accumulator is picked
 #: by rule instead: the **largest legal one**, which is the combination the
 #: scout prices first because its rounds are cheapest (a round costs
 #: ``3 * (frontier - acc + 1) + 1``, so the top of the range minimises every
@@ -3064,24 +3086,22 @@ def _mux_scout(
 #:
 #: The rule trades length for the contest's cost, so the line sits at the
 #: arity where the contest stops being affordable rather than at the one
-#: where the trade is cheapest.  Cold, both shapes, the contest costs 0.06s
-#: at six inputs, 0.38s at seven, 3.8s at eight and 35.8s at nine: eight is
-#: payable and nine is not, and nine is where the whole registry's sweep
-#: cost used to live.
+#: where the trade is cheapest.  The Pascal inverse moved that line: cold,
+#: both shapes, the contest costs 0.23s at eight inputs and 1.8s at nine;
+#: dense costs 13.8s at ten.  Nine is now cheaper than the old payable-eight
+#: contest, while ten is again the registry's dominant sweep cost.
 #:
 #: Against the sweep's winner the top accumulator builds dense +11.6% at
 #: eight inputs, +6.4% at nine and +1.8% at ten, and at every one of those
 #: arities parity picks the very same combination.  So drawing the line here
-#: costs exactly one dense entry (+6.4% at nine) and leaves everything at
-#: eight and below byte-identical to the contest.  Drawing it one lower
-#: would buy 3.8s for a second, larger dense regression, and lower still it
-#: stops being a trade at all: at seven the sweep's own winner *is* the top
-#: accumulator for dense but parity pays +11.0%, and at six dense pays +9.3%
-#: and parity +50.7%.
-_MUX_RULE_ARITY = 9
+#: costs exactly one dense entry (+1.8% at ten) and leaves everything at
+#: nine and below byte-identical to the contest.  Drawing it one lower would
+#: buy 1.8s for a larger dense regression; at eight it would save only 0.23s
+#: and cost still more.
+_MUX_RULE_ARITY = 10
 
 
-def _mux_rule_tail(
+def _mux_plan_tail(
     base: _Joint, acc: int, rewinds: list[int], *, direct: bool
 ) -> tuple[str, str]:
     """Spell the sculpt the scout priced, from its recorded rewinds.
@@ -3154,7 +3174,7 @@ def _mux_replays(
     :meth:`_Sim.run_rewinds` (one window per row where the parsed runs
     cost three law calls a round), the endgame through the parsed runs;
     ``suffix`` must be the tail past the rounds, exactly as
-    :func:`_mux_rule_tail` spells it.
+    :func:`_mux_plan_tail` spells it.
     """
     probe = base.fork()
     for m in probe.ms:
@@ -3205,13 +3225,11 @@ def _mux(truth_table: str, n: int) -> str | None:
     The measuring is the scout's.  Sculpting every combination for real
     priced the sweep at ``2**3n`` law applications -- 178 cold seconds at
     eight inputs, 97% of a cold seven-input profile -- so :func:`_mux_scout`
-    prices them all in closed form (the same dense build is 1.9s cold) and
-    exactly one combination, the winner, is sculpted for real.  Nothing is
-    returned on the strength of the shadow: the replayed sculpt simulates
-    every row as it always did, `_try_print` accepts on its own output,
-    and a replay that misses the scout's exact predicted length falls back
-    to :func:`_mux_sweep` -- as does a base state the scout refuses to
-    summarise.
+    prices them all in closed form.  The winner's Pascal plan is spelled
+    directly and replayed over every row; a replay that misses the scout's
+    exact predicted length falls back to :func:`_mux_sweep`, as does a base
+    state the scout refuses to summarise.  The emitted program stays
+    byte-identical to the old round loop below the rule boundary.
 
     Nothing about *which* tables build changes: a combination that stalls
     still contributes nothing, and this returns None exactly when the old
@@ -3219,11 +3237,9 @@ def _mux(truth_table: str, n: int) -> str | None:
 
     From :data:`_MUX_RULE_ARITY` the contest itself is the build's cost,
     so the accumulator is named rather than measured -- see that constant
-    for the rule, the trade and the coverage argument.  Only the
-    orientation is still priced (a real contest: 21 to 21 over sampled
-    eight-input tables, worth up to 24%), the scout records the winner's
-    rewinds as it prices, and the build is spelled from them and accepted
-    on its own replay rather than sculpted.
+    for the rule, the trade and the coverage argument.  Only the orientation
+    is still priced there (a real contest: 21 to 21 over sampled eight-input
+    tables, worth up to 24%).
     """
     if n < _MUX_MIN_ARITY:
         return None
@@ -3245,9 +3261,7 @@ def _mux(truth_table: str, n: int) -> str | None:
         # its trust check and its predicted length all carry over -- it is
         # just no longer asked to price the other ~2 * len(accs) - 1.
         accs = range(accs.stop - 1, accs.stop)
-    winner, trusted = _mux_scout(
-        base, truth_table, n, accs, recorded if n >= _MUX_RULE_ARITY else None
-    )
+    winner, trusted = _mux_scout(base, truth_table, n, accs, recorded)
     if not trusted:
         # The separation's state defeats the shadow's summary: not observed
         # at any arity -- the base is canonical by construction -- so this
@@ -3256,31 +3270,17 @@ def _mux(truth_table: str, n: int) -> str | None:
     if winner is None:
         return None
     acc, direct, predicted = winner
-    if n >= _MUX_RULE_ARITY:
-        # Spell the winner from the scout's own record and accept it on its
-        # replay: the sculpt re-simulates a probe per round, which at this
-        # arity is most of what remains of the build.
-        widths = recorded.get((acc, direct))
-        if widths is not None:
-            rounds, suffix = _mux_rule_tail(base, acc, widths, direct=direct)
-            spelled = base.template() + rounds + suffix
-            if len(spelled) == predicted and _mux_replays(
-                base, widths, suffix, truth_table
-            ):
-                return spelled
-        # The scout, the spelling and the replay disagreeing is a bug in
-        # the trio; the sweep is the exact spelling, so answer from it
-        # rather than raise.
-        return _mux_sweep(base, truth_table, n, accs)  # pragma: no cover
-    built = _mux_sculpt(
-        base, truth_table, n, acc, 0, direct=direct, hint=_SCULPT_POOL_CODE
-    )
-    if built is None or len(built) != predicted:
-        # The shadow and the sculpt disagreeing is a bug in the pair; the
-        # sweep is the exact spelling, so answer from it rather than raise
-        # -- the build that returns is still one `_try_print` accepted.
-        return _mux_sweep(base, truth_table, n, accs)
-    return built
+    widths = recorded.get((acc, direct))
+    if widths is not None:
+        rounds, suffix = _mux_plan_tail(base, acc, widths, direct=direct)
+        spelled = base.template() + rounds + suffix
+        if len(spelled) == predicted and _mux_replays(
+            base, widths, suffix, truth_table
+        ):
+            return spelled
+    # The plan, spelling and replay disagreeing is a bug in the trio; the
+    # sweep is the exact spelling, so answer from it rather than raise.
+    return _mux_sweep(base, truth_table, n, accs)  # pragma: no cover
 
 
 def _lift_leaves_name_order(essential: list[int], n: int) -> bool:
