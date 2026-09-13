@@ -751,10 +751,10 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 # ``best_input_order`` docstring for why the count cannot come down without
 # going per-language -- so that pass left all 1380 programs byte-identical.
 #
-# Across everything here, 1356 of the registry's 1380 programs are
-# byte-identical: the 24 that moved are nine factor arities that used to
-# refuse, minifuck's dense n=9 at +6.4%, and one_two_three's n=4..10 both
-# shapes, which the mark respacing cut by 82% overall.
+# Across everything here, 1357 of the registry's 1380 programs are
+# byte-identical: the 23 that moved are nine factor arities that used to
+# refuse and one_two_three's n=4..10 both shapes, which the mark respacing
+# cut by 82% overall.  Minifuck's Pascal inverse restored the n=9 contest.
 #
 # Ten still peaks at 637MB RSS on Circuit Diagram's n=10 dense table, 306MB
 # of program text.  That memory, not the time, is what keeps the band split:

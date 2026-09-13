@@ -857,8 +857,8 @@ class TestParameterizedMinifuck:
         This replays the scan on the states a sculpt actually reaches and
         asserts the constant answers exactly what it returned -- the same
         specification-oracle shape the other closed searches keep.  Both
-        orientations are scanned at every recorded state -- the scout means
-        only the winning replay probes now, always at ``cell7 == 0`` -- so
+        orientations are scanned at every recorded state from the retired
+        emitted-loop oracle, always at ``cell7 == 0`` -- so
         "``cell7 == 1`` is answered by none" stays pinned as a measured
         fact rather than an assumption baked into the constant.
         """
@@ -877,8 +877,20 @@ class TestParameterizedMinifuck:
                 seen.append(probe)
             return real(joint, acc, cell7, hint)
 
+        base = module._mux_separate(4)  # noqa: SLF001
+        acc = min(base.ptrs()) - 2
         with patch.object(module, "_mux_probe", record):
-            assert module._mux("0110100110010110", 4) is not None  # noqa: SLF001
+            assert (
+                module._mux_sculpt(  # noqa: SLF001
+                    base,
+                    "0110100110010110",
+                    4,
+                    acc,
+                    0,
+                    direct=True,
+                )
+                is not None
+            )
         assert seen, "no sculpting probes were observed"
 
         for probe in seen:
@@ -3106,6 +3118,85 @@ def test_the_rewind_law_matches_the_parsed_runs() -> None:
     skipping.run_rewind(0)
     clone.apply(_runs("x"))
     assert skipping.key() == clone.key()
+
+
+def test_the_pascal_plan_matches_the_emitted_round_loop() -> None:
+    """The binomial inverse returns the sculpt loop's exact rewinds.
+
+    Every two-input table is checked at every accumulator, then sampled
+    wider rows check the same identity after the triangle grows.  The oracle
+    emits each selected round and probes again; it shares no inverse with the
+    plan.  Multi-round cases are required so a probe that never fired cannot
+    make the differential pass vacuously.
+    """
+    import importlib
+    import math
+    import random
+
+    module = importlib.import_module("esolangs.tools.minifuck")
+
+    for row in range(65):
+        expected = sum(
+            1 << column for column in range(row + 1) if math.comb(row, column) & 1
+        )
+        assert module._pascal_parity_row(row) == expected  # noqa: SLF001
+
+    rng = random.Random(20260913)
+    cases: list[tuple[int, list[str]]] = [
+        (2, [format(value, "04b") for value in range(16)]),
+        (3, [format(rng.getrandbits(8), "08b") for _ in range(8)]),
+        (6, [format(rng.getrandbits(64), "064b") for _ in range(2)]),
+    ]
+    longest = 0
+    for n, tables in cases:
+        base = module._mux_separate(n)  # noqa: SLF001
+        positions = base.ptrs()
+        lowest, highest = min(positions), max(positions)
+        all_accs = range(
+            highest - lowest + module._POOL_WIDTH + 1,  # noqa: SLF001
+            lowest - 1,
+        )
+        accs = (
+            all_accs
+            if n == 2
+            else (all_accs.start, all_accs[len(all_accs) // 2], all_accs[-1])
+        )
+        want_tables = [tuple(int(ch) for ch in table) for table in tables]
+        for table, want in zip(tables, want_tables, strict=True):
+            for acc in accs:
+                recorded: dict[tuple[int, bool], list[int]] = {}
+                winner, trusted = module._mux_scout(  # noqa: SLF001
+                    base, table, n, range(acc, acc + 1), recorded
+                )
+                assert trusted
+                assert winner is not None
+
+                joint = base.fork()
+                emitted: list[int] = []
+                for _ in range(2**n + 4):
+                    found = module._mux_probe(joint, acc, 0)  # noqa: SLF001
+                    assert found is not None
+                    disagree = [
+                        pointer
+                        for pointer, got, target in zip(
+                            joint.ptrs(), found[0], want, strict=True
+                        )
+                        if got != target
+                    ]
+                    if not disagree:
+                        break
+                    rewind = max(disagree) - acc + 1
+                    emitted.append(rewind)
+                    joint.emit("<" * rewind)
+                    joint.emit("[x" * rewind)
+                    joint.emit("x")
+                else:
+                    raise AssertionError("the emitted oracle reached the round cap")
+
+                planned = recorded[(acc, True)]
+                assert planned == emitted, (n, table, acc)
+                longest = max(longest, len(planned))
+    assert longest > 1, "the oracle never exercised round composition"
 
 
 def _rule_arities() -> list[int]:

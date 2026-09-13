@@ -157,9 +157,8 @@ class TestMuxFallsBackToTheSweep:
     ) -> None:
         """The winner's replay disagreeing answers from the sweep instead.
 
-        Only the *replay* is broken -- the first sculpt ``_mux`` asks for --
-        since the sweep that follows sculpts through the same function and
-        needs it working to answer at all.
+        Only the replay is broken.  The sweep that follows uses the emitted
+        sculpt loop instead, so it still has an independent path to answer.
         """
         module = importlib.import_module("esolangs.tools.minifuck")
         expected = module._mux("0110", 2)  # noqa: SLF001
@@ -168,16 +167,15 @@ class TestMuxFallsBackToTheSweep:
         real = module._mux_sculpt  # noqa: SLF001
         calls = []
 
-        def once_broken(*args: object, **kwargs: object) -> str | None:
+        def record_sculpt(*args: object, **kwargs: object) -> str | None:
             calls.append(1)
-            if len(calls) == 1:
-                return None
             return real(*args, **kwargs)
 
         with monkeypatch.context() as patch:
-            patch.setattr(module, "_mux_sculpt", once_broken)
+            patch.setattr(module, "_mux_replays", lambda *_a: False)
+            patch.setattr(module, "_mux_sculpt", record_sculpt)
             assert module._mux("0110", 2) == expected  # noqa: SLF001
-        assert len(calls) > 1, "the sweep must have sculpted after the bad replay"
+        assert len(calls) > 1, "the sweep must sculpt after the bad replay"
 
     def test_a_scout_that_priced_nothing_returns_empty_handed(
         self, monkeypatch: pytest.MonkeyPatch
