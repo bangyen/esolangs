@@ -1,7 +1,7 @@
 """Run every committed example program and check its output.
 
 ``examples/`` holds only programs sampled from a *parameterized* generator:
-the boolean programs from ``esolangs.tools.boolean``, which take a truth
+the boolean programs from ``esolangs.tools``, which take a truth
 table and an input combination.  Each committed file is one point sampled
 from that space, so a companion test keeps it in sync with whatever the
 generator produces today -- the check has teeth precisely because the
@@ -18,8 +18,8 @@ from pathlib import Path
 import pytest
 
 from esolangs.registry import LANGUAGES, canonical_id
-from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
-from esolangs.tools.boolean.examples import HAND_WRITTEN
+from esolangs.tools.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
+from esolangs.tools.examples import HAND_WRITTEN
 from esolangs.vm import (
     _FramedMachine,
     _TapeMachine,
@@ -65,7 +65,7 @@ HALT_CONVENTION = {"123", "arrowqueue", "point-break"}
 # Boolean generators deliberately without a committed example, by canonical
 # id, each for a stated reason.  A language qualifies for an example when its
 # answer is recoverable from what its program prints (see
-# ``esolangs.tools.boolean.examples``); one whose answer no program can
+# ``esolangs.tools.examples``); one whose answer no program can
 # report belongs here rather than silently missing.
 #
 # Empty, and that is the claim: every boolean generator currently has one.
@@ -163,7 +163,7 @@ def test_every_boolean_generator_has_an_example() -> None:
 
     The check above compares the files on disk against
     :data:`BOOLEAN_EXAMPLES`, which is the hand-maintained table in
-    ``esolangs.tools.boolean.examples``.  A generator absent from *both* --
+    ``esolangs.tools.examples``.  A generator absent from *both* --
     no entry and so no file -- cancels out of that comparison and is
     invisible to it, which is how seven generators (%^2^-1, 123, CV(N)(C),
     Fargo, Minifuck, SLOW ACV MAMMALIAN and Super SNUSP) went uncovered.
@@ -188,12 +188,12 @@ def test_every_boolean_generator_has_an_example() -> None:
 
 # The boolean examples demonstrate a language's boolean-function capability
 # that is not an I/O truth machine (see the limitations ledger).  They are derived
-# from ``esolangs.tools.boolean.examples``, which records for each committed
+# from ``esolangs.tools.examples``, which records for each committed
 # program the generator, truth table, and input combination that produced it
 # -- so the files stay in sync with the generators.
 #
 # The input-reading languages take their bits on stdin; the parameterized
-# ones (see ``esolangs.tools.boolean.parameterized``) have the bits embedded
+# ones (see ``esolangs.tools.parameterized``) have the bits embedded
 # in the program text and read no input.  ArrowQueue and Point Break have no
 # output at all: their result is the halt-vs-loop convention, so only the
 # terminating (`0`) branch is committed -- the `1` branch loops forever by

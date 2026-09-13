@@ -159,12 +159,12 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     # The lemmas import the generator and nothing else, so only it and the
     # script itself can break them.
     "arrowqueue lemmas": (
-        "src/esolangs/tools/boolean/parameterized.py",
+        "src/esolangs/tools/parameterized.py",
         "scripts/arrowqueue_lemmas.py",
     ),
     # The sieve reads only the ceiling constant and its own source.
     "ztoalc slot record": (
-        "src/esolangs/tools/boolean/ztoalc_l.py",
+        "src/esolangs/tools/ztoalc_l.py",
         "scripts/ztoalc_slot_record.py",
     ),
     # Only an interpreter (or the sweep itself) can introduce a leak.

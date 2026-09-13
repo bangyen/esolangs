@@ -15,7 +15,7 @@ import sys
 from collections.abc import Iterator
 
 from esolangs.registry import LANGUAGES, canonical_id
-from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
+from esolangs.tools.examples import BOOLEAN_EXAMPLES
 
 _BY_ID = {lang.id: name for name, lang in LANGUAGES.items()}
 

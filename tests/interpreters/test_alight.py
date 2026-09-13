@@ -18,7 +18,7 @@ import esolangs
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.grid_based.alight import _Machine, run
 from esolangs.interpreters.io import ScriptedIO
-from esolangs.tools.boolean.alight import alight
+from esolangs.tools.alight import alight
 from esolangs.vm import run_until_halt_or_cycle
 from tests.interpreters.contract import (
     CycleContract,

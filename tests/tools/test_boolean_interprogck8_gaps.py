@@ -12,7 +12,7 @@ import importlib
 
 import pytest
 
-from esolangs.tools.boolean import interprogck8
+from esolangs.tools import interprogck8
 
 
 def _parity_table(n: int) -> str:
@@ -37,7 +37,7 @@ class TestRoutingBackstops:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """One pass cannot settle a program whose widths still move."""
-        module = importlib.import_module("esolangs.tools.boolean.interprogck8")
+        module = importlib.import_module("esolangs.tools.interprogck8")
         with monkeypatch.context() as patch:
             patch.setattr(module, "_PASSES", 1)
             with pytest.raises(ValueError, match="did not converge"):
@@ -53,7 +53,7 @@ class TestRoutingBackstops:
         the refusal -- which must name the stranded window rather than
         emit a program that jumps into the middle of a subtree.
         """
-        module = importlib.import_module("esolangs.tools.boolean.interprogck8")
+        module = importlib.import_module("esolangs.tools.interprogck8")
         with monkeypatch.context() as patch:
             patch.setattr(module, "_REPAIRS", -1)
             with pytest.raises(ValueError, match="no rung slot"):

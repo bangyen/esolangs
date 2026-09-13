@@ -8,7 +8,7 @@ comprehension that turns a row index into bits appeared ninety-seven
 times and the NOT/XOR/AND/NAND3 table it was fed appeared fifty-six.
 
 The data those copies varied over is already written down.
-:data:`~esolangs.tools.boolean.examples.BOOLEAN_EXAMPLES` pairs every
+:data:`~esolangs.tools.examples.BOOLEAN_EXAMPLES` pairs every
 generator with the interpreter that runs it, whether the program is split
 into lines, what the answer looks like when it arrives, and -- for the
 languages with no input command -- the ``fill`` that embeds a bit in the
@@ -39,11 +39,11 @@ import pytest
 from esolangs import encode_inputs
 from esolangs.interpreters.io import ScriptedIO
 from esolangs.registry import LANGUAGES, canonical_id
-from esolangs.tools.boolean.examples import BOOLEAN_EXAMPLES
+from esolangs.tools.examples import BOOLEAN_EXAMPLES
 from tests.raises import raises_message
 
 if TYPE_CHECKING:
-    from esolangs.tools.boolean.examples import BooleanExample
+    from esolangs.tools.examples import BooleanExample
 
 #: Every table over one and two inputs, then a set at three chosen for the
 #: shapes a tree can get wrong: constant, one-variable, parity, majority,

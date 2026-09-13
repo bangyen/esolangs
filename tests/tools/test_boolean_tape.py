@@ -1,6 +1,6 @@
 """Unit tests for the tape-based boolean generators.
 
-Covers the generators in :mod:`esolangs.tools.boolean.tape` plus the
+Covers the generators in :mod:`esolangs.tools.tape` plus the
 single-language modules that share its tape-machine shape: ``rotfuck``,
 ``six_five``, ``dimensional``, and ``streetcode``.
 """
@@ -13,9 +13,9 @@ from itertools import permutations
 
 import pytest
 
-from esolangs.tools import boolean
-from esolangs.tools.boolean.helpers import permute_truth_table
-from esolangs.tools.boolean.six_five import (
+from esolangs import tools as boolean
+from esolangs.tools.helpers import permute_truth_table
+from esolangs.tools.six_five import (
     _six_five_dag_cost,
     _six_five_hoisted,
     _six_five_markers,
@@ -437,7 +437,7 @@ class TestSixFive:
 
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
-        module = importlib.import_module("esolangs.tools.boolean.six_five")
+        module = importlib.import_module("esolangs.tools.six_five")
 
         # AND-n is symmetric, so its greedy pick *is* the identity and the
         # two dedupe to a single build -- the point being that neither is
@@ -470,7 +470,7 @@ class TestSixFive:
 
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
-        module = importlib.import_module("esolangs.tools.boolean.six_five")
+        module = importlib.import_module("esolangs.tools.six_five")
 
         assert not hasattr(boolean, "six_five_arithmetic")
         assert module.__all__ == ["six_five"]
@@ -484,7 +484,7 @@ class TestSixFive:
 class TestStreetcode:
     def test_default_uses_only_shared_layouts(self) -> None:
         """Per-input loops are width fallbacks, never default candidates."""
-        module = import_module("esolangs.tools.boolean.streetcode")
+        module = import_module("esolangs.tools.streetcode")
 
         for n in range(1, 4):
             for value in range(1 << (1 << n)):
@@ -734,8 +734,8 @@ class TestStreetcode:
         that needs no search.  Tested on the helper: reaching this through
         ``streetcode`` would mean building a seven-input program.
         """
-        from esolangs.tools.boolean.helpers import _ORDER_SEARCH_MAX
-        from esolangs.tools.boolean.streetcode import _streetcode_orders
+        from esolangs.tools.helpers import _ORDER_SEARCH_MAX
+        from esolangs.tools.streetcode import _streetcode_orders
 
         at_cap = _streetcode_orders(_ORDER_SEARCH_MAX)
         assert len(at_cap) == len(list(permutations(range(_ORDER_SEARCH_MAX))))
@@ -868,8 +868,8 @@ class TestCirclefuck:
 
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
-        module = importlib.import_module("esolangs.tools.boolean.tape")
-        from esolangs.tools.boolean.tape import _circlefuck_ordered
+        module = importlib.import_module("esolangs.tools.tape")
+        from esolangs.tools.tape import _circlefuck_ordered
 
         table = "01" * 64  # alternating: the greedy pick is not the identity
         built = 0
@@ -1080,7 +1080,7 @@ class TestFactor:
 
     def test_is_the_decimal_encoding_of_the_bf_program(self) -> None:
         """factor delegates to the brainfuck generator, then encodes it."""
-        from esolangs.tools.boolean.tape import _factor_encode
+        from esolangs.tools.tape import _factor_encode
 
         table = "0110"
         assert boolean.factor(table) == str(_factor_encode(boolean.brainfuck(table)))
@@ -1218,7 +1218,7 @@ class TestSlowAcvMammalian:
         here from either exit: XORing the exit accumulator against the exit
         sum reproduces what ``ACCEPT`` saw.
         """
-        from esolangs.tools.boolean.slow_acv_mammalian import _node
+        from esolangs.tools.slow_acv_mammalian import _node
 
         for array, acc in (
             ([0], 0),
@@ -1242,7 +1242,7 @@ class TestSlowAcvMammalian:
         """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
-        from esolangs.tools.boolean.slow_acv_mammalian import _node, _seeded
+        from esolangs.tools.slow_acv_mammalian import _node, _seeded
 
         for array, acc in (([3, 255, 255, 255], 7), ([90, 200, 200, 255], 4242)):
             tokens, _, taken, landing = _node(list(array), acc)
@@ -1271,7 +1271,7 @@ class TestSlowAcvMammalian:
         """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
-        from esolangs.tools.boolean.slow_acv_mammalian import _trampoline
+        from esolangs.tools.slow_acv_mammalian import _trampoline
 
         target = 900
         for head in (0, 130, 255):
@@ -1298,7 +1298,7 @@ class TestSlowAcvMammalian:
         """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
-        from esolangs.tools.boolean.slow_acv_mammalian import _trampoline
+        from esolangs.tools.slow_acv_mammalian import _trampoline
 
         array = [5, 255, 255, 255]
         target = sum(array) - array[0] + 1
@@ -1341,7 +1341,7 @@ class TestSlowAcvMammalian:
         # The package re-exports the generator under its own module's
         # name, so the package attribute is the *function*; only
         # import_module reaches the module.
-        module = importlib.import_module("esolangs.tools.boolean.slow_acv_mammalian")
+        module = importlib.import_module("esolangs.tools.slow_acv_mammalian")
 
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_widths", lambda n: [0] + [4] * n)
@@ -1381,7 +1381,7 @@ class TestSlowAcvMammalian:
         wrong seed reaches ``widths`` at all is eight.  Nothing below it
         can separate that term.
         """
-        from esolangs.tools.boolean.slow_acv_mammalian import _widths
+        from esolangs.tools.slow_acv_mammalian import _widths
 
         assert _widths(n) == widths
 
@@ -1400,7 +1400,7 @@ class TestSlowAcvMammalian:
         # The package re-exports the generator under its own module's
         # name, so the package attribute is the *function*; only
         # import_module reaches the module.
-        module = importlib.import_module("esolangs.tools.boolean.slow_acv_mammalian")
+        module = importlib.import_module("esolangs.tools.slow_acv_mammalian")
 
         hops: list[int] = []
         original = module._trampoline  # noqa: SLF001
@@ -1426,7 +1426,7 @@ class TestSlowAcvMammalian:
 class TestSuffolk:
     def test_candidate_costs_select_the_emitted_program(self) -> None:
         """The selector's model is exact across every non-constant table to n=3."""
-        from esolangs.tools.boolean.tape import _suffolk_candidate_cost
+        from esolangs.tools.tape import _suffolk_candidate_cost
 
         for n in range(1, 4):
             for value in range(2 ** (2**n)):
@@ -1744,13 +1744,13 @@ class TestSbleq:
 
     def test_only_the_hoisted_route_remains(self) -> None:
         """The former node-read builder is gone, not merely bypassed."""
-        import esolangs.tools.boolean.tape as module
+        import esolangs.tools.tape as module
 
         assert not hasattr(module, "_sbleq_node_read")
 
     def test_hoisted_build_reads_every_input_once_up_front(self) -> None:
         """The read block is 2n instructions and precedes every branch."""
-        from esolangs.tools.boolean.tape import _sbleq_hoisted
+        from esolangs.tools.tape import _sbleq_hoisted
 
         program = _sbleq_hoisted("00010111", (0, 1, 2))
         cells = [int(tok) for tok in program.split()]
@@ -1874,7 +1874,7 @@ class TestRotfuck:
         off by one, or runs backwards, still emits a program -- one whose
         every command means something else.
         """
-        from esolangs.tools.boolean.rotfuck import _ROTFUCK_CHAIN, _rotfuck_rot
+        from esolangs.tools.rotfuck import _ROTFUCK_CHAIN, _rotfuck_rot
 
         assert _ROTFUCK_CHAIN == "+-><,.[]"
         for i, char in enumerate(_ROTFUCK_CHAIN):
@@ -1895,7 +1895,7 @@ class TestRotfuck:
         commands survive -- and they exclude *different* ones, which is
         what makes the padding necessary rather than cosmetic.
         """
-        from esolangs.tools.boolean.rotfuck import _rotfuck_allowed, _rotfuck_rot
+        from esolangs.tools.rotfuck import _rotfuck_allowed, _rotfuck_rot
 
         for offset in range(8):
             allowed = _rotfuck_allowed(offset)
@@ -1915,7 +1915,7 @@ class TestRotfuck:
         also net-neutral by construction -- ``+-`` and ``><`` undo
         themselves -- which is what lets it be inserted anywhere.
         """
-        from esolangs.tools.boolean.rotfuck import _rotfuck_allowed, _rotfuck_neutral
+        from esolangs.tools.rotfuck import _rotfuck_allowed, _rotfuck_neutral
 
         for offset in range(8):
             pad = _rotfuck_neutral(offset)
@@ -1937,7 +1937,7 @@ class TestRotfuck:
         Neither is visible in a truth-table check: a body that breaks
         either still runs, it just re-converges in the wrong state.
         """
-        from esolangs.tools.boolean.rotfuck import _rotfuck_allowed, _rotfuck_body
+        from esolangs.tools.rotfuck import _rotfuck_allowed, _rotfuck_body
 
         for guard in range(6):
             for target in range(6):

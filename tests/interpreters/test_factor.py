@@ -210,8 +210,8 @@ class TestFactorint:
         import re
         import time
 
+        from esolangs import tools as boolean_tools
         from esolangs.interpreters.tape_based.factor import _factorint
-        from esolangs.tools import boolean as boolean_tools
 
         program = str(boolean_tools.factor("0110100110010110"))
         number = int(re.sub(r"[^0-9]", "", program))

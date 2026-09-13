@@ -3,8 +3,8 @@
 import pytest
 
 import esolangs
+from esolangs import tools as boolean
 from esolangs.exceptions import EsolangError, UnknownLanguageError
-from esolangs.tools import boolean
 
 
 @pytest.mark.parametrize("language", ["Sophie", "Circlefuck", "BFStack"])

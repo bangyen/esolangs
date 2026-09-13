@@ -737,7 +737,7 @@ _PCT_COMMAND = r"."
 # so that a single newline inside either part is that part's own fold.
 #
 # Spelled here rather than imported, because importing it would pull the whole
-# ``esolangs.tools.boolean`` package -- thirty-odd generator modules -- into a
+# ``esolangs.tools`` package -- thirty-odd generator modules -- into a
 # module that otherwise needs nothing but the standard library.  The generator
 # owns the value (``pct_squared_minus_one._HEADER_END``) and a test asserts the
 # two agree, so the duplication cannot drift silently.

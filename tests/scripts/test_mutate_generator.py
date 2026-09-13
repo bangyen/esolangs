@@ -44,20 +44,20 @@ class TestTestFiles:
         included the moment it is added, with nothing to remember.
         """
         script = load_script()
-        selected = script._test_files(script._KINDS["boolean"])  # noqa: SLF001
+        selected = script._test_files(script._KINDS["tools"])  # noqa: SLF001
         assert selected == sorted(p.name for p in TOOLS_TESTS.glob("test_*.py"))
 
     def test_the_suites_that_only_import_the_package_are_included(self) -> None:
         """The specific files import-based selection used to drop.
 
         ``test_boolean_other`` imports ``boolean`` and nothing below it, so
-        a scan for ``esolangs.tools.boolean.<module>`` does not select it --
+        a scan for ``esolangs.tools.<module>`` does not select it --
         and it is where every ``laserfuck`` test lives.  Named individually
         because the general assertion above would still pass if the
         directory itself lost it.
         """
         script = load_script()
-        selected = script._test_files(script._KINDS["boolean"])  # noqa: SLF001
+        selected = script._test_files(script._KINDS["tools"])  # noqa: SLF001
         assert "test_boolean_other.py" in selected
         assert "test_boolean_contract.py" in selected
 
@@ -74,7 +74,7 @@ class TestPytestArgs:
         directory's ``addopts``, which all three passes honour.
         """
         script = load_script()
-        kind = script._KINDS["boolean"]  # noqa: SLF001
+        kind = script._KINDS["tools"]  # noqa: SLF001
         args = script._pytest_args(kind, ["test_boolean_tape.py"])  # noqa: SLF001
         assert "-m" not in args
 
@@ -85,7 +85,7 @@ class TestPytestArgs:
         workers to run a suite that takes seconds.
         """
         script = load_script()
-        kind = script._KINDS["boolean"]  # noqa: SLF001
+        kind = script._KINDS["tools"]  # noqa: SLF001
         args = script._pytest_args(kind, ["test_boolean_tape.py"])  # noqa: SLF001
         assert args[args.index("-n") + 1] == "0"
 
@@ -100,7 +100,7 @@ class TestPytestArgs:
         import shlex
 
         script = load_script()
-        kind = script._KINDS["boolean"]  # noqa: SLF001
+        kind = script._KINDS["tools"]  # noqa: SLF001
         tests = ["test_boolean_tape.py"]
         command = script._runner_command(kind, tests)  # noqa: SLF001
         expected = script._pytest_args(kind, tests)  # noqa: SLF001
@@ -214,13 +214,13 @@ class TestParseTarget:
     def test_a_qualified_target_resolves_in_each_family(self) -> None:
         """Both kinds are reachable, named ``family/module``."""
         script = load_script()
-        assert script._parse_target("boolean/register") == ("boolean", "register")  # noqa: SLF001
+        assert script._parse_target("tools/register") == ("tools", "register")  # noqa: SLF001
         assert script._parse_target("tools/wrap") == ("tools", "wrap")  # noqa: SLF001
 
     def test_an_unambiguous_bare_name_still_resolves(self) -> None:
         """The boolean-only spelling keeps working where it is unambiguous."""
         script = load_script()
-        assert script._parse_target("minifuck") == ("boolean", "minifuck")  # noqa: SLF001
+        assert script._parse_target("minifuck") == ("tools", "minifuck")  # noqa: SLF001
 
     def test_a_name_in_both_families_is_refused(self) -> None:
         """The failure this prevents is silent, which is why it is an error.
@@ -235,9 +235,8 @@ class TestParseTarget:
         import pytest
 
         script = load_script()
-        assert not set(script._modules("boolean")) & set(script._modules("tools"))  # noqa: SLF001
         kinds = script._KINDS  # noqa: SLF001
-        kinds["mirror"] = kinds["boolean"]
+        kinds["mirror"] = kinds["tools"]
         # ``_FAMILIES`` is a snapshot taken at import, so the new kind has to
         # be added to both or the lookup never sees it.
         script._FAMILIES = (*script._FAMILIES, "mirror")  # noqa: SLF001
@@ -245,7 +244,7 @@ class TestParseTarget:
             with pytest.raises(SystemExit) as excinfo:
                 script._parse_target("register")  # noqa: SLF001
             message = str(excinfo.value)
-            assert "boolean/register" in message
+            assert "tools/register" in message
             assert "mirror/register" in message
         finally:
             del kinds["mirror"]
@@ -270,7 +269,6 @@ class TestParseTarget:
             script._parse_target("nosuchfamily/register")  # noqa: SLF001
         message = str(excinfo.value)
         assert "nosuchfamily" in message
-        assert "boolean" in message
         assert "tools" in message
 
     def test_entry_points_are_not_targets(self) -> None:
@@ -280,7 +278,7 @@ class TestParseTarget:
         surface or an argv check.
         """
         script = load_script()
-        for family in ("boolean", "tools"):
+        for family in ("tools",):
             modules = script._modules(family)  # noqa: SLF001
             assert "__init__" not in modules
             assert "__main__" not in modules
@@ -292,7 +290,7 @@ class TestParseTarget:
         caught here rather than by a run that cannot find its target.
         """
         script = load_script()
-        for family in ("boolean", "tools"):
+        for family in ("tools",):
             kind = script._KINDS[family]  # noqa: SLF001
             for name in script._modules(family):  # noqa: SLF001
                 assert (kind.pkg_dir / f"{name}.py").exists()
@@ -329,7 +327,6 @@ class TestPrepare:
         proj, _ = script._prepare("tools", "wrap", tmp_path, slow=False)  # noqa: SLF001
         config = (proj / "pyproject.toml").read_text()
         assert 'paths_to_mutate = ["esolangs/tools/wrap.py"]' in config
-        assert "boolean/wrap.py" not in config
 
     def test_the_mutated_path_and_the_score_path_agree(self, tmp_path: Path) -> None:
         """The file mutmut writes is the file the score is read from.
@@ -339,9 +336,9 @@ class TestPrepare:
         drifting apart.
         """
         script = load_script()
-        proj, _ = script._prepare("boolean", "tape", tmp_path, slow=False)  # noqa: SLF001
+        proj, _ = script._prepare("tools", "tape", tmp_path, slow=False)  # noqa: SLF001
         config = (proj / "pyproject.toml").read_text()
         mutated = config.split('paths_to_mutate = ["')[1].split('"]')[0]
         # The same expression ``_score`` uses to find mutmut's result file.
-        scored = proj / "mutants" / "esolangs" / "tools" / "boolean" / "tape.py.meta"
+        scored = proj / "mutants" / "esolangs" / "tools" / "tape.py.meta"
         assert scored == proj / "mutants" / f"{mutated}.meta"

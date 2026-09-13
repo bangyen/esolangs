@@ -1,9 +1,9 @@
 """Unit tests for the grid-based boolean generators.
 
-Covers :mod:`esolangs.tools.boolean.a_painter_ant`,
-:mod:`esolangs.tools.boolean.wii2d`,
-:mod:`esolangs.tools.boolean.circuit_diagram` and
-:mod:`esolangs.tools.boolean.super_snusp`, whose programs are
+Covers :mod:`esolangs.tools.a_painter_ant`,
+:mod:`esolangs.tools.wii2d`,
+:mod:`esolangs.tools.circuit_diagram` and
+:mod:`esolangs.tools.super_snusp`, whose programs are
 two-dimensional grids rather than instruction strings.
 """
 
@@ -16,11 +16,11 @@ from unittest.mock import patch
 
 import pytest
 
+from esolangs import tools as boolean
 from esolangs.interpreters.grid_based.a_painter_ant import _Machine as _APAMachine
 from esolangs.interpreters.grid_based.a_painter_ant import run as run_a_painter_ant
 from esolangs.interpreters.io import IO
-from esolangs.tools import boolean
-from esolangs.tools.boolean.a_painter_ant import _instantiate_apa, a_painter_ant
+from esolangs.tools.a_painter_ant import _instantiate_apa, a_painter_ant
 
 
 def _render_after_passes(program: str, passes: int) -> str:
@@ -196,7 +196,7 @@ class TestAPainterAnt:
 
     def test_four_input_head_works(self) -> None:
         """The head's leaf layout generalizes past three inputs."""
-        from esolangs.tools.boolean.a_painter_ant import _leaf_positions
+        from esolangs.tools.a_painter_ant import _leaf_positions
 
         positions = _leaf_positions(4)
         assert len(positions) == 16
@@ -220,7 +220,7 @@ class TestAPainterAnt:
         "mirror position" the docstring names, and pinning it is what makes
         an axis-parity flip visible.
         """
-        from esolangs.tools.boolean.a_painter_ant import _bit_move, _leaf_positions
+        from esolangs.tools.a_painter_ant import _bit_move, _leaf_positions
 
         step = {"w": (-1, 0), "e": (1, 0), "n": (0, 1), "s": (0, -1)}
         for n in (1, 2, 3, 4, 5):
@@ -241,7 +241,7 @@ class TestAPainterAnt:
         every behavioural assertion in this class -- the head only consumes
         the ``bits`` field.
         """
-        from esolangs.tools.boolean.a_painter_ant import _leaf_positions
+        from esolangs.tools.a_painter_ant import _leaf_positions
 
         assert _leaf_positions(2) == [
             (-2, -4, (0, 0)),
@@ -466,7 +466,7 @@ class TestWII2D:
     def run_chain(self, tpl: str, bits: list[int]) -> str:
         """Instantiate the n-embedding chain template and run the interpreter."""
         from esolangs.interpreters.grid_based.wii2d import run as run_wii2d
-        from esolangs.tools.boolean.examples import _fill_wii2d
+        from esolangs.tools.examples import _fill_wii2d
 
         program = _fill_wii2d(tpl, bits)
         buffer = io.StringIO()
@@ -544,7 +544,7 @@ class TestWII2D:
         so a route read back off it carries whatever spacing its row had --
         which must apply exactly as the unpadded route does.
         """
-        from esolangs.tools.boolean.wii2d import _wii2d_apply
+        from esolangs.tools.wii2d import _wii2d_apply
 
         for ops in ("+", "-", "*", "s", "+-", "*s"):
             want = _wii2d_apply(ops, 3)
@@ -555,7 +555,7 @@ class TestWII2D:
 
     def test_chain_n2_closed_form(self) -> None:
         """Two-input tables use the closed form, not the search."""
-        from esolangs.tools.boolean.wii2d import (
+        from esolangs.tools.wii2d import (
             _wii2d_apply,
             _wii2d_n2_closed_form,
         )
@@ -579,7 +579,7 @@ class TestWII2D:
     @pytest.mark.parametrize("n", [3, 4, 5, 6, 8])
     def test_chain_parity_closed_form(self, n: int) -> None:
         """Parity and its complement use the exact closed form for any arity."""
-        from esolangs.tools.boolean.wii2d import (
+        from esolangs.tools.wii2d import (
             _wii2d_apply,
             _wii2d_parity_routes,
             _wii2d_symmetric_popcount_map,
@@ -611,7 +611,7 @@ class TestWII2D:
         eight points is checked here; the widest domain the generator asks
         for is sixteen (``n == 5``), covered by the sampled case below.
         """
-        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_decode
+        from esolangs.tools.wii2d import _wii2d_apply, _wii2d_decode
 
         for width in range(1, 9):
             for value in range(2**width):
@@ -626,7 +626,7 @@ class TestWII2D:
         """The decode fits sampled 16-point patterns (the ``n == 5`` domain)."""
         import random
 
-        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_decode
+        from esolangs.tools.wii2d import _wii2d_apply, _wii2d_decode
 
         rng = random.Random(20260828)
         for _ in range(200):
@@ -648,7 +648,7 @@ class TestWII2D:
         promptly), so the witness table below is part of the pin: it is
         known to decode on both branches.
         """
-        from esolangs.tools.boolean.wii2d import _WII2D_MAX_INDEX_DOMAIN
+        from esolangs.tools.wii2d import _WII2D_MAX_INDEX_DOMAIN
 
         # The widest arity the guard still admits on its worst case.
         n = (_WII2D_MAX_INDEX_DOMAIN).bit_length()
@@ -681,7 +681,7 @@ class TestWII2D:
         """
         import random
 
-        from esolangs.tools.boolean.wii2d import (
+        from esolangs.tools.wii2d import (
             _WII2D_MAX_INDEX_DOMAIN,
             _wii2d_chain,
             _wii2d_cost,
@@ -721,7 +721,7 @@ class TestWII2D:
         whose chain merges down to a handful of points.  Both tables here sit
         at the arity the test above shows is refused.
         """
-        from esolangs.tools.boolean.wii2d import (
+        from esolangs.tools.wii2d import (
             _WII2D_MAX_INDEX_DOMAIN,
             _wii2d_chain,
             _wii2d_real_domain,
@@ -754,7 +754,7 @@ class TestWII2D:
         in reasonable time.  :data:`_WII2D_MAX_REAL_DOMAIN` refuses it before
         the fold is attempted, so this test must never reach the decode.
         """
-        from esolangs.tools.boolean.wii2d import (
+        from esolangs.tools.wii2d import (
             _WII2D_MAX_REAL_DOMAIN,
             _wii2d_chain,
             _wii2d_real_domain,
@@ -796,7 +796,7 @@ class TestWII2D:
         expensive.  The pattern is fixed (not random) because decode time at
         this domain has a heavy tail; this one is a fast representative.
         """
-        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_decode
+        from esolangs.tools.wii2d import _wii2d_apply, _wii2d_decode
 
         pattern = [
             int(bit)
@@ -819,9 +819,9 @@ class TestWII2D:
         interpreter and checked against the table.  The table is fixed so the
         build stays on the fast side of the decode's heavy tail.
         """
-        from esolangs.tools.boolean.wii2d import _wii2d_symmetric_popcount_map
+        from esolangs.tools.wii2d import _wii2d_symmetric_popcount_map
 
-        module = importlib.import_module("esolangs.tools.boolean.wii2d")
+        module = importlib.import_module("esolangs.tools.wii2d")
         n = 7
         monkeypatch.setattr(module, "_WII2D_MAX_INDEX_DOMAIN", 2 ** (n - 1))
 
@@ -848,8 +848,8 @@ class TestWII2D:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.wii2d")
-        from esolangs.tools.boolean.wii2d import (
+        module = importlib.import_module("esolangs.tools.wii2d")
+        from esolangs.tools.wii2d import (
             _wii2d_apply,
             _wii2d_decode,
             _wii2d_folds,
@@ -886,7 +886,7 @@ class TestWII2D:
         """
         import itertools
 
-        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_decode
+        from esolangs.tools.wii2d import _wii2d_apply, _wii2d_decode
 
         for bits in itertools.product([0, 1], repeat=8):
             pattern = list(bits)
@@ -896,7 +896,7 @@ class TestWII2D:
 
     def test_decode_constant_pattern_is_a_single_digit(self) -> None:
         """A constant column needs no folding at all, just a digit."""
-        from esolangs.tools.boolean.wii2d import _wii2d_decode
+        from esolangs.tools.wii2d import _wii2d_decode
 
         assert _wii2d_decode([0, 0, 0, 0]) == "0"
         assert _wii2d_decode([1, 1, 1, 1]) == "1"
@@ -916,9 +916,9 @@ class TestWII2D:
         """
         import importlib
 
-        from esolangs.tools.boolean.wii2d import _wii2d_decode
+        from esolangs.tools.wii2d import _wii2d_decode
 
-        module = importlib.import_module("esolangs.tools.boolean.wii2d")
+        module = importlib.import_module("esolangs.tools.wii2d")
         pattern = [0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 1]
         assert _wii2d_decode(list(pattern)) is not None
         monkeypatch.setattr(module, "_WII2D_MAX_MAGNITUDE", 1)
@@ -939,7 +939,7 @@ class TestWII2D:
         """
         import random
 
-        from esolangs.tools.boolean.wii2d import _wii2d_decode
+        from esolangs.tools.wii2d import _wii2d_decode
 
         rng = random.Random(9017)
         pattern = [rng.randint(0, 1) for _ in range(256)]
@@ -961,9 +961,9 @@ class TestWII2D:
         """
         import importlib
 
-        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_decode
+        from esolangs.tools.wii2d import _wii2d_apply, _wii2d_decode
 
-        module = importlib.import_module("esolangs.tools.boolean.wii2d")
+        module = importlib.import_module("esolangs.tools.wii2d")
         cap = 4
         pattern = [0, *([1] * cap), 0, 1]
 
@@ -977,7 +977,7 @@ class TestWII2D:
 
     def test_threshold_reads_out_two_live_values(self) -> None:
         """The tail turns the last two values into their bits, either way round."""
-        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_threshold
+        from esolangs.tools.wii2d import _wii2d_apply, _wii2d_threshold
 
         rising = _wii2d_threshold({3: 0, 9: 1})
         assert _wii2d_apply(rising, 3) == 0
@@ -989,7 +989,7 @@ class TestWII2D:
 
     def test_points_rejects_a_collision_needing_both_bits(self) -> None:
         """Two inputs on one value needing different bits is unrecoverable."""
-        from esolangs.tools.boolean.wii2d import _wii2d_points
+        from esolangs.tools.wii2d import _wii2d_points
 
         assert _wii2d_points([0, 1, 2], [0, 1, 0]) == {0: 0, 1: 1, 2: 0}
         assert _wii2d_points([0, 1, 1], [0, 1, 0]) is None
@@ -1001,7 +1001,7 @@ class TestWII2D:
         the two bits need; incrementing first splits them to 1 and 2, so
         compression makes progress instead of stalling.
         """
-        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_compress
+        from esolangs.tools.wii2d import _wii2d_apply, _wii2d_compress
 
         values, ops = _wii2d_compress([2, 3], [0, 1], "")
         # the two inputs stay on distinct values ...
@@ -1018,7 +1018,7 @@ class TestWII2D:
         Returning the values as they stand lets the caller decide; looping
         on them would not terminate.
         """
-        from esolangs.tools.boolean.wii2d import _wii2d_compress
+        from esolangs.tools.wii2d import _wii2d_compress
 
         values, ops = _wii2d_compress([-1, -1], [1, 1], "")
         assert values == [-1, -1]
@@ -1031,7 +1031,7 @@ class TestWII2D:
         values as it was given has cost the ops for nothing, so it is
         dropped rather than ranked.
         """
-        from esolangs.tools.boolean.wii2d import _wii2d_folds
+        from esolangs.tools.wii2d import _wii2d_folds
 
         assert _wii2d_folds([0, 1], [0, 1]) == []
         # A state that already collides has no live map at all, so neither
@@ -1047,7 +1047,7 @@ class TestWII2D:
         third needing the other -- and differ only in how far from zero
         they sit, so the empty result is the cap and not the pattern.
         """
-        from esolangs.tools.boolean.wii2d import _WII2D_MAX_CENTRE, _wii2d_folds
+        from esolangs.tools.wii2d import _WII2D_MAX_CENTRE, _wii2d_folds
 
         near = _wii2d_folds([0, 4, 10], [1, 1, 0])
         assert near, "the positive control must fold"
@@ -1069,8 +1069,8 @@ class TestWII2D:
 
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
-        module = importlib.import_module("esolangs.tools.boolean.wii2d")
-        from esolangs.tools.boolean.wii2d import _wii2d_decode
+        module = importlib.import_module("esolangs.tools.wii2d")
+        from esolangs.tools.wii2d import _wii2d_decode
 
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_wii2d_folds", lambda *_: [])
@@ -1088,8 +1088,8 @@ class TestWII2D:
 
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
-        module = importlib.import_module("esolangs.tools.boolean.wii2d")
-        from esolangs.tools.boolean.wii2d import _wii2d_decode
+        module = importlib.import_module("esolangs.tools.wii2d")
+        from esolangs.tools.wii2d import _wii2d_decode
 
         def stuck(
             values: list[int], _bits: list[int]
@@ -1121,7 +1121,7 @@ class TestWII2D:
         the catalogue, and the whole chain evaluating the table -- rather
         than the particular pairs a given table happens to select.
         """
-        from esolangs.tools.boolean.wii2d import (
+        from esolangs.tools.wii2d import (
             _WII2D_JUNCTIONS,
             _wii2d_apply,
             _wii2d_routes,
@@ -1156,8 +1156,8 @@ class TestWII2D:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.boolean.wii2d")
-        from esolangs.tools.boolean.wii2d import _WII2D_JUNCTIONS, _wii2d_chain
+        module = importlib.import_module("esolangs.tools.wii2d")
+        from esolangs.tools.wii2d import _WII2D_JUNCTIONS, _wii2d_chain
 
         assert _WII2D_JUNCTIONS[-1] == ("*", "*+")
 
@@ -1180,7 +1180,7 @@ class TestWII2D:
         """
         import itertools
 
-        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_routes
+        from esolangs.tools.wii2d import _wii2d_apply, _wii2d_routes
 
         n = 10
         table = "".join(
@@ -1200,7 +1200,7 @@ class TestWII2D:
         """An exactly-k-of-n table is symmetric but not monotone, and fits."""
         import itertools
 
-        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_routes
+        from esolangs.tools.wii2d import _wii2d_apply, _wii2d_routes
 
         n, k = 6, 3
         table = "".join(
@@ -1219,7 +1219,7 @@ class TestWII2D:
         """Constructed routes evaluate to the table for all 256 three-bit tables."""
         import itertools
 
-        from esolangs.tools.boolean.wii2d import _wii2d_apply, _wii2d_routes
+        from esolangs.tools.wii2d import _wii2d_apply, _wii2d_routes
 
         n = 3
         for value in range(2 ** (2**n)):
@@ -1252,7 +1252,7 @@ class TestWII2D:
         )
         assert len(table) == 128  # n == 7
 
-        from esolangs.tools.boolean.wii2d import _wii2d_symmetric_popcount_map
+        from esolangs.tools.wii2d import _wii2d_symmetric_popcount_map
 
         # not symmetric, so this is the general path rather than the popcount
         # chain that lets symmetric tables off cheaply
@@ -1271,8 +1271,8 @@ class TestWII2D:
         junction with nothing to branch on.  Every pattern tried decodes,
         so the refusal is reached by taking the decoder away.
         """
-        module = importlib.import_module("esolangs.tools.boolean.wii2d")
-        from esolangs.tools.boolean.wii2d import _wii2d_routes
+        module = importlib.import_module("esolangs.tools.wii2d")
+        from esolangs.tools.wii2d import _wii2d_routes
 
         # n == 2 has a closed form and a symmetric table has the popcount
         # chain, neither of which consults the branch decoder -- so this
@@ -1283,9 +1283,9 @@ class TestWII2D:
 
     def test_wii2d_raises_when_the_construction_finds_no_route(self) -> None:
         """``wii2d`` surfaces a construction failure as a ``ValueError``."""
-        from esolangs.tools.boolean import parameterized
+        from esolangs.tools import parameterized
 
-        wii2d_mod = importlib.import_module("esolangs.tools.boolean.wii2d")
+        wii2d_mod = importlib.import_module("esolangs.tools.wii2d")
 
         with (
             patch.object(wii2d_mod, "_wii2d_routes", return_value=None),
@@ -1301,7 +1301,7 @@ class TestWII2D:
         :func:`_wii2d_layout` directly with one and confirms the produced
         template actually runs correctly through the real interpreter.
         """
-        from esolangs.tools.boolean.wii2d import _wii2d_layout
+        from esolangs.tools.wii2d import _wii2d_layout
 
         template = "\n".join(_wii2d_layout(1, 5, [("", "+")]))
         for bit, expected in ((0, "5"), (1, "6")):
@@ -1362,7 +1362,7 @@ class TestWII2D:
         template that computes the table, just a longer one.  Pinning the
         plan makes the choice observable where the emitted answer cannot.
         """
-        from esolangs.tools.boolean.wii2d import _wii2d_routes
+        from esolangs.tools.wii2d import _wii2d_routes
 
         n = len(table).bit_length() - 1
         assert _wii2d_routes(n, table) == routes
@@ -1375,7 +1375,7 @@ class TestWII2D:
         the arms that differ elsewhere are only visible when the helpers are
         called directly with the states that separate them.
         """
-        from esolangs.tools.boolean.wii2d import _wii2d_decode, _wii2d_threshold
+        from esolangs.tools.wii2d import _wii2d_decode, _wii2d_threshold
 
         assert _wii2d_decode([0, 0, 0, 0, 1, 1, 0, 1]) == "*-s+/+/+//+//-s+/-s-//+"
         assert _wii2d_threshold({3: 0, 9: 1}) == "---------////+"
@@ -1401,7 +1401,7 @@ class TestCircuitDiagram:
         """Return the generated program's output for every input, in order."""
         from esolangs.interpreters.grid_based.circuit_diagram import run
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+        from esolangs.tools.circuit_diagram import circuit_diagram
 
         n = len(table).bit_length() - 1
         program = circuit_diagram(table).split("\n")
@@ -1447,7 +1447,7 @@ class TestCircuitDiagram:
         bus nothing read, plus the tap and the run out to it -- for AND that
         was more than half the drawing.
         """
-        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+        from esolangs.tools.circuit_diagram import circuit_diagram
 
         assert circuit_diagram(table).count("~") == tildes
 
@@ -1458,7 +1458,7 @@ class TestCircuitDiagram:
         saving is far larger than the one ``~`` that inverts the result:
         NAND3 selects seven rows drawn directly and one complemented.
         """
-        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+        from esolangs.tools.circuit_diagram import circuit_diagram
 
         dense = circuit_diagram("11111110")  # NAND3: seven ones
         sparse = circuit_diagram("00000001")  # its complement: one
@@ -1498,7 +1498,7 @@ class TestCircuitDiagram:
         """
         from esolangs.interpreters.grid_based.circuit_diagram import run
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+        from esolangs.tools.circuit_diagram import circuit_diagram
 
         for table in ("0001", "0110", "00010111"):
             n = len(table).bit_length() - 1
@@ -1511,14 +1511,14 @@ class TestCircuitDiagram:
 
     def test_input_lines_start_with_a_dash(self) -> None:
         """Each bit arrives on its own line, which the spec makes an input."""
-        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+        from esolangs.tools.circuit_diagram import circuit_diagram
 
         rows = circuit_diagram("00010111").split("\n")
         starts = [row for row in rows if row.startswith("-")]
         assert len(starts) == 3
 
     def test_a_malformed_table_is_rejected(self) -> None:
-        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+        from esolangs.tools.circuit_diagram import circuit_diagram
 
         with pytest.raises(ValueError, match="power-of-two"):
             circuit_diagram("010")
@@ -1553,7 +1553,7 @@ class TestCircuitDiagramLayoutGuards:
 
     @staticmethod
     def _layout() -> object:
-        from esolangs.tools.boolean.circuit_diagram import _Layout
+        from esolangs.tools.circuit_diagram import _Layout
 
         return _Layout()
 
@@ -1653,7 +1653,7 @@ class TestCircuitDiagramLayoutGuards:
         clash further left than an earlier one; the scan has to see every
         run before it names a coordinate.
         """
-        from esolangs.tools.boolean.circuit_diagram import _Layout
+        from esolangs.tools.circuit_diagram import _Layout
 
         late_is_earlier = _Layout._clash(  # noqa: SLF001
             [(6, 9, 1), (2, 4, 2)], None, 0, 10, 9
@@ -1734,7 +1734,7 @@ class TestCircuitDiagramLayoutGuards:
         entirely rather than merely drifts.  The extents are the cheapest
         observable that moves when any of the layout constants does.
         """
-        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+        from esolangs.tools.circuit_diagram import circuit_diagram
 
         drawing = circuit_diagram(table).split("\n")
         assert len(drawing) == rows
@@ -1784,7 +1784,7 @@ class TestCircuitDiagramLayoutGuards:
         regression names itself here instead of tripping an assertion deep
         in a render.
         """
-        from esolangs.tools.boolean.circuit_diagram import _Layout, circuit_diagram
+        from esolangs.tools.circuit_diagram import _Layout, circuit_diagram
 
         closest = []
         original = _Layout._check_junction_spacing  # noqa: SLF001
@@ -1809,7 +1809,7 @@ class TestCircuitDiagramLayoutGuards:
         """The banded program's output for every input, in table order."""
         from esolangs.interpreters.grid_based.circuit_diagram import run
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+        from esolangs.tools.circuit_diagram import circuit_diagram
 
         n = len(table).bit_length() - 1
         program = circuit_diagram(table, width).split("\n")
@@ -1831,7 +1831,7 @@ class TestCircuitDiagramLayoutGuards:
         another would be wrong in a way only a run would show, so this runs
         every input combination.
         """
-        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+        from esolangs.tools.circuit_diagram import circuit_diagram
 
         # ``00101111`` at 30 is the case that bands on the final ``~``: a
         # dense table is drawn from its zero rows and inverted, and that one
@@ -1856,7 +1856,7 @@ class TestCircuitDiagramLayoutGuards:
         table, which is why it stays well under 80 while the flat drawing
         does not.
         """
-        from esolangs.tools.boolean.circuit_diagram import circuit_diagram
+        from esolangs.tools.circuit_diagram import circuit_diagram
 
         for n in (4, 5, 6):
             table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
@@ -1879,9 +1879,9 @@ class TestCircuitDiagramLayoutGuards:
         """
         import importlib
 
-        from esolangs.tools.boolean.circuit_diagram import _Builder
+        from esolangs.tools.circuit_diagram import _Builder
 
-        module = importlib.import_module("esolangs.tools.boolean.circuit_diagram")
+        module = importlib.import_module("esolangs.tools.circuit_diagram")
         original = getattr(_Builder, "_band")  # noqa: B009 - SLF001 otherwise
 
         def forgetful(self: _Builder) -> None:
@@ -1919,8 +1919,8 @@ class TestSuperSNUSP:
 
     def test_cost_model_selects_the_emitted_anf(self) -> None:
         """The selector prices both ANF layouts exactly through three inputs."""
-        from esolangs.tools.boolean.helpers import essential_inputs, read_at
-        from esolangs.tools.boolean.super_snusp import (
+        from esolangs.tools.helpers import essential_inputs, read_at
+        from esolangs.tools.super_snusp import (
             _TWO_INPUT_SHORT,
             _anf_cost,
             _emit_anf,
@@ -1945,7 +1945,7 @@ class TestSuperSNUSP:
         """Return the generated program's output for every input, in order."""
         from esolangs.interpreters.grid_based.super_snusp import run
         from esolangs.interpreters.io import ScriptedIO
-        from esolangs.tools.boolean.super_snusp import super_snusp
+        from esolangs.tools.super_snusp import super_snusp
 
         n = len(table).bit_length() - 1
         program = super_snusp(table).splitlines()
@@ -2027,7 +2027,7 @@ class TestSuperSNUSP:
         reduced table still consumes the inputs it does not use -- otherwise
         a caller feeding several programs from one stream desynchronizes.
         """
-        from esolangs.tools.boolean.super_snusp import super_snusp
+        from esolangs.tools.super_snusp import super_snusp
 
         n = len(table).bit_length() - 1
         assert super_snusp(table).count(",") == n
@@ -2040,7 +2040,7 @@ class TestSuperSNUSP:
         which is undocumented in the spec; the marker is a no-op once
         execution begins.
         """
-        from esolangs.tools.boolean.super_snusp import super_snusp
+        from esolangs.tools.super_snusp import super_snusp
 
         assert super_snusp(table).startswith('"')
 
@@ -2053,14 +2053,14 @@ class TestSuperSNUSP:
         consulting the table would still pass every truth-table assertion
         above, so the dispatch is pinned separately.
         """
-        from esolangs.tools.boolean.super_snusp import _TWO_INPUT_SHORT, super_snusp
+        from esolangs.tools.super_snusp import _TWO_INPUT_SHORT, super_snusp
 
         for table, form in _TWO_INPUT_SHORT.items():
             assert super_snusp(table) == '"' + form
 
     def test_the_general_build_is_used_off_the_short_table(self) -> None:
         """A two-input table with no short form is built by the evaluator."""
-        from esolangs.tools.boolean.super_snusp import _TWO_INPUT_SHORT, super_snusp
+        from esolangs.tools.super_snusp import _TWO_INPUT_SHORT, super_snusp
 
         assert "0001" not in _TWO_INPUT_SHORT
         assert super_snusp("0001") == '"48{,->,->>1<<<{>>>&<<{>>&{<^>48{<+.'
@@ -2087,12 +2087,12 @@ class TestSuperSNUSP:
         emitting the unreduced shape here would be longer by one to four
         commands.
         """
-        from esolangs.tools.boolean.super_snusp import super_snusp
+        from esolangs.tools.super_snusp import super_snusp
 
         assert len(super_snusp(table)) == length
 
     def test_a_malformed_table_is_rejected(self) -> None:
-        from esolangs.tools.boolean.super_snusp import super_snusp
+        from esolangs.tools.super_snusp import super_snusp
 
         with pytest.raises(ValueError, match="power-of-two"):
             super_snusp("010")

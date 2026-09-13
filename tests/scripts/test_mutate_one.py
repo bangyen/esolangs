@@ -45,7 +45,7 @@ class TestRewriteImports:
         """A ``tools`` import is not the interpreter, even spelled alike.
 
         Several languages name their generator after the interpreter, so
-        ``from esolangs.tools.boolean import streetcode as gen`` has the
+        ``from esolangs.tools import streetcode as gen`` has the
         same leaf as ``grid_based.streetcode``.  The module-alias rule used
         to match it and bind ``gen`` to the bundled interpreter; the suite
         then called ``gen("00110100")`` and died with "'module' object is
@@ -54,13 +54,13 @@ class TestRewriteImports:
         """
         script = load_script()
         for line, module in (
-            ("from esolangs.tools.boolean import streetcode as gen", "streetcode"),
+            ("from esolangs.tools import streetcode as gen", "streetcode"),
             (
-                "from esolangs.tools.boolean.register import polynomial as gen",
+                "from esolangs.tools.register import polynomial as gen",
                 "register.polynomial",
             ),
             (
-                "from esolangs.tools.boolean.tape import dimensional as gen",
+                "from esolangs.tools.tape import dimensional as gen",
                 "tape.dimensional",
             ),
         ):

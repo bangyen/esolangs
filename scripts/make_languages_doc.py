@@ -11,7 +11,7 @@ import re
 
 import esolangs
 from esolangs.registry import LANGUAGES, RUNNERS, wiki_url
-from esolangs.tools.boolean import BOOLEAN
+from esolangs.tools import BOOLEAN
 
 ROOT = pathlib.Path(__file__).parents[1]
 # Extra source files that are support modules, not implementations: they are
