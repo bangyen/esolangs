@@ -104,13 +104,7 @@ languages with a boolean generator.  It regenerates via
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 66 languages</summary>
-
-### Image Languages
-
-Languages whose source is a raster image.
-
-- [Line](https://esolangs.org/wiki/Line) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/line.py))
+<summary>Show all 65 languages</summary>
 
 ### Grid-based Languages
 
@@ -210,7 +204,7 @@ Languages that don't fit into the above categories.
 <!-- IMPLEMENTED:END -->
 </details>
 
-Line is a registered PNG-language interpreter; run
+Line is an image-language module under `esolangs.interpreters.line`; run
 `just test-line` for its suite.
 
 ## Generators

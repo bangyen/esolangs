@@ -289,8 +289,7 @@ def chain(*ops: str) -> Node:
         if head is None:
             head = node
         else:
-            if tail is None:
-                raise AssertionError("non-empty node chain lost its tail")
+            assert tail is not None
             tail.next = node
         tail = node
     if head is None:
