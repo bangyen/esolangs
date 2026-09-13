@@ -18,8 +18,8 @@ language's own test file -- with its imports repointed at the bundle -- as
 the runner.
 
 Usage:
-    python scripts/mutate_one.py Qoibl
-    python scripts/mutate_one.py Grapheme --keep   # leave the work dir
+    python scripts/mutate.py interpreter Qoibl
+    python scripts/mutate.py generator tools/streetcode --keep
 
 Requires: mutmut==3.7.0, which fixes a 3.3.1 bug that silently reported
 class-method mutants as killed. Mutant IDs are not comparable across versions.
@@ -30,6 +30,7 @@ import ast
 import json
 import os
 import re
+import runpy
 import shutil
 import subprocess
 import sys
@@ -41,6 +42,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+if len(sys.argv) > 1 and sys.argv[1] == "generator":
+    sys.argv = [sys.argv[0], *sys.argv[2:]]
+    runpy.run_path(str(ROOT / "tests/tools/mutate_generator.py"), run_name="__main__")
+if len(sys.argv) > 1 and sys.argv[1] == "interpreter":
+    sys.argv.pop(1)
 
 # Tests that reach past the interpreter -- into the VM or the registry --
 # cannot run against a bundle, which inlines neither.  They are dropped from

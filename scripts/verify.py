@@ -154,7 +154,7 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
     # script itself can break them.
     "arrowqueue lemmas": (
         "src/esolangs/tools/parameterized.py",
-        "scripts/arrowqueue_lemmas.py",
+        "tests/tools/arrowqueue_lemmas.py",
     ),
     # Only an interpreter (or the sweep itself) can introduce a leak.
     "exception leaks": (
@@ -228,7 +228,7 @@ STEPS = [
     # has to be (`just apa-proof`, 5m40s).
     (
         "arrowqueue lemmas",
-        [*PY, "scripts/arrowqueue_lemmas.py"],
+        [*PY, "tests/tools/arrowqueue_lemmas.py"],
     ),
     # The contract exceptions.py states, executed: no interpreter may leak a
     # raw Python error to its caller.  Bare, it checks only the languages
