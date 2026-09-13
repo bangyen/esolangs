@@ -20,6 +20,15 @@ from esolangs.interpreters.brackets import match_brackets
 from esolangs.interpreters.io import IO
 
 type _State = tuple[int, int, int, tuple[int, ...], tuple[tuple[int, int, int], ...]]
+type _Output = int | str | None
+
+
+def _render_grid(grid: tuple[int, ...], width: int) -> str:
+    """Return the grid in EGL's pipe-delimited display format."""
+    return "".join(
+        "|" + "|".join(map(str, grid[start : start + width])) + "|\n"
+        for start in range(0, len(grid), width)
+    )
 
 
 def _advance(
@@ -29,13 +38,13 @@ def _advance(
     width: int,
     height: int,
     value: int | None = None,
-) -> tuple[_State, int | None]:
-    """Return the state after one command and an optional numeric output."""
+) -> tuple[_State, _Output]:
+    """Return the state after one command and an optional output value."""
     pc, row, col, grid, loops = state
     command = code[pc]
     cells = list(grid)
     index = row * width + col
-    output = None
+    output: _Output = None
 
     if command == ">":
         col += 1
@@ -59,6 +68,8 @@ def _advance(
         cells[index] = value
     elif command == "=":
         output = cells[index]
+    elif command == "#":
+        output = _render_grid(tuple(cells), width)
     elif command == "(":
         if cells[index] == 0:
             pc = pairs[pc]
@@ -131,7 +142,9 @@ class _Machine:
         self.state, output = _advance(
             self.state, self.code, self.pairs, self.width, self.height, value
         )
-        if output is not None:
+        if isinstance(output, str):
+            self.io.print_str(output)
+        elif output is not None:
             self.io.print_num(output)
 
 
