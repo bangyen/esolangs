@@ -12,7 +12,7 @@ help:
     @echo "  test-full    - Every check, whole tree"
     @echo "  test-quick   - Tier 1: pre-commit + pytest, fast band only (~8s pytest)"
     @echo "  test-mid     - Tier 2: pytest, fast + medium (execution and subprocess) (~25s)"
-    @echo "  test-py      - pytest only (-n auto; all three tiers)"
+    @echo "  test-py      - pytest only (-n auto; every tier, weekly included)"
     @echo "  test-line    - extra/line suites with pytest only (~3s)"
     @echo "  test-anchor  - ztoalc anchor table check (~3.2s)"
     @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
@@ -108,7 +108,7 @@ test-docstring *args:
 
 # mutation-test one interpreter: what its tests would NOT have caught
 # (not part of `just test` -- it is a few minutes per language)
-# `language` is quoted below: twelve of the sixty-nine display names contain
+# `language` is quoted below: twelve of the sixty-five display names contain
 # a space ("Point Break", "A Painter Ant", "Minsky Swap", ...), and unquoted
 # they split into two arguments -- `just mutate "Point Break"` failed with
 # `unrecognized arguments: Break`, for every one of the twelve.

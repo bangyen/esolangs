@@ -3,7 +3,7 @@
 Four documented claims have been falsified by execution over this
 package's QA history -- Fargo's input shape, a count of "four languages"
 that was seven, Grapheme's truthiness rule, and the exception ``run``
-promised for all sixty-nine.  Each was fixed where it was found.  This is
+promised for all sixty-five.  Each was fixed where it was found.  This is
 the same class caught at the source instead: a command that appears in the
 README, in ``docs/``, or in any ``--help`` output has to work.
 

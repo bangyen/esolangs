@@ -78,7 +78,7 @@ class Frame:
 
     Those are read off the machine rather than inferred, which is the whole
     difference between showing them and guessing.  Only eighteen of the
-    sixty-nine interpreters have a ``ptr`` at all and the ``ind`` thirty-three
+    sixty-five interpreters have a ``ptr`` at all and the ``ind`` others
     carry is usually an instruction index, so a "pointer" row invented for
     every language would be wrong more often than right; a row a language
     named itself cannot be.

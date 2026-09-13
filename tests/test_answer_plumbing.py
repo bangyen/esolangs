@@ -520,9 +520,9 @@ class TestBreakAtChecksTheKindOfPosition:
 
 @pytest.mark.filterwarnings("ignore::UserWarning")
 class TestWhatHappensWhenAProgramIsUnderfed:
-    """``run`` promised an exception for all sixty-nine.  Forty-five give it.
+    """``run`` promised an exception for every language.  Most give it.
 
-    A three-input program fed two bits: most raise, and seven take the
+    A three-input program fed two bits: most raise, and six take the
     exhausted read as a *value*, so the program answers a different row of
     its table with nothing in the output to show for it.  That convention
     was audited against the wiki pages and settled deliberately, so it is

@@ -626,7 +626,7 @@ def test_a_malformed_table_is_refused_in_the_shared_words(
 
     The sibling above pins that a nullary table is refused; this pins the
     other two rejections, and pins them by wording rather than by type.  All
-    69 generators route these through
+    65 generators route these through
     :func:`~esolangs.tools.boolean.helpers._validate_truth_table`, so the
     message is uniform today -- a generator that grows its own validator
     keeps raising ``ValueError`` and passes every other check while telling
@@ -718,7 +718,7 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 # Every boolean generator builds a table at n <= _MAX_ARITY.  Ten inputs:
 # the whole registry was swept at n=1..10 on both shapes, and exactly one
 # generator falls short -- WII2D, dense only, recorded below.  Every other
-# one of the 69 builds both shapes at n=10.
+# one of the 65 builds both shapes at n=10.
 #
 # Ten is here because it was made affordable, not because the cost was
 # waved through.  This sweep stopped at five for a long time, then briefly
@@ -767,7 +767,7 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 # of program text.  That memory, not the time, is what keeps the band split:
 # n <= _QUICK_ARITY runs in the default gate and the rest is marked slow.
 # Both bands assert the same thing; splitting them keeps the fast gate at
-# the 69 items and ~3s it had when this swept to five.
+# the 65 items and ~3s it had when this swept to five.
 _MAX_ARITY = 10
 _QUICK_ARITY = 5
 
@@ -907,8 +907,8 @@ def test_arity_caps_are_still_caps() -> None:
 # every arity; this checks the whole domain at the arities where "whole" is
 # reachable, which is what stops the argument from resting on its own prose.
 #
-# 4.7s serial across all 69, no generator over 1.8s -- pct-squared-minus-one
-# is the top, Factor 0.25s, the other 67 under 0.6s each.
+# 4.3s serial across all 65, no generator over 1.8s -- pct-squared-minus-one
+# is the top at 1.71s, and the other 64 are under 0.6s each.
 _EXHAUSTIVE_ARITY = 3
 
 
@@ -970,16 +970,15 @@ def test_cm_constants_builds_only_the_bootstrap_for_small_values() -> None:
 # test and a nightly job.
 #
 # n=6 is the floor that would have caught the bug and is affordable for all
-# 69: 18.6s of work in total, no language over 4.3s, 6.9s wall across the
-# four workers this suite runs on, and none excluded.  Restoring the old
-# key alphabet makes this fail, which is the only evidence that the arity
-# is high enough.
+# 65: 13.4s of work in total, no language over 4.3s, and none excluded.
+# Restoring the old key alphabet makes this fail, which is the only
+# evidence that the arity is high enough.
 # There is deliberately no exclusion table here -- an empty one is the
 # finding, and if a language ever needs to be added, it needs a reason and a
 # cost beside it like ``_ARITY_CAPPED`` carries.
 #
 # A wider probe backs the choice rather than a hunch: 517 evaluations over
-# all 69 languages, both shapes, n=5..8, found zero further failures of this
+# the whole registry, both shapes, n=5..8, found zero further failures of this
 # kind, so Grapheme was the only one.  22 language/arity pairs were too
 # expensive to reach and are *unchecked*, not passing.
 _ONE_MINTERM_ARITY = 6
@@ -1001,7 +1000,7 @@ def _one_hot(n: int) -> str:
     every one of the 65536 tables at n <= 4 and collides on 35% of random
     tables at n=7 -- so a second *shape* buys what a seventh input does not.
 
-    It costs 27.6s of work across the 69, against 18.6s for one minterm.  A
+    It costs 30.5s of work across the 65, against 13.4s for one minterm.  A
     third shape was measured and dropped: a 2-CNF at n=6 costs 67.2s, 37s of
     it Circuit Diagram alone, and caught nothing this does not.
     """

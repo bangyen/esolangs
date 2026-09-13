@@ -465,8 +465,10 @@ def check_program(
     type-checks ``stdin``.  It does not ask the language whether the source
     parses: ``check_program("brainfuck", "[")`` returns the program, and
     :func:`make_vm` on the same string raises ``ProgramError: unmatched
-    '['``.  Thirty-five of the sixty-nine languages have some program this
-    accepts and the interpreter then rejects.
+    '['``.  Over half the languages have some program this accepts and the
+    interpreter then rejects.  (The exact count was measured at a larger
+    registry and is not re-derived here -- what the caller needs is that
+    this is the common case, not the rare one.)
 
     That is structural rather than an oversight waiting to be fixed here.
     :func:`make_vm` *calls* this function, so validating by building a
@@ -701,7 +703,7 @@ def _warn_about_stdin(name: str, stdin: str) -> None:
     if not stdin:
         # An empty stdin is "I am not feeding this anything", which is a
         # legitimate thing to do with an arbitrary program -- the protocol
-        # tests run sixty-nine programs that way.  Judging it by *shape*
+        # tests run sixty-five programs that way.  Judging it by *shape*
         # warned about all of them.  The case that matters, a program that
         # reads anyway and gets a value, is decided after the run from the
         # counts, where there is no guessing: see below.
