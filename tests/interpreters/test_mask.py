@@ -13,7 +13,8 @@ at empty rows and at the last, possibly partial, block.
 from __future__ import annotations
 
 import pytest
-from mask import Mask, from_grey
+
+from esolangs.interpreters.line.mask import Mask, from_grey
 
 
 def test_get_and_set_round_trip() -> None:

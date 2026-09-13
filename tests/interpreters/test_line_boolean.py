@@ -20,10 +20,11 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 import pytest
-from extract import extract
-from line_boolean import line_boolean
-from render import render
-from simulate import IO, compile_program, run_compiled
+
+from esolangs.interpreters.line.extract import extract
+from esolangs.interpreters.line.line_boolean import line_boolean
+from esolangs.interpreters.line.render import render
+from esolangs.interpreters.line.simulate import IO, compile_program, run_compiled
 
 
 def _io(inputs: list[int]) -> tuple[IO, list[int]]:

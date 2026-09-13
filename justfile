@@ -13,7 +13,7 @@ help:
     @echo "  test-quick   - Tier 1: pre-commit + pytest, fast band only (~8s pytest)"
     @echo "  test-mid     - Tier 2: pytest, fast + medium (execution and subprocess) (~25s)"
     @echo "  test-py      - pytest only (-n auto; every tier, weekly included)"
-    @echo "  test-line    - extra/line suites with pytest only (~3s)"
+    @echo "  test-line    - tests/interpreters suites with pytest only (~3s)"
     @echo "  test-anchor  - ztoalc anchor table check (~3.2s)"
     @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
     @echo "  mutate-gen MOD - mutation-test one generator (e.g. just mutate-gen boolean/streetcode)"
@@ -92,7 +92,7 @@ test-py *args:
     {{PYTHON}} scripts/verify.py --only pytest {{args}}
 
 test-line *args:
-    {{PYTHON}} scripts/verify.py --only "extra/line suites (uv)" {{args}}
+    {{PYTHON}} scripts/verify.py --only "Line interpreter suites" {{args}}
 
 test-anchor *args:
     {{PYTHON}} scripts/verify.py --only "ztoalc anchor table is reproducible" {{args}}

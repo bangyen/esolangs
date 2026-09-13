@@ -67,7 +67,7 @@ caller will tolerate.
 
 from __future__ import annotations
 
-from render import Node, chain
+from .render import Node, chain
 
 
 def _validate_truth_table(truth_table: str) -> int:

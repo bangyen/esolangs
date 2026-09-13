@@ -53,6 +53,7 @@ from esolangs.exceptions import (
     UnknownLanguageError,
 )
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.interpreters.line import Raster
 from esolangs.registry import (
     LANGUAGES,
     RUNNERS,
@@ -117,6 +118,7 @@ __all__ = [
     "LanguageInfo",
     "ProgramError",
     "ProgramNotFoundError",
+    "Raster",
     "StopReason",
     "TemplateError",
     "TruthTableError",
@@ -543,15 +545,15 @@ def check_program(
 
 def run(
     language: str,
-    program: str | os.PathLike[str],
+    program: str | os.PathLike[str] | Raster,
     stdin: str = "",
     timeout: float | None = None,
     seed: int | None = None,
 ) -> str:
     """Execute ``program`` and return its output.
 
-    ``program`` is the program's *source*, or a :class:`~pathlib.Path` to
-    read it from.  A plain string shaped like a filename is refused rather
+    ``program`` is text source, a :class:`~pathlib.Path` to read it from, or
+    a :class:`Raster` for Line.  A plain string shaped like a filename is refused rather
     than executed, because a filename is a legal program in most of these
     languages and running one silently answers with nonsense.
 
@@ -640,6 +642,20 @@ def run(
     # here re-raised the error ``resolve`` had already raised.
     name = resolve(language)
     module, split = RUNNERS[name]
+    if name == "Line":
+        if isinstance(program, os.PathLike):
+            try:
+                program = Raster.from_png(pathlib.Path(program).read_bytes())
+            except OSError as exc:
+                raise ProgramNotFoundError(
+                    f"cannot read {program}: {exc.strerror}"
+                ) from exc
+        if not isinstance(program, Raster):
+            raise ProgramError("Line programs must be Raster instances")
+        run_fn = importlib.import_module("esolangs.interpreters.line").run
+        io_obj = ScriptedIO(stdin)
+        _run(run_fn, program, io_obj, timeout)
+        return io_obj.getvalue()
     program = check_program(name, program, stdin)
     run_fn = importlib.import_module("esolangs.interpreters." + module).run
     io_obj = ScriptedIO(stdin)

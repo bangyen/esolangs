@@ -22,10 +22,11 @@ import struct
 import zlib
 from pathlib import Path
 
-import png
 import pytest
 
-FIXTURES = Path(__file__).parent / "fixtures"
+from esolangs.interpreters.line import png
+
+FIXTURES = Path(__file__).parents[1] / "fixtures" / "line"
 
 # Shape and ink count (pixels below the 128 threshold extract.py uses) for
 # each checked-in fixture, as decoded by Pillow's Image.open().convert("L")
@@ -339,7 +340,7 @@ def test_a_jpeg_is_refused_with_a_usable_message(tmp_path: Path) -> None:
     is the one wrong-format case likely enough to be worth a message that
     says what to do next instead of "bad signature".
     """
-    import extract
+    from esolangs.interpreters.line import extract
 
     path = tmp_path / "drawing.jpg"
     # A JPEG start-of-image plus APP0, which is all the sniff looks at.

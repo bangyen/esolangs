@@ -34,7 +34,7 @@ continuation as its ``.zero`` child directly rather than chaining through
 
 from __future__ import annotations
 
-from render import Node
+from .render import Node
 
 _BF_TO_LINE = {"+": "+", "-": "-", "<": "<", ">": ">", ",": "i", ".": "o"}
 

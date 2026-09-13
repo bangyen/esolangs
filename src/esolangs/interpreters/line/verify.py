@@ -8,13 +8,13 @@ regressions in either ``render.py`` or ``extract.py`` show up as a nonzero
 exit code without needing to reach for a debugger or a one-off script.
 
 Usage:
-    python extra/line/verify.py
+    python -m esolangs.interpreters.line.verify
 """
 
 import sys
 from pathlib import Path
 
-from extract import extract
+from .extract import extract
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

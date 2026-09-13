@@ -57,7 +57,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from mask import Mask
+from .mask import Mask
 
 # 8 directions in (dy, dx) form, indexed 0..7 as N, NE, E, SE, S, SW, W, NW --
 # the same indexing render.py's headings would map onto, so a direction index
