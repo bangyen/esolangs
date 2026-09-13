@@ -3,7 +3,7 @@
 Everything that can be checked on a dev machine without a Linux host:
 
 1. pre-commit (lint, format, types) and pytest (the test suite)
-2. bandit (via uv) and the ``extra/line`` suites (via uv, which supplies the
+2. bandit (via uv) and the ``tests/interpreters`` suites (via uv, which supplies the
    image libraries the package itself does not depend on)
 
 ``.githooks/pre-push`` and ``just test`` both run this script.
@@ -24,7 +24,7 @@ A default run also leaves work to CI where CI already covers it: the steps in
 ``FULL_ONLY`` (the ZTOALC anchor table, which CI's lint job re-derives) and
 the ``slow`` marker in both test suites -- pytest's (the fuzzers' divergence-detection
 tests, which CI runs by that same marker and errors on if they skip) and
-extra/line's (its two 5.2s render round trips, which CI's ``line`` job runs
+tests/interpreters's (its two 5.2s render round trips, which CI's ``line`` job runs
 unfiltered).  ``--full``, ``just test-full``, and an explicit ``--only`` all
 still run them.
 
@@ -101,7 +101,7 @@ FULL_ONLY = frozenset(
 
 # Named once: the step table, STEP_SCOPE and the slow-marker filter all refer
 # to this step, and a typo in any of them would silently stop matching.
-LINE_STEP = "extra/line suites (uv)"
+LINE_STEP = "Line interpreter suites"
 
 # How often the long step reports that it is still going.  Short enough that
 # the wait never looks stalled, long enough that a normal run prints only a
@@ -139,7 +139,7 @@ def _line_addopts(env: dict[str, str]) -> str:
 # matter or it guards the whole tree.  Prefixes are repo-relative.
 STEP_SCOPE: dict[str, tuple[str, ...]] = {
     "bandit": ("src/",),
-    LINE_STEP: ("extra/line/",),
+    LINE_STEP: ("tests/interpreters/",),
     # The check re-derives the anchor table and diffs it against the committed
     # file, importing nothing from the interpreters -- so the only things that
     # can break it are the generator script and the table itself.  Scoping to
@@ -199,18 +199,14 @@ STEPS = [
         # The in-project run cannot show that.
         LINE_STEP,
         [
-            "uv",
-            "run",
-            "--isolated",
-            "--no-project",
-            "--directory",
-            "extra/line",
-            "--with",
+            *PY,
+            "-m",
             "pytest",
-            "--with",
-            "pytest-xdist",
-            "pytest",
-            ".",
+            "tests/interpreters/test_bf_to_line.py",
+            "tests/interpreters/test_line_boolean.py",
+            "tests/interpreters/test_mask.py",
+            "tests/interpreters/test_png.py",
+            "tests/interpreters/test_simulate.py",
             "-q",
         ],
     ),
@@ -686,7 +682,7 @@ def main() -> int:
         # everything -- a tooling change, an unreadable diff -- should still
         # not pay for them.
         #
-        # The extra/line suites carry the same marker on their two 5.2s tests
+        # The tests/interpreters suites carry the same marker on their two 5.2s tests
         # (the eight-level nesting round trip and the n=5 parity table), which
         # are 10.4s of that step's 12.8s.  CI's `line` job runs that suite
         # unfiltered on every push, so deselecting them here trades no

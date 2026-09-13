@@ -21,14 +21,20 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from extract import crop_to_content, detect_scale, extract, load_binary
-from lattice import _DIRS, Stroke, Vertex
-from render import Node, chain, render
-from simulate import IO, run
+
+from esolangs.interpreters.line.extract import (
+    crop_to_content,
+    detect_scale,
+    extract,
+    load_binary,
+)
+from esolangs.interpreters.line.lattice import _DIRS, Stroke, Vertex
+from esolangs.interpreters.line.render import Node, chain, render
+from esolangs.interpreters.line.simulate import IO, run
 
 # Anchored to this file rather than the working directory, so the wiki
 # fixtures resolve no matter where pytest is invoked from.
-FIXTURES = str(Path(__file__).parent / "fixtures")
+FIXTURES = str(Path(__file__).parents[1] / "fixtures" / "line")
 
 
 def _io(inputs: list[int]) -> tuple[IO, list[int]]:

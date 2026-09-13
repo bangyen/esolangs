@@ -40,7 +40,7 @@ import itertools
 import sys
 from dataclasses import dataclass, field
 
-import png
+from . import png
 
 # One grid unit in output pixels.  The wiki's own images use roughly this
 # scale for a single straight run between kinks.

@@ -1,7 +1,7 @@
 """The local gate may skip work, but only work CI is known to redo.
 
 ``scripts/verify.py`` deselects the ``slow`` marker from a default run in both
-test suites -- pytest's and ``extra/line``'s -- on the standing argument that
+test suites -- pytest's and Line's -- on the standing argument that
 CI runs those tests on every push, so skipping them locally costs no coverage.
 That argument only holds while the skip is exactly as narrow as it claims, so
 the two halves are pinned here: the filter must reach the line step *and* it

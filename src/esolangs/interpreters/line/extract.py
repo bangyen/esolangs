@@ -30,11 +30,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import lattice
-import mask as mask_module
-import png
-from lattice import _DIRS, _ink
-from mask import Mask
+from . import lattice, png
+from . import mask as mask_module
+from .lattice import _DIRS, _ink
+from .mask import Mask
 
 # This module runs on the standard library alone.  Pillow, numpy, scipy and
 # scikit-image were each removed, and PNG-only is a deliberate narrowing --
@@ -793,6 +792,23 @@ def coverage_gap(mask: Mask, cursor: Cursor, stroke: Stroke) -> int:
     return (redrawn ^ reference).sum()
 
 
+def extract_mask(mask: Mask) -> Stroke:
+    """Extract a walked program from an in-memory greyscale-derived mask."""
+    mask = crop_to_content(mask)
+    mask = normalize_scale(mask)
+    cursor = find_cursor(mask)
+    stroke = extract_tree(mask, cursor)
+    gap = coverage_gap(mask, cursor, stroke)
+    if gap > _ARROWHEAD_TIP_GAP:
+        raise ValueError(
+            f"extraction left {gap} source pixels unaccounted for "
+            f"(expected at most {_ARROWHEAD_TIP_GAP} for a clean drawing) "
+            "-- the image may be corrupted, over-compressed, or otherwise "
+            "not a clean drawing"
+        )
+    return stroke
+
+
 def extract(path: str) -> Stroke:
     """Load a Line image and walk its full path tree, cursor auto-detected.
 
@@ -822,20 +838,7 @@ def extract(path: str) -> Stroke:
     the best-effort tree regardless can call :func:`extract_tree` directly
     on an already-normalized mask.
     """
-    mask = load_binary(path)
-    mask = crop_to_content(mask)
-    mask = normalize_scale(mask)
-    cursor = find_cursor(mask)
-    stroke = extract_tree(mask, cursor)
-    gap = coverage_gap(mask, cursor, stroke)
-    if gap > _ARROWHEAD_TIP_GAP:
-        raise ValueError(
-            f"extraction left {gap} source pixels unaccounted for "
-            f"(expected at most {_ARROWHEAD_TIP_GAP} for a clean drawing) "
-            "-- the image may be corrupted, over-compressed, or otherwise "
-            "not a clean drawing"
-        )
-    return stroke
+    return extract_mask(load_binary(path))
 
 
 if __name__ == "__main__":

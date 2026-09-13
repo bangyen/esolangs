@@ -204,7 +204,7 @@ Languages that don't fit into the above categories.
 <!-- IMPLEMENTED:END -->
 </details>
 
-Line remains a standalone PNG-language tool under `extra/line`; run
+Line is a registered PNG-language interpreter; run
 `just test-line` for its suite.
 
 ## Generators

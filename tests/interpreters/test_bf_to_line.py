@@ -28,11 +28,12 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-import render as render_module
-from bf_to_line import bf_to_line
-from extract import extract
-from render import render
-from simulate import IO, run
+
+from esolangs.interpreters.line import render as render_module
+from esolangs.interpreters.line.bf_to_line import bf_to_line
+from esolangs.interpreters.line.extract import extract
+from esolangs.interpreters.line.render import render
+from esolangs.interpreters.line.simulate import IO, run
 
 
 def _run_bf(program: str, path: Path, inputs: list[int] | None = None) -> list[int]:
