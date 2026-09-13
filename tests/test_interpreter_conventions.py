@@ -31,7 +31,7 @@ import pytest
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO, ScriptedIO
-from esolangs.registry import RUNNERS
+from esolangs.registry import LANGUAGES, RUNNERS
 
 # The interpreter tree, anchored to this file rather than the working
 # directory: the suite is run from the repo root and from ``extra/``, and a
@@ -89,7 +89,7 @@ def _io_surface() -> frozenset[str]:
 def _module_files() -> list[pathlib.Path]:
     """Return every interpreter module, read off the tree.
 
-    Globbed rather than listed by category.  ``scripts/check_docstrings.py``
+    Globbed rather than listed by category. The retired docstring checker
     walked a hard-coded four-name category tuple that predated
     ``grid_based`` and ``queue_based``, so twelve of the sixty-three
     interpreters were exempt from it and three real violations sat behind
@@ -388,3 +388,51 @@ def test_the_scan_finds_the_ones_it_is_meant_to() -> None:
     assert not _BARE_RAISE.match('    raise HaltError("division by zero")')
     # Modulous was the reported case and is fixed, so it must not be here.
     assert "stack_based/modulous.py" not in _wordless_halts()
+
+
+def _docstring_issues(path: pathlib.Path, language: str | None) -> list[str]:
+    """Return documentation-convention violations for one interpreter."""
+    source = path.read_text(encoding="utf-8")
+    doc = ast.get_docstring(ast.parse(source)) or ""
+
+    def compact(text: str) -> str:
+        """Return a name in comparison form."""
+        return re.sub(r"[^a-z0-9]", "", text.lower())
+
+    issues = []
+    if len(doc.splitlines()) < 3:
+        issues.append("docstring is a bare stub")
+    if language is not None and compact(language) not in compact(doc):
+        issues.append(f"does not name the language ({language!r})")
+    if re.search(r"\.input_(char|str|num)\b", source) and "EOF" not in doc:
+        issues.append("reads input but does not document EOF")
+    if "raise HaltError" in source and "HaltError" not in doc:
+        issues.append("raises HaltError but does not document it")
+    if "raise ValueError" in source and "ValueError" not in doc:
+        issues.append("raises ValueError but does not document it")
+    return issues
+
+
+def test_interpreter_docstrings_follow_the_template() -> None:
+    """Every registered interpreter is walked and documents its behavior."""
+    names = {
+        lang.interpreter: name for name, lang in LANGUAGES.items() if lang.interpreter
+    }
+    walked = {
+        path.relative_to(_INTERPRETERS).with_suffix("").as_posix()
+        for path in _module_files()
+    }
+    assert {module.replace(".", "/") for module in names} <= walked
+    failures = {
+        path.relative_to(_INTERPRETERS).as_posix(): _docstring_issues(
+            path,
+            names.get(
+                path.relative_to(_INTERPRETERS)
+                .with_suffix("")
+                .as_posix()
+                .replace("/", ".")
+            ),
+        )
+        for path in _module_files()
+    }
+    assert {path: issues for path, issues in failures.items() if issues} == {}
