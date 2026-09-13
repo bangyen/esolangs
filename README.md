@@ -104,7 +104,13 @@ languages with a boolean generator.  It regenerates via
 <details>
 <!-- IMPLEMENTED:START -->
 
-<summary>Show all 65 languages</summary>
+<summary>Show all 66 languages</summary>
+
+### Image Languages
+
+Languages whose source is a raster image.
+
+- [Line](https://esolangs.org/wiki/Line) ([code](https://github.com/bangyen/esolangs/blob/main/src/esolangs/interpreters/line.py))
 
 ### Grid-based Languages
 

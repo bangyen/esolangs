@@ -11,6 +11,12 @@ from .simulate import IO
 from .simulate import run as _run
 
 
+class _Machine:
+    """Line's non-steppable interpreter traits for capability reporting."""
+
+    steppable_to_answer = False
+
+
 @dataclass(frozen=True)
 class Raster:
     """An immutable 8-bit greyscale image source, stored row by row."""
@@ -34,5 +40,5 @@ def run(program: Raster, io: ScriptedIO) -> None:
     stroke = extract_mask(from_grey([bytearray(row) for row in program.rows]))
     _run(
         stroke,
-        IO(read=lambda: int(io.read()), write=lambda value: io.write(str(value))),
+        IO(read=io.input_num, write=io.print_num),
     )

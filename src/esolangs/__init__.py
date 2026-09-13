@@ -174,6 +174,7 @@ _STATE_MODELS = {
     "grid_based": "grid",
     "queue_based": "queue",
     "other": "other",
+    "line": "image",
 }
 
 

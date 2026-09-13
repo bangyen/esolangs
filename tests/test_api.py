@@ -5,6 +5,8 @@ import pytest
 import esolangs
 from esolangs import tools as boolean
 from esolangs.exceptions import EsolangError, UnknownLanguageError
+from esolangs.interpreters.line import Raster, png
+from esolangs.interpreters.line.render import Node, render
 
 
 @pytest.mark.parametrize("language", ["Sophie", "Circlefuck", "BFStack"])
@@ -20,6 +22,18 @@ def test_run_feeds_stdin() -> None:
     program = boolean.circlefuck("1101")
     assert esolangs.run("Circlefuck", program, stdin="1\n0\n") == "0"
     assert esolangs.run("Circlefuck", program, stdin="0\n1\n") == "1"
+
+
+def test_run_accepts_line_raster_and_png_path(tmp_path) -> None:
+    """Line runs equivalent in-memory and PNG sources."""
+    head = Node("+")
+    head.next = Node("o")
+    rows = render(head).pixels
+    raster = Raster(tuple(bytes(row) for row in rows))
+    image = tmp_path / "line.png"
+    image.write_bytes(png.write_grey(rows))
+    assert esolangs.run("Line", raster) == "1"
+    assert esolangs.run("Line", image) == "1"
 
 
 def test_list_languages() -> None:
