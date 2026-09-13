@@ -481,6 +481,12 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.unsquare,
         id="unsquare",
     ),
+    "Vandevelo": Language(
+        "Vandevelo",
+        "other.vandevelo",
+        boolean=_boolean.vandevelo,
+        id="vandevelo",
+    ),
     "WII2D": Language(
         "WII2D",
         "grid_based.wii2d",

@@ -71,6 +71,7 @@ from esolangs.tools.tape import (
     suffolk,
     three_d_brainfuck,
 )
+from esolangs.tools.vandevelo import vandevelo
 
 __all__ = [
     "BOOLEAN",
@@ -140,6 +141,7 @@ __all__ = [
     "three_d_brainfuck",
     "three_x",
     "unsquare",
+    "vandevelo",
     "wii2d",
     "ztoalc_l",
 ]

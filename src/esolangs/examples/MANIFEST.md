@@ -74,6 +74,7 @@ that row is actually spelled for the language.
 | `super-snusp.txt` | Super SNUSP | `0001` | `01` | 0 1 | '0' |
 | `taglate.txt` | Taglate | `0001` | `01` | 0 1 | '0' |
 | `unsquare.txt` | Unsquare | `0001` | `01` | 0 1 | '0' |
+| `vandevelo.txt` | Vandevelo | `0001` | `01` | 0 1 | (nothing) |
 | `wii2d.txt` | WII2D | `0001` | `01` | embedded 01 | '0' |
 | `ztoalc-l.txt` | ZTOALC L | `0001` | `01` | 0 1 | '0' |
 
@@ -95,3 +96,4 @@ that row is actually spelled for the language.
 - **minsky-swap** -- Minsky Swap has no output instruction and dumps its registers at halt; the answer is the second one
 - **ram0** -- RAM0 has no output instruction and dumps its whole state at halt; the answer is the 'z' register
 - **taglate** -- Taglate takes a line per bit like most languages, but an odd input count above 1 is padded with a leading zero it reads like any other digit: an n=3 program wants four lines. Feeding three exhausts its input; padding at the end instead answers every row whose top bit is set wrongly
+- **vandevelo** -- Vandevelo answers by terminating: nil halts and not nil loops
