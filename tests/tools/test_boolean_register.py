@@ -165,11 +165,7 @@ class TestQoibl:
     def test_dense_growth_is_linear(self) -> None:
         """A full tree doubles by a bounded additive term."""
         sizes = [
-            len(
-                boolean.qoibl(
-                    "".join(str(row.bit_count() & 1) for row in range(2**n))
-                )
-            )
+            len(boolean.qoibl("".join(str(row.bit_count() & 1) for row in range(2**n))))
             for n in range(7, 11)
         ]
         assert all(b <= 2 * a + 800 for a, b in pairwise(sizes))

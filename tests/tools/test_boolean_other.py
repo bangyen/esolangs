@@ -791,7 +791,8 @@ class TestContainer:
         program = boolean.container("0110")
         assert program.startswith("T:\n+1 T>=T")
         assert ":" in program.splitlines()[:4]  # the empty-named reader
-        assert "S1_0:" in program and "S2_3:" in program
+        assert "S1_0:" in program
+        assert "S2_3:" in program
         assert program.count("PRINT:") == 1
 
     def test_tree_removes_the_minterm_factor(self) -> None:
