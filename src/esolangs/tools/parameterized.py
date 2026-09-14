@@ -1143,7 +1143,25 @@ def bitdeque(truth_table: str) -> str:
     register parity at its position, so moving the head would desync every
     fill site.  The emitted load is byte-identical whatever the order.
     """
-    return best_input_order(truth_table, _bitdeque_ordered)
+    if len(truth_table) <= 16:
+        return best_input_order(truth_table, _bitdeque_ordered)
+    return _bitdeque_linear(truth_table)
+
+
+def _bitdeque_linear(truth_table: str) -> str:
+    """Push the table, then discard its prefix and suffix in O(T) text."""
+    n = _validate_truth_table(truth_table)
+    tokens: list[str] = []
+    register = 0
+    for bit in truth_table:
+        value = int(bit)
+        if value != register:
+            tokens.append("INVERT")
+            register = value
+        tokens.append("PUSH")
+    tokens += ["{X" + str(i) + "}" for i in range(n)]
+    tokens += ["POP", "PUSH"]
+    return " ".join(tokens)
 
 
 def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
