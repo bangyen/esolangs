@@ -318,150 +318,70 @@ def eval(truth_table: str) -> str:  # noqa: A001 - the language is named "Eval"
     inputs (most significant first); the table length implies ``n``.  The
     program prints ``'0'`` or ``'1'``.
 
-    Eval has no input command, so this is a parameterized generator: the
-    template's ``{Xi}`` placeholders become a bit push and the harness
-    instantiates one program per input combination.  Each is two characters
-    wide whichever bit it carries, so the program's shape does not reveal
-    its inputs: the bit is staged on the tree stack, where ```` ` ````
-    (``1 - ptr``) pushes a one and ``0`` pushes a zero, and ``=`` then moves
-    it to the input stack the nodes read.  The tree is stored as a flat, full
-    binary tree in heap (BFS) order on the tree stack; a node at index
-    ``i`` tests the next input and the heap layout pins its two children at
-    fixed offsets.
+    Eval has no input command, so each placeholder stages one equal-width bit
+    on the input stack.  The table's result bits are pushed on the other
+    stack, then each input halves that candidate stack.  A zero discards its
+    top half; a one reverses, discards the same half, and reverses back.
 
-    A node is ``~=~?`` followed by ``i+1`` semicolons and a ``!``: ``~``
-    switches to the input stack, ``=`` moves the top input onto the tree
-    stack, ``~`` switches back, and ``?`` pops it -- skipping the next
-    command when it is zero.  The ``;``s discard ``i+1`` elements when the
-    bit is one (the skip makes it ``i`` when zero), so ``!`` pops the
-    0-child (heap index ``2i+1``) for a zero bit and the 1-child (``2i+2``)
-    for a one.  A leaf is ``0+.`` (prints 1) or ``0.`` (prints 0).  The
-    template pushes the tree in BFS order, reverses the stack so the root
-    is on top, and ``!`` evaluates it; each path keeps popping bits until a
-    leaf prints.  No node or leaf contains a quote or backtick, so the
-    strings need no escaping and the tree grows to any ``n``.
-
-    A node whose rows all agree becomes the leaf it would have reached, and
-    its descendants become empty strings.  The fold has to work that way
-    round: the heap is *positional*, so the ``;`` run is a function of the
-    node's own index and every child sits at a pinned ``2i+1``/``2i+2``, and
-    deleting a subtree the way a token-stream generator does would shift
-    every later index and misroute the whole tree.  Emptying the slots leaves
-    the arithmetic untouched, and an emptied slot is never popped because the
-    only node that routed into it has become a leaf.  A constant table goes
-    from 127 to 47 characters at ``n == 3``.
+    Duplicating the input before the first conditional preserves it for the
+    second, so both branches share one semicolon run.  Those runs total
+    ``T/2 + T/4 + ... < T`` commands; the table contributes ``T`` pushes and
+    every other level cost is constant.  Ignored inputs are drained without
+    halving after one linear bottom-up dependency pass.
     """
     n = _validate_truth_table(truth_table)
-    # The staging leaves the input stack holding only the bits and nothing
-    # else, so the tree can be preceded by ops that rearrange them.  Every
-    # reachable arrangement is a candidate, including the one staging
-    # already produces, which costs no ops.
-    #
-    # The tree pops the input stack top-first, so an arrangement listed
-    # bottom-to-top tests its *last* entry at the root: the split order is
-    # the arrangement reversed.  Staging pushes X0 first, so the free
-    # arrangement is ``(0, ..., n-1)`` and its split order is the reversal
-    # -- which is why the no-ops candidate is not the identity permutation.
-    best: tuple[int, str, str] | None = None
-    for arrangement, ops in sorted(
-        _eval_stack_programs(n).items(), key=lambda item: len(item[1])
-    ):
-        perm = tuple(reversed(arrangement))
-        table = permute_truth_table(truth_table, perm)
-        candidate = (_eval_cost(table, ops), table, ops)
-        # Sorted by op cost with the free arrangement first, and the
-        # comparison is strict, so a table no reorder helps emits exactly
-        # what it emitted before.
-        if best is None or candidate[0] < best[0]:
-            best = candidate
-    if best is None:  # pragma: no cover - the free arrangement is always reachable
-        raise RuntimeError("Eval's free stack arrangement is missing")
-    _, table, ops = best
-    return _eval_ordered(table, ops)
+    table = permute_truth_table(truth_table, tuple(reversed(range(n))))
+    return _eval_ordered(table, "")
 
 
 def _eval_cost(truth_table: str, ops: str) -> int:
     """Return :func:`_eval_ordered`'s exact rendered length without emitting it."""
+    return len(_eval_ordered(truth_table, ops))
+
+
+def _eval_dependencies(truth_table: str) -> list[int]:
+    """Return essential levels in one bottom-up pass over the table."""
     n = _validate_truth_table(truth_table)
-    slots = 2 ** (n + 1) - 1
-
-    def tree_cost(index: int, first: int, width: int) -> int:
-        values = truth_table[first : first + width]
-        if width == 1 or len(set(values)) == 1:
-            return 3 if values[0] == "1" else 2
-        half = width // 2
-        return (
-            index
-            + 6
-            + tree_cost(2 * index + 1, first, half)
-            + tree_cost(2 * index + 2, first + half, half)
-        )
-
-    bits = sum(len(str(i)) + 3 for i in range(n))
-    # Every positional heap slot remains quoted, including descendants of a
-    # folded node, whose empty strings cost just their two quote marks.
-    return int(bits + len(ops) + 2 * slots + tree_cost(0, 0, 2**n) + 2)
+    nodes = [int(bit) for bit in truth_table]
+    used: list[int] = []
+    ids: dict[tuple[int, int], int] = {}
+    next_id = 2
+    for level in reversed(range(n)):
+        parents: list[int] = []
+        matters = False
+        for index in range(0, len(nodes), 2):
+            pair = (nodes[index], nodes[index + 1])
+            matters |= pair[0] != pair[1]
+            node = ids.get(pair)
+            if node is None:
+                node = next_id
+                ids[pair] = node
+                next_id += 1
+            parents.append(node)
+        if matters:
+            used.append(level)
+        nodes = parents
+    return list(reversed(used))
 
 
 def _eval_ordered(truth_table: str, ops: str) -> str:
-    """Emit one input order's Eval template; see :func:`eval`.
-
-    ``truth_table`` is already permuted, so the heap walk below is unchanged
-    from the single-order construction.  What the emitted program does
-    differently is run ``ops`` between the staging blocks and the tree,
-    rearranging the input stack so the nodes pop the bits in this order.
-    """
+    """Emit one input order's linear lookup; see :func:`eval`."""
     n = _validate_truth_table(truth_table)
-
-    def combo(leaf: int) -> tuple[int, ...]:
-        """Input bits (most significant first) reaching the heap ``leaf``."""
-        path: list[int] = []
-        while leaf > 0:
-            path.append(0 if leaf % 2 else 1)  # odd = left child = 0 branch
-            leaf = (leaf - 1) // 2
-        return tuple(reversed(path))
-
-    def rows_under(i: int) -> list[int]:
-        """Table rows reachable from heap node ``i``."""
-        if i >= 2**n - 1:
-            return [sum(b << (n - 1 - k) for k, b in enumerate(combo(i)))]
-        return rows_under(2 * i + 1) + rows_under(2 * i + 2)
-
-    # A node whose rows all agree is replaced, *in its own slot*, by the leaf
-    # it would have reached.  The heap is positional -- every node's children
-    # are pinned at 2i+1/2i+2 and its own ``;`` run is a function of ``i`` --
-    # so a folded subtree cannot be deleted the way a token-stream tree's
-    # can, or every later index would shift.  Emptying the slots in place
-    # keeps that arithmetic untouched: an empty string is never popped,
-    # because the only node that routed into it is gone.
-    dead: set[int] = set()
-    tree: list[str] = []
-    for i in range(2 ** (n + 1) - 1):
-        if i in dead:
-            tree.append("")
-            continue
-        rows = rows_under(i)
-        values = {truth_table[row] for row in rows}
-        if i < 2**n - 1 and len(values) == 1:
-            tree.append("0+." if values.pop() == "1" else "0.")
-            below = [2 * i + 1, 2 * i + 2]
-            while below:  # the whole subtree, not just the two children
-                child = below.pop()
-                dead.add(child)
-                if child < 2**n - 1:
-                    below += [2 * child + 1, 2 * child + 2]
-        elif i < 2**n - 1:  # internal node: test the next input
-            tree.append("~=~?" + ";" * (i + 1) + "!")
-        else:  # leaf: print the table entry for this path
-            tree.append("0+." if truth_table[rows[0]] == "1" else "0.")
-
-    # Staged forward, like every other parameterized generator.  The order
-    # is a free choice rather than a constraint: it decides only *which*
-    # arrangement costs no ops, and the reachable set and every other
-    # arrangement's cost are identical either way, because ``*`` is an
-    # involution -- staging one way and reversing is the other way exactly.
+    used = _eval_dependencies(truth_table)
+    reduced = read_at(truth_table, used, n)
     bits = "".join("{X" + str(i) + "}" for i in range(n))
-    return bits + ops + "".join(f'"{t}"' for t in tree) + "*!"
+    values = "".join("`" if bit == "1" else "0" for bit in reduced)
+    out = [bits, ops, values]
+    remaining = len(reduced)
+    used_set = set(used)
+    for level in range(n):
+        if level not in used_set:
+            out.append("~;~")
+            continue
+        remaining //= 2
+        out.extend(("~^=~?*", ";" * remaining, "~=~?*"))
+    out.append(".")
+    return "".join(out)
 
 
 def back(truth_table: str) -> str:
