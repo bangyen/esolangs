@@ -1,9 +1,9 @@
 r"""Boolean-function generator for Circuit Diagram.
 
 Circuit Diagram is a language for drawing boolean circuits, so a truth
-table is its native idiom: the generated program is the sum of the table's
-minterms, drawn as an ASCII gate network that reads one bit per input wire
-and prints the answer through ``:``.
+table is its native idiom.  The generated ASCII gate network reads one bit
+per input wire, folds adjacent cofactors through muxes, and prints through
+``:``.
 
 Layout
 ------
@@ -20,9 +20,8 @@ Every signal owns a vertical **bus column**; every gate owns a three-row
 horizontal segments running from a bus column to its left-hand junctions,
 and its result leaves along a fresh bus.
 
-**Crossings are the point, not a hazard.**  A network where every input
-feeds every minterm is not planar, so wires must cross; the language says
-exactly what that looks like.  The spec's crossover figure puts ``-=-``
+**Crossings are the point, not a hazard.**  Shared selectors make the
+network non-planar, so wires must cross.  The spec's crossover figure puts ``-=-``
 between two horizontal wires and ``|`` above and below, with "opposite
 wires are connected", so one ``=`` carries a horizontal and a vertical wire
 past each other independently.  The renderer therefore derives each cell
@@ -50,47 +49,16 @@ most significant first, matching the other generators in this package.
   network scalar: the multi-wire path would need a ``<`` splitter tree to
   get back to individual rails, and the splitter's rounding rule makes that
   layout depend on ``n`` in a way this one does not.
-* the **literal buses** -- each input, and each input's ``~`` where some
-  minterm needs it -- are built once, up front.  A bus may be tapped by any
-  number of gates: it is still one wiring with one driver, so fan-out costs
-  nothing and no ``~`` is ever duplicated.  A complement no minterm selects
-  is not built at all: an input whose bit is 1 in every minterm never reads
-  it, and emitting one anyway leaves a ``~`` driving a bus nothing consumes,
-  plus the tap and the run out to it.  AND needs no ``~`` at all, which
-  takes its drawing from 324 characters to 144.
-* each minterm (a row of the table whose entry is ``1``) is a balanced tree
-  of two-input ``a`` gates over the ``n`` literal buses its index selects;
-* the minterms are combined by a balanced tree of ``o`` gates, and the
-  result runs into ``-:``.
+* each input and any complement the mux rules need is built once and shared;
+* a left-to-right binary-carry fold combines adjacent cofactors.  Equal
+  cofactors share one signal, ``0/1`` is the selector itself, and the other
+  cases use a fixed one- or three-gate mux rule;
+* at most one unfinished signal per input level is live.  The fold performs
+  one pass over the table and emits fewer than three gates per entry; it is
+  neither a circuit search nor a graph traversal.
 
-**Both folds are balanced, and that is a width decision.**  A gate has to
-sit right of every bus it reads, so the drawing's width is set by the
-*depth* of the gate network rather than by how many gates it holds.
-Folding left makes that depth the number of parts; splitting in half makes
-it the logarithm.  The halves are drawn one after the other, so no more
-than the depth's worth of partial results is live at once -- building every
-chain up front instead would put each on a bus of its own and spend in
-columns exactly what the balancing saved.  Parity at ``n == 6`` goes from
-271 columns to 133, and from 131932 characters to 84092.
-
-**A dense table is drawn as its complement.**  The cost is one ``a`` chain
-per row selected, so a table with more ones than zeros is built from its
-*zero* rows and the result inverted -- one ``~``, however many chains that
-saves.  It is the trade
-:func:`~esolangs.tools.helpers._maybe_complement` makes for the
-other sum-of-minterms generators, and it is worth more here, because a
-chain is not one instruction but a gate per literal plus the runs feeding
-it: a dense three-input table goes from ~7000 characters to ~190.  Choosing
-by the *count* rather than per minterm also keeps the complement buses
-honest -- which literals get a ``~`` is decided from the rows actually
-drawn.
-
-**Constant tables need no minterms.**  An all-zero table has none to sum and
-an all-one table would need ``2**n`` of them, so both are emitted as a
-single gate fed from one bus on both inputs: ``x`` of a value with itself is
-always 0 and ``X`` of a value with itself is always 1.  Feeding one wiring
-into both slots of a gate is the shape the wiki's own constant-output
-circuit uses, and the interpreter accepts it for that reason.
+**Constant tables need no muxes.**  Both are a single self-fed ``x`` or ``X``
+gate, the shape the wiki's own constant-output circuit uses.
 
 **Every wiring is driven exactly once.**  A ``:`` prints in *every*
 generation its wire carries a value, and a wiring driven twice takes the
@@ -100,18 +68,16 @@ port) and only ever read after that, which is why the tests can assert that
 a run prints exactly one character.
 """
 
+from bisect import bisect_left, insort
 from typing import Literal
 
 from esolangs.tools.helpers import (
-    _maybe_complement,
     _validate_truth_table,
     essential_inputs,
-    minterm_literals,
     read_at,
 )
 
-# The gate characters this generator draws: an AND and an OR for the
-# minterm tree, and the two self-fed XOR forms for a constant table.
+# Gate characters used by muxes and the two self-fed constant forms.
 _GateGlyph = Literal["a", "o", "x", "X"]
 _ConstGlyph = Literal["x", "X"]
 
@@ -155,8 +121,8 @@ class _Layout:
         """Place a literal character (a gate, an input dash, an output)."""
         self._check_free(x, y)
         self.glyphs[(x, y)] = char
-        self._glyph_rows.setdefault(y, []).append(x)
-        self._glyph_cols.setdefault(x, []).append(y)
+        insort(self._glyph_rows.setdefault(y, []), x)
+        insort(self._glyph_cols.setdefault(x, []), y)
 
     def junction(self, x: int, y: int, signal: int) -> None:
         """Place a ``.`` carrying ``signal``."""
@@ -179,7 +145,7 @@ class _Layout:
             if wire:
                 raise AssertionError(f"two signals run horizontal through ({x}, {y})")
             raise AssertionError(f"wire crosses glyph at ({x}, {y})")
-        self.horizontal.setdefault(y, []).append((lo, hi, signal))
+        self._record(self.horizontal.setdefault(y, []), (lo, hi, signal))
 
     def run_vertical(self, x: int, y0: int, y1: int, signal: int) -> None:
         """Record a vertical run between two junctions, exclusive."""
@@ -192,7 +158,19 @@ class _Layout:
             if wire:
                 raise AssertionError(f"two signals run vertical through ({x}, {y})")
             raise AssertionError(f"wire crosses glyph at ({x}, {y})")
-        self.vertical.setdefault(x, []).append((lo, hi, signal))
+        self._record(self.vertical.setdefault(x, []), (lo, hi, signal))
+
+    @staticmethod
+    def _record(runs: list[tuple[int, int, int]], run: tuple[int, int, int]) -> None:
+        """Insert an interval, taking O(1) for the builder's ordered runs."""
+        if runs and runs[-1][2] == run[2] and run[0] <= runs[-1][1]:
+            a, b, signal = runs[-1]
+            runs[-1] = (min(a, run[0]), max(b, run[1]), signal)
+            return
+        if not runs or runs[-1] <= run:
+            runs.append(run)
+        else:  # layout-guard tests may deliberately insert out of order
+            insort(runs, run)
 
     @staticmethod
     def _clash(
@@ -208,24 +186,44 @@ class _Layout:
         the clash is another signal's wire (``True``) or a glyph.
         """
         hit: tuple[int, bool] | None = None
-        for a, b, s in runs or ():
+        ordered = runs or []
+        index = max(0, bisect_left(ordered, (lo, -1, -1)) - 1)
+        while index < len(ordered):
+            a, b, s = ordered[index]
+            if a >= hi:
+                break
             if s != signal and a < hi and lo < b:
                 at = max(lo, a)
                 if hit is None or at < hit[0]:
                     hit = (at, True)
-        for g in glyph_line or ():
+            index += 1
+        glyphs = glyph_line or []
+        index = bisect_left(glyphs, lo)
+        while index < len(glyphs):
+            g = glyphs[index]
+            if g >= hi:
+                break
             if lo <= g < hi and (hit is None or g < hit[0]):
                 hit = (g, False)
+            index += 1
         return hit
 
     def _check_free(self, x: int, y: int) -> None:
         """Reject placing a glyph or junction over a wire or another glyph."""
         if (x, y) in self.glyphs:
             raise AssertionError(f"two glyphs at ({x}, {y})")
-        if any(a <= x < b for a, b, _ in self.horizontal.get(y, ())) or any(
-            a <= y < b for a, b, _ in self.vertical.get(x, ())
+        if self._covered(self.horizontal.get(y), x) or self._covered(
+            self.vertical.get(x), y
         ):
             raise AssertionError(f"glyph at ({x}, {y}) lands on a wire")
+
+    @staticmethod
+    def _covered(runs: list[tuple[int, int, int]] | None, point: int) -> bool:
+        """Whether a sorted interval line covers ``point``."""
+        if not runs:
+            return False
+        index = bisect_left(runs, (point + 1, -1, -1)) - 1
+        return index >= 0 and runs[index][0] <= point < runs[index][1]
 
     def _check_junction_spacing(self) -> None:
         """Reject two signals' junctions resting within one cell.
@@ -338,11 +336,8 @@ class _Builder:
         self.buses: dict[int, tuple[int, int]] = {}
         # Gate column groups that may be handed out again, and the group each
         # recyclable signal was cut from.  Only a *gate's* output is ever
-        # entered here: an input rail and a complement are read by every
-        # minterm that selects them, so their columns stay live for the whole
-        # drawing, while the circuit below is a left fold -- each ``a`` chain
-        # result and each running ``o`` result is read exactly once, by the
-        # gate on the next band down -- so those die as soon as they are read.
+        # entered here: selector rails are shared, while every mux result is
+        # read once by the carry that consumes it and then dies.
         self.free_strides: list[int] = []
         self.stride_of: dict[int, int] = {}
         # Set once a width is asked for: the column a new band starts at,
@@ -364,7 +359,7 @@ class _Builder:
     def _new_column(self) -> int:
         """Return a fresh bus column, right of every bus column in use.
 
-        Input rails only.  A rail is read by every minterm that selects it,
+        Input rails only.  A rail is read by every mux level that selects it,
         so it is live for the whole drawing and its column is never given
         back; :func:`_gate_columns` is where the recycling happens.
 
@@ -565,7 +560,7 @@ class _Builder:
         """Return a constant signal, from one bus fed to both gate inputs.
 
         ``x`` of a value with itself is always 0 and ``X`` always 1, so a
-        constant table needs no minterms.  Both of the gate's inputs come
+        constant table needs no muxes.  Both of the gate's inputs come
         from the same bus, which the interpreter accepts because the wiki's
         own constant-output circuit is drawn that way.
         """
@@ -628,43 +623,93 @@ class _Builder:
         self._tap(signal, x, y)
 
 
-def _minterm(
-    builder: _Builder, literals: list[tuple[int, int | None]], index: int
-) -> int:
-    """Return a signal that is 1 exactly when the inputs spell ``index``.
+_Value = int | Literal["0", "1"]
 
-    ``literals`` holds, per input position, the ``(plain, negated)`` bus
-    signals; the bits of ``index`` choose which of each pair to AND.  The
-    negated half is ``None`` when no minterm needs that input's complement,
-    in which case this never selects it (see :func:`circuit_diagram`).
+
+def _mux(
+    builder: _Builder, selectors: list[int | None], zero: _Value, one: _Value
+) -> _Value:
+    """Return ``zero`` or ``one`` according to ``selector``.
+
+    ``(~selector AND zero) OR (selector AND one)`` is a three-gate mux.
+    The caller shares each selector's complement across its whole level.
     """
-    n = len(literals)
-    chosen = []
-    for position, wants_complement in minterm_literals(index, n):
-        plain, negated = literals[position]
-        if not wants_complement:
-            chosen.append(plain)
-        elif negated is None:
-            raise AssertionError(f"input {position} needs its complement")
-        else:
-            chosen.append(negated)
-    return _fold(builder, "a", chosen)
+    if zero == one:
+        return zero
+    selector = selectors[0]
+    if selector is None:  # pragma: no cover - every selector has a plain rail
+        raise AssertionError("selector has no plain rail")
+    if zero == "0" and one == "1":
+        return selector
+    negated = selectors[1]
+    if negated is None:  # pragma: no cover - built before the fold
+        raise AssertionError("selector has no complemented rail")
+    if zero == "1" and one == "0":
+        return negated
+    if zero == "0":
+        if not isinstance(one, int):  # pragma: no cover - constants handled above
+            raise AssertionError("unexpected constant mux arm")
+        return builder.gate("a", selector, one)
+    if one == "0":
+        if not isinstance(zero, int):  # pragma: no cover - constants handled above
+            raise AssertionError("unexpected constant mux arm")
+        return builder.gate("a", negated, zero)
+    if zero == "1":
+        if not isinstance(one, int):  # pragma: no cover - constants handled above
+            raise AssertionError("unexpected constant mux arm")
+        return builder.gate("o", negated, one)
+    if one == "1":
+        if not isinstance(zero, int):  # pragma: no cover - constants handled above
+            raise AssertionError("unexpected constant mux arm")
+        return builder.gate("o", selector, zero)
+    off = builder.gate("a", negated, zero)
+    on = builder.gate("a", selector, one)
+    return builder.gate("o", off, on)
 
 
-def _fold(builder: _Builder, glyph: _GateGlyph, parts: list[int]) -> int:
-    """Combine ``parts`` with ``glyph`` gates, balanced rather than in a chain.
+def _shannon_fold(
+    builder: _Builder,
+    selectors: list[list[int | None]],
+    truth_table: str,
+) -> _Value:
+    """Fold the table in one pass, keeping one partial signal per level."""
+    stack: list[tuple[_Value, int]] = []
+    n = len(selectors)
+    for bit in truth_table:
+        signal: _Value = "1" if bit == "1" else "0"
+        level = 0
+        while stack and stack[-1][1] == level:
+            zero, _ = stack.pop()
+            signal = _mux(builder, selectors[n - 1 - level], zero, signal)
+            level += 1
+        stack.append((signal, level))
+    [(result, level)] = stack
+    if level != n:  # pragma: no cover - validation guarantees 2**n entries
+        raise AssertionError("incomplete Shannon fold")
+    return result
 
-    A gate has to sit right of every bus it reads, so the drawing's width
-    is set by the *depth* of the gate network, not by how many gates it
-    has.  Folding left makes that depth the number of parts; splitting in
-    half makes it the logarithm, and the halves are drawn one after the
-    other so no more than the depth's worth of results is live at a time.
-    """
-    if len(parts) == 1:
-        return parts[0]
-    half = len(parts) // 2
-    left = _fold(builder, glyph, parts[:half])
-    return builder.gate(glyph, left, _fold(builder, glyph, parts[half:]))
+
+def _complemented_levels(truth_table: str, n: int) -> set[int]:
+    """Return selector levels whose direct mux rule needs ``~selector``."""
+    stack: list[tuple[int, int]] = []
+    identities: dict[tuple[int, int, int], int] = {}
+    needed: set[int] = set()
+    next_identity = 2
+    for bit in truth_table:
+        identity, level = int(bit), 0
+        while stack and stack[-1][1] == level:
+            zero, _ = stack.pop()
+            if zero != identity:
+                if (zero, identity) != (0, 1):
+                    needed.add(n - 1 - level)
+                key = (level, zero, identity)
+                if key not in identities:
+                    identities[key] = next_identity
+                    next_identity += 1
+                identity = identities[key]
+            level += 1
+        stack.append((identity, level))
+    return needed
 
 
 def _circuit_diagram_at(truth_table: str, limit: int | None) -> str:
@@ -673,26 +718,16 @@ def _circuit_diagram_at(truth_table: str, limit: int | None) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    The program is the table's sum of minterms: one ``-`` input line per
-    bit, a bus per literal, an ``a`` chain per table row that is a 1, an
-    ``o`` chain combining them, and a ``:`` printing the result.  A constant
-    table is emitted as a single self-fed gate instead.
-
-    A table with more ones than zeros is built from its *zero* rows and the
-    result inverted, since the cost is one chain per row selected and a
-    ``~`` is one gate however many chains it saves -- the same trade
-    :func:`~esolangs.tools.helpers._maybe_complement` makes for the
-    other sum-of-minterms generators.  It is worth more here than there: a
-    chain is a gate per literal plus the runs feeding it, so a dense
-    three-input table drops from ~7000 characters to ~130.
+    The table is folded bottom-up by Shannon expansion.  Each unequal pair
+    becomes a fixed three-gate mux, while equal pairs share their signal.
+    There are fewer pairs than table entries, so construction uses O(T)
+    gates and no tree traversal or circuit search.
 
     The drawing's *width* is gate column groups, and a group is reused once
     the bus it drives is dead.  What makes so many die is the shape of the
-    circuit rather than any analysis: only the rails and their complements
-    are read more than once, and everything else is a left fold -- each
-    ``a`` chain result and each running ``o`` result is read exactly once,
-    by the gate on the next band down -- so a group is free again one band
-    after it is taken.  A gate must still sit right of every bus it reads,
+    circuit rather than any analysis: only selector rails are read more than
+    once, and each mux result is read once by the carry above it.  A gate
+    must still sit right of every bus it reads,
     since the run feeding it travels along its row, so what is reused is the
     leftmost dead group past those buses.  Four inputs: 219 columns to 99.
     """
@@ -702,9 +737,8 @@ def _circuit_diagram_at(truth_table: str, limit: int | None) -> str:
     n = len(truth_table).bit_length() - 1
     # Every input keeps its own ``-`` row -- the rows are the read order and
     # the interface -- but a table that ignores some of them is a smaller
-    # table, and the cost here is entirely in the *body*: one ``a`` chain
-    # per selected row, each a gate per literal plus the runs feeding it.
-    # So the chains are built over the essential inputs' rails only, and an
+    # table, and the cost here is entirely in the body.  The fold is built
+    # over the essential inputs' rails only, and an
     # ignored rail simply drives nothing, exactly as every rail but the
     # first already does for a constant table.
     used = essential_inputs(truth_table, n) or [0]
@@ -717,67 +751,19 @@ def _circuit_diagram_at(truth_table: str, limit: int | None) -> str:
         truth_table = table
         n = len(used)
 
-    # A sum of minterms spends one ``a`` chain per 1-row, so a table with
-    # more ones than zeros is cheaper built from its *zero* rows and
-    # inverted: every chain that saves costs a share of one ``~``.  A
-    # constant table is excluded because it is already a single gate, and
-    # complementing it would only swap which glyph that gate uses.
-    if len(set(truth_table)) == 1:
-        table, invert_result = truth_table, False
-    else:
-        table, invert_result = _maybe_complement(truth_table)
-    minterms = [i for i, bit in enumerate(table) if bit == "1"]
-    if not minterms:
-        constant: _ConstGlyph | None = "x"
-    elif len(minterms) == len(truth_table):
-        constant = "X"
-    else:
-        constant = None
+    complemented = _complemented_levels(truth_table, n)
+    selectors: list[list[int | None]] = [
+        [rail, builder.invert(rail) if level in complemented else None]
+        for level, rail in enumerate(rails)
+    ]
+    builder.band_start = builder.next_column
+    builder.limit = limit
 
-    if constant is not None:
-        # A constant table is one self-fed gate over ``rails[0]``; it reads no
-        # literal at all, so building the complements would leave every one of
-        # them driving a bus nothing consumes.  (An all-ones table is the trap
-        # here: every index is a minterm, so a per-minterm test concludes no
-        # complement is needed for a table that reads none of them either way.)
-        result = builder.constant(rails[0], constant)
-    else:
-        # A complement is computed once and shared by every minterm that
-        # selects it -- but only if one does.  An input whose bit is 1 in every
-        # minterm (both inputs of an AND, say) never reads its ``~``, and
-        # building one anyway leaves a gate driving a bus nothing consumes,
-        # plus the tap and the run out to it.
-        needs_complement = [
-            any(not (index >> (n - 1 - position)) & 1 for index in minterms)
-            for position in range(n)
-        ]
-        literals: list[tuple[int, int | None]] = [
-            (rail, builder.invert(rail) if needed else None)
-            for rail, needed in zip(rails, needs_complement, strict=True)
-        ]
-        # The rails and complements are read by everything below and so stay
-        # live for the whole drawing; a band can only reclaim what comes
-        # after them, which is why the limit is set here and not sooner.
-        builder.band_start = builder.next_column
-        builder.limit = limit
-
-        def combine(lo: int, hi: int) -> int:
-            """Sum ``minterms[lo:hi]`` as a balanced tree of ``o`` gates.
-
-            The chains are built inside the recursion rather than all up
-            front, so at most one partial sum per level is live at a time --
-            building them all first would put every chain's result on a bus
-            of its own and spend in columns what the balancing saved.
-            """
-            if hi - lo == 1:
-                return _minterm(builder, literals, minterms[lo])
-            mid = (lo + hi) // 2
-            return builder.gate("o", combine(lo, mid), combine(mid, hi))
-
-        result = combine(0, len(minterms))
-
-    if invert_result:
-        result = builder.invert(result)
+    result = _shannon_fold(builder, selectors, truth_table)
+    if result == "0":
+        result = builder.constant(rails[0], "x")
+    elif result == "1":
+        result = builder.constant(rails[0], "X")
     builder.output(result)
     return builder.layout.render()
 
@@ -798,7 +784,7 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     a row in either direction.
 
     The floor is what a band cannot reclaim -- the rails and the complements,
-    which every minterm reads and which therefore stay live for the whole
+    which their mux levels share and which therefore stay live for the whole
     drawing -- plus the carried signals and one gate group.  That is about
     ``8 * n`` columns, so the floor grows with the inputs rather than with
     the table.
