@@ -786,14 +786,14 @@ def container(truth_table: str) -> str:
 
     * The empty container pulses on even ticks ``0..2(n-1)`` (``+1 T>=2k``,
       ``-2 T>=2k+1``, ``+1 T>=2k+2``), reading one bit per pulse.
-    * For each bit ``k``, an armed gate ``A_k`` (65, dipping to 49) and
-      ``B_k`` (47, dipping to 48) make ``IN>=A_k`` and ``IN<=B_k`` hold for
+    * For each bit ``k``, two armed gates (65, dipping to 49; and 47, dipping
+      to 48) make their ``IN`` comparisons hold for
       exactly the tick the bit is in ``IN``, testing bit ``k`` once.
     * A prefix survivor creates its two children while bit ``k`` is active;
       the mismatching child is cancelled in that same tick.  The parent then
       expires, so each tree edge costs constant work instead of retesting the
       whole prefix at every leaf.
-    * At tick ``2n`` a gate ``Gout`` dips to 1, so ``+1 S_r>=Gout`` adds the
+    * At tick ``2n`` an output gate dips to 1, so the surviving row adds the
       table entry of the surviving row to ``OUT``; ``PRINT`` fires and
       ``EXIT`` halts.
 
@@ -805,6 +805,35 @@ def container(truth_table: str) -> str:
     the per-row survivor blocks above are fixed and unaffected.
     """
     n = _validate_truth_table(truth_table)
+    ones = truth_table.count("1")
+    invert = ones > 2**n - ones
+    wanted = "0" if invert else "1"
+
+    # Every generated container has a unique name, but their reference counts
+    # differ sharply.  Assign shortest alphabetic names by actual frequency.
+    uses: dict[tuple[str, int, int], int] = {("root", 0, 0): 6}
+    for bit in range(n):
+        uses[("low", bit, 0)] = 1 + 2**bit
+        uses[("high", bit, 0)] = 1 + 2**bit
+    for depth in range(1, n + 1):
+        for prefix in range(2**depth):
+            uses[("node", depth, prefix)] = (
+                6 if depth < n else 2 + (truth_table[prefix] == wanted)
+            )
+    uses[("output", 0, 0)] = 1 + truth_table.count(wanted)
+
+    reserved = {"EXIT", "IN", "OUT", "PRINT", "T"}
+    identifiers = (_forbin_name(i) for i in range(len(uses) + len(reserved)))
+    ordered = sorted(uses, key=lambda key: (-uses[key], key))
+    names: dict[tuple[str, int, int], str] = {}
+    for key in ordered:
+        name = next(identifiers)
+        while name in reserved:
+            name = next(identifiers)
+        names[key] = name
+
+    root = names[("root", 0, 0)]
+    output_gate = names[("output", 0, 0)]
 
     lines = ["T:", "+1 T>=T"]
     lines.append(":")  # the empty-named container reads input
@@ -816,30 +845,33 @@ def container(truth_table: str) -> str:
     lines.append(f"+1 T>={2 * n}")
     lines.append("IN=50:")  # a value no real byte matches
     for k in range(n):
-        lines.append(f"A{k}=65:")
+        low = names[("low", k, 0)]
+        high = names[("high", k, 0)]
+        lines.append(f"{low}=65:")
         lines.append(f"-16 T>={2 * k}")
         lines.append(f"+32 T>={2 * k + 1}")
         lines.append(f"-16 T>={2 * k + 2}")
-        lines.append(f"B{k}=47:")
+        lines.append(f"{high}=47:")
         lines.append(f"+1 T>={2 * k}")
         lines.append(f"-2 T>={2 * k + 1}")
         lines.append(f"+1 T>={2 * k + 2}")
-    lines.append("S=2:")
-    lines.append("-1 S>=1")
+    lines.append(f"{root}=2:")
+    lines.append(f"-1 {root}>=1")
     for depth in range(1, n + 1):
         bit = depth - 1
         for prefix in range(2**depth):
-            parent = "S" if depth == 1 else f"S{depth - 1}_{prefix >> 1}"
-            child = f"S{depth}_{prefix}"
+            parent = root if depth == 1 else names[("node", depth - 1, prefix >> 1)]
+            child = names[("node", depth, prefix)]
             lines.append(f"{child}:")
             # A node is born at 2, decays to 1, then pulses its children.
             # The paired parent rules therefore fire only at exactly 1.
             lines.append(f"+2 {parent}>=1")
             lines.append(f"-2 {parent}>=2")
-            mismatch = f"IN<=B{bit}" if prefix & 1 else f"IN>=A{bit}"
+            gate = names[("high" if prefix & 1 else "low", bit, 0)]
+            mismatch = f"IN<={gate}" if prefix & 1 else f"IN>={gate}"
             lines.append(f"-2 {mismatch}")
             lines.append(f"-1 {child}>=1")
-    lines.append("Gout=2:")
+    lines.append(f"{output_gate}=2:")
     lines.append(f"-1 T>={2 * n - 1}")
     lines.append(f"+1 T>={2 * n}")
     # OUT is 48 plus one ``+1`` per row the table sends to 1, so a dense
@@ -848,16 +880,13 @@ def container(truth_table: str) -> str:
     # complement, and since ``S`` is 0 or 1 the value stays at 48 or 49, so
     # the container's clamp at zero never bites.  Whichever row-set is
     # smaller wins; ties keep the plain form.
-    ones = truth_table.count("1")
-    invert = ones > 2**n - ones
     lines.append("OUT:")
     lines.append(f"+{_ASCII_ZERO + 1 if invert else _ASCII_ZERO} T>={2 * n}")
     lines.append(f"-{_ASCII_ZERO + 1 if invert else _ASCII_ZERO} T>={2 * n + 1}")
-    wanted = "0" if invert else "1"
     delta = "-1" if invert else "+1"
     for row in range(2**n):
         if truth_table[row] == wanted:
-            lines.append(f"{delta} S{n}_{row}>=Gout")
+            lines.append(f"{delta} {names[('node', n, row)]}>={output_gate}")
     lines.append("PRINT:")
     lines.append(f"+1 T>={2 * n}")
     lines.append("EXIT=1:")
