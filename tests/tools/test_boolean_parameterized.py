@@ -962,8 +962,17 @@ class TestParameterizedRam0:
         from esolangs.tools import parameterized
 
         template = parameterized.ram0("0000")
-        assert "C" not in template
+        assert template.count("C") == 1  # entry trampoline only
         assert "Z" in template
+
+    def test_leaves_share_a_low_address_halt_trampoline(self) -> None:
+        """Every leaf jumps to 2; only the trampoline names the end."""
+        from esolangs.tools import parameterized
+
+        template = parameterized.ram0("01101001")
+        tokens = template.split()
+        assert tokens[0] == "C"
+        assert tokens.count("2") == 8
 
 
 class TestParameterizedMinskySwap:
