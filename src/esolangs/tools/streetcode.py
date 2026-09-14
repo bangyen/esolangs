@@ -601,6 +601,17 @@ def _streetcode_columns(program: str) -> int:
     return max(len(line) for line in program.split("\n"))
 
 
+def _streetcode_rotate(program: str) -> str:
+    """Rotate a Streetcode grid 180 degrees and trim its new line ends.
+
+    Rotation preserves right-hand driving, unlike a reflection.  Streetcode's
+    commands are direction-independent, so no glyph translation is needed.
+    """
+    rows = program.splitlines()
+    width = max(map(len, rows))
+    return "\n".join(row.ljust(width)[::-1].rstrip() for row in reversed(rows))
+
+
 def _streetcode_hallway_program(n: int, tree: list[str]) -> str:
     """Render the narrow per-input layout used for width selection."""
     return "\n".join(
@@ -649,6 +660,11 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     and runs westbound (:func:`_streetcode_lift`), which takes its columns
     off every row of the program.
 
+    The compact shared program is also compared with its 180-degree rotation.
+    Rotation preserves the car's right-hand rule while moving the tree's
+    leading blank triangle to line ends, where rendering strips it.  A plain
+    reflection would reverse the driving rule and is not equivalent.
+
     The tree also splits on its inputs in whichever order emits the
     shortest program, so more subtrees fold.  That is a *placement* here
     rather than layout surgery: the halls test cells positionally, so
@@ -695,4 +711,5 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
             return shortest(*fitting)
         # Nothing fits: fall back to the narrowest rather than the shortest.
         return min(programs, key=_streetcode_columns)
-    return shortest(*programs)
+    rotated = [_streetcode_rotate(program) for program in programs]
+    return shortest(*programs, *rotated)
