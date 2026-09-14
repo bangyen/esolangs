@@ -1,9 +1,8 @@
 """Boolean-function generator for Super SNUSP.
 
-The generator reads ASCII ``0``/``1`` values, normalizes them to bits, then
-evaluates the truth table's algebraic normal form (ANF).  ANF is an XOR of
-input products, which maps directly to Super SNUSP's ``^`` and ``&`` stack
-operations and avoids the language's random ``=`` opcode entirely.
+Wide tables use a linear packed-integer lookup.  Small tables retain the ANF
+evaluator where its XOR of input products is shorter.  Neither uses the
+language's random ``=`` opcode.
 """
 
 from esolangs.tools.helpers import (
@@ -25,6 +24,11 @@ _TWO_INPUT_SHORT = {
     "0110": "48{,-> ,-<^{>^.",
     "0111": "48{,-> ,-<^{>|.",
 }
+
+# ANF can beat the lookup on small sparse functions, but its coefficient pass
+# and input products are super-linear in the table.  Keeping that comparison
+# finite preserves the small wins without putting it on the scaling path.
+_ANF_MAX_INPUTS = 4
 
 
 def _anf_coefficients(truth_table: str) -> list[int]:
@@ -116,8 +120,30 @@ def _anf_cost(
     return cost
 
 
+def _emit_lookup(truth_table: str) -> str:
+    """Emit a linear-size integer lookup for ``truth_table``.
+
+    The input row is accumulated by Horner's rule in cell 0.  Cell 1 then
+    builds the reversed table as one binary integer at run time, shifts it by
+    that row, and takes the low bit.  Each table entry emits one ``*`` and a
+    one entry emits one extra ``)``, so generation and output are O(T).
+    """
+    n = _validate_truth_table(truth_table)
+    out = ['"']
+    for _ in range(n):
+        # acc *= 2; read and normalize the next ASCII bit; acc += bit.
+        out.extend((">2{<*$", ">,>48{<-$", "{<+$"))
+    # Keep 2 on the value stack while cell 1 builds the packed table.  The
+    # reversed source order makes truth_table[row] bit ``row`` of the integer.
+    out.append(">0>2{<")
+    out.extend("*)" if bit == "1" else "*" for bit in reversed(truth_table))
+    # Shift by the row saved in cell 0, reduce modulo 2, encode as ASCII.
+    out.append("<{>]$%$>48{<+$.")
+    return "".join(out)
+
+
 def _super_snusp_flat(truth_table: str) -> str:
-    """Emit the straight-line program; see :func:`super_snusp`.
+    """Emit the shortest bounded-ANF or linear lookup program.
 
     Only essential inputs are retained, compactly, while every original input
     is still consumed in stream order.  The ANF is built over that projection:
@@ -132,19 +158,24 @@ def _super_snusp_flat(truth_table: str) -> str:
         # heading from generated programs; it is a no-op once execution begins.
         return '"' + _TWO_INPUT_SHORT[truth_table]
 
+    lookup = _emit_lookup(truth_table)
+    if n > _ANF_MAX_INPUTS:
+        return lookup
+
     used = essential_inputs(truth_table, n)
     full = list(range(n))
     if len(used) == n:
-        return _emit_anf(n, truth_table, full)
+        return min(lookup, _emit_anf(n, truth_table, full), key=len)
     reduced = read_at(truth_table, used, n)
     full_coefficients = _anf_coefficients(truth_table)
     reduced_coefficients = _anf_coefficients(reduced)
-    return (
+    anf = (
         _emit_anf(n, truth_table, full, coefficients=full_coefficients)
         if _anf_cost(n, truth_table, full, coefficients=full_coefficients)
         <= _anf_cost(n, reduced, used, coefficients=reduced_coefficients)
         else _emit_anf(n, reduced, used, coefficients=reduced_coefficients)
     )
+    return min(lookup, anf, key=len)
 
 
 def _super_snusp_tokens(program: str) -> list[str]:
@@ -234,12 +265,9 @@ def _super_snusp_folded(program: str, width: int) -> str:
 def super_snusp(truth_table: str, width: int | None = None) -> str:
     """Build a deterministic Super SNUSP program for ``truth_table``.
 
-    Only essential inputs are retained, compactly, while every original input
-    is still consumed in stream order.  The ANF is built over that projection:
-    for every nonzero coefficient the construction forms its input product
-    beside the accumulator and xors it in.  Both reads happen before any
-    evaluation, so every path consumes exactly ``n`` input lines, including
-    constant and reduced functions.
+    Small functions keep the shorter of the ANF evaluator and an integer
+    lookup.  Above four inputs only the lookup is built: it emits one or two
+    commands per table entry and O(n) setup while consuming every input.
 
     ``width`` asks for a column count, and the straight line folds into a
     boustrophedon to meet one -- see :func:`_super_snusp_folded`, where the
