@@ -1760,6 +1760,75 @@ class TestCircuitDiagramLayoutGuards:
         drawing = boolean.circuit_diagram(table)
         assert max(len(row) for row in drawing.splitlines()) == 131
 
+    def test_emitted_size_is_linear_in_the_table(self) -> None:
+        """A doubled dense table does not increase characters per entry."""
+        sizes = []
+        for n in (8, 9):
+            digest = hashlib.sha256(f"dense:{n}".encode()).digest()
+            bits = []
+            block = 0
+            while len(bits) < 2**n:
+                digest = hashlib.sha256(digest + bytes([block & 255])).digest()
+                bits.extend(str(byte & 1) for byte in digest)
+                block += 1
+            sizes.append(len(boolean.circuit_diagram("".join(bits[: 2**n]))))
+        assert sizes[1] <= 2 * sizes[0], sizes
+
+    def test_h_layout_reserves_linear_area(self) -> None:
+        """Two input levels quarter recursively without overlapping leaves."""
+        from esolangs.tools.circuit_diagram import _h_blocks, _h_sites, _h_size
+
+        for n in range(1, 12):
+            blocks = _h_blocks(n)
+            leaf_depth = n if n % 2 == 0 else n - 1
+            leaves = [
+                block for prefix, block in blocks.items() if len(prefix) == leaf_depth
+            ]
+            assert len(leaves) == 2**leaf_depth
+            assert len({(block.x, block.y) for block in leaves}) == len(leaves)
+            sites = _h_sites(n)
+            assert len(sites) == 2**n - 1
+            assert len(set(sites.values())) == len(sites)
+            assert _h_size(n) ** 2 <= 80_000 * 2**n
+
+    def test_h_layout_executes_every_two_input_table(self) -> None:
+        """The routed minterm and reduction trees compute all small functions."""
+        from esolangs.interpreters.grid_based.circuit_diagram import run
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.circuit_diagram import _h_term_layout
+
+        for value in range(1, 15):
+            table = format(value, "04b")
+            program = _h_term_layout(table).render().splitlines()
+            output = []
+            for index in range(4):
+                bits = format(index, "02b")
+                io = ScriptedIO("".join(f"{bit}\n" for bit in bits))
+                run(program, io)
+                output.append(io.getvalue())
+            assert "".join(output) == table
+
+    def test_layout_index_stops_past_the_probe(self) -> None:
+        """The interval guard stops once later wires and glyphs are reached."""
+        from esolangs.tools.circuit_diagram import _Layout
+
+        assert (
+            _Layout._clash(  # noqa: SLF001 - exercise the interval primitive
+                [(10, 12, 1)], [10], 0, 5, 0
+            )
+            is None
+        )
+
+    def test_invert_can_start_a_new_band(self) -> None:
+        """A complement honors a width already exhausted by its input."""
+        from esolangs.tools.circuit_diagram import _Builder
+
+        builder = _Builder()
+        source = builder.input_bus()
+        builder.limit = 0
+        builder.band_start = builder.next_column
+        assert builder.invert(source) != source
+
     def test_real_layouts_never_come_within_one_cell(self) -> None:
         """The generator's spacing keeps every table clear of the guard.
 
