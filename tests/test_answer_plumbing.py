@@ -1911,6 +1911,7 @@ class TestEvaluateTakesAWidth:
     1-row.
     """
 
+    @pytest.mark.medium
     def test_every_language_survives_a_wrap(self) -> None:
         """All 65, because a wrapper that broke one would break it quietly.
 
