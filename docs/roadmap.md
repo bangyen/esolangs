@@ -18,7 +18,7 @@ The candidate list is empty.
   Polynomial.  A construction audit adds AddSubJump, ArrowQueue, Back,
   B-tapemark, Bitdeque, BrainIf, Clockwise, Container, Dig, Flowchart, Forþ,
   Inject, Jaune, LaserFuck, Qoibl, RAM0, S*bleq,
-  SLOW ACV MAMMALIAN, Streetcode, Vandevelo, and bit~.  Their quiet factors
+  SLOW ACV MAMMALIAN, Streetcode, and Vandevelo.  Their quiet factors
   are minterms, rectangular tree layouts, widening labels or addresses, and
   per-depth padding; an n=8 -> 9 ratio near 2 is not evidence of O(T).
   Factor's Brainfuck tree has O(T) characters but Theta(T)

@@ -530,7 +530,6 @@ _MINTERM_SHAPED = {
 # collapsed structure.  Reordering does not become applicable to them the way
 # it would if they had grown a tree, which is why they are neither list.
 _REDUCING = {
-    "bit_tilde",
     "cod",
     "home_row",
     "nocomment",
