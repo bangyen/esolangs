@@ -1034,7 +1034,38 @@ def jaune(truth_table: str) -> str:
     crossed, so an order pays for the folds it wins, and the search measures
     rather than assumes.
     """
-    return best_input_order(truth_table, _jaune_ordered)
+    if len(truth_table) <= 16:
+        return best_input_order(truth_table, _jaune_ordered)
+    return _jaune_linear(truth_table)
+
+
+def _jaune_linear(truth_table: str) -> str:
+    """Emit a linear spatial table and travelling counter for Jaune."""
+    n = _validate_truth_table(truth_table)
+    out = ["v>" * n]
+
+    # Cell n is counter 0; each row then owns one output cell and the next
+    # counter cell.  Only one increment is needed for a true row.
+    for bit in truth_table:
+        out.append(">")
+        if bit == "1":
+            out.append("+")
+        out.append(">")
+    out.append("<" * (n + 2 * len(truth_table)))
+
+    # Revisit each input, carry it in the hold cell, and add its unary weight
+    # to counter 0.  The weights sum to T-1.
+    for i in range(n):
+        out.append("#")
+        out.append(">" * (n - i))
+        out.append("&" * (1 << (n - 1 - i)))
+        if i + 1 < n:
+            out.append("<" * (n - i - 1))
+
+    # Move a decremented copy of the counter two cells at a time.  When it
+    # reaches zero, the adjacent cell is the selected output.
+    out.append("1:2!#>>%&-1?1!2:>^.")
+    return "".join(out)
 
 
 def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:

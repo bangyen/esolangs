@@ -1658,6 +1658,23 @@ class TestJaune:
         assert program.count(".") == 4
         assert program.endswith("^.")
 
+    def test_spatial_lookup_executes_wide_rows(self) -> None:
+        """The travelling counter returns sampled six-input rows."""
+        n = 6
+        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+        program = boolean.jaune(table)
+        for row in (0, 1, 2, 7, 31, 32, 62, 63):
+            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
+            assert run_jaune(program, bits) == table[row]
+
+    def test_spatial_lookup_growth_is_linear(self) -> None:
+        """Wide parity programs grow by at most the table-size ratio."""
+        sizes = []
+        for n in range(11, 15):
+            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+            sizes.append(len(boolean.jaune(table)))
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
+
     @pytest.mark.parametrize(
         ("a", "b"),
         [
