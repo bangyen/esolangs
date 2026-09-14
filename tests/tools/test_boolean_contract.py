@@ -1078,6 +1078,7 @@ _LINEAR_SCALING = {
     "ram0",
     "sbleq",
 }
+_LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
     "a_painter_ant",
     "arrowqueue",
@@ -1087,7 +1088,6 @@ _OPEN_SCALING = {
     "cod",
     "container",
     "dig",
-    "factor",
     "flowchart",
     "inject",
     "laserfuck",
@@ -1129,7 +1129,7 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
         "streetcode",
         "vandevelo",
     }
-    classified = _LINEAR_SCALING | _OPEN_SCALING
+    classified = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
     assert classified == expected
     assert classified <= set(BY_BOOLEAN)
 

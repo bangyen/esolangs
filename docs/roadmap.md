@@ -42,7 +42,7 @@ The candidate list is empty.
   | Circuit Diagram | Open | Open |
   | COD | Open | Open |
   | Minifuck | Open | Open |
-  | Factor | Open | Open |
+  | Factor | Language lower bound | Language lower bound |
   | Polynomial | Open | Open |
   | AddSubJump | Linear | Linear |
   | ArrowQueue | Open | Open |
