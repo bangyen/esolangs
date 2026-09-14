@@ -1546,7 +1546,9 @@ def minsky_swap(truth_table: str) -> str:
 # either zero or ``2**(n-1-i)`` down headings; a right sentinel and the four
 # ring headings follow.  A vertical chain pops one marker per table row, so
 # the sentinel turns right at exactly the indexed row.  A zero row runs out
-# of the grid, while a one row enters the same sustaining ring as above.
+# of the grid, while a one row enters the same sustaining ring as above.  The
+# marker arms have lengths ``1, 2, 4, ..., T/2``, whose geometric sum is
+# ``T-1`` -- not the quadratic sum of every integer through ``T/2``.
 #
 # The tree is a full binary tree built from 3x3 blocks: a 0-branch
 # (``" + "``) pops the next bit, sending the pointer right for 0 and down

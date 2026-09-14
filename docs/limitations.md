@@ -105,7 +105,8 @@ rows through all log T levels.  Compaction removes empty rows and columns but
 none of those occupied prefixes.  Its marker-count construction is linear:
 input `i` contributes either zero or `2**(n-1-i)` down headings, one right
 sentinel follows them, and the sentinel selects one of T constant-size cascade
-stages.  Bitdeque's retired tree was Theta(T log T):
+stages.  The arm lengths are `1+2+4+...+T/2 = T-1`.  Bitdeque's retired tree
+was Theta(T log T):
 every parity leaf emitted `n+1` `POP` commands and absolute `GOTO` operands.
 Its head/tail discard lookup is linear.  RAM0's retired tree had linear command
 count but Theta(T) absolute one-branch targets of Theta(log T) digits.  Its
