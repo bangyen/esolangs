@@ -92,6 +92,11 @@ The candidate list is empty.
   Bitdeque pushes the table, then each zero input removes its weight from the
   tail and each one removes its weight from the head.  Exactly T-1 entries are
   discarded; sampled six-input rows execute correctly.
+  A Painter Ant paints a white corridor and its adjacent answer cells in one
+  pass; weighted routing along that corridor totals T-1 moves.  ArrowQueue's
+  marker arms have lengths `1+2+4+...+T/2 = T-1`, then one sentinel selects a
+  constant-size table row.  Flowchart preloads T answers and discards opposite
+  deque halves; both arms merge through a switch with a normalized heading.
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is
