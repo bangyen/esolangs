@@ -1051,7 +1051,7 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
     "Circuit Diagram": (145_216, 322_504, 2.2),
     "COD": (942_692, 3_668_705, 3.9),
-    "ROTfuck": (86_605, 194_945, 2.3),
+    "ROTfuck": (15_240, 29_472, 1.9),
     "Polynomial": (3_383_048, 10_896_883, 3.2),
     "SLOW ACV MAMMALIAN": (1_672_368, 3_380_418, 2.0),
     "bit~": (31_076, 69_005, 2.2),
