@@ -1542,6 +1542,12 @@ def minsky_swap(truth_table: str) -> str:
 #   so the pointer runs off the grid and halts; a ``1`` leaf is a ring that
 #   pushes on every edge and pops on every corner, sustaining forever.
 #
+# Wide tables replace that tree with a marker count.  Input ``i`` appends
+# either zero or ``2**(n-1-i)`` down headings; a right sentinel and the four
+# ring headings follow.  A vertical chain pops one marker per table row, so
+# the sentinel turns right at exactly the indexed row.  A zero row runs out
+# of the grid, while a one row enters the same sustaining ring as above.
+#
 # The tree is a full binary tree built from 3x3 blocks: a 0-branch
 # (``" + "``) pops the next bit, sending the pointer right for 0 and down
 # for 1; a 1-branch (``"*  "``/``"** "``) reflects the down-route back to
@@ -1711,6 +1717,8 @@ def arrowqueue(truth_table: str) -> str:
     124 to 128 bytes that way -- it is 109 now).
     """
     n = _validate_truth_table(truth_table)
+    if len(truth_table) > 16:
+        return _arrowqueue_linear(truth_table, n)
     header = ["{X0}"]
     header.extend(["    "] * 4)
     for i in range(1, n):
@@ -1718,6 +1726,21 @@ def arrowqueue(truth_table: str) -> str:
         header.extend(["    "] * 3)
     rows = header + _MIDDLE + _tree(list(truth_table))
     return "\n".join(row.rstrip() for row in rows)
+
+
+def _arrowqueue_linear(truth_table: str, n: int) -> str:
+    """Return the marker header and linear marker-count cascade."""
+    marker = "".join(f"{{X{i}}}" for i in range(n))
+    rows: list[str] = []
+    for bit in truth_table:
+        stage = [[" "] * 9 for _ in range(3)]
+        stage[0][4] = "+"
+        if bit == "1":
+            for r, line in enumerate(_TREE_1):
+                for c, char in enumerate(line):
+                    stage[r][6 + c] = char
+        rows.extend("".join(row).rstrip() for row in stage)
+    return marker + "\n" + "\n".join(rows)
 
 
 def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
@@ -1732,6 +1755,21 @@ def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
     """
     n = len(bits)
     rows = template.split("\n")
+    if n >= 5 and rows[0] == "".join(f"{{X{i}}}" for i in range(n)):
+        marker_rows: list[str] = []
+        for i, bit in enumerate(bits):
+            weight = 1 << (n - 1 - i)
+            marker_rows.extend([" ~" if bit else "  "] * weight)
+        # Enter column 1, append the marker run, turn around, append a right
+        # sentinel, then use the established middle block to queue R,D,L,U.
+        header = [" *", *marker_rows, "* ~   *"]
+        first = list(" " * 7)
+        first[0] = first[1] = "*"
+        for c, char in enumerate(_MIDDLE[0]):
+            first[3 + c] = char
+        header.append("".join(first))
+        header.extend("   " + row for row in _MIDDLE[1:])
+        return "\n".join([*header, *rows[1:]])
     # The header rows are built to a fixed width, but the pointer never
     # travels past the last glyph on a row, so trailing blanks are inert;
     # trim them so the emitted program carries no whitespace it cannot use.

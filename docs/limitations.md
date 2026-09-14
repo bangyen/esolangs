@@ -99,15 +99,17 @@ Theta(T) four-word instructions and a data cell per `next` edge.  A constant
 fraction of those words are positive instruction or data addresses in a
 Theta(T)-cell memory, so their space-separated decimal rendering uses
 Theta(log T) characters each.  The packed-chunk decoder replaced it.
-ArrowQueue's full tree is Theta(T log T): `_connect` shifts both children
+ArrowQueue's retired full tree was Theta(T log T): `_connect` shifted both children
 three columns right at every level, and parity retains Theta(T) occupied leaf
 rows through all log T levels.  Compaction removes empty rows and columns but
-none of those occupied prefixes.  Bitdeque's retired tree was Theta(T log T):
+none of those occupied prefixes.  Its marker-count construction is linear:
+input `i` contributes either zero or `2**(n-1-i)` down headings, one right
+sentinel follows them, and the sentinel selects one of T constant-size cascade
+stages.  Bitdeque's retired tree was Theta(T log T):
 every parity leaf emitted `n+1` `POP` commands and absolute `GOTO` operands.
 Its head/tail discard lookup is linear.  RAM0's retired tree had linear command
 count but Theta(T) absolute one-branch targets of Theta(log T) digits.  Its
-straight-line RAM initializer and unary-weight lookup are linear.  ArrowQueue
-needs shared columns and Bitdeque needs shared drains.
+straight-line RAM initializer and unary-weight lookup are linear.
 BrainIf's retired tree is Theta(T log T) on parity: it emits Theta(T) branch `goto`s, and a
 constant fraction target line numbers in a Theta(T)-line program, requiring
 Theta(log T) decimal digits.  Its spatial lookup is linear.  Container has the same bound through names:
