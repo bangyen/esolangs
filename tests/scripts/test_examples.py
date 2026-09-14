@@ -28,7 +28,7 @@ from esolangs.vm import (
     run_until_halt_or_cycle,
     run_until_halt_or_growth,
 )
-from tests.tools.boolean_runners import one_two_three_result, point_break_result
+from tests.tools.boolean_runners import one_two_three_result
 
 BASE_DIR = Path(__file__).parents[2]
 
@@ -60,7 +60,7 @@ EXITS = {"container"}
 # -- ``bits`` is just data, and a wrong one regenerates a looping file --
 # so :func:`test_halt_convention_examples_halt` checks the committed
 # program terminates *before* anything runs it unbounded.
-HALT_CONVENTION = {"123", "arrowqueue", "point-break"}
+HALT_CONVENTION = {"123", "arrowqueue"}
 
 # Boolean generators deliberately without a committed example, by canonical
 # id, each for a stated reason.  A language qualifies for an example when its
@@ -78,7 +78,7 @@ def test_boolean_example_matches_generator(name: str) -> None:
 
     The counterpart of :func:`test_example_files_match_generator` for the
     boolean examples; refresh them with
-    ``python scripts/write_examples.py boolean``. The file ends with a
+    ``python scripts/generate.py examples boolean``. The file ends with a
     single POSIX newline.
     """
     path = BASE_DIR / "examples" / f"{name}.txt"
@@ -87,7 +87,7 @@ def test_boolean_example_matches_generator(name: str) -> None:
 
 
 def test_the_manifest_matches_what_the_script_would_write() -> None:
-    """The committed table is what ``write_examples.py`` produces today.
+    """The committed table is what ``generate.py examples`` produces today.
 
     The programs beside it have had this check all along and the table
     describing them had none, so a note added to one language left the
@@ -97,11 +97,12 @@ def test_the_manifest_matches_what_the_script_would_write() -> None:
     without it and the gate stayed green.
     """
     sys.path.insert(0, str(BASE_DIR / "scripts"))
-    from write_examples import boolean_manifest_text
+    from esolangs.tools._generate_examples import boolean_manifest_text
 
     path = BASE_DIR / "examples" / "MANIFEST.md"
     assert path.read_text(encoding="utf-8") == boolean_manifest_text(), (
-        "examples/MANIFEST.md is stale; run `python scripts/write_examples.py boolean`"
+        "examples/MANIFEST.md is stale; run "
+        "`python scripts/generate.py examples boolean`"
     )
 
 
@@ -136,7 +137,7 @@ def test_halt_convention_examples_halt(name: str) -> None:
     )
 
 
-def _halts(name: str, program: str, inputs: list[str]) -> bool:
+def _halts(name: str, program: str, _inputs: list[str]) -> bool:
     """Whether ``name``'s committed program terminates, by cycle detection.
 
     ``inputs`` are the example's own stdin lines: 123 and ArrowQueue embed
@@ -152,7 +153,7 @@ def _halts(name: str, program: str, inputs: list[str]) -> bool:
         return run_until_halt_or_cycle(AQ(program.splitlines()))
     if name == "123":
         return one_two_three_result(program) == "0"
-    return point_break_result(program, inputs) == "0"
+    raise AssertionError(f"unsupported termination example: {name}")
 
 
 def test_every_boolean_generator_has_an_example() -> None:

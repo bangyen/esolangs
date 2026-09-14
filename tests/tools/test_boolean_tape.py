@@ -1424,18 +1424,14 @@ class TestSlowAcvMammalian:
 
 
 class TestSuffolk:
-    def test_candidate_costs_select_the_emitted_program(self) -> None:
-        """The selector's model is exact across every non-constant table to n=3."""
-        from esolangs.tools.tape import _suffolk_candidate_cost
-
-        for n in range(1, 4):
-            for value in range(2 ** (2**n)):
-                table = f"{value:0{2**n}b}"
-                if len({*table}) == 1:
-                    continue
-                plain = _suffolk_candidate_cost(table, "1", invert=False)
-                flipped = _suffolk_candidate_cost(table, "0", invert=True)
-                assert len(boolean.suffolk(table)) == min(plain, flipped)
+    def test_streaming_fold_scales_linearly(self) -> None:
+        """Doubling a dense table stays below twice plus fixed setup."""
+        sizes = []
+        for n in (8, 9, 10):
+            table = "".join(str((i * 73 + i.bit_count()) & 1) for i in range(2**n))
+            sizes.append(len(boolean.suffolk(table)))
+        assert sizes == [15_205, 24_291, 40_749]
+        assert sizes[2] < 2 * sizes[1]
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -1966,12 +1962,12 @@ class TestRotfuck:
     @pytest.mark.parametrize(
         ("table", "length"),
         [
-            ("01", 186),
-            ("10", 188),
-            ("0001", 303),
-            ("0110", 418),
-            ("11110000", 370),
-            ("01101001", 935),
+            ("01", 193),
+            ("10", 191),
+            ("0001", 340),
+            ("0110", 371),
+            ("11110000", 299),
+            ("01101001", 660),
         ],
     )
     def test_the_emitted_length_is_exact(self, table: str, length: int) -> None:
@@ -1985,8 +1981,7 @@ class TestRotfuck:
         changes an answer, and a loose size bound only catches them by
         luck, so the lengths are pinned exactly.
 
-        ``11110000`` also carries the dependency reduction: it depends on
-        one of its three inputs and so builds the one-input table, 370
-        characters against ``01101001``'s 935.
+        ``11110000`` also carries dependency reduction: it builds a one-input
+        Gray walk, 299 characters against ``01101001``'s 660.
         """
         assert len(boolean.rotfuck(table)) == length

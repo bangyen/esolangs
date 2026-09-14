@@ -213,15 +213,6 @@ def run_forbin_boolean(program: str, inputs: list[str]) -> str:
     return run_program(run, program, _stdin(inputs))
 
 
-def run_suptiftam(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.other.suptiftam import run
-
-    io = ScriptedIO("\n".join(inputs) + ("\n" if inputs else ""))
-    run(program, io)
-    return io.getvalue()
-
-
 def run_addsubjump(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.addsubjump import run
 
@@ -279,12 +270,6 @@ def run_sophie(program: str, inputs: list[str]) -> str:
     from esolangs.interpreters.register_based.sophie import run
 
     return run_program(run, program, _stdin(inputs))
-
-
-def run_between(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.register_based.between import run
-
-    return run_program(run, program.splitlines(), _stdin(inputs))
 
 
 def run_sbleq(program: str, inputs: list[str]) -> str:
@@ -373,30 +358,6 @@ def run_laserfuck(program: str, inputs: list[str], heading: int) -> str:
     # negative, which dump() skips, so the tape prints as exactly the answer
     # -- no filtering needed, and asserting on the raw output is stricter.
     return buffer.getvalue()
-
-
-def run_function_x_y(program: str, inputs: list[str]) -> str:
-    from esolangs.interpreters.other.function_x_y import run
-
-    return run_program(run, program, _stdin(inputs))
-
-
-def point_break_result(program: str, inputs: list[str]) -> str:
-    """Run a Point Break program; return "0" if it halts and "1" if it loops.
-
-    Point Break has no output, so the boolean generator's result is read
-    from the termination convention (halt for 0, loop for 1).  The run is
-    bounded by state-cycle detection instead of a wall-clock timeout: the
-    interpreter is step-capable, and a deterministic run that revisits its
-    complete internal state has looped forever, so the repeated state is a
-    proof of the "1" output and is reported immediately.
-    """
-    from esolangs.interpreters.io import ScriptedIO
-    from esolangs.interpreters.register_based.point_break import _Machine
-    from esolangs.vm import run_until_halt_or_cycle
-
-    machine = _Machine(program, ScriptedIO("\n".join(inputs)))
-    return "0" if run_until_halt_or_cycle(machine) else "1"
 
 
 def one_two_three_result(program: str) -> str:

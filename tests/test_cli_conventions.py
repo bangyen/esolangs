@@ -2608,7 +2608,7 @@ class TestTheTimeoutIsABackstopNotAPerRowCost:
     #: Sixteen rows, half of them 1s, on a language that answers by diverging.
     TABLE = "0110100110010110"
 
-    @pytest.mark.parametrize("language", ["123", "ArrowQueue", "Point Break"])
+    @pytest.mark.parametrize("language", ["123", "ArrowQueue"])
     def test_a_generous_bound_is_not_paid_per_row(self, language: str) -> None:
         """Thirty seconds a row would be minutes; the proof makes it instant."""
         start = time.perf_counter()
@@ -2777,7 +2777,7 @@ class TestWikiUrlsAreUsable:
     ``%^2`` is not a percent-escape, so the link was broken for the one
     language whose name starts with the escape character.  The same URL was
     a markdown link in README.md, built by a *second* copy of the slug
-    logic in ``scripts/make_languages_doc.py`` -- so fixing either alone
+    logic in ``scripts/generate.py docs`` -- so fixing either alone
     would have left the other wrong.
     """
 
@@ -2799,7 +2799,6 @@ class TestWikiUrlsAreUsable:
             ("CV(N)(C)", "CV(N)(C)"),
             ("S*bleq", "S*bleq"),
             ("bit~", "bit~"),
-            ("function x(y)", "function_x(y)"),
             ("SLOW ACV MAMMALIAN", "SLOW_ACV_MAMMALIAN"),
         ],
     )
@@ -3220,7 +3219,7 @@ class TestPrintedCommandsCanBePasted:
     ) -> None:
         """All twelve, since one unquoted survivor is the whole bug again."""
         spaced = [n for n in esolangs.list_languages() if " " in n]
-        assert len(spaced) == 12
+        assert len(spaced) == 10
         for name in spaced:
             out, _err = call_both(["describe", name], capsys)
             assert f'--spec "{name}"' in out, name
@@ -3236,7 +3235,7 @@ class TestAnswerProvesRatherThanWaits:
     ``verify`` and never reached here.
     """
 
-    @pytest.mark.parametrize("language", ["123", "ArrowQueue", "Point Break"])
+    @pytest.mark.parametrize("language", ["123", "ArrowQueue"])
     def test_a_diverging_row_is_settled_quickly(self, language: str) -> None:
         """A generous bound must not be paid; it is the backstop, not the clock."""
         start = time.perf_counter()
@@ -3313,7 +3312,7 @@ class TestExamplesShipWithThePackage:
     """
 
     def test_every_language_reports_one(self) -> None:
-        """Sixty-five languages, sixty-five committed programs."""
+        """Every implemented language reports a committed program."""
         populated = [
             name
             for name in esolangs.list_languages()
@@ -3350,8 +3349,8 @@ class TestExamplesShipWithThePackage:
         declared = re.search(r"^esolangs = \[(.+?)\]", config, re.M)
         assert declared, "no package-data entry for esolangs"
         patterns = declared.group(1)
-        assert "examples/*/*.txt" in patterns
-        assert "examples/*/*.md" in patterns
+        assert "examples/*.txt" in patterns
+        assert "examples/*/*.txt" not in patterns
 
     def test_the_manifest_is_beside_them(self) -> None:
         """It is what says which table each program computes."""

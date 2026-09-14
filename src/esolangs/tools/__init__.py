@@ -2,22 +2,23 @@
 
 from esolangs.tools.algebraic_programming_language import algebraic_programming_language
 from esolangs.tools.alight import alight
+from esolangs.tools.b_tapemark import b_tapemark
 from esolangs.tools.circuit_diagram import circuit_diagram
+from esolangs.tools.crement import crement
 from esolangs.tools.cvnc import cvnc
+from esolangs.tools.egl import egl
 from esolangs.tools.fargo import fargo
 from esolangs.tools.inject import inject
 from esolangs.tools.interprogck8 import interprogck8
+from esolangs.tools.nopstacle import nopstacle
 from esolangs.tools.other import (
-    between,
     bit_tilde,
     clockwise,
     container,
     flowchart,
     forbin,
-    function_x_y,
     laserfuck,
     streetcode,
-    suptiftam,
     taglate,
     three_x,
     ztoalc_l,
@@ -34,7 +35,6 @@ from esolangs.tools.parameterized import (
     eval,  # noqa: A004 - the language is named "Eval"
     home_row,
     instantiate,
-    lamfunc,
     minifuck,
     minsky_swap,
     nocomment,
@@ -48,7 +48,6 @@ from esolangs.tools.register import (
     collatz_multiverse,
     decleq,
     dig,
-    point_break,
     polynomial,
     qoibl,
     sophie,
@@ -74,6 +73,7 @@ from esolangs.tools.tape import (
     suffolk,
     three_d_brainfuck,
 )
+from esolangs.tools.vandevelo import vandevelo
 
 __all__ = [
     "BOOLEAN",
@@ -82,6 +82,7 @@ __all__ = [
     "algebraic_programming_language",
     "alight",
     "arrowqueue",
+    "b_tapemark",
     "back",
     "between",
     "bf_tree",
@@ -99,18 +100,19 @@ __all__ = [
     "cod",
     "collatz_multiverse",
     "container",
+    "crement",
     "cvnc",
     "decleq",
     "dig",
     "dimensional",
     "dimensional_tree",
+    "egl",
     "eval",
     "factor",
     "fargo",
     "flowchart",
     "forbin",
     "forth",
-    "function_x_y",
     "grapheme",
     "home_row",
     "inject",
@@ -118,17 +120,16 @@ __all__ = [
     "interprogck8",
     "jaune",
     "jaune_multiply",
-    "lamfunc",
     "laserfuck",
     "minifuck",
     "minsky_swap",
     "modulous",
     "nocomment",
+    "nopstacle",
     "one_two_three",
     "packlang",
     "painfuck",
     "pct_squared_minus_one",
-    "point_break",
     "polynomial",
     "qoibl",
     "ram0",
@@ -140,11 +141,11 @@ __all__ = [
     "streetcode",
     "suffolk",
     "super_snusp",
-    "suptiftam",
     "taglate",
     "three_d_brainfuck",
     "three_x",
     "unsquare",
+    "vandevelo",
     "wii2d",
     "ztoalc_l",
 ]

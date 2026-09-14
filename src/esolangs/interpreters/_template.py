@@ -74,7 +74,7 @@ Every interpreter follows the same conventions:
   ``run(data, IO())``.
 
 The module docstring has a fixed shape, checked by
-``scripts/check_docstrings.py``::
+``tests/test_interpreter_conventions.py``::
 
     '''Interpreter for <Language>.
 

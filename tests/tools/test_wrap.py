@@ -33,8 +33,9 @@ from esolangs.tools.wrap import (
     _bio,
     _bitdeque,
     _cell_width,
+    _indented,
+    _mammalian,
     _polynomial,
-    _qoibl,
     _six_five,
     _span,
     _taglate,
@@ -103,12 +104,39 @@ UNWRAPPABLE = {
     "nocomment": "a newline is an unrecognized command, a load error",
     "grapheme": "every character must be A-Z, so a newline is a load error",
     "cvnc": "the source must syllabify and a newline is in no syllable",
-    "fargo": "its newlines already separate statements",
-    "minsky_swap": "its second line is absolute offsets into its first",
+    "fargo": "each physical line is one command; expressions have no continuation",
+    "minsky_swap": "only line 1 is code; line 2 gives its numeric jump distances",
     "alight": "a command is a word walked cell by cell; a row end cuts it",
     "super_snusp": "a row is a grid row; a break moves code, it does not reflow",
-    "function_x_y": "its statements are one per line, and indented",
     "algebraic_programming_language": "a line with '=' defines, one without runs",
+    "arrowqueue": "the queue and decision tree occupy fixed grid coordinates",
+    "back": "the beam path and embedded input occupy fixed grid coordinates",
+    "brainif": "each line is one instruction and goto targets are line numbers",
+    "collatz_multiverse": "each line is one complete register assignment",
+    "container": "each line declares a container or one of its rules",
+    "inject": "blocks and executable commands are delimited by source lines",
+    "interprogck8": "each line is an instruction and relative jumps count lines",
+    "ztoalc_l": "line numbers are the program's Collatz trajectory slots",
+}
+
+# The narrower claim needed by the registry audit: these generators currently
+# take no width and cannot be safely reflowed afterwards.  Keep it separate
+# from UNWRAPPABLE, which also contains self-laying grids such as Alight.  A
+# stale exception must fail below when its generator learns to honour width.
+WIDTH_EXCEPTIONS = {
+    name: UNWRAPPABLE[name]
+    for name in (
+        "arrowqueue",
+        "back",
+        "collatz_multiverse",
+        "container",
+        "cvnc",
+        "grapheme",
+        "inject",
+        "interprogck8",
+        "minsky_swap",
+        "nocomment",
+    )
 }
 
 # These are 2D too, and wrap_program must not touch them either -- but each
@@ -149,6 +177,36 @@ WRAPPED = sorted(
     and lang.id in WRAPPERS
     and lang.id in EXAMPLE_BY_ID
 )
+
+
+def test_every_boolean_generator_has_a_width_policy() -> None:
+    """Every generator reflows, lays itself out, or records why it cannot.
+
+    Derived from the registry so a new generator enters this audit without a
+    hand-written catalogue update.  ``UNWRAPPABLE`` may overlap self-layout,
+    but ``WIDTH_EXCEPTIONS`` may not: Alight cannot be reflowed after generation
+    but can build a different grid when it receives ``width`` itself.
+    """
+    boolean_ids = {
+        language.id for language in LANGUAGES.values() if language.boolean is not None
+    }
+    missing = {
+        language.id
+        for language in LANGUAGES.values()
+        if language.boolean is not None
+        and language.id not in WRAPPERS
+        and not takes_width(language.boolean)
+        and language.id not in WIDTH_EXCEPTIONS
+    }
+    assert missing == set()
+    assert set(UNWRAPPABLE) <= boolean_ids
+    assert set(WIDTH_EXCEPTIONS) <= set(UNWRAPPABLE)
+    assert all(reason.strip() for reason in UNWRAPPABLE.values())
+    assert all(
+        not takes_width(language.boolean)
+        for language in LANGUAGES.values()
+        if language.id in WIDTH_EXCEPTIONS and language.boolean is not None
+    )
 
 
 def _table(arity: int) -> str:
@@ -197,7 +255,7 @@ def _is_grid(name: str) -> bool:
     single one the other space-delimited wrappers leave.  Undoing that wrap
     means collapsing whitespace, not swapping one character for another.
     """
-    return WRAPPERS[LANGUAGES[name].id] is wrap_grid
+    return WRAPPERS[LANGUAGES[name].id] in (wrap_grid, _mammalian)
 
 
 def _run(name: str, program: str) -> str:
@@ -264,11 +322,10 @@ def test_wrapping_only_breaks_between_tokens(name: str, width: int) -> None:
     if WRAPPERS[LANGUAGES[name].id] is _bio:
         assert "".join(wrapped.split()) == "".join(plain.split())
         return
-    # Qoibl is multi-line with no structural first line: every line is a
-    # statement and every one folds, so what must survive is the token
-    # sequence across the whole program, exactly as for the grid wrappers.
-    # Its newlines replace spaces, so splitting on whitespace recovers it.
-    if WRAPPERS[LANGUAGES[name].id] is _qoibl:
+    # These are multi-line with no structural first line. Their parsers see
+    # whitespace-delimited tokens across the whole source, so flattening and
+    # repacking may move every original line break.
+    if LANGUAGES[name].id in {"qoibl", "forbin", "packlang"}:
         assert wrapped.split() == plain.split()
         return
     # Taglate's first line is a structural queue seed the wrapper must leave
@@ -335,6 +392,13 @@ def test_every_wrapper_actually_fires(name: str) -> None:
     example = _example(name)
     raw = example.build(width=None)
     if example.build(40) != raw:
+        return
+    # Packlang already emits one short, indented statement per line.  Its
+    # wrapper exists for a caller's wider hand-written line; the focused
+    # ``_indented`` test supplies that positive control.
+    if WRAPPERS[LANGUAGES[name].id] is _indented and all(
+        len(line) <= 40 for line in raw.splitlines()
+    ):
         return
     structural = LANGUAGES[name].id in MULTILINE
     for arity in range(1, 5):
@@ -648,27 +712,6 @@ def test_no_width_is_unchanged(name: str) -> None:
     assert generate(name, TABLE) == lang.boolean(TABLE)
 
 
-def test_between_is_no_longer_wrapped_and_still_computes_its_table() -> None:
-    """Between's wrapper went with the text generators that fed it.
-
-    Its own programs are one instruction per line and none reaches a
-    readable width, so the bespoke statement-splitting wrapper had no
-    producer left; the width is now a no-op for it, and the program must
-    still compute its table.
-    """
-
-    from esolangs import tools as boolean
-
-    assert "between" not in WRAPPERS
-    for table, bits in (("01", 1), ("0110", 2), ("01101001", 3)):
-        program = boolean.between(table)
-        for width in (5, 20, 40):
-            assert wrap_program(program, "between", width) == program
-        for row, expected in enumerate(table):
-            stdin = "".join(b + "\n" for b in format(row, f"0{bits}b"))
-            assert run("Between", program, stdin) == expected
-
-
 def test_clockwise_is_never_reflowed() -> None:
     """Clockwise honours a width by shaping, never by inserting newlines.
 
@@ -950,6 +993,25 @@ def test_wrap_grid_never_straddles_a_row_boundary() -> None:
     assert wrapped.split("\n") == ["11 22", " 1234567 33"]
     # The token stayed whole -- that is the guarantee being made here.
     assert "1234567" in wrapped.split("\n")[1]
+
+
+def test_mammalian_uses_seed_sized_cells() -> None:
+    """Every command starts on the SEED-sized lattice."""
+    wrapped = _mammalian(
+        "SEED SEED DIGEST ACCEPT LEAPFROG PRONOUNCE CONFLAGRATE SEED", 39
+    )
+    assert wrapped.split("\n") == [
+        "SEED SEED DIGEST    ACCEPT    LEAPFROG",
+        "PRONOUNCE CONFLAGRATE    SEED",
+    ]
+    for row in wrapped.split("\n"):
+        assert all(match.start() % 5 == 0 for match in re.finditer(r"\S+", row))
+
+
+def test_indented_wrapper_preserves_blocks_and_folds_within_a_line() -> None:
+    """Statement boundaries and indentation survive a narrow width."""
+    program = "root {\n  alpha beta gamma;\n}\n"
+    assert _indented(program, 12) == "root {\n  alpha beta\n  gamma;\n}\n"
 
 
 def test_wrap_chars_breaks_anywhere() -> None:

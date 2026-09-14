@@ -4,12 +4,15 @@ Add stable, deterministic languages verifiable through this repository's I/O
 model.  Each needs a generator, or a documented reason one is impossible --
 record rejections in [limitations](limitations.md).
 
+Read the [architecture overview](architecture.md) for how registration,
+generation, execution, and answer extraction connect.
+
 ## Layout
 
 | Path | Holds |
 | --- | --- |
 | `src/esolangs/interpreters/` | interpreter modules and `run(code, io)` |
-| `src/esolangs/tools/boolean/` | generators |
+| `src/esolangs/tools/` | generators |
 | `src/esolangs/registry.py` | the source of truth for public integration |
 | `tests/` | interpreter and generator coverage |
 

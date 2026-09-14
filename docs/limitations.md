@@ -18,12 +18,26 @@
 (45 languages), `grid` (11), `line` (2), or `opaque` (7); undeclared tuple
 positions are refused. `opaque` positions have no program mark.
 
+Line extraction accepts anti-aliased PNGs while strokes retain a connected dark
+core; the 3px scan fixture executes addition correctly. A one-third-pixel shift
+of a 1px stroke followed by resampling erases that core and is rejected with 921
+unaccounted pixels rather than returning a different program.
+
 ## Boolean generators
 
 Parameterized generators embed inputs in the program. `%^2^-1` cannot compute
-a two-input function from runtime input. Input reordering has no useful effect
-on A Painter Ant, Alight, Container, Grapheme, Home Row, Packlang, Point Break,
-or Suptiftam; do not reopen this with a blind search.
+a two-input function from runtime input. Its screened reorder requires a
+permuted template or fill mapping; with both fixed, interleaving only lengthens
+the identity template. Input reordering has no useful effect on A Painter Ant,
+Alight, Container, Grapheme, Home Row, or Packlang; do not reopen this with a
+blind search.
+
+`scripts/screen_input_reorder.py` measures the size of permuted-table builds,
+not an admissible reorder under the fixed input-template and fill contract.
+Interprogck8, Dig, Flowchart, BrainIf, Sophie, and SLOW ACV MAMMALIAN must test
+stream inputs in read order; BF-PDA must consume its fixed stack order. No
+instruction-only wire is derived for 123, Minifuck, WII2D, or COD. ArrowQueue's
+conditional re-enqueue route remains open.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
@@ -37,18 +51,18 @@ promptly. Its magnitude guard is load-bearing. A per-node re-embed tree can
 build dense n=13, but is outside the generator contract.
 
 Uncapped dense-program sizes at n=8/n=9: Polynomial 3.38/10.90 MB, COD
-0.94/3.67 MB, SLOW ACV MAMMALIAN 1.67/3.38 MB, Circuit Diagram 0.61/1.61 MB,
-123 0.22/0.75 MB, ROTfuck 0.09/0.19 MB, bit~ 0.03/0.07 MB, Factor
+0.94/3.67 MB, SLOW ACV MAMMALIAN 1.67/3.38 MB, Circuit Diagram 0.15/0.32 MB,
+123 0.22/0.75 MB, ROTfuck 0.02/0.03 MB, bit~ 0.03/0.07 MB, Factor
 0.02/0.04 MB. Run generated programs before claiming size or equivalence.
 
 ## Curation
 
-The collection has 65 languages. The floor is 31: the languages that own a
+The collection has 60 languages. The floor is 31: the languages that own a
 generator construction, Polynomial and Modulous for their walls, and
 brainfuck for Factor's decoder. The 69→65 cut removed DINAC, MyScript,
 Basicfuck, and Nevermind: ordinary imperative languages with shared-shim
-generators and no downstream consumer. The live second band is in the
-[roadmap](roadmap.md).
+generators and no downstream consumer. The second band removed Suptiftam,
+Lamfunc, `function x(y)`, Between, and Point Break on the same criterion.
 
 ## Specification decisions
 

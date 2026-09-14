@@ -11,12 +11,11 @@ and read the answer out.
 
     row = ((b0 * 2 + b1) * 2 + b2) ...
 
-which is Horner's rule, and it is spelled directly as
-``set i i*2+a-48`` because expressions evaluate strictly left to right --
-the same reading the wiki's own ``len{l}-0.5`` forces.  Each input costs one
-``inp`` and one ``set``, so the program is O(n) commands over an O(2**n)
-table literal, with no decision tree, no leaves and no turns: it is one
-straight eastward line.
+which is Horner's rule.  The input characters remain in their variables and
+the expression subtracts their combined ASCII offset.  The base program is
+therefore O(n) commands over an O(2**n) table literal, with no decision tree
+or leaves.  A width request may split that lookup and turn the walk to
+minimize the grid's longer dimension.
 
 That shape is why ``alight`` sits in the contract test's ``_UNSHAPED`` list
 alongside ``ztoalc_l``.  Both are branch-free lookups, so there are
@@ -30,6 +29,7 @@ given arity consumes exactly ``n`` inputs, whatever the table says.
 from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
 
 __all__ = ["alight"]
+
 
 #: The two turns a fold spends.  ``turn`` pivots *at its own semicolon's
 #: cell* and the next command begins one cell beyond it in the new heading,
@@ -114,6 +114,24 @@ def _alight_units(truth_table: str, n: int, chunk: int) -> list[list[str]]:
     return units
 
 
+def _alight_flat_compact(truth_table: str, n: int) -> str:
+    """Return the shorter straight lookup, with the index in ``at`` itself."""
+    names = [chr(code) for code in range(ord("a"), ord("z") + 1) if code != ord("r")]
+    names.extend(f"a{index}" for index in range(n - len(names)))
+    expr = names[0]
+    for name in names[1:n]:
+        expr += f"*2+{name}"
+    # Every input is its character code.  The final half selects Alight's
+    # half-integer list slot; omitting its leading zero saves one column.
+    offset = _ASCII_ZERO * ((1 << n) - 1) - 0.5
+    expr += f"-{offset:g}"
+    return ";".join(
+        ["begin", *(f"var {name}" for name in names[:n]), "var r"]
+        + [f"inp {name}" for name in names[:n]]
+        + [f'set r at{{"{truth_table}",{expr}}}', "out r", "end", ""]
+    )
+
+
 def _alight_folded(units: list[list[str]], width: int) -> str:
     """Lay ``commands`` out as a boustrophedon inside ``width`` columns.
 
@@ -189,13 +207,45 @@ def _alight_folded(units: list[list[str]], width: int) -> str:
     ends: dict[int, int] = {}
     for r, c in cells:
         ends[r] = max(ends.get(r, 0), c)
-    # A row is trimmed to its last *written* cell rather than stripped:
-    # ``turn right`` has a space in the middle, so a vertical turn writes a
-    # blank that is part of a command and has to survive.
+    # The interpreter pads ragged rows back to this grid's widest line, so
+    # trailing blank cells need not be serialized.  Empty interior rows stay
+    # present as the newlines around them.
     return "\n".join(
-        "".join(cells.get((r, c), " ") for c in range(ends.get(r, -1) + 1))
+        "".join(cells.get((r, c), " ") for c in range(ends.get(r, -1) + 1)).rstrip()
         for r in range(height)
     )
+
+
+def _dimensions(program: str) -> tuple[int, int]:
+    """Return the rendered width and height of an Alight program."""
+    rows = program.splitlines()
+    return max(map(len, rows)), len(rows)
+
+
+def _alight_balanced(truth_table: str, n: int, width: int) -> str:
+    """Return the permitted layout with the smallest longer dimension.
+
+    Candidates are the straight program, its one-column rotation, and every
+    legal boustrophedon no wider than ``width``.  Equal squares prefer less
+    area, then fewer source characters.
+    """
+    if width < 1:
+        raise ValueError("width must be at least 1")
+    flat = _alight_flat_compact(truth_table, n)
+    candidates = ["\n".join(flat)]
+    if len(flat) <= width:
+        candidates.append(flat)
+    for columns in range(1, min(width, len(flat)) + 1):
+        chunk = _alight_chunk(len(truth_table), columns)
+        folded = _alight_folded(_alight_units(truth_table, n, chunk), columns)
+        if _dimensions(folded)[0] <= width:
+            candidates.append(folded)
+
+    def score(program: str) -> tuple[int, int, int]:
+        rendered_width, height = _dimensions(program)
+        return max(rendered_width, height), rendered_width * height, len(program)
+
+    return min(candidates, key=score)
 
 
 def alight(truth_table: str, width: int | None = None) -> str:
@@ -210,19 +260,12 @@ def alight(truth_table: str, width: int | None = None) -> str:
     in the reads, and it is a single line of commands running east from
     ``begin``.
 
-    ``width`` folds that line into a boustrophedon (:func:`_alight_folded`)
-    and, when the literal alone would still overflow, **splits the literal**
-    into guarded chunks (:func:`_alight_units`).  The literal used to be the
-    floor -- one token of one command, ``2 ** n`` characters -- and chunking
-    is what takes that away: the floor becomes one chunk plus its guard and
-    the turn they share a row with, which the width itself picks.
+    ``width`` is a hard upper bound.  The generator chooses the straight,
+    vertical, or boustrophedon layout minimizing ``max(rendered width,
+    rendered height)``; ties prefer less area, then fewer source characters.
     """
     n = _validate_truth_table(truth_table)
-    flat = ";".join(
-        ";".join(u) for u in _alight_units(truth_table, n, len(truth_table))
-    )
-    flat += ";"
-    if width is None or len(flat) <= width:
+    flat = _alight_flat_compact(truth_table, n)
+    if width is None:
         return flat
-    units = _alight_units(truth_table, n, _alight_chunk(len(truth_table), width))
-    return _alight_folded(units, width)
+    return _alight_balanced(truth_table, n, width)

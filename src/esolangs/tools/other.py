@@ -13,7 +13,6 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
     essential_inputs,
-    minterm_sum,
     read_at,
 )
 from esolangs.tools.laserfuck import laserfuck
@@ -21,15 +20,12 @@ from esolangs.tools.streetcode import streetcode
 from esolangs.tools.ztoalc_l import ztoalc_l
 
 __all__ = [
-    "between",
     "bit_tilde",
     "clockwise",
     "container",
     "forbin",
-    "function_x_y",
     "laserfuck",
     "streetcode",
-    "suptiftam",
     "taglate",
     "three_x",
     "ztoalc_l",
@@ -70,103 +66,6 @@ def _const(n: int) -> str:
     for d in reversed(digits[:-1]):
         prog += _NEG_THIRD + "#" + _NEG_DIGIT[d] + "x"
     return prog
-
-
-def function_x_y(truth_table: str, width: int | None = None) -> str:
-    """Build a function x(y) program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    The program reads all ``n`` input lines up front into ``b0..b(n-1)``,
-    then prints one nested ternary: at level ``k`` the condition is
-    ``(b_perm[k] == "1")`` and the arms are the two subtrees, folded to a
-    literal wherever the subtable is constant.  The reads stay in input
-    order and happen unconditionally, so a constant table still consumes
-    all ``n`` inputs -- the reads are the interface.
-
-    A ternary is an expression, so the whole tree is one statement and the
-    construction needs no control flow beyond it.  **The tree splits in
-    whichever input order emits the shortest program**
-    (:func:`~esolangs.tools.helpers.best_input_order`).
-
-    ``width`` asks for a column count, and the tree meets one by *naming*
-    its subtrees.  A ternary is an expression, so the whole tree is one
-    statement and its width is the whole tree -- but ``var`` binds an
-    expression to a name, and a name is three characters wherever it is
-    used.  So a subtree whose text would push its line past the width is
-    emitted as a ``var`` of its own and referred to by name, which is the
-    same program with the nesting spread down the page instead of along
-    the line.
-
-    That is sound here for a reason worth stating, because it is not true
-    of the language in general: a ``var`` is evaluated where it stands,
-    while a ternary's arms are evaluated **lazily, exactly one of them**.
-    Hoisting an arm therefore evaluates it whether or not it is taken.
-    Nothing in this tree minds -- the arms are string literals and
-    comparisons of variables that were read before the tree starts, so they
-    have no effects to duplicate and no errors to raise.  The reads
-    themselves stay where they were, one per input, above the tree and
-    unconditional.
-
-    The floor is one node's own line, ``var tN: (bK == "1")<tA, tB>``, and
-    a width under it returns the narrowest program rather than refusing.
-    """
-    return best_input_order(
-        truth_table,
-        lambda table, perm: _function_x_y_ordered(table, perm, width),
-    )
-
-
-def _function_x_y_ordered(
-    truth_table: str, perm: tuple[int, ...], width: int | None = None
-) -> str:
-    """Emit one input order's function x(y) program; see :func:`function_x_y`."""
-    n = _validate_truth_table(truth_table)
-    named: list[str] = []
-    # The prefix a named subtree's line carries.  It is measured against the
-    # *last* index the tree could reach rather than the next one, because a
-    # node is often named later than it is built -- a sibling subtree can
-    # spend several names in between -- and budgeting for the index at build
-    # time leaves the line a column short once the counter gains a digit.
-    head = len(f"var t{max(1, 2**n - 1)}: ")
-
-    def build(i: int, combo: int) -> str:
-        """Return the text for this subtree, naming as much as the width needs.
-
-        The invariant is that what comes back always fits a ``var`` line of
-        its own.  That is what makes naming an arm legal at any point: the
-        arm has already been built to fit a line, so giving it one cannot
-        overflow.  Naming a *node* does not shorten the node, which is the
-        thing to get right -- a line is too long because of what is inside
-        it, so the arms are what have to go.
-        """
-        # ``combo`` has the bits above level ``i`` set and the rest clear,
-        # so it is the first row of the run this subtree covers.
-        run = truth_table[combo : combo + 2 ** (n - i)]
-        if i == n or len(set(run)) == 1:
-            return f'"{truth_table[combo]}"'
-        arms = [build(i + 1, combo | (1 << (n - 1 - i))), build(i + 1, combo)]
-
-        def compose() -> str:
-            return f'(b{perm[i]} == "1")<{arms[0]}, {arms[1]}>'
-
-        text = compose()
-        while width is not None and head + len(text) > width:
-            longest = max((0, 1), key=lambda j: len(arms[j]))
-            name = f"t{len(named)}"
-            if len(arms[longest]) <= len(name):
-                # Both arms are already names or literals: there is nothing
-                # left to give, and this node's own line is the floor.
-                break
-            named.append(f"var {name}: {arms[longest]}")
-            arms[longest] = name
-            text = compose()
-        return text
-
-    body = build(0, 0)
-    reads = [f"var b{i}: [~]" for i in range(n)]
-    return "\n".join(["function truthTable()", *reads, *named, f"`{body}"])
 
 
 def three_x(truth_table: str) -> str:
@@ -394,97 +293,6 @@ def _build_padded_tt(truth_table: str, n_effective: int) -> str:
     """
     half = 2 ** (n_effective - 1)
     return truth_table.ljust(half * 2, "0")
-
-
-def between(truth_table: str) -> str:
-    """Build a Between program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
-
-    The program reads each input bit as a line, converts it to an integer
-    with ``c``, then walks a decision tree laid out linearly: every node
-    tests bit ``i`` and, when the bit is zero, jumps over the ``1`` subtree
-    to the ``0`` subtree; each leaf prints ``|0|``/``|1|`` and exits.  The
-    branch addresses are 0-indexed line numbers, so the size of each subtree
-    is computed ahead of the linear layout.
-
-    A subtree whose rows all agree becomes a leaf rather than branching on
-    bits that cannot change the answer.  Since the addresses come from
-    ``size`` walking the tree a second time, the fold has to be a property of
-    the path alone -- ``constant`` -- so both walks stop in the same places;
-    a check either walk applied and the other did not would leave every
-    branch below it naming the wrong line.
-
-    **The tree splits on its inputs in whichever order emits the shortest
-    program** (:func:`~esolangs.tools.helpers.best_input_order`),
-    since the split order decides which rows a subtree covers -- and so
-    whether it folds.  The reads stay put: the ``'i'v.``/``[i]i.`` block
-    above the tree still stores input ``i`` in variable ``[i]`` in stream
-    order, and only the variable a branch line *names* moves.
-    """
-    return best_input_order(truth_table, _between_ordered)
-
-
-def _between_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
-    """Emit one input order's Between program; see :func:`between`.
-
-    ``truth_table`` is already permuted, so the rows and the ``path``
-    indexing them are in the permuted frame.  ``perm`` is spent only on the
-    variable a branch tests, ``[perm[len(path)]]`` -- a substitution that
-    changes no line count, so ``size`` and ``emit`` still fold in the same
-    places and every branch address stays right.
-    """
-    n = _validate_truth_table(truth_table)
-
-    def first_row(path: list[int]) -> int:
-        """Return the lowest table row ``path`` reaches.
-
-        A full path spells a row outright; a short one has its unconsumed
-        bits still to come, so it names the *start* of the ``2**(n - len)``
-        run they span.  Shifting by those bits is what makes a folded leaf
-        read its own slice rather than the small index the raw path spells.
-        """
-        row = 0
-        for bit in path:
-            row = row * 2 + bit
-        return row << (n - len(path))
-
-    def leaf_value(path: list[int]) -> int:
-        return int(truth_table[first_row(path)])
-
-    def constant(path: list[int]) -> bool:
-        """Whether every row ``path`` reaches holds the same entry."""
-        row = first_row(path)
-        return len(set(truth_table[row : row + 2 ** (n - len(path))])) == 1
-
-    def size(path: list[int]) -> int:
-        if len(path) == n or constant(path):
-            return 2
-        return 1 + size([*path, 1]) + size([*path, 0])
-
-    lines: list[str] = []
-    for bit in range(n):
-        lines.append(f"'{bit}'v.")
-        lines.append(f"[{bit}]i.")
-        lines.append(f"[{bit}]s|[{bit}]c.|")
-
-    def emit(path: list[int], offset: int) -> int:
-        # Must stop exactly where ``size`` stops: the branch addresses are
-        # line numbers ``size`` computed ahead of the layout, so a subtree
-        # that folds here and not there would name the wrong target.
-        if len(path) == n or constant(path):
-            lines.append(f"|{leaf_value(path)}|p.")
-            lines.append(".x.")
-            return offset + 2
-        zero_addr = offset + 1 + size([*path, 1])
-        lines.append(f"|{zero_addr}|f([{perm[len(path)]}]=|0|)")
-        offset += 1
-        offset = emit([*path, 1], offset)
-        return emit([*path, 0], offset)
-
-    emit([], len(lines))
-    return "\n".join(lines)
 
 
 def _odd_reduce(pairs: int, level: int, n: int) -> str:
@@ -1285,77 +1093,6 @@ def _forbin_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     emit(0, 0, 1)
     lines.append("}")
-    return "\n".join(lines)
-
-
-def _suptiftam_bit(i: int) -> str:
-    """Variable name for input bit ``i`` (identifiers must be alphabetical)."""
-    if i < 25:
-        return chr(ord("b") + i)
-    return "b" + _suptiftam_bit(i - 25)
-
-
-def suptiftam(truth_table: str) -> str:
-    """Build a Suptiftam program computing the given truth table.
-
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.  The
-    program prints ``'0'`` or ``'1'``.
-
-    Suptiftam has only ``+``/``-``/``/`` and no equality test, so the table
-    is evaluated as a sum of minterms: each bit is read from its own input
-    row and normalized to 0/1 with ``%-[read]22%`` (the literal ``22``
-    parses in base 23 to 48), each minterm multiplies its bits (AND, via a
-    recursive add-until-zero ``mulStep`` guarded by ``if``), and the sum is
-    written to ``term``.  Exactly one minterm is 1 for any input, so the
-    sum is the table entry.
-
-    A table with more ones than zeros is summed over its *zero* rows and the
-    sum inverted, since a minterm is four lines per input and ``1 - sum`` is
-    one line however many it saves.  No constant table needs excluding here,
-    unlike the gate-network generators: an all-ones table complements to no
-    minterms, leaving ``sum`` at 0, and ``1 - 0`` is the 1 it should print.
-    """
-    n = _validate_truth_table(truth_table)
-    names = [_suptiftam_bit(i) for i in range(n)]
-    lines = [
-        "sum=0",
-        "p=1",
-        "fd mulStep :x",
-        "prod=%+[prod]a%",
-        "x=%-[x]1%",
-        "mulStep(:x:)if(x)",
-        "fi",
-    ]
-    for name in names:
-        lines.append(f"{name}=%-[read]22%")
-        lines.append("down(:read:)")
-
-    # One minterm per row selected, so a dense table is summed over its
-    # zeros and the sum inverted -- ``1 - sum`` is one line however many
-    # minterms it saves.
-    # A table that ignores some of its inputs is a smaller table, and since a
-    # minterm costs four lines *per input* on top of one row per selected
-    # row, dropping an input removes rows and shortens the rows that remain.
-    # Every input keeps its read and its normalization (they are the
-    # interface); an ignored one is never named as a factor.
-    def literal(i: int, negated: bool) -> str:  # noqa: FBT001 - a literal's sign
-        return f"%-[1]{names[i]}%" if negated else names[i]
-
-    def product(factors: list[str]) -> str:
-        # ``p=1`` seeds the row, then each factor multiplies into it.  The
-        # seed can sit here rather than before the literals because a
-        # literal only names a factor -- it emits nothing of its own.
-        lines.append("p=1")
-        for factor in factors:
-            lines.extend(["prod=0", f"a={factor}", "mulStep(:p:)if(p)", "p=prod"])
-        return "p"
-
-    def accumulate(row: str) -> None:
-        lines.append(f"sum=%+[sum]{row}%")
-
-    _used, _width, invert = minterm_sum(truth_table, literal, product, accumulate)
-    lines.append("term=%-[1]sum%" if invert else "term=sum")
     return "\n".join(lines)
 
 

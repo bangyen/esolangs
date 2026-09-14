@@ -250,7 +250,7 @@ class TestARunFinishesTheDump:
         it includes A Painter Ant and excludes ArrowQueue and Point Break.
         A docstring quoted that six for this set and was wrong by one.
         """
-        assert len(self._dumping()) == 7
+        assert len(self._dumping()) == 6
         mode = {
             n
             for n in esolangs.list_languages()
