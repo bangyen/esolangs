@@ -17,13 +17,12 @@ The candidate list is empty.
   (35611 -> 136735), Minifuck (57601 -> 203089), ROTFuck
   (83516 -> 200647), and Suffolk (34697 -> 105932); dense tables also expose
   Polynomial and Super SNUSP.  Treat every emitted character as build work,
-  then remove the independent non-linear planners: the shared and bespoke
-  factorial input-order scans (including CircleFuck, 6-5, LaserFuck,
-  Streetcode, and Unsquare's `3**n` arrangements), Circuit Diagram's
-  quadratic layout checks, and the greedy reorder's O(T log(T)^2) scoring.
-  Do not replace them with BFS or DFS.  `%^2^-1`'s live breadth-first spelling
-  catalogue must become a derived rule or a fixed-size direct construction;
-  test-only oracle searches and prose about retired searches may remain.
+  and replace Circuit Diagram's quadratic layout checks.  Input reordering is
+  an optional optimization around a generator, not part of its construction,
+  so its search cost does not enter this criterion.  No generator construction
+  may use BFS or DFS: `%^2^-1`'s live breadth-first spelling catalogue must
+  become a derived rule or a fixed-size direct construction; test-only oracle
+  searches and prose about retired searches may remain.
 
 - **Reorder EGL inputs.**  EGL hoists every read into addressable one-hot cells,
   so a tree can test cell `perm[depth]` while the `x` commands remain in stream
