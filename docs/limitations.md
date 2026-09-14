@@ -101,9 +101,9 @@ Theta(log T) characters each.  The packed-chunk decoder replaced it.
 ArrowQueue's full tree is Theta(T log T): `_connect` shifts both children
 three columns right at every level, and parity retains Theta(T) occupied leaf
 rows through all log T levels.  Compaction removes empty rows and columns but
-none of those occupied prefixes.  Bitdeque is Theta(T log T) because every
-one of its T parity leaves emits `n+1` `POP` commands; its absolute `GOTO`
-operands add another super-linear term.  RAM0's retired tree had linear command
+none of those occupied prefixes.  Bitdeque's retired tree was Theta(T log T):
+every parity leaf emitted `n+1` `POP` commands and absolute `GOTO` operands.
+Its head/tail discard lookup is linear.  RAM0's retired tree had linear command
 count but Theta(T) absolute one-branch targets of Theta(log T) digits.  Its
 straight-line RAM initializer and unary-weight lookup are linear.  ArrowQueue
 needs shared columns and Bitdeque needs shared drains.

@@ -47,7 +47,7 @@ The candidate list is empty.
   | AddSubJump | Linear | Linear |
   | ArrowQueue | Open | Open |
   | Back | Linear | Linear |
-  | Bitdeque | Open | Open |
+  | Bitdeque | Linear | Linear |
   | BrainIf | Linear | Linear |
   | Clockwise | Open | Open |
   | Container | Open | Open |
@@ -89,6 +89,9 @@ The candidate list is empty.
   Inject keeps the table in one block and conditionally deletes one half per
   input with literal regexes.  Their total length is under 2T; sampled
   six-input rows execute correctly.
+  Bitdeque pushes the table, then each zero input removes its weight from the
+  tail and each one removes its weight from the head.  Exactly T-1 entries are
+  discarded; sampled six-input rows execute correctly.
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is
