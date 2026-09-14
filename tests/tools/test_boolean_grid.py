@@ -1385,9 +1385,9 @@ class TestCircuitDiagram:
     """The Circuit Diagram generator (a real gate network, input-reading).
 
     Circuit Diagram draws boolean circuits, so a truth table is its native
-    idiom and the generator is a sum of minterms rather than a decision
-    tree: ``n`` input lines, a bus per literal, an ``a`` chain per minterm,
-    an ``o`` chain combining them, and a ``:`` that prints the answer.
+    idiom.  The generator folds adjacent cofactors into fixed mux circuits:
+    ``n`` input lines, one shared complement per selector that needs it,
+    and a ``:`` that prints the final signal.
 
     Every assertion here replays the generated program through the real
     interpreter over the table's *whole* input space, which is what makes
@@ -1434,30 +1434,20 @@ class TestCircuitDiagram:
     @pytest.mark.parametrize(
         ("table", "tildes"),
         [
-            ("0001", 0),  # AND: every minterm bit is 1, so no complement
+            ("0001", 1),  # selector 0 chooses whether selector 1 matters
             ("01", 0),  # identity: likewise
-            ("10", 1),  # NOT: its one minterm selects the complement
+            ("10", 1),  # NOT is the complemented selector
             ("0110", 2),  # XOR: both inputs appear negated and plain
         ],
     )
     def test_only_needed_complements_are_built(self, table: str, tildes: int) -> None:
-        """A ``~`` is drawn only when some minterm selects that complement.
-
-        Building all ``2n`` literals unconditionally left a gate driving a
-        bus nothing read, plus the tap and the run out to it -- for AND that
-        was more than half the drawing.
-        """
+        """A ``~`` is drawn only when a mux rule needs the inverse selector."""
         from esolangs.tools.circuit_diagram import circuit_diagram
 
         assert circuit_diagram(table).count("~") == tildes
 
-    def test_a_dense_table_is_drawn_as_its_complement(self) -> None:
-        """More ones than zeros costs less built from the zero rows.
-
-        A chain is a gate per literal plus the runs feeding it, so the
-        saving is far larger than the one ``~`` that inverts the result:
-        NAND3 selects seven rows drawn directly and one complemented.
-        """
+    def test_complementary_sparse_tables_have_comparable_drawings(self) -> None:
+        """Shannon folding handles a function and its complement symmetrically."""
         from esolangs.tools.circuit_diagram import circuit_diagram
 
         dense = circuit_diagram("11111110")  # NAND3: seven ones
@@ -1707,17 +1697,17 @@ class TestCircuitDiagramLayoutGuards:
         ("table", "rows", "columns"),
         [
             ("01", 1, 4),
-            ("0001", 7, 11),
+            ("0001", 11, 17),
             ("0110", 23, 35),
             # 91 columns before gate groups were recycled, and the width is
             # what moves when they stop being: the rows are untouched, since
             # reuse gives back columns and never a band.
-            ("00010111", 61, 61),
+            ("00010111", 33, 49),
             # Four inputs, where the two savings compound: 219 columns as a
             # left fold with no reuse, 99 once groups were recycled, and 87
             # once the folds were balanced.  The rows never move -- neither
             # change gives back a band.
-            ("0110100110010110", 147, 87),
+            ("0110100110010110", 107, 99),
         ],
     )
     def test_the_drawing_has_exact_dimensions(
@@ -1740,41 +1730,35 @@ class TestCircuitDiagramLayoutGuards:
         assert len(drawing) == rows
         assert max(len(row) for row in drawing) == columns
 
-    def test_balancing_the_folds_keeps_the_width_logarithmic(self) -> None:
-        """Each extra input doubles the minterms and costs a bounded step.
+    def test_the_online_fold_keeps_the_width_logarithmic(self) -> None:
+        """Each extra input doubles the cofactors and costs a bounded step.
 
         A gate sits right of every bus it reads, so the drawing's width is
         set by the gate network's *depth*.  Folded left that depth is the
         number of parts, and an extra input would roughly double it; folded
         in half it is the logarithm, so an extra input adds one level.
 
-        The pins are what a regression would move.  Left-folded, the same
-        four are 61, 99, 161 and 271.
+        The pins are what a regression would move.
         """
         widths = {}
         for n in (3, 4, 5, 6):
             table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
             drawing = boolean.circuit_diagram(table)
             widths[n] = max(len(row) for row in drawing.splitlines())
-        assert widths == {3: 61, 4: 87, 5: 113, 6: 133}
+        assert widths == {3: 67, 4: 99, 5: 131, 6: 163}
         steps = [widths[n + 1] - widths[n] for n in (3, 4, 5)]
-        assert max(steps) <= 30, steps
+        assert max(steps) <= 32, steps
 
-    def test_a_balanced_fold_holds_only_its_depth_live(self) -> None:
-        """The halves are drawn one after the other, not all up front.
+    def test_the_online_fold_holds_only_one_partial_per_level(self) -> None:
+        """Binary carries combine immediately rather than accumulating a level.
 
-        Building every minterm chain first and then combining them would
-        have the same depth but put each chain's result on a bus of its
-        own, spending in columns what the balancing saved.  Drawing each
-        half fully before starting the next keeps at most one partial
-        result per level alive, which is why the width falls rather than
-        merely moving.
+        Delaying carries would put every cofactor result on a bus of its own,
+        spending in columns what immediate binary carries save.
         """
-        # Sixteen minterms at n=5: all-up-front would need sixteen live
-        # buses, which at two columns each could not fit in this width.
+        # A level-wide fold would need sixteen live buses here.
         table = "".join(str(bin(i).count("1") % 2) for i in range(32))
         drawing = boolean.circuit_diagram(table)
-        assert max(len(row) for row in drawing.splitlines()) == 113
+        assert max(len(row) for row in drawing.splitlines()) == 131
 
     def test_real_layouts_never_come_within_one_cell(self) -> None:
         """The generator's spacing keeps every table clear of the guard.

@@ -13,11 +13,13 @@ The candidate list is empty.
   T is the truth-table length, and add a registry-wide scaling contract.  The
   n=8 -> 9 parity sweep already exposes super-linear output in A Painter Ant
   (135016 -> 534124), 123 (222847 -> 750738), Circuit Diagram
-  (632616 -> 1661008), COD (942692 -> 3668705), Minifuck
+  (145216 -> 322504), COD (942692 -> 3668705), Minifuck
   (57601 -> 203089), ROTFuck
   (83516 -> 200647), and Suffolk (34697 -> 105932); dense tables also expose
-  Polynomial.  Treat every emitted character as build work, and replace
-  Circuit Diagram's quadratic layout checks.  Input reordering is
+  Polynomial.  Circuit Diagram now uses a linear one-pass Shannon fold and
+  indexed layout guards, but its persistent selector rails leave the ASCII
+  area O(T log T); route each selector only across its mux level.  Treat every
+  emitted character as build work.  Input reordering is
   an optional optimization around a generator, not part of its construction,
   so its search cost does not enter this criterion.  No generator construction
   may use BFS or DFS; test-only oracle searches and prose about retired searches
