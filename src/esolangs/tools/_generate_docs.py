@@ -187,6 +187,19 @@ def render_boolean_count_section() -> str:
     )
 
 
+def render_contributor_tools_section() -> str:
+    """Render the generator directory after checking it against the registry."""
+    root = ROOT / "src" / "esolangs"
+    generator_dir = root / "tools"
+    for language in LANGUAGES.values():
+        if language.boolean is None:
+            continue
+        source = pathlib.Path(language.boolean.__code__.co_filename).resolve()
+        if not source.is_relative_to(generator_dir.resolve()):
+            raise ValueError(f"{language.name}'s generator is outside {generator_dir}")
+    return "| `src/esolangs/tools/` | generators |"
+
+
 def _reads_stdin() -> list[str]:
     """Return the languages that take their inputs on stdin, sorted."""
     names = esolangs.list_languages()
@@ -318,6 +331,26 @@ def update_usage() -> None:
     path.write_text(text)
 
 
+def update_contributing() -> None:
+    """Validate the registry-derived generator location in contributor docs."""
+    path = ROOT / "docs" / "CONTRIBUTING.md"
+    if render_contributor_tools_section() not in path.read_text():
+        raise ValueError(f"{path} does not name the registry's generator directory")
+
+
+def update_language_request() -> None:
+    """Rewrite the issue template's registry language count."""
+    path = ROOT / ".github" / "ISSUE_TEMPLATE" / "language_request.yml"
+    text, replacements = re.subn(
+        r"(What it adds that the current )\d+( do not —)",
+        rf"\g<1>{len(LANGUAGES)}\g<2>",
+        path.read_text(),
+    )
+    if replacements != 1:
+        raise ValueError(f"expected one language count in {path}, found {replacements}")
+    path.write_text(text)
+
+
 def update_readme() -> None:
     """Rewrite the generated sections of README.md between their markers."""
     path = ROOT / "README.md"
@@ -338,4 +371,8 @@ def main() -> int:
     print("updated the generated sections of README.md")
     update_usage()
     print("updated the generated tables of docs/usage.md")
+    update_contributing()
+    print("validated the registry facts in docs/CONTRIBUTING.md")
+    update_language_request()
+    print("updated the generated facts of the language request template")
     return 0

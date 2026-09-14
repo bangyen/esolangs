@@ -26,10 +26,10 @@ touched file that only ever went one way fails just as an unexecuted line
 does.  This is deliberately not a percentage: "the file is covered" is the
 only coherent form the threshold takes once the unit is a file.
 
-Fail-open, matching :mod:`_scope`: an unreadable diff, absent coverage data, or
-a run whose test selection cannot support the verdict is reported and skipped
-rather than failed.  A gate that blocks on data it does not have would just
-teach people to bypass it.
+Fail-open, matching :mod:`_scope`: an unreadable diff or absent coverage data
+is reported and skipped.  With ``--partial``, whole-file gaps outside the diff
+are reported but only added statements and branches block; those are the facts
+the branch introduced and the subset run can cheaply enforce.
 """
 
 import argparse
@@ -186,8 +186,8 @@ def main() -> int:
         "--partial",
         action="store_true",
         help=(
-            "the suite ran a subset (e.g. -m 'not slow'), so an uncovered line "
-            "may simply be covered by a test that did not run: report, do not fail"
+            "the suite ran a subset: report whole-file gaps, but fail only on "
+            "uncovered added statements and branches"
         ),
     )
     args = parser.parse_args()
@@ -283,14 +283,30 @@ def main() -> int:
         for path in unmeasured:
             print(f"  {path}")
 
-    if args.partial:
+    blocking_gaps = [
+        (path, [line for line in missing if line in added[path]])
+        for path, missing in gaps
+    ]
+    blocking_gaps = [(path, missing) for path, missing in blocking_gaps if missing]
+    blocking_arcs = [
+        (path, [arc for arc in arcs if arc[0] in added[path]])
+        for path, arcs in arc_gaps
+    ]
+    blocking_arcs = [(path, arcs) for path, arcs in blocking_arcs if arcs]
+
+    if args.partial and not blocking_gaps and not blocking_arcs and not unmeasured:
         print(
-            "\nnot failing: the suite ran a subset, so these may be covered by "
-            "tests that did not run.  Re-check with the full suite:\n"
+            "\nnot failing on gaps outside added lines: the suite ran a subset. "
+            "Re-check the whole files with the full suite:\n"
             "  uv run pytest --cov --cov-branch && "
             "uv run python scripts/check_diff_coverage.py"
         )
         return 0
+    if args.partial:
+        print(
+            "\nAdded executable lines and branches must be covered by the fast suite."
+        )
+        return 1
     print(
         "\nEvery file this branch touches must be fully covered.  Add tests for "
         "the lines above, or mark genuinely unreachable ones `# pragma: no cover` "
