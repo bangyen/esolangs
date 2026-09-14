@@ -474,7 +474,6 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
 _MINTERM_SHAPED = {
     "a_painter_ant",
     "bfstack",
-    "container",
     "vandevelo",
 }
 
@@ -563,6 +562,7 @@ _UNSHAPED = {
     "jaune_multiply",
     "circlefuck_byte",
     "slow_acv_mammalian",
+    "container",
 }
 
 # Every table depending on exactly one input, at n == 3, both polarities.
