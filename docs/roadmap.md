@@ -48,7 +48,7 @@ The candidate list is empty.
   | ArrowQueue | Open | Open |
   | Back | Linear | Linear |
   | Bitdeque | Open | Open |
-  | BrainIf | Open | Open |
+  | BrainIf | Linear | Linear |
   | Clockwise | Open | Open |
   | Container | Open | Open |
   | Dig | Open | Open |
@@ -83,6 +83,9 @@ The candidate list is empty.
   Jaune lays outputs beside travelling counter cells.  Unary input weights sum
   to T-1, and a fixed two-label loop carries the counter to its output; sampled
   six-input rows execute correctly.
+  BrainIf alternates output cells with fresh input-routing cells.  Both the
+  table initialization and all unary binary-weight paths contain O(T) lines;
+  sampled six-input rows execute correctly.
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is

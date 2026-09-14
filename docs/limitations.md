@@ -96,9 +96,9 @@ operands add another super-linear term.  RAM0's retired tree had linear command
 count but Theta(T) absolute one-branch targets of Theta(log T) digits.  Its
 straight-line RAM initializer and unary-weight lookup are linear.  ArrowQueue
 needs shared columns and Bitdeque needs shared drains.
-BrainIf is Theta(T log T) on parity: it emits Theta(T) branch `goto`s, and a
+BrainIf's retired tree is Theta(T log T) on parity: it emits Theta(T) branch `goto`s, and a
 constant fraction target line numbers in a Theta(T)-line program, requiring
-Theta(log T) decimal digits.  Container has the same bound through names:
+Theta(log T) decimal digits.  Its spatial lookup is linear.  Container has the same bound through names:
 Theta(T) leaf containers are each defined and referenced a constant number of
 times, while distinct identifiers over its fixed 52-letter alphabet require
 Theta(log T) characters for a constant fraction of them.
