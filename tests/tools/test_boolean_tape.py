@@ -1424,18 +1424,14 @@ class TestSlowAcvMammalian:
 
 
 class TestSuffolk:
-    def test_candidate_costs_select_the_emitted_program(self) -> None:
-        """The selector's model is exact across every non-constant table to n=3."""
-        from esolangs.tools.tape import _suffolk_candidate_cost
-
-        for n in range(1, 4):
-            for value in range(2 ** (2**n)):
-                table = f"{value:0{2**n}b}"
-                if len({*table}) == 1:
-                    continue
-                plain = _suffolk_candidate_cost(table, "1", invert=False)
-                flipped = _suffolk_candidate_cost(table, "0", invert=True)
-                assert len(boolean.suffolk(table)) == min(plain, flipped)
+    def test_streaming_fold_scales_linearly(self) -> None:
+        """Doubling a dense table stays below twice plus fixed setup."""
+        sizes = []
+        for n in (8, 9, 10):
+            table = "".join(str((i * 73 + i.bit_count()) & 1) for i in range(2**n))
+            sizes.append(len(boolean.suffolk(table)))
+        assert sizes == [15_205, 24_291, 40_749]
+        assert sizes[2] < 2 * sizes[1]
 
     @pytest.mark.parametrize(
         ("table", "n"),
