@@ -110,13 +110,13 @@ rows.  Dig's two-band form leaves Theta(T) occupied leaf rows reaching across
 Theta(log T) columns.  Flowchart places Theta(T) leaves on fixed pitch and
 draws one Theta(T)-wide selector level per input.  Thus every offered layout
 is Theta(T log T); localized or shared routing is required.
-Inject and Jaune are Theta(T log T) on parity because both assign a distinct
-label to every tree branch or leaf.  Inject emits each of Theta(T) labels
+Inject and Jaune's retired tree are Theta(T log T) on parity because both
+assign a distinct label to every tree branch or leaf.  Inject emits each of Theta(T) labels
 twice from a fixed 52-letter alphabet, so a constant fraction have
-Theta(log T) characters.  Jaune emits Theta(T) numeric labels and jump
+Theta(log T) characters.  Jaune emitted Theta(T) numeric labels and jump
 operands, likewise with Theta(log T) decimal width for a constant fraction.
-Either construction needs reusable branch continuations rather than unique
-textual labels.
+Jaune's spatial table now uses two labels; Inject still needs reusable branch
+continuations.
 LaserFuck and Streetcode use Theta(T) tree rows whose live paths extend
 across Theta(log T) level columns on parity; trimming removes only suffix
 blanks.  Vandevelo emits one depth-`n` guard chain for each of Theta(T)
