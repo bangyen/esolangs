@@ -10,12 +10,15 @@ The candidate list is empty.
 ## Conditional follow-up
 
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where
-  T is the truth-table length, and add a registry-wide scaling contract.  The
+  T is the truth-table length, and add a registry-wide scaling contract.
+  B-tapemark now meets both bounds; indexed spans and constant-time fold tests
+  make several other traversals linear, but do not remove their super-linear
+  output.  The
   n=8 -> 9 parity sweep already exposes super-linear output in A Painter Ant
   (135016 -> 534124), 123 (94579 -> 230034), Circuit Diagram
   (145216 -> 322504), COD (942692 -> 3668705), Minifuck
   (57601 -> 203089), and Factor (24113 -> 50090); dense tables also expose
-  Polynomial.  A construction audit adds AddSubJump, ArrowQueue, Back,
+  Polynomial.  The construction audit also leaves AddSubJump, ArrowQueue, Back,
   Bitdeque, BrainIf, Clockwise, Container, Dig, Flowchart, Forþ,
   Inject, Jaune, LaserFuck, RAM0, S*bleq,
   SLOW ACV MAMMALIAN, Streetcode, and Vandevelo.  Their quiet factors
