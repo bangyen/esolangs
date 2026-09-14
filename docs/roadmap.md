@@ -53,9 +53,9 @@ The candidate list is empty.
   | Container | Proved construction | Proved construction |
   | Dig | Proved construction | Proved construction |
   | Flowchart | Proved construction | Proved construction |
-  | Forþ | Super-linear | Super-linear |
-  | Inject | Super-linear | Super-linear |
-  | Jaune | Super-linear | Super-linear |
+  | Forþ | Linear | Linear |
+  | Inject | Proved construction | Proved construction |
+  | Jaune | Proved construction | Proved construction |
   | LaserFuck | Super-linear | Super-linear |
   | RAM0 | Proved construction | Proved construction |
   | S\*bleq | Super-linear | Super-linear |
