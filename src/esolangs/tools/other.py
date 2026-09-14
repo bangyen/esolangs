@@ -11,6 +11,7 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     best_input_order,
+    constant_span_test,
     essential_inputs,
     read_at,
 )
@@ -565,6 +566,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     asked for may go under it -- the request is the point.
     """
     n = _validate_truth_table(truth_table)
+    constant_span = constant_span_test(truth_table)
 
     def constant(bit: int, combo: int) -> bool:
         """Whether every row this subtree covers agrees.
@@ -575,7 +577,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
         """
         span = 2 ** (n - bit)
         start = combo << (n - bit)
-        return len(set(truth_table[start : start + span])) == 1
+        return constant_span(start, start + span)
 
     def leafy(bit: int, combo: int) -> bool:
         """Whether this subtree stops here, either at ``n`` or on a fold."""
