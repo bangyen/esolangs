@@ -2261,7 +2261,7 @@ class TestGeneratorEdgePaths:
 
 
 class TestAlgebraicProgrammingLanguage:
-    """The minterm-sum generator, whose whole program is one executed line."""
+    """The folded-tree generator, whose whole program is one executed line."""
 
     @staticmethod
     def _run(program: str, n: int, combo: int) -> str:
@@ -2419,17 +2419,24 @@ class TestAlgebraicProgrammingLanguage:
             ]
             assert len(set(widths)) == 1, (table, widths)
 
+    def test_default_full_tree_growth_is_linear(self) -> None:
+        """Parity folds no subtree, but its source only doubles per input."""
+        sizes = []
+        for n in (7, 8):
+            table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+            sizes.append(len(boolean.algebraic_programming_language(table)))
+        assert sizes[1] < 2 * sizes[0] + 32
+
 
 class TestAlgebraicProgrammingLanguageShapes:
-    """The structural corners of the minterm expansion, at four inputs.
+    """The structural corners of the decision tree, at four inputs.
 
     The exhaustive n<=3 sweep above already covers every shape the
     construction can take -- empty minterm set, full set, and everything
     between -- and the expansion is mechanical rather than searched, so
     sweeping all 65536 four-input tables costs about eight minutes to
     re-cover the same ground.  These four pin the corners instead: the
-    two constants, the table that expands to the most terms, and the one
-    that expands to the fewest.
+    two constants, a single selected row, and the fully branching parity.
     """
 
     @staticmethod

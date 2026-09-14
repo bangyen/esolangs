@@ -231,6 +231,7 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 # The tree generators that pick their input split order by measuring, and the
 # builder that emits one fixed order, so a test can compare the two.
 def _reordering_generators() -> list[object]:
+    from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
     from esolangs.tools.egl import _egl_ordered
     from esolangs.tools.helpers import _decision_tree_program
     from esolangs.tools.other import _forbin_ordered
@@ -245,6 +246,11 @@ def _reordering_generators() -> list[object]:
     )
 
     entries: list[tuple[str, object, object]] = [
+        (
+            "algebraic_programming_language",
+            boolean.algebraic_programming_language,
+            _apl_tree_ordered,
+        ),
         (
             "brainfuck",
             boolean.brainfuck,
@@ -467,7 +473,6 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
 # so this test is what keeps them true rather than a comment that rots.
 _MINTERM_SHAPED = {
     "a_painter_ant",
-    "algebraic_programming_language",
     "bfstack",
     "container",
     "vandevelo",
