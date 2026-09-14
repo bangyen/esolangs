@@ -1253,12 +1253,27 @@ class TestZtoalc:
 
 class TestClockwise:
     def test_compact_layout_uses_a_partial_stack_past_the_crossover(self) -> None:
-        """The named 8n candidate beats the flat dense eight-input tree."""
+        """Alternating composition beats both old eight-input layouts."""
         table = "01101001" * 32
         flat = boolean.clockwise(table, width=10_000)
         partially_stacked = boolean.clockwise(table, width=8 * 8)
         assert len(partially_stacked) < len(flat)
-        assert boolean.clockwise(table) == partially_stacked
+        assert len(boolean.clockwise(table)) < len(partially_stacked)
+
+    @pytest.mark.medium
+    def test_alternating_layout_executes_every_row(self) -> None:
+        """The linear layout computes two dense five- and six-input tables."""
+        for n in (5, 6):
+            size = 1 << n
+            tables = (
+                ("01101001" * (size // 8))[:size],
+                "".join(str((i * 73 + i // 3) & 1) for i in range(size)),
+            )
+            for table in tables:
+                program = boolean.clockwise(table)
+                for combo in range(size):
+                    bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                    assert run_clockwise(program, bits) == table[combo]
 
     @pytest.mark.parametrize(
         ("table", "n"),
