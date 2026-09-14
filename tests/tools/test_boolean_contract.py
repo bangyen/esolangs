@@ -1049,7 +1049,7 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: them approximate, and asserting one here would fail whenever the machine
 #: is busy -- which, on a suite that runs four workers, is always.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
-    "Circuit Diagram": (609_526, 1_609_864, 2.6),
+    "Circuit Diagram": (145_216, 322_504, 2.2),
     "COD": (942_692, 3_668_705, 3.9),
     "ROTfuck": (86_605, 194_945, 2.3),
     "Polynomial": (3_383_048, 10_896_883, 3.2),
