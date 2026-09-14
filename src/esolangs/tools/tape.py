@@ -854,7 +854,7 @@ def jaune(truth_table: str) -> str:
     ``ord-48``) -- and the tree then routes with ``?`` jumps: a node walks to
     the cell holding its bit and ``N?`` jumps to label ``N`` when that cell is
     nonzero, else falls through.  Each leaf prints its answer with ``^`` and
-    jumps to a shared end label.  A subtree whose table slice is a constant
+    terminates locally.  A subtree whose table slice is a constant
     collapses to a single leaf.
 
     Only the inputs the tree actually branches on get a cell of their own:
@@ -902,7 +902,7 @@ def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     and the value there is known -- 1 on the then-branch, 0 on the else --
     which makes the leaf one ``+``/``-`` and a ``^`` with no navigation at
     all.  Mutating a bit cell is safe because exactly one leaf runs per
-    execution and it jumps straight to the end.
+    execution and it terminates immediately.
 
     The pointer's position on entry to a node is a function of its *level*
     alone, never of the path taken: both of a parent's branches leave the
@@ -940,32 +940,29 @@ def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         reads += ">"
         scratch = slot + 1
 
-    def leaf(value: str, held: int | None, end: int) -> str:
+    def leaf(value: str, held: int | None) -> str:
         want = int(value)
         have = 0 if held is None else held
         adjust = "+" * (want - have) if want >= have else "-" * (have - want)
-        return adjust + "^" + f"+{end}?"
+        return adjust + "^."
 
-    def node(
-        level: int, lo: int, hi: int, entry: int, held: int | None, end: int
-    ) -> str:
+    def node(level: int, lo: int, hi: int, entry: int, held: int | None) -> str:
         if level == n or len(set(truth_table[lo:hi])) == 1:
-            return leaf(truth_table[lo], held, end)
+            return leaf(truth_table[lo], held)
         # A clobbered input has no cell to test.  Its bit cannot change the
         # answer, so the two halves of this span are value-identical and
         # descending into either one is the same function -- take the zero
         # half, which keeps the row span halving in step with the level.
         if perm[level] not in cell_of:
-            return node(level + 1, lo, (lo + hi) // 2, entry, held, end)
+            return node(level + 1, lo, (lo + hi) // 2, entry, held)
         cell = cell_of[perm[level]]
         then_lbl = fresh()
         mid = (lo + hi) // 2
-        then = node(level + 1, mid, hi, cell, 1, end)
-        else_ = node(level + 1, lo, mid, cell, 0, end)
+        then = node(level + 1, mid, hi, cell, 1)
+        else_ = node(level + 1, lo, mid, cell, 0)
         return move(entry, cell) + f"{then_lbl}?{else_}{then_lbl}:{then}"
 
-    end = fresh()
-    return reads + node(0, 0, 2**n, scratch, None, end) + f"{end}:."
+    return reads + node(0, 0, 2**n, scratch, None)
 
 
 def jaune_multiply() -> str:
