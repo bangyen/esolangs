@@ -107,14 +107,7 @@ The candidate list is empty.
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is
   diagnostic only; finite measurements do not establish an asymptotic bound.
-  Factor's Brainfuck tree has O(T) characters but Theta(T)
-  command runs; assigning each run the next prime makes its numeral
-  Theta(T log T) digits.  It needs a run-compressed Brainfuck lookup.
-  Circuit Diagram now uses a linear one-pass Shannon fold and
-  indexed layout guards, but its persistent selector rails leave the ASCII
-  area O(T log T): parity keeps all `n` selector rails live across Theta(T)
-  columns.  Route each selector only across its mux level.  Treat every
-  emitted character as build work.  Input reordering is optional around the
+  Treat every emitted character as build work.  Input reordering is optional around the
   construction, but its work still counts toward end-to-end generation time.
   Order selection builds at most four named candidates and its generic greedy
   scorer stops at n=10; factorial and exponential contests are test-only

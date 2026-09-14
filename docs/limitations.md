@@ -63,9 +63,10 @@ per one entry.  In 123, `_phase_a` uses the tight
 marks `(i+1)*2T+1` and emits Theta(mark) movement four times for every input;
 their sum is Theta(T (log T)^2).  These prove bounds on the shipped
 constructions, not on either language; a different geometry could evade them.
-Circuit Diagram's current layout is likewise Theta(T log T) on parity: all
-`n` selector rails remain live across Theta(T) columns.  Localizing each rail
-to its mux level remains an open route around that construction bound.
+Reversing the escape weights to `2,4,...,T` would make geometrically spaced
+marks total O(T), but the separator requires a new escape to fit the gaps
+already created: at level 1 its width 4 meets a gap of 2 and the exact builder
+rejects it.  A gap-doubling separator remains open.
 COD's leaf cascade is Theta(T^2): each of T leaf rows contains a prefix of
 length `3(k+1)` and a gate tail of length `2(T-k-1)`, so every row is
 Theta(T) and rotation cannot change the number of cells.  A non-cascade
