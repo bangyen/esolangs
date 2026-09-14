@@ -532,7 +532,6 @@ _MINTERM_SHAPED = {
 _REDUCING = {
     "bit_tilde",
     "cod",
-    "collatz_multiverse",
     "home_row",
     "nocomment",
     "qoibl",

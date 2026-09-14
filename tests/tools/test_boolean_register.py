@@ -744,28 +744,31 @@ class TestCollatzMultiverse:
             got = run_collatz_multiverse(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_minterm_structure(self) -> None:
-        """The program reads one input per line and prints once."""
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_every_small_table(self, n: int) -> None:
+        """Execute every table and row through three inputs."""
+        for value in range(2 ** (2**n)):
+            table = format(value, f"0{2**n}b")
+            program = boolean.collatz_multiverse(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                assert run_collatz_multiverse(program, bits) == table[combo]
+
+    def test_postorder_tree_structure(self) -> None:
+        """The tree reads each input once, reuses registers, and prints once."""
         program = boolean.collatz_multiverse("0110")
         assert program.count("input") == 2
         assert program.count("DO PRINT.") == 1
+        assert "r0" in program
+        assert "r1" in program
 
-    def test_a_dense_table_selects_its_zero_rows(self) -> None:
-        """More ones than zeros costs less built the other way.
-
-        Inverting is free here rather than one operation: the OR ends on a
-        ``flip`` turning ``prod(1 - minterm)`` into the answer, so a
-        complemented table keeps the accumulator instead.  A dense table is
-        therefore *shorter* than its sparse complement, not merely equal.
-        """
-        dense = boolean.collatz_multiverse("11111110")  # one zero row
-        sparse = boolean.collatz_multiverse("00000001")  # one one row
-        assert len(dense) < len(sparse)
-        for table in ("11111110", "00000001"):
-            program = boolean.collatz_multiverse(table)
-            for combo in range(8):
-                bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
-                assert run_collatz_multiverse(program, bits) == table[combo]
+    def test_full_tree_growth_is_linear(self) -> None:
+        """Parity folds nothing, but depth-reused names keep source linear."""
+        sizes = []
+        for n in (7, 8):
+            table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+            sizes.append(len(boolean.collatz_multiverse(table)))
+        assert sizes[1] < 2 * sizes[0] + 256
 
     def test_constant_tables_collapse_but_still_read(self) -> None:
         """A constant table collapses to one output but still reads its inputs.

@@ -1,5 +1,6 @@
 """Boolean-function generators for register-based languages."""
 
+from itertools import pairwise
 from typing import Any
 
 from esolangs.exceptions import GeneratorCapError
@@ -379,19 +380,11 @@ def collatz_multiverse(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    A register holding 0 or 1 is always odd, so on such registers the Collatz
-    rule is affine (``v`` becomes ``v*var2+var3``), which makes AND, NOT, and
-    minterms buildable: ``t = src x + zero`` multiplies by a 0/1 ``src`` and
-    ``t = negativeOne x + one`` complements.  Each selected row of the table
-    contributes its minterm (the AND of each bit's equality indicator); the
-    OR is ``1 - prod (1 - minterm)``, and ``48 + result`` is printed.  The
-    byte constants come from :func:`_cm_constants`.
-
-    A table with more ones than zeros selects its *zero* rows instead, since
-    a minterm costs an indicator per input plus an AND chain.  Inverting the
-    answer costs nothing: the OR already ends on the ``flip`` that turns
-    ``prod (1 - minterm)`` into the result, so a complemented table keeps the
-    accumulator as it stands.
+    A postorder Shannon tree combines child bits as
+    ``(!x & zero) | (x & one)``. Registers are reused by recursion depth;
+    every write first clears its destination because Collatz assignment
+    otherwise depends on the destination's old parity. Short names belong to
+    the deepest, most repeated levels, keeping the emitted source O(T).
     """
     n = _validate_truth_table(truth_table)
     if all(c == truth_table[0] for c in truth_table):
@@ -406,72 +399,54 @@ def collatz_multiverse(truth_table: str) -> str:
         return "\n".join(lines)
 
     lines = _cm_constants({_ASCII_ZERO})
-    for i in range(n):
-        lines.append(f"b{i} = negativeOne x + input, NOT PRINT.")
+    inputs = [f"b{n - 1 - depth}" for depth in range(n)]
+    for name in inputs:
+        lines.append(f"{name} = negativeOne x + input, NOT PRINT.")
 
-    next_reg = 0
+    def clear(dst: str) -> None:
+        lines.append(f"{dst} = zero x + zero, NOT PRINT.")
 
-    def fresh() -> str:
-        nonlocal next_reg
-        reg = f"r{next_reg}"
-        next_reg += 1
-        return reg
+    def assign(dst: str, src: str) -> None:
+        clear(dst)
+        lines.append(f"{dst} = negativeOne x + {src}, NOT PRINT.")
 
-    def flip(src: str) -> str:
-        reg = fresh()
-        lines.append(f"{reg} = negativeOne x + {src}, NOT PRINT.")
-        lines.append(f"{reg} = negativeOne x + k1, NOT PRINT.")
-        return reg
+    def negate(dst: str, src: str) -> None:
+        assign(dst, src)
+        lines.append(f"{dst} = negativeOne x + k1, NOT PRINT.")
 
-    def and_bits(x: str, y: str) -> str:
-        reg = fresh()
-        lines.append(f"{reg} = negativeOne x + {x}, NOT PRINT.")
-        lines.append(f"{reg} = {y} x + zero, NOT PRINT.")
-        return reg
+    def conjunction(dst: str, x: str, y: str) -> None:
+        assign(dst, x)
+        lines.append(f"{dst} = {y} x + zero, NOT PRINT.")
 
-    acc = "acc"
-    lines.append("acc = negativeOne x + k1, NOT PRINT.")
-    # Each selected row costs a minterm -- an indicator per input, an AND
-    # chain, and a flip -- so a dense table is built from its zeros.
-    # Inverting is free here: the OR already ends on a ``flip``, so the
-    # complement drops it rather than adding one.
-    # A table that ignores some of its inputs is a smaller table, and since a
-    # minterm costs an indicator *per input*, dropping an input removes rows
-    # and shortens the rows that remain.  Every input keeps its ``b{i}`` read
-    # (the reads are the interface); an ignored one is never turned into an
-    # indicator.  This is the constant branch above generalized from "no
-    # essential inputs" to "the ones that matter".
+    changes = [0]
+    for previous, current in pairwise(truth_table):
+        changes.append(changes[-1] + (previous != current))
 
-    # ``literal`` allocates a register and emits for a non-negated input, so
-    # it is called in the same order the hand-written loop called it: every
-    # literal of a row, then its product, then the accumulate.
-    def literal(i: int, negated: bool) -> str:  # noqa: FBT001 - a literal's sign, from minterm_literals
-        if negated:
-            return flip(f"b{i}")
-        reg = fresh()
-        lines.append(f"{reg} = negativeOne x + b{i}, NOT PRINT.")
-        return reg
+    def tree(start: int, end: int, depth: int) -> str:
+        if changes[start] == changes[end - 1]:
+            return "k1" if truth_table[start] == "1" else "zero"
+        half = (start + end) // 2
+        zero = tree(start, half, depth + 1)
+        index = n - 1 - depth
+        saved = f"l{index}"
+        if zero not in {"zero", "k1"}:
+            assign(saved, zero)
+            zero = saved
+        one = tree(half, end, depth + 1)
+        inverted = f"i{index}"
+        left = f"a{index}"
+        right = f"c{index}"
+        result = f"r{index}"
+        negate(inverted, inputs[depth])
+        conjunction(left, inverted, zero)
+        conjunction(right, inputs[depth], one)
+        assign(result, left)
+        lines.append(f"{result} = k1 x + {right}, NOT PRINT.")
+        return result
 
-    def product(factors: list[str]) -> str:
-        minterm = factors[0]
-        for factor in factors[1:]:
-            minterm = and_bits(minterm, factor)
-        return flip(minterm)
-
-    def accumulate(row: str) -> None:
-        nonlocal acc
-        nacc = fresh()
-        lines.append(f"{nacc} = negativeOne x + {acc}, NOT PRINT.")
-        lines.append(f"{nacc} = {row} x + zero, NOT PRINT.")
-        acc = nacc
-
-    _used, _width, invert = minterm_sum(truth_table, literal, product, accumulate)
-
-    # ``acc`` holds prod(1 - minterm), so the answer is its flip -- unless
-    # the minterms were the table's zeros, when ``acc`` is already it.
-    result = acc if invert else flip(acc)
-    out = fresh()
-    lines.append(f"{out} = negativeOne x + {result}, NOT PRINT.")
+    result = tree(0, 1 << n, 0)
+    out = "out"
+    assign(out, result)
     lines.append(f"{out} = k1 x + k48, DO PRINT.")
     return "\n".join(lines)
 
