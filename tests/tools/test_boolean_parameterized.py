@@ -872,6 +872,14 @@ class TestParameterizedBitdeque:
         assert "POP" in template
         assert "GOTO" in template
 
+    def test_leaves_share_a_low_address_halt_trampoline(self) -> None:
+        """Only the trampoline itself repeats the widening end address."""
+        from esolangs.tools import parameterized
+
+        template = parameterized.bitdeque("01101001")
+        assert template.startswith("GOTO 3 INVERT GOTO 4 GOTO ")
+        assert template.count("GOTO 0") == 8
+
 
 class TestParameterizedRam0:
     """Input-by-substitution boolean generator for the no-input language RAM0.

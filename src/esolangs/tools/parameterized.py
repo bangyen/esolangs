@@ -1082,7 +1082,7 @@ def bitdeque(truth_table: str) -> str:
     one, with the zero-subtree falling through in place.  A leaf drains the
     deque with ``n+1`` ``POP``s (so the register is exactly zero even for a
     collapsed tree), pushes the answer, forces the register back to one with
-    a trailing ``INVERT``, and ``GOTO``s past the program end to halt -- so
+    a trailing ``INVERT``, and uses a fixed low-address halt trampoline -- so
     every leaf always routes and the deque printed at halt holds exactly the
     answer.
 
@@ -1128,7 +1128,7 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         out.append("PUSH")
         if answer == "0":
             out.append("INVERT")
-        out.append("GOTO@END")
+        out.append("GOTO 0")
         return out
 
     # Simulate the deque to find each level's rotation.  The load pushes the
@@ -1168,6 +1168,10 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     # Each placeholder expands to two commands, which is what ``start`` below
     # counts; see the docstring for why the load is byte-identical per order.
+    # Initially command 0 falls through on zero and commands 1/2 skip the
+    # trampoline.  A leaf returns with one, so ``GOTO 0`` reaches command 3;
+    # only that command carries the widening end address.
+    prelude = ["GOTO 3", "INVERT", "GOTO 4", "GOTO@END", "INVERT"]
     load_block_in_name_order = ["{X" + str(i) + "}" for i in range(n)]
 
     # A node spends its rotation, its pop and its ``GOTO`` before either
@@ -1191,14 +1195,12 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         leaf_tokens,
         node,
         parent_width=width,
-        start=2 * n,
+        start=len(prelude) + 2 * n,
         collapse=True,
     )
-    end = 2 * n + len(tree)
-    return " ".join(
-        load_block_in_name_order
-        + ["GOTO " + str(end) if t == "GOTO@END" else t for t in tree]
-    )
+    end = len(prelude) + 2 * n + len(tree)
+    tokens = prelude + load_block_in_name_order + tree
+    return " ".join("GOTO " + str(end) if t == "GOTO@END" else t for t in tokens)
 
 
 def _ram0_width(address: int) -> int:
