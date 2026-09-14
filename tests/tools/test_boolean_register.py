@@ -17,7 +17,6 @@ from esolangs.tools.register import (
     _DIG_BRANCH,
     _DIG_RETURN,
     _DIG_STRIDE,
-    _addsubjump_ordered,
     _polynomial_dag,
     _polynomial_states,
 )
@@ -38,19 +37,6 @@ from tests.tools.boolean_runners import (
     run_sophie,
     run_sophie_from,
 )
-
-
-def _asj_normalize_sites(program: str) -> int:
-    """How many instructions add the ``-48`` constant cell to something.
-
-    One per *stored input* once the reads are hoisted, against one per
-    internal node when they sat at the nodes.  The constant lives in a data
-    cell, so this finds that cell's address and counts the instructions
-    whose ``b`` operand names it.
-    """
-    mem = [int(tok) for tok in program.split()]
-    const = mem.index(-48)
-    return sum(1 for i in range(0, len(mem) - 3, 4) if mem[i + 1] == const)
 
 
 class TestAddSubJump:
@@ -76,31 +62,22 @@ class TestAddSubJump:
             got = run_addsubjump(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_branch_normalizes_bits_to_zero_and_four(self) -> None:
-        """Each bit is normalized to {0, 4} and added to a jump cell."""
+    def test_branch_normalizes_ascii_bits(self) -> None:
+        """Each ASCII input contributes its zero-or-one value to the index."""
         program = boolean.addsubjump("0110")
-        assert "-48" in program  # the normalization constant
+        assert "48" in program
         assert run_addsubjump(program, ["0", "1"]) == "1"
         assert run_addsubjump(program, ["1", "0"]) == "1"
 
-    def test_repeated_operands_use_fixed_low_cells(self) -> None:
-        """The entry skips constants 48/49, zero, and -48 at cells 4..8."""
-        mem = [int(tok) for tok in boolean.addsubjump("0110").split()]
-        assert mem[4:9] == [48, 49, 0, 0, -48]
-        assert mem.count(6) >= 4  # shared zero operand in tree trampolines
-
-    def test_normalizes_once_per_input_not_once_per_node(self) -> None:
-        """The reads and their normalization are hoisted out of the tree.
-
-        Reading at the node repeated the four-instruction normalization at
-        every internal node; hoisting spends it once per *stored input*, so
-        the count tracks ``n`` rather than the tree's width.  ``-48`` is the
-        normalization constant and appears once in the data section, so the
-        instructions referencing its cell are what to count.
-        """
-        # XOR-3 has 7 internal nodes but only 3 inputs.
-        cells = _asj_normalize_sites(boolean.addsubjump("01101001"))
-        assert cells == 3
+    @pytest.mark.medium
+    def test_all_three_input_tables(self) -> None:
+        """The packed decoder executes every three-input function."""
+        for value in range(256):
+            table = format(value, "08b")
+            program = boolean.addsubjump(table)
+            for row in range(8):
+                bits = [str((row >> shift) & 1) for shift in (2, 1, 0)]
+                assert run_addsubjump(program, bits) == table[row]
 
     def test_every_path_reads_each_input_once(self) -> None:
         """A run consumes exactly ``n`` inputs, whatever the table.
@@ -120,21 +97,17 @@ class TestAddSubJump:
                 assert got == table[combo], f"{table} inputs {bits}"
                 assert not list(feed), f"{table} inputs {bits} left input unread"
 
-    def test_reordering_only_shrinks(self) -> None:
-        """No table comes out longer than the identity order's program.
-
-        ``best_input_order`` tries the identity first and ties keep it, so
-        this is a property of the dispatch rather than of the language; the
-        sweep pins it against a build that cannot silently regress.
-        """
-        improved = 0
-        for value in range(256):
-            table = format(value, "08b")
-            dispatched = len(boolean.addsubjump(table))
-            identity = len(_addsubjump_ordered(table, (0, 1, 2)))
-            assert dispatched <= identity, table
-            improved += dispatched < identity
-        assert improved == 72  # the rest tie, keeping the identity order
+    def test_packed_growth_is_linear(self) -> None:
+        """Wide parity tables grow by at most the table-size ratio."""
+        sizes = [
+            len(
+                boolean.addsubjump(
+                    "".join(str(row.bit_count() & 1) for row in range(2**n))
+                )
+            )
+            for n in range(11, 15)
+        ]
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
 
 
 class TestQoibl:

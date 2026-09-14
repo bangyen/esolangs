@@ -44,7 +44,7 @@ The candidate list is empty.
   | Minifuck | Open | Open |
   | Factor | Open | Open |
   | Polynomial | Open | Open |
-  | AddSubJump | Packed-chunk decoder | Packed-chunk decoder |
+  | AddSubJump | Linear | Linear |
   | ArrowQueue | Open | Open |
   | Back | Linear | Linear |
   | Bitdeque | Open | Open |
@@ -68,11 +68,13 @@ The candidate list is empty.
   every program in the language under the generator contract.  Super-linear
   output implies super-linear generation time; the time column is not an
   independent empirical verdict.
-  AddSubJump's replacement stores Theta(log T) table bits per numeric cell.
+  AddSubJump stores Theta(log T) table bits per numeric cell.
   A fixed repeated-subtraction loop selects a chunk and extracts its indexed
   bit; its self-modified operand advances through Theta(T/log T) cells.  Chunk
   values and their addresses each cost O(log T) digits, so both construction
-  and source are O(T).  Implement and execute this before resuming the queue.
+  and source are O(T).  Small tables retain the faster tree; every legacy
+  three-input table and sampled rows of the packed eight-input parity program
+  have executed through the interpreter.
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is

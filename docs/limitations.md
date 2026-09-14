@@ -82,12 +82,11 @@ has Theta(log k) decimal digits, and the encoded integer's digit count is the
 sum of those logarithms.  Run compression changes exponents, not the number
 of distinct primes.  A decoder that can reuse a prime or encode runs by
 position is required for linear output.
-AddSubJump's current decision tree is Theta(T log T) on parity.  It emits
+AddSubJump's retired decision tree was Theta(T log T) on parity.  It emitted
 Theta(T) four-word instructions and a data cell per `next` edge.  A constant
 fraction of those words are positive instruction or data addresses in a
 Theta(T)-cell memory, so their space-separated decimal rendering uses
-Theta(log T) characters each.  Relative or compact-address decoding is needed
-for linear text.
+Theta(log T) characters each.  The packed-chunk decoder replaced it.
 ArrowQueue's full tree is Theta(T log T): `_connect` shifts both children
 three columns right at every level, and parity retains Theta(T) occupied leaf
 rows through all log T levels.  Compaction removes empty rows and columns but
