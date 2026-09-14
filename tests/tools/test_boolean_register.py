@@ -496,7 +496,18 @@ class TestDig:
             "     >$3~;#\n"
             "          >$30:@"
         )
-        assert boolean.dig("0110") == expected
+        assert boolean.dig("0110", width=80) == expected
+
+    def test_compact_layout_uses_the_shorter_orientation(self) -> None:
+        """The safe turn is useful for size, not only width requests."""
+        from esolangs.tools.register import _dig_grid
+
+        table = "0110100110010110"
+        n = 4
+        flat = _dig_grid(table, n, None)
+        banded = _dig_grid(table, n, -(-(n + 2) // 2))
+        assert len(banded) < len(flat)
+        assert boolean.dig(table) == banded
 
     def test_a_constant_table_is_one_line(self) -> None:
         """Nothing to branch on, so the whole grid is a single leaf."""
@@ -540,7 +551,7 @@ class TestDig:
         """
         for table in ("0110", "10010110", "0110100110010110", "00010111"):
             n = len(table).bit_length() - 1
-            flat = boolean.dig(table)
+            flat = boolean.dig(table, 10_000)
             wide = max(len(row) for row in flat.splitlines())
             floor = max(len(row) for row in boolean.dig(table, 1).splitlines())
             assert floor < wide, f"{table} never narrows"
@@ -586,7 +597,7 @@ class TestDig:
         narrow = boolean.dig("0110100110010110", 1)
         assert _DIG_BRANCH[::-1] in narrow, "no mirrored block: the tree never turned"
         assert _DIG_RETURN in narrow, "nothing points the mole west"
-        flat = boolean.dig("0110100110010110")
+        flat = boolean.dig("0110100110010110", 10_000)
         assert _DIG_BRANCH[::-1] not in flat
         assert _DIG_RETURN not in flat
 
