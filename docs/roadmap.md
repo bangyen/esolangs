@@ -14,8 +14,11 @@ The candidate list is empty.
   n=8 -> 9 parity sweep already exposes super-linear output in A Painter Ant
   (135016 -> 534124), 123 (94579 -> 230034), Circuit Diagram
   (145216 -> 322504), COD (942692 -> 3668705), Minifuck
-  (57601 -> 203089); dense tables also expose
-  Polynomial.  Circuit Diagram now uses a linear one-pass Shannon fold and
+  (57601 -> 203089), and Factor (24113 -> 50090); dense tables also expose
+  Polynomial.  Factor's Brainfuck tree has O(T) characters but Theta(T)
+  command runs; assigning each run the next prime makes its numeral
+  Theta(T log T) digits.  It needs a run-compressed Brainfuck lookup.
+  Circuit Diagram now uses a linear one-pass Shannon fold and
   indexed layout guards, but its persistent selector rails leave the ASCII
   area O(T log T); route each selector only across its mux level.  Treat every
   emitted character as build work.  Input reordering is
