@@ -9,6 +9,22 @@ The candidate list is empty.
 
 ## Conditional follow-up
 
+- **Linear Boolean generators.**  Make build time and emitted size O(T), where
+  T is the truth-table length, and add a registry-wide scaling contract.  The
+  n=8 -> 9 parity sweep already exposes super-linear output in A Painter Ant
+  (135016 -> 534124), 123 (222847 -> 750738), Circuit Diagram
+  (632616 -> 1661008), COD (942692 -> 3668705), Eval
+  (35611 -> 136735), Minifuck (57601 -> 203089), ROTFuck
+  (83516 -> 200647), and Suffolk (34697 -> 105932); dense tables also expose
+  Polynomial and Super SNUSP.  Treat every emitted character as build work,
+  then remove the independent non-linear planners: the shared and bespoke
+  factorial input-order scans (including CircleFuck, 6-5, LaserFuck,
+  Streetcode, and Unsquare's `3**n` arrangements), Circuit Diagram's
+  quadratic layout checks, and the greedy reorder's O(T log(T)^2) scoring.
+  Do not replace them with BFS or DFS.  `%^2^-1`'s live breadth-first spelling
+  catalogue must become a derived rule or a fixed-size direct construction;
+  test-only oracle searches and prose about retired searches may remain.
+
 - **Reorder EGL inputs.**  EGL hoists every read into addressable one-hot cells,
   so a tree can test cell `perm[depth]` while the `x` commands remain in stream
   order.  Exhaustive n=3 measurement over all 256 tables gives 61304 -> 53592
