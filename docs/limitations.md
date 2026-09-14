@@ -82,6 +82,17 @@ has Theta(log k) decimal digits, and the encoded integer's digit count is the
 sum of those logarithms.  Run compression changes exponents, not the number
 of distinct primes.  A decoder that can reuse a prime or encode runs by
 position is required for linear output.
+
+No alternate Factor generator can have O(T) output for every table.  Let D be
+the decimal digit count of its integer and m the number of active prime
+factors, hence decoded Brainfuck runs.  The first m primes have log-product
+Theta(m log m), so m = O(D/log D).  Exponents sum to O(D); the number of their
+compositions into at most m runs is
+`exp(O(m log(D/m))) = exp(O(D log log D/log D))`.  The eight active residues
+add only `8**m`, the same subexponential order.  Thus D-digit Factor texts
+decode to `2**o(D)` Brainfuck programs.  If D = O(T), they realize `2**o(T)`
+functions, fewer than the `2**T` truth tables for large T.  Some tables
+therefore require super-linear Factor text, independent of construction.
 AddSubJump's retired decision tree was Theta(T log T) on parity.  It emitted
 Theta(T) four-word instructions and a data cell per `next` edge.  A constant
 fraction of those words are positive instruction or data addresses in a
