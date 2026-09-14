@@ -789,14 +789,15 @@ def container(truth_table: str) -> str:
     * For each bit ``k``, an armed gate ``A_k`` (65, dipping to 49) and
       ``B_k`` (47, dipping to 48) make ``IN>=A_k`` and ``IN<=B_k`` hold for
       exactly the tick the bit is in ``IN``, testing bit ``k`` once.
-    * A survivor per row (initial 1) is killed by ``-1 IN>=A_k`` or
-      ``-1 IN<=B_k`` when the corresponding bit mismatches, so exactly the
-      matching row's survivor stays 1.
+    * A prefix survivor creates its two children while bit ``k`` is active;
+      the mismatching child is cancelled in that same tick.  The parent then
+      expires, so each tree edge costs constant work instead of retesting the
+      whole prefix at every leaf.
     * At tick ``2n`` a gate ``Gout`` dips to 1, so ``+1 S_r>=Gout`` adds the
       table entry of the surviving row to ``OUT``; ``PRINT`` fires and
       ``EXIT`` halts.
 
-    That last block costs one line per row the table sends to 1, so a dense
+    The last block costs one line per row the table sends to 1, so a dense
     table is summed from its **zero** rows instead: ``OUT`` starts at 49 and
     each surviving zero row subtracts one, printing ``49 - S``.  The clamp at
     zero never bites, since the value stays at 48 or 49.  Worth up to 12.7%
@@ -823,13 +824,21 @@ def container(truth_table: str) -> str:
         lines.append(f"+1 T>={2 * k}")
         lines.append(f"-2 T>={2 * k + 1}")
         lines.append(f"+1 T>={2 * k + 2}")
-    for row in range(2**n):
-        lines.append(f"S{row}=1:")
-        for k in range(n):
-            if (row >> (n - 1 - k)) & 1:
-                lines.append(f"-1 IN<=B{k}")
-            else:
-                lines.append(f"-1 IN>=A{k}")
+    lines.append("S=2:")
+    lines.append("-1 S>=1")
+    for depth in range(1, n + 1):
+        bit = depth - 1
+        for prefix in range(2**depth):
+            parent = "S" if depth == 1 else f"S{depth - 1}_{prefix >> 1}"
+            child = f"S{depth}_{prefix}"
+            lines.append(f"{child}:")
+            # A node is born at 2, decays to 1, then pulses its children.
+            # The paired parent rules therefore fire only at exactly 1.
+            lines.append(f"+2 {parent}>=1")
+            lines.append(f"-2 {parent}>=2")
+            mismatch = f"IN<=B{bit}" if prefix & 1 else f"IN>=A{bit}"
+            lines.append(f"-2 {mismatch}")
+            lines.append(f"-1 {child}>=1")
     lines.append("Gout=2:")
     lines.append(f"-1 T>={2 * n - 1}")
     lines.append(f"+1 T>={2 * n}")
@@ -848,7 +857,7 @@ def container(truth_table: str) -> str:
     delta = "-1" if invert else "+1"
     for row in range(2**n):
         if truth_table[row] == wanted:
-            lines.append(f"{delta} S{row}>=Gout")
+            lines.append(f"{delta} S{n}_{row}>=Gout")
     lines.append("PRINT:")
     lines.append(f"+1 T>={2 * n}")
     lines.append("EXIT=1:")

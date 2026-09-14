@@ -787,12 +787,17 @@ class TestContainer:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_structure(self) -> None:
-        """The program reads n inputs and keeps one survivor per row."""
+        """The program reads n inputs and advances prefix survivors."""
         program = boolean.container("0110")
         assert program.startswith("T:\n+1 T>=T")
         assert ":" in program.splitlines()[:4]  # the empty-named reader
-        assert program.count("S") >= 4  # a survivor per row
+        assert "S1_0:" in program and "S2_3:" in program
         assert program.count("PRINT:") == 1
+
+    def test_tree_removes_the_minterm_factor(self) -> None:
+        """Each additional row adds bounded tree work, not n tests."""
+        sizes = [len(boolean.container("01" * (2 ** (n - 1)))) for n in range(7, 11)]
+        assert all(b <= 2 * a + 4000 for a, b in itertools.pairwise(sizes))
 
     def test_dense_tables_evaluate_the_complement(self) -> None:
         """A dense table is summed from its zero rows and inverted.
