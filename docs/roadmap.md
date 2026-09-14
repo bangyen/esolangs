@@ -35,6 +35,20 @@ The candidate list is empty.
   dogleg scan with cell-indexed collision checks; derive its first-free lanes
   into a direct routing rule without changing the emitted programs.
 
+- **A Painter Ant shared-head proof.**  The depth-first head cuts dense n=9
+  from 517348 to 19684 characters and executes every n=3 program plus sampled
+  programs through n=8, but invalidates the uniform proof check's independent
+  per-leaf rest-point and motif decomposition.  Rewrite those lemmas around
+  shared prefix entry/exit states, then restore `just apa-proof` to green and
+  rescreen input order now that the construction is tree-shaped.
+
+- **Reorder EGL inputs.**  EGL hoists every read into addressable one-hot cells,
+  so a tree can test cell `perm[depth]` while the `x` commands remain in stream
+  order.  Exhaustive n=3 measurement over all 256 tables gives 61304 -> 53592
+  total characters (12.6%); all 2048 rows of the shortest candidates execute
+  correctly.  Generalize that prototype through `best_input_order` and keep
+  the identity on ties.
+
 - **ArrowQueue reusable drain.**  Ship the verified deep-fold drain only if
   a proof makes folding meaningfully testable at `n >= 5`; current coverage
   does not reach its crossover.

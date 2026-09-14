@@ -472,7 +472,6 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
 # lists are measured (see the doc's "Which shape a boolean generator is"),
 # so this test is what keeps them true rather than a comment that rots.
 _MINTERM_SHAPED = {
-    "a_painter_ant",
     "bfstack",
 }
 
@@ -1104,4 +1103,4 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
         if name not in _DOCUMENTED_SIZES
     )
     assert biggest[0] < 600_000, biggest
-    assert biggest[1] == "A Painter Ant"
+    assert biggest[1] == "Minifuck"
