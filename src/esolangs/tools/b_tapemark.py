@@ -19,8 +19,18 @@ class _Builder:
         if previous != char:
             raise AssertionError(f"layout collision at {(x, y)}")
 
-    def node(self, table: str, depth: int, x: int, y: int) -> None:
+    def node(
+        self,
+        table: str,
+        depth: int,
+        x: int,
+        y: int,
+        start: int = 0,
+        stop: int | None = None,
+    ) -> None:
         """Place one branch and its descendants."""
+        if stop is None:
+            stop = len(table)
         # ``*`` builds a backslash/% path on the blank grid.  A vertical 0
         # match swaps onto it, turns right, then swaps back; a 1 stays on the
         # source grid.  Both cases reach distinct rightward paths.
@@ -52,8 +62,7 @@ class _Builder:
         zero = (x + 11, y - 1)
         one = (x + 11, y)
         if depth == 1:
-            half = len(table) // 2
-            for point, result in ((zero, table[0]), (one, table[half])):
+            for point, result in ((zero, table[start]), (one, table[start + 1])):
                 self.put(*point, result)
                 self.put(point[0] + 1, point[1], "!")
             return
@@ -65,9 +74,9 @@ class _Builder:
         ):
             self.put(*point, mirror)
             self.put(point[0], target_y, mirror)
-        half = len(table) // 2
-        self.node(table[:half], depth - 1, x + 12, y - gap)
-        self.node(table[half:], depth - 1, x + 12, y + gap)
+        middle = (start + stop) // 2
+        self.node(table, depth - 1, x + 12, y - gap, start, middle)
+        self.node(table, depth - 1, x + 12, y + gap, middle, stop)
 
     def render(self) -> str:
         """Render after removing wholly blank rows and columns."""
