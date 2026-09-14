@@ -123,9 +123,10 @@ across Theta(log T) level columns on parity; trimming removes only suffix
 blanks.  Vandevelo emits one depth-`n` guard chain for each of Theta(T)
 selected parity rows.  All three current spellings are Theta(T log T).
 
-S*bleq emits Theta(T) instructions and data triples with absolute decimal
+S*bleq's retired tree emitted Theta(T) instructions and data triples with absolute decimal
 addresses into a Theta(T)-cell memory, so a constant fraction of its operands
-have Theta(log T) digits.  SLOW ACV MAMMALIAN is super-linear even though its
+had Theta(log T) digits.  Its packed-chunk decoder is linear.  SLOW ACV
+MAMMALIAN is super-linear even though its
 measured ratio is close to two: for a child cap `C`, `_widths` reserves a
 trampoline slot of Omega(C/255), and `_subtree` emits that whole slot plus two
 children.  Its recurrence is therefore `S(d) >= (2 + 1/255) S(d-1)`.

@@ -9,7 +9,7 @@ import contextlib
 import hashlib
 import sys
 from importlib import import_module
-from itertools import permutations
+from itertools import pairwise, permutations
 
 import pytest
 
@@ -1761,6 +1761,23 @@ class TestSbleq:
         reads = [t for t in triples[:3] if t[1] == -2]
         assert len(reads) == 3  # one read per input, all before the tree
         assert [t[0] for t in reads] == sorted({t[0] for t in reads})  # input order
+
+    def test_packed_decoder_executes_wide_rows(self) -> None:
+        """Rows on both sides of chunk boundaries decode correctly."""
+        n = 6
+        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+        program = boolean.sbleq(table)
+        for row in (0, 1, 5, 6, 7, 31, 32, 62, 63):
+            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
+            assert run_sbleq(program, bits) == table[row]
+
+    def test_packed_growth_is_linear(self) -> None:
+        """Wide parity tables grow by at most the table-size ratio."""
+        sizes = []
+        for n in range(11, 15):
+            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+            sizes.append(len(boolean.sbleq(table)))
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
 
     def test_mismatched_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="power-of-two"):

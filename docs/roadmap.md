@@ -58,7 +58,7 @@ The candidate list is empty.
   | Jaune | Open | Open |
   | LaserFuck | Open | Open |
   | RAM0 | Open | Open |
-  | S\*bleq | Open | Open |
+  | S\*bleq | Linear | Linear |
   | SLOW ACV MAMMALIAN | Open | Open |
   | Streetcode | Open | Open |
   | Vandevelo | Open | Open |
@@ -75,6 +75,8 @@ The candidate list is empty.
   and source are O(T).  Small tables retain the faster tree; every legacy
   three-input table and sampled rows of the packed eight-input parity program
   have executed through the interpreter.
+  S*bleq uses the same chunk bound with native subtract-and-branch loops;
+  sampled six-input rows across chunk boundaries execute correctly.
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is
