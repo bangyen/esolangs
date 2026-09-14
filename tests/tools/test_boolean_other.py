@@ -1564,6 +1564,12 @@ class TestThreeX:
         program = boolean.three_x("0" * 16 + "1" * 16)
         assert program.count("(") < 40
 
+    def test_deep_names_keep_full_tree_growth_linear(self) -> None:
+        """The shortest variable names sit at the most repeated depths."""
+        parity7 = "".join(str(i.bit_count() & 1) for i in range(2**7))
+        parity8 = "".join(str(i.bit_count() & 1) for i in range(2**8))
+        assert len(boolean.three_x(parity8)) < 2 * len(boolean.three_x(parity7))
+
     def test_digit_constant_encodings(self) -> None:
         """The base-3 digit seeds are the closed-form minimal programs."""
         from esolangs.tools import other
