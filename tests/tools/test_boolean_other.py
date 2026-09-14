@@ -1699,6 +1699,14 @@ class TestThreeX:
 
 
 class TestLaserFuck:
+    def test_compact_layout_compares_straight_and_hanging_trees(self) -> None:
+        """The narrow named layout wins for a dense eight-input table."""
+        table = "01101001" * 32
+        natural = boolean.laserfuck(table, width=10_000)
+        hanging = boolean.laserfuck(table, width=1)
+        assert len(hanging) < len(natural)
+        assert boolean.laserfuck(table) == hanging
+
     @pytest.mark.parametrize(
         ("table", "n"),
         [
@@ -1774,9 +1782,8 @@ class TestLaserFuck:
         """Past the cap only the identity order is built, not ``n!`` of them.
 
         Seven inputs would be 5040 orders; the search stops at six, so the
-        wide table costs one build.  Counting the builds is the assertion
-        rather than the timing, since that is what a change to the cap
-        would move.
+        wide table costs one order with two named layouts.  Counting the
+        builds is the assertion rather than timing.
         """
         import importlib
 
@@ -1799,7 +1806,7 @@ class TestLaserFuck:
             with pytest.MonkeyPatch.context() as patch:
                 patch.setattr(module, "_laserfuck_build", counted)
                 boolean.laserfuck(table)
-            assert built == orders, f"n={n} built {built} candidates"
+            assert built == 2 * orders, f"n={n} built {built} candidates"
 
     @pytest.mark.parametrize(
         "table",
@@ -1903,11 +1910,11 @@ class TestLaserFuck:
         cannot meet is still met.
         """
         table = "01101001"  # XOR3
-        natural = max(len(ln) for ln in boolean.laserfuck(table).split("\n"))
+        natural = max(len(ln) for ln in boolean.laserfuck(table, 10_000).split("\n"))
         assert natural > 30
         narrow = boolean.laserfuck(table, 30).split("\n")
         assert max(len(ln) for ln in narrow) <= 30
-        assert len(narrow) > len(boolean.laserfuck(table).split("\n"))
+        assert len(narrow) > len(boolean.laserfuck(table, 10_000).split("\n"))
 
     def test_the_fold_uses_its_return_rows(self) -> None:
         """A same-character run fills the leftward leg, not just the right.
@@ -2143,10 +2150,9 @@ class TestLaserFuck:
         at = boolean.laserfuck(table, flip).split("\n")
         assert (len(at), max(len(line) for line in at)) == wide
 
-        # At the flip the constraint stops binding, so the grid matches the
-        # unconstrained build.
+        # The compact build is allowed to choose either named placement.
         free = boolean.laserfuck(table).split("\n")
-        assert (len(free), max(len(line) for line in free)) == wide
+        assert len("\n".join(free)) <= len("\n".join(at))
 
     def test_the_grid_uses_only_laserfuck_characters(self) -> None:
         """Nothing but the language's own glyphs and layout space.

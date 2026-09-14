@@ -642,6 +642,10 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     The identity order is built first and ties keep it, so a table no
     reorder improves emits exactly what it emitted before.
 
+    Without a width, each input order compares the natural straight tree
+    with the narrowest reader and hanging tree.  These are two named layouts,
+    not a search over widths, and rendered length decides between them.
+
     A width is applied to every candidate rather than to the winner: the
     reader's orientations and the tree's placement already trade rows
     against columns, so the narrowest program is often not the shortest,
@@ -653,11 +657,18 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     if n <= _ORDER_SEARCH_MAX:
         orders += [p for p in permutations(range(n)) if p != identity]
 
-    best = _laserfuck_build(truth_table, identity, width)
-    for perm in orders[1:]:
-        candidate = _laserfuck_build(
-            permute_truth_table(truth_table, perm), perm, width
+    def layouts(table: str, perm: tuple[int, ...]) -> tuple[str, ...]:
+        """Return this order's one requested or two compact layouts."""
+        if width is not None:
+            return (_laserfuck_build(table, perm, width),)
+        return (
+            _laserfuck_build(table, perm),
+            _laserfuck_build(table, perm, width=1),
         )
+
+    best = min(layouts(truth_table, identity), key=len)
+    for perm in orders[1:]:
+        candidate = min(layouts(permute_truth_table(truth_table, perm), perm), key=len)
         if len(candidate) < len(best):
             best = candidate
     return best
