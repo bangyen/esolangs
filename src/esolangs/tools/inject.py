@@ -69,7 +69,7 @@ __all__ = ["inject"]
 
 
 _ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-_CONSTANTS = {"o", "z"}
+_CONSTANTS = {"o", "t", "z"}
 
 
 def _word(index: int) -> str:
@@ -163,7 +163,36 @@ def inject(truth_table: str) -> str:
     The ``readto`` block stays in input order, so only the block a
     ``skipq`` names moves.
     """
-    return best_input_order(truth_table, _inject_ordered)
+    if len(truth_table) <= 16:
+        return best_input_order(truth_table, _inject_ordered)
+    return _inject_halving(truth_table)
+
+
+def _inject_halving(truth_table: str) -> str:
+    """Select one table character with linear total regex text."""
+    n = _validate_truth_table(truth_table)
+    names = _Names(n, tuple(range(n)))
+    lines = [f"{name};\n{name};" for name in names.inputs]
+    lines += ["t;", truth_table, "t;", "z;", "0", "z;", "o;", "1", "o;"]
+    lines += [f"readto {name}" for name in names.inputs]
+
+    for depth, input_name in enumerate(names.inputs):
+        half = 1 << (n - depth - 1)
+        one = names.fresh()
+        zero = names.fresh()
+        # A zero skips the prefix deletion; a one skips the suffix deletion.
+        lines += [
+            f"skipq {input_name} z",
+            f"{one};",
+            "inject t=^" + "." * half + "/",
+            f"{one};",
+            f"skipq {input_name} o",
+            f"{zero};",
+            "inject t=" + "." * half + "$/",
+            f"{zero};",
+        ]
+    lines.append("send t")
+    return "\n".join(lines)
 
 
 def _inject_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
