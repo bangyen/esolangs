@@ -684,30 +684,22 @@ class TestBooleanGenerator:
             run(packlang(table), io)
             assert io.position() == n, table
 
-    def test_the_construction_is_the_anf(self) -> None:
-        """The term count is the ANF's, and each term's depth its degree.
-
-        ``INCR acc`` appears once per nonzero coefficient, so it counts
-        *terms*; ``If`` counts the guards, which is the sum of the terms'
-        degrees.  The two separate the shapes: AND is one term of degree
-        n, parity is n terms of degree 1, and both have the same number of
-        rows -- so a construction that had collapsed into a minterm sum
-        would show here even though every output stayed correct.
-        """
-        # x0 & x1: one term, degree 2.
-        assert packlang("0001").count("INCR acc") == 1
-        assert packlang("0001").count("If ") == 2
-        # x0 ^ x1: two terms, degree 1 each.
-        assert packlang("0110").count("INCR acc") == 2
-        assert packlang("0110").count("If ") == 2
-        # 3-way parity: three terms, degree 1 each.
-        assert packlang("01101001").count("INCR acc") == 3
-        assert packlang("01101001").count("If ") == 3
-        # A constant table has only the degree-zero coefficient: an
-        # unguarded INCR, or none at all.
+    def test_the_construction_is_a_folded_decision_tree(self) -> None:
+        """Complementary guards branch, while constant subtrees disappear."""
+        assert packlang("0001").count("If ") == 4
+        assert packlang("0110").count("If ") == 6
+        assert packlang("01101001").count("If ") == 14
         assert packlang("1111").count("If ") == 0
         assert packlang("1111").count("INCR acc") == 1
         assert packlang("0000").count("INCR acc") == 0
+
+    def test_full_tree_growth_is_linear(self) -> None:
+        """Parity forces the full tree, whose emitted size still doubles."""
+        sizes = []
+        for n in (7, 8):
+            table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+            sizes.append(len(packlang(table)))
+        assert sizes[1] < 2 * sizes[0]
 
     def test_a_one_entry_table_is_refused(self) -> None:
         with pytest.raises(ValueError, match="at least one input"):

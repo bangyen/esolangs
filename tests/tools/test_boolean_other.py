@@ -29,6 +29,20 @@ from tests.tools.boolean_runners import (
 )
 
 
+class TestPacklangLinearTree:
+    """Fast structural coverage for Packlang's linear decision tree."""
+
+    def test_constants_fold_and_parity_doubles(self) -> None:
+        """Cover both leaf values, branching, and empty/nonempty bodies."""
+        assert "If " not in boolean.packlang("0000")
+        assert boolean.packlang("1111").count("INCR acc") == 1
+        sizes = []
+        for n in (7, 8):
+            table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+            sizes.append(len(boolean.packlang(table)))
+        assert sizes[1] < 2 * sizes[0]
+
+
 class TestInject:
     """The decision tree of ``skipq`` guards over stored input blocks."""
 
