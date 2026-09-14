@@ -17,6 +17,7 @@ from esolangs.tools import laserfuck_layout
 from esolangs.tools.helpers import (
     _ORDER_SEARCH_MAX,
     _validate_truth_table,
+    constant_span_test,
     permute_truth_table,
 )
 
@@ -528,11 +529,12 @@ def _laserfuck_build(
     # is the next row index and the two stay in step.
     rows: list[list[tuple[int, str]]] = [[]]
 
-    def emit(path: list[int], row: int, col: int) -> None:
-        """Lay the subtree for ``path``, entered at ``(row, col)`` going right."""
-        depth = len(path)
-        first = int("".join(map(str, path)), 2) << (n - depth) if path else 0
-        if depth == n or len(set(truth_table[first : first + 2 ** (n - depth)])) == 1:
+    constant = constant_span_test(truth_table)
+
+    def emit(depth: int, first: int, row: int, col: int) -> None:
+        """Lay one row span, entered at ``(row, col)`` going right."""
+        stop = first + 2 ** (n - depth)
+        if depth == n or constant(first, stop):
             index = first
             # The rings leave the inputs in cells 1..n and cell 0 already
             # touched at zero, so the sweep walks down to it and a zero
@@ -549,17 +551,18 @@ def _laserfuck_build(
             run = ">" * (n - depth)
             run += "--<" * (n - depth)
             for level in range(depth, 0, -1):
-                run += "-" * (path[level - 1] + 1) + "<"
+                bit = (first >> (n - level)) & 1
+                run += "-" * (bit + 1) + "<"
             run += "+" if truth_table[index] == "1" else ""
             rows[row].append((col, run + "x"))
             return
         rows[row].append((col, ">#v)"))
-        emit([*path, 0], row, col + 4)  # a zero carries on along this row
+        emit(depth + 1, first, row, col + 4)  # zero carries on along this row
         drop = len(rows)
         rows.append([(col + 2, "\\")])  # a one comes down the 'v' column
-        emit([*path, 1], drop, col + 3)
+        emit(depth + 1, first + 2 ** (n - depth - 1), drop, col + 3)
 
-    emit([], 0, 0)
+    emit(0, 0, 0, 0)
     span = max(col + len(text) for marks in rows for col, text in marks)
     upright = []
     for marks in rows:

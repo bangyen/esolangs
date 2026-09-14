@@ -19,6 +19,7 @@ from itertools import permutations
 from esolangs.tools.helpers import (
     _ORDER_SEARCH_MAX,
     _validate_truth_table,
+    constant_span_test,
     permute_truth_table,
 )
 from esolangs.tools.wrap import shortest
@@ -212,11 +213,38 @@ _TREE_CACHE_MAX = 2**4
 def _streetcode_tree(table: str) -> list[str]:
     """Build the binary decision tree: one T-junction turn per input bit."""
     if len(table) > _TREE_CACHE_MAX:
-        return _streetcode_tree_uncached(table)
+        return _streetcode_tree_span(table, 0, len(table), constant_span_test(table))
     # Copied out: the cache hands back the same object to every caller, and
     # ``_streetcode_combine`` and ``_streetcode_lift`` both treat their rows
     # as read-only today, which is not a property to leave load-bearing.
     return list(_streetcode_tree_memo(table))
+
+
+def _streetcode_tree_span(
+    table: str,
+    start: int,
+    stop: int,
+    constant: Callable[[int, int], bool],
+) -> list[str]:
+    """Build a large tree by bounds, delegating small spans to the cache."""
+    size = stop - start
+    if size <= _TREE_CACHE_MAX:
+        return _streetcode_tree(table[start:stop])
+
+    half = size // 2
+    middle = start + half
+    skipped = half.bit_length() - 1
+    top = (
+        _streetcode_leaf(int(table[start]), skipped)
+        if constant(start, middle)
+        else _streetcode_tree_span(table, start, middle, constant)
+    )
+    bot = (
+        _streetcode_leaf(int(table[middle]), skipped)
+        if constant(middle, stop)
+        else _streetcode_tree_span(table, middle, stop, constant)
+    )
+    return _streetcode_join(top, bot)
 
 
 @cache
@@ -259,6 +287,11 @@ def _streetcode_tree_uncached(table: str) -> list[str]:
         top = _streetcode_leaf(int(table[0]), half.bit_length() - 1)
     if _streetcode_constant(bot):
         bot = _streetcode_leaf(int(table[half]), half.bit_length() - 1)
+    return _streetcode_join(top, bot)
+
+
+def _streetcode_join(top: list[str], bot: list[str]) -> list[str]:
+    """Join two finished subtrees with their shared branching hall."""
     width = max(max(len(row) for row in top), max(len(row) for row in bot))
     top = [row.ljust(width) for row in top]
     bot = [row.ljust(width) for row in bot]

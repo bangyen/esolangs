@@ -751,8 +751,6 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
     as the node-read build did.
     """
     n = _validate_truth_table(truth_table)
-    prelude = [0, 0, 6, -1, 0, 0, 9, 0, 0]
-    code_base = len(prelude)
     neg49, d48 = 0, 1
     vbase = 4
     nxtbase = vbase + n
@@ -790,7 +788,9 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
     )
 
     onebase = nxtbase + n
-    data_base = code_base + 3 * len(instructions)
+    one_count = sum(kind == "one" for _a, _b, kind, _arg in instructions)
+    data_base = 9
+    code_base = data_base + onebase + one_count
 
     # ``one`` instructions carry their absolute target, and the data block
     # holds those targets in the order the emit loop meets them.
@@ -815,7 +815,11 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
         + [code_base + 3 * (i + 1) for i in range(n)]
         + ones
     )
-    cells = prelude + cells + data
+    # Instruction 0 jumps over inert low-address data to the code.  Keeping
+    # the data first shortens every repeated a/b/c operand; the large code
+    # targets remain values stored once in that data.
+    prelude = [0, 0, 6, -1, 0, 0, code_base, 0, 0]
+    cells = prelude + data + cells
     return " ".join(map(str, cells))
 
 
@@ -919,6 +923,7 @@ def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """
     n = _validate_truth_table(truth_table)
     label = [1]
+    constant = constant_span_test(truth_table)
 
     def fresh() -> int:
         label[0] += 1
@@ -955,7 +960,7 @@ def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         return adjust + "^."
 
     def node(level: int, lo: int, hi: int, entry: int, held: int | None) -> str:
-        if level == n or len(set(truth_table[lo:hi])) == 1:
+        if level == n or constant(lo, hi):
             return leaf(truth_table[lo], held)
         # A clobbered input has no cell to test.  Its bit cannot change the
         # answer, so the two halves of this span are value-identical and
