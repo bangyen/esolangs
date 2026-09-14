@@ -10,10 +10,19 @@ The candidate list is empty.
 ## Conditional follow-up
 
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where
-  T is the truth-table length, and add a registry-wide scaling contract.
-  B-tapemark now meets both bounds; indexed spans and constant-time fold tests
-  make several other traversals linear, but do not remove their super-linear
-  output.  The
+  T is the truth-table length.  For each remaining generator, either add a
+  loop-less O(T) construction and an executed scaling regression, or record a
+  structural proof that the language or required encoding forces super-linear
+  output and continue with the next generator.  Generation time includes
+  choosing an input order and writing the result.  Finish with a registry-wide
+  scaling contract.
+
+  Work in this order: A Painter Ant, 123, Circuit Diagram, COD, Minifuck,
+  Factor, Polynomial, AddSubJump, ArrowQueue, Back, Bitdeque, BrainIf,
+  Clockwise, Container, Dig, Flowchart, Forþ, Inject, Jaune, LaserFuck, RAM0,
+  S*bleq, SLOW ACV MAMMALIAN, Streetcode, and Vandevelo.  B-tapemark already
+  meets both bounds; indexed spans and constant-time fold tests make several
+  other traversals linear but do not remove their super-linear output.  The
   n=8 -> 9 parity sweep already exposes super-linear output in A Painter Ant
   (135016 -> 534124), 123 (94579 -> 230034), Circuit Diagram
   (145216 -> 322504), COD (942692 -> 3668705), Minifuck
@@ -54,8 +63,8 @@ The candidate list is empty.
   | Streetcode | Super-linear | Super-linear |
   | Vandevelo | Super-linear | Super-linear |
 
-  Generation time includes writing the result, so super-linear output implies
-  super-linear time; the time column is not an independent empirical verdict.
+  Super-linear output implies super-linear generation time; the time column is
+  not an independent empirical verdict.
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is
@@ -75,7 +84,8 @@ The candidate list is empty.
   scan with cell-indexed collision checks; derive its first-free lanes into a
   direct routing rule without changing the emitted programs.
 
-- **A Painter Ant shared-head proof.**  The depth-first head cuts dense n=9
+- **A Painter Ant shared-head proof.**  While auditing A Painter Ant above, the
+  depth-first head cuts dense n=9
   from 517348 to 19684 characters and executes every n=3 program plus sampled
   programs through n=8, but invalidates the uniform proof check's independent
   per-leaf rest-point and motif decomposition.  Rewrite those lemmas around
