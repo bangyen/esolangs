@@ -128,13 +128,11 @@ jobs:
       # below needs the arcs.
       run: uv run pytest -n auto -m "not slow" --cov --cov-branch --cov-report=xml --cov-report=term-missing
 
-    # `--partial`, and this is the cost of moving the `slow` band weekly: the
-    # run above no longer selects every test, so an uncovered line here may
-    # simply be covered by a test that did not run.  The gate therefore
-    # reports and does not fail, which is what `--partial` is for -- it was
-    # written for exactly this selection.  The blocking version is the
-    # command it prints, and the weekly job is where the whole suite runs.
-    - name: Report changed-line and changed-branch coverage
+    # The fast suite cannot judge pre-existing lines covered only by a slow
+    # test, so `--partial` reports those whole-file gaps without blocking.
+    # Added executable lines and branches are still this PR's responsibility
+    # and fail the job; the weekly suite retains the expensive evidence.
+    - name: Check changed-line and changed-branch coverage
       if: matrix.python-version == '3.14'
       run: uv run python scripts/check_diff_coverage.py --partial
 
@@ -170,7 +168,7 @@ jobs:
     - name: Check generated documentation
       run: |
         uv run python scripts/generate.py docs
-        if ! git diff --exit-code README.md docs/usage.md; then
+        if ! git diff --exit-code README.md docs/usage.md docs/CONTRIBUTING.md .github/ISSUE_TEMPLATE/language_request.yml; then
           echo "Generated documentation is out of date. Run:"
           echo "  uv run python scripts/generate.py docs"
           exit 1

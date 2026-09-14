@@ -12,7 +12,7 @@ generation, execution, and answer extraction connect.
 | Path | Holds |
 | --- | --- |
 | `src/esolangs/interpreters/` | interpreter modules and `run(code, io)` |
-| `src/esolangs/tools/boolean/` | generators |
+| `src/esolangs/tools/` | generators |
 | `src/esolangs/registry.py` | the source of truth for public integration |
 | `tests/` | interpreter and generator coverage |
 

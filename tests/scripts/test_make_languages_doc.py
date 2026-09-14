@@ -2,12 +2,17 @@
 
 import importlib.util
 import re
+from dataclasses import replace
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / "src" / "esolangs" / "tools" / "_generate_docs.py"
 README = REPO_ROOT / "README.md"
 USAGE_DOC = REPO_ROOT / "docs" / "usage.md"
+CONTRIBUTING = REPO_ROOT / "docs" / "CONTRIBUTING.md"
+LANGUAGE_REQUEST = REPO_ROOT / ".github" / "ISSUE_TEMPLATE" / "language_request.yml"
 
 
 def _markers(tag: str) -> tuple[str, str]:
@@ -92,6 +97,85 @@ def test_readme_counts_match_the_registry() -> None:
     examples = module.render_examples_section()
     assert f"each of the {len(module.BOOLEAN)}\nlanguages with a boolean" in examples
     assert f"  {len(module.BOOLEAN)} of the" in module.render_boolean_count_section()
+
+
+def test_contributor_facts_match_the_registry() -> None:
+    """The generator home is validated and the language count is generated."""
+    module = load_script()
+    assert module.render_contributor_tools_section() in CONTRIBUTING.read_text()
+    module.update_contributing()
+    assert (
+        f"What it adds that the current {len(module.LANGUAGES)} do not"
+        in LANGUAGE_REQUEST.read_text()
+    )
+
+
+def test_a_generator_outside_tools_is_rejected() -> None:
+    """The contributor path must describe every registry generator."""
+    module = load_script()
+
+    def elsewhere() -> str:
+        return ""
+
+    language = next(iter(module.LANGUAGES.values()))
+    module.LANGUAGES = {language.name: replace(language, boolean=elsewhere)}
+    with pytest.raises(ValueError, match="generator is outside"):
+        module.render_contributor_tools_section()
+
+
+def test_a_language_without_a_generator_is_ignored() -> None:
+    """Only registry entries that claim a generator constrain its home."""
+    module = load_script()
+    language = next(iter(module.LANGUAGES.values()))
+    module.LANGUAGES = {language.name: replace(language, boolean=None)}
+    assert module.render_contributor_tools_section().endswith("| generators |")
+
+
+def test_an_incorrect_contributor_path_is_rejected(tmp_path: Path) -> None:
+    module = load_script()
+    module.ROOT = tmp_path
+    path = tmp_path / "docs" / "CONTRIBUTING.md"
+    path.parent.mkdir()
+    path.write_text("| `src/esolangs/tools/boolean/` | generators |\n")
+    module.render_contributor_tools_section = lambda: "correct row"
+    with pytest.raises(ValueError, match="does not name"):
+        module.update_contributing()
+
+
+def test_the_issue_template_must_contain_one_count(tmp_path: Path) -> None:
+    """A wording change cannot silently disable count generation."""
+    module = load_script()
+    module.ROOT = tmp_path
+    path = tmp_path / ".github" / "ISSUE_TEMPLATE" / "language_request.yml"
+    path.parent.mkdir(parents=True)
+    path.write_text("no generated count here\n")
+    with pytest.raises(ValueError, match="expected one language count"):
+        module.update_language_request()
+
+
+def test_the_issue_template_count_is_rewritten(tmp_path: Path) -> None:
+    module = load_script()
+    module.ROOT = tmp_path
+    path = tmp_path / ".github" / "ISSUE_TEMPLATE" / "language_request.yml"
+    path.parent.mkdir(parents=True)
+    path.write_text("What it adds that the current 1 do not — enough\n")
+    module.update_language_request()
+    assert f"current {len(module.LANGUAGES)} do not" in path.read_text()
+
+
+def test_main_updates_all_registry_derived_docs(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """The public generator command includes both contributor surfaces."""
+    module = load_script()
+    called = []
+    module.update_readme = lambda: called.append("readme")
+    module.update_usage = lambda: called.append("usage")
+    module.update_contributing = lambda: called.append("contributing")
+    module.update_language_request = lambda: called.append("request")
+    assert module.main() == 0
+    assert called == ["readme", "usage", "contributing", "request"]
+    assert "language request template" in capsys.readouterr().out
 
 
 def test_readme_tui_frame_is_in_sync() -> None:
