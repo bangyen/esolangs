@@ -1203,6 +1203,14 @@ class TestZtoalc:
 
 
 class TestClockwise:
+    def test_compact_layout_uses_a_partial_stack_past_the_crossover(self) -> None:
+        """The named 8n candidate beats the flat dense eight-input tree."""
+        table = "01101001" * 32
+        flat = boolean.clockwise(table, width=10_000)
+        partially_stacked = boolean.clockwise(table, width=8 * 8)
+        assert len(partially_stacked) < len(flat)
+        assert boolean.clockwise(table) == partially_stacked
+
     @pytest.mark.parametrize(
         ("table", "n"),
         [
