@@ -9,7 +9,6 @@ from itertools import pairwise
 
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
-    _maybe_complement,
     _validate_truth_table,
     best_input_order,
     essential_inputs,
@@ -863,64 +862,17 @@ def bit_tilde(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    bit~ is a bit pool with ``{``/``}`` while-nonzero loops.  Each ``)``
-    reads an input byte into eight bits (MSB first), so the input bit lands
-    at cell ``8i+7`` and cells ``8i+2``/``8i+3`` hold the ``00110000`` byte
-    pattern a ``0`` output needs.  Each ``1`` row is built and then
-    immediately tested: one indicator cell per input is copied from that
-    input's chain (chained two-dest copies so the source survives) and
-    complemented when the minterm needs the bit zero, then a nested
-    ``{ bit ... }`` test whose innermost body forces the result cell to 1.
-    The first input-0 copy also consumes the input bit out of cell 7 so the
-    output window holds a clean 48.  The result is copied into cell 7 so
-    ``(`` prints ``48 + result``.  Dense tables evaluate the complement
-    instead (fewer minterms) and flip the output bit once.
-
-    **The scratch window is fixed, not per-row.**  Because a row is tested
-    before the next row is built, the indicators are reused: the working set
-    is ``3 * width + 1`` cells (two chain cells and one indicator per input,
-    plus the result) wherever the table's one-rows fall.  Cells used to be
-    allocated fresh per (input, one-row) pair, which put the scratch area
-    2,032 cells out at eight inputs and left 98% of the emitted program in
-    the unary ``>``/``<`` walks reaching it.  A reused indicator is cleared
-    with ``{~}`` before each copy, since a row whose outer test failed
-    never entered the body that clears the inner indicators.
-
-    Measured on the contract sweep's dense tables.  Both shapes were executed
-    over every input combination through eight inputs and over 64 sampled
-    combinations at nine and ten, and every table through three inputs was
-    executed against every combination::
-
-        n      fresh cells    fixed window    factor
-        3              308             368     0.84x
-        4            2,099           1,344     1.56x
-        6           28,769           6,316     4.56x
-        8          507,740          31,076    16.34x
-        9        2,220,956          69,005    32.19x
-        10       9,963,861         153,854    64.76x
-
-    The highest cell reached goes 2,032 -> 88 at eight inputs and is now
-    linear in ``n`` (10,162 -> 110 at ten), so the mean walk is 2 cells
-    rather than 297 and growth per added input falls from ~4.5x to ~2.2x.
-    **It loses below four inputs** -- the per-row clears cost more than the
-    short walks they save when the scratch area is only a few cells wide --
-    which is the deliberate trade: the small tables give up at most 68
-    characters and the large ones stop being quadratic.
+    bit~ is a bit pool with ``{``/``}`` while-nonzero loops. Each node copies
+    its stored input into two indicators, complements the zero indicator,
+    then uses both as one-shot branch loops. The loop body clears its own
+    indicator, so both paths converge and scratch cells can be reused by
+    depth. Deep levels occupy cells nearest the input area; their repeated
+    pointer walks therefore form a geometric sum and the source is O(T).
     """
     n = _validate_truth_table(truth_table)
 
-    # A table that ignores some of its inputs is a smaller table, and every
-    # cost here is per *one-row* and per *input within it*: each minterm
-    # pre-copies one cell per input and nests one ``{`` test per input, so
-    # dropping an input removes rows and shortens the rows that remain.  The
-    # reads stay -- one ``)`` per input, and they are the interface -- so the
-    # ignored inputs are read into their own cells and never copied out.
     used = essential_inputs(truth_table, n) or [0]
-    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
-
-    table, use_complement = _maybe_complement(reduced)
-    # Reads keep their original cells (input ``i`` lands at ``8i+7``), so a
-    # minterm's ``level`` indexes into ``used`` rather than into ``range(n)``.
+    table = truth_table if len(used) == n else read_at(truth_table, used, n)
     width = len(used)
 
     prog: list[str] = []
@@ -954,26 +906,8 @@ def bit_tilde(truth_table: str) -> str:
         prog.append(")")
         pos = 8 * i
 
-    # A fixed window: three cells per slot -- two the chain alternates
-    # through and one indicator the row's test consumes -- plus the result.
-    # The whole scratch area is ``3 * width + 1`` cells wide whatever the
-    # table holds, because a row is built and tested before the next row
-    # reuses the cells.
     base = 8 * n
-    chain = [(base + 3 * slot, base + 3 * slot + 1) for slot in range(width)]
-    indicator = [base + 3 * slot + 2 for slot in range(width)]
-    result = base + 3 * width
-
-    if 0 not in used:
-        # ``(`` prints cell 7's window, and input 0's bit lands there, so it
-        # has to be consumed whether or not the table depends on it.  When
-        # input 0 is essential the first copy below does that as a side
-        # effect; when it is *ignored* nothing else touches cell 7, and the
-        # output comes out as the input bit rather than the answer -- exactly
-        # the 16 tables at ``n <= 3`` that ignore input 0.
-        move(7)
-        prog.append("{ ~ }")
-        pos = 7
+    result = base
 
     def set_result() -> None:
         nonlocal pos
@@ -981,55 +915,51 @@ def bit_tilde(truth_table: str) -> str:
         prog.append("{ ~ } ~")
         pos = result
 
-    def node(level: int) -> None:
+    def clear(cell: int) -> None:
         nonlocal pos
-        if level == width:
-            set_result()
+        move(cell)
+        prog.append("{~}")
+        pos = cell
+
+    changes = [0]
+    for previous, current in pairwise(table):
+        changes.append(changes[-1] + (previous != current))
+
+    def node(start: int, end: int, depth: int) -> None:
+        nonlocal pos
+        if changes[start] == changes[end - 1]:
+            if table[start] == "1":
+                set_result()
             return
-        cell = indicator[level]
-        move(cell)
+        half = (start + end) // 2
+        slot = width - 1 - depth
+        zero = base + 1 + 3 * slot
+        one = zero + 1
+        temp = zero + 2
+        for cell in (zero, one, temp):
+            clear(cell)
+        source = 8 * used[depth] + 7
+        copy2(source, one, temp)
+        copy2(temp, source, zero)
+        move(zero)
+        prog.append("~{")
+        pos = zero
+        node(start, half, depth + 1)
+        move(zero)
+        prog.append("~}")
+        pos = zero
+        move(one)
         prog.append("{")
-        pos = cell
-        node(level + 1)
-        move(cell)
-        prog.append("~")
-        pos = cell
-        prog.append("}")
+        pos = one
+        node(half, end, depth + 1)
+        move(one)
+        prog.append("~}")
+        pos = one
 
-    # Each slot threads its input bit through its own chain, so the chains
-    # are independent and advance only on the rows they are copied for.
-    source = [8 * i + 7 for i in used]
-    turn = [0] * width
-    for k in range(2**width):
-        one_row = table[k] == "1"
-        for slot, i in enumerate(used):
-            # only one-rows' indicators are used; the first input-0 copy must
-            # still run to consume the input bit out of cell 7
-            if not one_row and not (slot == 0 and i == 0 and k == 0):
-                continue
-            # The indicator is reused, and a row whose *outer* test failed
-            # never entered the body that clears the inner ones, so clear
-            # unconditionally rather than reasoning about which cells the
-            # previous row consumed.  ``copy2`` xors into its destinations,
-            # so a stale 1 here would silently invert an indicator.  Spelled
-            # without the spaces the other two clear sites use: this one is
-            # emitted once per (one-row, input) rather than once per program,
-            # and the interpreter ignores the spaces anyway.
-            cell = indicator[slot]
-            move(cell)
-            prog.append("{~}")
-            pos = cell
-            nxt = chain[slot][turn[slot]]
-            copy2(source[slot], cell, nxt)
-            source[slot] = nxt
-            turn[slot] ^= 1
-            if not (k >> (width - 1 - slot)) & 1:
-                move(cell)
-                prog.append("~")
-                pos = cell
-        if one_row:
-            node(0)
+    node(0, 1 << width, 0)
 
+    # Cell 7 still holds input 0 because tree copies preserve every source.
+    clear(7)
     move(result)
     prog.append("{")
     move(7)
@@ -1038,10 +968,6 @@ def bit_tilde(truth_table: str) -> str:
     prog.append("~")
     prog.append("}")
     pos = result
-    if use_complement:
-        move(7)
-        prog.append("~")
-        pos = 7
     move(0)
     prog.append("(")
     return "".join(prog)
