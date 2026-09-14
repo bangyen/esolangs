@@ -16,8 +16,8 @@ The candidate list is empty.
   (632616 -> 1661008), COD (942692 -> 3668705), Minifuck
   (57601 -> 203089), ROTFuck
   (83516 -> 200647), and Suffolk (34697 -> 105932); dense tables also expose
-  Polynomial and Super SNUSP.  Treat every emitted character as build work,
-  and replace Circuit Diagram's quadratic layout checks.  Input reordering is
+  Polynomial.  Treat every emitted character as build work, and replace
+  Circuit Diagram's quadratic layout checks.  Input reordering is
   an optional optimization around a generator, not part of its construction,
   so its search cost does not enter this criterion.  No generator construction
   may use BFS or DFS: `%^2^-1`'s live breadth-first spelling catalogue must
