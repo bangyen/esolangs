@@ -26,6 +26,16 @@ def test_constant_still_reads_every_input() -> None:
     assert io.position() == 3
 
 
-def test_one_rows_are_named_minterms() -> None:
+def test_one_rows_are_named_cubes() -> None:
     program = vandevelo("0001")
     assert program.splitlines()[-1] == "i0? != Nil? :: i1? != Nil? :: loop?"
+
+
+def test_constant_one_needs_no_guards() -> None:
+    program = vandevelo("11111111")
+    assert program.splitlines()[-1] == "loop?"
+
+
+def test_constant_subtree_drops_suffix_guards() -> None:
+    program = vandevelo("00001111")
+    assert program.splitlines()[-1] == "i0? != Nil? :: loop?"
