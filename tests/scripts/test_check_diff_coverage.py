@@ -192,10 +192,8 @@ class TestWithoutBranchData:
 
 
 class TestPartial:
-    def test_partial_reports_an_untaken_branch_without_failing(
-        self, tmp_path: Path
-    ) -> None:
-        """A subset run cannot tell an untaken arc from a deselected test."""
+    def test_partial_fails_on_an_added_untaken_branch(self, tmp_path: Path) -> None:
+        """An added branch is cheap evidence the PR must supply."""
         files = {
             PATH: record(
                 [10],
@@ -206,9 +204,27 @@ class TestPartial:
             )
         }
         code, out = run_gate(tmp_path, files, {PATH: {10}}, partial=True)
-        assert code == 0
+        assert code == 1
         assert "never taken" in out
-        assert "not failing" in out
+        assert "must be covered by the fast suite" in out
+
+    def test_partial_does_not_fail_on_a_gap_outside_the_diff(
+        self, tmp_path: Path
+    ) -> None:
+        """A deselected slow test may be the evidence for an old line."""
+        files = {PATH: record([10], [40])}
+        code, out = run_gate(tmp_path, files, {PATH: {10}}, partial=True)
+        assert code == 0
+        assert "line(s)" not in out
+        assert "not failing on gaps outside added lines" in out
+
+    def test_partial_fails_on_an_uncovered_added_statement(
+        self, tmp_path: Path
+    ) -> None:
+        files = {PATH: record([10], [11])}
+        code, out = run_gate(tmp_path, files, {PATH: {10, 11}}, partial=True)
+        assert code == 1
+        assert "must be covered by the fast suite" in out
 
 
 class TestTheGateRuns:
