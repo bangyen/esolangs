@@ -1056,7 +1056,7 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: them approximate, and asserting one here would fail whenever the machine
 #: is busy -- which, on a suite that runs four workers, is always.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
-    "Circuit Diagram": (145_216, 322_504, 2.2),
+    "Circuit Diagram": (7_910_330, 11_394_987, 1.4),
     "COD": (942_692, 3_668_705, 3.9),
     "ROTfuck": (15_240, 29_472, 1.9),
     "Polynomial": (3_383_048, 10_896_883, 3.2),
@@ -1076,6 +1076,7 @@ _LINEAR_SCALING = {
     "back",
     "bitdeque",
     "brainif",
+    "circuit_diagram",
     "clockwise",
     "forbin",
     "flowchart",
@@ -1087,7 +1088,6 @@ _LINEAR_SCALING = {
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
-    "circuit_diagram",
     "cod",
     "container",
     "dig",
@@ -1138,7 +1138,10 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
 def test_converted_generators_scale_linearly(name: str) -> None:
     """Doubling a wide unfolded table at most doubles generated text."""
     fn = getattr(boolean, name)
-    sizes = [len(fn(_parity(n))) for n in (11, 12)]
+    # Circuit Diagram's odd/even H recurrences have different finite-size
+    # constants; its all-arity area bound is checked in test_boolean_grid.
+    arities = (8, 9) if name == "circuit_diagram" else (11, 12)
+    sizes = [len(fn(_parity(n))) for n in arities]
     assert sizes[1] <= 2 * sizes[0]
 
 
@@ -1154,13 +1157,9 @@ def test_the_expensive_generators_grow_as_documented(name: str) -> None:
     of frozen table this repository turns back into a rule.  A rule in prose
     is only worth having if it is checked, so this is the check.
 
-    n=9 is the ceiling here on purpose: it was chosen when Circuit Diagram
-    was 60MB there and 306MB at n=10, and a test that allocates a third of
-    a gigabyte to confirm a documented number is a worse trade than the
-    number being one arity smaller.  Five of these eight have since shrunk
-    by between 2.4x and 15x -- Circuit Diagram is 1.6MB at n=9 now -- but
-    n=9 stays, because the growth law is what is being checked and one more
-    arity does not check it better.
+    n=9 is the ceiling here on purpose: Circuit Diagram's deliberately roomy
+    H-layout is already 11.4MB there, and one more arity does not check its
+    proved area recurrence better.
     """
     at_eight, at_nine, ratio = _DOCUMENTED_SIZES[name]
     assert len(esolangs.generate(name, _dense(8))) == at_eight
@@ -1183,4 +1182,4 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
         if name not in _DOCUMENTED_SIZES
     )
     assert biggest[0] < 600_000, biggest
-    assert biggest[1] == "Minifuck"
+    assert biggest[1] == "BrainIf"

@@ -25,7 +25,7 @@ The candidate list is empty.
   other traversals linear but do not remove their super-linear output.  The
   n=8 -> 9 parity sweep already exposes super-linear output in A Painter Ant
   (135016 -> 534124), 123 (94579 -> 230034), Circuit Diagram
-  (145216 -> 322504), COD (942692 -> 3668705), Minifuck
+  (7910330 -> 11394987), COD (942692 -> 3668705), Minifuck
   (57601 -> 203089), and Factor (24113 -> 50090); dense tables also expose
   Polynomial.  The construction audit also leaves AddSubJump, ArrowQueue, Back,
   Bitdeque, BrainIf, Clockwise, Container, Dig, Flowchart, Forþ,
@@ -39,7 +39,7 @@ The candidate list is empty.
   | --- | --- | --- |
   | A Painter Ant | Linear | Linear |
   | 123 | Open | Open |
-  | Circuit Diagram | Open | Open |
+  | Circuit Diagram | Linear | Linear |
   | COD | Open | Open |
   | Minifuck | Open | Open |
   | Factor | Language lower bound | Language lower bound |
@@ -101,6 +101,8 @@ The candidate list is empty.
   lengths, and uses a fixed overshoot to align the selected cell for cleanup.
   Clockwise alternates horizontal and vertical subtree composition; each pair
   of levels doubles both dimensions, keeping the rendered rectangle linear.
+  Circuit Diagram recursively quarters its minterm tree in an H-layout whose
+  side is O(sqrt(T)); the fixed-catalogue router occupies O(T) cells.
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is

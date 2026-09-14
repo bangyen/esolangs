@@ -51,7 +51,7 @@ promptly. Its magnitude guard is load-bearing. A per-node re-embed tree can
 build dense n=13, but is outside the generator contract.
 
 Uncapped dense-program sizes at n=8/n=9: Polynomial 3.38/10.90 MB, COD
-0.94/3.67 MB, SLOW ACV MAMMALIAN 1.67/3.38 MB, Circuit Diagram 0.15/0.32 MB,
+0.94/3.67 MB, SLOW ACV MAMMALIAN 1.67/3.38 MB, Circuit Diagram 7.91/11.39 MB,
 123 0.09/0.23 MB, ROTfuck 0.02/0.03 MB, bit~ 0.03/0.06 MB, Factor
 0.02/0.04 MB. Run generated programs before claiming size or equivalence.
 
@@ -128,6 +128,10 @@ fixed pitch and drew one Theta(T)-wide selector level per input.  Its five-row
 deque layout is linear: it preloads T answers, then its two arms discard
 opposite halves; setting the arms to 1/0 before a shared switch makes both
 incoming headings leave east.  Dig still needs localized or shared routing.
+Circuit Diagram's H-layout quarters its minterm tree every two inputs.  Its
+side recurrence is `S(n) = 2*S(n-2) + O(n) = O(sqrt(T))`, so its rendered
+area is O(T); routing records at most one horizontal and one vertical signal
+per cell and tries a fixed local catalogue, keeping construction linear too.
 Inject's and Jaune's retired trees are Theta(T log T) on parity because both
 assign a distinct label to every tree branch or leaf.  Inject emits each of Theta(T) labels
 twice from a fixed 52-letter alphabet, so a constant fraction have
