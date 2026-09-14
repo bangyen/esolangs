@@ -198,37 +198,173 @@ def addsubjump(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    ASJ's instruction is ``a b c d``: ``*a += *b`` (when ``*d <= 0``) or
-    ``*a -= *b`` (when ``*d > 0``), then ``goto *c``, where ``c`` is a cell
-    holding the next instruction pointer.  There is no data-testable jump,
-    so the generator routes a decision tree through two trampolines: a jump
-    cell initialized to the zero trampoline's address is advanced by
-    ``4 * bit``, and ``goto *jump`` lands on the zero or one trampoline,
-    which jumps to the corresponding subtree.  Leaves print 48/49 and halt
-    via ``c = -8`` (a special address).  Subtrees whose table entries are
-    constant collapse to a leaf.
-
-    **All ``n`` bits are read up front**, each into a cell of its own and
-    normalized there once from 48/49 to ``{0, 4}`` (subtract 48, double
-    twice).  A node then spends two instructions -- ``J += B`` naming
-    whichever bit it tests, and ``goto *J``.  Reading at the node instead
-    would repeat the four-instruction normalization at every node and make a
-    folded leaf drain the reads its untaken siblings skipped; hoisting pays
-    for both once, 25.1% of the program at n == 3 before any reordering.
-
-    **The tree then splits on its inputs in whichever order emits the
-    shortest program** (:func:`~esolangs.tools.helpers.best_input_order`),
-    which the hoist enables: with every bit in its own cell, ``J += *b`` can
-    name any of them, so a node is not tied to the bit just read.  The reads
-    stay in stream order, so the program consumes its input exactly as
-    before.  Reordering adds 8.9% on top of the hoist at n == 3, for 31.7%
-    together, rising to 41.0% at n == 4 and 47.8% at n == 5.
-
-    Only the inputs the tree actually branches on get a cell; one no node
-    tests is read into write-only scratch, so a constant table still
-    consumes every input without storing any.
+    Inputs are read once into a binary row index.  The table is packed into
+    ``n``-bit numeric cells; a self-modified operand selects the indexed cell
+    and repeated subtraction extracts its bit.  There are ``Theta(T/n)``
+    cells of ``O(n)`` digits and the decoder has ``O(n)`` instructions, so
+    generation time and rendered size are both ``O(T)``.
     """
-    return best_input_order(truth_table, _addsubjump_ordered)
+    if len(truth_table) <= 16:
+        return best_input_order(truth_table, _addsubjump_ordered)
+    return _addsubjump_packed(truth_table)
+
+
+def _addsubjump_packed(truth_table: str) -> str:
+    """Emit a linear-size packed-table decoder for AddSubJump."""
+    n = _validate_truth_table(truth_table)
+    chunk_width = max(n, 1)
+    instructions: list[tuple[object, object, str, object]] = []
+    labels: dict[str, int] = {}
+    values: dict[str, int] = {
+        "ZERO": 0,
+        "ONE": 1,
+        "FOUR": 4,
+        "C48": 48,
+        "N": chunk_width,
+        "INDEX": 0,
+        "TMP": 0,
+        "COUNT": chunk_width,
+        "OFFSET": 0,
+        "TABLE": 0,
+        "SHIFT": 0,
+        "Q": 0,
+        "R": 0,
+        "OUT": _ASCII_ZERO,
+        "HALT": -8,
+    }
+    branch_id = 0
+
+    def mark(name: str) -> None:
+        labels[name] = len(instructions)
+
+    def emit(a: object, b: object, target: str, d: object = "ZERO") -> int:
+        instructions.append((a, b, target, d))
+        return len(instructions) - 1
+
+    def jump(target: str) -> None:
+        emit("ZERO", "ZERO", target)
+
+    def clear(dst: str) -> None:
+        emit(dst, dst, "next", "ONE")
+
+    def branch_positive(cell: str, positive: str, zero: str) -> None:
+        """Branch on ``cell > 0`` and restore the reusable jump cell."""
+        nonlocal branch_id
+        tag = branch_id
+        branch_id += 1
+        jump_cell = f"BRANCH{tag}"
+        positive_trampoline = f"branch_{tag}_positive"
+        zero_trampoline = f"branch_{tag}_zero"
+        emit(jump_cell, "FOUR", "next", cell)
+        emit("ZERO", "ZERO", "@" + jump_cell)
+        mark(positive_trampoline)
+        emit(jump_cell, "FOUR", "next")
+        emit("ZERO", "ZERO", positive)
+        mark(zero_trampoline)
+        emit(jump_cell, "FOUR", "next", "ONE")
+        emit("ZERO", "ZERO", zero)
+        # The trampolines are two instructions apart; their midpoint is the
+        # value from which adding/subtracting FOUR selects either one.
+        values[jump_cell] = 4 * (labels[positive_trampoline] + 1)
+
+    # Read every input once and form its binary row index.
+    for _ in range(n):
+        clear("TMP")
+        emit("TMP", -1, "next")
+        emit("TMP", "C48", "next", "ONE")
+        emit("INDEX", "INDEX", "next")
+        emit("INDEX", "TMP", "next")
+
+    mark("select_test")
+    branch_positive("INDEX", "select_step", "selected")
+    mark("select_step")
+    emit("INDEX", "ONE", "next", "ONE")
+    emit("COUNT", "ONE", "next", "ONE")
+    emit("OFFSET", "ONE", "next")
+    branch_positive("COUNT", "select_test", "advance_chunk")
+    mark("advance_chunk")
+    load_operand_increment = emit(0, "ONE", "next")
+    emit("COUNT", "N", "next")
+    clear("OFFSET")
+    jump("select_test")
+
+    mark("selected")
+    clear("TABLE")
+    load_chunk = emit("TABLE", "CHUNK0", "next")
+    clear("SHIFT")
+    emit("SHIFT", "OFFSET", "next")
+    emit("SHIFT", "ONE", "div_init")
+
+    # Divide the selected chunk by two OFFSET+1 times.  The final remainder
+    # is precisely the indexed truth-table bit.
+    mark("div_init")
+    clear("Q")
+    clear("R")
+    mark("div_test")
+    branch_positive("TABLE", "div_first", "division_complete")
+    mark("div_first")
+    emit("TABLE", "ONE", "next", "ONE")
+    branch_positive("TABLE", "div_pair", "div_odd")
+    mark("div_pair")
+    emit("TABLE", "ONE", "next", "ONE")
+    emit("Q", "ONE", "div_test")
+    mark("div_odd")
+    emit("R", "ONE", "division_complete")
+
+    mark("division_complete")
+    emit("SHIFT", "ONE", "next", "ONE")
+    branch_positive("SHIFT", "divide_again", "output")
+    mark("divide_again")
+    clear("TABLE")
+    emit("TABLE", "Q", "div_init")
+    mark("output")
+    emit("OUT", "R", "next")
+    emit(-1, "OUT", "@HALT")
+
+    # Pack n adjacent rows per cell.  Both each value and each cell address
+    # have O(log T) digits, while there are O(T/log T) cells.
+    chunks = [
+        sum(
+            int(bit) << offset
+            for offset, bit in enumerate(truth_table[start : start + chunk_width])
+        )
+        for start in range(0, len(truth_table), chunk_width)
+    ]
+
+    target_names = [f"TARGET{i}" for i in range(len(instructions))]
+    names = list(values)
+    for target_name in target_names:
+        if target_name not in values:
+            names.append(target_name)
+    names.extend(f"CHUNK{i}" for i in range(len(chunks)))
+    base = 4 * len(instructions)
+    address = {name: base + i for i, name in enumerate(names)}
+
+    memory = [0] * (base + len(names))
+    for i, (a, b, target, d) in enumerate(instructions):
+
+        def operand(value: object) -> int:
+            return address[value] if isinstance(value, str) else int(value)
+
+        if target == "next":
+            target_value = 4 * (i + 1)
+        elif target.startswith("@"):
+            target_value = None
+        else:
+            target_value = 4 * labels[target]
+        target_cell = target_names[i]
+        memory[address[target_cell]] = target_value if target_value is not None else 0
+        c = address[target[1:]] if target.startswith("@") else address[target_cell]
+        memory[4 * i : 4 * i + 4] = [operand(a), operand(b), c, operand(d)]
+
+    for name, value in values.items():
+        memory[address[name]] = value
+    for i, value in enumerate(chunks):
+        memory[address[f"CHUNK{i}"]] = value
+    # Advancing this instruction's destination advances LOAD_CHUNK's b
+    # operand through the contiguous chunk cells.
+    memory[4 * load_operand_increment] = 4 * load_chunk + 1
+    return " ".join(map(str, memory))
 
 
 def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
