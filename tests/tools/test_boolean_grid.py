@@ -11,6 +11,7 @@ import hashlib
 import importlib
 import io
 from contextlib import redirect_stdout
+from itertools import pairwise
 from typing import ClassVar
 from unittest.mock import patch
 
@@ -149,15 +150,15 @@ class TestAPainterAnt:
         assert "{X0}" in template
         assert "{X1}" in template
 
-    def test_leaf_paint_uses_space_for_zero(self) -> None:
-        """A zero leaf is left unpainted (space), a one leaf is painted P.
+    def test_leaf_paint_omits_zero_subtrees(self) -> None:
+        """A zero leaf is omitted and a one leaf is painted P.
 
         The generator never paints a cell black (no ``p``), which is what
         keeps every instantiated program a monotone, cycle-stable fixed
         point.
         """
         template = a_painter_ant("0110")  # f(1,1)=0, f(0,0)=0, f(1,0)=1, f(0,1)=1
-        assert " " in template  # zero leaves are spaces
+        assert template.count("P") < a_painter_ant("1111").count("P")
         # no paint-black anywhere in any instantiated program
         program = _instantiate_apa(template, [1, 1])
         assert "p" not in program
@@ -279,6 +280,11 @@ class TestAPainterAnt:
                     assert landing_after(program, 1) == int(
                         table[sum(bits[k] << (n - 1 - k) for k in range(n))]
                     ), f"n={n} table {table} bits {bits}"
+
+    def test_shared_head_growth(self) -> None:
+        """A dense head grows O(T log T), not quadratically in T."""
+        sizes = [len(a_painter_ant("1" * (2**n))) for n in range(6, 10)]
+        assert all(b / a < 2.3 for a, b in pairwise(sizes))
 
     def test_three_input_xor_works(self) -> None:
         """XOR3 is exact and cycle-stable on every input."""

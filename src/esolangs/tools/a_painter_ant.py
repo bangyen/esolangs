@@ -32,10 +32,9 @@ __all__ = ["a_painter_ant"]
 # is the visited-cell bounding box, which carries no coordinates).
 #
 # The construction paints the decision-tree leaves and routes the ant to the
-# leaf for its inputs.  :func:`_head` paints one leaf per input combination
-# and returns to the origin; each leaf is painted ``P`` (white) for a one
-# table entry and left unpainted (a space, ignored by the interpreter) for a
-# zero.  Only ``P`` is ever used -- the generator never paints a cell black --
+# leaf for its inputs.  :func:`_head` shares the routes to white leaves in a
+# depth-first walk and returns to the origin; zero subtrees are omitted.  Only
+# ``P`` is ever used -- the generator never paints a cell black --
 # so the white cells are monotone increasing: cycle 1 establishes them and
 # every later cycle only re-confirms a subset, which makes the programs
 # cycle-stable.  The ``body`` then funnels the ant (from whichever corner it
@@ -49,9 +48,8 @@ __all__ = ["a_painter_ant"]
 # the leaves sit on one row ``y = -2`` at ``x = +-2 +-4 +-8``, four cells
 # apart so adjacent stars share their axis cells and symmetric across the
 # y-axis.  The row generalises: this one ``_head`` serves every arity, not
-# just the three above -- XOR builds and lands correctly on all inputs
-# through ``n == 7`` (34788 characters), which is as far as it was measured,
-# not a ceiling.
+# just the three above.  A depth-first traversal shares each prefix, so a
+# dense head has O(n * 2**n) characters rather than O(4**n).
 #
 # The template routes the first ``n-1`` inputs by their weight (west/north
 # for a one bit, east/south for a zero) before the body and the final input
@@ -148,36 +146,42 @@ def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
 def _head(truth_table: str, bits: list[int]) -> str:
     """Build the A Painter Ant head for an ``n``-input table.
 
-    The head paints every white leaf and returns to the origin.  It walks
-    each leaf out and back piecewise -- one weighted move per input bit
-    (:func:`_bit_move`), in the same order and direction the routing uses --
-    so the outbound path never crosses a previously painted leaf (the
-    intermediate cells are never leaf positions) and the reverse path
-    retraces it cleanly.  The ``N`` prefix and ``Ssn`` ending are no-ops on
-    the empty first cycle; from cycle 2 on the ``WS``/``NE`` anchors launch
-    the ant off the leaf onto the painted ring, making the whole program a
-    cycle-stable fixed point.
+    The head paints every white leaf in one depth-first walk and returns to
+    the origin.  Sharing prefixes makes each tree level cost O(2**n), hence
+    O(n * 2**n) source rather than walking the whole O(2**n)-long route for
+    every leaf.  Zero subtrees are omitted.  Intermediate cells are never
+    leaves, so previously painted leaves cannot block the walk.
+
+    The ``N`` prefix and ``Ssn`` ending are no-ops on the empty first cycle;
+    from cycle 2 on the ``WS``/``NE`` anchors launch the ant off the leaf
+    onto the painted ring, making the whole program a cycle-stable fixed
+    point.
     """
     n = len(bits)
     out = ["N"]
+    lead = "WS" if n >= 3 and n % 2 == 1 else ""
+    out.append(lead)
 
-    for _x, _y, leaf_bits in _leaf_positions(n):
-        if not _leaf_color(truth_table, list(leaf_bits)):
-            out.append(" ")
-            continue
-        # Odd n starts on a horizontal bit, so its outbound would lead with
-        # NE and the reverse path would end on an orphan WS anchor; a
-        # leading WS (no moves) flips it to start WS / end NE like n == 2.
-        outbound = "WS" if n >= 3 and n % 2 == 1 else ""
-        outbound += "".join(
-            (
-                ("NE" if _bit_is_horizontal(n, k) else "WS") + _bit_move(n, k, b)
-                if n >= 2
-                else _bit_move(n, k, b)
-            )
-            for k, b in enumerate(leaf_bits)
-        )
-        out.append(outbound + "P" + _reverse_moves(outbound))
+    def walk(start: int, stop: int, depth: int) -> None:
+        if "1" not in truth_table[start:stop]:
+            return
+        if depth == n:
+            out.append("P")
+            return
+        middle = (start + stop) // 2
+        for bit, lo, hi in ((0, start, middle), (1, middle, stop)):
+            if "1" not in truth_table[lo:hi]:
+                continue
+            edge = ""
+            if n >= 2:
+                edge = "NE" if _bit_is_horizontal(n, depth) else "WS"
+            edge += _bit_move(n, depth, bit)
+            out.append(edge)
+            walk(lo, hi, depth + 1)
+            out.append(_reverse_moves(edge))
+
+    walk(0, len(truth_table), 0)
+    out.append(_reverse_moves(lead))
 
     out.append("Ssn")
     return "".join(out)
