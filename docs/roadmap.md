@@ -17,7 +17,7 @@ The candidate list is empty.
   (57601 -> 203089), and Factor (24113 -> 50090); dense tables also expose
   Polynomial.  A construction audit adds AddSubJump, Algebraic
   Programming Language, ArrowQueue, Back, B-tapemark, Bitdeque, BrainIf,
-  Clockwise, Collatz Multiverse, Container, Dig, Fargo, Flowchart, Forþ,
+  Clockwise, Collatz Multiverse, Container, Dig, Flowchart, Forþ,
   Grapheme, Inject, Jaune, LaserFuck, Qoibl, RAM0, S*bleq,
   SLOW ACV MAMMALIAN, Streetcode, Vandevelo, and bit~.  Their quiet factors
   are minterms, rectangular tree layouts, widening labels or addresses, and
