@@ -248,9 +248,11 @@ class TestForbinBoolean:
 
     def test_full_tree_growth_is_linear(self) -> None:
         """Names and indentation add only a geometric cost to the tree."""
-        parity7 = "".join(str(i.bit_count() & 1) for i in range(2**7))
-        parity8 = "".join(str(i.bit_count() & 1) for i in range(2**8))
-        assert len(boolean.forbin(parity8)) < 2 * len(boolean.forbin(parity7))
+        sizes = []
+        for n in range(11, 15):
+            parity = "".join(str(i.bit_count() & 1) for i in range(2**n))
+            sizes.append(len(boolean.forbin(parity)))
+        assert all(later < 2 * earlier for earlier, later in itertools.pairwise(sizes))
 
 
 class TestCvnc:
