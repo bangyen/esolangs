@@ -33,6 +33,20 @@ def _grapheme_counted_side(table: str, n: int) -> str:
 
 
 class TestGrapheme:
+    def test_variable_keys_are_unbounded_and_avoid_the_reserved_key(self) -> None:
+        """Integer-mode arithmetic removes the old 24-letter key ceiling."""
+        from esolangs.tools.stack import (
+            _GRAPHEME_CONST_KEY,
+            _grapheme_push_key,
+            _grapheme_slot_key,
+        )
+
+        keys = [_grapheme_slot_key(slot) for slot in range(40)]
+        assert len(set(keys)) == len(keys)
+        assert _GRAPHEME_CONST_KEY not in keys
+        for key in (60, 260, keys[-1], 1_263_460):
+            assert run_grapheme(_grapheme_push_key(key) + "Y", []) == str(key)
+
     @pytest.mark.parametrize(
         ("table", "n"),
         [
@@ -578,36 +592,32 @@ class TestUnsquare:
             assert set(boolean.unsquare(table)) <= set("+-<>AIOPSiox"), table
 
 
-class TestGraphemeKeysAvoidItsOwnAlphabet:
-    """Two variable keys collided with the language, and only one raised.
-
-    Both were invisible to the arity sweep in
-    ``tests/tools/test_boolean_contract.py``, which builds every generator
-    to ten inputs but never runs what it builds.  ``boolean.grapheme``
-    returned a healthy-looking program for all of these.
-    """
+class TestGraphemeKeys:
+    """Variable keys remain distinct beyond the old one-letter alphabet."""
 
     @staticmethod
     def _one_minterm(n: int) -> str:
         """A table whose single 1 makes every one of its ``n`` inputs matter."""
         return "1" + "0" * (2**n - 1)
 
-    def test_no_key_letter_is_the_int_mode_delimiter(self) -> None:
-        """``F`` framed the key, so it could not also be the digit inside it."""
-        assert "F" not in stack._GRAPHEME_KEY_LETTERS  # noqa: SLF001
+    def test_digit_six_is_split_around_the_int_mode_delimiter(self) -> None:
+        """A key containing decimal 6 is still constructed exactly."""
+        for key in (60, 160, 260, 1_263_460):
+            code = stack._grapheme_push_key(key)  # noqa: SLF001
+            assert run_grapheme(code + "Y", []) == str(key)
 
     def test_no_key_letter_aliases_the_constant(self) -> None:
-        """The normalizing 65 owns key 90, and a slot must not store over it."""
+        """The normalizing 65 owns key 90, and no finite slot aliases it."""
         keys = [
             stack._grapheme_slot_key(slot)  # noqa: SLF001
-            for slot in range(len(stack._GRAPHEME_KEY_LETTERS))  # noqa: SLF001
+            for slot in range(1000)
         ]
         assert stack._GRAPHEME_CONST_KEY not in keys  # noqa: SLF001
         assert len(set(keys)) == len(keys)
 
     @pytest.mark.parametrize("n", [6, 7, 8, 9])
     def test_a_table_using_every_input_still_computes(self, n: int) -> None:
-        """Six essential inputs reached slot 5, and slot 5's key was ``FFF``.
+        """Six essential inputs reached slot 5, whose old key was ``FFF``.
 
         Under the old alphabet six raised ``ProgramError: Grapheme produced
         no answer this could read`` and seven raised ``HaltError: G needs a
@@ -626,19 +636,22 @@ class TestGraphemeKeysAvoidItsOwnAlphabet:
     def test_the_constant_alias_returned_a_wrong_answer(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """The positive control, and the reason ``I`` is filtered out.
+        """The positive control: aliasing a slot with key 90 is quietly wrong.
 
-        Dropping only ``F`` leaves ``I`` at slot 7 holding key 90 -- the
-        constant's.  That collision does not raise: eight essential inputs
+        The old ``I`` key put slot 7 at the normalization constant's key.
+        That collision does not raise: eight essential inputs
         still come out right, because slot 7 is read last and nothing reads
         the constant after it.  Nine is where the clobbered 65 is read back
         and the table comes out wrong, quietly.  Without this control the
         ``I`` skip looks like superstition.
         """
+        from esolangs.tools.stack import _GRAPHEME_CONST_KEY
+
+        slot_key = stack._grapheme_slot_key  # noqa: SLF001
         monkeypatch.setattr(
             stack,
-            "_GRAPHEME_KEY_LETTERS",
-            [letter for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" if letter != "F"],
+            "_grapheme_slot_key",
+            lambda slot: _GRAPHEME_CONST_KEY if slot == 7 else slot_key(slot),
         )
         table = self._one_minterm(9)
         assert esolangs.evaluate("Grapheme", table, timeout=60) != table
