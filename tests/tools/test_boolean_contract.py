@@ -1080,6 +1080,7 @@ _LINEAR_SCALING = {
     "flowchart",
     "inject",
     "jaune",
+    "laserfuck",
     "ram0",
     "sbleq",
 }
@@ -1090,7 +1091,6 @@ _OPEN_SCALING = {
     "cod",
     "container",
     "dig",
-    "laserfuck",
     "minifuck",
     "one_two_three",
     "polynomial",
