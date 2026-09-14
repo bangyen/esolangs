@@ -420,7 +420,7 @@ class TestUnsquare:
             assert boolean.unsquare(format(value, "08b")).count("iA>-<P") == 3
 
     def test_the_natural_order_is_built_at_wide_arity(self) -> None:
-        """Wide tables use the same no-sink input prefix as small ones."""
+        """A wide greedy prefix still reads every input exactly once."""
         n = 7
         table = "01" * (2 ** (n - 1))
         program = boolean.unsquare(table)
@@ -428,15 +428,31 @@ class TestUnsquare:
         assert program.count("iA>-<P") == n  # one read per input
         assert program.endswith("o")
 
-    def test_the_natural_stack_order_is_emitted(self) -> None:
-        """Unsquare no longer contests reachable input orders."""
-        from esolangs.tools.stack import _UNSQUARE_READ, _unsquare_tree
+    def test_greedy_sinks_recover_most_small_oracle_winners(self) -> None:
+        """The heuristic never grows n=3 and matches 248/256 oracle minima."""
+        from esolangs.tools.stack import (
+            _UNSQUARE_READ,
+            _unsquare_cost,
+            _unsquare_stack_programs,
+            _unsquare_tree,
+        )
 
+        improved = 0
+        exact = 0
+        largest_gap = 0
         for value in range(256):
             table = format(value, "08b")
-            assert boolean.unsquare(table) == _UNSQUARE_READ * 3 + _unsquare_tree(
-                table, 3
+            current = len(boolean.unsquare(table))
+            natural = len(_UNSQUARE_READ * 3 + _unsquare_tree(table, 3))
+            oracle = min(
+                _unsquare_cost(permute_truth_table(table, arrangement), 3, prefix)
+                for arrangement, prefix in _unsquare_stack_programs(3).items()
             )
+            assert current <= natural
+            improved += current < natural
+            exact += current == oracle
+            largest_gap = max(largest_gap, current - oracle)
+        assert (improved, exact, largest_gap) == (104, 248, 44)
 
     def test_sinks_are_interleaved_with_the_reads(self) -> None:
         """Weaving the sinks into the reads is what reaches the arrangements.

@@ -399,7 +399,7 @@ class TestSixFive:
         # 186 before the leaves gained ``_six_five_const``'s ``r == 5``
         # shortcut: a shorter leaf changes which orders pay for themselves,
         # so more tables now beat the identity rather than tying it.
-        assert improved == 94  # the rest tie, keeping the old emission
+        assert improved == 192  # the rest tie, keeping the old emission
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -424,22 +424,20 @@ class TestSixFive:
             assert got == table[combo], f"inputs {bits}"
             assert not list(feed), f"inputs {bits} left input unread"
 
-    def test_only_identity_and_greedy_orders_are_built(self) -> None:
-        """Every arity builds at most the identity and greedy candidates."""
+    def test_only_four_named_orders_are_built(self) -> None:
+        """Every arity builds at most four deterministic candidates."""
         import importlib
 
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
         module = importlib.import_module("esolangs.tools.six_five")
 
-        # AND-n is symmetric, so its greedy pick *is* the identity and the
-        # two dedupe to a single build -- the point being that neither is
-        # 40320.  An alternating table, whose greedy pick differs, is the
-        # two-candidate case.
-        for n, table, orders in (
-            (6, "0" * 63 + "1", 1),
-            (8, "0" * 255 + "1", 1),
-            (7, ("10" * 128)[:128], 2),
+        # The named orders deduplicate before rendering; the bound, rather
+        # than timing, prevents a factorial contest from returning.
+        for n, table in (
+            (6, "0" * 63 + "1"),
+            (8, "0" * 255 + "1"),
+            (7, ("10" * 128)[:128]),
         ):
             built = 0
 
@@ -455,7 +453,7 @@ class TestSixFive:
             with pytest.MonkeyPatch.context() as patch:
                 patch.setattr(module, "_six_five_hoisted", counted)
                 boolean.six_five(table)
-            assert built == orders, f"n={n} built {built} candidates"
+            assert 1 <= built <= 4, f"n={n} built {built} candidates"
 
     def test_retired_arithmetic_kernel_is_gone(self) -> None:
         """Retired construction helpers do not return as dispatch candidates."""

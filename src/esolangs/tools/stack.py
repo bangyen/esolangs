@@ -595,16 +595,34 @@ def unsquare(truth_table: str) -> str:
     pops the top into it, ``S`` swaps the two now exposed, and ``P`` pushes
     it back, sinking a bit two places (:data:`_UNSQUARE_SINKS`).
 
-    The generator retains the natural stack order instead of enumerating
-    reachable arrangements.
+    At each read the generator greedily chooses whether to sink the new bit
+    zero, one, or two places.  It prices those three reachable continuations
+    with the exact tree-size model, so it builds one final program rather than
+    enumerating ``2 * 3**(n-2)`` complete arrangements.
     """
     n = _validate_truth_table(truth_table)
-    # ``A`` pops, so the tree tests the *last* input at the root: the order
-    # this generator has always emitted is the identity *arrangement* (no
-    # sinks), which is the reversal as an input order.  It goes first and ties
-    # keep it, so a table no reorder helps emits exactly what it emitted
-    # before.
-    return _UNSQUARE_READ * n + _unsquare_tree(truth_table, n)
+    # A zero-place sink is always a candidate, so each greedy choice is no
+    # larger under the exact model than leaving that input in natural order.
+    stack: tuple[int, ...] = ()
+    prefix = ""
+    for input_index in range(n):
+        pushed = (*stack, input_index)
+        choices: list[tuple[int, int, tuple[int, ...], str]] = []
+        for places, ops in _UNSQUARE_SINKS:
+            if places >= len(pushed):
+                continue
+            arranged = _sink_top(pushed, places)
+            final = (*arranged, *range(input_index + 1, n))
+            candidate_prefix = prefix + _UNSQUARE_READ + ops
+            future_prefix = candidate_prefix + _UNSQUARE_READ * (n - input_index - 1)
+            table = permute_truth_table(truth_table, final)
+            choices.append(
+                (_unsquare_cost(table, n, future_prefix), places, arranged, ops)
+            )
+        _, _, stack, ops = min(choices)
+        prefix += _UNSQUARE_READ + ops
+    table = permute_truth_table(truth_table, stack)
+    return prefix + _unsquare_tree(table, n)
 
 
 # The read that pushes one normalized input bit.
