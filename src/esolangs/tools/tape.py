@@ -128,6 +128,8 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     lines per skipped level and cancelled the fold exactly.
     """
     n = _validate_truth_table(truth_table)
+    if len(truth_table) > 16:
+        return _brainif_linear(truth_table, width)
     # Initial zero skips the two-line output trampoline.  Leaves later return
     # with 48/49 to line 2, where one of the two guards forwards to the wide
     # output-tail address; that address is rendered twice instead of per leaf.
@@ -236,6 +238,76 @@ def brainif(truth_table: str, width: int | None = None) -> str:
         # language's short spellings, not abbreviations invented by the
         # generator.  Line count is unchanged; the resolved goto targets stay
         # valid.
+        lines = [
+            line.replace("increment", "inc")
+            .replace("move right", "right")
+            .replace("move left", "left")
+            for line in lines
+        ]
+    return "\n".join(lines)
+
+
+def _brainif_linear(truth_table: str, width: int | None) -> str:
+    """Emit a linear spatial lookup for BrainIf."""
+    n = _validate_truth_table(truth_table)
+    lines: list[str] = []
+    labels: dict[str, int] = {}
+
+    def emit(line: str) -> None:
+        lines.append(line)
+
+    def mark(name: str) -> None:
+        labels[name] = len(lines) + 1
+
+    # Scratch and output cells alternate.  Every output is initialized once;
+    # the pointer then returns through the same O(T) strip.
+    layout = "0" * n + truth_table
+    for bit in layout:
+        emit("if 0 move right")
+        for value in range(_ASCII_ZERO):
+            emit(f"if {value} increment")
+        if bit == "1":
+            emit(f"if {_ASCII_ZERO} increment")
+        emit(f"if {_ASCII_ZERO} move right")
+        emit(f"if {_ASCII_ONE} move right")
+    for _ in layout:
+        emit("if 0 move left")
+        emit(f"if {_ASCII_ZERO} move left")
+        emit(f"if {_ASCII_ONE} move left")
+
+    # Input is read at the current scratch cell.  A one walks its binary
+    # weight in scratch/output pairs; a zero stays for the next read.
+    for i in range(n):
+        one = f"input_{i}_one"
+        zero = f"input_{i}_zero"
+        after = f"input_{i}_after"
+        emit("if 0 input")
+        emit(f"if {_ASCII_ONE} goto @{one}")
+        emit(f"if {_ASCII_ZERO} goto @{zero}")
+        mark(zero)
+        emit(f"if {_ASCII_ZERO} move right")
+        emit(f"if {_ASCII_ZERO} move right")
+        emit(f"if {_ASCII_ONE} move right")
+        emit(f"if 0 goto @{after}")
+        mark(one)
+        weight = 1 + (1 << (n - 1 - i))
+        for step in range(weight):
+            guard = _ASCII_ONE if step == 0 else 0
+            emit(f"if {guard} move right")
+            emit(f"if {_ASCII_ZERO} move right")
+            emit(f"if {_ASCII_ONE} move right")
+        mark(after)
+
+    # Every route ends on a fresh zero scratch cell.
+    emit("if 0 move right")
+    emit(f"if {_ASCII_ZERO} output")
+    emit(f"if {_ASCII_ONE} output")
+    emit("")
+    for i, line in enumerate(lines):
+        if "goto @" in line:
+            head, name = line.split("goto @")
+            lines[i] = f"{head}goto {labels[name]}"
+    if width is not None and any(len(line) > width for line in lines):
         lines = [
             line.replace("increment", "inc")
             .replace("move right", "right")

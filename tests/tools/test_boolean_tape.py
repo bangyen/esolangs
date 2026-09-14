@@ -1858,6 +1858,23 @@ class TestBrainIf:
         assert len(boolean.brainif("11111111")) < len(boolean.brainif("11110000"))
         assert len(boolean.brainif("11110000")) < len(boolean.brainif("10010110"))
 
+    def test_spatial_lookup_executes_wide_rows(self) -> None:
+        """Fresh scratch cells route sampled six-input rows."""
+        n = 6
+        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+        program = boolean.brainif(table)
+        for row in (0, 1, 2, 7, 31, 32, 62, 63):
+            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
+            assert run_brainif(program, bits) == table[row]
+
+    def test_spatial_lookup_growth_is_linear(self) -> None:
+        """Wide parity programs grow by at most the table-size ratio."""
+        sizes = []
+        for n in range(8, 12):
+            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+            sizes.append(len(boolean.brainif(table)))
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
+
 
 class TestRotfuck:
     """The ROTfuck boolean generator.
