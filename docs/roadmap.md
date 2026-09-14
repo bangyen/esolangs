@@ -16,7 +16,7 @@ The candidate list is empty.
   (145216 -> 322504), COD (942692 -> 3668705), Minifuck
   (57601 -> 203089), and Factor (24113 -> 50090); dense tables also expose
   Polynomial.  A construction audit adds AddSubJump, ArrowQueue, Back,
-  B-tapemark, Bitdeque, BrainIf, Clockwise, Container, Dig, Flowchart, Forþ,
+  Bitdeque, BrainIf, Clockwise, Container, Dig, Flowchart, Forþ,
   Inject, Jaune, LaserFuck, RAM0, S*bleq,
   SLOW ACV MAMMALIAN, Streetcode, and Vandevelo.  Their quiet factors
   are minterms, rectangular tree layouts, widening labels or addresses, and
