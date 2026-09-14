@@ -10,6 +10,7 @@ from esolangs.tools.helpers import (
     _cm_constants,
     _validate_truth_table,
     best_input_order,
+    constant_span_test,
     essential_inputs,
     read_at,
     stored_inputs,
@@ -650,6 +651,7 @@ def _dig_columns(n: int, split: int | None) -> tuple[int, int]:
 def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
     """Lay the decision tree out, in one band east or two that turn round."""
     total = 2 ** (n + 1) - 1
+    constant = constant_span_test(truth_table)
     east, west = _dig_columns(n, split)
     cells: dict[tuple[int, int], str] = {}
     corridors: list[tuple[int, int, int]] = []
@@ -692,7 +694,7 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
 
     def walk(row: int, level: int, lo: int, hi: int) -> None:
         """Lay the subtree for ``truth_table[lo:hi]`` at ``row``."""
-        if level == n or len(set(truth_table[lo:hi])) == 1:
+        if level == n or constant(lo, hi):
             # A constant slice cannot be told apart by more branching, so
             # this is a leaf and every row below it goes unwritten.  It
             # still reads what it did not branch on: a program whose input

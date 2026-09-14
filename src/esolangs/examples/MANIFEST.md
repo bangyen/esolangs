@@ -66,7 +66,7 @@ that row is actually spelled for the language.
 | `pct-squared-minus-one.txt` | %^2^-1 | `0001` | `01` | embedded 01 | '0' |
 | `polynomial.txt` | Polynomial | `0001` | `01` | 0 1 | '0' |
 | `qoibl.txt` | Qoibl | `0001` | `01` | 0 1 | '0' |
-| `ram0.txt` | RAM0 | `0001` | `01` | embedded 01 | 'z: 0\nn: 1\nram: {\n    0: 0,\n    1: 1\n}' |
+| `ram0.txt` | RAM0 | `0001` | `01` | embedded 01 | 'z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}' |
 | `rotfuck.txt` | ROTfuck | `0001` | `01` | 0 1 | '0' |
 | `s*bleq.txt` | S*bleq | `0001` | `01` | 0 1 | '0' |
 | `slow-acv-mammalian.txt` | SLOW ACV MAMMALIAN | `0001` | `01` | 0 1 | '0' |
