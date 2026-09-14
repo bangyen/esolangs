@@ -164,6 +164,7 @@ def _sweepable() -> list[str]:
 @pytest.mark.parametrize("name", _sweepable())
 # 9.6s over the file: runs every generated program against its table.
 @pytest.mark.medium
+@pytest.mark.slow
 def test_the_generated_program_computes_its_table(name: str) -> None:
     """Every row of every small table comes back as the table says.
 

@@ -2701,7 +2701,7 @@ class TestOutputSurvivesAFailure:
     def test_a_timeout_carries_it(self) -> None:
         """The case that matters most: a loop you meant to be finite."""
         with pytest.raises(esolangs.ExecutionTimeoutError) as caught:
-            esolangs.run("Modulous", self.LOOPS_PRINTING, "", 2)
+            esolangs.run("Modulous", self.LOOPS_PRINTING, "", 0.01)
         assert caught.value.partial_output.startswith("999")
 
     def test_an_error_before_the_run_carries_nothing(self) -> None:
@@ -2954,6 +2954,7 @@ class TestOutputPythonCannotEncode:
         # text that has no valid UTF-8 form.
         assert result.stdout.startswith(b"\xed\xa0\x80")
 
+    @pytest.mark.slow
     def test_the_partial_output_write_is_guarded_too(self) -> None:
         """The second site.  ``>+~`` overruns the code point range.
 
@@ -2965,6 +2966,7 @@ class TestOutputPythonCannotEncode:
             esolangs.run("WII2D", ">+~\n!\n", "", 5)
         assert len(caught.value.partial_output) > 1_000_000
 
+    @pytest.mark.slow
     def test_the_overrun_says_what_it_was(self) -> None:
         """It leaked ``chr() arg not in range(0x110000)``, naming nothing."""
         with pytest.raises(esolangs.HaltError) as caught:

@@ -856,6 +856,7 @@ class TestContainer:
         special = {"", "T", "IN", "OUT", "PRINT", "EXIT"}
         assert all(len(name) == 1 for name in declarations if name not in special)
 
+    @pytest.mark.slow
     def test_tree_removes_the_minterm_factor(self) -> None:
         """Each additional row adds bounded tree work, not n tests."""
         sizes = [len(boolean.container("01" * (2 ** (n - 1)))) for n in range(7, 11)]

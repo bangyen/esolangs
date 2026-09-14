@@ -525,6 +525,7 @@ class TestQoiblParserGuards:
 
 # 1.9s over 51 tests: runs the generated program.
 @pytest.mark.medium
+@pytest.mark.slow
 class TestTheTokenizerCarriesItsOwnStack:
     """The search used to spend one Python frame per character.
 
