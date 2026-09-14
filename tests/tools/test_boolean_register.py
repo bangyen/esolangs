@@ -83,6 +83,12 @@ class TestAddSubJump:
         assert run_addsubjump(program, ["0", "1"]) == "1"
         assert run_addsubjump(program, ["1", "0"]) == "1"
 
+    def test_repeated_operands_use_fixed_low_cells(self) -> None:
+        """The entry skips constants 48/49, zero, and -48 at cells 4..8."""
+        mem = [int(tok) for tok in boolean.addsubjump("0110").split()]
+        assert mem[4:9] == [48, 49, 0, 0, -48]
+        assert mem.count(6) >= 4  # shared zero operand in tree trampolines
+
     def test_normalizes_once_per_input_not_once_per_node(self) -> None:
         """The reads and their normalization are hoisted out of the tree.
 
@@ -128,7 +134,7 @@ class TestAddSubJump:
             identity = len(_addsubjump_ordered(table, (0, 1, 2)))
             assert dispatched <= identity, table
             improved += dispatched < identity
-        assert improved == 118  # the rest tie, keeping the identity order
+        assert improved == 88  # the rest tie, keeping the identity order
 
 
 class TestQoibl:
