@@ -5,7 +5,12 @@ parameterized convention described in
 :mod:`esolangs.tools.parameterized`: the template's ``{Xi}``
 placeholders are movement runs that the harness fills per input
 combination, and the ant's final cell colour encodes the table entry.
+
+Wide tables use one white corridor with the answers in the adjacent row.
+Building it, returning to its origin, and routing along it each cost O(T).
 """
+
+import re
 
 from esolangs.tools.helpers import _validate_truth_table, instantiate
 
@@ -232,6 +237,9 @@ def a_painter_ant(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
 
+    if len(truth_table) > 16:
+        return _a_painter_ant_linear(truth_table, n)
+
     # The head paints every leaf, the body paints the two stars, the first
     # n-1 inputs route by weight before the body, and the final
     # (least-significant) input routes east/west onto its leaf after it.
@@ -240,6 +248,31 @@ def a_painter_ant(truth_table: str) -> str:
     suffix = "{X" + str(n - 1) + "}"
 
     return head + prefix + _body() + suffix
+
+
+def _a_painter_ant_linear(truth_table: str, n: int) -> str:
+    """Paint a linear lookup strip and route to its indexed side cell."""
+    size = len(truth_table)
+    out = ["N", "W" * size, "P"]
+    if truth_table[0] == "1":
+        out.append("sPN")
+    for bit in truth_table[1:]:
+        # First pass: ``e`` enters the black next cell and paints it; ``E``
+        # is then blocked.  Later passes: ``e`` is blocked and ``E`` enters
+        # that already-white cell.  Thus the same four commands advance one
+        # cell on every pass while establishing a permanent white corridor.
+        out.append("ePEP")
+        if bit == "1":
+            # On the first pass, enter and paint the black answer cell, then
+            # return north to the white corridor.  Later ``s`` is blocked by
+            # that answer, so both paints are harmless and ``N`` is blocked.
+            out.append("sPN")
+    out.append("W" * (size - 1))
+    out.extend(f"{{X{i}}}" for i in range(n))
+    # White answer: ``s`` is blocked and ``S`` enters it.  Black answer:
+    # ``s`` enters it and ``S`` is blocked by the black cell beyond.
+    out.append("sS")
+    return "".join(out)
 
 
 def _instantiate_apa(template: str, bits: list[int]) -> str:
@@ -253,6 +286,15 @@ def _instantiate_apa(template: str, bits: list[int]) -> str:
     template built by :func:`a_painter_ant`.
     """
     n = len(bits)
+
+    if template.endswith("sS"):
+
+        def linear(match: re.Match[str]) -> str:
+            i = int(match.group(1))
+            weight = 1 << (n - 1 - i)
+            return ("E" if bits[i] else "e") * weight
+
+        return re.sub(r"\{X(\d+)\}", linear, template)
 
     def replace(i: int, bit: int) -> str:
         if i == len(bits) - 1:

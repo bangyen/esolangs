@@ -37,7 +37,7 @@ The candidate list is empty.
 
   | Language | Generation time | Output size |
   | --- | --- | --- |
-  | A Painter Ant | Open | Open |
+  | A Painter Ant | Linear | Linear |
   | 123 | Open | Open |
   | Circuit Diagram | Open | Open |
   | COD | Open | Open |
