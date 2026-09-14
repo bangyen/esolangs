@@ -54,7 +54,7 @@ The candidate list is empty.
   | Dig | Open | Open |
   | Flowchart | Open | Open |
   | Forþ | Linear | Linear |
-  | Inject | Open | Open |
+  | Inject | Linear | Linear |
   | Jaune | Linear | Linear |
   | LaserFuck | Open | Open |
   | RAM0 | Linear | Linear |
@@ -86,6 +86,9 @@ The candidate list is empty.
   BrainIf alternates output cells with fresh input-routing cells.  Both the
   table initialization and all unary binary-weight paths contain O(T) lines;
   sampled six-input rows execute correctly.
+  Inject keeps the table in one block and conditionally deletes one half per
+  input with literal regexes.  Their total length is under 2T; sampled
+  six-input rows execute correctly.
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is

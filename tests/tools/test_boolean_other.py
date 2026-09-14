@@ -8,6 +8,7 @@ helper edge paths exercised across generator modules.
 import importlib
 import itertools
 import random
+from itertools import pairwise
 
 import pytest
 
@@ -155,6 +156,23 @@ class TestInject:
             if line.endswith(";")
         ]
         assert all(len(label) == 1 for label in labels)
+
+    def test_halving_lookup_executes_wide_rows(self) -> None:
+        """Regex halves return sampled six-input rows."""
+        n = 6
+        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+        program = boolean.inject(table)
+        for row in (0, 1, 2, 7, 31, 32, 62, 63):
+            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
+            assert run_inject(program, bits) == table[row] + "\n"
+
+    def test_halving_lookup_growth_is_linear(self) -> None:
+        """Wide parity programs grow by at most the table-size ratio."""
+        sizes = []
+        for n in range(11, 15):
+            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+            sizes.append(len(boolean.inject(table)))
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
 
     def test_the_tree_collapses_on_the_constant_subtree_alone(self) -> None:
         """Depth never terminates the recursion; a constant subtree always does.
