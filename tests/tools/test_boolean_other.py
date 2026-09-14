@@ -190,13 +190,19 @@ class TestForbinBoolean:
         """Each input is read as 8 bits and only the LSB drives the tree."""
         program = boolean.forbin("01")
         # one 8-variable read, then a decision tree that prints '1' for bit 1
-        assert "i0_0,i0_1,i0_2,i0_3,i0_4,i0_5,i0_6,i0_7 = (in 0);" in program
+        assert "b0_0,b0_1,b0_2,b0_3,b0_4,b0_5,b0_6,b0_7 = (in 0);" in program
 
     def test_constant_subtrees_fold(self) -> None:
         """A constant slice returns its answer instead of branching further."""
         assert boolean.forbin("11111111").count("return 0;") == 1
         assert boolean.forbin("11110000").count("return 0;") == 2
         assert boolean.forbin("10010110").count("return 0;") == 8
+
+    def test_full_tree_growth_is_linear(self) -> None:
+        """Names and indentation add only a geometric cost to the tree."""
+        parity7 = "".join(str(i.bit_count() & 1) for i in range(2**7))
+        parity8 = "".join(str(i.bit_count() & 1) for i in range(2**8))
+        assert len(boolean.forbin(parity8)) < 2 * len(boolean.forbin(parity7))
 
 
 class TestCvnc:

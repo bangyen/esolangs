@@ -1074,26 +1074,38 @@ def _forbin_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     n = _validate_truth_table(truth_table)
 
     lines: list[str] = ["main {"]
-    bits: list[str] = []
+    bits = [""] * n
+    depth_of = {stream: depth for depth, stream in enumerate(perm)}
     for i in range(n):
-        reads = [f"i{i}_{j}" for j in range(8)]
+        depth = depth_of[i]
+        # Deep levels are repeated exponentially more often in the emitted
+        # tree.  Give them the shortest names; the widening prefixes then
+        # form a geometric sum rather than multiplying the whole tree.
+        reads = [f"b{n - 1 - depth}_{j}" for j in range(8)]
         lines.append(f"  {','.join(reads)} = (in 0);")
-        bits.append(reads[7])
+        bits[depth] = reads[7]
 
-    def emit(level: int, row: int, depth: int) -> None:
-        indent = "  " * depth
-        if level == n or len(set(truth_table[row : row + 2 ** (n - level)])) == 1:
+    # ``changes[i]`` counts value boundaries through entry ``i``.  An
+    # interval is constant iff its endpoints see the same count, so every
+    # node's fold test is O(1) after this one linear pass.
+    changes = [0]
+    for previous, current in pairwise(truth_table):
+        changes.append(changes[-1] + (previous != current))
+
+    def emit(level: int, row: int) -> None:
+        end = row + 2 ** (n - level)
+        if level == n or changes[row] == changes[end - 1]:
             byte = _ASCII_ZERO + int(truth_table[row])
-            lines.append(f"{indent}out {','.join(format(byte, '08b'))};")
-            lines.append(f"{indent}return 0;")
+            lines.append(f"  out {','.join(format(byte, '08b'))};")
+            lines.append("  return 0;")
             return
-        bit = bits[perm[level]]
-        lines.append(f"{indent}for _:!{bit}..{bit} {{")
-        emit(level + 1, row + 2 ** (n - 1 - level), depth + 1)
-        lines.append(f"{indent}}}")
-        emit(level + 1, row, depth)
+        bit = bits[level]
+        lines.append(f"  for _:!{bit}..{bit} {{")
+        emit(level + 1, row + 2 ** (n - 1 - level))
+        lines.append("  }")
+        emit(level + 1, row)
 
-    emit(0, 0, 1)
+    emit(0, 0)
     lines.append("}")
     return "\n".join(lines)
 
