@@ -359,6 +359,9 @@ def minterm_sum[Factor](
     return used, width, inverted
 
 
+_GREEDY_ORDER_MAX_ARITY = 10
+
+
 def best_input_order(
     truth_table: str,
     build: Callable[[str, tuple[int, ...]], str],
@@ -370,9 +373,11 @@ def best_input_order(
     index inside the build is in the permuted frame and self-consistent, and
     ``perm`` surfaces only where a node names the input it tests.
 
-    The greedy order is chosen level by level, scoring each remaining input
-    by the constant subtrees it creates.  This costs ``O(n**2)`` span tests
-    rather than ``n!`` complete builds.  Both it and the identity are built,
+    Through :data:`_GREEDY_ORDER_MAX_ARITY`, the greedy order is chosen level
+    by level, scoring each remaining input by the constant subtrees it creates.
+    This costs ``O(n**2 * 2**n)`` row work, so it is a bounded small-table
+    optimization rather than part of the scaling path.  Wider tables use the
+    identity directly.  Both orders are built inside the bounded domain,
     because per-language address and routing costs can outweigh its folds.
 
     The identity order is tried first and ties keep it, so a table no
@@ -425,7 +430,11 @@ def best_input_order(
     """
     n = _validate_truth_table(truth_table)
     identity = tuple(range(n))
-    greedy = _greedy_input_order(truth_table, n)
+    greedy = (
+        _greedy_input_order(truth_table, n)
+        if n <= _GREEDY_ORDER_MAX_ARITY
+        else identity
+    )
     orders = [] if greedy == identity else [greedy]
 
     # An empty candidate means "this order could not be built" and is skipped

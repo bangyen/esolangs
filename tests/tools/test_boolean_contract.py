@@ -374,6 +374,22 @@ def test_order_selection_builds_at_most_two_candidates() -> None:
     assert built[0] == (0, 1, 2)
 
 
+def test_wide_order_selection_builds_only_identity() -> None:
+    """The optional greedy scorer stays off the asymptotic build path."""
+    from esolangs.tools.helpers import best_input_order
+
+    built = 0
+
+    def build(table: str, _perm: tuple[int, ...]) -> str:
+        nonlocal built
+        built += 1
+        return table
+
+    table = "01" * 2**10
+    assert best_input_order(table, build) == table
+    assert built == 1
+
+
 def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
     """A greedily-ordered program still computes its table.
 

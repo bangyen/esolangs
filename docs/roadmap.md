@@ -78,8 +78,9 @@ The candidate list is empty.
   columns.  Route each selector only across its mux level.  Treat every
   emitted character as build work.  Input reordering is optional around the
   construction, but its work still counts toward end-to-end generation time.
-  Order selection builds at most four named candidates; factorial and
-  exponential contests are test-only oracles.  No generator construction may
+  Order selection builds at most four named candidates and its generic greedy
+  scorer stops at n=10; factorial and exponential contests are test-only
+  oracles.  No generator construction may
   use BFS or DFS; test-only oracle searches and prose about retired searches may
   remain.  Circuit Diagram's H-layout temporarily uses a bounded local dogleg
   scan with cell-indexed collision checks; derive its first-free lanes into a
