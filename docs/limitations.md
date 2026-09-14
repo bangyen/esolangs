@@ -121,9 +121,12 @@ Three current grid layouts also spend one depth-width strip per table row.
 Clockwise's flat form uses Theta(T) columns across Theta(log T) active rows;
 its bounded-width stack instead uses Theta(log T) columns across Theta(T)
 rows.  Dig's two-band form leaves Theta(T) occupied leaf rows reaching across
-Theta(log T) columns.  Flowchart places Theta(T) leaves on fixed pitch and
-draws one Theta(T)-wide selector level per input.  Thus every offered layout
-is Theta(T log T); localized or shared routing is required.
+Theta(log T) columns.  Flowchart's retired tree placed Theta(T) leaves on
+fixed pitch and drew one Theta(T)-wide selector level per input.  Its five-row
+deque layout is linear: it preloads T answers, then its two arms discard
+opposite halves; setting the arms to 1/0 before a shared switch makes both
+incoming headings leave east.  Clockwise and Dig still need localized or
+shared routing.
 Inject's and Jaune's retired trees are Theta(T log T) on parity because both
 assign a distinct label to every tree branch or leaf.  Inject emits each of Theta(T) labels
 twice from a fixed 52-letter alphabet, so a constant fraction have

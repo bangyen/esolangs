@@ -52,7 +52,7 @@ The candidate list is empty.
   | Clockwise | Open | Open |
   | Container | Open | Open |
   | Dig | Open | Open |
-  | Flowchart | Open | Open |
+  | Flowchart | Linear | Linear |
   | Forþ | Linear | Linear |
   | Inject | Linear | Linear |
   | Jaune | Linear | Linear |

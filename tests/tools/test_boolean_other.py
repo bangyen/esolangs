@@ -674,6 +674,21 @@ class TestFlowchart:
             f"table {table} consumed {io.position()} inputs, expected {n}"
         )
 
+    @pytest.mark.medium
+    def test_wide_deque_lookup_executes_every_row(self) -> None:
+        """Opposite-end discards leave exactly the indexed answer."""
+        n = 6
+        table = "".join(str((row.bit_count() ^ (row >> 2)) & 1) for row in range(2**n))
+        program = boolean.flowchart(table)
+        for row in range(2**n):
+            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
+            assert run_flowchart(program, bits) == table[row], row
+
+    def test_wide_deque_lookup_scales_linearly(self) -> None:
+        """The five-row layout grows no faster than its table doubles."""
+        sizes = [len(boolean.flowchart("01" * (2 ** (n - 1)))) for n in range(7, 11)]
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
+
     def test_tree_depth_matches_input_count(self) -> None:
         """One ``/ /`` read node sits on each path from entry to a leaf."""
         program = boolean.flowchart("0110100110010110")
