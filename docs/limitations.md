@@ -28,8 +28,8 @@ unaccounted pixels rather than returning a different program.
 Parameterized generators embed inputs in the program. `%^2^-1` cannot compute
 a two-input function from runtime input. Its screened reorder requires a
 permuted template or fill mapping; with both fixed, interleaving only lengthens
-the identity template. Input reordering has no useful effect on A Painter Ant,
-Alight, Container, Grapheme, Home Row, or Packlang; do not reopen this with a
+the identity template. Input reordering has no useful effect on Alight,
+Container, Grapheme, Home Row, or Packlang; do not reopen this with a
 blind search.
 
 `scripts/screen_input_reorder.py` measures the size of permuted-table builds,
