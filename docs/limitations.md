@@ -92,11 +92,10 @@ three columns right at every level, and parity retains Theta(T) occupied leaf
 rows through all log T levels.  Compaction removes empty rows and columns but
 none of those occupied prefixes.  Bitdeque is Theta(T log T) because every
 one of its T parity leaves emits `n+1` `POP` commands; its absolute `GOTO`
-operands add another super-linear term.  RAM0's command count is linear by
-its depth-reused unary addresses, but its Theta(T) tree nodes each render an
-absolute one-branch target whose decimal width is Theta(log T) for a constant
-fraction of nodes.  ArrowQueue needs shared columns, Bitdeque needs shared
-drains, and RAM0 needs compact or relative targets.
+operands add another super-linear term.  RAM0's retired tree had linear command
+count but Theta(T) absolute one-branch targets of Theta(log T) digits.  Its
+straight-line RAM initializer and unary-weight lookup are linear.  ArrowQueue
+needs shared columns and Bitdeque needs shared drains.
 BrainIf is Theta(T log T) on parity: it emits Theta(T) branch `goto`s, and a
 constant fraction target line numbers in a Theta(T)-line program, requiring
 Theta(log T) decimal digits.  Container has the same bound through names:
