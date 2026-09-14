@@ -42,22 +42,22 @@ The candidate list is empty.
   | Circuit Diagram | Proved construction | Proved construction |
   | COD | Proved construction | Proved construction |
   | Minifuck | Super-linear | Super-linear |
-  | Factor | Super-linear | Super-linear |
+  | Factor | Proved construction | Proved construction |
   | Polynomial | Super-linear | Super-linear |
-  | AddSubJump | Super-linear | Super-linear |
-  | ArrowQueue | Super-linear | Super-linear |
-  | Back | Super-linear | Super-linear |
-  | Bitdeque | Super-linear | Super-linear |
-  | BrainIf | Super-linear | Super-linear |
-  | Clockwise | Super-linear | Super-linear |
-  | Container | Super-linear | Super-linear |
-  | Dig | Super-linear | Super-linear |
-  | Flowchart | Super-linear | Super-linear |
+  | AddSubJump | Proved construction | Proved construction |
+  | ArrowQueue | Proved construction | Proved construction |
+  | Back | Linear | Linear |
+  | Bitdeque | Proved construction | Proved construction |
+  | BrainIf | Proved construction | Proved construction |
+  | Clockwise | Proved construction | Proved construction |
+  | Container | Proved construction | Proved construction |
+  | Dig | Proved construction | Proved construction |
+  | Flowchart | Proved construction | Proved construction |
   | Forþ | Super-linear | Super-linear |
   | Inject | Super-linear | Super-linear |
   | Jaune | Super-linear | Super-linear |
   | LaserFuck | Super-linear | Super-linear |
-  | RAM0 | Super-linear | Super-linear |
+  | RAM0 | Proved construction | Proved construction |
   | S\*bleq | Super-linear | Super-linear |
   | SLOW ACV MAMMALIAN | Super-linear | Super-linear |
   | Streetcode | Super-linear | Super-linear |

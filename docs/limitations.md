@@ -76,6 +76,43 @@ Its derived parity plans fire 131/247/497 rows with rewind sums
 characters and parity 57,601/203,089.  These executed measurements expose the
 mechanism but are not an asymptotic proof; a shared or packed sculpt remains
 open.
+Factor is Theta(T log T) on parity under the current encoding.  The folded
+Brainfuck tree has Theta(T) maximal command runs.  Each run consumes the next
+prime in one of eight nonzero residue classes modulo 11; the k-th such prime
+has Theta(log k) decimal digits, and the encoded integer's digit count is the
+sum of those logarithms.  Run compression changes exponents, not the number
+of distinct primes.  A decoder that can reuse a prime or encode runs by
+position is required for linear output.
+AddSubJump's current decision tree is Theta(T log T) on parity.  It emits
+Theta(T) four-word instructions and a data cell per `next` edge.  A constant
+fraction of those words are positive instruction or data addresses in a
+Theta(T)-cell memory, so their space-separated decimal rendering uses
+Theta(log T) characters each.  Relative or compact-address decoding is needed
+for linear text.
+ArrowQueue's full tree is Theta(T log T): `_connect` shifts both children
+three columns right at every level, and parity retains Theta(T) occupied leaf
+rows through all log T levels.  Compaction removes empty rows and columns but
+none of those occupied prefixes.  Bitdeque is Theta(T log T) because every
+one of its T parity leaves emits `n+1` `POP` commands; its absolute `GOTO`
+operands add another super-linear term.  RAM0's command count is linear by
+its depth-reused unary addresses, but its Theta(T) tree nodes each render an
+absolute one-branch target whose decimal width is Theta(log T) for a constant
+fraction of nodes.  ArrowQueue needs shared columns, Bitdeque needs shared
+drains, and RAM0 needs compact or relative targets.
+BrainIf is Theta(T log T) on parity: it emits Theta(T) branch `goto`s, and a
+constant fraction target line numbers in a Theta(T)-line program, requiring
+Theta(log T) decimal digits.  Container has the same bound through names:
+Theta(T) leaf containers are each defined and referenced a constant number of
+times, while distinct identifiers over its fixed 52-letter alphabet require
+Theta(log T) characters for a constant fraction of them.
+
+Three current grid layouts also spend one depth-width strip per table row.
+Clockwise's flat form uses Theta(T) columns across Theta(log T) active rows;
+its bounded-width stack instead uses Theta(log T) columns across Theta(T)
+rows.  Dig's two-band form leaves Theta(T) occupied leaf rows reaching across
+Theta(log T) columns.  Flowchart places Theta(T) leaves on fixed pitch and
+draws one Theta(T)-wide selector level per input.  Thus every offered layout
+is Theta(T log T); localized or shared routing is required.
 
 ## Curation
 
