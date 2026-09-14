@@ -427,7 +427,7 @@ _MINIFUCK_COMMAND = r"\[+.|."
 # adding 1 twice is adding 2 -- so a run needs no rule of its own.
 _JAUNE_COMMAND = r"\d+[-+:?!$@]|v[-+?!@]|."
 _BRACKET_LITERAL = r"\[[^\]]*\]|."
-_QUOTE_LITERAL = r'"[^"]*"|.'
+_EVAL_UNIT = r'"[^"]*"|\?.|.'
 
 
 def _bio(program: str, width: int) -> str:
@@ -656,8 +656,8 @@ def _bracket_literal(program: str, width: int) -> str:
 
 
 def _quote_literal(program: str, width: int) -> str:
-    """Wrap Eval, keeping a double-quoted literal whole."""
-    return wrap_tokens(program, width, _QUOTE_LITERAL)
+    """Wrap Eval, keeping literals and conditional commands whole."""
+    return wrap_tokens(program, width, _EVAL_UNIT)
 
 
 def _polynomial(program: str, width: int) -> str:

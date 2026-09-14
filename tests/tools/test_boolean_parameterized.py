@@ -1923,23 +1923,14 @@ class TestEvalBoolean:
                 got = self.run_eval(self.instantiate(template, bits))
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
-    def test_constant_subtrees_fold_in_place(self) -> None:
-        """A constant subtree becomes a leaf; its slots empty but remain.
-
-        The heap is positional -- a node's ``;`` run is a function of its
-        own index and its children sit at pinned offsets -- so the folded
-        subtree cannot be *removed* without shifting every later index.
-        The slots stay and are emptied instead, which is why the string
-        count never changes while the program still gets shorter.
-        """
+    def test_ignored_inputs_shrink_the_lookup(self) -> None:
+        """A constant table pushes one result and only drains its inputs."""
         from esolangs.tools import parameterized
 
         full = parameterized.eval("10010110")
         folded = parameterized.eval("11111111")
         assert len(folded) < len(full)
-        # every heap slot is still present, just empty
-        assert folded.count('"') == full.count('"')
-        assert '""' in folded
+        assert folded == "{X0}{X1}{X2}`~;~~;~~;~."
 
     def test_folding_keeps_both_bits_equal_width(self) -> None:
         """Folding shrinks the template, never one instantiation.
@@ -1971,31 +1962,22 @@ class TestEvalBoolean:
         assert "{X0}" in template
         assert "{X1}" in template
 
-    def test_heap_tree_structure(self) -> None:
-        """The template is a flat heap tree pushed BFS-order then reversed."""
+    def test_linear_lookup_structure(self) -> None:
+        """Each level shares one half-stack discard between both branches."""
         from esolangs.tools import parameterized
 
         template = parameterized.eval("0110")
-        # Staged forward, like every other parameterized generator: each
-        # block pushes its bit on the tree stack and `=` moves it across.
-        # Which order they are staged in only decides *which* arrangement
-        # costs no reorder ops, since `*` reverses either way.
         assert template.startswith("{X0}{X1}")
-        assert template.endswith("*!")
-        assert '"~=~?;!"' in template  # root node: one discard
-        assert '"~=~?;;!"' in template  # BFS index 1: two discards
-        assert template.count('"~=~?') == 3  # 2**2 - 1 internal nodes
-        assert template.count('"0+.') + template.count('"0.') == 4  # leaves
-        # leaves are the XOR table in heap order: 0 1 1 0
-        assert template.endswith('"0.""0+.""0+.""0."*!')
+        assert template.endswith(".")
+        assert '"' not in template
+        assert "!" not in template
+        assert template.count("~^=~?*") == 2
+        assert template.count("~=~?*") == 2
+        assert template.removeprefix("{X0}{X1}").startswith("0``0")
+        assert template.count(";") == 3  # shared discards of 2 and 1
 
-    def test_reordering_only_shrinks(self) -> None:
-        """No table is longer than the arrangement staging already produces.
-
-        The candidates are sorted by op cost with the free arrangement
-        first and the comparison is strict, so a table no reorder helps
-        emits exactly what it emitted before.
-        """
+    def test_reordering_is_not_part_of_the_lookup(self) -> None:
+        """The free staged order is always shortest for the linear lookup."""
         from esolangs.tools import parameterized
         from esolangs.tools.helpers import permute_truth_table
         from esolangs.tools.parameterized import _eval_ordered
@@ -2003,14 +1985,11 @@ class TestEvalBoolean:
         # Staging pushes X0 first, so the free arrangement's split order is
         # the reversal -- the no-ops build is not the identity permutation.
         free = tuple(reversed(range(3)))
-        improved = 0
         for value in range(256):
             table = format(value, "08b")
             dispatched = len(parameterized.eval(table))
             staged = len(_eval_ordered(permute_truth_table(table, free), ""))
-            assert dispatched <= staged, table
-            improved += dispatched < staged
-        assert improved == 114
+            assert dispatched == staged, table
 
     def test_reorder_cost_selects_the_emitted_template(self) -> None:
         """The pricing model matches every candidate and picks the shortest."""
@@ -2169,13 +2148,20 @@ class TestEvalBoolean:
             assert list(_eval_stack_programs(n).items()) == list(searched(n).items())
 
     def test_scales_to_more_inputs(self) -> None:
-        """The heap tree grows to any n (spot-checked at n = 6)."""
+        """Size stays linear and a wider generated program executes."""
         from esolangs.tools import parameterized
+
+        sizes = []
+        for width in range(6, 13):
+            parity = "".join(str(i.bit_count() & 1) for i in range(2**width))
+            sizes.append(len(parameterized.eval(parity)) / len(parity))
+        assert sizes == sorted(sizes, reverse=True)
+        assert sizes[-1] < 2.1
 
         n = 6
         table = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(2**n))
         template = parameterized.eval(table)
-        assert len(template) < 3000
+        assert len(template) == 218
         for combo in range(2**n):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_eval(self.instantiate(template, bits))
