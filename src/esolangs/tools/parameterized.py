@@ -6,6 +6,7 @@ functions without pretending to read stdin. Equal-width setters prevent input
 bits leaking through program length.
 """
 
+import re
 from functools import cache
 from math import factorial
 
@@ -384,6 +385,40 @@ def _eval_ordered(truth_table: str, ops: str) -> str:
     return "".join(out)
 
 
+def _reflect_back(source: str) -> str:
+    r"""Reflect a Back template and route the fixed eastward start into it.
+
+    A placeholder is one grid cell despite occupying several source
+    characters, so reflection reverses parsed cells rather than characters.
+    Only the beam mirrors swap; ``<`` and ``>`` move the tape head and keep
+    their meanings.
+    """
+    rows = [re.findall(r"\{X\d+\}|.", row) for row in source.splitlines()]
+    width = max(map(len, rows))
+    mirrors = str.maketrans({"/": "\\", "\\": "/"})
+    reflected: list[list[str]] = []
+    for row in rows:
+        cells = list(reversed([*row, *([" "] * (width - len(row)))]))
+        reflected.append(
+            [
+                " ",
+                *(
+                    cell.translate(mirrors) if len(cell) == 1 else cell
+                    for cell in cells
+                ),
+                " ",
+            ]
+        )
+
+    # Start east, turn south, wrap west, then turn north and west into the
+    # reflected root.  The two extra columns touch only these first rows;
+    # all tree padding is now trailing and disappears under rstrip.
+    reflected[0][0] = reflected[0][-1] = "\\"
+    reflected[1][0] = "/"
+    reflected[1][-1] = "\\"
+    return "\n".join("".join(row).rstrip() for row in reflected)
+
+
 def back(truth_table: str) -> str:
     r"""Build a Back template for the given truth table.
 
@@ -417,6 +452,11 @@ def back(truth_table: str) -> str:
     and the ``/`` -- now taking a beam heading up -- turns it right into the
     tree.  The load is therefore written bottom-to-top, and the tree is free
     to begin one column in.
+
+    That logical drawing is reflected for output.  The tree then grows left,
+    putting its triangular padding at line ends where it is stripped.  A
+    two-row outer route converts Back's fixed eastward start into the westward
+    entry the reflected root needs.
 
     The answer is therefore the *value* of cell ``n``, which the halt dump
     prints, rather than the head's position, which it does not.  An earlier
@@ -600,7 +640,7 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # both bits embed as a single command ('-' or '+'), never as the blank a
     # zero once used, so no placeholder row instantiates to whitespace and
     # the strip cannot change a filled row's length.
-    return "\n".join("".join(row).rstrip() for row in rows)
+    return _reflect_back("\n".join("".join(row).rstrip() for row in rows))
 
 
 # The largest value a NoComment cell can hold, hence the largest distance a
