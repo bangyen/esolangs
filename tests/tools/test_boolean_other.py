@@ -215,7 +215,25 @@ class TestForbinBoolean:
         """Each input is read as 8 bits and only the LSB drives the tree."""
         program = boolean.forbin("01")
         # one 8-variable read, then a decision tree that prints '1' for bit 1
-        assert "b0_0,b0_1,b0_2,b0_3,b0_4,b0_5,b0_6,b0_7 = (in 0);" in program
+        assert "a,b,c,d,e,f,g,h = (in 0);" in program
+        assert "for _:!h..h" in program
+
+    def test_small_program_uses_one_character_variables(self) -> None:
+        """The first 52 bit variables do not carry widening decimal suffixes."""
+        assignments = [
+            line.strip().split(" =", 1)[0]
+            for line in boolean.forbin("01101001").splitlines()
+            if " = (in 0);" in line
+        ]
+        assert all(len(name) == 1 for group in assignments for name in group.split(","))
+
+    def test_compact_variables_skip_keywords_without_duplicates(self) -> None:
+        """Filtering a reserved word does not reuse its successor's name."""
+        from esolangs.tools.other import _FORBIN_RESERVED, _forbin_name
+
+        names = [_forbin_name(i) for i in range(600)]
+        assert len(set(names)) == len(names)
+        assert not set(names) & _FORBIN_RESERVED
 
     def test_constant_subtrees_fold(self) -> None:
         """A constant slice returns its answer instead of branching further."""

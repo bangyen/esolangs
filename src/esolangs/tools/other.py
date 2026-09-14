@@ -1004,6 +1004,28 @@ def forbin(truth_table: str) -> str:
     return best_input_order(truth_table, _forbin_ordered)
 
 
+_FORBIN_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+_FORBIN_RESERVED = {"for", "in", "main", "out", "return"}
+
+
+def _forbin_name(index: int) -> str:
+    """Return the ``index``th shortest non-keyword identifier."""
+    base = len(_FORBIN_ALPHABET)
+    candidate = 0
+    while True:
+        value = candidate + 1
+        chars = []
+        while value:
+            value, digit = divmod(value - 1, base)
+            chars.append(_FORBIN_ALPHABET[digit])
+        name = "".join(reversed(chars))
+        if name not in _FORBIN_RESERVED:
+            if index == 0:
+                return name
+            index -= 1
+        candidate += 1
+
+
 def _forbin_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one input order's Forbin program; see :func:`forbin`."""
     n = _validate_truth_table(truth_table)
@@ -1014,9 +1036,9 @@ def _forbin_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     for i in range(n):
         depth = depth_of[i]
         # Deep levels are repeated exponentially more often in the emitted
-        # tree.  Give them the shortest names; the widening prefixes then
-        # form a geometric sum rather than multiplying the whole tree.
-        reads = [f"b{n - 1 - depth}_{j}" for j in range(8)]
+        # tree, so allocate their eight input bits first.
+        start = 8 * (n - 1 - depth)
+        reads = [_forbin_name(start + j) for j in range(8)]
         lines.append(f"  {','.join(reads)} = (in 0);")
         bits[depth] = reads[7]
 
