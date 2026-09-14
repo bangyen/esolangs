@@ -2109,6 +2109,7 @@ class TestParameterizedMinifuck:
         # empty results above are the guard and not an exhausted search.
         assert _all_derived_plans(_derived_plans, _STAGED_ARITIES, 2)
 
+    @pytest.mark.slow
     def test_the_pool_rule_matches_the_scan_it_replaced(self) -> None:
         """``_find_pool`` answers what trying every code would have answered.
 

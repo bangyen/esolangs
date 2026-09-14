@@ -449,7 +449,13 @@ def test_every_wrapper_fires_on_a_template_too(name: str) -> None:
     pytest.skip(f"{name}: no table up to 4 inputs gives a template long enough")
 
 
-@pytest.mark.parametrize("name", WRAPPED)
+@pytest.mark.parametrize(
+    "name",
+    [
+        pytest.param(name, marks=pytest.mark.slow) if name == "%^2^-1" else name
+        for name in WRAPPED
+    ],
+)
 # part of 6.7s: runs the wrapped program.
 @pytest.mark.medium
 def test_no_width_breaks_a_placeholder(name: str) -> None:
@@ -628,7 +634,15 @@ def test_width_honouring_layout_meets_any_width_it_can(name: str) -> None:
             )
 
 
-@pytest.mark.parametrize("name", WIDTH_HONOURING)
+@pytest.mark.parametrize(
+    "name",
+    [
+        pytest.param(name, marks=pytest.mark.slow)
+        if name in {"crement", "nopstacle", "streetcode", "vandevelo"}
+        else name
+        for name in WIDTH_HONOURING
+    ],
+)
 # part of 6.7s: runs the wrapped program.
 @pytest.mark.medium
 def test_width_honouring_layout_computes_the_same_thing(name: str) -> None:

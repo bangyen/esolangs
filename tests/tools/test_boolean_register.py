@@ -344,6 +344,7 @@ class TestPolynomial:
                 else:
                     assert machine == _polynomial_dag(table), table
 
+    @pytest.mark.slow
     def test_polynomial_screen_slack(self) -> None:
         """The screen's slack is a measurement, and it is arity-dependent.
 
