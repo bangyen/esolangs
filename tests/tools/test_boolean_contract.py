@@ -231,6 +231,7 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 # The tree generators that pick their input split order by measuring, and the
 # builder that emits one fixed order, so a test can compare the two.
 def _reordering_generators() -> list[object]:
+    from esolangs.tools.egl import _egl_ordered
     from esolangs.tools.helpers import _decision_tree_program
     from esolangs.tools.other import _forbin_ordered
     from esolangs.tools.parameterized import (
@@ -254,6 +255,7 @@ def _reordering_generators() -> list[object]:
             boolean.dimensional,
             lambda t, p: _decision_tree_program(t, ">0", "<0", p),
         ),
+        ("egl", boolean.egl, _egl_ordered),
         ("ram0", boolean.ram0, _ram0_ordered),
         ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
         (
