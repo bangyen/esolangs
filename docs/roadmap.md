@@ -20,9 +20,8 @@ The candidate list is empty.
   Circuit Diagram's quadratic layout checks.  Input reordering is
   an optional optimization around a generator, not part of its construction,
   so its search cost does not enter this criterion.  No generator construction
-  may use BFS or DFS: `%^2^-1`'s live breadth-first spelling catalogue must
-  become a derived rule or a fixed-size direct construction; test-only oracle
-  searches and prose about retired searches may remain.
+  may use BFS or DFS; test-only oracle searches and prose about retired searches
+  may remain.
 
 - **Reorder EGL inputs.**  EGL hoists every read into addressable one-hot cells,
   so a tree can test cell `perm[depth]` while the `x` commands remain in stream
