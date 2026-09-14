@@ -121,17 +121,19 @@ def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # short and emitted twice per guard), var 3 is the result (its constant
     # is the single char `3`, emitted once per table entry), and the inputs
     # live in the cheapest remaining names by actual constant length (the
-    # base-3 encodings are non-monotonic: 15 is cheaper than 13).  The names
-    # are assigned by *depth*, so the cheapest one sits at the root where the
-    # tree reads it most often; which input lands at which depth is what
-    # ``best_input_order`` searches over.
+    # base-3 encodings are non-monotonic: 15 is cheaper than 13).  Deep tree
+    # levels occur exponentially more often in the emitted program, so the
+    # cheapest name goes deepest.  Reversing the length order makes the name
+    # cost a geometric sum rather than repeating the longest name at half the
+    # nodes.  Which input lands at which depth is what ``best_input_order``
+    # searches over.
     trash = _const(0) + "#v"  # pop the stack top into variable 0
     result = 3
     used = {0, 3}
     input_vars = sorted(
         (v for v in range(3 + n) if v not in used),
         key=lambda v: len(_const(v)),
-    )[:n]
+    )[:n][::-1]
 
     def store(var: int) -> str:
         return _const(var) + "#v"  # var = stack top, stack ends empty
