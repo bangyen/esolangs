@@ -74,7 +74,7 @@ after ignoring the performance/resource ceiling as specified above.
 | Clockwise | tree | finite grid layout |
 | COD | parameterized tree | — |
 | Collatz Multiverse | tree | finite cell placement |
-| Container | minterms | — |
+| Container | tree | deliberately unfolded to preserve timed input pulses |
 | Crement | finite lookup | prototype instantiation |
 | CV(N)(C) | tree, cap | the halting-goto reach is a renderer ceiling |
 | Decleq | tree | — |
@@ -87,7 +87,7 @@ after ignoring the performance/resource ceiling as specified above.
 | Flowchart | tree | — |
 | Forbin | tree | — |
 | Forþ | tree | — |
-| Grapheme | minterms | arbitrary integer variable keys remove the old 24 one-letter-key ceiling |
+| Grapheme | tree | arbitrary integer variable keys remove the old 24 one-letter-key ceiling |
 | Home Row | parameterized tree | — |
 | Inject | tree | — |
 | Interprogck8 | exception | no uniform proof that bounded repair always routes arbitrarily wide trees |
@@ -117,7 +117,7 @@ after ignoring the performance/resource ceiling as specified above.
 | 3D Brainfuck | tree | Brainfuck tree transliteration |
 | 3x | tree | — |
 | Unsquare | tree | stack arrangement affects size only |
-| Vandevelo | minterms | — |
+| Vandevelo | minterms | constant-one subtrees drop their suffix literals |
 | WII2D | exception | Horner makes the input chain total, but the deterministic final fold is not proved to decode every finite domain |
 | ZTOALC L | finite lookup, cap | `2**k` supplies `k` ordered trajectory slots for every finite `k` |
 

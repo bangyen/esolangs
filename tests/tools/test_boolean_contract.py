@@ -474,7 +474,6 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
 _MINTERM_SHAPED = {
     "a_painter_ant",
     "bfstack",
-    "vandevelo",
 }
 
 # Neither model describes these.  ``wii2d`` is a route search over a grid,

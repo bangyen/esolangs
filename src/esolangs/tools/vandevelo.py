@@ -17,10 +17,18 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
         else [f"i{index} ~> Inp?" for index in range(n)]
     )
     lines.append("l->l?" if compact else "loop -> loop?")
-    for row, result in enumerate(truth_table):
-        if result == "0":
-            continue
-        bits = f"{row:0{n}b}"
+    def emit(lo: int, hi: int, bits: str) -> None:
+        span = truth_table[lo:hi]
+        if "1" not in span:
+            return
+        if "0" not in span:
+            append(bits)
+            return
+        mid = (lo + hi) // 2
+        emit(lo, mid, bits + "0")
+        emit(mid, hi, bits + "1")
+
+    def append(bits: str) -> None:
         if compact:
             guards = [
                 f"{names[index]}?{'!=' if bit == '1' else '=='}Nil?"
@@ -33,4 +41,6 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
                 for index, bit in enumerate(bits)
             ]
             lines.append(" :: ".join([*guards, "loop?"]))
+
+    emit(0, 2**n, "")
     return "\n".join(lines)
