@@ -15,7 +15,14 @@ The candidate list is empty.
   (135016 -> 534124), 123 (94579 -> 230034), Circuit Diagram
   (145216 -> 322504), COD (942692 -> 3668705), Minifuck
   (57601 -> 203089), and Factor (24113 -> 50090); dense tables also expose
-  Polynomial.  Factor's Brainfuck tree has O(T) characters but Theta(T)
+  Polynomial.  A construction audit adds 3x, AddSubJump, Algebraic
+  Programming Language, ArrowQueue, Back, B-tapemark, Bitdeque, BrainIf,
+  Clockwise, Collatz Multiverse, Container, Dig, Fargo, Flowchart, Forbin,
+  Forþ, Grapheme, Inject, Jaune, LaserFuck, Packlang, Qoibl, RAM0, S*bleq,
+  SLOW ACV MAMMALIAN, Streetcode, Vandevelo, and bit~.  Their quiet factors
+  are minterms, rectangular tree layouts, widening labels or addresses, and
+  per-depth padding; an n=8 -> 9 ratio near 2 is not evidence of O(T).
+  Factor's Brainfuck tree has O(T) characters but Theta(T)
   command runs; assigning each run the next prime makes its numeral
   Theta(T log T) digits.  It needs a run-compressed Brainfuck lookup.
   Circuit Diagram now uses a linear one-pass Shannon fold and
