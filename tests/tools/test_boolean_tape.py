@@ -1962,12 +1962,12 @@ class TestRotfuck:
     @pytest.mark.parametrize(
         ("table", "length"),
         [
-            ("01", 186),
-            ("10", 188),
-            ("0001", 303),
-            ("0110", 418),
-            ("11110000", 370),
-            ("01101001", 935),
+            ("01", 193),
+            ("10", 191),
+            ("0001", 340),
+            ("0110", 371),
+            ("11110000", 299),
+            ("01101001", 660),
         ],
     )
     def test_the_emitted_length_is_exact(self, table: str, length: int) -> None:
@@ -1981,8 +1981,7 @@ class TestRotfuck:
         changes an answer, and a loose size bound only catches them by
         luck, so the lengths are pinned exactly.
 
-        ``11110000`` also carries the dependency reduction: it depends on
-        one of its three inputs and so builds the one-input table, 370
-        characters against ``01101001``'s 935.
+        ``11110000`` also carries dependency reduction: it builds a one-input
+        Gray walk, 299 characters against ``01101001``'s 660.
         """
         assert len(boolean.rotfuck(table)) == length
