@@ -87,15 +87,23 @@ def _reflect(source: str) -> str:
 
 
 def b_tapemark(truth_table: str, width: int | None = None) -> str:
-    """Build a B-tapemark program computing ``truth_table``."""
+    """Build a B-tapemark program computing ``truth_table``.
+
+    The tree is reflected before rendering.  Its long branch corridors then
+    occupy trailing rather than leading blanks, so ``rstrip`` removes them;
+    the remaining text is linear in the tree rather than its bounding box.
+    """
     depth = _validate_truth_table(truth_table)
     builder = _Builder()
     builder.put(-1, 0, ">")
     builder.node(truth_table, depth, 0, 0)
     program = builder.render()
-    if width is None:
+    if width is not None:
+        # The raw orientation is the alternate width-requested layout.  Both
+        # orientations have the same intrinsic width; only their ragged area
+        # differs, so neither can honour a bound the other cannot.
         return program
     # Digits only print while travelling horizontally, so a quarter-turn is
-    # not equivalent. Reflection preserves the tree's intrinsic width while
-    # making a supplied layout distinct from the raw one.
+    # not equivalent.  Reflection preserves every heading while moving the
+    # tree's triangular padding to the right edge, where it is not rendered.
     return _reflect(program)
