@@ -41,9 +41,9 @@ The candidate list is empty.
   | 123 | Proved construction | Proved construction |
   | Circuit Diagram | Proved construction | Proved construction |
   | COD | Proved construction | Proved construction |
-  | Minifuck | Super-linear | Super-linear |
+  | Minifuck | Proved construction | Proved construction |
   | Factor | Proved construction | Proved construction |
-  | Polynomial | Super-linear | Super-linear |
+  | Polynomial | Proved construction | Proved construction |
   | AddSubJump | Proved construction | Proved construction |
   | ArrowQueue | Proved construction | Proved construction |
   | Back | Linear | Linear |
@@ -56,12 +56,12 @@ The candidate list is empty.
   | Forþ | Linear | Linear |
   | Inject | Proved construction | Proved construction |
   | Jaune | Proved construction | Proved construction |
-  | LaserFuck | Super-linear | Super-linear |
+  | LaserFuck | Proved construction | Proved construction |
   | RAM0 | Proved construction | Proved construction |
-  | S\*bleq | Super-linear | Super-linear |
-  | SLOW ACV MAMMALIAN | Super-linear | Super-linear |
-  | Streetcode | Super-linear | Super-linear |
-  | Vandevelo | Super-linear | Super-linear |
+  | S\*bleq | Proved construction | Proved construction |
+  | SLOW ACV MAMMALIAN | Proved construction | Proved construction |
+  | Streetcode | Proved construction | Proved construction |
+  | Vandevelo | Proved construction | Proved construction |
 
   Super-linear output implies super-linear generation time; the time column is
   not an independent empirical verdict.
