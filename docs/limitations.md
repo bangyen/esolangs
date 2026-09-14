@@ -142,7 +142,8 @@ measured ratio is close to two: for a child cap `C`, `_widths` reserves a
 trampoline slot of Omega(C/255), and `_subtree` emits that whole slot plus two
 children.  Its recurrence is therefore `S(d) >= (2 + 1/255) S(d-1)`.
 
-Polynomial is structurally super-linear under its expanded-root encoding.
+Polynomial's current expanded-root encoding is super-linear; this is not a
+language-wide lower bound.
 Standard maximal ordered-BDD table families have Omega(T/log T) distinct
 residual states, so every tree/machine split used here emits that many
 instructions.  The builder encodes negative arithmetic by changing the opcode,
@@ -151,8 +152,9 @@ alternating nonnegative coefficient magnitudes.  Products preserve that sign
 pattern without cancellation.  The binomial contributions obtained by taking
 the leading or constant term of each factor alone give Omega(m^2) total
 coefficient digits for `m` factors.  With `m = Omega(T/log T)`, the expanded
-program is Omega(T^2/(log T)^2).  A factored syntax or another instruction
-encoding is required for O(T).
+program is Omega(T^2/(log T)^2).  An alternate root family could invalidate
+the argument, so Polynomial remains open alongside the other construction
+walls.
 
 
 ## Curation
