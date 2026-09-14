@@ -1898,14 +1898,12 @@ class TestCircuitDiagramLayoutGuards:
 
 
 class TestSuperSNUSP:
-    """The Super SNUSP generator (an ANF evaluator over a value stack).
+    """The Super SNUSP generator (bounded ANF or a packed lookup).
 
-    Super SNUSP has a random ``=`` opcode the generator avoids entirely by
-    evaluating the truth table's algebraic normal form: an XOR of input
-    products, which is exactly what ``^`` and ``&`` give.  Five two-input
-    tables have hand-written short forms; everything else is built by
-    :func:`_emit_anf`, and a table that ignores an input is rebuilt over its
-    essential ones and kept only when that is shorter.
+    Super SNUSP has a random ``=`` opcode the generator avoids entirely.
+    Small tables choose between an ANF evaluator and the packed lookup; wider
+    tables use only the linear lookup.  Five two-input tables have shorter
+    hand-written forms.
 
     Every assertion here replays the generated program through the real
     interpreter over the table's *whole* input space.  That is what makes
@@ -1917,13 +1915,14 @@ class TestSuperSNUSP:
     that; a replayed truth table can.
     """
 
-    def test_cost_model_selects_the_emitted_anf(self) -> None:
-        """The selector prices both ANF layouts exactly through three inputs."""
+    def test_cost_model_selects_the_smallest_form(self) -> None:
+        """The selector prices both ANF layouts and the lookup exactly."""
         from esolangs.tools.helpers import essential_inputs, read_at
         from esolangs.tools.super_snusp import (
             _TWO_INPUT_SHORT,
             _anf_cost,
             _emit_anf,
+            _emit_lookup,
             super_snusp,
         )
 
@@ -1938,7 +1937,9 @@ class TestSuperSNUSP:
                 assert full_cost == len(_emit_anf(n, table, full))
                 assert reduced_cost == len(_emit_anf(n, reduced, used))
                 if table not in _TWO_INPUT_SHORT:
-                    assert len(super_snusp(table)) == min(full_cost, reduced_cost)
+                    assert len(super_snusp(table)) == min(
+                        full_cost, reduced_cost, len(_emit_lookup(table))
+                    )
 
     @staticmethod
     def run_table(table: str) -> str:
@@ -2016,6 +2017,21 @@ class TestSuperSNUSP:
         the products that share its span.
         """
         assert self.run_table("0110100110010110") == "0110100110010110"
+
+    def test_the_lookup_scales_linearly_and_runs(self) -> None:
+        """The unbounded path approaches its one-or-two commands per row."""
+        from esolangs.tools.super_snusp import super_snusp
+
+        ratios = []
+        for n in range(5, 13):
+            table = "".join(str(i.bit_count() & 1) for i in range(2**n))
+            ratios.append(len(super_snusp(table)) / len(table))
+        assert ratios == sorted(ratios, reverse=True)
+        assert ratios[-1] < 1.6
+
+        n = 6
+        table = "".join(str(i.bit_count() & 1) for i in range(2**n))
+        assert self.run_table(table) == table
 
     @pytest.mark.parametrize(
         "table", ["01", "0110", "0001", "01101001", "11110000", "00010111"]
