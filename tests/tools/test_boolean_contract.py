@@ -533,7 +533,6 @@ _REDUCING = {
     "cod",
     "home_row",
     "nocomment",
-    "qoibl",
     "rotfuck",
     "suffolk",
     "super_snusp",
