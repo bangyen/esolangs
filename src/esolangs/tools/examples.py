@@ -312,6 +312,13 @@ def _fill_nocomment(template: str, bits: list[int]) -> str:
 
 
 def _fill_bitdeque(template: str, bits: list[int]) -> str:
+    if not template.startswith("GOTO 3"):
+        n = len(bits)
+        return instantiate(
+            template,
+            bits,
+            lambda i, b: ("EJECT " if b else "POP ") * (2 ** (n - 1 - i)),
+        )
     # The register flips after every load block, and the load pushes the
     # inputs in name order, so bit i is pushed at load position i with the
     # incoming register at i % 2.

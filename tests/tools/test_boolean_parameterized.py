@@ -872,6 +872,31 @@ class TestParameterizedBitdeque:
         assert template.startswith("GOTO 3 INVERT GOTO 4 GOTO ")
         assert template.count("GOTO 0") == 8
 
+    def test_linear_discard_executes_wide_rows(self) -> None:
+        """Head/tail discards leave sampled six-input answers."""
+        from esolangs.tools import parameterized
+
+        n = 6
+        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+        template = parameterized.bitdeque(table)
+        for row in (0, 1, 2, 7, 31, 32, 62, 63):
+            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            assert self.run_bitdeque(self.instantiate(template, bits)) == table[row]
+
+    def test_linear_discard_growth(self) -> None:
+        """Wide templates and their fills scale with table size."""
+        from esolangs.tools import parameterized
+
+        templates = []
+        filled = []
+        for n in range(11, 15):
+            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+            template = parameterized.bitdeque(table)
+            templates.append(len(template))
+            filled.append(len(self.instantiate(template, [0] * n)))
+        assert all(b <= 2 * a for a, b in pairwise(templates))
+        assert all(b <= 2 * a for a, b in pairwise(filled))
+
 
 class TestParameterizedRam0:
     """Input-by-substitution boolean generator for the no-input language RAM0.
