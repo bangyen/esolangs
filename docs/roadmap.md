@@ -12,7 +12,7 @@ The candidate list is empty.
 - **Linear Boolean generators.**  Make build time and emitted size O(T), where
   T is the truth-table length, and add a registry-wide scaling contract.  The
   n=8 -> 9 parity sweep already exposes super-linear output in A Painter Ant
-  (135016 -> 534124), 123 (222847 -> 750738), Circuit Diagram
+  (135016 -> 534124), 123 (94579 -> 230034), Circuit Diagram
   (145216 -> 322504), COD (942692 -> 3668705), Minifuck
   (57601 -> 203089); dense tables also expose
   Polynomial.  Circuit Diagram now uses a linear one-pass Shannon fold and
