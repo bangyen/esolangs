@@ -1,14 +1,35 @@
 """Shared fixtures for the esolangs test suite."""
 
 import contextlib
+from collections.abc import Generator
 
 import coverage
 import pytest
+from _pytest.reports import TestReport
 from coverage.collector import Collector
+
+from tests.duration_policy import violation
+
+
+@pytest.hookimpl(wrapper=True)
+def pytest_runtest_makereport(
+    item: pytest.Item, call: pytest.CallInfo[object]
+) -> Generator[None, TestReport, TestReport]:
+    """Fail tests whose call exceeds their cost band's ceiling."""
+    del call
+    report = yield
+    if report.when != "call" or not report.passed:
+        return report
+    markers = {marker.name for marker in item.iter_markers()}
+    message = violation(markers, report.duration)
+    if message is not None:
+        report.outcome = "failed"
+        report.longrepr = message
+    return report
 
 
 @pytest.fixture(autouse=True)
-def _repair_coverage_lock():
+def _repair_coverage_lock() -> Generator[None, None, None]:
     """Undo a coverage C-tracer lock leak left by a signal-handler exception.
 
     The timeout-protection tests use ``signal.alarm`` handlers that raise an
