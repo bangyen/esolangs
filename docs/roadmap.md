@@ -37,34 +37,37 @@ The candidate list is empty.
 
   | Language | Generation time | Output size |
   | --- | --- | --- |
-  | A Painter Ant | Proved construction | Proved construction |
-  | 123 | Proved construction | Proved construction |
-  | Circuit Diagram | Proved construction | Proved construction |
-  | COD | Proved construction | Proved construction |
-  | Minifuck | Proved construction | Proved construction |
-  | Factor | Proved construction | Proved construction |
-  | Polynomial | Proved construction | Proved construction |
-  | AddSubJump | Proved construction | Proved construction |
-  | ArrowQueue | Proved construction | Proved construction |
+  | A Painter Ant | Open | Open |
+  | 123 | Open | Open |
+  | Circuit Diagram | Open | Open |
+  | COD | Open | Open |
+  | Minifuck | Open | Open |
+  | Factor | Open | Open |
+  | Polynomial | Open | Open |
+  | AddSubJump | Open | Open |
+  | ArrowQueue | Open | Open |
   | Back | Linear | Linear |
-  | Bitdeque | Proved construction | Proved construction |
-  | BrainIf | Proved construction | Proved construction |
-  | Clockwise | Proved construction | Proved construction |
-  | Container | Proved construction | Proved construction |
-  | Dig | Proved construction | Proved construction |
-  | Flowchart | Proved construction | Proved construction |
+  | Bitdeque | Open | Open |
+  | BrainIf | Open | Open |
+  | Clockwise | Open | Open |
+  | Container | Open | Open |
+  | Dig | Open | Open |
+  | Flowchart | Open | Open |
   | Forþ | Linear | Linear |
-  | Inject | Proved construction | Proved construction |
-  | Jaune | Proved construction | Proved construction |
-  | LaserFuck | Proved construction | Proved construction |
-  | RAM0 | Proved construction | Proved construction |
-  | S\*bleq | Proved construction | Proved construction |
-  | SLOW ACV MAMMALIAN | Proved construction | Proved construction |
-  | Streetcode | Proved construction | Proved construction |
-  | Vandevelo | Proved construction | Proved construction |
+  | Inject | Open | Open |
+  | Jaune | Open | Open |
+  | LaserFuck | Open | Open |
+  | RAM0 | Open | Open |
+  | S\*bleq | Open | Open |
+  | SLOW ACV MAMMALIAN | Open | Open |
+  | Streetcode | Open | Open |
+  | Vandevelo | Open | Open |
 
-  Super-linear output implies super-linear generation time; the time column is
-  not an independent empirical verdict.
+  The limitations file proves only that the shipped constructions are
+  super-linear.  None closes a row above: closure requires a lower bound over
+  every program in the language under the generator contract.  Super-linear
+  output implies super-linear generation time; the time column is not an
+  independent empirical verdict.
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is
