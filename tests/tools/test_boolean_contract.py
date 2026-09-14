@@ -1070,6 +1070,7 @@ _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
 # The roadmap's original scaling queue.  A row leaves ``_OPEN_SCALING`` only
 # after an O(T) construction or a language-wide lower bound.
 _LINEAR_SCALING = {
+    "a_painter_ant",
     "addsubjump",
     "back",
     "bitdeque",
@@ -1082,7 +1083,6 @@ _LINEAR_SCALING = {
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
-    "a_painter_ant",
     "arrowqueue",
     "circuit_diagram",
     "clockwise",

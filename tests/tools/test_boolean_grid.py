@@ -282,9 +282,22 @@ class TestAPainterAnt:
                     ), f"n={n} table {table} bits {bits}"
 
     def test_shared_head_growth(self) -> None:
-        """A dense head grows O(T log T), not quadratically in T."""
+        """Wide dense tables grow no faster than their table size."""
         sizes = [len(a_painter_ant("1" * (2**n))) for n in range(6, 10)]
-        assert all(b / a < 2.3 for a, b in pairwise(sizes))
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
+
+    def test_linear_strip_executes_dense_wide_table(self) -> None:
+        """Every row reaches its adjacent strip cell and remains cycle-stable."""
+        from tests.tools.a_painter_ant_trace import cycle_stable, landing_after
+
+        n = 6
+        table = "".join(str((row.bit_count() ^ (row >> 2)) & 1) for row in range(2**n))
+        template = a_painter_ant(table)
+        for row in range(2**n):
+            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            program = _instantiate_apa(template, bits)
+            assert cycle_stable(program), row
+            assert landing_after(program) == int(table[row]), row
 
     def test_three_input_xor_works(self) -> None:
         """XOR3 is exact and cycle-stable on every input."""

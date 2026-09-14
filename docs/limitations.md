@@ -55,10 +55,11 @@ Uncapped dense-program sizes at n=8/n=9: Polynomial 3.38/10.90 MB, COD
 123 0.09/0.23 MB, ROTfuck 0.02/0.03 MB, bit~ 0.03/0.06 MB, Factor
 0.02/0.04 MB. Run generated programs before claiming size or equivalence.
 
-Two current constructions are structurally super-linear.  On A Painter Ant
-parity every subtree is live.  At each of `n` depths, `_head` traverses
-`2**(d+1)` child edges of length `2**(n-d)` out and back: `4T` movement
-characters per depth, hence Theta(T log T).  In 123, `_phase_a` uses the tight
+The retired A Painter Ant tree was Theta(T log T): on parity every subtree was
+live, and each depth traversed Theta(T) weighted edges.  Its lookup strip is
+linear: `ePEP` both establishes a white corridor on pass one and traverses it
+on later passes, while the adjacent answer row costs at most three characters
+per one entry.  In 123, `_phase_a` uses the tight
 marks `(i+1)*2T+1` and emits Theta(mark) movement four times for every input;
 their sum is Theta(T (log T)^2).  These prove bounds on the shipped
 constructions, not on either language; a different geometry could evade them.
