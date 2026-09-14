@@ -24,6 +24,43 @@ The candidate list is empty.
   SLOW ACV MAMMALIAN, Streetcode, and Vandevelo.  Their quiet factors
   are minterms, rectangular tree layouts, widening labels or addresses, and
   per-depth padding; an n=8 -> 9 ratio near 2 is not evidence of O(T).
+  The live audit is:
+
+  | Language | Generation time | Output size |
+  | --- | --- | --- |
+  | A Painter Ant | Super-linear | Super-linear |
+  | 123 | Super-linear | Super-linear |
+  | Circuit Diagram | Super-linear | Super-linear |
+  | COD | Super-linear | Super-linear |
+  | Minifuck | Super-linear | Super-linear |
+  | Factor | Super-linear | Super-linear |
+  | Polynomial | Super-linear | Super-linear |
+  | AddSubJump | Super-linear | Super-linear |
+  | ArrowQueue | Super-linear | Super-linear |
+  | Back | Super-linear | Super-linear |
+  | Bitdeque | Super-linear | Super-linear |
+  | BrainIf | Super-linear | Super-linear |
+  | Clockwise | Super-linear | Super-linear |
+  | Container | Super-linear | Super-linear |
+  | Dig | Super-linear | Super-linear |
+  | Flowchart | Super-linear | Super-linear |
+  | Forþ | Super-linear | Super-linear |
+  | Inject | Super-linear | Super-linear |
+  | Jaune | Super-linear | Super-linear |
+  | LaserFuck | Super-linear | Super-linear |
+  | RAM0 | Super-linear | Super-linear |
+  | S\*bleq | Super-linear | Super-linear |
+  | SLOW ACV MAMMALIAN | Super-linear | Super-linear |
+  | Streetcode | Super-linear | Super-linear |
+  | Vandevelo | Super-linear | Super-linear |
+
+  Generation time includes writing the result, so super-linear output implies
+  super-linear time; the time column is not an independent empirical verdict.
+  Median-of-three dense and parity measurements for `n=1..9` are plotted as
+  [characters per table entry](boolean-scaling-size.svg) and
+  [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is
+  diagnostic only: the deliberate exhaustive input-order contest through
+  `n=6` makes several curves fall sharply at `n=7`.
   Factor's Brainfuck tree has O(T) characters but Theta(T)
   command runs; assigning each run the next prime makes its numeral
   Theta(T log T) digits.  It needs a run-compressed Brainfuck lookup.
