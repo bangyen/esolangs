@@ -24,7 +24,7 @@ that row is actually spelled for the language.
 | `alight.txt` | Alight | `0001` | `01` | 0 1 | '0' |
 | `arrowqueue.txt` | ArrowQueue | `0001` | `01` | embedded 01 | '1 0 1 2 3' |
 | `b-tapemark.txt` | B-tapemark | `0001` | `01` | 0 1 | '0' |
-| `back.txt` | Back | `0001` | `01` | embedded 01 | '1 0 0' |
+| `back.txt` | Back | `0001` | `01` | embedded 01 | '0 1 0' |
 | `bf-pda.txt` | BF-PDA | `0001` | `01` | embedded 01 | '0' |
 | `bfstack.txt` | BFStack | `0001` | `01` | 0 1 | '0' |
 | `bio.txt` | BIO | `0001` | `01` | embedded 01 | '0' |
@@ -86,7 +86,7 @@ that row is actually spelled for the language.
 - **a-painter-ant** -- A Painter Ant has no output: it paints a grid and the answer is which of the two leaf rings the ant rests in, shown by 'o' (on black, a zero) or '@' (on white, a one)
 - **algebraic-programming-language** -- an executed line prints its result, so the answer ends in a newline
 - **arrowqueue** -- ArrowQueue answers by termination -- it halts for a 0 result and loops forever for a 1, so only the halting branch is committed.  The headings printed are its interpreter-only queue dump, which the verdict does not read: the answer is that the program halted at all
-- **back** -- Back has no output instruction and dumps its tape at halt; the answer is cell n, past the n input cells -- which the reorder may hold in either order, so only cell n is pinned
+- **back** -- Back has no output instruction and dumps its tape at halt; the answer is cell n, past the n input cells
 - **bitdeque** -- Bitdeque has no output instruction and dumps its deque at halt; the generator leaves exactly one bit on it, so the whole dump is the answer and there is no position to name
 - **clockwise** -- Clockwise reads all its input bits in one go, so they go on one line -- one character per bit, not a line per bit, and not seven bits packed into a character: that packing is real but is on the output side. A line per bit, or a packed one, is read as a different row and answered wrongly
 - **cod** -- COD has no runtime input and no I/O but a printed number

@@ -134,7 +134,7 @@ class TestAddSubJump:
             identity = len(_addsubjump_ordered(table, (0, 1, 2)))
             assert dispatched <= identity, table
             improved += dispatched < identity
-        assert improved == 88  # the rest tie, keeping the identity order
+        assert improved == 72  # the rest tie, keeping the identity order
 
 
 class TestQoibl:

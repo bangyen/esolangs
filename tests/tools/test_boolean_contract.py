@@ -348,29 +348,38 @@ def test_reorder_permutation_preserves_the_function() -> None:
             assert permuted[row] == table[original]
 
 
-def test_wide_tables_skip_the_exhaustive_search() -> None:
-    """Above the cap the order is picked greedily, so wide tables stay fast.
+def test_greedy_order_never_grows_a_wide_program() -> None:
+    """The identity candidate keeps the greedy heuristic from growing output."""
+    from esolangs.tools.helpers import _decision_tree_program
 
-    ``12!`` is 479 million orders; an uncapped search never returns.  The
-    greedy fallback still may not emit more than the identity order does.
-    """
-    from esolangs.tools.helpers import _ORDER_SEARCH_MAX, _decision_tree_program
-
-    n = _ORDER_SEARCH_MAX + 2
+    n = 8
     table = "0" * (2**n - 1) + "1"
     assert len(boolean.brainfuck(table)) <= len(
         _decision_tree_program(table, ">", "<", tuple(range(n)))
     )
 
 
+def test_order_selection_builds_at_most_two_candidates() -> None:
+    """Small arities no longer trigger an exhaustive permutation contest."""
+    from esolangs.tools.helpers import best_input_order
+
+    built: list[tuple[int, ...]] = []
+
+    def build(table: str, perm: tuple[int, ...]) -> str:
+        built.append(perm)
+        return table
+
+    best_input_order("01011010", build)
+    assert 1 <= len(built) <= 2
+    assert built[0] == (0, 1, 2)
+
+
 def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
     """A greedily-ordered program still computes its table.
 
-    Above ``_ORDER_SEARCH_MAX`` the order is picked greedily rather than
-    searched, and this is the only path where a *non-identity* order is
-    chosen without every candidate having been built and measured, so it
-    gets run rather than merely sized.  ``"01" * 64`` depends only on its
-    last input, which the greedy pick fronts.
+    The order is chosen without every candidate having been built and
+    measured, so it gets run rather than merely sized.  ``"01" * 64``
+    depends only on its last input, which the greedy pick fronts.
     """
     from esolangs.interpreters.tape_based.brainfuck import run
     from esolangs.tools.helpers import _greedy_input_order
@@ -731,34 +740,11 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 #     polynomial      28.4s -> 5.5s     wii2d            7.2s -> 1.3s
 #     one_two_three   17.8s -> 3.7s
 #
-# plus a generic pass on the order search below.  The whole n=1..10 sweep
-# is now 46.1s of CPU.  Per arity: n=6 6.2s, n=7 1.0s, n=8 5.7s, n=9 7.2s,
-# n=10 23.8s.
-#
-# n=6 costing six times n=7 is not a measurement error and not warmup -- it
-# is ``_ORDER_SEARCH_MAX = 6`` in ``helpers.py``.  At n <= 6 a reordering
-# generator builds all ``n!`` = 720 candidate orders and keeps the
-# shortest; at n=7 it switches to the greedy ``O(n**2)`` pick, so a
-# *bigger* table is hundreds of times faster (laserfuck 1.03s at six
-# against 0.002s at seven, streetcode 0.56s against 0.002s).
-#
-# What that 720-build search buys, measured by running the registry at n=6
-# with the cap at 6 and at 5: 3,193,830 chars in 10.7s against 3,195,778 in
-# 0.79s.  Only 13 of 138 cases differ and the registry total is 0.06%, but
-# the win is concentrated, not absent -- ram0 parity 29.9% shorter under the
-# search, circlefuck dense 26.4%, six_five dense 14.2%, unsquare dense
-# 13.5%.  Lowering the cap is a bad trade rather than a free 10s.
-#
-# **Measuring that requires patching six modules, not one.**  ``laserfuck``,
-# ``streetcode``, ``stack``, ``six_five`` and ``tape`` each do ``from
-# .helpers import _ORDER_SEARCH_MAX``, a by-value import, so patching
-# ``helpers`` alone leaves the two most expensive generators exhaustive and
-# reports the greedy side as 5.17s instead of 0.79s.
-#
-# n=6 was 10.0s until the candidates themselves were made cheap.  The
-# search still builds every one of the 720 and measures it -- see the
-# ``best_input_order`` docstring for why the count cannot come down without
-# going per-language -- so that pass left all 1380 programs byte-identical.
+# plus a generic pass on input ordering.  Exhaustive ordering was later
+# removed: its n=6 registry sweep cost 10.7s instead of 0.79s for a 0.06%
+# aggregate size saving.  Generators now compare the identity with at most
+# one greedy order; stack languages without a safe greedy mapping retain
+# their natural order.
 #
 # Across everything here, 1357 of the registry's 1380 programs are
 # byte-identical: the 23 that moved are nine factor arities that used to
@@ -1056,7 +1042,7 @@ _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
     "ROTfuck": (15_240, 29_472, 1.9),
     "Polynomial": (3_383_048, 10_896_883, 3.2),
     "SLOW ACV MAMMALIAN": (1_672_368, 3_380_418, 2.0),
-    "bit~": (31_076, 69_005, 2.2),
+    "bit~": (28_210, 56_676, 2.0),
     "123": (94_589, 230_002, 2.4),
     "Factor": (17_613, 36_339, 2.1),
 }

@@ -467,7 +467,8 @@ def back(truth_table: str) -> str:
     -- a leaf spends one ``-`` instead of one extra pointer move -- and makes
     the dump self-describing.
     """
-    return best_input_order(truth_table, _back_ordered)
+    n = _validate_truth_table(truth_table)
+    return _back_ordered(truth_table, tuple(range(n)))
 
 
 def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:

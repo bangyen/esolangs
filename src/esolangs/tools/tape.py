@@ -3,7 +3,6 @@
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
-from itertools import permutations
 
 from esolangs.exceptions import GeneratorCapError
 
@@ -15,7 +14,6 @@ from esolangs.tools.dimensional import dimensional, dimensional_tree
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
-    _ORDER_SEARCH_MAX,
     _validate_truth_table,
     best_input_order,
     constant_span_test,
@@ -284,8 +282,8 @@ def circlefuck_byte(truth_table: Sequence[int]) -> str:
     are unconditional, so a folded program consumes its input exactly as an
     unfolded one does.
 
-    **The tree splits on its inputs in whichever order emits the shortest
-    program**, over all ``n!`` of them.  Unlike the generators whose nodes
+    **The tree compares its identity and greedy input orders.**  Unlike
+    generators whose nodes
     *name* the input they test, a Circlefuck node tests whatever cell the
     pointer is over, so an order is not a renaming: the tree has to walk
     the pointer to the cell it wants, and the walk is a real cost the fold
@@ -320,7 +318,7 @@ def _permute_byte_table(truth_table: Sequence[int], perm: tuple[int, ...]) -> li
 
 
 def _best_byte_order(truth_table: Sequence[int], n: int) -> str:
-    """Return the shortest program over every input order.
+    """Return the shorter program from the identity and greedy orders.
 
     The byte-valued twin of
     :func:`~esolangs.tools.helpers.best_input_order`, which takes a
@@ -328,30 +326,20 @@ def _best_byte_order(truth_table: Sequence[int], n: int) -> str:
     identity order goes first and ties keep it, so a table no reorder helps
     emits exactly what it emitted before.
 
-    The search is capped for the same reason the shared helper caps: ``n!``
-    builds of an ``O(2**n)`` program.  The cap is reached in practice at
-    ``n <= 8``, so the greedy fallback is not decorative.
+    The identity and greedy orders are both built, so the heuristic cannot
+    make the output longer.
     """
     best = _circlefuck_ordered(list(truth_table), tuple(range(n)))
     if n < 2:
         return best
-    if n > _ORDER_SEARCH_MAX:
-        return min(best, _circlefuck_greedy(truth_table, n), key=len)
-    for perm in permutations(range(n)):
-        if perm == tuple(range(n)):
-            continue
-        candidate = _circlefuck_ordered(_permute_byte_table(truth_table, perm), perm)
-        if len(candidate) < len(best):
-            best = candidate
-    return best
+    return min(best, _circlefuck_greedy(truth_table, n), key=len)
 
 
 def _circlefuck_greedy(truth_table: Sequence[int], n: int) -> str:
-    """Pick an order level by level above the exhaustive cap.
+    """Pick an order level by level.
 
     Each remaining input is scored by how many constant subtrees choosing
-    it next would create -- the fold the exhaustive search is hunting --
-    which is ``O(n**2)`` scorings rather than ``n!`` builds.
+    it next would create, using ``O(n**2)`` scorings.
     """
     remaining = list(range(n))
     order: list[int] = []
@@ -362,7 +350,9 @@ def _circlefuck_greedy(truth_table: Sequence[int], n: int) -> str:
         )
         order.append(best_input)
         remaining.remove(best_input)
-    perm = tuple(order)
+    # ``_circlefuck_ordered`` descends its permuted row bits from least to
+    # most significant, so its tuple is the reverse of this root-first score.
+    perm = tuple(reversed(order))
     return _circlefuck_ordered(_permute_byte_table(truth_table, perm), perm)
 
 

@@ -14,10 +14,9 @@ generator so the counter sits above the value rather than below it.
 
 from collections.abc import Callable
 from functools import cache
-from itertools import permutations
 
 from esolangs.tools.helpers import (
-    _ORDER_SEARCH_MAX,
+    _greedy_input_order,
     _validate_truth_table,
     constant_span_test,
     permute_truth_table,
@@ -195,18 +194,9 @@ def _streetcode_leaf(bit: int, skipped: int = 0) -> list[str]:
     ]
 
 
-# Largest subtable whose drawing is worth remembering across candidates.
-#
-# The order search rebuilds the tree once per permutation, and the halves
-# it recurses on repeat: at n=6 the 720 orders make 23040 calls on a
-# two-row subtable but only 4 distinct ones, and 5760 calls on an
-# eight-row one against at most 960 distinct.  Above four inputs the
-# count stops collapsing -- a 2**5 subtable pins the root input, its side
-# and the order of the rest, so all 1440 calls are distinct, and all 720
-# of the full table are -- so caching those buys nothing and would hold
-# 2160 copies of the whole drawing.  Cutting at 2**4 keeps every hit and
-# none of that memory: 276k units of node work drop to 125k, and the n=6
-# registry sweep measures 1.50s -> 0.58s.
+# Largest subtable whose drawing is worth remembering across the identity
+# and greedy candidates.  Small repeated halves share drawings; caching
+# larger, usually distinct subtrees only retains their grids.
 _TREE_CACHE_MAX = 2**4
 
 
@@ -600,8 +590,8 @@ def _streetcode_shared(n: int, perm: tuple[int, ...] | None = None) -> list[str]
     return ["".join(row) for row in grid]
 
 
-def _streetcode_orders(n: int) -> list[tuple[int, ...]]:
-    """Return the input orders to build the shared shape over, identity first.
+def _streetcode_orders(truth_table: str, n: int) -> list[tuple[int, ...]]:
+    """Return the identity and greedy input orders, identity first.
 
     Streetcode cannot go through
     :func:`~esolangs.tools.helpers.best_input_order` the way the
@@ -612,21 +602,12 @@ def _streetcode_orders(n: int) -> list[tuple[int, ...]]:
     selection runs over the whole pool, which is the ``six_five`` and
     ``forth`` precedent.
 
-    The cap is shared with ``best_input_order`` rather than reinvented:
-    above it the exhaustive search is ``n!`` builds of an ``O(2**n)``
-    drawing, the cost that does not announce itself.  Past the cap this
-    returns the identity alone rather than ``best_input_order``'s greedy
-    order -- a Streetcode program is a *drawing*, so the greedy score (how
-    many subtrees a split leaves constant) misses the per-order cost that
-    actually decides the winner here, the walk the prefix spends putting
-    each bit in its cell.  A table that big is outside what the suite
-    exercises; wiring the greedy path in unmeasured would be guessing at its
-    own benchmark.
+    The greedy score sees subtree folds but not drawing geometry, so both
+    candidates are retained and the rendered layouts decide the winner.
     """
     identity = tuple(range(n))
-    if n <= _ORDER_SEARCH_MAX:
-        return [identity, *(p for p in permutations(range(n)) if p != identity)]
-    return [identity]
+    greedy = _greedy_input_order(truth_table, n)
+    return [identity] if greedy == identity else [identity, greedy]
 
 
 def _streetcode_columns(program: str) -> int:
@@ -658,7 +639,7 @@ def _streetcode_shared_programs(truth_table: str, n: int, tree: list[str]) -> li
     """Render the shared-lap layouts for every permitted input order."""
     identity = tuple(range(n))
     programs = []
-    for perm in _streetcode_orders(n):
+    for perm in _streetcode_orders(truth_table, n):
         shared = _streetcode_combine(
             [
                 _streetcode_shared(n, perm),

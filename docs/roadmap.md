@@ -59,8 +59,7 @@ The candidate list is empty.
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is
-  diagnostic only: the deliberate exhaustive input-order contest through
-  `n=6` makes several curves fall sharply at `n=7`.
+  diagnostic only; finite measurements do not establish an asymptotic bound.
   Factor's Brainfuck tree has O(T) characters but Theta(T)
   command runs; assigning each run the next prime makes its numeral
   Theta(T log T) digits.  It needs a run-compressed Brainfuck lookup.

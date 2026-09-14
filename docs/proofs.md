@@ -81,7 +81,7 @@ after ignoring the performance/resource ceiling as specified above.
 | Dig | tree | finite cell placement |
 | Dimensional | tree | `decision_tree_program` with dimensional moves |
 | EGL | tree | — |
-| Eval | parameterized tree | stack reordering only shortens the fallback tree |
+| Eval | linear lookup | fixed reversed stack order selects the indexed row |
 | Factor | tree, cap | Brainfuck tree followed by a total prime encoding; Dirichlet supplies the next prime in each residue class mod 11 |
 | Fargo | tree | finite folded layout |
 | Flowchart | tree | — |
