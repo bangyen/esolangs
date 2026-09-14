@@ -498,7 +498,7 @@ class TestCvnc:
 
 
 class TestFargo:
-    """The Fargo boolean generator: an algebraic normal form, not a tree."""
+    """The Fargo boolean generator: a recursively factored ANF."""
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_every_table_at_small_arity(self, n: int) -> None:
@@ -558,6 +558,11 @@ class TestFargo:
         """One term whatever the arity, which is what the catalogue checks."""
         assert boolean.fargo("11110000") == "% 0 ^ 1 @ 10\n$\n"
         assert len(boolean.fargo("11110000")) < len(boolean.fargo("01101001"))
+
+    def test_dense_anf_growth_is_linear(self) -> None:
+        """NOR has every ANF coefficient set, but its source only doubles."""
+        sizes = [len(boolean.fargo("1" + "0" * ((1 << n) - 1))) for n in (7, 8)]
+        assert sizes[1] < 2 * sizes[0] + 16
 
 
 class TestFlowchart:
