@@ -14,6 +14,11 @@ import pytest
 from esolangs import tools as boolean
 from esolangs.interpreters.io import IO
 from esolangs.tools import laserfuck_layout
+from esolangs.tools.other import (
+    _flowchart_cells,
+    _flowchart_render,
+    _flowchart_stacked,
+)
 from tests.tools.boolean_runners import (
     run_algebraic_programming_language,
     run_clockwise,
@@ -597,6 +602,14 @@ class TestFargo:
 class TestFlowchart:
     """The Flowchart boolean generator (works for arbitrary n)."""
 
+    def test_compact_layout_uses_the_shorter_orientation(self) -> None:
+        """A stacked parity tree beats the flat form from three inputs."""
+        table = "01101001"
+        flat = _flowchart_render(_flowchart_cells(table))
+        stacked = _flowchart_render(_flowchart_stacked(table))
+        assert len(stacked) < len(flat)
+        assert boolean.flowchart(table) == stacked
+
     @pytest.mark.parametrize(
         ("table", "n"),
         [
@@ -739,7 +752,7 @@ class TestFlowchart:
         """
         for table in ("0110", "01101001", "0110100110010110"):
             n = len(table).bit_length() - 1
-            flat = boolean.flowchart(table)
+            flat = _flowchart_render(_flowchart_cells(table))
             wide = max(len(row) for row in flat.splitlines())
             floor = max(len(row) for row in boolean.flowchart(table, 1).splitlines())
             assert floor < wide, f"{table} never narrows"
@@ -761,7 +774,7 @@ class TestFlowchart:
         """
         for n in (2, 3, 4):
             table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
-            flat = boolean.flowchart(table)
+            flat = _flowchart_render(_flowchart_cells(table))
             stacked = boolean.flowchart(table, 1)
             assert max(len(row) for row in stacked.splitlines()) == n + 5, n
             assert max(len(row) for row in flat.splitlines()) == 5 * 2**n, n

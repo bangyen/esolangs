@@ -1355,6 +1355,8 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     that would benefit from the wider coverage; it costs a ``4n``-row
     prologue and depends on push-top/pop-bottom being FIFO, a silent
     wrong-answer trap if the pop is ever changed to pop-top.
+    Without a width, both named layouts are built and the shorter rendered
+    program wins; this is a fixed two-way comparison, not a layout search.
     ``width`` asks for a column count.  The flat drawing gives every leaf a
     column of its own and so grows as ``2 ** n``; a width under that is met
     by *stacking* the tree instead, separating the two subtrees by rows and
@@ -1368,9 +1370,11 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     """
     _validate_truth_table(truth_table)
     flat = _flowchart_render(_flowchart_cells(truth_table))
-    if width is None or max(len(line) for line in flat.split("\n")) <= width:
+    if width is not None and max(len(line) for line in flat.split("\n")) <= width:
         return flat
     stacked = _flowchart_render(_flowchart_stacked(truth_table))
+    if width is None:
+        return min((flat, stacked), key=len)
     if max(len(line) for line in stacked.split("\n")) < max(
         len(line) for line in flat.split("\n")
     ):
