@@ -55,7 +55,7 @@ The candidate list is empty.
   | Flowchart | Open | Open |
   | Forþ | Linear | Linear |
   | Inject | Open | Open |
-  | Jaune | Open | Open |
+  | Jaune | Linear | Linear |
   | LaserFuck | Open | Open |
   | RAM0 | Linear | Linear |
   | S\*bleq | Linear | Linear |
@@ -80,6 +80,9 @@ The candidate list is empty.
   RAM0 initializes one RAM cell per table row with a runtime address counter,
   then conditionally adds unary binary weights whose total is 2T-2.  Only
   O(log T) direct jumps remain; sampled six-input rows execute correctly.
+  Jaune lays outputs beside travelling counter cells.  Unary input weights sum
+  to T-1, and a fixed two-label loop carries the counter to its output; sampled
+  six-input rows execute correctly.
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is
