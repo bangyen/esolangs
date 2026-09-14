@@ -138,7 +138,18 @@ class TestInject:
         """
         for n, table in ((1, "01"), (2, "0001"), (3, "01101001")):
             lines = boolean.inject(table).splitlines()
-            assert lines[: 2 * n] == [f"i{d};" for d in range(n) for _ in (0, 1)]
+            head = lines[: 2 * n]
+            assert all(head[2 * d] == head[2 * d + 1] for d in range(n))
+            assert len(set(head[::2])) == n
+
+    def test_small_tree_uses_one_character_labels(self) -> None:
+        """Inputs, branches, leaves, and constants share the short namespace."""
+        labels = [
+            line[:-1]
+            for line in boolean.inject("01101001").splitlines()
+            if line.endswith(";")
+        ]
+        assert all(len(label) == 1 for label in labels)
 
     def test_the_tree_collapses_on_the_constant_subtree_alone(self) -> None:
         """Depth never terminates the recursion; a constant subtree always does.
@@ -151,7 +162,7 @@ class TestInject:
         the disjunct is known to be belt-and-braces rather than assumed to
         be required.
         """
-        from esolangs.tools.inject import _tree
+        from esolangs.tools.inject import _Names, _tree
 
         calls: list[tuple[str, int, int]] = []
 
@@ -171,9 +182,9 @@ class TestInject:
         ]
         assert collapsed_by_depth_only == []
         # And the tree itself is unchanged when the depth clause cannot fire.
-        state = {"leaves": 0, "blocks": 0}
-        assert _tree("01101001", 0, 3, state, (0, 1, 2)) == _tree(
-            "01101001", 0, 3, {"leaves": 0, "blocks": 0}, (0, 1, 2)
+        perm = (0, 1, 2)
+        assert _tree("01101001", 0, 3, _Names(3, perm), perm) == _tree(
+            "01101001", 0, 3, _Names(3, perm), perm
         )
 
 
