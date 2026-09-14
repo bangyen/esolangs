@@ -55,6 +55,28 @@ Uncapped dense-program sizes at n=8/n=9: Polynomial 3.38/10.90 MB, COD
 123 0.09/0.23 MB, ROTfuck 0.02/0.03 MB, bit~ 0.03/0.06 MB, Factor
 0.02/0.04 MB. Run generated programs before claiming size or equivalence.
 
+Two current constructions are structurally super-linear.  On A Painter Ant
+parity every subtree is live.  At each of `n` depths, `_head` traverses
+`2**(d+1)` child edges of length `2**(n-d)` out and back: `4T` movement
+characters per depth, hence Theta(T log T).  In 123, `_phase_a` uses the tight
+marks `(i+1)*2T+1` and emits Theta(mark) movement four times for every input;
+their sum is Theta(T (log T)^2).  These prove bounds on the shipped
+constructions, not on either language; a different geometry could evade them.
+Circuit Diagram's current layout is likewise Theta(T log T) on parity: all
+`n` selector rails remain live across Theta(T) columns.  Localizing each rail
+to its mux level remains an open route around that construction bound.
+COD's leaf cascade is Theta(T^2): each of T leaf rows contains a prefix of
+length `3(k+1)` and a gate tail of length `2(T-k-1)`, so every row is
+Theta(T) and rotation cannot change the number of cells.  A non-cascade
+decoder is required for linear output.
+Minifuck's fixed mux has a quadratic spelling mechanism: row `i`, when fired,
+rewinds across Theta(T-i) cells and spells both `<` and `[x` for that distance.
+Its derived parity plans fire 131/247/497 rows with rewind sums
+17,192/63,473/261,565 at n=8/9/10.  Dense n=8/9 measures 58,594/221,305
+characters and parity 57,601/203,089.  These executed measurements expose the
+mechanism but are not an asymptotic proof; a shared or packed sculpt remains
+open.
+
 ## Curation
 
 The collection has 60 languages. The floor is 31: the languages that own a

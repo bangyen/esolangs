@@ -37,10 +37,10 @@ The candidate list is empty.
 
   | Language | Generation time | Output size |
   | --- | --- | --- |
-  | A Painter Ant | Super-linear | Super-linear |
-  | 123 | Super-linear | Super-linear |
-  | Circuit Diagram | Super-linear | Super-linear |
-  | COD | Super-linear | Super-linear |
+  | A Painter Ant | Proved construction | Proved construction |
+  | 123 | Proved construction | Proved construction |
+  | Circuit Diagram | Proved construction | Proved construction |
+  | COD | Proved construction | Proved construction |
   | Minifuck | Super-linear | Super-linear |
   | Factor | Super-linear | Super-linear |
   | Polynomial | Super-linear | Super-linear |
@@ -74,7 +74,8 @@ The candidate list is empty.
   Theta(T log T) digits.  It needs a run-compressed Brainfuck lookup.
   Circuit Diagram now uses a linear one-pass Shannon fold and
   indexed layout guards, but its persistent selector rails leave the ASCII
-  area O(T log T); route each selector only across its mux level.  Treat every
+  area O(T log T): parity keeps all `n` selector rails live across Theta(T)
+  columns.  Route each selector only across its mux level.  Treat every
   emitted character as build work.  Input reordering is optional around the
   construction, but its work still counts toward end-to-end generation time.
   Order selection builds at most four named candidates; factorial and
