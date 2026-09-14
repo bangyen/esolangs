@@ -11,6 +11,7 @@ import random
 import re
 from collections.abc import Iterable
 from contextlib import redirect_stdout
+from itertools import pairwise
 
 import pytest
 
@@ -438,6 +439,16 @@ class TestParameterizedBack:
             n = (len(table) - 1).bit_length()
             identity = parameterized._back_ordered(table, tuple(range(n)))  # noqa: SLF001
             assert parameterized.back(table) == identity, table
+
+    def test_full_tree_growth_is_linear(self) -> None:
+        """Reflection makes depth padding geometric; parity folds nothing."""
+        from esolangs.tools import parameterized
+
+        sizes = []
+        for n in range(6, 11):
+            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+            sizes.append(len(parameterized.back(table)))
+        assert all(later <= 2 * earlier for earlier, later in pairwise(sizes))
 
     @pytest.mark.parametrize(
         "table",

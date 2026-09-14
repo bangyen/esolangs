@@ -22,6 +22,7 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     best_input_order,
+    constant_span_test,
     decision_tree_tokens,
     essential_inputs,
     instantiate,
@@ -591,6 +592,7 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # repo's own interpreter.
     grid: dict[tuple[int, int], str] = {}
     next_row = [1]
+    constant = constant_span_test(truth_table)
 
     def leaf(level: int, value: str, row: int, col: int) -> None:
         # walk to the single answer cell, write a 1 there when the leaf's
@@ -602,9 +604,8 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
             grid[(row, col + k)] = ch
 
     def emit(level: int, lo: int, hi: int, row: int, col: int) -> None:
-        vals = {truth_table[r] for r in range(lo, hi)}
-        if level == n or len(vals) == 1:
-            leaf(level, vals.pop() if level < n else truth_table[lo], row, col)
+        if level == n or constant(lo, hi):
+            leaf(level, truth_table[lo], row, col)
             return
         mid = lo + (hi - lo) // 2
         grid[(row, col)] = "+"
