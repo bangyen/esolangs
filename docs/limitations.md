@@ -52,7 +52,7 @@ build dense n=13, but is outside the generator contract.
 
 Uncapped dense-program sizes at n=8/n=9: Polynomial 3.38/10.90 MB, COD
 0.94/3.67 MB, SLOW ACV MAMMALIAN 1.67/3.38 MB, Circuit Diagram 0.15/0.32 MB,
-123 0.22/0.75 MB, ROTfuck 0.09/0.19 MB, bit~ 0.03/0.07 MB, Factor
+123 0.22/0.75 MB, ROTfuck 0.02/0.03 MB, bit~ 0.03/0.07 MB, Factor
 0.02/0.04 MB. Run generated programs before claiming size or equivalence.
 
 ## Curation
