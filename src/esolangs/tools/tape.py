@@ -100,9 +100,8 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     (most significant first), ``n`` is the input count implied by the table length.
 
     BrainIf reads each input into a cell with ``if 0 input``, then a
-    recursive decision tree checks each cell with ``if 48/49 goto`` (the
-    groups' checks sit adjacent so a failed check falls through to the next
-    candidate).
+    recursive decision tree checks each cell with ``if 49 goto``; zero falls
+    through to its subtree without spelling a second destination.
 
     The answer byte is built *first*, on cell 0: 48 ``increment`` lines
     once, rather than a climb per digit.  There is no way to copy a byte in
@@ -130,7 +129,14 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     lines per skipped level and cancelled the fold exactly.
     """
     n = _validate_truth_table(truth_table)
-    entries: list[_Entry] = []
+    # Initial zero skips the two-line output trampoline.  Leaves later return
+    # with 48/49 to line 2, where one of the two guards forwards to the wide
+    # output-tail address; that address is rendered twice instead of per leaf.
+    entries: list[_Entry] = [
+        _Cmd("if 0 goto 4"),
+        _Cmd(f"if {_ASCII_ZERO} goto OUT0"),
+        _Cmd(f"if {_ASCII_ONE} goto OUT0"),
+    ]
     # The answer byte goes on cell 0 and the inputs above it, read from the
     # far end back down.  Building first means stepping out over cells that
     # are still zero, where one ``if 0 move right`` advances exactly one
@@ -157,8 +163,8 @@ def brainif(truth_table: str, width: int | None = None) -> str:
                 out.append(_Cmd(f"if {_ASCII_ONE} move left"))
             if int(truth_table[rows[0]]):
                 out.append(_Cmd(f"if {_ASCII_ZERO} increment"))
-            out.append(_Cmd(f"if {_ASCII_ZERO} goto OUT0"))
-            out.append(_Cmd(f"if {_ASCII_ONE} goto OUT0"))
+            out.append(_Cmd(f"if {_ASCII_ZERO} goto 2"))
+            out.append(_Cmd(f"if {_ASCII_ONE} goto 2"))
             return out
         # Level ``k`` reads input ``k - 1`` into cell ``n - k + 1``, so the
         # bit it selects is the table's usual most-significant-first one --
@@ -171,7 +177,6 @@ def brainif(truth_table: str, width: int | None = None) -> str:
         sub1 = build(g1, k + 1)
         return [
             _Cmd("if 0 input"),
-            _If(_ASCII_ZERO, l0),
             _If(_ASCII_ONE, l1),
             _MoveLeft(_ASCII_ZERO, l0),
             *sub0,

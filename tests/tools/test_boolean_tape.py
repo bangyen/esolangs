@@ -1807,11 +1807,11 @@ class TestBrainIf:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_structure(self) -> None:
-        """The answer byte is built first, then an input is read and tested."""
+        """An entry trampoline precedes the answer build and input tree."""
         program = boolean.brainif("10")
-        assert program.startswith("if 0 increment")
+        assert program.startswith("if 0 goto 4\nif 48 goto")
         assert "if 0 input" in program
-        assert "if 48 goto" in program
+        assert program.count("goto 2") == 4
 
     def test_the_answer_byte_is_built_once(self) -> None:
         """The climb to 48 is paid before the tree, not once per digit.
