@@ -55,12 +55,12 @@ after ignoring the performance/resource ceiling as specified above.
 
 | Generator | Proof | Qualification |
 | --- | --- | --- |
-| A Painter Ant | parameterized tree | finite grid layout |
+| A Painter Ant | parameterized tree | shared prefixes preserve the finite tree; the independent motif proof awaits entry/exit lemmas |
 | AddSubJump | tree | forward labels are emitted after the finite tree |
 | Algebraic Programming Language | minterms | base-26 names are unbounded |
 | Alight | tree | folded post-order layout |
 | ArrowQueue | parameterized tree | finite queue layout |
-| B-tapemark | tree | deliberately unfolded to preserve reads |
+| B-tapemark | tree | reflected finite grid; indexed table spans preserve the same leaves without recursive copies |
 | Back | parameterized tree | — |
 | BF-PDA | parameterized tree | — |
 | BFStack | minterms | — |
