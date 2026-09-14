@@ -249,6 +249,10 @@ class TestPackageSurface:
         for name in esolangs.__all__:
             assert hasattr(esolangs, name), name
 
+    def test_check_runnable_is_public(self) -> None:
+        """Its contract says callers besides ``run`` should use it."""
+        assert "check_runnable" in esolangs.__all__
+
     def test_stdlib_imports_are_not_advertised(self) -> None:
         for leaked in ("importlib", "pathlib", "signal", "threading", "Any"):
             assert leaked not in esolangs.__all__
@@ -278,7 +282,7 @@ class TestConventionsAreDiscoverable:
         )
         assert got == XOR
 
-    @pytest.mark.parametrize("name", ["123", "ArrowQueue", "Point Break", "Fargo"])
+    @pytest.mark.parametrize("name", ["123", "ArrowQueue", "Fargo"])
     def test_a_language_that_needs_explaining_explains_itself(self, name: str) -> None:
         """Termination-as-answer and Fargo's row index are not guessable."""
         assert esolangs.describe(name)["answer_convention"]
@@ -695,7 +699,7 @@ class TestTheThreadRefusalNamesAWayThrough:
         ``None`` terminates rather than hanging -- which is what makes it a
         real answer to "how do I do this off the main thread".
         """
-        for language in ("123", "ArrowQueue", "Point Break"):
+        for language in ("123", "ArrowQueue"):
             outcome = self._off_thread(
                 lambda language=language: esolangs.evaluate(  # type: ignore[misc]
                     language, "0110", timeout=None

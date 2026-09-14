@@ -104,15 +104,24 @@ def _slots(length: int) -> tuple[int, list[int]]:
     """Return an anchor start and the lines its commands occupy.
 
     The slots are the ``length`` smallest usable values of the first
-    anchor with enough of them, kept in visit order -- a subset of the
+    anchor covering ``length``, kept in visit order -- a subset of the
     trajectory's positions is still visited in trajectory order, so the
     commands run once each, in sequence, and the emitted size is the
     ``length``-th smallest value instead of the prefix peak (the peak is
     what capped the old placement at eight inputs).
+
+    The anchor is chosen by ``end``, not by the first one that merely has
+    the room: having room is not being the smallest, and a row further
+    down the table can hold ``length`` and still be the larger program.
+    Ignoring ``end`` cost up to 2.7x at ``n == 8`` and 1.8-2.3x at
+    ``n == 9``, never less than 1.0x anywhere.
     """
-    for _, start in ANCHORS:
+    for end, start in ANCHORS:
         values = _usable_values(start, _MAX_LINES)
-        if len(values) < length:
+        # ``end`` was derived at the committed ceiling; a tightened
+        # ``_MAX_LINES`` shrinks the trajectory out from under it, so the
+        # room is rechecked rather than trusted
+        if length > end or len(values) < length:
             continue
         bound = sorted(values)[length - 1]
         return start, [v for v in values if v <= bound]
@@ -123,7 +132,7 @@ def _slots(length: int) -> tuple[int, list[int]]:
     )
 
 
-def ztoalc_l(truth_table: str) -> str:
+def ztoalc_l(truth_table: str, width: int | None = None) -> str:
     """Build a ZTOALC L program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -155,6 +164,9 @@ def ztoalc_l(truth_table: str) -> str:
     """
     n = _validate_truth_table(truth_table)
     cmds = _commands(truth_table, n)
+    if width is not None and "r = u[t[s]][v]" in cmds and width < 14:
+        at = cmds.index("r = u[t[s]][v]")
+        cmds[at : at + 1] = ["r = t[s]", "r = u[r]", "r = r[v]"]
     start, slots = _slots(len(cmds))
     lines = [""] * max(slots)
     lines[0] = str(start)

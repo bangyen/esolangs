@@ -141,8 +141,10 @@ _NOT_SWEPT: dict[str, str] = {
     "container": "halts by exiting with status 0",
     # Answers by halting or looping forever rather than by printing, so
     # there is no output to compare a row against.
-    "point-break": "answers by termination, not by output",
     "123": "answers by termination, not by output",
+    "crement": "answers by termination, not by output",
+    "nopstacle": "answers by termination, not by output",
+    "vandevelo": "answers by termination, not by output",
     # The dumping languages print their whole final state -- a tape, a
     # register list, a queue, a RAM map -- and which part of that dump is
     # the answer is a fact about the language, not a suffix a sweep can

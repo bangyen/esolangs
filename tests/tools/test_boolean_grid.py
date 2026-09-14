@@ -1385,9 +1385,9 @@ class TestCircuitDiagram:
     """The Circuit Diagram generator (a real gate network, input-reading).
 
     Circuit Diagram draws boolean circuits, so a truth table is its native
-    idiom and the generator is a sum of minterms rather than a decision
-    tree: ``n`` input lines, a bus per literal, an ``a`` chain per minterm,
-    an ``o`` chain combining them, and a ``:`` that prints the answer.
+    idiom.  The generator folds adjacent cofactors into fixed mux circuits:
+    ``n`` input lines, one shared complement per selector that needs it,
+    and a ``:`` that prints the final signal.
 
     Every assertion here replays the generated program through the real
     interpreter over the table's *whole* input space, which is what makes
@@ -1434,30 +1434,20 @@ class TestCircuitDiagram:
     @pytest.mark.parametrize(
         ("table", "tildes"),
         [
-            ("0001", 0),  # AND: every minterm bit is 1, so no complement
+            ("0001", 1),  # selector 0 chooses whether selector 1 matters
             ("01", 0),  # identity: likewise
-            ("10", 1),  # NOT: its one minterm selects the complement
+            ("10", 1),  # NOT is the complemented selector
             ("0110", 2),  # XOR: both inputs appear negated and plain
         ],
     )
     def test_only_needed_complements_are_built(self, table: str, tildes: int) -> None:
-        """A ``~`` is drawn only when some minterm selects that complement.
-
-        Building all ``2n`` literals unconditionally left a gate driving a
-        bus nothing read, plus the tap and the run out to it -- for AND that
-        was more than half the drawing.
-        """
+        """A ``~`` is drawn only when a mux rule needs the inverse selector."""
         from esolangs.tools.circuit_diagram import circuit_diagram
 
         assert circuit_diagram(table).count("~") == tildes
 
-    def test_a_dense_table_is_drawn_as_its_complement(self) -> None:
-        """More ones than zeros costs less built from the zero rows.
-
-        A chain is a gate per literal plus the runs feeding it, so the
-        saving is far larger than the one ``~`` that inverts the result:
-        NAND3 selects seven rows drawn directly and one complemented.
-        """
+    def test_complementary_sparse_tables_have_comparable_drawings(self) -> None:
+        """Shannon folding handles a function and its complement symmetrically."""
         from esolangs.tools.circuit_diagram import circuit_diagram
 
         dense = circuit_diagram("11111110")  # NAND3: seven ones
@@ -1707,17 +1697,17 @@ class TestCircuitDiagramLayoutGuards:
         ("table", "rows", "columns"),
         [
             ("01", 1, 4),
-            ("0001", 7, 11),
+            ("0001", 11, 17),
             ("0110", 23, 35),
             # 91 columns before gate groups were recycled, and the width is
             # what moves when they stop being: the rows are untouched, since
             # reuse gives back columns and never a band.
-            ("00010111", 61, 61),
+            ("00010111", 33, 49),
             # Four inputs, where the two savings compound: 219 columns as a
             # left fold with no reuse, 99 once groups were recycled, and 87
             # once the folds were balanced.  The rows never move -- neither
             # change gives back a band.
-            ("0110100110010110", 147, 87),
+            ("0110100110010110", 107, 99),
         ],
     )
     def test_the_drawing_has_exact_dimensions(
@@ -1740,41 +1730,35 @@ class TestCircuitDiagramLayoutGuards:
         assert len(drawing) == rows
         assert max(len(row) for row in drawing) == columns
 
-    def test_balancing_the_folds_keeps_the_width_logarithmic(self) -> None:
-        """Each extra input doubles the minterms and costs a bounded step.
+    def test_the_online_fold_keeps_the_width_logarithmic(self) -> None:
+        """Each extra input doubles the cofactors and costs a bounded step.
 
         A gate sits right of every bus it reads, so the drawing's width is
         set by the gate network's *depth*.  Folded left that depth is the
         number of parts, and an extra input would roughly double it; folded
         in half it is the logarithm, so an extra input adds one level.
 
-        The pins are what a regression would move.  Left-folded, the same
-        four are 61, 99, 161 and 271.
+        The pins are what a regression would move.
         """
         widths = {}
         for n in (3, 4, 5, 6):
             table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
             drawing = boolean.circuit_diagram(table)
             widths[n] = max(len(row) for row in drawing.splitlines())
-        assert widths == {3: 61, 4: 87, 5: 113, 6: 133}
+        assert widths == {3: 67, 4: 99, 5: 131, 6: 163}
         steps = [widths[n + 1] - widths[n] for n in (3, 4, 5)]
-        assert max(steps) <= 30, steps
+        assert max(steps) <= 32, steps
 
-    def test_a_balanced_fold_holds_only_its_depth_live(self) -> None:
-        """The halves are drawn one after the other, not all up front.
+    def test_the_online_fold_holds_only_one_partial_per_level(self) -> None:
+        """Binary carries combine immediately rather than accumulating a level.
 
-        Building every minterm chain first and then combining them would
-        have the same depth but put each chain's result on a bus of its
-        own, spending in columns what the balancing saved.  Drawing each
-        half fully before starting the next keeps at most one partial
-        result per level alive, which is why the width falls rather than
-        merely moving.
+        Delaying carries would put every cofactor result on a bus of its own,
+        spending in columns what immediate binary carries save.
         """
-        # Sixteen minterms at n=5: all-up-front would need sixteen live
-        # buses, which at two columns each could not fit in this width.
+        # A level-wide fold would need sixteen live buses here.
         table = "".join(str(bin(i).count("1") % 2) for i in range(32))
         drawing = boolean.circuit_diagram(table)
-        assert max(len(row) for row in drawing.splitlines()) == 113
+        assert max(len(row) for row in drawing.splitlines()) == 131
 
     def test_real_layouts_never_come_within_one_cell(self) -> None:
         """The generator's spacing keeps every table clear of the guard.
@@ -1898,14 +1882,12 @@ class TestCircuitDiagramLayoutGuards:
 
 
 class TestSuperSNUSP:
-    """The Super SNUSP generator (an ANF evaluator over a value stack).
+    """The Super SNUSP generator (bounded ANF or a packed lookup).
 
-    Super SNUSP has a random ``=`` opcode the generator avoids entirely by
-    evaluating the truth table's algebraic normal form: an XOR of input
-    products, which is exactly what ``^`` and ``&`` give.  Five two-input
-    tables have hand-written short forms; everything else is built by
-    :func:`_emit_anf`, and a table that ignores an input is rebuilt over its
-    essential ones and kept only when that is shorter.
+    Super SNUSP has a random ``=`` opcode the generator avoids entirely.
+    Small tables choose between an ANF evaluator and the packed lookup; wider
+    tables use only the linear lookup.  Five two-input tables have shorter
+    hand-written forms.
 
     Every assertion here replays the generated program through the real
     interpreter over the table's *whole* input space.  That is what makes
@@ -1917,13 +1899,14 @@ class TestSuperSNUSP:
     that; a replayed truth table can.
     """
 
-    def test_cost_model_selects_the_emitted_anf(self) -> None:
-        """The selector prices both ANF layouts exactly through three inputs."""
+    def test_cost_model_selects_the_smallest_form(self) -> None:
+        """The selector prices both ANF layouts and the lookup exactly."""
         from esolangs.tools.helpers import essential_inputs, read_at
         from esolangs.tools.super_snusp import (
             _TWO_INPUT_SHORT,
             _anf_cost,
             _emit_anf,
+            _emit_lookup,
             super_snusp,
         )
 
@@ -1938,7 +1921,9 @@ class TestSuperSNUSP:
                 assert full_cost == len(_emit_anf(n, table, full))
                 assert reduced_cost == len(_emit_anf(n, reduced, used))
                 if table not in _TWO_INPUT_SHORT:
-                    assert len(super_snusp(table)) == min(full_cost, reduced_cost)
+                    assert len(super_snusp(table)) == min(
+                        full_cost, reduced_cost, len(_emit_lookup(table))
+                    )
 
     @staticmethod
     def run_table(table: str) -> str:
@@ -2016,6 +2001,21 @@ class TestSuperSNUSP:
         the products that share its span.
         """
         assert self.run_table("0110100110010110") == "0110100110010110"
+
+    def test_the_lookup_scales_linearly_and_runs(self) -> None:
+        """The unbounded path approaches its one-or-two commands per row."""
+        from esolangs.tools.super_snusp import super_snusp
+
+        ratios = []
+        for n in range(5, 13):
+            table = "".join(str(i.bit_count() & 1) for i in range(2**n))
+            ratios.append(len(super_snusp(table)) / len(table))
+        assert ratios == sorted(ratios, reverse=True)
+        assert ratios[-1] < 1.6
+
+        n = 6
+        table = "".join(str(i.bit_count() & 1) for i in range(2**n))
+        assert self.run_table(table) == table
 
     @pytest.mark.parametrize(
         "table", ["01", "0110", "0001", "01101001", "11110000", "00010111"]
@@ -2101,12 +2101,7 @@ class TestSuperSNUSP:
 
 
 class TestAlightWidth:
-    """Alight's boustrophedon, which is the only way its line can fold.
-
-    A command is a word walked cell by cell, so a row end cuts one in half
-    and no after-the-fact reflow can touch it.  What the generator has that
-    a wrapper does not is ``turn``.
-    """
+    """Alight minimizes its longer dimension under the width bound."""
 
     @staticmethod
     def _run(program: str, bits: list[str]) -> str:
@@ -2115,88 +2110,49 @@ class TestAlightWidth:
         stdin = "".join(f"{bit}\n" for bit in bits)
         return esolangs.run("Alight", program, stdin=stdin, timeout=5.0).strip()
 
-    def test_a_width_folds_the_walk_and_it_still_computes(self) -> None:
-        """The folded walk computes what the straight one did."""
+    def test_a_width_turns_the_straight_walk_vertical(self) -> None:
+        """A narrow program is one column and has no padding."""
         for table in ("0110", "01101001", "0110100110010110"):
             n = len(table).bit_length() - 1
             flat = boolean.alight(table)
             wide = max(len(row) for row in flat.splitlines())
-            floor = max(len(row) for row in boolean.alight(table, 1).splitlines())
-            assert floor < wide, f"{table} never narrows"
+            assert max(len(row) for row in boolean.alight(table, 1).splitlines()) == 1
             for width in (1, 40, 60, wide):
                 narrow = boolean.alight(table, width)
                 columns = max(len(row) for row in narrow.splitlines())
-                assert columns <= max(width, floor), (table, width, columns)
+                assert columns <= width, (table, width, columns)
                 for combo in range(2**n):
                     bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                     assert self._run(narrow, bits) == table[combo], (table, width)
 
-    def test_splitting_the_literal_takes_the_floor_off_the_table(self) -> None:
-        """The literal was the floor; chunking it means the arity no longer is.
-
-        A string is one token of one command, so an unsplit table literal
-        makes the floor ``2 ** n`` -- 48, 64, 96, 160 columns at n=4..7,
-        doubling with every input even though the flat program's width
-        barely grows.  Split into guarded chunks, the floor is one chunk
-        plus its guard and the turn they share a row with, which the width
-        picks: it stops tracking ``n`` altogether.
-        """
-        floors = {}
-        for n in (4, 5, 6, 7):
-            table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
-            narrow = boolean.alight(table, 1)
-            floors[n] = max(len(row) for row in narrow.splitlines())
-            # the unsplit literal alone would have been wider than this
-            literal = len(f'set r at{{"{table}", i+0.5}};')
-            assert floors[n] < literal or n == 4, (n, floors[n], literal)
-        assert max(floors.values()) - min(floors.values()) <= 4, floors
-
     def test_a_width_is_met_at_every_arity(self) -> None:
-        """Which is what splitting the literal buys: 80 columns holds at n=7.
-
-        Unsplit, the literal alone put n=6 at 96 columns however narrow the
-        request.
-        """
+        """Every requested width holds at every practical arity."""
         for n in (4, 5, 6, 7):
             table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
             for width in (60, 80):
                 narrow = boolean.alight(table, width)
                 assert max(len(row) for row in narrow.splitlines()) <= width, (n, width)
 
-    def test_a_chunk_and_its_guard_stay_on_one_row(self) -> None:
-        """``skip`` guards the *next command along the heading*.
+    @pytest.mark.parametrize(
+        ("table", "width", "dimensions"),
+        [
+            ("0001", 30, (1, 75)),
+            ("0001", 40, (36, 43)),
+            ("0001", 80, (43, 33)),
+            ("01101001", 80, (43, 43)),
+            ("0110100110010110", 80, (49, 43)),
+        ],
+    )
+    def test_the_longer_dimension_is_minimal(
+        self, table: str, width: int, dimensions: tuple[int, int]
+    ) -> None:
+        """Pin each transition between the vertical and folded optima."""
+        rows = boolean.alight(table, width).splitlines()
+        assert (max(map(len, rows)), len(rows)) == dimensions
 
-        A fold between the two would leave the ``skip`` skipping the turn
-        instead of the lookup, and the walk would carry straight on off the
-        grid.  So the pair is one unit to the folder, and the check is that
-        every ``skip`` has its lookup after it on the same row -- read in
-        the direction that row runs.
-        """
-        table = "".join(str(bin(i).count("1") % 2) for i in range(64))
-        rows = boolean.alight(table, 60).splitlines()
-        seen = 0
-        for row in rows:
-            for text in (row, row[::-1]):
-                for index in range(len(text) - 4):
-                    if text[index : index + 4] == "skip":
-                        seen += 1
-                        assert "set r at{" in text[index:], text
-        assert seen, "no guarded chunk in the drawing"
-
-    def test_a_folded_row_keeps_the_space_inside_its_turn(self) -> None:
-        """``turn right`` has a space, and a vertical turn writes it as a cell.
-
-        Stripping a row's trailing blank -- which is what every other
-        generator here does -- deletes that space and the walk reads
-        ``turnright``.  So rows are trimmed to their last *written* cell
-        instead, and a row whose only content is that blank stays a blank.
-        """
-        narrow = boolean.alight("0110100110010110", 40)
-        rows = narrow.splitlines()
-        assert any(row.strip() == "" and row != "" for row in rows), (
-            "the turn's own space was stripped away"
-        )
-        assert "turnright" not in narrow.replace("\n", "")
+    def test_width_must_have_one_column(self) -> None:
+        with pytest.raises(ValueError, match="at least 1"):
+            boolean.alight("0001", 0)
 
 
 class TestSuperSNUSPWidth:

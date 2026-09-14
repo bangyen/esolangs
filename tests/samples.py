@@ -129,7 +129,6 @@ DUMPS_ON_THE_POST_HALT_STEP = frozenset(
         "Bitdeque",
         "LaserFuck",
         "ArrowQueue",
-        "Point Break",
         "Back",
     }
 )
@@ -189,8 +188,8 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "BF-PDA": ("<@.", ""),
     "BFStack": (">+.", ""),
     "Back": ("-*", ""),
+    "B-tapemark": (">OK!", ""),
     "BIO": ("0ox;0ix{1ox;};1ix;", ""),
-    "Between": ("'a'v.\n[a]s|3|\n[a]p.\n.x.", ""),
     "bit~": ("~(", ""),
     "Bitdeque": ("PUSH INVERT", ""),
     "BrainIf": ("if 0 output", ""),
@@ -204,19 +203,20 @@ SAMPLES: dict[str, tuple[str, str]] = {
     # VM test asserts exactly that of "A=0:\n+1 A>=0"); the empty program
     # is the one that reaches a halt.
     "Container": ("", ""),
+    "Crement": ("+J 0 0", ""),
     # The wiki's truth machine, which halts only on a zero: the "1"
     # branch loops forever, so the halting input is the one to sweep.
     "CV(N)(C)": ("soθɰ̊oθʋi", "0\n"),
     "Decleq": ("-2 5 9 9 9 65 0 0", ""),
     "Dig": (">$5:\n 2 ", ""),
     "Dimensional": ("+.+.+.", ""),
+    "EGL": ("1,1:+=", ""),
     "Eval": ("0+.", ""),
     "Factor": ("15", ""),
     "Fargo": ("$", "0\n"),
     "Flowchart": (FLOWCHART_TRUTH_MACHINE, "0\n"),
     "Forbin": ("main { x = 1; }", ""),
     "Forþ": ("65.", ""),
-    "function x(y)": ("function f()\n[[~]]", "a\n"),
     "Grapheme": ("FAFY", ""),
     "Home Row": ("ak;", ""),
     # A corrected truth machine (the wiki's own is inverted -- see the
@@ -225,18 +225,17 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Inject": (INJECT_TRUTH_MACHINE, "0\n"),
     "Interprogck8": ("nNnN\ndiv", ""),
     "Jaune": ("++^", ""),
-    "Lamfunc": ("p 5", ""),
     "LaserFuck": ("ÿ   x\n    +\n    o", ""),
     "Minifuck": (".", ""),
     "Minsky Swap": ("+", ""),
     "Modulous": ("[PSH INT 5][DUP][PRT INT]", ""),
     "NoComment": ("ciio", ""),
+    "Nopstacle": (" #\n##", ""),
     "Packlang": (
         "Package : IO {\n  Integer main {\n    charPut(65);\n    0;\n  }\n} p;",
         "",
     ),
     "Painfuck": ("pp", ""),
-    "Point Break": ("LET zero:=0", "0"),
     "Polynomial": ("f(x) = x^2+4", ""),
     "Qoibl": ("we y we yyeeee we\ntt qe y qe tt", ""),
     "RAM0": ("ZA", ""),
@@ -247,9 +246,9 @@ SAMPLES: dict[str, tuple[str, str]] = {
     "Streetcode": (STREETCODE, ""),
     "Super SNUSP": ('"65.', ""),
     "Suffolk": ("!" * 66 + "<.", ""),
-    "Suptiftam": ("x=7", ""),
     "Taglate": ("abc\ni", ""),
     "Unsquare": ("Io", ""),
+    "Vandevelo": ("Nil?", ""),
     "WII2D": (">~.\n!", ""),
     "ZTOALC L": ("10\nprint 65", ""),
 }

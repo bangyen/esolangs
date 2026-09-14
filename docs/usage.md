@@ -28,6 +28,7 @@ steps rather than the result, they are `generate`, `encode_inputs`, `run`,
 <!-- PUBLIC-API:START -->
 
 - `esolangs.check_program` -- return `program` as source, having checked what can be checked here
+- `esolangs.check_runnable` -- reject a program that is a path or an unfilled template
 - `esolangs.check_stdin` -- refuse `stdin` that cannot be what `language` wants to read
 - `esolangs.describe` -- return a structured description of `language`
 - `esolangs.encode_inputs` -- return the stdin that feeds `bits` to a `language` program
@@ -66,8 +67,8 @@ esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0\n1\n0\n1\n'
 | Grapheme | `line_per_bit` | `%`/`A` | `'A\n%\nA\n'` |
 | Taglate | `line_per_bit_padded` | `0`/`1` | `'0\n1\n0\n1\n'` |
 
-The other 44 that read stdin take one `0`/`1` line per bit -- `'1\n0\n1\n'`.
-The remaining 17 read no stdin at all: their inputs are
+The other 43 that read stdin take one `0`/`1` line per bit -- `'1\n0\n1\n'`.
+The remaining 18 read no stdin at all: their inputs are
 embedded by `instantiate`.  Call `encode_inputs` rather than reading a row off
 this table; it is generated from `describe`, and so is the table.
 
@@ -75,8 +76,8 @@ this table; it is generated from `describe`, and so is the table.
 
 A shape the checker cannot tell apart from a legitimate one still answers
 the wrong row, which is why the encoder is the interface and the table is
-only a reference. `examples/boolean/MANIFEST.md` lists every language's
-input column.
+only a reference. [`src/esolangs/examples/MANIFEST.md`](../src/esolangs/examples/MANIFEST.md)
+lists every language's input column.
 
 Stdin is checked against the shape and alphabet a language declares:
 `esolangs run` warns, `esolangs run --judge` refuses, and
@@ -90,7 +91,7 @@ Seventeen languages embed the inputs in the program rather than reading
 them, so `generate` returns a template with a `{Xi}` slot per input. Fill
 it with `esolangs.instantiate(language, template, bits)`; running one
 unfilled is refused. `esolangs list --details` marks them `tmpl` and
-[languages.md](languages.md#parameterized-generators) lists them.
+identifies each one.
 
 ## Reading the answer
 

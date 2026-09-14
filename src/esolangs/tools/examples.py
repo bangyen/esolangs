@@ -6,7 +6,7 @@ those files: each
 :class:`BooleanExample` records the generator, the truth table, and the input
 combination that produced its program, plus how the interpreter is invoked.
 
-The example writer (``scripts/write_examples.py``) and the test that
+The example writer (``scripts/generate.py examples``) and the test that
 keeps the files in sync (``tests/scripts/test_examples.py``) both derive from
 :data:`BOOLEAN_EXAMPLES`, so a committed program is always exactly what its
 generator produces today.
@@ -62,7 +62,9 @@ from dataclasses import dataclass, replace
 
 from esolangs.registry import Generator, canonical_id
 from esolangs.tools.a_painter_ant import _instantiate_apa
+from esolangs.tools.crement import instantiate_crement
 from esolangs.tools.helpers import instantiate
+from esolangs.tools.nopstacle import instantiate_nopstacle
 from esolangs.tools.parameterized import _instantiate_arrowqueue
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
@@ -306,15 +308,6 @@ def _fill_nocomment(template: str, bits: list[int]) -> str:
         template,
         bits,
         lambda _i, b: "c" if b == 0 else "i",
-    )
-
-
-def _fill_lamfunc(template: str, bits: list[int]) -> str:
-    # each {Xi} fills a `vs v{i}` store with the binary literal
-    return instantiate(
-        template,
-        bits,
-        lambda _i, b: "0b" + str(b),
     )
 
 
@@ -576,6 +569,16 @@ def _fill_arrowqueue(template: str, bits: list[int]) -> str:
     return _instantiate_arrowqueue(template, bits)
 
 
+def _fill_nopstacle(template: str, bits: list[int]) -> str:
+    """Specialize the prototype's table for one embedded input row."""
+    return instantiate_nopstacle(template, bits)
+
+
+def _fill_crement(template: str, bits: list[int]) -> str:
+    """Specialize the prototype's table for one embedded input row."""
+    return instantiate_crement(template, bits)
+
+
 # Example file stem -> how that example is built and run.  Stems match the
 # language's display name lowercased with spaces as dashes.
 BOOLEAN_EXAMPLES: dict[str, BooleanExample] = {}
@@ -595,7 +598,7 @@ def _register() -> None:
             note="an executed line prints its result, so the answer ends in a newline",
         ),
         "alight": _reader(b.alight, "grid_based.alight", split=True),
-        "between": _reader(b.between, "register_based.between", split=True),
+        "b-tapemark": _reader(b.b_tapemark, "grid_based.b_tapemark"),
         "bfstack": _reader(b.bfstack, "stack_based.bfstack"),
         "bit~": _reader(b.bit_tilde, "tape_based.bit_tilde"),
         "brainfuck": _reader(b.brainfuck, "tape_based.brainfuck"),
@@ -646,6 +649,7 @@ def _register() -> None:
         "decleq": _reader(b.decleq, "register_based.decleq"),
         "dig": _reader(b.dig, "grid_based.dig", split=True),
         "dimensional": _reader(b.dimensional, "tape_based.dimensional"),
+        "egl": _reader(b.egl, "grid_based.egl"),
         "factor": _reader(b.factor, "tape_based.factor"),
         # Fargo reads one *number* before the program starts, not a bit per
         # line, and ``@ k`` indexes that number's bits.  The boolean
@@ -663,7 +667,6 @@ def _register() -> None:
         "flowchart": _reader(b.flowchart, "grid_based.flowchart", split=True),
         "forbin": _reader(b.forbin, "other.forbin"),
         "forþ": _reader(b.forth, "stack_based.forth"),
-        "function-x(y)": _reader(b.function_x_y, "other.function_x_y"),
         "grapheme": _reader(
             b.grapheme,
             "stack_based.grapheme",
@@ -695,20 +698,6 @@ def _register() -> None:
         "modulous": _reader(b.modulous, "stack_based.modulous"),
         "packlang": _reader(b.packlang, "other.packlang"),
         "painfuck": _reader(b.painfuck, "tape_based.painfuck"),
-        "point-break": _reader(
-            b.point_break,
-            "register_based.point_break",
-            answer_mode="termination",
-            answer_values=("halts", "diverges"),
-            expected="1 0 1 1 0 0 0 1",
-            note=(
-                "Point Break answers by termination -- it halts for a 0 "
-                "result and loops forever for a 1, so only the halting "
-                "branch is committed.  The numbers printed are its "
-                "interpreter-only variable dump, which the verdict does not "
-                "read: the answer is that the program halted at all"
-            ),
-        ),
         "polynomial": _reader(b.polynomial, "register_based.polynomial"),
         "qoibl": _reader(b.qoibl, "register_based.qoibl", split=True),
         "rotfuck": _reader(b.rotfuck, "tape_based.rotfuck"),
@@ -720,7 +709,6 @@ def _register() -> None:
         "streetcode": _reader(b.streetcode, "grid_based.streetcode", split=True),
         "super-snusp": _reader(b.super_snusp, "grid_based.super_snusp", split=True),
         "suffolk": _reader(b.suffolk, "tape_based.suffolk"),
-        "suptiftam": _reader(b.suptiftam, "other.suptiftam"),
         "taglate": _reader(
             b.taglate,
             "queue_based.taglate",
@@ -734,6 +722,14 @@ def _register() -> None:
             "every row whose top bit is set wrongly",
         ),
         "unsquare": _reader(b.unsquare, "stack_based.unsquare"),
+        "vandevelo": _reader(
+            b.vandevelo,
+            "other.vandevelo",
+            answer_mode="termination",
+            answer_values=("halts", "diverges"),
+            expected="",
+            note="Vandevelo answers by terminating: nil halts and not nil loops",
+        ),
         "ztoalc-l": _reader(b.ztoalc_l, "other.ztoalc_l", split=True),
         "3d-brainfuck": _reader(b.three_d_brainfuck, "tape_based.three_d_brainfuck"),
         "3x": _reader(b.three_x, "stack_based.three_x"),
@@ -793,7 +789,6 @@ def _register() -> None:
         ),
         "eval": _embedded(b.eval, "stack_based.eval", _fill_eval),
         "home-row": _embedded(b.home_row, "tape_based.home_row", _fill_home_row),
-        "lamfunc": _embedded(b.lamfunc, "other.lamfunc", _fill_lamfunc),
         "minifuck": _embedded(b.minifuck, "tape_based.minifuck", _fill_minifuck),
         "minsky-swap": _embedded(
             b.minsky_swap,
@@ -865,6 +860,31 @@ def _register() -> None:
                 "committed.  The headings printed are its interpreter-only "
                 "queue dump, which the verdict does not read: the answer is "
                 "that the program halted at all"
+            ),
+        ),
+        "nopstacle": _embedded(
+            b.nopstacle,
+            "grid_based.nopstacle",
+            _fill_nopstacle,
+            answer_mode="termination",
+            answer_values=("halts", "diverges"),
+            expected="",
+            split=True,
+            note=(
+                "Nopstacle answers by termination: a local repeated state "
+                "halts for 0 and crossing repeated copies forever is 1"
+            ),
+        ),
+        "crement": _embedded(
+            b.crement,
+            "other.crement",
+            _fill_crement,
+            answer_mode="termination",
+            answer_values=("halts", "diverges"),
+            expected="",
+            note=(
+                "Crement answers by termination: a false jump halts for 0 "
+                "and a positive self-jump diverges for 1"
             ),
         ),
     }

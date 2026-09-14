@@ -21,12 +21,10 @@ rather than a blanket post-processing pass:
   newlines as row separators, so a newline moves code to another row.
 - NoComment has no comment syntax at all -- an unrecognized character is a
   load error, and that includes ``\n``.
-- Forbin would tolerate a reflow -- its interpreter reads whitespace, not
-  lines -- but its ``out`` statements sit one per line inside a ``main {}``
-  block, and that layout is how the language is meant to be read.  Packing
-  them to a width costs more than the ragged right edge it saves, so a
-  language whose own idiom is one-statement-per-line is left alone even
-  when reflowing it would be safe.
+- Forbin and Packlang tolerate reflow -- their interpreters read whitespace,
+  not lines -- but their statements sit on indented lines inside braces.
+  Their wrapper preserves those lines and only folds one that exceeds the
+  requested width.
 
 ROTfuck used to belong on that list: its interpreter rotated the program on
 *every* character the pointer passed, comments included, so an inserted
@@ -97,7 +95,7 @@ queue and the rest are commands, so its wrapper keeps that seed on its own
 row and folds only what follows.  :data:`MULTILINE` names the languages
 whose wrappers handle their own newlines that way.
 
-Most wrappers only decide *where* the newlines go.  Two also decide where
+Most wrappers only decide *where* the newlines go.  Two layouts also decide where
 the tokens sit within a line, each following the shape its language's
 programs actually have.  :func:`_bio` indents a nested BIO program two
 spaces per loop level, since the boolean generator nests one loop per
@@ -114,7 +112,9 @@ Polynomial gets its own wrapper for a related reason: its one-character
 tokens are the ``+`` and ``-`` between terms, and :func:`_polynomial` glues
 each to the term it signs so no line is just a sign.  That wrapper then puts
 one term to a line rather than packing them to the width, for the reason its
-docstring gives.
+docstring gives.  SLOW ACV MAMMALIAN uses the same grid layout with a fixed
+four-character cell: its long ``SEED`` runs form the visible structure, while
+the other command words span whole cells.
 
 :data:`WRAPPERS` maps a language id to the wrapper it needs; a language
 absent from it is not wrapped.  :func:`wrap_program` is the entry point the
@@ -162,6 +162,17 @@ def wrap_space_delimited(program: str, width: int) -> str:
     return _join_tokens(program.split(), width, separator=" ")
 
 
+def _indented(program: str, width: int) -> str:
+    """Wrap each source line separately, preserving its leading indentation."""
+    lines: list[str] = []
+    for line in program.split("\n"):
+        indent = line[: len(line) - len(line.lstrip())]
+        content = line[len(indent) :]
+        wrapped = wrap_space_delimited(content, max(1, width - len(indent)))
+        lines.extend(indent + part for part in wrapped.split("\n"))
+    return "\n".join(lines)
+
+
 def wrap_grid(program: str, width: int) -> str:
     """Wrap a whitespace-delimited program into a right-aligned grid.
 
@@ -192,7 +203,13 @@ def wrap_grid(program: str, width: int) -> str:
     tokens = program.split()
     if not tokens:
         return program
-    cell = _cell_width(tokens)
+    return _wrap_grid(tokens, width, _cell_width(tokens))
+
+
+def _wrap_grid(
+    tokens: list[str], width: int, cell: int, *, left_aligned: bool = False
+) -> str:
+    """Align ``tokens`` on a lattice whose base cell is ``cell``."""
     # A row of k cells is k cells plus the k-1 single spaces between them.
     per_row = max(1, (width + 1) // (cell + 1))
     lines: list[str] = []
@@ -201,17 +218,32 @@ def wrap_grid(program: str, width: int) -> str:
     for token in tokens:
         span = _span(len(token), cell)
         if row and used + span > per_row:
-            lines.append(" ".join(row))
+            lines.append(" ".join(row).rstrip())
             row, used = [], 0
-        # A token spanning k cells is right-aligned across the whole span:
-        # its k cells plus the k-1 separators they absorb.
-        row.append(token.rjust(span * cell + span - 1))
+        # A token spanning k cells occupies its k cells plus the k-1 separators
+        # they absorb.
+        slot = span * cell + span - 1
+        row.append(token.ljust(slot) if left_aligned else token.rjust(slot))
         used += span
     # The loop ends by appending, and an empty ``tokens`` returned above, so
     # ``row`` always holds the last row by the time it is flushed here.
     if row:  # pragma: no branch - never empty; see above
-        lines.append(" ".join(row))
+        lines.append(" ".join(row).rstrip())
     return "\n".join(lines)
+
+
+def _mammalian(program: str, width: int) -> str:
+    """Wrap Mammalian on four-character cells, one cell per ``SEED``.
+
+    ``SEED`` is the construction's unit: it forms nearly all long runs in a
+    generated program.  The other command words span two or three cells, so
+    every following ``SEED`` returns to the same lattice without padding all
+    cells to the longest word.
+    """
+    tokens = program.split()
+    if not tokens:
+        return program
+    return _wrap_grid(tokens, width, 4, left_aligned=True)
 
 
 def _cell_width(tokens: list[str]) -> int:
@@ -395,7 +427,7 @@ _MINIFUCK_COMMAND = r"\[+.|."
 # adding 1 twice is adding 2 -- so a run needs no rule of its own.
 _JAUNE_COMMAND = r"\d+[-+:?!$@]|v[-+?!@]|."
 _BRACKET_LITERAL = r"\[[^\]]*\]|."
-_QUOTE_LITERAL = r'"[^"]*"|.'
+_EVAL_UNIT = r'"[^"]*"|\?.|.'
 
 
 def _bio(program: str, width: int) -> str:
@@ -624,8 +656,8 @@ def _bracket_literal(program: str, width: int) -> str:
 
 
 def _quote_literal(program: str, width: int) -> str:
-    """Wrap Eval, keeping a double-quoted literal whole."""
-    return wrap_tokens(program, width, _QUOTE_LITERAL)
+    """Wrap Eval, keeping literals and conditional commands whole."""
+    return wrap_tokens(program, width, _EVAL_UNIT)
 
 
 def _polynomial(program: str, width: int) -> str:
@@ -850,10 +882,9 @@ WRAPPERS = {
     # 123 is single-character commands throughout -- its trailing ``1`` is a
     # terminator, not a structural line -- so any position is a legal break.
     "one_two_three": wrap_chars,
-    # SLOW ACV MAMMALIAN's commands are whole words (``SEED``, ``SPRINT``,
-    # ``DIGEST``), so it wraps on whitespace like the numeric languages;
-    # breaking by character count would split a word and change the program.
-    "slow_acv_mammalian": wrap_space_delimited,
+    # SLOW ACV MAMMALIAN's ``SEED`` runs are its visible unit, so four-character
+    # cells align them while its longer command words span whole cells.
+    "slow_acv_mammalian": _mammalian,
     # Space-delimited too, and the space is the only safe break: Lamfunc's
     # ``vs``/``vg``/``0b1`` and RAM0's operands (``L C 19``) are multi-
     # character tokens that a character wrap splits.  RAM0's numbers are
@@ -888,6 +919,11 @@ WRAPPERS = {
     # One statement a line, each of space-separated tokens, and a newline
     # between two tokens is just whitespace -- so each line folds on its own.
     "qoibl": _qoibl,
+    # Both parsers treat every newline as ordinary whitespace, but their
+    # generators already emit indented blocks.  Keep those statement lines
+    # and fold only an individual line that exceeds the requested width.
+    "forbin": _indented,
+    "packlang": _indented,
 }
 
 
@@ -901,7 +937,9 @@ WRAPPERS = {
 # but every one is a statement, so its wrapper folds each separately rather
 # than reflowing the program as one stream.  The language would not notice
 # the difference -- a newline is whitespace to it -- but the reader would.
-MULTILINE = frozenset({"taglate", "pct_squared_minus_one", "qoibl"})
+MULTILINE = frozenset(
+    {"taglate", "pct_squared_minus_one", "qoibl", "forbin", "packlang"}
+)
 
 
 def takes_width(fn: Callable[..., str]) -> bool:

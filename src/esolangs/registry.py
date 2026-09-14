@@ -163,18 +163,17 @@ LANGUAGES: dict[str, Language] = {
         interpreter="tape_based.back",
         split=True,
     ),
+    "B-tapemark": Language(
+        "B-tapemark",
+        boolean=_boolean.b_tapemark,
+        id="b_tapemark",
+        interpreter="grid_based.b_tapemark",
+    ),
     "BF-PDA": Language(
         "BF-PDA",
         boolean=_boolean.bfpda,
         id="bf_pda",
         interpreter="stack_based.bf_pda",
-    ),
-    "Between": Language(
-        "Between",
-        "register_based.between",
-        boolean=_boolean.between,
-        id="between",
-        split=True,
     ),
     "brainfuck": Language(
         "brainfuck",
@@ -264,6 +263,12 @@ LANGUAGES: dict[str, Language] = {
         id="container",
         split=True,
     ),
+    "Crement": Language(
+        "Crement",
+        "other.crement",
+        boolean=_boolean.crement,
+        id="crement",
+    ),
     "Dig": Language(
         "Dig",
         "grid_based.dig",
@@ -276,6 +281,12 @@ LANGUAGES: dict[str, Language] = {
         "tape_based.dimensional",
         boolean=_boolean.dimensional,
         id="dimensional",
+    ),
+    "EGL": Language(
+        "EGL",
+        "grid_based.egl",
+        boolean=_boolean.egl,
+        id="egl",
     ),
     "Eval": Language(
         "Eval",
@@ -314,12 +325,6 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.forbin,
         id="forbin",
     ),
-    "function x(y)": Language(
-        "function x(y)",
-        "other.function_x_y",
-        boolean=_boolean.function_x_y,
-        id="function_x_y",
-    ),
     "Grapheme": Language(
         "Grapheme",
         boolean=_boolean.grapheme,
@@ -350,12 +355,6 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.jaune,
         id="jaune",
         interpreter="tape_based.jaune",
-    ),
-    "Lamfunc": Language(
-        "Lamfunc",
-        boolean=_boolean.lamfunc,
-        id="lamfunc",
-        interpreter="other.lamfunc",
     ),
     "LaserFuck": Language(
         "LaserFuck",
@@ -394,6 +393,13 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.nocomment,
         id="nocomment",
     ),
+    "Nopstacle": Language(
+        "Nopstacle",
+        "grid_based.nopstacle",
+        boolean=_boolean.nopstacle,
+        id="nopstacle",
+        split=True,
+    ),
     "Packlang": Language(
         "Packlang",
         "other.packlang",
@@ -411,13 +417,6 @@ LANGUAGES: dict[str, Language] = {
         "register_based.polynomial",
         boolean=_boolean.polynomial,
         id="polynomial",
-    ),
-    "Point Break": Language(
-        "Point Break",
-        boolean=_boolean.point_break,
-        id="point_break",
-        interpreter="register_based.point_break",
-        split=True,
     ),
     "Qoibl": Language(
         "Qoibl",
@@ -476,12 +475,6 @@ LANGUAGES: dict[str, Language] = {
         boolean=_boolean.suffolk,
         id="suffolk",
     ),
-    "Suptiftam": Language(
-        "Suptiftam",
-        "other.suptiftam",
-        boolean=_boolean.suptiftam,
-        id="suptiftam",
-    ),
     "3x": Language(
         "3x",
         "stack_based.three_x",
@@ -500,6 +493,12 @@ LANGUAGES: dict[str, Language] = {
         "stack_based.unsquare",
         boolean=_boolean.unsquare,
         id="unsquare",
+    ),
+    "Vandevelo": Language(
+        "Vandevelo",
+        "other.vandevelo",
+        boolean=_boolean.vandevelo,
+        id="vandevelo",
     ),
     "WII2D": Language(
         "WII2D",
@@ -619,7 +618,7 @@ def wiki_url(name: str) -> str:
     """Return the esolangs.org page for a language's display name.
 
     One function because there were two constructions -- :func:`describe`
-    built the URL inline and ``scripts/make_languages_doc.py`` built it
+    built the URL inline and ``scripts/generate.py docs`` built it
     again for the README -- so the same broken link shipped in both, and a
     fix to either would have left the other wrong.
     """

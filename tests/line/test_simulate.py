@@ -18,29 +18,67 @@ from __future__ import annotations
 
 import signal
 from collections.abc import Iterator
+from inspect import signature
 from pathlib import Path
 
 import pytest
 
+from esolangs.line import lattice
 from esolangs.line.extract import (
     crop_to_content,
     detect_scale,
     extract,
+    find_cursor,
     load_binary,
 )
 from esolangs.line.lattice import _DIRS, Stroke, Vertex
+from esolangs.line.mask import Mask, from_grey
+from esolangs.line.png import read_grey
 from esolangs.line.render import Node, chain, render
 from esolangs.line.simulate import IO, run
 
 # Anchored to this file rather than the working directory, so the wiki
 # fixtures resolve no matter where pytest is invoked from.
 FIXTURES = str(Path(__file__).parents[1] / "fixtures" / "line")
+INVALID_FIXTURES = Path(__file__).parents[1] / "fixtures" / "line_invalid"
+
+
+def test_lattice_probe_length_is_derived_from_unit() -> None:
+    """The star probe keeps its quarter-unit clearance at smaller units."""
+    default = signature(lattice.star).parameters["length"].default
+    assert default == max(1, lattice.UNIT * 3 // 4)
 
 
 def _io(inputs: list[int]) -> tuple[IO, list[int]]:
     outputs: list[int] = []
     values: Iterator[int] = iter(inputs)
     return IO(read=values.__next__, write=outputs.append), outputs
+
+
+class TestCursorSelection:
+    """Cursor detection refuses images whose start cannot be determined."""
+
+    def test_two_arrowheads_are_ambiguous(self) -> None:
+        """Two complete drawings supply two equally plausible cursors."""
+        drawing = from_grey(render(chain("+")).pixels)
+        offset = drawing.width + 10
+        mask = Mask(
+            drawing.height,
+            drawing.width * 2 + 10,
+            [row | (row << offset) for row in drawing.rows],
+        )
+        with pytest.raises(ValueError, match="ambiguous cursor: found 2"):
+            find_cursor(mask)
+
+    def test_larger_non_arrow_blob_does_not_hide_cursor(self) -> None:
+        """Shape, not component size alone, selects the sole arrowhead."""
+        drawing = from_grey(render(chain("+")).pixels)
+        rows = list(drawing.rows)
+        square = ((1 << 12) - 1) << (drawing.width + 4)
+        for y in range(2, 14):
+            rows[y] |= square
+        mask = Mask(drawing.height, drawing.width + 16, rows)
+        assert find_cursor(mask).x < drawing.width
 
 
 class TestBasicOps:
@@ -175,6 +213,26 @@ class TestWikiFixtures:
         io, outputs = _io([a, b])
         run(extract(f"{FIXTURES}/multiplication.png"), io=io)
         assert outputs == [expected]
+
+    def test_antialiased_scan(self) -> None:
+        """Softened 3px strokes retain their program and arithmetic."""
+        path = Path(FIXTURES) / "addition_antialiased_3x.png"
+        levels = {level for row in read_grey(path.read_bytes()) for level in row}
+        assert len(levels) == 12
+        stroke = extract(str(path))
+        for a, b in ((3, 2), (0, 5), (7, 3)):
+            io, outputs = _io([a, b])
+            run(stroke, io=io)
+            assert outputs == [a + b]
+
+
+def test_antialiased_resample_is_rejected() -> None:
+    """A resample that erases the stroke core fails instead of changing it."""
+    path = INVALID_FIXTURES / "addition_antialiased.png"
+    levels = {level for row in read_grey(path.read_bytes()) for level in row}
+    assert len(levels) == 194
+    with pytest.raises(ValueError, match="left 921 source pixels unaccounted"):
+        extract(str(path))
 
 
 def _build_decrement_loop() -> Stroke:

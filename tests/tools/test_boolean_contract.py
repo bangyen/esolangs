@@ -232,13 +232,9 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 # builder that emits one fixed order, so a test can compare the two.
 def _reordering_generators() -> list[object]:
     from esolangs.tools.helpers import _decision_tree_program
-    from esolangs.tools.other import (
-        _between_ordered,
-        _forbin_ordered,
-    )
+    from esolangs.tools.other import _forbin_ordered
     from esolangs.tools.parameterized import (
         _bitdeque_ordered,
-        _lamfunc_ordered,
         _ram0_ordered,
     )
     from esolangs.tools.tape import (
@@ -259,8 +255,6 @@ def _reordering_generators() -> list[object]:
             lambda t, p: _decision_tree_program(t, ">0", "<0", p),
         ),
         ("ram0", boolean.ram0, _ram0_ordered),
-        ("between", boolean.between, _between_ordered),
-        ("lamfunc", boolean.lamfunc, _lamfunc_ordered),
         ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
         (
             "circlefuck",
@@ -474,6 +468,7 @@ _MINTERM_SHAPED = {
     "algebraic_programming_language",
     "bfstack",
     "container",
+    "vandevelo",
 }
 
 # Neither model describes these.  ``wii2d`` is a route search over a grid,
@@ -481,12 +476,11 @@ _MINTERM_SHAPED = {
 # at all: ``jaune_multiply`` takes no argument (it multiplies two decimal
 # numbers, a fixed program), and ``circlefuck_byte`` takes a *byte* table.
 #
-# ``slow_acv_mammalian`` is a tree, but a deliberately *unfolded*
-# one, so the folding discriminator does not apply to it.  Its nodes are
-# what read the input -- the branch condition is the bit ``ACCEPT`` just
-# appended -- so collapsing a constant subtree would drop that subtree's
-# reads and break the read-count contract above.  The tree therefore stays
-# uniform depth ``n`` and its size tracks ``2**n`` whatever the table says.
+# ``slow_acv_mammalian`` and ``b_tapemark`` are trees, but deliberately
+# *unfolded* ones, so the folding discriminator does not apply.  Their nodes
+# read the input, so collapsing a constant subtree would drop that subtree's
+# reads and break the read-count contract above.  Both trees therefore stay
+# at uniform depth ``n`` and track ``2**n`` whatever the table says.
 #
 # ``minifuck`` is a search too, and of the same kind as ``wii2d``: it emits
 # whatever code it can *see* produce the table's column, so the program has
@@ -534,14 +528,17 @@ _REDUCING = {
     "collatz_multiverse",
     "home_row",
     "nocomment",
-    "point_break",
     "qoibl",
     "rotfuck",
     "suffolk",
-    "suptiftam",
     "super_snusp",
 }
 
+# ``crement`` and ``nopstacle`` are likewise branch-free lookups: their
+# prototypes specialize the selected row while filling the input slots, then
+# emit one halt/diverge gadget, so every table of one arity has the same
+# template length.
+#
 # ``alight`` is a branch-free lookup of the same class as
 # ``ztoalc_l``: the inputs are folded into a row index by Horner's
 # rule and the table is a string literal read with ``at{table, i+0.5}``, so
@@ -551,6 +548,9 @@ _REDUCING = {
 # the same reason: lookup size does not track table shape.)
 _UNSHAPED = {
     "alight",
+    "b_tapemark",
+    "crement",
+    "nopstacle",
     "wii2d",
     "minifuck",
     "ztoalc_l",
@@ -637,7 +637,7 @@ def test_a_malformed_table_is_refused_in_the_shared_words(
     string"`` for ``"0123"`` and ``"needs at least one input: a power-of-two
     length"`` for ``"011"``, and nothing in the suite noticed.  These two
     messages were pinned per generator in four files and packlang was in
-    none of them; ``scripts/check_generators.py`` checks the signature, not
+    none of them; the generator-convention test checks the signature, not
     the words.
 
     The second assertion is what catches that ``"011"`` case, and is the
@@ -758,10 +758,10 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 # ``best_input_order`` docstring for why the count cannot come down without
 # going per-language -- so that pass left all 1380 programs byte-identical.
 #
-# Across everything here, 1356 of the registry's 1380 programs are
-# byte-identical: the 24 that moved are nine factor arities that used to
-# refuse, minifuck's dense n=9 at +6.4%, and one_two_three's n=4..10 both
-# shapes, which the mark respacing cut by 82% overall.
+# Across everything here, 1357 of the registry's 1380 programs are
+# byte-identical: the 23 that moved are nine factor arities that used to
+# refuse and one_two_three's n=4..10 both shapes, which the mark respacing
+# cut by 82% overall.  Minifuck's Pascal inverse restored the n=9 contest.
 #
 # Ten still peaks at 637MB RSS on Circuit Diagram's n=10 dense table, 306MB
 # of program text.  That memory, not the time, is what keeps the band split:
@@ -1049,9 +1049,9 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: them approximate, and asserting one here would fail whenever the machine
 #: is busy -- which, on a suite that runs four workers, is always.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
-    "Circuit Diagram": (609_526, 1_609_864, 2.6),
+    "Circuit Diagram": (145_216, 322_504, 2.2),
     "COD": (942_692, 3_668_705, 3.9),
-    "ROTfuck": (86_605, 194_945, 2.3),
+    "ROTfuck": (15_240, 29_472, 1.9),
     "Polynomial": (3_383_048, 10_896_883, 3.2),
     "SLOW ACV MAMMALIAN": (1_672_368, 3_380_418, 2.0),
     "bit~": (31_076, 69_005, 2.2),

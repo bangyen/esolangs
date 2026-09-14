@@ -478,102 +478,50 @@ _WIDE_A_VALS = _wide_a_vals(_WIDE_A_LIMIT)
 #: no table that ``+/-12`` misses.
 _WIDE_B_VALS = tuple(range(-12, 13))
 
-#: Window a candidate spelling is checked against.  A spelling is admitted
-#: because it *behaves* as ``a*x + b`` here, not because it matches a template,
-#: which is what lets ``mp`` be found as ``a == -2`` without a rule for it.
+#: Window the derived spellings are checked against in tests.
 _SPELL_WINDOW = range(-90, 91)
 
-#: Longest command string the speller enumerates for one branch.
-_SPELL_MAX = 7
+#: Longest derived command string used for one branch.
+_SPELL_MAX = 18
+
+#: Odd-width identity: subtract six, negate, subtract six, negate.
+_ODD_AFFINE_IDENTITY = "ssspiip"
 
 
-#: The alphabet a branch spells its map in: erase, step, double, negate.
-_SPELL_ALPHABET = "simp'"
+_WIDE_A_CODE = {0: "'", 1: "", -1: "p", 2: "m", -2: "mp", 4: "mm", -4: "mmp"}
 
 
-def _spell_map(window: tuple[int, ...]) -> tuple[int, int] | None:
-    """Return ``(a, b)`` if ``window`` is ``a*x + b`` throughout, else ``None``.
-
-    The window carries what a command string leaves for each input in
-    :data:`_SPELL_WINDOW`, so a spelling is admitted because it *behaves*
-    affinely here, not because it matches a template -- which is what lets
-    ``mp`` be found as ``a == -2`` with no rule written for it.
-    """
-    first, second = window[0], window[1]
-    a = second - first
-    b = first - a * _SPELL_WINDOW[0]
-    pairs = zip(_SPELL_WINDOW, window, strict=True)
-    if any(value != a * x + b for x, value in pairs):
-        return None
-    return a, b
+def _wide_affine_code(a: int, b: int) -> str:
+    """Spell one map in the shipped affine grid directly."""
+    if b == -1:
+        offset = "ipsp"
+    elif b == 1:
+        offset = "spip"
+    elif b == 0:
+        offset = ""
+    else:
+        sub = _sub_code(abs(b))
+        if sub is None:  # pragma: no cover - the grid excludes other gaps
+            raise AssertionError(b)
+        offset = sub if b < 0 else f"p{sub}p"
+    return _WIDE_A_CODE[a] + offset
 
 
 @cache
 def _spell_bases() -> dict[tuple[int, int], tuple[str | None, str | None]]:
-    """Minimal spelling of each grid map, per width parity.
-
-    ``(a, b)`` maps to ``(shortest even-width spelling, shortest odd-width
-    spelling)``, either ``None`` where that parity has no spelling within
-    :data:`_SPELL_MAX`.  For ``a == 0`` the erase kills everything before
-    it, so one base spells every width above its own and the second slot is
-    always ``None``.
-
-    Built rather than stored.  Command strings are grown a character at a
-    time and carried as the window they leave -- the whole point of
-    :func:`_spell_map` -- so two strings that act alike are one state and
-    the growth stays flat instead of branching five ways per character.
-    The first string to reach a map at a parity is its minimal spelling,
-    since strings are grown shortest first.
-
-    Everything beyond these bases is derivable, which is why only they are
-    built: appending ``pp`` -- two negations, an identity the interpreter
-    executes -- widens any spelling by two without changing its map, and an
-    ``a == 0`` base takes an ``s`` prefix per extra width.  A map's width
-    set is exactly the arithmetic progressions its bases seed, which
-    :func:`_spellings_by_width` rebuilds below.
-    """
-    window = tuple(_SPELL_WINDOW)
-    shortest: dict[tuple[tuple[int, int], int], str] = {}
-    # The empty string is the identity map, and it is even-width.
-    identity = _spell_map(window)
-    # The window is x itself.
-    if identity is None:
-        raise AssertionError("identity is not None")
-    shortest[identity, 0] = ""
-    frontier = {window: ""}
-    for length in range(1, _SPELL_MAX + 1):
-        grown: dict[tuple[int, ...], str] = {}
-        for carried, code in frontier.items():
-            for char in _SPELL_ALPHABET:
-                moved = tuple(_apply(value, char) for value in carried)
-                if moved not in grown:
-                    grown[moved] = code + char
-        frontier = grown
-        for carried, code in frontier.items():
-            spelled = _spell_map(carried)
-            if spelled is None:
-                continue
-            key = (spelled, length % 2)
-            if key not in shortest:
-                shortest[key] = code
+    """Return directly derived bases for each grid map and width parity."""
     bases: dict[tuple[int, int], tuple[str | None, str | None]] = {}
     for a in _WIDE_A_VALS:
         for b in _WIDE_B_VALS:
-            even = shortest.get(((a, b), 0))
-            odd = shortest.get(((a, b), 1))
+            base = _wide_affine_code(a, b)
             if a == 0:
-                # The erase forgets the prefix, so the shorter base spells
-                # every width above its own and the odd slot stays empty.
-                found = [code for code in (even, odd) if code is not None]
-                # Every grid map spells.
-                if not found:
-                    raise AssertionError((a, b))
-                bases[a, b] = (min(found, key=len), None)
+                bases[a, b] = (base, None)
             else:
-                # As above.
-                if not (even or odd):
-                    raise AssertionError((a, b))
-                bases[a, b] = (even, odd)
+                by_parity: list[str | None] = [None, None]
+                by_parity[len(base) % 2] = base
+                other = base + _ODD_AFFINE_IDENTITY
+                by_parity[len(other) % 2] = other
+                bases[a, b] = (by_parity[0], by_parity[1])
     return bases
 
 
@@ -583,20 +531,12 @@ def _spellings_by_width(a: int, b: int) -> dict[int, str]:
     :func:`_affine_code` gives one spelling per map, which fixes its width.
     That is what makes an odd width gap between a setter's two branches
     unfixable: :func:`_pad_pair` pads with ``pp`` and closes only even gaps.
-    But a map usually has spellings of *several* lengths -- ``-6`` is ``sss``
-    or ``ii`` -- so a pair whose natural widths differ by one can be respelled
-    to a common width instead of padded.  Ninety-nine of the hundred maps in
-    the grid have spellings of both parities, so this closes nearly every gap
-    that padding refused.
+    Each nonconstant map has directly derived bases of both parities, so a pair
+    whose natural widths differ by one can be respelled to a common width.
 
     Derived from :func:`_spell_bases` by padding rather than enumerated: a
     base plus ``pp`` repeated reaches every width of its parity, and an
-    ``a == 0`` base takes an ``s`` prefix per extra width.  The width *sets*
-    are therefore identical to the enumeration's -- checked exhaustively
-    over the grid before the enumeration was retired -- so which tables
-    build, and at what width, is unchanged; only the characters inside a
-    wider-than-minimal branch differ, and those are re-executed like
-    everything else.
+    ``a == 0`` base takes an ``s`` prefix per extra width.
     """
     found = _spell_bases().get((a, b))
     if found is None:  # pragma: no cover - every grid map has a base
@@ -661,11 +601,6 @@ _LADDERS = (
     ((1250, 250, 1000), 2000),
     ((1250, 1250, 500), 2000),
 )
-
-#: Longest suffix the ladder search composes after stage 1.  The witnesses in
-#: the shipped grid need at most ten characters; the search is breadth-first, so
-#: this bounds the frontier rather than selecting among solutions.
-_LADDER_DEPTH = 10
 
 
 def _sub_of_width(k: int, width: int) -> str | None:
