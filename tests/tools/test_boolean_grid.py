@@ -1766,6 +1766,7 @@ class TestCircuitDiagramLayoutGuards:
         drawing = boolean.circuit_diagram(table)
         assert max(len(row) for row in drawing.splitlines()) == 131
 
+    @pytest.mark.slow
     def test_emitted_size_is_linear_in_the_table(self) -> None:
         """A doubled dense table does not increase characters per entry."""
         sizes = []
@@ -1797,6 +1798,7 @@ class TestCircuitDiagramLayoutGuards:
             assert len(set(sites.values())) == len(sites)
             assert _h_size(n) ** 2 <= 80_000 * 2**n
 
+    @pytest.mark.slow
     def test_h_layout_executes_every_two_input_table(self) -> None:
         """The routed minterm and reduction trees compute all small functions."""
         from esolangs.interpreters.grid_based.circuit_diagram import run
@@ -1880,6 +1882,7 @@ class TestCircuitDiagramLayoutGuards:
             results.append(io.getvalue())
         return "".join(results)
 
+    @pytest.mark.slow
     def test_a_width_bands_the_drawing_and_it_still_computes(self) -> None:
         """Banding carries the live signals left; the circuit is unchanged.
 
@@ -1926,6 +1929,7 @@ class TestCircuitDiagramLayoutGuards:
             # and it costs rows, which is the trade
             assert len(banded.splitlines()) > len(flat.splitlines()), n
 
+    @pytest.mark.slow
     def test_a_band_must_re_carry_what_an_earlier_one_moved(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -2200,6 +2204,7 @@ class TestAlightWidth:
                     bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
                     assert self._run(narrow, bits) == table[combo], (table, width)
 
+    @pytest.mark.slow
     def test_a_width_is_met_at_every_arity(self) -> None:
         """Every requested width holds at every practical arity."""
         for n in (4, 5, 6, 7):

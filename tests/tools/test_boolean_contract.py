@@ -858,6 +858,7 @@ def test_every_generator_builds_up_to_ten_inputs(name: str, arities: range) -> N
                     fn(table)
 
 
+@pytest.mark.slow
 def test_arity_caps_are_still_caps() -> None:
     """A capped generator that grew past its cap must leave ``_ARITY_CAPPED``.
 
@@ -907,6 +908,7 @@ def _all_tables(arity: int) -> list[str]:
     ]
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("name", sorted(BY_BOOLEAN))
 def test_every_generator_is_total_on_every_small_table(name: str) -> None:
     """Every generator returns a program for *every* table up to three inputs.
@@ -1003,6 +1005,7 @@ _EXEC_SHAPES = (("one_minterm", _one_minterm), ("one_hot", _one_hot))
     "make", [make for _, make in _EXEC_SHAPES], ids=[s for s, _ in _EXEC_SHAPES]
 )
 @pytest.mark.parametrize("name", sorted(esolangs.list_languages()))
+@pytest.mark.slow
 def test_every_generator_runs_what_it_builds(
     name: str, make: Callable[[int], str]
 ) -> None:

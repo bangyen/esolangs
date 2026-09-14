@@ -1062,7 +1062,7 @@ class TestRawTerminal:
             out = ""
             quiet = time.time() + 5
             while time.time() < min(quiet, deadline):
-                ready, _, _ = select.select([fd], [], [], 0.2)
+                ready, _, _ = select.select([fd], [], [], 0.02)
                 if not ready:
                     continue
                 try:
@@ -1072,7 +1072,7 @@ class TestRawTerminal:
                 if not chunk:
                     break
                 out += chunk.decode("utf-8", "replace")
-                quiet = time.time() + 0.4
+                quiet = time.time() + 0.05
             return out
 
         try:

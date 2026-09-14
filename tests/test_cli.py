@@ -803,6 +803,7 @@ class TestProgramFailuresAreReported:
         assert "{X0}" in result.stderr
         assert "Traceback" not in result.stderr
 
+    @pytest.mark.slow
     def test_the_readme_suffolk_flow_completes(self, tmp_path: Path) -> None:
         """Generate then run, the README's first pair, for all four rows."""
         generated = run_cli("generate", "Suffolk", "0110")
