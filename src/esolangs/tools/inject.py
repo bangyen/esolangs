@@ -42,8 +42,8 @@ the read count equal on every path -- the boolean contract requires exactly
 more than once for free.
 
 The tree then walks the table.  At depth ``d`` the node tests the input
-the chosen order puts there (``perm[d]``; the shortest of the ``n!``
-orders wins, ties keeping the identity) against the constant zero block:
+the chosen order puts there (``perm[d]``; identity and greedy compete,
+with ties keeping the identity) against the constant zero block:
 
 * ``skipq INPUT ZERO`` fires when the bit **is** ``0``, so the block
   it guards is the ``1``-subtree, which is skipped exactly then;

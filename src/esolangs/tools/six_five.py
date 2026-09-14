@@ -19,12 +19,10 @@ assembler were retired.
 """
 
 import string
-from itertools import permutations
 
 from esolangs.exceptions import GeneratorCapError
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
-    _ORDER_SEARCH_MAX,
     _greedy_input_order,
     _validate_truth_table,
     permute_truth_table,
@@ -121,27 +119,14 @@ def six_five(truth_table: str) -> str:
     committed size measurement was taken against, and far shorter when a
     table folds or shares well.
 
-    **The order search is capped at ``_ORDER_SEARCH_MAX`` inputs**, the same
-    bound and the same greedy fallback ``best_input_order`` uses.  The cap
-    matters more here than there, because this generator does render past
-    n == 6 when a table folds hard: searching AND-8's 40320 orders takes
-    about 17 seconds against milliseconds for the greedy pick, and n == 9
-    would be half an hour.  Above the cap only the identity and the greedy
-    order are built, so a wide table stays fast and still never grows.
+    Only the identity and greedy orders are built.  Searching AND-8's 40320
+    orders took about 17 seconds against milliseconds for the greedy pick.
     """
     n = _validate_truth_table(truth_table)
     best = ""
     identity = tuple(range(n))
-    # The same cap ``best_input_order`` uses, for the same reason: ``n!``
-    # builds of an ``O(2**n)`` program does not announce itself.  This
-    # generator renders past n == 6 whenever a table folds hard enough, so
-    # the cap is reachable here rather than theoretical -- AND-8 measures
-    # 17 seconds searching all 40320 orders against milliseconds greedily.
-    if n <= _ORDER_SEARCH_MAX:
-        orders = list(permutations(range(n)))
-    else:
-        greedy = _greedy_input_order(truth_table, n)
-        orders = [identity] if greedy == identity else [identity, greedy]
+    greedy = _greedy_input_order(truth_table, n)
+    orders = [identity] if greedy == identity else [identity, greedy]
     for perm in orders:
         table = (
             truth_table if perm == identity else permute_truth_table(truth_table, perm)

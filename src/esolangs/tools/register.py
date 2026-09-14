@@ -252,7 +252,7 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # as they are emitted.  The numbering pass below wants exactly this list
     # and used to recover it by re-scanning every operand of every
     # instruction -- 3.5M ``isinstance`` calls on a six-input build, which
-    # the order search pays once per candidate.
+    # input-order selection pays once per candidate.
     named: list[str] = []
 
     def emit(a: object, b: object, c: object, d: int) -> int:

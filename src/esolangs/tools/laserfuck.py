@@ -10,12 +10,11 @@ block on end to meet a width.
 """
 
 from functools import cache
-from itertools import permutations
 from typing import NamedTuple
 
 from esolangs.tools import laserfuck_layout
 from esolangs.tools.helpers import (
-    _ORDER_SEARCH_MAX,
+    _greedy_input_order,
     _validate_truth_table,
     constant_span_test,
     permute_truth_table,
@@ -267,9 +266,8 @@ def _laserfuck_placements(
     The caller tries all ``2**count`` orientation words, and a block's
     placement depends only on the block and its own letter -- so cutting
     and rotating per word rebuilt the same ``2 * count`` placements
-    ``2**count`` times.  Hoisting them here is what makes the order search
-    affordable: at n=6 it turns 17 reader cuts and 16 rotations per
-    candidate into one and two.
+    ``2**count`` times.  Hoisting them turns 17 reader cuts and 16 rotations
+    at n=6 into one and two per candidate.
     """
     return [
         {upright: _laserfuck_place(block, upright) for upright in "FR"}
@@ -468,8 +466,7 @@ def _laserfuck_build(
         """Write a whole run of cells, growing the ragged grid to reach it.
 
         The tree arrives as runs, and going through :func:`put` a character
-        at a time is 1.7M calls on a six-input build once the order search
-        multiplies it by ``n!``.  A slice assignment leaves the same line:
+        at a time dominated six-input builds.  A slice assignment leaves the same line:
         the run is blank-free, so nothing it covers had to be preserved.
         """
         if len(grid) <= row:
@@ -519,10 +516,9 @@ def _laserfuck_build(
     # from ``><-+`` and the rest are the literals ``x``, ``>#v)`` and
     # ``\`` -- and every row is filled strictly left to right, so a run is
     # the whole of what a cell dict was storing one character at a time.
-    # The order search rebuilds this n! times, and the dict cost it twice:
-    # 1.7M single-cell writes going in and 3.1M ``get`` probes coming back
-    # out over the bounding rectangle, which is mostly blank because the
-    # tree is a staircase.
+    # The old order search rebuilt this n! times, and the dict cost it twice:
+    # single-cell writes going in and ``get`` probes coming back out over a
+    # bounding rectangle that is mostly blank because the tree is a staircase.
     #
     # A row is appended exactly when a ``one`` edge creates it, and the
     # counter that names it is bumped in the same breath, so ``len(rows)``
@@ -656,9 +652,8 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     """
     n = _validate_truth_table(truth_table)
     identity = tuple(range(n))
-    orders = [identity]
-    if n <= _ORDER_SEARCH_MAX:
-        orders += [p for p in permutations(range(n)) if p != identity]
+    greedy = _greedy_input_order(truth_table, n)
+    orders = [identity] if greedy == identity else [identity, greedy]
 
     def layouts(table: str, perm: tuple[int, ...]) -> tuple[str, ...]:
         """Return this order's one requested or two compact layouts."""

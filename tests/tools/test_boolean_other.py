@@ -455,11 +455,11 @@ class TestCvnc:
     def test_a_tie_keeps_the_node_read_tree(self) -> None:
         """The hoisted build must be strictly shorter to be taken.
 
-        Fourteen of the 256 three-input tables build a hoisted program of
+        Sixteen of the 256 three-input tables build a hoisted program of
         exactly the tree's length, so ``<`` and ``<=`` ship different
         programs of *identical size*: invisible to a length bound and to
         every truth-table assertion, since both shapes compute the table.
-        All fourteen keep the tree.
+        All sixteen keep the tree.
 
         The comparison has to be driven through ``best_input_order``, the
         way the generator does it -- that helper permutes the *table* per
@@ -480,7 +480,7 @@ class TestCvnc:
             )
             if hoisted and len(hoisted) == len(tree):
                 tied.append(table)
-        assert len(tied) == 14
+        assert len(tied) == 16
         for table in tied:
             assert boolean.cvnc(table) == module._tree(table, 0)  # noqa: SLF001
 
@@ -1778,13 +1778,8 @@ class TestLaserFuck:
         """
         assert ",>,>," in boolean.laserfuck("01101001")
 
-    def test_wide_tables_do_not_search_every_order(self) -> None:
-        """Past the cap only the identity order is built, not ``n!`` of them.
-
-        Seven inputs would be 5040 orders; the search stops at six, so the
-        wide table costs one order with two named layouts.  Counting the
-        builds is the assertion rather than timing.
-        """
+    def test_only_identity_and_greedy_orders_are_built(self) -> None:
+        """Each table costs at most two orders with two named layouts each."""
         import importlib
 
         # The package re-exports the generator under the submodule's own
@@ -1793,8 +1788,8 @@ class TestLaserFuck:
         real = module._laserfuck_build  # noqa: SLF001
 
         for n, table, orders in (
-            (3, "01011010", 6),
-            (7, ("10" * 64)[:128], 1),
+            (3, "01011010", 2),
+            (7, ("10" * 64)[:128], 2),
         ):
             built = 0
 
@@ -2120,7 +2115,7 @@ class TestLaserFuck:
         ("table", "flip", "narrow", "wide"),
         [
             ("11111110", 69, (6, 49), (4, 68)),
-            ("01101001", 71, (10, 51), (8, 68)),
+            ("01101001", 69, (10, 49), (8, 68)),
         ],
     )
     def test_the_straight_layout_starts_at_its_exact_width(
