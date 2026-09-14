@@ -1198,6 +1198,28 @@ class TestParameterizedArrowQueue:
                     got = self.run_arrowqueue(self.instantiate(template, bits))
                     assert got == table[combo], f"{table} inputs {bits}"
 
+    def test_linear_marker_cascade_executes_every_row(self) -> None:
+        """Wide inputs become marker counts and select one cascade stage."""
+        from esolangs.tools import parameterized
+
+        n = 6
+        table = "".join(str((row.bit_count() ^ (row >> 2)) & 1) for row in range(2**n))
+        template = parameterized.arrowqueue(table)
+        sizes = set()
+        for row in range(2**n):
+            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            program = self.instantiate(template, bits)
+            sizes.add(len(program))
+            assert self.run_arrowqueue(program) == table[row], row
+        assert len(sizes) == 1
+
+    def test_linear_marker_cascade_scales_with_table(self) -> None:
+        """Dense wide templates grow no faster than the table doubles."""
+        from esolangs.tools import parameterized
+
+        sizes = [len(parameterized.arrowqueue("1" * (2**n))) for n in range(7, 11)]
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
+
     def test_template_is_input_independent(self) -> None:
         """The template has {Xi} placeholders, not hardcoded bits."""
         from esolangs.tools import parameterized

@@ -1072,6 +1072,7 @@ _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
 _LINEAR_SCALING = {
     "a_painter_ant",
     "addsubjump",
+    "arrowqueue",
     "back",
     "bitdeque",
     "brainif",
@@ -1083,7 +1084,6 @@ _LINEAR_SCALING = {
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
-    "arrowqueue",
     "circuit_diagram",
     "clockwise",
     "cod",

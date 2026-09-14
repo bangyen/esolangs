@@ -45,7 +45,7 @@ The candidate list is empty.
   | Factor | Language lower bound | Language lower bound |
   | Polynomial | Open | Open |
   | AddSubJump | Linear | Linear |
-  | ArrowQueue | Open | Open |
+  | ArrowQueue | Linear | Linear |
   | Back | Linear | Linear |
   | Bitdeque | Linear | Linear |
   | BrainIf | Linear | Linear |
