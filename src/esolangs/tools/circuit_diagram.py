@@ -69,7 +69,9 @@ a run prints exactly one character.
 """
 
 from bisect import bisect_left, insort
-from typing import Literal
+from dataclasses import dataclass
+from itertools import pairwise
+from typing import Literal, cast
 
 from esolangs.tools.helpers import (
     _validate_truth_table,
@@ -88,6 +90,282 @@ __all__ = ["circuit_diagram"]
 # each other (see the module docstring's note on the eight-way ``.``).
 _COL_STEP = 2
 _ROW_STEP = 2
+
+
+@dataclass(frozen=True)
+class _Block:
+    """Square reserved by one recursive H-layout subtree."""
+
+    x: int
+    y: int
+    size: int
+
+    def quadrants(self, child_size: int) -> tuple["_Block", ...]:
+        """Return four corner children around this block's centre cross."""
+        far = self.size - child_size
+        return (
+            _Block(self.x, self.y, child_size),
+            _Block(self.x + far, self.y, child_size),
+            _Block(self.x, self.y + far, child_size),
+            _Block(self.x + far, self.y + far, child_size),
+        )
+
+
+def _h_size(inputs: int) -> int:
+    """Return a side length for a two-level-at-a-time H-layout."""
+    if inputs <= 1:
+        return 32
+    child = _h_size(inputs - 2)
+    return 2 * child + 32 + 32 * inputs
+
+
+def _h_blocks(inputs: int) -> dict[str, _Block]:
+    """Assign every two-bit prefix a non-overlapping H-layout square."""
+    root = _Block(0, 0, _h_size(inputs))
+    blocks = {"": root}
+
+    def descend(prefix: str, remaining: int, block: _Block) -> None:
+        if remaining < 2:
+            return
+        child_size = _h_size(remaining - 2)
+        for bits, child in zip(
+            ("00", "01", "10", "11"), block.quadrants(child_size), strict=True
+        ):
+            blocks[prefix + bits] = child
+            descend(prefix + bits, remaining - 2, child)
+
+    descend("", inputs, root)
+    return blocks
+
+
+def _h_sites(inputs: int) -> dict[str, tuple[int, int]]:
+    """Return the centre-cross site of every non-leaf Shannon node."""
+    blocks = _h_blocks(inputs)
+    sites: dict[str, tuple[int, int]] = {}
+    for prefix, block in blocks.items():
+        remaining = inputs - len(prefix)
+        if remaining == 0:
+            continue
+        if remaining == 1:
+            sites[prefix] = (block.x + block.size // 2, block.y + block.size // 2)
+            continue
+        child = _h_size(remaining - 2)
+        gap = block.size - 2 * child
+        left = block.x + child
+        top = block.y + child
+        sites[prefix] = (left + 3 * gap // 4, top + gap // 2)
+        sites[prefix + "0"] = (left + gap // 4, top + gap // 4)
+        sites[prefix + "1"] = (left + gap // 4, top + 3 * gap // 4)
+    return sites
+
+
+def _h_minterm_sites(inputs: int) -> dict[str, tuple[int, int]]:
+    """Return H-layout sites for every prefix, including minterm leaves."""
+    sites = _h_sites(inputs)
+    blocks = _h_blocks(inputs)
+    if inputs % 2 == 0:
+        for prefix, block in blocks.items():
+            if len(prefix) == inputs:
+                sites[prefix] = (
+                    block.x + block.size // 2,
+                    block.y + block.size // 2,
+                )
+    else:
+        for prefix, block in blocks.items():
+            if len(prefix) != inputs - 1:
+                continue
+            middle_x = block.x + block.size // 2
+            middle_y = block.y + block.size // 2
+            sites[prefix + "0"] = (middle_x - 8, middle_y + 8)
+            sites[prefix + "1"] = (middle_x + 8, middle_y + 8)
+    return sites
+
+
+def _h_term_layout(table: str) -> "_Layout":
+    """Route one truth table's parallel minterm tree through an H-layout."""
+    truth_table = table
+    inputs = len(table).bit_length() - 1
+    margin = 32 * inputs + 16
+    sites = {
+        prefix: (x + margin, y + margin)
+        for prefix, (x, y) in _h_minterm_sites(inputs).items()
+    }
+    layout = _RoutingLayout()
+    signals = {
+        prefix: index
+        for index, prefix in enumerate(prefix for prefix in sites if len(prefix) >= 2)
+    }
+    literal_start = len(signals)
+
+    def literal(depth: int, bit: str) -> int:
+        return literal_start + 2 * depth + int(bit)
+
+    next_signal = literal_start + 2 * inputs
+    results: dict[str, int | None] = {
+        prefix: signals[prefix] if truth_table[int(prefix, 2)] == "1" else None
+        for prefix in sites
+        if len(prefix) == inputs
+    }
+    result_gates: set[str] = set()
+    for depth in range(inputs - 1, -1, -1):
+        for prefix in (p for p in sites if len(p) == depth):
+            zero = results.get(prefix + "0")
+            one = results.get(prefix + "1")
+            if zero is not None and one is not None:
+                results[prefix] = next_signal
+                next_signal += 1
+                result_gates.add(prefix)
+            else:
+                results[prefix] = zero if zero is not None else one
+    result_signal = results[""]
+    if result_signal is None:  # handled by the scalar constant construction
+        raise AssertionError("the H layout needs at least one selected minterm")
+
+    for prefix, (x, y) in sites.items():
+        if len(prefix) >= 2:
+            layout.glyph(x, y, "a")
+        if prefix:
+            signal = literal(0, prefix[0]) if len(prefix) == 1 else signals[prefix]
+            layout.reserve((x + 1, y), signal)
+        if len(prefix) >= 2:
+            parent = prefix[:-1]
+            layout.reserve(
+                (x - 1, y - 1),
+                (literal(0, parent[0]) if len(parent) == 1 else signals[parent]),
+            )
+            layout.reserve((x - 1, y + 1), literal(len(prefix) - 1, prefix[-1]))
+    result_track_x = 8 * inputs + 4
+    result_track_y = 8 * inputs + 4
+
+    def result_anchor(prefix: str) -> tuple[int, int]:
+        x, y = sites[prefix]
+        return x + result_track_x, y - result_track_y
+
+    result_points: dict[str, tuple[int, int]] = {}
+    for prefix, result_value in results.items():
+        if result_value is None:
+            continue
+        if len(prefix) == inputs:
+            x, y = sites[prefix]
+            result_points[prefix] = (x + 1, y)
+        else:
+            x, y = result_anchor(prefix)
+            if prefix in result_gates:
+                layout.glyph(x, y, "o")
+                point = (x + 1, y)
+            else:
+                point = (x, y)
+            result_points[prefix] = point
+            layout.reserve(point, result_value)
+    for prefix in result_gates:
+        x, y = result_anchor(prefix)
+        children = [
+            prefix + bit for bit in "01" if results.get(prefix + bit) is not None
+        ]
+        for child, target in zip(
+            children, ((x - 1, y - 1), (x - 1, y + 1)), strict=True
+        ):
+            layout.reserve(target, cast(int, results[child]))
+    root = result_points[""]
+    layout.junction(*root, result_signal)
+    layout.glyph(root[0] + 1, root[1], "-")
+    layout.glyph(root[0] + 2, root[1], ":")
+    literal_anchors: dict[tuple[int, str, str], tuple[int, int]] = {}
+    roots: dict[tuple[int, str], tuple[int, int]] = {}
+    for depth in range(inputs):
+        for bit in "01":
+            track_x = (2 if bit == "0" else 6) + 16 * depth
+            track_y = (5 if bit == "0" else 2) + 16 * depth
+            for prefix in sites:
+                if len(prefix) <= depth:
+                    x, y = sites[prefix]
+                    point = (x - track_x, y - track_y)
+                    literal_anchors[(depth, bit, prefix)] = point
+                    layout.reserve(point, literal(depth, bit))
+                    if not prefix:
+                        layout.junction(*point, literal(depth, bit))
+            roots[(depth, bit)] = literal_anchors[(depth, bit, "")]
+    input_starts: dict[tuple[int, str], tuple[int, int]] = {}
+    for depth in range(inputs):
+        row = 8 * depth
+        plain = literal(depth, "1")
+        negated = literal(depth, "0")
+        layout.glyph(0, row, "-")
+        layout.junction(2, row, plain)
+        layout.run_horizontal(0, 2, row, plain)
+        layout.junction(2, row + 2, plain)
+        layout.junction(3, row + 2, plain)
+        layout.run_vertical(2, row, row + 2, plain)
+        layout.run_horizontal(2, 3, row + 2, plain)
+        layout.glyph(4, row + 2, "~")
+        layout.junction(5, row + 2, negated)
+        input_starts[(depth, "1")] = (2, row)
+        input_starts[(depth, "0")] = (5, row + 2)
+    for depth in range(inputs):
+        for bit in "01":
+            layout.route(
+                input_starts[(depth, bit)],
+                roots[(depth, bit)],
+                literal(depth, bit),
+            )
+    for (depth, bit, prefix), point in literal_anchors.items():
+        if prefix:
+            layout.junction(*point, literal(depth, bit))
+    for prefix, (x, y) in sites.items():
+        if not prefix:
+            continue
+        signal = literal(0, prefix[0]) if len(prefix) == 1 else signals[prefix]
+        source = (x + 1, y)
+        layout.junction(*source, signal)
+        for bit in "01":
+            child = prefix + bit
+            if child not in sites:
+                continue
+            child_x, child_y = sites[child]
+            target = (child_x - 1, child_y - 1)
+            layout.route(source, target, signal)
+    for depth in range(inputs):
+        for bit in "01":
+            signal = literal(depth, bit)
+            frontier = [""]
+            for level in range(depth + 1):
+                following = []
+                for prefix in frontier:
+                    branches = bit if level == depth else "01"
+                    source = literal_anchors[(depth, bit, prefix)]
+                    for branch in branches:
+                        child = prefix + branch
+                        if level == depth:
+                            child_x, child_y = sites[child]
+                            target = (
+                                (child_x + 1, child_y)
+                                if len(child) == 1
+                                else (child_x - 1, child_y + 1)
+                            )
+                        else:
+                            target = literal_anchors[(depth, bit, child)]
+                            following.append(child)
+                        layout.route(source, target, signal)
+                frontier = following
+    for depth in range(inputs):
+        for prefix in (p for p in sites if len(p) == depth and results[p] is not None):
+            children = [
+                prefix + bit for bit in "01" if results.get(prefix + bit) is not None
+            ]
+            if prefix in result_gates:
+                gate_x, gate_y = result_anchor(prefix)
+                targets: tuple[tuple[int, int], ...] = (
+                    (gate_x - 1, gate_y - 1),
+                    (gate_x - 1, gate_y + 1),
+                )
+            else:
+                targets = (result_points[prefix],)
+            for child, target in zip(children, targets, strict=True):
+                child_result = results[child]
+                if child_result is None:  # pragma: no cover - filtered above
+                    raise AssertionError("missing result signal")
+                layout.route(result_points[child], target, child_result)
+    return layout
 
 
 class _Layout:
@@ -316,6 +594,126 @@ class _Layout:
                 buf[x] = code
             rows.append(buf.decode("ascii"))
         return "\n".join(rows)
+
+
+class _RoutingLayout(_Layout):
+    """Layout with O(1) cell indexes for bounded local route probes."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._horizontal_cells: dict[tuple[int, int], int] = {}
+        self._vertical_cells: dict[tuple[int, int], int] = {}
+        self._reserved: dict[tuple[int, int], int] = {}
+
+    def reserve(self, point: tuple[int, int], signal: int) -> None:
+        """Keep a future junction clear for ``signal`` while routing."""
+        self._reserved[point] = signal
+
+    def junction(self, x: int, y: int, signal: int) -> None:
+        """Place a junction unless another signal already occupies its cell."""
+        existing = self.junctions.get((x, y))
+        covering = {
+            value
+            for value in (
+                self._horizontal_cells.get((x, y)),
+                self._vertical_cells.get((x, y)),
+            )
+            if value is not None
+        }
+        if (
+            (existing is not None and existing != signal)
+            or (x, y) in self.glyphs
+            or bool(covering - {signal})
+        ):
+            raise AssertionError(f"junction collision at ({x}, {y})")
+        self.junctions[(x, y)] = signal
+
+    def run_horizontal(self, x0: int, x1: int, y: int, signal: int) -> None:
+        """Record a horizontal run and index its occupied cells."""
+        lo, hi = min(x0, x1) + 1, max(x0, x1)
+        for x in range(lo, hi):
+            other = self._horizontal_cells.get((x, y))
+            if (other is not None and other != signal) or (x, y) in self.glyphs:
+                raise AssertionError(f"horizontal collision at ({x}, {y})")
+        self._record(self.horizontal.setdefault(y, []), (lo, hi, signal))
+        for x in range(lo, hi):
+            self._horizontal_cells[(x, y)] = signal
+
+    def run_vertical(self, x: int, y0: int, y1: int, signal: int) -> None:
+        """Record a vertical run and index its occupied cells."""
+        lo, hi = min(y0, y1) + 1, max(y0, y1)
+        for y in range(lo, hi):
+            other = self._vertical_cells.get((x, y))
+            if (other is not None and other != signal) or (x, y) in self.glyphs:
+                raise AssertionError(f"vertical collision at ({x}, {y})")
+        self._record(self.vertical.setdefault(x, []), (lo, hi, signal))
+        for y in range(lo, hi):
+            self._vertical_cells[(x, y)] = signal
+
+    def route(
+        self, source: tuple[int, int], target: tuple[int, int], signal: int
+    ) -> None:
+        """Use the first free route in a fixed local dogleg catalogue."""
+        sx, sy = source
+        tx, ty = target
+        candidates = [[source, (sx, ty), target], [source, (tx, sy), target]]
+        for distance in range(2, 130, 2):
+            for offset in (distance, -distance):
+                candidates.extend(
+                    (
+                        [source, (sx, sy + offset), (tx, sy + offset), target],
+                        [source, (sx + offset, sy), (sx + offset, ty), target],
+                        [source, (tx + offset, sy), (tx + offset, ty), target],
+                        [source, (sx, ty + offset), (tx, ty + offset), target],
+                    )
+                )
+        for points in candidates:
+            if self._route_is_free(points, signal):
+                self._add_route(points, signal)
+                return
+        raise AssertionError(f"no local route from {source} to {target}")
+
+    def _add_route(self, points: list[tuple[int, int]], signal: int) -> None:
+        """Add one already checked rectilinear route."""
+        for point in points:
+            self.junction(*point, signal)
+        for (x0, y0), (x1, y1) in pairwise(points):
+            if x0 == x1:
+                self.run_vertical(x0, y0, y1, signal)
+            else:
+                self.run_horizontal(x0, x1, y0, signal)
+
+    def _route_is_free(self, points: list[tuple[int, int]], signal: int) -> bool:
+        """Whether a candidate dogleg can be added without merging signals."""
+        for x, y in points:
+            if (
+                (x, y) in self.glyphs
+                or self._reserved.get((x, y), signal) != signal
+                or self._horizontal_cells.get((x, y), signal) != signal
+                or self._vertical_cells.get((x, y), signal) != signal
+            ):
+                return False
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    other = self.junctions.get((x + dx, y + dy))
+                    if other is not None and other != signal:
+                        return False
+        for (x0, y0), (x1, y1) in pairwise(points):
+            if x0 == x1:
+                cells = ((x0, y) for y in range(min(y0, y1) + 1, max(y0, y1)))
+                occupied = self._vertical_cells
+            else:
+                cells = ((x, y0) for x in range(min(x0, x1) + 1, max(x0, x1)))
+                occupied = self._horizontal_cells
+            for cell in cells:
+                if (
+                    cell in self.glyphs
+                    or self._reserved.get(cell, signal) != signal
+                    or occupied.get(cell, signal) != signal
+                    or self.junctions.get(cell, signal) != signal
+                ):
+                    return False
+        return True
 
 
 class _Builder:
@@ -745,8 +1143,6 @@ def _circuit_diagram_at(truth_table: str, limit: int | None) -> str:
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
     rails = [builder.input_bus() for _ in range(n)]
     if len(used) < n:
-        # Re-point at the surviving rails and evaluate the reduced table;
-        # everything below is written against ``rails``/``truth_table``.
         rails = [rails[i] for i in used]
         truth_table = table
         n = len(used)
@@ -789,6 +1185,10 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     ``8 * n`` columns, so the floor grows with the inputs rather than with
     the table.
     """
+    _validate_truth_table(truth_table)
+    inputs = len(truth_table).bit_length() - 1
+    if width is None and inputs >= 8 and "1" in truth_table:
+        return _h_term_layout(truth_table).render()
     flat = _circuit_diagram_at(truth_table, None)
     if width is None or max(len(line) for line in flat.split("\n")) <= width:
         return flat

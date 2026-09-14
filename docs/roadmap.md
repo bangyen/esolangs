@@ -22,7 +22,9 @@ The candidate list is empty.
   an optional optimization around a generator, not part of its construction,
   so its search cost does not enter this criterion.  No generator construction
   may use BFS or DFS; test-only oracle searches and prose about retired searches
-  may remain.
+  may remain.  Circuit Diagram's H-layout temporarily uses a bounded local
+  dogleg scan with cell-indexed collision checks; derive its first-free lanes
+  into a direct routing rule without changing the emitted programs.
 
 - **ArrowQueue reusable drain.**  Ship the verified deep-fold drain only if
   a proof makes folding meaningfully testable at `n >= 5`; current coverage
