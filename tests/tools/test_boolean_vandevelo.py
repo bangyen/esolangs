@@ -28,7 +28,7 @@ def test_constant_still_reads_every_input() -> None:
 
 def test_one_rows_are_named_cubes() -> None:
     program = vandevelo("0001")
-    assert program.splitlines()[-1] == "i0? != Nil? :: i1? != Nil? :: loop?"
+    assert program.splitlines()[-1] == "a? != Nil? :: b? != Nil? :: loop?"
 
 
 def test_constant_one_needs_no_guards() -> None:
@@ -38,4 +38,13 @@ def test_constant_one_needs_no_guards() -> None:
 
 def test_constant_subtree_drops_suffix_guards() -> None:
     program = vandevelo("00001111")
-    assert program.splitlines()[-1] == "i0? != Nil? :: loop?"
+    assert program.splitlines()[-1] == "a? != Nil? :: loop?"
+
+
+def test_short_names_are_unique_and_skip_builtins() -> None:
+    """The compact namespace does not shadow input, nil, or the loop."""
+    from esolangs.tools.vandevelo import _RESERVED, _name
+
+    names = [_name(index) for index in range(500)]
+    assert len(set(names)) == len(names)
+    assert not set(names) & _RESERVED
