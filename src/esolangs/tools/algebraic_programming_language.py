@@ -1,5 +1,7 @@
 """Boolean-function generator for Algebraic Programming Language."""
 
+from itertools import pairwise
+
 from esolangs.tools.helpers import _validate_truth_table, best_input_order
 
 #: The variable names inputs are read into, in the order the harness feeds
@@ -30,11 +32,10 @@ def algebraic_programming_language(truth_table: str, width: int | None = None) -
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    APL has neither an input command nor an output command.  A variable is
-    read from stdin by *appearing* on an executed line, and that line's
-    result is printed, so the whole program is a header of definitions
-    plus **one** executed expression -- the truth table as a sum of
-    minterms over ``&``, ``|``, and the wiki's own ``!``.
+    APL has neither an input command nor an output command. A variable is
+    read from stdin by appearing on an executed line, and that line's result
+    is printed. The default expression is a folded decision tree: each node
+    selects its zero and one subtrees with ``!x`` and ``!!x``.
 
     Every value stays 0 or 1: ``!`` returns exactly one of them, ``&``
     returns 0 or its right operand, and ``|`` returns its left operand or
@@ -53,26 +54,37 @@ def algebraic_programming_language(truth_table: str, width: int | None = None) -
     reordering changes which minterm literal comes first, never the input
     order.
 
-    **The construction is total**, and structurally rather than by
-    search.  Every table is the disjunction of one term per ``1`` row,
-    each term the conjunction of ``n`` literals, and the choice of
-    literal is decided bit by bit from the row index -- so there is no
-    table shape that can fail to expand, no staging to miss a case, and
-    no arity at which the emission stops working.  The two boundaries
-    are handled explicitly: a table with no ``1`` rows takes the
-    constant-zero branch below, and a table with every row set expands
-    to ``2**n`` terms like any other.
-
-    **What bounds it is size, not reach.**  The program is about
-    ``n * 2**(n-1)`` characters, and the *table* is ``2**n`` -- so the
-    arity that exhausts memory arrives far below the point where
-    :data:`_NAMES` runs out.  Running out of names would need a table of
-    ``2**55`` rows, which cannot be constructed to pass in, so there is
-    no alphabet check here: it would be a guard no argument could reach.
+    A zero-valued prefix names every input in ascending order before the
+    tree, preserving input binding even when a constant subtree folds. The
+    tree has O(T) nodes for a T-entry table and no depth-sized whitespace, so
+    its emitted size is O(T). Width-constrained output retains the definition-
+    split minterm form because APL cannot continue an expression across lines.
     """
-    return best_input_order(
-        truth_table, lambda table, perm: _apl_ordered(table, perm, width)
-    )
+    if width is not None:
+        return best_input_order(
+            truth_table, lambda table, perm: _apl_ordered(table, perm, width)
+        )
+    return best_input_order(truth_table, _apl_tree_ordered)
+
+
+def _apl_tree_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
+    """Emit one input order as a folded, linear-size Boolean tree."""
+    n = _validate_truth_table(truth_table)
+    changes = [0]
+    for previous, current in pairwise(truth_table):
+        changes.append(changes[-1] + (previous != current))
+
+    def tree(start: int, end: int, depth: int) -> str:
+        if changes[start] == changes[end - 1]:
+            return truth_table[start]
+        half = (start + end) // 2
+        name = _NAMES[perm[depth]]
+        zero = tree(start, half, depth + 1)
+        one = tree(half, end, depth + 1)
+        return f"((!{name} & {zero}) | (!!{name} & {one}))"
+
+    reads = " & ".join(_NAMES[index] for index in range(n)) + " & 0"
+    return f"{_NOT}\n({reads}) | {tree(0, 1 << n, 0)}"
 
 
 def _apl_name(index: int) -> str:
