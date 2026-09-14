@@ -787,8 +787,9 @@ def dig(truth_table: str, width: int | None = None) -> str:
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
-    ``width`` asks for a column count; the tree turns round once if that is
-    what it takes to meet one, and a width under the floor returns the
+    The compact form builds both safe orientations and keeps the shorter:
+    the tree may turn round once even without a width request.  ``width``
+    asks for a column count, and a width under the floor returns the
     narrowest program rather than refusing.
 
     The tree is laid out so the mole starts in the top-left corner (``'``)
@@ -833,14 +834,16 @@ def dig(truth_table: str, width: int | None = None) -> str:
     """
     n = _validate_truth_table(truth_table)
     flat = _dig_grid(truth_table, n, None)
-    if width is None or n < 2:
-        return flat
-    if max(len(line) for line in flat.split("\n")) <= width:
+    if n < 2:
         return flat
     # The turn has to leave the westbound band room to finish left of where
     # the eastbound one starts its last block, which is what fixes the
     # split rather than any search: the halves are as even as that allows.
     banded = _dig_grid(truth_table, n, -(-(n + 2) // 2))
+    if width is None:
+        return min((flat, banded), key=len)
+    if max(len(line) for line in flat.split("\n")) <= width:
+        return flat
     if max(len(line) for line in banded.split("\n")) < max(
         len(line) for line in flat.split("\n")
     ):
