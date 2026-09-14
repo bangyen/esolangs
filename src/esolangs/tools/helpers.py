@@ -616,16 +616,14 @@ def decision_tree_tokens[Token](
     only the skeleton and takes the emitting as callbacks.
     """
     n = _validate_truth_table(truth_table)
+    ones = [0]
+    for bit in truth_table:
+        ones.append(ones[-1] + (bit == "1"))
     width = parent_width if callable(parent_width) else lambda _level: parent_width
 
     def walk(level: int, lo: int, hi: int, at: int) -> list[Token]:
-        # ``count`` over the span rather than a set comprehension over it:
-        # the constant test runs at every node of every one of the n!
-        # candidates, and it is also skipped entirely when ``collapse`` is
-        # off, which the set built unconditionally.
-        if level == n or (
-            collapse and truth_table.count(truth_table[lo], lo, hi) == hi - lo
-        ):
+        one_count = ones[hi] - ones[lo]
+        if level == n or (collapse and one_count in (0, hi - lo)):
             return leaf(level, lo)
         half = (hi - lo) // 2
         below = at + width(level)
