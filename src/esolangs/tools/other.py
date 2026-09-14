@@ -507,9 +507,12 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.  The
     program prints the result as the ASCII digit ``'0'`` or ``'1'``.
-    ``width`` asks for a column count; the tree stacks as much of itself as
-    it needs to meet one, and a width under the floor returns the narrowest
-    program rather than refusing.
+    Without a width, the compact form compares the flat tree with one partial
+    stack bounded to eight columns per input and keeps the shorter.  This is
+    two named linear builds, not a search over stack depths.  ``width`` asks
+    for a column count; the tree stacks as much of itself as it needs to meet
+    one, and a width under the floor returns the narrowest program rather than
+    refusing.
 
     The program is a decision tree in a closed ring.  ``S`` zeroes the
     accumulator and seven ``.`` reads consume a ``0``/``1`` input char's seven
@@ -768,7 +771,11 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     # The grid is a fixed-size rectangle of blanks that the cells are painted
     # into, so a row's trailing filler is never reached; the interpreter pads
     # short rows itself, so trimming it changes nothing but the file.
-    return "\n".join("".join(row).rstrip() for row in grid)
+    program = "\n".join("".join(row).rstrip() for row in grid)
+    if width is None:
+        partially_stacked = clockwise(truth_table, width=8 * n)
+        return min((program, partially_stacked), key=len)
+    return program
 
 
 def container(truth_table: str) -> str:
