@@ -1736,12 +1736,27 @@ class TestThreeX:
 
 class TestLaserFuck:
     def test_compact_layout_compares_straight_and_hanging_trees(self) -> None:
-        """The narrow named layout wins for a dense eight-input table."""
+        """Explicit widths retain the old straight and hanging layouts."""
         table = "01101001" * 32
         natural = boolean.laserfuck(table, width=10_000)
         hanging = boolean.laserfuck(table, width=1)
         assert len(hanging) < len(natural)
-        assert boolean.laserfuck(table) == hanging
+
+    @pytest.mark.medium
+    def test_weighted_table_executes_every_row(self) -> None:
+        """The linear default computes dense tables at every initial heading."""
+        for n in (5, 6):
+            size = 1 << n
+            tables = (
+                ("01101001" * (size // 8))[:size],
+                "".join(str((i * 73 + i // 3) & 1) for i in range(size)),
+            )
+            for table in tables:
+                program = boolean.laserfuck(table)
+                for combo in range(size):
+                    bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                    for heading in range(4):
+                        assert run_laserfuck(program, bits, heading) == table[combo]
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -1823,10 +1838,7 @@ class TestLaserFuck:
         module = importlib.import_module("esolangs.tools.laserfuck")
         real = module._laserfuck_build  # noqa: SLF001
 
-        for n, table, orders in (
-            (3, "01011010", 2),
-            (7, ("10" * 64)[:128], 2),
-        ):
+        for n, table, orders in ((3, "01011010", 2),):
             built = 0
 
             def counted(*args: object, _build: object = real, **kwargs: object) -> str:

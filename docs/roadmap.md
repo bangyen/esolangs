@@ -56,7 +56,7 @@ The candidate list is empty.
   | Forþ | Linear | Linear |
   | Inject | Linear | Linear |
   | Jaune | Linear | Linear |
-  | LaserFuck | Open | Open |
+  | LaserFuck | O(T) | O(T) |
   | RAM0 | Linear | Linear |
   | S\*bleq | Linear | Linear |
   | SLOW ACV MAMMALIAN | Open | Open |
@@ -97,6 +97,8 @@ The candidate list is empty.
   marker arms have lengths `1+2+4+...+T/2 = T-1`, then one sentinel selects a
   constant-size table row.  Flowchart preloads T answers and discards opposite
   deque halves; both arms merge through a switch with a normalized heading.
+  LaserFuck prewrites the table, conditionally walks the same geometric arm
+  lengths, and uses a fixed overshoot to align the selected cell for cleanup.
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is

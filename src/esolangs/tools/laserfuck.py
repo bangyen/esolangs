@@ -37,6 +37,53 @@ def _laserfuck_walk(frm: int, to: int) -> str:
     return ">" * (to - frm) if to >= frm else "<" * (frm - to)
 
 
+def _laserfuck_weighted(truth_table: str) -> str:
+    r"""Build the table in linear space with weighted conditional walks.
+
+    The top row first writes the T answer cells one band to the right, then
+    returns to cell zero.  Input bit ``i`` conditionally crosses an arm of
+    ``T/2**(i+1)`` ``>`` commands; the arm lengths sum to ``T-1``, so the
+    pointer finishes at its binary input index.  A fixed T-step walk reaches
+    that answer cell and adds two.
+
+    Moving left 2T steps deliberately overruns the tape.  Prepending cells
+    shifts the chosen answer to cell 2T regardless of its index.  One 3T-cell
+    sweep subtracts two everywhere: every other initialized answer and every
+    input becomes negative, while the chosen cell becomes exactly its table
+    bit.  LaserFuck prints only touched nonnegative cells, hence only it.
+
+    A conditional arm is a two-row diamond.  ``#v)`` lets zero continue on
+    the top row; one reflects onto ``v``, crosses the lower arm, and rises to
+    the same ``}`` exit.  The three rows, table initialization, arms, and
+    cleanup all have total length O(T), and construction performs only those
+    linear appends.
+    """
+    n = _validate_truth_table(truth_table)
+    size = len(truth_table)
+    top = list(" }}}")
+    middle = list("|o^ ")
+    bottom = list(" _  ")
+
+    def straight(text: str) -> None:
+        top.extend(text)
+        middle.extend(" " * len(text))
+        bottom.extend(" " * len(text))
+
+    straight(">" * size)
+    straight("".join(("+" if bit == "1" else "") + ">" for bit in truth_table))
+    straight("<" * (2 * size))
+    for level in range(n):
+        arm = 1 << (n - 1 - level)
+        straight("," + "-" * 48)
+        upper = "#v)" + " " * (arm - 1) + "}"
+        lower = " }" + ">" * arm + "^"
+        top.extend(upper)
+        middle.extend(lower)
+        bottom.extend(" " * len(upper))
+    straight(">" * size + "++" + "<" * (2 * size) + "-->" * (3 * size) + "x")
+    return "\n".join("".join(row).rstrip() for row in (top, middle, bottom))
+
+
 def _laserfuck_cells(n: int, perm: tuple[int, ...]) -> list[int]:
     """Return the cell each stream input is read into, indexed by input.
 
@@ -651,6 +698,8 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     and the choice has to be made over the whole pool.
     """
     n = _validate_truth_table(truth_table)
+    if width is None and len(truth_table) > 16:
+        return _laserfuck_weighted(truth_table)
     identity = tuple(range(n))
     greedy = _greedy_input_order(truth_table, n)
     orders = [identity] if greedy == identity else [identity, greedy]
