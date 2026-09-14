@@ -69,13 +69,12 @@ COD's leaf cascade is Theta(T^2): each of T leaf rows contains a prefix of
 length `3(k+1)` and a gate tail of length `2(T-k-1)`, so every row is
 Theta(T) and rotation cannot change the number of cells.  A non-cascade
 decoder is required for linear output.
-Minifuck's fixed mux has a quadratic spelling mechanism: row `i`, when fired,
-rewinds across Theta(T-i) cells and spells both `<` and `[x` for that distance.
-Its derived parity plans fire 131/247/497 rows with rewind sums
-17,192/63,473/261,565 at n=8/9/10.  Dense n=8/9 measures 58,594/221,305
-characters and parity 57,601/203,089.  These executed measurements expose the
-mechanism but are not an asymptotic proof; a shared or packed sculpt remains
-open.
+Minifuck's fixed mux is Theta(T^2) in the worst case.  Its triangular planner
+visits targets sequentially; after prior choices fix row `i`'s predicted bit,
+choosing the opposite table bit forces that row to fire.  This recursively
+defines a valid table that fires every row.  Fired row `i` spells both `<` and
+`[x` across Theta(T-i) cells, whose sum is Theta(T^2).  A shared or packed
+sculpt is required for linear output.
 Factor is Theta(T log T) on parity under the current encoding.  The folded
 Brainfuck tree has Theta(T) maximal command runs.  Each run consumes the next
 prime in one of eight nonzero residue classes modulo 11; the k-th such prime
@@ -120,6 +119,30 @@ Theta(log T) characters.  Jaune emits Theta(T) numeric labels and jump
 operands, likewise with Theta(log T) decimal width for a constant fraction.
 Either construction needs reusable branch continuations rather than unique
 textual labels.
+LaserFuck and Streetcode use Theta(T) tree rows whose live paths extend
+across Theta(log T) level columns on parity; trimming removes only suffix
+blanks.  Vandevelo emits one depth-`n` guard chain for each of Theta(T)
+selected parity rows.  All three current spellings are Theta(T log T).
+
+S*bleq emits Theta(T) instructions and data triples with absolute decimal
+addresses into a Theta(T)-cell memory, so a constant fraction of its operands
+have Theta(log T) digits.  SLOW ACV MAMMALIAN is super-linear even though its
+measured ratio is close to two: for a child cap `C`, `_widths` reserves a
+trampoline slot of Omega(C/255), and `_subtree` emits that whole slot plus two
+children.  Its recurrence is therefore `S(d) >= (2 + 1/255) S(d-1)`.
+
+Polynomial is structurally super-linear under its expanded-root encoding.
+Standard maximal ordered-BDD table families have Omega(T/log T) distinct
+residual states, so every tree/machine split used here emits that many
+instructions.  The builder encodes negative arithmetic by changing the opcode,
+not by using a negative operand, so every resulting monic factor has
+alternating nonnegative coefficient magnitudes.  Products preserve that sign
+pattern without cancellation.  The binomial contributions obtained by taking
+the leading or constant term of each factor alone give Omega(m^2) total
+coefficient digits for `m` factors.  With `m = Omega(T/log T)`, the expanded
+program is Omega(T^2/(log T)^2).  A factored syntax or another instruction
+encoding is required for O(T).
+
 
 ## Curation
 

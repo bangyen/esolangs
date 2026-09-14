@@ -1067,6 +1067,80 @@ _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
 }
 
 
+# The roadmap's original scaling queue, closed either by an O(T) construction
+# or by a structural lower bound on the shipped construction in
+# ``docs/limitations.md``.  Keeping the full roster here prevents a later edit
+# from quietly dropping an unresolved generator from the audit.
+_LINEAR_SCALING = {"back", "forbin"}
+_PROVED_SUPERLINEAR_SCALING = {
+    "a_painter_ant",
+    "addsubjump",
+    "arrowqueue",
+    "bitdeque",
+    "brainif",
+    "circuit_diagram",
+    "clockwise",
+    "cod",
+    "container",
+    "dig",
+    "factor",
+    "flowchart",
+    "inject",
+    "jaune",
+    "laserfuck",
+    "minifuck",
+    "one_two_three",
+    "polynomial",
+    "ram0",
+    "sbleq",
+    "slow_acv_mammalian",
+    "streetcode",
+    "vandevelo",
+}
+
+
+def test_remaining_scaling_audit_is_exhaustive() -> None:
+    """Every generator in the requested queue has a closed classification."""
+    expected = {
+        "a_painter_ant",
+        "one_two_three",
+        "circuit_diagram",
+        "cod",
+        "minifuck",
+        "factor",
+        "polynomial",
+        "addsubjump",
+        "arrowqueue",
+        "back",
+        "bitdeque",
+        "brainif",
+        "clockwise",
+        "container",
+        "dig",
+        "flowchart",
+        "forbin",
+        "inject",
+        "jaune",
+        "laserfuck",
+        "ram0",
+        "sbleq",
+        "slow_acv_mammalian",
+        "streetcode",
+        "vandevelo",
+    }
+    classified = _LINEAR_SCALING | _PROVED_SUPERLINEAR_SCALING
+    assert classified == expected
+    assert classified <= set(BY_BOOLEAN)
+
+
+@pytest.mark.parametrize("name", sorted(_LINEAR_SCALING))
+def test_converted_generators_scale_linearly(name: str) -> None:
+    """Past order screening, doubling an unfolded table at most doubles text."""
+    fn = getattr(boolean, name)
+    sizes = [len(fn(_parity(n))) for n in (11, 12)]
+    assert sizes[1] <= 2 * sizes[0]
+
+
 @pytest.mark.slow
 @pytest.mark.parametrize("name", sorted(_DOCUMENTED_SIZES))
 def test_the_expensive_generators_grow_as_documented(name: str) -> None:
