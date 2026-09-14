@@ -808,7 +808,7 @@ def _register() -> None:
             _fill_ram0,
             answer_mode="dump",
             answer_pattern=r"z: (\d+)",
-            expected="z: 0\nn: 1\nram: {\n    0: 0,\n    1: 1\n}",
+            expected="z: 0\nn: 0\nram: {\n    1: 0,\n    0: 1\n}",
             note=(
                 "RAM0 has no output instruction and dumps its whole state "
                 "at halt; the answer is the 'z' register"

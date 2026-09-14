@@ -84,6 +84,20 @@ class TestGrapheme:
 
 
 class TestForth:
+    def test_wide_table_skips_the_exponential_order_contest(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Beyond n=10, use the natural order without enumerating 3**n orders."""
+        import esolangs.tools.stack as stack
+
+        monkeypatch.setattr(
+            stack,
+            "_forth_stack_programs",
+            lambda _n: (_ for _ in ()).throw(AssertionError("order contest ran")),
+        )
+        program = stack.forth("0" * (2**11))
+        assert run_forth(program, ["0"] * 11) == "0"
+
     def test_program_structure(self) -> None:
         """The program defines one function per surviving node, reading n bits.
 

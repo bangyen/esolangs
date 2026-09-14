@@ -1125,6 +1125,7 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
     ``< >``, a rail), then the five-row leaf block.
     """
     cells: dict[tuple[int, int], str] = {}
+    constant = constant_span_test(truth_table)
 
     def put(x: int, y: int, text: str) -> None:
         for i, char in enumerate(text):
@@ -1175,7 +1176,7 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
         ``depth`` is the level it sits at, which fixes its rows; its columns
         come from the leaf slots it consumes.
         """
-        if len(set(truth_table[lo:hi])) == 1:
+        if constant(lo, hi):
             # Constant: no branch below here can change the answer, so this
             # is a leaf.  Leaves all sit on the bottom row whatever their
             # depth, so the rail from the switch above covers the levels this
@@ -1245,6 +1246,7 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
     # them.
     spine = n + 2
     cells: dict[tuple[int, int], str] = {}
+    constant = constant_span_test(truth_table)
 
     def put(x: int, y: int, text: str) -> None:
         for i, char in enumerate(text):
@@ -1275,7 +1277,7 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
 
     def walk(lo: int, hi: int, depth: int, y: int) -> int:
         """Draw the subtree for ``truth_table[lo:hi]``; return the row after."""
-        if len(set(truth_table[lo:hi])) == 1:
+        if constant(lo, hi):
             return leaf(y, depth, truth_table[lo])
         put(spine - 1, y, "/ /")
         cells[(spine, y + 1)] = "│"

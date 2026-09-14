@@ -195,6 +195,9 @@ def _forth_const(value: int) -> str:
     return prog
 
 
+_FORTH_ORDER_SEARCH_MAX = 10
+
+
 def forth(truth_table: str) -> str:
     """Build a Forþ program computing the given truth table.
 
@@ -250,6 +253,8 @@ def forth(truth_table: str) -> str:
     # It goes first and ties keep it, so a table no reorder helps emits
     # exactly what it emitted before.
     natural = tuple(reversed(range(n)))
+    if n > _FORTH_ORDER_SEARCH_MAX:
+        return _forth_ordered(permute_truth_table(truth_table, natural), natural)
     # Score the *reachable* arrangements rather than all ``n!`` orders --
     # the keys of ``_forth_stack_programs``, ``2 * 3**(n - 2)`` of them,
     # checked equal through ``n == 6`` to the orders ``_forth_ordered``
@@ -469,7 +474,11 @@ def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """
     n = _validate_truth_table(truth_table)
     wanted = tuple(reversed(perm))
-    reads = _forth_stack_programs(n).get(wanted)
+    reads = (
+        _FORTH_READ * n
+        if wanted == tuple(range(n))
+        else _forth_stack_programs(n).get(wanted)
+    )
     if reads is None:
         return ""
 

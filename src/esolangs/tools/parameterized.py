@@ -1247,11 +1247,8 @@ def _ram0_width(address: int) -> int:
     """Commands a RAM0 tree node spends before its subtrees.
 
     ``Z``, an ``A`` per unit of the cell address, ``L``, ``C``, and the
-    ``goto`` that reaches the one-subtree -- so the width varies from node
-    to node, which is why the walker takes a callable rather than a
-    constant.  The address is the *input* the node tests, which is its
-    level only under the identity order; :func:`_ram0_ordered` maps one to
-    the other.
+    ``goto`` that reaches the one-subtree.  Addresses descend with depth,
+    putting the most repeated tests in the shortest cells.
     """
     return address + 4
 
@@ -1269,7 +1266,7 @@ def ram0(truth_table: str) -> str:
     variable-length setter (``Z`` vs ``Z A``) was what shifted the absolute
     ``goto`` operands; the padded setter removes that.
 
-    A load phase stores each bit once in its own RAM cell (address ``i``),
+    A load phase stores each bit once in its own RAM cell,
     so the inputs are embedded exactly ``n`` times; the decision tree then
     *loads* each bit with RAM0's indirect ``L`` (``z := ram[z]``) rather than
     re-embedding it, so the tree nodes contain no substitution.  Each node
@@ -1284,11 +1281,10 @@ def ram0(truth_table: str) -> str:
     Folding a subtree needs the rows it covers to agree, and which rows a
     subtree covers is what the split order decides; RAM0 also spells an
     input as a run of ``A`` as long as its *address*, so a cheap order here
-    additionally wants the low addresses at the deep, oft-repeated levels.
-    Both effects come out of measuring the emitted candidates rather than
-    modelling either.  The load phase still stores bit ``i`` in cell ``i``
-    in input order, so the ``{Xi}`` placeholders and their positions are
-    untouched -- only which cell a node loads moves.
+    additionally benefits from low addresses at deep, oft-repeated levels.
+    That assignment is fixed optimally by depth: level ``n-1`` uses address
+    zero, up to the root at ``n-1``.  The load remains in input order, so the
+    ``{Xi}`` placeholders and their positions are untouched.
     """
     return best_input_order(truth_table, _ram0_ordered)
 
@@ -1297,27 +1293,28 @@ def _ram0_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one input order's RAM0 template; see :func:`ram0`.
 
     ``truth_table`` is already permuted, so every row index here is in the
-    permuted frame.  ``perm`` is spent on the address a node names: the
-    ``A`` run is ``perm[level]`` long, which is also what makes the node's
-    width -- and therefore every absolute ``goto`` operand below it --
-    depend on the order.
+    permuted frame.  ``perm`` decides which named input is loaded into each
+    depth-assigned cell; nodes use address ``n - 1 - level``.
     """
     n = _validate_truth_table(truth_table)
 
     def width(level: int) -> int:
-        return _ram0_width(perm[level])
+        return _ram0_width(n - 1 - level)
 
     # Initial z == 0 makes C skip the widening end target.  Leaves jump to
     # that target through fixed 1-based address 2.
     tokens = ["C", "END@"]
     pos = len(tokens)  # instantiated command index of the next command
 
-    # load phase: ram[i] = bit i, embedded exactly once each
+    # Store the deepest, most repeated test at address zero.  Placeholders
+    # remain in input-name order; only their destination cell changes.
+    address_of = {input_index: n - 1 - level for level, input_index in enumerate(perm)}
     for i in range(n):
+        address = address_of[i]
         tokens.append("Z")
-        tokens.extend("A" for _ in range(i))
+        tokens.extend("A" for _ in range(address))
         tokens.append("N")
-        pos += 1 + i + 1
+        pos += 1 + address + 1
         tokens.append("{X" + str(i) + "}")  # expands to "Z A" / "Z Z"
         pos += 2
         tokens.append("S")
@@ -1332,7 +1329,7 @@ def _ram0_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         # therefore starts a further ``len(zero)`` along, 1-based.
         return [
             "Z",
-            *("A" for _ in range(perm[level])),
+            *("A" for _ in range(n - 1 - level)),
             "L",
             "C",
             f"ONE@{at + width(level) + len(zero) + 1}",

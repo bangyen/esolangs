@@ -1747,19 +1747,25 @@ class TestSbleq:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_program_structure(self) -> None:
-        """The root reads, then its branch normalizes and tests it."""
+        """Low-address data precedes the root reads and branch."""
         program = boolean.sbleq("0110")
         cells = [int(tok) for tok in program.split()]
-        data_base = len(cells) - 11
-        assert cells[:9] == [0, 0, 6, -1, 0, 0, 9, 0, 0]
-        assert cells[9:12] == [data_base + 4, -2, data_base + 6]  # root read
-        assert cells[15:18] == [  # root branch and normalization
+        data_base = 9
+        code_base = cells[6]
+        assert cells[:6] == [0, 0, 6, -1, 0, 0]
+        assert cells[7:9] == [0, 0]
+        assert cells[data_base : data_base + 4] == [-49, 48, 49, -1]
+        assert cells[code_base : code_base + 3] == [
+            data_base + 4,
+            -2,
+            data_base + 6,
+        ]
+        assert cells[code_base + 6 : code_base + 9] == [
             data_base + 4,
             data_base,
             data_base + 8,
         ]
-        assert cells[-11:-7] == [-49, 48, 49, -1]  # NEG49, D48, D49, HALT
-        code = cells[:data_base]
+        code = cells[code_base:]
         triples = [tuple(code[i : i + 3]) for i in range(0, len(code), 3)]
         outputs = [
             t for t in triples if t[0] == -3
@@ -1784,9 +1790,11 @@ class TestSbleq:
 
         program = _sbleq_hoisted("00010111", (0, 1, 2))
         cells = [int(tok) for tok in program.split()]
-        triples = [tuple(cells[i : i + 3]) for i in range(0, len(cells), 3)]
-        reads = [t for t in triples[:6] if t[1] == -2]
-        assert len(reads) == 3  # one read per input, all in the first 6 instrs
+        code_base = cells[6]
+        code = cells[code_base:]
+        triples = [tuple(code[i : i + 3]) for i in range(0, len(code), 3)]
+        reads = [t for t in triples[:3] if t[1] == -2]
+        assert len(reads) == 3  # one read per input, all before the tree
         assert [t[0] for t in reads] == sorted({t[0] for t in reads})  # input order
 
     def test_mismatched_table_rejected(self) -> None:

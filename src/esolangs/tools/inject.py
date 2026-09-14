@@ -59,7 +59,11 @@ the tail only by a leaf's escape jump, and a line whose first word is not a
 command is a no-op.
 """
 
-from esolangs.tools.helpers import _validate_truth_table, best_input_order
+from esolangs.tools.helpers import (
+    _validate_truth_table,
+    best_input_order,
+    constant_span_test,
+)
 
 __all__ = ["inject"]
 
@@ -117,30 +121,29 @@ def _tree(
     input ``perm[depth]`` -- ``perm`` is spent only on the block a node
     names.  ``names`` also records escape labels in closing order.
     """
-    # A constant subtree needs no further tests: whatever the remaining
-    # bits are, the answer is the same, so the node collapses to its leaf.
-    # This is what makes a table depending on one input cost a single test
-    # rather than ``n`` of them.
-    if depth == n or table == table[0] * len(table):
-        escape = names.fresh()
-        names.escapes.append(escape)
-        return _leaf(table[0], escape)
+    constant = constant_span_test(table)
 
-    half = len(table) // 2
-    zeros = _tree(table[:half], depth + 1, n, names, perm)
-    ones = _tree(table[half:], depth + 1, n, names, perm)
+    def walk(start: int, stop: int, level: int) -> list[str]:
+        # A constant subtree needs no further tests: whatever the remaining
+        # bits are, the answer is the same, so the node collapses to its leaf.
+        if level == n or constant(start, stop):
+            escape = names.fresh()
+            names.escapes.append(escape)
+            return _leaf(table[start], escape)
 
-    # ``skipq`` fires when the bit equals zero, so the guarded block is
-    # the one-subtree: it is skipped exactly when the bit is 0, and entered
-    # by falling through when the bit is 1.
-    block = names.fresh()
-    return [
-        f"skipq {names.inputs[perm[depth]]} z",
-        f"{block};",
-        *ones,
-        f"{block};",
-        *zeros,
-    ]
+        middle = (start + stop) // 2
+        zeros = walk(start, middle, level + 1)
+        ones = walk(middle, stop, level + 1)
+        block = names.fresh()
+        return [
+            f"skipq {names.inputs[perm[level]]} z",
+            f"{block};",
+            *ones,
+            f"{block};",
+            *zeros,
+        ]
+
+    return walk(0, len(table), depth)
 
 
 def inject(truth_table: str) -> str:

@@ -1,6 +1,6 @@
 """Boolean-function generator for Vandevelo."""
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import _validate_truth_table, constant_span_test
 
 __all__ = ["vandevelo"]
 
@@ -31,31 +31,31 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
         else [f"{names[index]} ~> Inp?" for index in range(n)]
     )
     lines.append("l->l?" if compact else "loop -> loop?")
+    constant = constant_span_test(truth_table)
 
-    def emit(lo: int, hi: int, bits: str) -> None:
-        span = truth_table[lo:hi]
-        if "1" not in span:
-            return
-        if "0" not in span:
-            append(bits)
+    def emit(lo: int, hi: int, depth: int, prefix: int) -> None:
+        if constant(lo, hi):
+            if truth_table[lo] == "1":
+                append(depth, prefix)
             return
         mid = (lo + hi) // 2
-        emit(lo, mid, bits + "0")
-        emit(mid, hi, bits + "1")
+        emit(lo, mid, depth + 1, prefix << 1)
+        emit(mid, hi, depth + 1, (prefix << 1) | 1)
 
-    def append(bits: str) -> None:
+    def append(depth: int, prefix: int) -> None:
+        bits = [(prefix >> (depth - 1 - index)) & 1 for index in range(depth)]
         if compact:
             guards = [
-                f"{names[index]}?{'!=' if bit == '1' else '=='}Nil?"
+                f"{names[index]}?{'!=' if bit else '=='}Nil?"
                 for index, bit in enumerate(bits)
             ]
             lines.append("::".join([*guards, "l?"]))
         else:
             guards = [
-                f"{names[index]}? {'!=' if bit == '1' else '=='} Nil?"
+                f"{names[index]}? {'!=' if bit else '=='} Nil?"
                 for index, bit in enumerate(bits)
             ]
             lines.append(" :: ".join([*guards, "loop?"]))
 
-    emit(0, 2**n, "")
+    emit(0, 2**n, 0, 0)
     return "\n".join(lines)
