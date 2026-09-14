@@ -1314,7 +1314,15 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    The program is a binary decision tree drawn on the grid: every level
+    Wide unconstrained programs preload the table into one deque.  Each input
+    selects between two arms that pop half the remaining answers from opposite
+    ends.  The upper arm sets register 1 and enters the merge switch downward;
+    the lower sets 0 and enters upward, so both leave that switch east.  Across
+    all levels the two arms contain fewer than ``2T`` pops, and the drawing is
+    five rows high, making both construction and rendered output O(T).
+
+    Small or width-constrained programs use a binary decision tree drawn on
+    the grid: every level
     reads one input bit with ``/ /`` and hands it to a ``< >`` switch whose
     two sides are the halves of the table, and each of the ``2**n`` leaves
     sets the register to its own digit, prints it, and halts.
@@ -1373,6 +1381,8 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     narrower flat.
     """
     _validate_truth_table(truth_table)
+    if len(truth_table) > 16 and width is None:
+        return _flowchart_deque(truth_table)
     flat = _flowchart_render(_flowchart_cells(truth_table))
     if width is not None and max(len(line) for line in flat.split("\n")) <= width:
         return flat
@@ -1384,3 +1394,64 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     ):
         return stacked
     return flat
+
+
+def _flowchart_deque(truth_table: str) -> str:
+    """Select one preloaded answer by discarding opposite deque halves."""
+    cells: dict[tuple[int, int], str] = {}
+    main = 2
+
+    def put(x: int, y: int, text: str) -> None:
+        for offset, char in enumerate(text):
+            key = (x + offset, y)
+            if key in cells:
+                raise AssertionError(f"two Flowchart cells at {key}")
+            cells[key] = char
+
+    def chain(x: int, y: int, nodes: list[str]) -> int:
+        for node in nodes:
+            put(x, y, node)
+            x += len(node)
+            put(x, y, "─")
+            x += 1
+        return x
+
+    x = 0
+    x = chain(x, main, ["( )"])
+    preload: list[str] = []
+    for bit in truth_table:
+        preload.extend(("[ }" if bit == "1" else "{ ]", "\\[ ]/"))
+    x = chain(x, main, preload)
+
+    n = len(truth_table).bit_length() - 1
+    for level in range(n):
+        x = chain(x, main, ["/ /"])
+        switch = x
+        put(switch, main, "< >")
+        middle = switch + 1
+        put(middle, main - 1, "│")
+        put(middle, main + 1, "│")
+        put(middle, main - 2, "┌")
+        put(middle, main + 2, "└")
+
+        count = 1 << (n - 1 - level)
+        top = chain(middle + 1, main - 2, ["/{ }\\"] * count + ["[ }"])
+        bottom = chain(middle + 1, main + 2, ["\\{ }/"] * count + ["{ ]"])
+        if top != bottom:  # pragma: no cover - paired node widths are equal
+            raise AssertionError("Flowchart selector arms have different widths")
+        end = top
+        put(end, main - 2, "┐")
+        put(end, main + 2, "┘")
+        put(end, main - 1, "│")
+        put(end, main + 1, "│")
+        put(end - 1, main, "< >")
+        put(end + 2, main, "─")
+        x = end + 3
+
+    x = chain(x, main, ["\\{ }/", "\\ \\"])
+    put(x, main, "(( ))")
+    width = max(col for col, _ in cells) + 1
+    grid = [[" "] * width for _ in range(5)]
+    for (col, row), char in cells.items():
+        grid[row][col] = char
+    return "\n".join("".join(row).rstrip() for row in grid)
