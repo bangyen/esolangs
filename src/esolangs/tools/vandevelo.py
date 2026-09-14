@@ -17,6 +17,7 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
         else [f"i{index} ~> Inp?" for index in range(n)]
     )
     lines.append("l->l?" if compact else "loop -> loop?")
+
     def emit(lo: int, hi: int, bits: str) -> None:
         span = truth_table[lo:hi]
         if "1" not in span:

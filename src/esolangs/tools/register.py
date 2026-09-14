@@ -865,6 +865,7 @@ def qoibl(truth_table: str) -> str:
     the shortest binary names, so widening register IDs still sum to O(T).
     """
     n = _validate_truth_table(truth_table)
+
     def registers(level: int) -> tuple[int, int, int, int]:
         base = 4 * (n - 1 - level)
         return base, base + 1, base + 2, base + 3
@@ -907,9 +908,7 @@ def qoibl(truth_table: str) -> str:
         )
 
     node(0, 0, 2**n, root)
-    lines.append(
-        f"tt qe {_qoibl_enc(root)} qe ry ee ry {_qoibl_enc(_ASCII_ZERO)} tt"
-    )
+    lines.append(f"tt qe {_qoibl_enc(root)} qe ry ee ry {_qoibl_enc(_ASCII_ZERO)} tt")
     return "\n".join(lines)
 
 
