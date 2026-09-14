@@ -730,7 +730,159 @@ def sbleq(truth_table: str) -> str:
     across the tree. It handles every table alone.
     """
     _validate_truth_table(truth_table)
-    return best_input_order(truth_table, _sbleq_hoisted)
+    if len(truth_table) <= 16:
+        return best_input_order(truth_table, _sbleq_hoisted)
+    return _sbleq_packed(truth_table)
+
+
+def _sbleq_packed(truth_table: str) -> str:
+    """Emit a linear-size packed-table decoder for S*bleq."""
+    n = _validate_truth_table(truth_table)
+    instructions: list[tuple[object, object, str]] = []
+    labels: dict[str, int] = {}
+    values: dict[str, int] = {
+        "ZERO": 0,
+        "ONE": 1,
+        "NEGONE": -1,
+        "NEG48": -_ASCII_ZERO,
+        "N": n,
+        "INDEX": 0,
+        "TMP": 0,
+        "BIT": 0,
+        "NEG": 0,
+        "COUNT": n,
+        "OFFSET": 0,
+        "TABLE": 0,
+        "SHIFT": 0,
+        "Q": 0,
+        "R": 0,
+        "OUT": _ASCII_ZERO,
+        "HALT": -1,
+    }
+
+    def mark(name: str) -> None:
+        labels[name] = len(instructions)
+
+    def emit(a: object, b: object, target: str = "next") -> int:
+        instructions.append((a, b, target))
+        return len(instructions) - 1
+
+    def jump(target: str) -> None:
+        emit("ZERO", "ZERO", target)
+
+    def clear(dst: str) -> None:
+        emit(dst, dst)
+
+    def increment(dst: object) -> None:
+        emit(dst, "NEGONE")
+
+    def add(dst: str, src: str) -> None:
+        clear("NEG")
+        emit("NEG", src)
+        emit(dst, "NEG")
+
+    def copy(dst: str, src: str) -> None:
+        clear(dst)
+        add(dst, src)
+
+    def branch_positive(cell: str, positive: str, zero: str) -> None:
+        # A positive result falls through; zero branches through c.
+        emit(cell, "ZERO", zero)
+        jump(positive)
+
+    # Read ASCII bits once and form their binary row index.
+    for _ in range(n):
+        clear("TMP")
+        emit("TMP", -2)
+        emit("TMP", "NEG48")
+        clear("BIT")
+        emit("BIT", "TMP")
+        add("INDEX", "INDEX")
+        add("INDEX", "BIT")
+
+    mark("select_test")
+    branch_positive("INDEX", "select_step", "selected")
+    mark("select_step")
+    emit("INDEX", "ONE")
+    emit("COUNT", "ONE")
+    increment("OFFSET")
+    branch_positive("COUNT", "select_test", "advance_chunk")
+    mark("advance_chunk")
+    load_operand_increment = emit(0, "NEGONE")
+    add("COUNT", "N")
+    clear("OFFSET")
+    jump("select_test")
+
+    mark("selected")
+    clear("TABLE")
+    load_chunk = emit("TABLE", "CHUNK0")
+    copy("SHIFT", "OFFSET")
+    increment("SHIFT")
+
+    # Divide by two OFFSET+1 times; the last remainder is the selected bit.
+    mark("div_init")
+    clear("Q")
+    clear("R")
+    mark("div_test")
+    branch_positive("TABLE", "div_first", "division_complete")
+    mark("div_first")
+    emit("TABLE", "ONE")
+    branch_positive("TABLE", "div_pair", "div_odd")
+    mark("div_pair")
+    emit("TABLE", "ONE")
+    increment("Q")
+    jump("div_test")
+    mark("div_odd")
+    increment("R")
+    jump("division_complete")
+
+    mark("division_complete")
+    emit("SHIFT", "ONE")
+    branch_positive("SHIFT", "divide_again", "output")
+    mark("divide_again")
+    copy("TABLE", "Q")
+    jump("div_init")
+    mark("output")
+    add("OUT", "R")
+    emit(-3, "OUT")
+    jump("@HALT")
+
+    # Negative packed values let one subtraction load a positive chunk.
+    chunks = [
+        -sum(
+            int(bit) << offset
+            for offset, bit in enumerate(truth_table[start : start + n])
+        )
+        for start in range(0, len(truth_table), n)
+    ]
+
+    target_names = [f"TARGET{i}" for i in range(len(instructions))]
+    names = [*values, *target_names, *(f"CHUNK{i}" for i in range(len(chunks)))]
+    base = 3 * len(instructions)
+    address = {name: base + i for i, name in enumerate(names)}
+    memory = [0] * (base + len(names))
+
+    def operand(value: object) -> int:
+        return address[value] if isinstance(value, str) else int(value)
+
+    for i, (a, b, target) in enumerate(instructions):
+        if target == "next":
+            target_value = 3 * (i + 1)
+        elif target.startswith("@"):
+            target_value = None
+        else:
+            target_value = 3 * labels[target]
+        target_cell = target_names[i]
+        memory[address[target_cell]] = target_value if target_value is not None else 0
+        c = address[target[1:]] if target.startswith("@") else address[target_cell]
+        memory[3 * i : 3 * i + 3] = [operand(a), operand(b), c]
+
+    for name, value in values.items():
+        memory[address[name]] = value
+    for i, value in enumerate(chunks):
+        memory[address[f"CHUNK{i}"]] = value
+    memory[3 * load_operand_increment] = 3 * load_chunk + 1
+    return " ".join(map(str, memory))
 
 
 def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
