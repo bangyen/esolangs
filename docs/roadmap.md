@@ -49,7 +49,7 @@ The candidate list is empty.
   | Back | Linear | Linear |
   | Bitdeque | Linear | Linear |
   | BrainIf | Linear | Linear |
-  | Clockwise | Open | Open |
+  | Clockwise | Linear | Linear |
   | Container | Open | Open |
   | Dig | Open | Open |
   | Flowchart | Linear | Linear |
@@ -99,6 +99,8 @@ The candidate list is empty.
   deque halves; both arms merge through a switch with a normalized heading.
   LaserFuck prewrites the table, conditionally walks the same geometric arm
   lengths, and uses a fixed overshoot to align the selected cell for cleanup.
+  Clockwise alternates horizontal and vertical subtree composition; each pair
+  of levels doubles both dimensions, keeping the rendered rectangle linear.
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is

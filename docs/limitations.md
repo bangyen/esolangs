@@ -118,16 +118,16 @@ Theta(T) leaf containers are each defined and referenced a constant number of
 times, while distinct identifiers over its fixed 52-letter alphabet require
 Theta(log T) characters for a constant fraction of them.
 
-Three current grid layouts also spend one depth-width strip per table row.
-Clockwise's flat form uses Theta(T) columns across Theta(log T) active rows;
-its bounded-width stack instead uses Theta(log T) columns across Theta(T)
-rows.  Dig's two-band form leaves Theta(T) occupied leaf rows reaching across
-Theta(log T) columns.  Flowchart's retired tree placed Theta(T) leaves on
+Three retired or current grid layouts spend one depth-width strip per table
+row.  Clockwise's retired flat form used Theta(T) columns across Theta(log T)
+active rows; its bounded-width stack instead uses Theta(log T) columns across
+Theta(T) rows.  Alternating the two compositions makes both dimensions
+O(sqrt(T)), hence O(T) area.  Dig's two-band form leaves Theta(T) occupied
+leaf rows reaching across Theta(log T) columns.  Flowchart's retired tree placed Theta(T) leaves on
 fixed pitch and drew one Theta(T)-wide selector level per input.  Its five-row
 deque layout is linear: it preloads T answers, then its two arms discard
 opposite halves; setting the arms to 1/0 before a shared switch makes both
-incoming headings leave east.  Clockwise and Dig still need localized or
-shared routing.
+incoming headings leave east.  Dig still needs localized or shared routing.
 Inject's and Jaune's retired trees are Theta(T log T) on parity because both
 assign a distinct label to every tree branch or leaf.  Inject emits each of Theta(T) labels
 twice from a fixed 52-letter alphabet, so a constant fraction have

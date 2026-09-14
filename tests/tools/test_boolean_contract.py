@@ -1076,6 +1076,7 @@ _LINEAR_SCALING = {
     "back",
     "bitdeque",
     "brainif",
+    "clockwise",
     "forbin",
     "flowchart",
     "inject",
@@ -1087,7 +1088,6 @@ _LINEAR_SCALING = {
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
     "circuit_diagram",
-    "clockwise",
     "cod",
     "container",
     "dig",

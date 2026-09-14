@@ -538,8 +538,8 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     lets leaves finish on *different* rows: the ring closes through column 0
     rather than through one shared bottom row.
 
-    Two ways the tree separates its paths, and the width picks between
-    them.  A node can send its one-branch to a column of its own, which
+    Three ways the tree composes its paths.  A node can send its one-branch
+    to a column of its own, which
     costs the columns that branch displaces -- the classic layout, and the
     reason an unstacked tree grows as ``2 ** (n + 1)``.  Or it can send it
     one column left and *stack* the two subtrees, the zero-branch falling
@@ -547,6 +547,12 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     Stacking costs one column per level instead of ``2 ** (n - bit)``, and
     pays for it in rows: the subtree below a stacked node is written twice
     over, so each stacked level doubles the program's height.
+
+    Wide default tables alternate those two compositions by level.  Across
+    each pair of levels both width and height only double, so each is
+    O(sqrt(T)) and the rendered rectangle is O(T).  The builder visits the
+    O(T) tree cells and that rectangle once, so generation time is O(T) too.
+    Explicit widths retain the prefix-stacked layout below.
 
     The shallow levels displace furthest, so those are the ones stacked
     first: ``width`` fixes the smallest number of levels that brings the
@@ -566,7 +572,12 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     asked for may go under it -- the request is the point.
     """
     n = _validate_truth_table(truth_table)
+    alternating = width is None and n > 4
     constant_span = constant_span_test(truth_table)
+
+    def stacks(bit: int, stacked: int) -> bool:
+        """Whether this level composes its children vertically."""
+        return bit % 2 == 0 if alternating else bit < stacked
 
     def constant(bit: int, combo: int) -> bool:
         """Whether every row this subtree covers agrees.
@@ -606,7 +617,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
             else:
                 one = shape(bit + 1, (combo << 1) | 1, stacked)
                 zero = shape(bit + 1, combo << 1, stacked)
-                if bit < stacked:
+                if stacks(bit, stacked):
                     shapes[key] = (
                         max(3, one[0] + 1, zero[0]),
                         _CLOCKWISE_LEVEL + one[1] + zero[1],
@@ -735,7 +746,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
         # A stacked node displaces a single column and drops its
         # zero-branch below the one-branch's rows; a flat one displaces
         # past the zero-branch's span and the two share the rows.
-        step = 1 if bit < stacked else max(2, zero[0])
+        step = 1 if stacks(bit, stacked) else max(2, zero[0])
         xn = x - step - (slack if bit == 0 else 0)
         # b=1: '?' turns the pointer aside, then three R's turn it down
         place((xn, y + 8), " ")
@@ -743,7 +754,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
         place((xn - 1, y + 7), "R")
         place((xn, y + 7), "R")
         build(bit + 1, xn, y + 9, (combo << 1) | 1)
-        below = one[1] if bit < stacked else 0
+        below = one[1] if stacks(bit, stacked) else 0
         # b=0: fall down this column, past the one-branch when it stacks
         build(bit + 1, x, y + 9 + below, combo << 1)
 
@@ -774,7 +785,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     # into, so a row's trailing filler is never reached; the interpreter pads
     # short rows itself, so trimming it changes nothing but the file.
     program = "\n".join("".join(row).rstrip() for row in grid)
-    if width is None:
+    if width is None and not alternating:
         partially_stacked = clockwise(truth_table, width=8 * n)
         return min((program, partially_stacked), key=len)
     return program
