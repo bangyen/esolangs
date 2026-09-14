@@ -665,20 +665,18 @@ def _paint(b: _Builder, k: int) -> None:
 
 
 def _paint_all(b: _Builder, offsets: list[int]) -> None:
-    """Emit :func:`_paint` at every offset, applying them in one step.
+    """Paint every offset in one outward-and-back sweep.
 
-    A paint restores every position and its descent's XOR does not read
-    the tape, so a whole shield campaign is a single shift-and-XOR per
-    row -- ``tape ^= delta << pos`` with bit ``k`` of ``delta`` set per
-    offset -- instead of four simulated runs per paint per row.  At ten
-    inputs that is 2.1M row steps of a 3.2M-step build, and the emitted
-    text is the concatenation the separate paints would have produced,
-    character for character.
+    Walk to the highest target once, then descend.  The mandatory ``1``
+    toggles each visited cell; an unselected cell gets an immediate
+    ``21`` excursion, toggling it a second time.  Thus selected cells flip
+    once, every other cell flips twice, and the pointer returns to its
+    start in at most four commands per cell.  The tracked rows receive the
+    equivalent mask in one XOR each rather than replaying the sweep.
 
-    Distinct offsets are what make the fused XOR equal the sequence:
-    two shields on one offset would cancel instead of stacking.  The
-    verdict's collision-freedom argument already gives that, so a clash
-    is a broken precondition rather than a case to handle.
+    Distinct offsets are required because two shields on one cell would
+    cancel.  The verdict's collision-freedom argument already gives that,
+    so a clash is a broken precondition rather than a case to handle.
     """
     if any(k < 1 for k in offsets):  # pragma: no cover - the verdict computes k >= 1
         raise ConstructError("a paint offset is not above the row")
@@ -687,13 +685,13 @@ def _paint_all(b: _Builder, offsets: list[int]) -> None:
     live = b.live()
     if any(r.pos < 0 for r in live):  # pragma: no cover - separation leaves pos >= 1
         raise ConstructError("a shield would walk out of the ring")
-    parts: list[str] = []
-    for k in offsets:
-        parts.append(_ZERO * k)
-        parts.append(_ONE * k)
-        if k > 1:
-            parts.append(_ZERO * (k - 1))
-            parts.append(_ONE * (k - 1))
+    targets = set(offsets)
+    top = max(offsets)
+    parts = [_ZERO * top]
+    for k in range(top, 0, -1):
+        parts.append(_ONE)
+        if k not in targets:
+            parts.append(_ZERO + _ONE)
     _work[0] -= sum(map(len, parts)) * len(live)
     if _work[0] < 0:
         raise _WorkExhaustedError
