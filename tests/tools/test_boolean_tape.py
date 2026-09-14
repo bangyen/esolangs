@@ -1676,6 +1676,12 @@ class TestJaune:
         # every input matters here, so every read keeps its cell
         assert boolean.jaune("10010110").startswith("v>v>v>")
 
+    def test_each_leaf_terminates_without_a_shared_label(self) -> None:
+        """Leaves use ``.`` instead of repeating a widening end label."""
+        program = boolean.jaune("0110")
+        assert program.count(".") == 4
+        assert program.endswith("^.")
+
     @pytest.mark.parametrize(
         ("a", "b"),
         [
