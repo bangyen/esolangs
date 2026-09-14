@@ -29,6 +29,19 @@ _ASCII_ONE = _ASCII_ZERO + 1  # ``ord("1")``, the digit the other branch prints
 _ORDER_SEARCH_MAX = 6
 
 
+def constant_span_test(truth_table: str) -> Callable[[int, int], bool]:
+    """Return an O(1) test for whether a half-open table span is constant."""
+    ones = [0]
+    for bit in truth_table:
+        ones.append(ones[-1] + (bit == "1"))
+
+    def constant(start: int, stop: int) -> bool:
+        count = ones[stop] - ones[start]
+        return count in (0, stop - start)
+
+    return constant
+
+
 def _validate_truth_table(truth_table: str) -> int:
     """Validate a truth table and return its input count ``n``.
 
@@ -616,14 +629,11 @@ def decision_tree_tokens[Token](
     only the skeleton and takes the emitting as callbacks.
     """
     n = _validate_truth_table(truth_table)
-    ones = [0]
-    for bit in truth_table:
-        ones.append(ones[-1] + (bit == "1"))
+    constant = constant_span_test(truth_table)
     width = parent_width if callable(parent_width) else lambda _level: parent_width
 
     def walk(level: int, lo: int, hi: int, at: int) -> list[Token]:
-        one_count = ones[hi] - ones[lo]
-        if level == n or (collapse and one_count in (0, hi - lo)):
+        if level == n or (collapse and constant(lo, hi)):
             return leaf(level, lo)
         half = (hi - lo) // 2
         below = at + width(level)
