@@ -264,10 +264,11 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         return idx
 
     emit(-9, -6, "next", -7)  # enable flag mode
-    values["C48"] = -_ASCII_ZERO
-    values["U"] = 0
-    values["D48"] = _ASCII_ZERO
-    values["D49"] = _ASCII_ONE
+    # The entry jumps over these two instruction-width data blocks.  Their
+    # fixed addresses hold the operands repeated throughout the tree:
+    # D48=4, D49=5, U=6 and C48=8.
+    instructions += [[_ASCII_ZERO, _ASCII_ONE, 0, 0], [-_ASCII_ZERO, 0, 0, 0]]
+    next_cells += [None, None]
 
     stored = stored_inputs(truth_table, perm)
 
@@ -283,7 +284,7 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         bit = f"B{i}"
         values[bit] = 0
         emit(bit, -1, "next", -7)  # B += input byte (48/49)
-        emit(bit, "C48", "next", -7)  # B += -48
+        emit(bit, 8, "next", -7)  # B += -48
         emit(bit, bit, "next", -7)  # double
         emit(bit, bit, "next", -7)  # double -> {0, 4}
 
@@ -296,8 +297,7 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         if truth_table.count(truth_table[lo], lo, hi) == hi - lo:
             # Every read already happened up front, so a folded leaf prints
             # and halts with nothing to drain.
-            out = _ASCII_ZERO + int(truth_table[lo])
-            emit(-1, f"D{out}", -8, -7)
+            emit(-1, 4 + int(truth_table[lo]), -8, -7)
             return
         half = (hi - lo) // 2
         if perm[level] not in stored:
@@ -313,11 +313,11 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         # at the zero trampoline two slots on.
         values[jump] = ("t0", base + 2)
         emit(jump, bit, "next", -7)  # J += B, the hoisted bit this node tests
-        emit("U", "U", jump, -7)  # goto *J
+        emit(6, 6, jump, -7)  # goto *J
         ztarget = f"Z{base}"
         otarget = f"O{base}"
-        emit("U", "U", ztarget, -7)  # zero trampoline
-        emit("U", "U", otarget, -7)  # one trampoline
+        emit(6, 6, ztarget, -7)  # zero trampoline
+        emit(6, 6, otarget, -7)  # one trampoline
         zstart = len(instructions)
         build(level + 1, lo, lo + half)
         ostart = len(instructions)
@@ -369,7 +369,7 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         mem[idx] = 4 * val[1] if isinstance(val, tuple) else val
     for i, nc in enumerate(next_cells):
         if nc:
-            mem[cell(nc)] = 4 * (i + 1)
+            mem[cell(nc)] = 12 if i == 0 else 4 * (i + 1)
     return " ".join(map(str, mem))
 
 
