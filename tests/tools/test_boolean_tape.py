@@ -1740,8 +1740,9 @@ class TestSbleq:
         program = boolean.sbleq("0110")
         cells = [int(tok) for tok in program.split()]
         data_base = len(cells) - 11
-        assert cells[:3] == [data_base + 4, -2, data_base + 6]  # root read
-        assert cells[6:9] == [  # root branch and normalization
+        assert cells[:9] == [0, 0, 6, -1, 0, 0, 9, 0, 0]
+        assert cells[9:12] == [data_base + 4, -2, data_base + 6]  # root read
+        assert cells[15:18] == [  # root branch and normalization
             data_base + 4,
             data_base,
             data_base + 8,
@@ -1758,9 +1759,7 @@ class TestSbleq:
             (-3, data_base + 2, 0),
             (-3, data_base + 1, 0),
         ]
-        assert [t for t in triples if t == (0, 0, data_base + 3)] == 4 * [
-            (0, 0, data_base + 3)
-        ]  # one halt per leaf
+        assert [t for t in triples if t == (0, 0, 3)] == 4 * [(0, 0, 3)]
 
     def test_only_the_hoisted_route_remains(self) -> None:
         """The former node-read builder is gone, not merely bypassed."""

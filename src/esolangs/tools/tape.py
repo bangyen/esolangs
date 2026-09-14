@@ -715,7 +715,7 @@ def sbleq(truth_table: str) -> str:
     for the whole program.
 
     Leaves print ``-3 D 0`` (``D`` a constant 48/49 cell) and halt with
-    ``0 0 HALT`` (``HALT`` holds -1, a negative jump target).  Whole
+    ``0 0 3``; an entry trampoline keeps -1 in fixed low cell 3.  Whole
     subtrees whose table entries are constant collapse to a leaf.
 
     S*bleq's operands are addresses, so a cell holding a transient 0/1 is
@@ -745,6 +745,8 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
     as the node-read build did.
     """
     n = _validate_truth_table(truth_table)
+    prelude = [0, 0, 6, -1, 0, 0, 9, 0, 0]
+    code_base = len(prelude)
     neg49, d48 = 0, 1
     vbase = 4
     nxtbase = vbase + n
@@ -782,7 +784,7 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
     )
 
     onebase = nxtbase + n
-    data_base = 3 * len(instructions)
+    data_base = code_base + 3 * len(instructions)
 
     # ``one`` instructions carry their absolute target, and the data block
     # holds those targets in the order the emit loop meets them.
@@ -793,21 +795,21 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
         if kind == "out":
             cells += [-3, data_base + b, 0]
         elif kind == "halt":
-            cells += [0, 0, data_base + 3]
+            cells += [0, 0, 3]
         elif kind == "nxt":
             cells += [data_base + a, -2, data_base + nxtbase + arg]
         else:
             slot = len(ones)
-            ones.append(arg)
+            ones.append(code_base + arg)
             cells += [data_base + a, data_base + b, data_base + onebase + slot]
 
     data = (
         [-_ASCII_ONE, _ASCII_ZERO, _ASCII_ONE, -1]
         + [0] * n
-        + [3 * (i + 1) for i in range(n)]
+        + [code_base + 3 * (i + 1) for i in range(n)]
         + ones
     )
-    cells += data
+    cells = prelude + cells + data
     return " ".join(map(str, cells))
 
 
