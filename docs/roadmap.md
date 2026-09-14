@@ -66,13 +66,14 @@ The candidate list is empty.
   Circuit Diagram now uses a linear one-pass Shannon fold and
   indexed layout guards, but its persistent selector rails leave the ASCII
   area O(T log T); route each selector only across its mux level.  Treat every
-  emitted character as build work.  Input reordering is
-  an optional optimization around a generator, not part of its construction,
-  so its search cost does not enter this criterion.  No generator construction
-  may use BFS or DFS; test-only oracle searches and prose about retired searches
-  may remain.  Circuit Diagram's H-layout temporarily uses a bounded local
-  dogleg scan with cell-indexed collision checks; derive its first-free lanes
-  into a direct routing rule without changing the emitted programs.
+  emitted character as build work.  Input reordering is optional around the
+  construction, but its work still counts toward end-to-end generation time.
+  Order selection builds at most four named candidates; factorial and
+  exponential contests are test-only oracles.  No generator construction may
+  use BFS or DFS; test-only oracle searches and prose about retired searches may
+  remain.  Circuit Diagram's H-layout temporarily uses a bounded local dogleg
+  scan with cell-indexed collision checks; derive its first-free lanes into a
+  direct routing rule without changing the emitted programs.
 
 - **A Painter Ant shared-head proof.**  The depth-first head cuts dense n=9
   from 517348 to 19684 characters and executes every n=3 program plus sampled
