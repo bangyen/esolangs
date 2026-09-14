@@ -85,8 +85,7 @@ def six_five(truth_table: str) -> str:
 
     The identity order reads and tests in place. A reordered tree stores its
     inputs first, then tests any cell. 6-5 has a tape and pointer (``B``,
-    ``1``/``3``), so one ordered builder covers both cases. Every order is
-    measured and the shortest emitted program wins.
+    ``1``/``3``), so one ordered builder covers both cases.
 
     The branch labels are the digits 0..9 then A..Z (values 1..35, consumed
     as ``8n`` operands), one per internal node the fold leaves standing.
@@ -119,14 +118,22 @@ def six_five(truth_table: str) -> str:
     committed size measurement was taken against, and far shorter when a
     table folds or shares well.
 
-    Only the identity and greedy orders are built.  Searching AND-8's 40320
-    orders took about 17 seconds against milliseconds for the greedy pick.
+    Four named orders compete: identity, fold-greedy, reverse, and first input
+    followed by the others reversed.  The last two recover the cheap pointer
+    walks that fold-only scoring cannot see on symmetric tables.  Searching
+    AND-8's 40320 orders took about 17 seconds against milliseconds here.
     """
     n = _validate_truth_table(truth_table)
     best = ""
     identity = tuple(range(n))
-    greedy = _greedy_input_order(truth_table, n)
-    orders = [identity] if greedy == identity else [identity, greedy]
+    orders = dict.fromkeys(
+        (
+            identity,
+            _greedy_input_order(truth_table, n),
+            tuple(reversed(identity)),
+            (0, *reversed(range(1, n))),
+        )
+    )
     for perm in orders:
         table = (
             truth_table if perm == identity else permute_truth_table(truth_table, perm)
