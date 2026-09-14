@@ -13,8 +13,8 @@ The candidate list is empty.
   T is the truth-table length, and add a registry-wide scaling contract.  The
   n=8 -> 9 parity sweep already exposes super-linear output in A Painter Ant
   (135016 -> 534124), 123 (222847 -> 750738), Circuit Diagram
-  (632616 -> 1661008), COD (942692 -> 3668705), Eval
-  (35611 -> 136735), Minifuck (57601 -> 203089), ROTFuck
+  (632616 -> 1661008), COD (942692 -> 3668705), Minifuck
+  (57601 -> 203089), ROTFuck
   (83516 -> 200647), and Suffolk (34697 -> 105932); dense tables also expose
   Polynomial and Super SNUSP.  Treat every emitted character as build work,
   and replace Circuit Diagram's quadratic layout checks.  Input reordering is
