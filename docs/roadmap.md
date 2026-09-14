@@ -15,7 +15,7 @@ The candidate list is empty.
   (135016 -> 534124), 123 (222847 -> 750738), Circuit Diagram
   (145216 -> 322504), COD (942692 -> 3668705), Minifuck
   (57601 -> 203089), ROTFuck
-  (83516 -> 200647), and Suffolk (34697 -> 105932); dense tables also expose
+  (83516 -> 200647); dense tables also expose
   Polynomial.  Circuit Diagram now uses a linear one-pass Shannon fold and
   indexed layout guards, but its persistent selector rails leave the ASCII
   area O(T log T); route each selector only across its mux level.  Treat every
