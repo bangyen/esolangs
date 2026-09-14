@@ -18,6 +18,7 @@ from esolangs.tools.helpers import (
     _ORDER_SEARCH_MAX,
     _validate_truth_table,
     best_input_order,
+    constant_span_test,
     decision_tree_program,
     decision_tree_tokens,
     essential_inputs,
@@ -146,11 +147,12 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     entries += [_Cmd("if 0 move right") for _ in range(n - 1)]
 
     counter = [0]
+    constant = constant_span_test(truth_table)
 
-    def build(rows: list[int], k: int) -> list[_Entry]:
-        """Emit the subtree for ``rows``, entered with the pointer on cell n-k+1."""
+    def build(lo: int, hi: int, k: int) -> list[_Entry]:
+        """Emit a table span, entered with the pointer on cell n-k+1."""
         rest = n - (k - 1)
-        if rest == 0 or len({truth_table[row] for row in rows}) == 1:
+        if rest == 0 or constant(lo, hi):
             # Consume the inputs this path never branched on, which walks
             # the pointer the rest of the way home; then add one iff the
             # answer is a 1 and join the tail.  Reading them is not optional:
@@ -161,7 +163,7 @@ def brainif(truth_table: str, width: int | None = None) -> str:
                 out.append(_Cmd("if 0 input"))
                 out.append(_Cmd(f"if {_ASCII_ZERO} move left"))
                 out.append(_Cmd(f"if {_ASCII_ONE} move left"))
-            if int(truth_table[rows[0]]):
+            if int(truth_table[lo]):
                 out.append(_Cmd(f"if {_ASCII_ZERO} increment"))
             out.append(_Cmd(f"if {_ASCII_ZERO} goto 2"))
             out.append(_Cmd(f"if {_ASCII_ONE} goto 2"))
@@ -169,12 +171,11 @@ def brainif(truth_table: str, width: int | None = None) -> str:
         # Level ``k`` reads input ``k - 1`` into cell ``n - k + 1``, so the
         # bit it selects is the table's usual most-significant-first one --
         # the reads are in input order even though the pointer walks down.
-        g0 = [row for row in rows if ((row >> (n - k)) & 1) == 0]
-        g1 = [row for row in rows if ((row >> (n - k)) & 1) == 1]
+        middle = (lo + hi) // 2
         l0, l1 = counter[0], counter[0] + 1
         counter[0] += 2
-        sub0 = build(g0, k + 1)
-        sub1 = build(g1, k + 1)
+        sub0 = build(lo, middle, k + 1)
+        sub1 = build(middle, hi, k + 1)
         return [
             _Cmd("if 0 input"),
             _If(_ASCII_ONE, l1),
@@ -184,7 +185,7 @@ def brainif(truth_table: str, width: int | None = None) -> str:
             *sub1,
         ]
 
-    entries += build(list(range(2**n)), 1)
+    entries += build(0, len(truth_table), 1)
     # One shared tail: the answer cell already holds the byte to print, so
     # this is two lines rather than a climb per digit.
     entries.append(_Out(0))
