@@ -57,7 +57,7 @@ The candidate list is empty.
   | Inject | Open | Open |
   | Jaune | Open | Open |
   | LaserFuck | Open | Open |
-  | RAM0 | Open | Open |
+  | RAM0 | Linear | Linear |
   | S\*bleq | Linear | Linear |
   | SLOW ACV MAMMALIAN | Open | Open |
   | Streetcode | Open | Open |
@@ -77,6 +77,9 @@ The candidate list is empty.
   have executed through the interpreter.
   S*bleq uses the same chunk bound with native subtract-and-branch loops;
   sampled six-input rows across chunk boundaries execute correctly.
+  RAM0 initializes one RAM cell per table row with a runtime address counter,
+  then conditionally adds unary binary weights whose total is 2T-2.  Only
+  O(log T) direct jumps remain; sampled six-input rows execute correctly.
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is
