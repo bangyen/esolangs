@@ -18,7 +18,7 @@ The candidate list is empty.
   Polynomial.  A construction audit adds AddSubJump, Algebraic
   Programming Language, ArrowQueue, Back, B-tapemark, Bitdeque, BrainIf,
   Clockwise, Collatz Multiverse, Container, Dig, Fargo, Flowchart, Forþ,
-  Grapheme, Inject, Jaune, LaserFuck, Packlang, Qoibl, RAM0, S*bleq,
+  Grapheme, Inject, Jaune, LaserFuck, Qoibl, RAM0, S*bleq,
   SLOW ACV MAMMALIAN, Streetcode, Vandevelo, and bit~.  Their quiet factors
   are minterms, rectangular tree layouts, widening labels or addresses, and
   per-depth padding; an n=8 -> 9 ratio near 2 is not evidence of O(T).
