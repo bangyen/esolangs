@@ -35,26 +35,25 @@ escape blocks all close consecutively in the tail.
 Layout
 ------
 
-The bits are read up front, one ``readto`` per input, into blocks ``i0`` ..
-``i{n-1}``.  Reading first rather than at the tree's nodes is what keeps
+The bits are read up front, one ``readto`` per input, into compactly named
+blocks.  Reading first rather than at the tree's nodes is what keeps
 the read count equal on every path -- the boolean contract requires exactly
 ``n`` reads whatever the inputs are -- and it also lets a node test a bit
 more than once for free.
 
 The tree then walks the table.  At depth ``d`` the node tests the input
 the chosen order puts there (``perm[d]``; the shortest of the ``n!``
-orders wins, ties keeping the identity) against the constant block
-``zero``:
+orders wins, ties keeping the identity) against the constant zero block:
 
-* ``skipq i{perm[d]} zero`` fires when the bit **is** ``0``, so the block
+* ``skipq INPUT ZERO`` fires when the bit **is** ``0``, so the block
   it guards is the ``1``-subtree, which is skipped exactly then;
 * falling through enters that block, which holds the ``1``-subtree.
 
-A leaf sends ``zero`` or ``one`` and then escapes.  Because a constant
+A leaf sends the zero or one block and then escapes.  Because a constant
 block is both a comparison operand and an answer, the program needs only
 the two of them.
 
-The tail holds ``zero;``/``one;`` (the answer constants) and the closing
+The tail holds the answer constants and the closing
 delimiters of every escape block, all of which are inert: control reaches
 the tail only by a leaf's escape jump, and a line whose first word is not a
 command is a no-op.
@@ -65,6 +64,40 @@ from esolangs.tools.helpers import _validate_truth_table, best_input_order
 __all__ = ["inject"]
 
 
+_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+_CONSTANTS = {"o", "z"}
+
+
+def _word(index: int) -> str:
+    """Return the ``index``th shortest alphabetic identifier."""
+    base = len(_ALPHABET)
+    chars = []
+    index += 1
+    while index:
+        index, digit = divmod(index - 1, base)
+        chars.append(_ALPHABET[digit])
+    return "".join(reversed(chars))
+
+
+class _Names:
+    """Hand out globally unique short labels and retain escape order."""
+
+    def __init__(self, n: int, perm: tuple[int, ...]) -> None:
+        self.next = 0
+        self.inputs = [""] * n
+        # Deeper inputs occur in more guards, so they get the shortest names.
+        for input_index in reversed(perm):
+            self.inputs[input_index] = self.fresh()
+        self.escapes: list[str] = []
+
+    def fresh(self) -> str:
+        """Return the next label not reserved for an answer constant."""
+        while (name := _word(self.next)) in _CONSTANTS:
+            self.next += 1
+        self.next += 1
+        return name
+
+
 def _leaf(bit: str, escape: str) -> list[str]:
     """Emit a leaf: send the answer's constant block, then jump clear.
 
@@ -72,38 +105,37 @@ def _leaf(bit: str, escape: str) -> list[str]:
     clause 1 carries control past that block's close -- which the caller
     places after every remaining executable line.
     """
-    return [f"send {'one' if bit == '1' else 'zero'}", "skip", f"{escape};"]
+    return [f"send {'o' if bit == '1' else 'z'}", "skip", f"{escape};"]
 
 
 def _tree(
-    table: str, depth: int, n: int, state: dict[str, int], perm: tuple[int, ...]
+    table: str, depth: int, n: int, names: _Names, perm: tuple[int, ...]
 ) -> list[str]:
     """Emit the decision tree for ``table``, testing input ``perm[depth]`` first.
 
     ``table`` is in the permuted frame, so its bit ``depth`` is original
     input ``perm[depth]`` -- ``perm`` is spent only on the block a node
-    names.  ``state`` carries the running count of escape labels handed
-    out, so each leaf gets a distinct one.
+    names.  ``names`` also records escape labels in closing order.
     """
     # A constant subtree needs no further tests: whatever the remaining
     # bits are, the answer is the same, so the node collapses to its leaf.
     # This is what makes a table depending on one input cost a single test
     # rather than ``n`` of them.
     if depth == n or table == table[0] * len(table):
-        state["leaves"] += 1
-        return _leaf(table[0], f"e{state['leaves'] - 1}")
+        escape = names.fresh()
+        names.escapes.append(escape)
+        return _leaf(table[0], escape)
 
     half = len(table) // 2
-    zeros = _tree(table[:half], depth + 1, n, state, perm)
-    ones = _tree(table[half:], depth + 1, n, state, perm)
+    zeros = _tree(table[:half], depth + 1, n, names, perm)
+    ones = _tree(table[half:], depth + 1, n, names, perm)
 
-    # ``skipq`` fires when the bit equals ``zero``, so the guarded block is
+    # ``skipq`` fires when the bit equals zero, so the guarded block is
     # the one-subtree: it is skipped exactly when the bit is 0, and entered
     # by falling through when the bit is 1.
-    block = f"b{depth}_{state['blocks']}"
-    state["blocks"] += 1
+    block = names.fresh()
     return [
-        f"skipq i{perm[depth]} zero",
+        f"skipq {names.inputs[perm[depth]]} z",
         f"{block};",
         *ones,
         f"{block};",
@@ -135,22 +167,22 @@ def _inject_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one input order's Inject program; see :func:`inject`."""
     n = _validate_truth_table(truth_table)
 
-    state = {"leaves": 0, "blocks": 0}
-    body = [f"readto i{d}" for d in range(n)]
-    body += _tree(truth_table, 0, n, state, perm)
+    names = _Names(n, perm)
+    body = [f"readto {names.inputs[d]}" for d in range(n)]
+    body += _tree(truth_table, 0, n, names, perm)
 
     # Every escape block has to span all the remaining executable lines, so
     # the closes come after the tree and before the data tail.  They are
     # emitted innermost-last: a leaf that escapes must clear every *later*
     # leaf's code too, and closing them in order of issue does that.
-    tail = [f"e{i};" for i in range(state["leaves"])]
+    tail = [f"{escape};" for escape in names.escapes]
 
-    # The constants.  ``zero`` is both the comparison operand for every
-    # node and the answer for a 0 leaf; ``one`` is only an answer.  They sit
+    # The constants.  ``z`` is both the comparison operand for every node
+    # and the answer for a 0 leaf; ``o`` is only an answer.  They sit
     # after the escape closes, so no escape jump can land inside them.
-    tail += ["zero;", "0", "zero;", "one;", "1", "one;"]
+    tail += ["z;", "0", "z;", "o;", "1", "o;"]
 
     # The input blocks start empty: ``readto`` fills them, and an empty
     # block is two adjacent delimiters.
-    head = [f"i{d};\n i{d};".replace(" ", "") for d in range(n)]
+    head = [f"{name};\n{name};" for name in names.inputs]
     return "\n".join([*head, *body, *tail])
