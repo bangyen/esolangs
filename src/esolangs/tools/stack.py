@@ -6,7 +6,6 @@ from itertools import pairwise, product
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
-    _ORDER_SEARCH_MAX,
     _validate_truth_table,
     essential_inputs,
     permute_truth_table,
@@ -195,9 +194,6 @@ def _forth_const(value: int) -> str:
     return prog
 
 
-_FORTH_ORDER_SEARCH_MAX = 10
-
-
 def forth(truth_table: str) -> str:
     """Build a Forþ program computing the given truth table.
 
@@ -223,29 +219,9 @@ def forth(truth_table: str) -> str:
     move.  The reads sit outside the tree, so a folded program consumes its
     input exactly as an unfolded one does.
 
-    **The tree splits on its inputs in whichever order emits the shortest
-    program.**  ``;`` pops the stack, so the *natural* order tests the last
-    input at the root -- Forþ's decision tree is stack-ordered, not
-    input-ordered.  Other orders are reachable because the stack can be
-    rearranged: ``v`` swaps the top two and ``c`` rotates the third to the
-    top (``o`` reverses the whole stack and is unusable here, since the
-    scope indices sit below the bits and would come with it).
-
-    **The rotations are interleaved with the reads, not run after them.**
-    ``v``/``c`` reach only the top three cells, so a preamble after all
-    ``n`` reads can only permute the last three bits -- 6 arrangements at
-    any width, which collapses the saving to 2.4% at n == 4 and nothing at
-    n == 5.  Moving a bit *while it is still near the top*, before later
-    reads bury it, reaches 18 of 24 arrangements at n == 4 and 54 of 120 at
-    n == 5 for a median of 2-3 extra characters
-    (:func:`_forth_stack_programs`).
-
-    Every rotation costs characters, so an order pays for the folds it wins
-    or loses to the natural one; the search measures rather than assumes.
-    Each order is scored in closed form (:func:`_forth_order_length`) and
-    only the winner is built.  Measured over all 256 tables at n == 3 the
-    saving is 13.8% (112 improved), with 13.2% and 14.3% over samples at
-    n == 4 and n == 5.
+    ``;`` pops the stack, so the tree naturally tests the last input first.
+    The generator keeps that order instead of enumerating reachable stack
+    arrangements.
     """
     n = _validate_truth_table(truth_table)
     # ``;`` pops, so the tree tests the *last* input at the root: the order
@@ -253,29 +229,7 @@ def forth(truth_table: str) -> str:
     # It goes first and ties keep it, so a table no reorder helps emits
     # exactly what it emitted before.
     natural = tuple(reversed(range(n)))
-    if n > _FORTH_ORDER_SEARCH_MAX:
-        return _forth_ordered(permute_truth_table(truth_table, natural), natural)
-    # Score the *reachable* arrangements rather than all ``n!`` orders --
-    # the keys of ``_forth_stack_programs``, ``2 * 3**(n - 2)`` of them,
-    # checked equal through ``n == 6`` to the orders ``_forth_ordered``
-    # accepts -- and build only the winner.  The contest that used to build
-    # 13,122 full programs at n == 10 (61-68s) now builds one (0.2s),
-    # byte-identical at every n <= 10, both benchmark shapes.  An
-    # arrangement is the input order reversed.
-    bits = int(truth_table[::-1], 2)  # bit ``r`` mirrors ``truth_table[r]``
-    programs = _forth_stack_programs(n)
-    best_perm = natural
-    best_len = _forth_order_length(
-        _forth_permuted_bits(bits, natural, n), n, len(programs[tuple(range(n))])
-    )
-    for arrangement, reads in programs.items():
-        perm = tuple(reversed(arrangement))
-        if perm == natural:
-            continue
-        length = _forth_order_length(_forth_permuted_bits(bits, perm, n), n, len(reads))
-        if length < best_len:
-            best_perm, best_len = perm, length
-    return _forth_ordered(permute_truth_table(truth_table, best_perm), best_perm)
+    return _forth_ordered(permute_truth_table(truth_table, natural), natural)
 
 
 # The read that pushes one normalized input bit.
@@ -312,12 +266,7 @@ def _forth_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     A breadth-first search over (arrangement, reads done) finds op strings
     shorter on some arrangements, because they compose across reads -- a
     late ``c`` can do work several per-read ``v``s would each repeat.  It is
-    not used: the difference is 1-2 characters on an intermediate string,
-    and since :func:`forth` keeps the shortest program over every order, a
-    longer rotation usually loses to a different order instead.  Measured
-    over the emitted programs the whole effect is +0.13% at n == 3 and
-    +0.03% at n == 5, which does not pay for a search in a generator meant
-    to be read.
+    not used: the generator retains its natural input order.
     """
     return stack_programs(n, _FORTH_SINKS, _FORTH_READ)
 
@@ -646,14 +595,8 @@ def unsquare(truth_table: str) -> str:
     pops the top into it, ``S`` swaps the two now exposed, and ``P`` pushes
     it back, sinking a bit two places (:data:`_UNSQUARE_SINKS`).
 
-    **The sinks are interleaved with the reads, not run after them.**  A bit
-    stashed in the accumulator does not survive a read block -- the block's
-    own ``A`` overwrites it -- so a bit has to be moved while still near the
-    top, before later reads bury it.  Every sink costs characters, so an
-    order pays for the folds it wins or loses to the natural one and the
-    search measures rather than assumes.  Measured saving: 15.6% over all
-    256 tables at n == 3 (112 improved, none grown), 18.0% and 13.8% over
-    samples at n == 4 and n == 5.
+    The generator retains the natural stack order instead of enumerating
+    reachable arrangements.
     """
     n = _validate_truth_table(truth_table)
     # ``A`` pops, so the tree tests the *last* input at the root: the order
@@ -661,44 +604,7 @@ def unsquare(truth_table: str) -> str:
     # sinks), which is the reversal as an input order.  It goes first and ties
     # keep it, so a table no reorder helps emits exactly what it emitted
     # before.
-    arrangements = _unsquare_stack_programs(n)
-
-    def candidate_from(arrangement: tuple[int, ...]) -> tuple[int, str, str]:
-        """Price the program whose stack ends in ``arrangement``."""
-        # The tree pops LIFO, so an arrangement tests its inputs in reverse.
-        # ``permute_truth_table`` puts the input tested at level ``k`` in the
-        # table's ``k``-th *most* significant bit, but this tree splits on
-        # ``row >> k`` -- least significant first, because that is the order
-        # the pops arrive in.  Passing the arrangement itself converts between
-        # the two frames; without it a table is read against the wrong axis
-        # and the program computes a different function.
-        table = permute_truth_table(truth_table, arrangement)
-        prefix = arrangements[arrangement]
-        return _unsquare_cost(table, n, prefix), table, prefix
-
-    # The natural order is the identity arrangement, which the product always
-    # reaches (every sink can be zero), so this needs no reachability check.
-    best: tuple[int, str, str] | None = None
-    # Iterate the *reachable* arrangements rather than all ``n!`` orders:
-    # only ``2 * 3**(n - 2)`` of them can be built, so this is the candidate
-    # set rather than a filter over a much larger one.  (The unreachable
-    # orders are exactly the ones ``candidate`` would return ``None`` for.)
-    #
-    # Still capped, because ``3**n`` builds of an ``O(2**n)`` program is the
-    # same cost shape the shared helper caps for, just with a smaller base:
-    # n == 10 is 18 seconds of a call that is milliseconds at n == 6.  Above
-    # the cap only the natural order is emitted, which is what this generator
-    # produced before reordering existed -- never worse, just unimproved.
-    for arrangement in arrangements:
-        if n > _ORDER_SEARCH_MAX and arrangement != tuple(range(n)):
-            continue
-        candidate = candidate_from(arrangement)
-        if best is None or candidate[0] < best[0]:
-            best = candidate
-    if best is None:  # pragma: no cover - the identity arrangement is reachable
-        raise RuntimeError("Unsquare's identity stack arrangement is missing")
-    _, table, prefix = best
-    return prefix + _unsquare_tree(table, n)
+    return _UNSQUARE_READ * n + _unsquare_tree(truth_table, n)
 
 
 # The read that pushes one normalized input bit.

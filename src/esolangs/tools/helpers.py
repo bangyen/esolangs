@@ -10,7 +10,6 @@ generators take no ``n`` parameter.
 """
 
 from collections.abc import Callable, Iterable
-from itertools import permutations
 
 from esolangs.exceptions import TruthTableError
 
@@ -20,13 +19,6 @@ from esolangs.exceptions import TruthTableError
 # of ``+`` or ``-`` reads as a magic number.
 _ASCII_ZERO = 48
 _ASCII_ONE = _ASCII_ZERO + 1  # ``ord("1")``, the digit the other branch prints
-
-# Largest input count :func:`best_input_order` searches exhaustively.  The
-# search builds ``n!`` programs of ``O(2**n)`` characters each, so the work
-# is the product of two factorial-ish terms: 6 inputs is 720 builds of a
-# 64-row table (milliseconds), 7 is 5040, and Dimensional's 12-input table
-# would be 479 million.  Above this the order is picked greedily instead.
-_ORDER_SEARCH_MAX = 6
 
 
 def constant_span_test(truth_table: str) -> Callable[[int, int], bool]:
@@ -82,10 +74,8 @@ def _validate_shape(truth_table: str) -> int:
     # answered it with "must have a power-of-two number of entries, got 3"
     # and never mentioned the ``a`` that was actually wrong.
     #
-    # Spelled as a set difference rather than ``all(c in "01" ...)``: the
-    # order search revalidates the same table once per candidate, so this
-    # runs ~720 times per call at n=6 and a per-character Python loop over
-    # 2**n shows up (0.86s of the n=6 registry sweep).
+    # Spelled as a set difference rather than ``all(c in "01" ...)``: this
+    # is a per-character check on every candidate build.
     if set(truth_table) - {"0", "1"}:
         # The *argument*, plus which character is wrong and where.  This
         # printed ``sorted(set(...))``, so someone who typed ``nonsense``
@@ -101,8 +91,7 @@ def _validate_shape(truth_table: str) -> int:
     if len(truth_table) != 2**n:
         # The likeliest first error anyone gets, and the rule alone leaves
         # them to do the arithmetic.  The brackets are cheap here because
-        # this is the cold path -- the check itself runs ~720 times per call
-        # at n=6, but only ever raises once.
+        # this is the cold path and only ever raises once.
         between = (
             f"; {len(truth_table)} is between {2**n} "
             f"({n} input{'' if n == 1 else 's'}) and "
@@ -283,7 +272,7 @@ def read_at(truth_table: str, inputs: tuple[int, ...] | list[int], n: int) -> st
     # each row's bits: slot ``k`` is the next-most-significant bit, so
     # appending ``o | mask`` after ``o`` extends the list in row order.
     # That is O(2**k) list work against O(2**k * k) bit tests -- worth the
-    # doubling because the order search calls this once per candidate.
+    # doubling because order selection calls this once per candidate.
     originals = [0]
     for i in inputs:
         mask = 1 << (n - 1 - i)
@@ -374,45 +363,17 @@ def best_input_order(
     truth_table: str,
     build: Callable[[str, tuple[int, ...]], str],
 ) -> str:
-    """Return the shortest program over every input order.
+    """Return the shorter program from the identity and greedy input orders.
 
     ``build(permuted_table, perm)`` emits the program that splits on
     ``perm[k]`` at level ``k``, reading the *permuted* table -- so every row
     index inside the build is in the permuted frame and self-consistent, and
     ``perm`` surfaces only where a node names the input it tests.
 
-    **The winner is measured, not modelled.**  What a reorder saves is the
-    subtrees it folds, but what it costs is per-language: RAM0 spells an
-    input as a run of ``A`` as long as its address, so a cheap order there
-    also wants low addresses deep, while Brainfuck pays the same for every
-    input and cares only about the fold.  Building all ``n!`` candidates and
-    taking the shortest gets both right, and any future language's cost
-    shape for free.
-
-    **The ``n!`` builds do not come down, and the sweep's own two tables
-    show why.**  A dedupe needs a key available *before* a build, and the
-    only generic one is the permuted table.  On the dense n=6 fixture all
-    720 are distinct, so it collapses nothing.  On parity it collapses all
-    720 into one -- parity is totally symmetric -- and that is the case
-    that refutes the key rather than the one that saves it: over that
-    single table the 720 candidates are still 720 distinct programs,
-    because ``perm`` decides which input each node tests.  A language whose
-    nodes cost the same whichever input they test gives them one length, so
-    its 719 extra builds only confirm a tie; Jaune gives them 176 distinct
-    lengths, because Jaune pays for the address.
-    Which of those a language is cannot be known without building it, so
-    the cost was taken out of the candidates instead -- the n=6 registry
-    sweep is 10.0s -> 6.0s of CPU with all 1380 programs byte-identical.
-
-    **The exhaustive search is capped at ``_ORDER_SEARCH_MAX`` inputs**,
-    because ``n!`` builds of an ``O(2**n)`` program is the kind of cost that
-    does not announce itself: Dimensional renders a 4096-row table, and
-    ``12!`` is 479 million candidates, so an uncapped search turns a
-    millisecond call into one that never returns.  Above the cap the order
-    is chosen greedily instead -- level by level, each remaining input
-    scored by how many of the subtrees it would create come out constant,
-    which is the fold the search is hunting for -- at ``O(n**2)`` builds of
-    nothing.  Both paths keep the guarantee below.
+    The greedy order is chosen level by level, scoring each remaining input
+    by the constant subtrees it creates.  This costs ``O(n**2)`` span tests
+    rather than ``n!`` complete builds.  Both it and the identity are built,
+    because per-language address and routing costs can outweigh its folds.
 
     The identity order is tried first and ties keep it, so a table no
     reorder improves emits exactly what it emitted before -- reordering can
@@ -464,20 +425,12 @@ def best_input_order(
     """
     n = _validate_truth_table(truth_table)
     identity = tuple(range(n))
-    if n <= _ORDER_SEARCH_MAX:
-        orders = [p for p in permutations(range(n)) if p != identity]
-    else:
-        greedy = _greedy_input_order(truth_table, n)
-        orders = [] if greedy == identity else [greedy]
+    greedy = _greedy_input_order(truth_table, n)
+    orders = [] if greedy == identity else [greedy]
 
-    # An empty candidate means "this order could not be built" -- Forth's
-    # stack reader reaches only some arrangements of the bits, so an order
-    # it cannot stack comes back empty -- and it is skipped rather than
-    # winning on length 0.  A build that always succeeds never returns one,
-    # and gets the plain behaviour.  (ZTOALC L was the original reason for
-    # this: it searched for a collision-free line placement and some orders
-    # had none.  It now constructs a branch-free lookup instead and does not
-    # reorder at all, so it is no longer an example.)
+    # An empty candidate means "this order could not be built" and is skipped
+    # rather than winning on length 0.  Builders that always succeed retain
+    # the plain behavior.
     best = build(truth_table, identity)
     for perm in orders:
         candidate = build(permute_truth_table(truth_table, perm), perm)
@@ -487,14 +440,13 @@ def best_input_order(
 
 
 def _greedy_input_order(truth_table: str, n: int) -> tuple[int, ...]:
-    """Pick an input order one level at a time, for tables too wide to search.
+    """Pick an input order one level at a time.
 
     At each level every input still unchosen is scored by the number of
     constant subtrees splitting on it would produce among the blocks still
     live, and the best-scoring one is taken.  That is a direct proxy for
-    what the exhaustive search finds by measuring -- a constant subtree is
-    the leaf a fold emits -- without the language's own per-input cost,
-    which is why it is the fallback rather than the rule.
+    what order selection seeks -- a constant subtree is the leaf a fold
+    emits -- without pretending to model language-specific routing costs.
 
     Ties keep the lowest input index, so a table no order helps yields the
     identity and the caller emits exactly what it emitted before.
@@ -725,8 +677,7 @@ def _decision_tree_program(
     for i in range(n):
         cells.append(",")
         # ``append`` of the run, not ``extend`` over its characters: the run
-        # is 48 long and the join sees the same text either way, but the
-        # order search pays the per-character list work n! times.
+        # is 48 long and the join sees the same text either way.
         cells.append("-" * _ASCII_ZERO)
         if i < n - 1:
             move(pos + 2)

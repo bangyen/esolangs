@@ -420,51 +420,31 @@ class TestParameterizedBack:
         assert "\\" in template
         assert "*" in template  # leaves halt
 
-    def test_input_reordering_folds_a_scattered_table(self) -> None:
-        """The tree splits in whichever order folds most, not load order.
-
-        ``10101010`` depends on its last input alone, so it folds nothing
-        loaded in order and everything once that input sits in cell 0.  It
-        reaches the cheap shape and lands far under the table that folds
-        under no order at all; the two one-dependency tables differ only by
-        the walk that carries the pointer, two characters a step.
-        """
+    def test_the_natural_order_folds_its_aligned_dependency(self) -> None:
+        """Only a dependency aligned with the natural root folds immediately."""
         from esolangs.tools import parameterized
 
         scattered = len(parameterized.back("10101010"))
         aligned = len(parameterized.back("11110000"))
         parity = len(parameterized.back("01101001"))
-        assert scattered < parity
+        assert scattered == parity
         assert aligned < parity
-        assert abs(scattered - aligned) < 0.25 * parity
 
-    def test_input_reordering_never_grows_a_template(self) -> None:
-        """No table comes out larger than its identity build.
-
-        ``best_input_order`` builds the identity first and keeps it on a
-        tie, so reordering can only ever shrink a template.  Checked against
-        ``_back_ordered`` at the identity rather than against a stored
-        number, so it stays true as the construction changes.
-
-        Note this is *not* "parity keeps the identity build".  It used to
-        be, while the load emitted no walk; now that the units are emitted
-        in reverse name order, some orders spend a shorter walk than the
-        identity does, and parity shrinks 126 to 118 without folding
-        anything.  The invariant that survives is the one-sided one.
-        """
+    def test_the_identity_template_is_emitted(self) -> None:
+        """Back no longer contests input orders."""
         from esolangs.tools import parameterized
 
         for table in ("01101001", "10101010", "11110000", "00111100", "10010110"):
             n = (len(table) - 1).bit_length()
             identity = parameterized._back_ordered(table, tuple(range(n)))  # noqa: SLF001
-            assert len(parameterized.back(table)) <= len(identity), table
+            assert parameterized.back(table) == identity, table
 
     @pytest.mark.parametrize(
         "table",
         ["10101010", "11001100", "01011010", "00111100", "10010110"],
     )
-    def test_reordered_templates_compute_the_table(self, table: str) -> None:
-        """A reordered template still computes its function.
+    def test_templates_compute_the_table(self, table: str) -> None:
+        """Each emitted natural-order template computes its function.
 
         Back's node is ``+\\>`` -- test the current cell, *then* advance --
         so level ``k`` tests cell ``k``, one lower than the generators whose
