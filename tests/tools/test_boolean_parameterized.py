@@ -966,6 +966,27 @@ class TestParameterizedRam0:
         assert tokens[0] == "C"
         assert tokens.count("2") == 8
 
+    def test_linear_lookup_executes_wide_rows(self) -> None:
+        """The straight-line RAM table returns sampled six-input rows."""
+        from esolangs.tools import parameterized
+
+        n = 6
+        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+        template = parameterized.ram0(table)
+        for row in (0, 1, 2, 7, 31, 32, 62, 63):
+            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            assert self.run_ram0(self.instantiate(template, bits)) == table[row]
+
+    def test_linear_lookup_growth(self) -> None:
+        """Wide parity templates grow by at most the table-size ratio."""
+        from esolangs.tools import parameterized
+
+        sizes = []
+        for n in range(11, 15):
+            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+            sizes.append(len(parameterized.ram0(table)))
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
+
 
 class TestParameterizedMinskySwap:
     """Input-by-substitution boolean generator for the no-input language Minsky Swap.
