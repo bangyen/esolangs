@@ -15,8 +15,8 @@ The candidate list is empty.
   (135016 -> 534124), 123 (94579 -> 230034), Circuit Diagram
   (145216 -> 322504), COD (942692 -> 3668705), Minifuck
   (57601 -> 203089), and Factor (24113 -> 50090); dense tables also expose
-  Polynomial.  A construction audit adds AddSubJump, Algebraic
-  Programming Language, ArrowQueue, Back, B-tapemark, Bitdeque, BrainIf,
+  Polynomial.  A construction audit adds AddSubJump, ArrowQueue, Back,
+  B-tapemark, Bitdeque, BrainIf,
   Clockwise, Collatz Multiverse, Container, Dig, Flowchart, Forþ,
   Grapheme, Inject, Jaune, LaserFuck, Qoibl, RAM0, S*bleq,
   SLOW ACV MAMMALIAN, Streetcode, Vandevelo, and bit~.  Their quiet factors
