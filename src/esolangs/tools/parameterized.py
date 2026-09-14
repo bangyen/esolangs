@@ -1236,9 +1236,8 @@ def ram0(truth_table: str) -> str:
     sets ``z`` to its address, loads the bit, and ``C`` skips the following
     ``goto`` when ``z`` is zero (the zero-subtree falls through in place)
     while the ``goto`` jumps to the one-subtree otherwise.  A leaf sets
-    ``z`` to the answer and uses RAM0's *unconditional* ``goto`` to run off
-    the program end, so the final ``z`` read from the state dump is the
-    answer.
+    ``z`` to the answer and jumps to a fixed low-address halt trampoline, so
+    the final ``z`` read from the state dump is the answer.
 
     **The tree splits on its inputs in whichever order emits the shortest
     program** (:func:`~esolangs.tools.helpers.best_input_order`).
@@ -1268,8 +1267,10 @@ def _ram0_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     def width(level: int) -> int:
         return _ram0_width(perm[level])
 
-    tokens: list[str] = []
-    pos = 0  # instantiated command index of the next command
+    # Initial z == 0 makes C skip the widening end target.  Leaves jump to
+    # that target through fixed 1-based address 2.
+    tokens = ["C", "END@"]
+    pos = len(tokens)  # instantiated command index of the next command
 
     # load phase: ram[i] = bit i, embedded exactly once each
     for i in range(n):
@@ -1283,7 +1284,7 @@ def _ram0_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         pos += 1
 
     def leaf_tokens(_level: int, row: int) -> list[str]:
-        return ["Z", "A" if truth_table[row] == "1" else "Z", "END@"]
+        return ["Z", "A" if truth_table[row] == "1" else "Z", "2"]
 
     def node(level: int, zero: list[str], one: list[str], at: int) -> list[str]:
         # ``Z``, the level's ``A`` run, ``L``, ``C`` and the ``ONE@`` slot all
