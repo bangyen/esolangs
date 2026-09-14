@@ -11,7 +11,6 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     best_input_order,
     essential_inputs,
-    minterm_sum,
     read_at,
     stored_inputs,
 )
@@ -860,65 +859,57 @@ def qoibl(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    Each input is read with ``et`` and normalized to 0/1 (``ry ey ry 48``),
-    and each one's complement ``1 - bit`` is stored too.  The function is then
-    evaluated as the sum over its minterms: every ``1`` row contributes the
-    product of the bits (or complements) that select it, accumulated into a
-    sum variable, and ``tt`` prints ``48 + sum``.  Qoibl's ``ry`` chains parse
-    right-associatively from the leftmost ``ry``, so each minterm is a chain
-    of plain ``qe`` reads (no operator inside a factor).
-
-    When the table has more ``1``s than ``0``s the complement is evaluated
-    instead (fewer minterms) and ``49 - sum`` is printed, keeping the program
-    under the size of the sparser half.
+    Each input is read with ``et`` and normalized to 0/1.  A folded Shannon
+    tree then combines children as ``(1 - x) * lo + x * hi``.  Four registers
+    are reserved per level; the deepest, most frequently repeated levels get
+    the shortest binary names, so widening register IDs still sum to O(T).
     """
     n = _validate_truth_table(truth_table)
-    # A table that ignores some of its inputs is a smaller table, and since a
-    # minterm costs one ``qe`` factor *per input* on top of two lines per
-    # selected row, dropping an input removes rows and shortens the rows that
-    # remain.  Every input keeps its ``et`` read, its normalization and its
-    # complement (they are the interface); an ignored one is never named as a
-    # factor.  Measured at ``n == 3``, that setup is 29% of a one-dependency
-    # program and the minterm body the other 71%, so most of the arity cost
-    # here is reachable -- unlike ``suffolk``, whose per-input setup is 96%
-    # of the program.
-    lines = []
-    for i in range(n):
-        lines.append(f"we {_qoibl_enc(i)} we et ry ey ry {_qoibl_enc(_ASCII_ZERO)} we")
-    for i in range(n):
+    def registers(level: int) -> tuple[int, int, int, int]:
+        base = 4 * (n - 1 - level)
+        return base, base + 1, base + 2, base + 3
+
+    lines: list[str] = []
+    for level in range(n):
+        raw, complement, _lo, _hi = registers(level)
         lines.append(
-            f"we {_qoibl_enc(n + i)} we {_qoibl_enc(1)} "
-            f"ry ey ry qe {_qoibl_enc(i)} qe we",
+            f"we {_qoibl_enc(raw)} we et ry ey ry {_qoibl_enc(_ASCII_ZERO)} we"
         )
-    lines.append(f"we {_qoibl_enc(2 * n)} we {_qoibl_enc(0)} we")
-
-    def literal(i: int, negated: bool) -> str:  # noqa: FBT001 - a literal's sign, from minterm_literals
-        return f"qe {_qoibl_enc(n + i if negated else i)} qe"
-
-    def product(factors: list[str]) -> str:
-        out = factors[0]
-        for factor in factors[1:]:
-            out = f"{out} ry ye ry {factor}"
-        return out
-
-    def accumulate(row: str) -> None:
-        lines.append(f"we {_qoibl_enc(2 * n + 1)} we {row} we")
         lines.append(
-            f"we {_qoibl_enc(2 * n)} we qe {_qoibl_enc(2 * n)} "
-            f"qe ry ee ry qe {_qoibl_enc(2 * n + 1)} qe we",
+            f"we {_qoibl_enc(complement)} we {_qoibl_enc(1)} "
+            f"ry ey ry qe {_qoibl_enc(raw)} qe we"
         )
 
-    _used, _width, use_complement = minterm_sum(
-        truth_table, literal, product, accumulate
+    root = 4 * n
+
+    def assign(destination: int, expression: str) -> None:
+        lines.append(f"we {_qoibl_enc(destination)} we {expression} we")
+
+    def node(level: int, lo: int, hi: int, destination: int) -> None:
+        if len(set(truth_table[lo:hi])) == 1:
+            assign(destination, _qoibl_enc(int(truth_table[lo])))
+            return
+        mid = (lo + hi) // 2
+        if truth_table[lo:mid] == truth_table[mid:hi]:
+            node(level + 1, lo, mid, destination)
+            return
+        raw, complement, low, high = registers(level)
+        node(level + 1, lo, mid, low)
+        node(level + 1, mid, hi, high)
+        assign(
+            low,
+            f"qe {_qoibl_enc(complement)} qe ry ye ry qe {_qoibl_enc(low)} qe",
+        )
+        assign(high, f"qe {_qoibl_enc(raw)} qe ry ye ry qe {_qoibl_enc(high)} qe")
+        assign(
+            destination,
+            f"qe {_qoibl_enc(low)} qe ry ee ry qe {_qoibl_enc(high)} qe",
+        )
+
+    node(0, 0, 2**n, root)
+    lines.append(
+        f"tt qe {_qoibl_enc(root)} qe ry ee ry {_qoibl_enc(_ASCII_ZERO)} tt"
     )
-    if use_complement:
-        lines.append(
-            f"tt {_qoibl_enc(_ASCII_ONE)} ry ey ry qe {_qoibl_enc(2 * n)} qe tt"
-        )
-    else:
-        lines.append(
-            f"tt qe {_qoibl_enc(2 * n)} qe ry ee ry {_qoibl_enc(_ASCII_ZERO)} tt"
-        )
     return "\n".join(lines)
 
 

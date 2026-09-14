@@ -6,6 +6,7 @@ Break.
 """
 
 import random
+from itertools import pairwise
 
 import pytest
 
@@ -149,17 +150,29 @@ class TestQoibl:
             got = run_qoibl(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_minterm_structure(self) -> None:
-        """An AND function stores the minterm product and prints 48 + sum."""
+    def test_tree_structure(self) -> None:
+        """An AND function combines the two branches arithmetically."""
         program = boolean.qoibl("0001")
-        assert program.startswith("we e we et")
-        assert "ry ye ry" in program  # a minterm product
+        assert program.startswith("we yee we et")
+        assert "ry ee ry" in program
         assert program.endswith("tt")
 
-    def test_empty_truth_table(self) -> None:
-        """A constant-zero function skips all minterms."""
+    def test_constant_truth_table_folds(self) -> None:
+        """A constant function needs only one tree assignment."""
         program = boolean.qoibl("0000")
-        assert "ry ye ry" not in program
+        assert program.count("\nwe ") == 4
+
+    def test_dense_growth_is_linear(self) -> None:
+        """A full tree doubles by a bounded additive term."""
+        sizes = [
+            len(
+                boolean.qoibl(
+                    "".join(str(row.bit_count() & 1) for row in range(2**n))
+                )
+            )
+            for n in range(7, 11)
+        ]
+        assert all(b <= 2 * a + 800 for a, b in pairwise(sizes))
 
 
 # 4.2s over 72 tests: runs the generated program.
