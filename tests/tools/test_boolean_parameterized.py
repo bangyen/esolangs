@@ -2425,7 +2425,7 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.one_two_three_construct import construct
 
         assert construct("01") == (
-            "2222{X0}1111121211222222111111233222332233222211112221113311111111"
+            "2222{X0}1111121211222222111111233222332233222211211211213311111111"
             "122222222212331111111111"
         )
 
@@ -2441,7 +2441,7 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.one_two_three_construct import construct
 
         total = sum(len(construct(format(value, "08b"))) for value in range(256))
-        assert total == 206791
+        assert total == 191359
 
     def test_slots_run_in_name_order(self) -> None:
         """Every emitted template embeds {X0} before {X1}."""
@@ -2814,6 +2814,28 @@ class TestParameterizedOneTwoThree:
             for (p0, t0), (p1, t1) in zip(before, after, strict=True):
                 assert p1 == p0, k
                 assert t1 == t0 ^ (1 << (p0 + k + _RING)), k
+
+    def test_paint_all_sweeps_the_span_once(self) -> None:
+        """The fused painter flips an arbitrary mask in one linear sweep."""
+        from esolangs.tools.one_two_three_construct import (
+            _RING,
+            _WORK_BUDGET,
+            _Builder,
+            _paint_all,
+            _work,
+        )
+
+        _work[0] = _WORK_BUDGET
+        b = _Builder(2)
+        for row, pos in zip(b.rows, (1, 5, 29, 41), strict=True):
+            row.pos = pos
+        before = [(r.pos, r.tape) for r in b.rows]
+        _paint_all(b, [1, 3, 6])
+        assert b.template() == "222222112112111211"
+        delta = sum(1 << k for k in (1, 3, 6))
+        for (p0, t0), row in zip(before, b.rows, strict=True):
+            assert row.pos == p0
+            assert row.tape == t0 ^ (delta << (p0 + _RING))
 
     def test_the_verdict_checks_its_position_preconditions(self) -> None:
         """A state violating the parity law raises instead of emitting.
