@@ -18,20 +18,6 @@ from tests.tools.boolean_runners import (
 )
 
 
-def _grapheme_counted_side(table: str, n: int) -> str:
-    """The build the retired row-count rule would have chosen.
-
-    It took the zero side when ``len(zeros) <= len(ones)``, so ties went to
-    that side.  Kept here rather than in the generator: it is the thing the
-    generator is asserted to beat, not something it should be able to emit.
-    """
-    from esolangs.tools.stack import _grapheme_head, _grapheme_side
-
-    head, reduced, width = _grapheme_head(table, n)
-    zeros = reduced.count("0")
-    return _grapheme_side(reduced, width, head, zero_rows=zeros <= reduced.count("1"))
-
-
 class TestGrapheme:
     def test_variable_keys_are_unbounded_and_avoid_the_reserved_key(self) -> None:
         """Integer-mode arithmetic removes the old 24-letter key ceiling."""
@@ -78,41 +64,23 @@ class TestGrapheme:
                 got = run_grapheme(program, [str(b) for b in bits])
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
-    def test_shorter_side_wins_not_the_sparser_one(self) -> None:
-        """Row count is a proxy for length, and it picks wrong.
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant table has no conditional skip; parity has a full tree."""
+        assert "V" not in boolean.grapheme("0" * 8)
+        assert boolean.grapheme("01101001").count("V") == 14
 
-        A row's cost falls with its popcount -- a negated literal spends
-        eight characters more than a plain one -- and the two sides seed the
-        accumulator differently (7 characters against 3), so equal counts do
-        not mean equal length.  The old rule compared counts and gave ties
-        to the expensive seed, so a balanced table always lost.
-
-        Both sides are built now and the shorter kept.  ``00010111`` is the
-        worst case at n == 3, and the count rule cost it 52 characters.
-        """
-        improved = 0
-        for value in range(256):
-            table = format(value, "08b")
-            shipped = len(boolean.grapheme(table))
-            # What the count rule would have picked, built directly.
-            counted = len(_grapheme_counted_side(table, 3))
-            assert shipped <= counted, table
-            improved += shipped < counted
-        assert improved == 45
-
-    def test_balanced_table_takes_the_cheaper_seed(self) -> None:
-        """The old ``<=`` tie went to the 7-character seed every time."""
-        program = boolean.grapheme("0011")
-        assert len(program) < len(_grapheme_counted_side("0011", 2))
-        for combo in range(4):
-            bits = [(combo >> (1 - i)) & 1 for i in range(2)]
-            got = run_grapheme(program, [str(b) for b in bits])
-            assert got == "0011"[combo], f"inputs {bits}"
+    def test_full_tree_growth_is_linear(self) -> None:
+        """Skip literals widen near the root, but total source stays O(T)."""
+        sizes = []
+        for n in (7, 8):
+            table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+            sizes.append(len(boolean.grapheme(table)))
+        assert sizes[1] < 2 * sizes[0] + 64
 
     def test_the_program_is_only_grapheme_commands(self) -> None:
         """Only the letters Grapheme reads as commands are emitted."""
         for table in ("10", "0110", "0001", "11111110"):
-            assert set(boolean.grapheme(table)) <= set("ABCDEFGIRSTWYZ"), table
+            assert set(boolean.grapheme(table)) <= set("ABCDEFGHIRSTVWYZ"), table
 
 
 class TestForth:
