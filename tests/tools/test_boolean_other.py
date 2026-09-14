@@ -820,9 +820,28 @@ class TestContainer:
         program = boolean.container("0110")
         assert program.startswith("T:\n+1 T>=T")
         assert ":" in program.splitlines()[:4]  # the empty-named reader
-        assert "S1_0:" in program
-        assert "S2_3:" in program
+        declarations = [
+            line[:-1].split("=", 1)[0]
+            for line in program.splitlines()
+            if line.endswith(":")
+        ]
+        generated = [
+            name
+            for name in declarations
+            if name not in {"", "T", "IN", "OUT", "PRINT", "EXIT"}
+        ]
+        assert len(generated) == len(set(generated))
         assert program.count("PRINT:") == 1
+
+    def test_small_tree_uses_one_character_generated_names(self) -> None:
+        """Gates and survivors share one compact identifier namespace."""
+        declarations = [
+            line[:-1].split("=", 1)[0]
+            for line in boolean.container("01101001").splitlines()
+            if line.endswith(":")
+        ]
+        special = {"", "T", "IN", "OUT", "PRINT", "EXIT"}
+        assert all(len(name) == 1 for name in declarations if name not in special)
 
     def test_tree_removes_the_minterm_factor(self) -> None:
         """Each additional row adds bounded tree work, not n tests."""
