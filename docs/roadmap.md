@@ -41,10 +41,14 @@ The candidate list is empty.
   and per-entry cost went from 14.2 climbing to 33.1 to a flat 14.4.
   Interprogck8 is the row added below.  It had been exempt for the wrong
   reason -- a `proofs.md` `exception` row about its repair budget's totality,
-  which says nothing about size -- and it is super-linear for a reason
-  [limitations](limitations.md) now argues down to a single borrowed step.  An
-  n=8 -> 9 ratio near 2 is still not evidence of O(T), which is why the
-  contract's verdicts read in one direction only.
+  which says nothing about size -- and the shipped construction is
+  super-linear for a reason [limitations](limitations.md) carries in full.
+  That reason now assumes its decision tree rather than forcing it: the
+  pointer is not the only state crossing a read, because the function slot,
+  the call stack and `z`-rewritten text each survive one
+  (`notes/ick8_slot_probe.py` executes all three).  An n=8 -> 9 ratio near 2
+  is still not evidence of O(T), which is why the contract's verdicts read in
+  one direction only.
   The live audit is:
 
   | Language | Generation time | Output size |
@@ -167,11 +171,16 @@ The candidate list is empty.
   rows at n=6/8 and every table through n=3 execute correctly.
 
   Polynomial's positive-factor bound is likewise construction-specific
-  because signed real parts can cancel coefficients.  Multiplying by ignored
+  because signed real parts can cancel coefficients -- measured, not
+  conceded: a negative real part decodes and runs
+  (`notes/poly_negative_operand.py`).  Multiplying by ignored
   roots preserves the decoded program, but [generic sparse-multiple
   algorithms][sparse-multiples] are exponential in the requested sparsity.  A
   linear generator therefore needs a direct sparse multiple specialized to the
-  prime-power instruction roots, not an optimization search.
+  prime-power instruction roots, not an optimization search.  Shipping the
+  factored form instead is not available: the parser reads only summed
+  monomials and misreads a product silently
+  (`notes/poly_factored_probe.py`).
 
   Treat every emitted character as build work.  Input reordering is optional
   around the construction, but its work still counts toward end-to-end
