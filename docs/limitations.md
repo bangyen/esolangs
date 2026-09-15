@@ -254,8 +254,8 @@ which is stateless -- two chains may land on the same line carrying different
 accumulators, and each flies its own stride.  Rungs *are* shareable, and what
 matters is the union of the chains' waypoints rather than the sum.
 
-Sharing is nonetheless bounded, because it cannot *persist*.  A rung has to be
-a dead line, so it lives in a meadow, and a stride of at most one reach forces
+Sharing is nonetheless bounded for any chain that needs *dedicated* rungs,
+because it cannot *persist*.  A stride of at most one reach forces
 every chain to land at least once in each 256-line window it crosses.  Suppose
 two chains share one rung in every window.  Then their consecutive landings are
 the same fixed distance apart, so they carry the same stride; being at one
@@ -293,6 +293,18 @@ would be past height 50.  A slimmer construction would therefore *measure*
 linear across every arity anyone can run while still being `Theta(T log T)`,
 which is worth saying out loud: the contract passing would not mean this
 paragraph was wrong.
+
+None of which closes the row, and the gap is worth naming precisely because it
+is the one an attempt should aim at.  Everything above prices *dedicated*
+rungs, and a chain does not need one: its landing only has to be a
+`DownAccLines`, which then flies that chain's own accumulator and lets it go
+on.  The program is already dense with them -- about twelve a table entry --
+so the supply is the whole program rather than the meadows, and "distinct dead
+lines per window" does not follow from "distinct rungs per window".  Whether
+`Theta(T)` chains can be given strides and alignments whose arithmetic
+progressions land only on jumps that already exist is a packing question
+nobody here has answered.  It is why this row reads Open rather than Language
+lower bound.
 
 Two families of long jumps contribute.  The bit-0 arm spans its sibling
 subtree, and those targets are all distinct, which is the family the
