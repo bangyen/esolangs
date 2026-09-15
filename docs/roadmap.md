@@ -50,7 +50,7 @@ The candidate list is empty.
   | Bitdeque | Linear | Linear |
   | BrainIf | Linear | Linear |
   | Clockwise | Linear | Linear |
-  | Container | Open | Open |
+  | Container | Linear | Linear |
   | Dig | Linear | Linear |
   | Flowchart | Linear | Linear |
   | Forþ | Linear | Linear |
@@ -109,6 +109,9 @@ The candidate list is empty.
   Dig lets each `#` turn directly into the next branch axis.  The recursive
   bounds swap width and height each level and double one, so both dimensions
   double per level pair and the full grid has O(T) cells.
+  Container spells the table backwards as one decimal 0/1 integer.  A fixed
+  two-bank network divides it by ten once per selected row, while binary input
+  weights total `T-1`; the literal, source, and construction are O(T).
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is
