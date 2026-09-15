@@ -171,6 +171,11 @@ MAMMALIAN is super-linear even though its
 measured ratio is close to two: for a child cap `C`, `_widths` reserves a
 trampoline slot of Omega(C/255), and `_subtree` emits that whole slot plus two
 children.  Its recurrence is therefore `S(d) >= (2 + 1/255) S(d-1)`.
+This recurrence is not forced by input itself: with `acc % 256 == 48`,
+`ACCEPT` appends exactly the input bit without changing `acc`, so the retained
+integer can already name one `LEAPFROG` target.  No constant-token update is
+yet known that changes it to each child's next absolute label; reconstructing
+that label from array sum is the trampoline above.
 
 Polynomial's current expanded-root encoding is super-linear; this is not a
 language-wide lower bound.
