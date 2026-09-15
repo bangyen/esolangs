@@ -368,8 +368,11 @@ other channels do, each executed in `notes/ick8_slot_probe.py`:
 
 - The **function slot**.  `u` does not touch it, and `<` captures the body
   the pointer is standing on, so two inputs can reach *one* line holding
-  different bodies.  The probe's two arms meet at line 300 and the same
-  `EXE` prints `A` or `B`.
+  different bodies.  The probe's two arms meet at line 301 carrying the
+  same accumulator -- 0, normalised on arrival on purpose, so the slot is
+  the only thing that differs -- and the same `EXE` prints `A` or `B`.
+  Stepped rather than inferred: `notes/ick8_slot_confirm.py` reads the
+  pointer and the accumulator off the state at the call.
 - The **call stack**.  A read taken inside a body returns into that body.
 - The **program text**, through `z`.  A restart clears the accumulator, the
   slot and the pointer but *not* the input cursor, so
