@@ -53,7 +53,6 @@ The candidate list is empty.
   | Interprogck8 | Open | Open |
   | Polynomial | Open | Open |
   | SLOW ACV MAMMALIAN | Open | Open |
-  | Vandevelo | Open | Open |
 
   The limitations file proves only that the shipped constructions are
   super-linear.  None closes a row above: closure requires a lower bound over
@@ -146,16 +145,19 @@ The candidate list is empty.
   state to that child's next label; `DIGEST` only XORs the current whole-array
   sum, while rebuilding an arbitrary sum recreates the skipped-child cost.
 
-  Vandevelo reduces to covering the selected inputs by affine subspaces.
-  [Cohen--Shinkar's DNF-of-parities theorem][dnf-parities] covers every set
-  with at most `1 + 9*T/log2(T)` subspaces, but counts clauses rather than
-  source:
-  spelling the subspaces' dense parity equations can still cost
-  `Theta(T*log(T))` variable references.  Splitting the inputs in half and
-  precomputing every parity in each half reduces the XOR-gate count to O(T),
-  but each later selection names one of `Theta(sqrt(T))` retained values and
-  therefore still costs `Theta(log(T))` characters.  Removing that textual
-  addressing cost remains open; minterms are not a language lower bound.
+  Vandevelo's hang-set is exactly a union of affine cosets -- every bindable
+  value is affine in the inputs and only `::` chains evaluate conditionally --
+  so the generator peels the 1-set by iterated popular-difference cubes and
+  emits one guard line per coset.  [Cohen--Shinkar][dnf-parities] bound the
+  peel at `1 + 9*T/log2(T)` clauses, capping total guard parts at `9T + n`;
+  the dense regime falls back to an exact Walsh--Hadamard autocorrelation, so
+  the bound is not heuristic.  Constraints from reduced elimination are at
+  most `dim+1` inputs wide and live in strict registers morphed one toggle at
+  a time; that upkeep is the one unproven piece, `O(T log log T)` worst case
+  and under half the text measured.  Dense random tables measure a flat
+  8.1--8.9 characters per entry at n=8..12; parity is one hyperplane, 259
+  characters at n=10 against the retired per-row spelling's 52,821.  Sampled
+  rows at n=6/8 and every table through n=3 execute correctly.
 
   Polynomial's positive-factor bound is likewise construction-specific
   because signed real parts can cancel coefficients.  Multiplying by ignored

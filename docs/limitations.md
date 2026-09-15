@@ -180,17 +180,27 @@ blanks.  LaserFuck now conditionally walks arms of total length `T-1`, selects
 one of T prewritten cells, then cleans all cells in one sweep.  Streetcode's
 alternating-axis H-tree fits its two-wide roads in O(T) area.
 
-Vandevelo's current spelling emits one depth-`n` guard chain for each of
-Theta(T) selected parity rows, hence Theta(T log T).
+Vandevelo's retired spelling emitted one depth-`n` guard chain for each of
+Theta(T) selected rows, hence Theta(T log T).
 
-The [`O(T/log T)` affine-cover theorem of Cohen and Shinkar][dnf-parities] does
-not by itself give linear Vandevelo source: its size measure is the number of
-top-level clauses, while one clause may spell Theta(log T) dense parity
-equations with Theta(log T) variable references apiece.  A shared linear-form
-construction can reduce the XOR-gate count to O(T) by tabulating all parities of
-two half-input blocks, but referring to one of Theta(sqrt(T)) live bindings
-costs Theta(log T) characters.  A construction that removes that addressing cost
-could still close the gap, so this is not a language lower bound.
+Its replacement peels the 1-set by affine cubes.  Every value a Vandevelo
+program can bind is affine in the inputs and only `::` chains evaluate
+conditionally, so a program's hang-set is exactly a union of affine cosets,
+and the generator emits one guard line per coset of a cover.
+[Cohen--Shinkar][dnf-parities] bound the peel at `1 + 9T/log2(T)` clauses, so
+guard parts total O(T); while the remainder is dense a capped candidate scan
+that misses the pigeonhole average falls back to an exact Walsh--Hadamard
+autocorrelation, which is what makes that a bound rather than a heuristic.
+Reduced elimination keeps every constraint at most `dim+1` inputs wide.
+
+What is not proven O(T) is register upkeep: spelling those constraints costs
+`O(T log log T)` worst case, measured under half the emitted text.  Dense
+random tables hold 8.1--8.9 characters per entry flat across n=8..12 (9,397
+at n=10 against the retired 36,829) and parity is one hyperplane, 259 against
+52,821.  No matching lower bound: random tables admit no monochromatic cube
+above dimension `log2(n) + log2(log2(n)) + O(1)`, which forces only
+`Omega(T / log n)` guard parts, so the upkeep gap is open in both
+directions.
 
 [dnf-parities]: https://eccc.weizmann.ac.il/report/2014/099/
 
@@ -204,14 +214,46 @@ and `_subtree` emits that whole slot plus two children.  Its recurrence is
 therefore `S(d) >= (2 + 1/255) S(d-1)`.  This recurrence is not forced by input
 itself: with `acc % 256 == 48`, `ACCEPT` appends exactly the input bit without
 changing `acc`, so the retained integer can already name one `LEAPFROG` target.
-No constant-token update is yet known that changes it to each child's next
-absolute label; reconstructing that label from array sum is the trampoline
-above.
+A constant-token update *is* now known, so that is no longer the obstruction.
+A **pump loop** -- a fixed ~20-token body that rotates a frozen anchor,
+appends `S % 256` to a ballast array and re-enters through
+`DIGEST`/`LEAPFROG` on the anchor's non-head sum -- raises an address by
+thousands for O(1) text, and exits by planting one trigger in a queue
+`SPRINT` marches through, diverting down a pad chain to a second exit
+`LEAPFROG` at the pumped value.  An outer counted loop re-enters the inner
+one, carrying it to 174/261/348/435/522/696 iterations at 2/3/4/5/6/8 rounds
+against a single instance's 87, each landing exactly on the pumped value.
 
-Polynomial's current expanded-root encoding is super-linear; this is not a
-language-wide lower bound.  Standard maximal ordered-BDD table families have
-Omega(T/log T) distinct residual states, so every tree/machine split used here
-emits that many instructions.  The builder encodes negative arithmetic by
+Three measurements shape any further attempt.  A builder-driven raise is
+cheap on only arrays 0, 1 and 3 (0.021/0.014/0.014 tokens per unit) and 7--30
+times worse elsewhere, so the array an outer level freezes has to be a cheap
+one and the expensive one has to be merely pumped.  The pump has an absorbing
+state -- an append adds `S % 256` to `S`, so once the low byte reaches 0 the
+sum freezes and every later append is 0 -- and the cure is a two-pair body
+over an array seeded with odd cells, which simulates to 325,312 of reach
+still growing against 2,556 for a six-pair body over doubled ballast.  With
+both, the nested pump lands exactly where asked (+60,000 gives 66,296;
++150,000 gives 156,668) and the prototype builds n=1 and n=2.
+
+n>=3 stops on one address-space fault: a loop body must be laid at its
+anchor's value, and a node's two branches carry independent machine states
+while sharing one text space, so the branch whose anchors are still low lays
+its gadget into text the other already wrote.  A fixed point on the
+1-subtree's address settles n=2 (it is the only free address -- the 0-branch
+falls through the read), but at n=3 the subtree-span bound the 0-child is
+placed against no longer holds.  Size is the other reason this has not
+shipped: a node spans ~31,400 characters against the retired tree's ~6,550,
+so even a working version would cost ~5x at every arity anyone builds.
+
+Polynomial's current expanded-root encoding is super-linear, and its
+instruction count is language-forced even though its text is not.  The input
+instruction *overwrites* the register, so between reads every bit about
+earlier inputs lives in the cursor alone: just before the k-th read the
+reachable configurations number at most twice the instruction count, and a
+maximal-width table needs Omega(T/log T) residual classes under every read
+order.  Every Polynomial program for such a table therefore carries
+`m = Omega(T/log T)` instructions whatever its operands -- the older argument
+below covered only the tree/machine splits used here.  The builder encodes negative arithmetic by
 changing the opcode, not by using a negative operand, so every resulting monic
 factor has alternating nonnegative coefficient magnitudes.  Products preserve
 that sign pattern without cancellation.  The binomial contributions obtained by
@@ -221,10 +263,17 @@ program is Omega(T^2/(log T)^2).  An alternate root family could invalidate the
 argument, so Polynomial remains open alongside the other construction walls.
 
 Extra roots that do not match an instruction code may multiply the mandatory
-root product without changing execution.  The general sparse-multiple problem
-does not supply a generator: known rational algorithms are exponential in the
-requested sparsity, which is `Theta(T/log T)` here.  A usable result must be a
-direct family for these prime-power roots.
+root product without changing execution, but the escape is narrow.  No
+two-term multiple exists at all: `x^N - D` vanishing on `a + p**b i` forces
+`(z/conj(z))**N = 1`, a rational angle, and Niven's theorem then pins `a` to
+0 or `p**b`; even then two factors need `2*p1**(2*b1) = 2*p2**(2*b2)`, which
+distinct primes cannot satisfy.  A t-term multiple imposes `2m` vanishing
+conditions on its `2t` coefficients and exponents, so `t = Omega(m)`, and
+every multiple already spends `Omega(m log m)` digits on its lowest nonzero
+coefficient, which the product of the mandatory primes squared divides.
+Known rational sparse-multiple algorithms are exponential in the requested
+sparsity, `Theta(T/log T)` here.  What remains open is exactly a non-generic
+`o(m)`-term, O(T)-digit family for these prime-power roots.
 
 [sparse-multiples]: https://arxiv.org/abs/1009.3214
 
