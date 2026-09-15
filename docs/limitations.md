@@ -602,24 +602,40 @@ a body cannot branch on the accumulator the position tree hands it:
 accumulator on its first test, so a body distinguishes one value of `j` and no
 more.
 
-The `z` loop is the other, and it is now pinned down enough to aim at.  The
-shape that works is an invariant body followed by `[cell, z]` pairs: one cell
-runs per restart, so `T` steps cost `O(T)` text.  Two facts bound what it can
-do, both executed (`notes/ick8_z_blind.py`, `notes/ick8_z_steer.py`).  First,
-a read is **invisible** across a restart -- `z` zeroes the accumulator and a
-`z` at line `p` deletes only `p-1` and `p`, so the body below it is never
-touched and re-runs identically; a pass that reads a byte and then restarts
-leaves nothing behind but a moved input cursor.  Second, the input can still
-reach the text, but only by steering *which* `z` fires: read a bit, branch to
-one of two restart sites, and the two runs keep different programs, which a
-later pass can tell apart.  That costs one read per steered step, so there are
-at most `n` of them.
-
-So the open question is sharp: `n` input-steered deletions can write the row
-into the text, and any number of further passes can compute on that text
-without reading -- can `O(T)` such passes route a table?  Nothing here answers
-it, and the construction is not built.  Both aim-points are why this row reads
-Open rather than Language lower bound.
+The `z` loop was the other, and it is closed, negatively
+(`notes/ick8_z_retire.py`, four executed facts, on top of the two in
+`notes/ick8_z_blind.py` and `notes/ick8_z_steer.py`: a read is invisible
+across a restart, and input reaches the text only by steering which `z`
+fires).  One gadget at the top does read a fresh bit on every pass -- that
+half of the shape works.  What kills the route is that **the read never
+retires**.  A firing deletes only the `z` and its adjacent predecessor, and
+the nearest steerable site is a flight below the `u`, so no steer reaches
+its own read; and every pass's route is identical to the previous pass's
+until the first read or the first text difference, both of which sit at or
+below the read, so once the input-independent burns above it are spent,
+every restart re-executes it.  Each post-burn pass therefore consumes an
+input line -- at most `n` of them, and the first restart after the input is
+spent dies at the `u` -- and each fires one two-line pair, so the whole
+input-dependent positional range of the text channel is `2n` lines, not
+`T`.  The reading passes are also consecutive and terminal: the route from
+line 0 to the read is untouched by any steered deletion (all of them lie
+forward of the read), so once one pass reads, every later pass does, and
+the run must end during the n-th -- the blind passes that could compute at
+scale all come before the first read, where they are input-independent.
+In the natural comb -- both arms landing directly on `z`s, which the
+one-line accumulator spread makes adjacent -- the record decays too: a
+0-bit's pair takes the line above the landing frontier, where the previous
+record sits, and inputs `00x` and `10x` leave identical text.  Spreading
+the arms through relays dodges the decay but not the rest: one arm's `z`
+still survives unfired as a live `z`, and a later walk that touches it
+restarts and dies at the read, so a readback may only visit a site whose
+bit it already knows -- the positional decision tree the arrangement bound
+above already prices.  What `z` buys is `n` restarts and `n` fragile local
+sites; the row's openness now rests on the slot product alone.  (A
+handoff note's contrary verdict -- `T/2` passes writing `T` bits, in
+`notes/linearize-three-handoff.md` -- is withdrawn there: it needed
+input-dependent passes after the reads, which the paragraph above rules
+out.)
 
 Two families of long jumps contribute.  The bit-0 arm spans its sibling
 subtree, and those targets are all distinct, which is the family the
