@@ -32,15 +32,17 @@ proof.
 
 What is NOT asserted
 --------------------
-**Passing this is not evidence of linearity.**  SLOW ACV MAMMALIAN is the
-standing counterexample: ``docs/limitations.md`` proves its recurrence is
-``S(d) >= (2 + 1/255) S(d-1)``, and it measures x2.039 here -- comfortably
-inside the bound.  No threshold separates it from a linear construction at any
-arity this suite can reach, and one tuned until it did would fail most of the
-registry.  A super-linear factor of ``log T`` is simply not visible in twelve
-doublings.  That is why the expected-failure set is read from the documents
-rather than discovered here, and why a generator's absence from the failure
-list below means only "not caught", never "proved linear".
+**Passing this is not evidence of linearity.**  Factor is the standing
+counterexample: ``docs/limitations.md`` proves its digit growth is
+language-forced super-linear, and it measures x2.113 here -- inside the
+bound.  SLOW ACV MAMMALIAN's retired tree made the same point at x2.039
+against a proven ``S(d) >= (2 + 1/255) S(d-1)`` before its linear chain
+shipped.  No threshold separates such a construction from a linear one at
+any arity this suite can reach, and one tuned until it did would fail most
+of the registry.  A super-linear factor of ``log T`` is simply not visible
+in twelve doublings.  That is why the expected-failure set is read from the
+documents rather than discovered here, and why a generator's absence from
+the failure list below means only "not caught", never "proved linear".
 
 Regime changes are excluded, not smoothed
 -----------------------------------------
@@ -242,7 +244,7 @@ def main() -> int:
         print(f"  {name:30s} {why}")
     print(
         f"\n{len(xpass)} of those measure inside the bound anyway -- expected, and "
-        "not evidence of\nlinearity (see the module docstring on SLOW ACV):"
+        "not evidence of\nlinearity (see the module docstring on Factor):"
     )
     print(f"  {', '.join(xpass)}")
 

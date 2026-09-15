@@ -41,8 +41,8 @@ characters per table entry past each generator's last route change and holds
 every generator to it except those the roadmap's scaling audit or this
 document's `cap` and `exception` rows already exempt.  Read its verdicts in one
 direction only: exceeding the bound is evidence, staying inside it is not, and
-SLOW ACV MAMMALIAN -- proven super-linear in `limitations.md` and measuring
-x2.03 -- is why.
+Factor -- proven super-linear at the language level in `limitations.md` and
+measuring x2.11 -- is why.
 
 ## Proof schemes
 
@@ -95,11 +95,13 @@ for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
 and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  Alight, COD, Crement and Nopstacle keep no tree route
-at all: Alight indexes a string literal, COD emits four rows, and the two
-prototypes embed the table verbatim beside their input slots.  Container's
-sub-crossover route is a tree but a deliberately unfolded one, so it does not
-shrink on a degenerate table.
+the tree at any arity.  Alight, COD, Crement, Nopstacle and
+SLOW ACV MAMMALIAN keep no tree route at all: Alight indexes a string literal,
+COD emits four rows, the two prototypes embed the table verbatim beside their
+input slots, and SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf
+slot per row whatever the table says.  Container's sub-crossover route is a
+tree but a deliberately unfolded one, so it does not shrink on a degenerate
+table.
 
 ## Generator ledger
 
@@ -163,7 +165,7 @@ after ignoring the performance/resource ceiling as specified above.
 | ROTfuck | tree | movement search stops after at most eight offsets |
 | S*bleq | finite lookup | packed chunks decoded after the hoisted read block |
 | 6-5 | finite lookup, cap | constant-label arithmetic evaluates `(T >> index) & 1` |
-| SLOW ACV MAMMALIAN | tree | 255-chunk trampoline construction is finite |
+| SLOW ACV MAMMALIAN | linear lookup | a read chain banks each bit as a 256-multiple weight on array 16; one trampoline lands the indexed 256-token leaf |
 | Sophie | tree | — |
 | Streetcode | tree | — |
 | Suffolk | tree | — |
