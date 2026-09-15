@@ -137,13 +137,20 @@ The candidate list is empty.
 
   Three cases remain open.
 
-  SLOW ACV MAMMALIAN need not discard its control label when reading:
-  `ACCEPT` appends `byte XOR acc` and leaves `acc` intact, so an accumulator
-  congruent to 48 appends the input bit while remaining an absolute
-  `LEAPFROG` label.  This removes the current per-node trampoline in
-  principle.  The open step is a constant-token transition from either child
-  state to that child's next label; `DIGEST` only XORs the current whole-array
-  sum, while rebuilding an arbitrary sum recreates the skipped-child cost.
+  SLOW ACV MAMMALIAN's pump-loop construction now builds *and executes*
+  n=1/2/3, every row through the interpreter: the constant-token transition
+  exists (the pump loop) and the address-space fault is repaired by settling
+  every address against a dry run instead of a static bound.  What keeps the
+  row open is the measured reach law: a pump's climb is affine in its counted
+  rounds (~10,000 per round), so the counter spells each node's climb --
+  ~its 1-subtree's span -- in unary cells, and per-entry cost triples from
+  n=2 to n=3.  The open step is an exit whose cost is sublinear in the climb:
+  a counter tower whose depth follows the node's own span sums to O(T) by
+  `sum 2^d (n-d) = 2^(n+1)-n-2`, five free arrays route to all 23 classes,
+  and one added level (~10,000x reach) already covers n=3 fourfold -- so the
+  remaining work is engineering the new level's divert route and pads, which
+  is where every configuration change so far has destabilised the residues.
+  [limitations](limitations.md) has the measurements.
 
   Vandevelo's hang-set is exactly a union of affine cosets -- every bindable
   value is affine in the inputs and only `::` chains evaluate conditionally --
