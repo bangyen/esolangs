@@ -511,10 +511,26 @@ classes for `P+C` text -- but the two coordinates have to meet at the end, and
 a body cannot branch on the accumulator the position tree hands it:
 `DownAccLines` is rejected inside a body, and `{values}` consumes the
 accumulator on its first test, so a body distinguishes one value of `j` and no
-more.  The `z` loop is the other: two lines of text an iteration, input cursor
-intact, text as memory, and no bound yet on what a `T`-line text can decide.
-Neither is built.  Both are why this row reads Open rather than Language lower
-bound.
+more.
+
+The `z` loop is the other, and it is now pinned down enough to aim at.  The
+shape that works is an invariant body followed by `[cell, z]` pairs: one cell
+runs per restart, so `T` steps cost `O(T)` text.  Two facts bound what it can
+do, both executed (`notes/ick8_z_blind.py`, `notes/ick8_z_steer.py`).  First,
+a read is **invisible** across a restart -- `z` zeroes the accumulator and a
+`z` at line `p` deletes only `p-1` and `p`, so the body below it is never
+touched and re-runs identically; a pass that reads a byte and then restarts
+leaves nothing behind but a moved input cursor.  Second, the input can still
+reach the text, but only by steering *which* `z` fires: read a bit, branch to
+one of two restart sites, and the two runs keep different programs, which a
+later pass can tell apart.  That costs one read per steered step, so there are
+at most `n` of them.
+
+So the open question is sharp: `n` input-steered deletions can write the row
+into the text, and any number of further passes can compute on that text
+without reading -- can `O(T)` such passes route a table?  Nothing here answers
+it, and the construction is not built.  Both aim-points are why this row reads
+Open rather than Language lower bound.
 
 Two families of long jumps contribute.  The bit-0 arm spans its sibling
 subtree, and those targets are all distinct, which is the family the
