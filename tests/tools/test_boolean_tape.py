@@ -473,14 +473,17 @@ class TestSixFive:
 # 2.3s over 84 tests: runs the generated program.
 @pytest.mark.medium
 class TestStreetcode:
-    def test_linear_h_tree_executes_wide_rows(self) -> None:
+    # One case per row, because each run rebuilds the machine and revalidates
+    # the whole grid: nine in one test is 2.5s locally and over the band on a
+    # slower runner.  The build is 0.03s of that, so splitting costs nothing.
+    @pytest.mark.parametrize("combo", [0, 1, 2, 17, 31, 32, 47, 62, 63])
+    def test_linear_h_tree_executes_wide_rows(self, combo: int) -> None:
         """The alternating-axis layout reaches both sides of every level."""
         n = 6
         table = "".join(str(index.bit_count() & 1) for index in range(2**n))
         program = boolean.streetcode(table)
-        for combo in (0, 1, 2, 17, 31, 32, 47, 62, 63):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            assert run_streetcode(program, [str(bit) for bit in bits]) == table[combo]
+        bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+        assert run_streetcode(program, [str(bit) for bit in bits]) == table[combo]
 
     def test_h_tree_rectangle_is_linear(self) -> None:
         """Alternating axes bound the rendered rectangle, not just live roads."""

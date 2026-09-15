@@ -2241,6 +2241,7 @@ class TestPctAffineSolver:
     def module():
         return importlib.import_module("esolangs.tools.pct_squared_minus_one")
 
+    @pytest.mark.medium
     def test_the_shorter_of_cascade_and_affine_ships(self) -> None:
         """The cascade is usually shorter at three inputs, but not always.
 
