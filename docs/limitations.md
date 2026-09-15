@@ -112,10 +112,14 @@ count but Theta(T) absolute one-branch targets of Theta(log T) digits.  Its
 straight-line RAM initializer and unary-weight lookup are linear.
 BrainIf's retired tree is Theta(T log T) on parity: it emits Theta(T) branch `goto`s, and a
 constant fraction target line numbers in a Theta(T)-line program, requiring
-Theta(log T) decimal digits.  Its spatial lookup is linear.  Container has the same bound through names:
+Theta(log T) decimal digits.  Its spatial lookup is linear.  Container's retired tree has the same bound through names:
 Theta(T) leaf containers are each defined and referenced a constant number of
 times, while distinct identifiers over its fixed 52-letter alphabet require
-Theta(log T) characters for a constant fraction of them.
+Theta(log T) characters for a constant fraction of them.  Its replacement
+stores the reversed table as one decimal 0/1 literal and repeatedly divides it
+by ten in a fixed two-bank network.  The input weights sum to `T-1`, so source
+and construction are O(T); execution time is intentionally not bounded by that
+source-size result and is enormous for dense wide tables.
 
 Three retired or current grid layouts spend one depth-width strip per table
 row.  Clockwise's retired flat form used Theta(T) columns across Theta(log T)
