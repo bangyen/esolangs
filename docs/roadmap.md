@@ -39,27 +39,16 @@ The candidate list is empty.
   nodes; the construction now labels each definition with the step from the
   previous one and passes the callee its own index, which is constant per node,
   and per-entry cost went from 14.2 climbing to 33.1 to a flat 14.4.
-  Interprogck8 is the row added below.  It had been exempt for the wrong
-  reason -- a `proofs.md` `exception` row about its repair budget's totality,
-  which says nothing about size -- and the shipped construction is
-  super-linear for a reason [limitations](limitations.md) carries in full.
-  That reason now assumes its decision tree rather than forcing it: the
-  pointer is not the only state crossing a read, because the function slot,
-  the call stack and `z`-rewritten text each survive one
-  (`notes/ick8_slot_probe.py` executes all three).  The `z` channel is since
-  measured out: reads never retire, so a run gets at most `n` input-dependent
-  restarts of two lines each, and the record they leave both decays and
-  poisons its own readback (`notes/ick8_z_retire.py`).  The slot product now
-  meets on execution -- a captured body writes the accumulator and one
-  `DownAccLines` fans on it -- but is priced: bodies are disjoint text, so
-  `C` distinct strides cost `Omega(C^2)` characters and the position router
-  keeps at least half the log under any near-linear budget
-  (`notes/ick8_slot_meet.py`).  The call stack, the last channel, is priced
-  too: one absorbing accumulator bit and order-blind pop tallies are all
-  that cross a read, so episodes exit eight affine bits and routing stays
-  span-priced (`notes/ick8_stack_price.py`).  Every state field is now
-  priced or closed, each at construction-family scope; a language-level
-  bound is what closing the row still needs.
+  Interprogck8 was the second row it added, and that row closed Sep 2026 by
+  construction: the router's private express rungs -- ~span/255 per chain,
+  the same `L/255` again at every tree level -- were replaced by a shared
+  corridor, every idle odd line a stateless `DownAccLines`, where a read's
+  even/odd accumulator selects dismount against flight by landing parity
+  and flights are phase-separated by depth.  Per-entry cost oscillates
+  805-887 chars over n=8..12 with no trend (parity, every row executed)
+  where the router climbed 328 to 526, and the scaling contract reads
+  x1.963 with no exemption; [limitations](limitations.md) carries the
+  retired router's pricing and the corridor's non-interference argument.
   An n=8 -> 9 ratio near 2
   is still not evidence of O(T), which is why the contract's verdicts read in
   one direction only.
@@ -68,7 +57,6 @@ The candidate list is empty.
   | Language | Generation time | Output size |
   | --- | --- | --- |
   | Factor | Language lower bound | Language lower bound |
-  | Interprogck8 | Open | Open |
   | Polynomial | Open | Open |
 
   The limitations file proves only that the shipped constructions are

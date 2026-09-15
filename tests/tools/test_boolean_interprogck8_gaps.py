@@ -1,10 +1,11 @@
-"""Interprogck8's two routing backstops, each pinned to its own message.
+"""Interprogck8's corridor machinery that no shipped arity reaches.
 
-The shipped constants are sized so neither fires -- the settle and the
-repair budget are both measured, not argued -- so each is reached by
-shrinking the budget it guards rather than by finding a table that
-defeats the real one.  The express test module accepts whichever
-refusal a starved meadow happens to reach; these separate them.
+Two pieces are load-bearing but dormant at buildable sizes: the stride
+classes past the first (the mod-50 phase pool holds 21 depths, far past
+the contract's ceiling) and the validator's refusal (the assembler plans
+the flights it validates, so a live build never trips it).  Each is
+reached by construction -- shrinking the pool, corrupting the corridor
+-- rather than by finding a table that defeats the real constants.
 """
 
 import hashlib
@@ -13,6 +14,8 @@ import importlib
 import pytest
 
 from esolangs.tools import interprogck8
+from esolangs.tools.interprogck8 import _RUNG, _assemble, _Layout, _validate
+from tests.tools.boolean_runners import run_interprogck8
 
 
 def _parity_table(n: int) -> str:
@@ -32,32 +35,55 @@ def _dense_table(n: int) -> str:
     return "".join(bits[: 2**n])
 
 
-class TestRoutingBackstops:
-    def test_widths_that_run_out_of_passes_are_refused(
+class TestDormantMachinery:
+    def test_deep_stride_classes_route_and_execute(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """One pass cannot settle a program whose widths still move."""
-        module = importlib.import_module("esolangs.tools.interprogck8")
-        with monkeypatch.context() as patch:
-            patch.setattr(module, "_PASSES", 1)
-            with pytest.raises(ValueError, match="did not converge"):
-                interprogck8(_parity_table(6))
+        """Adjusted strides work, proved by shrinking the pool to reach them.
 
-    def test_a_shortfall_given_no_repairs_is_refused(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """With no meadows to add, a routing shortfall names its window.
-
-        Dense at n=8 needs a couple of repair meadows under the shipped
-        placement, so a budget below zero turns its first shortfall into
-        the refusal -- which must name the stranded window rather than
-        emit a program that jumps into the middle of a subtree.
+        Two residues per class force a five-input tree through three
+        stride classes (30, 32, 34), so the ``@nd`` adjusters and the
+        cross-class stop avoidance -- dead code below depth 14 otherwise
+        -- carry real flights, and every row still executes.
         """
         module = importlib.import_module("esolangs.tools.interprogck8")
+        table = _parity_table(5)
         with monkeypatch.context() as patch:
-            patch.setattr(module, "_REPAIRS", -1)
-            with pytest.raises(ValueError, match="no rung slot"):
-                interprogck8(_dense_table(8))
+            patch.setattr(module, "_PHASES_PER_CLASS", 2)
+            lines, flights = _assemble(table, 5)
+        assert {stride for _, stride, _ in flights} >= {30, 32, 34}, (
+            "the shrunken pool must actually reach three stride classes"
+        )
+        _validate(lines, flights)
+        program = "\n".join(lines)
+        for row in range(32):
+            bits = list(bin(row)[2:].zfill(5))
+            assert run_interprogck8(program, bits) == table[row], f"row {row}"
+
+    def test_a_corrupted_corridor_is_refused_not_emitted(self) -> None:
+        """A non-rung straying onto an open channel fails validation.
+
+        That is the corridor's one failure mode -- the chain would
+        dismount mid-flight and compute the wrong row -- so the check
+        must catch a single blanked rung on any multi-hop flight.
+        """
+        lines, flights = _assemble(_dense_table(6), 6)
+        launch, stride, _stop = next(f for f in flights if f[2] - f[0] > f[1])
+        assert lines[launch + stride] == _RUNG
+        lines[launch + stride] = "x"
+        with pytest.raises(AssertionError, match="dismounts"):
+            _validate(lines, flights)
+
+    def test_the_placer_walks_over_an_occupied_line(self) -> None:
+        """A placement scan skips occupied lines rather than reusing them.
+
+        The tree's own scans mostly start past the frontier where every
+        line is free, so the skip is pinned directly: a line already
+        holding an instruction is passed over for the next fit.
+        """
+        layout = _Layout()
+        layout.put(4, "x")
+        assert layout.place(4, 0, ()) == 6
 
     def test_the_shipped_constants_still_build_the_table(self) -> None:
         """The positive control: neither backstop fires by default."""
