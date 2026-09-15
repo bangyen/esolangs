@@ -151,6 +151,14 @@ only suffix blanks.  LaserFuck now conditionally walks arms of total length
 Streetcode's alternating-axis H-tree fits its two-wide roads in O(T) area.
 Vandevelo's current spelling emits one depth-`n` guard chain for each of
 Theta(T) selected parity rows, hence Theta(T log T).
+The [`O(T/log T)` affine-cover theorem of Cohen and Shinkar][dnf-parities]
+does not by itself
+give linear Vandevelo source: its size measure is the number of top-level
+clauses, while one clause may spell Theta(log T) dense parity equations with
+Theta(log T) variable references apiece.  A shared linear-form construction
+could still close that gap, so this is not a language lower bound.
+
+[dnf-parities]: https://eccc.weizmann.ac.il/report/2014/099/
 
 S*bleq's retired tree emitted Theta(T) instructions and data triples with absolute decimal
 addresses into a Theta(T)-cell memory, so a constant fraction of its operands

@@ -127,11 +127,17 @@ The candidate list is empty.
   SLOW ACV MAMMALIAN's current trampoline adds one token run proportional to
   the skipped child at every internal node, giving a factor above two per
   level; a packed selector or constant-distance branch layout is still
-  needed.  Vandevelo reduces to covering the selected
-  inputs by affine subspaces; minterms are not a language lower bound, and no
-  linear-cost cover or super-linear lower bound is known.  Polynomial's
+  needed.  Vandevelo reduces to covering the selected inputs by affine
+  subspaces.  [Cohen--Shinkar's DNF-of-parities theorem][dnf-parities] covers every set with
+  at most `1 + 9*T/log2(T)` subspaces, but counts clauses rather than source:
+  spelling the subspaces' dense parity equations can still cost
+  `Theta(T*log(T))` variable references.  Sharing or deriving those equations
+  in linear text remains open; minterms are not a language lower bound.
+  Polynomial's
   positive-factor bound is likewise construction-specific because signed
   real parts can cancel coefficients.
+
+  [dnf-parities]: https://eccc.weizmann.ac.il/report/2014/099/
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is
