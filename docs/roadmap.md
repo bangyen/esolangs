@@ -127,10 +127,14 @@ The candidate list is empty.
   exactly once.  A shared placeholder cannot distribute the bit to separate
   node lanes without losing the lane identity; carrying that identity as the
   cod's value returns to the super-linear numeric decoder.
-  SLOW ACV MAMMALIAN's current trampoline adds one token run proportional to
-  the skipped child at every internal node, giving a factor above two per
-  level; a packed selector or constant-distance branch layout is still
-  needed.  Vandevelo reduces to covering the selected inputs by affine
+  SLOW ACV MAMMALIAN need not discard its control label when reading:
+  `ACCEPT` appends `byte XOR acc` and leaves `acc` intact, so an accumulator
+  congruent to 48 appends the input bit while remaining an absolute
+  `LEAPFROG` label.  This removes the current per-node trampoline in
+  principle.  The open step is a constant-token transition from either child
+  state to that child's next label; `DIGEST` only XORs the current whole-array
+  sum, while rebuilding an arbitrary sum recreates the skipped-child cost.
+  Vandevelo reduces to covering the selected inputs by affine
   subspaces.  [Cohen--Shinkar's DNF-of-parities theorem][dnf-parities] covers every set with
   at most `1 + 9*T/log2(T)` subspaces, but counts clauses rather than source:
   spelling the subspaces' dense parity equations can still cost
