@@ -246,28 +246,36 @@ reads, and on a computed jump the landing accumulator *is* the index, which a
 fall-through suffix cannot cancel without a one-line no-op the language does
 not have.
 
-What is **not** settled is whether the tree's edges must cost more than `O(T)`
-to route, and the shipped construction's `Theta(T log T)` is a property of its
-router rather than a proven property of the language.  The router gives each
-chain its own relay rungs, so it pays `Sum ceil(span/255)` and the spans of a
-binary tree in a line total `Theta(N log N)`.  But a rung is a bare
-`DownAccLines`, which is stateless: two chains may land on the same rung line
-carrying different accumulators, and each flies its own stride.  Rungs are
-therefore shareable, and the real cost is the *union* of the chains' waypoints,
-not the sum.
+Routing the tree is then what costs the log factor, and the first attempt at
+saying why was wrong in a way worth keeping: it claimed relay rungs cannot be
+shared between chains with distinct targets.  A rung is a bare `DownAccLines`,
+which is stateless -- two chains may land on the same line carrying different
+accumulators, and each flies its own stride.  Rungs *are* shareable, and what
+matters is the union of the chains' waypoints rather than the sum.
 
-The obstruction to exploiting that is specific, and stated here so it can be
-refuted rather than re-derived.  Waypoints coincide in bulk only when chains
-cruise the same lattice, which needs a common step, which means a common
-accumulator -- and two travellers at one position with one accumulator have the
-same future, so they cannot land on different targets.  Chains with distinct
-targets need distinct strides, and two progressions with different strides meet
-only every `lcm` of their steps.  A chain also cannot dismount: it stops only
-by landing on a line that is not a rung, and changing stride mid-flight needs
-an adjuster line, which every other chain landing there would execute too.
-Whether `Theta(T)` chains with distinct targets can share a `O(T)` waypoint
-set under those rules is open; a counting argument bounds a line's visits at
-one per chain but does not bound the union from below.
+Sharing is nonetheless bounded, because it cannot *persist*.  A rung has to be
+a dead line, so it lives in a meadow, and a stride of at most one reach forces
+every chain to land at least once in each 256-line window it crosses.  Suppose
+two chains share one rung in every window.  Then their consecutive landings are
+the same fixed distance apart, so they carry the same stride; being at one
+position with one accumulator, they have one future, and so they cannot end at
+different targets.  Chains with distinct targets therefore need distinct rung
+lines in all but a bounded number of the windows they cross -- two progressions
+with different steps meet only every `lcm` of them.  Dismounting has the same
+shape: a chain stops only by landing on a line that is not a rung, and changing
+stride mid-flight takes an adjuster, which every other chain landing there
+would also execute.
+
+That gives the bound the shipped construction runs into.  The far arms have
+pairwise distinct targets, the number of them crossing a given position is the
+layout's cutwidth, and the sum of that over all positions is the tree's total
+edge span.  So the dead lines needed are `Omega(Sum span / 256)`, short edges
+contribute only `O(T)` of that sum, and for a complete binary tree the total is
+`Theta(N log N)` in any linear arrangement -- `Omega(T log T)` rungs.  One step
+of that is still borrowed rather than proved here: the minimum linear
+arrangement of a complete binary tree.  Everything else is the interpreter's
+own geometry, so that citation is the whole remaining gap, and a layout beating
+`Omega(N log N)` on total edge span is exactly what would reopen this.
 
 Two families of long jumps contribute.  The bit-0 arm spans its sibling
 subtree, and those targets are all distinct, which is the family the
