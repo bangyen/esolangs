@@ -1085,6 +1085,7 @@ _LINEAR_SCALING = {
     "forth",
     "flowchart",
     "inject",
+    "interprogck8",
     "jaune",
     "laserfuck",
     "minifuck",
@@ -1097,7 +1098,6 @@ _LINEAR_SCALING = {
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
-    "interprogck8",
     "polynomial",
 }
 

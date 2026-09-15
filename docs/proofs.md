@@ -147,7 +147,7 @@ after ignoring the performance/resource ceiling as specified above.
 | Grapheme | tree | arbitrary integer variable keys remove the old 24 one-letter-key ceiling |
 | Home Row | parameterized tree | — |
 | Inject | finite lookup | one table block halved by `O(n)` conditional substitutions |
-| Interprogck8 | exception | no uniform proof that bounded repair always routes arbitrarily wide trees |
+| Interprogck8 | tree | routed by a shared `DownAccLines` corridor: a read's 48/49 selects dismount against flight by landing parity, stops are phase-separated by depth, and assembly is one pass with no repair loop |
 | Jaune | finite lookup | a spatial table reached with two labels |
 | LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep |
 | Minifuck | parameterized construction | `_mux` is the total fallback; its six failure sites close uniformly in `n` |
@@ -180,12 +180,9 @@ after ignoring the performance/resource ceiling as specified above.
 
 ## Exceptions and walls
 
-The three `exception` rows are proof gaps, not permission to call the languages
+The two `exception` rows are proof gaps, not permission to call the languages
 incapable.
 
-- Interprogck8 can refuse when its finite repair budget is exhausted.  Raising
-  the budget has repaired measured wider tables, but there is no decreasing
-  measure proving that some finite repair count serves every table.
 - `%^2^-1` can refuse when none of its cascade, affine, ladder, band, or fold
   planners succeeds.
 - WII2D can refuse when its deterministic decode hits the magnitude/width
@@ -195,15 +192,14 @@ incapable.
 
 ### Attempts on the open cases
 
-**Interprogck8.**  The byte accumulator does not prove a cap:
-`DownAccLines` retains it, so arbitrarily long forward edges can be split into
-finitely many hops of at most 255 lines.  The natural totality attempt emits the
-finite decision tree, gives each long edge a private chain of such rungs, and
-routes leaves through ancestor exits.  What is missing is an embedding lemma:
-the finitely many chains share one line, and inserting room for one changes the
-coordinates and demand of the others.  The current repair loop demonstrates
-the construction but supplies no monotone measure proving simultaneous
-placement.  Thus neither a language cap nor totality follows.
+**Interprogck8** left this section Sep 2026: the repair loop whose totality
+was the gap no longer exists.  The corridor assembly places each gadget once
+on computed coordinates, a placement is a bounded congruence scan (a free
+line on one class recurs within its modulus times the longest occupied run,
+and every occupied run is O(1)), and rungs are shared rather than embedded --
+no simultaneous-placement lemma is needed because nothing is ever moved.
+Stride classes `30 + 2k` for `k` up to 113 hand 14 residues each to
+successive depth bands, 1596 read depths, past any representable table.
 
 **`%^2^-1`.**  The proved two-read wall does not survive parameterization, and
 the 3003 reset does not make the machine finite-state: negative accumulators
@@ -289,7 +285,7 @@ therefore impossible at every program length.  The exported generator is
 parameterized and contains no `n`; substituting `{Xi}` changes the program
 before execution and voids the theorem's hypothesis.
 
-Accordingly, this ledger records 62 theoretical totality arguments and three
+Accordingly, this ledger records 63 theoretical totality arguments and two
 open exceptions.  It records no structural impossibility for an exported
 generator's actual parameterized contract.  Turning any exception into
 “incapable” requires an unbounded-program proof; a failed search or a live cap
