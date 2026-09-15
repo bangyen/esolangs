@@ -503,6 +503,25 @@ a shared stride, and a shared stride is one future.  So the narrow gap is
 narrower than it looked, though still not shut -- these are the *shipped*
 layout's jumps, and a construction that positions its own could do better.
 
+One objection to a deliberate lattice is now removed, which is worth
+recording because it was the easy half.  The reason a lattice cannot simply
+be threaded through the region that *computes* the answer is that the
+accumulator is nonzero there, so every rung fires and corrupts the result.
+But `DownAccLines` advances by `acc + 1`, so a rung followed by `k` nops is
+**transparent** for every `acc` in `[0, k]`: each value lands somewhere
+inside the nop run, all paths converge on the line after it, and none of
+them touches the accumulator.  Executed in `notes/ick8_transparent.py`,
+with a control where a rung followed by an effect does move the
+accumulator.  The same file runs the natural answer phase -- enter a table
+of `table[j] - table[j+1]` differences at row `r` and fall through, so the
+sum telescopes to `table[r]`, biased by one to keep it in `[0, 2]` -- with
+a transparent rung every four lines, and it returns the right bit for every
+row of four tables up to sixteen entries.  So navigation lines and answer
+lines can share the same region.  What that does *not* solve is
+dismounting: a chain riding a regular lattice leaves it only on a non-rung
+or an adjuster, and both are seen by every chain that lands there.
+Corruption was the easy half; one future is still the hard one.
+
 That is the narrow gap.  The wide one is the retraction above: the tree is an
 assumption, so a construction that is not a decision diagram over positions
 pays none of this.  Two aim-points fall out, both refutable.  The slot gives a
