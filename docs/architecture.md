@@ -11,7 +11,7 @@ registry.Language ──► boolean generator ──► program or {Xi} template
     │                                              │
     │                                      instantiate inputs
     ▼                                              │
-interpreter module ◄──── source + encoded stdin ◄─┘
+interpreter module ◄──── source + encoded stdin ◄──┘
     │
     ├── run() ──► raw output ──► read_answer() ──► bit
     └── make_vm() ──► step-and-inspect state
