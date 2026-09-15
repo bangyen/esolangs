@@ -49,8 +49,13 @@ The candidate list is empty.
   (`notes/ick8_slot_probe.py` executes all three).  The `z` channel is since
   measured out: reads never retire, so a run gets at most `n` input-dependent
   restarts of two lines each, and the record they leave both decays and
-  poisons its own readback (`notes/ick8_z_retire.py`) -- the escape route
-  still open is the slot product.  An n=8 -> 9 ratio near 2
+  poisons its own readback (`notes/ick8_z_retire.py`).  The slot product now
+  meets on execution -- a captured body writes the accumulator and one
+  `DownAccLines` fans on it -- but is priced: bodies are disjoint text, so
+  `C` distinct strides cost `Omega(C^2)` characters and the position router
+  keeps at least half the log under any near-linear budget
+  (`notes/ick8_slot_meet.py`); the channel left unpriced is the call stack.
+  An n=8 -> 9 ratio near 2
   is still not evidence of O(T), which is why the contract's verdicts read in
   one direction only.
   The live audit is:
