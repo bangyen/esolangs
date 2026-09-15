@@ -344,14 +344,17 @@ every multiple already spends `Omega(m log m)` digits on its lowest nonzero
 coefficient, which the product of the mandatory primes squared divides.
 Known rational sparse-multiple algorithms are exponential in the requested
 sparsity, `Theta(T/log T)` here.  What remains open is exactly a non-generic
-`o(m)`-term, O(T)-digit family for these prime-power roots.
+O(T)-digit family for these prime-power roots -- and note the `t = Omega(m)`
+above is a dimension count, a necessary condition on a generic solution
+rather than an impossibility proof, so it bounds no specific family and does
+not by itself forbid a sparser one.
 
 [sparse-multiples]: https://arxiv.org/abs/1009.3214
 
-Interprogck8 is super-linear and now carries a roadmap audit row saying so.  It
-had been exempt by accident: its `proofs.md` row is an `exception` about the
-repair budget's totality, which says nothing about size, and nothing else named
-it at all.  Measured, it is real rather than an
+Interprogck8's shipped construction is super-linear, and the roadmap audit row
+says so.  It had been exempt by accident: its `proofs.md` row is an `exception`
+about the repair budget's totality, which says nothing about size, and nothing
+else named it at all.  Measured, the growth is real rather than an
 artefact of the two-step statistic -- parity per-entry cost climbs
 monotonically from 328 to 526 characters over n=3..10, and `DownAccLines` per
 entry rises by a near-constant +0.7 an arity, which is the signature of
