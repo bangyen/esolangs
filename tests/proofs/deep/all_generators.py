@@ -90,6 +90,8 @@ def main() -> int:
         result = battery(row.generator, scheme, key)
         results.append(result)
         status = f"{len(result.passed)}/5"
+        if row.generator in _MAY_REFUSE:
+            status += "  (exception row: refusals expected)"
         print(f"{row.generator:34s} {scheme:26s} {status}")
         for note in result.notes:
             print(note)

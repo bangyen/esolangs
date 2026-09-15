@@ -49,6 +49,10 @@ import itertools
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 
+# The suite's own shapes, not a local stand-in: ``_dense`` is the worst case to
+# fold and ``_parity`` the table with no constant subtree above a single row.
+from tests.tools.test_boolean_contract import _dense, _parity
+
 
 class UnprovenError(Exception):
     """A lemma does not apply here, and this is why.
@@ -143,7 +147,12 @@ def check_rows(fn: Builder, max_n: int = 4) -> str:
     checked = blind = 0
     for n in range(1, max_n + 1):
         size = 1 << n
-        for table in tables_at(n, limit=6):
+        # The enumerated tables are the lexicographically first ones, which are
+        # near-empty and the most biased base a flip test could have.  The
+        # suite's two worst cases go in beside them so the lemma is exercised
+        # on tables that fold nothing.
+        bases = [*tables_at(n, limit=6), _dense(n), _parity(n)]
+        for table in bases:
             base = build(fn, table)
             if base is None:
                 continue
@@ -207,7 +216,11 @@ def check_embedding(fn: Builder, max_n: int = 4) -> str:
     """
     checked = 0
     for n in range(2, max_n + 1):
-        program = build(fn, "10" * (1 << (n - 1)))
+        # _dense, not the alternating table: that one depends on a single
+        # input, so a folding generator returns a near-trivial template -- the
+        # weakest possible witness for an exactly-once claim.  The same
+        # degenerate shape corrupted the arity ladder before it was caught.
+        program = build(fn, _dense(n))
         if program is None:
             continue
         if "{X0}" not in program:
