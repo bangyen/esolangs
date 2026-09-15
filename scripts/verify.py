@@ -156,6 +156,14 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
         "src/esolangs/tools/parameterized.py",
         "tests/proofs/deep/arrowqueue.py",
     ),
+    # BIO's lemmas parse the emitted program and instantiate it through the
+    # shipped fill, so the generator, that fill, and the script are the three
+    # things that can break them.
+    "bio lemmas": (
+        "src/esolangs/tools/parameterized.py",
+        "src/esolangs/tools/examples.py",
+        "tests/proofs/deep/bio.py",
+    ),
     # Only an interpreter (or the sweep itself) can introduce a leak.
     "exception leaks": (
         "src/esolangs/interpreters/",
@@ -229,6 +237,16 @@ STEPS = [
     (
         "arrowqueue lemmas",
         [*PY, "tests/proofs/deep/arrowqueue.py"],
+    ),
+    # The telescoping-lookup proof behind BIO's ledger row: the adjustments
+    # are recovered from the emitted program and folded against every row
+    # through n=7.  0.1s, so it gates on the same rule arrowqueue does.  The
+    # Container proof next to it does not: its L1 enumerates every row of
+    # twelve arities and costs 16s, and weakening a proof to fit a gate is
+    # the wrong trade -- `just proofs` runs it.
+    (
+        "bio lemmas",
+        [*PY, "tests/proofs/deep/bio.py"],
     ),
     # The contract exceptions.py states, executed: no interpreter may leak a
     # raw Python error to its caller.  Bare, it checks only the languages

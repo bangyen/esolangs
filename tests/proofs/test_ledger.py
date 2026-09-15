@@ -5,8 +5,8 @@ Nothing read the ledger before this file.  It is prose, so every claim in it
 capped, how many exceptions remain -- was maintained by hand and verified by
 hand.  The failure that motivates these tests is not hypothetical: thirteen
 rows sat on a `tree` scheme for twenty-three commits after their generators
-had been linearized onto lookups, and one row still does not match its
-construction at all.
+had been linearized onto lookups, and a fourteenth (Alight) did not match its
+construction at all until the commit that added this file.
 
 These are cheap on purpose.  Parsing a document and comparing name sets does
 not run a generator, so the whole file stays in the fast band and gates every
