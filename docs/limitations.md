@@ -193,6 +193,13 @@ coefficient digits for `m` factors.  With `m = Omega(T/log T)`, the expanded
 program is Omega(T^2/(log T)^2).  An alternate root family could invalidate
 the argument, so Polynomial remains open alongside the other construction
 walls.
+Extra roots that do not match an instruction code may multiply the mandatory
+root product without changing execution.  The general sparse-multiple problem
+does not supply a generator: known rational algorithms are exponential in the
+requested sparsity, which is `Theta(T/log T)` here.  A usable result must be a
+direct family for these prime-power roots.
+
+[sparse-multiples]: https://arxiv.org/abs/1009.3214
 
 
 ## Curation
