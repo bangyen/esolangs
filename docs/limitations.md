@@ -418,7 +418,37 @@ moduli.  Sparsity bounds real positive roots by Descartes, but it does not
 bound complex root moduli at all (`x^N - 1` has `N` roots on one circle from
 two terms), so the modulus route cannot reach `t = Omega(m)`.
 
+What remains is not merely unsolved here; it instantiates a problem the
+literature poses and leaves open, and every published case misses it
+(`notes/poly_open_literature.py`).  [Giesbrecht, Roche and
+Tilak][sparse-multiples] (Algorithmica 64:454-480, 2012) is the standing
+work on computing sparse multiples, and its rational results are exactly
+two: an unconditional algorithm for *binomial* multiples `x^m - a` --
+the `t = 2` case Niven's theorem closes for these roots above -- and,
+for each *fixed* `t >= 3`, an algorithm needing an a priori height bound
+on the output and an input free of repeated cyclotomic factors.  The
+caveat is not what excludes the mandatory products: they are
+cyclotomic-free, since a cyclotomic root sits on the unit circle while
+every instruction root has squared modulus at least 4 (measured 58 at
+its smallest over the dense n=3..6 builds).  What excludes them is the
+sparsity itself.  Spelling `t` distinct exponents alone costs
+`Omega(t log t)` characters, so O(T) text forces `t = O(T/log T)`, and
+the Descartes-plus-routing floor forces `t = Omega(T/log T)` -- the
+multiple the row needs has `t = Theta(T/log T)`, growing with the
+degree.  That is the case the paper's conclusion singles out, verbatim:
+"Removing these restrictions is desirable (though not necessarily
+possible)", and "we suspect that computing t-sparse multiples is
+NP-complete over both Q and F_q, when t is a parameter in the input".
+Roche's 2018 survey ([arXiv:1807.08289][sparse-survey]) adds nothing on
+multiples and leaves the neighbouring sparse-division and
+divisibility-testing questions as its Open Problems 2 and 3.  So no
+published result decides this row in either direction -- and since even
+the conjectured NP-completeness would not forbid a bespoke family for
+these specific prime-power roots, the row stays open rather than
+closing as a wall.
+
 [sparse-multiples]: https://arxiv.org/abs/1009.3214
+[sparse-survey]: https://arxiv.org/abs/1807.08289
 
 Interprogck8's shipped construction is super-linear, and the roadmap audit row
 says so.  It had been exempt by accident: its `proofs.md` row is an `exception`
