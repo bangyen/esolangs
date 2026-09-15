@@ -65,7 +65,10 @@ for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
 and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  COD keeps no tree route at all.
+the tree at any arity.  Alight, COD, Crement and Nopstacle keep no tree route at
+all: Alight indexes a string literal, COD emits four rows, and the two
+prototypes embed the table verbatim beside their input slots.  Container's sub-crossover route is a tree but a
+deliberately unfolded one, so it does not shrink on a degenerate table.
 
 ## Generator ledger
 
@@ -79,7 +82,7 @@ after ignoring the performance/resource ceiling as specified above.
 | A Painter Ant | parameterized lookup | the embedded bits advance the ant along a self-painting corridor by their own weights, leaving it over the indexed answer cell |
 | AddSubJump | finite lookup | packed `n`-bit cells selected by a self-modified operand |
 | Algebraic Programming Language | minterms | base-26 names are unbounded |
-| Alight | tree | folded post-order layout |
+| Alight | finite lookup | inputs folded into a row index by Horner's rule; the table is a string literal read with `at`, so the program has no branches |
 | ArrowQueue | parameterized lookup | marker counts select one of `2**n` constant-size cascade stages |
 | B-tapemark | tree | reflected finite grid; indexed table spans preserve the same leaves without recursive copies |
 | Back | parameterized tree | — |
