@@ -299,14 +299,39 @@ reachable configurations number at most twice the instruction count, and a
 maximal-width table needs Omega(T/log T) residual classes under every read
 order.  Every Polynomial program for such a table therefore carries
 `m = Omega(T/log T)` instructions whatever its operands -- the older argument
-below covered only the tree/machine splits used here.  The builder encodes negative arithmetic by
-changing the opcode, not by using a negative operand, so every resulting monic
-factor has alternating nonnegative coefficient magnitudes.  Products preserve
-that sign pattern without cancellation.  The binomial contributions obtained by
-taking the leading or constant term of each factor alone give Omega(m^2) total
-coefficient digits for `m` factors.  With `m = Omega(T/log T)`, the expanded
-program is Omega(T^2/(log T)^2).  An alternate root family could invalidate the
-argument, so Polynomial remains open alongside the other construction walls.
+below covered only the tree/machine splits used here.
+
+That cursor-only step is sound here, unlike the one it resembles under
+Interprogck8, and the difference is worth keeping: a Polynomial state is
+exactly `(register, cursor)`, the input arm assigns the register rather than
+combining with it, and the instruction list is recovered once and never
+rewritten -- the language has no slot, no call stack and no `z`.  So here the
+cursor really is the only channel.
+
+The text is a different matter, and two of the escapes are now measured.
+Negative operands are **legal**: `convert` puts no sign condition on a complex
+root's real part, and `f(x) = 1x^6-130x^5+3563x^4+41030x^3+255186x^2+
+1107000x^1+4168400` decodes to `[[70, 1], [-5, 1], [0, 1]]` and prints `A`
+(`notes/poly_negative_operand.py`).  A complex instruction `[a, b]` is
+`(x-a)^2 + p**(2b)`, so its linear coefficient `-2a` flips sign with `a`, and
+that program's own expansion is already not alternating.  The builder encodes
+negative arithmetic by changing the opcode instead, so *its* monic factors have
+alternating nonnegative coefficient magnitudes and products preserve the sign
+pattern without cancellation; the binomial contributions from each factor's
+leading or constant term alone then give Omega(m^2) total coefficient digits,
+and with `m = Omega(T/log T)` the expanded program is Omega(T^2/(log T)^2).
+The no-cancellation premise is thus a property of the shipped builder, not of
+the language, and mixed-sign operands are the free parameter it does not
+cover.
+
+The other escape is closed.  Shipping the *product* form -- `m` factors at
+`O(log)` characters each, no expansion -- is not a legal encoding: the parser
+strips `*` and reads only summed `c*x^d` monomials, keeping the last
+coefficient per degree, so `f(x) = (x-2)(x-3)(x-5)` is silently read as
+`x - 5` rather than rejected (`notes/poly_factored_probe.py`).  Program text
+is the expanded coefficient digits and nothing else, which is what the bound
+above prices.  Polynomial remains open alongside the other construction
+walls.
 
 Extra roots that do not match an instruction code may multiply the mandatory
 root product without changing execution, but the escape is narrow.  No
@@ -332,27 +357,41 @@ monotonically from 328 to 526 characters over n=3..10, and `DownAccLines` per
 entry rises by a near-constant +0.7 an arity, which is the signature of
 `a + b*n` rather than a constant.
 
-What *is* settled is that a decision tree is forced.  Every read destroys the
-accumulator -- `u` loads the byte and `{values/=a/=b/=c}` overwrites it with 84
-or 81 -- so no value survives a read, and the only state carrying which rows
-remain possible is the instruction pointer.  A program therefore needs one
-distinct position per residual function still reachable after k reads -- a
-decision *diagram*, not necessarily a tree, and for a random table an ordered
-one has `Theta(T/log T)` nodes rather than `Theta(T)`.  That does not obviously
-help here and may hurt: a diagram's successors have no locality, so what it
-saves in nodes it hands back in pointer distance, and the pointers are exactly
-what relay rungs are paid for.  Either way the information floor is unmoved --
-a random table is `T` bits and the alphabet is `O(1)`, so `Omega(T)` characters
-are needed regardless.  The tree the shipped construction emits is a choice
-within that, not the only one.  That also
-closes the packed-table route twice: an index cannot be accumulated across
-reads, and on a computed jump the landing accumulator *is* the index, which a
-fall-through suffix cannot cancel without a one-line no-op the language does
-not have.
+A decision diagram is **not** forced, and the paragraph that claimed it was
+is retracted.  The accumulator does die at every read -- `u` loads the byte
+and `{values/=a/=b/=c}` overwrites it with 84 or 81 -- but it is not the only
+state, and the pointer is not the only thing that crosses a read.  Three
+other channels do, each executed in `notes/ick8_slot_probe.py`:
 
-Routing the tree is then what costs the log factor, and the first attempt at
-saying why was wrong in a way worth keeping: it claimed relay rungs cannot be
-shared between chains with distinct targets.  A rung is a bare `DownAccLines`,
+- The **function slot**.  `u` does not touch it, and `<` captures the body
+  the pointer is standing on, so two inputs can reach *one* line holding
+  different bodies.  The probe's two arms meet at line 300 and the same
+  `EXE` prints `A` or `B`.
+- The **call stack**.  A read taken inside a body returns into that body.
+- The **program text**, through `z`.  A restart clears the accumulator, the
+  slot and the pointer but *not* the input cursor, so
+  `["u", "div"] + ["X", "z"] * 3` reads and prints four bytes at two lines
+  of text per iteration -- a loop whose memory is the text.
+
+So "one distinct position per residual function" does not follow: after k
+reads the residual class is carried by the pointer *and* the slot *and* the
+frames *and* the text, and a product of channels needs far fewer positions
+than a diagram over positions alone.  The packed-table closure loses the
+same premise -- `z` accumulates input history into the text whatever the
+accumulator does -- though its second half still stands on its own: on a
+computed jump the landing accumulator *is* the index, and the language has
+no one-line no-op to cancel it with.
+
+What is unmoved is the information floor: a random table is `T` bits and the
+alphabet is `O(1)`, so `Omega(T)` characters are needed regardless.  That
+floor is linear, so it does not order this row either way.
+
+Routing *the tree the generator emits* is what costs the log factor.  Every
+bound from here down is therefore about that construction, not about the
+language: it takes the tree as given, and the paragraph above is why that is
+now an assumption rather than a theorem.  The first attempt at saying why was
+wrong in a way worth keeping: it claimed relay rungs cannot be shared between
+chains with distinct targets.  A rung is a bare `DownAccLines`,
 which is stateless -- two chains may land on the same line carrying different
 accumulators, and each flies its own stride.  Rungs *are* shareable, and what
 matters is the union of the chains' waypoints rather than the sum.
@@ -384,7 +423,9 @@ is an exact tree DP and mentions no layout.  Summing it bounds every
 arrangement at once.  On complete binary trees, `sum mincut(i)` divided by `N`
 runs 1.14, 1.47, 1.81, 2.13, 2.43, 2.74, 3.04, 3.34, 3.65, 3.95 for heights 2
 through 11 -- a constant `~0.30` per height, so linear in `log N`, holding at
-`~0.33 N log2 N`.  It is a lower bound, so no cleverer arrangement is hiding.
+`~0.33 N log2 N`.  It is a lower bound over arrangements, so no cleverer
+*layout* of this tree is hiding; a construction that is not this tree is not
+covered by it at all.
 
 The one thing that remains a judgement is where the log starts to bite, because
 short edges are free and `255` lines is a lot of tree when a node is small.
@@ -406,8 +447,20 @@ so the supply is the whole program rather than the meadows, and "distinct dead
 lines per window" does not follow from "distinct rungs per window".  Whether
 `Theta(T)` chains can be given strides and alignments whose arithmetic
 progressions land only on jumps that already exist is a packing question
-nobody here has answered.  It is why this row reads Open rather than Language
-lower bound.
+nobody here has answered.
+
+That is the narrow gap.  The wide one is the retraction above: the tree is an
+assumption, so a construction that is not a decision diagram over positions
+pays none of this.  Two aim-points fall out, both refutable.  The slot gives a
+*product* -- `P` positions times `C` captured bodies reach `P*C` residual
+classes for `P+C` text -- but the two coordinates have to meet at the end, and
+a body cannot branch on the accumulator the position tree hands it:
+`DownAccLines` is rejected inside a body, and `{values}` consumes the
+accumulator on its first test, so a body distinguishes one value of `j` and no
+more.  The `z` loop is the other: two lines of text an iteration, input cursor
+intact, text as memory, and no bound yet on what a `T`-line text can decide.
+Neither is built.  Both are why this row reads Open rather than Language lower
+bound.
 
 Two families of long jumps contribute.  The bit-0 arm spans its sibling
 subtree, and those targets are all distinct, which is the family the
