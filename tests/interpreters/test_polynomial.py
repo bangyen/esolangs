@@ -707,6 +707,9 @@ class TestNttRecovery:
             seen.add(modulus)
         assert len(seen) == len(_NTT_FIELDS), "the cross-check needs a second field"
 
+    # The four tests below reach `_roots_mod`, whose ~0.4s of NTT butterflies
+    # is a fixed cost of the field, not of the planted roots.
+    @pytest.mark.medium
     def test_roots_mod_is_the_exact_root_set(self) -> None:
         """Planted roots come back exactly -- no more, no fewer.
 
@@ -725,6 +728,7 @@ class TestNttRecovery:
             modulus = field[0]
             assert _roots_mod(coefficients, field) == {r % modulus for r in planted}
 
+    @pytest.mark.medium
     def test_zero_is_reported_when_x_divides(self) -> None:
         """The one point outside the multiplicative group is still seen."""
         from esolangs.interpreters.register_based.polynomial import (
@@ -742,6 +746,7 @@ class TestNttRecovery:
         assert sorted(_iter_bits(mask, 163841)) == [0, 7, 8, 1000, 163839]
         assert list(_iter_bits(0, 163841)) == []
 
+    @pytest.mark.medium
     def test_a_large_program_is_recovered_exactly(self) -> None:
         """Past the threshold, every planted factor comes back and nothing
         else -- the execution-gate witness for the search half.
@@ -783,6 +788,7 @@ class TestNttRecovery:
         recovered = _factor_roots(tuple(coefficients))
         assert sorted(recovered) == sorted(expected)
 
+    @pytest.mark.medium
     def test_what_the_large_path_cannot_take_reaches_factor_list(self) -> None:
         """The fallback stays wired on the NTT path.
 

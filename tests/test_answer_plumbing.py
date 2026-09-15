@@ -786,6 +786,8 @@ class TestRunSaysWhenStdinLooksWrong:
         with pytest.warns(UserWarning, match="spells its bits"):
             esolangs.run("Grapheme", program, "0\n1\n", 10)
 
+    # Generates and runs one program per language, like the wrap test above.
+    @pytest.mark.medium
     def test_the_documented_path_is_silent(self) -> None:
         """A warning that fires on correct input is worse than none."""
         import warnings
