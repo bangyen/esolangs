@@ -1089,13 +1089,13 @@ _LINEAR_SCALING = {
     "one_two_three",
     "ram0",
     "sbleq",
+    "streetcode",
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
     "cod",
     "polynomial",
     "slow_acv_mammalian",
-    "streetcode",
     "vandevelo",
 }
 
@@ -1138,9 +1138,14 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
 def test_converted_generators_scale_linearly(name: str) -> None:
     """Doubling a wide unfolded table at most doubles generated text."""
     fn = getattr(boolean, name)
-    # Circuit Diagram's odd/even H recurrences have different finite-size
-    # constants; its all-arity area bound is checked in test_boolean_grid.
-    arities = (8, 9) if name == "circuit_diagram" else (11, 12)
+    # The grid H-layouts have different odd/even finite-size constants; their
+    # all-arity area bounds are checked with their construction invariants.
+    if name == "circuit_diagram":
+        arities = (8, 9)
+    elif name == "streetcode":
+        arities = (9, 10)
+    else:
+        arities = (11, 12)
     sizes = [len(fn(_parity(n))) for n in arities]
     if name == "minifuck":
         assert all(size <= 70 * 2**n for size, n in zip(sizes, arities, strict=True))

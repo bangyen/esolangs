@@ -60,7 +60,7 @@ The candidate list is empty.
   | RAM0 | Linear | Linear |
   | S\*bleq | Linear | Linear |
   | SLOW ACV MAMMALIAN | Open | Open |
-  | Streetcode | Open | Open |
+  | Streetcode | Linear | Linear |
   | Vandevelo | Open | Open |
 
   The limitations file proves only that the shipped constructions are
@@ -116,15 +116,18 @@ The candidate list is empty.
   Level `i` paints and spans O(2^i) cells, then one replay separates every
   prefix group; the geometric sums bound both direct emission and source by
   O(T), without materializing every row's tape state.
-  Five cases remain open.  COD can stop its main cascade at the selected
+  Streetcode thickens an alternating-axis H-tree into two-lane roads.  Its
+  branch distance is geometric on every other level, so its height and width
+  are both O(sqrt(T)); the shared input normalizer occupies only O(log(T)^2)
+  cells beside it.  Sampled paths through six inputs execute correctly.
+  Four cases remain open.  COD can stop its main cascade at the selected
   value and feed the earlier positive copies into one shared decrement
   ladder, but its upward-only `_` test reflects a rejected copy back through
   the fork that made it; no deterministic constant-area exit is known.
   SLOW ACV MAMMALIAN's current trampoline adds one token run proportional to
   the skipped child at every internal node, giving a factor above two per
   level; a packed selector or constant-distance branch layout is still
-  needed.  Streetcode has an O(T) tape algorithm, but no O(T)-area road layout
-  for its fixed set of loops.  Vandevelo reduces to covering the selected
+  needed.  Vandevelo reduces to covering the selected
   inputs by affine subspaces; minterms are not a language lower bound, and no
   linear-cost cover or super-linear lower bound is known.  Polynomial's
   positive-factor bound is likewise construction-specific because signed

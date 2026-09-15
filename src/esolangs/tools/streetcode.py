@@ -626,6 +626,160 @@ def _streetcode_rotate(program: str) -> str:
     return "\n".join(row.ljust(width)[::-1].rstrip() for row in reversed(rows))
 
 
+_H_DIR = {"E": (0, 1), "S": (1, 0), "W": (0, -1), "N": (-1, 0)}
+_H_LEFT = {"E": "N", "N": "W", "W": "S", "S": "E"}
+_H_RIGHT = {value: key for key, value in _H_LEFT.items()}
+
+
+def _streetcode_h_rect(r0: int, r1: int, c0: int, c1: int) -> set[tuple[int, int]]:
+    """Return the cells in one half-open rectangle."""
+    return {(r, c) for r in range(r0, r1) for c in range(c0, c1)}
+
+
+def _streetcode_h_corridor(
+    one: tuple[int, int], two: tuple[int, int]
+) -> set[tuple[int, int]]:
+    """Return a two-cell-wide axis-aligned corridor between two anchors."""
+    r0, c0 = one
+    r1, c1 = two
+    if r0 == r1:
+        return _streetcode_h_rect(r0, r0 + 2, min(c0, c1), max(c0, c1) + 2)
+    if c0 != c1:  # pragma: no cover - the H layout changes one axis per edge
+        raise AssertionError("an H-tree corridor must be axis-aligned")
+    return _streetcode_h_rect(min(r0, r1), max(r0, r1) + 2, c0, c0 + 2)
+
+
+def _streetcode_h_lane(anchor: tuple[int, int], direction: str) -> tuple[int, int]:
+    """Return the right-hand lane cell at a two-by-two junction."""
+    r, c = anchor
+    return {"E": (r + 1, c), "S": (r, c), "W": (r, c + 1), "N": (r + 1, c + 1)}[
+        direction
+    ]
+
+
+def _streetcode_h_render(
+    open_cells: set[tuple[int, int]],
+    glyphs: dict[tuple[int, int], str],
+    fixed_walls: dict[tuple[int, int], str],
+) -> str:
+    """Render a two-wide road union, retaining the normalizer's inner walls."""
+    border = {
+        (r + dr, c + dc)
+        for r, c in open_cells
+        for dr in (-1, 0, 1)
+        for dc in (-1, 0, 1)
+        if (r + dr, c + dc) not in open_cells
+    }
+    cells = open_cells | border | fixed_walls.keys()
+    lo_r = min(r for r, _ in cells)
+    lo_c = min(c for _, c in cells)
+    hi_r = max(r for r, _ in cells)
+    hi_c = max(c for _, c in cells)
+    rows: list[str] = []
+    for r in range(lo_r, hi_r + 1):
+        row: list[str] = []
+        for c in range(lo_c, hi_c + 1):
+            pos = (r, c)
+            if pos in fixed_walls:
+                row.append(fixed_walls[pos])
+            elif pos in open_cells:
+                row.append(glyphs.get(pos, " "))
+            elif pos not in border:
+                row.append(" ")
+            else:
+                vertical = (r - 1, c) in open_cells or (r + 1, c) in open_cells
+                horizontal = (r, c - 1) in open_cells or (r, c + 1) in open_cells
+                row.append("+" if vertical == horizontal else "-" if vertical else "|")
+        rows.append("".join(row).rstrip())
+    return "\n".join(rows)
+
+
+def _streetcode_h_layout(
+    truth_table: str, n: int
+) -> tuple[set[tuple[int, int]], dict[tuple[int, int], str]]:
+    """Return an alternating-axis decision tree whose rectangle is O(T)."""
+    cells: set[tuple[int, int]] = set()
+    glyphs: dict[tuple[int, int], str] = {}
+    # The western radius is smaller than this geometric bound.  Keeping the
+    # tree east of column zero leaves the input normalizer a private region.
+    root = (0, 32 * (1 << (n // 2)))
+    cells |= _streetcode_h_corridor((0, 0), root)
+
+    def descend(prefix: str, anchor: tuple[int, int], direction: str) -> None:
+        remaining = n - len(prefix)
+        if not remaining:
+            dr, dc = _H_DIR[direction]
+            end = (anchor[0] + 7 * dr, anchor[1] + 7 * dc)
+            cells.update(_streetcode_h_corridor(anchor, end))
+            at = _streetcode_h_lane(anchor, direction)
+            commands = (
+                "~" if truth_table[int(prefix, 2)] == "0" else " ",
+                "O",
+                ";",
+            )
+            for step, char in enumerate(commands, 2):
+                glyphs[(at[0] + step * dr, at[1] + step * dc)] = char
+            return
+
+        distance = 16 * (1 << ((remaining - 1) // 2))
+        for bit, branch in (("0", _H_LEFT[direction]), ("1", _H_RIGHT[direction])):
+            br, bc = _H_DIR[branch]
+            child = (anchor[0] + distance * br, anchor[1] + distance * bc)
+            cells.update(_streetcode_h_corridor(anchor, child))
+            # A junction tests the current input.  Both exits advance CP to
+            # the next input (or the prepared output cell) before the child.
+            at = _streetcode_h_lane(anchor, branch)
+            glyphs[(at[0] + 2 * br, at[1] + 2 * bc)] = "="
+            descend(prefix + bit, child, branch)
+
+    descend("", root, "E")
+    return cells, glyphs
+
+
+def _streetcode_h_program(truth_table: str, n: int) -> str:
+    """Attach the shared input normalizer to the linear-area H-tree."""
+    cells, glyphs = _streetcode_h_layout(truth_table, n)
+    rows = _streetcode_shared(n)
+    width = max(map(len, rows))
+    padded = [row.ljust(width) for row in rows]
+    start = next(
+        (r, c)
+        for r, row in enumerate(padded)
+        for c, char in enumerate(row)
+        if char == "C"
+    )
+    pending = [start]
+    reachable = {start}
+    while pending:
+        r, c = pending.pop()
+        for dr, dc in _H_DIR.values():
+            pos = (r + dr, c + dc)
+            if not (0 <= pos[0] < len(padded) and 0 <= pos[1] < width):
+                continue
+            if padded[pos[0]][pos[1]] in "+-|" or pos in reachable:
+                continue
+            reachable.add(pos)
+            pending.append(pos)
+
+    # Row 2 is the normalizer's eastbound driving lane; join its open end to
+    # row 1 of the H-tree's incoming road.
+    east = max(c for r, c in reachable if r == 2)
+    shift = (-1, -east)
+    fixed_walls = {
+        (r + shift[0], c + shift[1]): char
+        for r, row in enumerate(padded)
+        for c, char in enumerate(row)
+        if char in "+-|"
+    }
+    for r, c in reachable:
+        pos = (r + shift[0], c + shift[1])
+        cells.add(pos)
+        char = padded[r][c]
+        if char != " ":
+            glyphs[pos] = char
+    return _streetcode_h_render(cells, glyphs, fixed_walls)
+
+
 def _streetcode_hallway_program(n: int, tree: list[str]) -> str:
     """Render the narrow per-input layout used for width selection."""
     return "\n".join(
@@ -659,6 +813,11 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
+
+    At six inputs and above, the decision tree is an alternating-axis H-tree.
+    Every branch is a two-cell-wide road and the branch distances double only
+    every other level, so both dimensions are O(sqrt(T)) and the rendered
+    source is O(T).  Smaller tables keep the more compact stacked layout.
 
     The car reads each input bit through a wall-hugging loop that walks its
     ASCII value down to a bare 0/1 (built by :func:`_streetcode_populate`
@@ -701,6 +860,17 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     shape narrower than its tree.
     """
     n = _validate_truth_table(truth_table)
+    if n >= 6:
+        program = _streetcode_h_program(truth_table, n)
+        h_rotated = _streetcode_rotate(program)
+        if width is None:
+            return shortest(program, h_rotated)
+        fitting = [p for p in (program, h_rotated) if _streetcode_columns(p) <= width]
+        return (
+            shortest(*fitting)
+            if fitting
+            else min((program, h_rotated), key=_streetcode_columns)
+        )
     tree = _streetcode_tree(truth_table)
     # The per-input loops trade rows for columns, so only width selection
     # needs them.  The shared lap is strictly shorter through every table at
