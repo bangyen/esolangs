@@ -177,27 +177,39 @@ The candidate list is empty.
   characters at n=10 against the retired per-row spelling's 52,821.  Sampled
   rows at n=6/8 and every table through n=3 execute correctly.
 
-  Polynomial's positive-factor bound is likewise construction-specific, but
-  the sign freedom is measured near-empty: a negative real part decodes and
-  runs (`notes/poly_negative_operand.py`), and minimising total digits over
-  sign patterns saves at most 5.2% with the growth exponent unmoved --
-  `|F(iy)|` is sign-invariant on the whole imaginary axis
-  (`notes/poly_sign_growth.py`).  Multiplying by ignored roots preserves the
-  decoded program and runs (`notes/poly_multiple_runs.py`), but
+  Polynomial's positive-factor bound is no longer construction-specific:
+  it is a theorem on half the plane.  Any program polynomial whose roots
+  all have nonnegative real part carries `Omega(T^2/log T)` coefficient
+  digits, whatever the cofactor -- the `x -> -x` flip makes every
+  right-half-plane factor's coefficients nonnegative, products then
+  cannot cancel, and a single-selection bound forces every low
+  coefficient at once; a compensation lemma pairs the shipped builds'
+  few negative operands (which falsified the older all-alternating
+  premise at n >= 4) with unused nonnegative quadratics, keeping the
+  same floor, checked in exact integers on emitted artifacts and
+  executed multiples (`notes/poly_rhp_superlinear.py`).  The sign freedom
+  that escapes it is measured near-empty: a negative real part decodes
+  and runs (`notes/poly_negative_operand.py`), and minimising total
+  digits over sign patterns saves at most 5.2% with the growth exponent
+  unmoved -- `|F(iy)|` is sign-invariant on the whole imaginary axis
+  (`notes/poly_sign_growth.py`).  Multiplying by ignored roots preserves
+  the decoded program and runs (`notes/poly_multiple_runs.py`), but
   [generic sparse-multiple algorithms][sparse-multiples] are exponential in
   the requested sparsity, and an LLL sweep of every multiple with bounded
   cofactor degree returns the trivial shifts unchanged
-  (`notes/poly_lll_multiple.py`).  The term floor is now language-level:
-  any multiple of a product with `m_r` real factors has at least
-  `m_r + 1` terms (Descartes, `notes/poly_descartes_terms.py`), and real
-  instructions are forced -- `B >= (N'(k+1) - E(k))/2` per level, a
+  (`notes/poly_lll_multiple.py`).  The term floor is language-level on the
+  whole plane: any multiple of a product with `m_r` real factors has at
+  least `m_r + 1` terms (Descartes, `notes/poly_descartes_terms.py`), and
+  real instructions are forced -- `B >= (N'(k+1) - E(k))/2` per level, a
   routing bound the register overwrite makes a proof
   (`notes/poly_routing_floor.py`) -- so every multiple of every
   dense-table program carries `Omega(T/log T)` monomials.  That matches
-  rather than separates.  A linear generator therefore needs a
-  direct sparse multiple specialized to the prime-power instruction roots,
-  not an optimization search -- and that is the input-`t` sparse-multiple
-  problem the literature leaves open and suspects NP-complete
+  rather than separates.  A linear generator therefore needs a direct
+  multiple that exploits roots with negative real part -- negative
+  operands or a left-half-plane cofactor -- specialized to the
+  prime-power instruction roots, not an optimization search; the general
+  form of that question is the input-`t` sparse-multiple problem the
+  literature leaves open and suspects NP-complete
   (`notes/poly_open_literature.py` carries the case-match).  Shipping the
   factored form instead is not
   available: the parser reads only summed monomials and misreads a product
