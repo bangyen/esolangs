@@ -248,11 +248,17 @@ one row with empty output while every builder-side check passes -- so a
 build only counts once its rows have executed, and the builder's internal
 guards are known to be insufficient.
 
-The executed regression is also what keeps this super-linear as built:
-per-entry cost runs 438,370 / 469,554 / 1,348,680 characters, and the
-growth cannot be pinned away -- asking for the n=2 counter at n=3 just
-forces the doubling (60 cells suffice at n=2, 240 at n=3, against a 6.1x
-span).  The mechanism is the pump's reach law, measured affine off the
+The executed regression is also what keeps this row open: per-entry cost
+runs 438,370 / 469,554 / 1,348,680 characters, and the growth cannot be
+pinned away -- asking for the n=2 counter at n=3 just forces the doubling
+(60 cells suffice at n=2, 240 at n=3, against a 6.1x span).  One caution
+on reading a law into that: the n=3 jump coincides with a regime change
+(the counter doubles twice and nested pumping takes over), and three
+points with a discontinuity at the last cannot separate "asymptotically
+super-linear" from "a constant-factor cliff at the nesting threshold";
+n=4 decides.  The cost itself is located either way: it is total raise
+magnitude, chunked at ~254 units per solved append, so the DIGEST count
+-- one per chunk (2,547 / 5,790 / 48,403) -- is the metric to watch.  The mechanism is the pump's reach law, measured affine off the
 builder's own dry runs: climb ~ 10,000 x rounds - 14,000, with the
 round-on-round ratio falling to `R/(R-1)`.  The early acceleration is a
 transient, so a counted exit spells its climb in unary counter cells, each
