@@ -17,9 +17,15 @@ arguments below.
 What is machine-checked lives in `tests/proofs/`.  `test_ledger.py` holds this
 document to the registry and to itself, and `test_schemes.py` holds each row to
 its scheme's measurable consequence; both are in the fast band and gate every
-push.  `tests/proofs/deep/` holds the hand-derived uniform-in-n arguments, one
-per generator that has one -- four of sixty-five so far.  `just proofs` runs
-every one of them.
+push.  `tests/proofs/deep/` holds the proofs themselves, at two depths.
+`all_generators.py` runs a lemma battery against all sixty-five: every single
+row of the table demonstrably participates in the emitted program, and the
+construction completes at every arity of a ladder on both table shapes.  That
+is the counting half of each scheme above, and it is what makes "finite object
+covering every row" checkable per generator.  Four generators -- A Painter Ant,
+ArrowQueue, Container and BIO -- additionally have a hand-derived proof of
+their own specific argument, which no generic battery can reach.  `just proofs`
+runs all of it.
 
 ## Proof schemes
 
@@ -72,10 +78,11 @@ for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
 and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  Alight, COD, Crement and Nopstacle keep no tree route at
-all: Alight indexes a string literal, COD emits four rows, and the two
-prototypes embed the table verbatim beside their input slots.  Container's sub-crossover route is a tree but a
-deliberately unfolded one, so it does not shrink on a degenerate table.
+the tree at any arity.  Alight, COD, Crement and Nopstacle keep no tree route
+at all: Alight indexes a string literal, COD emits four rows, and the two
+prototypes embed the table verbatim beside their input slots.  Container's
+sub-crossover route is a tree but a deliberately unfolded one, so it does not
+shrink on a degenerate table.
 
 ## Generator ledger
 
