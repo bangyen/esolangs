@@ -40,7 +40,7 @@ The candidate list is empty.
   | A Painter Ant | Linear | Linear |
   | 123 | Linear | Linear |
   | Circuit Diagram | Linear | Linear |
-  | COD | Open | Open |
+  | COD | Linear | Linear |
   | Minifuck | Linear | Linear |
   | Factor | Language lower bound | Language lower bound |
   | Polynomial | Open | Open |
@@ -120,13 +120,10 @@ The candidate list is empty.
   branch distance is geometric on every other level, so its height and width
   are both O(sqrt(T)); the shared input normalizer occupies only O(log(T)^2)
   cells beside it.  Sampled paths through six inputs execute correctly.
-  Four cases remain open.  COD has a constant-size two-polarity branch once
-  a bit reaches a node: `<` keeps only one, while `(<` keeps only zero, and
-  `(`/`)` normalize the survivor.  Repeating `{Xi}` would therefore give a
-  linear-area H-tree, but the parameterized contract embeds each input
-  exactly once.  A shared placeholder cannot distribute the bit to separate
-  node lanes without losing the lane identity; carrying that identity as the
-  cod's value returns to the super-linear numeric decoder.
+  COD lays all T answers in one row.  Each once-only placeholder contributes
+  its binary-weight horizontal displacement, selecting one answer column;
+  the filled four-row grid is `4T+23` characters.
+  Three cases remain open.
   SLOW ACV MAMMALIAN need not discard its control label when reading:
   `ACCEPT` appends `byte XOR acc` and leaves `acc` intact, so an accumulator
   congruent to 48 appends the input bit while remaining an absolute

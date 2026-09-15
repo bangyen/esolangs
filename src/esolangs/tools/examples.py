@@ -62,6 +62,7 @@ from dataclasses import dataclass, replace
 
 from esolangs.registry import Generator, canonical_id
 from esolangs.tools.a_painter_ant import _instantiate_apa
+from esolangs.tools.cod import _instantiate_cod
 from esolangs.tools.crement import instantiate_crement
 from esolangs.tools.helpers import instantiate
 from esolangs.tools.nopstacle import instantiate_nopstacle
@@ -457,25 +458,8 @@ def _fill_home_row(template: str, bits: list[int]) -> str:
 
 
 def _fill_cod(template: str, bits: list[int]) -> str:
-    """Set the cod's value to the bit at that input's ``+`` fork.
-
-    ``)`` increments, so a one is ``)`` and a zero is a space -- which is
-    water, an open grid cell the cod passes through, not the inert filler a
-    space is in a language that ignores unknown characters.  Both bits are
-    one cell, so the programs are already all the same size and differ in
-    exactly one character per input, at a fixed column: 89 characters at
-    ``n == 1``, 350 at ``n == 2``, 1495 at ``n == 3``, whatever the inputs.
-
-    Spelling the zero as a command instead (``)(`` against ``)<``) works --
-    it needs the fork box widened by a column and one more of the cascade's
-    leading blanks -- but it buys nothing here and costs size: 350 goes to
-    359 and 1495 to 1529.  The blank is the grid's own zero, not padding.
-    """
-    return instantiate(
-        template,
-        bits,
-        lambda _i, b: ")" if b else " ",
-    )
+    """Expand weighted input slots into the COD answer-strip route."""
+    return _instantiate_cod(template, bits)
 
 
 def _fill_eval(template: str, bits: list[int]) -> str:
