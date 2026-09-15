@@ -129,9 +129,12 @@ mutate-gen module *args:
 
 # The ledger obligations under tests/proofs are collected by pytest and gate
 # every push. The proofs under deep/ are not: all_generators.py runs the shared
-# lemma battery against all 65 generators (~12s), and the four hand-derived
-# files mechanize one construction's own argument each. Dominated by A Painter
-# Ant at 1m20s, then Container at 16s.
+# lemma battery against all 65 generators (~12s), linearity.py measures all 65
+# against the roadmap's scaling audit (~30s), and the four hand-derived files
+# mechanize one construction's own argument each. Dominated by A Painter Ant at
+# 1m20s, then linearity at 30s and Container at 16s. Linearity runs last
+# because it currently reports a finding (Forþ), and a recipe stops at the
+# first failure -- the proofs before it should still run.
 # run every executable proof: the ledger obligations and all 65 deep proofs
 proofs:
     {{PYTHON}} -m pytest tests/proofs -q
@@ -140,6 +143,7 @@ proofs:
     {{PYTHON}} tests/proofs/deep/container.py
     {{PYTHON}} tests/proofs/deep/bio.py
     {{PYTHON}} tests/proofs/deep/a_painter_ant.py
+    {{PYTHON}} tests/proofs/deep/linearity.py
 
 # Not in `just test` or CI: what it guards moves only when APA's head, body,
 # or routing does, so run it then. L2's foreign-leaf sweep at n=9 is 57s of

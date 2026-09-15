@@ -50,10 +50,16 @@ WII2D n=9 is partial: 37 of 64 sampled dense tables build and the rest refuse
 promptly. Its magnitude guard is load-bearing. A per-node re-embed tree can
 build dense n=13, but is outside the generator contract.
 
-Uncapped dense-program sizes at n=8/n=9: Polynomial 3.38/10.90 MB, COD
-0.94/3.67 MB, SLOW ACV MAMMALIAN 1.67/3.38 MB, Circuit Diagram 7.91/11.39 MB,
-123 0.09/0.23 MB, ROTfuck 0.02/0.03 MB, bit~ 0.03/0.06 MB, Factor
-0.02/0.04 MB. Run generated programs before claiming size or equivalence.
+Uncapped dense-program sizes at n=8/n=9: Circuit Diagram 7.91/11.39 MB,
+Polynomial 3.38/10.90 MB, SLOW ACV MAMMALIAN 1.67/3.38 MB, 123 22.4/44.7 KB,
+bit~ 27.5/55.3 KB, Factor 17.2/35.5 KB, ROTfuck 14.9/28.8 KB, COD
+294/554 bytes. Run generated programs before claiming size or equivalence.
+
+COD and 123 are in that list because they used to be its largest entries:
+linearizing them took COD from 942,692 characters at n=8 to 294 and 123 from
+94,589 to 22,988. Their sizes stayed in this paragraph, and in the test that
+pins it, for every commit in between -- that test carries the `slow` marker,
+so PR CI never ran it.
 
 The retired A Painter Ant tree was Theta(T log T): on parity every subtree was
 live, and each depth traversed Theta(T) weighted edges.  Its lookup strip is
