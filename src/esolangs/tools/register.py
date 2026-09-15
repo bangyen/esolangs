@@ -920,15 +920,106 @@ def _dig_clear(
                 raise AssertionError(f"{char!r} at {(row, col)} reads {above!r} first")
 
 
+_DIG_DIRECTIONS = ((-1, 0), (0, 1), (1, 0), (0, -1))
+
+
+def _dig_alternating(truth_table: str, n: int) -> str:
+    """Lay a full Dig tree with its branch axis rotating at every level.
+
+    A ``#`` naturally sends its zero and one children left and right.  Let a
+    subtree's local x-axis be its entering heading.  Its children therefore
+    enter on the local y-axis; placing each just beyond its own most-backward
+    cell keeps the two child rectangles on opposite sides of the parent.
+    Width and height swap, then one doubles, at successive levels.  Thus each
+    pair of levels doubles both and the rendered rectangle is O(2**n).
+    """
+    # Bounds of a complete m-level subtree entered east, inclusive and local
+    # to its first ``$``: (min_x, max_x, min_y, max_y).  Leaves and branch
+    # blocks are both five cells long.
+    bounds = [(0, 4, 0, 0)]
+    for _ in range(n):
+        min_x, max_x, min_y, max_y = bounds[-1]
+        distance = 1 - min_x
+        bounds.append(
+            (
+                min(0, 4 + min_y, 4 - max_y),
+                max(4, 4 + max_y, 4 - min_y),
+                -(distance + max_x),
+                distance + max_x,
+            )
+        )
+
+    cells: dict[tuple[int, int], str] = {}
+
+    def place(point: tuple[int, int], char: str) -> None:
+        if point in cells:
+            raise AssertionError(f"two cells at {point}: {cells[point]!r} and {char!r}")
+        cells[point] = char
+
+    def text(point: tuple[int, int], heading: int, code: str) -> None:
+        dr, dc = _DIG_DIRECTIONS[heading]
+        for offset, char in enumerate(code):
+            place((point[0] + dr * offset, point[1] + dc * offset), char)
+
+    def node(
+        level: int,
+        point: tuple[int, int],
+        heading: int,
+        lo: int,
+        hi: int,
+    ) -> None:
+        if level == n:
+            text(point, heading, f"$3{truth_table[lo]}:@")
+            return
+        text(point, heading, _DIG_BRANCH)
+        dr, dc = _DIG_DIRECTIONS[heading]
+        end = (point[0] + 4 * dr, point[1] + 4 * dc)
+        half = (lo + hi) // 2
+        distance = 1 - bounds[n - level - 1][0]
+        for bit, child_bounds in ((0, (lo, half)), (1, (half, hi))):
+            child_heading = (heading - 1) % 4 if bit == 0 else (heading + 1) % 4
+            cr, cc = _DIG_DIRECTIONS[child_heading]
+            child = (end[0] + distance * cr, end[1] + distance * cc)
+            node(level + 1, child, child_heading, *child_bounds)
+
+    # Build locally with the root heading east.  Its ray from the west is
+    # empty by the same bounds recurrence, so an external L-shaped entry can
+    # reach it without crossing the tree.
+    node(0, (0, 0), 1, 0, len(truth_table))
+    min_row = min(row for row, _ in cells)
+    min_col = min(col for _, col in cells)
+    row_shift, col_shift = 2 - min_row, 2 - min_col
+    cells = {
+        (row + row_shift, col + col_shift): char for (row, col), char in cells.items()
+    }
+    root_row, root_col = row_shift, col_shift
+    if any((root_row, col) in cells for col in range(root_col)):
+        raise AssertionError("the alternating Dig tree blocked its entry ray")
+    for row in range(root_row):
+        cells[(row, 0)] = " "
+    for col in range(root_col):
+        cells[(root_row, col)] = " "
+    cells[(0, 0)] = "'"
+    cells[(root_row, 0)] = ">"
+
+    height = max(row for row, _ in cells) + 1
+    width = max(col for _, col in cells) + 1
+    grid = [[" "] * width for _ in range(height)]
+    for (row, col), char in cells.items():
+        grid[row][col] = char
+    return "\n".join("".join(row).rstrip() for row in grid)
+
+
 def dig(truth_table: str, width: int | None = None) -> str:
     """Build a Dig program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
-    The compact form builds both safe orientations and keeps the shorter:
-    the tree may turn round once even without a width request.  ``width``
-    asks for a column count, and a width under the floor returns the
-    narrowest program rather than refusing.
+    Past four inputs the default alternates the branch axis at every level.
+    Its width and height each double once per pair of levels, so its area and
+    construction time are O(T).  ``width`` retains the folded one- or
+    two-band layouts below; a width under their floor returns the narrower
+    program rather than refusing.
 
     The tree is laid out so the mole starts in the top-left corner (``'``)
     facing down into the root.  Each branch block reads one input bit:
@@ -960,7 +1051,8 @@ def dig(truth_table: str, width: int | None = None) -> str:
     since ``$`` looks up, right, down, left and takes the first digit it
     finds.
 
-    ``5 * n + 6`` columns is what that comes to, and a width under it is met
+    In the explicit-width layout, ``5 * n + 6`` columns is what that comes
+    to, and a width under it is met
     by turning the tree round once: the levels past the turn run west over
     the columns the levels before it already used, their blocks mirrored so
     the mole still meets each ``$`` first.  Nothing has to be routed back --
@@ -971,6 +1063,8 @@ def dig(truth_table: str, width: int | None = None) -> str:
     lives, along with the reason a *second* turn is not possible.
     """
     n = _validate_truth_table(truth_table)
+    if width is None and n > 4:
+        return _dig_alternating(truth_table, n)
     flat = _dig_grid(truth_table, n, None)
     if n < 2:
         return flat
