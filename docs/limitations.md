@@ -221,29 +221,69 @@ appends `S % 256` to a ballast array and re-enters through
 thousands for O(1) text, and exits by planting one trigger in a queue
 `SPRINT` marches through, diverting down a pad chain to a second exit
 `LEAPFROG` at the pumped value.  An outer counted loop re-enters the inner
-one, carrying it to 174/261/348/435/522/696 iterations at 2/3/4/5/6/8 rounds
-against a single instance's 87, each landing exactly on the pumped value.
+one and multiplies its ~87 iterations by the round count.  The pump has an
+absorbing state -- an append adds `S % 256` to `S`, so once the low byte
+reaches 0 the sum freezes and every later append is 0 -- and the cure is a
+two-pair body over an array seeded with odd cells.
 
-Three measurements shape any further attempt.  A builder-driven raise is
-cheap on only arrays 0, 1 and 3 (0.021/0.014/0.014 tokens per unit) and 7--30
-times worse elsewhere, so the array an outer level freezes has to be a cheap
-one and the expensive one has to be merely pumped.  The pump has an absorbing
-state -- an append adds `S % 256` to `S`, so once the low byte reaches 0 the
-sum freezes and every later append is 0 -- and the cure is a two-pair body
-over an array seeded with odd cells, which simulates to 325,312 of reach
-still growing against 2,556 for a six-pair body over doubled ballast.  With
-both, the nested pump lands exactly where asked (+60,000 gives 66,296;
-+150,000 gives 156,668) and the prototype builds n=1 and n=2.
+The address-space fault that stopped n >= 3 is repaired.  A loop body must
+be laid at its anchor's value, and a node's two branches carry independent
+machine states in one text space; the collision was a static-bound problem,
+not a structural one -- the 1-subtree slot, the chain-gadget clearance, and
+the 0-child's placement bound were fixed constants, and at n >= 2 the
+0-chain's laid extent outgrew them by ~14,000.  The repair prices nothing
+statically: the 1-subtree address settles by fixed point against the
+0-chain's dry-run extent, the pump target settles against a scratch-built
+1-subtree's actual extent, and the dry runs are exact, so their text is
+merged and their worlds adopted rather than rebuilt.  The vertical order is
+forced -- chain below the read target `t1`, 1-subtree at `t1 + 1`, 0-subtree
+at the pump landing -- because the read leaves array 0's sum at `t1 + 1` in
+the 0-branch and anchors only rise.  With that, the prototype builds *and
+executes* n=1/2/3: every row of every arity through the interpreter
+(876,739 / 1,878,218 / 10,789,439 characters), plus the exhaustive n <= 2
+corpus, 20/20.  One warning travels with those numbers: correctness is
+address-sensitive.  A faster root settle (a secant step in place of the
+naive walk) picked a different root, and the resulting n=3 program fails
+one row with empty output while every builder-side check passes -- so a
+build only counts once its rows have executed, and the builder's internal
+guards are known to be insufficient.
 
-n>=3 stops on one address-space fault: a loop body must be laid at its
-anchor's value, and a node's two branches carry independent machine states
-while sharing one text space, so the branch whose anchors are still low lays
-its gadget into text the other already wrote.  A fixed point on the
-1-subtree's address settles n=2 (it is the only free address -- the 0-branch
-falls through the read), but at n=3 the subtree-span bound the 0-child is
-placed against no longer holds.  Size is the other reason this has not
-shipped: a node spans ~31,400 characters against the retired tree's ~6,550,
-so even a working version would cost ~5x at every arity anyone builds.
+The executed regression is also what keeps this super-linear as built:
+per-entry cost runs 438,370 / 469,554 / 1,348,680 characters, and the
+growth cannot be pinned away -- asking for the n=2 counter at n=3 just
+forces the doubling (60 cells suffice at n=2, 240 at n=3, against a 6.1x
+span).  The mechanism is the pump's reach law, measured affine off the
+builder's own dry runs: climb ~ 10,000 x rounds - 14,000, with the
+round-on-round ratio falling to `R/(R-1)`.  The early acceleration is a
+transient, so a counted exit spells its climb in unary counter cells, each
+node's climb is ~its 1-subtree's span, and those climbs sum over the tree
+to Theta(T log T) addresses.  Fixed nesting does not escape: L counter
+levels reach ~ C^L for L*C text, so one level is Theta(T) counter cells at
+the root and L levels still leave `C = Theta(span^(1/L))`.  A tower whose
+depth grows with the node's own span (~ln of it) makes the per-node cost
+logarithmic in a span that halves per level, and `sum 2^d (n - d)` is
+`2^(n+1) - n - 2` -- O(T) in total.  The arrays for it exist: a head at
+array `i` steps by `i + 1` under SEED, covering all 23 routing classes
+exactly when `gcd(i+1, 256) <= 8`, and of the six arrays the construction
+leaves free, five qualify (7, 13, 16, 17, 19; only 15 fails, the one array
+already noted as having no routable head).  Reach multiplies ~10,000 a
+round per level, so a depth-5 tower out-reaches anything buildable; what
+remains is engineering each level's divert route and pads, plus keeping
+per-node tower depth matched to its own span.  The alternative is an exit
+triggered by the pumped value itself rather than a count, which nothing in
+the instruction set cheaply provides: `SPRINT`'s length guard compares
+against an accumulator the pump can only hold small or whole-sum, and an
+XOR-equality reference array must itself be raised to the target -- unless
+it too can be pumped in lockstep, which is untested.
+
+Two raise-cost measurements to keep any retuning honest: the free-chunk
+raise decays -- the doubling orbit fills the array with its own small
+appends and settles at ~3 units a token -- and a window-steered raise
+(a few SEEDs aim `S % 256` into [200, 255], ~30 units a token held) is
+16x cheaper than the solved-append raise in isolation but destabilised the
+pump's exit search in both attempts to adopt it, so the shipped prototype
+keeps solved appends.  Size remains the other reason not to ship: per-entry
+cost at n=3 is ~200x the retired tree's, before any of the above is fixed.
 
 Polynomial's current expanded-root encoding is super-linear, and its
 instruction count is language-forced even though its text is not.  The input
