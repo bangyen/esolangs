@@ -173,7 +173,10 @@ The candidate list is empty.
   [generic sparse-multiple algorithms][sparse-multiples] are exponential in
   the requested sparsity, and an LLL sweep of every multiple with bounded
   cofactor degree returns the trivial shifts unchanged
-  (`notes/poly_lll_multiple.py`).  A linear generator therefore needs a
+  (`notes/poly_lll_multiple.py`).  Descartes hardens the term floor --
+  any multiple of a product with `m_r` real factors has at least
+  `m_r + 1` terms (`notes/poly_descartes_terms.py`) -- but that matches
+  rather than separates.  A linear generator therefore needs a
   direct sparse multiple specialized to the prime-power instruction roots,
   not an optimization search.  Shipping the factored form instead is not
   available: the parser reads only summed monomials and misreads a product

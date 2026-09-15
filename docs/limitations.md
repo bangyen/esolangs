@@ -323,6 +323,32 @@ above is a dimension count, a necessary condition on a generic solution
 rather than an impossibility proof, so it bounds no specific family and does
 not by itself forbid a sparser one.
 
+For the real-rooted part that count is now a theorem
+(`notes/poly_descartes_terms.py`).  A multiple keeps every root of the
+mandatory product, the real instructions contribute `m_r` distinct
+positive real roots `p**v`, and Descartes' rule caps a `t`-term real
+polynomial's positive roots at its sign changes, at most `t - 1` -- so
+*every* multiple of a product carrying `m_r` real factors has
+`t >= m_r + 1` terms, whatever the cofactor.  The shipped machines make
+that `Omega(m)`: an if/endif pair per state puts the real share at
+0.32..0.36 of the instruction list (measured n=3..6), and the expanded
+builds' sign changes sit at or above `m_r` as the rule requires, on the
+builds and on shape-dodging multiples.  Two limits keep it from
+separating.  It is the matching bound arrived at a third way --
+`Omega(m)` terms already cost `Omega(m log m)` exponent digits, and a
+`Theta(m)`-term multiple with small coefficients would still be O(T)
+text.  And it does not cover a program that sheds its real instructions.
+Whether one can is a routing question: the register is the only store,
+tests compare to zero, and a loop whose exit depends on the register
+merges every entry of a residue class into one configuration -- entries
+7 and 10 leave `while (reg > 0) reg -= 3` with identical state and print
+the same byte, while 7, 8 and 9 leave it pairwise distinguishable (run
+through the interpreter, same probe).  The residue survives as position,
+the quotient is destroyed, so a dispatch to `R` read sites appears to
+need `Omega(R)` bracket sites.  That routing bound is the named missing
+lemma, stated refutably: exhibit a dense-table program with `o(m)` real
+instructions, or prove the test chain necessary.
+
 The generic corner of that family is searched, and empty
 (`notes/poly_lll_multiple.py`).  The integer multiples of `P` with
 cofactor degree at most `k` are exactly the lattice spanned by the shifts
