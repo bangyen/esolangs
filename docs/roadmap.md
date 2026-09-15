@@ -38,7 +38,7 @@ The candidate list is empty.
   | Language | Generation time | Output size |
   | --- | --- | --- |
   | A Painter Ant | Linear | Linear |
-  | 123 | Open | Open |
+  | 123 | Linear | Linear |
   | Circuit Diagram | Linear | Linear |
   | COD | Open | Open |
   | Minifuck | Linear | Linear |
@@ -112,6 +112,10 @@ The candidate list is empty.
   Container spells the table backwards as one decimal 0/1 integer.  A fixed
   two-bank network divides it by ten once per selected row, while binary input
   weights total `T-1`; the literal, source, and construction are O(T).
+  123 converts each embedded bit into one separator mark per earlier prefix.
+  Level `i` paints and spans O(2^i) cells, then one replay separates every
+  prefix group; the geometric sums bound both direct emission and source by
+  O(T), without materializing every row's tape state.
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is
