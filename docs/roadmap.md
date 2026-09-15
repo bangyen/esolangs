@@ -138,8 +138,11 @@ The candidate list is empty.
   subspaces.  [Cohen--Shinkar's DNF-of-parities theorem][dnf-parities] covers every set with
   at most `1 + 9*T/log2(T)` subspaces, but counts clauses rather than source:
   spelling the subspaces' dense parity equations can still cost
-  `Theta(T*log(T))` variable references.  Sharing or deriving those equations
-  in linear text remains open; minterms are not a language lower bound.
+  `Theta(T*log(T))` variable references.  Splitting the inputs in half and
+  precomputing every parity in each half reduces the XOR-gate count to O(T),
+  but each later selection names one of `Theta(sqrt(T))` retained values and
+  therefore still costs `Theta(log(T))` characters.  Removing that textual
+  addressing cost remains open; minterms are not a language lower bound.
   Polynomial's
   positive-factor bound is likewise construction-specific because signed
   real parts can cancel coefficients.

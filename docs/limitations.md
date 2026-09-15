@@ -160,7 +160,10 @@ does not by itself
 give linear Vandevelo source: its size measure is the number of top-level
 clauses, while one clause may spell Theta(log T) dense parity equations with
 Theta(log T) variable references apiece.  A shared linear-form construction
-could still close that gap, so this is not a language lower bound.
+can reduce the XOR-gate count to O(T) by tabulating all parities of two
+half-input blocks, but referring to one of Theta(sqrt(T)) live bindings costs
+Theta(log T) characters.  A construction that removes that addressing cost
+could still close the gap, so this is not a language lower bound.
 
 [dnf-parities]: https://eccc.weizmann.ac.il/report/2014/099/
 
