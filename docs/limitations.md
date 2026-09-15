@@ -449,8 +449,27 @@ on.  The program is already dense with them -- about twelve a table entry --
 so the supply is the whole program rather than the meadows, and "distinct dead
 lines per window" does not follow from "distinct rungs per window".  Whether
 `Theta(T)` chains can be given strides and alignments whose arithmetic
-progressions land only on jumps that already exist is a packing question
-nobody here has answered.
+progressions land only on jumps that already exist is a packing question --
+now measured on real artifacts, and the free supply does not close it
+(`notes/ick8_packing.py`).  A chain flies a progression of step `1 + acc`,
+so a hop of span `S` at stride `d` needs its `S/d - 1` interior landings to
+be `DownAccLines` already.  The lines are there -- 9.7% to 10.8% of the
+program at n=8 and n=10, dense and parity, matching the ~12 an entry quoted
+above -- but they are not *aligned*.  Free-riding carries a median of 552 to
+597 lines from a start against 256 for a single hop, every successful ride
+used two hops (a handful used four), and over 300 sampled hops per case a
+span of 2000 or 10000 free-rode 0 times.  The observed rates track what
+independent placement at that density predicts -- 12.7% against 9.8%, 11.3%
+against 10.1%, 12.3% against 10.9% at span 500 -- so there is no hidden
+structure to exploit: a `k`-hop ride costs `rho**(k-1)`, which decays
+exponentially in the span.  Both controls fire (a full lattice reaches
+999/999 targets, a rung-free program 0/700).
+
+That leaves deliberate alignment as the only route, and it runs straight
+into the persistence argument above: rungs placed on a shared lattice give
+a shared stride, and a shared stride is one future.  So the narrow gap is
+narrower than it looked, though still not shut -- these are the *shipped*
+layout's jumps, and a construction that positions its own could do better.
 
 That is the narrow gap.  The wide one is the retraction above: the tree is an
 assumption, so a construction that is not a decision diagram over positions
