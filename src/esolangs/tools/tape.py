@@ -810,7 +810,7 @@ def sbleq(truth_table: str) -> str:
 def _sbleq_packed(truth_table: str) -> str:
     """Emit a linear-size packed-table decoder for S*bleq."""
     n = _validate_truth_table(truth_table)
-    instructions: list[tuple[object, object, str]] = []
+    instructions: list[tuple[int | str, int | str, str]] = []
     labels: dict[str, int] = {}
     values: dict[str, int] = {
         "ZERO": 0,
@@ -835,7 +835,7 @@ def _sbleq_packed(truth_table: str) -> str:
     def mark(name: str) -> None:
         labels[name] = len(instructions)
 
-    def emit(a: object, b: object, target: str = "next") -> int:
+    def emit(a: int | str, b: int | str, target: str = "next") -> int:
         instructions.append((a, b, target))
         return len(instructions) - 1
 
@@ -845,7 +845,7 @@ def _sbleq_packed(truth_table: str) -> str:
     def clear(dst: str) -> None:
         emit(dst, dst)
 
-    def increment(dst: object) -> None:
+    def increment(dst: int | str) -> None:
         emit(dst, "NEGONE")
 
     def add(dst: str, src: str) -> None:
@@ -934,7 +934,7 @@ def _sbleq_packed(truth_table: str) -> str:
     address = {name: base + i for i, name in enumerate(names)}
     memory = [0] * (base + len(names))
 
-    def operand(value: object) -> int:
+    def operand(value: int | str) -> int:
         return address[value] if isinstance(value, str) else int(value)
 
     for i, (a, b, target) in enumerate(instructions):

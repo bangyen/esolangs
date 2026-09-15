@@ -41,7 +41,7 @@ The candidate list is empty.
   | 123 | Open | Open |
   | Circuit Diagram | Linear | Linear |
   | COD | Open | Open |
-  | Minifuck | Open | Open |
+  | Minifuck | Linear | Linear |
   | Factor | Language lower bound | Language lower bound |
   | Polynomial | Open | Open |
   | AddSubJump | Linear | Linear |
@@ -103,6 +103,9 @@ The candidate list is empty.
   of levels doubles both dimensions, keeping the rendered rectangle linear.
   Circuit Diagram recursively quarters its minterm tree in an H-layout whose
   side is O(sqrt(T)); the fixed-catalogue router occupies O(T) cells.
+  Minifuck preloads one control per row below a shifted binary-weight
+  separator.  A fixed four-addition identity crosses that strip without
+  changing it; one left run selects the row and one parity sweep prints it.
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is

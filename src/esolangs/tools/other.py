@@ -585,7 +585,13 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
         Rows split most-significant-first, so the subtree entered at
         ``bit`` with prefix ``combo`` covers the contiguous run of
         ``2 ** (n - bit)`` rows starting at ``combo << (n - bit)``.
+
+        Alternating composition keeps the complete tree.  Its per-level
+        width/height proof already gives O(T), while folding makes sibling
+        heights unequal and can open the outer ring.
         """
+        if alternating:
+            return False
         span = 2 ** (n - bit)
         start = combo << (n - bit)
         return constant_span(start, start + span)
