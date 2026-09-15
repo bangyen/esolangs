@@ -145,9 +145,14 @@ The candidate list is empty.
   addressing cost remains open; minterms are not a language lower bound.
   Polynomial's
   positive-factor bound is likewise construction-specific because signed
-  real parts can cancel coefficients.
+  real parts can cancel coefficients.  Multiplying by ignored roots preserves
+  the decoded program, but [generic sparse-multiple algorithms][sparse-multiples]
+  are exponential in the requested sparsity.  A linear generator therefore
+  needs a direct sparse multiple specialized to the prime-power instruction
+  roots, not an optimization search.
 
   [dnf-parities]: https://eccc.weizmann.ac.il/report/2014/099/
+  [sparse-multiples]: https://arxiv.org/abs/1009.3214
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is
