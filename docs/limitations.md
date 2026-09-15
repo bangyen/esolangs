@@ -272,11 +272,27 @@ pairwise distinct targets, the number of them crossing a given position is the
 layout's cutwidth, and the sum of that over all positions is the tree's total
 edge span.  So the dead lines needed are `Omega(Sum span / 256)`, short edges
 contribute only `O(T)` of that sum, and for a complete binary tree the total is
-`Theta(N log N)` in any linear arrangement -- `Omega(T log T)` rungs.  One step
-of that is still borrowed rather than proved here: the minimum linear
-arrangement of a complete binary tree.  Everything else is the interpreter's
-own geometry, so that citation is the whole remaining gap, and a layout beating
-`Omega(N log N)` on total edge span is exactly what would reopen this.
+`Theta(N log N)` in any linear arrangement -- `Omega(T log T)` rungs.
+
+That last step is computed rather than cited.  For any layout the total edge
+span equals the sum over the `N-1` cut positions of the edges crossing each,
+and a cut leaving a part of size `i` crosses at least `mincut(i)` edges, which
+is an exact tree DP and mentions no layout.  Summing it bounds every
+arrangement at once.  On complete binary trees, `sum mincut(i)` divided by `N`
+runs 1.14, 1.47, 1.81, 2.13, 2.43, 2.74, 3.04, 3.34, 3.65, 3.95 for heights 2
+through 11 -- a constant `~0.30` per height, so linear in `log N`, holding at
+`~0.33 N log2 N`.  It is a lower bound, so no cleverer arrangement is hiding.
+
+The one thing that remains a judgement is where the log starts to bite, because
+short edges are free and `255` lines is a lot of tree when a node is small.
+Spans are in nodes, so a node costing `w` lines makes edges under `255/w` nodes
+free, and the long part only dominates past height `~0.3^-1 * 255/w`.  At the
+shipped `w` of about 110 lines a node that is height 8, which is why this shows
+up in the measured range at all; at a `w` near the gadget's own 16 lines it
+would be past height 50.  A slimmer construction would therefore *measure*
+linear across every arity anyone can run while still being `Theta(T log T)`,
+which is worth saying out loud: the contract passing would not mean this
+paragraph was wrong.
 
 Two families of long jumps contribute.  The bit-0 arm spans its sibling
 subtree, and those targets are all distinct, which is the family the
