@@ -22,12 +22,15 @@ The candidate list is empty.
   Clockwise, Container, Dig, Flowchart, Forþ, Inject, Jaune, LaserFuck, RAM0,
   S*bleq, SLOW ACV MAMMALIAN, Streetcode, and Vandevelo.  B-tapemark already
   meets both bounds; indexed spans and constant-time fold tests make several
-  other traversals linear but do not remove their super-linear output.  The
-  n=8 -> 9 parity sweep already exposes super-linear output in A Painter Ant
+  other traversals linear but do not remove their super-linear output.
+
+  The n=8 -> 9 parity sweep already exposes super-linear output in A Painter Ant
   (135016 -> 534124), 123 (94579 -> 230034), Circuit Diagram
   (7910330 -> 11394987), COD (942692 -> 3668705), Minifuck
   (57601 -> 203089), and Factor (24113 -> 50090); dense tables also expose
-  Polynomial.  The construction audit also leaves AddSubJump, ArrowQueue, Back,
+  Polynomial.
+
+  The construction audit also leaves AddSubJump, ArrowQueue, Back,
   Bitdeque, BrainIf, Clockwise, Container, Dig, Flowchart, Forþ,
   Inject, Jaune, LaserFuck, RAM0, S*bleq,
   SLOW ACV MAMMALIAN, Streetcode, and Vandevelo.  Their quiet factors
@@ -37,30 +40,9 @@ The candidate list is empty.
 
   | Language | Generation time | Output size |
   | --- | --- | --- |
-  | A Painter Ant | Linear | Linear |
-  | 123 | Linear | Linear |
-  | Circuit Diagram | Linear | Linear |
-  | COD | Linear | Linear |
-  | Minifuck | Linear | Linear |
   | Factor | Language lower bound | Language lower bound |
   | Polynomial | Open | Open |
-  | AddSubJump | Linear | Linear |
-  | ArrowQueue | Linear | Linear |
-  | Back | Linear | Linear |
-  | Bitdeque | Linear | Linear |
-  | BrainIf | Linear | Linear |
-  | Clockwise | Linear | Linear |
-  | Container | Linear | Linear |
-  | Dig | Linear | Linear |
-  | Flowchart | Linear | Linear |
-  | Forþ | Linear | Linear |
-  | Inject | Linear | Linear |
-  | Jaune | Linear | Linear |
-  | LaserFuck | O(T) | O(T) |
-  | RAM0 | Linear | Linear |
-  | S\*bleq | Linear | Linear |
   | SLOW ACV MAMMALIAN | Open | Open |
-  | Streetcode | Linear | Linear |
   | Vandevelo | Open | Open |
 
   The limitations file proves only that the shipped constructions are
@@ -68,6 +50,7 @@ The candidate list is empty.
   every program in the language under the generator contract.  Super-linear
   output implies super-linear generation time; the time column is not an
   independent empirical verdict.
+
   AddSubJump stores Theta(log T) table bits per numeric cell.
   A fixed repeated-subtraction loop selects a chunk and extracts its indexed
   bit; its self-modified operand advances through Theta(T/log T) cells.  Chunk
@@ -75,55 +58,76 @@ The candidate list is empty.
   and source are O(T).  Small tables retain the faster tree; every legacy
   three-input table and sampled rows of the packed eight-input parity program
   have executed through the interpreter.
+
   S*bleq uses the same chunk bound with native subtract-and-branch loops;
   sampled six-input rows across chunk boundaries execute correctly.
+
   RAM0 initializes one RAM cell per table row with a runtime address counter,
   then conditionally adds unary binary weights whose total is 2T-2.  Only
   O(log T) direct jumps remain; sampled six-input rows execute correctly.
+
   Jaune lays outputs beside travelling counter cells.  Unary input weights sum
   to T-1, and a fixed two-label loop carries the counter to its output; sampled
   six-input rows execute correctly.
+
   BrainIf alternates output cells with fresh input-routing cells.  Both the
   table initialization and all unary binary-weight paths contain O(T) lines;
   sampled six-input rows execute correctly.
+
   Inject keeps the table in one block and conditionally deletes one half per
   input with literal regexes.  Their total length is under 2T; sampled
   six-input rows execute correctly.
+
   Bitdeque pushes the table, then each zero input removes its weight from the
   tail and each one removes its weight from the head.  Exactly T-1 entries are
   discarded; sampled six-input rows execute correctly.
+
   A Painter Ant paints a white corridor and its adjacent answer cells in one
-  pass; weighted routing along that corridor totals T-1 moves.  ArrowQueue's
-  marker arms have lengths `1+2+4+...+T/2 = T-1`, then one sentinel selects a
-  constant-size table row.  Flowchart preloads T answers and discards opposite
-  deque halves; both arms merge through a switch with a normalized heading.
+  pass; weighted routing along that corridor totals T-1 moves.
+
+  ArrowQueue's marker arms have lengths `1+2+4+...+T/2 = T-1`, then one
+  sentinel selects a constant-size table row.
+
+  Flowchart preloads T answers and discards opposite deque halves; both arms
+  merge through a switch with a normalized heading.
+
   LaserFuck prewrites the table, conditionally walks the same geometric arm
   lengths, and uses a fixed overshoot to align the selected cell for cleanup.
+
   Clockwise alternates horizontal and vertical subtree composition; each pair
   of levels doubles both dimensions, keeping the rendered rectangle linear.
+
   Circuit Diagram recursively quarters its minterm tree in an H-layout whose
   side is O(sqrt(T)); the fixed-catalogue router occupies O(T) cells.
+
   Minifuck preloads one control per row below a shifted binary-weight
   separator.  A fixed four-addition identity crosses that strip without
   changing it; one left run selects the row and one parity sweep prints it.
+
   Dig lets each `#` turn directly into the next branch axis.  The recursive
   bounds swap width and height each level and double one, so both dimensions
   double per level pair and the full grid has O(T) cells.
+
   Container spells the table backwards as one decimal 0/1 integer.  A fixed
   two-bank network divides it by ten once per selected row, while binary input
   weights total `T-1`; the literal, source, and construction are O(T).
+
   123 converts each embedded bit into one separator mark per earlier prefix.
   Level `i` paints and spans O(2^i) cells, then one replay separates every
   prefix group; the geometric sums bound both direct emission and source by
   O(T), without materializing every row's tape state.
+
   Streetcode thickens an alternating-axis H-tree into two-lane roads.  Its
   branch distance is geometric on every other level, so its height and width
   are both O(sqrt(T)); the shared input normalizer occupies only O(log(T)^2)
   cells beside it.  Sampled paths through six inputs execute correctly.
+
   COD lays all T answers in one row.  Each once-only placeholder contributes
   its binary-weight horizontal displacement, selecting one answer column;
   the filled four-row grid is `4T+23` characters.
+
   Three cases remain open.
+
   SLOW ACV MAMMALIAN need not discard its control label when reading:
   `ACCEPT` appends `byte XOR acc` and leaves `acc` intact, so an accumulator
   congruent to 48 appends the input bit while remaining an absolute
@@ -131,38 +135,39 @@ The candidate list is empty.
   principle.  The open step is a constant-token transition from either child
   state to that child's next label; `DIGEST` only XORs the current whole-array
   sum, while rebuilding an arbitrary sum recreates the skipped-child cost.
-  Vandevelo reduces to covering the selected inputs by affine
-  subspaces.  [Cohen--Shinkar's DNF-of-parities theorem][dnf-parities] covers every set with
-  at most `1 + 9*T/log2(T)` subspaces, but counts clauses rather than source:
+
+  Vandevelo reduces to covering the selected inputs by affine subspaces.
+  [Cohen--Shinkar's DNF-of-parities theorem][dnf-parities] covers every set
+  with at most `1 + 9*T/log2(T)` subspaces, but counts clauses rather than
+  source:
   spelling the subspaces' dense parity equations can still cost
   `Theta(T*log(T))` variable references.  Splitting the inputs in half and
   precomputing every parity in each half reduces the XOR-gate count to O(T),
   but each later selection names one of `Theta(sqrt(T))` retained values and
   therefore still costs `Theta(log(T))` characters.  Removing that textual
   addressing cost remains open; minterms are not a language lower bound.
-  Polynomial's
-  positive-factor bound is likewise construction-specific because signed
-  real parts can cancel coefficients.  Multiplying by ignored roots preserves
-  the decoded program, but [generic sparse-multiple algorithms][sparse-multiples]
-  are exponential in the requested sparsity.  A linear generator therefore
-  needs a direct sparse multiple specialized to the prime-power instruction
-  roots, not an optimization search.
+
+  Polynomial's positive-factor bound is likewise construction-specific
+  because signed real parts can cancel coefficients.  Multiplying by ignored
+  roots preserves the decoded program, but [generic sparse-multiple
+  algorithms][sparse-multiples] are exponential in the requested sparsity.  A
+  linear generator therefore needs a direct sparse multiple specialized to the
+  prime-power instruction roots, not an optimization search.
+
+  Treat every emitted character as build work.  Input reordering is optional
+  around the construction, but its work still counts toward end-to-end
+  generation time.  Order selection builds at most four named candidates and
+  its generic greedy scorer stops at n=10; factorial and exponential contests
+  are test-only oracles.
+
+  No generator construction may use BFS or DFS; test-only oracle searches and
+  prose about retired searches may remain.  Circuit Diagram's H-layout
+  temporarily uses a bounded local dogleg scan with cell-indexed collision
+  checks; derive its first-free lanes into a direct routing rule without
+  changing the emitted programs.
 
   [dnf-parities]: https://eccc.weizmann.ac.il/report/2014/099/
   [sparse-multiples]: https://arxiv.org/abs/1009.3214
-  Median-of-three dense and parity measurements for `n=1..9` are plotted as
-  [characters per table entry](boolean-scaling-size.svg) and
-  [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is
-  diagnostic only; finite measurements do not establish an asymptotic bound.
-  Treat every emitted character as build work.  Input reordering is optional around the
-  construction, but its work still counts toward end-to-end generation time.
-  Order selection builds at most four named candidates and its generic greedy
-  scorer stops at n=10; factorial and exponential contests are test-only
-  oracles.  No generator construction may
-  use BFS or DFS; test-only oracle searches and prose about retired searches may
-  remain.  Circuit Diagram's H-layout temporarily uses a bounded local dogleg
-  scan with cell-indexed collision checks; derive its first-free lanes into a
-  direct routing rule without changing the emitted programs.
 
 - **A Painter Ant shared-head proof.**  While auditing A Painter Ant above, the
   depth-first head cuts dense n=9
@@ -171,13 +176,6 @@ The candidate list is empty.
   per-leaf rest-point and motif decomposition.  Rewrite those lemmas around
   shared prefix entry/exit states, then restore `just apa-proof` to green and
   rescreen input order now that the construction is tree-shaped.
-
-- **Reorder EGL inputs.**  EGL hoists every read into addressable one-hot cells,
-  so a tree can test cell `perm[depth]` while the `x` commands remain in stream
-  order.  Exhaustive n=3 measurement over all 256 tables gives 61304 -> 53592
-  total characters (12.6%); all 2048 rows of the shortest candidates execute
-  correctly.  Generalize that prototype through `best_input_order` and keep
-  the identity on ties.
 
 - **ArrowQueue reusable drain.**  Ship the verified deep-fold drain only if
   a proof makes folding meaningfully testable at `n >= 5`; current coverage
