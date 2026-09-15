@@ -173,9 +173,13 @@ The candidate list is empty.
   [generic sparse-multiple algorithms][sparse-multiples] are exponential in
   the requested sparsity, and an LLL sweep of every multiple with bounded
   cofactor degree returns the trivial shifts unchanged
-  (`notes/poly_lll_multiple.py`).  Descartes hardens the term floor --
+  (`notes/poly_lll_multiple.py`).  The term floor is now language-level:
   any multiple of a product with `m_r` real factors has at least
-  `m_r + 1` terms (`notes/poly_descartes_terms.py`) -- but that matches
+  `m_r + 1` terms (Descartes, `notes/poly_descartes_terms.py`), and real
+  instructions are forced -- `B >= (N'(k+1) - E(k))/2` per level, a
+  routing bound the register overwrite makes a proof
+  (`notes/poly_routing_floor.py`) -- so every multiple of every
+  dense-table program carries `Omega(T/log T)` monomials.  That matches
   rather than separates.  A linear generator therefore needs a
   direct sparse multiple specialized to the prime-power instruction roots,
   not an optimization search.  Shipping the factored form instead is not

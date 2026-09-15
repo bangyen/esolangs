@@ -337,17 +337,44 @@ builds and on shape-dodging multiples.  Two limits keep it from
 separating.  It is the matching bound arrived at a third way --
 `Omega(m)` terms already cost `Omega(m log m)` exponent digits, and a
 `Theta(m)`-term multiple with small coefficients would still be O(T)
-text.  And it does not cover a program that sheds its real instructions.
-Whether one can is a routing question: the register is the only store,
-tests compare to zero, and a loop whose exit depends on the register
-merges every entry of a residue class into one configuration -- entries
-7 and 10 leave `while (reg > 0) reg -= 3` with identical state and print
-the same byte, while 7, 8 and 9 leave it pairwise distinguishable (run
-through the interpreter, same probe).  The residue survives as position,
-the quotient is destroyed, so a dispatch to `R` read sites appears to
-need `Omega(R)` bracket sites.  That routing bound is the named missing
-lemma, stated refutably: exhibit a dense-table program with `o(m)` real
-instructions, or prove the test chain necessary.
+text.  And it covers only programs that carry real instructions at all.
+
+A program cannot shed them: the routing lemma that was the named gap
+here is now a proof (`notes/poly_routing_floor.py`).  A read *overwrites*
+the register, so after the k-th read the future behaviour is a function
+of the read instruction's position alone; between reads every
+non-bracket instruction has one successor and every bracket has two,
+fixed by its partner.  So a destination reached through at least one
+bracket is determined by the last bracket passed and the way it went --
+at most `2B` values for `B` real instructions -- while a bracket-free
+segment reaches one destination for both bit values, which a correct
+program can afford only where the state's two children are the same
+subfunction (same position, same future map).  Non-constant
+level-`(k+1)` subfunctions must land on distinct read positions, so
+`N'(k+1) <= 2B + E(k)`, i.e. `B >= (N'(k+1) - E(k))/2` at every `k`,
+with `N'` the non-constant subfunction count per level and `E(k)` the
+non-constant level-`k` states whose halves are equal -- a floor that is
+a property of the table, and `Theta(T/log T)` on dense ones.  Both
+halves execute: on machine- and tree-shaped builds at n=3..5, over every
+input, every inter-read destination is the recorded function of its last
+bracket and outcome and every bracket-free segment is bit-blind; and the
+floor computed from the dense fixture runs 16, 52, 128 at n=8, 10, 12 --
+0.38..0.53 of `T/log2 T` throughout, under the shipped machines' actual
+real counts as it must be.  A loop changes nothing, and
+`notes/poly_descartes_terms.py` runs the mechanism through the
+interpreter: entries 7 and 10 leave `while (reg > 0) reg -= 3` with
+identical state while 7, 8 and 9 leave it pairwise distinguishable --
+an exit that depends on the register merges a whole residue class into
+one configuration, so the quotient a dispatch would need is destroyed
+rather than stored.
+
+Together with Descartes this makes the matching bound language-level:
+every multiple of every program for a dense table -- under the standing
+convention that each path reads its `n` bits -- carries
+`Omega(T/log T)` monomials and therefore `Omega(T)` characters, with no
+assumption left about which construction wrote it.  What it still is
+not is a separation: the floor prices exponents, not coefficient mass,
+and the sparse-multiple question above is unchanged.
 
 The generic corner of that family is searched, and empty
 (`notes/poly_lll_multiple.py`).  The integer multiples of `P` with
