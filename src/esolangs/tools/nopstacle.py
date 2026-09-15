@@ -54,9 +54,14 @@ def instantiate_nopstacle(template: str, bits: list[int]) -> str:
     encoded_table = truth_table.replace("0", " ").replace("1", "#")
     encoded_bits = "".join("#" if bit else " " for bit in bits)
     width = max(2, len(encoded_table), len(encoded_bits))
+    # Kept rectangular rather than trimmed.  A zero bit *is* a space, so
+    # stripping the trailing one made the program's size depend on the
+    # embedded input -- 7 characters for a 0 against 8 for a 1 at n=1 --
+    # which is the one thing a boolean embedding may not do.  The
+    # interpreter pads short rows to the widest anyway, so the padding is
+    # free.
     return "\n".join(
-        line.rstrip()
-        for line in (
+        (
             f" {selector}".ljust(width),
             "##".ljust(width),
             encoded_table.ljust(width),
