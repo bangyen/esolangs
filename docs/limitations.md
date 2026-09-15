@@ -349,6 +349,25 @@ above is a dimension count, a necessary condition on a generic solution
 rather than an impossibility proof, so it bounds no specific family and does
 not by itself forbid a sparser one.
 
+The obvious *language-level* lower bound also comes out linear, which is
+worth stating because it says which way this row can close.  Any valid
+program is divisible by the product of its `m` mandatory instruction
+factors, and each factor's constant term is at least its prime -- `p**v`
+for a real instruction, `a**2 + p**(2b) >= p**2` for a complex one -- so
+the polynomial's lowest nonzero coefficient is divisible by the primorial
+of `m` and carries `theta(p_m)/ln 10 = Omega(m log m)` digits.  With
+`m = Omega(T/log T)` that is `Omega(T)` digits: computed over `n = 6..20`
+with `m = T/log2 T`, the forced digit count divided by `T` runs 0.153,
+0.180, 0.198, 0.206, 0.220, ... 0.267, creeping toward `ln 2 / ln 10 =
+0.301` rather than growing.  So the mandatory primes force a *linear*
+amount of text and nothing more.  That is a matching bound, not a
+separating one, and it cannot be promoted into a proof of super-linearity
+no matter how it is sharpened.  Any language-level proof therefore has to
+come from the *other* coefficients -- which is exactly what the
+construction-specific `Omega(m^2)` argument above does, and why ruling out
+a sparse multiple is the whole question.  On current evidence this row
+closes by construction if it closes at all.
+
 One natural way to promote the two-term argument does *not* work, which is
 worth recording so it is not retried.  That argument succeeds because a
 two-term multiple forces every root to share one modulus, which distinct
