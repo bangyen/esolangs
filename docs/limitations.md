@@ -449,6 +449,21 @@ minimises, which an unbalanced small-digit multiple could evade.  It
 bounds the search rather than closing it, but a sparse multiple, if one
 exists, is not hiding at small cofactor degree.
 
+The l2 objective's blind spot is searched now too, and it is also empty
+(`notes/poly_weighted_lll.py`).  A linear-size program cannot be l2-short
+-- its lowest coefficient is primorial-forced, so its profile is one
+heavy bottom coefficient and small everything else, the shape l2
+penalizes most.  Scaling column `j` of the shift lattice by
+`2^(s0 - s_j)` for a target bit envelope `s` makes the reduction hunt
+exactly that unbalanced profile; with the constant term left free and a
+flat or tapering budget elsewhere, every searched case over prefixes to
+degree 40 and cofactor degree to 8 returns gain 1.000 or worse, the
+control envelope (P's own profile) returns the trivial shifts, and the
+unstable cases -- sympy's pure-Python LLL loses its bookkeeping on very
+wide scaled entries -- are reported as unsearched rather than clean.
+Bounded by prefix size, cofactor degree, and the envelope family, as its
+predecessor was by the l2 objective.
+
 The obvious *language-level* lower bound also comes out linear, which is
 worth stating because it says which way this row can close.  Any valid
 program is divisible by the product of its `m` mandatory instruction
