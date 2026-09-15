@@ -163,17 +163,21 @@ The candidate list is empty.
   characters at n=10 against the retired per-row spelling's 52,821.  Sampled
   rows at n=6/8 and every table through n=3 execute correctly.
 
-  Polynomial's positive-factor bound is likewise construction-specific
-  because signed real parts can cancel coefficients -- measured, not
-  conceded: a negative real part decodes and runs
-  (`notes/poly_negative_operand.py`).  Multiplying by ignored
-  roots preserves the decoded program, but [generic sparse-multiple
-  algorithms][sparse-multiples] are exponential in the requested sparsity.  A
-  linear generator therefore needs a direct sparse multiple specialized to the
-  prime-power instruction roots, not an optimization search.  Shipping the
-  factored form instead is not available: the parser reads only summed
-  monomials and misreads a product silently
-  (`notes/poly_factored_probe.py`).
+  Polynomial's positive-factor bound is likewise construction-specific, but
+  the sign freedom is measured near-empty: a negative real part decodes and
+  runs (`notes/poly_negative_operand.py`), and minimising total digits over
+  sign patterns saves at most 5.2% with the growth exponent unmoved --
+  `|F(iy)|` is sign-invariant on the whole imaginary axis
+  (`notes/poly_sign_growth.py`).  Multiplying by ignored roots preserves the
+  decoded program and runs (`notes/poly_multiple_runs.py`), but
+  [generic sparse-multiple algorithms][sparse-multiples] are exponential in
+  the requested sparsity, and an LLL sweep of every multiple with bounded
+  cofactor degree returns the trivial shifts unchanged
+  (`notes/poly_lll_multiple.py`).  A linear generator therefore needs a
+  direct sparse multiple specialized to the prime-power instruction roots,
+  not an optimization search.  Shipping the factored form instead is not
+  available: the parser reads only summed monomials and misreads a product
+  silently (`notes/poly_factored_probe.py`).
 
   Treat every emitted character as build work.  Input reordering is optional
   around the construction, but its work still counts toward end-to-end
