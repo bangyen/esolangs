@@ -34,17 +34,23 @@ The candidate list is empty.
   tracks per-entry cost to n=12 across all 65 generators, so the quiet factors
   it was looking for -- minterms, rectangular tree layouts, widening labels or
   addresses, per-depth padding -- are each either absent or showing.  It caught
-  one: Forþ spelled every tree node's scope index as a base-15 literal, an
-  `O(n)` label on each of `2**(n+1)` nodes.  The construction now labels each
-  definition with the step from the previous one and passes the callee its own
-  index, which is constant per node; per-entry cost went from 14.2 climbing to
-  33.1 to a flat 14.4.  An n=8 -> 9 ratio near 2 is still not evidence of O(T),
-  which is why the contract's verdicts read in one direction only.
+  two, neither of them on the queue above.  Forþ spelled every tree node's
+  scope index as a base-15 literal, an `O(n)` label on each of `2**(n+1)`
+  nodes; the construction now labels each definition with the step from the
+  previous one and passes the callee its own index, which is constant per node,
+  and per-entry cost went from 14.2 climbing to 33.1 to a flat 14.4.
+  Interprogck8 is the row added below.  It had been exempt for the wrong
+  reason -- a `proofs.md` `exception` row about its repair budget's totality,
+  which says nothing about size -- and it is super-linear for a reason
+  [limitations](limitations.md) now argues down to a single borrowed step.  An
+  n=8 -> 9 ratio near 2 is still not evidence of O(T), which is why the
+  contract's verdicts read in one direction only.
   The live audit is:
 
   | Language | Generation time | Output size |
   | --- | --- | --- |
   | Factor | Language lower bound | Language lower bound |
+  | Interprogck8 | Open | Open |
   | Polynomial | Open | Open |
   | SLOW ACV MAMMALIAN | Open | Open |
   | Vandevelo | Open | Open |

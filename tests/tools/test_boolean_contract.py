@@ -1081,7 +1081,7 @@ _LINEAR_SCALING = {
     "cod",
     "container",
     "dig",
-    "forbin",
+    "forth",
     "flowchart",
     "inject",
     "jaune",
@@ -1094,6 +1094,7 @@ _LINEAR_SCALING = {
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
+    "interprogck8",
     "polynomial",
     "slow_acv_mammalian",
     "vandevelo",
@@ -1101,7 +1102,12 @@ _OPEN_SCALING = {
 
 
 def test_remaining_scaling_audit_is_exhaustive() -> None:
-    """Every generator in the requested queue remains classified."""
+    """Every generator in the scaling audit remains classified.
+
+    The roadmap's original queue plus whatever the registry-wide contract has
+    since added to the audit -- Interprogck8 is the first, measured
+    super-linear while sitting outside the queue entirely.
+    """
     expected = {
         "a_painter_ant",
         "one_two_three",
@@ -1109,6 +1115,7 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
         "cod",
         "minifuck",
         "factor",
+        "interprogck8",
         "polynomial",
         "addsubjump",
         "arrowqueue",
@@ -1119,7 +1126,7 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
         "container",
         "dig",
         "flowchart",
-        "forbin",
+        "forth",
         "inject",
         "jaune",
         "laserfuck",

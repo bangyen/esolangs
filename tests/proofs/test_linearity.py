@@ -103,9 +103,14 @@ def test_the_contract_covers_generators_the_original_queue_missed() -> None:
     """The point of the registry-wide contract: it is wider than the queue.
 
     The roadmap's scaling item enumerated twenty-five languages, and the
-    suite's existing linearity test covers exactly those.  Forty generators
+    suite's existing linearity test covered exactly those.  Forty generators
     were never checked, which is why this exists.
+
+    Interprogck8 is the twenty-sixth, and it is the demonstration rather than
+    an exception to it: the contract measured it super-linear, and it had been
+    outside the queue the whole time.  Growing this number is the contract
+    doing its job, so the assertion is on the *original* twenty-five.
     """
     queue = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
-    assert len(queue) == 25
-    assert len(BY_BOOLEAN) - len(queue) == 40
+    assert len(queue - {"interprogck8"}) == 25
+    assert len(BY_BOOLEAN) - len(queue) == 39
