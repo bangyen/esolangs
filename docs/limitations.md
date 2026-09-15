@@ -41,7 +41,6 @@ conditional re-enqueue route remains open.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Interprogck8 | 10 | 10 | Cost policy: dense n=11 builds only with 1,445 repairs and a 1.2 MB program. |
 | Polynomial | 10 | 10 | 1,934-instruction guard; dense n=11 is 124 MB and runs in 267 s. |
 | WII2D | 9 | 10 | Dense n=10 conflicts with the exactly-once embedding convention. |
 | ZTOALC L | 10 | 10 | n=11 needs 545–587 command slots; the line ceiling admits at most 395. |
@@ -526,14 +525,19 @@ closing as a wall.
 [sparse-multiples]: https://arxiv.org/abs/1009.3214
 [sparse-survey]: https://arxiv.org/abs/1807.08289
 
-Interprogck8's shipped construction is super-linear, and the roadmap audit row
-says so.  It had been exempt by accident: its `proofs.md` row is an `exception`
-about the repair budget's totality, which says nothing about size, and nothing
-else named it at all.  Measured, the growth is real rather than an
-artefact of the two-step statistic -- parity per-entry cost climbs
-monotonically from 328 to 526 characters over n=3..10, and `DownAccLines` per
-entry rises by a near-constant +0.7 an arity, which is the signature of
-`a + b*n` rather than a constant.
+Interprogck8's audit row closed Sep 2026 by construction.  The express
+router shipped until then was super-linear, and measurably so rather than as
+an artefact of the two-step statistic -- parity per-entry cost climbed
+monotonically from 328 to 526 characters over n=3..10, and `DownAccLines`
+per entry rose by a near-constant +0.7 an arity, the signature of `a + b*n`
+-- where its replacement is flat: per-entry cost oscillates between 805
+and 887 characters over n=8..12 on parity with no trend, every row of
+every build executed, and the registry scaling contract reads x1.963
+against its x2.15 bound with no exemption.  The replacement is the shared corridor the closing
+paragraph of this section describes; everything between here and there
+prices the *retired* router and the language's state channels, and those
+pricings stand -- they are the map of which channels a still-cheaper
+construction could and could not use.
 
 A decision diagram is **not** forced, and the paragraph that claimed it was
 is retracted.  The accumulator does die at every read -- `u` loads the byte
@@ -772,26 +776,42 @@ stride still wraps below 256, and the span sum above prices the rest.
 With that, every field of the state is priced or closed: `lines` (`z`,
 retired), `slot` (the product above), `frames` (here), the accumulator
 (eight bits, one absorbing thread), and the pointer (the arrangement
-bound).  None of this is yet a language-level lower bound -- the
-affine-exit step is scoped to unarmed episode shapes the way the slot
-price is scoped to stride-coded bodies -- which is why the audit row
-stays open.
+bound).  None of it is a language-level lower bound -- the affine-exit
+step is scoped to unarmed episode shapes the way the slot price is
+scoped to stride-coded bodies -- and with the corridor shipped none of
+it needs to be: the row closed on the other side.
 
-Two families of long jumps contribute.  The bit-0 arm spans its sibling
-subtree, and those targets are all distinct, which is the family the
-obstruction above bites on.  The exit ladder is the easy one -- every leaf is
-heading to the same place, so a common stride costs nothing -- and it is
-removable: deleting it and having each
-leaf stop where it stands drops parity per-entry cost from 526 to 352 at n=10,
-a third of the program.  That is not shipped because the language has no halt.
-Running off the last line is its termination, and the obvious one-line stand-in
-is a line the interpreter does not recognise, which raises `HaltError` -- the
-boolean runners swallow that, but `run` treats it as a crash, so it fails the
-table harness.  The legitimate form is a shared escalator: every leaf hops onto
-a lattice of `DownAccLines` rungs spaced one reach apart and rides it off the
-end, which is `O(1)` a leaf plus `O(L/255)` shared.  It would leave the bit-0
-family, and the generator super-linear, so it is recorded here rather than
-built.
+Two families of long jumps contributed.  The bit-0 arm spanned its sibling
+subtree, with pairwise distinct targets -- the family the obstruction bites
+on -- and the exit ladder was the easy one, removable for a third of the
+program (526 to 352 an entry at n=10) while leaving the construction
+super-linear.
+
+What closed the row is the corridor construction, which pays the
+persistence bound nothing because it owns no dedicated rungs at all.
+Every odd line nothing occupies is a bare `DownAccLines`, so "distinct
+rung lines per window" is free: the union of every chain's waypoints is
+the corridor itself, half the program, paid once.  The one-future wall
+assumed a shared lattice forces a shared future, and it fails twice over.
+Chains at one stride with different positions fly translated landing
+sets, so position alone separates them; and the input picks dismount
+against flight with no adjuster anyone shares -- `u` then two `@dd`
+leave 28 or 29, a rung flies `1 + acc`, so from an odd line an even
+accumulator lands even, off the corridor in one hop (the 0-arm), while
+an odd one keeps its odd residue class until the first non-rung line on
+it, the node's stop.
+Merging is prevented by phase: each read depth owns a (stride, residue)
+channel -- 14 residues at stride 30, then `@nd` adjusters after the read
+lift both arms so class `k` flies `30 + 2k`, 1596 depths before a stride
+leaves the byte -- and every odd-line instruction avoids every channel
+crossing it, checked at placement and re-checked by walking each flight
+over the emitted text before the program is returned.  Leaf arms load 65
+in one line (`nNnN`) and fly stride 66 to one of two shared printer
+stops, so an arm is O(1) and the print code is spelled once, past every
+stop, where nothing flies.  A node is O(1) occupied lines plus O(1)
+placement slack, the corridor is linear in the layout, and per-entry
+cost is flat where the router's climbed: the log's mechanism -- the span
+sum over private waypoints -- has no term left to bill.
 
 
 ## Curation

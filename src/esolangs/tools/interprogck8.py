@@ -1,704 +1,329 @@
 """Boolean-function generator for Interprogck8.
 
-The decision tree is routed entirely by ``DownAccLines``, the computed
-forward jump.  Nothing here touches the current-function slot: the
-roadmap's question was whether a tree had to be squeezed through that
-single slot, and it does not have to go near it.
+Routing rides a *shared corridor* instead of a private router: every odd
+line nothing occupies is a bare ``DownAccLines`` rung, and a rung is
+stateless, so one lattice serves every chain at once.  ``u`` reads the
+digit and two ``@dd`` leave 28 or 29 in the accumulator, and from an odd
+rung the stride ``1 + acc`` preserves line parity exactly when the bit
+was 1 -- so a 0 dismounts onto one even line 29 below the launch rung,
+while a 1 flies odd lines of one residue class mod 30 until the first
+non-rung line on that class, the node's *stop*.  Which line catches a
+chain is arithmetic in (position, stride); no chain owns a rung.  That
+is what removes the old router's super-linear term: it paid ~span/255
+private rungs per express chain and every tree level cost the same
+``L/255`` again, where the corridor is paid once for everyone.
+Measured: per-entry cost oscillates between 805 and 887 characters over
+n=8..12 with no trend (the old router climbed 328 to 526 over n=3..10),
+and the registry scaling contract reads x1.963 against its x2.15 bound
+with no exemption.
 
-**The branch gadget.**  ``u`` reads the input digit as 48 or 49; ``@dd``
-four times and ``@nt`` eight times leave the bit itself in the
-accumulator.  ``DownAccLines`` lands on ``ip + 1 + acc``, so the two
-values land one line apart -- too close to separate two arms.  A second
-jump spreads them:
+Interference is phase separation.  Each read depth owns a channel -- a
+(stride, residue) pair -- and every odd-line instruction avoids every
+channel that crosses it, so a flight passes any number of deeper
+subtrees without dismounting.  A stride class holds 14 residues, handed
+out descending so the read's own adjuster lines fall on residues no
+channel uses; deeper depths append ``@nd`` adjusters, so class ``k``
+flies stride ``30 + 2k`` and opens 14 fresh residues.  Class 113 is the
+last (a stride is one accumulator step, at most 256), 1596 read depths
+-- no representable table reaches that, so the construction is total
+over its inputs.  A constant subtree folds to a *consume* chain: one
+read per remaining input whose both arms converge, by flow, on the next
+-- the 0-arm's zeroed flow walks forward through the 1-arm's stop.
+Leaf arms load 65 with one ``nNnN`` and fly stride 66 to the nearest of
+four shared printer stops per digit; the print code is sequential text
+past the stops, where nothing flies.
 
-    DownAccLines      p     bit 0 -> p+1, bit 1 -> p+2
-    @id               p+1   bit-0 path only: acc 0 -> 10
-    DownAccLines      p+2   bit 1 arrives with 1, bit 0 with 10
-
-so bit 1 lands at ``p+4`` and bit 0 at ``p+13``, nine lines apart.  Past
-the split the accumulator is a known constant on each path, so every later
-jump is unconditional: ``NnNn`` plus modifiers plus ``DownAccLines`` reaches
-any line up to 255 ahead, and further by riding the express (below).
-
-**Layout.**  Both landing sites hold jumps rather than code, so neither arm
-has to be spelled inside the nine-line window: the window hops to a relay
-just past the bit-0 jump, and the relay enters the bit-1 subtree.  Leaves
-print their digit and leave through a *ladder* of per-node exits -- one hop
-reaches 255 lines and an n=3 tree is longer than that, so a leaf climbs out
-through its ancestors rather than jumping to the end in one go.
-
-Every distance is derived from the assembled index map, never counted by
-hand, and the widths are a fixed point: sizing one jump moves every label
-after it.
-
-**The express, which is what carries a hop past one reach.**  A hop longer
-than 255 lines used to be respelled at every waypoint, ~25 lines each, and
-the waypoints of different hops fought over the same dead lines -- the
-routing was iterative and its cost exploded past n=7.  ``DownAccLines``
-does not consume the accumulator, so a long hop needs to spell its stride
-*once*: the jump's own slot loads the accumulator and launches, and every
-waypoint after that is a bare one-line ``DownAccLines`` that flies the
-same stride again, give or take a few ``@nd``/``@id`` adjusters where the
-stride has to change.
-
-Those waypoints -- *rungs* -- are parked in *meadows*: blocks of dead
-lines behind an unconditional jump, emitted at safe points between gadgets
-every :data:`_MEADOW_SPACING` lines and sized to the express chains
-crossing the point.  Control walking into a meadow hops over it; control
-landing inside is a rung in flight.  Meadows are placed after every width
-has settled, and laying a rung replaces a one-line placeholder with a
-one-line instruction, so routing never moves a label: every chain is
-planned against final coordinates and cannot interfere with another,
-which is what replaced the old router's patience knob, rung-spacing knob
-and 2031s n=8 price.
-
-Demand is measured, not derived, so placement can still come up short.  A
-chain the meadows cannot carry is a *shortfall* naming the window that
-held no rung slot; the repair adds one meadow inside each distinct
-window and reroutes from clean placeholders, at most :data:`_REPAIRS`
-additions -- a budget with a certificate per round, not a search -- and a
-table still short after it is refused with the window, never mis-routed.
+Assembly is one forward pass over computed coordinates -- no width
+fixed point, no meadows, no repair rounds -- dense n=9 builds in ~0.04s
+against the old router's minutes-scale repairs.  Every flight is
+checked after it: :func:`_validate` walks the emitted lines exactly as
+``DownAccLines`` flies them, and a flight that would dismount anywhere
+but its stop is refused rather than emitted.
 """
 
-from bisect import bisect_left, bisect_right
-from functools import cache
+from esolangs.tools.helpers import _validate_truth_table
 
-from esolangs.exceptions import GeneratorCapError
-from esolangs.tools.helpers import _ASCII_ZERO, _validate_truth_table
+#: The corridor line.  ``DownAccLines`` jumps to ``ip + 1 + acc`` and
+#: leaves the accumulator alone, which is the whole sharing argument.
+_RUNG = "DownAccLines"
 
-#: Lines between the two landing sites of the branch gadget, fixed by the
-#: ``@id`` spread: bit 1 lands at ``p+4`` and bit 0 at ``p+13``.
-_WINDOW = 9
+#: Stride a 1-bit flies at with no class adjusters: ``u`` then two
+#: ``@dd`` leave 29, and a rung adds one.  Each class adds two.
+_BASE_STRIDE = 30
 
-#: How far one ``DownAccLines`` reaches: the accumulator holds a byte.
-_REACH = 255
+#: Residues a stride class hands out: the top 14 odd residues,
+#: descending with depth.  The reserve below them is load-bearing: a
+#: class-``k`` read trails ``2 + 2k`` adjusters whose ``1 + k`` odd
+#: lines sit on the residues just below its own phase, and descending
+#: from ``stride - 1`` spills them exactly down to residue 1 -- never
+#: onto a residue any channel owns.
+_PHASES_PER_CLASS = 14
 
+#: Stride a leaf arm flies at: ``nNnN`` loads 65 in one line.
+_PRINT_STRIDE = 66
 
-def _set_acc(target: int) -> list[str]:
-    """Lines loading ``target`` (0-255) whatever the accumulator held.
-
-    Counting up costs ``target % 10`` single steps; overshooting to the
-    next ten and counting back with ``@nt`` costs ``10 - target % 10``.
-    The shorter of the two spells 8 in four lines instead of nine, which is
-    what lets the nine-line window reach past a distance of 7.
-    """
-    up = ["@id"] * (target // 10) + ["@nd"] * (target % 10)
-    over = -(-target // 10)
-    down = ["@id"] * over + ["@nt"] * (over * 10 - target)
-    return ["NnNn", *min(up, down, key=len)]
-
-
-@cache
-def _hop_width(distance: int) -> int:
-    """Lines an unconditional hop of ``distance`` needs.
-
-    Memoised: sizing calls this once per growable jump per pass, and the
-    distances repeat -- a hop spans at most one reach plus whatever a
-    not-yet-promoted jump reads, so the key space is a few hundred wide.
-    """
-    return len(_set_acc(distance)) + 1
+#: The printer channels' residues mod 66, four per output digit so a
+#: leaf arm reaches the nearest one cheaply.  Each digit's four are
+#: clustered (spacing four, never two: a leaf 1-arm's stop sits two
+#: lines before its launch rung, and two below a live residue that
+#: stop would be dismounted on by other flights), and the 0 cluster is
+#: kept narrow so the 1-printer's sequential code block -- which the
+#: 0 flights cross -- fits between two of its passes.
+_PRINT_PHASE = {0: (33, 37, 41, 45), 1: (1, 5, 9, 13)}
 
 
-#: Sizing passes ``_resolve`` allows before giving up.  It is a cap, not a
-#: convergence argument: what it refuses is a layout whose widths are still
-#: moving, and the express keeps every width local, so the settles seen
-#: since it shipped are two-digit.
-_PASSES = 4096
-
-#: Longest distance the nine-line window can spell.  Not ``_REACH``: the
-#: slot is fixed, so what fits is what ``_set_acc`` spells in eight lines.
-#: Not monotonic in the distance either -- 70 costs nine lines where 69
-#: costs ten -- so this is a scan rather than an inverted formula.
-_WINDOW_REACH = max(d for d in range(_REACH + 1) if _hop_width(d) <= _WINDOW)
-
-#: The widest slot any single hop can need, scanned rather than assumed:
-#: an express jump's slot is fixed at this width, so it can spell whatever
-#: first stride the routing later picks.
-_EXPRESS = max(_hop_width(d) for d in range(_REACH + 1))
-
-# The bit-0 jump sits one window behind its relay label, so when it is
-# promoted to an express slot the window must spell _EXPRESS itself.
-if _hop_width(_EXPRESS) > _WINDOW:
-    raise AssertionError("express slot outgrew the window")
+def _channel(depth: int) -> tuple[int, int]:
+    """Return the (stride, launch residue) pair depth ``depth`` owns."""
+    group, index = divmod(depth, _PHASES_PER_CLASS)
+    stride = _BASE_STRIDE + 2 * group
+    return stride, stride - 1 - 2 * index
 
 
-class _Jump:
-    """A hop to ``label``, holding ``width`` lines until it is resolved.
+#: One flight: its launch rung, its stride, and the stop that must catch
+#: it.  Kept for :func:`_validate` to walk against the emitted text.
+type _Flight = tuple[int, int, int]
 
-    ``fixed`` marks a slot whose size is load-bearing geometry -- the
-    nine-line window -- so it is checked for overflow rather than grown.
+#: Channels a placement must stay off: ``(modulus, forbidden residues)``.
+type _Avoid = tuple[tuple[int, frozenset[int]], ...]
 
-    ``express`` marks a jump promoted to a fixed :data:`_EXPRESS`-wide
-    slot because its span outgrew one reach; the router later points it at
-    ``to_line`` -- its first rung, or the target itself where the span
-    shrank back under one reach by the time widths settled.
-    """
-
-    __slots__ = ("express", "fixed", "label", "to_line", "width")
-
-    def __init__(
-        self,
-        label: str,
-        width: int,
-        *,
-        fixed: bool = False,
-    ) -> None:
-        self.label = label
-        self.width = width
-        self.fixed = fixed
-        self.express = False
-        self.to_line: int | None = None
+_PRINTER_CHANNELS: _Avoid = (
+    (_PRINT_STRIDE, frozenset(_PRINT_PHASE[0] + _PRINT_PHASE[1])),
+)
 
 
-class _Label:
-    """A named position, occupying no line."""
-
-    __slots__ = ("name",)
-
-    def __init__(self, name: str) -> None:
-        self.name = name
-
-
-class _Safe:
-    """A zero-width point between gadgets where a meadow may be laid.
-
-    Only marked positions are eligible: splicing lines into the middle of
-    the branch gadget would break its fixed nine-line offset, and a meadow
-    starts with an accumulator-clobbering jump, so the point also has to be
-    one where the accumulator is dead -- which every gadget boundary is,
-    since every continuation begins with a read or a load.
-    """
-
-    __slots__ = ()
-
-
-class _Rung:
-    """One reserved dead line in a meadow, ``x`` until a chain claims it."""
-
-    __slots__ = ("op",)
+class _Layout:
+    """The assembly state: placed lines, laid rungs, recorded flights."""
 
     def __init__(self) -> None:
-        self.op = "x"
+        self.ops: dict[int, str] = {}
+        self.flights: list[_Flight] = []
+
+    def put(self, line: int, op: str) -> None:
+        """Occupy ``line`` with ``op``; a collision is a planning bug."""
+        if line in self.ops:
+            raise AssertionError(f"line {line} holds {self.ops[line]!r}, wanted {op!r}")
+        self.ops[line] = op
+
+    def put_rung(self, line: int) -> None:
+        """Lay one corridor rung; sharing an existing rung is the point."""
+        if line % 2 == 0:
+            raise AssertionError(f"rung on even line {line}")
+        existing = self.ops.setdefault(line, _RUNG)
+        if existing != _RUNG:
+            raise AssertionError(f"rung vs {existing!r} at line {line}")
+
+    def clear(self, line: int, avoid: _Avoid) -> bool:
+        """Whether ``line`` is free and off every channel in ``avoid``.
+
+        Only odd lines can sit on a channel: flights land on odd lines
+        alone, so an even line never needs the residue check.
+        """
+        if line in self.ops:
+            return False
+        if line % 2 == 0:
+            return True
+        return all(line % mod not in bad for mod, bad in avoid)
+
+    def place(
+        self,
+        start: int,
+        parity: int,
+        congruences: tuple[tuple[int, int], ...],
+        avoid: _Avoid = (),
+        span: int = 1,
+    ) -> int:
+        """First line at or past ``start`` whose whole gadget fits.
+
+        The line must meet ``parity`` and every congruence, and all of
+        ``line .. line + span - 1`` must clear ``avoid`` -- a read's
+        adjusters trail it, so the footprint is checked as one piece.
+        The scan bound is a backstop against a planning bug, not a
+        budget: a free line on any single congruence class recurs
+        within its modulus times the longest occupied run.
+        """
+        line = start
+        for _ in range(100_000):
+            if (
+                line % 2 == parity
+                and all(line % mod == residue for mod, residue in congruences)
+                and all(self.clear(line + i, avoid) for i in range(span))
+            ):
+                return line
+            line += 1
+        raise AssertionError(f"no placement past {start} met {congruences}")
+
+    def lay(self, launch: int, stride: int, stop: int) -> None:
+        """Lay one flight's rungs from ``launch`` up to (not on) ``stop``."""
+        position = launch
+        while position != stop:
+            if position > stop:
+                raise AssertionError(
+                    f"flight {launch}+{stride}k steps over its stop {stop}"
+                )
+            self.put_rung(position)
+            position += stride
+        self.flights.append((launch, stride, stop))
 
 
-type _Item = str | _Jump | _Label | _Safe | _Rung
+def _assemble(table: str, n: int) -> tuple[list[str], list[_Flight]]:
+    """Lay the whole program out; every coordinate is final when written."""
+    layout = _Layout()
+    printer_flights: list[tuple[int, int]] = []
 
+    def launch_pad(entry: int, value: int) -> int:
+        """Place a printer launch, reached by acc-0 flow from ``entry``.
 
-def _emit(table: str, n: int) -> list[_Item]:
-    """Lay the tree out flat, leaving every jump unresolved."""
-    counter = [0]
-    out: list[_Item] = []
+        One even line loading 65; the rung after it flies stride 66 on
+        whichever of the digit's four residues is nearest, so the pad
+        costs a few lines of slack rather than half a period.
+        """
+        line = min(
+            layout.place(entry, 0, ((_PRINT_STRIDE, (residue - 1) % _PRINT_STRIDE),))
+            for residue in _PRINT_PHASE[value]
+        )
+        layout.put(line, "nNnN")
+        printer_flights.append((line + 1, value))
+        return line
 
-    def block(lo: int, hi: int, depth: int, exit_label: str) -> None:
-        out.append(_Safe())
+    def read_gadget(
+        depth: int, entry: int, open_channels: _Avoid
+    ) -> tuple[int, int, int]:
+        """Place one read and its adjusters; return (launch, stride, arm).
+
+        ``launch`` is the rung both arms leave from, ``arm`` the even
+        line the 0-arm dismounts onto.  The footprint -- the read, four
+        ``@dd``, the class's ``@nd`` tail -- is placed as one piece so
+        its odd lines stay off every crossing channel.
+        """
+        stride, phase = _channel(depth)
+        width = stride - 27  # ``u`` + 2 ``@dd`` + (stride - 30) ``@nd``
+        read = layout.place(
+            entry,
+            0,
+            ((stride, (phase + 5) % stride),),
+            open_channels,
+            span=width,
+        )
+        layout.put(read, "u")
+        for offset in range(1, 3):
+            layout.put(read + offset, "@dd")
+        for offset in range(3, width):
+            layout.put(read + offset, "@nd")
+        launch = read + width
+        return launch, stride, launch + stride - 1
+
+    def node(lo: int, hi: int, depth: int, entry: int, open_channels: _Avoid) -> int:
+        """One subtree: place it, return the frontier line."""
+        if depth == n:
+            return launch_pad(entry, int(table[lo])) + 2
         window = table[lo:hi]
         if len(set(window)) == 1:
-            # A constant subtree needs no more branching, but it still has
-            # to *read* the inputs below it: the reads are the interface,
-            # and a program that leaves them on the stream desynchronises
-            # whatever runs next.  ``u`` alone consumes one and is dropped.
-            out.extend(["u"] * (n - depth))
-            out.extend(_set_acc(_ASCII_ZERO + int(window[0])))
-            out.append("div")
-            # Out through this node's exit rather than straight to the end:
-            # one hop reaches 255 lines and the tree is longer than that.
-            out.append(_Jump(exit_label, 2))
-            return
-        counter[0] += 1
-        tag = counter[0]
-        right, left, mine, relay = (f"{p}{tag}" for p in "RLXY")
+            # A constant subtree folds to a consume chain: the read
+            # still happens -- the reads are the interface -- but both
+            # arms converge on one child.  The 0-arm's zeroed flow
+            # walks forward *through* the 1-arm's stop (a second
+            # ``NnNn`` under an already-zero accumulator), so the two
+            # arms meet without a join gadget.
+            launch, stride, arm = read_gadget(depth, entry, open_channels)
+            layout.put(arm, "NnNn")
+            stop = layout.place(
+                arm + 1,
+                1,
+                ((stride, launch % stride),),
+                (*open_channels, *_PRINTER_CHANNELS),
+            )
+            layout.put(stop, "NnNn")
+            layout.lay(launch, stride, stop)
+            return node(lo, hi, depth + 1, stop + 1, open_channels)
         half = (hi - lo) // 2
-        out.extend(["u", *["@dd"] * 4, *["@nt"] * 8])
-        out.extend(["DownAccLines", "@id", "DownAccLines"])
-        out.append("x")  # dead: bit 1 lands two on, bit 0 eleven on
-        # Both landing sites hold jumps, so neither subtree has to fit in
-        # the window: the window clears only the bit-0 jump to reach the
-        # relay, and the relay -- free to be any width -- enters `right`.
-        out.append(_Jump(relay, _WINDOW, fixed=True))
-        # The relay label must stay exactly here: bit 0 lands on this jump
-        # by the gadget's fixed nine-line offset.  Nothing is ever spliced
-        # between gadget lines -- meadows go only where ``_Safe`` says.
-        out.append(_Jump(left, 2))  # the bit-0 landing site
-        out.append(_Label(relay))
-        out.append(_Jump(right, 2))
-        out.append(_Label(right))
-        block(lo + half, hi, depth + 1, mine)
-        out.append(_Label(left))
-        block(lo, lo + half, depth + 1, mine)
-        out.append(_Label(mine))
-        out.append(_Jump(exit_label, 2))
-
-    block(0, len(table), 0, "END")
-    return out
-
-
-def _index(items: list[_Item]) -> tuple[list[int], dict[str, int]]:
-    """Return each item's starting line and every label's line."""
-    starts: list[int] = []
-    append = starts.append
-    labels: dict[str, int] = {}
-    line = 0
-    # Dispatched on the exact class, cheapest case first: all but a few
-    # thousand of the items are plain lines, and this walk runs once per
-    # sizing pass over the whole program.
-    for item in items:
-        append(line)
-        kind = item.__class__
-        if kind is str or kind is _Rung:
-            line += 1
-        elif kind is _Jump:
-            line += item.width  # type: ignore[union-attr]
-        elif kind is _Label:
-            labels[item.name] = line  # type: ignore[union-attr]
-    labels["END"] = line
-    return starts, labels
-
-
-def _resolve(items: list[_Item]) -> tuple[list[int], dict[str, int]]:
-    """Size every growable jump until no width changes; return the index.
-
-    A jump's own width shifts every label after it, so this is a fixed
-    point rather than one pass.  A width can shrink as well as grow, so
-    the bound is measured rather than argued -- and with every long span
-    parked at the fixed express width, what is left to move is local.
-
-    Which jumps are growable cannot change inside the loop, so they are
-    picked out once instead of re-scanned every pass; the returned index
-    is the settled one, so the caller need not walk the program again.
-    """
-    growable = [
-        (position, item)
-        for position, item in enumerate(items)
-        # A fixed slot cannot grow: the window is checked at emission,
-        # and an express slot spells any first stride.
-        if isinstance(item, _Jump) and not item.fixed and not item.express
-    ]
-    moving = 0
-    for _ in range(_PASSES):
-        starts, labels = _index(items)
-        moving = 0
-        for position, jump in growable:
-            distance = labels[jump.label] - (starts[position] + jump.width)
-            need = _hop_width(max(distance, 0))
-            if need != jump.width:
-                jump.width = need
-                moving += 1
-        if not moving:
-            return starts, labels
-    raise ValueError(
-        f"jump widths did not converge in {_PASSES} passes: {moving} jumps still moving"
-    )
-
-
-def _settle(items: list[_Item]) -> None:
-    """Size widths and promote over-reach jumps until neither moves.
-
-    Promotion is monotone -- an express jump never demotes, and promoting
-    one only pushes labels apart -- so the alternation converges; the
-    bound is the jump count, since each round must promote at least one.
-    """
-    while True:
-        starts, labels = _resolve(items)
-        promoted = 0
-        for item, start in zip(items, starts, strict=True):
-            if not isinstance(item, _Jump) or item.fixed or item.express:
-                continue
-            if labels[item.label] - (start + item.width) > _REACH:
-                item.express = True
-                item.width = _EXPRESS
-                promoted += 1
-        if not promoted:
-            return
-
-
-#: Lines between meadows, measured on settled coordinates at placement.
-#: The binding constraint is a hop between *cursors*: a chain may leave a
-#: meadow near its start and land in the next near its end, so the pitch
-#: between meadow starts plus a whole meadow of drift must stay inside one
-#: reach -- and the pitch seen at run time is this figure stretched by the
-#: guards and promotions that settle afterwards, so it sits well under
-#: that bound.  The router's own reach check refuses a layout that
-#: stretched too far anyway.
-_MEADOW_SPACING = 80
-
-#: Dead lines per meadow: the floor, the ceiling, and the lines added per
-#: express chain crossing the placement point.  Demand is not uniform --
-#: a meadow under a busy subtree carries a rung and a few adjusters for
-#: every chain over it, plus the terminals of the label cluster behind it
-#: -- so capacity follows the measured crossings instead of one number.
-#: The ceiling is a reach constraint, not thrift: a hop may leave one
-#: meadow's start and land at the next one's end, so two meadows and the
-#: pitch between them must stay inside one reach.
-_MEADOW_LEAST = 24
-_MEADOW_MOST = 56
-_MEADOW_PER_CHAIN = 6
-
-#: Meadows the repair may add at shortfalls before a table is refused.
-#: A budget on additions, not a convergence argument: four n=10 dense
-#: seeds spend 95-126 across a handful of rounds, so this is the worst
-#: measured with room over, and the programs past it are ones this
-#: generator should refuse rather than chase.
-#:
-#: What it declines is measured, not assumed: dense n=11 closes at 4096,
-#: spending 1445 additions for a 1203786-character program, every one of
-#: its 2048 rows correct.  Left at 256 on that cost.
-_REPAIRS = 256
-
-
-def _spans(items: list[_Item]) -> list[tuple[int, int]]:
-    """Every express jump's (launch, target), on current coordinates."""
-    starts, labels = _index(items)
-    return [
-        (start + item.width, labels[item.label])
-        for item, start in zip(items, starts, strict=True)
-        if isinstance(item, _Jump) and item.express
-    ]
-
-
-def _meadow(size: int, tag: int) -> tuple[list[_Rung], list[_Item]]:
-    """One meadow: its rungs, and the guard-jump block that carries them."""
-    rungs = [_Rung() for _ in range(size)]
-    skip = f"M{tag}"
-    return rungs, [_Jump(skip, 2), *rungs, _Label(skip)]
-
-
-def _place(items: list[_Item]) -> list[list[_Rung]]:
-    """Lay a meadow at every safe point one spacing past the last.
-
-    Runs on settled coordinates, so the spacing seen here is real; the
-    guards and promotions that follow stretch it, which is why the pitch
-    sits well under the reach.  Each meadow is sized to the express
-    chains crossing its point.  The sentinels are kept: a routing
-    shortfall later adds meadows at them (:func:`_add`).
-    """
-    starts, _labels = _index(items)
-    spans = _spans(items)
-    out: list[_Item] = []
-    meadows: list[list[_Rung]] = []
-    last = 0
-    for item, start in zip(items, starts, strict=True):
-        if isinstance(item, _Safe) and start - last >= _MEADOW_SPACING:
-            crossing = sum(low < start < high for low, high in spans)
-            size = min(_MEADOW_MOST, _MEADOW_LEAST + _MEADOW_PER_CHAIN * crossing)
-            rungs, block = _meadow(size, len(meadows))
-            out.extend(block)
-            meadows.append(rungs)
-            last = start
-        out.append(item)
-    items[:] = out
-    return meadows
-
-
-def _add(items: list[_Item], meadows: list[list[_Rung]], low: int, high: int) -> None:
-    """Insert one more meadow inside the shortfall window ``(low, high)``.
-
-    The repair for a routing shortfall: the refusal names the window that
-    held no usable rung slot, and the meadow goes at the last safe point
-    inside it -- nearest whatever the stranded chain was reaching for.
-    Falls back to the nearest safe point when the window holds none.
-
-    Walks the lines itself rather than indexing the whole program: the
-    scan stops at the window, and a repair round calls this once per
-    stranded window.
-    """
-    at = None
-    fallback = None
-    line = 0
-    for position, item in enumerate(items):
-        kind = item.__class__
-        if kind is str or kind is _Rung:
-            line += 1
-        elif kind is _Jump:
-            line += item.width  # type: ignore[union-attr]
-        elif kind is _Safe:
-            if line >= high:
-                break
-            fallback = position
-            if line > low:
-                at = position
-    if at is None:
-        at = fallback
-    if at is None:
-        raise AssertionError("a tree always emits safe points")
-    rungs, block = _meadow(_MEADOW_MOST, len(meadows))
-    items[at:at] = block
-    meadows.append(rungs)
-
-
-def _adjust(current: int, wanted: int) -> list[str]:
-    """Return the shortest lines turning ``current`` into ``wanted``.
-
-    Either nudged with ``@id``/``@dd`` tens and ``@nd``/``@nt`` units --
-    the usual case, since consecutive strides differ by a meadow pitch or
-    two -- or respelled from zero where that is shorter.
-    """
-    delta = wanted - current
-    best: list[str] | None = None
-    for tens in range(delta // 10 - 1, delta // 10 + 2):
-        units = delta - 10 * tens
-        ops = ["@id" if tens > 0 else "@dd"] * abs(tens)
-        ops += ["@nd" if units > 0 else "@nt"] * abs(units)
-        if best is None or len(ops) < len(best):
-            best = ops
-    if best is None:
-        raise AssertionError("the tens scan always yields a candidate")
-    return min(best, _set_acc(wanted), key=len)
-
-
-class _Bank:
-    """One meadow's allocation state: its rungs, their lines, a cursor."""
-
-    __slots__ = ("cursor", "lines", "rungs")
-
-    def __init__(self, rungs: list[_Rung], lines: list[int]) -> None:
-        self.rungs = rungs
-        self.lines = lines
-        self.cursor = 0
-
-    @property
-    def line(self) -> int | None:
-        """Where the next rung would land, or ``None`` when full."""
-        if self.cursor >= len(self.rungs):
-            return None
-        return self.lines[self.cursor]
-
-    @property
-    def free(self) -> int:
-        return len(self.rungs) - self.cursor
-
-    def lay(self, ops: list[str], length: int) -> None:
-        """Claim ``length`` lines: pads, then ``ops``, then the hop."""
-        body = ["x"] * (length - len(ops) - 1) + ops + ["DownAccLines"]
-        for rung, op in zip(
-            self.rungs[self.cursor : self.cursor + length], body, strict=True
-        ):
-            rung.op = op
-        self.cursor += length
-
-
-def _lay(bank: _Bank, acc: int | None, landing: int, wanted: int) -> int | None:
-    """Lay one rung in ``bank`` carrying ``acc`` from ``landing`` to ``wanted``.
-
-    ``acc`` is ``None`` for a terminal rung, whose incoming accumulator is
-    only decided when the approach to it is routed later -- so its body
-    must respell from zero rather than adjust.
-
-    The rung's length and its stride are coupled: a longer body launches
-    from further down, which shrinks the stride, which changes the body.
-    Scanned rather than solved -- lengths are small -- taking the first
-    length whose body fits, padded in front so the hop stays at the end.
-    Returns the stride flown, or ``None`` where nothing fits.
-    """
-    for length in range(1, min(bank.free, _EXPRESS) + 1):
-        stride = wanted - landing - length
-        if not 0 <= stride <= _REACH:
-            continue
-        if acc is None:
-            ops = _set_acc(stride)
-        else:
-            ops = [] if stride == acc else _adjust(acc, stride)
-        if len(ops) + 1 <= length:
-            bank.lay(ops, length)
-            return stride
-    return None
-
-
-def _fits(free: int, landing: int, target: int, acc: int | None = None) -> bool:
-    """Whether a terminal rung landing at ``landing`` can finish in ``free``.
-
-    Mirrors :func:`_lay` with no allocation.  With ``acc`` unknown the
-    body is priced as a respell -- the worst a terminal can need, since
-    the real lay adjusts from the accumulator the approach delivers when
-    that is shorter -- so a bank that passes is guaranteed to take the
-    rung later.  A terminal the entry hop reaches directly knows its
-    accumulator already, and pricing the true adjusters lets it fit in
-    room a respell could not.
-    """
-    for length in range(1, min(free, _EXPRESS) + 1):
-        stride = target - landing - length
-        if not 0 <= stride <= _REACH:
-            continue
-        if acc is None:
-            need = _hop_width(stride)
-        else:
-            ops = [] if stride == acc else _adjust(acc, stride)
-            need = len(ops) + 1
-        if need <= length:
-            return True
-    return False
-
-
-class _StuckError(GeneratorCapError):
-    """One routing shortfall, naming the window that held no rung slot.
-
-    A :class:`ValueError` so an unrepaired shortfall is the generator's
-    ordinary refusal; the window is where :func:`_add` repairs.  For a
-    stranded approach that is the reach ahead of its landing; for a chain
-    that found no terminal it is the stretch before its target.
-    """
-
-    def __init__(self, low: int, high: int, label: str) -> None:
-        super().__init__(
-            f"no rung slot in lines {low}-{high} for the jump to {label} "
-            f"-- every meadow there is full or out of reach"
+        launch, stride, arm = read_gadget(depth, entry, open_channels)
+        below = (*open_channels, (stride, frozenset({launch % stride})))
+        layout.put(arm, "NnNn")
+        frontier = node(lo, lo + half, depth + 1, arm + 2, below)
+        stop = layout.place(
+            max(frontier, launch + 2),
+            1,
+            ((stride, launch % stride),),
+            (*open_channels, *_PRINTER_CHANNELS),
         )
-        self.low = low
-        self.high = high
+        layout.put(stop, "NnNn")
+        layout.lay(launch, stride, stop)
+        return node(lo + half, hi, depth + 1, stop + 2, below)
+
+    end = node(0, len(table), 0, 2, _PRINTER_CHANNELS)
+
+    # The printer region.  Flights for 1 stop first; their code is
+    # sequential text (stops and code are contiguous occupied lines, so
+    # parity plays no role) ending in one hop over the 0 side to the
+    # program end.  Flights for 0 cross that code on their own four
+    # residues, which the code block's placement stays off.
+    zero_avoid: _Avoid = ((_PRINT_STRIDE, frozenset(_PRINT_PHASE[0])),)
+    cursor = end + 2
+    one_stops = []
+    for residue in _PRINT_PHASE[1]:
+        stop = layout.place(cursor, 1, ((_PRINT_STRIDE, residue),), zero_avoid)
+        layout.put(stop, "NnNn")
+        one_stops.append(stop)
+        cursor = stop + 1
+    one_code = ["@id"] * 4 + ["@nd"] * 9 + ["div"]
+    escape_slack = 26  # ``NnNn`` + the distance spelling + the hop
+    code = layout.place(cursor, 0, (), zero_avoid, span=len(one_code) + escape_slack)
+    for offset, op in enumerate(one_code):
+        layout.put(code + offset, op)
+    escape = code + len(one_code)
+    cursor = escape + escape_slack
+    zero_stops = []
+    for residue in _PRINT_PHASE[0]:
+        stop = layout.place(cursor, 1, ((_PRINT_STRIDE, residue),))
+        layout.put(stop, "NnNn")
+        zero_stops.append(stop)
+        cursor = stop + 1
+    zero_code = ["@id"] * 4 + ["@nd"] * 8 + ["div"]
+    for offset, op in enumerate(zero_code):
+        layout.put(cursor + offset, op)
+    length = cursor + len(zero_code)  # the 0-printer falls off the end
+    # The 1-printer's hop over the 0 side: respell and fly to the end.
+    distance = length - (escape + escape_slack - 1) - 1
+    if distance > 255:
+        raise AssertionError(f"printer escape spans {distance} lines")
+    spell = ["NnNn"] + ["@id"] * (distance // 10) + ["@nd"] * (distance % 10)
+    for offset, op in enumerate(spell):
+        layout.put(escape + offset, op)
+    for offset in range(len(spell), escape_slack - 1):
+        layout.put(escape + offset, "x")
+    layout.put(escape + escape_slack - 1, _RUNG)
+
+    for launch, value in printer_flights:
+        landing = launch % _PRINT_STRIDE
+        stops = one_stops if value else zero_stops
+        stop = next(s for s in stops if s % _PRINT_STRIDE == landing)
+        layout.lay(launch, _PRINT_STRIDE, stop)
+
+    lines = [layout.ops.get(i, _RUNG if i % 2 else "x") for i in range(length)]
+    return lines, layout.flights
 
 
-def _route(items: list[_Item], meadows: list[list[_Rung]]) -> list[_StuckError]:
-    """Point every express jump at its chain, laying rungs in meadows.
+def _validate(lines: list[str], flights: list[_Flight]) -> None:
+    """Walk every flight exactly as ``DownAccLines`` would fly it.
 
-    Coordinates are final -- laying a rung rewrites a placeholder line in
-    place -- so chains are planned once, greedily, each hop taking the
-    furthest meadow in reach.  A chain that finds no meadow it can use is
-    a shortfall by name, never a mis-routed program; every shortfall of
-    the pass is returned together, so one repair round serves them all.
+    The corridor's one failure mode is a non-rung line straying onto an
+    open channel, which would dismount a chain mid-flight and compute
+    the wrong row -- so a program is emitted only after every flight
+    has been walked to its intended stop on the emitted text.
     """
-    starts, labels = _index(items)
-    rung_line = {
-        id(item): start
-        for item, start in zip(items, starts, strict=True)
-        if item.__class__ is _Rung
-    }
-    banks = [_Bank(rungs, [rung_line[id(rung)] for rung in rungs]) for rungs in meadows]
-    # Meadows never overlap, so ordering banks by their first rung orders
-    # them by cursor line too, and the banks a hop could reach are one
-    # slice rather than a filter-and-sort over every meadow in the
-    # program.  That scan was the n=10 price: ~600 meadows re-examined at
-    # each of tens of thousands of hops, once per repair round.
-    banks.sort(key=lambda bank: bank.lines[0])
-    heads = [bank.lines[0] for bank in banks]
-    widest = max((len(bank.rungs) for bank in banks), default=0)
-
-    def within(low: int, high: int) -> list[_Bank]:
-        """Banks whose cursor line lies in ``(low, high]``, furthest first.
-
-        The slice is bounded exactly on the right -- a meadow starting
-        past ``high`` cannot hold a line inside -- and widened on the left
-        by the widest meadow actually laid, since a cursor has drifted at
-        most a whole meadow past its head.  Every candidate is then
-        filtered on its real line, so the widening costs comparisons only
-        and the slice is the same set the old whole-list scan found.
-        """
-        if high <= low:
-            return []
-        left = bisect_left(heads, low - widest + 1)
-        right = bisect_right(heads, high)
-        ahead = [
-            bank
-            for bank in banks[left:right]
-            if bank.line is not None and low < bank.line <= high
-        ]
-        ahead.reverse()
-        return ahead
-
-    def refuse(landing: int, until: int, label: str) -> _StuckError:
-        return _StuckError(landing, until, label)
-
-    def onward(landing: int, until: int) -> list[_Bank]:
-        """Banks a hop from ``landing`` could land in, furthest first.
-
-        Room for a typical adjuster rung is demanded up front, so a chain
-        never hops into a bank it cannot leave: consecutive strides differ
-        by a meadow pitch or two, well inside what thirteen adjusters fix.
-        """
-        return [
-            bank
-            for bank in within(landing, min(until, landing + _REACH))
-            if bank.free >= 14
-        ]
-
-    chains = [
-        (item, start + item.width, labels[item.label])
-        for item, start in zip(items, starts, strict=True)
-        if isinstance(item, _Jump) and item.express
-    ]
-
-    def route(item: _Jump, launch: int, target: int) -> None:
-        if 0 <= target - launch <= _REACH:
-            item.to_line = target  # the span settled back under one reach
-            return
-        # The terminal bank -- the chain's last stop -- is chosen first,
-        # nearest the target with room for a worst-case finish, so the
-        # chain never discovers at its last stop that the room for the
-        # finish was already spent.  Its rung is *laid* last, though: the
-        # accumulator it inherits is only decided by the approach, and a
-        # known accumulator turns the finish from a respell into a few
-        # adjusters.  Excluding it from the approach keeps its room whole.
-        terminal = next(
-            (
-                bank
-                for bank in within(max(launch, target - _REACH - 1), target - 1)
-                if bank.line is not None
-                and _fits(
-                    bank.free,
-                    bank.line,
-                    target,
-                    bank.line - launch if bank.line - launch <= _REACH else None,
-                )
-            ),
-            None,
-        )
-        if terminal is None or terminal.line is None:
-            # The shortfall is in the terminal window before the target,
-            # wherever the launch was.
-            raise refuse(max(launch, target - _REACH), target, item.label)
-        stop = terminal.line
-        if stop - launch <= _REACH:
-            item.to_line = stop  # the entry hop reaches the terminal alone
-            acc = stop - launch
-        else:
-            first = [b for b in onward(launch, stop) if b is not terminal]
-            if not first:
-                raise refuse(launch, min(stop, launch + _REACH), item.label)
-            bank = first[0]
-            landing = bank.line or 0
-            item.to_line = landing
-            acc = landing - launch
-            while True:
-                # ``landing`` is the cursor line of ``bank``, where this
-                # chain's next rung must be laid; ride until one of those
-                # rungs can land exactly on the terminal.
-                if stop - landing <= _REACH:
-                    hop = _lay(bank, acc, landing, stop)
-                    if hop is not None:
-                        acc = hop
-                        break
-                for goal in onward(landing, stop):
-                    goal_line = goal.line
-                    if goal is terminal or goal_line is None:
-                        continue
-                    hop = _lay(bank, acc, landing, goal_line)
-                    if hop is not None:
-                        acc, landing, bank = hop, goal_line, goal
-                        break
-                else:
-                    raise refuse(landing, min(stop, landing + _REACH), item.label)
-        if _lay(terminal, acc, stop, target) is None:
-            raise refuse(stop, target, item.label)
-
-    stuck: list[_StuckError] = []
-    for item, launch, target in chains:
-        try:
-            route(item, launch, target)
-        except _StuckError as shortfall:
-            # Collect rather than stop: every stranded chain names its
-            # window in one pass, so one repair round serves them all.
-            # Rungs a chain laid before stranding stay claimed, which is
-            # fine -- a repaired attempt starts from clean placeholders.
-            stuck.append(shortfall)
-    return stuck
-
-
-def _check(label: str, distance: int, width: int) -> None:
-    """Refuse a jump the gadget cannot spell, naming which and by how much."""
-    if not 0 <= distance <= _REACH:
-        raise ValueError(f"jump to {label} spans {distance} lines (max {_REACH})")
-    if _hop_width(distance) > width:
-        raise ValueError(
-            f"jump to {label} needs {_hop_width(distance)} lines, has {width}"
-        )
+    for launch, stride, stop in flights:
+        if lines[launch] != _RUNG:
+            raise AssertionError(f"launch {launch} is {lines[launch]!r}")
+        position = launch + stride
+        while lines[position] == _RUNG:
+            position += stride
+            if position >= len(lines):
+                raise AssertionError(f"flight from {launch} overshot the end")
+        if position != stop:
+            raise AssertionError(
+                f"flight from {launch} at stride {stride} dismounts on "
+                f"{lines[position]!r} at {position}, not its stop {stop}"
+            )
 
 
 def interprogck8(truth_table: str) -> str:
@@ -707,70 +332,6 @@ def interprogck8(truth_table: str) -> str:
     Reads ``n`` digits, one per line, and prints ``0`` or ``1``.
     """
     n = _validate_truth_table(truth_table)
-    items = _emit(truth_table, n)
-    # Widths first, so meadows are placed on real coordinates; then widths
-    # again, since the meadows' guards and the jumps that now span a meadow
-    # move labels.  Both settles are fixed points, not searches, and the
-    # routing after them is a single pass against frozen coordinates.
-    _settle(items)
-    meadows = _place(items)
-    _settle(items)
-    # Routing is a single pass against frozen coordinates, but demand is
-    # measured, not derived: every stranded chain names the window whose
-    # reach held no usable rung slot, a meadow is added in each distinct
-    # window, and the whole route is retried from clean placeholders.
-    # Each round adds capacity at certificates, so the loop is a bounded
-    # repair, not a search; a table still short after the budget is
-    # refused with one of its remaining shortfalls.
-    added = 0
-    while True:
-        stuck = _route(items, meadows)
-        if not stuck:
-            break
-        if added > _REPAIRS:
-            # The shortfall alone is a maintainer's note -- it names a line
-            # window and a label, and a caller learns from it neither the
-            # arity nor the ceiling nor that anything is capped.  The three
-            # sibling caps read "caps at 1934, but this table needs 2862";
-            # this one now opens the same way and keeps the routing detail
-            # after the dash, where it is still the thing to debug from.
-            raise GeneratorCapError(
-                f"Interprogck8 is routed and tested to 10 inputs and this "
-                f"table has {n}: after {_REPAIRS} repair rounds its express "
-                f"jumps still have nowhere to land -- {stuck[0]}"
-            ) from stuck[0]
-        for rungs in meadows:
-            for rung in rungs:
-                rung.op = "x"
-        for item in items:
-            if isinstance(item, _Jump):
-                item.to_line = None
-        # Highest window first, so the insertions this round leave the
-        # coordinates of the windows still waiting untouched; windows
-        # overlapping one already served this round share its meadow.
-        served: list[tuple[int, int]] = []
-        for shortfall in sorted(stuck, key=lambda s: -s.low):
-            if any(shortfall.low < hi and lo < shortfall.high for lo, hi in served):
-                continue
-            _add(items, meadows, shortfall.low, shortfall.high)
-            served.append((shortfall.low, shortfall.high))
-            added += 1
-        _settle(items)
-    starts, labels = _index(items)
-    out: list[str] = []
-    for item, start in zip(items, starts, strict=True):
-        if isinstance(item, (_Label, _Safe)):
-            continue
-        if isinstance(item, _Rung):
-            out.append(item.op)
-            continue
-        if isinstance(item, _Jump):
-            goal = item.to_line if item.to_line is not None else labels[item.label]
-            distance = goal - (start + item.width)
-            _check(item.label, distance, item.width)
-            patch = [*_set_acc(distance), "DownAccLines"]
-            # Pad ahead of the hop so its jump stays at the slot's end.
-            out.extend(["x"] * (item.width - len(patch)) + patch)
-        else:
-            out.append(item)
-    return "\n".join(out)
+    lines, flights = _assemble(truth_table, n)
+    _validate(lines, flights)
+    return "\n".join(lines)
