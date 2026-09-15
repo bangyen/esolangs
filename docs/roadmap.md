@@ -46,7 +46,11 @@ The candidate list is empty.
   That reason now assumes its decision tree rather than forcing it: the
   pointer is not the only state crossing a read, because the function slot,
   the call stack and `z`-rewritten text each survive one
-  (`notes/ick8_slot_probe.py` executes all three).  An n=8 -> 9 ratio near 2
+  (`notes/ick8_slot_probe.py` executes all three).  The `z` channel is since
+  measured out: reads never retire, so a run gets at most `n` input-dependent
+  restarts of two lines each, and the record they leave both decays and
+  poisons its own readback (`notes/ick8_z_retire.py`) -- the escape route
+  still open is the slot product.  An n=8 -> 9 ratio near 2
   is still not evidence of O(T), which is why the contract's verdicts read in
   one direction only.
   The live audit is:
