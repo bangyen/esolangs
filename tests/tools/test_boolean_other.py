@@ -881,6 +881,15 @@ class TestContainer:
         assert len(generated) == len(set(generated))
         assert program.count("PRINT:") == 1
 
+    def test_packed_decoder_selects_decimal_digits(self) -> None:
+        """The wide-table path divides one packed decimal digit per row."""
+        table = "011" + "0" * 125
+        program = boolean.container(table)
+        assert "A=110:" in program
+        for combo in (0, 1, 2, 3, 17, 63, 64, 127):
+            bits = [(combo >> (6 - i)) & 1 for i in range(7)]
+            assert run_container(program, [str(b) for b in bits]) == table[combo]
+
     def test_small_tree_uses_one_character_generated_names(self) -> None:
         """Gates and survivors share one compact identifier namespace."""
         declarations = [
