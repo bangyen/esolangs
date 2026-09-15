@@ -198,7 +198,16 @@ The candidate list is empty.
   prime-power instruction roots, not an optimization search; the general
   form of that question is the input-`t` sparse-multiple problem the
   literature leaves open and suspects NP-complete
-  (`notes/poly_open_literature.py` carries the case-match).  Shipping the
+  (`notes/poly_open_literature.py` carries the case-match).  The operand
+  half of that escape is now measured directly: coordinate-descent over
+  every complex operand -- positive, negative-only (the uncovered
+  90..135-degree sector), and mixed, with and without forced real
+  factors, m <= 16 (`notes/poly_lhp_search.py`) -- bottoms out at the
+  pure-imaginary build in every class, negative operands buying under
+  4% with `mass/m^2` rising throughout, so deep-LHP *operands* alone do
+  not bend the growth and what remains is the left-half-plane
+  *multiple*.  Bounded like every search here: b = 1, operand range
+  twice the prime, greedy descent.  Shipping the
   factored form instead is not
   available: the parser reads only summed monomials and misreads a product
   silently (`notes/poly_factored_probe.py`).
