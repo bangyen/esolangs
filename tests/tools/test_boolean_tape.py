@@ -473,6 +473,24 @@ class TestSixFive:
 # 2.3s over 84 tests: runs the generated program.
 @pytest.mark.medium
 class TestStreetcode:
+    def test_linear_h_tree_executes_wide_rows(self) -> None:
+        """The alternating-axis layout reaches both sides of every level."""
+        n = 6
+        table = "".join(str(index.bit_count() & 1) for index in range(2**n))
+        program = boolean.streetcode(table)
+        for combo in (0, 1, 2, 17, 31, 32, 47, 62, 63):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            assert run_streetcode(program, [str(bit) for bit in bits]) == table[combo]
+
+    def test_h_tree_rectangle_is_linear(self) -> None:
+        """Alternating axes bound the rendered rectangle, not just live roads."""
+        for n in range(6, 11):
+            table = "".join(str(index.bit_count() & 1) for index in range(2**n))
+            program = boolean.streetcode(table)
+            rows = program.splitlines()
+            assert len(rows) * max(map(len, rows)) <= 1_700 * 2**n
+            assert len(program) <= 1_100 * 2**n
+
     def test_compact_layout_compares_both_rotations(self) -> None:
         """Rotation strips the dense tree's leading triangular padding."""
         from esolangs.tools.streetcode import _streetcode_rotate
