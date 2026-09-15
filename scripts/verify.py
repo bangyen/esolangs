@@ -225,7 +225,7 @@ STEPS = [
     # Twelve named lemmas behind the relevant generator tests, each pinning
     # one finite fact the total-over-every-arity proof rests on.  0.8s, so
     # it is a gate rather than the by-hand check the A Painter Ant proof
-    # has to be (`just apa-proof`, 5m40s).
+    # has to be (`just apa-proof`, 1m20s).
     (
         "arrowqueue lemmas",
         [*PY, "tests/tools/arrowqueue_lemmas.py"],

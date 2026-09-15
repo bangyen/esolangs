@@ -59,7 +59,10 @@ The retired A Painter Ant tree was Theta(T log T): on parity every subtree was
 live, and each depth traversed Theta(T) weighted edges.  Its lookup strip is
 linear: `ePEP` both establishes a white corridor on pass one and traverses it on
 later passes, while the adjacent answer row costs at most three characters per
-one entry.
+one entry.  The tree that remains below the crossover shares every common
+prefix in one depth-first walk and prunes all-zero subtrees, which cuts a dense
+n=9 head from 517348 to 19684 characters.  Input reordering leaves only 3.3% on
+it at n=3 (96 of 256 tables), so it stays unwired.
 
 123's retired wide construction used `_phase_a` with tight marks `(i+1)*2T+1`
 and emits Theta(mark) movement four times for every input; their sum is Theta(T

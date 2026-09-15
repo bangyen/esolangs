@@ -17,7 +17,7 @@ help:
     @echo "  test-anchor  - ztoalc anchor table check (~3.2s)"
     @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
     @echo "  mutate-gen MOD - mutation-test one generator (e.g. just mutate-gen boolean/streetcode)"
-    @echo "  apa-proof    - re-check the A Painter Ant uniform-in-n proof (5m40s)"
+    @echo "  apa-proof    - re-check the A Painter Ant uniform-in-n proof (1m20s)"
     @echo "  install-dev  - Install development dependencies"
     @echo "  clean        - Clean up generated files"
     @echo ""
@@ -126,9 +126,10 @@ mutate language *args:
 mutate-gen module *args:
     {{PYTHON}} scripts/mutate.py generator {{module}} {{args}}
 
-# re-check the A Painter Ant uniform-in-n proof (5m40s, single-threaded)
-# Not in `just test` or CI: it is longer than the whole suite, and what it
-# guards only APA's head, body, or routing. Run it when those move.
+# Not in `just test` or CI: what it guards moves only when APA's head, body,
+# or routing does, so run it then. L2's foreign-leaf sweep at n=9 is 57s of
+# the cost; the table enumeration is cheap.
+# re-check the A Painter Ant uniform-in-n proof (1m20s, single-threaded)
 apa-proof:
     {{PYTHON}} tests/tools/apa_uniform_proof_check.py
 

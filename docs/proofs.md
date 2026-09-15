@@ -76,7 +76,7 @@ after ignoring the performance/resource ceiling as specified above.
 
 | Generator | Proof | Qualification |
 | --- | --- | --- |
-| A Painter Ant | parameterized lookup | a linear answer strip is traversed by the painted corridor |
+| A Painter Ant | parameterized lookup | the embedded bits advance the ant along a self-painting corridor by their own weights, leaving it over the indexed answer cell |
 | AddSubJump | finite lookup | packed `n`-bit cells selected by a self-modified operand |
 | Algebraic Programming Language | minterms | base-26 names are unbounded |
 | Alight | tree | folded post-order layout |
