@@ -421,6 +421,21 @@ right-half-plane floor, measured not proved).  The LLL sweep below never
 searched that region for cancellation, so the sparse-multiple question is
 now exactly a left-half-plane question.
 
+The one routine route to an *unrestricted* bound -- forcing compensation
+partners from the semantics -- is closed, negatively
+(`notes/poly_opcode_census.py`, executed).  The op selector is the
+imaginary exponent, so additive negatives are rewritable (`[-c, 1]` is
+`[c, 2]` -- the builder's opcode swap), but `[-c, 3]` (reg *= -c) matches
+no single nonnegative-operand register map, so sector arithmetic is
+semantically real; and a bracket that never fires guards dead code, so a
+program can carry arbitrarily many negative-operand instructions against
+the routing floor's `Omega(T/log T)` linears -- the padded printer runs
+identically with more negatives than linears.  No pairing rule can
+therefore be forced language-level, and the positivity method's sector
+boundary is final: the unrestricted statement stands or falls with the
+open sparse-multiple problem, pinned to programs whose arithmetic mass
+sits in the open 90..135-degree sector with too few compensators.
+
 The generic corner of that family is searched, and empty
 (`notes/poly_lll_multiple.py`).  The integer multiples of `P` with
 cofactor degree at most `k` are exactly the lattice spanned by the shifts
