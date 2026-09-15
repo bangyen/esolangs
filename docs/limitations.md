@@ -69,7 +69,11 @@ rather than simulating T width-T tapes makes source and construction O(T).
 COD's leaf cascade is Theta(T^2): each of T leaf rows contains a prefix of
 length `3(k+1)` and a gate tail of length `2(T-k-1)`, so every row is
 Theta(T) and rotation cannot change the number of cells.  A non-cascade
-decoder is required for linear output.
+decoder is required for linear output.  At one node, `<` and `(<` form
+constant-size complementary tests and `(`/`)` restore the surviving cod to
+zero.  That would make an ordinary H-tree linear only by repeating `{Xi}` at
+every node of level `i`, contrary to the once-only parameterized-input
+contract; it is not yet a replacement decoder.
 Minifuck's retired sculpt was Theta(T^2) in the worst case: an adversarial
 table fired every triangular rewind.  The replacement preloads a control
 strip and uses `[x<[x<[x<[x`, which advances one cell while restoring an
