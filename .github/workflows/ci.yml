@@ -57,7 +57,7 @@ jobs:
     # Twelve finite ArrowQueue lemmas, whose proof
     # is total over every arity -- so nothing here enumerates tables to
     # establish the claim.  0.8s, which is why this one gates while the A
-    # Painter Ant equivalent (5m40s) stays a by-hand `just apa-proof`.
+    # Painter Ant equivalent (1m20s) stays a by-hand `just apa-proof`.
     - name: Check the ArrowQueue lemmas
       run: uv run python tests/tools/arrowqueue_lemmas.py
 

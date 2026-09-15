@@ -169,14 +169,6 @@ The candidate list is empty.
   [dnf-parities]: https://eccc.weizmann.ac.il/report/2014/099/
   [sparse-multiples]: https://arxiv.org/abs/1009.3214
 
-- **A Painter Ant shared-head proof.**  While auditing A Painter Ant above, the
-  depth-first head cuts dense n=9
-  from 517348 to 19684 characters and executes every n=3 program plus sampled
-  programs through n=8, but invalidates the uniform proof check's independent
-  per-leaf rest-point and motif decomposition.  Rewrite those lemmas around
-  shared prefix entry/exit states, then restore `just apa-proof` to green and
-  rescreen input order now that the construction is tree-shaped.
-
 - **ArrowQueue reusable drain.**  Ship the verified deep-fold drain only if
   a proof makes folding meaningfully testable at `n >= 5`; current coverage
   does not reach its crossover.
