@@ -30,12 +30,16 @@ The candidate list is empty.
   (57601 -> 203089), and Factor (24113 -> 50090); dense tables also expose
   Polynomial.
 
-  The construction audit also leaves AddSubJump, ArrowQueue, Back,
-  Bitdeque, BrainIf, Clockwise, Container, Dig, Flowchart, Forþ,
-  Inject, Jaune, LaserFuck, RAM0, S*bleq,
-  SLOW ACV MAMMALIAN, Streetcode, and Vandevelo.  Their quiet factors
-  are minterms, rectangular tree layouts, widening labels or addresses, and
-  per-depth padding; an n=8 -> 9 ratio near 2 is not evidence of O(T).
+  That audit is now measured rather than pending: `tests/proofs/deep/linearity.py`
+  tracks per-entry cost to n=12 across all 65 generators, so the quiet factors
+  it was looking for -- minterms, rectangular tree layouts, widening labels or
+  addresses, per-depth padding -- are each either absent or showing.  It caught
+  one: Forþ spelled every tree node's scope index as a base-15 literal, an
+  `O(n)` label on each of `2**(n+1)` nodes.  The construction now labels each
+  definition with the step from the previous one and passes the callee its own
+  index, which is constant per node; per-entry cost went from 14.2 climbing to
+  33.1 to a flat 14.4.  An n=8 -> 9 ratio near 2 is still not evidence of O(T),
+  which is why the contract's verdicts read in one direction only.
   The live audit is:
 
   | Language | Generation time | Output size |

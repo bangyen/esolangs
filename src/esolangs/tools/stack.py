@@ -202,22 +202,40 @@ def forth(truth_table: str) -> str:
     program prints ``'0'`` or ``'1'``.
 
     Forþ reads a line with ``,`` and has no clean pop, so the generator
-    builds a decision tree out of functions:     ``{ scope }`` stores a scope in
-    the function table, and an internal node dispatches with ``base + ;``,
-    which pops the top bit and calls ``table[base + bit]``.  Each input is
-    read and normalized to 0/1 with ``,68*-``, the root dispatches with
-    ``1+;``, and a leaf pushes ``48 + result`` which the final ``.`` prints.
-    The definition indices are left on the stack below the result; the
-    ``{ }`` construct reads (but does not pop) the top index, and ``;`` pops
-    it, so the stale indices never get in the way of the dispatch arithmetic.
+    builds a decision tree out of functions: ``{ scope }`` stores a scope in
+    the function table and ``;`` calls the one its key names.  Each input is
+    read and normalized to 0/1 with ``,68*-``, and a leaf pushes
+    ``48 + result`` which the final ``.`` prints.
+
+    **Every number the tree names is a step, not an address.**  Nodes take
+    heap indices -- the children of ``m`` are ``2m + 1`` and ``2m + 2`` --
+    and spelling those out is what the construction avoids, because there
+    are ``2**(n + 1)`` of them and a base-15 literal for one costs
+    ``O(n)``.  Two properties of the language make the index implicit
+    instead:
+
+    - ``{`` reads its key without popping, so one pushed number labels a
+      definition and is still there for the next.  The definitions are
+      emitted in increasing index order and each is introduced by the step
+      to it -- ``1+`` between adjacent nodes -- so the whole table of
+      scopes is written with a running counter.
+    - ``;`` pops, so a node that dups its key before calling leaves the
+      callee its *own* index on the stack, under nothing but the bits still
+      unread.  An internal node is then the fixed string ``2*1++:;``: it
+      doubles its index for the child base, adds the bit below it (which is
+      the dispatch, and consumes the bit), dups, and calls.
+
+    The result is that no node's cost depends on where it sits, and the
+    program is linear in the table.  See :func:`_forth_ordered` for the
+    stack discipline that keeps it balanced.
 
     A subtree whose rows all agree answers in place -- the node pushes the
     result byte instead of dispatching, and its whole subtree goes
     unemitted.  That costs nothing to arrange because Forþ keys its scope
     table by the number pushed before ``{`` and looks it up with a default,
-    so a gap in the numbering is a scope that never exists; no index has to
-    move.  The reads sit outside the tree, so a folded program consumes its
-    input exactly as an unfolded one does.
+    so a gap in the numbering is a scope that never exists; the step to the
+    next emitted node simply spans it.  The reads sit outside the tree, so
+    a folded program consumes its input exactly as an unfolded one does.
 
     ``;`` pops the stack, so the tree naturally tests the last input first.
     The generator keeps that order instead of enumerating reachable stack
@@ -234,6 +252,14 @@ def forth(truth_table: str) -> str:
 
 # The read that pushes one normalized input bit.
 _FORTH_READ = ",68*-"
+
+
+#: One internal node, whole.  Entering it the stack is ``.. bit, index``:
+#: ``2*1+`` turns the index into the base of its two children, ``+`` adds the
+#: bit (selecting one of them, and consuming the bit), ``:`` keeps a copy so
+#: the callee can do the same, and ``;`` calls.  Constant at every depth,
+#: which is the whole reason the construction is linear.
+_FORTH_DISPATCH = "2*1++:;"
 
 
 # How far a freshly-read bit can sink, and the ops that put it there.  ``v``
@@ -271,144 +297,6 @@ def _forth_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     return stack_programs(n, _FORTH_SINKS, _FORTH_READ)
 
 
-#: Per internal depth, root children first: (subtree rows, stride mask over
-#: the packed table, the saving shared by the whole level or ``None``, the
-#: per-node savings).  A level's savings share one value whenever no heap
-#: index in it or below it crosses a base-15 digit boundary.
-_ForthLevels = tuple[tuple[int, int, int | None, tuple[int, ...]], ...]
-
-
-def _forth_const_len(value: int) -> int:
-    """``len(_forth_const(value))`` in closed form: 4 per digit, minus 3."""
-    if value == 0:
-        return 1
-    digits = 0
-    while value:
-        digits += 1
-        value //= 15
-    return 4 * digits - 3
-
-
-@cache
-def _forth_metrics(n: int) -> tuple[int, int, _ForthLevels, tuple[int, ...]]:
-    """Constants :func:`_forth_order_length` needs at arity ``n``.
-
-    Returns ``(all_mask, full, levels, axis)``: the packed table's full
-    mask, the no-fold program length short of the reads and root dispatch,
-    the per-depth fold accounting (:data:`_ForthLevels`), and per row-index
-    bit the mask of rows with that bit set (for the delta swaps).
-    """
-    size = 2**n
-    last_internal = size - 2
-    top = 2 ** (n + 1) - 1  # heap indices run 1 .. top - 1
-    length = [_forth_const_len(m) for m in range(2 * top)]
-    # No-fold cost of the subtree at heap index ``m``: a leaf emits
-    # ``m { const }`` (the body is 5 characters for 48 and 49 alike, so no
-    # cost depends on the table), an internal node ``m { 2m+1 +; }`` plus
-    # both children.
-    subtree = [0] * top
-    for m in range(top - 1, 0, -1):
-        if m > last_internal:
-            subtree[m] = length[m] + 7
-        else:
-            subtree[m] = (
-                length[m]
-                + length[2 * m + 1]
-                + 4
-                + subtree[2 * m + 1]
-                + subtree[2 * m + 2]
-            )
-    levels = []
-    for d in range(1, n):
-        rows = 2 ** (n - d)
-        stride = sum(1 << (j * rows) for j in range(2**d))
-        base = 2**d - 1
-        # Folding node ``m`` trades its whole subtree for one answer node.
-        saves = tuple(subtree[base + j] - (length[base + j] + 7) for j in range(2**d))
-        scalar = saves[0] if all(v == saves[0] for v in saves) else None
-        levels.append((rows, stride, scalar, saves))
-    axis = tuple(sum(1 << r for r in range(size) if (r >> p) & 1) for p in range(n))
-    return (1 << size) - 1, subtree[1] + subtree[2], tuple(levels), axis
-
-
-def _forth_permuted_bits(bits: int, perm: tuple[int, ...], n: int) -> int:
-    """:func:`permute_truth_table` on a table packed as bit ``r`` = row ``r``.
-
-    Slot ``s`` of the permuted table varies with input ``perm[s]``, which on
-    row-index bits moves axis ``p`` to ``n - 1 - perm[n - 1 - p]``; each
-    transposition of that permutation's cycles is one delta swap on the
-    packed table.  O(n) big-int ops per order against ``read_at``'s
-    ``O(n * 2**n)`` Python loop, a fifth of the old runtime.
-    """
-    axis = _forth_metrics(n)[3]
-    dest = [n - 1 - perm[n - 1 - p] for p in range(n)]
-    seen = [False] * n
-    for start in range(n):
-        if seen[start] or dest[start] == start:
-            seen[start] = True
-            continue
-        cycle = []
-        p = start
-        while not seen[p]:
-            seen[p] = True
-            cycle.append(p)
-            p = dest[p]
-        for i in range(len(cycle) - 1):
-            a, b = cycle[i], cycle[i + 1]
-            if a > b:
-                a, b = b, a
-            delta = (1 << b) - (1 << a)
-            low = axis[a] & ~axis[b]
-            moved = ((bits >> delta) ^ bits) & low
-            bits ^= moved ^ (moved << delta)
-    return bits
-
-
-def _forth_order_length(bits: int, n: int, reads_len: int) -> int:
-    """Length of ``_forth_ordered`` on the packed permuted table, unbuilt.
-
-    The no-fold total plus the reads and root dispatch, minus what each
-    *maximal* constant subtree saves.  Constancy is monotone -- a constant
-    node's children are constant -- so maximal is exactly "constant with a
-    non-constant parent", and the depth-1 nodes have no parent to check.
-    Checked equal to ``len(_forth_ordered(...))`` for every arrangement
-    over all 256 tables at n == 3 and structured/random tables through
-    n == 6.
-    """
-    all_mask, full, levels, _ = _forth_metrics(n)
-    # All-ones/all-zeros run ladders, doubling the run once per level; a
-    # subtree is constant when either survives.  An empty level ends the
-    # climb: a constant run of ``2 * rows`` needs constant runs of ``rows``.
-    const_at: dict[int, int] = {}
-    ones = bits
-    zeros = bits ^ all_mask
-    for rows, stride, _, _ in reversed(levels):
-        half = rows >> 1
-        ones &= ones >> half
-        zeros &= zeros >> half
-        const = (ones | zeros) & stride
-        const_at[rows] = const
-        if not const:
-            break
-    save = 0
-    for depth, (rows, _stride, scalar, saves) in enumerate(levels, start=1):
-        const = const_at.get(rows, 0)
-        if const and depth > 1:
-            parent = const_at.get(2 * rows, 0)
-            const &= ~(parent | (parent << rows))
-        if not const:
-            continue
-        if scalar is not None:
-            save += scalar * const.bit_count()
-            continue
-        shift = n - depth
-        while const:
-            low = const & -const
-            save += saves[(low.bit_length() - 1) >> shift]
-            const ^= low
-    return full + reads_len + 4 - save
-
-
 def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one input order's Forþ program; see :func:`forth`.
 
@@ -420,6 +308,15 @@ def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     Returns ``""`` when the ops cannot reach that arrangement, which is a
     signal to try another order rather than a failure.
+
+    **The stack is balanced by construction, and has to be.**  An
+    empty-stack pop is fatal in Forþ -- it halts the program rather than
+    aborting a scope -- and the definition counter is left sitting under
+    the bits, so the tree must never pop past them.  It does not: each
+    dispatch consumes exactly one bit and one index and produces one index,
+    so a walk to depth ``k`` has consumed ``k`` bits and holds one index,
+    and the leaf pushes the answer byte above it.  The counter and the
+    leaf's index are the only residue, both below the byte ``.`` prints.
     """
     n = _validate_truth_table(truth_table)
     wanted = tuple(reversed(perm))
@@ -446,6 +343,7 @@ def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     prog = []
     folded: set[int] = set()
+    previous = 0  # the index the accumulator holds; 0 before anything is pushed
     for m in range(1, 2 ** (n + 1) - 1):
         if m in folded:
             # An ancestor already answered for this subtree, so its scope is
@@ -472,12 +370,17 @@ def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
                     if child <= last_internal:
                         below += [2 * child + 1, 2 * child + 2]
             else:  # internal node: dispatch on the top bit
-                body = _forth_const(2 * m + 1) + "+;"
+                body = _FORTH_DISPATCH
         else:  # leaf: push the result byte
             body = _forth_const(_ASCII_ZERO + int(truth_table[m - last_internal - 1]))
-        prog.append(_forth_const(m) + "{" + body + "}")
+        # The label is a step from the index already on the stack, never the
+        # index itself: ``{`` reads its key without popping, so the pushed
+        # number survives the definition and the next one is ``+`` away.
+        step = _forth_const(m - previous) + ("+" if previous else "")
+        previous = m
+        prog.append(step + "{" + body + "}")
     prog.append(reads)  # the reads, with this order's rotations woven in
-    prog.append("1+;.")  # root dispatch, then print the result
+    prog.append("1+:;.")  # root dispatch, then print the result
     return "".join(prog)
 
 
