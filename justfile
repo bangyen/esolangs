@@ -134,6 +134,7 @@ mutate-gen module *args:
 # run every executable proof: the ledger obligations and both deep proofs
 proofs:
     {{PYTHON}} -m pytest tests/proofs -q
+    {{PYTHON}} tests/proofs/deep/all_generators.py
     {{PYTHON}} tests/proofs/deep/arrowqueue.py
     {{PYTHON}} tests/proofs/deep/container.py
     {{PYTHON}} tests/proofs/deep/bio.py
