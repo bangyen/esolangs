@@ -59,6 +59,7 @@ BANDS = ("verify", "ci", "by-hand")
 #: reason a band exists, so they are checked rather than merely documented.
 BUDGET = {"verify": 5.0, "ci": 20.0, "by-hand": 180.0}
 
+
 #: A leading underscore means a helper, not a proof -- ``_lemmas`` today.  The
 #: rule is a convention rather than a list so that adding a second helper does
 #: not fail discovery with a confusing "declares no BAND"; the flip side, a

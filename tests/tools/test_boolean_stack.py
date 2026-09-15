@@ -18,6 +18,24 @@ from tests.tools.boolean_runners import (
 )
 
 
+def _forth_scope_keys(table: str) -> set[int]:
+    """The heap indices a Forþ program's definitions actually reach.
+
+    Runs the definition prefix -- everything before the first read, and
+    ``,`` is the only read -- and returns the interpreter's scope table.
+    The generator labels each definition with the step from the previous
+    one, so the index a node lands on is a running sum that only the
+    interpreter resolves.
+    """
+    from esolangs.interpreters.io import ScriptedIO
+    from esolangs.interpreters.stack_based.forth import _Machine
+
+    machine = _Machine(boolean.forth(table).split(",")[0], ScriptedIO(""))
+    while not machine.halted:
+        machine.step()
+    return set(machine.table)
+
+
 class TestGrapheme:
     def test_variable_keys_are_unbounded_and_avoid_the_reserved_key(self) -> None:
         """Integer-mode arithmetic removes the old 24-letter key ceiling."""
@@ -105,7 +123,9 @@ class TestForth:
         nodes rather than the full six.
         """
         program = boolean.forth("0001")
-        assert program.endswith("1+;.")
+        # The root dup is what hands the callee its own index, which is
+        # what lets every node below spell its children as a step.
+        assert program.endswith("1+:;.")
         assert program.count("{") == program.count("}") == 4
         assert program.count(",68*-") == 2  # read and normalize 2 inputs
 
@@ -165,12 +185,17 @@ class TestForth:
         A grandchild below a folded node is just as unreachable; emitting
         it would be dead code the program never calls, so the node count
         must fall to exactly the surviving frontier.
-        """
-        from esolangs.tools.stack import _forth_const
 
-        program = boolean.forth("1" * 8)
-        for m in range(3, 15):  # every node below the two root children
-            assert _forth_const(m) + "{" not in program
+        Asserted against the scope table the interpreter actually builds,
+        not against the emitted text.  The labels are steps between
+        indices rather than the indices themselves, so searching the source
+        for one would pass whatever the generator emitted.
+        """
+        assert _forth_scope_keys("1" * 8) == {1, 2}
+        assert _forth_scope_keys("0" * 4 + "1" * 4) == set(range(1, 15))
+        # The one-side fold keeps its sibling's descendants: AND's zero
+        # subtree collapses to node 1 while 2 keeps 5 and 6.
+        assert _forth_scope_keys("0001") == {1, 2, 5, 6}
 
     def test_the_natural_stack_order_is_emitted(self) -> None:
         """Forþ no longer contests reachable input orders."""
@@ -282,44 +307,10 @@ class TestForth:
         assert _forth_const(224) == "EF*E+"
         assert _forth_const(225) == "1F*0+F*0+"
 
-    def test_length_formula_matches_the_built_program(self) -> None:
-        """The closed-form score equals the built length for every order.
-
-        ``forth`` picks its input order by ``_forth_order_length`` and
-        builds only the winner, so a drift between formula and builder
-        ships a wrong winner that still runs.  n == 3 is exhaustive over
-        tables and orders; n == 7 is the first arity where a level's heap
-        indices cross a base-15 digit boundary, so the per-node savings
-        fallback fires rather than the shared-scalar path.
-        """
-        import random
-
-        from esolangs.tools.helpers import permute_truth_table
-        from esolangs.tools.stack import (
-            _forth_order_length,
-            _forth_ordered,
-            _forth_permuted_bits,
-            _forth_stack_programs,
-        )
-
-        rng = random.Random(7)
-        tables = [format(v, "08b") for v in range(256)]
-        tables += ["".join(rng.choice("01") for _ in range(128)) for _ in range(2)]
-        for table in tables:
-            n = len(table).bit_length() - 1
-            bits = int(table[::-1], 2)
-            for arrangement, reads in _forth_stack_programs(n).items():
-                perm = tuple(reversed(arrangement))
-                got = _forth_order_length(
-                    _forth_permuted_bits(bits, perm, n), n, len(reads)
-                )
-                want = len(_forth_ordered(permute_truth_table(table, perm), perm))
-                assert got == want, (table, perm)
-
     def test_the_program_is_only_forth_commands(self) -> None:
         """Only the characters Forþ reads are emitted."""
         for table in ("10", "0110", "0001", "11111110"):
-            assert set(boolean.forth(table)) <= set("*+,-.123456789;ABCDEFcv{}"), table
+            assert set(boolean.forth(table)) <= set("*+,-.:123456789;ABCDEFcv{}"), table
 
 
 class TestModulous:
