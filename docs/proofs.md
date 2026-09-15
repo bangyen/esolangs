@@ -186,14 +186,6 @@ The remaining `cap` rows do have a uniform lift argument.
   assigns each command run the next prime in one of the nonzero residue
   classes 1 through 8 modulo 11.  Dirichlet guarantees such a prime above
   every bound, and an arbitrary-precision integer holds their finite product.
-- Grapheme's minterm construction needs one variable per essential input, but
-  variable names are arbitrary integers, not just the 24 collision-free
-  one-letter literals the old emitter used.  `FAF` pushes 10; repeating
-  it and combining the copies with `A` constructs `10(i+1)` for every finite
-  `i`.  Reserving a disjoint key for the normalization constant therefore
-  extends the same finite minterm proof to every arity.  Decimal digit 6 is
-  split into `1 + 5`, since `F` delimits integer mode and cannot occur inside
-  its literal.
 - NoComment's wide construction needs a finite number of cells for every
   finite table and already accepts the tape size as a parameter.  The language
   specifies static memory but no fixed size; choosing that finite size removes
@@ -216,6 +208,15 @@ The remaining `cap` rows do have a uniform lift argument.
   in visit order before line 1 halts.  The emitted source may have `2**k`
   lines, but existence is unconditional and uses no Collatz conjecture.  The
   committed anchors merely find much smaller programs under `_MAX_LINES`.
+
+Grapheme's lift is already applied, so it is a `tree` row rather than a
+`cap` row.  Its folded tree needs one variable per essential input, but
+variable names are arbitrary integers, not just the 24 collision-free
+one-letter literals the old emitter used.  `FAF` pushes 10; repeating it and
+combining the copies with `A` constructs `10(i+1)` for every finite `i`.
+Reserving a disjoint key for the normalization constant therefore extends the
+same finite tree proof to every arity.  Decimal digit 6 is split into `1 + 5`,
+since `F` delimits integer mode and cannot occur inside its literal.
 
 The shipped 6-5 function still refuses past its optimized construction.  Its
 classification is theoretical in this section's stated sense: removing the
