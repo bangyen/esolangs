@@ -228,9 +228,10 @@ direct family for these prime-power roots.
 
 [sparse-multiples]: https://arxiv.org/abs/1009.3214
 
-Interprogck8 is super-linear and the scaling contract exempts it only by
-accident: its `proofs.md` row is an `exception` about the repair budget's
-totality, which says nothing about size.  Measured, it is real rather than an
+Interprogck8 is super-linear and now carries a roadmap audit row saying so.  It
+had been exempt by accident: its `proofs.md` row is an `exception` about the
+repair budget's totality, which says nothing about size, and nothing else named
+it at all.  Measured, it is real rather than an
 artefact of the two-step statistic -- parity per-entry cost climbs
 monotonically from 328 to 526 characters over n=3..10, and `DownAccLines` per
 entry rises by a near-constant +0.7 an arity, which is the signature of
