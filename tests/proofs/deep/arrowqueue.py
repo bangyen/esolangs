@@ -40,6 +40,11 @@ from esolangs.tools.parameterized import (
 )
 from esolangs.vm import run_until_halt_or_cycle
 
+#: Cost band; see ``__main__.py``. Total over every arity, so nothing here enumerates
+#: tables to establish the claim -- the best gating ratio in the directory.
+BAND = "verify"
+COST = 2.0
+
 #: The four loop components the ring's corners must pop, in queue order.
 RDLU = (0, 1, 2, 3)
 
@@ -423,8 +428,14 @@ def check_deep_composition() -> None:
     )
 
 
-def main() -> int:
-    """Run the lemma checks and return a process exit status."""
+def main(argv: list[str] | None = None) -> int:
+    """Run the lemma checks and return a process exit status.
+
+    ``argv`` is explicit so the band runner can call this without its own
+    arguments leaking in -- ``parse_args(None)`` reads ``sys.argv``, which
+    under ``python -m tests.proofs.deep verify`` made argparse reject the band
+    name and exit 2 before a single lemma ran.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--deep",
@@ -436,7 +447,7 @@ def main() -> int:
         action="store_true",
         help="add the exhaustive 65536-table tree sweep (~3 minutes)",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     # Seeded so the sampled arities and random tables are reproducible.
     random.seed(20240904)

@@ -85,6 +85,11 @@ from tests.proofs._ledger import load as load_ledger
 from tests.proofs._roadmap import load as load_audit
 from tests.tools.test_boolean_contract import _dense, _parity
 
+#: Cost band; see ``__main__.py``. Builds all 65 at rising arity, and currently exits
+#: 1 on the Forþ finding, so it cannot gate until that is triaged.
+BAND = "by-hand"
+COST = 30.0
+
 _SHAPES = (("dense", _dense), ("parity", _parity))
 
 #: Most per-added-input growth a settled generator may show.  See the module

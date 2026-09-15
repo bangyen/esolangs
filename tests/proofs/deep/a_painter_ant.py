@@ -61,6 +61,11 @@ from esolangs.tools.a_painter_ant import (
 )
 from tests.tools.a_painter_ant_trace import run
 
+#: Cost band; see ``__main__.py``. L2's foreign-leaf sweep at n=9 is 57s of the cost.
+#: `just apa-proof` runs it alone when the head, body or routing moves.
+BAND = "by-hand"
+COST = 80.0
+
 _D = {"n": (0, -1), "s": (0, 1), "e": (1, 0), "w": (-1, 0)}
 
 #: One unit of the shared head: (kind, horizontal, bit, non-space length).

@@ -34,6 +34,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from esolangs.tools import bio
 
+#: Cost band; see ``__main__.py``. Telescoping-lookup lemmas, cheap enough that
+#: scoping them is the only reason they are ever skipped.
+BAND = "verify"
+COST = 0.2
+
 #: The adjustment emitted on each kind of edge, per the construction: a rise
 #: raises ``y``, a fall lowers it, a flat edge emits nothing at all.
 _RISE, _FALL = "0oy;", "1oy;"

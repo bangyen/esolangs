@@ -32,6 +32,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from esolangs.tools.other import _container_packed
 
+#: Cost band; see ``__main__.py``. L1 enumerates every row of twelve arities.
+#: Weakening a proof to fit a gate is the wrong trade.
+BAND = "by-hand"
+COST = 16.0
+
 
 def packed_literal(truth_table: str) -> str:
     """The decimal literal the generator emits, by its own rule."""
