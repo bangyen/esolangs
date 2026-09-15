@@ -271,6 +271,26 @@ The no-cancellation premise is thus a property of the shipped builder, not of
 the language, and mixed-sign operands are the free parameter it does not
 cover.
 
+That free parameter is now measured, and it is close to empty
+(`notes/poly_sign_growth.py`).  Over prefixes of a real dense build (the
+k=0 machine on the contract's dense n=6 fixture, 187 instructions), total
+rendered digits are minimised over the complex operands' sign patterns --
+exhaustively to 12 signs, first-improvement hill-climbing from random
+restarts above, the two compared wherever both run (one exhaustive minimum
+was missed, by 0.4%).  The best pattern saves at most 5.2% anywhere
+measured, the saving *shrinks* as `m` grows -- ratio 0.96 at m=4 to 0.998
+at m=40 on the built operands -- and the fitted growth exponent does not
+move: 2.35 all-positive against 2.37 minimised, and 2.12 against 2.14 with
+the built operands replaced by large free offsets (`|a| ~ 2^10..2^12`),
+the regime where the operand-carrying terms own the digit mass and
+cancellation has the most to bite.  One exact fact says why the family is
+this barren: a factor's squared modulus at `x = iy` is
+`(q + a^2 - y^2)^2 + 4a^2y^2`, a function of `a^2` alone, and moduli
+multiply -- so `|F(iy)|` is *identical* under every sign pattern on the
+whole imaginary axis (verified in exact integer arithmetic), and whatever
+a sign choice cancels must be invisible there.  A census over two operand
+regimes and a local search, not a proof.
+
 The other escape is closed.  Shipping the *product* form -- `m` factors at
 `O(log)` characters each, no expansion -- is not a legal encoding: the parser
 strips `*` and reads only summed `c*x^d` monomials, keeping the last
@@ -280,8 +300,15 @@ is the expanded coefficient digits and nothing else, which is what the bound
 above prices.  Polynomial remains open alongside the other construction
 walls.
 
-Extra roots that do not match an instruction code may multiply the mandatory
-root product without changing execution, but the escape is narrow.  No
+Extra roots that do not match an instruction code multiply the mandatory
+root product without changing execution -- executed, not assumed
+(`notes/poly_multiple_runs.py`): `P*(x^2+x+1)` and `P*(x-6)` both decode
+to the base program and run identically, on the three-instruction `'A'`
+printer and on `polynomial("0110")` over all four rows, while the control
+`P*(x-2)` -- whose root is the instruction code `2**1` -- decodes to a
+different program and dies on an unmatched bracket.  So a multiple is
+legal exactly when every cofactor root dodges the instruction encodings,
+and the escape is narrow.  No
 two-term multiple exists at all: `x^N - D` vanishing on `a + p**b i` forces
 `(z/conj(z))**N = 1`, a rational angle, and Niven's theorem then pins `a` to
 0 or `p**b`; even then two factors need `2*p1**(2*b1) = 2*p2**(2*b2)`, which
@@ -295,6 +322,19 @@ O(T)-digit family for these prime-power roots -- and note the `t = Omega(m)`
 above is a dimension count, a necessary condition on a generic solution
 rather than an impossibility proof, so it bounds no specific family and does
 not by itself forbid a sparser one.
+
+The generic corner of that family is searched, and empty
+(`notes/poly_lll_multiple.py`).  The integer multiples of `P` with
+cofactor degree at most `k` are exactly the lattice spanned by the shifts
+`x^i * P`, so one LLL reduction searches every such multiple at once for a
+short member.  On prefixes of the same real dense build (degree to 40)
+with `k` from 1 up to the degree, the reduction returns the trivial shifts
+*unchanged* -- every reduced row is `±x^i * P` -- so at `delta = 0.75`
+nothing in the family renders even one digit shorter than `P` itself.
+Bounded three ways: prefix size, cofactor degree, and the l2 objective LLL
+minimises, which an unbalanced small-digit multiple could evade.  It
+bounds the search rather than closing it, but a sparse multiple, if one
+exists, is not hiding at small cofactor degree.
 
 The obvious *language-level* lower bound also comes out linear, which is
 worth stating because it says which way this row can close.  Any valid
