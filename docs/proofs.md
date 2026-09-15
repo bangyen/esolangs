@@ -41,10 +41,31 @@ nodes of a full decision tree gives the same induction as `tree`; equal width
 prevents program length from becoming an extra input.  A generator may use a
 smaller arithmetic construction, but the full tree is its coverage witness.
 
+**Parameterized lookup.**  A no-input language embeds each bit once through
+the same equal-width `{Xi}` replacement, and the embedded bits address a finite
+stored table instead of routing a tree.  Index formation is one embedding per
+input and the table has `2**n` entries, so the `finite lookup` argument applies
+unchanged.
+
+**Parameterized construction.**  A language-specific arithmetic or geometric
+construction that embeds each input once and is proved total by its own row's
+qualification rather than by a scheme above.
+
+**Linear lookup.**  A finite lookup whose emitted program is also linear in the
+table length.  Coverage follows from `finite lookup`; the label only records
+the size result.
+
 **Reduction.**  `essential_inputs` projects away ignored inputs.  Solving the
 smaller table and restoring the omitted, equal-width placeholders preserves
 every row.  This is only an optimization unless the cited inner construction
 is itself total.
+
+**Size dispatch.**  Most lookup rows ship two routes: a folded decision tree
+for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
+and the lookup above it.  Each route is total on its own domain and the lookup
+carries the universal claim, so the tree below the crossover is a size
+optimization rather than part of the proof.  A width-constrained build may take
+the tree at any arity.  COD keeps no tree route at all.
 
 ## Generator ledger
 
@@ -55,26 +76,26 @@ after ignoring the performance/resource ceiling as specified above.
 
 | Generator | Proof | Qualification |
 | --- | --- | --- |
-| A Painter Ant | parameterized tree | shared prefixes preserve the finite tree; the independent motif proof awaits entry/exit lemmas |
-| AddSubJump | tree | forward labels are emitted after the finite tree |
+| A Painter Ant | parameterized lookup | a linear answer strip is traversed by the painted corridor |
+| AddSubJump | finite lookup | packed `n`-bit cells selected by a self-modified operand |
 | Algebraic Programming Language | minterms | base-26 names are unbounded |
 | Alight | tree | folded post-order layout |
-| ArrowQueue | parameterized tree | finite queue layout |
+| ArrowQueue | parameterized lookup | marker counts select one of `2**n` constant-size cascade stages |
 | B-tapemark | tree | reflected finite grid; indexed table spans preserve the same leaves without recursive copies |
 | Back | parameterized tree | — |
 | BF-PDA | parameterized tree | — |
 | BFStack | minterms | — |
 | BIO | finite lookup | nested loops telescope from `table[0]` to `table[index]` |
 | bit~ | tree | — |
-| Bitdeque | parameterized tree | — |
+| Bitdeque | parameterized lookup | head/tail discards leave the indexed entry in the deque |
 | brainfuck | tree | `decision_tree_program` |
-| BrainIf | tree | — |
+| BrainIf | finite lookup | a spatial table is addressed by the read row index |
 | Circlefuck | tree | its local shape guard is equivalent to the shared guard |
 | Circuit Diagram | tree | finite planar routing |
 | Clockwise | tree | finite grid layout |
-| COD | parameterized tree | — |
+| COD | parameterized lookup | binary-weight water runs stop the path over one of `2**n` baked-in answer cells; this row has no tree route |
 | Collatz Multiverse | tree | finite cell placement |
-| Container | tree | deliberately unfolded to preserve timed input pulses |
+| Container | finite lookup | the reversed table is one decimal literal divided by ten in a fixed two-bank network |
 | Crement | finite lookup | prototype instantiation |
 | CV(N)(C) | tree, cap | the halting-goto reach is a renderer ceiling |
 | Decleq | tree | — |
@@ -84,15 +105,15 @@ after ignoring the performance/resource ceiling as specified above.
 | Eval | linear lookup | fixed reversed stack order selects the indexed row |
 | Factor | tree, cap | Brainfuck tree followed by a total prime encoding; Dirichlet supplies the next prime in each residue class mod 11 |
 | Fargo | tree | finite folded layout |
-| Flowchart | tree | — |
+| Flowchart | finite lookup | a five-row deque preloads `2**n` answers and discards opposite halves |
 | Forbin | tree | — |
 | Forþ | tree | — |
 | Grapheme | tree | arbitrary integer variable keys remove the old 24 one-letter-key ceiling |
 | Home Row | parameterized tree | — |
-| Inject | tree | — |
+| Inject | finite lookup | one table block halved by `O(n)` conditional substitutions |
 | Interprogck8 | exception | no uniform proof that bounded repair always routes arbitrarily wide trees |
-| Jaune | tree | unused inputs may be clobbered, without changing the fallback proof |
-| LaserFuck | tree | — |
+| Jaune | finite lookup | a spatial table reached with two labels |
+| LaserFuck | finite lookup | weighted arms select one of `2**n` prewritten cells, cleaned in one sweep |
 | Minifuck | parameterized construction | `_mux` is the total fallback; its six failure sites close uniformly in `n` |
 | Minsky Swap | parameterized tree | — |
 | Modulous | tree | — |
@@ -104,9 +125,9 @@ after ignoring the performance/resource ceiling as specified above.
 | %^2^-1 | exception | parameterized planners cover all tables through four inputs and tested tables above that, but no all-arity proof is known |
 | Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding |
 | Qoibl | tree | — |
-| RAM0 | parameterized tree | — |
+| RAM0 | parameterized lookup | a straight-line RAM initializer plus a unary-weight lookup |
 | ROTfuck | tree | movement search stops after at most eight offsets |
-| S*bleq | tree | — |
+| S*bleq | finite lookup | packed chunks decoded after the hoisted read block |
 | 6-5 | finite lookup, cap | constant-label arithmetic evaluates `(T >> index) & 1` |
 | SLOW ACV MAMMALIAN | tree | 255-chunk trampoline construction is finite |
 | Sophie | tree | — |
