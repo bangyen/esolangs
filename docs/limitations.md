@@ -349,6 +349,16 @@ above is a dimension count, a necessary condition on a generic solution
 rather than an impossibility proof, so it bounds no specific family and does
 not by itself forbid a sparser one.
 
+One natural way to promote the two-term argument does *not* work, which is
+worth recording so it is not retried.  That argument succeeds because a
+two-term multiple forces every root to share one modulus, which distinct
+primes cannot do.  The tempting generalisation -- a `t`-term polynomial's
+roots take at most `t-1` distinct moduli, via Newton-polygon segments -- is
+false: `x^3 - 7x + 6` is `(x-1)(x-2)(x+3)`, three terms and three distinct
+moduli.  Sparsity bounds real positive roots by Descartes, but it does not
+bound complex root moduli at all (`x^N - 1` has `N` roots on one circle from
+two terms), so the modulus route cannot reach `t = Omega(m)`.
+
 [sparse-multiples]: https://arxiv.org/abs/1009.3214
 
 Interprogck8's shipped construction is super-linear, and the roadmap audit row
