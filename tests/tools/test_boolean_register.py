@@ -435,6 +435,26 @@ class TestPolynomial:
 
 
 class TestDig:
+    @pytest.mark.medium
+    def test_alternating_layout_executes_every_row(self) -> None:
+        """The alternating-axis tree computes two dense wide tables."""
+        for n in (5, 6):
+            size = 1 << n
+            tables = (
+                ("01101001" * size)[:size],
+                "".join(str((row * 73 + row // 3) & 1) for row in range(size)),
+            )
+            for table in tables:
+                program = boolean.dig(table)
+                for combo in range(size):
+                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    assert run_dig(program, [str(bit) for bit in bits]) == table[combo]
+
+    def test_alternating_layout_has_linear_area(self) -> None:
+        """Two more levels quadruple entries and at most quadruple text."""
+        sizes = [len(boolean.dig("01" * (2 ** (n - 1)))) for n in (7, 9)]
+        assert sizes[1] <= 4 * sizes[0]
+
     @pytest.mark.parametrize(
         ("table", "n"),
         [
@@ -553,7 +573,7 @@ class TestDig:
         """
         for table in ("1" * 64, "1" * 32 + "0" * 32):
             n = len(table).bit_length() - 1
-            flat = boolean.dig(table)
+            flat = boolean.dig(table, 10_000)
             assert boolean.dig(table, 1) == flat, table
             for combo in (0, 2 ** (n - 1), 2**n - 1):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
