@@ -261,15 +261,17 @@ root's real part, and `f(x) = 1x^6-130x^5+3563x^4+41030x^3+255186x^2+
 1107000x^1+4168400` decodes to `[[70, 1], [-5, 1], [0, 1]]` and prints `A`
 (`notes/poly_negative_operand.py`).  A complex instruction `[a, b]` is
 `(x-a)^2 + p**(2b)`, so its linear coefficient `-2a` flips sign with `a`, and
-that program's own expansion is already not alternating.  The builder encodes
-negative arithmetic by changing the opcode instead, so *its* monic factors have
-alternating nonnegative coefficient magnitudes and products preserve the sign
-pattern without cancellation; the binomial contributions from each factor's
-leading or constant term alone then give Omega(m^2) total coefficient digits,
-and with `m = Omega(T/log T)` the expanded program is Omega(T^2/(log T)^2).
-The no-cancellation premise is thus a property of the shipped builder, not of
-the language, and mixed-sign operands are the free parameter it does not
-cover.
+that program's own expansion is already not alternating.  The builder was long described here as
+encoding negative arithmetic by changing the opcode, its monic factors all
+sign-alternating so that products preserve the pattern without cancellation
+and give Omega(m^2) total coefficient digits.  That premise is FALSE at
+n >= 4: the shipped dense builds carry a few negative operands -- 0/36,
+1/70, 4/117, 6/187 complex instructions at n = 3..6, operands -1..-3, all
+at b = 3 (`notes/poly_rhp_superlinear.py`) -- so the builder-specific
+argument did not actually cover those builds.  The right-half-plane
+theorem below, with its compensation lemma, both repairs that hole and
+extends the bound to every cofactor on half the plane; the free parameters
+left over are roots with substantially negative real part.
 
 That free parameter is now measured, and it is close to empty
 (`notes/poly_sign_growth.py`).  Over prefixes of a real dense build (the
@@ -373,8 +375,51 @@ every multiple of every program for a dense table -- under the standing
 convention that each path reads its `n` bits -- carries
 `Omega(T/log T)` monomials and therefore `Omega(T)` characters, with no
 assumption left about which construction wrote it.  What it still is
-not is a separation: the floor prices exponents, not coefficient mass,
-and the sparse-multiple question above is unchanged.
+not is a full separation: the floor prices exponents, not coefficient
+mass, and coefficient mass is where the remaining freedom lives.
+
+Coefficient mass is now priced too, on half the complex plane
+(`notes/poly_rhp_superlinear.py`).  If every root of a program polynomial
+has nonnegative real part -- every complex operand `a >= 0` and every
+cofactor root in the closed right half-plane -- then substituting
+`x -> -x` gives each real factor nonnegative coefficients (`(x - r)`
+becomes `-(x + r)`; `(x - a)^2 + q` becomes `x^2 + 2ax + (a^2 + q)`), and
+a product of nonnegative-coefficient polynomials cannot cancel.  The
+coefficient of `x^k` is then at least the single selection in which the
+`k` smallest-constant linear factors contribute their `x` and every other
+factor its constant term: `|[x^k] F| >= (prod of all constant terms) /
+(c_1 ... c_k)` exactly, checked coefficient-by-coefficient in integers on
+the emitted artifacts and on executed right-half-plane multiples.
+Summing `k = 0..L` gives at least `(L+1) M / 2` total digit mass, where
+`L` counts linear factors and `M` is the log of the product of all
+constant terms.  Both are language-forced: the routing floor makes the
+real (bracket) count `Omega(T/log T)`, a multiple keeps every mandatory
+root, and the mandatory real constants are at least their distinct
+primes, so `M = Omega(m_r log m_r)`.  Hence **every right-half-plane
+program for a dense table is `Omega(T^2/log T)`** -- superlinear,
+whatever the cofactor.  A compensation lemma stretches it past the
+axis: a flipped quadratic with negative middle `x^2 - 2bx + c` times an
+unused nonnegative one `x^2 + 2b'x + c'` is coefficientwise nonnegative
+iff `b' >= b`, `c + c' >= 4bb'` and `b'c >= bc'`, and pairing leaves the
+selection bound and the floor formula unchanged -- which is what covers
+the shipped builds' few `a = -1..-3` operands (middles at most 6 against
+constants at least 65; the matching is found and verified per build).
+Unlike Mahler measure, the primorial divisibility, or
+the Newton polygons -- norm and divisibility bounds that one heavy
+coefficient can absorb -- positivity forces every low coefficient at
+once, which is why this crosses the linear matching bound where those
+could not.  The hypothesis is load-bearing:
+`(x-2)(x-3)(x+2)(x+3) = x^4 - 13x^2 + 36` has `[x^1] = 0` where the
+as-if-right-half-plane floor demands 18, so one left-half-plane pair per
+magnitude zeroes a coefficient the theorem would force.  A linear-size
+program must therefore put roots with negative real part to work, in
+force enough to defeat every compensation matching: negative complex
+operands (legal, and measured near-empty for sign flips of real builds
+above) or left-half-plane cofactor roots (the executed legal multiple
+`x^2 + x + 1` is mildly one; its mass still sits above the
+right-half-plane floor, measured not proved).  The LLL sweep below never
+searched that region for cancellation, so the sparse-multiple question is
+now exactly a left-half-plane question.
 
 The generic corner of that family is searched, and empty
 (`notes/poly_lll_multiple.py`).  The integer multiples of `P` with
@@ -404,9 +449,10 @@ amount of text and nothing more.  That is a matching bound, not a
 separating one, and it cannot be promoted into a proof of super-linearity
 no matter how it is sharpened.  Any language-level proof therefore has to
 come from the *other* coefficients -- which is exactly what the
-construction-specific `Omega(m^2)` argument above does, and why ruling out
-a sparse multiple is the whole question.  On current evidence this row
-closes by construction if it closes at all.
+right-half-plane theorem above now does for half the plane, and why
+ruling out a left-half-plane multiple is the whole remaining question.
+On current evidence this row closes by a construction that exploits
+negative real parts, or not at all.
 
 One natural way to promote the two-term argument does *not* work, which is
 worth recording so it is not retried.  That argument succeeds because a
