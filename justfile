@@ -136,6 +136,7 @@ proofs:
     {{PYTHON}} -m pytest tests/proofs -q
     {{PYTHON}} tests/proofs/deep/arrowqueue.py
     {{PYTHON}} tests/proofs/deep/container.py
+    {{PYTHON}} tests/proofs/deep/bio.py
     {{PYTHON}} tests/proofs/deep/a_painter_ant.py
 
 # Not in `just test` or CI: what it guards moves only when APA's head, body,

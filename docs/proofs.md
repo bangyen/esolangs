@@ -18,7 +18,7 @@ What is machine-checked lives in `tests/proofs/`.  `test_ledger.py` holds this
 document to the registry and to itself, and `test_schemes.py` holds each row to
 its scheme's measurable consequence; both are in the fast band and gate every
 push.  `tests/proofs/deep/` holds the hand-derived uniform-in-n arguments, one
-per generator that has one -- three of sixty-five so far.  `just proofs` runs
+per generator that has one -- four of sixty-five so far.  `just proofs` runs
 every one of them.
 
 ## Proof schemes
