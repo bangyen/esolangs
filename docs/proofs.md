@@ -14,6 +14,13 @@ the exhaustive `n <= 3` and sampled `n <= 10` sweeps in
 `tests/tools/test_boolean_contract.py` are counterexample searches for the
 arguments below.
 
+What is machine-checked lives in `tests/proofs/`.  `test_ledger.py` holds this
+document to the registry and to itself, and `test_schemes.py` holds each row to
+its scheme's measurable consequence; both are in the fast band and gate every
+push.  `tests/proofs/deep/` holds the hand-derived uniform-in-n arguments, one
+per generator that has one -- two of sixty-five so far.  `just proofs` runs
+every one of them.
+
 ## Proof schemes
 
 **Decision tree.**  Recursively split the table on an input.  A leaf emits its
