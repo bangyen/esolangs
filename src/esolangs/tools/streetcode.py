@@ -742,28 +742,22 @@ def _streetcode_h_program(truth_table: str, n: int) -> str:
     rows = _streetcode_shared(n)
     width = max(map(len, rows))
     padded = [row.ljust(width) for row in rows]
-    start = next(
-        (r, c)
-        for r, row in enumerate(padded)
-        for c, char in enumerate(row)
-        if char == "C"
-    )
-    pending = [start]
-    reachable = {start}
-    while pending:
-        r, c = pending.pop()
-        for dr, dc in _H_DIR.values():
-            pos = (r + dr, c + dc)
-            if not (0 <= pos[0] < len(padded) and 0 <= pos[1] < width):
-                continue
-            if padded[pos[0]][pos[1]] in "+-|" or pos in reachable:
-                continue
-            reachable.add(pos)
-            pending.append(pos)
+    normalizer_open: set[tuple[int, int]] = set()
+    for r, row in enumerate(padded):
+        walls = [c for c, char in enumerate(row) if char in "+-|"]
+        if not walls:
+            continue
+        # Rows 1 and 2 are the two open-ended street lanes.  Every other row
+        # is bounded by its first and last wall; inner walls remain fixed
+        # below, so including an island's blank interior cannot join a road.
+        stop = width if r in (1, 2) else walls[-1]
+        normalizer_open.update(
+            (r, c) for c in range(walls[0] + 1, stop) if row[c] not in "+-|"
+        )
 
     # Row 2 is the normalizer's eastbound driving lane; join its open end to
     # row 1 of the H-tree's incoming road.
-    east = max(c for r, c in reachable if r == 2)
+    east = max(c for r, c in normalizer_open if r == 2)
     shift = (-1, -east)
     fixed_walls = {
         (r + shift[0], c + shift[1]): char
@@ -771,7 +765,7 @@ def _streetcode_h_program(truth_table: str, n: int) -> str:
         for c, char in enumerate(row)
         if char in "+-|"
     }
-    for r, c in reachable:
+    for r, c in normalizer_open:
         pos = (r + shift[0], c + shift[1])
         cells.add(pos)
         char = padded[r][c]
