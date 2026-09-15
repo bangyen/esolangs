@@ -505,11 +505,12 @@ _MINTERM_SHAPED = {
 # at all: ``jaune_multiply`` takes no argument (it multiplies two decimal
 # numbers, a fixed program), and ``circlefuck_byte`` takes a *byte* table.
 #
-# ``slow_acv_mammalian`` and ``b_tapemark`` are trees, but deliberately
-# *unfolded* ones, so the folding discriminator does not apply.  Their nodes
-# read the input, so collapsing a constant subtree would drop that subtree's
-# reads and break the read-count contract above.  Both trees therefore stay
-# at uniform depth ``n`` and track ``2**n`` whatever the table says.
+# ``b_tapemark`` is a tree, but a deliberately *unfolded* one, so the
+# folding discriminator does not apply: its nodes read the input, and
+# collapsing a constant subtree would drop that subtree's reads and break
+# the read-count contract above.  ``slow_acv_mammalian`` is a branch-free
+# chain into a flat leaf table -- every table of one arity renders to the
+# same length, so a 0% fold is its construction working.
 #
 # ``minifuck`` is a search too, and of the same kind as ``wii2d``: it emits
 # whatever code it can *see* produce the table's column, so the program has
@@ -1060,7 +1061,7 @@ _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
     "COD": (294, 554, 1.9),
     "ROTfuck": (15_240, 29_472, 1.9),
     "Polynomial": (3_383_048, 10_896_883, 3.2),
-    "SLOW ACV MAMMALIAN": (1_672_368, 3_380_418, 2.0),
+    "SLOW ACV MAMMALIAN": (456_394, 798_829, 1.8),
     "bit~": (28_210, 56_676, 2.0),
     "123": (22_988, 45_755, 2.0),
     "Factor": (17_613, 36_339, 2.1),
@@ -1090,6 +1091,7 @@ _LINEAR_SCALING = {
     "one_two_three",
     "ram0",
     "sbleq",
+    "slow_acv_mammalian",
     "streetcode",
     "vandevelo",
 }
@@ -1097,7 +1099,6 @@ _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
     "interprogck8",
     "polynomial",
-    "slow_acv_mammalian",
 }
 
 

@@ -1173,12 +1173,10 @@ class TestSlowAcvMammalian:
     def test_constant_tables_still_read_every_input(self) -> None:
         """A constant table consumes all ``n`` inputs.
 
-        The tree is uniform depth, so there is no folding to skip a read --
-        the reads are the language's interface, and leaving a caller's bits
-        on the input stream would break whatever runs next.  What counts is
-        the reads a *run* makes, not the ``ACCEPT`` tokens in the source:
-        preorder emits one per internal node, so a depth-``n`` tree carries
-        ``2**n - 1`` of them and executes ``n``.
+        The reads are the language's interface, and leaving a caller's bits
+        on the input stream would break whatever runs next.  The chain
+        carries exactly one ``ACCEPT`` per input and executes all of them
+        unconditionally -- there is no subtree to fold a constant into.
         """
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
@@ -1186,22 +1184,25 @@ class TestSlowAcvMammalian:
 
         for table in ("0000", "1111", "0110"):
             program = boolean.slow_acv_mammalian(table)
-            assert program.split().count("ACCEPT") == 3  # 2**2 - 1 nodes
+            assert program.split().count("ACCEPT") == 2  # one per input
             io_obj = ScriptedIO("0\n" * 8)
             run_until_halt_or_cycle(_Machine(program, io_obj))
             assert io_obj.position() == 2
 
-    def test_pointer_never_leaves_array_zero(self) -> None:
-        """No ``SPRINT``: the tree lives in code space, not in array space.
+    def test_routing_is_confined_to_the_arms_and_the_dispatch(self) -> None:
+        """Exactly ``2n + 1`` ``SPRINT``s: out and back per arm, one out.
 
-        The wall this generator resolves argued that a bit could not be both
-        read and routed, since ``ACCEPT`` needs ``ptr == 0`` to consume one
-        while routing needs ``SPRINT`` to move away.  The construction never
-        routes at all, and this pins that.
+        ``ACCEPT`` appends to array 0 whatever the pointer holds, so the
+        reads never route; the pointer leaves array 0 only to bank a
+        weight on array 16 (each 1-arm goes out and comes back) and once
+        at the end, when the dispatch trampoline jumps from array 16 into
+        the leaf table.  A count off by one would mean a read or a merge
+        running on the wrong array.
         """
-        program = boolean.slow_acv_mammalian("01101001")
-        assert "SPRINT" not in program
-        assert "CONFLAGRATE" not in program
+        for table, n in (("01", 1), ("0110", 2), ("01101001", 3)):
+            tokens = boolean.slow_acv_mammalian(table).split()
+            assert tokens.count("SPRINT") == 2 * n + 1
+            assert "CONFLAGRATE" not in tokens
 
     def test_a_node_opens_the_accumulator_on_a_clean_digit(self) -> None:
         """``ACCEPT`` is entered with ``acc % 256 == 48``, whatever the state.
@@ -1311,27 +1312,35 @@ class TestSlowAcvMammalian:
         assert machine.ind == target
 
     def test_ballast_is_spent_where_it_stands(self) -> None:
-        """No ``CONSUME``: the parent/child ballast lock never forms.
+        """No ``CONSUME`` or ``FISSION``: no cell is ever indexed.
 
-        The searching construction shed a 0-arm's inherited ballast with
-        ``CONSUME`` runs because a child re-aimed from scratch would
-        otherwise convert every stashed token into padding of its own.
-        Here the 1-subtree inherits the array whose sum *is* its position
-        and the 0-subtree enters through a trampoline carrying the same,
-        so nothing is ever dropped to be rebuilt -- and the program says
-        so: only the six ops the construction needs appear.
+        The build tracks only heads and non-head sums (see ``_Sums``), and
+        that is sound precisely because the emitted program never touches
+        a cell by position -- ``SPRINT`` reads ``curr[0]`` with a zeroed
+        accumulator and every ``LEAPFROG``'s firing cell is appended by
+        its own code.  The program says so: only the seven ops the
+        construction needs appear.
         """
         program = boolean.slow_acv_mammalian("0110")
         used = set(program.split())
-        assert used <= {"SEED", "EXCRETE", "DIGEST", "ACCEPT", "PRONOUNCE", "LEAPFROG"}
+        assert used <= {
+            "SEED",
+            "EXCRETE",
+            "DIGEST",
+            "ACCEPT",
+            "PRONOUNCE",
+            "LEAPFROG",
+            "SPRINT",
+        }
 
-    def test_a_stale_width_table_is_caught_not_emitted(self) -> None:
-        """Slots too narrow for their trampolines raise, loudly.
+    def test_a_stale_slot_bound_is_caught_not_emitted(self) -> None:
+        """An arm too wide for its slot raises, loudly.
 
-        The slot widths are the one place the construction leans on a
-        bound rather than an exact solve, so a stale ``_widths`` must
-        surface as an error naming the overflow -- not as a program whose
-        trampoline spills into the dead pad and executes it.
+        The slot is the one place the construction leans on a bound rather
+        than an exact solve, so a stale ``_tramp_bound`` must surface as
+        an error naming the overflow -- not as a program whose merge
+        trampoline spills past its slot and lands the two branch paths at
+        different addresses.
         """
         import importlib
 
@@ -1341,83 +1350,78 @@ class TestSlowAcvMammalian:
         module = importlib.import_module("esolangs.tools.slow_acv_mammalian")
 
         with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "_widths", lambda n: [0] + [4] * n)
+            patch.setattr(module, "_tramp_bound", lambda _distance: 0)
             with pytest.raises(AssertionError, match="slot"):
                 module.slow_acv_mammalian("0110")
 
-    @pytest.mark.parametrize(
-        ("n", "widths"),
-        [
-            (1, [0, 267]),
-            (2, [0, 267, 805]),
-            (3, [0, 267, 805, 871]),
-            (4, [0, 267, 805, 871, 1000]),
-            (8, [0, 267, 805, 871, 1000, 1258, 1783, 2836, 4954]),
-        ],
-    )
-    def test_the_width_recurrence_is_exact(self, n: int, widths: list[int]) -> None:
-        """The cap recurrence's own output, pinned per level.
+    @pytest.mark.parametrize("amount", [0, 100, 256, 600, 2000])
+    def test_a_weight_raise_is_exact_on_the_machine(self, amount: int) -> None:
+        """``_w_raise`` moves array 16's non-head sum by exactly its ask.
 
-        ``_widths`` is an *upper bound*, and the slack it carries is large
-        -- 542 and 558 tokens at levels 2 and 3 -- so a term that drifts
-        upward changes nothing anywhere else: the emitted program is
-        byte-identical when every slot grows by 5, because the dead pad
-        absorbs the difference and the landing offsets move in steps of
-        255.  The companion test above covers the other direction, where a
-        too-*small* slot trips the alarm.  Between them the bound is only
-        pinned from below, which leaves every line of the recurrence free
-        to grow unobserved; these values close that.
-
-        A level is one entry, so the list also fixes the recurrence's
-        length and the ``widths[0] == 0`` seed (a leaf has no slot).
-
-        ``n == 8`` is not padding, and costs nothing -- this is integer
-        arithmetic, with no program built.  The ``caps`` seed feeds the
-        next level's slot only through a ceiling division, which swallows
-        a one-token change for seven levels; the first arity where a
-        wrong seed reaches ``widths`` at all is eight.  Nothing below it
-        can separate that term.
-        """
-        from esolangs.tools.slow_acv_mammalian import _widths
-
-        assert _widths(n) == widths
-
-    def test_the_slots_actually_hold_their_trampolines(self) -> None:
-        """Every emitted hop fits, and level 1 is the tight one.
-
-        The bound is worth having only if it binds somewhere near the
-        truth: the level-1 slot is 267 tokens against a largest observed
-        hop of 245, while the deeper levels sit hundreds clear.  Recording
-        the real occupancy keeps the recurrence honest from above -- a term
-        that grew would push these numbers apart -- and documents which
-        level is the one to watch.
+        The weights are the construction's dispatch index, so a raise that
+        overshot by one would land every affected row on the wrong leaf.
+        The amounts cover each closing shape: nothing to do, one exact
+        chunk, the two-chunk split, and greedy high bytes first.  Run on
+        the machine so the step-17 head arithmetic is the interpreter's,
+        not the builder's.
         """
         import importlib
 
-        # The package re-exports the generator under its own module's
-        # name, so the package attribute is the *function*; only
-        # import_module reaches the module.
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
+
         module = importlib.import_module("esolangs.tools.slow_acv_mammalian")
+        st = module._Sums()  # noqa: SLF001
+        st.ptr, st.hw, st.nw = 16, 9, 255
+        tokens = module._w_raise(st, amount)  # noqa: SLF001
+        machine = _Machine(" ".join(tokens), ScriptedIO(""))
+        machine.ptr = 16
+        machine.lst = tuple((9, 200, 55) if k == 16 else (0,) for k in range(23))
+        while not machine.halted:
+            machine.step()
+        array = machine.lst[16]
+        assert sum(array) - array[0] == 255 + amount
+        assert (st.nw, st.hw) == (255 + amount, array[0])
 
-        hops: list[int] = []
-        original = module._trampoline  # noqa: SLF001
+    def test_the_dispatch_lands_every_row_on_its_own_leaf(self) -> None:
+        """Each run halts inside the leaf slot its inputs selected.
 
-        def record(*args: object) -> tuple[list[str], list[int], int]:
-            hop, array, acc = original(*args)
-            hops.append(len(hop))
-            return hop, array, acc
+        The construction's one data-dependent jump is the dispatch: the
+        banked weights shift array 16's non-head sum by ``row * 256``, so
+        the same fixed trampoline must land run ``row`` at
+        ``leaf_base + row * 256``.  Recovering the slot from the halt
+        cursor pins that arithmetic through the machine rather than
+        through the builder's own model of it.
+        """
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.interpreters.tape_based.slow_acv_mammalian import _Machine
 
-        with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(module, "_trampoline", record)
-            for table in ("0110", "0001", "01101001"):
-                module.slow_acv_mammalian(table)
-        assert hops, "no trampoline was built"
-        assert max(hops) == 306
-        # Each slot is checked against its own level as the emitter runs
-        # (``_subtree`` raises on an overflow), so what is asserted here is
-        # that the deepest slot -- the one every hop could in principle
-        # need -- still clears the largest hop with room to spare.
-        assert max(hops) < max(module._widths(3)[1:])  # noqa: SLF001
+        table = "01101001"
+        program = boolean.slow_acv_mammalian(table)
+        tokens = program.split()
+        leaf_base = len(tokens) - 256 * len(table)
+        for row in range(8):
+            bits = [(row >> (2 - i)) & 1 for i in range(3)]
+            machine = _Machine(program, ScriptedIO("".join(f"{b}\n" for b in bits)))
+            while not machine.halted:
+                machine.step()
+            assert (machine.ind - leaf_base) // 256 == row
+
+    def test_the_emitted_size_is_pinned_and_linear(self) -> None:
+        """Exact sizes per arity, and the leaf table is the whole growth.
+
+        The construction is deterministic, so three sizes pin every piece
+        -- a node, an arm, a slot or the dispatch drifting shows here
+        first.  The differences also carry the linearity: each added input
+        costs one more level (whose arm doubles) plus the doubled leaf
+        table, so per-entry cost falls toward the 256-token slot floor
+        instead of growing.
+        """
+        sizes = [
+            len(boolean.slow_acv_mammalian(table))
+            for table in ("01", "0110", "01101001")
+        ]
+        assert sizes == [22_531, 40_555, 58_472]
 
 
 class TestSuffolk:

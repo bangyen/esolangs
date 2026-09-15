@@ -51,7 +51,7 @@ promptly. Its magnitude guard is load-bearing. A per-node re-embed tree can
 build dense n=13, but is outside the generator contract.
 
 Uncapped dense-program sizes at n=8/n=9: Circuit Diagram 7.91/11.39 MB,
-Polynomial 3.38/10.90 MB, SLOW ACV MAMMALIAN 1.67/3.38 MB, 123 22.4/44.7 KB,
+Polynomial 3.38/10.90 MB, SLOW ACV MAMMALIAN 456/799 KB, 123 22.4/44.7 KB,
 bit~ 27.5/55.3 KB, Factor 17.2/35.5 KB, ROTfuck 14.9/28.8 KB, COD
 294/554 bytes. Run generated programs before claiming size or equivalence.
 
@@ -208,88 +208,35 @@ S*bleq's retired tree emitted Theta(T) instructions and data triples with
 absolute decimal addresses into a Theta(T)-cell memory, so a constant fraction
 of its operands had Theta(log T) digits.  Its packed-chunk decoder is linear.
 
-SLOW ACV MAMMALIAN is super-linear even though its measured ratio is close to
-two: for a child cap `C`, `_widths` reserves a trampoline slot of Omega(C/255),
-and `_subtree` emits that whole slot plus two children.  Its recurrence is
-therefore `S(d) >= (2 + 1/255) S(d-1)`.  This recurrence is not forced by input
-itself: with `acc % 256 == 48`, `ACCEPT` appends exactly the input bit without
-changing `acc`, so the retained integer can already name one `LEAPFROG` target.
-A constant-token update *is* now known, so that is no longer the obstruction.
-A **pump loop** -- a fixed ~20-token body that rotates a frozen anchor,
-appends `S % 256` to a ballast array and re-enters through
-`DIGEST`/`LEAPFROG` on the anchor's non-head sum -- raises an address by
-thousands for O(1) text, and exits by planting one trigger in a queue
-`SPRINT` marches through, diverting down a pad chain to a second exit
-`LEAPFROG` at the pumped value.  An outer counted loop re-enters the inner
-one and multiplies its ~87 iterations by the round count.  The pump has an
-absorbing state -- an append adds `S % 256` to `S`, so once the low byte
-reaches 0 the sum freezes and every later append is 0 -- and the cure is a
-two-pair body over an array seeded with odd cells.
+SLOW ACV MAMMALIAN's retired tree was super-linear even though its measured
+ratio was close to two: for a child cap `C`, `_widths` reserved a trampoline
+slot of Omega(C/255) and `_subtree` emitted that whole slot plus two
+children, so `S(d) >= (2 + 1/255) S(d-1)`.  The recurrence was never forced
+by the language -- the shipped construction reads all n inputs in one chain,
+banks each 1-bit as a 256-multiple weight on a side array's non-head sum,
+and lands one final trampoline at `nonhead + b = leaf_base + row * 256` in a
+flat table of 256-token leaves, which is O(T) text and build (456 KB against
+the tree's 1.67 MB at dense n=8; per-entry cost falls toward the slot
+floor).  What made the chain possible where the tree forked is that every
+other divergence between the branch paths cancels before they merge: both
+leave through trampolines aimed at the same address, so the post-jump
+non-head sums are equal by the jump identity itself, and a one-chunk tuning
+byte zeroes the (always even) head residue at slope -2.
 
-The address-space fault that stopped n >= 3 is repaired.  A loop body must
-be laid at its anchor's value, and a node's two branches carry independent
-machine states in one text space; the collision was a static-bound problem,
-not a structural one -- the 1-subtree slot, the chain-gadget clearance, and
-the 0-child's placement bound were fixed constants, and at n >= 2 the
-0-chain's laid extent outgrew them by ~14,000.  The repair prices nothing
-statically: the 1-subtree address settles by fixed point against the
-0-chain's dry-run extent, the pump target settles against a scratch-built
-1-subtree's actual extent, and the dry runs are exact, so their text is
-merged and their worlds adopted rather than rebuilt.  The vertical order is
-forced -- chain below the read target `t1`, 1-subtree at `t1 + 1`, 0-subtree
-at the pump landing -- because the read leaves array 0's sum at `t1 + 1` in
-the 0-branch and anchors only rise.  With that, the prototype builds *and
-executes* n=1/2/3: every row of every arity through the interpreter
-(876,739 / 1,878,218 / 10,789,439 characters), plus the exhaustive n <= 2
-corpus, 20/20.  One warning travels with those numbers: correctness is
-address-sensitive.  A faster root settle (a secant step in place of the
-naive walk) picked a different root, and the resulting n=3 program fails
-one row with empty output while every builder-side check passes -- so a
-build only counts once its rows have executed, and the builder's internal
-guards are known to be insufficient.
-
-The executed regression is also what keeps this row open: per-entry cost
-runs 438,370 / 469,554 / 1,348,680 characters, and the growth cannot be
-pinned away -- asking for the n=2 counter at n=3 just forces the doubling
-(60 cells suffice at n=2, 240 at n=3, against a 6.1x span).  One caution
-on reading a law into that: the n=3 jump coincides with a regime change
-(the counter doubles twice and nested pumping takes over), and three
-points with a discontinuity at the last cannot separate "asymptotically
-super-linear" from "a constant-factor cliff at the nesting threshold";
-n=4 decides.  The cost itself is located either way: it is total raise
-magnitude, chunked at ~254 units per solved append, so the DIGEST count
--- one per chunk (2,547 / 5,790 / 48,403) -- is the metric to watch.  The mechanism is the pump's reach law, measured affine off the
-builder's own dry runs: climb ~ 10,000 x rounds - 14,000, with the
-round-on-round ratio falling to `R/(R-1)`.  The early acceleration is a
-transient, so a counted exit spells its climb in unary counter cells, each
-node's climb is ~its 1-subtree's span, and those climbs sum over the tree
-to Theta(T log T) addresses.  Fixed nesting does not escape: L counter
-levels reach ~ C^L for L*C text, so one level is Theta(T) counter cells at
-the root and L levels still leave `C = Theta(span^(1/L))`.  A tower whose
-depth grows with the node's own span (~ln of it) makes the per-node cost
-logarithmic in a span that halves per level, and `sum 2^d (n - d)` is
-`2^(n+1) - n - 2` -- O(T) in total.  The arrays for it exist: a head at
-array `i` steps by `i + 1` under SEED, covering all 23 routing classes
-exactly when `gcd(i+1, 256) <= 8`, and of the six arrays the construction
-leaves free, five qualify (7, 13, 16, 17, 19; only 15 fails, the one array
-already noted as having no routable head).  Reach multiplies ~10,000 a
-round per level, so a depth-5 tower out-reaches anything buildable; what
-remains is engineering each level's divert route and pads, plus keeping
-per-node tower depth matched to its own span.  The alternative is an exit
-triggered by the pumped value itself rather than a count, which nothing in
-the instruction set cheaply provides: `SPRINT`'s length guard compares
-against an accumulator the pump can only hold small or whole-sum, and an
-XOR-equality reference array must itself be raised to the target -- unless
-it too can be pumped in lockstep, which is untested.
-
-Two raise-cost measurements to keep any retuning honest: the free-chunk
-raise decays -- the doubling orbit fills the array with its own small
-appends and settles at ~3 units a token -- and a window-steered raise
-(a few SEEDs aim `S % 256` into [200, 255], ~30 units a token held) is
-16x cheaper than the solved-append raise in isolation but destabilised the
-pump's exit search in both attempts to adopt it, so the shipped prototype
-keeps solved appends.  Size remains the other reason not to ship: per-entry
-cost at n=3 is ~200x the retired tree's, before any of the above is fixed.
+A **pump-loop** lane was researched first and is retired; its negative
+results priced the loop route out.  The loop itself worked -- a fixed
+~20-token body raising an address by thousands for O(1) text, with the
+address-space fault repaired by settling every address against exact dry
+runs -- and built and executed n=1/2/3 completely.  But its measured reach
+law is affine (~10,000 per counted round, ratio falling to `R/(R-1)`), so a
+counted exit spells each node's climb in unary counter cells and the climbs
+sum to Theta(T log T); fixed nesting only trades the exponent (`L` levels
+leave `C = Theta(span^(1/L))`), per-entry cost at n=3 was ~200x the tree's,
+and no cheap value-triggered exit exists in the instruction set.  One
+warning from that lane still binds every construction here: correctness is
+address-sensitive -- a variant build once passed every builder-side check
+and failed one row with empty output -- so a build only counts once its
+rows have executed.
 
 Polynomial's current expanded-root encoding is super-linear, and its
 instruction count is language-forced even though its text is not.  The input

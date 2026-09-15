@@ -56,7 +56,6 @@ The candidate list is empty.
   | Factor | Language lower bound | Language lower bound |
   | Interprogck8 | Open | Open |
   | Polynomial | Open | Open |
-  | SLOW ACV MAMMALIAN | Open | Open |
 
   The limitations file proves only that the shipped constructions are
   super-linear.  None closes a row above: closure requires a lower bound over
@@ -139,22 +138,16 @@ The candidate list is empty.
   its binary-weight horizontal displacement, selecting one answer column;
   the filled four-row grid is `4T+23` characters.
 
-  Three cases remain open.
+  SLOW ACV MAMMALIAN reads all n inputs in one chain: each read's 1-branch
+  banks a binary weight (a multiple of 256) on a side array's non-head sum
+  and re-merges -- both branches leave through trampolines aimed at the same
+  address, which equalizes the sums the jump identities read -- and one
+  final trampoline lands `nonhead + b = leaf_base + row * 256` in a flat
+  table of fixed 256-token leaves.  Weights total under 2T*256 at a token
+  per 14, so text and build are O(T); every table through n=3 executes every
+  row, and sampled rows execute through n=12.
 
-  SLOW ACV MAMMALIAN's pump-loop construction now builds *and executes*
-  n=1/2/3, every row through the interpreter: the constant-token transition
-  exists (the pump loop) and the address-space fault is repaired by settling
-  every address against a dry run instead of a static bound.  What keeps the
-  row open is the measured reach law: a pump's climb is affine in its counted
-  rounds (~10,000 per round), so the counter spells each node's climb --
-  ~its 1-subtree's span -- in unary cells, and per-entry cost triples from
-  n=2 to n=3.  The open step is an exit whose cost is sublinear in the climb:
-  a counter tower whose depth follows the node's own span sums to O(T) by
-  `sum 2^d (n-d) = 2^(n+1)-n-2`, five free arrays route to all 23 classes,
-  and one added level (~10,000x reach) already covers n=3 fourfold -- so the
-  remaining work is engineering the new level's divert route and pads, which
-  is where every configuration change so far has destabilised the residues.
-  [limitations](limitations.md) has the measurements.
+  Two cases remain open.
 
   Vandevelo's hang-set is exactly a union of affine cosets -- every bindable
   value is affine in the inputs and only `::` chains evaluate conditionally --

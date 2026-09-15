@@ -12,11 +12,11 @@ which looks like a contradiction until you notice ``n == 3`` sits under every
 crossover -- those rows are measuring the tree route while the ledger names
 the wide one.  Folding therefore cannot be turned into "folds implies `tree`".
 
-Nor does the converse hold.  A tree may be *deliberately* unfolded: B-tapemark,
-SLOW ACV MAMMALIAN and Container's sub-crossover route all keep uniform depth
-because their nodes read the input, and collapsing a constant subtree would
-drop that subtree's reads.  A 0% fold is those constructions working.  The
-obligations below are the ones that survive both cautions.
+Nor does the converse hold.  A tree may be *deliberately* unfolded: B-tapemark
+and Container's sub-crossover route both keep uniform depth because their
+nodes read the input, and collapsing a constant subtree would drop that
+subtree's reads.  A 0% fold is those constructions working.  The obligations
+below are the ones that survive both cautions.
 """
 
 from __future__ import annotations
