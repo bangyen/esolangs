@@ -579,9 +579,9 @@ _UNSHAPED = {
     "nopstacle",
     "wii2d",
     "minifuck",
+    "one_two_three",
     "ztoalc_l",
     "pct_squared_minus_one",
-    "one_two_three",
     "jaune_multiply",
     "circlefuck_byte",
     "slow_acv_mammalian",
@@ -1086,13 +1086,13 @@ _LINEAR_SCALING = {
     "jaune",
     "laserfuck",
     "minifuck",
+    "one_two_three",
     "ram0",
     "sbleq",
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
     "cod",
-    "one_two_three",
     "polynomial",
     "slow_acv_mammalian",
     "streetcode",

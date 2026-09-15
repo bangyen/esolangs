@@ -2914,6 +2914,27 @@ class TestParameterizedOneTwoThree:
             assert row.pos == p0
             assert row.tape == t0 ^ (delta << (p0 + _RING))
 
+    def test_paint_all_replays_mixed_runs_exactly(self) -> None:
+        """A conditional sweep replays ``21`` as two different commands."""
+        from esolangs.tools.one_two_three_construct import (
+            _RING,
+            _WORK_BUDGET,
+            _Builder,
+            _paint_all,
+            _work,
+        )
+
+        _work[0] = _WORK_BUDGET
+        b = _Builder(1)
+        b.rows[1].tape = 1 << (2 + _RING)
+        b.run("2221")
+        _paint_all(b, [7])
+        b.test()
+        assert [row.pos for row in b.rows] == [2, 4]
+        assert all((row.tape >> (9 + _RING)) & 1 for row in b.rows)
+        assert not (b.rows[0].tape >> (11 + _RING)) & 1
+        assert (b.rows[1].tape >> (11 + _RING)) & 1
+
     def test_the_verdict_checks_its_position_preconditions(self) -> None:
         """A state violating the parity law raises instead of emitting.
 

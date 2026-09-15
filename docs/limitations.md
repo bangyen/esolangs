@@ -59,14 +59,13 @@ The retired A Painter Ant tree was Theta(T log T): on parity every subtree was
 live, and each depth traversed Theta(T) weighted edges.  Its lookup strip is
 linear: `ePEP` both establishes a white corridor on pass one and traverses it
 on later passes, while the adjacent answer row costs at most three characters
-per one entry.  In 123, `_phase_a` uses the tight
+per one entry.  123's retired wide construction used `_phase_a` with tight
 marks `(i+1)*2T+1` and emits Theta(mark) movement four times for every input;
-their sum is Theta(T (log T)^2).  These prove bounds on the shipped
-constructions, not on either language; a different geometry could evade them.
-Reversing the escape weights to `2,4,...,T` would make geometrically spaced
-marks total O(T), but the separator requires a new escape to fit the gaps
-already created: at level 1 its width 4 meets a gap of 2 and the exact builder
-rejects it.  A gap-doubling separator remains open.
+their sum is Theta(T (log T)^2).  Its replacement conditionally paints one
+mark per earlier prefix: level `i` uses a span and a single separator of
+O(2^i), with marks and their shadows in different residue classes modulo four.
+Rows finish at `9 + 4*(T-1+bit_reverse(row))`; emitting from that closed form
+rather than simulating T width-T tapes makes source and construction O(T).
 COD's leaf cascade is Theta(T^2): each of T leaf rows contains a prefix of
 length `3(k+1)` and a gate tail of length `2(T-k-1)`, so every row is
 Theta(T) and rotation cannot change the number of cells.  A non-cascade
