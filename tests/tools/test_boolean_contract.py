@@ -1078,6 +1078,7 @@ _LINEAR_SCALING = {
     "brainif",
     "circuit_diagram",
     "clockwise",
+    "dig",
     "forbin",
     "flowchart",
     "inject",
@@ -1091,7 +1092,6 @@ _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
     "cod",
     "container",
-    "dig",
     "one_two_three",
     "polynomial",
     "slow_acv_mammalian",

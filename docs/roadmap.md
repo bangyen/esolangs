@@ -51,7 +51,7 @@ The candidate list is empty.
   | BrainIf | Linear | Linear |
   | Clockwise | Linear | Linear |
   | Container | Open | Open |
-  | Dig | Open | Open |
+  | Dig | Linear | Linear |
   | Flowchart | Linear | Linear |
   | Forþ | Linear | Linear |
   | Inject | Linear | Linear |
@@ -106,6 +106,9 @@ The candidate list is empty.
   Minifuck preloads one control per row below a shifted binary-weight
   separator.  A fixed four-addition identity crosses that strip without
   changing it; one left run selects the row and one parity sweep prints it.
+  Dig lets each `#` turn directly into the next branch axis.  The recursive
+  bounds swap width and height each level and double one, so both dimensions
+  double per level pair and the full grid has O(T) cells.
   Median-of-three dense and parity measurements for `n=1..9` are plotted as
   [characters per table entry](boolean-scaling-size.svg) and
   [seconds per table entry](boolean-scaling-speed.svg).  The timing plot is
