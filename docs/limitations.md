@@ -228,6 +228,45 @@ direct family for these prime-power roots.
 
 [sparse-multiples]: https://arxiv.org/abs/1009.3214
 
+Interprogck8 is super-linear and the scaling contract exempts it only by
+accident: its `proofs.md` row is an `exception` about the repair budget's
+totality, which says nothing about size.  Measured, it is real rather than an
+artefact of the two-step statistic -- parity per-entry cost climbs
+monotonically from 328 to 526 characters over n=3..10, and `DownAccLines` per
+entry rises by a near-constant +0.7 an arity, which is the signature of
+`a + b*n` rather than a constant.
+
+The cause is that a decision tree is forced and then has to be laid out in a
+line.  Every read destroys the accumulator -- `u` loads the byte and
+`{values/=a/=b/=c}` overwrites it with 84 or 81 -- so no value survives a read,
+and the only state carrying which rows remain possible is the instruction
+pointer.  A program distinguishing 2^k prefixes therefore needs 2^k distinct
+positions after k reads.  One `DownAccLines` reaches 255 lines, so an edge
+spanning `l` lines costs `Omega(l/255)` relay rungs, and the emitted size is
+bounded below by the tree's total edge span under its layout.  For a complete
+binary tree that total is `Theta(N log N)` in any linear arrangement, which is
+the log factor being measured.  The layout step is the soft one: it rests on
+the minimum linear arrangement of a complete binary tree rather than on an
+argument given here, so this is a wall with a citation-shaped hole in it, not a
+closed proof.
+
+Two families of long jumps contribute, and only one is inherent.  The bit-0 arm
+spans its sibling subtree, and those targets are all distinct, so their relay
+rungs cannot be shared: a rung is a bare `DownAccLines` that re-flies the
+accumulator it arrives with, so two chains share a rung only when they share a
+stride *and* a destination.  The exit ladder is the opposite -- every leaf is
+heading to the same place -- and it is removable: deleting it and having each
+leaf stop where it stands drops parity per-entry cost from 526 to 352 at n=10,
+a third of the program.  That is not shipped because the language has no halt.
+Running off the last line is its termination, and the obvious one-line stand-in
+is a line the interpreter does not recognise, which raises `HaltError` -- the
+boolean runners swallow that, but `run` treats it as a crash, so it fails the
+table harness.  The legitimate form is a shared escalator: every leaf hops onto
+a lattice of `DownAccLines` rungs spaced one reach apart and rides it off the
+end, which is `O(1)` a leaf plus `O(L/255)` shared.  It would leave the bit-0
+family, and the generator super-linear, so it is recorded here rather than
+built.
+
 
 ## Curation
 
