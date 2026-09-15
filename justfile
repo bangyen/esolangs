@@ -17,6 +17,7 @@ help:
     @echo "  test-anchor  - ztoalc anchor table check (~3.2s)"
     @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
     @echo "  mutate-gen MOD - mutation-test one generator (e.g. just mutate-gen boolean/streetcode)"
+    @echo "  proofs       - every executable proof: ledger obligations + both deep proofs"
     @echo "  apa-proof    - re-check the A Painter Ant uniform-in-n proof (1m20s)"
     @echo "  install-dev  - Install development dependencies"
     @echo "  clean        - Clean up generated files"
@@ -126,12 +127,22 @@ mutate language *args:
 mutate-gen module *args:
     {{PYTHON}} scripts/mutate.py generator {{module}} {{args}}
 
+# The registry-wide obligations under tests/proofs are collected by pytest and
+# gate every push; the two under deep/ are hand-derived uniform-in-n arguments
+# and are not. This runs both halves, so it is the A Painter Ant cost plus a
+# couple of seconds.
+# run every executable proof: the ledger obligations and both deep proofs
+proofs:
+    {{PYTHON}} -m pytest tests/proofs -q
+    {{PYTHON}} tests/proofs/deep/arrowqueue.py
+    {{PYTHON}} tests/proofs/deep/a_painter_ant.py
+
 # Not in `just test` or CI: what it guards moves only when APA's head, body,
 # or routing does, so run it then. L2's foreign-leaf sweep at n=9 is 57s of
 # the cost; the table enumeration is cheap.
 # re-check the A Painter Ant uniform-in-n proof (1m20s, single-threaded)
 apa-proof:
-    {{PYTHON}} tests/tools/apa_uniform_proof_check.py
+    {{PYTHON}} tests/proofs/deep/a_painter_ant.py
 
 # clean generated
 clean:

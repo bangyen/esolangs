@@ -59,7 +59,7 @@ jobs:
     # establish the claim.  0.8s, which is why this one gates while the A
     # Painter Ant equivalent (1m20s) stays a by-hand `just apa-proof`.
     - name: Check the ArrowQueue lemmas
-      run: uv run python tests/tools/arrowqueue_lemmas.py
+      run: uv run python tests/proofs/deep/arrowqueue.py
 
     # --all, not the touched-language default the local gate uses: this is
     # the run that holds exceptions.py's contract across all 69.  68s.

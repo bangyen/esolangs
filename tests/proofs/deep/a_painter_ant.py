@@ -1,6 +1,6 @@
 """Machine checks backing the A Painter Ant uniform-in-n correctness proof.
 
-Run:  just apa-proof   (or python tests/tools/apa_uniform_proof_check.py)
+Run:  just apa-proof   (or python tests/proofs/deep/a_painter_ant.py)
 
 Each check corresponds to a lemma in the relevant generator tests.
 
@@ -11,12 +11,13 @@ minutes for the whole suite under ``-n auto``, so neither pytest (no
 ``test_`` prefix, so it is not collected) nor CI pays that on every push for
 inputs that move this rarely.
 
-It sits here rather than in ``scripts/`` beside ``arrowqueue_lemmas.py``,
-its opposite number for ArrowQueue, because of what it imports: those
-lemmas reach only into ``esolangs``, while this shares
-``tests.tools.a_painter_ant_trace`` with ``test_boolean_grid.py``.  A
-``scripts/`` module importing from ``tests/`` would invert that dependency,
-and mypy checks ``scripts`` but not ``tests``.
+It sits beside ``arrowqueue.py``, its opposite number for ArrowQueue,
+under ``tests/proofs/deep/``: both are hand-derived uniform-in-n arguments
+rather than the registry-wide obligations one directory up.  Neither can
+live in ``scripts/`` -- this one shares ``tests.tools.a_painter_ant_trace``
+with ``test_boolean_grid.py``, and a ``scripts/`` module importing from
+``tests/`` would invert that dependency, since mypy checks ``scripts`` but
+not ``tests``.
 
 What it buys over the suite is the *uniform-in-n* half.  The checked-in
 tests cover the shipped behaviour at the arities they can enumerate; this
@@ -47,7 +48,7 @@ import sys
 from pathlib import Path
 
 # Run as a script (not under pytest), the repo root is not on the path.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from esolangs.tools.a_painter_ant import (
     _bit_is_horizontal,
