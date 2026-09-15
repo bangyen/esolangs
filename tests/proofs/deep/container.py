@@ -32,9 +32,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from esolangs.tools.other import _container_packed
 
-#: Above the ``n <= 6`` tree crossover, so ``container`` really packs.
-_CROSSOVER = 6
-
 
 def packed_literal(truth_table: str) -> str:
     """The decimal literal the generator emits, by its own rule."""

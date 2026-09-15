@@ -187,15 +187,16 @@ def check_l3(max_n: int = 8) -> list[str]:
 
 
 def _fill(template: str, bits: str) -> str:
-    """Instantiate a BIO template through the shared parameterized helper."""
-    from esolangs.tools.parameterized import instantiate
+    """Instantiate through the *shipped* fill, not a local copy of it.
 
-    n = len(bits)
-    return instantiate(
-        template,
-        [int(b) for b in bits],
-        lambda i, bit: ("0ox;" if bit else "0oz;") * (2 ** (n - 1 - i)),
-    )
+    ``_fill_bio`` is what the suite and the examples actually use.  Writing the
+    replacement out again here would make L3 a statement about this file: any
+    lambda with two symmetric branches is equal-width by construction, so a
+    local copy would pass the lemma however the real one drifted.
+    """
+    from esolangs.tools.examples import _fill_bio
+
+    return _fill_bio(template, [int(b) for b in bits])
 
 
 def main() -> int:
