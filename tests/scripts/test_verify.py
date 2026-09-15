@@ -232,6 +232,7 @@ class TestHeavyStepsAreNotRunInPytestsShadow:
         assert names >= verify.HEAVY_STEPS
         assert verify.LEAK_STEP in verify.HEAVY_STEPS
 
+    @pytest.mark.slow
     def test_a_heavy_step_runs_after_pytest_not_beside_it(self) -> None:
         """Order: tree-mutating, then the cheap steps, then pytest, then heavy.
 

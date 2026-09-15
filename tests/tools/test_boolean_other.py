@@ -8,12 +8,18 @@ helper edge paths exercised across generator modules.
 import importlib
 import itertools
 import random
+from itertools import pairwise
 
 import pytest
 
 from esolangs import tools as boolean
 from esolangs.interpreters.io import IO
 from esolangs.tools import laserfuck_layout
+from esolangs.tools.other import (
+    _flowchart_cells,
+    _flowchart_render,
+    _flowchart_stacked,
+)
 from tests.tools.boolean_runners import (
     run_algebraic_programming_language,
     run_clockwise,
@@ -27,6 +33,20 @@ from tests.tools.boolean_runners import (
     run_taglate,
     run_ztoalc,
 )
+
+
+class TestPacklangLinearTree:
+    """Fast structural coverage for Packlang's linear decision tree."""
+
+    def test_constants_fold_and_parity_doubles(self) -> None:
+        """Cover both leaf values, branching, and empty/nonempty bodies."""
+        assert "If " not in boolean.packlang("0000")
+        assert boolean.packlang("1111").count("INCR acc") == 1
+        sizes = []
+        for n in (7, 8):
+            table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+            sizes.append(len(boolean.packlang(table)))
+        assert sizes[1] < 2 * sizes[0]
 
 
 class TestInject:
@@ -124,7 +144,35 @@ class TestInject:
         """
         for n, table in ((1, "01"), (2, "0001"), (3, "01101001")):
             lines = boolean.inject(table).splitlines()
-            assert lines[: 2 * n] == [f"i{d};" for d in range(n) for _ in (0, 1)]
+            head = lines[: 2 * n]
+            assert all(head[2 * d] == head[2 * d + 1] for d in range(n))
+            assert len(set(head[::2])) == n
+
+    def test_small_tree_uses_one_character_labels(self) -> None:
+        """Inputs, branches, leaves, and constants share the short namespace."""
+        labels = [
+            line[:-1]
+            for line in boolean.inject("01101001").splitlines()
+            if line.endswith(";")
+        ]
+        assert all(len(label) == 1 for label in labels)
+
+    def test_halving_lookup_executes_wide_rows(self) -> None:
+        """Regex halves return sampled six-input rows."""
+        n = 6
+        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+        program = boolean.inject(table)
+        for row in (0, 1, 2, 7, 31, 32, 62, 63):
+            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
+            assert run_inject(program, bits) == table[row] + "\n"
+
+    def test_halving_lookup_growth_is_linear(self) -> None:
+        """Wide parity programs grow by at most the table-size ratio."""
+        sizes = []
+        for n in range(11, 15):
+            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+            sizes.append(len(boolean.inject(table)))
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
 
     def test_the_tree_collapses_on_the_constant_subtree_alone(self) -> None:
         """Depth never terminates the recursion; a constant subtree always does.
@@ -137,7 +185,7 @@ class TestInject:
         the disjunct is known to be belt-and-braces rather than assumed to
         be required.
         """
-        from esolangs.tools.inject import _tree
+        from esolangs.tools.inject import _Names, _tree
 
         calls: list[tuple[str, int, int]] = []
 
@@ -157,9 +205,9 @@ class TestInject:
         ]
         assert collapsed_by_depth_only == []
         # And the tree itself is unchanged when the depth clause cannot fire.
-        state = {"leaves": 0, "blocks": 0}
-        assert _tree("01101001", 0, 3, state, (0, 1, 2)) == _tree(
-            "01101001", 0, 3, {"leaves": 0, "blocks": 0}, (0, 1, 2)
+        perm = (0, 1, 2)
+        assert _tree("01101001", 0, 3, _Names(3, perm), perm) == _tree(
+            "01101001", 0, 3, _Names(3, perm), perm
         )
 
 
@@ -190,13 +238,39 @@ class TestForbinBoolean:
         """Each input is read as 8 bits and only the LSB drives the tree."""
         program = boolean.forbin("01")
         # one 8-variable read, then a decision tree that prints '1' for bit 1
-        assert "i0_0,i0_1,i0_2,i0_3,i0_4,i0_5,i0_6,i0_7 = (in 0);" in program
+        assert "a,b,c,d,e,f,g,h = (in 0);" in program
+        assert "for _:!h..h" in program
+
+    def test_small_program_uses_one_character_variables(self) -> None:
+        """The first 52 bit variables do not carry widening decimal suffixes."""
+        assignments = [
+            line.strip().split(" =", 1)[0]
+            for line in boolean.forbin("01101001").splitlines()
+            if " = (in 0);" in line
+        ]
+        assert all(len(name) == 1 for group in assignments for name in group.split(","))
+
+    def test_compact_variables_skip_keywords_without_duplicates(self) -> None:
+        """Filtering a reserved word does not reuse its successor's name."""
+        from esolangs.tools.other import _FORBIN_RESERVED, _forbin_name
+
+        names = [_forbin_name(i) for i in range(600)]
+        assert len(set(names)) == len(names)
+        assert not set(names) & _FORBIN_RESERVED
 
     def test_constant_subtrees_fold(self) -> None:
         """A constant slice returns its answer instead of branching further."""
         assert boolean.forbin("11111111").count("return 0;") == 1
         assert boolean.forbin("11110000").count("return 0;") == 2
         assert boolean.forbin("10010110").count("return 0;") == 8
+
+    def test_full_tree_growth_is_linear(self) -> None:
+        """Names and indentation add only a geometric cost to the tree."""
+        sizes = []
+        for n in range(11, 15):
+            parity = "".join(str(i.bit_count() & 1) for i in range(2**n))
+            sizes.append(len(boolean.forbin(parity)))
+        assert all(later < 2 * earlier for earlier, later in itertools.pairwise(sizes))
 
 
 class TestCvnc:
@@ -401,11 +475,11 @@ class TestCvnc:
     def test_a_tie_keeps_the_node_read_tree(self) -> None:
         """The hoisted build must be strictly shorter to be taken.
 
-        Fourteen of the 256 three-input tables build a hoisted program of
+        Sixteen of the 256 three-input tables build a hoisted program of
         exactly the tree's length, so ``<`` and ``<=`` ship different
         programs of *identical size*: invisible to a length bound and to
         every truth-table assertion, since both shapes compute the table.
-        All fourteen keep the tree.
+        All sixteen keep the tree.
 
         The comparison has to be driven through ``best_input_order``, the
         way the generator does it -- that helper permutes the *table* per
@@ -426,7 +500,7 @@ class TestCvnc:
             )
             if hoisted and len(hoisted) == len(tree):
                 tied.append(table)
-        assert len(tied) == 14
+        assert len(tied) == 16
         for table in tied:
             assert boolean.cvnc(table) == module._tree(table, 0)  # noqa: SLF001
 
@@ -478,7 +552,7 @@ class TestCvnc:
 
 
 class TestFargo:
-    """The Fargo boolean generator: an algebraic normal form, not a tree."""
+    """The Fargo boolean generator: a recursively factored ANF."""
 
     @pytest.mark.parametrize("n", [1, 2, 3])
     def test_every_table_at_small_arity(self, n: int) -> None:
@@ -539,9 +613,22 @@ class TestFargo:
         assert boolean.fargo("11110000") == "% 0 ^ 1 @ 10\n$\n"
         assert len(boolean.fargo("11110000")) < len(boolean.fargo("01101001"))
 
+    def test_dense_anf_growth_is_linear(self) -> None:
+        """NOR has every ANF coefficient set, but its source only doubles."""
+        sizes = [len(boolean.fargo("1" + "0" * ((1 << n) - 1))) for n in (7, 8)]
+        assert sizes[1] < 2 * sizes[0] + 16
+
 
 class TestFlowchart:
     """The Flowchart boolean generator (works for arbitrary n)."""
+
+    def test_compact_layout_uses_the_shorter_orientation(self) -> None:
+        """A stacked parity tree beats the flat form from three inputs."""
+        table = "01101001"
+        flat = _flowchart_render(_flowchart_cells(table))
+        stacked = _flowchart_render(_flowchart_stacked(table))
+        assert len(stacked) < len(flat)
+        assert boolean.flowchart(table) == stacked
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -586,6 +673,21 @@ class TestFlowchart:
         assert io.position() == n, (
             f"table {table} consumed {io.position()} inputs, expected {n}"
         )
+
+    @pytest.mark.medium
+    def test_wide_deque_lookup_executes_every_row(self) -> None:
+        """Opposite-end discards leave exactly the indexed answer."""
+        n = 6
+        table = "".join(str((row.bit_count() ^ (row >> 2)) & 1) for row in range(2**n))
+        program = boolean.flowchart(table)
+        for row in range(2**n):
+            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
+            assert run_flowchart(program, bits) == table[row], row
+
+    def test_wide_deque_lookup_scales_linearly(self) -> None:
+        """The five-row layout grows no faster than its table doubles."""
+        sizes = [len(boolean.flowchart("01" * (2 ** (n - 1)))) for n in range(7, 11)]
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
 
     def test_tree_depth_matches_input_count(self) -> None:
         """One ``/ /`` read node sits on each path from entry to a leaf."""
@@ -685,7 +787,7 @@ class TestFlowchart:
         """
         for table in ("0110", "01101001", "0110100110010110"):
             n = len(table).bit_length() - 1
-            flat = boolean.flowchart(table)
+            flat = _flowchart_render(_flowchart_cells(table))
             wide = max(len(row) for row in flat.splitlines())
             floor = max(len(row) for row in boolean.flowchart(table, 1).splitlines())
             assert floor < wide, f"{table} never narrows"
@@ -707,7 +809,7 @@ class TestFlowchart:
         """
         for n in (2, 3, 4):
             table = "".join(str(bin(i).count("1") % 2) for i in range(2**n))
-            flat = boolean.flowchart(table)
+            flat = _flowchart_render(_flowchart_cells(table))
             stacked = boolean.flowchart(table, 1)
             assert max(len(row) for row in stacked.splitlines()) == n + 5, n
             assert max(len(row) for row in flat.splitlines()) == 5 * 2**n, n
@@ -762,12 +864,47 @@ class TestContainer:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_structure(self) -> None:
-        """The program reads n inputs and keeps one survivor per row."""
+        """The program reads n inputs and advances prefix survivors."""
         program = boolean.container("0110")
         assert program.startswith("T:\n+1 T>=T")
         assert ":" in program.splitlines()[:4]  # the empty-named reader
-        assert program.count("S") >= 4  # a survivor per row
+        declarations = [
+            line[:-1].split("=", 1)[0]
+            for line in program.splitlines()
+            if line.endswith(":")
+        ]
+        generated = [
+            name
+            for name in declarations
+            if name not in {"", "T", "IN", "OUT", "PRINT", "EXIT"}
+        ]
+        assert len(generated) == len(set(generated))
         assert program.count("PRINT:") == 1
+
+    def test_packed_decoder_selects_decimal_digits(self) -> None:
+        """The wide-table path divides one packed decimal digit per row."""
+        table = "011" + "0" * 125
+        program = boolean.container(table)
+        assert "A=110:" in program
+        for combo in (0, 1, 2, 3, 17, 63, 64, 127):
+            bits = [(combo >> (6 - i)) & 1 for i in range(7)]
+            assert run_container(program, [str(b) for b in bits]) == table[combo]
+
+    def test_small_tree_uses_one_character_generated_names(self) -> None:
+        """Gates and survivors share one compact identifier namespace."""
+        declarations = [
+            line[:-1].split("=", 1)[0]
+            for line in boolean.container("01101001").splitlines()
+            if line.endswith(":")
+        ]
+        special = {"", "T", "IN", "OUT", "PRINT", "EXIT"}
+        assert all(len(name) == 1 for name in declarations if name not in special)
+
+    @pytest.mark.slow
+    def test_tree_removes_the_minterm_factor(self) -> None:
+        """Each additional row adds bounded tree work, not n tests."""
+        sizes = [len(boolean.container("01" * (2 ** (n - 1)))) for n in range(7, 11)]
+        assert all(b <= 2 * a + 4000 for a, b in itertools.pairwise(sizes))
 
     def test_dense_tables_evaluate_the_complement(self) -> None:
         """A dense table is summed from its zero rows and inverted.
@@ -1124,6 +1261,29 @@ class TestZtoalc:
 
 
 class TestClockwise:
+    def test_compact_layout_uses_a_partial_stack_past_the_crossover(self) -> None:
+        """Alternating composition beats both old eight-input layouts."""
+        table = "01101001" * 32
+        flat = boolean.clockwise(table, width=10_000)
+        partially_stacked = boolean.clockwise(table, width=8 * 8)
+        assert len(partially_stacked) < len(flat)
+        assert len(boolean.clockwise(table)) < len(partially_stacked)
+
+    @pytest.mark.medium
+    def test_alternating_layout_executes_every_row(self) -> None:
+        """The linear layout computes two dense five- and six-input tables."""
+        for n in (5, 6):
+            size = 1 << n
+            tables = (
+                ("01101001" * (size // 8))[:size],
+                "".join(str((i * 73 + i // 3) & 1) for i in range(size)),
+            )
+            for table in tables:
+                program = boolean.clockwise(table)
+                for combo in range(size):
+                    bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                    assert run_clockwise(program, bits) == table[combo]
+
     @pytest.mark.parametrize(
         ("table", "n"),
         [
@@ -1564,6 +1724,12 @@ class TestThreeX:
         program = boolean.three_x("0" * 16 + "1" * 16)
         assert program.count("(") < 40
 
+    def test_deep_names_keep_full_tree_growth_linear(self) -> None:
+        """The shortest variable names sit at the most repeated depths."""
+        parity7 = "".join(str(i.bit_count() & 1) for i in range(2**7))
+        parity8 = "".join(str(i.bit_count() & 1) for i in range(2**8))
+        assert len(boolean.three_x(parity8)) < 2 * len(boolean.three_x(parity7))
+
     def test_digit_constant_encodings(self) -> None:
         """The base-3 digit seeds are the closed-form minimal programs."""
         from esolangs.tools import other
@@ -1593,6 +1759,29 @@ class TestThreeX:
 
 
 class TestLaserFuck:
+    def test_compact_layout_compares_straight_and_hanging_trees(self) -> None:
+        """Explicit widths retain the old straight and hanging layouts."""
+        table = "01101001" * 32
+        natural = boolean.laserfuck(table, width=10_000)
+        hanging = boolean.laserfuck(table, width=1)
+        assert len(hanging) < len(natural)
+
+    @pytest.mark.medium
+    def test_weighted_table_executes_every_row(self) -> None:
+        """The linear default computes dense tables at every initial heading."""
+        for n in (5, 6):
+            size = 1 << n
+            tables = (
+                ("01101001" * (size // 8))[:size],
+                "".join(str((i * 73 + i // 3) & 1) for i in range(size)),
+            )
+            for table in tables:
+                program = boolean.laserfuck(table)
+                for combo in range(size):
+                    bits = [str((combo >> (n - 1 - i)) & 1) for i in range(n)]
+                    for heading in range(4):
+                        assert run_laserfuck(program, bits, heading) == table[combo]
+
     @pytest.mark.parametrize(
         ("table", "n"),
         [
@@ -1664,14 +1853,8 @@ class TestLaserFuck:
         """
         assert ",>,>," in boolean.laserfuck("01101001")
 
-    def test_wide_tables_do_not_search_every_order(self) -> None:
-        """Past the cap only the identity order is built, not ``n!`` of them.
-
-        Seven inputs would be 5040 orders; the search stops at six, so the
-        wide table costs one build.  Counting the builds is the assertion
-        rather than the timing, since that is what a change to the cap
-        would move.
-        """
+    def test_only_identity_and_greedy_orders_are_built(self) -> None:
+        """Each table costs at most two orders with two named layouts each."""
         import importlib
 
         # The package re-exports the generator under the submodule's own
@@ -1679,10 +1862,7 @@ class TestLaserFuck:
         module = importlib.import_module("esolangs.tools.laserfuck")
         real = module._laserfuck_build  # noqa: SLF001
 
-        for n, table, orders in (
-            (3, "01011010", 6),
-            (7, ("10" * 64)[:128], 1),
-        ):
+        for n, table, orders in ((3, "01011010", 2),):
             built = 0
 
             def counted(*args: object, _build: object = real, **kwargs: object) -> str:
@@ -1693,7 +1873,7 @@ class TestLaserFuck:
             with pytest.MonkeyPatch.context() as patch:
                 patch.setattr(module, "_laserfuck_build", counted)
                 boolean.laserfuck(table)
-            assert built == orders, f"n={n} built {built} candidates"
+            assert built == 2 * orders, f"n={n} built {built} candidates"
 
     @pytest.mark.parametrize(
         "table",
@@ -1797,11 +1977,11 @@ class TestLaserFuck:
         cannot meet is still met.
         """
         table = "01101001"  # XOR3
-        natural = max(len(ln) for ln in boolean.laserfuck(table).split("\n"))
+        natural = max(len(ln) for ln in boolean.laserfuck(table, 10_000).split("\n"))
         assert natural > 30
         narrow = boolean.laserfuck(table, 30).split("\n")
         assert max(len(ln) for ln in narrow) <= 30
-        assert len(narrow) > len(boolean.laserfuck(table).split("\n"))
+        assert len(narrow) > len(boolean.laserfuck(table, 10_000).split("\n"))
 
     def test_the_fold_uses_its_return_rows(self) -> None:
         """A same-character run fills the leftward leg, not just the right.
@@ -2007,7 +2187,7 @@ class TestLaserFuck:
         ("table", "flip", "narrow", "wide"),
         [
             ("11111110", 69, (6, 49), (4, 68)),
-            ("01101001", 71, (10, 51), (8, 68)),
+            ("01101001", 69, (10, 49), (8, 68)),
         ],
     )
     def test_the_straight_layout_starts_at_its_exact_width(
@@ -2037,10 +2217,9 @@ class TestLaserFuck:
         at = boolean.laserfuck(table, flip).split("\n")
         assert (len(at), max(len(line) for line in at)) == wide
 
-        # At the flip the constraint stops binding, so the grid matches the
-        # unconstrained build.
+        # The compact build is allowed to choose either named placement.
         free = boolean.laserfuck(table).split("\n")
-        assert (len(free), max(len(line) for line in free)) == wide
+        assert len("\n".join(free)) <= len("\n".join(at))
 
     def test_the_grid_uses_only_laserfuck_characters(self) -> None:
         """Nothing but the language's own glyphs and layout space.
@@ -2230,7 +2409,7 @@ class TestGeneratorEdgePaths:
 
 
 class TestAlgebraicProgrammingLanguage:
-    """The minterm-sum generator, whose whole program is one executed line."""
+    """The folded-tree generator, whose whole program is one executed line."""
 
     @staticmethod
     def _run(program: str, n: int, combo: int) -> str:
@@ -2388,17 +2567,24 @@ class TestAlgebraicProgrammingLanguage:
             ]
             assert len(set(widths)) == 1, (table, widths)
 
+    def test_default_full_tree_growth_is_linear(self) -> None:
+        """Parity folds no subtree, but its source only doubles per input."""
+        sizes = []
+        for n in (7, 8):
+            table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+            sizes.append(len(boolean.algebraic_programming_language(table)))
+        assert sizes[1] < 2 * sizes[0] + 32
+
 
 class TestAlgebraicProgrammingLanguageShapes:
-    """The structural corners of the minterm expansion, at four inputs.
+    """The structural corners of the decision tree, at four inputs.
 
     The exhaustive n<=3 sweep above already covers every shape the
     construction can take -- empty minterm set, full set, and everything
     between -- and the expansion is mechanical rather than searched, so
     sweeping all 65536 four-input tables costs about eight minutes to
     re-cover the same ground.  These four pin the corners instead: the
-    two constants, the table that expands to the most terms, and the one
-    that expands to the fewest.
+    two constants, a single selected row, and the fully branching parity.
     """
 
     @staticmethod

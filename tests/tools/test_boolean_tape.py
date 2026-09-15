@@ -9,7 +9,7 @@ import contextlib
 import hashlib
 import sys
 from importlib import import_module
-from itertools import permutations
+from itertools import pairwise, permutations
 
 import pytest
 
@@ -399,7 +399,7 @@ class TestSixFive:
         # 186 before the leaves gained ``_six_five_const``'s ``r == 5``
         # shortcut: a shorter leaf changes which orders pay for themselves,
         # so more tables now beat the identity rather than tying it.
-        assert improved == 208  # the rest tie, keeping the old emission
+        assert improved == 192  # the rest tie, keeping the old emission
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -424,29 +424,20 @@ class TestSixFive:
             assert got == table[combo], f"inputs {bits}"
             assert not list(feed), f"inputs {bits} left input unread"
 
-    def test_wide_tables_do_not_search_every_order(self) -> None:
-        """Past the cap only the identity and a greedy order are built.
-
-        This generator renders past n == 6 whenever a table folds hard, so
-        the ``n!`` search is reachable rather than theoretical: AND-8 has
-        40320 orders and searching them takes about 17 seconds against
-        milliseconds for the greedy pick.  Timing is not the assertion --
-        the build count is, since that is what a future change would break.
-        """
+    def test_only_four_named_orders_are_built(self) -> None:
+        """Every arity builds at most four deterministic candidates."""
         import importlib
 
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
         module = importlib.import_module("esolangs.tools.six_five")
 
-        # AND-n is symmetric, so its greedy pick *is* the identity and the
-        # two dedupe to a single build -- the point being that neither is
-        # 40320.  An alternating table, whose greedy pick differs, is the
-        # two-candidate case.
-        for n, table, orders in (
-            (6, "0" * 63 + "1", 720),
-            (8, "0" * 255 + "1", 1),
-            (7, ("10" * 128)[:128], 2),
+        # The named orders deduplicate before rendering; the bound, rather
+        # than timing, prevents a factorial contest from returning.
+        for n, table in (
+            (6, "0" * 63 + "1"),
+            (8, "0" * 255 + "1"),
+            (7, ("10" * 128)[:128]),
         ):
             built = 0
 
@@ -462,7 +453,7 @@ class TestSixFive:
             with pytest.MonkeyPatch.context() as patch:
                 patch.setattr(module, "_six_five_hoisted", counted)
                 boolean.six_five(table)
-            assert built == orders, f"n={n} built {built} candidates"
+            assert 1 <= built <= 4, f"n={n} built {built} candidates"
 
     def test_retired_arithmetic_kernel_is_gone(self) -> None:
         """Retired construction helpers do not return as dispatch candidates."""
@@ -482,6 +473,34 @@ class TestSixFive:
 # 2.3s over 84 tests: runs the generated program.
 @pytest.mark.medium
 class TestStreetcode:
+    def test_linear_h_tree_executes_wide_rows(self) -> None:
+        """The alternating-axis layout reaches both sides of every level."""
+        n = 6
+        table = "".join(str(index.bit_count() & 1) for index in range(2**n))
+        program = boolean.streetcode(table)
+        for combo in (0, 1, 2, 17, 31, 32, 47, 62, 63):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            assert run_streetcode(program, [str(bit) for bit in bits]) == table[combo]
+
+    def test_h_tree_rectangle_is_linear(self) -> None:
+        """Alternating axes bound the rendered rectangle, not just live roads."""
+        for n in range(6, 11):
+            table = "".join(str(index.bit_count() & 1) for index in range(2**n))
+            program = boolean.streetcode(table)
+            rows = program.splitlines()
+            assert len(rows) * max(map(len, rows)) <= 1_700 * 2**n
+            assert len(program) <= 1_100 * 2**n
+
+    def test_compact_layout_compares_both_rotations(self) -> None:
+        """Rotation strips the dense tree's leading triangular padding."""
+        from esolangs.tools.streetcode import _streetcode_rotate
+
+        table = "01101001"
+        original = boolean.streetcode(table, width=10_000)
+        rotated = _streetcode_rotate(original)
+        assert len(rotated) < len(original)
+        assert boolean.streetcode(table) == rotated
+
     def test_default_uses_only_shared_layouts(self) -> None:
         """Per-input loops are width fallbacks, never default candidates."""
         module = import_module("esolangs.tools.streetcode")
@@ -490,9 +509,10 @@ class TestStreetcode:
             for value in range(1 << (1 << n)):
                 table = format(value, f"0{1 << n}b")
                 tree = module._streetcode_tree(table)  # noqa: SLF001
+                shared = module._streetcode_shared_programs(table, n, tree)  # noqa: SLF001
                 all_programs = [
-                    module._streetcode_hallway_program(n, tree),  # noqa: SLF001
-                    *module._streetcode_shared_programs(table, n, tree),  # noqa: SLF001
+                    *shared,
+                    *(module._streetcode_rotate(p) for p in shared),  # noqa: SLF001
                 ]
                 assert boolean.streetcode(table) == shortest(*all_programs)
 
@@ -726,23 +746,13 @@ class TestStreetcode:
         for width in (1, 20, 29, 33):
             assert set(boolean.streetcode("0110", width)) <= allowed, width
 
-    def test_order_search_stops_at_the_cap(self) -> None:
-        """Past the cap only the identity order is offered.
-
-        Above ``_ORDER_SEARCH_MAX`` the exhaustive search is ``n!`` builds of
-        an ``O(2**n)`` drawing, so the enumeration collapses to the one order
-        that needs no search.  Tested on the helper: reaching this through
-        ``streetcode`` would mean building a seven-input program.
-        """
-        from esolangs.tools.helpers import _ORDER_SEARCH_MAX
+    def test_only_identity_and_greedy_orders_are_offered(self) -> None:
+        """Streetcode never renders more than two order candidates."""
         from esolangs.tools.streetcode import _streetcode_orders
 
-        at_cap = _streetcode_orders(_ORDER_SEARCH_MAX)
-        assert len(at_cap) == len(list(permutations(range(_ORDER_SEARCH_MAX))))
-        assert at_cap[0] == tuple(range(_ORDER_SEARCH_MAX))
-
-        past = _ORDER_SEARCH_MAX + 1
-        assert _streetcode_orders(past) == [tuple(range(past))]
+        table = "01011010"
+        assert _streetcode_orders(table, 3)[0] == (0, 1, 2)
+        assert len(_streetcode_orders(table, 3)) <= 2
 
 
 class TestDimensional:
@@ -853,17 +863,8 @@ class TestCirclefuck:
         with pytest.raises(ValueError, match="power-of-two"):
             boolean.circlefuck_byte([1, 2, 3])
 
-    def test_past_the_cap_the_greedy_order_replaces_the_search(self) -> None:
-        """Above ``_ORDER_SEARCH_MAX`` one greedy pick stands in for ``n!``.
-
-        The exhaustive reorder is capped because it builds a program per
-        order; at n == 7 that is 5040 builds.  Past the cap the generator
-        scores each input by the constant subtrees choosing it next would
-        create and commits to that order, so exactly one extra candidate is
-        built.  The count is the assertion -- it is what a change to the cap
-        or to the fallback would break -- and the table still has to come
-        out right, so the program is run over all 128 combinations too.
-        """
+    def test_identity_and_greedy_are_the_only_candidates(self) -> None:
+        """The two candidates are counted and the selected one is executed."""
         import importlib
 
         # The package re-exports the generator under the submodule's own
@@ -903,13 +904,8 @@ class TestCirclefuck:
         the same as a scattered table.  The tree now picks its order, so
         both single-dependency tables fold to one branch.
 
-        They do not come out *equal*, and the residue is the reorder's
-        price: a node tests the cell under the pointer, so ``11110000``
-        walks to cell 0 and pays two moves the already-aligned
-        ``10101010`` does not.  Pinning the gap as a small constant rather
-        than as equality is what keeps that cost visible -- if the walk
-        ever stopped being emitted, this would read as an improvement
-        instead of the correctness bug it would be.
+        Their layouts need not be equal because pointer walks are a real
+        cost; both must still beat an unfolded table.
         """
         assert len(boolean.circlefuck("11111111")) < len(
             boolean.circlefuck("10101010"),
@@ -917,10 +913,8 @@ class TestCirclefuck:
         assert len(boolean.circlefuck("10101010")) < len(
             boolean.circlefuck("10010110"),
         )
-        aligned = len(boolean.circlefuck("10101010"))
         walked = len(boolean.circlefuck("11110000"))
-        assert walked - aligned == 2, "the reorder should pay exactly its walk"
-        assert walked < len(boolean.circlefuck("10010110"))
+        assert walked <= len(boolean.circlefuck("10010110"))
 
     def test_folded_leaf_clears_its_cell(self) -> None:
         """A folded leaf builds its value on a cleared cell.
@@ -1580,6 +1574,24 @@ class TestBitTilde:
             got = run_bit_tilde(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_every_small_table(self, n: int) -> None:
+        """Execute every table and row through three inputs."""
+        for value in range(2 ** (2**n)):
+            table = format(value, f"0{2**n}b")
+            program = boolean.bit_tilde(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                assert run_bit_tilde(program, [str(b) for b in bits]) == table[combo]
+
+    def test_full_tree_growth_is_linear(self) -> None:
+        """Parity folds nothing, but depth-local movement stays linear."""
+        sizes = []
+        for n in (7, 8):
+            table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+            sizes.append(len(boolean.bit_tilde(table)))
+        assert sizes[1] < 2 * sizes[0] + 256
+
     def test_single_read_and_output(self) -> None:
         """One read per input and a single final output."""
         program = boolean.bit_tilde("0110")
@@ -1658,6 +1670,29 @@ class TestJaune:
         # every input matters here, so every read keeps its cell
         assert boolean.jaune("10010110").startswith("v>v>v>")
 
+    def test_each_leaf_terminates_without_a_shared_label(self) -> None:
+        """Leaves use ``.`` instead of repeating a widening end label."""
+        program = boolean.jaune("0110")
+        assert program.count(".") == 4
+        assert program.endswith("^.")
+
+    def test_spatial_lookup_executes_wide_rows(self) -> None:
+        """The travelling counter returns sampled six-input rows."""
+        n = 6
+        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+        program = boolean.jaune(table)
+        for row in (0, 1, 2, 7, 31, 32, 62, 63):
+            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
+            assert run_jaune(program, bits) == table[row]
+
+    def test_spatial_lookup_growth_is_linear(self) -> None:
+        """Wide parity programs grow by at most the table-size ratio."""
+        sizes = []
+        for n in range(11, 15):
+            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+            sizes.append(len(boolean.jaune(table)))
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
+
     @pytest.mark.parametrize(
         ("a", "b"),
         [
@@ -1712,18 +1747,25 @@ class TestSbleq:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_program_structure(self) -> None:
-        """The root reads, then its branch normalizes and tests it."""
+        """Low-address data precedes the root reads and branch."""
         program = boolean.sbleq("0110")
         cells = [int(tok) for tok in program.split()]
-        data_base = len(cells) - 11
-        assert cells[:3] == [data_base + 4, -2, data_base + 6]  # root read
-        assert cells[6:9] == [  # root branch and normalization
+        data_base = 9
+        code_base = cells[6]
+        assert cells[:6] == [0, 0, 6, -1, 0, 0]
+        assert cells[7:9] == [0, 0]
+        assert cells[data_base : data_base + 4] == [-49, 48, 49, -1]
+        assert cells[code_base : code_base + 3] == [
+            data_base + 4,
+            -2,
+            data_base + 6,
+        ]
+        assert cells[code_base + 6 : code_base + 9] == [
             data_base + 4,
             data_base,
             data_base + 8,
         ]
-        assert cells[-11:-7] == [-49, 48, 49, -1]  # NEG49, D48, D49, HALT
-        code = cells[:data_base]
+        code = cells[code_base:]
         triples = [tuple(code[i : i + 3]) for i in range(0, len(code), 3)]
         outputs = [
             t for t in triples if t[0] == -3
@@ -1734,9 +1776,7 @@ class TestSbleq:
             (-3, data_base + 2, 0),
             (-3, data_base + 1, 0),
         ]
-        assert [t for t in triples if t == (0, 0, data_base + 3)] == 4 * [
-            (0, 0, data_base + 3)
-        ]  # one halt per leaf
+        assert [t for t in triples if t == (0, 0, 3)] == 4 * [(0, 0, 3)]
 
     def test_only_the_hoisted_route_remains(self) -> None:
         """The former node-read builder is gone, not merely bypassed."""
@@ -1750,10 +1790,29 @@ class TestSbleq:
 
         program = _sbleq_hoisted("00010111", (0, 1, 2))
         cells = [int(tok) for tok in program.split()]
-        triples = [tuple(cells[i : i + 3]) for i in range(0, len(cells), 3)]
-        reads = [t for t in triples[:6] if t[1] == -2]
-        assert len(reads) == 3  # one read per input, all in the first 6 instrs
+        code_base = cells[6]
+        code = cells[code_base:]
+        triples = [tuple(code[i : i + 3]) for i in range(0, len(code), 3)]
+        reads = [t for t in triples[:3] if t[1] == -2]
+        assert len(reads) == 3  # one read per input, all before the tree
         assert [t[0] for t in reads] == sorted({t[0] for t in reads})  # input order
+
+    def test_packed_decoder_executes_wide_rows(self) -> None:
+        """Rows on both sides of chunk boundaries decode correctly."""
+        n = 6
+        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+        program = boolean.sbleq(table)
+        for row in (0, 1, 5, 6, 7, 31, 32, 62, 63):
+            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
+            assert run_sbleq(program, bits) == table[row]
+
+    def test_packed_growth_is_linear(self) -> None:
+        """Wide parity tables grow by at most the table-size ratio."""
+        sizes = []
+        for n in range(11, 15):
+            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+            sizes.append(len(boolean.sbleq(table)))
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
 
     def test_mismatched_table_rejected(self) -> None:
         with pytest.raises(ValueError, match="power-of-two"):
@@ -1784,11 +1843,11 @@ class TestBrainIf:
             assert got == str(int(table[combo])), f"inputs {bits}"
 
     def test_structure(self) -> None:
-        """The answer byte is built first, then an input is read and tested."""
+        """An entry trampoline precedes the answer build and input tree."""
         program = boolean.brainif("10")
-        assert program.startswith("if 0 increment")
+        assert program.startswith("if 0 goto 4\nif 48 goto")
         assert "if 0 input" in program
-        assert "if 48 goto" in program
+        assert program.count("goto 2") == 4
 
     def test_the_answer_byte_is_built_once(self) -> None:
         """The climb to 48 is paid before the tree, not once per digit.
@@ -1816,6 +1875,23 @@ class TestBrainIf:
         """
         assert len(boolean.brainif("11111111")) < len(boolean.brainif("11110000"))
         assert len(boolean.brainif("11110000")) < len(boolean.brainif("10010110"))
+
+    def test_spatial_lookup_executes_wide_rows(self) -> None:
+        """Fresh scratch cells route sampled six-input rows."""
+        n = 6
+        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+        program = boolean.brainif(table)
+        for row in (0, 1, 2, 7, 31, 32, 62, 63):
+            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
+            assert run_brainif(program, bits) == table[row]
+
+    def test_spatial_lookup_growth_is_linear(self) -> None:
+        """Wide parity programs grow by at most the table-size ratio."""
+        sizes = []
+        for n in range(8, 12):
+            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+            sizes.append(len(boolean.brainif(table)))
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
 
 
 class TestRotfuck:

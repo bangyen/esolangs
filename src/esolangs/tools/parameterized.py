@@ -6,6 +6,7 @@ functions without pretending to read stdin. Equal-width setters prevent input
 bits leaking through program length.
 """
 
+import re
 from functools import cache
 from math import factorial
 
@@ -21,6 +22,7 @@ from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
     best_input_order,
+    constant_span_test,
     decision_tree_tokens,
     essential_inputs,
     instantiate,
@@ -384,6 +386,40 @@ def _eval_ordered(truth_table: str, ops: str) -> str:
     return "".join(out)
 
 
+def _reflect_back(source: str) -> str:
+    r"""Reflect a Back template and route the fixed eastward start into it.
+
+    A placeholder is one grid cell despite occupying several source
+    characters, so reflection reverses parsed cells rather than characters.
+    Only the beam mirrors swap; ``<`` and ``>`` move the tape head and keep
+    their meanings.
+    """
+    rows = [re.findall(r"\{X\d+\}|.", row) for row in source.splitlines()]
+    width = max(map(len, rows))
+    mirrors = str.maketrans({"/": "\\", "\\": "/"})
+    reflected: list[list[str]] = []
+    for row in rows:
+        cells = list(reversed([*row, *([" "] * (width - len(row)))]))
+        reflected.append(
+            [
+                " ",
+                *(
+                    cell.translate(mirrors) if len(cell) == 1 else cell
+                    for cell in cells
+                ),
+                " ",
+            ]
+        )
+
+    # Start east, turn south, wrap west, then turn north and west into the
+    # reflected root.  The two extra columns touch only these first rows;
+    # all tree padding is now trailing and disappears under rstrip.
+    reflected[0][0] = reflected[0][-1] = "\\"
+    reflected[1][0] = "/"
+    reflected[1][-1] = "\\"
+    return "\n".join("".join(row).rstrip() for row in reflected)
+
+
 def back(truth_table: str) -> str:
     r"""Build a Back template for the given truth table.
 
@@ -418,6 +454,11 @@ def back(truth_table: str) -> str:
     tree.  The load is therefore written bottom-to-top, and the tree is free
     to begin one column in.
 
+    That logical drawing is reflected for output.  The tree then grows left,
+    putting its triangular padding at line ends where it is stripped.  A
+    two-row outer route converts Back's fixed eastward start into the westward
+    entry the reflected root needs.
+
     The answer is therefore the *value* of cell ``n``, which the halt dump
     prints, rather than the head's position, which it does not.  An earlier
     layout kept a 0-cell and a 1-cell and parked the head on whichever
@@ -427,7 +468,8 @@ def back(truth_table: str) -> str:
     -- a leaf spends one ``-`` instead of one extra pointer move -- and makes
     the dump self-describing.
     """
-    return best_input_order(truth_table, _back_ordered)
+    n = _validate_truth_table(truth_table)
+    return _back_ordered(truth_table, tuple(range(n)))
 
 
 def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -550,6 +592,7 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # repo's own interpreter.
     grid: dict[tuple[int, int], str] = {}
     next_row = [1]
+    constant = constant_span_test(truth_table)
 
     def leaf(level: int, value: str, row: int, col: int) -> None:
         # walk to the single answer cell, write a 1 there when the leaf's
@@ -561,9 +604,8 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
             grid[(row, col + k)] = ch
 
     def emit(level: int, lo: int, hi: int, row: int, col: int) -> None:
-        vals = {truth_table[r] for r in range(lo, hi)}
-        if level == n or len(vals) == 1:
-            leaf(level, vals.pop() if level < n else truth_table[lo], row, col)
+        if level == n or constant(lo, hi):
+            leaf(level, truth_table[lo], row, col)
             return
         mid = lo + (hi - lo) // 2
         grid[(row, col)] = "+"
@@ -600,7 +642,7 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # both bits embed as a single command ('-' or '+'), never as the blank a
     # zero once used, so no placeholder row instantiates to whitespace and
     # the strip cannot change a filled row's length.
-    return "\n".join("".join(row).rstrip() for row in rows)
+    return _reflect_back("\n".join("".join(row).rstrip() for row in rows))
 
 
 # The largest value a NoComment cell can hold, hence the largest distance a
@@ -1082,7 +1124,7 @@ def bitdeque(truth_table: str) -> str:
     one, with the zero-subtree falling through in place.  A leaf drains the
     deque with ``n+1`` ``POP``s (so the register is exactly zero even for a
     collapsed tree), pushes the answer, forces the register back to one with
-    a trailing ``INVERT``, and ``GOTO``s past the program end to halt -- so
+    a trailing ``INVERT``, and uses a fixed low-address halt trampoline -- so
     every leaf always routes and the deque printed at halt holds exactly the
     answer.
 
@@ -1101,7 +1143,25 @@ def bitdeque(truth_table: str) -> str:
     register parity at its position, so moving the head would desync every
     fill site.  The emitted load is byte-identical whatever the order.
     """
-    return best_input_order(truth_table, _bitdeque_ordered)
+    if len(truth_table) <= 16:
+        return best_input_order(truth_table, _bitdeque_ordered)
+    return _bitdeque_linear(truth_table)
+
+
+def _bitdeque_linear(truth_table: str) -> str:
+    """Push the table, then discard its prefix and suffix in O(T) text."""
+    n = _validate_truth_table(truth_table)
+    tokens: list[str] = []
+    register = 0
+    for bit in truth_table:
+        value = int(bit)
+        if value != register:
+            tokens.append("INVERT")
+            register = value
+        tokens.append("PUSH")
+    tokens += ["{X" + str(i) + "}" for i in range(n)]
+    tokens += ["POP", "PUSH"]
+    return " ".join(tokens)
 
 
 def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -1128,7 +1188,7 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         out.append("PUSH")
         if answer == "0":
             out.append("INVERT")
-        out.append("GOTO@END")
+        out.append("GOTO 0")
         return out
 
     # Simulate the deque to find each level's rotation.  The load pushes the
@@ -1168,6 +1228,10 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     # Each placeholder expands to two commands, which is what ``start`` below
     # counts; see the docstring for why the load is byte-identical per order.
+    # Initially command 0 falls through on zero and commands 1/2 skip the
+    # trampoline.  A leaf returns with one, so ``GOTO 0`` reaches command 3;
+    # only that command carries the widening end address.
+    prelude = ["GOTO 3", "INVERT", "GOTO 4", "GOTO@END", "INVERT"]
     load_block_in_name_order = ["{X" + str(i) + "}" for i in range(n)]
 
     # A node spends its rotation, its pop and its ``GOTO`` before either
@@ -1191,25 +1255,20 @@ def _bitdeque_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         leaf_tokens,
         node,
         parent_width=width,
-        start=2 * n,
+        start=len(prelude) + 2 * n,
         collapse=True,
     )
-    end = 2 * n + len(tree)
-    return " ".join(
-        load_block_in_name_order
-        + ["GOTO " + str(end) if t == "GOTO@END" else t for t in tree]
-    )
+    end = len(prelude) + 2 * n + len(tree)
+    tokens = prelude + load_block_in_name_order + tree
+    return " ".join("GOTO " + str(end) if t == "GOTO@END" else t for t in tokens)
 
 
 def _ram0_width(address: int) -> int:
     """Commands a RAM0 tree node spends before its subtrees.
 
     ``Z``, an ``A`` per unit of the cell address, ``L``, ``C``, and the
-    ``goto`` that reaches the one-subtree -- so the width varies from node
-    to node, which is why the walker takes a callable rather than a
-    constant.  The address is the *input* the node tests, which is its
-    level only under the identity order; :func:`_ram0_ordered` maps one to
-    the other.
+    ``goto`` that reaches the one-subtree.  Addresses descend with depth,
+    putting the most repeated tests in the shortest cells.
     """
     return address + 4
 
@@ -1227,61 +1286,136 @@ def ram0(truth_table: str) -> str:
     variable-length setter (``Z`` vs ``Z A``) was what shifted the absolute
     ``goto`` operands; the padded setter removes that.
 
-    A load phase stores each bit once in its own RAM cell (address ``i``),
+    A load phase stores each bit once in its own RAM cell,
     so the inputs are embedded exactly ``n`` times; the decision tree then
     *loads* each bit with RAM0's indirect ``L`` (``z := ram[z]``) rather than
     re-embedding it, so the tree nodes contain no substitution.  Each node
     sets ``z`` to its address, loads the bit, and ``C`` skips the following
     ``goto`` when ``z`` is zero (the zero-subtree falls through in place)
     while the ``goto`` jumps to the one-subtree otherwise.  A leaf sets
-    ``z`` to the answer and uses RAM0's *unconditional* ``goto`` to run off
-    the program end, so the final ``z`` read from the state dump is the
-    answer.
+    ``z`` to the answer and jumps to a fixed low-address halt trampoline, so
+    the final ``z`` read from the state dump is the answer.
 
     **The tree splits on its inputs in whichever order emits the shortest
     program** (:func:`~esolangs.tools.helpers.best_input_order`).
     Folding a subtree needs the rows it covers to agree, and which rows a
     subtree covers is what the split order decides; RAM0 also spells an
     input as a run of ``A`` as long as its *address*, so a cheap order here
-    additionally wants the low addresses at the deep, oft-repeated levels.
-    Both effects come out of measuring the emitted candidates rather than
-    modelling either.  The load phase still stores bit ``i`` in cell ``i``
-    in input order, so the ``{Xi}`` placeholders and their positions are
-    untouched -- only which cell a node loads moves.
+    additionally benefits from low addresses at deep, oft-repeated levels.
+    That assignment is fixed optimally by depth: level ``n-1`` uses address
+    zero, up to the root at ``n-1``.  The load remains in input order, so the
+    ``{Xi}`` placeholders and their positions are untouched.
     """
-    return best_input_order(truth_table, _ram0_ordered)
+    if len(truth_table) <= 16:
+        return best_input_order(truth_table, _ram0_ordered)
+    return _ram0_linear(truth_table)
+
+
+def _ram0_linear(truth_table: str) -> str:
+    """Emit a linear straight-line RAM initializer and indexed lookup."""
+    n = _validate_truth_table(truth_table)
+    tokens: list[str] = []
+    labels: dict[str, int] = {}
+    jumps: list[tuple[int, str]] = []
+
+    def emit(*commands: str) -> None:
+        tokens.extend(commands)
+
+    def mark(name: str) -> None:
+        labels[name] = len(tokens)
+
+    def jump(target: str) -> None:
+        jumps.append((len(tokens), target))
+        tokens.append("@")
+
+    def unary(value: int) -> None:
+        emit("Z", *("A" for _ in range(value)))
+
+    def store_constant(address: int, value: int) -> None:
+        unary(address)
+        emit("N")
+        unary(value)
+        emit("S")
+
+    # Cells 0/1 hold the initializer's address counter and the selected table
+    # pointer; cells 2..n+1 hold the parameterized inputs.
+    for i in range(n):
+        unary(i + 2)
+        emit("N", "{X" + str(i) + "}", "S")
+
+    table_base = n + 2
+    store_constant(0, table_base - 1)
+    store_constant(1, table_base)
+
+    # Advance cell 0, using the new address as a temporary copy of itself,
+    # then store one table bit there.  This is constant work per row.
+    for bit in truth_table:
+        emit("Z", "L", "A", "N", "S")
+        emit("Z", "N", "Z", "L", "A", "L", "S")
+        emit("Z", "L", "N", "Z")
+        if bit == "1":
+            emit("A")
+        emit("S")
+
+    # Add each set bit's weight to the selected table pointer.  Across all
+    # inputs the unary runs contain 2T-2 commands.
+    for i in range(n):
+        unary(i + 2)
+        emit("L", "C")
+        one = f"input_{i}_one"
+        after = f"input_{i}_after"
+        jump(one)
+        jump(after)
+        mark(one)
+        unary(1)
+        emit("N", "Z", "A", "L")
+        emit(*("A" for _ in range(1 << (n - 1 - i))))
+        emit("S")
+        mark(after)
+
+    emit("Z", "A", "L", "L")
+    extra: list[int] = [0]
+    for token in tokens:
+        extra.append(extra[-1] + token.startswith("{X"))
+    for at, target in jumps:
+        target_at = labels[target]
+        tokens[at] = str(target_at + extra[target_at] + 1)
+    return " ".join(tokens)
 
 
 def _ram0_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one input order's RAM0 template; see :func:`ram0`.
 
     ``truth_table`` is already permuted, so every row index here is in the
-    permuted frame.  ``perm`` is spent on the address a node names: the
-    ``A`` run is ``perm[level]`` long, which is also what makes the node's
-    width -- and therefore every absolute ``goto`` operand below it --
-    depend on the order.
+    permuted frame.  ``perm`` decides which named input is loaded into each
+    depth-assigned cell; nodes use address ``n - 1 - level``.
     """
     n = _validate_truth_table(truth_table)
 
     def width(level: int) -> int:
-        return _ram0_width(perm[level])
+        return _ram0_width(n - 1 - level)
 
-    tokens: list[str] = []
-    pos = 0  # instantiated command index of the next command
+    # Initial z == 0 makes C skip the widening end target.  Leaves jump to
+    # that target through fixed 1-based address 2.
+    tokens = ["C", "END@"]
+    pos = len(tokens)  # instantiated command index of the next command
 
-    # load phase: ram[i] = bit i, embedded exactly once each
+    # Store the deepest, most repeated test at address zero.  Placeholders
+    # remain in input-name order; only their destination cell changes.
+    address_of = {input_index: n - 1 - level for level, input_index in enumerate(perm)}
     for i in range(n):
+        address = address_of[i]
         tokens.append("Z")
-        tokens.extend("A" for _ in range(i))
+        tokens.extend("A" for _ in range(address))
         tokens.append("N")
-        pos += 1 + i + 1
+        pos += 1 + address + 1
         tokens.append("{X" + str(i) + "}")  # expands to "Z A" / "Z Z"
         pos += 2
         tokens.append("S")
         pos += 1
 
     def leaf_tokens(_level: int, row: int) -> list[str]:
-        return ["Z", "A" if truth_table[row] == "1" else "Z", "END@"]
+        return ["Z", "A" if truth_table[row] == "1" else "Z", "2"]
 
     def node(level: int, zero: list[str], one: list[str], at: int) -> list[str]:
         # ``Z``, the level's ``A`` run, ``L``, ``C`` and the ``ONE@`` slot all
@@ -1289,7 +1423,7 @@ def _ram0_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         # therefore starts a further ``len(zero)`` along, 1-based.
         return [
             "Z",
-            *("A" for _ in range(perm[level])),
+            *("A" for _ in range(n - 1 - level)),
             "L",
             "C",
             f"ONE@{at + width(level) + len(zero) + 1}",
@@ -1407,6 +1541,14 @@ def minsky_swap(truth_table: str) -> str:
 #   pointer right for a 0 bit or down for a 1 bit.  A ``0`` leaf is empty,
 #   so the pointer runs off the grid and halts; a ``1`` leaf is a ring that
 #   pushes on every edge and pops on every corner, sustaining forever.
+#
+# Wide tables replace that tree with a marker count.  Input ``i`` appends
+# either zero or ``2**(n-1-i)`` down headings; a right sentinel and the four
+# ring headings follow.  A vertical chain pops one marker per table row, so
+# the sentinel turns right at exactly the indexed row.  A zero row runs out
+# of the grid, while a one row enters the same sustaining ring as above.  The
+# marker arms have lengths ``1, 2, 4, ..., T/2``, whose geometric sum is
+# ``T-1`` -- not the quadratic sum of every integer through ``T/2``.
 #
 # The tree is a full binary tree built from 3x3 blocks: a 0-branch
 # (``" + "``) pops the next bit, sending the pointer right for 0 and down
@@ -1577,6 +1719,8 @@ def arrowqueue(truth_table: str) -> str:
     124 to 128 bytes that way -- it is 109 now).
     """
     n = _validate_truth_table(truth_table)
+    if len(truth_table) > 16:
+        return _arrowqueue_linear(truth_table, n)
     header = ["{X0}"]
     header.extend(["    "] * 4)
     for i in range(1, n):
@@ -1584,6 +1728,21 @@ def arrowqueue(truth_table: str) -> str:
         header.extend(["    "] * 3)
     rows = header + _MIDDLE + _tree(list(truth_table))
     return "\n".join(row.rstrip() for row in rows)
+
+
+def _arrowqueue_linear(truth_table: str, n: int) -> str:
+    """Return the marker header and linear marker-count cascade."""
+    marker = "".join(f"{{X{i}}}" for i in range(n))
+    rows: list[str] = []
+    for bit in truth_table:
+        stage = [[" "] * 9 for _ in range(3)]
+        stage[0][4] = "+"
+        if bit == "1":
+            for r, line in enumerate(_TREE_1):
+                for c, char in enumerate(line):
+                    stage[r][6 + c] = char
+        rows.extend("".join(row).rstrip() for row in stage)
+    return marker + "\n" + "\n".join(rows)
 
 
 def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
@@ -1598,6 +1757,21 @@ def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
     """
     n = len(bits)
     rows = template.split("\n")
+    if n >= 5 and rows[0] == "".join(f"{{X{i}}}" for i in range(n)):
+        marker_rows: list[str] = []
+        for i, bit in enumerate(bits):
+            weight = 1 << (n - 1 - i)
+            marker_rows.extend([" ~" if bit else "  "] * weight)
+        # Enter column 1, append the marker run, turn around, append a right
+        # sentinel, then use the established middle block to queue R,D,L,U.
+        header = [" *", *marker_rows, "* ~   *"]
+        first = list(" " * 7)
+        first[0] = first[1] = "*"
+        for c, char in enumerate(_MIDDLE[0]):
+            first[3 + c] = char
+        header.append("".join(first))
+        header.extend("   " + row for row in _MIDDLE[1:])
+        return "\n".join([*header, *rows[1:]])
     # The header rows are built to a fixed width, but the pointer never
     # travels past the last glyph on a row, so trailing blanks are inert;
     # trim them so the emitted program carries no whitespace it cannot use.

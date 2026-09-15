@@ -123,24 +123,14 @@ class TestScoutPricesNothing:
 
 
 class TestMuxUsesOneRule:
-    """The production mux names one combination and aborts on disagreement."""
+    """The production mux uses one direct preloaded-strip rule."""
 
-    def test_the_rule_matches_the_sculpt_oracle(self) -> None:
-        """The top accumulator's direct sculpt is the rule's exact spelling."""
+    def test_the_rule_matches_the_named_lookup(self) -> None:
+        """The named strip construction is the production spelling."""
         module = importlib.import_module("esolangs.tools.minifuck")
         for n, table in ((2, "0110"), (2, "0001"), (3, "01101001")):
-            base, _accs = _scout_setup(module, n)
             built = module._mux(table, n)  # noqa: SLF001
-            top = min(base.ptrs()) - 2
-            assert built == module._mux_sculpt(  # noqa: SLF001
-                base,
-                table,
-                n,
-                top,
-                0,
-                direct=True,
-                hint=module._SCULPT_POOL_CODE,  # noqa: SLF001
-            )
+            assert built == module._mux_lookup(table, n)  # noqa: SLF001
 
     def test_the_scout_and_sweep_are_not_on_the_build_path(
         self, monkeypatch: pytest.MonkeyPatch
@@ -158,16 +148,15 @@ class TestMuxUsesOneRule:
             patch.setattr(module, "_mux_sweep", forbidden)
             assert module._mux("0110", 2) == expected  # noqa: SLF001
 
-    def test_a_replay_disagreement_aborts(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """An invariant failure cannot silently restore the enumeration."""
+    def test_the_start_displacement_sets_the_baseline_phase(self) -> None:
+        """Crossing an odd extra prefix flips the zero-control column."""
         module = importlib.import_module("esolangs.tools.minifuck")
-
-        with monkeypatch.context() as patch:
-            patch.setattr(module, "_mux_replays", lambda *_a: False)
-            with pytest.raises(AssertionError, match="printed the wrong table"):
-                module._mux("0110", 2)  # noqa: SLF001
+        phases = [
+            (n ^ (module._mux_start(n) - module._MUX_BASE) ^ 1)  # noqa: SLF001
+            & 1
+            for n in range(2, 9)
+        ]
+        assert phases == [1, 0, 1, 1, 0, 1, 0]
 
 
 class TestProbeFrameAndColumns:

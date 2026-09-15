@@ -10,13 +10,13 @@ block on end to meet a width.
 """
 
 from functools import cache
-from itertools import permutations
 from typing import NamedTuple
 
 from esolangs.tools import laserfuck_layout
 from esolangs.tools.helpers import (
-    _ORDER_SEARCH_MAX,
+    _greedy_input_order,
     _validate_truth_table,
+    constant_span_test,
     permute_truth_table,
 )
 
@@ -35,6 +35,53 @@ _LASER_INNER = 6
 def _laserfuck_walk(frm: int, to: int) -> str:
     """Spell the tape walk from cell ``frm`` to cell ``to``."""
     return ">" * (to - frm) if to >= frm else "<" * (frm - to)
+
+
+def _laserfuck_weighted(truth_table: str) -> str:
+    r"""Build the table in linear space with weighted conditional walks.
+
+    The top row first writes the T answer cells one band to the right, then
+    returns to cell zero.  Input bit ``i`` conditionally crosses an arm of
+    ``T/2**(i+1)`` ``>`` commands; the arm lengths sum to ``T-1``, so the
+    pointer finishes at its binary input index.  A fixed T-step walk reaches
+    that answer cell and adds two.
+
+    Moving left 2T steps deliberately overruns the tape.  Prepending cells
+    shifts the chosen answer to cell 2T regardless of its index.  One 3T-cell
+    sweep subtracts two everywhere: every other initialized answer and every
+    input becomes negative, while the chosen cell becomes exactly its table
+    bit.  LaserFuck prints only touched nonnegative cells, hence only it.
+
+    A conditional arm is a two-row diamond.  ``#v)`` lets zero continue on
+    the top row; one reflects onto ``v``, crosses the lower arm, and rises to
+    the same ``}`` exit.  The three rows, table initialization, arms, and
+    cleanup all have total length O(T), and construction performs only those
+    linear appends.
+    """
+    n = _validate_truth_table(truth_table)
+    size = len(truth_table)
+    top = list(" }}}")
+    middle = list("|o^ ")
+    bottom = list(" _  ")
+
+    def straight(text: str) -> None:
+        top.extend(text)
+        middle.extend(" " * len(text))
+        bottom.extend(" " * len(text))
+
+    straight(">" * size)
+    straight("".join(("+" if bit == "1" else "") + ">" for bit in truth_table))
+    straight("<" * (2 * size))
+    for level in range(n):
+        arm = 1 << (n - 1 - level)
+        straight("," + "-" * 48)
+        upper = "#v)" + " " * (arm - 1) + "}"
+        lower = " }" + ">" * arm + "^"
+        top.extend(upper)
+        middle.extend(lower)
+        bottom.extend(" " * len(upper))
+    straight(">" * size + "++" + "<" * (2 * size) + "-->" * (3 * size) + "x")
+    return "\n".join("".join(row).rstrip() for row in (top, middle, bottom))
 
 
 def _laserfuck_cells(n: int, perm: tuple[int, ...]) -> list[int]:
@@ -266,9 +313,8 @@ def _laserfuck_placements(
     The caller tries all ``2**count`` orientation words, and a block's
     placement depends only on the block and its own letter -- so cutting
     and rotating per word rebuilt the same ``2 * count`` placements
-    ``2**count`` times.  Hoisting them here is what makes the order search
-    affordable: at n=6 it turns 17 reader cuts and 16 rotations per
-    candidate into one and two.
+    ``2**count`` times.  Hoisting them turns 17 reader cuts and 16 rotations
+    at n=6 into one and two per candidate.
     """
     return [
         {upright: _laserfuck_place(block, upright) for upright in "FR"}
@@ -467,8 +513,7 @@ def _laserfuck_build(
         """Write a whole run of cells, growing the ragged grid to reach it.
 
         The tree arrives as runs, and going through :func:`put` a character
-        at a time is 1.7M calls on a six-input build once the order search
-        multiplies it by ``n!``.  A slice assignment leaves the same line:
+        at a time dominated six-input builds.  A slice assignment leaves the same line:
         the run is blank-free, so nothing it covers had to be preserved.
         """
         if len(grid) <= row:
@@ -518,21 +563,21 @@ def _laserfuck_build(
     # from ``><-+`` and the rest are the literals ``x``, ``>#v)`` and
     # ``\`` -- and every row is filled strictly left to right, so a run is
     # the whole of what a cell dict was storing one character at a time.
-    # The order search rebuilds this n! times, and the dict cost it twice:
-    # 1.7M single-cell writes going in and 3.1M ``get`` probes coming back
-    # out over the bounding rectangle, which is mostly blank because the
-    # tree is a staircase.
+    # The old order search rebuilt this n! times, and the dict cost it twice:
+    # single-cell writes going in and ``get`` probes coming back out over a
+    # bounding rectangle that is mostly blank because the tree is a staircase.
     #
     # A row is appended exactly when a ``one`` edge creates it, and the
     # counter that names it is bumped in the same breath, so ``len(rows)``
     # is the next row index and the two stay in step.
     rows: list[list[tuple[int, str]]] = [[]]
 
-    def emit(path: list[int], row: int, col: int) -> None:
-        """Lay the subtree for ``path``, entered at ``(row, col)`` going right."""
-        depth = len(path)
-        first = int("".join(map(str, path)), 2) << (n - depth) if path else 0
-        if depth == n or len(set(truth_table[first : first + 2 ** (n - depth)])) == 1:
+    constant = constant_span_test(truth_table)
+
+    def emit(depth: int, first: int, row: int, col: int) -> None:
+        """Lay one row span, entered at ``(row, col)`` going right."""
+        stop = first + 2 ** (n - depth)
+        if depth == n or constant(first, stop):
             index = first
             # The rings leave the inputs in cells 1..n and cell 0 already
             # touched at zero, so the sweep walks down to it and a zero
@@ -549,17 +594,18 @@ def _laserfuck_build(
             run = ">" * (n - depth)
             run += "--<" * (n - depth)
             for level in range(depth, 0, -1):
-                run += "-" * (path[level - 1] + 1) + "<"
+                bit = (first >> (n - level)) & 1
+                run += "-" * (bit + 1) + "<"
             run += "+" if truth_table[index] == "1" else ""
             rows[row].append((col, run + "x"))
             return
         rows[row].append((col, ">#v)"))
-        emit([*path, 0], row, col + 4)  # a zero carries on along this row
+        emit(depth + 1, first, row, col + 4)  # zero carries on along this row
         drop = len(rows)
         rows.append([(col + 2, "\\")])  # a one comes down the 'v' column
-        emit([*path, 1], drop, col + 3)
+        emit(depth + 1, first + 2 ** (n - depth - 1), drop, col + 3)
 
-    emit([], 0, 0)
+    emit(0, 0, 0, 0)
     span = max(col + len(text) for marks in rows for col, text in marks)
     upright = []
     for marks in rows:
@@ -642,22 +688,34 @@ def laserfuck(truth_table: str, width: int | None = None) -> str:
     The identity order is built first and ties keep it, so a table no
     reorder improves emits exactly what it emitted before.
 
+    Without a width, each input order compares the natural straight tree
+    with the narrowest reader and hanging tree.  These are two named layouts,
+    not a search over widths, and rendered length decides between them.
+
     A width is applied to every candidate rather than to the winner: the
     reader's orientations and the tree's placement already trade rows
     against columns, so the narrowest program is often not the shortest,
     and the choice has to be made over the whole pool.
     """
     n = _validate_truth_table(truth_table)
+    if width is None and len(truth_table) > 16:
+        return _laserfuck_weighted(truth_table)
     identity = tuple(range(n))
-    orders = [identity]
-    if n <= _ORDER_SEARCH_MAX:
-        orders += [p for p in permutations(range(n)) if p != identity]
+    greedy = _greedy_input_order(truth_table, n)
+    orders = [identity] if greedy == identity else [identity, greedy]
 
-    best = _laserfuck_build(truth_table, identity, width)
-    for perm in orders[1:]:
-        candidate = _laserfuck_build(
-            permute_truth_table(truth_table, perm), perm, width
+    def layouts(table: str, perm: tuple[int, ...]) -> tuple[str, ...]:
+        """Return this order's one requested or two compact layouts."""
+        if width is not None:
+            return (_laserfuck_build(table, perm, width),)
+        return (
+            _laserfuck_build(table, perm),
+            _laserfuck_build(table, perm, width=1),
         )
+
+    best = min(layouts(truth_table, identity), key=len)
+    for perm in orders[1:]:
+        candidate = min(layouts(permute_truth_table(truth_table, perm), perm), key=len)
         if len(candidate) < len(best):
             best = candidate
     return best

@@ -203,7 +203,7 @@ class TestDebuggerResume:
         why it stopped.
         """
         dbg = esolangs.make_debugger("brainfuck", "+[]", stdin="")
-        assert dbg.run(timeout=1) == "timeout"
+        assert dbg.run(timeout=0.01) == "timeout"
         assert not dbg.halted
 
 
@@ -688,7 +688,7 @@ class TestTheThreadRefusalNamesAWayThrough:
         program = esolangs.instantiate("123", template, [0, 1])
 
         def work() -> object:
-            return esolangs.make_debugger("123", program, "").run(timeout=2.0)
+            return esolangs.make_debugger("123", program, "").run(timeout=0.01)
 
         assert self._off_thread(work) == "timeout"
 

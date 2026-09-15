@@ -7,6 +7,7 @@ import pytest
 from esolangs import tools
 from esolangs.interpreters.grid_based.egl import run
 from esolangs.interpreters.io import ScriptedIO
+from esolangs.tools.egl import _egl_ordered
 
 
 def execute(program: str, bits: tuple[int, ...]) -> tuple[str, int]:
@@ -30,3 +31,20 @@ def test_truth_tables(table: str) -> None:
 
 def test_constant_subtrees_fold() -> None:
     assert len(tools.egl("00001111")) < len(tools.egl("01101001"))
+
+
+def test_input_reordering_folds_a_scattered_table() -> None:
+    table = "10101010"
+    assert len(tools.egl(table)) < len(_egl_ordered(table, (0, 1, 2)))
+
+
+def test_input_reordering_never_grows_a_program() -> None:
+    for value in range(256):
+        table = f"{value:08b}"
+        assert len(tools.egl(table)) <= len(_egl_ordered(table, (0, 1, 2)))
+
+
+def test_reordered_programs_compute_the_table() -> None:
+    for value in range(256):
+        table = f"{value:08b}"
+        test_truth_tables(table)

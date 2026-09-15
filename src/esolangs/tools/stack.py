@@ -1,15 +1,13 @@
 """Boolean-function generators for stack-based languages."""
 
 from functools import cache
-from itertools import product
+from itertools import pairwise, product
 
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
-    _ORDER_SEARCH_MAX,
     _validate_truth_table,
     essential_inputs,
-    minterm_literals,
     permute_truth_table,
     read_at,
 )
@@ -111,6 +109,11 @@ def _grapheme_push_key(key: int) -> str:
     return literal(low) + literal(five) + "A"
 
 
+def _grapheme_push_int(value: int) -> str:
+    """Push any nonnegative integer using Grapheme's trailing-zero literals."""
+    return _grapheme_push_key(value * 10) + _grapheme_push_key(10) + "R"
+
+
 def grapheme(truth_table: str) -> str:
     """Build a Grapheme program computing the given truth table.
 
@@ -124,112 +127,54 @@ def grapheme(truth_table: str) -> str:
     zero.  Each bit is normalized to the integer 0/1 with ``W 65 B T``
     (``B`` computes ``ord(bit) - 65``, which is 0 exactly for ``A``, and
     ``T`` maps zero to 1 and nonzero to 0), stored in a variable, and the
-    table is evaluated as a sum of minterms: the result is ``1`` minus the
-    sum of the ``0``-rows' minterms, or the sum of the ``1``-rows' minterms,
-    whichever comes out *shorter* (each minterm is the arithmetic AND, ``S``,
-    of the bits or their complements ``1 - b``).  Since exactly one row's
-    minterm is 1 for any input, the accumulator holds the table entry, which
-    ``Y`` prints.  No control-flow jumps are needed — only ``A``/``B``/``S``
-    arithmetic and ``T``.
+    table is evaluated by a folded decision tree. ``V`` skips the unselected
+    branch by its character length, so subtrees stay inline and need no
+    widening variable keys. The most repeated, deepest inputs occupy the
+    shortest keys. A leaf pushes its bit and ``Y`` prints it.
     """
     n = _validate_truth_table(truth_table)
 
-    # A table that ignores some of its inputs is a smaller table, and every
-    # minterm here spends one factor per input, so dropping an input shortens
-    # each of the (now fewer) minterms as well.  The reads stay -- they are
-    # the interface -- but an ignored one costs a *single* character: ``W``
-    # pushes the line it read and nothing pops it, since every operator here
-    # pops what it consumes and ``Y`` prints the top of the stack, so a value
-    # left below the accumulator is unreachable rather than merely unused.
-    # That makes it cheaper than taglate's rotate-and-drop, which has a
-    # queue's positional arithmetic to keep undisturbed.
-    head, table, width = _grapheme_head(truth_table, n)
-
-    # Evaluate over one side of the table and fold its minterms.  Both sides
-    # are built and the shorter kept, because the row *count* the sparser
-    # rule went by is only a proxy for length and gets it wrong two ways.
-    #
-    # The sides do not cost the same per row: a negated literal spends eight
-    # characters more than a plain one, so a row's cost falls with its
-    # popcount (47 characters at row 0 against 23 at row 7, width 3) and two
-    # sides with equal counts can differ by a lot.  Nor do they start the
-    # same: the zero side seeds the accumulator with ``_grapheme_push1()``
-    # (7 characters) against the one side's ``_grapheme_push0()`` (3), which
-    # a count comparison cannot see at all -- and the old rule's ``<=`` gave
-    # every tie to the expensive seed, so a balanced table always lost.
-    #
-    # Measured against the count rule: 45 of 256 tables at n == 3 came out
-    # longer, by up to 52 characters, and 7654 of 65536 at n == 4 by up to
-    # 100.  Building both is cheap here because the program *is* the string
-    # -- there is no assembly step -- and the two sides together spend one
-    # minterm per row of the table.  The comparison is strict, so a table
-    # the other side does not shorten emits exactly what it emitted before.
-    zero_side = _grapheme_side(table, width, head, zero_rows=True)
-    one_side = _grapheme_side(table, width, head, zero_rows=False)
-    return one_side if len(one_side) < len(zero_side) else zero_side
-
-
-def _grapheme_head(truth_table: str, n: int) -> tuple[str, str, int]:
-    """Emit the reads, and return them with the reduced table and its width.
-
-    Shared by the two side builders below, which differ only in what they
-    fold onto the accumulator -- the reads are the interface and are the
-    same either way.
-    """
     used = essential_inputs(truth_table, n) or [0]
     table = truth_table if len(used) == n else read_at(truth_table, used, n)
-    # Slot ``s`` holds original input ``used[s]``; the minterm body is
-    # written over the reduced table's slots, so it never names a dropped one.
-    slot_of = {i: s for s, i in enumerate(used)}
+    width = len(used)
+    level_of = {input_index: level for level, input_index in enumerate(used)}
+    slots = [width - 1 - level for level in range(width)]
 
-    prog = [
-        _grapheme_push65() + _grapheme_push_key(_GRAPHEME_CONST_KEY) + "C"
-    ]  # the normalization constant
-    for i in range(n):
-        if i not in slot_of:
-            prog.append("W")  # read the ignored input and abandon it
+    head = [_grapheme_push65() + _grapheme_push_key(_GRAPHEME_CONST_KEY) + "C"]
+    for input_index in range(n):
+        if input_index not in level_of:
+            head.append("W")
             continue
-        # W reads the bit; normalize to 0/1; store under key 10*(slot+1).
-        prog.append(
+        slot = slots[level_of[input_index]]
+        head.append(
             "W"
             + _grapheme_push_key(_GRAPHEME_CONST_KEY)
             + "D"
             + "B"
             + "T"
-            + _grapheme_push_key(_grapheme_slot_key(slot_of[i]))
+            + _grapheme_push_key(_grapheme_slot_key(slot))
             + "C"
         )
-    return "".join(prog), table, len(used)
 
+    changes = [0]
+    for previous, current in pairwise(table):
+        changes.append(changes[-1] + (previous != current))
 
-def _grapheme_side(table: str, width: int, head: str, *, zero_rows: bool) -> str:
-    """Fold one side of the table onto the accumulator.
+    def tree(start: int, end: int, depth: int) -> tuple[list[str], int]:
+        if changes[start] == changes[end - 1]:
+            leaf = _grapheme_push1() if table[start] == "1" else _grapheme_push0()
+            return [leaf], len(leaf)
+        half = (start + end) // 2
+        zero, zero_len = tree(start, half, depth + 1)
+        one, one_len = tree(half, end, depth + 1)
+        always = _grapheme_push_int(one_len) + _grapheme_push0() + "V"
+        lookup = _grapheme_push_key(_grapheme_slot_key(slots[depth])) + "D"
+        conditional = _grapheme_push_int(zero_len + len(always)) + lookup + "TV"
+        parts = [conditional, *zero, always, *one]
+        return parts, sum(map(len, parts))
 
-    ``zero_rows`` sums the ``0``-rows' minterms and subtracts them from 1;
-    otherwise the ``1``-rows' minterms are summed directly.  The seeds differ
-    in length (7 characters against 3), which is half of why the row count
-    the old rule compared is not the program's length.
-    """
-    rows = [r for r in range(2**width) if (table[r] == "0") == zero_rows]
-    acc, op = (_grapheme_push1(), "B") if zero_rows else (_grapheme_push0(), "A")
-    body = [acc]
-    for row in rows:
-        body.append(_grapheme_push1())  # start this minterm at 1
-        for i, negated in minterm_literals(row, width):
-            if negated:
-                # factor = 1 - b_i
-                body.append(
-                    _grapheme_push1()
-                    + _grapheme_push_key(_grapheme_slot_key(i))
-                    + "D"
-                    + "B"
-                )
-            else:
-                # factor = b_i
-                body.append(_grapheme_push_key(_grapheme_slot_key(i)) + "D")
-            body.append("S")
-        body.append(op)  # fold the minterm into the accumulator
-    return head + "".join(body) + "Y"
+    body, _length = tree(0, 1 << width, 0)
+    return "".join([*head, *body, "Y"])
 
 
 def _forth_const(value: int) -> str:
@@ -274,29 +219,9 @@ def forth(truth_table: str) -> str:
     move.  The reads sit outside the tree, so a folded program consumes its
     input exactly as an unfolded one does.
 
-    **The tree splits on its inputs in whichever order emits the shortest
-    program.**  ``;`` pops the stack, so the *natural* order tests the last
-    input at the root -- Forþ's decision tree is stack-ordered, not
-    input-ordered.  Other orders are reachable because the stack can be
-    rearranged: ``v`` swaps the top two and ``c`` rotates the third to the
-    top (``o`` reverses the whole stack and is unusable here, since the
-    scope indices sit below the bits and would come with it).
-
-    **The rotations are interleaved with the reads, not run after them.**
-    ``v``/``c`` reach only the top three cells, so a preamble after all
-    ``n`` reads can only permute the last three bits -- 6 arrangements at
-    any width, which collapses the saving to 2.4% at n == 4 and nothing at
-    n == 5.  Moving a bit *while it is still near the top*, before later
-    reads bury it, reaches 18 of 24 arrangements at n == 4 and 54 of 120 at
-    n == 5 for a median of 2-3 extra characters
-    (:func:`_forth_stack_programs`).
-
-    Every rotation costs characters, so an order pays for the folds it wins
-    or loses to the natural one; the search measures rather than assumes.
-    Each order is scored in closed form (:func:`_forth_order_length`) and
-    only the winner is built.  Measured over all 256 tables at n == 3 the
-    saving is 13.8% (112 improved), with 13.2% and 14.3% over samples at
-    n == 4 and n == 5.
+    ``;`` pops the stack, so the tree naturally tests the last input first.
+    The generator keeps that order instead of enumerating reachable stack
+    arrangements.
     """
     n = _validate_truth_table(truth_table)
     # ``;`` pops, so the tree tests the *last* input at the root: the order
@@ -304,27 +229,7 @@ def forth(truth_table: str) -> str:
     # It goes first and ties keep it, so a table no reorder helps emits
     # exactly what it emitted before.
     natural = tuple(reversed(range(n)))
-    # Score the *reachable* arrangements rather than all ``n!`` orders --
-    # the keys of ``_forth_stack_programs``, ``2 * 3**(n - 2)`` of them,
-    # checked equal through ``n == 6`` to the orders ``_forth_ordered``
-    # accepts -- and build only the winner.  The contest that used to build
-    # 13,122 full programs at n == 10 (61-68s) now builds one (0.2s),
-    # byte-identical at every n <= 10, both benchmark shapes.  An
-    # arrangement is the input order reversed.
-    bits = int(truth_table[::-1], 2)  # bit ``r`` mirrors ``truth_table[r]``
-    programs = _forth_stack_programs(n)
-    best_perm = natural
-    best_len = _forth_order_length(
-        _forth_permuted_bits(bits, natural, n), n, len(programs[tuple(range(n))])
-    )
-    for arrangement, reads in programs.items():
-        perm = tuple(reversed(arrangement))
-        if perm == natural:
-            continue
-        length = _forth_order_length(_forth_permuted_bits(bits, perm, n), n, len(reads))
-        if length < best_len:
-            best_perm, best_len = perm, length
-    return _forth_ordered(permute_truth_table(truth_table, best_perm), best_perm)
+    return _forth_ordered(permute_truth_table(truth_table, natural), natural)
 
 
 # The read that pushes one normalized input bit.
@@ -361,12 +266,7 @@ def _forth_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     A breadth-first search over (arrangement, reads done) finds op strings
     shorter on some arrangements, because they compose across reads -- a
     late ``c`` can do work several per-read ``v``s would each repeat.  It is
-    not used: the difference is 1-2 characters on an intermediate string,
-    and since :func:`forth` keeps the shortest program over every order, a
-    longer rotation usually loses to a different order instead.  Measured
-    over the emitted programs the whole effect is +0.13% at n == 3 and
-    +0.03% at n == 5, which does not pay for a search in a generator meant
-    to be read.
+    not used: the generator retains its natural input order.
     """
     return stack_programs(n, _FORTH_SINKS, _FORTH_READ)
 
@@ -523,7 +423,11 @@ def _forth_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """
     n = _validate_truth_table(truth_table)
     wanted = tuple(reversed(perm))
-    reads = _forth_stack_programs(n).get(wanted)
+    reads = (
+        _FORTH_READ * n
+        if wanted == tuple(range(n))
+        else _forth_stack_programs(n).get(wanted)
+    )
     if reads is None:
         return ""
 
@@ -691,58 +595,33 @@ def unsquare(truth_table: str) -> str:
     pops the top into it, ``S`` swaps the two now exposed, and ``P`` pushes
     it back, sinking a bit two places (:data:`_UNSQUARE_SINKS`).
 
-    **The sinks are interleaved with the reads, not run after them.**  A bit
-    stashed in the accumulator does not survive a read block -- the block's
-    own ``A`` overwrites it -- so a bit has to be moved while still near the
-    top, before later reads bury it.  Every sink costs characters, so an
-    order pays for the folds it wins or loses to the natural one and the
-    search measures rather than assumes.  Measured saving: 15.6% over all
-    256 tables at n == 3 (112 improved, none grown), 18.0% and 13.8% over
-    samples at n == 4 and n == 5.
+    At each read the generator greedily chooses whether to sink the new bit
+    zero, one, or two places.  It prices those three reachable continuations
+    with the exact tree-size model, so it builds one final program rather than
+    enumerating ``2 * 3**(n-2)`` complete arrangements.
     """
     n = _validate_truth_table(truth_table)
-    # ``A`` pops, so the tree tests the *last* input at the root: the order
-    # this generator has always emitted is the identity *arrangement* (no
-    # sinks), which is the reversal as an input order.  It goes first and ties
-    # keep it, so a table no reorder helps emits exactly what it emitted
-    # before.
-    arrangements = _unsquare_stack_programs(n)
-
-    def candidate_from(arrangement: tuple[int, ...]) -> tuple[int, str, str]:
-        """Price the program whose stack ends in ``arrangement``."""
-        # The tree pops LIFO, so an arrangement tests its inputs in reverse.
-        # ``permute_truth_table`` puts the input tested at level ``k`` in the
-        # table's ``k``-th *most* significant bit, but this tree splits on
-        # ``row >> k`` -- least significant first, because that is the order
-        # the pops arrive in.  Passing the arrangement itself converts between
-        # the two frames; without it a table is read against the wrong axis
-        # and the program computes a different function.
-        table = permute_truth_table(truth_table, arrangement)
-        prefix = arrangements[arrangement]
-        return _unsquare_cost(table, n, prefix), table, prefix
-
-    # The natural order is the identity arrangement, which the product always
-    # reaches (every sink can be zero), so this needs no reachability check.
-    best: tuple[int, str, str] | None = None
-    # Iterate the *reachable* arrangements rather than all ``n!`` orders:
-    # only ``2 * 3**(n - 2)`` of them can be built, so this is the candidate
-    # set rather than a filter over a much larger one.  (The unreachable
-    # orders are exactly the ones ``candidate`` would return ``None`` for.)
-    #
-    # Still capped, because ``3**n`` builds of an ``O(2**n)`` program is the
-    # same cost shape the shared helper caps for, just with a smaller base:
-    # n == 10 is 18 seconds of a call that is milliseconds at n == 6.  Above
-    # the cap only the natural order is emitted, which is what this generator
-    # produced before reordering existed -- never worse, just unimproved.
-    for arrangement in arrangements:
-        if n > _ORDER_SEARCH_MAX and arrangement != tuple(range(n)):
-            continue
-        candidate = candidate_from(arrangement)
-        if best is None or candidate[0] < best[0]:
-            best = candidate
-    if best is None:  # pragma: no cover - the identity arrangement is reachable
-        raise RuntimeError("Unsquare's identity stack arrangement is missing")
-    _, table, prefix = best
+    # A zero-place sink is always a candidate, so each greedy choice is no
+    # larger under the exact model than leaving that input in natural order.
+    stack: tuple[int, ...] = ()
+    prefix = ""
+    for input_index in range(n):
+        pushed = (*stack, input_index)
+        choices: list[tuple[int, int, tuple[int, ...], str]] = []
+        for places, ops in _UNSQUARE_SINKS:
+            if places >= len(pushed):
+                continue
+            arranged = _sink_top(pushed, places)
+            final = (*arranged, *range(input_index + 1, n))
+            candidate_prefix = prefix + _UNSQUARE_READ + ops
+            future_prefix = candidate_prefix + _UNSQUARE_READ * (n - input_index - 1)
+            table = permute_truth_table(truth_table, final)
+            choices.append(
+                (_unsquare_cost(table, n, future_prefix), places, arranged, ops)
+            )
+        _, _, stack, ops = min(choices)
+        prefix += _UNSQUARE_READ + ops
+    table = permute_truth_table(truth_table, stack)
     return prefix + _unsquare_tree(table, n)
 
 

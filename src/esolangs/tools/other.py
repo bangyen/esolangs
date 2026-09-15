@@ -9,9 +9,9 @@ from itertools import pairwise
 
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
-    _maybe_complement,
     _validate_truth_table,
     best_input_order,
+    constant_span_test,
     essential_inputs,
     read_at,
 )
@@ -121,17 +121,19 @@ def _three_x_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # short and emitted twice per guard), var 3 is the result (its constant
     # is the single char `3`, emitted once per table entry), and the inputs
     # live in the cheapest remaining names by actual constant length (the
-    # base-3 encodings are non-monotonic: 15 is cheaper than 13).  The names
-    # are assigned by *depth*, so the cheapest one sits at the root where the
-    # tree reads it most often; which input lands at which depth is what
-    # ``best_input_order`` searches over.
+    # base-3 encodings are non-monotonic: 15 is cheaper than 13).  Deep tree
+    # levels occur exponentially more often in the emitted program, so the
+    # cheapest name goes deepest.  Reversing the length order makes the name
+    # cost a geometric sum rather than repeating the longest name at half the
+    # nodes.  Which input lands at which depth is what ``best_input_order``
+    # searches over.
     trash = _const(0) + "#v"  # pop the stack top into variable 0
     result = 3
     used = {0, 3}
     input_vars = sorted(
         (v for v in range(3 + n) if v not in used),
         key=lambda v: len(_const(v)),
-    )[:n]
+    )[:n][::-1]
 
     def store(var: int) -> str:
         return _const(var) + "#v"  # var = stack top, stack ends empty
@@ -506,9 +508,12 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.  The
     program prints the result as the ASCII digit ``'0'`` or ``'1'``.
-    ``width`` asks for a column count; the tree stacks as much of itself as
-    it needs to meet one, and a width under the floor returns the narrowest
-    program rather than refusing.
+    Without a width, the compact form compares the flat tree with one partial
+    stack bounded to eight columns per input and keeps the shorter.  This is
+    two named linear builds, not a search over stack depths.  ``width`` asks
+    for a column count; the tree stacks as much of itself as it needs to meet
+    one, and a width under the floor returns the narrowest program rather than
+    refusing.
 
     The program is a decision tree in a closed ring.  ``S`` zeroes the
     accumulator and seven ``.`` reads consume a ``0``/``1`` input char's seven
@@ -533,8 +538,8 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     lets leaves finish on *different* rows: the ring closes through column 0
     rather than through one shared bottom row.
 
-    Two ways the tree separates its paths, and the width picks between
-    them.  A node can send its one-branch to a column of its own, which
+    Three ways the tree composes its paths.  A node can send its one-branch
+    to a column of its own, which
     costs the columns that branch displaces -- the classic layout, and the
     reason an unstacked tree grows as ``2 ** (n + 1)``.  Or it can send it
     one column left and *stack* the two subtrees, the zero-branch falling
@@ -542,6 +547,12 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     Stacking costs one column per level instead of ``2 ** (n - bit)``, and
     pays for it in rows: the subtree below a stacked node is written twice
     over, so each stacked level doubles the program's height.
+
+    Wide default tables alternate those two compositions by level.  Across
+    each pair of levels both width and height only double, so each is
+    O(sqrt(T)) and the rendered rectangle is O(T).  The builder visits the
+    O(T) tree cells and that rectangle once, so generation time is O(T) too.
+    Explicit widths retain the prefix-stacked layout below.
 
     The shallow levels displace furthest, so those are the ones stacked
     first: ``width`` fixes the smallest number of levels that brings the
@@ -561,6 +572,12 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     asked for may go under it -- the request is the point.
     """
     n = _validate_truth_table(truth_table)
+    alternating = width is None and n > 4
+    constant_span = constant_span_test(truth_table)
+
+    def stacks(bit: int, stacked: int) -> bool:
+        """Whether this level composes its children vertically."""
+        return bit % 2 == 0 if alternating else bit < stacked
 
     def constant(bit: int, combo: int) -> bool:
         """Whether every row this subtree covers agrees.
@@ -568,10 +585,16 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
         Rows split most-significant-first, so the subtree entered at
         ``bit`` with prefix ``combo`` covers the contiguous run of
         ``2 ** (n - bit)`` rows starting at ``combo << (n - bit)``.
+
+        Alternating composition keeps the complete tree.  Its per-level
+        width/height proof already gives O(T), while folding makes sibling
+        heights unequal and can open the outer ring.
         """
+        if alternating:
+            return False
         span = 2 ** (n - bit)
         start = combo << (n - bit)
-        return len(set(truth_table[start : start + span])) == 1
+        return constant_span(start, start + span)
 
     def leafy(bit: int, combo: int) -> bool:
         """Whether this subtree stops here, either at ``n`` or on a fold."""
@@ -600,7 +623,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
             else:
                 one = shape(bit + 1, (combo << 1) | 1, stacked)
                 zero = shape(bit + 1, combo << 1, stacked)
-                if bit < stacked:
+                if stacks(bit, stacked):
                     shapes[key] = (
                         max(3, one[0] + 1, zero[0]),
                         _CLOCKWISE_LEVEL + one[1] + zero[1],
@@ -729,7 +752,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
         # A stacked node displaces a single column and drops its
         # zero-branch below the one-branch's rows; a flat one displaces
         # past the zero-branch's span and the two share the rows.
-        step = 1 if bit < stacked else max(2, zero[0])
+        step = 1 if stacks(bit, stacked) else max(2, zero[0])
         xn = x - step - (slack if bit == 0 else 0)
         # b=1: '?' turns the pointer aside, then three R's turn it down
         place((xn, y + 8), " ")
@@ -737,7 +760,7 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
         place((xn - 1, y + 7), "R")
         place((xn, y + 7), "R")
         build(bit + 1, xn, y + 9, (combo << 1) | 1)
-        below = one[1] if bit < stacked else 0
+        below = one[1] if stacks(bit, stacked) else 0
         # b=0: fall down this column, past the one-branch when it stacks
         build(bit + 1, x, y + 9 + below, combo << 1)
 
@@ -767,10 +790,14 @@ def clockwise(truth_table: str, width: int | None = None) -> str:
     # The grid is a fixed-size rectangle of blanks that the cells are painted
     # into, so a row's trailing filler is never reached; the interpreter pads
     # short rows itself, so trimming it changes nothing but the file.
-    return "\n".join("".join(row).rstrip() for row in grid)
+    program = "\n".join("".join(row).rstrip() for row in grid)
+    if width is None and not alternating:
+        partially_stacked = clockwise(truth_table, width=8 * n)
+        return min((program, partially_stacked), key=len)
+    return program
 
 
-def container(truth_table: str) -> str:
+def _container_tree(truth_table: str) -> str:
     """Build a Container program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -785,17 +812,18 @@ def container(truth_table: str) -> str:
 
     * The empty container pulses on even ticks ``0..2(n-1)`` (``+1 T>=2k``,
       ``-2 T>=2k+1``, ``+1 T>=2k+2``), reading one bit per pulse.
-    * For each bit ``k``, an armed gate ``A_k`` (65, dipping to 49) and
-      ``B_k`` (47, dipping to 48) make ``IN>=A_k`` and ``IN<=B_k`` hold for
+    * For each bit ``k``, two armed gates (65, dipping to 49; and 47, dipping
+      to 48) make their ``IN`` comparisons hold for
       exactly the tick the bit is in ``IN``, testing bit ``k`` once.
-    * A survivor per row (initial 1) is killed by ``-1 IN>=A_k`` or
-      ``-1 IN<=B_k`` when the corresponding bit mismatches, so exactly the
-      matching row's survivor stays 1.
-    * At tick ``2n`` a gate ``Gout`` dips to 1, so ``+1 S_r>=Gout`` adds the
+    * A prefix survivor creates its two children while bit ``k`` is active;
+      the mismatching child is cancelled in that same tick.  The parent then
+      expires, so each tree edge costs constant work instead of retesting the
+      whole prefix at every leaf.
+    * At tick ``2n`` an output gate dips to 1, so the surviving row adds the
       table entry of the surviving row to ``OUT``; ``PRINT`` fires and
       ``EXIT`` halts.
 
-    That last block costs one line per row the table sends to 1, so a dense
+    The last block costs one line per row the table sends to 1, so a dense
     table is summed from its **zero** rows instead: ``OUT`` starts at 49 and
     each surviving zero row subtracts one, printing ``49 - S``.  The clamp at
     zero never bites, since the value stays at 48 or 49.  Worth up to 12.7%
@@ -803,6 +831,35 @@ def container(truth_table: str) -> str:
     the per-row survivor blocks above are fixed and unaffected.
     """
     n = _validate_truth_table(truth_table)
+    ones = truth_table.count("1")
+    invert = ones > 2**n - ones
+    wanted = "0" if invert else "1"
+
+    # Every generated container has a unique name, but their reference counts
+    # differ sharply.  Assign shortest alphabetic names by actual frequency.
+    uses: dict[tuple[str, int, int], int] = {("root", 0, 0): 6}
+    for bit in range(n):
+        uses[("low", bit, 0)] = 1 + 2**bit
+        uses[("high", bit, 0)] = 1 + 2**bit
+    for depth in range(1, n + 1):
+        for prefix in range(2**depth):
+            uses[("node", depth, prefix)] = (
+                6 if depth < n else 2 + (truth_table[prefix] == wanted)
+            )
+    uses[("output", 0, 0)] = 1 + truth_table.count(wanted)
+
+    reserved = {"EXIT", "IN", "OUT", "PRINT", "T"}
+    identifiers = (_forbin_name(i) for i in range(len(uses) + len(reserved)))
+    ordered = sorted(uses, key=lambda key: (-uses[key], key))
+    names: dict[tuple[str, int, int], str] = {}
+    for key in ordered:
+        name = next(identifiers)
+        while name in reserved:
+            name = next(identifiers)
+        names[key] = name
+
+    root = names[("root", 0, 0)]
+    output_gate = names[("output", 0, 0)]
 
     lines = ["T:", "+1 T>=T"]
     lines.append(":")  # the empty-named container reads input
@@ -814,22 +871,33 @@ def container(truth_table: str) -> str:
     lines.append(f"+1 T>={2 * n}")
     lines.append("IN=50:")  # a value no real byte matches
     for k in range(n):
-        lines.append(f"A{k}=65:")
+        low = names[("low", k, 0)]
+        high = names[("high", k, 0)]
+        lines.append(f"{low}=65:")
         lines.append(f"-16 T>={2 * k}")
         lines.append(f"+32 T>={2 * k + 1}")
         lines.append(f"-16 T>={2 * k + 2}")
-        lines.append(f"B{k}=47:")
+        lines.append(f"{high}=47:")
         lines.append(f"+1 T>={2 * k}")
         lines.append(f"-2 T>={2 * k + 1}")
         lines.append(f"+1 T>={2 * k + 2}")
-    for row in range(2**n):
-        lines.append(f"S{row}=1:")
-        for k in range(n):
-            if (row >> (n - 1 - k)) & 1:
-                lines.append(f"-1 IN<=B{k}")
-            else:
-                lines.append(f"-1 IN>=A{k}")
-    lines.append("Gout=2:")
+    lines.append(f"{root}=2:")
+    lines.append(f"-1 {root}>=1")
+    for depth in range(1, n + 1):
+        bit = depth - 1
+        for prefix in range(2**depth):
+            parent = root if depth == 1 else names[("node", depth - 1, prefix >> 1)]
+            child = names[("node", depth, prefix)]
+            lines.append(f"{child}:")
+            # A node is born at 2, decays to 1, then pulses its children.
+            # The paired parent rules therefore fire only at exactly 1.
+            lines.append(f"+2 {parent}>=1")
+            lines.append(f"-2 {parent}>=2")
+            gate = names[("high" if prefix & 1 else "low", bit, 0)]
+            mismatch = f"IN<={gate}" if prefix & 1 else f"IN>={gate}"
+            lines.append(f"-2 {mismatch}")
+            lines.append(f"-1 {child}>=1")
+    lines.append(f"{output_gate}=2:")
     lines.append(f"-1 T>={2 * n - 1}")
     lines.append(f"+1 T>={2 * n}")
     # OUT is 48 plus one ``+1`` per row the table sends to 1, so a dense
@@ -838,21 +906,149 @@ def container(truth_table: str) -> str:
     # complement, and since ``S`` is 0 or 1 the value stays at 48 or 49, so
     # the container's clamp at zero never bites.  Whichever row-set is
     # smaller wins; ties keep the plain form.
-    ones = truth_table.count("1")
-    invert = ones > 2**n - ones
     lines.append("OUT:")
     lines.append(f"+{_ASCII_ZERO + 1 if invert else _ASCII_ZERO} T>={2 * n}")
     lines.append(f"-{_ASCII_ZERO + 1 if invert else _ASCII_ZERO} T>={2 * n + 1}")
-    wanted = "0" if invert else "1"
     delta = "-1" if invert else "+1"
     for row in range(2**n):
         if truth_table[row] == wanted:
-            lines.append(f"{delta} S{row}>=Gout")
+            lines.append(f"{delta} {names[('node', n, row)]}>={output_gate}")
     lines.append("PRINT:")
     lines.append(f"+1 T>={2 * n}")
     lines.append("EXIT=1:")
     lines.append(f"-1 T>={2 * n + 1}")
     return "\n".join(lines)
+
+
+def _container_packed(truth_table: str) -> str:
+    """Build an O(T)-size Container program for the given truth table.
+
+    The table is one decimal integer whose digits, least significant first,
+    are its rows.  Two banks repeatedly divide it by ten: one loses ten per
+    tick while the other gains one.  After the input-built row counter has
+    requested enough divisions, the remaining digit is the answer.  The two
+    division networks are fixed; only the table literal and the binary input
+    weights grow, totalling O(T) source and construction work.
+    """
+    n = _validate_truth_table(truth_table)
+    lines = ["T:", "+1 T>=T", ":", "+1 T>=0", "-2 T>=1"]
+    for k in range(1, n):
+        lines.extend((f"+2 T>={2 * k}", f"-2 T>={2 * k + 1}"))
+    lines.append(f"+1 T>={2 * n}")
+    lines.append("IN=50:")
+
+    # Lk equals 49 for exactly the tick after input k was read, and 65 at
+    # every other useful tick.  Thus IN>=Lk adds its weight exactly for '1'.
+    for k in range(n):
+        lines.extend(
+            (
+                f"L{k}=65:",
+                f"-16 T>={2 * k}",
+                f"+32 T>={2 * k + 1}",
+                f"-16 T>={2 * k + 2}",
+            )
+        )
+
+    # One division exposes row zero as the units digit; the binary input
+    # index adds the number of further divisions.
+    lines.append("COUNT=1:")
+    for k in range(n):
+        lines.append(f"+{2 ** (n - 1 - k)} IN>=L{k}")
+    lines.extend(("-1 NA>=1", "-1 NB>=1"))
+
+    # Reversing the spelling, rather than converting bases, puts row zero in
+    # the units place in one linear string pass.  Leading zeroes may vanish
+    # in the interpreter's integer parse; they denote zero high rows anyway.
+    packed = truth_table[::-1].lstrip("0") or "0"
+    lines.extend(
+        (
+            f"A={packed}:",
+            "-10 WA>=1",
+            "+1 WB>=1",
+            "-1 NB>=1",
+            "B:",
+            "+1 WA>=1",
+            "-10 WB>=1",
+            "-1 NA>=1",
+            "START:",
+            f"+1 T>={2 * n}",
+            f"-2 T>={2 * n + 1}",
+            f"+1 T>={2 * n + 2}",
+            # NA/NB are one-tick, positive-count continuations.  Subtracting
+            # on COUNT<=0 cancels the event in the same synchronous update.
+            "NA:",
+            "+1 START>=1",
+            "+1 DB>=1",
+            "-1 COUNT<=0",
+            "-1 NA>=1",
+            "NB:",
+            "+1 DA>=1",
+            "-1 COUNT<=0",
+            "-1 NB>=1",
+            "SA:",
+            "+1 DA>=1",
+            "-1 COUNT>=1",
+            "-1 SA>=1",
+            "SB:",
+            "+1 DB>=1",
+            "-1 COUNT>=1",
+            "-1 SB>=1",
+            "FA:",
+            "+1 NA>=1",
+            "-1 DA>=1",
+            "FB:",
+            "+1 NB>=1",
+            "-1 DB>=1",
+            # A work pulse persists while its active dividend is at least 10.
+            "WA:",
+            "+1 FA>=1",
+            "-1 A<=9",
+            "-2 WA>=1",
+            "WB:",
+            "+1 FB>=1",
+            "-1 B<=9",
+            "-2 WB>=1",
+            # Completion is the complementary pulse: active and below ten.
+            "DA:",
+            "+1 FA>=1",
+            "-1 A>=10",
+            "-2 DA>=1",
+            "DB:",
+            "+1 FB>=1",
+            "-1 B>=10",
+            "-2 DB>=1",
+            # Filter the stopping bank's digit into a one pulse.
+            "OA:",
+            "+1 SA>=1",
+            "-1 A<=0",
+            "-1 OA>=1",
+            "OB:",
+            "+1 SB>=1",
+            "-1 B<=0",
+            "-1 OB>=1",
+            "DELAY:",
+            "+1 SA>=1",
+            "+1 SB>=1",
+            "-1 DELAY>=1",
+            "OUT=48:",
+            "+1 OA>=1",
+            "+1 OB>=1",
+            "PRINT:",
+            "+1 DELAY>=1",
+            "-1 PRINT>=1",
+            "EXIT:",
+            "+1 PRINT>=1",
+        )
+    )
+    return "\n".join(lines)
+
+
+def container(truth_table: str) -> str:
+    """Build a Container program, switching to the linear packed decoder."""
+    n = _validate_truth_table(truth_table)
+    if n <= 6:
+        return _container_tree(truth_table)
+    return _container_packed(truth_table)
 
 
 def bit_tilde(truth_table: str) -> str:
@@ -861,64 +1057,17 @@ def bit_tilde(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    bit~ is a bit pool with ``{``/``}`` while-nonzero loops.  Each ``)``
-    reads an input byte into eight bits (MSB first), so the input bit lands
-    at cell ``8i+7`` and cells ``8i+2``/``8i+3`` hold the ``00110000`` byte
-    pattern a ``0`` output needs.  Each ``1`` row is built and then
-    immediately tested: one indicator cell per input is copied from that
-    input's chain (chained two-dest copies so the source survives) and
-    complemented when the minterm needs the bit zero, then a nested
-    ``{ bit ... }`` test whose innermost body forces the result cell to 1.
-    The first input-0 copy also consumes the input bit out of cell 7 so the
-    output window holds a clean 48.  The result is copied into cell 7 so
-    ``(`` prints ``48 + result``.  Dense tables evaluate the complement
-    instead (fewer minterms) and flip the output bit once.
-
-    **The scratch window is fixed, not per-row.**  Because a row is tested
-    before the next row is built, the indicators are reused: the working set
-    is ``3 * width + 1`` cells (two chain cells and one indicator per input,
-    plus the result) wherever the table's one-rows fall.  Cells used to be
-    allocated fresh per (input, one-row) pair, which put the scratch area
-    2,032 cells out at eight inputs and left 98% of the emitted program in
-    the unary ``>``/``<`` walks reaching it.  A reused indicator is cleared
-    with ``{~}`` before each copy, since a row whose outer test failed
-    never entered the body that clears the inner indicators.
-
-    Measured on the contract sweep's dense tables.  Both shapes were executed
-    over every input combination through eight inputs and over 64 sampled
-    combinations at nine and ten, and every table through three inputs was
-    executed against every combination::
-
-        n      fresh cells    fixed window    factor
-        3              308             368     0.84x
-        4            2,099           1,344     1.56x
-        6           28,769           6,316     4.56x
-        8          507,740          31,076    16.34x
-        9        2,220,956          69,005    32.19x
-        10       9,963,861         153,854    64.76x
-
-    The highest cell reached goes 2,032 -> 88 at eight inputs and is now
-    linear in ``n`` (10,162 -> 110 at ten), so the mean walk is 2 cells
-    rather than 297 and growth per added input falls from ~4.5x to ~2.2x.
-    **It loses below four inputs** -- the per-row clears cost more than the
-    short walks they save when the scratch area is only a few cells wide --
-    which is the deliberate trade: the small tables give up at most 68
-    characters and the large ones stop being quadratic.
+    bit~ is a bit pool with ``{``/``}`` while-nonzero loops. Each node copies
+    its stored input into two indicators, complements the zero indicator,
+    then uses both as one-shot branch loops. The loop body clears its own
+    indicator, so both paths converge and scratch cells can be reused by
+    depth. Deep levels occupy cells nearest the input area; their repeated
+    pointer walks therefore form a geometric sum and the source is O(T).
     """
     n = _validate_truth_table(truth_table)
 
-    # A table that ignores some of its inputs is a smaller table, and every
-    # cost here is per *one-row* and per *input within it*: each minterm
-    # pre-copies one cell per input and nests one ``{`` test per input, so
-    # dropping an input removes rows and shortens the rows that remain.  The
-    # reads stay -- one ``)`` per input, and they are the interface -- so the
-    # ignored inputs are read into their own cells and never copied out.
     used = essential_inputs(truth_table, n) or [0]
-    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
-
-    table, use_complement = _maybe_complement(reduced)
-    # Reads keep their original cells (input ``i`` lands at ``8i+7``), so a
-    # minterm's ``level`` indexes into ``used`` rather than into ``range(n)``.
+    table = truth_table if len(used) == n else read_at(truth_table, used, n)
     width = len(used)
 
     prog: list[str] = []
@@ -952,26 +1101,8 @@ def bit_tilde(truth_table: str) -> str:
         prog.append(")")
         pos = 8 * i
 
-    # A fixed window: three cells per slot -- two the chain alternates
-    # through and one indicator the row's test consumes -- plus the result.
-    # The whole scratch area is ``3 * width + 1`` cells wide whatever the
-    # table holds, because a row is built and tested before the next row
-    # reuses the cells.
     base = 8 * n
-    chain = [(base + 3 * slot, base + 3 * slot + 1) for slot in range(width)]
-    indicator = [base + 3 * slot + 2 for slot in range(width)]
-    result = base + 3 * width
-
-    if 0 not in used:
-        # ``(`` prints cell 7's window, and input 0's bit lands there, so it
-        # has to be consumed whether or not the table depends on it.  When
-        # input 0 is essential the first copy below does that as a side
-        # effect; when it is *ignored* nothing else touches cell 7, and the
-        # output comes out as the input bit rather than the answer -- exactly
-        # the 16 tables at ``n <= 3`` that ignore input 0.
-        move(7)
-        prog.append("{ ~ }")
-        pos = 7
+    result = base
 
     def set_result() -> None:
         nonlocal pos
@@ -979,55 +1110,51 @@ def bit_tilde(truth_table: str) -> str:
         prog.append("{ ~ } ~")
         pos = result
 
-    def node(level: int) -> None:
+    def clear(cell: int) -> None:
         nonlocal pos
-        if level == width:
-            set_result()
+        move(cell)
+        prog.append("{~}")
+        pos = cell
+
+    changes = [0]
+    for previous, current in pairwise(table):
+        changes.append(changes[-1] + (previous != current))
+
+    def node(start: int, end: int, depth: int) -> None:
+        nonlocal pos
+        if changes[start] == changes[end - 1]:
+            if table[start] == "1":
+                set_result()
             return
-        cell = indicator[level]
-        move(cell)
+        half = (start + end) // 2
+        slot = width - 1 - depth
+        zero = base + 1 + 3 * slot
+        one = zero + 1
+        temp = zero + 2
+        for cell in (zero, one, temp):
+            clear(cell)
+        source = 8 * used[depth] + 7
+        copy2(source, one, temp)
+        copy2(temp, source, zero)
+        move(zero)
+        prog.append("~{")
+        pos = zero
+        node(start, half, depth + 1)
+        move(zero)
+        prog.append("~}")
+        pos = zero
+        move(one)
         prog.append("{")
-        pos = cell
-        node(level + 1)
-        move(cell)
-        prog.append("~")
-        pos = cell
-        prog.append("}")
+        pos = one
+        node(half, end, depth + 1)
+        move(one)
+        prog.append("~}")
+        pos = one
 
-    # Each slot threads its input bit through its own chain, so the chains
-    # are independent and advance only on the rows they are copied for.
-    source = [8 * i + 7 for i in used]
-    turn = [0] * width
-    for k in range(2**width):
-        one_row = table[k] == "1"
-        for slot, i in enumerate(used):
-            # only one-rows' indicators are used; the first input-0 copy must
-            # still run to consume the input bit out of cell 7
-            if not one_row and not (slot == 0 and i == 0 and k == 0):
-                continue
-            # The indicator is reused, and a row whose *outer* test failed
-            # never entered the body that clears the inner ones, so clear
-            # unconditionally rather than reasoning about which cells the
-            # previous row consumed.  ``copy2`` xors into its destinations,
-            # so a stale 1 here would silently invert an indicator.  Spelled
-            # without the spaces the other two clear sites use: this one is
-            # emitted once per (one-row, input) rather than once per program,
-            # and the interpreter ignores the spaces anyway.
-            cell = indicator[slot]
-            move(cell)
-            prog.append("{~}")
-            pos = cell
-            nxt = chain[slot][turn[slot]]
-            copy2(source[slot], cell, nxt)
-            source[slot] = nxt
-            turn[slot] ^= 1
-            if not (k >> (width - 1 - slot)) & 1:
-                move(cell)
-                prog.append("~")
-                pos = cell
-        if one_row:
-            node(0)
+    node(0, 1 << width, 0)
 
+    # Cell 7 still holds input 0 because tree copies preserve every source.
+    clear(7)
     move(result)
     prog.append("{")
     move(7)
@@ -1036,10 +1163,6 @@ def bit_tilde(truth_table: str) -> str:
     prog.append("~")
     prog.append("}")
     pos = result
-    if use_complement:
-        move(7)
-        prog.append("~")
-        pos = 7
     move(0)
     prog.append("(")
     return "".join(prog)
@@ -1067,31 +1190,65 @@ def forbin(truth_table: str) -> str:
     return best_input_order(truth_table, _forbin_ordered)
 
 
+_FORBIN_ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+_FORBIN_RESERVED = {"for", "in", "main", "out", "return"}
+
+
+def _forbin_name(index: int) -> str:
+    """Return the ``index``th shortest non-keyword identifier."""
+    base = len(_FORBIN_ALPHABET)
+    candidate = 0
+    while True:
+        value = candidate + 1
+        chars = []
+        while value:
+            value, digit = divmod(value - 1, base)
+            chars.append(_FORBIN_ALPHABET[digit])
+        name = "".join(reversed(chars))
+        if name not in _FORBIN_RESERVED:
+            if index == 0:
+                return name
+            index -= 1
+        candidate += 1
+
+
 def _forbin_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit one input order's Forbin program; see :func:`forbin`."""
     n = _validate_truth_table(truth_table)
 
     lines: list[str] = ["main {"]
-    bits: list[str] = []
+    bits = [""] * n
+    depth_of = {stream: depth for depth, stream in enumerate(perm)}
     for i in range(n):
-        reads = [f"i{i}_{j}" for j in range(8)]
+        depth = depth_of[i]
+        # Deep levels are repeated exponentially more often in the emitted
+        # tree, so allocate their eight input bits first.
+        start = 8 * (n - 1 - depth)
+        reads = [_forbin_name(start + j) for j in range(8)]
         lines.append(f"  {','.join(reads)} = (in 0);")
-        bits.append(reads[7])
+        bits[depth] = reads[7]
 
-    def emit(level: int, row: int, depth: int) -> None:
-        indent = "  " * depth
-        if level == n or len(set(truth_table[row : row + 2 ** (n - level)])) == 1:
+    # ``changes[i]`` counts value boundaries through entry ``i``.  An
+    # interval is constant iff its endpoints see the same count, so every
+    # node's fold test is O(1) after this one linear pass.
+    changes = [0]
+    for previous, current in pairwise(truth_table):
+        changes.append(changes[-1] + (previous != current))
+
+    def emit(level: int, row: int) -> None:
+        end = row + 2 ** (n - level)
+        if level == n or changes[row] == changes[end - 1]:
             byte = _ASCII_ZERO + int(truth_table[row])
-            lines.append(f"{indent}out {','.join(format(byte, '08b'))};")
-            lines.append(f"{indent}return 0;")
+            lines.append(f"  out {','.join(format(byte, '08b'))};")
+            lines.append("  return 0;")
             return
-        bit = bits[perm[level]]
-        lines.append(f"{indent}for _:!{bit}..{bit} {{")
-        emit(level + 1, row + 2 ** (n - 1 - level), depth + 1)
-        lines.append(f"{indent}}}")
-        emit(level + 1, row, depth)
+        bit = bits[level]
+        lines.append(f"  for _:!{bit}..{bit} {{")
+        emit(level + 1, row + 2 ** (n - 1 - level))
+        lines.append("  }")
+        emit(level + 1, row)
 
-    emit(0, 0, 1)
+    emit(0, 0)
     lines.append("}")
     return "\n".join(lines)
 
@@ -1116,6 +1273,7 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
     ``< >``, a rail), then the five-row leaf block.
     """
     cells: dict[tuple[int, int], str] = {}
+    constant = constant_span_test(truth_table)
 
     def put(x: int, y: int, text: str) -> None:
         for i, char in enumerate(text):
@@ -1166,7 +1324,7 @@ def _flowchart_cells(truth_table: str) -> dict[tuple[int, int], str]:
         ``depth`` is the level it sits at, which fixes its rows; its columns
         come from the leaf slots it consumes.
         """
-        if len(set(truth_table[lo:hi])) == 1:
+        if constant(lo, hi):
             # Constant: no branch below here can change the answer, so this
             # is a leaf.  Leaves all sit on the bottom row whatever their
             # depth, so the rail from the switch above covers the levels this
@@ -1236,6 +1394,7 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
     # them.
     spine = n + 2
     cells: dict[tuple[int, int], str] = {}
+    constant = constant_span_test(truth_table)
 
     def put(x: int, y: int, text: str) -> None:
         for i, char in enumerate(text):
@@ -1266,7 +1425,7 @@ def _flowchart_stacked(truth_table: str) -> dict[tuple[int, int], str]:
 
     def walk(lo: int, hi: int, depth: int, y: int) -> int:
         """Draw the subtree for ``truth_table[lo:hi]``; return the row after."""
-        if len(set(truth_table[lo:hi])) == 1:
+        if constant(lo, hi):
             return leaf(y, depth, truth_table[lo])
         put(spine - 1, y, "/ /")
         cells[(spine, y + 1)] = "│"
@@ -1303,7 +1462,15 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    The program is a binary decision tree drawn on the grid: every level
+    Wide unconstrained programs preload the table into one deque.  Each input
+    selects between two arms that pop half the remaining answers from opposite
+    ends.  The upper arm sets register 1 and enters the merge switch downward;
+    the lower sets 0 and enters upward, so both leave that switch east.  Across
+    all levels the two arms contain fewer than ``2T`` pops, and the drawing is
+    five rows high, making both construction and rendered output O(T).
+
+    Small or width-constrained programs use a binary decision tree drawn on
+    the grid: every level
     reads one input bit with ``/ /`` and hands it to a ``< >`` switch whose
     two sides are the halves of the table, and each of the ``2**n`` leaves
     sets the register to its own digit, prints it, and halts.
@@ -1348,6 +1515,8 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     that would benefit from the wider coverage; it costs a ``4n``-row
     prologue and depends on push-top/pop-bottom being FIFO, a silent
     wrong-answer trap if the pop is ever changed to pop-top.
+    Without a width, both named layouts are built and the shorter rendered
+    program wins; this is a fixed two-way comparison, not a layout search.
     ``width`` asks for a column count.  The flat drawing gives every leaf a
     column of its own and so grows as ``2 ** n``; a width under that is met
     by *stacking* the tree instead, separating the two subtrees by rows and
@@ -1360,12 +1529,77 @@ def flowchart(truth_table: str, width: int | None = None) -> str:
     narrower flat.
     """
     _validate_truth_table(truth_table)
+    if len(truth_table) > 16 and width is None:
+        return _flowchart_deque(truth_table)
     flat = _flowchart_render(_flowchart_cells(truth_table))
-    if width is None or max(len(line) for line in flat.split("\n")) <= width:
+    if width is not None and max(len(line) for line in flat.split("\n")) <= width:
         return flat
     stacked = _flowchart_render(_flowchart_stacked(truth_table))
+    if width is None:
+        return min((flat, stacked), key=len)
     if max(len(line) for line in stacked.split("\n")) < max(
         len(line) for line in flat.split("\n")
     ):
         return stacked
     return flat
+
+
+def _flowchart_deque(truth_table: str) -> str:
+    """Select one preloaded answer by discarding opposite deque halves."""
+    cells: dict[tuple[int, int], str] = {}
+    main = 2
+
+    def put(x: int, y: int, text: str) -> None:
+        for offset, char in enumerate(text):
+            key = (x + offset, y)
+            if key in cells:
+                raise AssertionError(f"two Flowchart cells at {key}")
+            cells[key] = char
+
+    def chain(x: int, y: int, nodes: list[str]) -> int:
+        for node in nodes:
+            put(x, y, node)
+            x += len(node)
+            put(x, y, "─")
+            x += 1
+        return x
+
+    x = 0
+    x = chain(x, main, ["( )"])
+    preload: list[str] = []
+    for bit in truth_table:
+        preload.extend(("[ }" if bit == "1" else "{ ]", "\\[ ]/"))
+    x = chain(x, main, preload)
+
+    n = len(truth_table).bit_length() - 1
+    for level in range(n):
+        x = chain(x, main, ["/ /"])
+        switch = x
+        put(switch, main, "< >")
+        middle = switch + 1
+        put(middle, main - 1, "│")
+        put(middle, main + 1, "│")
+        put(middle, main - 2, "┌")
+        put(middle, main + 2, "└")
+
+        count = 1 << (n - 1 - level)
+        top = chain(middle + 1, main - 2, ["/{ }\\"] * count + ["[ }"])
+        bottom = chain(middle + 1, main + 2, ["\\{ }/"] * count + ["{ ]"])
+        if top != bottom:  # pragma: no cover - paired node widths are equal
+            raise AssertionError("Flowchart selector arms have different widths")
+        end = top
+        put(end, main - 2, "┐")
+        put(end, main + 2, "┘")
+        put(end, main - 1, "│")
+        put(end, main + 1, "│")
+        put(end - 1, main, "< >")
+        put(end + 2, main, "─")
+        x = end + 3
+
+    x = chain(x, main, ["\\{ }/", "\\ \\"])
+    put(x, main, "(( ))")
+    width = max(col for col, _ in cells) + 1
+    grid = [[" "] * width for _ in range(5)]
+    for (col, row), char in cells.items():
+        grid[row][col] = char
+    return "\n".join("".join(row).rstrip() for row in grid)

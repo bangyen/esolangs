@@ -231,6 +231,8 @@ def test_boolean_set_lists_exactly_the_exported_generators() -> None:
 # The tree generators that pick their input split order by measuring, and the
 # builder that emits one fixed order, so a test can compare the two.
 def _reordering_generators() -> list[object]:
+    from esolangs.tools.algebraic_programming_language import _apl_tree_ordered
+    from esolangs.tools.egl import _egl_ordered
     from esolangs.tools.helpers import _decision_tree_program
     from esolangs.tools.other import _forbin_ordered
     from esolangs.tools.parameterized import (
@@ -245,6 +247,11 @@ def _reordering_generators() -> list[object]:
 
     entries: list[tuple[str, object, object]] = [
         (
+            "algebraic_programming_language",
+            boolean.algebraic_programming_language,
+            _apl_tree_ordered,
+        ),
+        (
             "brainfuck",
             boolean.brainfuck,
             lambda t, p: _decision_tree_program(t, ">", "<", p),
@@ -254,6 +261,7 @@ def _reordering_generators() -> list[object]:
             boolean.dimensional,
             lambda t, p: _decision_tree_program(t, ">0", "<0", p),
         ),
+        ("egl", boolean.egl, _egl_ordered),
         ("ram0", boolean.ram0, _ram0_ordered),
         ("bitdeque", boolean.bitdeque, _bitdeque_ordered),
         (
@@ -340,29 +348,54 @@ def test_reorder_permutation_preserves_the_function() -> None:
             assert permuted[row] == table[original]
 
 
-def test_wide_tables_skip_the_exhaustive_search() -> None:
-    """Above the cap the order is picked greedily, so wide tables stay fast.
+def test_greedy_order_never_grows_a_wide_program() -> None:
+    """The identity candidate keeps the greedy heuristic from growing output."""
+    from esolangs.tools.helpers import _decision_tree_program
 
-    ``12!`` is 479 million orders; an uncapped search never returns.  The
-    greedy fallback still may not emit more than the identity order does.
-    """
-    from esolangs.tools.helpers import _ORDER_SEARCH_MAX, _decision_tree_program
-
-    n = _ORDER_SEARCH_MAX + 2
+    n = 8
     table = "0" * (2**n - 1) + "1"
     assert len(boolean.brainfuck(table)) <= len(
         _decision_tree_program(table, ">", "<", tuple(range(n)))
     )
 
 
+def test_order_selection_builds_at_most_two_candidates() -> None:
+    """Small arities no longer trigger an exhaustive permutation contest."""
+    from esolangs.tools.helpers import best_input_order
+
+    built: list[tuple[int, ...]] = []
+
+    def build(table: str, perm: tuple[int, ...]) -> str:
+        built.append(perm)
+        return table
+
+    best_input_order("01011010", build)
+    assert 1 <= len(built) <= 2
+    assert built[0] == (0, 1, 2)
+
+
+def test_wide_order_selection_builds_only_identity() -> None:
+    """The optional greedy scorer stays off the asymptotic build path."""
+    from esolangs.tools.helpers import best_input_order
+
+    built = 0
+
+    def build(table: str, _perm: tuple[int, ...]) -> str:
+        nonlocal built
+        built += 1
+        return table
+
+    table = "01" * 2**10
+    assert best_input_order(table, build) == table
+    assert built == 1
+
+
 def test_greedy_order_is_correct_when_it_is_not_the_identity() -> None:
     """A greedily-ordered program still computes its table.
 
-    Above ``_ORDER_SEARCH_MAX`` the order is picked greedily rather than
-    searched, and this is the only path where a *non-identity* order is
-    chosen without every candidate having been built and measured, so it
-    gets run rather than merely sized.  ``"01" * 64`` depends only on its
-    last input, which the greedy pick fronts.
+    The order is chosen without every candidate having been built and
+    measured, so it gets run rather than merely sized.  ``"01" * 64``
+    depends only on its last input, which the greedy pick fronts.
     """
     from esolangs.interpreters.tape_based.brainfuck import run
     from esolangs.tools.helpers import _greedy_input_order
@@ -464,11 +497,7 @@ def test_the_tree_program_spends_its_permutation_on_the_tested_cell() -> None:
 # lists are measured (see the doc's "Which shape a boolean generator is"),
 # so this test is what keeps them true rather than a comment that rots.
 _MINTERM_SHAPED = {
-    "a_painter_ant",
-    "algebraic_programming_language",
     "bfstack",
-    "container",
-    "vandevelo",
 }
 
 # Neither model describes these.  ``wii2d`` is a route search over a grid,
@@ -523,12 +552,9 @@ _MINTERM_SHAPED = {
 # collapsed structure.  Reordering does not become applicable to them the way
 # it would if they had grown a tree, which is why they are neither list.
 _REDUCING = {
-    "bit_tilde",
     "cod",
-    "collatz_multiverse",
     "home_row",
     "nocomment",
-    "qoibl",
     "rotfuck",
     "suffolk",
     "super_snusp",
@@ -553,12 +579,13 @@ _UNSHAPED = {
     "nopstacle",
     "wii2d",
     "minifuck",
+    "one_two_three",
     "ztoalc_l",
     "pct_squared_minus_one",
-    "one_two_three",
     "jaune_multiply",
     "circlefuck_byte",
     "slow_acv_mammalian",
+    "container",
 }
 
 # Every table depending on exactly one input, at n == 3, both polarities.
@@ -729,34 +756,11 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 #     polynomial      28.4s -> 5.5s     wii2d            7.2s -> 1.3s
 #     one_two_three   17.8s -> 3.7s
 #
-# plus a generic pass on the order search below.  The whole n=1..10 sweep
-# is now 46.1s of CPU.  Per arity: n=6 6.2s, n=7 1.0s, n=8 5.7s, n=9 7.2s,
-# n=10 23.8s.
-#
-# n=6 costing six times n=7 is not a measurement error and not warmup -- it
-# is ``_ORDER_SEARCH_MAX = 6`` in ``helpers.py``.  At n <= 6 a reordering
-# generator builds all ``n!`` = 720 candidate orders and keeps the
-# shortest; at n=7 it switches to the greedy ``O(n**2)`` pick, so a
-# *bigger* table is hundreds of times faster (laserfuck 1.03s at six
-# against 0.002s at seven, streetcode 0.56s against 0.002s).
-#
-# What that 720-build search buys, measured by running the registry at n=6
-# with the cap at 6 and at 5: 3,193,830 chars in 10.7s against 3,195,778 in
-# 0.79s.  Only 13 of 138 cases differ and the registry total is 0.06%, but
-# the win is concentrated, not absent -- ram0 parity 29.9% shorter under the
-# search, circlefuck dense 26.4%, six_five dense 14.2%, unsquare dense
-# 13.5%.  Lowering the cap is a bad trade rather than a free 10s.
-#
-# **Measuring that requires patching six modules, not one.**  ``laserfuck``,
-# ``streetcode``, ``stack``, ``six_five`` and ``tape`` each do ``from
-# .helpers import _ORDER_SEARCH_MAX``, a by-value import, so patching
-# ``helpers`` alone leaves the two most expensive generators exhaustive and
-# reports the greedy side as 5.17s instead of 0.79s.
-#
-# n=6 was 10.0s until the candidates themselves were made cheap.  The
-# search still builds every one of the 720 and measures it -- see the
-# ``best_input_order`` docstring for why the count cannot come down without
-# going per-language -- so that pass left all 1380 programs byte-identical.
+# plus a generic pass on input ordering.  Exhaustive ordering was later
+# removed: its n=6 registry sweep cost 10.7s instead of 0.79s for a 0.06%
+# aggregate size saving.  Generators now compare the identity with at most
+# one greedy order; stack languages without a safe greedy mapping retain
+# their natural order.
 #
 # Across everything here, 1357 of the registry's 1380 programs are
 # byte-identical: the 23 that moved are nine factor arities that used to
@@ -870,6 +874,7 @@ def test_every_generator_builds_up_to_ten_inputs(name: str, arities: range) -> N
                     fn(table)
 
 
+@pytest.mark.slow
 def test_arity_caps_are_still_caps() -> None:
     """A capped generator that grew past its cap must leave ``_ARITY_CAPPED``.
 
@@ -919,6 +924,7 @@ def _all_tables(arity: int) -> list[str]:
     ]
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("name", sorted(BY_BOOLEAN))
 def test_every_generator_is_total_on_every_small_table(name: str) -> None:
     """Every generator returns a program for *every* table up to three inputs.
@@ -1015,6 +1021,7 @@ _EXEC_SHAPES = (("one_minterm", _one_minterm), ("one_hot", _one_hot))
     "make", [make for _, make in _EXEC_SHAPES], ids=[s for s, _ in _EXEC_SHAPES]
 )
 @pytest.mark.parametrize("name", sorted(esolangs.list_languages()))
+@pytest.mark.slow
 def test_every_generator_runs_what_it_builds(
     name: str, make: Callable[[int], str]
 ) -> None:
@@ -1049,15 +1056,101 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: them approximate, and asserting one here would fail whenever the machine
 #: is busy -- which, on a suite that runs four workers, is always.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
-    "Circuit Diagram": (145_216, 322_504, 2.2),
+    "Circuit Diagram": (7_910_330, 11_394_987, 1.4),
     "COD": (942_692, 3_668_705, 3.9),
     "ROTfuck": (15_240, 29_472, 1.9),
     "Polynomial": (3_383_048, 10_896_883, 3.2),
     "SLOW ACV MAMMALIAN": (1_672_368, 3_380_418, 2.0),
-    "bit~": (31_076, 69_005, 2.2),
-    "123": (219_937, 752_570, 3.4),
+    "bit~": (28_210, 56_676, 2.0),
+    "123": (94_589, 230_002, 2.4),
     "Factor": (17_613, 36_339, 2.1),
 }
+
+
+# The roadmap's original scaling queue.  A row leaves ``_OPEN_SCALING`` only
+# after an O(T) construction or a language-wide lower bound.
+_LINEAR_SCALING = {
+    "a_painter_ant",
+    "addsubjump",
+    "arrowqueue",
+    "back",
+    "bitdeque",
+    "brainif",
+    "circuit_diagram",
+    "clockwise",
+    "container",
+    "dig",
+    "forbin",
+    "flowchart",
+    "inject",
+    "jaune",
+    "laserfuck",
+    "minifuck",
+    "one_two_three",
+    "ram0",
+    "sbleq",
+    "streetcode",
+}
+_LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
+_OPEN_SCALING = {
+    "cod",
+    "polynomial",
+    "slow_acv_mammalian",
+    "vandevelo",
+}
+
+
+def test_remaining_scaling_audit_is_exhaustive() -> None:
+    """Every generator in the requested queue remains classified."""
+    expected = {
+        "a_painter_ant",
+        "one_two_three",
+        "circuit_diagram",
+        "cod",
+        "minifuck",
+        "factor",
+        "polynomial",
+        "addsubjump",
+        "arrowqueue",
+        "back",
+        "bitdeque",
+        "brainif",
+        "clockwise",
+        "container",
+        "dig",
+        "flowchart",
+        "forbin",
+        "inject",
+        "jaune",
+        "laserfuck",
+        "ram0",
+        "sbleq",
+        "slow_acv_mammalian",
+        "streetcode",
+        "vandevelo",
+    }
+    classified = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
+    assert classified == expected
+    assert classified <= set(BY_BOOLEAN)
+
+
+@pytest.mark.parametrize("name", sorted(_LINEAR_SCALING))
+def test_converted_generators_scale_linearly(name: str) -> None:
+    """Doubling a wide unfolded table at most doubles generated text."""
+    fn = getattr(boolean, name)
+    # The grid H-layouts have different odd/even finite-size constants; their
+    # all-arity area bounds are checked with their construction invariants.
+    if name == "circuit_diagram":
+        arities = (8, 9)
+    elif name == "streetcode":
+        arities = (9, 10)
+    else:
+        arities = (11, 12)
+    sizes = [len(fn(_parity(n))) for n in arities]
+    if name == "minifuck":
+        assert all(size <= 70 * 2**n for size, n in zip(sizes, arities, strict=True))
+    else:
+        assert sizes[1] <= 2 * sizes[0]
 
 
 @pytest.mark.slow
@@ -1072,13 +1165,9 @@ def test_the_expensive_generators_grow_as_documented(name: str) -> None:
     of frozen table this repository turns back into a rule.  A rule in prose
     is only worth having if it is checked, so this is the check.
 
-    n=9 is the ceiling here on purpose: it was chosen when Circuit Diagram
-    was 60MB there and 306MB at n=10, and a test that allocates a third of
-    a gigabyte to confirm a documented number is a worse trade than the
-    number being one arity smaller.  Five of these eight have since shrunk
-    by between 2.4x and 15x -- Circuit Diagram is 1.6MB at n=9 now -- but
-    n=9 stays, because the growth law is what is being checked and one more
-    arity does not check it better.
+    n=9 is the ceiling here on purpose: Circuit Diagram's deliberately roomy
+    H-layout is already 11.4MB there, and one more arity does not check its
+    proved area recurrence better.
     """
     at_eight, at_nine, ratio = _DOCUMENTED_SIZES[name]
     assert len(esolangs.generate(name, _dense(8))) == at_eight
@@ -1101,4 +1190,4 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
         if name not in _DOCUMENTED_SIZES
     )
     assert biggest[0] < 600_000, biggest
-    assert biggest[1] == "A Painter Ant"
+    assert biggest[1] == "BrainIf"

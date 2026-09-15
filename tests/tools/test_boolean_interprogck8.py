@@ -45,7 +45,7 @@ def _tables(n: int) -> list[str]:
 
 
 class TestExhaustive:
-    @pytest.mark.parametrize("n", [1, 2, 3])
+    @pytest.mark.parametrize("n", [1, 2, pytest.param(3, marks=pytest.mark.slow)])
     def test_every_table_of_every_arity(self, n: int) -> None:
         """All 4, 16 and 256 tables, every row, executed.
 

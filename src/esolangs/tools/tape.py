@@ -3,7 +3,6 @@
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
-from itertools import permutations
 
 from esolangs.exceptions import GeneratorCapError
 
@@ -15,9 +14,9 @@ from esolangs.tools.dimensional import dimensional, dimensional_tree
 from esolangs.tools.helpers import (
     _ASCII_ONE,
     _ASCII_ZERO,
-    _ORDER_SEARCH_MAX,
     _validate_truth_table,
     best_input_order,
+    constant_span_test,
     decision_tree_program,
     decision_tree_tokens,
     essential_inputs,
@@ -100,9 +99,8 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     (most significant first), ``n`` is the input count implied by the table length.
 
     BrainIf reads each input into a cell with ``if 0 input``, then a
-    recursive decision tree checks each cell with ``if 48/49 goto`` (the
-    groups' checks sit adjacent so a failed check falls through to the next
-    candidate).
+    recursive decision tree checks each cell with ``if 49 goto``; zero falls
+    through to its subtree without spelling a second destination.
 
     The answer byte is built *first*, on cell 0: 48 ``increment`` lines
     once, rather than a climb per digit.  There is no way to copy a byte in
@@ -130,7 +128,16 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     lines per skipped level and cancelled the fold exactly.
     """
     n = _validate_truth_table(truth_table)
-    entries: list[_Entry] = []
+    if len(truth_table) > 16:
+        return _brainif_linear(truth_table, width)
+    # Initial zero skips the two-line output trampoline.  Leaves later return
+    # with 48/49 to line 2, where one of the two guards forwards to the wide
+    # output-tail address; that address is rendered twice instead of per leaf.
+    entries: list[_Entry] = [
+        _Cmd("if 0 goto 4"),
+        _Cmd(f"if {_ASCII_ZERO} goto OUT0"),
+        _Cmd(f"if {_ASCII_ONE} goto OUT0"),
+    ]
     # The answer byte goes on cell 0 and the inputs above it, read from the
     # far end back down.  Building first means stepping out over cells that
     # are still zero, where one ``if 0 move right`` advances exactly one
@@ -140,11 +147,12 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     entries += [_Cmd("if 0 move right") for _ in range(n - 1)]
 
     counter = [0]
+    constant = constant_span_test(truth_table)
 
-    def build(rows: list[int], k: int) -> list[_Entry]:
-        """Emit the subtree for ``rows``, entered with the pointer on cell n-k+1."""
+    def build(lo: int, hi: int, k: int) -> list[_Entry]:
+        """Emit a table span, entered with the pointer on cell n-k+1."""
         rest = n - (k - 1)
-        if rest == 0 or len({truth_table[row] for row in rows}) == 1:
+        if rest == 0 or constant(lo, hi):
             # Consume the inputs this path never branched on, which walks
             # the pointer the rest of the way home; then add one iff the
             # answer is a 1 and join the tail.  Reading them is not optional:
@@ -155,23 +163,21 @@ def brainif(truth_table: str, width: int | None = None) -> str:
                 out.append(_Cmd("if 0 input"))
                 out.append(_Cmd(f"if {_ASCII_ZERO} move left"))
                 out.append(_Cmd(f"if {_ASCII_ONE} move left"))
-            if int(truth_table[rows[0]]):
+            if int(truth_table[lo]):
                 out.append(_Cmd(f"if {_ASCII_ZERO} increment"))
-            out.append(_Cmd(f"if {_ASCII_ZERO} goto OUT0"))
-            out.append(_Cmd(f"if {_ASCII_ONE} goto OUT0"))
+            out.append(_Cmd(f"if {_ASCII_ZERO} goto 2"))
+            out.append(_Cmd(f"if {_ASCII_ONE} goto 2"))
             return out
         # Level ``k`` reads input ``k - 1`` into cell ``n - k + 1``, so the
         # bit it selects is the table's usual most-significant-first one --
         # the reads are in input order even though the pointer walks down.
-        g0 = [row for row in rows if ((row >> (n - k)) & 1) == 0]
-        g1 = [row for row in rows if ((row >> (n - k)) & 1) == 1]
+        middle = (lo + hi) // 2
         l0, l1 = counter[0], counter[0] + 1
         counter[0] += 2
-        sub0 = build(g0, k + 1)
-        sub1 = build(g1, k + 1)
+        sub0 = build(lo, middle, k + 1)
+        sub1 = build(middle, hi, k + 1)
         return [
             _Cmd("if 0 input"),
-            _If(_ASCII_ZERO, l0),
             _If(_ASCII_ONE, l1),
             _MoveLeft(_ASCII_ZERO, l0),
             *sub0,
@@ -179,7 +185,7 @@ def brainif(truth_table: str, width: int | None = None) -> str:
             *sub1,
         ]
 
-    entries += build(list(range(2**n)), 1)
+    entries += build(0, len(truth_table), 1)
     # One shared tail: the answer cell already holds the byte to print, so
     # this is two lines rather than a climb per digit.
     entries.append(_Out(0))
@@ -241,6 +247,76 @@ def brainif(truth_table: str, width: int | None = None) -> str:
     return "\n".join(lines)
 
 
+def _brainif_linear(truth_table: str, width: int | None) -> str:
+    """Emit a linear spatial lookup for BrainIf."""
+    n = _validate_truth_table(truth_table)
+    lines: list[str] = []
+    labels: dict[str, int] = {}
+
+    def emit(line: str) -> None:
+        lines.append(line)
+
+    def mark(name: str) -> None:
+        labels[name] = len(lines) + 1
+
+    # Scratch and output cells alternate.  Every output is initialized once;
+    # the pointer then returns through the same O(T) strip.
+    layout = "0" * n + truth_table
+    for bit in layout:
+        emit("if 0 move right")
+        for value in range(_ASCII_ZERO):
+            emit(f"if {value} increment")
+        if bit == "1":
+            emit(f"if {_ASCII_ZERO} increment")
+        emit(f"if {_ASCII_ZERO} move right")
+        emit(f"if {_ASCII_ONE} move right")
+    for _ in layout:
+        emit("if 0 move left")
+        emit(f"if {_ASCII_ZERO} move left")
+        emit(f"if {_ASCII_ONE} move left")
+
+    # Input is read at the current scratch cell.  A one walks its binary
+    # weight in scratch/output pairs; a zero stays for the next read.
+    for i in range(n):
+        one = f"input_{i}_one"
+        zero = f"input_{i}_zero"
+        after = f"input_{i}_after"
+        emit("if 0 input")
+        emit(f"if {_ASCII_ONE} goto @{one}")
+        emit(f"if {_ASCII_ZERO} goto @{zero}")
+        mark(zero)
+        emit(f"if {_ASCII_ZERO} move right")
+        emit(f"if {_ASCII_ZERO} move right")
+        emit(f"if {_ASCII_ONE} move right")
+        emit(f"if 0 goto @{after}")
+        mark(one)
+        weight = 1 + (1 << (n - 1 - i))
+        for step in range(weight):
+            guard = _ASCII_ONE if step == 0 else 0
+            emit(f"if {guard} move right")
+            emit(f"if {_ASCII_ZERO} move right")
+            emit(f"if {_ASCII_ONE} move right")
+        mark(after)
+
+    # Every route ends on a fresh zero scratch cell.
+    emit("if 0 move right")
+    emit(f"if {_ASCII_ZERO} output")
+    emit(f"if {_ASCII_ONE} output")
+    emit("")
+    for i, line in enumerate(lines):
+        if "goto @" in line:
+            head, name = line.split("goto @")
+            lines[i] = f"{head}goto {labels[name]}"
+    if width is not None and any(len(line) > width for line in lines):
+        lines = [
+            line.replace("increment", "inc")
+            .replace("move right", "right")
+            .replace("move left", "left")
+            for line in lines
+        ]
+    return "\n".join(lines)
+
+
 def circlefuck(truth_table: str) -> str:
     """Build a Circlefuck program computing the given truth table.
 
@@ -278,8 +354,8 @@ def circlefuck_byte(truth_table: Sequence[int]) -> str:
     are unconditional, so a folded program consumes its input exactly as an
     unfolded one does.
 
-    **The tree splits on its inputs in whichever order emits the shortest
-    program**, over all ``n!`` of them.  Unlike the generators whose nodes
+    **The tree compares its identity and greedy input orders.**  Unlike
+    generators whose nodes
     *name* the input they test, a Circlefuck node tests whatever cell the
     pointer is over, so an order is not a renaming: the tree has to walk
     the pointer to the cell it wants, and the walk is a real cost the fold
@@ -314,7 +390,7 @@ def _permute_byte_table(truth_table: Sequence[int], perm: tuple[int, ...]) -> li
 
 
 def _best_byte_order(truth_table: Sequence[int], n: int) -> str:
-    """Return the shortest program over every input order.
+    """Return the shorter program from the identity and greedy orders.
 
     The byte-valued twin of
     :func:`~esolangs.tools.helpers.best_input_order`, which takes a
@@ -322,30 +398,20 @@ def _best_byte_order(truth_table: Sequence[int], n: int) -> str:
     identity order goes first and ties keep it, so a table no reorder helps
     emits exactly what it emitted before.
 
-    The search is capped for the same reason the shared helper caps: ``n!``
-    builds of an ``O(2**n)`` program.  The cap is reached in practice at
-    ``n <= 8``, so the greedy fallback is not decorative.
+    The identity and greedy orders are both built, so the heuristic cannot
+    make the output longer.
     """
     best = _circlefuck_ordered(list(truth_table), tuple(range(n)))
     if n < 2:
         return best
-    if n > _ORDER_SEARCH_MAX:
-        return min(best, _circlefuck_greedy(truth_table, n), key=len)
-    for perm in permutations(range(n)):
-        if perm == tuple(range(n)):
-            continue
-        candidate = _circlefuck_ordered(_permute_byte_table(truth_table, perm), perm)
-        if len(candidate) < len(best):
-            best = candidate
-    return best
+    return min(best, _circlefuck_greedy(truth_table, n), key=len)
 
 
 def _circlefuck_greedy(truth_table: Sequence[int], n: int) -> str:
-    """Pick an order level by level above the exhaustive cap.
+    """Pick an order level by level.
 
     Each remaining input is scored by how many constant subtrees choosing
-    it next would create -- the fold the exhaustive search is hunting --
-    which is ``O(n**2)`` scorings rather than ``n!`` builds.
+    it next would create, using ``O(n**2)`` scorings.
     """
     remaining = list(range(n))
     order: list[int] = []
@@ -356,7 +422,9 @@ def _circlefuck_greedy(truth_table: Sequence[int], n: int) -> str:
         )
         order.append(best_input)
         remaining.remove(best_input)
-    perm = tuple(order)
+    # ``_circlefuck_ordered`` descends its permuted row bits from least to
+    # most significant, so its tuple is the reverse of this root-first score.
+    perm = tuple(reversed(order))
     return _circlefuck_ordered(_permute_byte_table(truth_table, perm), perm)
 
 
@@ -715,7 +783,7 @@ def sbleq(truth_table: str) -> str:
     for the whole program.
 
     Leaves print ``-3 D 0`` (``D`` a constant 48/49 cell) and halt with
-    ``0 0 HALT`` (``HALT`` holds -1, a negative jump target).  Whole
+    ``0 0 3``; an entry trampoline keeps -1 in fixed low cell 3.  Whole
     subtrees whose table entries are constant collapse to a leaf.
 
     S*bleq's operands are addresses, so a cell holding a transient 0/1 is
@@ -734,7 +802,159 @@ def sbleq(truth_table: str) -> str:
     across the tree. It handles every table alone.
     """
     _validate_truth_table(truth_table)
-    return best_input_order(truth_table, _sbleq_hoisted)
+    if len(truth_table) <= 16:
+        return best_input_order(truth_table, _sbleq_hoisted)
+    return _sbleq_packed(truth_table)
+
+
+def _sbleq_packed(truth_table: str) -> str:
+    """Emit a linear-size packed-table decoder for S*bleq."""
+    n = _validate_truth_table(truth_table)
+    instructions: list[tuple[int | str, int | str, str]] = []
+    labels: dict[str, int] = {}
+    values: dict[str, int] = {
+        "ZERO": 0,
+        "ONE": 1,
+        "NEGONE": -1,
+        "NEG48": -_ASCII_ZERO,
+        "N": n,
+        "INDEX": 0,
+        "TMP": 0,
+        "BIT": 0,
+        "NEG": 0,
+        "COUNT": n,
+        "OFFSET": 0,
+        "TABLE": 0,
+        "SHIFT": 0,
+        "Q": 0,
+        "R": 0,
+        "OUT": _ASCII_ZERO,
+        "HALT": -1,
+    }
+
+    def mark(name: str) -> None:
+        labels[name] = len(instructions)
+
+    def emit(a: int | str, b: int | str, target: str = "next") -> int:
+        instructions.append((a, b, target))
+        return len(instructions) - 1
+
+    def jump(target: str) -> None:
+        emit("ZERO", "ZERO", target)
+
+    def clear(dst: str) -> None:
+        emit(dst, dst)
+
+    def increment(dst: int | str) -> None:
+        emit(dst, "NEGONE")
+
+    def add(dst: str, src: str) -> None:
+        clear("NEG")
+        emit("NEG", src)
+        emit(dst, "NEG")
+
+    def copy(dst: str, src: str) -> None:
+        clear(dst)
+        add(dst, src)
+
+    def branch_positive(cell: str, positive: str, zero: str) -> None:
+        # A positive result falls through; zero branches through c.
+        emit(cell, "ZERO", zero)
+        jump(positive)
+
+    # Read ASCII bits once and form their binary row index.
+    for _ in range(n):
+        clear("TMP")
+        emit("TMP", -2)
+        emit("TMP", "NEG48")
+        clear("BIT")
+        emit("BIT", "TMP")
+        add("INDEX", "INDEX")
+        add("INDEX", "BIT")
+
+    mark("select_test")
+    branch_positive("INDEX", "select_step", "selected")
+    mark("select_step")
+    emit("INDEX", "ONE")
+    emit("COUNT", "ONE")
+    increment("OFFSET")
+    branch_positive("COUNT", "select_test", "advance_chunk")
+    mark("advance_chunk")
+    load_operand_increment = emit(0, "NEGONE")
+    add("COUNT", "N")
+    clear("OFFSET")
+    jump("select_test")
+
+    mark("selected")
+    clear("TABLE")
+    load_chunk = emit("TABLE", "CHUNK0")
+    copy("SHIFT", "OFFSET")
+    increment("SHIFT")
+
+    # Divide by two OFFSET+1 times; the last remainder is the selected bit.
+    mark("div_init")
+    clear("Q")
+    clear("R")
+    mark("div_test")
+    branch_positive("TABLE", "div_first", "division_complete")
+    mark("div_first")
+    emit("TABLE", "ONE")
+    branch_positive("TABLE", "div_pair", "div_odd")
+    mark("div_pair")
+    emit("TABLE", "ONE")
+    increment("Q")
+    jump("div_test")
+    mark("div_odd")
+    increment("R")
+    jump("division_complete")
+
+    mark("division_complete")
+    emit("SHIFT", "ONE")
+    branch_positive("SHIFT", "divide_again", "output")
+    mark("divide_again")
+    copy("TABLE", "Q")
+    jump("div_init")
+    mark("output")
+    add("OUT", "R")
+    emit(-3, "OUT")
+    jump("@HALT")
+
+    # Negative packed values let one subtraction load a positive chunk.
+    chunks = [
+        -sum(
+            int(bit) << offset
+            for offset, bit in enumerate(truth_table[start : start + n])
+        )
+        for start in range(0, len(truth_table), n)
+    ]
+
+    target_names = [f"TARGET{i}" for i in range(len(instructions))]
+    names = [*values, *target_names, *(f"CHUNK{i}" for i in range(len(chunks)))]
+    base = 3 * len(instructions)
+    address = {name: base + i for i, name in enumerate(names)}
+    memory = [0] * (base + len(names))
+
+    def operand(value: int | str) -> int:
+        return address[value] if isinstance(value, str) else int(value)
+
+    for i, (a, b, target) in enumerate(instructions):
+        if target == "next":
+            target_value = 3 * (i + 1)
+        elif target.startswith("@"):
+            target_value = None
+        else:
+            target_value = 3 * labels[target]
+        target_cell = target_names[i]
+        memory[address[target_cell]] = target_value if target_value is not None else 0
+        c = address[target[1:]] if target.startswith("@") else address[target_cell]
+        memory[3 * i : 3 * i + 3] = [operand(a), operand(b), c]
+
+    for name, value in values.items():
+        memory[address[name]] = value
+    for i, value in enumerate(chunks):
+        memory[address[f"CHUNK{i}"]] = value
+    memory[3 * load_operand_increment] = 3 * load_chunk + 1
+    return " ".join(map(str, memory))
 
 
 def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -782,7 +1002,9 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
     )
 
     onebase = nxtbase + n
-    data_base = 3 * len(instructions)
+    one_count = sum(kind == "one" for _a, _b, kind, _arg in instructions)
+    data_base = 9
+    code_base = data_base + onebase + one_count
 
     # ``one`` instructions carry their absolute target, and the data block
     # holds those targets in the order the emit loop meets them.
@@ -793,21 +1015,25 @@ def _sbleq_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
         if kind == "out":
             cells += [-3, data_base + b, 0]
         elif kind == "halt":
-            cells += [0, 0, data_base + 3]
+            cells += [0, 0, 3]
         elif kind == "nxt":
             cells += [data_base + a, -2, data_base + nxtbase + arg]
         else:
             slot = len(ones)
-            ones.append(arg)
+            ones.append(code_base + arg)
             cells += [data_base + a, data_base + b, data_base + onebase + slot]
 
     data = (
         [-_ASCII_ONE, _ASCII_ZERO, _ASCII_ONE, -1]
         + [0] * n
-        + [3 * (i + 1) for i in range(n)]
+        + [code_base + 3 * (i + 1) for i in range(n)]
         + ones
     )
-    cells += data
+    # Instruction 0 jumps over inert low-address data to the code.  Keeping
+    # the data first shortens every repeated a/b/c operand; the large code
+    # targets remain values stored once in that data.
+    prelude = [0, 0, 6, -1, 0, 0, code_base, 0, 0]
+    cells = prelude + data + cells
     return " ".join(map(str, cells))
 
 
@@ -854,7 +1080,7 @@ def jaune(truth_table: str) -> str:
     ``ord-48``) -- and the tree then routes with ``?`` jumps: a node walks to
     the cell holding its bit and ``N?`` jumps to label ``N`` when that cell is
     nonzero, else falls through.  Each leaf prints its answer with ``^`` and
-    jumps to a shared end label.  A subtree whose table slice is a constant
+    terminates locally.  A subtree whose table slice is a constant
     collapses to a single leaf.
 
     Only the inputs the tree actually branches on get a cell of their own:
@@ -880,7 +1106,38 @@ def jaune(truth_table: str) -> str:
     crossed, so an order pays for the folds it wins, and the search measures
     rather than assumes.
     """
-    return best_input_order(truth_table, _jaune_ordered)
+    if len(truth_table) <= 16:
+        return best_input_order(truth_table, _jaune_ordered)
+    return _jaune_linear(truth_table)
+
+
+def _jaune_linear(truth_table: str) -> str:
+    """Emit a linear spatial table and travelling counter for Jaune."""
+    n = _validate_truth_table(truth_table)
+    out = ["v>" * n]
+
+    # Cell n is counter 0; each row then owns one output cell and the next
+    # counter cell.  Only one increment is needed for a true row.
+    for bit in truth_table:
+        out.append(">")
+        if bit == "1":
+            out.append("+")
+        out.append(">")
+    out.append("<" * (n + 2 * len(truth_table)))
+
+    # Revisit each input, carry it in the hold cell, and add its unary weight
+    # to counter 0.  The weights sum to T-1.
+    for i in range(n):
+        out.append("#")
+        out.append(">" * (n - i))
+        out.append("&" * (1 << (n - 1 - i)))
+        if i + 1 < n:
+            out.append("<" * (n - i - 1))
+
+    # Move a decremented copy of the counter two cells at a time.  When it
+    # reaches zero, the adjacent cell is the selected output.
+    out.append("1:2!#>>%&-1?1!2:>^.")
+    return "".join(out)
 
 
 def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -902,7 +1159,7 @@ def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     and the value there is known -- 1 on the then-branch, 0 on the else --
     which makes the leaf one ``+``/``-`` and a ``^`` with no navigation at
     all.  Mutating a bit cell is safe because exactly one leaf runs per
-    execution and it jumps straight to the end.
+    execution and it terminates immediately.
 
     The pointer's position on entry to a node is a function of its *level*
     alone, never of the path taken: both of a parent's branches leave the
@@ -911,6 +1168,7 @@ def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     """
     n = _validate_truth_table(truth_table)
     label = [1]
+    constant = constant_span_test(truth_table)
 
     def fresh() -> int:
         label[0] += 1
@@ -940,32 +1198,29 @@ def _jaune_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         reads += ">"
         scratch = slot + 1
 
-    def leaf(value: str, held: int | None, end: int) -> str:
+    def leaf(value: str, held: int | None) -> str:
         want = int(value)
         have = 0 if held is None else held
         adjust = "+" * (want - have) if want >= have else "-" * (have - want)
-        return adjust + "^" + f"+{end}?"
+        return adjust + "^."
 
-    def node(
-        level: int, lo: int, hi: int, entry: int, held: int | None, end: int
-    ) -> str:
-        if level == n or len(set(truth_table[lo:hi])) == 1:
-            return leaf(truth_table[lo], held, end)
+    def node(level: int, lo: int, hi: int, entry: int, held: int | None) -> str:
+        if level == n or constant(lo, hi):
+            return leaf(truth_table[lo], held)
         # A clobbered input has no cell to test.  Its bit cannot change the
         # answer, so the two halves of this span are value-identical and
         # descending into either one is the same function -- take the zero
         # half, which keeps the row span halving in step with the level.
         if perm[level] not in cell_of:
-            return node(level + 1, lo, (lo + hi) // 2, entry, held, end)
+            return node(level + 1, lo, (lo + hi) // 2, entry, held)
         cell = cell_of[perm[level]]
         then_lbl = fresh()
         mid = (lo + hi) // 2
-        then = node(level + 1, mid, hi, cell, 1, end)
-        else_ = node(level + 1, lo, mid, cell, 0, end)
+        then = node(level + 1, mid, hi, cell, 1)
+        else_ = node(level + 1, lo, mid, cell, 0)
         return move(entry, cell) + f"{then_lbl}?{else_}{then_lbl}:{then}"
 
-    end = fresh()
-    return reads + node(0, 0, 2**n, scratch, None, end) + f"{end}:."
+    return reads + node(0, 0, 2**n, scratch, None)
 
 
 def jaune_multiply() -> str:

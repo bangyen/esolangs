@@ -1,5 +1,6 @@
 """Boolean-function generators for register-based languages."""
 
+from itertools import pairwise
 from typing import Any
 
 from esolangs.exceptions import GeneratorCapError
@@ -9,8 +10,8 @@ from esolangs.tools.helpers import (
     _cm_constants,
     _validate_truth_table,
     best_input_order,
+    constant_span_test,
     essential_inputs,
-    minterm_sum,
     read_at,
     stored_inputs,
 )
@@ -197,37 +198,173 @@ def addsubjump(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    ASJ's instruction is ``a b c d``: ``*a += *b`` (when ``*d <= 0``) or
-    ``*a -= *b`` (when ``*d > 0``), then ``goto *c``, where ``c`` is a cell
-    holding the next instruction pointer.  There is no data-testable jump,
-    so the generator routes a decision tree through two trampolines: a jump
-    cell initialized to the zero trampoline's address is advanced by
-    ``4 * bit``, and ``goto *jump`` lands on the zero or one trampoline,
-    which jumps to the corresponding subtree.  Leaves print 48/49 and halt
-    via ``c = -8`` (a special address).  Subtrees whose table entries are
-    constant collapse to a leaf.
-
-    **All ``n`` bits are read up front**, each into a cell of its own and
-    normalized there once from 48/49 to ``{0, 4}`` (subtract 48, double
-    twice).  A node then spends two instructions -- ``J += B`` naming
-    whichever bit it tests, and ``goto *J``.  Reading at the node instead
-    would repeat the four-instruction normalization at every node and make a
-    folded leaf drain the reads its untaken siblings skipped; hoisting pays
-    for both once, 25.1% of the program at n == 3 before any reordering.
-
-    **The tree then splits on its inputs in whichever order emits the
-    shortest program** (:func:`~esolangs.tools.helpers.best_input_order`),
-    which the hoist enables: with every bit in its own cell, ``J += *b`` can
-    name any of them, so a node is not tied to the bit just read.  The reads
-    stay in stream order, so the program consumes its input exactly as
-    before.  Reordering adds 8.9% on top of the hoist at n == 3, for 31.7%
-    together, rising to 41.0% at n == 4 and 47.8% at n == 5.
-
-    Only the inputs the tree actually branches on get a cell; one no node
-    tests is read into write-only scratch, so a constant table still
-    consumes every input without storing any.
+    Inputs are read once into a binary row index.  The table is packed into
+    ``n``-bit numeric cells; a self-modified operand selects the indexed cell
+    and repeated subtraction extracts its bit.  There are ``Theta(T/n)``
+    cells of ``O(n)`` digits and the decoder has ``O(n)`` instructions, so
+    generation time and rendered size are both ``O(T)``.
     """
-    return best_input_order(truth_table, _addsubjump_ordered)
+    if len(truth_table) <= 16:
+        return best_input_order(truth_table, _addsubjump_ordered)
+    return _addsubjump_packed(truth_table)
+
+
+def _addsubjump_packed(truth_table: str) -> str:
+    """Emit a linear-size packed-table decoder for AddSubJump."""
+    n = _validate_truth_table(truth_table)
+    chunk_width = max(n, 1)
+    instructions: list[tuple[int | str, int | str, str, int | str]] = []
+    labels: dict[str, int] = {}
+    values: dict[str, int] = {
+        "ZERO": 0,
+        "ONE": 1,
+        "FOUR": 4,
+        "C48": 48,
+        "N": chunk_width,
+        "INDEX": 0,
+        "TMP": 0,
+        "COUNT": chunk_width,
+        "OFFSET": 0,
+        "TABLE": 0,
+        "SHIFT": 0,
+        "Q": 0,
+        "R": 0,
+        "OUT": _ASCII_ZERO,
+        "HALT": -8,
+    }
+    branch_id = 0
+
+    def mark(name: str) -> None:
+        labels[name] = len(instructions)
+
+    def emit(a: int | str, b: int | str, target: str, d: int | str = "ZERO") -> int:
+        instructions.append((a, b, target, d))
+        return len(instructions) - 1
+
+    def jump(target: str) -> None:
+        emit("ZERO", "ZERO", target)
+
+    def clear(dst: str) -> None:
+        emit(dst, dst, "next", "ONE")
+
+    def branch_positive(cell: str, positive: str, zero: str) -> None:
+        """Branch on ``cell > 0`` and restore the reusable jump cell."""
+        nonlocal branch_id
+        tag = branch_id
+        branch_id += 1
+        jump_cell = f"BRANCH{tag}"
+        positive_trampoline = f"branch_{tag}_positive"
+        zero_trampoline = f"branch_{tag}_zero"
+        emit(jump_cell, "FOUR", "next", cell)
+        emit("ZERO", "ZERO", "@" + jump_cell)
+        mark(positive_trampoline)
+        emit(jump_cell, "FOUR", "next")
+        emit("ZERO", "ZERO", positive)
+        mark(zero_trampoline)
+        emit(jump_cell, "FOUR", "next", "ONE")
+        emit("ZERO", "ZERO", zero)
+        # The trampolines are two instructions apart; their midpoint is the
+        # value from which adding/subtracting FOUR selects either one.
+        values[jump_cell] = 4 * (labels[positive_trampoline] + 1)
+
+    # Read every input once and form its binary row index.
+    for _ in range(n):
+        clear("TMP")
+        emit("TMP", -1, "next")
+        emit("TMP", "C48", "next", "ONE")
+        emit("INDEX", "INDEX", "next")
+        emit("INDEX", "TMP", "next")
+
+    mark("select_test")
+    branch_positive("INDEX", "select_step", "selected")
+    mark("select_step")
+    emit("INDEX", "ONE", "next", "ONE")
+    emit("COUNT", "ONE", "next", "ONE")
+    emit("OFFSET", "ONE", "next")
+    branch_positive("COUNT", "select_test", "advance_chunk")
+    mark("advance_chunk")
+    load_operand_increment = emit(0, "ONE", "next")
+    emit("COUNT", "N", "next")
+    clear("OFFSET")
+    jump("select_test")
+
+    mark("selected")
+    clear("TABLE")
+    load_chunk = emit("TABLE", "CHUNK0", "next")
+    clear("SHIFT")
+    emit("SHIFT", "OFFSET", "next")
+    emit("SHIFT", "ONE", "div_init")
+
+    # Divide the selected chunk by two OFFSET+1 times.  The final remainder
+    # is precisely the indexed truth-table bit.
+    mark("div_init")
+    clear("Q")
+    clear("R")
+    mark("div_test")
+    branch_positive("TABLE", "div_first", "division_complete")
+    mark("div_first")
+    emit("TABLE", "ONE", "next", "ONE")
+    branch_positive("TABLE", "div_pair", "div_odd")
+    mark("div_pair")
+    emit("TABLE", "ONE", "next", "ONE")
+    emit("Q", "ONE", "div_test")
+    mark("div_odd")
+    emit("R", "ONE", "division_complete")
+
+    mark("division_complete")
+    emit("SHIFT", "ONE", "next", "ONE")
+    branch_positive("SHIFT", "divide_again", "output")
+    mark("divide_again")
+    clear("TABLE")
+    emit("TABLE", "Q", "div_init")
+    mark("output")
+    emit("OUT", "R", "next")
+    emit(-1, "OUT", "@HALT")
+
+    # Pack n adjacent rows per cell.  Both each value and each cell address
+    # have O(log T) digits, while there are O(T/log T) cells.
+    chunks = [
+        sum(
+            int(bit) << offset
+            for offset, bit in enumerate(truth_table[start : start + chunk_width])
+        )
+        for start in range(0, len(truth_table), chunk_width)
+    ]
+
+    target_names = [f"TARGET{i}" for i in range(len(instructions))]
+    names = list(values)
+    for target_name in target_names:
+        if target_name not in values:
+            names.append(target_name)
+    names.extend(f"CHUNK{i}" for i in range(len(chunks)))
+    base = 4 * len(instructions)
+    address = {name: base + i for i, name in enumerate(names)}
+
+    memory = [0] * (base + len(names))
+    for i, (a, b, target, d) in enumerate(instructions):
+
+        def operand(value: int | str) -> int:
+            return address[value] if isinstance(value, str) else int(value)
+
+        if target == "next":
+            target_value = 4 * (i + 1)
+        elif target.startswith("@"):
+            target_value = None
+        else:
+            target_value = 4 * labels[target]
+        target_cell = target_names[i]
+        memory[address[target_cell]] = target_value if target_value is not None else 0
+        c = address[target[1:]] if target.startswith("@") else address[target_cell]
+        memory[4 * i : 4 * i + 4] = [operand(a), operand(b), c, operand(d)]
+
+    for name, value in values.items():
+        memory[address[name]] = value
+    for i, value in enumerate(chunks):
+        memory[address[f"CHUNK{i}"]] = value
+    # Advancing this instruction's destination advances LOAD_CHUNK's b
+    # operand through the contiguous chunk cells.
+    memory[4 * load_operand_increment] = 4 * load_chunk + 1
+    return " ".join(map(str, memory))
 
 
 def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -251,7 +388,7 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # as they are emitted.  The numbering pass below wants exactly this list
     # and used to recover it by re-scanning every operand of every
     # instruction -- 3.5M ``isinstance`` calls on a six-input build, which
-    # the order search pays once per candidate.
+    # input-order selection pays once per candidate.
     named: list[str] = []
 
     def emit(a: object, b: object, c: object, d: int) -> int:
@@ -264,10 +401,11 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         return idx
 
     emit(-9, -6, "next", -7)  # enable flag mode
-    values["C48"] = -_ASCII_ZERO
-    values["U"] = 0
-    values["D48"] = _ASCII_ZERO
-    values["D49"] = _ASCII_ONE
+    # The entry jumps over these two instruction-width data blocks.  Their
+    # fixed addresses hold the operands repeated throughout the tree:
+    # D48=4, D49=5, U=6 and C48=8.
+    instructions += [[_ASCII_ZERO, _ASCII_ONE, 0, 0], [-_ASCII_ZERO, 0, 0, 0]]
+    next_cells += [None, None]
 
     stored = stored_inputs(truth_table, perm)
 
@@ -283,7 +421,7 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         bit = f"B{i}"
         values[bit] = 0
         emit(bit, -1, "next", -7)  # B += input byte (48/49)
-        emit(bit, "C48", "next", -7)  # B += -48
+        emit(bit, 8, "next", -7)  # B += -48
         emit(bit, bit, "next", -7)  # double
         emit(bit, bit, "next", -7)  # double -> {0, 4}
 
@@ -296,8 +434,7 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         if truth_table.count(truth_table[lo], lo, hi) == hi - lo:
             # Every read already happened up front, so a folded leaf prints
             # and halts with nothing to drain.
-            out = _ASCII_ZERO + int(truth_table[lo])
-            emit(-1, f"D{out}", -8, -7)
+            emit(-1, 4 + int(truth_table[lo]), -8, -7)
             return
         half = (hi - lo) // 2
         if perm[level] not in stored:
@@ -313,11 +450,11 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         # at the zero trampoline two slots on.
         values[jump] = ("t0", base + 2)
         emit(jump, bit, "next", -7)  # J += B, the hoisted bit this node tests
-        emit("U", "U", jump, -7)  # goto *J
+        emit(6, 6, jump, -7)  # goto *J
         ztarget = f"Z{base}"
         otarget = f"O{base}"
-        emit("U", "U", ztarget, -7)  # zero trampoline
-        emit("U", "U", otarget, -7)  # one trampoline
+        emit(6, 6, ztarget, -7)  # zero trampoline
+        emit(6, 6, otarget, -7)  # one trampoline
         zstart = len(instructions)
         build(level + 1, lo, lo + half)
         ostart = len(instructions)
@@ -369,7 +506,7 @@ def _addsubjump_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         mem[idx] = 4 * val[1] if isinstance(val, tuple) else val
     for i, nc in enumerate(next_cells):
         if nc:
-            mem[cell(nc)] = 4 * (i + 1)
+            mem[cell(nc)] = 12 if i == 0 else 4 * (i + 1)
     return " ".join(map(str, mem))
 
 
@@ -379,19 +516,11 @@ def collatz_multiverse(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    A register holding 0 or 1 is always odd, so on such registers the Collatz
-    rule is affine (``v`` becomes ``v*var2+var3``), which makes AND, NOT, and
-    minterms buildable: ``t = src x + zero`` multiplies by a 0/1 ``src`` and
-    ``t = negativeOne x + one`` complements.  Each selected row of the table
-    contributes its minterm (the AND of each bit's equality indicator); the
-    OR is ``1 - prod (1 - minterm)``, and ``48 + result`` is printed.  The
-    byte constants come from :func:`_cm_constants`.
-
-    A table with more ones than zeros selects its *zero* rows instead, since
-    a minterm costs an indicator per input plus an AND chain.  Inverting the
-    answer costs nothing: the OR already ends on the ``flip`` that turns
-    ``prod (1 - minterm)`` into the result, so a complemented table keeps the
-    accumulator as it stands.
+    A postorder Shannon tree combines child bits as
+    ``(!x & zero) | (x & one)``. Registers are reused by recursion depth;
+    every write first clears its destination because Collatz assignment
+    otherwise depends on the destination's old parity. Short names belong to
+    the deepest, most repeated levels, keeping the emitted source O(T).
     """
     n = _validate_truth_table(truth_table)
     if all(c == truth_table[0] for c in truth_table):
@@ -406,72 +535,54 @@ def collatz_multiverse(truth_table: str) -> str:
         return "\n".join(lines)
 
     lines = _cm_constants({_ASCII_ZERO})
-    for i in range(n):
-        lines.append(f"b{i} = negativeOne x + input, NOT PRINT.")
+    inputs = [f"b{n - 1 - depth}" for depth in range(n)]
+    for name in inputs:
+        lines.append(f"{name} = negativeOne x + input, NOT PRINT.")
 
-    next_reg = 0
+    def clear(dst: str) -> None:
+        lines.append(f"{dst} = zero x + zero, NOT PRINT.")
 
-    def fresh() -> str:
-        nonlocal next_reg
-        reg = f"r{next_reg}"
-        next_reg += 1
-        return reg
+    def assign(dst: str, src: str) -> None:
+        clear(dst)
+        lines.append(f"{dst} = negativeOne x + {src}, NOT PRINT.")
 
-    def flip(src: str) -> str:
-        reg = fresh()
-        lines.append(f"{reg} = negativeOne x + {src}, NOT PRINT.")
-        lines.append(f"{reg} = negativeOne x + k1, NOT PRINT.")
-        return reg
+    def negate(dst: str, src: str) -> None:
+        assign(dst, src)
+        lines.append(f"{dst} = negativeOne x + k1, NOT PRINT.")
 
-    def and_bits(x: str, y: str) -> str:
-        reg = fresh()
-        lines.append(f"{reg} = negativeOne x + {x}, NOT PRINT.")
-        lines.append(f"{reg} = {y} x + zero, NOT PRINT.")
-        return reg
+    def conjunction(dst: str, x: str, y: str) -> None:
+        assign(dst, x)
+        lines.append(f"{dst} = {y} x + zero, NOT PRINT.")
 
-    acc = "acc"
-    lines.append("acc = negativeOne x + k1, NOT PRINT.")
-    # Each selected row costs a minterm -- an indicator per input, an AND
-    # chain, and a flip -- so a dense table is built from its zeros.
-    # Inverting is free here: the OR already ends on a ``flip``, so the
-    # complement drops it rather than adding one.
-    # A table that ignores some of its inputs is a smaller table, and since a
-    # minterm costs an indicator *per input*, dropping an input removes rows
-    # and shortens the rows that remain.  Every input keeps its ``b{i}`` read
-    # (the reads are the interface); an ignored one is never turned into an
-    # indicator.  This is the constant branch above generalized from "no
-    # essential inputs" to "the ones that matter".
+    changes = [0]
+    for previous, current in pairwise(truth_table):
+        changes.append(changes[-1] + (previous != current))
 
-    # ``literal`` allocates a register and emits for a non-negated input, so
-    # it is called in the same order the hand-written loop called it: every
-    # literal of a row, then its product, then the accumulate.
-    def literal(i: int, negated: bool) -> str:  # noqa: FBT001 - a literal's sign, from minterm_literals
-        if negated:
-            return flip(f"b{i}")
-        reg = fresh()
-        lines.append(f"{reg} = negativeOne x + b{i}, NOT PRINT.")
-        return reg
+    def tree(start: int, end: int, depth: int) -> str:
+        if changes[start] == changes[end - 1]:
+            return "k1" if truth_table[start] == "1" else "zero"
+        half = (start + end) // 2
+        zero = tree(start, half, depth + 1)
+        index = n - 1 - depth
+        saved = f"l{index}"
+        if zero not in {"zero", "k1"}:
+            assign(saved, zero)
+            zero = saved
+        one = tree(half, end, depth + 1)
+        inverted = f"i{index}"
+        left = f"a{index}"
+        right = f"c{index}"
+        result = f"r{index}"
+        negate(inverted, inputs[depth])
+        conjunction(left, inverted, zero)
+        conjunction(right, inputs[depth], one)
+        assign(result, left)
+        lines.append(f"{result} = k1 x + {right}, NOT PRINT.")
+        return result
 
-    def product(factors: list[str]) -> str:
-        minterm = factors[0]
-        for factor in factors[1:]:
-            minterm = and_bits(minterm, factor)
-        return flip(minterm)
-
-    def accumulate(row: str) -> None:
-        nonlocal acc
-        nacc = fresh()
-        lines.append(f"{nacc} = negativeOne x + {acc}, NOT PRINT.")
-        lines.append(f"{nacc} = {row} x + zero, NOT PRINT.")
-        acc = nacc
-
-    _used, _width, invert = minterm_sum(truth_table, literal, product, accumulate)
-
-    # ``acc`` holds prod(1 - minterm), so the answer is its flip -- unless
-    # the minterms were the table's zeros, when ``acc`` is already it.
-    result = acc if invert else flip(acc)
-    out = fresh()
-    lines.append(f"{out} = negativeOne x + {result}, NOT PRINT.")
+    result = tree(0, 1 << n, 0)
+    out = "out"
+    assign(out, result)
     lines.append(f"{out} = k1 x + k48, DO PRINT.")
     return "\n".join(lines)
 
@@ -676,6 +787,7 @@ def _dig_columns(n: int, split: int | None) -> tuple[int, int]:
 def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
     """Lay the decision tree out, in one band east or two that turn round."""
     total = 2 ** (n + 1) - 1
+    constant = constant_span_test(truth_table)
     east, west = _dig_columns(n, split)
     cells: dict[tuple[int, int], str] = {}
     corridors: list[tuple[int, int, int]] = []
@@ -718,7 +830,7 @@ def _dig_grid(truth_table: str, n: int, split: int | None) -> str:
 
     def walk(row: int, level: int, lo: int, hi: int) -> None:
         """Lay the subtree for ``truth_table[lo:hi]`` at ``row``."""
-        if level == n or len(set(truth_table[lo:hi])) == 1:
+        if level == n or constant(lo, hi):
             # A constant slice cannot be told apart by more branching, so
             # this is a leaf and every row below it goes unwritten.  It
             # still reads what it did not branch on: a program whose input
@@ -808,14 +920,106 @@ def _dig_clear(
                 raise AssertionError(f"{char!r} at {(row, col)} reads {above!r} first")
 
 
+_DIG_DIRECTIONS = ((-1, 0), (0, 1), (1, 0), (0, -1))
+
+
+def _dig_alternating(truth_table: str, n: int) -> str:
+    """Lay a full Dig tree with its branch axis rotating at every level.
+
+    A ``#`` naturally sends its zero and one children left and right.  Let a
+    subtree's local x-axis be its entering heading.  Its children therefore
+    enter on the local y-axis; placing each just beyond its own most-backward
+    cell keeps the two child rectangles on opposite sides of the parent.
+    Width and height swap, then one doubles, at successive levels.  Thus each
+    pair of levels doubles both and the rendered rectangle is O(2**n).
+    """
+    # Bounds of a complete m-level subtree entered east, inclusive and local
+    # to its first ``$``: (min_x, max_x, min_y, max_y).  Leaves and branch
+    # blocks are both five cells long.
+    bounds = [(0, 4, 0, 0)]
+    for _ in range(n):
+        min_x, max_x, min_y, max_y = bounds[-1]
+        distance = 1 - min_x
+        bounds.append(
+            (
+                min(0, 4 + min_y, 4 - max_y),
+                max(4, 4 + max_y, 4 - min_y),
+                -(distance + max_x),
+                distance + max_x,
+            )
+        )
+
+    cells: dict[tuple[int, int], str] = {}
+
+    def place(point: tuple[int, int], char: str) -> None:
+        if point in cells:
+            raise AssertionError(f"two cells at {point}: {cells[point]!r} and {char!r}")
+        cells[point] = char
+
+    def text(point: tuple[int, int], heading: int, code: str) -> None:
+        dr, dc = _DIG_DIRECTIONS[heading]
+        for offset, char in enumerate(code):
+            place((point[0] + dr * offset, point[1] + dc * offset), char)
+
+    def node(
+        level: int,
+        point: tuple[int, int],
+        heading: int,
+        lo: int,
+        hi: int,
+    ) -> None:
+        if level == n:
+            text(point, heading, f"$3{truth_table[lo]}:@")
+            return
+        text(point, heading, _DIG_BRANCH)
+        dr, dc = _DIG_DIRECTIONS[heading]
+        end = (point[0] + 4 * dr, point[1] + 4 * dc)
+        half = (lo + hi) // 2
+        distance = 1 - bounds[n - level - 1][0]
+        for bit, child_bounds in ((0, (lo, half)), (1, (half, hi))):
+            child_heading = (heading - 1) % 4 if bit == 0 else (heading + 1) % 4
+            cr, cc = _DIG_DIRECTIONS[child_heading]
+            child = (end[0] + distance * cr, end[1] + distance * cc)
+            node(level + 1, child, child_heading, *child_bounds)
+
+    # Build locally with the root heading east.  Its ray from the west is
+    # empty by the same bounds recurrence, so an external L-shaped entry can
+    # reach it without crossing the tree.
+    node(0, (0, 0), 1, 0, len(truth_table))
+    min_row = min(row for row, _ in cells)
+    min_col = min(col for _, col in cells)
+    row_shift, col_shift = 2 - min_row, 2 - min_col
+    cells = {
+        (row + row_shift, col + col_shift): char for (row, col), char in cells.items()
+    }
+    root_row, root_col = row_shift, col_shift
+    if any((root_row, col) in cells for col in range(root_col)):
+        raise AssertionError("the alternating Dig tree blocked its entry ray")
+    for row in range(root_row):
+        cells[(row, 0)] = " "
+    for col in range(root_col):
+        cells[(root_row, col)] = " "
+    cells[(0, 0)] = "'"
+    cells[(root_row, 0)] = ">"
+
+    height = max(row for row, _ in cells) + 1
+    width = max(col for _, col in cells) + 1
+    grid = [[" "] * width for _ in range(height)]
+    for (row, col), char in cells.items():
+        grid[row][col] = char
+    return "\n".join("".join(row).rstrip() for row in grid)
+
+
 def dig(truth_table: str, width: int | None = None) -> str:
     """Build a Dig program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
-    ``width`` asks for a column count; the tree turns round once if that is
-    what it takes to meet one, and a width under the floor returns the
-    narrowest program rather than refusing.
+    Past four inputs the default alternates the branch axis at every level.
+    Its width and height each double once per pair of levels, so its area and
+    construction time are O(T).  ``width`` retains the folded one- or
+    two-band layouts below; a width under their floor returns the narrower
+    program rather than refusing.
 
     The tree is laid out so the mole starts in the top-left corner (``'``)
     facing down into the root.  Each branch block reads one input bit:
@@ -847,7 +1051,8 @@ def dig(truth_table: str, width: int | None = None) -> str:
     since ``$`` looks up, right, down, left and takes the first digit it
     finds.
 
-    ``5 * n + 6`` columns is what that comes to, and a width under it is met
+    In the explicit-width layout, ``5 * n + 6`` columns is what that comes
+    to, and a width under it is met
     by turning the tree round once: the levels past the turn run west over
     the columns the levels before it already used, their blocks mirrored so
     the mole still meets each ``$`` first.  Nothing has to be routed back --
@@ -858,15 +1063,19 @@ def dig(truth_table: str, width: int | None = None) -> str:
     lives, along with the reason a *second* turn is not possible.
     """
     n = _validate_truth_table(truth_table)
+    if width is None and n > 4:
+        return _dig_alternating(truth_table, n)
     flat = _dig_grid(truth_table, n, None)
-    if width is None or n < 2:
-        return flat
-    if max(len(line) for line in flat.split("\n")) <= width:
+    if n < 2:
         return flat
     # The turn has to leave the westbound band room to finish left of where
     # the eastbound one starts its last block, which is what fixes the
     # split rather than any search: the halves are as even as that allows.
     banded = _dig_grid(truth_table, n, -(-(n + 2) // 2))
+    if width is None:
+        return min((flat, banded), key=len)
+    if max(len(line) for line in flat.split("\n")) <= width:
+        return flat
     if max(len(line) for line in banded.split("\n")) < max(
         len(line) for line in flat.split("\n")
     ):
@@ -885,65 +1094,56 @@ def qoibl(truth_table: str) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
-    Each input is read with ``et`` and normalized to 0/1 (``ry ey ry 48``),
-    and each one's complement ``1 - bit`` is stored too.  The function is then
-    evaluated as the sum over its minterms: every ``1`` row contributes the
-    product of the bits (or complements) that select it, accumulated into a
-    sum variable, and ``tt`` prints ``48 + sum``.  Qoibl's ``ry`` chains parse
-    right-associatively from the leftmost ``ry``, so each minterm is a chain
-    of plain ``qe`` reads (no operator inside a factor).
-
-    When the table has more ``1``s than ``0``s the complement is evaluated
-    instead (fewer minterms) and ``49 - sum`` is printed, keeping the program
-    under the size of the sparser half.
+    Each input is read with ``et`` and normalized to 0/1.  A folded Shannon
+    tree then combines children as ``(1 - x) * lo + x * hi``.  Four registers
+    are reserved per level; the deepest, most frequently repeated levels get
+    the shortest binary names, so widening register IDs still sum to O(T).
     """
     n = _validate_truth_table(truth_table)
-    # A table that ignores some of its inputs is a smaller table, and since a
-    # minterm costs one ``qe`` factor *per input* on top of two lines per
-    # selected row, dropping an input removes rows and shortens the rows that
-    # remain.  Every input keeps its ``et`` read, its normalization and its
-    # complement (they are the interface); an ignored one is never named as a
-    # factor.  Measured at ``n == 3``, that setup is 29% of a one-dependency
-    # program and the minterm body the other 71%, so most of the arity cost
-    # here is reachable -- unlike ``suffolk``, whose per-input setup is 96%
-    # of the program.
-    lines = []
-    for i in range(n):
-        lines.append(f"we {_qoibl_enc(i)} we et ry ey ry {_qoibl_enc(_ASCII_ZERO)} we")
-    for i in range(n):
+
+    def registers(level: int) -> tuple[int, int, int, int]:
+        base = 4 * (n - 1 - level)
+        return base, base + 1, base + 2, base + 3
+
+    lines: list[str] = []
+    for level in range(n):
+        raw, complement, _lo, _hi = registers(level)
         lines.append(
-            f"we {_qoibl_enc(n + i)} we {_qoibl_enc(1)} "
-            f"ry ey ry qe {_qoibl_enc(i)} qe we",
+            f"we {_qoibl_enc(raw)} we et ry ey ry {_qoibl_enc(_ASCII_ZERO)} we"
         )
-    lines.append(f"we {_qoibl_enc(2 * n)} we {_qoibl_enc(0)} we")
-
-    def literal(i: int, negated: bool) -> str:  # noqa: FBT001 - a literal's sign, from minterm_literals
-        return f"qe {_qoibl_enc(n + i if negated else i)} qe"
-
-    def product(factors: list[str]) -> str:
-        out = factors[0]
-        for factor in factors[1:]:
-            out = f"{out} ry ye ry {factor}"
-        return out
-
-    def accumulate(row: str) -> None:
-        lines.append(f"we {_qoibl_enc(2 * n + 1)} we {row} we")
         lines.append(
-            f"we {_qoibl_enc(2 * n)} we qe {_qoibl_enc(2 * n)} "
-            f"qe ry ee ry qe {_qoibl_enc(2 * n + 1)} qe we",
+            f"we {_qoibl_enc(complement)} we {_qoibl_enc(1)} "
+            f"ry ey ry qe {_qoibl_enc(raw)} qe we"
         )
 
-    _used, _width, use_complement = minterm_sum(
-        truth_table, literal, product, accumulate
-    )
-    if use_complement:
-        lines.append(
-            f"tt {_qoibl_enc(_ASCII_ONE)} ry ey ry qe {_qoibl_enc(2 * n)} qe tt"
+    root = 4 * n
+
+    def assign(destination: int, expression: str) -> None:
+        lines.append(f"we {_qoibl_enc(destination)} we {expression} we")
+
+    def node(level: int, lo: int, hi: int, destination: int) -> None:
+        if len(set(truth_table[lo:hi])) == 1:
+            assign(destination, _qoibl_enc(int(truth_table[lo])))
+            return
+        mid = (lo + hi) // 2
+        if truth_table[lo:mid] == truth_table[mid:hi]:
+            node(level + 1, lo, mid, destination)
+            return
+        raw, complement, low, high = registers(level)
+        node(level + 1, lo, mid, low)
+        node(level + 1, mid, hi, high)
+        assign(
+            low,
+            f"qe {_qoibl_enc(complement)} qe ry ye ry qe {_qoibl_enc(low)} qe",
         )
-    else:
-        lines.append(
-            f"tt qe {_qoibl_enc(2 * n)} qe ry ee ry {_qoibl_enc(_ASCII_ZERO)} tt"
+        assign(high, f"qe {_qoibl_enc(raw)} qe ry ye ry qe {_qoibl_enc(high)} qe")
+        assign(
+            destination,
+            f"qe {_qoibl_enc(low)} qe ry ee ry qe {_qoibl_enc(high)} qe",
         )
+
+    node(0, 0, 2**n, root)
+    lines.append(f"tt qe {_qoibl_enc(root)} qe ry ee ry {_qoibl_enc(_ASCII_ZERO)} tt")
     return "\n".join(lines)
 
 

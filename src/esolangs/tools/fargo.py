@@ -7,20 +7,16 @@ them.  What every other generator spends on routing -- a decision tree, a
 minterm sum, a grid walk -- Fargo spends on nothing at all.
 
 That makes an **algebraic normal form** the natural construction rather than
-a tree.  Every boolean function has exactly one ANF, the XOR of a subset of
-the AND-products of its inputs::
+a decision tree. Every boolean function has exactly one ANF::
 
     f(x) = c0 XOR (c1 & x0) XOR (c2 & x1) XOR (c3 & x0 & x1) XOR ...
 
-which maps onto ``^``, ``&`` and ``@`` one operator per node, so the program
-is the polynomial and its size tracks the function's *algebraic* complexity
-rather than ``2**n``.  A table depending on one input is one term whatever
-its arity; parity costs only ``n`` terms, since its ANF is the sum of all
-``n`` single-variable terms, while a dense ANF is the worst case at up to
-``2**n - 1`` terms -- NOR at three inputs spends 7 against parity's 3.  The
-coefficients come from the
-Möbius transform (:func:`_anf_coefficients`), which is the table's own
-XOR-prefix over subsets.
+The coefficients come from the Möbius transform
+(:func:`_anf_coefficients`). The emitter recursively factors each variable:
+``p = p0 ^ (x & p1)``. Thus every coefficient and factor appears at most
+once, keeping even a dense ANF O(T) for a T-entry table. Variables with wide
+binary indices occur near the root; the heavily repeated deep variables have
+the shortest indices.
 
 The emitted program is two lines::
 
@@ -39,9 +35,7 @@ is the only place the mapping appears.  Because the number is read once by
 the interpreter before execution, every program consumes exactly one input
 line whatever the table says, constant tables included.
 
-Input *reordering* does not apply here: ``@`` indexes a bit directly, so no
-order of reads exists to permute and every arrangement of the same ANF has
-the same length.
+Input reordering does not apply: ``@`` indexes the input number directly.
 """
 
 from esolangs.tools.helpers import _validate_truth_table
@@ -130,6 +124,29 @@ def _factored(masks: list[int], constant: int, n: int) -> str:
     return "\n".join([*lines, f"% 0 {result}", "$", ""])
 
 
+def _anf_expression(coeffs: list[int], n: int) -> str:
+    """Return a recursively factored ANF expression in O(T) emitted size."""
+    nonzero = [0]
+    for coefficient in coeffs:
+        nonzero.append(nonzero[-1] + coefficient)
+
+    def build(start: int, size: int, bit: int) -> str | None:
+        if nonzero[start] == nonzero[start + size]:
+            return None
+        if size == 1:
+            return "1"
+        half = size // 2
+        low = build(start, half, bit - 1)
+        high = build(start + half, half, bit - 1)
+        if high is None:
+            return low
+        product = f"@ {bit:b}" if high == "1" else f"& @ {bit:b} {high}"
+        return product if low is None else f"^ {low} {product}"
+
+    expression = build(0, 1 << n, n - 1)
+    return "0" if expression is None else expression
+
+
 def fargo(truth_table: str, width: int | None = None) -> str:
     """Build a Fargo program computing the given truth table.
 
@@ -146,17 +163,9 @@ def fargo(truth_table: str, width: int | None = None) -> str:
     """
     n = _validate_truth_table(truth_table)
     coeffs = _anf_coefficients(truth_table)
-    masks = [mask for mask in range(1 << n) if coeffs[mask] and mask]
-    terms = [_term(mask, n) for mask in masks]
-    constant = coeffs[0]
-    if not terms:
-        return f"% 0 {constant}\n$\n"
-    # ``^`` is binary and prefix, so combining k terms needs k - 1 of them
-    # up front; a nonzero constant is one more thing to XOR in.
-    if constant:
-        terms.insert(0, "1")
-    expression = "^ " * (len(terms) - 1) + " ".join(terms)
+    expression = _anf_expression(coeffs, n)
     compact = f"% 0 {expression}\n$\n"
     if width is None or max(map(len, compact.splitlines())) <= width:
         return compact
-    return _factored(masks, constant, n)
+    masks = [mask for mask in range(1 << n) if coeffs[mask] and mask]
+    return _factored(masks, coeffs[0], n)

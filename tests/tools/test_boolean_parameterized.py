@@ -11,6 +11,7 @@ import random
 import re
 from collections.abc import Iterable
 from contextlib import redirect_stdout
+from itertools import pairwise
 
 import pytest
 
@@ -411,58 +412,50 @@ class TestParameterizedBack:
             assert len(re.findall(r"\{X\d+\}", template)) == n
 
     def test_tree_uses_tape_decision_nodes(self) -> None:
-        """The decision tree routes via '+\\' nodes and a down-transition."""
+        """The reflected decision tree retains its skip and both mirrors."""
         from esolangs.tools import parameterized
 
         template = parameterized.back("0110")
-        assert "+\\" in template  # a decision node
+        assert "+" in template
+        assert "/" in template
+        assert "\\" in template
         assert "*" in template  # leaves halt
 
-    def test_input_reordering_folds_a_scattered_table(self) -> None:
-        """The tree splits in whichever order folds most, not load order.
-
-        ``10101010`` depends on its last input alone, so it folds nothing
-        loaded in order and everything once that input sits in cell 0.  It
-        reaches the cheap shape and lands far under the table that folds
-        under no order at all; the two one-dependency tables differ only by
-        the walk that carries the pointer, two characters a step.
-        """
+    def test_the_natural_order_folds_its_aligned_dependency(self) -> None:
+        """Only a dependency aligned with the natural root folds immediately."""
         from esolangs.tools import parameterized
 
         scattered = len(parameterized.back("10101010"))
         aligned = len(parameterized.back("11110000"))
         parity = len(parameterized.back("01101001"))
-        assert scattered < parity
+        assert scattered == parity
         assert aligned < parity
-        assert abs(scattered - aligned) < 0.2 * parity
 
-    def test_input_reordering_never_grows_a_template(self) -> None:
-        """No table comes out larger than its identity build.
-
-        ``best_input_order`` builds the identity first and keeps it on a
-        tie, so reordering can only ever shrink a template.  Checked against
-        ``_back_ordered`` at the identity rather than against a stored
-        number, so it stays true as the construction changes.
-
-        Note this is *not* "parity keeps the identity build".  It used to
-        be, while the load emitted no walk; now that the units are emitted
-        in reverse name order, some orders spend a shorter walk than the
-        identity does, and parity shrinks 126 to 118 without folding
-        anything.  The invariant that survives is the one-sided one.
-        """
+    def test_the_identity_template_is_emitted(self) -> None:
+        """Back no longer contests input orders."""
         from esolangs.tools import parameterized
 
         for table in ("01101001", "10101010", "11110000", "00111100", "10010110"):
             n = (len(table) - 1).bit_length()
             identity = parameterized._back_ordered(table, tuple(range(n)))  # noqa: SLF001
-            assert len(parameterized.back(table)) <= len(identity), table
+            assert parameterized.back(table) == identity, table
+
+    def test_full_tree_growth_is_linear(self) -> None:
+        """Reflection makes depth padding geometric; parity folds nothing."""
+        from esolangs.tools import parameterized
+
+        sizes = []
+        for n in range(6, 11):
+            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+            sizes.append(len(parameterized.back(table)))
+        assert all(later <= 2 * earlier for earlier, later in pairwise(sizes))
 
     @pytest.mark.parametrize(
         "table",
         ["10101010", "11001100", "01011010", "00111100", "10010110"],
     )
-    def test_reordered_templates_compute_the_table(self, table: str) -> None:
-        """A reordered template still computes its function.
+    def test_templates_compute_the_table(self, table: str) -> None:
+        """Each emitted natural-order template computes its function.
 
         Back's node is ``+\\>`` -- test the current cell, *then* advance --
         so level ``k`` tests cell ``k``, one lower than the generators whose
@@ -505,8 +498,7 @@ class TestParameterizedBack:
                 built = parameterized._back_ordered(permuted, perm)  # noqa: SLF001
                 names = re.findall(r"\{X(\d+)\}", built)
                 assert names == sorted(names), (table, perm, names)
-                column = [ln[0] for ln in built.split("\n") if ln[:1].strip()]
-                walked += column.count("<")
+                walked += built.count("<")
         # A non-identity order has to step the pointer back at some point;
         # a build with no leftward step is not reordering anything.
         assert walked > 0
@@ -535,10 +527,10 @@ class TestParameterizedBack:
             names = re.findall(r"\{X(\d+)\}", template)
             assert names == sorted(names), f"{table} slots {names}"
             assert sorted(names) == ["0", "1", "2"], f"{table} embeds each once"
-            # The load column carries the walk; a table whose best order is
-            # not the identity spends more than the n-1 steps a plain load
-            # would.
-            column = [line[0] for line in template.split("\n") if line[:1].strip()]
+            # Reflection moves the load to the last occupied cell of its row.
+            column = [
+                line.rstrip()[-1] for line in template.split("\n") if line.strip()
+            ]
             walked += column.count("<")
         # At least one of these tables reorders, so at least one leftward
         # step is emitted -- a plain ascending load never steps back.
@@ -872,6 +864,39 @@ class TestParameterizedBitdeque:
         assert "POP" in template
         assert "GOTO" in template
 
+    def test_leaves_share_a_low_address_halt_trampoline(self) -> None:
+        """Only the trampoline itself repeats the widening end address."""
+        from esolangs.tools import parameterized
+
+        template = parameterized.bitdeque("01101001")
+        assert template.startswith("GOTO 3 INVERT GOTO 4 GOTO ")
+        assert template.count("GOTO 0") == 8
+
+    def test_linear_discard_executes_wide_rows(self) -> None:
+        """Head/tail discards leave sampled six-input answers."""
+        from esolangs.tools import parameterized
+
+        n = 6
+        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+        template = parameterized.bitdeque(table)
+        for row in (0, 1, 2, 7, 31, 32, 62, 63):
+            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            assert self.run_bitdeque(self.instantiate(template, bits)) == table[row]
+
+    def test_linear_discard_growth(self) -> None:
+        """Wide templates and their fills scale with table size."""
+        from esolangs.tools import parameterized
+
+        templates = []
+        filled = []
+        for n in range(11, 15):
+            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+            template = parameterized.bitdeque(table)
+            templates.append(len(template))
+            filled.append(len(self.instantiate(template, [0] * n)))
+        assert all(b <= 2 * a for a, b in pairwise(templates))
+        assert all(b <= 2 * a for a, b in pairwise(filled))
+
 
 class TestParameterizedRam0:
     """Input-by-substitution boolean generator for the no-input language RAM0.
@@ -954,8 +979,38 @@ class TestParameterizedRam0:
         from esolangs.tools import parameterized
 
         template = parameterized.ram0("0000")
-        assert "C" not in template
+        assert template.count("C") == 1  # entry trampoline only
         assert "Z" in template
+
+    def test_leaves_share_a_low_address_halt_trampoline(self) -> None:
+        """Every leaf jumps to 2; only the trampoline names the end."""
+        from esolangs.tools import parameterized
+
+        template = parameterized.ram0("01101001")
+        tokens = template.split()
+        assert tokens[0] == "C"
+        assert tokens.count("2") == 8
+
+    def test_linear_lookup_executes_wide_rows(self) -> None:
+        """The straight-line RAM table returns sampled six-input rows."""
+        from esolangs.tools import parameterized
+
+        n = 6
+        table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+        template = parameterized.ram0(table)
+        for row in (0, 1, 2, 7, 31, 32, 62, 63):
+            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            assert self.run_ram0(self.instantiate(template, bits)) == table[row]
+
+    def test_linear_lookup_growth(self) -> None:
+        """Wide parity templates grow by at most the table-size ratio."""
+        from esolangs.tools import parameterized
+
+        sizes = []
+        for n in range(11, 15):
+            table = "".join(str(row.bit_count() & 1) for row in range(2**n))
+            sizes.append(len(parameterized.ram0(table)))
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
 
 
 class TestParameterizedMinskySwap:
@@ -1142,6 +1197,28 @@ class TestParameterizedArrowQueue:
                     bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
                     got = self.run_arrowqueue(self.instantiate(template, bits))
                     assert got == table[combo], f"{table} inputs {bits}"
+
+    def test_linear_marker_cascade_executes_every_row(self) -> None:
+        """Wide inputs become marker counts and select one cascade stage."""
+        from esolangs.tools import parameterized
+
+        n = 6
+        table = "".join(str((row.bit_count() ^ (row >> 2)) & 1) for row in range(2**n))
+        template = parameterized.arrowqueue(table)
+        sizes = set()
+        for row in range(2**n):
+            bits = [(row >> (n - 1 - i)) & 1 for i in range(n)]
+            program = self.instantiate(template, bits)
+            sizes.add(len(program))
+            assert self.run_arrowqueue(program) == table[row], row
+        assert len(sizes) == 1
+
+    def test_linear_marker_cascade_scales_with_table(self) -> None:
+        """Dense wide templates grow no faster than the table doubles."""
+        from esolangs.tools import parameterized
+
+        sizes = [len(parameterized.arrowqueue("1" * (2**n))) for n in range(7, 11)]
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
 
     def test_template_is_input_independent(self) -> None:
         """The template has {Xi} placeholders, not hardcoded bits."""
@@ -2425,7 +2502,7 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.one_two_three_construct import construct
 
         assert construct("01") == (
-            "2222{X0}1111121211222222111111233222332233222211112221113311111111"
+            "2222{X0}1111121211222222111111233222332233222211211211213311111111"
             "122222222212331111111111"
         )
 
@@ -2441,7 +2518,7 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.one_two_three_construct import construct
 
         total = sum(len(construct(format(value, "08b"))) for value in range(256))
-        assert total == 206791
+        assert total == 191359
 
     def test_slots_run_in_name_order(self) -> None:
         """Every emitted template embeds {X0} before {X1}."""
@@ -2814,6 +2891,49 @@ class TestParameterizedOneTwoThree:
             for (p0, t0), (p1, t1) in zip(before, after, strict=True):
                 assert p1 == p0, k
                 assert t1 == t0 ^ (1 << (p0 + k + _RING)), k
+
+    def test_paint_all_sweeps_the_span_once(self) -> None:
+        """The fused painter flips an arbitrary mask in one linear sweep."""
+        from esolangs.tools.one_two_three_construct import (
+            _RING,
+            _WORK_BUDGET,
+            _Builder,
+            _paint_all,
+            _work,
+        )
+
+        _work[0] = _WORK_BUDGET
+        b = _Builder(2)
+        for row, pos in zip(b.rows, (1, 5, 29, 41), strict=True):
+            row.pos = pos
+        before = [(r.pos, r.tape) for r in b.rows]
+        _paint_all(b, [1, 3, 6])
+        assert b.template() == "222222112112111211"
+        delta = sum(1 << k for k in (1, 3, 6))
+        for (p0, t0), row in zip(before, b.rows, strict=True):
+            assert row.pos == p0
+            assert row.tape == t0 ^ (delta << (p0 + _RING))
+
+    def test_paint_all_replays_mixed_runs_exactly(self) -> None:
+        """A conditional sweep replays ``21`` as two different commands."""
+        from esolangs.tools.one_two_three_construct import (
+            _RING,
+            _WORK_BUDGET,
+            _Builder,
+            _paint_all,
+            _work,
+        )
+
+        _work[0] = _WORK_BUDGET
+        b = _Builder(1)
+        b.rows[1].tape = 1 << (2 + _RING)
+        b.run("2221")
+        _paint_all(b, [7])
+        b.test()
+        assert [row.pos for row in b.rows] == [2, 4]
+        assert all((row.tape >> (9 + _RING)) & 1 for row in b.rows)
+        assert not (b.rows[0].tape >> (11 + _RING)) & 1
+        assert (b.rows[1].tape >> (11 + _RING)) & 1
 
     def test_the_verdict_checks_its_position_preconditions(self) -> None:
         """A state violating the parity law raises instead of emitting.
