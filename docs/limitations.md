@@ -472,7 +472,9 @@ other channels do, each executed in `notes/ick8_slot_probe.py`:
   the only thing that differs -- and the same `EXE` prints `A` or `B`.
   Stepped rather than inferred: `notes/ick8_slot_confirm.py` reads the
   pointer and the accumulator off the state at the call.
-- The **call stack**.  A read taken inside a body returns into that body.
+- The **call stack**.  A read taken inside a body returns into that body,
+  and `IFT`/`IFQ` make the push itself conditional.  Priced below
+  (`notes/ick8_stack_price.py`).
 - The **program text**, through `z`.  A restart clears the accumulator, the
   slot and the pointer but *not* the input cursor, so
   `["u", "div"] + ["X", "z"] * 3` reads and prints four bytes at two lines
@@ -657,11 +659,47 @@ restarts and dies at the read, so a readback may only visit a site whose
 bit it already knows -- the positional decision tree the arrangement bound
 above already prices.  What `z` buys is `n` restarts and `n` fragile local
 sites; with the slot product priced above and the `z` loop closed here, the
-channel left unpriced is the call stack.  (A
+one channel left is the call stack, priced next.  (A
 handoff note's contrary verdict -- `T/2` passes writing `T` bits, in
 `notes/linearize-three-handoff.md` -- is withdrawn there: it needed
 input-dependent passes after the reads, which the paragraph above rules
 out.)
+
+The call stack now carries the same verdict
+(`notes/ick8_stack_price.py`, five executed facts).  `IFT`/`IFQ` are
+conditional calls -- a data-dependent push with no positional divergence
+-- so the frames are a real second store.  What crosses a read inside one
+episode (one capture, one body: a body can never contain `<`) is exactly
+two things.  The accumulator keeps one *absorbing* bit:
+`{values/=u/=/=c}` compares the byte against the incoming accumulator,
+and the enumeration over every read form shows each maps 256 incoming
+values onto at most two outgoing ones with no swap anywhere -- so an
+equality chain threads an AND through the reads (a 52-line NOR at n=6
+executes) but never a counter or a parity.  And the stack keeps push
+counts: a one-site descent body exits with the accumulator at 82 plus
+the count of leading zeros -- the meet again, multi-bit information
+crossing reads on frames alone.  The readback is what collapses.  A call
+re-runs the whole body from its first line, so every push spends the
+body's reads: a body that pushes on both bit values recurses on every
+input and dies at EOF (all 16 at n=4); a one-value pusher cannot read
+past its stop bit (reads consumed is exactly `lz+1`, executed); and
+arming the unwind -- marginal text that can wrap the accumulator back to
+a firing value -- makes the resumed site spend a read that is no longer
+there (the armed twin dies on the input its disarmed twin exits cleanly,
+and the raise itself reports three reads of a two-line input).  Unarmed
+unwinds are therefore straight-line arithmetic, the same marginal text
+at every depth, so an episode's exit accumulator is an affine tally of
+per-site pop counts mod 256 plus the last read: order-blind, eight bits,
+and a random table is not an affine functional of its bits.  Episodes
+can only feed 8-bit exits to top-level routing, every input-dependent
+stride still wraps below 256, and the span sum above prices the rest.
+With that, every field of the state is priced or closed: `lines` (`z`,
+retired), `slot` (the product above), `frames` (here), the accumulator
+(eight bits, one absorbing thread), and the pointer (the arrangement
+bound).  None of this is yet a language-level lower bound -- the
+affine-exit step is scoped to unarmed episode shapes the way the slot
+price is scoped to stride-coded bodies -- which is why the audit row
+stays open.
 
 Two families of long jumps contribute.  The bit-0 arm spans its sibling
 subtree, and those targets are all distinct, which is the family the
