@@ -57,141 +57,161 @@ Uncapped dense-program sizes at n=8/n=9: Polynomial 3.38/10.90 MB, COD
 
 The retired A Painter Ant tree was Theta(T log T): on parity every subtree was
 live, and each depth traversed Theta(T) weighted edges.  Its lookup strip is
-linear: `ePEP` both establishes a white corridor on pass one and traverses it
-on later passes, while the adjacent answer row costs at most three characters
-per one entry.  123's retired wide construction used `_phase_a` with tight
-marks `(i+1)*2T+1` and emits Theta(mark) movement four times for every input;
-their sum is Theta(T (log T)^2).  Its replacement conditionally paints one
-mark per earlier prefix: level `i` uses a span and a single separator of
-O(2^i), with marks and their shadows in different residue classes modulo four.
-Rows finish at `9 + 4*(T-1+bit_reverse(row))`; emitting from that closed form
-rather than simulating T width-T tapes makes source and construction O(T).
-COD's retired leaf cascade was Theta(T^2): each of T leaf rows contains a prefix of
-length `3(k+1)` and a gate tail of length `2(T-k-1)`, so every row is
+linear: `ePEP` both establishes a white corridor on pass one and traverses it on
+later passes, while the adjacent answer row costs at most three characters per
+one entry.
+
+123's retired wide construction used `_phase_a` with tight marks `(i+1)*2T+1`
+and emits Theta(mark) movement four times for every input; their sum is Theta(T
+(log T)^2).  Its replacement conditionally paints one mark per earlier prefix:
+level `i` uses a span and a single separator of O(2^i), with marks and their
+shadows in different residue classes modulo four.  Rows finish at `9 +
+4*(T-1+bit_reverse(row))`; emitting from that closed form rather than simulating
+T width-T tapes makes source and construction O(T).
+
+COD's retired leaf cascade was Theta(T^2): each of T leaf rows contains a prefix
+of length `3(k+1)` and a gate tail of length `2(T-k-1)`, so every row is
 Theta(T) and rotation cannot change the number of cells.  Its replacement is
-four rows wide: each parameterized input contributes its binary-weight water
-run once, the resulting path stops over one of the complete strip's T baked-in
-answer cells, and that cod drops through the cell to a shared border print.
-The template and filled program are both O(T).
-Minifuck's retired sculpt was Theta(T^2) in the worst case: an adversarial
-table fired every triangular rewind.  The replacement preloads a control
-strip and uses `[x<[x<[x<[x`, which advances one cell while restoring an
-arbitrary tape.  Its separator, selection, and final parity sweep total O(T).
+four rows wide: each parameterized input contributes its binary-weight water run
+once, the resulting path stops over one of the complete strip's T baked-in
+answer cells, and that cod drops through the cell to a shared border print.  The
+template and filled program are both O(T).
+
+Minifuck's retired sculpt was Theta(T^2) in the worst case: an adversarial table
+fired every triangular rewind.  The replacement preloads a control strip and
+uses `[x<[x<[x<[x`, which advances one cell while restoring an arbitrary tape.
+Its separator, selection, and final parity sweep total O(T).
+
 Factor is Theta(T log T) on parity under the current encoding.  The folded
 Brainfuck tree has Theta(T) maximal command runs.  Each run consumes the next
-prime in one of eight nonzero residue classes modulo 11; the k-th such prime
-has Theta(log k) decimal digits, and the encoded integer's digit count is the
-sum of those logarithms.  Run compression changes exponents, not the number
-of distinct primes.  A decoder that can reuse a prime or encode runs by
-position is required for linear output.
+prime in one of eight nonzero residue classes modulo 11; the k-th such prime has
+Theta(log k) decimal digits, and the encoded integer's digit count is the sum of
+those logarithms.  Run compression changes exponents, not the number of distinct
+primes.  A decoder that can reuse a prime or encode runs by position is required
+for linear output.
 
 No alternate Factor generator can have O(T) output for every table.  Let D be
-the decimal digit count of its integer and m the number of active prime
-factors, hence decoded Brainfuck runs.  The first m primes have log-product
-Theta(m log m), so m = O(D/log D).  Exponents sum to O(D); the number of their
-compositions into at most m runs is
-`exp(O(m log(D/m))) = exp(O(D log log D/log D))`.  The eight active residues
-add only `8**m`, the same subexponential order.  Thus D-digit Factor texts
-decode to `2**o(D)` Brainfuck programs.  If D = O(T), they realize `2**o(T)`
-functions, fewer than the `2**T` truth tables for large T.  Some tables
-therefore require super-linear Factor text, independent of construction.
+the decimal digit count of its integer and m the number of active prime factors,
+hence decoded Brainfuck runs.  The first m primes have log-product Theta(m log
+m), so m = O(D/log D).  Exponents sum to O(D); the number of their compositions
+into at most m runs is `exp(O(m log(D/m))) = exp(O(D log log D/log D))`.  The
+eight active residues add only `8**m`, the same subexponential order.  Thus
+D-digit Factor texts decode to `2**o(D)` Brainfuck programs.  If D = O(T), they
+realize `2**o(T)` functions, fewer than the `2**T` truth tables for large T.
+Some tables therefore require super-linear Factor text, independent of
+construction.
+
 AddSubJump's retired decision tree was Theta(T log T) on parity.  It emitted
 Theta(T) four-word instructions and a data cell per `next` edge.  A constant
 fraction of those words are positive instruction or data addresses in a
-Theta(T)-cell memory, so their space-separated decimal rendering uses
-Theta(log T) characters each.  The packed-chunk decoder replaced it.
-ArrowQueue's retired full tree was Theta(T log T): `_connect` shifted both children
-three columns right at every level, and parity retains Theta(T) occupied leaf
-rows through all log T levels.  Compaction removes empty rows and columns but
-none of those occupied prefixes.  Its marker-count construction is linear:
-input `i` contributes either zero or `2**(n-1-i)` down headings, one right
-sentinel follows them, and the sentinel selects one of T constant-size cascade
-stages.  The arm lengths are `1+2+4+...+T/2 = T-1`.  Bitdeque's retired tree
-was Theta(T log T):
-every parity leaf emitted `n+1` `POP` commands and absolute `GOTO` operands.
-Its head/tail discard lookup is linear.  RAM0's retired tree had linear command
-count but Theta(T) absolute one-branch targets of Theta(log T) digits.  Its
-straight-line RAM initializer and unary-weight lookup are linear.
-BrainIf's retired tree is Theta(T log T) on parity: it emits Theta(T) branch `goto`s, and a
-constant fraction target line numbers in a Theta(T)-line program, requiring
-Theta(log T) decimal digits.  Its spatial lookup is linear.  Container's retired tree has the same bound through names:
-Theta(T) leaf containers are each defined and referenced a constant number of
-times, while distinct identifiers over its fixed 52-letter alphabet require
-Theta(log T) characters for a constant fraction of them.  Its replacement
-stores the reversed table as one decimal 0/1 literal and repeatedly divides it
-by ten in a fixed two-bank network.  The input weights sum to `T-1`, so source
-and construction are O(T); execution time is intentionally not bounded by that
-source-size result and is enormous for dense wide tables.
+Theta(T)-cell memory, so their space-separated decimal rendering uses Theta(log
+T) characters each.  The packed-chunk decoder replaced it.
 
-Three retired or current grid layouts spend one depth-width strip per table
-row.  Clockwise's retired flat form used Theta(T) columns across Theta(log T)
-active rows; its bounded-width stack instead uses Theta(log T) columns across
-Theta(T) rows.  Alternating the two compositions makes both dimensions
-O(sqrt(T)), hence O(T) area.  Dig's retired two-band form left Theta(T)
-occupied leaf rows reaching across Theta(log T) columns.  Its alternating-axis
-tree swaps dimensions at each level and doubles each once per pair, giving
-O(T) area.  Flowchart's retired tree placed Theta(T) leaves on
-fixed pitch and drew one Theta(T)-wide selector level per input.  Its five-row
-deque layout is linear: it preloads T answers, then its two arms discard
-opposite halves; setting the arms to 1/0 before a shared switch makes both
-incoming headings leave east.  Dig still needs localized or shared routing.
-Circuit Diagram's H-layout quarters its minterm tree every two inputs.  Its
-side recurrence is `S(n) = 2*S(n-2) + O(n) = O(sqrt(T))`, so its rendered
-area is O(T); routing records at most one horizontal and one vertical signal
-per cell and tries a fixed local catalogue, keeping construction linear too.
+ArrowQueue's retired full tree was Theta(T log T): `_connect` shifted both
+children three columns right at every level, and parity retains Theta(T)
+occupied leaf rows through all log T levels.  Compaction removes empty rows and
+columns but none of those occupied prefixes.  Its marker-count construction is
+linear: input `i` contributes either zero or `2**(n-1-i)` down headings, one
+right sentinel follows them, and the sentinel selects one of T constant-size
+cascade stages.  The arm lengths are `1+2+4+...+T/2 = T-1`.
+
+Bitdeque's retired tree was Theta(T log T): every parity leaf emitted `n+1`
+`POP` commands and absolute `GOTO` operands.  Its head/tail discard lookup is
+linear.
+
+RAM0's retired tree had linear command count but Theta(T) absolute one-branch
+targets of Theta(log T) digits.  Its straight-line RAM initializer and
+unary-weight lookup are linear.
+
+BrainIf's retired tree is Theta(T log T) on parity: it emits Theta(T) branch
+`goto`s, and a constant fraction target line numbers in a Theta(T)-line program,
+requiring Theta(log T) decimal digits.  Its spatial lookup is linear.
+
+Container's retired tree has the same bound through names: Theta(T) leaf
+containers are each defined and referenced a constant number of times, while
+distinct identifiers over its fixed 52-letter alphabet require Theta(log T)
+characters for a constant fraction of them.  Its replacement stores the reversed
+table as one decimal 0/1 literal and repeatedly divides it by ten in a fixed
+two-bank network.  The input weights sum to `T-1`, so source and construction
+are O(T); execution time is intentionally not bounded by that source-size result
+and is enormous for dense wide tables.
+
+Three retired or current grid layouts spend one depth-width strip per table row.
+Clockwise's retired flat form used Theta(T) columns across Theta(log T) active
+rows; its bounded-width stack instead uses Theta(log T) columns across Theta(T)
+rows.  Alternating the two compositions makes both dimensions O(sqrt(T)), hence
+O(T) area.
+
+Dig's retired two-band form left Theta(T) occupied leaf rows reaching across
+Theta(log T) columns.  Its alternating-axis tree swaps dimensions at each level
+and doubles each once per pair, giving O(T) area.
+
+Flowchart's retired tree placed Theta(T) leaves on fixed pitch and drew one
+Theta(T)-wide selector level per input.  Its five-row deque layout is linear: it
+preloads T answers, then its two arms discard opposite halves; setting the arms
+to 1/0 before a shared switch makes both incoming headings leave east.  Dig
+still needs localized or shared routing.
+
+Circuit Diagram's H-layout quarters its minterm tree every two inputs.  Its side
+recurrence is `S(n) = 2*S(n-2) + O(n) = O(sqrt(T))`, so its rendered area is
+O(T); routing records at most one horizontal and one vertical signal per cell
+and tries a fixed local catalogue, keeping construction linear too.
+
 Inject's and Jaune's retired trees are Theta(T log T) on parity because both
-assign a distinct label to every tree branch or leaf.  Inject emits each of Theta(T) labels
-twice from a fixed 52-letter alphabet, so a constant fraction have
-Theta(log T) characters.  Jaune emitted Theta(T) numeric labels and jump
+assign a distinct label to every tree branch or leaf.  Inject emits each of
+Theta(T) labels twice from a fixed 52-letter alphabet, so a constant fraction
+have Theta(log T) characters.  Jaune emitted Theta(T) numeric labels and jump
 operands, likewise with Theta(log T) decimal width for a constant fraction.
 Jaune's spatial table now uses two labels.  Inject's single table block is
 halved by O(log T) conditional regex substitutions whose literal text totals
 O(T).
-LaserFuck's and Streetcode's retired trees use Theta(T) rows whose
-live paths extend across Theta(log T) level columns on parity; trimming removes
-only suffix blanks.  LaserFuck now conditionally walks arms of total length
-`T-1`, selects one of T prewritten cells, then cleans all cells in one sweep.
-Streetcode's alternating-axis H-tree fits its two-wide roads in O(T) area.
+
+LaserFuck's and Streetcode's retired trees use Theta(T) rows whose live paths
+extend across Theta(log T) level columns on parity; trimming removes only suffix
+blanks.  LaserFuck now conditionally walks arms of total length `T-1`, selects
+one of T prewritten cells, then cleans all cells in one sweep.  Streetcode's
+alternating-axis H-tree fits its two-wide roads in O(T) area.
+
 Vandevelo's current spelling emits one depth-`n` guard chain for each of
 Theta(T) selected parity rows, hence Theta(T log T).
-The [`O(T/log T)` affine-cover theorem of Cohen and Shinkar][dnf-parities]
-does not by itself
-give linear Vandevelo source: its size measure is the number of top-level
-clauses, while one clause may spell Theta(log T) dense parity equations with
-Theta(log T) variable references apiece.  A shared linear-form construction
-can reduce the XOR-gate count to O(T) by tabulating all parities of two
-half-input blocks, but referring to one of Theta(sqrt(T)) live bindings costs
-Theta(log T) characters.  A construction that removes that addressing cost
+
+The [`O(T/log T)` affine-cover theorem of Cohen and Shinkar][dnf-parities] does
+not by itself give linear Vandevelo source: its size measure is the number of
+top-level clauses, while one clause may spell Theta(log T) dense parity
+equations with Theta(log T) variable references apiece.  A shared linear-form
+construction can reduce the XOR-gate count to O(T) by tabulating all parities of
+two half-input blocks, but referring to one of Theta(sqrt(T)) live bindings
+costs Theta(log T) characters.  A construction that removes that addressing cost
 could still close the gap, so this is not a language lower bound.
 
 [dnf-parities]: https://eccc.weizmann.ac.il/report/2014/099/
 
-S*bleq's retired tree emitted Theta(T) instructions and data triples with absolute decimal
-addresses into a Theta(T)-cell memory, so a constant fraction of its operands
-had Theta(log T) digits.  Its packed-chunk decoder is linear.  SLOW ACV
-MAMMALIAN is super-linear even though its
-measured ratio is close to two: for a child cap `C`, `_widths` reserves a
-trampoline slot of Omega(C/255), and `_subtree` emits that whole slot plus two
-children.  Its recurrence is therefore `S(d) >= (2 + 1/255) S(d-1)`.
-This recurrence is not forced by input itself: with `acc % 256 == 48`,
-`ACCEPT` appends exactly the input bit without changing `acc`, so the retained
-integer can already name one `LEAPFROG` target.  No constant-token update is
-yet known that changes it to each child's next absolute label; reconstructing
-that label from array sum is the trampoline above.
+S*bleq's retired tree emitted Theta(T) instructions and data triples with
+absolute decimal addresses into a Theta(T)-cell memory, so a constant fraction
+of its operands had Theta(log T) digits.  Its packed-chunk decoder is linear.
+
+SLOW ACV MAMMALIAN is super-linear even though its measured ratio is close to
+two: for a child cap `C`, `_widths` reserves a trampoline slot of Omega(C/255),
+and `_subtree` emits that whole slot plus two children.  Its recurrence is
+therefore `S(d) >= (2 + 1/255) S(d-1)`.  This recurrence is not forced by input
+itself: with `acc % 256 == 48`, `ACCEPT` appends exactly the input bit without
+changing `acc`, so the retained integer can already name one `LEAPFROG` target.
+No constant-token update is yet known that changes it to each child's next
+absolute label; reconstructing that label from array sum is the trampoline
+above.
 
 Polynomial's current expanded-root encoding is super-linear; this is not a
-language-wide lower bound.
-Standard maximal ordered-BDD table families have Omega(T/log T) distinct
-residual states, so every tree/machine split used here emits that many
-instructions.  The builder encodes negative arithmetic by changing the opcode,
-not by using a negative operand, so every resulting monic factor has
-alternating nonnegative coefficient magnitudes.  Products preserve that sign
-pattern without cancellation.  The binomial contributions obtained by taking
-the leading or constant term of each factor alone give Omega(m^2) total
+language-wide lower bound.  Standard maximal ordered-BDD table families have
+Omega(T/log T) distinct residual states, so every tree/machine split used here
+emits that many instructions.  The builder encodes negative arithmetic by
+changing the opcode, not by using a negative operand, so every resulting monic
+factor has alternating nonnegative coefficient magnitudes.  Products preserve
+that sign pattern without cancellation.  The binomial contributions obtained by
+taking the leading or constant term of each factor alone give Omega(m^2) total
 coefficient digits for `m` factors.  With `m = Omega(T/log T)`, the expanded
-program is Omega(T^2/(log T)^2).  An alternate root family could invalidate
-the argument, so Polynomial remains open alongside the other construction
-walls.
+program is Omega(T^2/(log T)^2).  An alternate root family could invalidate the
+argument, so Polynomial remains open alongside the other construction walls.
+
 Extra roots that do not match an instruction code may multiply the mandatory
 root product without changing execution.  The general sparse-multiple problem
 does not supply a generator: known rational algorithms are exponential in the
