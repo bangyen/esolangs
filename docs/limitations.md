@@ -594,13 +594,38 @@ Corruption was the easy half; one future is still the hard one.
 
 That is the narrow gap.  The wide one is the retraction above: the tree is an
 assumption, so a construction that is not a decision diagram over positions
-pays none of this.  Two aim-points fall out, both refutable.  The slot gives a
-*product* -- `P` positions times `C` captured bodies reach `P*C` residual
-classes for `P+C` text -- but the two coordinates have to meet at the end, and
-a body cannot branch on the accumulator the position tree hands it:
-`DownAccLines` is rejected inside a body, and `{values}` consumes the
-accumulator on its first test, so a body distinguishes one value of `j` and no
-more.
+pays none of this.  Two aim-points fell out, both refutable, and both are now
+resolved.  The slot gives a *product* -- `P` positions times `C` captured
+bodies reach `P*C` residual classes for `P+C` routing text.  A body cannot
+branch on the accumulator the position tree hands it (`DownAccLines` is
+rejected inside a body, and `{values}` consumes the accumulator on its first
+test, so a body distinguishes one value of `j` and no more) -- but that blocks
+one direction only, and the other direction *works*: a captured body writes
+the accumulator, frames pop eagerly, so a `DownAccLines` placed right after
+`EXE` executes frame-free with the body's value and fans one shared position
+out on body identity.  Executed end to end in `notes/ick8_slot_meet.py`: an
+n=4 generator routes two bits into one of four captured bodies, converges,
+routes the other two bits into one of four `EXE` blocks, and all 16 rows of
+an arbitrary table print correctly through `P+C` routing text and `P*C`
+landing cells.
+
+The meet exists; what the same file then prices is the strides.  Two more
+executed facts.  `[v v]` with equal dice literals is a *deterministic*
+accumulator load with no 255 cap -- a body loading 298 flies a single
+298-line hop -- but the line costs about `v` characters (two dice literals
+of `v/2` colons), so reach stays char-priced at `Theta(span)` and the rung
+economics above stand.  And bodies are pairwise disjoint text: `<` scans to
+the next `>` and raises on a second `<`, so a body can never contain one and
+no two live bodies share a line.  The price follows for any build of this
+shape.  `C` bodies must set `C` distinct strides; arithmetic wraps at 255,
+so past that only the literal remains and their total cost is `Omega(C^2)`
+characters, while the position router still resolves `log2 P` bits across a
+landing region of `Omega(T)` lines -- the same per-level span sum the
+arrangement bound above prices, `Omega(T log P)` characters.  Under any
+`O(T*f)` character budget the body term forces `C = O(sqrt(T*f))`, hence
+`log P >= (log T - log f)/2`: the log survives every `P*C` split, and the
+product's best case is halving its coefficient.  The slot channel meets but
+cannot linearize.
 
 The `z` loop was the other, and it is closed, negatively
 (`notes/ick8_z_retire.py`, four executed facts, on top of the two in
@@ -631,7 +656,8 @@ still survives unfired as a live `z`, and a later walk that touches it
 restarts and dies at the read, so a readback may only visit a site whose
 bit it already knows -- the positional decision tree the arrangement bound
 above already prices.  What `z` buys is `n` restarts and `n` fragile local
-sites; the row's openness now rests on the slot product alone.  (A
+sites; with the slot product priced above and the `z` loop closed here, the
+channel left unpriced is the call stack.  (A
 handoff note's contrary verdict -- `T/2` passes writing `T` bits, in
 `notes/linearize-three-handoff.md` -- is withdrawn there: it needed
 input-dependent passes after the reads, which the paragraph above rules
