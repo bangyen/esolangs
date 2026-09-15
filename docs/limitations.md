@@ -71,12 +71,10 @@ COD's leaf cascade is Theta(T^2): each of T leaf rows contains a prefix of
 length `3(k+1)` and a gate tail of length `2(T-k-1)`, so every row is
 Theta(T) and rotation cannot change the number of cells.  A non-cascade
 decoder is required for linear output.
-Minifuck's fixed mux is Theta(T^2) in the worst case.  Its triangular planner
-visits targets sequentially; after prior choices fix row `i`'s predicted bit,
-choosing the opposite table bit forces that row to fire.  This recursively
-defines a valid table that fires every row.  Fired row `i` spells both `<` and
-`[x` across Theta(T-i) cells, whose sum is Theta(T^2).  A shared or packed
-sculpt is required for linear output.
+Minifuck's retired sculpt was Theta(T^2) in the worst case: an adversarial
+table fired every triangular rewind.  The replacement preloads a control
+strip and uses `[x<[x<[x<[x`, which advances one cell while restoring an
+arbitrary tape.  Its separator, selection, and final parity sweep total O(T).
 Factor is Theta(T log T) on parity under the current encoding.  The folded
 Brainfuck tree has Theta(T) maximal command runs.  Each run consumes the next
 prime in one of eight nonzero residue classes modulo 11; the k-th such prime

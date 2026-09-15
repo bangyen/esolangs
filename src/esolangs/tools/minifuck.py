@@ -3163,6 +3163,104 @@ def _mux_replays(
     return probe.printed() == list(truth_table)
 
 
+_MUX_PRESERVE_RIGHT = "[x<" * 3 + "[x"
+
+
+def _mux_init_bits(bits: str) -> str:
+    """Write ``bits`` on fresh cells in one left-to-right pass.
+
+    After the first zero, every tile leaves the following cell preset to one;
+    the zero and one tiles consume or restore that preset respectively.
+    Callers append a zero guard, making the one-cell wake independent of the
+    data (including the all-one word).
+    """
+    parts: list[str] = []
+    zero_seen = False
+    for bit in bits:
+        if not zero_seen:
+            if bit == "1":
+                parts.append("[")
+            else:
+                parts.append("[<[x")
+                zero_seen = True
+        elif bit == "0":
+            parts.append("[x")
+        else:
+            parts.append("[x<[")
+    return "".join(parts)
+
+
+def _mux_lookup(truth_table: str, n: int) -> str:
+    """Return the linear preloaded-strip mux.
+
+    ``[x<[x<[x<[x`` advances one cell and restores an arbitrary tape cell;
+    four additions cancel in the two-bit Minifuck state.  Repeating that
+    identity crosses the preloaded controls without changing them.  The
+    binary-weight separator is shifted beyond the strip, after which one
+    non-writing left run maps row ``r`` to control ``r``.  Reading that cell
+    changes the parity swept by the fixed print tail.
+
+    With zero controls the printed row is ``popcount(r)`` plus the separator
+    phase below: its geometric pads contribute one and each odd displacement
+    of the walk-in toggles it.
+    A control bit flips every row except its own; the sentinel flips every
+    row.  Thus controls are the disagreement column and their parity is the
+    sentinel, making the selected output exactly the requested bit.
+    """
+    total = len(truth_table)
+    phase = (n ^ (_mux_start(n) - _MUX_BASE) ^ 1) & 1
+    baseline = [((row.bit_count() ^ phase) & 1) for row in range(total)]
+    controls = [
+        int(bit) ^ base for bit, base in zip(truth_table, baseline, strict=True)
+    ]
+    sentinel = sum(controls) & 1
+
+    field_lo = _MUX_GUARD + 4
+    field = "".join(map(str, reversed(controls))) + str(sentinel)
+    parts = ["[x" * (field_lo - 1), _mux_init_bits(field + "0")]
+    parts.append("<" * (field_lo + len(field) + 3))
+
+    field_end = field_lo + len(field) + 1
+    parts.append(_MUX_PRESERVE_RIGHT * field_end)
+    start = _mux_start(n) + 4 * total
+    parts.append("[x" * (start - 1 - field_end))
+
+    weights = _mux_weights(n)
+    for i, weight in enumerate(weights):
+        parts.append("{X" + str(i) + "}")
+        parts.append(_mux_weight(weight))
+        if i + 1 < n:
+            # The next gadget reaches ``next_weight - 2`` cells left of its
+            # setter.  Advancing by the current weight plus one less than
+            # that next weight puts it on fresh tape.  These pads sum to
+            # T/2-1 rather than spending the old T/4 pad at every level.
+            parts.append("[x" * (weight + weights[i + 1] - 1))
+
+    pmax = start + 3 * total // 2 - 3
+    field_high = field_lo + total - 1
+    parts.extend(("<" * (pmax - field_high + 1), "[x"))
+    parts.append("<" * (field_high + 1))
+
+    byte = _POOL_MASK ^ 1
+    frame = _probe_frame(_SCULPT_POOL_CODE, byte)
+    if frame is None:  # pragma: no cover - fixed arity-free pool frame
+        raise AssertionError("the fixed pool code has no frame")
+    landed, parity = frame
+    if parity != 1:  # pragma: no cover - lookup polarity uses this frame
+        raise AssertionError("the fixed pool code changed its parity")
+    acc = pmax + 8
+    parts.extend(
+        (
+            _SCULPT_POOL_CODE,
+            "[x" * (acc - 1 - landed),
+            _READS[1],
+            "<" * (acc - (_POOL_WIDTH - 1)),
+            "[x.",
+        )
+    )
+    return "".join(parts)
+
+
 def _mux_sweep(base: _Joint, truth_table: str, n: int, accs: range) -> str | None:
     """Sculpt every combination for real and keep the shortest build.
 
@@ -3187,60 +3285,10 @@ def _mux_sweep(base: _Joint, truth_table: str, n: int, accs: range) -> str | Non
 
 
 def _mux(truth_table: str, n: int) -> str | None:
-    """Build by one closed rule: top accumulator, direct orientation.
-
-    The largest legal accumulator minimises every rewind and satisfies the
-    guard whenever any accumulator can.  Either orientation spans every
-    target column, so the direct one names the answer without a contest.  The
-    Pascal inverse derives its rounds; the spelling is replayed over every row
-    and a disagreement aborts instead of falling back to an enumeration.
-    """
+    """Build the table with the linear preloaded-strip rule."""
     if n < _MUX_MIN_ARITY:
         return None
-    base = _mux_separate(n)
-    if base is None:
-        # `_mux_separate` refuses only through its own two guards, which the
-        # construction does not trip at any arity -- see the pragmas there.
-        # This is that refusal reaching its caller.
-        return None  # pragma: no cover - the separation never refuses
-    ms = base.ms
-    if any(m.dead or m.skip for m in ms):  # pragma: no cover - separation is exact
-        raise AssertionError("the separation left an unrunnable row")
-    byte = ms[0].tape & _POOL_MASK
-    if byte != _POOL_MASK ^ 1 or any((m.tape & _POOL_MASK) != byte for m in ms):
-        raise AssertionError("the separation did not preserve the canonical pool")
-    frame = _probe_frame(_SCULPT_POOL_CODE, byte)
-    if frame is None:  # pragma: no cover - the fixed code has a frame
-        raise AssertionError("the fixed pool code has no frame")
-
-    ptrs = base.ptrs()
-    order = sorted(range(len(ptrs)), key=lambda row: ptrs[row], reverse=True)
-    ptrs_s = [ptrs[row] for row in order]
-    if any(a - b != 1 for a, b in pairwise(ptrs_s)):
-        raise AssertionError("the separation did not leave consecutive pointers")
-    tapes_s = [ms[row].tape for row in order]
-    want = [int(truth_table[row]) for row in order]
-    acc = min(ptrs) - 2
-    mask = ((1 << (acc + 1)) - 1) ^ _POOL_MASK
-    parities = [(tape & mask).bit_count() & 1 for tape in tapes_s]
-    planned = _mux_round_plan(
-        tapes_s,
-        ptrs_s,
-        parities,
-        want,
-        acc,
-        flip=frame[1],
-        guard=min(ptrs) - _POOL_WIDTH,
-        round_limit=None,
-    )
-    if planned is None:  # pragma: no cover - the top accumulator is always legal
-        raise AssertionError("the fixed mux rule refused its own table")
-    rewinds, _cost = planned
-    rounds, suffix = _mux_plan_tail(base, acc, rewinds)
-    spelled = base.template() + rounds + suffix
-    if not _mux_replays(base, rewinds, suffix, truth_table):
-        raise AssertionError("the fixed mux rule printed the wrong table")
-    return spelled
+    return _mux_lookup(truth_table, n)
 
 
 def _lift_leaves_name_order(essential: list[int], n: int) -> bool:
@@ -3306,11 +3354,15 @@ def _solve(truth_table: str) -> str:
     """
     n = _validate_shape(truth_table)
 
-    # A table that ignores some of its inputs is a *smaller* table wearing
-    # extra ones, so solve it at the arity it actually uses and renumber the
-    # placeholders back.  This is the part of the construction that composes:
-    # what it costs depends on the essential inputs, not on ``n``, so a wide
-    # table with a narrow core is as cheap as that core.
+    # Dependency discovery compares every row at every input and is
+    # O(T log T).  Keep the compact legacy routes only below the strip's
+    # crossover; the direct lookup is O(T) for every wider table, folded or
+    # not, so no preliminary analysis may dominate it.
+    if n >= 5:
+        return _mux_lookup(truth_table, n)
+
+    # Below the strip crossover, a table that ignores inputs is a smaller
+    # table wearing extra ones; solve it there and renumber the placeholders.
     essential = essential_inputs(truth_table, n)
     if len(essential) < n:
         # Projection is cheaper, but appending ignored inputs after the print

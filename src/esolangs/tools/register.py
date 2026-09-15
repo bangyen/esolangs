@@ -213,7 +213,7 @@ def _addsubjump_packed(truth_table: str) -> str:
     """Emit a linear-size packed-table decoder for AddSubJump."""
     n = _validate_truth_table(truth_table)
     chunk_width = max(n, 1)
-    instructions: list[tuple[object, object, str, object]] = []
+    instructions: list[tuple[int | str, int | str, str, int | str]] = []
     labels: dict[str, int] = {}
     values: dict[str, int] = {
         "ZERO": 0,
@@ -237,7 +237,7 @@ def _addsubjump_packed(truth_table: str) -> str:
     def mark(name: str) -> None:
         labels[name] = len(instructions)
 
-    def emit(a: object, b: object, target: str, d: object = "ZERO") -> int:
+    def emit(a: int | str, b: int | str, target: str, d: int | str = "ZERO") -> int:
         instructions.append((a, b, target, d))
         return len(instructions) - 1
 
@@ -343,7 +343,7 @@ def _addsubjump_packed(truth_table: str) -> str:
     memory = [0] * (base + len(names))
     for i, (a, b, target, d) in enumerate(instructions):
 
-        def operand(value: object) -> int:
+        def operand(value: int | str) -> int:
             return address[value] if isinstance(value, str) else int(value)
 
         if target == "next":
