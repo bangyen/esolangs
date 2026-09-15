@@ -240,8 +240,16 @@ entry rises by a near-constant +0.7 an arity, which is the signature of
 What *is* settled is that a decision tree is forced.  Every read destroys the
 accumulator -- `u` loads the byte and `{values/=a/=b/=c}` overwrites it with 84
 or 81 -- so no value survives a read, and the only state carrying which rows
-remain possible is the instruction pointer.  A program distinguishing 2^k
-prefixes therefore needs 2^k distinct positions after k reads.  That also
+remain possible is the instruction pointer.  A program therefore needs one
+distinct position per residual function still reachable after k reads -- a
+decision *diagram*, not necessarily a tree, and for a random table an ordered
+one has `Theta(T/log T)` nodes rather than `Theta(T)`.  That does not obviously
+help here and may hurt: a diagram's successors have no locality, so what it
+saves in nodes it hands back in pointer distance, and the pointers are exactly
+what relay rungs are paid for.  Either way the information floor is unmoved --
+a random table is `T` bits and the alphabet is `O(1)`, so `Omega(T)` characters
+are needed regardless.  The tree the shipped construction emits is a choice
+within that, not the only one.  That also
 closes the packed-table route twice: an index cannot be accumulated across
 reads, and on a computed jump the landing accumulator *is* the index, which a
 fall-through suffix cannot cancel without a one-line no-op the language does
