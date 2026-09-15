@@ -54,7 +54,12 @@ The candidate list is empty.
   `DownAccLines` fans on it -- but is priced: bodies are disjoint text, so
   `C` distinct strides cost `Omega(C^2)` characters and the position router
   keeps at least half the log under any near-linear budget
-  (`notes/ick8_slot_meet.py`); the channel left unpriced is the call stack.
+  (`notes/ick8_slot_meet.py`).  The call stack, the last channel, is priced
+  too: one absorbing accumulator bit and order-blind pop tallies are all
+  that cross a read, so episodes exit eight affine bits and routing stays
+  span-priced (`notes/ick8_stack_price.py`).  Every state field is now
+  priced or closed, each at construction-family scope; a language-level
+  bound is what closing the row still needs.
   An n=8 -> 9 ratio near 2
   is still not evidence of O(T), which is why the contract's verdicts read in
   one direction only.
