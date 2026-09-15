@@ -236,26 +236,44 @@ monotonically from 328 to 526 characters over n=3..10, and `DownAccLines` per
 entry rises by a near-constant +0.7 an arity, which is the signature of
 `a + b*n` rather than a constant.
 
-The cause is that a decision tree is forced and then has to be laid out in a
-line.  Every read destroys the accumulator -- `u` loads the byte and
-`{values/=a/=b/=c}` overwrites it with 84 or 81 -- so no value survives a read,
-and the only state carrying which rows remain possible is the instruction
-pointer.  A program distinguishing 2^k prefixes therefore needs 2^k distinct
-positions after k reads.  One `DownAccLines` reaches 255 lines, so an edge
-spanning `l` lines costs `Omega(l/255)` relay rungs, and the emitted size is
-bounded below by the tree's total edge span under its layout.  For a complete
-binary tree that total is `Theta(N log N)` in any linear arrangement, which is
-the log factor being measured.  The layout step is the soft one: it rests on
-the minimum linear arrangement of a complete binary tree rather than on an
-argument given here, so this is a wall with a citation-shaped hole in it, not a
-closed proof.
+What *is* settled is that a decision tree is forced.  Every read destroys the
+accumulator -- `u` loads the byte and `{values/=a/=b/=c}` overwrites it with 84
+or 81 -- so no value survives a read, and the only state carrying which rows
+remain possible is the instruction pointer.  A program distinguishing 2^k
+prefixes therefore needs 2^k distinct positions after k reads.  That also
+closes the packed-table route twice: an index cannot be accumulated across
+reads, and on a computed jump the landing accumulator *is* the index, which a
+fall-through suffix cannot cancel without a one-line no-op the language does
+not have.
 
-Two families of long jumps contribute, and only one is inherent.  The bit-0 arm
-spans its sibling subtree, and those targets are all distinct, so their relay
-rungs cannot be shared: a rung is a bare `DownAccLines` that re-flies the
-accumulator it arrives with, so two chains share a rung only when they share a
-stride *and* a destination.  The exit ladder is the opposite -- every leaf is
-heading to the same place -- and it is removable: deleting it and having each
+What is **not** settled is whether the tree's edges must cost more than `O(T)`
+to route, and the shipped construction's `Theta(T log T)` is a property of its
+router rather than a proven property of the language.  The router gives each
+chain its own relay rungs, so it pays `Sum ceil(span/255)` and the spans of a
+binary tree in a line total `Theta(N log N)`.  But a rung is a bare
+`DownAccLines`, which is stateless: two chains may land on the same rung line
+carrying different accumulators, and each flies its own stride.  Rungs are
+therefore shareable, and the real cost is the *union* of the chains' waypoints,
+not the sum.
+
+The obstruction to exploiting that is specific, and stated here so it can be
+refuted rather than re-derived.  Waypoints coincide in bulk only when chains
+cruise the same lattice, which needs a common step, which means a common
+accumulator -- and two travellers at one position with one accumulator have the
+same future, so they cannot land on different targets.  Chains with distinct
+targets need distinct strides, and two progressions with different strides meet
+only every `lcm` of their steps.  A chain also cannot dismount: it stops only
+by landing on a line that is not a rung, and changing stride mid-flight needs
+an adjuster line, which every other chain landing there would execute too.
+Whether `Theta(T)` chains with distinct targets can share a `O(T)` waypoint
+set under those rules is open; a counting argument bounds a line's visits at
+one per chain but does not bound the union from below.
+
+Two families of long jumps contribute.  The bit-0 arm spans its sibling
+subtree, and those targets are all distinct, which is the family the
+obstruction above bites on.  The exit ladder is the easy one -- every leaf is
+heading to the same place, so a common stride costs nothing -- and it is
+removable: deleting it and having each
 leaf stop where it stands drops parity per-entry cost from 526 to 352 at n=10,
 a third of the program.  That is not shipped because the language has no halt.
 Running off the last line is its termination, and the obvious one-line stand-in
