@@ -1083,6 +1083,7 @@ _LINEAR_SCALING = {
     "inject",
     "jaune",
     "laserfuck",
+    "minifuck",
     "ram0",
     "sbleq",
 }
@@ -1091,7 +1092,6 @@ _OPEN_SCALING = {
     "cod",
     "container",
     "dig",
-    "minifuck",
     "one_two_three",
     "polynomial",
     "slow_acv_mammalian",
@@ -1142,7 +1142,10 @@ def test_converted_generators_scale_linearly(name: str) -> None:
     # constants; its all-arity area bound is checked in test_boolean_grid.
     arities = (8, 9) if name == "circuit_diagram" else (11, 12)
     sizes = [len(fn(_parity(n))) for n in arities]
-    assert sizes[1] <= 2 * sizes[0]
+    if name == "minifuck":
+        assert all(size <= 70 * 2**n for size, n in zip(sizes, arities, strict=True))
+    else:
+        assert sizes[1] <= 2 * sizes[0]
 
 
 @pytest.mark.slow

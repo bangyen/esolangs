@@ -1922,8 +1922,8 @@ class TestParameterizedMinifuck:
             assert not any(m.dead for m in joint.ms), ignored
             assert len({m.key() for m in joint.ms}) == 1, ignored
 
-    def test_the_sculpted_route_uses_the_named_combination(self) -> None:
-        """``_mux`` uses the largest legal accumulator and direct orientation."""
+    def test_the_mux_uses_the_preloaded_strip_rule(self) -> None:
+        """``_mux`` is exactly the named linear lookup construction."""
         import importlib
 
         module = importlib.import_module("esolangs.tools.minifuck")
@@ -1932,18 +1932,7 @@ class TestParameterizedMinifuck:
         built = module._mux(table, 4)  # noqa: SLF001
         assert built is not None
 
-        base = module._mux_separate(4)  # noqa: SLF001
-        assert base is not None
-        top = min(base.ptrs()) - 2
-        assert built == module._mux_sculpt(  # noqa: SLF001
-            base,
-            table,
-            4,
-            top,
-            0,
-            direct=True,
-            hint=module._SCULPT_POOL_CODE,  # noqa: SLF001
-        )
+        assert built == module._mux_lookup(table, 4)  # noqa: SLF001
 
     @pytest.mark.parametrize(("sep_index", "settle"), [(2, 0), (0, 1)])
     def test_closed_sweeps_match_the_emit_and_walk_sweep(
@@ -3137,19 +3126,9 @@ def test_the_pascal_plan_matches_the_emitted_round_loop() -> None:
     assert longest > 1, "the oracle never exercised round composition"
 
 
-@pytest.mark.slow  # the rule build plus the retired sculpt, ~4s at ten
 @pytest.mark.parametrize("n", [2, 10])
-def test_the_rule_spelling_matches_the_real_sculpt(n: int) -> None:
-    """The fixed rule's spelling is the direct top sculpt's bytes.
-
-    The rule names the combination; the spelling must then be exactly what
-    :func:`_mux_sculpt` emits at that combination, so the retired machinery
-    is run once here as the oracle.  Byte equality is the whole claim --
-    the replay acceptance inside ``_mux`` already checked the prints.
-
-    The smallest and widest tested arities pin both ends without restoring
-    the retired contest.
-    """
+def test_the_lookup_rule_is_linear(n: int) -> None:
+    """The direct strip has one bounded-cost block per table cell."""
     import importlib
     import random
 
@@ -3160,18 +3139,23 @@ def test_the_rule_spelling_matches_the_real_sculpt(n: int) -> None:
     built = module._mux(table, n)  # noqa: SLF001
     assert built is not None
 
-    base = module._mux_separate(n)  # noqa: SLF001
-    top = min(base.ptrs()) - 2
-    sculpted = module._mux_sculpt(  # noqa: SLF001
-        base,
-        table,
-        n,
-        top,
-        0,
-        direct=True,
-        hint=module._SCULPT_POOL_CODE,  # noqa: SLF001
-    )
-    assert built == sculpted
+    assert built == module._mux_lookup(table, n)  # noqa: SLF001
+    assert len(built) <= 650 + 70 * 2**n
+
+
+def test_the_preserving_step_restores_arbitrary_tape() -> None:
+    """The lookup's right step preserves every tested tape and advances one."""
+    import importlib
+
+    module = importlib.import_module("esolangs.tools.minifuck")
+    for ptr in (0, 7):
+        for tape in range(256):
+            sim = module._Sim(32)  # noqa: SLF001
+            sim.ptr = ptr
+            sim.tape = tape << (ptr + 1)
+            before = sim.tape
+            sim.apply(module._runs(module._MUX_PRESERVE_RIGHT))  # noqa: SLF001
+            assert (sim.ptr, sim.tape, sim.skip) == (ptr + 1, before, False)
 
 
 @pytest.mark.slow  # two ten-input builds plus twelve interpreter rows, ~10s
