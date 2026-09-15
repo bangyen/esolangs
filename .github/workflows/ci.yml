@@ -61,6 +61,11 @@ jobs:
     - name: Check the ArrowQueue lemmas
       run: uv run python tests/proofs/deep/arrowqueue.py
 
+    # BIO's telescoping-lookup lemmas, 0.1s. The Container proof beside it is
+    # 16s and stays a by-hand `just proofs`, on the same rule.
+    - name: Check the BIO lemmas
+      run: uv run python tests/proofs/deep/bio.py
+
     # --all, not the touched-language default the local gate uses: this is
     # the run that holds exceptions.py's contract across all 69.  68s.
     - name: Check that no interpreter leaks a raw exception
