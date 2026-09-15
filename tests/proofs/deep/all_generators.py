@@ -48,6 +48,12 @@ from tests.proofs.deep._lemmas import (
 # and refuse the other.
 from tests.tools.test_boolean_contract import _dense, _parity
 
+#: Cost band; see ``__main__.py``. Registry-wide, so its scope is every generator:
+#: too broad to re-run on every local edit, cheap enough that CI should never skip
+#: it.
+BAND = "ci"
+COST = 12.0
+
 _SHAPES = (("dense", _dense), ("parity", _parity))
 
 #: Highest arity the ladder climbs.  Measured, not guessed: a calibration

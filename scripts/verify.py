@@ -150,19 +150,14 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
         "src/esolangs/tools/ztoalc_starts.py",
     ),
     "duplicate-code check (pylint)": ("src/esolangs/", "scripts/", "tests/"),
-    # The lemmas import the generator and nothing else, so only it and the
-    # script itself can break them.
-    "arrowqueue lemmas": (
-        "src/esolangs/tools/parameterized.py",
-        "tests/proofs/deep/arrowqueue.py",
-    ),
-    # BIO's lemmas parse the emitted program and instantiate it through the
-    # shipped fill, so the generator, that fill, and the script are the three
-    # things that can break them.
-    "bio lemmas": (
+    # The union of what the two proofs in this band read: ArrowQueue's lemmas
+    # import the generator and nothing else, and BIO's also parse the emitted
+    # program and instantiate it through the shipped fill.  The runner is in
+    # the scope too, since it decides which of them run at all.
+    "deep proofs (verify band)": (
         "src/esolangs/tools/parameterized.py",
         "src/esolangs/tools/examples.py",
-        "tests/proofs/deep/bio.py",
+        "tests/proofs/deep/",
     ),
     # Only an interpreter (or the sweep itself) can introduce a leak.
     "exception leaks": (
@@ -230,23 +225,17 @@ STEPS = [
             "tests",
         ],
     ),
-    # Twelve named lemmas behind the relevant generator tests, each pinning
-    # one finite fact the total-over-every-arity proof rests on.  0.8s, so
-    # it is a gate rather than the by-hand check the A Painter Ant proof
-    # has to be (`just apa-proof`, 1m20s).
+    # The deep proofs cheap enough to gate locally: ArrowQueue's twelve named
+    # lemmas and BIO's telescoping lookup, each pinning finite facts their
+    # total-over-every-arity proofs rest on.  2.2s together.  Which proofs
+    # those are is not listed here -- each declares a band beside itself and
+    # `tests/proofs/test_bands.py` holds the band to a 5s budget, so this step
+    # cannot silently grow or shrink.  The registry-wide battery sits in the
+    # `ci` band instead: it touches every generator, so scoping it here would
+    # mean running its 12s on nearly every edit.
     (
-        "arrowqueue lemmas",
-        [*PY, "tests/proofs/deep/arrowqueue.py"],
-    ),
-    # The telescoping-lookup proof behind BIO's ledger row: the adjustments
-    # are recovered from the emitted program and folded against every row
-    # through n=7.  0.1s, so it gates on the same rule arrowqueue does.  The
-    # Container proof next to it does not: its L1 enumerates every row of
-    # twelve arities and costs 16s, and weakening a proof to fit a gate is
-    # the wrong trade -- `just proofs` runs it.
-    (
-        "bio lemmas",
-        [*PY, "tests/proofs/deep/bio.py"],
+        "deep proofs (verify band)",
+        [*PY, "-m", "tests.proofs.deep", "verify"],
     ),
     # The contract exceptions.py states, executed: no interpreter may leak a
     # raw Python error to its caller.  Bare, it checks only the languages

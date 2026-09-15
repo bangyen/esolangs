@@ -24,8 +24,15 @@ construction completes at every arity of a ladder on both table shapes.  That
 is the counting half of each scheme above, and it is what makes "finite object
 covering every row" checkable per generator.  Four generators -- A Painter Ant,
 ArrowQueue, Container and BIO -- additionally have a hand-derived proof of
-their own specific argument, which no generic battery can reach.  `just proofs`
-runs all of it.
+their own specific argument, which no generic battery can reach.
+
+Each proof declares the cost band it runs in, and
+`python -m tests.proofs.deep <band>` selects on that: `verify` is the local
+gate, `ci` adds the registry-wide battery, `all` is everything and is what
+`just proofs` runs.  The bands are what the justfile, the workflow and
+`scripts/verify.py` each invoke, so none of them carries a list of proofs;
+`test_bands.py` holds every band to a cost budget and checks that no file under
+`deep/` is missing one.
 
 None of that bounds *size*: the schemes count nodes and entries, so a generator
 can satisfy its row and still emit super-linear text.  `linearity.py` is the
