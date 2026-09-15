@@ -700,8 +700,13 @@ def _paint_all(b: _Builder, offsets: list[int]) -> None:
         delta |= 1 << k
     for row in live:
         row.tape ^= delta << (row.pos + _RING)
-    b.seg.extend(parts)
-    b.chunks.append("".join(parts))
+    source = "".join(parts)
+    # ``parts`` includes mixed ``"21"`` excursions, while ``seg`` stores
+    # maximal homogeneous runs.  Most callers close on a false cell and
+    # never replay the sweep; conditional painting does, so preserving a
+    # mixed part as one token would replay it as two ``2`` commands.
+    b.seg.extend(_run_parts(source))
+    b.chunks.append(source)
 
 
 def _verdict(b: _Builder, table: str) -> None:
@@ -796,6 +801,128 @@ def _endgame(b: _Builder) -> None:
     b.run("1" * (p + 1))
     if any(r.pos >= 0 for r in live):  # pragma: no cover - invariant
         raise ConstructError("a survivor would restart instead of halting")
+
+
+_REUSED_BIT_MERGE = "121111112112"
+
+
+def _paint_source(offsets: list[int]) -> str:
+    """Spell :func:`_paint_all` without constructing per-row tape states."""
+    targets = set(offsets)
+    top = max(offsets)
+    return _ZERO * top + "".join(
+        _ONE if k in targets else _ONE + _ZERO + _ONE for k in range(top, 0, -1)
+    )
+
+
+def _position_after_ones(pos: int, count: int) -> int:
+    """Return a pointer position after ``count`` ``1`` commands."""
+    if count <= pos + 1:
+        return pos - count
+    return (-1, -2, -3, 0)[(count - pos - 1) % 4]
+
+
+def _linear_endgame(positions: set[int]) -> str:
+    """Park the given nonnegative positions below zero in O(max(position)) source."""
+    out = []
+    while len(positions) > 1:
+        while any(pos < 0 for pos in positions):
+            if -3 in positions:
+                out.append(_ONE)
+                positions = {0 if pos == -3 else pos - 1 for pos in positions}
+            else:
+                out.append(_ZERO)
+                positions = {0 if pos in (-1, -2) else pos + 1 for pos in positions}
+        if len({pos % 4 for pos in positions}) == 4:
+            count = min(positions) + 2
+            out.append(_ONE * count)
+            positions = {_position_after_ones(pos, count) for pos in positions}
+            out.append(_ZERO)
+            positions = {0 if pos in (-1, -2) else pos + 1 for pos in positions}
+        else:
+            count = max(positions) + 1
+            out.append(_ONE * count)
+            positions = {_position_after_ones(pos, count) for pos in positions}
+    pos = next(iter(positions))
+    out.append(_ONE * (pos + 1))
+    return "".join(out)
+
+
+def _construct_linear(truth_table: str, n: int) -> str:
+    """Build the repeated-mark 123 construction in O(T) time and source.
+
+    Input ``i`` first occupies reusable cell 2.  Everyone paints the cells
+    two below that input's separator marks; a set-bit row replays the segment
+    from cell 2 and paints the marks themselves.  The merge identity maps the
+    resulting positions 2/4 back to zero and clears cell 2 only on the latter
+    path, ready for the next input.
+
+    Separator weight ``4*2**i`` gives level ``i`` one mark for each earlier
+    prefix.  Marks occupy one residue class modulo four and their unconditional
+    shadows another, so they never collide.  Their spans and the separator
+    walks sum geometrically.  After the last level, row ``r`` is at
+    ``base + 4*(T-1 + bit_reverse(r))``; deriving those positions directly
+    avoids the old exact model's T rows by T-bit tape integers.
+    """
+    base = 9
+    out: list[str] = []
+    for i in range(n):
+        # The first three runs are one P=1 embed/merge/scrub, leaving exactly
+        # bit i at cell 2 and every row at zero.
+        out.extend(("2", f"{{X{i}}}", "11", "212112", "22", "111", "2", "33"))
+        weight = 4 * 2**i
+        prefix_positions = range(4 * (2**i - 1), 8 * (2**i - 1) + 1, 4)
+        marks = [base + pos + weight for pos in prefix_positions]
+        out.extend(
+            (
+                "2221",
+                _paint_source([mark - 4 for mark in marks]),
+                "33",
+                _REUSED_BIT_MERGE,
+                "33",
+            )
+        )
+
+    out.extend((_ZERO * base, "33"))
+    for i in range(n):
+        out.extend((_ZERO * (4 * 2**i), "33"))
+
+    size = 2**n
+    reversed_rows = [0]
+    for _ in range(n):
+        reversed_rows = [2 * row for row in reversed_rows] + [
+            2 * row + 1 for row in reversed_rows
+        ]
+    positions = [base + 4 * (size - 1 + row) for row in reversed_rows]
+    ones = [positions[row] for row, bit in enumerate(truth_table) if bit == "1"]
+    if ones:
+        boundary = max(ones) + 2
+        shields = [
+            boundary - 1 - pos
+            for row, pos in enumerate(positions)
+            if truth_table[row] == "0" and pos < boundary
+        ]
+        if shields:
+            out.extend((_paint_source(shields), "33"))
+        out.extend(
+            (
+                _ONE * boundary,
+                _ZERO,
+                _ZERO * (boundary - 1),
+                _ONE + _ZERO,
+                "33",
+            )
+        )
+        live = {
+            boundary - 1 if pos < boundary else pos
+            for row, pos in enumerate(positions)
+            if truth_table[row] == "0"
+        }
+    else:
+        live = set(positions)
+    if live:
+        out.append(_linear_endgame(live))
+    return "".join(out)
 
 
 def _jump_tables(code: str) -> tuple[list[int], list[int]]:
@@ -1002,6 +1129,8 @@ def construct(truth_table: str) -> str:
     against that interpreter on random programs.
     """
     n = max(1, (len(truth_table) - 1).bit_length())
+    if n >= 4:
+        return _construct_linear(truth_table, n)
     # The mark geometry comes from _geometry: the tight linear layout
     # when its per-arity reference run proves out (every probed arity),
     # the doubling base with halving escapes -- proven total at every
