@@ -18,20 +18,6 @@ from tests.tools.boolean_runners import (
 )
 
 
-def _grapheme_counted_side(table: str, n: int) -> str:
-    """The build the retired row-count rule would have chosen.
-
-    It took the zero side when ``len(zeros) <= len(ones)``, so ties went to
-    that side.  Kept here rather than in the generator: it is the thing the
-    generator is asserted to beat, not something it should be able to emit.
-    """
-    from esolangs.tools.stack import _grapheme_head, _grapheme_side
-
-    head, reduced, width = _grapheme_head(table, n)
-    zeros = reduced.count("0")
-    return _grapheme_side(reduced, width, head, zero_rows=zeros <= reduced.count("1"))
-
-
 class TestGrapheme:
     def test_variable_keys_are_unbounded_and_avoid_the_reserved_key(self) -> None:
         """Integer-mode arithmetic removes the old 24-letter key ceiling."""
@@ -78,44 +64,40 @@ class TestGrapheme:
                 got = run_grapheme(program, [str(b) for b in bits])
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
-    def test_shorter_side_wins_not_the_sparser_one(self) -> None:
-        """Row count is a proxy for length, and it picks wrong.
+    def test_constant_subtrees_fold(self) -> None:
+        """A constant table has no conditional skip; parity has a full tree."""
+        assert "V" not in boolean.grapheme("0" * 8)
+        assert boolean.grapheme("01101001").count("V") == 14
 
-        A row's cost falls with its popcount -- a negated literal spends
-        eight characters more than a plain one -- and the two sides seed the
-        accumulator differently (7 characters against 3), so equal counts do
-        not mean equal length.  The old rule compared counts and gave ties
-        to the expensive seed, so a balanced table always lost.
-
-        Both sides are built now and the shorter kept.  ``00010111`` is the
-        worst case at n == 3, and the count rule cost it 52 characters.
-        """
-        improved = 0
-        for value in range(256):
-            table = format(value, "08b")
-            shipped = len(boolean.grapheme(table))
-            # What the count rule would have picked, built directly.
-            counted = len(_grapheme_counted_side(table, 3))
-            assert shipped <= counted, table
-            improved += shipped < counted
-        assert improved == 45
-
-    def test_balanced_table_takes_the_cheaper_seed(self) -> None:
-        """The old ``<=`` tie went to the 7-character seed every time."""
-        program = boolean.grapheme("0011")
-        assert len(program) < len(_grapheme_counted_side("0011", 2))
-        for combo in range(4):
-            bits = [(combo >> (1 - i)) & 1 for i in range(2)]
-            got = run_grapheme(program, [str(b) for b in bits])
-            assert got == "0011"[combo], f"inputs {bits}"
+    def test_full_tree_growth_is_linear(self) -> None:
+        """Skip literals widen near the root, but total source stays O(T)."""
+        sizes = []
+        for n in (7, 8):
+            table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+            sizes.append(len(boolean.grapheme(table)))
+        assert sizes[1] < 2 * sizes[0] + 64
 
     def test_the_program_is_only_grapheme_commands(self) -> None:
         """Only the letters Grapheme reads as commands are emitted."""
         for table in ("10", "0110", "0001", "11111110"):
-            assert set(boolean.grapheme(table)) <= set("ABCDEFGIRSTWYZ"), table
+            assert set(boolean.grapheme(table)) <= set("ABCDEFGHIRSTVWYZ"), table
 
 
 class TestForth:
+    def test_wide_table_skips_the_exponential_order_contest(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Beyond n=10, use the natural order without enumerating 3**n orders."""
+        import esolangs.tools.stack as stack
+
+        monkeypatch.setattr(
+            stack,
+            "_forth_stack_programs",
+            lambda _n: (_ for _ in ()).throw(AssertionError("order contest ran")),
+        )
+        program = stack.forth("0" * (2**11))
+        assert run_forth(program, ["0"] * 11) == "0"
+
     def test_program_structure(self) -> None:
         """The program defines one function per surviving node, reading n bits.
 
@@ -164,18 +146,16 @@ class TestForth:
         ``{`` and calls it with a default, so an unemitted node simply
         never exists -- folding is skip-emission with no renumbering.
 
-        Which subtrees are constant depends on the order the tree splits
-        in, and the order is chosen per table: ``00001111`` depends on the
-        first input alone and ``01010101`` on the last, so each collapses to
-        the two root children under the order that tests its input first.
-        A stack-ordered tree could only fold the second.
+        The natural stack order tests the last input first, so
+        ``01010101`` collapses to the two root children while ``00001111``
+        does not.
 
         Parity is what folds under no order at all, so it is the witness
         that the fold is doing work rather than the search hiding it.
         """
         assert boolean.forth("1" * 8).count("{") == 2
         assert boolean.forth("01" * 4).count("{") == 2
-        assert boolean.forth("0" * 4 + "1" * 4).count("{") == 2
+        assert boolean.forth("0" * 4 + "1" * 4).count("{") == 14
         parity = "".join(str(bin(row).count("1") % 2) for row in range(8))
         assert boolean.forth(parity).count("{") == 2 ** (3 + 1) - 2
 
@@ -192,27 +172,16 @@ class TestForth:
         for m in range(3, 15):  # every node below the two root children
             assert _forth_const(m) + "{" not in program
 
-    def test_reordering_only_shrinks(self) -> None:
-        """No table comes out longer than the stack-ordered program.
-
-        The natural order here is the *reversal* -- ``;`` pops, so the tree
-        has always tested the last input at the root -- and it is tried
-        first with ties keeping it.  Pinning against that build is what
-        proves the search cannot churn an emission it does not shorten.
-        """
+    def test_the_natural_stack_order_is_emitted(self) -> None:
+        """Forþ no longer contests reachable input orders."""
         from esolangs.tools.stack import _forth_ordered
 
         natural = (2, 1, 0)
-        improved = 0
         for value in range(256):
             table = format(value, "08b")
-            dispatched = len(boolean.forth(table))
-            stack_ordered = len(
-                _forth_ordered(permute_truth_table(table, natural), natural)
+            assert boolean.forth(table) == _forth_ordered(
+                permute_truth_table(table, natural), natural
             )
-            assert dispatched <= stack_ordered, table
-            improved += dispatched < stack_ordered
-        assert improved == 112
 
     def test_rotations_are_interleaved_with_the_reads(self) -> None:
         """Weaving the rotations into the reads reaches more arrangements.
@@ -450,73 +419,40 @@ class TestUnsquare:
         for value in range(256):
             assert boolean.unsquare(format(value, "08b")).count("iA>-<P") == 3
 
-    def test_past_the_cap_only_the_natural_order_is_built(self) -> None:
-        """Above ``_ORDER_SEARCH_MAX`` the arrangement search is skipped.
-
-        The reachable arrangements are ``2 * 3**(n - 2)`` rather than
-        ``n!``, but that is still a program built per candidate, so the
-        shared cap applies.  Past it the generator emits the natural order
-        alone -- what it produced before reordering existed, never worse,
-        just unimproved -- and this pins that only one program is built.
-        """
-        from esolangs.tools.helpers import _ORDER_SEARCH_MAX
-
-        n = _ORDER_SEARCH_MAX + 1
+    def test_the_natural_order_is_built_at_wide_arity(self) -> None:
+        """A wide greedy prefix still reads every input exactly once."""
+        n = 7
         table = "01" * (2 ** (n - 1))
         program = boolean.unsquare(table)
 
         assert program.count("iA>-<P") == n  # one read per input
         assert program.endswith("o")
 
-    def test_reordering_never_grows_a_program(self) -> None:
-        """Choosing the stack arrangement can only shrink the program.
-
-        The natural order here is the *reversal* -- ``A`` pops, so the tree
-        has always tested the last input at the root -- and it is tried
-        first with ties keeping it, so a table no reorder helps emits
-        exactly what it emitted before.
-        """
+    def test_greedy_sinks_recover_most_small_oracle_winners(self) -> None:
+        """The heuristic never grows n=3 and matches 248/256 oracle minima."""
         from esolangs.tools.stack import (
-            _unsquare_stack_programs,
-            _unsquare_tree,
-        )
-
-        n = 3
-        natural = tuple(reversed(range(n)))
-        prefix = _unsquare_stack_programs(n)[tuple(reversed(natural))]
-        improved = 0
-        for value in range(256):
-            table = format(value, "08b")
-            reordered = len(boolean.unsquare(table))
-            stack_ordered = len(
-                prefix
-                + _unsquare_tree(
-                    permute_truth_table(table, tuple(reversed(natural))), n
-                )
-            )
-            assert reordered <= stack_ordered, table
-            improved += reordered < stack_ordered
-        assert improved == 112
-
-    def test_reorder_cost_selects_the_emitted_program(self) -> None:
-        """The pricing model matches every candidate and picks the shortest."""
-        from esolangs.tools.stack import (
+            _UNSQUARE_READ,
             _unsquare_cost,
             _unsquare_stack_programs,
             _unsquare_tree,
         )
 
-        for n in (1, 2, 3):
-            for value in range(2 ** (2**n)):
-                table = format(value, f"0{2**n}b")
-                costs = []
-                for arrangement, prefix in _unsquare_stack_programs(n).items():
-                    permuted = permute_truth_table(table, arrangement)
-                    assert _unsquare_cost(permuted, n, prefix) == len(
-                        prefix + _unsquare_tree(permuted, n)
-                    )
-                    costs.append(_unsquare_cost(permuted, n, prefix))
-                assert len(boolean.unsquare(table)) == min(costs)
+        improved = 0
+        exact = 0
+        largest_gap = 0
+        for value in range(256):
+            table = format(value, "08b")
+            current = len(boolean.unsquare(table))
+            natural = len(_UNSQUARE_READ * 3 + _unsquare_tree(table, 3))
+            oracle = min(
+                _unsquare_cost(permute_truth_table(table, arrangement), 3, prefix)
+                for arrangement, prefix in _unsquare_stack_programs(3).items()
+            )
+            assert current <= natural
+            improved += current < natural
+            exact += current == oracle
+            largest_gap = max(largest_gap, current - oracle)
+        assert (improved, exact, largest_gap) == (104, 248, 44)
 
     def test_sinks_are_interleaved_with_the_reads(self) -> None:
         """Weaving the sinks into the reads is what reaches the arrangements.

@@ -14,11 +14,11 @@ generator so the counter sits above the value rather than below it.
 
 from collections.abc import Callable
 from functools import cache
-from itertools import permutations
 
 from esolangs.tools.helpers import (
-    _ORDER_SEARCH_MAX,
+    _greedy_input_order,
     _validate_truth_table,
+    constant_span_test,
     permute_truth_table,
 )
 from esolangs.tools.wrap import shortest
@@ -194,29 +194,47 @@ def _streetcode_leaf(bit: int, skipped: int = 0) -> list[str]:
     ]
 
 
-# Largest subtable whose drawing is worth remembering across candidates.
-#
-# The order search rebuilds the tree once per permutation, and the halves
-# it recurses on repeat: at n=6 the 720 orders make 23040 calls on a
-# two-row subtable but only 4 distinct ones, and 5760 calls on an
-# eight-row one against at most 960 distinct.  Above four inputs the
-# count stops collapsing -- a 2**5 subtable pins the root input, its side
-# and the order of the rest, so all 1440 calls are distinct, and all 720
-# of the full table are -- so caching those buys nothing and would hold
-# 2160 copies of the whole drawing.  Cutting at 2**4 keeps every hit and
-# none of that memory: 276k units of node work drop to 125k, and the n=6
-# registry sweep measures 1.50s -> 0.58s.
+# Largest subtable whose drawing is worth remembering across the identity
+# and greedy candidates.  Small repeated halves share drawings; caching
+# larger, usually distinct subtrees only retains their grids.
 _TREE_CACHE_MAX = 2**4
 
 
 def _streetcode_tree(table: str) -> list[str]:
     """Build the binary decision tree: one T-junction turn per input bit."""
     if len(table) > _TREE_CACHE_MAX:
-        return _streetcode_tree_uncached(table)
+        return _streetcode_tree_span(table, 0, len(table), constant_span_test(table))
     # Copied out: the cache hands back the same object to every caller, and
     # ``_streetcode_combine`` and ``_streetcode_lift`` both treat their rows
     # as read-only today, which is not a property to leave load-bearing.
     return list(_streetcode_tree_memo(table))
+
+
+def _streetcode_tree_span(
+    table: str,
+    start: int,
+    stop: int,
+    constant: Callable[[int, int], bool],
+) -> list[str]:
+    """Build a large tree by bounds, delegating small spans to the cache."""
+    size = stop - start
+    if size <= _TREE_CACHE_MAX:
+        return _streetcode_tree(table[start:stop])
+
+    half = size // 2
+    middle = start + half
+    skipped = half.bit_length() - 1
+    top = (
+        _streetcode_leaf(int(table[start]), skipped)
+        if constant(start, middle)
+        else _streetcode_tree_span(table, start, middle, constant)
+    )
+    bot = (
+        _streetcode_leaf(int(table[middle]), skipped)
+        if constant(middle, stop)
+        else _streetcode_tree_span(table, middle, stop, constant)
+    )
+    return _streetcode_join(top, bot)
 
 
 @cache
@@ -259,6 +277,11 @@ def _streetcode_tree_uncached(table: str) -> list[str]:
         top = _streetcode_leaf(int(table[0]), half.bit_length() - 1)
     if _streetcode_constant(bot):
         bot = _streetcode_leaf(int(table[half]), half.bit_length() - 1)
+    return _streetcode_join(top, bot)
+
+
+def _streetcode_join(top: list[str], bot: list[str]) -> list[str]:
+    """Join two finished subtrees with their shared branching hall."""
     width = max(max(len(row) for row in top), max(len(row) for row in bot))
     top = [row.ljust(width) for row in top]
     bot = [row.ljust(width) for row in bot]
@@ -567,8 +590,8 @@ def _streetcode_shared(n: int, perm: tuple[int, ...] | None = None) -> list[str]
     return ["".join(row) for row in grid]
 
 
-def _streetcode_orders(n: int) -> list[tuple[int, ...]]:
-    """Return the input orders to build the shared shape over, identity first.
+def _streetcode_orders(truth_table: str, n: int) -> list[tuple[int, ...]]:
+    """Return the identity and greedy input orders, identity first.
 
     Streetcode cannot go through
     :func:`~esolangs.tools.helpers.best_input_order` the way the
@@ -579,26 +602,176 @@ def _streetcode_orders(n: int) -> list[tuple[int, ...]]:
     selection runs over the whole pool, which is the ``six_five`` and
     ``forth`` precedent.
 
-    The cap is shared with ``best_input_order`` rather than reinvented:
-    above it the exhaustive search is ``n!`` builds of an ``O(2**n)``
-    drawing, the cost that does not announce itself.  Past the cap this
-    returns the identity alone rather than ``best_input_order``'s greedy
-    order -- a Streetcode program is a *drawing*, so the greedy score (how
-    many subtrees a split leaves constant) misses the per-order cost that
-    actually decides the winner here, the walk the prefix spends putting
-    each bit in its cell.  A table that big is outside what the suite
-    exercises; wiring the greedy path in unmeasured would be guessing at its
-    own benchmark.
+    The greedy score sees subtree folds but not drawing geometry, so both
+    candidates are retained and the rendered layouts decide the winner.
     """
     identity = tuple(range(n))
-    if n <= _ORDER_SEARCH_MAX:
-        return [identity, *(p for p in permutations(range(n)) if p != identity)]
-    return [identity]
+    greedy = _greedy_input_order(truth_table, n)
+    return [identity] if greedy == identity else [identity, greedy]
 
 
 def _streetcode_columns(program: str) -> int:
     """Return the widest row of ``program``, which is what a width bounds."""
     return max(len(line) for line in program.split("\n"))
+
+
+def _streetcode_rotate(program: str) -> str:
+    """Rotate a Streetcode grid 180 degrees and trim its new line ends.
+
+    Rotation preserves right-hand driving, unlike a reflection.  Streetcode's
+    commands are direction-independent, so no glyph translation is needed.
+    """
+    rows = program.splitlines()
+    width = max(map(len, rows))
+    return "\n".join(row.ljust(width)[::-1].rstrip() for row in reversed(rows))
+
+
+_H_DIR = {"E": (0, 1), "S": (1, 0), "W": (0, -1), "N": (-1, 0)}
+_H_LEFT = {"E": "N", "N": "W", "W": "S", "S": "E"}
+_H_RIGHT = {value: key for key, value in _H_LEFT.items()}
+
+
+def _streetcode_h_rect(r0: int, r1: int, c0: int, c1: int) -> set[tuple[int, int]]:
+    """Return the cells in one half-open rectangle."""
+    return {(r, c) for r in range(r0, r1) for c in range(c0, c1)}
+
+
+def _streetcode_h_corridor(
+    one: tuple[int, int], two: tuple[int, int]
+) -> set[tuple[int, int]]:
+    """Return a two-cell-wide axis-aligned corridor between two anchors."""
+    r0, c0 = one
+    r1, c1 = two
+    if r0 == r1:
+        return _streetcode_h_rect(r0, r0 + 2, min(c0, c1), max(c0, c1) + 2)
+    if c0 != c1:  # pragma: no cover - the H layout changes one axis per edge
+        raise AssertionError("an H-tree corridor must be axis-aligned")
+    return _streetcode_h_rect(min(r0, r1), max(r0, r1) + 2, c0, c0 + 2)
+
+
+def _streetcode_h_lane(anchor: tuple[int, int], direction: str) -> tuple[int, int]:
+    """Return the right-hand lane cell at a two-by-two junction."""
+    r, c = anchor
+    return {"E": (r + 1, c), "S": (r, c), "W": (r, c + 1), "N": (r + 1, c + 1)}[
+        direction
+    ]
+
+
+def _streetcode_h_render(
+    open_cells: set[tuple[int, int]],
+    glyphs: dict[tuple[int, int], str],
+    fixed_walls: dict[tuple[int, int], str],
+) -> str:
+    """Render a two-wide road union, retaining the normalizer's inner walls."""
+    border = {
+        (r + dr, c + dc)
+        for r, c in open_cells
+        for dr in (-1, 0, 1)
+        for dc in (-1, 0, 1)
+        if (r + dr, c + dc) not in open_cells
+    }
+    cells = open_cells | border | fixed_walls.keys()
+    lo_r = min(r for r, _ in cells)
+    lo_c = min(c for _, c in cells)
+    hi_r = max(r for r, _ in cells)
+    hi_c = max(c for _, c in cells)
+    rows: list[str] = []
+    for r in range(lo_r, hi_r + 1):
+        row: list[str] = []
+        for c in range(lo_c, hi_c + 1):
+            pos = (r, c)
+            if pos in fixed_walls:
+                row.append(fixed_walls[pos])
+            elif pos in open_cells:
+                row.append(glyphs.get(pos, " "))
+            elif pos not in border:
+                row.append(" ")
+            else:
+                vertical = (r - 1, c) in open_cells or (r + 1, c) in open_cells
+                horizontal = (r, c - 1) in open_cells or (r, c + 1) in open_cells
+                row.append("+" if vertical == horizontal else "-" if vertical else "|")
+        rows.append("".join(row).rstrip())
+    return "\n".join(rows)
+
+
+def _streetcode_h_layout(
+    truth_table: str, n: int
+) -> tuple[set[tuple[int, int]], dict[tuple[int, int], str]]:
+    """Return an alternating-axis decision tree whose rectangle is O(T)."""
+    cells: set[tuple[int, int]] = set()
+    glyphs: dict[tuple[int, int], str] = {}
+    # The western radius is smaller than this geometric bound.  Keeping the
+    # tree east of column zero leaves the input normalizer a private region.
+    root = (0, 32 * (1 << (n // 2)))
+    cells |= _streetcode_h_corridor((0, 0), root)
+
+    def descend(prefix: str, anchor: tuple[int, int], direction: str) -> None:
+        remaining = n - len(prefix)
+        if not remaining:
+            dr, dc = _H_DIR[direction]
+            end = (anchor[0] + 7 * dr, anchor[1] + 7 * dc)
+            cells.update(_streetcode_h_corridor(anchor, end))
+            at = _streetcode_h_lane(anchor, direction)
+            commands = (
+                "~" if truth_table[int(prefix, 2)] == "0" else " ",
+                "O",
+                ";",
+            )
+            for step, char in enumerate(commands, 2):
+                glyphs[(at[0] + step * dr, at[1] + step * dc)] = char
+            return
+
+        distance = 16 * (1 << ((remaining - 1) // 2))
+        for bit, branch in (("0", _H_LEFT[direction]), ("1", _H_RIGHT[direction])):
+            br, bc = _H_DIR[branch]
+            child = (anchor[0] + distance * br, anchor[1] + distance * bc)
+            cells.update(_streetcode_h_corridor(anchor, child))
+            # A junction tests the current input.  Both exits advance CP to
+            # the next input (or the prepared output cell) before the child.
+            at = _streetcode_h_lane(anchor, branch)
+            glyphs[(at[0] + 2 * br, at[1] + 2 * bc)] = "="
+            descend(prefix + bit, child, branch)
+
+    descend("", root, "E")
+    return cells, glyphs
+
+
+def _streetcode_h_program(truth_table: str, n: int) -> str:
+    """Attach the shared input normalizer to the linear-area H-tree."""
+    cells, glyphs = _streetcode_h_layout(truth_table, n)
+    rows = _streetcode_shared(n)
+    width = max(map(len, rows))
+    padded = [row.ljust(width) for row in rows]
+    normalizer_open: set[tuple[int, int]] = set()
+    for r, row in enumerate(padded):
+        walls = [c for c, char in enumerate(row) if char in "+-|"]
+        if not walls:
+            continue
+        # Rows 1 and 2 are the two open-ended street lanes.  Every other row
+        # is bounded by its first and last wall; inner walls remain fixed
+        # below, so including an island's blank interior cannot join a road.
+        stop = width if r in (1, 2) else walls[-1]
+        normalizer_open.update(
+            (r, c) for c in range(walls[0] + 1, stop) if row[c] not in "+-|"
+        )
+
+    # Row 2 is the normalizer's eastbound driving lane; join its open end to
+    # row 1 of the H-tree's incoming road.
+    east = max(c for r, c in normalizer_open if r == 2)
+    shift = (-1, -east)
+    fixed_walls = {
+        (r + shift[0], c + shift[1]): char
+        for r, row in enumerate(padded)
+        for c, char in enumerate(row)
+        if char in "+-|"
+    }
+    for r, c in normalizer_open:
+        pos = (r + shift[0], c + shift[1])
+        cells.add(pos)
+        char = padded[r][c]
+        if char != " ":
+            glyphs[pos] = char
+    return _streetcode_h_render(cells, glyphs, fixed_walls)
 
 
 def _streetcode_hallway_program(n: int, tree: list[str]) -> str:
@@ -614,7 +787,7 @@ def _streetcode_shared_programs(truth_table: str, n: int, tree: list[str]) -> li
     """Render the shared-lap layouts for every permitted input order."""
     identity = tuple(range(n))
     programs = []
-    for perm in _streetcode_orders(n):
+    for perm in _streetcode_orders(truth_table, n):
         shared = _streetcode_combine(
             [
                 _streetcode_shared(n, perm),
@@ -635,6 +808,11 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
 
+    At six inputs and above, the decision tree is an alternating-axis H-tree.
+    Every branch is a two-cell-wide road and the branch distances double only
+    every other level, so both dimensions are O(sqrt(T)) and the rendered
+    source is O(T).  Smaller tables keep the more compact stacked layout.
+
     The car reads each input bit through a wall-hugging loop that walks its
     ASCII value down to a bare 0/1 (built by :func:`_streetcode_populate`
     out of :func:`_streetcode_strip` rooms), then drives into a binary
@@ -648,6 +826,11 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     Whichever shape wins, the leading run then moves to the oncoming lane
     and runs westbound (:func:`_streetcode_lift`), which takes its columns
     off every row of the program.
+
+    The compact shared program is also compared with its 180-degree rotation.
+    Rotation preserves the car's right-hand rule while moving the tree's
+    leading blank triangle to line ends, where rendering strips it.  A plain
+    reflection would reverse the driving rule and is not equivalent.
 
     The tree also splits on its inputs in whichever order emits the
     shortest program, so more subtrees fold.  That is a *placement* here
@@ -671,6 +854,17 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
     shape narrower than its tree.
     """
     n = _validate_truth_table(truth_table)
+    if n >= 6:
+        program = _streetcode_h_program(truth_table, n)
+        h_rotated = _streetcode_rotate(program)
+        if width is None:
+            return shortest(program, h_rotated)
+        fitting = [p for p in (program, h_rotated) if _streetcode_columns(p) <= width]
+        return (
+            shortest(*fitting)
+            if fitting
+            else min((program, h_rotated), key=_streetcode_columns)
+        )
     tree = _streetcode_tree(truth_table)
     # The per-input loops trade rows for columns, so only width selection
     # needs them.  The shared lap is strictly shorter through every table at
@@ -695,4 +889,5 @@ def streetcode(truth_table: str, width: int | None = None) -> str:
             return shortest(*fitting)
         # Nothing fits: fall back to the narrowest rather than the shortest.
         return min(programs, key=_streetcode_columns)
-    return shortest(*programs)
+    rotated = [_streetcode_rotate(program) for program in programs]
+    return shortest(*programs, *rotated)

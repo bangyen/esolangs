@@ -96,6 +96,7 @@ class TestBundleCompiles:
 
 
 class TestBundleMatchesPackage:
+    @pytest.mark.slow
     def test_generator_languages_match(self, tmp_path: Path) -> None:
         """A generated program runs the same through the bundle and the package.
 
@@ -192,6 +193,7 @@ class TestBundleDetails:
         assert result.stdout == "Input: Input: 1"
 
 
+@pytest.mark.slow
 def test_install_one_downloads_and_runs_a_bundle() -> None:
     """The public shell installer fetches and runs representative bundles."""
     if shutil.which("curl") is None:

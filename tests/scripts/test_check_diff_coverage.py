@@ -99,6 +99,14 @@ def record(
 PATH = "src/esolangs/demo.py"
 
 
+def test_non_python_package_data_is_outside_coverage(tmp_path: Path) -> None:
+    """Generated examples cannot have Python execution coverage."""
+    example = "src/esolangs/examples/demo.txt"
+    code, out = run_gate(tmp_path, {}, {example: {1}})
+    assert code == 0
+    assert "branch touched no files" in out
+
+
 class TestAddedBranches:
     def test_an_added_one_sided_branch_fails(self, tmp_path: Path) -> None:
         """The line ran, so only the arc can report the untaken side."""

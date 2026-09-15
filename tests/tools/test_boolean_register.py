@@ -6,6 +6,7 @@ Break.
 """
 
 import random
+from itertools import pairwise
 
 import pytest
 
@@ -16,7 +17,6 @@ from esolangs.tools.register import (
     _DIG_BRANCH,
     _DIG_RETURN,
     _DIG_STRIDE,
-    _addsubjump_ordered,
     _polynomial_dag,
     _polynomial_states,
 )
@@ -37,19 +37,6 @@ from tests.tools.boolean_runners import (
     run_sophie,
     run_sophie_from,
 )
-
-
-def _asj_normalize_sites(program: str) -> int:
-    """How many instructions add the ``-48`` constant cell to something.
-
-    One per *stored input* once the reads are hoisted, against one per
-    internal node when they sat at the nodes.  The constant lives in a data
-    cell, so this finds that cell's address and counts the instructions
-    whose ``b`` operand names it.
-    """
-    mem = [int(tok) for tok in program.split()]
-    const = mem.index(-48)
-    return sum(1 for i in range(0, len(mem) - 3, 4) if mem[i + 1] == const)
 
 
 class TestAddSubJump:
@@ -75,25 +62,22 @@ class TestAddSubJump:
             got = run_addsubjump(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_branch_normalizes_bits_to_zero_and_four(self) -> None:
-        """Each bit is normalized to {0, 4} and added to a jump cell."""
+    def test_branch_normalizes_ascii_bits(self) -> None:
+        """Each ASCII input contributes its zero-or-one value to the index."""
         program = boolean.addsubjump("0110")
-        assert "-48" in program  # the normalization constant
+        assert "48" in program
         assert run_addsubjump(program, ["0", "1"]) == "1"
         assert run_addsubjump(program, ["1", "0"]) == "1"
 
-    def test_normalizes_once_per_input_not_once_per_node(self) -> None:
-        """The reads and their normalization are hoisted out of the tree.
-
-        Reading at the node repeated the four-instruction normalization at
-        every internal node; hoisting spends it once per *stored input*, so
-        the count tracks ``n`` rather than the tree's width.  ``-48`` is the
-        normalization constant and appears once in the data section, so the
-        instructions referencing its cell are what to count.
-        """
-        # XOR-3 has 7 internal nodes but only 3 inputs.
-        cells = _asj_normalize_sites(boolean.addsubjump("01101001"))
-        assert cells == 3
+    @pytest.mark.medium
+    def test_all_three_input_tables(self) -> None:
+        """The packed decoder executes every three-input function."""
+        for value in range(256):
+            table = format(value, "08b")
+            program = boolean.addsubjump(table)
+            for row in range(8):
+                bits = [str((row >> shift) & 1) for shift in (2, 1, 0)]
+                assert run_addsubjump(program, bits) == table[row]
 
     def test_every_path_reads_each_input_once(self) -> None:
         """A run consumes exactly ``n`` inputs, whatever the table.
@@ -113,21 +97,17 @@ class TestAddSubJump:
                 assert got == table[combo], f"{table} inputs {bits}"
                 assert not list(feed), f"{table} inputs {bits} left input unread"
 
-    def test_reordering_only_shrinks(self) -> None:
-        """No table comes out longer than the identity order's program.
-
-        ``best_input_order`` tries the identity first and ties keep it, so
-        this is a property of the dispatch rather than of the language; the
-        sweep pins it against a build that cannot silently regress.
-        """
-        improved = 0
-        for value in range(256):
-            table = format(value, "08b")
-            dispatched = len(boolean.addsubjump(table))
-            identity = len(_addsubjump_ordered(table, (0, 1, 2)))
-            assert dispatched <= identity, table
-            improved += dispatched < identity
-        assert improved == 118  # the rest tie, keeping the identity order
+    def test_packed_growth_is_linear(self) -> None:
+        """Wide parity tables grow by at most the table-size ratio."""
+        sizes = [
+            len(
+                boolean.addsubjump(
+                    "".join(str(row.bit_count() & 1) for row in range(2**n))
+                )
+            )
+            for n in range(11, 15)
+        ]
+        assert all(b <= 2 * a for a, b in pairwise(sizes))
 
 
 class TestQoibl:
@@ -149,17 +129,25 @@ class TestQoibl:
             got = run_qoibl(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_minterm_structure(self) -> None:
-        """An AND function stores the minterm product and prints 48 + sum."""
+    def test_tree_structure(self) -> None:
+        """An AND function combines the two branches arithmetically."""
         program = boolean.qoibl("0001")
-        assert program.startswith("we e we et")
-        assert "ry ye ry" in program  # a minterm product
+        assert program.startswith("we yee we et")
+        assert "ry ee ry" in program
         assert program.endswith("tt")
 
-    def test_empty_truth_table(self) -> None:
-        """A constant-zero function skips all minterms."""
+    def test_constant_truth_table_folds(self) -> None:
+        """A constant function needs only one tree assignment."""
         program = boolean.qoibl("0000")
-        assert "ry ye ry" not in program
+        assert program.count("\nwe ") == 4
+
+    def test_dense_growth_is_linear(self) -> None:
+        """A full tree doubles by a bounded additive term."""
+        sizes = [
+            len(boolean.qoibl("".join(str(row.bit_count() & 1) for row in range(2**n))))
+            for n in range(7, 11)
+        ]
+        assert all(b <= 2 * a + 800 for a, b in pairwise(sizes))
 
 
 # 4.2s over 72 tests: runs the generated program.
@@ -329,6 +317,7 @@ class TestPolynomial:
                 else:
                     assert machine == _polynomial_dag(table), table
 
+    @pytest.mark.slow
     def test_polynomial_screen_slack(self) -> None:
         """The screen's slack is a measurement, and it is arity-dependent.
 
@@ -446,6 +435,26 @@ class TestPolynomial:
 
 
 class TestDig:
+    @pytest.mark.medium
+    def test_alternating_layout_executes_every_row(self) -> None:
+        """The alternating-axis tree computes two dense wide tables."""
+        for n in (5, 6):
+            size = 1 << n
+            tables = (
+                ("01101001" * size)[:size],
+                "".join(str((row * 73 + row // 3) & 1) for row in range(size)),
+            )
+            for table in tables:
+                program = boolean.dig(table)
+                for combo in range(size):
+                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                    assert run_dig(program, [str(bit) for bit in bits]) == table[combo]
+
+    def test_alternating_layout_has_linear_area(self) -> None:
+        """Two more levels quadruple entries and at most quadruple text."""
+        sizes = [len(boolean.dig("01" * (2 ** (n - 1)))) for n in (7, 9)]
+        assert sizes[1] <= 4 * sizes[0]
+
     @pytest.mark.parametrize(
         ("table", "n"),
         [
@@ -481,7 +490,18 @@ class TestDig:
             "     >$3~;#\n"
             "          >$30:@"
         )
-        assert boolean.dig("0110") == expected
+        assert boolean.dig("0110", width=80) == expected
+
+    def test_compact_layout_uses_the_shorter_orientation(self) -> None:
+        """The safe turn is useful for size, not only width requests."""
+        from esolangs.tools.register import _dig_grid
+
+        table = "0110100110010110"
+        n = 4
+        flat = _dig_grid(table, n, None)
+        banded = _dig_grid(table, n, -(-(n + 2) // 2))
+        assert len(banded) < len(flat)
+        assert boolean.dig(table) == banded
 
     def test_a_constant_table_is_one_line(self) -> None:
         """Nothing to branch on, so the whole grid is a single leaf."""
@@ -525,7 +545,7 @@ class TestDig:
         """
         for table in ("0110", "10010110", "0110100110010110", "00010111"):
             n = len(table).bit_length() - 1
-            flat = boolean.dig(table)
+            flat = boolean.dig(table, 10_000)
             wide = max(len(row) for row in flat.splitlines())
             floor = max(len(row) for row in boolean.dig(table, 1).splitlines())
             assert floor < wide, f"{table} never narrows"
@@ -553,7 +573,7 @@ class TestDig:
         """
         for table in ("1" * 64, "1" * 32 + "0" * 32):
             n = len(table).bit_length() - 1
-            flat = boolean.dig(table)
+            flat = boolean.dig(table, 10_000)
             assert boolean.dig(table, 1) == flat, table
             for combo in (0, 2 ** (n - 1), 2**n - 1):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
@@ -571,7 +591,7 @@ class TestDig:
         narrow = boolean.dig("0110100110010110", 1)
         assert _DIG_BRANCH[::-1] in narrow, "no mirrored block: the tree never turned"
         assert _DIG_RETURN in narrow, "nothing points the mole west"
-        flat = boolean.dig("0110100110010110")
+        flat = boolean.dig("0110100110010110", 10_000)
         assert _DIG_BRANCH[::-1] not in flat
         assert _DIG_RETURN not in flat
 
@@ -744,28 +764,31 @@ class TestCollatzMultiverse:
             got = run_collatz_multiverse(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    def test_minterm_structure(self) -> None:
-        """The program reads one input per line and prints once."""
+    @pytest.mark.parametrize("n", [1, 2, 3])
+    def test_every_small_table(self, n: int) -> None:
+        """Execute every table and row through three inputs."""
+        for value in range(2 ** (2**n)):
+            table = format(value, f"0{2**n}b")
+            program = boolean.collatz_multiverse(table)
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                assert run_collatz_multiverse(program, bits) == table[combo]
+
+    def test_postorder_tree_structure(self) -> None:
+        """The tree reads each input once, reuses registers, and prints once."""
         program = boolean.collatz_multiverse("0110")
         assert program.count("input") == 2
         assert program.count("DO PRINT.") == 1
+        assert "r0" in program
+        assert "r1" in program
 
-    def test_a_dense_table_selects_its_zero_rows(self) -> None:
-        """More ones than zeros costs less built the other way.
-
-        Inverting is free here rather than one operation: the OR ends on a
-        ``flip`` turning ``prod(1 - minterm)`` into the answer, so a
-        complemented table keeps the accumulator instead.  A dense table is
-        therefore *shorter* than its sparse complement, not merely equal.
-        """
-        dense = boolean.collatz_multiverse("11111110")  # one zero row
-        sparse = boolean.collatz_multiverse("00000001")  # one one row
-        assert len(dense) < len(sparse)
-        for table in ("11111110", "00000001"):
-            program = boolean.collatz_multiverse(table)
-            for combo in range(8):
-                bits = [str((combo >> (2 - i)) & 1) for i in range(3)]
-                assert run_collatz_multiverse(program, bits) == table[combo]
+    def test_full_tree_growth_is_linear(self) -> None:
+        """Parity folds nothing, but depth-reused names keep source linear."""
+        sizes = []
+        for n in (7, 8):
+            table = "".join(str(row.bit_count() & 1) for row in range(1 << n))
+            sizes.append(len(boolean.collatz_multiverse(table)))
+        assert sizes[1] < 2 * sizes[0] + 256
 
     def test_constant_tables_collapse_but_still_read(self) -> None:
         """A constant table collapses to one output but still reads its inputs.

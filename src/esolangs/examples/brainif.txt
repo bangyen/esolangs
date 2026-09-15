@@ -1,3 +1,6 @@
+if 0 goto 4
+if 48 goto 72
+if 49 goto 72
 if 0 increment
 if 1 increment
 if 2 increment
@@ -49,24 +52,22 @@ if 47 increment
 if 48 move right
 if 0 move right
 if 0 input
-if 48 goto 54
-if 49 goto 60
+if 49 goto 62
 if 48 move left
 if 0 input
 if 48 move left
 if 49 move left
-if 48 goto 71
-if 49 goto 71
+if 48 goto 2
+if 49 goto 2
 if 49 move left
 if 0 input
-if 48 goto 64
-if 49 goto 67
+if 49 goto 68
 if 48 move left
-if 48 goto 71
-if 49 goto 71
+if 48 goto 2
+if 49 goto 2
 if 49 move left
 if 48 increment
-if 48 goto 71
-if 49 goto 71
+if 48 goto 2
+if 49 goto 2
 if 48 output
 if 49 output

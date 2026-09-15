@@ -55,12 +55,12 @@ after ignoring the performance/resource ceiling as specified above.
 
 | Generator | Proof | Qualification |
 | --- | --- | --- |
-| A Painter Ant | parameterized tree | finite grid layout |
+| A Painter Ant | parameterized tree | shared prefixes preserve the finite tree; the independent motif proof awaits entry/exit lemmas |
 | AddSubJump | tree | forward labels are emitted after the finite tree |
 | Algebraic Programming Language | minterms | base-26 names are unbounded |
 | Alight | tree | folded post-order layout |
 | ArrowQueue | parameterized tree | finite queue layout |
-| B-tapemark | tree | deliberately unfolded to preserve reads |
+| B-tapemark | tree | reflected finite grid; indexed table spans preserve the same leaves without recursive copies |
 | Back | parameterized tree | — |
 | BF-PDA | parameterized tree | — |
 | BFStack | minterms | — |
@@ -74,20 +74,20 @@ after ignoring the performance/resource ceiling as specified above.
 | Clockwise | tree | finite grid layout |
 | COD | parameterized tree | — |
 | Collatz Multiverse | tree | finite cell placement |
-| Container | minterms | — |
+| Container | tree | deliberately unfolded to preserve timed input pulses |
 | Crement | finite lookup | prototype instantiation |
 | CV(N)(C) | tree, cap | the halting-goto reach is a renderer ceiling |
 | Decleq | tree | — |
 | Dig | tree | finite cell placement |
 | Dimensional | tree | `decision_tree_program` with dimensional moves |
 | EGL | tree | — |
-| Eval | parameterized tree | stack reordering only shortens the fallback tree |
+| Eval | linear lookup | fixed reversed stack order selects the indexed row |
 | Factor | tree, cap | Brainfuck tree followed by a total prime encoding; Dirichlet supplies the next prime in each residue class mod 11 |
 | Fargo | tree | finite folded layout |
 | Flowchart | tree | — |
 | Forbin | tree | — |
 | Forþ | tree | — |
-| Grapheme | minterms | arbitrary integer variable keys remove the old 24 one-letter-key ceiling |
+| Grapheme | tree | arbitrary integer variable keys remove the old 24 one-letter-key ceiling |
 | Home Row | parameterized tree | — |
 | Inject | tree | — |
 | Interprogck8 | exception | no uniform proof that bounded repair always routes arbitrarily wide trees |
@@ -117,7 +117,7 @@ after ignoring the performance/resource ceiling as specified above.
 | 3D Brainfuck | tree | Brainfuck tree transliteration |
 | 3x | tree | — |
 | Unsquare | tree | stack arrangement affects size only |
-| Vandevelo | minterms | — |
+| Vandevelo | minterms | constant-one subtrees drop their suffix literals |
 | WII2D | exception | Horner makes the input chain total, but the deterministic final fold is not proved to decode every finite domain |
 | ZTOALC L | finite lookup, cap | `2**k` supplies `k` ordered trajectory slots for every finite `k` |
 

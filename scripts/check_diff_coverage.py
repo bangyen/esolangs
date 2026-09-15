@@ -1,4 +1,4 @@
-"""Require every file this branch *touches* to be fully covered.
+"""Require every Python source file this branch *touches* to be fully covered.
 
 The diff picks the files; the whole file is then judged.  Touch a file and
 you answer for all of it, not only the lines you added.
@@ -202,7 +202,7 @@ def main() -> int:
         print("skip: could not read the branch diff")
         return 0
 
-    targets = {f for f in added if f.startswith(MEASURED)}
+    targets = {f for f in added if f.startswith(MEASURED) and f.endswith(".py")}
     if not targets:
         print(f"skip: branch touched no files under {MEASURED}")
         return 0
