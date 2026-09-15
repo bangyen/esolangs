@@ -120,10 +120,13 @@ The candidate list is empty.
   branch distance is geometric on every other level, so its height and width
   are both O(sqrt(T)); the shared input normalizer occupies only O(log(T)^2)
   cells beside it.  Sampled paths through six inputs execute correctly.
-  Four cases remain open.  COD can stop its main cascade at the selected
-  value and feed the earlier positive copies into one shared decrement
-  ladder, but its upward-only `_` test reflects a rejected copy back through
-  the fork that made it; no deterministic constant-area exit is known.
+  Four cases remain open.  COD has a constant-size two-polarity branch once
+  a bit reaches a node: `<` keeps only one, while `(<` keeps only zero, and
+  `(`/`)` normalize the survivor.  Repeating `{Xi}` would therefore give a
+  linear-area H-tree, but the parameterized contract embeds each input
+  exactly once.  A shared placeholder cannot distribute the bit to separate
+  node lanes without losing the lane identity; carrying that identity as the
+  cod's value returns to the super-linear numeric decoder.
   SLOW ACV MAMMALIAN's current trampoline adds one token run proportional to
   the skipped child at every internal node, giving a factor above two per
   level; a packed selector or constant-distance branch layout is still
