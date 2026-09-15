@@ -2241,7 +2241,8 @@ class TestPctAffineSolver:
     def module():
         return importlib.import_module("esolangs.tools.pct_squared_minus_one")
 
-    @pytest.mark.medium
+    # Builds 256 tables both ways and compares lengths; nothing is executed,
+    # so this is cost rather than behaviour and takes no marker.
     def test_the_shorter_of_cascade_and_affine_ships(self) -> None:
         """The cascade is usually shorter at three inputs, but not always.
 
