@@ -552,7 +552,6 @@ _MINTERM_SHAPED = {
 # collapsed structure.  Reordering does not become applicable to them the way
 # it would if they had grown a tree, which is why they are neither list.
 _REDUCING = {
-    "cod",
     "home_row",
     "nocomment",
     "rotfuck",
@@ -575,6 +574,7 @@ _REDUCING = {
 _UNSHAPED = {
     "alight",
     "b_tapemark",
+    "cod",
     "crement",
     "nopstacle",
     "wii2d",
@@ -1078,6 +1078,7 @@ _LINEAR_SCALING = {
     "brainif",
     "circuit_diagram",
     "clockwise",
+    "cod",
     "container",
     "dig",
     "forbin",
@@ -1093,7 +1094,6 @@ _LINEAR_SCALING = {
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
-    "cod",
     "polynomial",
     "slow_acv_mammalian",
     "vandevelo",
