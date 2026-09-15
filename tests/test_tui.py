@@ -1038,6 +1038,9 @@ class TestRawTerminal:
     here rather than hang the suite.
     """
 
+    # Forks a pty and execs a fresh interpreter, then waits on quiet periods:
+    # a subprocess whose cost is a wait, so it stretches under a loaded box.
+    @pytest.mark.medium
     @pytest.mark.skipif(sys.platform == "win32", reason="no pty on Windows")
     def test_it_paints_and_quits_on_a_real_terminal(self) -> None:
         import contextlib
