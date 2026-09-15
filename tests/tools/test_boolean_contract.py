@@ -1091,13 +1091,13 @@ _LINEAR_SCALING = {
     "ram0",
     "sbleq",
     "streetcode",
+    "vandevelo",
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
     "interprogck8",
     "polynomial",
     "slow_acv_mammalian",
-    "vandevelo",
 }
 
 
