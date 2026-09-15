@@ -182,7 +182,10 @@ The candidate list is empty.
   dense-table program carries `Omega(T/log T)` monomials.  That matches
   rather than separates.  A linear generator therefore needs a
   direct sparse multiple specialized to the prime-power instruction roots,
-  not an optimization search.  Shipping the factored form instead is not
+  not an optimization search -- and that is the input-`t` sparse-multiple
+  problem the literature leaves open and suspects NP-complete
+  (`notes/poly_open_literature.py` carries the case-match).  Shipping the
+  factored form instead is not
   available: the parser reads only summed monomials and misreads a product
   silently (`notes/poly_factored_probe.py`).
 
