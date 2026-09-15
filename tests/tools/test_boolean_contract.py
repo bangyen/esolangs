@@ -1057,12 +1057,12 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: is busy -- which, on a suite that runs four workers, is always.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
     "Circuit Diagram": (7_910_330, 11_394_987, 1.4),
-    "COD": (942_692, 3_668_705, 3.9),
+    "COD": (294, 554, 1.9),
     "ROTfuck": (15_240, 29_472, 1.9),
     "Polynomial": (3_383_048, 10_896_883, 3.2),
     "SLOW ACV MAMMALIAN": (1_672_368, 3_380_418, 2.0),
     "bit~": (28_210, 56_676, 2.0),
-    "123": (94_589, 230_002, 2.4),
+    "123": (22_988, 45_755, 2.0),
     "Factor": (17_613, 36_339, 2.1),
 }
 
@@ -1190,4 +1190,4 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
         if name not in _DOCUMENTED_SIZES
     )
     assert biggest[0] < 600_000, biggest
-    assert biggest[1] == "BrainIf"
+    assert biggest[1] == "Streetcode"

@@ -27,6 +27,16 @@ ArrowQueue, Container and BIO -- additionally have a hand-derived proof of
 their own specific argument, which no generic battery can reach.  `just proofs`
 runs all of it.
 
+None of that bounds *size*: the schemes count nodes and entries, so a generator
+can satisfy its row and still emit super-linear text.  `linearity.py` is the
+separate, registry-wide scaling contract the roadmap asks for.  It measures
+characters per table entry past each generator's last route change and holds
+every generator to it except those the roadmap's scaling audit or this
+document's `cap` and `exception` rows already exempt.  Read its verdicts in one
+direction only: exceeding the bound is evidence, staying inside it is not, and
+SLOW ACV MAMMALIAN -- proven super-linear in `limitations.md` and measuring
+x2.03 -- is why.
+
 ## Proof schemes
 
 **Decision tree.**  Recursively split the table on an input.  A leaf emits its
