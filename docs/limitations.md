@@ -149,8 +149,8 @@ live paths extend across Theta(log T) level columns on parity; trimming removes
 only suffix blanks.  LaserFuck now conditionally walks arms of total length
 `T-1`, selects one of T prewritten cells, then cleans all cells in one sweep.
 Streetcode's alternating-axis H-tree fits its two-wide roads in O(T) area.
-Vandevelo emits one depth-`n` guard chain for each of Theta(T) selected parity
-rows.  The latter two current spellings are Theta(T log T).
+Vandevelo's current spelling emits one depth-`n` guard chain for each of
+Theta(T) selected parity rows, hence Theta(T log T).
 
 S*bleq's retired tree emitted Theta(T) instructions and data triples with absolute decimal
 addresses into a Theta(T)-cell memory, so a constant fraction of its operands
