@@ -227,9 +227,12 @@ fixed in place and the warning was never updated.
 import).  Each measurement above is a short driver over it:
 
 ```python
-import sys; sys.path[:0] = ["notes", "src", "."]
+import sys
+
+sys.path[:0] = ["notes", "src", "."]
 import acv_swap
-p = acv_swap.generate("0110")          # 338,619 tokens
+
+p = acv_swap.generate("0110")  # 338,619 tokens
 toks = p.split()
 ```
 

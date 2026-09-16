@@ -56,18 +56,14 @@ class TestFactoredProgramsAreMisread:
     def test_the_expanded_form_is_read_as_written(self) -> None:
         assert sanitize("f(x) = x^2-5x^1+6") == [1, -5, 6]
 
-    @pytest.mark.parametrize(
-        "code", ["f(x) = (x-2)(x-3)", "f(x) = (x-2)*(x-3)"]
-    )
+    @pytest.mark.parametrize("code", ["f(x) = (x-2)(x-3)", "f(x) = (x-2)*(x-3)"])
     def test_a_product_is_accepted_rather_than_rejected(self, code: str) -> None:
         # The silence is the point: a rejection would be a clean signal.
         # ``*`` is stripped by the character filter, so both spellings land
         # in the same place.
         assert sanitize(code) is not None
 
-    @pytest.mark.parametrize(
-        "code", ["f(x) = (x-2)(x-3)", "f(x) = (x-2)*(x-3)"]
-    )
+    @pytest.mark.parametrize("code", ["f(x) = (x-2)(x-3)", "f(x) = (x-2)*(x-3)"])
     def test_a_product_decodes_to_a_different_polynomial(self, code: str) -> None:
         assert sanitize(code) != sanitize("f(x) = x^2-5x^1+6")
 
@@ -92,9 +88,7 @@ class TestFactoredProgramsAreMisread:
 _NOP = "X"
 
 
-def _run_from(
-    program: list[str], ip: int, acc: int
-) -> tuple[int | None, str]:
+def _run_from(program: list[str], ip: int, acc: int) -> tuple[int | None, str]:
     """Run starting mid-program at ``(ip, acc)``; return (final acc, printed)."""
     io = ScriptedIO("")
     machine = _Machine(program, io)
@@ -139,12 +133,8 @@ class TestRungsAreTransparent:
         assert moved != 0, "acc 0 should fall through onto @id and move"
         assert kept == 1, "acc 1 should jump over @id and be kept"
 
-    @pytest.mark.parametrize(
-        "table", ["01101001", "1111", "0000", "0110100110010110"]
-    )
-    def test_a_suffix_sum_survives_rungs_threaded_through_it(
-        self, table: str
-    ) -> None:
+    @pytest.mark.parametrize("table", ["01101001", "1111", "0000", "0110100110010110"])
+    def test_a_suffix_sum_survives_rungs_threaded_through_it(self, table: str) -> None:
         """The answer phase itself: enter at r, fall through, read table[r].
 
         Line j is the difference ``table[j] - table[j+1]`` in {-1,0,1},
