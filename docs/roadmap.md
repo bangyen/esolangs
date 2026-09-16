@@ -224,7 +224,7 @@ The candidate list is empty.
   | ArrowQueue | Holds | Holds | Holds | Language |
   | Back | Holds | Holds | Holds | Language |
   | BIO | Holds | Holds | Holds | Open |
-  | Bitdeque | Holds | Holds | Holds | Language |
+  | Bitdeque | Holds | Holds | Holds | Open |
   | COD | Holds | Holds | Holds | Language |
   | Crement | Holds | Holds | Holds | Language |
   | Minsky Swap | Holds | Holds | Holds | Open |
@@ -234,7 +234,11 @@ The candidate list is empty.
 
   The open cells are separators nothing reads, all verified by execution
   on every row of four tables: BIO's are the blanks between its setters
-  (one per input, under one percent of the text); RAM0's tokenizer is
+  (one per input, under one percent of the text); Bitdeque's ``GOTO``
+  takes its number after zero or more spaces and its tokenizer is a
+  ``findall``, so every space goes (22%, 1560 of 7132) -- the wrapper's
+  note that the jump is "spelled with spaces" describes a split it must
+  not make, not one the interpreter needs; RAM0's tokenizer is
   `[ZANCLS]|[1-9]\d*`, so a space is needed only between two numbers and
   the rest are 47% of the text (1236 of 2620 characters over 24 programs);
   Minsky Swap's first line is filtered to `+~*` before it is read, so its
@@ -242,11 +246,14 @@ The candidate list is empty.
   that must stay delimited; Nopstacle pads every row to the
   rectangle with trailing blanks that `rstrip` removes without changing
   halts or diverges (40 of 40).  The `Language` cells are the five grids,
-  whose blank is an empty cell the pointer crosses (COD's is water), and
-  Bitdeque, whose `GOTO *(\d+)` spells the jump with spaces.  Whether every
-  grid blank could be a written no-op cell instead is a size question, not
+  whose blank is an empty cell the pointer crosses (COD's is water); with
+  every space deleted Back, COD and WII2D each change an answer or run
+  past twice the original's step count on some row.  Whether every grid
+  blank could be a written no-op cell instead is a size question, not
   attempted; COD's water spelled as a command needed the fork box a column
-  wider.
+  wider.  `tests/proofs/test_conventions.py` reads this table: a `Holds`
+  cell is measured, an `Open` cell's strip is executed on every row, and
+  the runnable `Language` cells are the positive control.
 
   Two candidate conventions are not adopted.  *Rectangular*: every row of a
   grid the same width.  Only COD holds it; the other five are ragged, and
