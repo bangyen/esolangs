@@ -262,8 +262,7 @@ cursor really is the only channel.
 The text is a different matter, and two of the escapes are now measured.
 Negative operands are **legal**: `convert` puts no sign condition on a complex
 root's real part, and `f(x) = 1x^6-130x^5+3563x^4+41030x^3+255186x^2+
-1107000x^1+4168400` decodes to `[[70, 1], [-5, 1], [0, 1]]` and prints `A`
-(`notes/poly_negative_operand.py`).  A complex instruction `[a, b]` is
+1107000x^1+4168400` decodes to `[[70, 1], [-5, 1], [0, 1]]` and prints `A`.  A complex instruction `[a, b]` is
 `(x-a)^2 + p**(2b)`, so its linear coefficient `-2a` flips sign with `a`, and
 that program's own expansion is already not alternating.  The builder was long described here as
 encoding negative arithmetic by changing the opcode, its monic factors all
@@ -271,14 +270,13 @@ sign-alternating so that products preserve the pattern without cancellation
 and give Omega(m^2) total coefficient digits.  That premise is FALSE at
 n >= 4: the shipped dense builds carry a few negative operands -- 0/36,
 1/70, 4/117, 6/187 complex instructions at n = 3..6, operands -1..-3, all
-at b = 3 (`notes/poly_rhp_superlinear.py`) -- so the builder-specific
+at b = 3 -- so the builder-specific
 argument did not actually cover those builds.  The right-half-plane
 theorem below, with its compensation lemma, both repairs that hole and
 extends the bound to every cofactor on half the plane; the free parameters
 left over are roots with substantially negative real part.
 
-That free parameter is now measured, and it is close to empty
-(`notes/poly_sign_growth.py`).  Over prefixes of a real dense build (the
+That free parameter is now measured, and it is close to empty.  Over prefixes of a real dense build (the
 k=0 machine on the contract's dense n=6 fixture, 187 instructions), total
 rendered digits are minimised over the complex operands' sign patterns --
 exhaustively to 12 signs, first-improvement hill-climbing from random
@@ -301,14 +299,13 @@ The other escape is closed.  Shipping the *product* form -- `m` factors at
 `O(log)` characters each, no expansion -- is not a legal encoding: the parser
 strips `*` and reads only summed `c*x^d` monomials, keeping the last
 coefficient per degree, so `f(x) = (x-2)(x-3)(x-5)` is silently read as
-`x - 5` rather than rejected (`notes/poly_factored_probe.py`).  Program text
+`x - 5` rather than rejected.  Program text
 is the expanded coefficient digits and nothing else, which is what the bound
 above prices.  Polynomial remains open alongside the other construction
 walls.
 
 Extra roots that do not match an instruction code multiply the mandatory
-root product without changing execution -- executed, not assumed
-(`notes/poly_multiple_runs.py`): `P*(x^2+x+1)` and `P*(x-6)` both decode
+root product without changing execution -- executed, not assumed: `P*(x^2+x+1)` and `P*(x-6)` both decode
 to the base program and run identically, on the three-instruction `'A'`
 printer and on `polynomial("0110")` over all four rows, while the control
 `P*(x-2)` -- whose root is the instruction code `2**1` -- decodes to a
@@ -329,8 +326,7 @@ above is a dimension count, a necessary condition on a generic solution
 rather than an impossibility proof, so it bounds no specific family and does
 not by itself forbid a sparser one.
 
-For the real-rooted part that count is now a theorem
-(`notes/poly_descartes_terms.py`).  A multiple keeps every root of the
+For the real-rooted part that count is now a theorem.  A multiple keeps every root of the
 mandatory product, the real instructions contribute `m_r` distinct
 positive real roots `p**v`, and Descartes' rule caps a `t`-term real
 polynomial's positive roots at its sign changes, at most `t - 1` -- so
@@ -346,7 +342,7 @@ separating.  It is the matching bound arrived at a third way --
 text.  And it covers only programs that carry real instructions at all.
 
 A program cannot shed them: the routing lemma that was the named gap
-here is now a proof (`notes/poly_routing_floor.py`).  A read *overwrites*
+here is now a proof.  A read *overwrites*
 the register, so after the k-th read the future behaviour is a function
 of the read instruction's position alone; between reads every
 non-bracket instruction has one successor and every bracket has two,
@@ -367,7 +363,7 @@ bracket and outcome and every bracket-free segment is bit-blind; and the
 floor computed from the dense fixture runs 16, 52, 128 at n=8, 10, 12 --
 0.38..0.53 of `T/log2 T` throughout, under the shipped machines' actual
 real counts as it must be.  A loop changes nothing, and
-`notes/poly_descartes_terms.py` runs the mechanism through the
+the mechanism runs through the
 interpreter: entries 7 and 10 leave `while (reg > 0) reg -= 3` with
 identical state while 7, 8 and 9 leave it pairwise distinguishable --
 an exit that depends on the register merges a whole residue class into
@@ -382,8 +378,7 @@ assumption left about which construction wrote it.  What it still is
 not is a full separation: the floor prices exponents, not coefficient
 mass, and coefficient mass is where the remaining freedom lives.
 
-Coefficient mass is now priced too, on half the complex plane
-(`notes/poly_rhp_superlinear.py`).  If every root of a program polynomial
+Coefficient mass is now priced too, on half the complex plane.  If every root of a program polynomial
 has nonnegative real part -- every complex operand `a >= 0` and every
 cofactor root in the closed right half-plane -- then substituting
 `x -> -x` gives each real factor nonnegative coefficients (`(x - r)`
@@ -440,7 +435,7 @@ now exactly a left-half-plane question.
 
 The one routine route to an *unrestricted* bound -- forcing compensation
 partners from the semantics -- is closed, negatively
-(`notes/poly_opcode_census.py`, executed).  The op selector is the
+(executed).  The op selector is the
 imaginary exponent, so additive negatives are rewritable (`[-c, 1]` is
 `[c, 2]` -- the builder's opcode swap), but `[-c, 3]` (reg *= -c) matches
 no single nonnegative-operand register map, so sector arithmetic is
@@ -453,8 +448,7 @@ boundary is final: the unrestricted statement stands or falls with the
 open sparse-multiple problem, pinned to programs whose arithmetic mass
 sits in the open 90..135-degree sector with too few compensators.
 
-The generic corner of that family is searched, and empty
-(`notes/poly_lll_multiple.py`).  The integer multiples of `P` with
+The generic corner of that family is searched, and empty.  The integer multiples of `P` with
 cofactor degree at most `k` are exactly the lattice spanned by the shifts
 `x^i * P`, so one LLL reduction searches every such multiple at once for a
 short member.  On prefixes of the same real dense build (degree to 40)
@@ -466,8 +460,7 @@ minimises, which an unbalanced small-digit multiple could evade.  It
 bounds the search rather than closing it, but a sparse multiple, if one
 exists, is not hiding at small cofactor degree.
 
-The l2 objective's blind spot is searched now too, and it is also empty
-(`notes/poly_weighted_lll.py`).  A linear-size program cannot be l2-short
+The l2 objective's blind spot is searched now too, and it is also empty.  A linear-size program cannot be l2-short
 -- its lowest coefficient is primorial-forced, so its profile is one
 heavy bottom coefficient and small everything else, the shape l2
 penalizes most.  Scaling column `j` of the shift lattice by
@@ -512,8 +505,7 @@ bound complex root moduli at all (`x^N - 1` has `N` roots on one circle from
 two terms), so the modulus route cannot reach `t = Omega(m)`.
 
 What remains is not merely unsolved here; it instantiates a problem the
-literature poses and leaves open, and every published case misses it
-(`notes/poly_open_literature.py`).  [Giesbrecht, Roche and
+literature poses and leaves open, and every published case misses it.  [Giesbrecht, Roche and
 Tilak][sparse-multiples] (Algorithmica 64:454-480, 2012) is the standing
 work on computing sparse multiples, and its rational results are exactly
 two: an unconditional algorithm for *binomial* multiples `x^m - a` --
@@ -561,18 +553,17 @@ A decision diagram is **not** forced, and the paragraph that claimed it was
 is retracted.  The accumulator does die at every read -- `u` loads the byte
 and `{values/=a/=b/=c}` overwrites it with 84 or 81 -- but it is not the only
 state, and the pointer is not the only thing that crosses a read.  Three
-other channels do, each executed in `notes/ick8_slot_probe.py`:
+other channels do, each executed:
 
 - The **function slot**.  `u` does not touch it, and `<` captures the body
   the pointer is standing on, so two inputs can reach *one* line holding
   different bodies.  The probe's two arms meet at line 301 carrying the
   same accumulator -- 0, normalised on arrival on purpose, so the slot is
   the only thing that differs -- and the same `EXE` prints `A` or `B`.
-  Stepped rather than inferred: `notes/ick8_slot_confirm.py` reads the
-  pointer and the accumulator off the state at the call.
+  Stepped rather than inferred: the pointer and the accumulator are read
+  off the state at the call.
 - The **call stack**.  A read taken inside a body returns into that body,
-  and `IFT`/`IFQ` make the push itself conditional.  Priced below
-  (`notes/ick8_stack_price.py`).
+  and `IFT`/`IFQ` make the push itself conditional.  Priced below.
 - The **program text**, through `z`.  A restart clears the accumulator, the
   slot and the pointer but *not* the input cursor, so
   `["u", "div"] + ["X", "z"] * 3` reads and prints four bytes at two lines
@@ -652,8 +643,7 @@ so the supply is the whole program rather than the meadows, and "distinct dead
 lines per window" does not follow from "distinct rungs per window".  Whether
 `Theta(T)` chains can be given strides and alignments whose arithmetic
 progressions land only on jumps that already exist is a packing question --
-now measured on real artifacts, and the free supply does not close it
-(`notes/ick8_packing.py`).  A chain flies a progression of step `1 + acc`,
+now measured on real artifacts, and the free supply does not close it.  A chain flies a progression of step `1 + acc`,
 so a hop of span `S` at stride `d` needs its `S/d - 1` interior landings to
 be `DownAccLines` already.  The lines are there -- 9.7% to 10.8% of the
 program at n=8 and n=10, dense and parity, matching the ~12 an entry quoted
@@ -680,9 +670,8 @@ accumulator is nonzero there, so every rung fires and corrupts the result.
 But `DownAccLines` advances by `acc + 1`, so a rung followed by `k` nops is
 **transparent** for every `acc` in `[0, k]`: each value lands somewhere
 inside the nop run, all paths converge on the line after it, and none of
-them touches the accumulator.  Executed in `notes/ick8_transparent.py`,
-with a control where a rung followed by an effect does move the
-accumulator.  The same file runs the natural answer phase -- enter a table
+them touches the accumulator.  Executed, with a control where a rung
+followed by an effect does move the accumulator.  The same probe runs the natural answer phase -- enter a table
 of `table[j] - table[j+1]` differences at row `r` and fall through, so the
 sum telescopes to `table[r]`, biased by one to keep it in `[0, 2]` -- with
 a transparent rung every four lines, and it returns the right bit for every
@@ -703,7 +692,7 @@ test, so a body distinguishes one value of `j` and no more) -- but that blocks
 one direction only, and the other direction *works*: a captured body writes
 the accumulator, frames pop eagerly, so a `DownAccLines` placed right after
 `EXE` executes frame-free with the body's value and fans one shared position
-out on body identity.  Executed end to end in `notes/ick8_slot_meet.py`: an
+out on body identity.  Executed end to end: an
 n=4 generator routes two bits into one of four captured bodies, converges,
 routes the other two bits into one of four `EXE` blocks, and all 16 rows of
 an arbitrary table print correctly through `P+C` routing text and `P*C`
@@ -728,8 +717,7 @@ product's best case is halving its coefficient.  The slot channel meets but
 cannot linearize.
 
 The `z` loop was the other, and it is closed, negatively
-(`notes/ick8_z_retire.py`, four executed facts, on top of the two in
-`notes/ick8_z_blind.py` and `notes/ick8_z_steer.py`: a read is invisible
+(four executed facts, on top of two more: a read is invisible
 across a restart, and input reaches the text only by steering which `z`
 fires).  One gadget at the top does read a fresh bit on every pass -- that
 half of the shape works.  What kills the route is that **the read never
@@ -758,13 +746,13 @@ bit it already knows -- the positional decision tree the arrangement bound
 above already prices.  What `z` buys is `n` restarts and `n` fragile local
 sites; with the slot product priced above and the `z` loop closed here, the
 one channel left is the call stack, priced next.  (A
-handoff note's contrary verdict -- `T/2` passes writing `T` bits, in
-`notes/linearize-three-handoff.md` -- is withdrawn there: it needed
+handoff note's contrary verdict -- `T/2` passes writing `T` bits -- is
+withdrawn there: it needed
 input-dependent passes after the reads, which the paragraph above rules
 out.)
 
 The call stack now carries the same verdict
-(`notes/ick8_stack_price.py`, five executed facts).  `IFT`/`IFQ` are
+(five executed facts).  `IFT`/`IFQ` are
 conditional calls -- a data-dependent push with no positional divergence
 -- so the frames are a real second store.  What crosses a read inside one
 episode (one capture, one body: a body can never contain `<`) is exactly

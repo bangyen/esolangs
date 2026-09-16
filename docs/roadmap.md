@@ -175,34 +175,30 @@ The candidate list is empty.
   few negative operands (which falsified the older all-alternating
   premise at n >= 4) with unused nonnegative quadratics, keeping the
   same floor, checked in exact integers on emitted artifacts and
-  executed multiples (`notes/poly_rhp_superlinear.py`).  The sign freedom
-  that escapes it is measured near-empty: a negative real part decodes
-  and runs (`notes/poly_negative_operand.py`), and minimising total
+  executed multiples.  The sign freedom that escapes it is measured
+  near-empty: a negative real part decodes and runs, and minimising total
   digits over sign patterns saves at most 5.2% with the growth exponent
-  unmoved -- `|F(iy)|` is sign-invariant on the whole imaginary axis
-  (`notes/poly_sign_growth.py`).  Multiplying by ignored roots preserves
-  the decoded program and runs (`notes/poly_multiple_runs.py`), but
+  unmoved -- `|F(iy)|` is sign-invariant on the whole imaginary axis.
+  Multiplying by ignored roots preserves the decoded program and runs, but
   [generic sparse-multiple algorithms][sparse-multiples] are exponential in
   the requested sparsity, and an LLL sweep of every multiple with bounded
-  cofactor degree returns the trivial shifts unchanged
-  (`notes/poly_lll_multiple.py`).  The term floor is language-level on the
-  whole plane: any multiple of a product with `m_r` real factors has at
-  least `m_r + 1` terms (Descartes, `notes/poly_descartes_terms.py`), and
-  real instructions are forced -- `B >= (N'(k+1) - E(k))/2` per level, a
-  routing bound the register overwrite makes a proof
-  (`notes/poly_routing_floor.py`) -- so every multiple of every
-  dense-table program carries `Omega(T/log T)` monomials.  That matches
+  cofactor degree returns the trivial shifts unchanged.  The term floor is
+  language-level on the whole plane: any multiple of a product with `m_r`
+  real factors has at least `m_r + 1` terms (Descartes), and real
+  instructions are forced -- `B >= (N'(k+1) - E(k))/2` per level, a
+  routing bound the register overwrite makes a proof -- so every multiple
+  of every dense-table program carries `Omega(T/log T)` monomials.  That matches
   rather than separates.  A linear generator therefore needs a direct
   multiple that exploits roots with negative real part -- negative
   operands or a left-half-plane cofactor -- specialized to the
   prime-power instruction roots, not an optimization search; the general
   form of that question is the input-`t` sparse-multiple problem the
   literature leaves open and suspects NP-complete
-  (`notes/poly_open_literature.py` carries the case-match).  The operand
+  (the case-match is carried separately).  The operand
   half of that escape is now measured directly: coordinate-descent over
   every complex operand -- positive, negative-only (the uncovered
   90..135-degree sector), and mixed, with and without forced real
-  factors, m <= 16 (`notes/poly_lhp_search.py`) -- bottoms out at the
+  factors, m <= 16 -- bottoms out at the
   pure-imaginary build in every class, negative operands buying under
   4% with `mass/m^2` rising throughout, so deep-LHP *operands* alone do
   not bend the growth and what remains is the left-half-plane
@@ -216,7 +212,7 @@ The candidate list is empty.
   magnitude relations.  Shipping the
   factored form instead is not
   available: the parser reads only summed monomials and misreads a product
-  silently (`notes/poly_factored_probe.py`).
+  silently.
 
   Treat every emitted character as build work.  Input reordering is optional
   around the construction, but its work still counts toward end-to-end
