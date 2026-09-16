@@ -81,10 +81,8 @@ on input 1 is unreachable under all 384 readings.  The randomness caveat
 recorded during this screen -- tone 0 picks a random direction, `en`
 pushes a random 0/1 -- was not what sank it.
 
-*(Do not read a missing generator as an open candidate.  Pinyin has no
-generator because it was rejected, not because it is pending; the
-distinction lives in `docs/roadmap.md`'s history, not in the tools
-directory.)*
+Rejections and prunings are recorded in `docs/roadmap.md` and its history,
+not in `src/esolangs/tools/`, which holds only what survived.
 
 ABCDirection is **not** a candidate -- it was implemented here and then
 removed; the rationale is in git history, not on the wiki.
