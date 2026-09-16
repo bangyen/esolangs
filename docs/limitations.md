@@ -44,7 +44,7 @@ conditional re-enqueue route remains open.
 
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
-| Polynomial | 10 | 10 | 1,934-instruction guard; dense n=11 is 124 MB and runs in 267 s. |
+| Polynomial | 10 | 10 | 1,934-instruction guard; dense n=11 was 124 MB and ran in 267 s under the previous spelling. |
 | WII2D | 9 | 10 | Cost policy: dense n=10 leaves a domain past the admitted 256. |
 | ZTOALC L | 10 | 10 | n=11 needs 545–587 command slots; the line ceiling admits at most 395. |
 
@@ -56,7 +56,7 @@ is refused here on cost, not reach -- the four refusing dense n=9 tables cost
 0.8–1.6 MB each and the decode reaches domain 512.
 
 Uncapped dense-program sizes at n=8/n=9: Circuit Diagram 1.78/2.51 MB,
-Polynomial 3.38/10.90 MB, SLOW ACV MAMMALIAN 456/799 KB, 123 22.4/44.7 KB,
+Polynomial 1.59/5.02 MB, SLOW ACV MAMMALIAN 456/799 KB, 123 22.4/44.7 KB,
 bit~ 27.5/55.3 KB, Factor 17.2/35.5 KB, ROTfuck 14.9/28.8 KB, COD
 294/554 bytes. Run generated programs before claiming size or equivalence.
 

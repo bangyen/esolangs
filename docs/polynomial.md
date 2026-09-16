@@ -25,8 +25,14 @@ root's real part, and `f(x) = 1x^6-130x^5+3563x^4+41030x^3+255186x^2+
 A complex instruction `[a, b]` is `(x-a)^2 + p**(2b)`, so its linear
 coefficient `-2a` flips sign with `a`.  The older builder-specific argument
 (all factors sign-alternating, hence Omega(m^2) digits) had a FALSE premise
-at n >= 4: shipped dense builds carry 0/36, 1/70, 4/117, 6/187 negative
-complex operands at n=3..6, operands -1..-3, all at b=3.
+at n >= 4, and the current builder abandons the premise outright: it spells
+every subtraction as `+=` with a negative operand and every chain park as a
+negative operand at `b = 1`, because the digits an instruction costs are
+`2b log p` (or `v log p` for a test) and `-=`, `if == 0` and `//=` are
+`b = 2`, `v = 4`, `b = 4`.  That is a constant factor -- dense n=8..10
+render 2.1x shorter (1.59, 5.02, 16.9 MB) -- and puts the shipped programs
+in the sector the right-half-plane theorem below does not cover; their
+growth is unchanged in kind (x3.2..3.4 per added input at n=8..10).
 
 Sign freedom is measured near-empty.  On prefixes of the dense n=6 build
 (187 instructions), minimising rendered digits over operand sign patterns
@@ -68,7 +74,7 @@ destination for both bit values, so `N'(k+1) <= 2B + E(k)`, i.e.
 level, `E` those with equal halves).  Executed on machine- and tree-shaped
 builds at n=3..5 over every input; the floor on the dense fixture runs 16,
 52, 128 at n=8, 10, 12, 0.38..0.53 of `T/log2 T`.  The shipped machines put
-the real share at 0.32..0.36 of the instruction list.  A loop changes
+the real share at 0.36 of the instruction list.  A loop changes
 nothing: entries 7 and 10 leave `while (reg > 0) reg -= 3` in identical
 state, so an exit on the register merges a residue class rather than storing
 it.  Hence every multiple of every dense-table program carries
@@ -85,10 +91,12 @@ the `k` smallest linear constants (checked coefficientwise in integers on
 emitted artifacts and executed right-half-plane multiples).  Summing
 `k = 0..L` gives `(L+1) M / 2` digit mass, with `L = Omega(T/log T)` linears
 by the routing floor and `M = Omega(m_r log m_r)` from the distinct primes.
-A compensation lemma covers the shipped builds' `a = -1..-3` operands: a
+A compensation lemma covered the previous builder's `a = -1..-3` operands: a
 flipped `x^2 - 2bx + c` times an unused `x^2 + 2b'x + c'` is coefficientwise
 nonnegative iff `b' >= b`, `c + c' >= 4bb'`, `b'c >= bc'` (middles at most 6
-against constants at least 65; matching found and verified per build).
+against constants at least 65; matching found and verified per build).  The
+current builder's parks are negative operands in every block, so its
+programs are not covered by this theorem; the bound is about the language.
 Positivity forces every low coefficient at once, which Mahler measure, the
 primorial, and Newton polygons -- norms one heavy coefficient absorbs -- do
 not.  The hypothesis is load-bearing: `(x-2)(x-3)(x+2)(x+3) = x^4 - 13x^2 +
