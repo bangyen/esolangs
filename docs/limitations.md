@@ -42,12 +42,17 @@ conditional re-enqueue route remains open.
 | Generator | Dense | Parity | Limit |
 | --- | ---: | ---: | --- |
 | Polynomial | 10 | 10 | 1,934-instruction guard; dense n=11 is 124 MB and runs in 267 s. |
-| WII2D | 9 | 10 | Dense n=10 conflicts with the exactly-once embedding convention. |
+| WII2D | 9 | 10 | Cost policy: dense n=10 leaves a domain past the admitted 256. |
 | ZTOALC L | 10 | 10 | n=11 needs 545–587 command slots; the line ceiling admits at most 395. |
 
 WII2D n=9 is partial: 37 of 64 sampled dense tables build and the rest refuse
 promptly. Its magnitude guard is load-bearing. A per-node re-embed tree can
-build dense n=13, but is outside the generator contract.
+build dense n=13, but is outside the generator contract. None of that is a
+coverage gap: `proofs.md` now carries a total decode that stays inside the
+contract, folding the extremal same-colour pair instead of the cheapest one.
+It is refused here on cost, not reach — the extremal fold spells its centres
+in unary, so the four refusing dense n=9 tables cost 0.8–1.6 MB each, and the
+decode alone reaches domain 512.
 
 Uncapped dense-program sizes at n=8/n=9: Circuit Diagram 7.91/11.39 MB,
 Polynomial 3.38/10.90 MB, SLOW ACV MAMMALIAN 456/799 KB, 123 22.4/44.7 KB,
