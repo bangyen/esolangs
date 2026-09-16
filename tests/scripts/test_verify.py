@@ -140,6 +140,67 @@ class TestPytestScopeCollects:
         assert list(verify.COLLECTED_PATTERNS) == patterns
 
 
+class TestScopedCoverageMeasuresTheTouchedFiles:
+    """A scoped run measures only what the touched-file gate will read.
+
+    Whole-package coverage is 13s of a 27s run and the gate reads only the
+    ``src/esolangs`` files the branch touched, so the scoped command narrows
+    the measurement to those.  The narrowing must hand the gate the same
+    files it will look for, and must not leave a stray ``--cov`` behind that
+    would widen the measurement back out.
+    """
+
+    COV = ("python", "-m", "pytest", "-q", "--cov", "--cov-branch", "--cov-report=")
+
+    def test_touched_source_files_become_an_include_rc(self) -> None:
+        """The rc names exactly the touched ``src/esolangs`` files."""
+        verify = load_script()
+        cmd = verify._scoped_coverage(  # noqa: SLF001
+            list(self.COV),
+            ["src/esolangs/vm.py", "tests/test_vm.py", "src/esolangs/tools/x.py"],
+        )
+        assert "--cov" in cmd
+        assert "--cov-branch" not in cmd  # the rc carries branch=True
+        rc = next(c for c in cmd if c.startswith("--cov-config=")).split("=", 1)[1]
+        text = Path(rc).read_text(encoding="utf-8")
+        assert "include =" in text
+        assert "src/esolangs/vm.py" in text
+        assert "src/esolangs/tools/x.py" in text
+        assert "tests/test_vm.py" not in text
+        assert "branch = True" in text
+        assert "source" not in text  # coverage ignores include beside source
+
+    def test_no_touched_source_file_measures_nothing(self) -> None:
+        """Nothing for the gate to read means no coverage flags at all."""
+        verify = load_script()
+        cmd = verify._scoped_coverage(list(self.COV), ["tests/test_vm.py"])  # noqa: SLF001
+        assert not any(c.startswith("--cov") for c in cmd)
+        assert cmd == ["python", "-m", "pytest", "-q"]
+
+    def test_a_command_without_coverage_is_left_alone(self) -> None:
+        """The narrowing has nothing to say to a step that never measured."""
+        verify = load_script()
+        bare = ["python", "-m", "pytest", "-q"]
+        assert verify._scoped_coverage(bare, ["src/esolangs/vm.py"]) == bare  # noqa: SLF001
+
+    def test_the_whole_suite_fallback_still_narrows(self) -> None:
+        """Widening the *tests* run does not widen the *measurement*.
+
+        Which tests run and which files are measured are separate questions:
+        a helper change runs every test but the gate still reads only the
+        touched source, so the rc is applied on that path too.
+        """
+        verify = load_script()
+        cmd = verify._scoped_cmd(  # noqa: SLF001
+            "pytest",
+            list(self.COV),
+            ["tests/tools/boolean_oracles.py", "src/esolangs/vm.py"],
+        )
+        assert cmd is not None
+        assert any(c.startswith("--cov-config=") for c in cmd)
+        assert not any(c.startswith("tests/") for c in cmd)
+
+
 CI = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 
 
