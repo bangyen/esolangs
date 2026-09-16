@@ -53,6 +53,16 @@ leaf rings the ant rests in, and the interpreter's raster drew painted cells
 only, so the ant was invisible and the rings identical; ``render`` now marks
 the ant's own cell, with ``o`` on black and ``@`` on white.
 
+**The ``_fill_*`` functions here are the only place a setter is spelled.**
+A caller that wants one -- a test, a harness, a script -- imports it rather
+than writing the same substitution again.  This is not style: a generator
+lays its template out by counting the positions a filled setter will take,
+so a second spelling that drifts in width moves every jump target after it.
+When that happened the instantiated program did not fail, it addressed
+commands that were no longer there and looped, and the suite hung instead of
+reporting anything.  Minsky Swap's copy is the worked example; NoComment's
+and RAM0's had not drifted yet and were retired for the same reason.
+
 Every boolean generator whose answer a program can report therefore has a
 committed example.
 """

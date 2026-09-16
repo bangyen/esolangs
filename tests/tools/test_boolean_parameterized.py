@@ -568,13 +568,18 @@ class TestParameterizedNoComment:
         return buffer.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools import parameterized
+        """Fill through the shipped filler, not a copy of it.
 
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda _i, b: "c" if b == 0 else "i",
-        )
+        The setter here is one character and the same at every position, so
+        a copy of it looks harmless -- but the generator counts instantiated
+        positions when it lays out the template, so a copy that drifted in
+        *width* would move every offset after it.  Minsky Swap's copy did
+        exactly that and the suite hung rather than failing, which is a
+        worse outcome than any this duplication was buying.
+        """
+        from esolangs.tools.examples import _fill_nocomment
+
+        return _fill_nocomment(tpl, bits)
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -917,15 +922,18 @@ class TestParameterizedRam0:
         return m.group(1)
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools import parameterized
+        """Fill through the shipped filler, not a copy of it.
 
-        # Z resets absolutely, so the setter is the same at every position:
-        # "Z A" for a one, "Z Z" for a zero, each exactly two commands.
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda _i, b: "Z A" if b else "Z Z",
-        )
+        ``Z`` resets absolutely, so the setter is the same at every
+        position -- ``Z A`` for a one, ``Z Z`` for a zero, two commands
+        either way -- which is what made a local copy look safe.  It is
+        still a second spelling of a construction the generator counts
+        positions against, and that is the shape that hung the suite when
+        Minsky Swap's copy drifted.
+        """
+        from esolangs.tools.examples import _fill_ram0
+
+        return _fill_ram0(tpl, bits)
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -1043,9 +1051,9 @@ class TestParameterizedMinskySwap:
         class pins is the truth table the instantiated program computes, and
         that is checked below either way.
         """
-        import esolangs
+        from esolangs.tools.examples import _fill_minsky_swap
 
-        return esolangs.instantiate("Minsky Swap", tpl, bits)
+        return _fill_minsky_swap(tpl, bits)
 
     @pytest.mark.parametrize(
         ("table", "n"),
