@@ -34,7 +34,10 @@ constraint weight.  Summed over the peel, ``4 * n`` per clause is ``4 * n
 + 36 * 2**n`` by the clause bound, and the second term is at most ``4 *
 2**dim`` per clause, hence ``4 * 2**n`` over the disjoint cubes.  Register
 upkeep is therefore O(T) -- under ``40 * 2**n + 4 * n`` lines -- and its
-measured share stays under half of the emitted text.  The reduced-echelon
+measured share stays under half of the emitted text.  The bank holds at
+most ``n**2`` registers (:func:`_bank_cap`), so a register name is never
+longer than two input names and a full bank respells its least recently
+used free register at the same cost as a fresh one.  The reduced-echelon
 basis alone would not give this: on a cube whose columns spread over
 ``2**dim`` values it weighs ``n * dim / 2`` however the pivots are
 chosen, which is ``Theta(T log log T)`` at the ``log2(n)`` dimensions the
@@ -53,6 +56,19 @@ _RESERVED = {"Inp", "Nil", "l", "loop"}
 # cap -- a missed direction only costs cover size -- and 48 keeps the
 # popular-difference scan linear in the remainder instead of quadratic.
 _CANDIDATE_CAP = 48
+
+
+def _bank_cap(n: int) -> int:
+    """Live registers allowed for an ``n``-input table.
+
+    Uncapped, the bank grows with the peel -- 7 registers at n=6 to 117 at
+    n=13, about ``2**(n/2)`` -- and names for that many registers would put
+    a factor of ``n`` on every reference.  ``n**2`` keeps a register name
+    within twice an input name's length, always leaves a free register (a
+    clause binds at most ``n - 1``), and never binds at measured sizes;
+    ``n`` or ``2 * n`` would cost 40% and 23% at n=13 in forced respelling.
+    """
+    return n * n
 
 
 def _name(index: int) -> str:
@@ -303,6 +319,7 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
                 )
                 if exact is not None:
                     register = exact
+                    bank[register] = bank.pop(register)  # most recently used
                 else:
                     nearest: str | None = None
                     distance = w.bit_count()
@@ -312,30 +329,32 @@ def vandevelo(truth_table: str, width: int | None = None) -> str:
                         d = (held ^ w).bit_count()
                         if d < distance:
                             nearest, distance = r, d
-                    if nearest is None:
+                    if nearest is not None:
+                        register = nearest
+                        toggles = _points(bank.pop(register) ^ w)
+                    elif len(bank) < _bank_cap(n):
                         register = _name(next_register)
                         next_register += 1
-                        bits = _points(w)
-                        first, rest_bits = ref(bits[0]), bits[1:]
+                        toggles = _points(w)
+                    else:
+                        # Bank full: respell the least recently used free
+                        # register, which costs what a fresh one would.
+                        register = next(r for r in bank if r not in used)
+                        del bank[register]
+                        toggles = _points(w)
+                    if nearest is None:
+                        first, toggles = ref(toggles[0]), toggles[1:]
                         lines.append(
                             f"{register}~>{first}?"
                             if compact
                             else f"{register} ~> {first}?"
                         )
-                        for b in rest_bits:
-                            lines.append(
-                                f"{register}~>{register}?!={ref(b)}?"
-                                if compact
-                                else f"{register} ~> {register}? != {ref(b)}?"
-                            )
-                    else:
-                        register = nearest
-                        for b in _points(bank[register] ^ w):
-                            lines.append(
-                                f"{register}~>{register}?!={ref(b)}?"
-                                if compact
-                                else f"{register} ~> {register}? != {ref(b)}?"
-                            )
+                    for b in toggles:
+                        lines.append(
+                            f"{register}~>{register}?!={ref(b)}?"
+                            if compact
+                            else f"{register} ~> {register}? != {ref(b)}?"
+                        )
                     bank[register] = w
                 used.add(register)
                 part = register
