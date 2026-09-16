@@ -189,6 +189,37 @@ class TestFactorint:
 
         assert _factorint(number) == sympy.factorint(number)
 
+    @pytest.mark.parametrize(
+        "number",
+        [
+            # Above _BATCH_BITS, so the chunk is tested by one gcd rather
+            # than a remainder per prime.  Only 2 divides, so every other
+            # prime in the chunk has to fall through the gcd's answer.
+            pytest.param(2**9000, id="one-small-prime"),
+            # Two primes far apart, the larger past the first chunk: the
+            # batch has to survive a residue that keeps shrinking under it,
+            # and a later chunk's gcd has to still find 20011.
+            pytest.param(2**9000 * 3**40 * 20011, id="across-chunks"),
+        ],
+    )
+    def test_the_batched_chunk_answers_what_the_divisions_would(
+        self, number: int
+    ) -> None:
+        """The gcd shortcut must find exactly the primes the loop found.
+
+        A chunk-wide gcd replaces one full-width remainder per prime, which
+        is what made loading a wide program quadratic.  It is only sound
+        because a prime divides the number exactly when it divides that
+        gcd, and only taken above ``_BATCH_BITS`` -- so these are the
+        numbers that reach it, checked against sympy like every other.
+        """
+        import sympy
+
+        from esolangs.interpreters.tape_based.factor import _BATCH_BITS, _factorint
+
+        assert number.bit_length() >= _BATCH_BITS, "would not reach the batch"
+        assert _factorint(number) == sympy.factorint(number)
+
     def test_does_not_strand_a_large_composite_on_sympy(self) -> None:
         """The residue handed to sympy must never be a large composite.
 

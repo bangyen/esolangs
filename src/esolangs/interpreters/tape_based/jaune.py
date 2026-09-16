@@ -188,20 +188,31 @@ def _set(cells: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
     return (*cells[:ptr], value, *cells[ptr + 1 :])
 
 
-def _find(commands: Sequence[_Command], op: str, num: int | None) -> int | None:
-    """Return the index of the ``op`` marker whose argument is ``num``."""
+def _markers(commands: Sequence[_Command]) -> dict[tuple[str, int | None], int]:
+    """Return the index of the first marker for each ``op`` and argument.
+
+    Built once per program.  Every jump used to scan the command list for
+    its target, so a program with Theta(T) jumps over Theta(T) commands paid
+    Theta(T) to find each one.  First occurrence wins, which is the command
+    the old scan returned.
+    """
+    marks: dict[tuple[str, int | None], int] = {}
     for i, cmd in enumerate(commands):
-        if cmd.op == op and cmd.arg == num:
-            return i
-    return None
+        marks.setdefault((cmd.op, cmd.arg), i)
+    return marks
 
 
 def _advance(
     state: _State,
     commands: Sequence[_Command],
+    marks: dict[tuple[str, int | None], int],
     value: int | None = None,
 ) -> _State:
     """Return the state after executing ``cmd``.
+
+    ``marks`` is :func:`_markers` for ``commands`` -- the jump targets, read
+    rather than searched for.  Required rather than defaulted: rebuilding it
+    per step is exactly the cost this removed.
 
     Pure: it reads ``state`` and returns a new one.  ``^``'s printing is
     the caller's business -- the cell it prints is carried forward
@@ -247,19 +258,19 @@ def _advance(
     elif c == "-":
         cells = _set(cells, ptr, cells[ptr] - (cmd.arg or 1))
     elif c == "?":
-        target = _find(commands, ":", cmd.arg)
+        target = marks.get((":", cmd.arg))
         if target is None:
             raise HaltError(f"jump to undefined label {cmd.arg}")
         if cells[ptr] != 0:
             return (cells, ptr, hold, target, calls)
     elif c == "!":
-        target = _find(commands, ":", cmd.arg)
+        target = marks.get((":", cmd.arg))
         if target is None:
             raise HaltError(f"jump to undefined label {cmd.arg}")
         if cells[ptr] == 0:
             return (cells, ptr, hold, target, calls)
     elif c == "@":
-        target = _find(commands, "$", cmd.arg)
+        target = marks.get(("$", cmd.arg))
         if target is None:
             raise HaltError(f"call to undefined subroutine {cmd.arg}")
         return (cells, ptr, hold, target, (*calls, pos + 1))
@@ -269,7 +280,7 @@ def _advance(
         # branch is taken -- the grammar evaluates the number to have a
         # command at all -- so input advances either way.
         num = value if value is not None else 0
-        target = _find(commands, ":", num)
+        target = marks.get((":", num))
         if target is None:
             raise HaltError(f"jump to undefined label {num}")
         taken = cells[ptr] != 0 if c == "v?" else cells[ptr] == 0
@@ -277,7 +288,7 @@ def _advance(
             return (cells, ptr, hold, target, calls)
     elif c == "v@":
         num = value if value is not None else 0
-        target = _find(commands, "$", num)
+        target = marks.get(("$", num))
         if target is None:
             raise HaltError(f"call to undefined subroutine {num}")
         return (cells, ptr, hold, target, (*calls, pos + 1))
@@ -299,6 +310,10 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         self.io = io
         self.commands = _parse(code)
+        # Label and subroutine targets, matched once: the program is parsed
+        # and never rewritten, so every jump can read its target instead of
+        # searching the command list for it.
+        self.marks = _markers(self.commands)
         self.cells: tuple[int, ...] = (0,)
         self.ptr = 0
         self.hold = 0
@@ -402,7 +417,7 @@ class _Machine:
             ch = self.io.input_str()
             value = ord(ch[0]) - 48 if ch else 0
 
-        self._restore(_advance(self._state, self.commands, value))
+        self._restore(_advance(self._state, self.commands, self.marks, value))
 
 
 def run(code: str, io: IO) -> None:
