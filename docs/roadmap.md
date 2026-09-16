@@ -59,18 +59,19 @@ The candidate list is empty.
   programs against the current template; abandon it if the routing spends
   the apparent gain.
 
-- **Replace the generators that still search at build time.**  "Uses a
-  simulator" means the module drives an interpreter or an execution model
-  while generating, and only one of the three ways that happens is a
-  defect: driving a *search* over candidate codes.  Simulation used as
-  bookkeeping for what is already being emitted is fine, and size contests
-  run no simulator at all.  Minifuck's `_find_pool` closed this way -- by
-  rule rather than by trying five codes -- and the order for the rest is
-  `_try_print` first (smallest answer space, same evidence base), then
-  `_find_pool` at the canonical probe state, then `_find_pool` in general,
-  which is the real wall.  WII2D may not close; report the key rather than
-  force it.  A longer emitted program is an acceptable price for a rule,
-  and the replaced search stays in the tests as the oracle.
+- **Replace WII2D's build-time fold search.**  "Uses a simulator" means
+  the module drives an interpreter or an execution model while generating,
+  and only one of the three ways that happens is a defect: driving a
+  *search* over candidate codes.  Simulation used as bookkeeping for what is
+  already being emitted is fine, and size contests run no simulator at all.
+  WII2D's decode still enumerates the legal folds, validates each against
+  the decode model, and takes the head of a ranked shortlist.  The rule is
+  known -- folding the extremal same-colour pair is always legal, the
+  argument that made the decode total -- but shipped as the decoder it
+  builds the dense n=9 tables the current construction refuses, in seconds
+  and a megabyte each, so a swap must keep the prompt refusal or beat it on
+  executed programs.  A longer emitted program is an acceptable price for a
+  rule, and the replaced search stays in the tests as the oracle.
 
 - **`%^2^-1` fourteen inputs.**  The staged fold's endgame strands its last
   duplicated cofactor pairs.  Rank order is steerable (pulsed doubling), but
