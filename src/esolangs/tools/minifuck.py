@@ -71,33 +71,22 @@ _POOL = (0, 0, 1, 1, 0, 0, 0)
 # byte and not a tunable: it is the same 8 that ``_POOL`` above spells out.
 #
 # **Several numbers in this module are this one wearing different hats**, and
-# spelling them as literals hid a relationship the totality argument in
-# ``the relevant generator tests`` turns on.  What derives from it:
+# the totality argument in ``the relevant generator tests`` turns on the
+# relationship: the accumulator floor ``_endgame`` refuses below, the
+# sculpting rewind guard ``rewind > min(ptrs) - _POOL_WIDTH``,
+# :data:`_PROBE_WALK_OUT` and the lowest cell a round may write (both
+# ``_POOL_WIDTH + 1``), and the sculpting accumulator loop's start,
+# ``span + _POOL_WIDTH + 1``.
 #
-# * the accumulator floor -- ``_endgame`` refuses ``acc < _POOL_WIDTH``,
-#   because the accumulator has to sit past the pool;
-# * the sculpting rewind guard, ``rewind > min(ptrs) - _POOL_WIDTH``, which
-#   is what keeps a round's writes off the pool;
-# * :data:`_PROBE_WALK_OUT` and the lowest cell a round may write, both
-#   ``_POOL_WIDTH + 1``;
-# * the sculpting accumulator loop's start, ``span + _POOL_WIDTH + 1``.
+# That last pair is essential: the loop starting one *past* the guard is what
+# makes the rewind bound tight rather than slack, since the worst rewind is
+# ``lo - _POOL_WIDTH``, the guard itself, so the guard can never fire.
+# Spelled ``8`` and ``9`` the identity looks like a coincidence.
 #
-# The last pair is essential. The loop starting one *past* the
-# guard is exactly what makes the rewind bound tight rather than slack: the
-# worst rewind is ``lo - _POOL_WIDTH``, which is the guard itself, so the
-# guard can never fire.  Written as ``8`` and ``9`` the two look independent
-# and the identity looks like a coincidence.
-#
-# The staging path takes the same two: its accumulator loops start at
-# :data:`_PROBE_WALK_OUT`, and the counts spelled ``_MAX_ACC - _POOL_WIDTH``
-# are the length of that loop.  Only ``_MAX_ACC`` itself is a search bound.
-#
-# What is *not* this constant is ``_MUX_GUARD``'s ``8``, which is a scratch
-# width: collapsing it into this would assert a relationship that does not
-# hold.  It is not independent either, though, which is a separate point --
-# :func:`_mux_start`'s offset is derived from it, because the embed starts at
-# the shortest position whose leftmost write still clears the guard.  So the
-# two are coupled, just not through this constant.
+# The staging path takes the same two, and only ``_MAX_ACC`` itself is a
+# search bound.  ``_MUX_GUARD``'s ``8`` is *not* this constant but a scratch
+# width; it is not independent either, since :func:`_mux_start`'s offset
+# derives from it, but the two are coupled elsewhere.
 _POOL_WIDTH = len(_POOL) + 1
 
 # The two reads.  ``[<`` leaves the pointer at ``(acc-1) + v``; ``[x<[<``
@@ -192,24 +181,19 @@ def _step(carry: int = 1, backs: int = 1, *, odd: bool = True) -> str:
 # An override is ``(backs, odd)`` for the step it names, so the two free
 # variables stay visible side by side.
 #
-# **Why these values, and not a shorter description.**  The plans do not
-# compress further, which was measured rather than assumed.  ``core`` is not
-# derivable from the finished code: on a blank tape every plan with
+# **These values do not compress further**, which was measured.  ``core`` is
+# not derivable from the finished code: on a blank tape every plan with
 # ``core > 0`` ends at ``mark = steps + 1`` and ``pointer = steps`` whatever
-# the core's index -- verified for ``steps`` 1 to 40 -- so the blank-tape
-# outcome cannot pick it.  It is pinned on live states instead, and the two
-# properties split the way they do for the codes themselves.  Moving the core
-# strands tables at every alternative for three of the plans -- 22 for the
-# third, 18 for the fourth, 6 for the fifth -- which for the third and fourth
-# is exactly what dropping those codes outright costs.  The second plan's core
-# strands nothing at any alternative and is pinned by the quiet property
-# instead: slot order goes from 10 out-of-name-order templates to 18, the same
-# cost the ablation records for the non-stranding codes.
+# the core's index (verified for ``steps`` 1 to 40).  It is pinned on live
+# states instead.  Moving it strands tables at every alternative for three of
+# the plans -- 22 for the third, 18 for the fourth, 6 for the fifth -- which
+# for the third and fourth is what dropping those codes outright costs.  The
+# second plan's core strands nothing and is pinned by slot order instead, 10
+# out-of-name-order templates going to 18.
 #
-# Only the first plan's core moves freely, and that is not a fact about the
-# core.  That code answers no site at ``n <= 3`` at all -- it is one of the two
-# the ablation finds strands nothing -- so every spelling of it looks free at
-# the arity being measured.  The two spellings are genuinely different
+# Only the first plan's core moves freely, which is a fact about the arity
+# rather than the core: that code answers no site at ``n <= 3``, so every
+# spelling looks free there.  The two spellings are genuinely different
 # functions, leaving marks at cells 1, 2, 4 against a single mark at 3.
 _PLANS: tuple[tuple[int, int, dict[int, tuple[int, bool]]], ...] = (
     (2, 0, {1: (4, True)}),
@@ -960,233 +944,103 @@ def _reconverged(truth_table: str, essential: list[int], n: int) -> str | None:
 # plain run of ``k`` brackets from ``_BASE - 1`` sweeps that picture forward,
 # exposing a different function at each step.  So the whole problem is: pick
 # the separator, the bracket count and the accumulator, then hand the result
-# to the endgame every other route already uses.
-#
-# Which is small enough to *enumerate*.  :func:`_stagings` gives the order --
-# 5 separators x 2 settle counts x 29 bracket counts x 26 accumulators -- and
-# a table is built by the first entry that prints it, so no table of answers
-# is needed.
+# to the endgame every other route already uses.  That is small enough to
+# *enumerate*: :func:`_stagings` gives the order -- 5 separators x 2 settle
+# counts x 29 bracket counts x 26 accumulators -- and a table is built by the
+# first entry that prints it.
 #
 # :func:`_derived_plans` runs that enumeration for a whole arity at once,
 # which is what makes it affordable.  A staging is expensive to build and
 # cheap to test against a table, so the loops go staging-major: one embed per
 # (separator, settle), the bracket run extended one instruction at a time,
 # and the endgame emitted once per (k, accumulator, read, orientation)
-# whatever the table.  Measured, the whole three-input arity derives in 2.4s
-# and two inputs in 0.15s; the table-major spelling of the same search costs
-# minutes, because it rebuilds every staging once per table.  (Those two were
-# 15s and 0.9s when this was written and are re-measured here rather than
-# carried forward -- a timing in prose ages against every change under it.)
-#
-# What the three-input arity spends that on is 127 distinct stagings, spread
-# over all five separators -- 34, 29, 37, 23 and 4 of them -- and both settle
-# counts, 94 at zero and 33 at one.  The load is nowhere near even, and
-# separator 4 carrying four stagings is the reason the list is not trimmed on
-# a glance at how often each is named.
+# whatever the table.  Measured, three inputs derive in 2.4s and two in
+# 0.15s; the table-major spelling costs minutes, rebuilding every staging
+# once per table.
 #
 # Selection is on the accumulator's value **at the read**, not on the cell
-# that holds the answer beforehand.  Those differ, because the walk out
-# applies the running prefix-XOR: at ``acc = 22`` after separator 1, AND
-# ``(0,0,0,1)`` arrives as the constant ``(1,1,1,1)``, and XOR ``(0,1,1,0)``
-# arrives as ``b1``.  Choosing on the pre-walk column is what made an earlier
-# version of this cover 10 of the 16 two-input tables rather than all of them.
-# The enumeration sidesteps that trap by construction: it does not reason
-# about which column *ought* to arrive, it emits the endgame and reads what
-# the rows actually printed.
-#
-# A table and its complement share a staging, because the endgame tries both
-# read polarities and both pool orientations and the printed digit is
-# ``NOT(v XOR cell7)``, so the complement costs nothing to reach.  That is
-# why the counts below are given in complement pairs.
+# holding the answer beforehand: the walk out applies the running prefix-XOR,
+# so at ``acc = 22`` after separator 1, AND arrives as a constant and XOR as
+# ``b1``.  The enumeration sidesteps that by emitting the endgame and reading
+# what the rows actually printed.  A table and its complement share a staging
+# -- the endgame tries both read polarities and both pool orientations, and
+# the printed digit is ``NOT(v XOR cell7)`` -- so counts below are in pairs.
 _Staging = tuple[int, int, int | str, int]
 
-# **The population every figure below is stated over.**  109 is the number of
-# complement pairs of three-input tables that are non-degenerate *and* depend
-# on all three inputs: 128 pairs, less the 3 the degenerate route claims,
-# less the 16 that ignore an input and go to the projection route.  Saying
-# only "non-degenerate" leaves 125, and that missing half of the definition
-# is why two later re-probes could not reconcile these counts -- one of them
-# reporting 252, which is not a population at all but the column count of
-# :func:`_staging_index`, twice 126 because the index holds each column and
-# its complement.  Derived with :func:`essential_inputs` rather than a local
-# copy of the test.
+# Coverage is stated over the 109 complement pairs of three-input tables that
+# are non-degenerate *and* depend on all three inputs (128 pairs, less the 3
+# the degenerate route claims and the 16 that go to the projection route).
+# The enumeration reaches 108 of them and all 8 at two inputs.
 #
-# **Coverage, and the one table that must still be stored.**  The enumeration
-# reaches 108 of those 109 and all 8 at two inputs.  That the single miss is
-# the table named just below is what pins the definition: a wrong population
-# of a similar size would not put the holdout there.
-# The holdout is ``01101101`` / ``10010010``, and why is worth
-# knowing: it was the hardest table here by some margin and the searches
-# never built it at all -- both members raise after about 96 seconds.
+# The one holdout is ``01101101`` / ``10010010``, and the shape of the miss is
+# worth recording so it is not re-run blind.  Its answer column is not scarce
+# -- it stands at cell 24 under separator 2 at ``k == 15``, and 14375 of
+# 804600 sparse suffixes leave it standing somewhere -- but no staging
+# *carries* it to the read, because the walk's prefix-XOR rewrites that very
+# cell.  A pure bracket run never manages it, which is exactly why every
+# entry of :func:`_stagings` being a run puts it out of reach; the stored
+# suffix interleaves two ``<`` into the run instead.  A sweep over 13 of the
+# 15 (separator, settle) slices at ``k <= 40`` and every accumulator reached
+# Hamming distance 1 and never 0.  It is a gap in this family rather than a
+# wall: 180 of the 256 possible columns arrive, and no affine invariant
+# separates them from this one (all 255 parity masks checked).
 #
-# Its answer column is not scarce: 14375 of 804600 sparse suffixes leave it
-# standing somewhere on the tape.  What is scarce is a staging that also
-# *carries* it to the read, because the walk's prefix-XOR rewrites the very
-# cell.  A pure bracket run never manages it -- which is exactly why the
-# enumeration cannot reach it, every entry of :func:`_stagings` being a run --
-# and the stored suffix interleaves two ``<`` into the run instead.
+# What closed the *other* gaps was a wider separator set rather than a better
+# search -- see :data:`_SEPS`.  The bracket axis is *exhausted*, not capped:
+# nothing here writes leftward, so once every row's pointer has passed the
+# accumulator window no further bracket can change a staged column.  Measured,
+# columns stop changing between ``k == 25`` and ``k == 38``, the sweep ran to
+# 40, and the deepest first hit needed is ``k == 26`` at three inputs, which
+# is where :data:`_MAX_BRACKETS` comes from.  The settle and accumulator axes
+# were sampled rather than exhausted and came back empty.
 #
-# The shape of that miss is worth recording so it is not re-run blind.  Unlike
-# the tables the wider separator set closed, its answer *is* computed:
-# ``01101101`` stands as a column at cell 24 under separator 2 at ``k == 15``.
-# What fails is the carry -- no accumulator reads it intact, and from that
-# staging it arrives as ``10011101`` or ``01100010``, neither the table nor
-# its complement.  A sweep over 13 of the 15 (separator, settle) slices at
-# ``k <= 40`` and every accumulator found no staging that delivers it; the two
-# skipped slices scored worst on a cheap distance screen, and the five that
-# scored best -- reaching Hamming distance 1 but never 0 -- were all covered
-# and all missed.
+# **All four fields are enumerated because the simpler forms were measured
+# and fail.**  One fixed staging is impossible by counting: it offers 52
+# slots, but the prefix-XOR is many-to-one, so the best single staging
+# delivers 13 pairs and the mean is 5.8, against 109 to place.  Two
+# separators reach 49 of 109; dropping the settle field reaches 99, ten pairs
+# being reachable only at ``settle == 1``.  (Ablations must patch
+# :func:`_slices`, the enumeration the index really walks; patching
+# :func:`_stagings`, which has no callers, reports the baseline as the
+# ablation's result.  ``_staging_index`` is cached and must be cleared too.)
 #
-# It is a gap in this family, not a wall: 180 of the 256 possible columns
-# arrive across the family, and no affine invariant separates them from this
-# one (all 255 parity masks checked), so nothing here forbids it.
+# Nor is there a cheap predictor of which staging serves a table: at four
+# inputs no tested invariant yields a necessary condition, every (separator,
+# settle) slice contributes tables reachable nowhere else, and 72% of tables
+# are served by exactly one slice.  The column algebra does *invert* -- a
+# target's first pure-run staging can be computed directly from per-row
+# admissible-``k`` bitmasks, reproducing the index exactly -- but the 4640
+# stagings collapse to about 4190 distinct plan vectors, so there is no
+# many-to-one structure to exploit, and a per-table inversion runs 20-30ms
+# against a 0.4-0.75s whole-arity fill that then answers every table.
 #
-# What closed the *other* gaps was not a better search but a wider separator
-# set.  See the note on :data:`_SEPS`: the first two separators leave 126 of
-# the 252 columns standing, and 112 of the 120 tables the searches could not
-# reach did not stand as a column at all.  Three more separators carry 118 of
-# those 120, every one of which builds, computes and emits in name order.
-#
-# The bracket axis is *exhausted*, not capped, and that is checkable rather
-# than assumed.  Nothing in this language writes leftward -- ``[`` writes at
-# ``ptr + 1`` and, on the cascade, ``ptr + 2``, and the pointer only ever
-# advances -- so once every row's pointer has passed the accumulator window,
-# no further bracket can change a staged column.  Measured, the columns stop
-# changing between ``k == 25`` and ``k == 38`` depending on separator and
-# settle count, so the sweep ran to 40 and anything past it is provably
-# redundant.  The deepest first hit the enumeration actually needs is
-# ``k == 26`` at three inputs and ``k == 6`` at two, where
-# :data:`_MAX_BRACKETS` comes from; stopping at 30 would have been a cap
-# rather than a bound.
-#
-# The other two axes were *sampled* rather than exhausted and came back
-# empty -- settle counts 3 to 5 and accumulators 36 to 47 reached nothing the
-# shipped stagings did not.  That is evidence they are barren, not proof.
-#
-# **A simpler form was looked for and does not exist.**  This is what the
-# enumeration replaced a stored table with, and not what it could have been:
-# the wish was a *uniform* rule -- one staging, or at least one field fewer --
-# even at the cost of longer programs.  Every version of that was measured and
-# fails, which is why all four fields are still enumerated:
-#
-# * **One fixed staging: impossible**, and by counting rather than by search.
-#   A staging offers one column per accumulator and orientation -- 52 slots
-#   over the ranges used here -- but those collapse badly, because the walk's
-#   prefix-XOR is many-to-one and different accumulators keep arriving at the
-#   same column.  Measured over every staging in the family, **the best
-#   single one delivers 13 pairs and the mean is 5.8**, against 109 to place.
-#   So this is short by a factor of eight, not marginally.
-#
-#   Nor is there a *cheap predictor* of which staging serves a table.
-#   Measured on the full many-to-many relation (not on the first-hit
-#   assignment, which is contaminated by separator 0 claiming everything it
-#   reaches first): at four inputs no tested invariant yields a necessary
-#   condition, every one of the ten (separator, settle) slices contributes
-#   tables reachable nowhere else, and 72% of tables are served by exactly
-#   one slice.  Hamming weight does predict a *rate* -- 78.4% reachable at
-#   weight 2 and 14 against 18.8% at weight 8 -- but no weight class is
-#   empty, so nothing licenses declining early.  See
-#   ``the relevant generator tests``.
-#
-#   An earlier version of this note said the map "behaves like a hash" and
-#   cannot be indexed at all, which overstated that evidence: it predates
-#   the closed-form column algebra, and the algebra *inverts*.  Computing a
-#   target's first pure-run staging directly -- per-row admissible-``k``
-#   bitmasks read off the bracket staircase, intersected across rows, first
-#   set bit in enumeration order -- reproduces the index exactly (all 252
-#   keys at three inputs, 464 sampled pure-claimed keys at four, zero
-#   mismatches).  What the measurements do support is *density*, not
-#   opacity: the 4640 stagings collapse to about 4190 distinct plan
-#   vectors, so there is no large many-to-one structure to exploit, a
-#   per-table inversion of the insert family has no demonstrated
-#   sub-sweep form, and the pure inversion runs ~20-30ms a table against a
-#   0.4-0.75s whole-arity fill that then answers every table -- which is
-#   why the tabulation stays.
-# * **Two separators: 49 of 109.**  Re-measured; the figure here read 99,
-#   which was wrong by more than half -- most likely copied from the settle
-#   line directly below, whose 99 is correct.  The direction of the old
-#   claim survives and is in fact stronger: two separators cover well under
-#   half the population, so the stragglers need a different separator rather
-#   than a longer program, which is why the enumeration walks all five.
-# * **Dropping the settle field: 99 of 109.**  Confirmed.  Ten pairs are
-#   reachable only at ``settle == 1``, so the staging cannot shrink to three
-#   fields.
-#
-#   Both ablations are measured against :func:`_slices`, the enumeration the
-#   index really walks.  Patching :func:`_stagings` instead measures nothing
-#   -- it has no callers -- and reports the baseline as the ablation's own
-#   result, which is a third instance of the false negative this module has
-#   now produced twice before (see :func:`_staging_index` and the mux
-#   sculpt).  ``_staging_index`` is cached, so a variant that does not clear
-#   it reports the baseline for the same reason.
-#
-# Separator 0 is the one curiosity: no *three-input* table needs it, since
-# separators 1 to 4 reach 108 of the 109 between them.  It is enumerated
-# first anyway because it carries every two-input table on its own, and
-# :data:`_SEP` and :data:`_SCAN_SEPS` use it.
-#
-# **What happened at four inputs, back when the searches were here.**
-# Four-input AND and NAND build in 0.2s and a table depending on one input in
-# 2.4s -- all before the staging, by the degenerate and projection routes.
-# What the searches could not build was four-input XOR, and the diagnosis at
-# the time was that the pool was fine and the search depth was the wall:
-# XOR's failed attempt made 1016 pool lookups, 508 of them successful, the
-# same one-in-two rate the three-input arity shows.
-#
-# That reading was right about the pool and incomplete about the wall.  XOR
-# now builds from a staging, and the thing that had to change was neither the
-# search nor the pool but the *suffix*: with ``'[' * k`` the only spelling
-# available, the enumeration could not reach it.  See :data:`_STAGED_ARITIES`
-# and :func:`_insert_suffixes`.  The searches remain what the other 76% of
-# the arity falls through to, and the depth is still their limit.
-#
-# Which code answers does shift with arity, which is worth knowing before
-# trimming the list on three-input evidence.  On the four-input tables measured
-# here, sixteen-row joints were served by the third and fifth codes, and the
-# fifth answers almost nothing below four inputs -- so an ablation at
-# ``n <= 3`` under-reports what it is for.  The split is table-dependent and
-# the sample is small: the sites from a four-input AND were answered by the
-# fifth code alone, while the failing XOR's were answered by both.  Take this
-# as "arity changes which code answers", not as a census.
+# Separator 0 is enumerated first although no three-input table needs it:
+# it carries every two-input table on its own, and :data:`_SEP` and
+# :data:`_SCAN_SEPS` use it.
 
 # The arities the enumeration covers.  Two and three are *total*; four and
-# five are partial, and are here because partial beats the fall-through each
-# replaces.  Beyond five the gate stays explicit rather than implied by a
-# miss: it is not that the enumeration is known to fail there, but that it
-# has not been shown to succeed, and this list is the place that claim is
-# made.
+# five are partial, and ship because a miss falls through to the searches, so
+# admitting an arity cannot cost coverage.  Beyond five the gate stays
+# explicit: not that the enumeration is known to fail, but that it has not
+# been shown to succeed.
 #
-# Five was gated shut on exactly that wording until the family was harvested
-# at that arity, which is the measurement that opened it: 24582
-# fully-essential 32-bit columns, complement-closed, five-input XOR among
-# them.  It is a 0.00057% slice rather than four inputs' quarter, and it
-# ships on the same argument -- a miss falls through, so admitting the arity
-# cannot cost coverage.  The one thing that had to change to make it runnable
-# at all is that :func:`_derived_plans` is asked for the tables it wants
-# rather than for the whole arity.
-#
-# Four inputs is gated on measurement rather than hope: the insert family
-# below reaches 15404 of the 64594 fully-essential four-input tables (23.9%),
+# Four reaches 15404 of the 64594 fully-essential four-input tables (23.9%),
 # four-input XOR among them -- the table the searches are recorded as failing
-# on.  A table the derivation misses still falls through to the searches, so
-# admitting the arity cannot cost *coverage*.
+# on, and what closed it was the *suffix* rather than the search or the pool
+# (see :data:`_STAGED_ARITIES` and :func:`_insert_suffixes`).  Five ships on
+# a harvest of 24582 fully-essential 32-bit columns, complement-closed, with
+# five-input XOR among them; what made it runnable is that
+# :func:`_derived_plans` is asked for the tables it wants rather than for the
+# whole arity.
 #
-# What it costs is time, and the shape of that cost is worth stating plainly
-# because it is unlike the other arities.  At two and three inputs the
-# derivation stops early: every table is placed, so ``remaining`` reaches
-# zero partway through.  At four it never can -- 76% of the arity is
-# unreachable -- so the enumeration always runs to its caps, measured at
-# about 76 seconds.  That is paid by the first fully-essential four-input
-# table in a process whether it hits or misses, and :func:`_derived_plans` is
-# cached, so it is paid once.  Constants, projections and any table with an
-# ignored input are answered by the degenerate and projection routes in
-# :func:`minifuck` before the staging is consulted at all, and never pay it.
-#
-# The caps are not slack that could shorten this.  Coverage climbs to both of
-# them -- suffixes to ``k == 28`` and accumulators to 34 -- with 12256 tables
-# at ``k <= 24`` against 15404 at 28, so a trim to buy time is a trim to
-# coverage.  ``_stagings`` takes ``n`` for arity-dependent caps; measurement
-# says this arity wants the full ones.
+# Four inputs costs time in a way the others do not.  At two and three every
+# table is placed, so the derivation stops early; at four it never can, so
+# the enumeration runs to its caps -- about 76 seconds, paid by the first
+# fully-essential four-input table in a process whether it hits or misses,
+# and once, since :func:`_derived_plans` is cached.  Constants, projections
+# and tables with an ignored input never reach it.  The caps are not slack:
+# coverage climbs to both of them, with 12256 tables at ``k <= 24`` against
+# 15404 at 28, so trimming to buy time trims coverage.
 _STAGED_ARITIES = (2, 3, 4, 5)
 
 # How far the enumeration runs.  Both caps are the measured maximum over
@@ -1208,23 +1062,18 @@ _MAX_ACC = 34
 # How much of the enumeration a caller is willing to spend, counted in
 # **stagings visited** rather than in seconds.
 #
-# The unit is the point.  A wall-clock budget would make the generator
-# non-deterministic across machines: the same table would build on a fast
-# host and raise on a slow one, and the template a table gets would depend
-# on how loaded the box was.  A staging is one ``(separator, settle,
-# suffix, accumulator)`` tuple in :func:`_stagings` order, so counting them
-# is identical everywhere -- a budget picks out the *same* set of tables on
-# a Raspberry Pi and on an M3, and the emitted programs stay byte-identical.
-# The count also tracks real work: :func:`_column_sweep` derives a staging's
-# whole accumulator range from one walk, making a visited staging roughly a
-# constant unit.
+# The unit is the point: a wall-clock budget would build a table on a fast
+# host and raise on a slow one.  A staging is one tuple in
+# :func:`_stagings` order, so a budget picks out the *same* set of tables
+# everywhere and the emitted programs stay byte-identical.  It also tracks
+# real work, since :func:`_column_sweep` derives a staging's whole
+# accumulator range from one walk.
 #
-# **A budget costs program length, not coverage.**  A table the budget stops
-# short of falls through to :func:`_mux`, which is total at four inputs at
-# about 11ms -- so lowering this cannot make a table unbuildable.  What it
-# trades is the staged route's much shorter template (measured at four
-# inputs: 205 characters against the sculpted route's 952) for the tables it
-# gives up.  That is why a slow host can lower it safely.
+# **A budget costs program length, not coverage.**  A table it stops short of
+# falls through to :func:`_mux`, total at four inputs at about 11ms, so
+# lowering this cannot make a table unbuildable -- it trades the staged
+# route's shorter template (205 characters at four inputs against the
+# sculpted route's 952) for the tables it gives up.
 #
 # ``None`` means no budget, which is what ships at four inputs and below:
 # the default must reproduce the enumeration exactly there, or every
@@ -2262,127 +2111,96 @@ def _staged(truth_table: str, n: int) -> str | None:
 # The sculpted route: separate every row into its own pointer position, then
 # fix the printed column one row at a time, from the highest position down.
 #
-# This is the construction that closes the four-input residue, and it embeds
-# each input **exactly once** -- the repo-wide rule every parameterized
-# generator holds to (see ``docs/limitations.md``) is kept, not carved out.
-# The observation it stands on is that the embed already put the whole row
+# This closes the four-input residue, and it embeds each input **exactly
+# once** -- the repo-wide rule (see ``docs/limitations.md``) is kept, not
+# carved out.  It stands on the embed having already put the whole row
 # identity on the tape: ``_embed``'s walk transform is affine and invertible,
-# so after the embed no two rows are in the same state, and converting that
-# state difference into a *pointer* difference needs reads of what is already
-# there, never another copy of an input.
+# so no two rows are in the same state afterwards, and converting that state
+# difference into a *pointer* difference needs only reads of what is there.
 #
-# **Separation** is that conversion, and it is *constructed* -- closed form in
-# ``n``, no search anywhere.  Weight each input as it lands, so the pointer
-# ends holding the row's binary expansion:
+# **Separation** is that conversion, constructed in closed form with no
+# search.  Weight each input as it lands, so the pointer ends holding the
+# row's binary expansion::
 #
 #     for i in range(n):
 #         setter(i); weight(2**(n-1-i)); pad
 #
-# :func:`_mux_weight` is what makes a bit worth more than one step.  A
-# restoring read ``[x<[<`` displaces by the bit and puts the cell back, so it
-# can be read again; ``k`` of them with a one-cell rewind between compound to
-# exactly ``-k`` times the bit -- measured linear for ``k`` of 1 to 8.  The
-# pointer therefore lands at ``c0 - sum(2**(n-1-i) * x_i)``, which is affine
-# in the inputs and injective by binary expansion: all ``2**n`` rows are
-# separated by construction, and nothing has to be searched for or checked
-# row by row.
+# :func:`_mux_weight` is what makes a bit worth more than one step: a
+# restoring read ``[x<[<`` displaces by the bit and puts the cell back, so
+# ``k`` of them with a one-cell rewind between compound to exactly ``-k``
+# times the bit (measured linear for ``k`` of 1 to 8).  The pointer lands at
+# ``c0 - sum(2**(n-1-i) * x_i)``, injective by binary expansion, so all
+# ``2**n`` rows are separated by construction.
 #
-# Two conditions make the weights compose, and both were found by measuring
-# rather than by argument:
+# Two conditions make the weights compose, both found by measuring:
 #
 # * the bit must be **fresh**.  One ``[x`` between the setter and the gadget
-#   folds the bit into the running prefix-XOR, and every weight collapses
-#   to 1 -- which is exactly what an earlier per-setter attempt measured and
-#   read as a wall.  Once the displacement is banked in the pointer, though,
-#   arbitrary rightward padding preserves it (measured pad 0 to 10).
+#   folds it into the running prefix-XOR and every weight collapses to 1 --
+#   which is what an earlier per-setter attempt measured and read as a wall.
+#   Once the displacement is banked in the pointer, rightward padding
+#   preserves it (measured pad 0 to 10).
 # * gadgets must not reach into each other.  Weight ``k`` writes at most
-#   ``k - 3`` cells left of its setter, so :func:`_mux_pad` puts that much
-#   clear air plus the room the deepest rewind needs above cell 0.  The
-#   threshold ``2**(n-2) - 1`` is sharp -- below it the weights are still
-#   exactly right and the misses are rows clamping at the tape floor.
+#   ``k - 3`` cells left of its setter, so :func:`_mux_pad` leaves that much
+#   clear air plus the deepest rewind's room above cell 0.  The threshold
+#   ``2**(n-2) - 1`` is sharp -- below it the weights are still exactly right
+#   and the misses are rows clamping at the tape floor.
 #
-# This replaces four searches (a pointer-census BFS, a greedy pass over aimed
+# This replaced four searches (a pointer-census BFS, a greedy pass over aimed
 # reads, a beam over aimed-read sequences, and a two-machine BFS on one
-# colliding pair).  They cost 2.8s at three inputs and 15.0s at four, and
-# failed outright at five after 191 seconds; the construction is 0.0007s at
-# four and 0.004s at five.
-#
-# It also corrects what this comment used to claim.  "Reading a bit as it
-# lands does not help and cannot" was measured over a *stale* bit -- the
-# setter-read unit is shift-invariant over the uniform wake only once a walk
-# has crossed the bit.  Read while fresh and sandboxed, it is the whole
-# construction.
+# colliding pair) costing 2.8s at three inputs and 15.0s at four, and failing
+# outright at five after 191s.  The construction is 0.0007s at four and
+# 0.004s at five.
 #
 # **Sculpting** then edits the separated rows individually.  Fix a target
-# cell ``C`` below every row.  One round ``'<' * K + '[x' * K`` with
+# cell ``C`` below every row; one round ``'<' * K + '[x' * K`` with
 # ``K = b - C + 1`` has three provable effects:
 #
 # * the row at position ``b`` rewinds to ``C - 1`` and its first landing is
-#   ``C`` -- an *unconditional* flip, nothing crossed before it, so the flip
-#   is clean whatever that row's tape holds;
-# * a row above ``b`` starts its walk right of ``C`` and writes nothing below
-#   its own rewind point, so its cells at and left of ``C`` -- and therefore
-#   the value the endgame will read for it -- are untouched;
+#   ``C`` -- an *unconditional* flip, clean whatever that row's tape holds;
+# * a row above ``b`` starts right of ``C`` and writes nothing below its own
+#   rewind point, so the value the endgame reads for it is untouched;
 # * rows below ``b`` cross ``C`` on the way back and pick up value-dependent
-#   cascade debris from crossing ``C - 1``: scrambled, not controlled.
+#   cascade debris: scrambled, not controlled.
 #
 # So repeatedly fixing the *highest* disagreeing row strictly lowers the
-# frontier, and the loop lands in at most ``2**n`` rounds.  What used to be
-# the one non-structural residue -- the pool code, re-derived each round,
-# where a state-driven switch could in principle have disturbed a fixed row
-# through the walkout -- is now closed by name: the probe state is canonical
-# at every round, so the code is a constant and cannot switch.  See
-# :data:`_SCULPT_POOL_CODE`.  The loop keeps its allowance and its
-# fall-through anyway, because they cost nothing and the cap is what makes
-# "a stall returns None" true.  The trailing ``x`` on every round is
-# the ``_FLIP`` lesson again: a walk whose last ``[`` cascades leaves the
-# skip flag set, and the next instruction must be one the program can afford
-# to lose.
+# frontier and the loop lands in at most ``2**n`` rounds.  The pool code, once
+# the one non-structural residue, is closed by name: the probe state is
+# canonical at every round, so the code is a constant and cannot switch (see
+# :data:`_SCULPT_POOL_CODE`).  The loop keeps its allowance and fall-through
+# anyway, since they cost nothing and the cap is what makes "a stall returns
+# None" true.  The trailing ``x`` on every round is the ``_FLIP`` lesson
+# again: a walk whose last ``[`` cascades leaves the skip flag set, so the
+# next instruction must be one the program can afford to lose.
 #
 # **Coverage and cost, measured.**  All 3652 four-input tables the staged
 # families miss build through this route and print all 16 rows correctly on
-# the shipped interpreter, at one program width per table and with the slots
-# in name order -- which closes the arity: 64594 of 64594.  The arity's
-# separation, which used to be a 15-17s search, is now 0.0007s of
-# construction.
+# the shipped interpreter, which closes the arity at 64594 of 64594.
 #
-# **A build costs about 220ms and buys a 43% shorter program.**  It used to
-# cost 7ms by returning the first ``(C, orientation, read)`` that printed;
-# it now sculpts all of them and keeps the shortest, because the accumulator
-# sets the price of every round -- a round is ``3 * K + 1`` characters for a
-# rewind of ``K = frontier - C + 1`` -- and the first is a poor choice.
-# Measured over sampled four-input tables: first-ascending 1046 characters,
-# first-descending 700, minimum over all 594.  At five inputs the same change
-# takes XOR5 from 2511 characters to 1174.  Two probe savings pay part of the
-# extra work back (a hint carried between rounds, and scanning the pool codes
-# at the fixed probe distance rather than at the caller's accumulator), and
-# both are verified to leave the emitted template byte for byte identical.
+# A build costs about 220ms and buys a 43% shorter program.  It used to cost
+# 7ms by returning the first ``(C, orientation, read)`` that printed; it now
+# sculpts all of them and keeps the shortest, because the accumulator sets
+# the price of every round -- a round is ``3 * K + 1`` characters for a
+# rewind of ``K = frontier - C + 1`` -- and the first is a poor choice.  Over
+# sampled four-input tables: first-ascending 1046 characters,
+# first-descending 700, minimum over all 594; at five inputs XOR5 goes from
+# 2511 to 1174.  Two probe savings pay part of the extra work back and are
+# verified to leave the emitted template byte for byte identical.
 #
-# **The arity gate is gone entirely.**  This section used to say five was
-# absent because no derivation had separated 32 rows -- the searches ran 191
-# seconds and failed, always stalling on pairs differing in the first input.
-# The constructed separation above does it in 0.004s, and the rest of the
-# route was never arity-specific.  That first lifted five; what has since
-# replaced the tuple with :data:`_MUX_MIN_ARITY` is that "nothing in the
-# construction is aware of ``n``" stopped being an observation and became an
-# argument: every one of the route's six refusal sites closes uniformly in
-# ``n`` (``the relevant generator tests``, "Is ``_mux`` total?").  Sampled end
-# to end: 200
-# of 200 fully-essential five-input tables build and print all 32 rows
-# correctly on the shipped interpreter, five-input XOR among them, at about
-# 0.14s each.  Six inputs is the arity the gate used to refuse and it builds
-# the same way: the two tables that raised in 0.000s before the lift emit 4040
-# and 3993 characters in 41.6s and 53.8s, and a fixed fully-essential table
-# prints all 64 rows on the shipped interpreter in
-# :meth:`test_no_arity_is_gated`.  ``the relevant generator tests`` carries the
-# wider run,
-# 448 of 448 rows correct at five, six and seven inputs.
+# **There is no arity gate.**  Every one of the route's six refusal sites
+# closes uniformly in ``n`` (``the relevant generator tests``, "Is ``_mux``
+# total?"), which is what replaced the arity tuple with
+# :data:`_MUX_MIN_ARITY`.  Sampled end to end: 200 of 200 fully-essential
+# five-input tables build and print all 32 rows correctly at about 0.14s
+# each, five-input XOR among them; the two six-input tables that used to
+# raise emit 4040 and 3993 characters in 41.6s and 53.8s, and
+# :meth:`test_no_arity_is_gated` prints all 64 rows of a fixed one.  ``the
+# relevant generator tests`` carries the wider run, 448 of 448 rows correct
+# at five, six and seven inputs.
 #
 # The route sits *after* the staged families in :func:`_solve`, so every
-# table they already build keeps its template byte for byte.  It is the last
-# route: the searches that used to sit behind it are gone, so a table it
-# cannot build -- a pool code refusing every ``(C, orientation, read)`` --
-# raises rather than sweeping.
+# table they build keeps its template byte for byte.  It is the last route:
+# the searches behind it are gone, so a table it cannot build -- a pool code
+# refusing every ``(C, orientation, read)`` -- raises rather than sweeping.
 
 # Where the sculpted route embeds, and how much of the tape to its left the
 # separation searches must not write.  The pool codes were designed against
@@ -2581,7 +2399,7 @@ def _mux_separate(n: int) -> _Joint | None:
 #: Which pool code a *sculpting* probe reaches, named rather than searched.
 #:
 #: The scan this replaces was re-deriving a constant.  The verdict is fixed
-#: by the construction, in three steps:
+#: by the construction:
 #:
 #: * **The probe state is canonical.**  :func:`_mux_probe` emits ``x`` to
 #:   absorb a pending skip and then :func:`_clamp`\ s, and ``<`` never
@@ -2598,36 +2416,21 @@ def _mux_separate(n: int) -> _Joint | None:
 #:   guard ``rewind > min(ptrs) - _POOL_WIDTH``, so it never writes into the
 #:   region, and the next round re-clamps to the same state.
 #:
-#: So the answer is a constant of the arity-free construction, not a
+#: So the answer is a constant of the arity-free construction rather than a
 #: property of the table: the fifth code answers ``cell7 == 0`` at every
-#: accumulator and every round, and ``cell7 == 1`` is answered by none.  That
-#: is what the ``hint`` parameter was observing when it measured "zero
-#: switches" -- the hint never switched because it never could.
+#: accumulator and every round, and ``cell7 == 1`` is answered by none.
 #:
-#: **What this is worth, measured rather than inherited.**  The roadmap
-#: entry that opened this frontier read "14.5s of a 17.9s warm five-input
-#: build" as the cost of the *scan*.  That was cumulative time in
-#: :func:`_mux_probe`, and the scan was the smaller half of it: the ``hint``
-#: already skipped the list on all but the first round, so naming the code
-#: takes a warm five-input build from ~3.1s to ~2.8s, about 10%.  Profiled
-#: when that landed, :func:`_pool_reaches` was 3% of a build and every call
-#: left came from :func:`_find_pool` on the derivation path; those calls are
-#: gone now that the derivation path looks the code up too, and
-#: :func:`_pool_reaches` runs only when a slice is first derived and in the
-#: tests -- never on a build's own path.  The rest of
-#: :func:`_mux_probe` is the *column derivation* -- the walk and clamp over
-#: every row, once a round -- which is a different question from which code
-#: to use and is not closed by this constant.
+#: The value is the rule rather than the seconds -- naming the code takes a
+#: warm five-input build from ~3.1s to ~2.8s, since the old ``hint`` already
+#: skipped the list on all but the first round.  The rest of
+#: :func:`_mux_probe` is the *column derivation*, a different question this
+#: constant does not close.
 #:
-#: So the value here is the rule, not the seconds: the search is gone, and
-#: what remains is arithmetic the module was always going to do.
-#:
-#: This is the sculpting probe only, and it is now the special case of a
-#: general rule rather than the one closed corner: :func:`_find_pool` asks the
-#: same question of the *derivation* path, whose joints are not clamped to this
-#: state, and answers it by :data:`_POOL_CODE_OF` without a scan either.  This
-#: constant stays because the sculpting probe's state is known at import, so
-#: naming the code costs nothing at all; the general path needs the lookup.
+#: This is the sculpting probe only, and a special case of a general rule:
+#: :func:`_find_pool` asks the same question of the *derivation* path, whose
+#: joints are not clamped to this state, and answers it by
+#: :data:`_POOL_CODE_OF` without a scan either.  This constant stays because
+#: the sculpting probe's state is known at import.
 _SCULPT_POOL_CODE = _POOL_CODES[4]
 
 
