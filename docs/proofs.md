@@ -96,9 +96,9 @@ for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
 and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  Alight, COD, Crement, Nopstacle and
+the tree at any arity.  Alight, Crement, Nopstacle and
 SLOW ACV MAMMALIAN keep no tree route at all: Alight indexes a string literal,
-COD emits four rows, the two prototypes embed the table verbatim beside their
+the two prototypes embed the table verbatim beside their
 input slots, and SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf
 slot per row whatever the table says.  Container's sub-crossover route is a
 tree but a deliberately unfolded one, so it does not shrink on a degenerate
@@ -130,7 +130,7 @@ after ignoring the performance/resource ceiling as specified above.
 | Circlefuck | tree | its local shape guard is equivalent to the shared guard |
 | Circuit Diagram | tree | finite planar routing |
 | Clockwise | tree | finite grid layout |
-| COD | parameterized lookup | binary-weight water runs stop the path over one of `2**n` baked-in answer cells; this row has no tree route |
+| COD | parameterized tree | each `{Xi}` sets the cod's value at its own fork box, once; the leaf cascade prints the entry |
 | Collatz Multiverse | tree | finite cell placement |
 | Container | finite lookup | the reversed table is one decimal literal divided by ten in a fixed two-bank network |
 | Crement | finite lookup | prototype instantiation |

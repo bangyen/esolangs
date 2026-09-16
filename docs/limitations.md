@@ -67,7 +67,7 @@ linear construction has to get past.
 Uncapped dense-program sizes at n=8/n=9: Circuit Diagram 1.78/2.51 MB,
 Polynomial 1.59/5.02 MB, SLOW ACV MAMMALIAN 456/799 KB, 123 22.4/44.7 KB,
 bit~ 27.5/55.3 KB, Factor 17.2/35.5 KB, ROTfuck 14.9/28.8 KB, COD
-294/554 bytes. Run generated programs before claiming size or equivalence.
+943 KB/3.67 MB (the once-only fork generator, restored Sep 2026). Run generated programs before claiming size or equivalence.
 
 ### Scaling
 
@@ -115,7 +115,7 @@ other.  The execution contract (`tests/proofs/deep/execution.py`) holds every
 generator's command count linear; per-command cost belongs to the
 interpreter and is recorded here.
 
-- **Constant per command, linear program:** Minifuck, COD, Forth, Back,
+- **Constant per command, linear program:** Minifuck, Forth, Back,
   ROTfuck, S*bleq, Qoibl, Container's command count, and about a dozen more.
 - **Per-command cost is now constant everywhere it was measured.**  Five
   interpreters read super-linear in September 2026 -- BFStack x2.8 per

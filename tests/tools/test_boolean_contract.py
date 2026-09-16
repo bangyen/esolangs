@@ -553,6 +553,7 @@ _MINTERM_SHAPED = {
 # collapsed structure.  Reordering does not become applicable to them the way
 # it would if they had grown a tree, which is why they are neither list.
 _REDUCING = {
+    "cod",
     "home_row",
     "nocomment",
     "rotfuck",
@@ -575,7 +576,6 @@ _REDUCING = {
 _UNSHAPED = {
     "alight",
     "b_tapemark",
-    "cod",
     "crement",
     "nopstacle",
     "wii2d",
@@ -1063,7 +1063,7 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: is busy -- which, on a suite that runs four workers, is always.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
     "Circuit Diagram": (1_780_773, 2_505_897, 1.4),
-    "COD": (294, 554, 1.9),
+    "COD": (942_692, 3_668_705, 3.9),
     "ROTfuck": (15_240, 29_472, 1.9),
     "Polynomial": (1_589_968, 5_016_851, 3.2),
     "SLOW ACV MAMMALIAN": (456_394, 798_829, 1.8),
@@ -1084,7 +1084,6 @@ _LINEAR_SCALING = {
     "brainif",
     "circuit_diagram",
     "clockwise",
-    "cod",
     "container",
     "dig",
     "forth",
@@ -1106,6 +1105,7 @@ _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 # occupy values of one Collatz trajectory, so the last line grows
 # exponentially in the command count (x8.1 then x49 per input at n=9, 10).
 _OPEN_SCALING = {
+    "cod",
     "polynomial",
     "wii2d",
     "ztoalc_l",

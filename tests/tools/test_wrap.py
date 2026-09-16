@@ -111,7 +111,6 @@ UNWRAPPABLE = {
     "algebraic_programming_language": "a line with '=' defines, one without runs",
     "arrowqueue": "the queue and decision tree occupy fixed grid coordinates",
     "back": "the beam path and embedded input occupy fixed grid coordinates",
-    "cod": "the swimming path and answer strip occupy fixed grid coordinates",
     "brainif": "each line is one instruction and goto targets are line numbers",
     "collatz_multiverse": "each line is one complete register assignment",
     "container": "each line declares a container or one of its rules",
@@ -129,7 +128,6 @@ WIDTH_EXCEPTIONS = {
     for name in (
         "arrowqueue",
         "back",
-        "cod",
         "collatz_multiverse",
         "container",
         "cvnc",

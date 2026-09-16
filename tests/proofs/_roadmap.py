@@ -84,6 +84,18 @@ class Audit:
         """
         return frozenset(row.generator for row in self.rows if not row.size_is_settled)
 
+    @property
+    def execution_unsettled(self) -> frozenset[str]:
+        """Generators whose command count the roadmap does not claim is linear.
+
+        The execution contract's expected failures, read the same way the
+        size contract reads :attr:`unsettled`: a row open only on size or
+        build time is still held to the command-count bound.
+        """
+        return frozenset(
+            row.generator for row in self.rows if row.execution_time not in SETTLED
+        )
+
 
 def _unescape(cell: str) -> str:
     r"""Undo the markdown escaping a table cell needs (``S\*bleq``)."""
