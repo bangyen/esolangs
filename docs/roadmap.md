@@ -215,24 +215,27 @@ The candidate list is empty.
   every cell: the embed is the span on which the two fills of one input
   differ, and a blank left after deleting each single blank between two
   non-blank characters is the violation.  Measured Sep 2026 on dense and
-  parity tables at n=2..6, every instantiation: single embed and slot
-  order hold for all eighteen, constant width for seventeen, no spaces for
-  fifteen.  `Open` means a command spelling is not ruled out; `Language`
+  parity tables at n=2..6, every instantiation: single embed, constant
+  width and slot order hold for all eighteen, no spaces for fifteen.  `Open` means a command spelling is not ruled out; `Language`
   means the alphabet leaves none.  A row is present while any cell is open
   and leaves when all four close.
 
   | Language | Single embed | Constant width | Slot order | No spaces |
   | --- | --- | --- | --- | --- |
   | ArrowQueue | Holds | Holds | Holds | Open |
-  | Bitdeque | Holds | Open | Holds | Holds |
   | COD | Holds | Holds | Holds | Open |
   | Nopstacle | Holds | Holds | Holds | Language |
 
-  Bitdeque's width leak is above the arity the equal-width test covers
-  (n=1..2): its tree route is fixed-width, but the linear route from n=5
-  fills `EJECT ` against `POP ` per unit of weight, so the 32 instantiations
-  of a five-input table have 32 distinct lengths (444..506) and the length
-  is the input.  A zero needs a six-character executed spelling.  ArrowQueue's
+  Bitdeque left: above the arity the equal-width test covers (n=1..2)
+  its linear route filled `EJECT ` against `POP ` per unit of weight, so
+  the 32 instantiations of a five-input table had 32 distinct lengths
+  (444..506) and the length was the input.  No no-op is two characters,
+  so a *unit* cannot be padded, but a block's deficit `2k` is exactly
+  `k/8` pairs of `PUSH POP` (nine) and `k/16` of `INVERT INVERT`
+  (fourteen) for every `k >= 16`, and the four smaller weights take fixed
+  pairs of the same three no-ops; every row through n=7 executes at one
+  length per template, 578 characters at dense n=5 against 444..506.
+  ArrowQueue's
   one-bit block is `~` amid blanks where the zero block is a dense `*` box
   (the walls that equalized the *count* left the cells blank); the trace
   that placed those walls -- an all-ones header travels column 3 only,
@@ -263,7 +266,7 @@ The candidate list is empty.
   per unit of weight, BF-PDA's pair would return to `<` against `<@` from
   four characters each, and the earlier BIO fill ran 236/240/244/248 at
   n=2 against 248 flat -- and it buys the leak back, which is what
-  Bitdeque's linear route has today.  *Allow spaces* would admit a filler
+  Bitdeque's linear route had until Sep 2026.  *Allow spaces* would admit a filler
   the interpreter ignores where an executed no-op is hard to find (BIO
   `'    ' * w` and Eval `'0 '` both ran clean over 2120 cases and were
   rejected for it, since an ignored pad is what a later cleanup strips)
