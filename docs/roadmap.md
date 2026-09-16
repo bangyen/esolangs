@@ -19,7 +19,8 @@ The candidate list is empty.
 
   Twenty-five generators were queued and Interprogck8 was added by the
   registry-wide contract (`tests/proofs/deep/linearity.py`, per-entry cost
-  to n=12 across all 65); all but two have closed, by construction or by a
+  to n=12 across all 65); WII2D joined by hand, measured past its `cap`
+  exemption; all but three have closed, by construction or by a
   language-level lower bound.  An
   n=8 -> 9 ratio near 2 is not evidence of O(T), so the contract's verdicts
   read in one direction only.  The live audit is:
@@ -28,6 +29,7 @@ The candidate list is empty.
   | --- | --- | --- |
   | Factor | Language lower bound | Language lower bound |
   | Polynomial | Open | Open |
+  | WII2D | Open | Open |
 
   Closure requires a lower bound over every program in the language under
   the generator contract.  Super-linear output implies super-linear
@@ -39,6 +41,19 @@ The candidate list is empty.
   the Descartes-minimal class are all language-forced, and every searched
   escape is closed.  [polynomial](polynomial.md) has the proofs,
   the measured negatives, and the literature match.
+
+  WII2D's remaining question is the decode: the last junction's two
+  branches turn the Horner index into the table's columns by folding
+  (`'-' * c + 's'`, one character per unit of the centre) and halving, and
+  the emitted size per table entry climbs 11 -> 16 -> 15 -> 58 -> 153 from
+  n=5 to n=9 on the suite's dense fixture.  A linear construction needs the
+  answer readable as the accumulator's *top* bit -- floor-halving discards
+  low bits and a digit discards everything, so nothing discards the bits
+  above -- and every cheap placement found (shifts by `2 ** q`, squaring's
+  cross terms, a dot product by multiplication) leaves other entries or
+  monomials above it.  Refuted by an op-string family of length O(T) that
+  computes an arbitrary column from the index, or from `2 ** (K +- q)`,
+  which the chain can emit in O(n) characters.
 
   Treat every emitted character as build work.  Input reordering is optional
   around the construction, but its work still counts toward end-to-end
@@ -65,13 +80,17 @@ The candidate list is empty.
   *search* over candidate codes.  Simulation used as bookkeeping for what is
   already being emitted is fine, and size contests run no simulator at all.
   WII2D's decode still enumerates the legal folds, validates each against
-  the decode model, and takes the head of a ranked shortlist.  The rule is
-  known -- folding the extremal same-colour pair is always legal, the
-  argument that made the decode total -- but shipped as the decoder it
-  builds the dense n=9 tables the current construction refuses, in seconds
-  and a megabyte each, so a swap must keep the prompt refusal or beat it on
-  executed programs.  A longer emitted program is an acceptable price for a
-  rule, and the replaced search stays in the tests as the oracle.
+  the decode model, and takes the head of a ranked shortlist.  The
+  compressed-magnitude contest is load-bearing: on a 230-table seeded
+  corpus the one-shot rules lose (nearest-midpoint centre 1.06x the size
+  and 0 of 8 dense n=9 against 4 of 8; most-merges and cheapest-centre
+  build nothing past n=6), and the extremal same-colour fold -- always
+  legal, the argument that made the decode total -- refuses from n=7 under
+  the shipped centre and magnitude caps and needs them lifted to build
+  dense n=9 at a megabyte.  A closing rule must keep the prompt refusal or
+  beat the contest on executed programs; a longer emitted program is an
+  acceptable price, and the replaced search stays in the tests as the
+  oracle.
 
 - **`%^2^-1` fourteen inputs.**  The staged fold's endgame strands its last
   duplicated cofactor pairs.  Rank order is steerable (pulsed doubling), but

@@ -1104,6 +1104,7 @@ _LINEAR_SCALING = {
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
     "polynomial",
+    "wii2d",
 }
 
 
@@ -1141,6 +1142,7 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
         "slow_acv_mammalian",
         "streetcode",
         "vandevelo",
+        "wii2d",
     }
     classified = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
     assert classified == expected
