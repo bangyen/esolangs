@@ -47,10 +47,7 @@ The candidate list is empty.
   are test-only oracles.
 
   No generator construction may use BFS or DFS; test-only oracle searches and
-  prose about retired searches may remain.  Circuit Diagram's H-layout
-  temporarily uses a bounded local dogleg scan with cell-indexed collision
-  checks; derive its first-free lanes into a direct routing rule without
-  changing the emitted programs.
+  prose about retired searches may remain.
 
 - **ArrowQueue reusable drain.**  Ship the verified deep-fold drain only if
   a proof makes folding meaningfully testable at `n >= 5`; current coverage
