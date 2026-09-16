@@ -1102,9 +1102,13 @@ _LINEAR_SCALING = {
     "vandevelo",
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
+# ``ztoalc_l`` sits here for its placement, not its lookup: the commands
+# occupy values of one Collatz trajectory, so the last line grows
+# exponentially in the command count (x8.1 then x49 per input at n=9, 10).
 _OPEN_SCALING = {
     "polynomial",
     "wii2d",
+    "ztoalc_l",
 }
 
 
@@ -1143,6 +1147,7 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
         "streetcode",
         "vandevelo",
         "wii2d",
+        "ztoalc_l",
     }
     classified = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
     assert classified == expected

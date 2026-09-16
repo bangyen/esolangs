@@ -36,7 +36,7 @@ The candidate list is empty.
   | Polynomial | Cap | Open | Open | Linear |
   | Vandevelo | Total | Open | Linear | Linear |
   | WII2D | Cap | Open | Open | Linear |
-  | ZTOALC L | Cap | Linear | Linear | Linear |
+  | ZTOALC L | Cap | Open | Open | Linear |
 
   Generation time, growth per added input at the top arity: %^2^-1 x4.2
   dense (0.9 s at n=10, parity x2.6), Polynomial x3.4 dense (1.1 s at
