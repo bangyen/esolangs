@@ -69,6 +69,12 @@ esolangs = ["py.typed", "examples/*.md", "examples/*.txt"]
 [tool.ruff]
 target-version = "py312"
 line-length = 88
+# ``notes/`` holds research artifacts, not shipped code.  The few tracked
+# there are kept byte-for-byte because the measurements written up beside
+# them were taken against exactly that source -- reformatting the prototype
+# would silently decouple a document's numbers from the file it cites as
+# their reproduction path.  Lint standards apply to what we ship.
+extend-exclude = ["notes"]
 
 [tool.ruff.lint]
 select = [
