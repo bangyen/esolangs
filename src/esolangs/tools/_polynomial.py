@@ -1,9 +1,10 @@
 """Polynomial algebra for the Polynomial generator.
 
-A Polynomial program is a polynomial whose roots encode instructions: the
-k-th instruction uses the k-th prime p, turned into a complex root
-``a + p**b*i``. Conjugate pairs are included so the expanded coefficients
-stay integers.
+A Polynomial program is a polynomial whose roots encode instructions: each
+instruction is assigned a prime p, ascending in program order (consecutive
+instructions may share one; see ``_polynomial_assemble``), and turned into a
+complex root ``a + p**b*i``. Conjugate pairs are included so the expanded
+coefficients stay integers.
 """
 
 import contextlib
@@ -156,15 +157,14 @@ def _normalise(coeffs: list[str]) -> tuple[list[str], bool]:
     never negative -- which is what lets :func:`_merge` slice a product apart
     without first biasing it.
 
-    Polynomial's factors *nearly* have the property by construction
-    (``[1, -2a, a*a + p**(2*b)]``, ``[1, -p**v]``): an operand carries a
-    magnitude and its sign lives in the opcode.  The exception is
-    multiply-by-span, whose operand is a difference of two state indices.
-    Products still come out alternating because a factor's constant term is
-    a prime power and swamps the span -- measured on dense n=10, 67 of 1638
-    factors break the pattern and all 31 nodes of the tree still have it --
-    but that is an argument about magnitudes, not a guarantee, so it is
-    detected here rather than assumed.
+    A factor ``[1, -2a, a*a + p**(2*b)]`` has the property only for
+    ``a >= 0``, and the generator now spells every subtraction and every
+    chain park as a *negative* operand at ``b == 1`` (the cheapest opcode),
+    so most leaves lose it and the merges above them take the signed path:
+    on dense n=10, 7 of the 11 nodes normalise and 4 carry signs.  Detected
+    rather than assumed, either way; the signed path costs a second decimal
+    as wide as the product, and the render is still 1.8x faster than the
+    previous builder's because the product is half the size.
     """
     if all(c == "0" or (c[0] == "-") == (i % 2 == 1) for i, c in enumerate(coeffs)):
         return [c[1:] if c[0] == "-" else c for c in coeffs], True

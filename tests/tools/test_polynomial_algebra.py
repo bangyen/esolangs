@@ -115,3 +115,28 @@ class TestFormatCoeffs:
     def test_a_zero_coefficient_contributes_no_term(self) -> None:
         """``(x - 1)(x + 1)`` is ``x^2 - 1``: the linear term drops out."""
         assert format_coeffs([1, 0, -1]) == "f(x) = x^2 - 1"
+
+
+class TestBranchesTheGeneratorNoLongerReaches:
+    """The generator now parks negative operands, so its products are signed.
+
+    Two branches the old all-alternating builds exercised for free are still
+    live code -- a widest coefficient past CPython's 4300-digit cap, and a
+    merge of two non-negative sides -- so they are driven directly.
+    """
+
+    def test_the_digit_cap_is_lifted_and_restored(self) -> None:
+        import sys
+
+        from esolangs.tools._polynomial import _digit_limit_for
+
+        before = sys.get_int_max_str_digits()
+        with _digit_limit_for(before + 200):
+            assert len(str(10 ** (before + 100))) == before + 101
+        assert sys.get_int_max_str_digits() == before
+
+    def test_two_non_negative_sides_merge_without_a_bias(self) -> None:
+        """All-positive factors neither alternate nor carry a minus, so the
+        product's slots are read straight off, with no bias decimal."""
+        factors = [[1, 2 + i, 3 + i] for i in range(_PACKED_MIN_FACTORS + 8)]
+        assert render_product(factors) == _incremental(factors)

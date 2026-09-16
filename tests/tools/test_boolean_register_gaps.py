@@ -1,6 +1,6 @@
 """The drained-DAG builder's refusals.
 
-Draining pays two instructions per ignored leading input, so the builder
+Draining pays one bare read per ignored leading input, so the builder
 declines a table that ignores none -- there is nothing to drain, and the
 plain DAG already spells it.
 """
@@ -24,10 +24,10 @@ class TestDrainedDag:
         cost = _polynomial_drained_dag_cost("0101")
         assert cost == len(instrs)
 
-    def test_two_ignored_inputs_cost_two_instructions_each(self) -> None:
+    def test_two_ignored_inputs_cost_one_instruction_each(self) -> None:
         built = _polynomial_drained_dag("01010101")
         plain = _polynomial_drained_dag("0101")
         assert built is not None
         assert plain is not None
-        # One more ignored input than the two-input table: two instructions.
-        assert len(built) == len(plain) + 2
+        # One more ignored input than the two-input table: one bare read.
+        assert len(built) == len(plain) + 1

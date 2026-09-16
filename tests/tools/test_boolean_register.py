@@ -207,7 +207,15 @@ class TestPolynomial:
         from esolangs.tools.register import _POLYNOMIAL_MAX_INSTRS
 
         states = [min(2**k, 2 ** (2 ** (10 - k))) for k in range(11)]
-        assert 7 * sum(states[:10]) + 5 * states[10] - 1 == _POLYNOMIAL_MAX_INSTRS
+        # Root level 3, every other level 6 per state, two leaves at 6.
+        worst = 3 + 6 * (sum(states[:10]) - 1) + 6 * states[10]
+        assert worst == 1659
+        # The bound stays at the 1934 the previous builder's worst case set:
+        # the interpreter was measured to afford it, and a cheaper spelling
+        # per state is no reason to refuse a table that fit before.
+        assert (
+            worst <= _POLYNOMIAL_MAX_INSTRS == 7 * sum(states[:10]) + 5 * states[10] - 1
+        )
 
     @pytest.mark.slow  # 4.5s: one NTT factorization, then 256 cached rows
     def test_a_dense_eight_input_table_runs_every_row(self) -> None:
@@ -236,8 +244,9 @@ class TestPolynomial:
         The gate was on ``n`` because a decision tree doubles with it.  The
         state machine merges prefixes with equal residual subfunctions, so a
         table that collapses is cheap at any width: AND-5 was rejected and
-        is 63 instructions, and parity -- the tree's worst case, 2298
-        instructions at n == 8 -- is linear here and renders through n == 8.
+        now builds, and parity -- the tree's worst case, 2298 instructions
+        at n == 8 -- is linear here, 11 per input, and renders through
+        n == 8.
         """
         and5 = "0" * 31 + "1"
         program = boolean.polynomial(and5)
@@ -249,7 +258,7 @@ class TestPolynomial:
 
         for n in (6, 8):
             parity = "".join(str(bin(row).count("1") % 2) for row in range(2**n))
-            assert len(_polynomial_dag(parity)) == 13 * n + 2
+            assert len(_polynomial_dag(parity)) == 11 * n + 3
             assert boolean.polynomial(parity).startswith("f(x) = ")
 
     def test_state_machine_merges_what_the_tree_cannot(self) -> None:
@@ -304,7 +313,7 @@ class TestPolynomial:
         contains both, which is what let the separate emitters go.  The
         machine's identity holds except on a constant table, where the
         hybrid collapses to a leaf before reaching it and comes out
-        shorter (5 instructions against 10 at n == 1).
+        shorter (4 instructions against 5 at n == 1).
         """
         from esolangs.tools.register import _polynomial_hybrid
 
@@ -324,8 +333,9 @@ class TestPolynomial:
 
         Selection is on rendered characters while the screen is on
         instructions, so the shortest render can sit above the cheapest
-        candidate.  Every table at n <= 3 needs at most 6; a slack fitted
-        there would emit the worse program at n == 4, which reaches 9.
+        candidate.  Every table at n <= 3 needs at most 1; a slack fitted
+        there would emit the worse program at n == 4, where 2000 sampled
+        tables reach 6.
         """
         from esolangs.tools.register import (
             _POLYNOMIAL_SCREEN_SLACK,
@@ -348,10 +358,8 @@ class TestPolynomial:
                 shortest = min(length for length, _ in rendered)
                 needed = min(cost for length, cost in rendered if length == shortest)
                 worst = max(worst, needed - min(cost for cost, _ in built))
-        # Pure-``k`` candidates only; the drained variants were measured
-        # separately and reach the same 6 here, so widening this sweep
-        # would not raise the bound.
-        assert worst == 6
+        # Pure-``k`` candidates only.
+        assert worst == 1
         assert worst <= _POLYNOMIAL_SCREEN_SLACK
 
     @pytest.mark.parametrize(
@@ -361,12 +369,10 @@ class TestPolynomial:
     def test_hybrid_shortens_and_still_computes(self, table: str) -> None:
         """A split whose halves merge separately beats both parents.
 
-        ``00000101`` is 43 instructions as a tree and 39 as a state machine,
-        but 36 when the first bit branches and each half runs its own
+        ``00000101`` is 45 instructions as a tree and 36 as a state machine,
+        but 28 when the first bit branches and each half runs its own
         machine: the residuals merge *within* the top split and not across
-        it, so neither parent construction sees the merge.  Measured over
-        the n == 3 corpus these tables render 24-30% shorter, and no table
-        grows.
+        it, so neither parent construction sees the merge.
         """
         from esolangs.tools.register import _polynomial_hybrid
 
@@ -379,11 +385,11 @@ class TestPolynomial:
     def test_drained_machine_survives_a_one_in_the_drained_bit(self) -> None:
         """The reduction reaches the machine, not just the tree.
 
-        Draining with ``-= 48`` leaves 0 or 1 and the machine's entry chain
-        tests for zero, so a drained ``1`` fell past every state test -- the
-        failure that made this pairing look impossible.  ``//= 50`` lands on
-        0 either way, so the rows with a 1 in the drained bit are the ones
-        that matter here.
+        A drain is a bare read and the machine's root level opens with a
+        read of its own, so the drained byte is overwritten unlooked-at.
+        The previous chain tested for zero and a drained ``1`` fell past
+        every state test; the rows with a 1 in the drained bit are still
+        the ones that matter here.
         """
         from esolangs.tools.register import _polynomial_drained_dag
 
@@ -395,24 +401,28 @@ class TestPolynomial:
             got = run_polynomial(program, [str(b) for b in bits])
             assert got == table[combo], f"inputs {bits}"
 
-    @pytest.mark.parametrize("table", ["01100000", "01101111", "10010000", "10011111"])
-    def test_hybrid_losing_on_characters_does_not_ship(self, table: str) -> None:
+    @pytest.mark.parametrize("table", ["00100000", "11011111", "00000010"])
+    def test_machine_losing_on_characters_does_not_ship(self, table: str) -> None:
         """Fewer instructions is not fewer characters.
 
-        These four are 42 instructions against the tree's 43 and still
-        render 11008 characters against 9507, because a longer program's
-        later instructions consume larger primes.  The dispatch compares
-        *rendered* programs, so they keep the tree's emission.
+        These three are 35 instructions as a machine against the tree's 36
+        and still render longer (4677 characters against 4614 for the
+        first), because the machine spends a ``*=`` -- ``p**6`` against a
+        ``+=``'s ``p**2`` -- where the tree spends only ``+=``.  The
+        dispatch compares *rendered* programs, so they keep the tree's
+        emission.  Found by sweeping the n == 3 corpus for tables whose
+        fewest-instruction candidate is not the shortest render: five of
+        256.
         """
         from esolangs.tools.register import (
             _polynomial_assemble,
             _polynomial_hybrid,
         )
 
-        hybrid = _polynomial_assemble(_polynomial_hybrid(table, 1))
+        machine = _polynomial_assemble(_polynomial_hybrid(table, 0))
         tree = _polynomial_assemble(_polynomial_tree(table))
-        assert len(_polynomial_hybrid(table, 1)) < len(_polynomial_tree(table))
-        assert len(hybrid) > len(tree)
+        assert len(_polynomial_hybrid(table, 0)) < len(_polynomial_tree(table))
+        assert len(machine) > len(tree)
         assert boolean.polynomial(table) == tree
 
     def test_every_path_reads_each_input_once(self) -> None:
