@@ -673,12 +673,11 @@ class TestParameterizedPctSquaredMinusOne:
         it picks the first legal weighting inside the span budget and calls
         the planner once, where the search called it per candidate.
 
-        Pinned because a counterexample would not raise.  The planner would
+        Pinned because a counterexample would not raise: the planner would
         return ``None``, the loop would move on, and the only visible effect
-        would be a longer program from a later construction -- so the
-        property is checked rather than assumed.  Failures do exist outside
-        the budget, at ``sum(units) * 256`` past the limit, which is why
-        :func:`_deep_weightings` drops those rather than trying them.
+        would be a longer program from a later construction.  Failures do
+        exist outside the budget, at ``sum(units) * 256`` past the limit,
+        which is why :func:`_deep_weightings` drops those.
         """
         from esolangs.tools.pct_squared_minus_one import (
             _cross_class_diffs,
@@ -1932,7 +1931,7 @@ class TestPctFoldPlan:
 
     @staticmethod
     def module():
-        return importlib.import_module("esolangs.tools.pct_squared_minus_one")
+        return importlib.import_module("esolangs.tools.pct_fold")
 
     def test_the_pre_pass_stops_when_no_bottom_wipe_is_offered(self) -> None:
         """Extent that no minimum-relocation wipe can clear ends the plan.
@@ -1994,6 +1993,7 @@ class TestPctFoldPlan:
         ladder spends only ``2**n + 1`` and carries eleven.  Twelve exceeds
         even that, so no ladder is offered and the fold refuses.
         """
+        pct = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         module = self.module()
         limit = module._LIMIT  # noqa: SLF001
 
@@ -2008,7 +2008,7 @@ class TestPctFoldPlan:
         # every row, which is 4096 runs and a subcube the *cascade* builds,
         # so it never reaches the fold at all.  A low-run table does.
         wide = "".join(str(((r >> 11) & 1) ^ ((r >> 10) & 1)) for r in range(2**12))
-        assert module._cascade(wide, 12) is None  # noqa: SLF001
+        assert pct._cascade(wide, 12) is None  # noqa: SLF001
         assert module._fold(wide, 12) is None  # noqa: SLF001
         # A table inside the bound still builds, so the ``None`` above is
         # the workspace and not the arity itself.
