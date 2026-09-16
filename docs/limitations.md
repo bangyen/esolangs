@@ -55,7 +55,7 @@ a total decode inside the contract, folding the extremal same-colour pair; it
 is refused here on cost, not reach -- the four refusing dense n=9 tables cost
 0.8–1.6 MB each and the decode reaches domain 512.
 
-Uncapped dense-program sizes at n=8/n=9: Circuit Diagram 7.91/11.39 MB,
+Uncapped dense-program sizes at n=8/n=9: Circuit Diagram 1.78/2.51 MB,
 Polynomial 3.38/10.90 MB, SLOW ACV MAMMALIAN 456/799 KB, 123 22.4/44.7 KB,
 bit~ 27.5/55.3 KB, Factor 17.2/35.5 KB, ROTfuck 14.9/28.8 KB, COD
 294/554 bytes. Run generated programs before claiming size or equivalence.

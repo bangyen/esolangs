@@ -91,6 +91,29 @@ __all__ = ["circuit_diagram"]
 _COL_STEP = 2
 _ROW_STEP = 2
 
+# Owner of the H-layout's result-anchor holds while the trees are routed;
+# no real signal, so every route treats a held cell as foreign.
+_HOLD = -1
+
+# H-layout lattice.  Every site sits on a multiple of eight in both axes, and
+# each wire class owns residues no other class uses, so wires of different
+# classes only ever cross and their corners never touch:
+#
+#   columns  0 gate  1 output  7 inputs  | 2, 6 literals | 3..5 results
+#   rows     0 gate  7, 1 inputs         | 3, 2 literals | 4..6 results
+#
+# A literal's anchor at a site is offset by its distance below that site's
+# level, so within one level's band the anchors of every literal that
+# reaches it are distinct; the band (``16 * remaining + 16`` wide) has
+# room for all ``2 * remaining`` of them.
+_LATTICE = 8
+_LITERAL_TRACK_X = {"0": 2, "1": 6}
+_LITERAL_TRACK_Y = {"0": 5, "1": 6}
+_RESULT_TRACK = (4, 3)
+
+# The three wire shapes; see :meth:`_RoutingLayout.route`.
+_Shape = Literal["down", "across", "under"]
+
 
 @dataclass(frozen=True)
 class _Block:
@@ -112,11 +135,17 @@ class _Block:
 
 
 def _h_size(inputs: int) -> int:
-    """Return a side length for a two-level-at-a-time H-layout."""
+    """Return a side length for a two-level-at-a-time H-layout.
+
+    A level's band between its four child blocks is sized from the
+    lattice: ``8 * remaining`` cells of literal track to the left of the
+    child sites, the same again to the parent's, and a lattice step for the
+    parent's own cells.  A leaf block is two lattice steps.
+    """
     if inputs <= 1:
-        return 32
+        return 2 * _LATTICE
     child = _h_size(inputs - 2)
-    return 2 * child + 32 + 32 * inputs
+    return 2 * child + 2 * _LATTICE * inputs + 2 * _LATTICE
 
 
 def _h_blocks(inputs: int) -> dict[str, _Block]:
@@ -150,12 +179,15 @@ def _h_sites(inputs: int) -> dict[str, tuple[int, int]]:
             sites[prefix] = (block.x + block.size // 2, block.y + block.size // 2)
             continue
         child = _h_size(remaining - 2)
-        gap = block.size - 2 * child
         left = block.x + child
         top = block.y + child
-        sites[prefix] = (left + 3 * gap // 4, top + gap // 2)
-        sites[prefix + "0"] = (left + gap // 4, top + gap // 4)
-        sites[prefix + "1"] = (left + gap // 4, top + 3 * gap // 4)
+        # The two one-bit children stack at the band's left, each with
+        # ``8 * remaining`` cells of literal track above and to its left; the
+        # parent sits between them with the same track to *its* left.
+        track = _LATTICE * remaining
+        sites[prefix] = (left + 2 * track + _LATTICE, top + track + _LATTICE)
+        sites[prefix + "0"] = (left + track, top + track)
+        sites[prefix + "1"] = (left + track, top + 2 * track + _LATTICE)
     return sites
 
 
@@ -182,10 +214,18 @@ def _h_minterm_sites(inputs: int) -> dict[str, tuple[int, int]]:
 
 
 def _h_term_layout(table: str) -> "_Layout":
-    """Route one truth table's parallel minterm tree through an H-layout."""
+    """Route one truth table's parallel minterm tree through an H-layout.
+
+    Every wire takes a lane fixed by its class (see ``_LATTICE``): the
+    input feeders run across then down, and everything else runs down its
+    own column then across, except the ``1`` literal's last hop to a gate
+    whose sibling sits beside it, which passes under the target.  Nothing
+    here searches; the collision check in :meth:`_RoutingLayout.route` is
+    a guard on the lattice.
+    """
     truth_table = table
     inputs = len(table).bit_length() - 1
-    margin = 32 * inputs + 16
+    margin = _LATTICE * inputs + _LATTICE  # the root anchors and input feeders
     sites = {
         prefix: (x + margin, y + margin)
         for prefix, (x, y) in _h_minterm_sites(inputs).items()
@@ -234,13 +274,112 @@ def _h_term_layout(table: str) -> "_Layout":
                 (literal(0, parent[0]) if len(parent) == 1 else signals[parent]),
             )
             layout.reserve((x - 1, y + 1), literal(len(prefix) - 1, prefix[-1]))
-    result_track_x = 8 * inputs + 4
-    result_track_y = 8 * inputs + 4
 
     def result_anchor(prefix: str) -> tuple[int, int]:
         x, y = sites[prefix]
-        return x + result_track_x, y - result_track_y
+        return x + _RESULT_TRACK[0], y - _RESULT_TRACK[1]
 
+    # Every result anchor is kept clear whether or not this table uses it,
+    # so the literal and selector trees are routed on a canvas that does
+    # not depend on the table; the holds are released before the results
+    # are routed.  A route may cross a held cell's neighbourhood but may
+    # not corner there (see :meth:`_RoutingLayout._route_is_free`).
+    for prefix in sites:
+        if len(prefix) == inputs:
+            continue
+        x, y = result_anchor(prefix)
+        for cell in ((x, y), (x + 1, y), (x - 1, y - 1), (x - 1, y + 1)):
+            layout.reserve(cell, _HOLD)
+    literal_anchors: dict[tuple[int, str, str], tuple[int, int]] = {}
+    roots: dict[tuple[int, str], tuple[int, int]] = {}
+    for depth in range(inputs):
+        for bit in "01":
+            for prefix in sites:
+                if len(prefix) <= depth:
+                    x, y = sites[prefix]
+                    below = _LATTICE * (depth - len(prefix))
+                    point = (
+                        x - _LITERAL_TRACK_X[bit] - below,
+                        y - _LITERAL_TRACK_Y[bit] - below,
+                    )
+                    literal_anchors[(depth, bit, prefix)] = point
+                    layout.reserve(point, literal(depth, bit))
+                    if not prefix:
+                        layout.junction(*point, literal(depth, bit))
+            roots[(depth, bit)] = literal_anchors[(depth, bit, "")]
+    input_starts: dict[tuple[int, str], tuple[int, int]] = {}
+    for depth in range(inputs):
+        row = 8 * depth
+        plain = literal(depth, "1")
+        negated = literal(depth, "0")
+        layout.glyph(0, row, "-")
+        layout.junction(2, row, plain)
+        layout.run_horizontal(0, 2, row, plain)
+        layout.junction(2, row + 2, plain)
+        layout.junction(3, row + 2, plain)
+        layout.run_vertical(2, row, row + 2, plain)
+        layout.run_horizontal(2, 3, row + 2, plain)
+        layout.glyph(4, row + 2, "~")
+        layout.junction(5, row + 2, negated)
+        input_starts[(depth, "1")] = (2, row)
+        input_starts[(depth, "0")] = (5, row + 2)
+    for depth in range(inputs):
+        for bit in "01":
+            layout.route(
+                input_starts[(depth, bit)],
+                roots[(depth, bit)],
+                literal(depth, bit),
+                "across",
+            )
+    for (depth, bit, prefix), point in literal_anchors.items():
+        if prefix:
+            layout.junction(*point, literal(depth, bit))
+    for prefix, (x, y) in sites.items():
+        if not prefix:
+            continue
+        signal = literal(0, prefix[0]) if len(prefix) == 1 else signals[prefix]
+        source = (x + 1, y)
+        layout.junction(*source, signal)
+        for bit in "01":
+            child = prefix + bit
+            if child not in sites:
+                continue
+            child_x, child_y = sites[child]
+            target = (child_x - 1, child_y - 1)
+            layout.route(source, target, signal)
+    for depth in range(inputs):
+        for bit in "01":
+            signal = literal(depth, bit)
+            frontier = [""]
+            for level in range(depth + 1):
+                following = []
+                for prefix in frontier:
+                    branches = bit if level == depth else "01"
+                    source = literal_anchors[(depth, bit, prefix)]
+                    for branch in branches:
+                        child = prefix + branch
+                        shape: _Shape = "down"
+                        if level == depth:
+                            child_x, child_y = sites[child]
+                            target = (
+                                (child_x + 1, child_y)
+                                if len(child) == 1
+                                else (child_x - 1, child_y + 1)
+                            )
+                            # Side-by-side siblings put both last-level
+                            # targets on one row, and the ``0`` wire corners
+                            # on it first; the ``1`` wire passes underneath.
+                            side_by_side = (
+                                sites[prefix + "0"][0] != sites[prefix + "1"][0]
+                            )
+                            if side_by_side and bit == "1":
+                                shape = "under"
+                        else:
+                            target = literal_anchors[(depth, bit, child)]
+                            following.append(child)
+                        layout.route(source, target, signal, shape)
+                frontier = following
+    layout.release(_HOLD)
     result_points: dict[str, tuple[int, int]] = {}
     for prefix, result_value in results.items():
         if result_value is None:
@@ -270,83 +409,6 @@ def _h_term_layout(table: str) -> "_Layout":
     layout.junction(*root, result_signal)
     layout.glyph(root[0] + 1, root[1], "-")
     layout.glyph(root[0] + 2, root[1], ":")
-    literal_anchors: dict[tuple[int, str, str], tuple[int, int]] = {}
-    roots: dict[tuple[int, str], tuple[int, int]] = {}
-    for depth in range(inputs):
-        for bit in "01":
-            track_x = (2 if bit == "0" else 6) + 16 * depth
-            track_y = (5 if bit == "0" else 2) + 16 * depth
-            for prefix in sites:
-                if len(prefix) <= depth:
-                    x, y = sites[prefix]
-                    point = (x - track_x, y - track_y)
-                    literal_anchors[(depth, bit, prefix)] = point
-                    layout.reserve(point, literal(depth, bit))
-                    if not prefix:
-                        layout.junction(*point, literal(depth, bit))
-            roots[(depth, bit)] = literal_anchors[(depth, bit, "")]
-    input_starts: dict[tuple[int, str], tuple[int, int]] = {}
-    for depth in range(inputs):
-        row = 8 * depth
-        plain = literal(depth, "1")
-        negated = literal(depth, "0")
-        layout.glyph(0, row, "-")
-        layout.junction(2, row, plain)
-        layout.run_horizontal(0, 2, row, plain)
-        layout.junction(2, row + 2, plain)
-        layout.junction(3, row + 2, plain)
-        layout.run_vertical(2, row, row + 2, plain)
-        layout.run_horizontal(2, 3, row + 2, plain)
-        layout.glyph(4, row + 2, "~")
-        layout.junction(5, row + 2, negated)
-        input_starts[(depth, "1")] = (2, row)
-        input_starts[(depth, "0")] = (5, row + 2)
-    for depth in range(inputs):
-        for bit in "01":
-            layout.route(
-                input_starts[(depth, bit)],
-                roots[(depth, bit)],
-                literal(depth, bit),
-            )
-    for (depth, bit, prefix), point in literal_anchors.items():
-        if prefix:
-            layout.junction(*point, literal(depth, bit))
-    for prefix, (x, y) in sites.items():
-        if not prefix:
-            continue
-        signal = literal(0, prefix[0]) if len(prefix) == 1 else signals[prefix]
-        source = (x + 1, y)
-        layout.junction(*source, signal)
-        for bit in "01":
-            child = prefix + bit
-            if child not in sites:
-                continue
-            child_x, child_y = sites[child]
-            target = (child_x - 1, child_y - 1)
-            layout.route(source, target, signal)
-    for depth in range(inputs):
-        for bit in "01":
-            signal = literal(depth, bit)
-            frontier = [""]
-            for level in range(depth + 1):
-                following = []
-                for prefix in frontier:
-                    branches = bit if level == depth else "01"
-                    source = literal_anchors[(depth, bit, prefix)]
-                    for branch in branches:
-                        child = prefix + branch
-                        if level == depth:
-                            child_x, child_y = sites[child]
-                            target = (
-                                (child_x + 1, child_y)
-                                if len(child) == 1
-                                else (child_x - 1, child_y + 1)
-                            )
-                        else:
-                            target = literal_anchors[(depth, bit, child)]
-                            following.append(child)
-                        layout.route(source, target, signal)
-                frontier = following
     for depth in range(inputs):
         for prefix in (p for p in sites if len(p) == depth and results[p] is not None):
             children = [
@@ -597,7 +659,7 @@ class _Layout:
 
 
 class _RoutingLayout(_Layout):
-    """Layout with O(1) cell indexes for bounded local route probes."""
+    """Layout whose wires are laid in fixed shapes over indexed cells."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -608,6 +670,12 @@ class _RoutingLayout(_Layout):
     def reserve(self, point: tuple[int, int], signal: int) -> None:
         """Keep a future junction clear for ``signal`` while routing."""
         self._reserved[point] = signal
+
+    def release(self, signal: int) -> None:
+        """Drop every reservation held by ``signal``."""
+        self._reserved = {
+            point: owner for point, owner in self._reserved.items() if owner != signal
+        }
 
     def junction(self, x: int, y: int, signal: int) -> None:
         """Place a junction unless another signal already occupies its cell."""
@@ -651,27 +719,33 @@ class _RoutingLayout(_Layout):
             self._vertical_cells[(x, y)] = signal
 
     def route(
-        self, source: tuple[int, int], target: tuple[int, int], signal: int
+        self,
+        source: tuple[int, int],
+        target: tuple[int, int],
+        signal: int,
+        shape: _Shape = "down",
     ) -> None:
-        """Use the first free route in a fixed local dogleg catalogue."""
+        """Lay one wire in the given shape; the caller has chosen its lane.
+
+        ``down`` runs along the source's column and then the target's row,
+        ``across`` along the source's row and then the target's column, and
+        ``under`` along the source's column to two rows past the target,
+        across, and back up into it -- the shape that feeds a gate's lower
+        input when a sibling wire already corners on the target's row.  The
+        collision check is a guard on the layout's spacing rules, not a
+        search: a wire that does not fit is a spacing bug.
+        """
         sx, sy = source
         tx, ty = target
-        candidates = [[source, (sx, ty), target], [source, (tx, sy), target]]
-        for distance in range(2, 130, 2):
-            for offset in (distance, -distance):
-                candidates.extend(
-                    (
-                        [source, (sx, sy + offset), (tx, sy + offset), target],
-                        [source, (sx + offset, sy), (sx + offset, ty), target],
-                        [source, (tx + offset, sy), (tx + offset, ty), target],
-                        [source, (sx, ty + offset), (tx, ty + offset), target],
-                    )
-                )
-        for points in candidates:
-            if self._route_is_free(points, signal):
-                self._add_route(points, signal)
-                return
-        raise AssertionError(f"no local route from {source} to {target}")
+        if shape == "down":
+            points = [source, (sx, ty), target]
+        elif shape == "across":
+            points = [source, (tx, sy), target]
+        else:
+            points = [source, (sx, ty + 2), (tx, ty + 2), target]
+        if not self._route_is_free(points, signal):
+            raise AssertionError(f"{shape} route from {source} to {target} collides")
+        self._add_route(points, signal)
 
     def _add_route(self, points: list[tuple[int, int]], signal: int) -> None:
         """Add one already checked rectilinear route."""
@@ -684,7 +758,7 @@ class _RoutingLayout(_Layout):
                 self.run_horizontal(x0, x1, y0, signal)
 
     def _route_is_free(self, points: list[tuple[int, int]], signal: int) -> bool:
-        """Whether a candidate dogleg can be added without merging signals."""
+        """Whether a wire can be added without merging or overlapping signals."""
         for x, y in points:
             if (
                 (x, y) in self.glyphs
@@ -697,6 +771,8 @@ class _RoutingLayout(_Layout):
                 for dy in (-1, 0, 1):
                     other = self.junctions.get((x + dx, y + dy))
                     if other is not None and other != signal:
+                        return False
+                    if self._reserved.get((x + dx, y + dy)) == _HOLD:
                         return False
         for (x0, y0), (x1, y1) in pairwise(points):
             if x0 == x1:
@@ -1170,6 +1246,14 @@ def circuit_diagram(truth_table: str, width: int | None = None) -> str:
     See :func:`_circuit_diagram_at` for the construction.  ``width`` asks
     for a column count: the drawing is built once without one, and again
     inside the width if that came out too wide.
+
+    From eight inputs an unconstrained build uses the H-layout instead
+    (:func:`_h_term_layout`).  That is a growth choice, not a size one: the
+    flat drawing's width grows with the depth, so its area is Theta(T log
+    T) -- 2.2x to 2.8x per added input, measured n=6..11 -- while the
+    H-layout is O(T) with a constant about twelve times larger (n=8 dense:
+    145 KB flat, 1.78 MB H).  Eight is where the registry's linearity
+    contract starts measuring, and lowering it would only cost size.
 
     What a width buys is *banding*.  Gates march right because one has to
     sit right of every bus it reads, so a column group freed behind the

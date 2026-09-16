@@ -768,8 +768,13 @@ def test_generator_shape_is_what_the_catalogue_says(name: str) -> None:
 # refuse and one_two_three's n=4..10 both shapes, which the mark respacing
 # cut by 82% overall.  Minifuck's Pascal inverse restored the n=9 contest.
 #
-# Ten still peaks at 637MB RSS on Circuit Diagram's n=10 dense table, 306MB
-# of program text.  That memory, not the time, is what keeps the band split:
+# Ten still peaks at 619MB RSS on Polynomial's n=10 dense table, 34MB of
+# program text (Circuit Diagram's H-layout, once the peak at 306MB of text,
+# is 8MB and 255MB RSS since it was sized from its lattice).  Of that RSS
+# only 154MB is ever live -- the last merge's 59M-digit product held as a
+# decimal, its C string and its Python copy at once -- and the rest is
+# pages the allocator keeps after freeing them.  That memory, not the
+# time, is what keeps the band split:
 # n <= _QUICK_ARITY runs in the default gate and the rest is marked slow.
 # Both bands assert the same thing; splitting them keeps the fast gate at
 # the 65 items and ~3s it had when this swept to five.
@@ -1057,7 +1062,7 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: them approximate, and asserting one here would fail whenever the machine
 #: is busy -- which, on a suite that runs four workers, is always.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
-    "Circuit Diagram": (7_910_330, 11_394_987, 1.4),
+    "Circuit Diagram": (1_780_773, 2_505_897, 1.4),
     "COD": (294, 554, 1.9),
     "ROTfuck": (15_240, 29_472, 1.9),
     "Polynomial": (3_383_048, 10_896_883, 3.2),
@@ -1174,7 +1179,7 @@ def test_the_expensive_generators_grow_as_documented(name: str) -> None:
     is only worth having if it is checked, so this is the check.
 
     n=9 is the ceiling here on purpose: Circuit Diagram's deliberately roomy
-    H-layout is already 11.4MB there, and one more arity does not check its
+    H-layout is already 2.5MB there, and one more arity does not check its
     proved area recurrence better.
     """
     at_eight, at_nine, ratio = _DOCUMENTED_SIZES[name]

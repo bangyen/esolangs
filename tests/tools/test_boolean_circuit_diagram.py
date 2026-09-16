@@ -282,7 +282,7 @@ class TestCircuitDiagramLayoutGuards:
             sites = _h_sites(n)
             assert len(sites) == 2**n - 1
             assert len(set(sites.values())) == len(sites)
-            assert _h_size(n) ** 2 <= 80_000 * 2**n
+            assert _h_size(n) ** 2 <= 10_000 * 2**n
 
     @pytest.mark.slow
     def test_h_layout_executes_every_two_input_table(self) -> None:
@@ -578,3 +578,90 @@ class TestCircuitDiagram:
             circuit_diagram("010")
         with pytest.raises(ValueError, match="only '0' and '1'"):
             circuit_diagram("012x")
+
+    def test_h_layout_tree_wiring_does_not_depend_on_the_table(self) -> None:
+        """The literal and selector wires take the same lanes for every table.
+
+        Every result anchor is held before the trees are routed, whether or
+        not the table uses it, so the canvas a tree wire is routed on is a
+        function of the arity alone -- which is what lets those lanes be
+        derived into a rule.  The holds are released before the results are
+        routed, so a table's result wires still reach their anchors.
+        """
+        from esolangs.tools.circuit_diagram import (
+            _HOLD,
+            _h_minterm_sites,
+            _h_term_layout,
+        )
+
+        n = 3  # odd arity: every shape, including ``under``, at the leaves
+        prefixes = [p for p in _h_minterm_sites(n) if len(p) >= 2]
+        # Selector signals are the non-leaf prefixes'; the literals follow.
+        tree = {index for index, p in enumerate(prefixes) if len(p) < n}
+        tree |= set(range(len(prefixes), len(prefixes) + 2 * n))
+
+        def wiring(table: str) -> set[tuple[str, int, int, int, int]]:
+            layout = _h_term_layout(table)
+            assert _HOLD not in layout._reserved.values()  # noqa: SLF001
+            runs = {
+                ("h", y, a, b, s)
+                for y, line in layout.horizontal.items()
+                for a, b, s in line
+                if s in tree
+            }
+            runs |= {
+                ("v", x, a, b, s)
+                for x, line in layout.vertical.items()
+                for a, b, s in line
+                if s in tree
+            }
+            return runs
+
+        tables = ("00000001", "10100111", "11111110")
+        assert wiring(tables[0]) == wiring(tables[1]) == wiring(tables[2])
+
+    def test_a_route_may_cross_a_hold_but_not_corner_beside_it(self) -> None:
+        """A held cell keeps corners out of its neighbourhood, not wires.
+
+        The hold stands in for a result junction that may or may not be
+        placed later, so a corner beside it would merge with that junction
+        while a wire crossing its column would not.
+        """
+        from esolangs.tools.circuit_diagram import _HOLD, _RoutingLayout
+
+        layout = _RoutingLayout()
+        layout.reserve((1, 10), _HOLD)  # beside the ``down`` corner
+        with pytest.raises(AssertionError, match=r"down route .* collides"):
+            layout.route((0, 0), (20, 10), 5, "down")
+        layout.route((0, 0), (20, 10), 5, "across")  # crosses column 1
+        assert (20, 0) in layout.junctions
+        layout.route((0, 12), (20, 22), 6, "under")
+        assert (0, 24) in layout.junctions
+        assert (20, 24) in layout.junctions
+        layout.release(_HOLD)
+        assert not layout._reserved  # noqa: SLF001
+
+    @pytest.mark.slow  # ~6s: three n=4 builds, sixteen interpreted rows each
+    def test_h_layout_lanes_execute_at_four_inputs(self) -> None:
+        """Fixed lanes lay a correct circuit where every wire class meets.
+
+        Four inputs is the smallest H-layout with two-level quadrants, so
+        every shape -- ``down``, ``across`` and ``under`` -- and every
+        residue class of the lattice is exercised.
+        """
+        import random
+
+        from esolangs.interpreters.grid_based.circuit_diagram import run
+        from esolangs.interpreters.io import ScriptedIO
+        from esolangs.tools.circuit_diagram import _h_term_layout
+
+        rng = random.Random(4)
+        for _ in range(3):
+            table = "".join(rng.choice("01") for _ in range(16))
+            if "1" not in table:
+                continue
+            program = _h_term_layout(table).render().splitlines()
+            for index in range(16):
+                io = ScriptedIO("".join(f"{bit}\n" for bit in format(index, "04b")))
+                run(program, io)
+                assert io.getvalue() == table[index], (table, index)
