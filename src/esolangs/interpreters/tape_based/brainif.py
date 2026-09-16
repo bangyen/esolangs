@@ -157,24 +157,7 @@ class _Machine:
         # ``halted`` is read twice per line -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(code)
-        # One parsed form per line, filled the first time that line runs.
-        # The source does not change during a run, so re-parsing on every
-        # step was pure rework -- a loop over a Theta(T)-line program parsed
-        # Theta(T) times, which is what made execution super-linear.
-        #
-        # Lazy, not parsed up front: ``_parse`` is also the rejection point,
-        # and a malformed line that no run ever reaches must keep running.
-        # Filling this eagerly would turn that program into a load error.
-        self._parsed: list[_Line] = [None] * len(code)
-        self._seen = bytearray(len(code))
         self.state: _State = (0, 0, (0,))
-
-    def _line(self, ind: int) -> _Line:
-        """Return line ``ind`` parsed, parsing it the first time only."""
-        if not self._seen[ind]:
-            self._parsed[ind] = _parse(self.code[ind])
-            self._seen[ind] = 1
-        return self._parsed[ind]
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -258,7 +241,7 @@ class _Machine:
         """
         if self.halted:
             return
-        parsed = self._line(self.state[0])
+        parsed = _parse(self.code[self.state[0]])
         byte = None
         if parsed is not None:
             _ind, ptr, cells = self.state
