@@ -1029,23 +1029,23 @@ class TestParameterizedMinskySwap:
         return io.getvalue().split()[1]
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools import parameterized
+        """Fill the template the way a caller does, not the way this file did.
 
-        n = len(bits)
+        This used to carry its own copy of the setter -- the same blocks,
+        padded to ``2**n``.  A copy of a construction is free to drift from
+        it, and this one did: when the generator shortened each block to its
+        own bit's weight, the copy went on emitting full-length ones, so the
+        template's jump targets addressed commands that were no longer
+        there.  The program did not fail, it ran off into a loop, and the
+        suite hung rather than reporting anything.
 
-        def set_bit(i: int, b: int) -> str:
-            if i == n - 1:  # LSB: length-4 block, no "~"
-                return "+*+*" if b else "****"
-            w = 2 ** (n - 1 - i)  # this bit's weight
-            if b:
-                return "+" * w + "*" * (2**n - w)
-            return "*" * 2**n
+        The shipped filler is the thing under test here anyway: what this
+        class pins is the truth table the instantiated program computes, and
+        that is checked below either way.
+        """
+        import esolangs
 
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            set_bit,
-        )
+        return esolangs.instantiate("Minsky Swap", tpl, bits)
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -1113,17 +1113,26 @@ class TestParameterizedMinskySwap:
         assert self.run_minsky_swap(program) == AND2[(bits[0] << 1) | bits[1]]
 
     def test_examples_fill_weights_the_non_lsb(self) -> None:
-        """A set non-LSB is its weight in ``+`` then a pad to the block size.
+        """A non-LSB block is its own weight long, in ``+`` or in ``*``.
 
-        The pad keeps every block the same even length, which is what stops
-        the register pointer drifting; ``"+*+*"`` is the LSB's exception.
+        Not padded to the table's length: equal width is required of a bit
+        against *itself*, so that the program's length cannot report the bit,
+        and block ``i`` owes block ``j`` nothing.  Padding them all to
+        ``2**n`` ran ``(n-1) * 2**n`` commands to load ``n`` bits.
+
+        The length stays even either way, which is what stops the register
+        pointer drifting -- a one does no swapping at all and a zero an even
+        number of swaps.  ``"+*+*"`` is the LSB's exception.
         """
         from esolangs.tools import minsky_swap
         from esolangs.tools.examples import AND2, _fill_minsky_swap
 
         template = minsky_swap(AND2)
-        assert "++**" in _fill_minsky_swap(template, [1, 1])
-        assert "++**" not in _fill_minsky_swap(template, [0, 1])
+        # Weight 2 at the MSB of a two-input table, so two commands, and the
+        # LSB's four -- six, where padding to the table gave eight.
+        assert _fill_minsky_swap(template, [1, 1]).startswith("++ +*+*")
+        assert _fill_minsky_swap(template, [0, 1]).startswith("** +*+*")
+        assert "++**" not in _fill_minsky_swap(template, [1, 1])
 
 
 class TestParameterizedArrowQueue:
