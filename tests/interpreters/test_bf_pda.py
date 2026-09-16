@@ -159,6 +159,19 @@ class TestMalformed:
         with raises_message(ValueError, "unmatched '[' at position 4"):
             run_program("<[.<[.")
 
+    def test_an_unmatched_open_is_named_even_when_a_later_one_matched(self) -> None:
+        """The position names an *unmatched* ``[``, not the last one written.
+
+        The old check reported ``code.rfind('[')``, which is the last ``[``
+        in the text whether or not it was matched -- here that is index 1,
+        which closes perfectly well at index 2.  The unmatched bracket is
+        index 0.  Both readings agree on ``<[.<[.`` above, so the choice was
+        invisible until a matched bracket sat to the right of an unmatched
+        one.
+        """
+        with raises_message(ValueError, "unmatched '[' at position 0"):
+            run_program("[[]")
+
     def test_unmatched_close_bracket_reports_its_own_position(self) -> None:
         """A stray ``]`` names the index it sits at, checked exactly."""
         with raises_message(ValueError, "unmatched ']' at position 2"):

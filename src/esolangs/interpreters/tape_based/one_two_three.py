@@ -88,26 +88,40 @@ def _with_byte(bits: _Bits, value: int) -> _Bits:
     )
 
 
-def _jump(code: str, ip: int, *, back: bool) -> int:
-    """Return the cursor after a ``3`` jumps backward or forward.
+def _landings(code: str) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    """Return where a backward and a forward ``3`` jump land, per position.
 
-    Backward lands just after the previous ``3`` (or at the start); forward
-    lands just after the next ``3`` (or past the end, where the normal
-    loop-or-halt check applies).  Both are total -- a missing partner is
-    not an error here, it just runs to the edge.
+    Two prefix scans, run once when the program loads.  The jump used to
+    walk to the nearest ``3`` from the cursor, so it cost the distance to
+    its partner every time it was taken -- and these are not nested
+    brackets but a plain nearest-neighbour search, which a pair of arrays
+    answers outright.
+
+    The edges are that walk's: no ``3`` behind lands at the start, and none
+    ahead lands past the end, where the loop-or-halt check applies.
     """
-    if back:
-        j = ip - 1
-        while j >= 0 and code[j] != "3":
-            j -= 1
-    else:
-        j = ip + 1
-        while j < len(code) and code[j] != "3":
-            j += 1
-    return j + 1
+    size = len(code)
+    back = [0] * size
+    last = -1
+    for i in range(size):
+        back[i] = last + 1
+        if code[i] == "3":
+            last = i
+    forward = [size + 1] * size
+    nxt = size
+    for i in range(size - 1, -1, -1):
+        forward[i] = nxt + 1
+        if code[i] == "3":
+            nxt = i
+    return tuple(back), tuple(forward)
 
 
-def _advance(state: _State, code: str, byte: int | None = None) -> _State:
+def _advance(
+    state: _State,
+    code: str,
+    landings: tuple[tuple[int, ...], tuple[int, ...]],
+    byte: int | None = None,
+) -> _State:
     """Return the state after executing one command.
 
     Pure: it reads ``state`` and returns a new one.  It takes no ``io``
@@ -145,7 +159,7 @@ def _advance(state: _State, code: str, byte: int | None = None) -> _State:
     elif char == "3" and pos >= 0:
         # Below location 0 a ``3`` is a NOP; at or above it jumps, and the
         # jump has already positioned the cursor.
-        return (_jump(code, ip, back=pos in bits), pos, bits, done)
+        return (landings[0 if pos in bits else 1][ip], pos, bits, done)
     return (ip + 1, pos, bits, done)
 
 
@@ -166,6 +180,8 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Store ``code`` and reset the tape; a command-less program halts."""
         self.code = code
+        # Where each jump lands, scanned once rather than per jump.
+        self._landings = _landings(code)
         self.io = io
         self.n = len(code)
         # A program with no commands can never move, so it is done already.
@@ -246,7 +262,7 @@ class _Machine:
                 byte = self.io.input_char()
             elif pos == _WRITE:
                 self.io.print_char(chr(_byte_of(bits)))
-        self.state = _advance(self.state, self.code, byte)
+        self.state = _advance(self.state, self.code, self._landings, byte)
 
 
 def run(code: str, io: IO) -> None:

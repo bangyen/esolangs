@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import sys
 
+from esolangs.interpreters.brackets import match_brackets
 from esolangs.interpreters.io import IO
 
 #: One instant of a run: ``(ip, stack)`` -- the cursor and the bit stack.  A
@@ -70,38 +71,18 @@ def _top(stack: tuple[int, ...]) -> int:
     return stack[-1] if stack else 0
 
 
-def _forward(code: str, i: int) -> int:
-    """Return the index after the ``]`` matching the ``[`` at ``i``."""
-    depth = 1
-    j = i + 1
-    while depth:
-        if code[j] == "[":
-            depth += 1
-        elif code[j] == "]":
-            depth -= 1
-        j += 1
-    return j
-
-
-def _backward(code: str, i: int) -> int:
-    """Return the index after the ``[`` matching the ``]`` at ``i``."""
-    depth = 1
-    j = i - 1
-    while depth:
-        if code[j] == "]":
-            depth += 1
-        elif code[j] == "[":
-            depth -= 1
-        j -= 1
-    return j + 1
-
-
-def _advance(state: _State, code: str) -> _State:
+def _advance(state: _State, code: str, jumps: dict[int, int]) -> _State:
     """Return the state after executing the command at the cursor.
 
-    Pure, and total: the brackets were balanced in ``__init__`` so the two
-    scans below always find their partner, and an empty stack reads as zero
-    for every peek.  It takes no ``io`` argument, so ``.``'s print is the
+    ``jumps`` pairs each bracket with its partner, matched once when the
+    program was loaded.  Both brackets used to *scan* for that partner on
+    every jump, which cost the length of the loop body each time a loop was
+    entered or repeated -- while the constructor already walked the whole
+    program to check the brackets were balanced, and threw the pairing away.
+
+    Pure, and total: the brackets were balanced in ``__init__`` so every
+    lookup below finds its partner, and an empty stack reads as zero for
+    every peek.  It takes no ``io`` argument, so ``.``'s print is the
     caller's business -- it changes no state at all.
 
     Every command sets the cursor itself rather than falling through to a
@@ -121,9 +102,9 @@ def _advance(state: _State, code: str) -> _State:
         stack = stack[:-1]
     elif code[ip] == "[":
         if _top(stack) == 0:
-            return (_forward(code, ip), stack)
+            return (jumps[ip] + 1, stack)
     elif code[ip] == "]" and _top(stack) == 1:
-        return (_backward(code, ip), stack)
+        return (jumps[ip] + 1, stack)
     return (ip + 1, stack)
 
 
@@ -139,16 +120,16 @@ class _Machine:
         """
         if not code:
             raise ValueError("BF-PDA program cannot be empty")
-        depth = 0
-        for pos, ch in enumerate(code):
-            if ch == "[":
-                depth += 1
-            elif ch == "]":
-                depth -= 1
-                if depth < 0:
-                    raise ValueError(f"unmatched ']' at position {pos}")
-        if depth:
-            raise ValueError(f"unmatched '[' at position {code.rfind('[')}")
+        # The balance check and the jump table are the same walk, so it is
+        # done once and kept.  This used to count depth and discard it, then
+        # rescan for a partner on every jump.
+        #
+        # The shared matcher reports an unmatched ``[`` at the innermost one
+        # still waiting rather than at the last ``[`` in the text.  Those
+        # agree wherever the old message was pinned, and differ only where
+        # the old one was wrong: ``rfind`` could name a bracket that *was*
+        # matched, as in ``[[]``, which names 1 where the unmatched one is 0.
+        self.jumps = match_brackets(code)
 
         self.io = io
         self.code = code
@@ -202,7 +183,7 @@ class _Machine:
         ip, stack = self.state
         if self.code[ip] == ".":
             self.io.print_char("01"[_top(stack)])
-        self.state = _advance(self.state, self.code)
+        self.state = _advance(self.state, self.code, self.jumps)
 
 
 def run(code: str, io: IO) -> None:

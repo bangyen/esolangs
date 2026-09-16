@@ -63,6 +63,34 @@ def matches(code: str) -> None:
             raise ValueError(f"unmatched '{opr}'")
 
 
+def _partners(code: str) -> dict[int, int]:
+    """Map each ``[`` and ``{`` to the index :func:`find` would return.
+
+    One pass per bracket pair, built when the program loads.  Both jumps
+    used to call :func:`find`, which rescans from the bracket every time it
+    is reached, so a loop skipped or a block entered cost the length of its
+    body once per visit.
+
+    Deliberately blind to ``#`` loads, exactly as :func:`find` is.
+    :func:`matches` is *not* -- it treats a loaded bracket as data -- so the
+    two already disagree on a program that loads one, and this reproduces
+    the reading the jumps actually use rather than quietly adopting the
+    other.  An opener with no partner maps to ``len(code)``, which is what
+    :func:`find` returns when its scan runs off the end.
+    """
+    table: dict[int, int] = {}
+    for opr, end in (("[", "]"), ("{", "}")):
+        open_at: list[int] = []
+        for i, char in enumerate(code):
+            if char == opr:
+                open_at.append(i)
+            elif char == end and open_at:
+                table[open_at.pop()] = i
+        for i in open_at:
+            table[i] = len(code)
+    return table
+
+
 def find(code: str, ind: int) -> int:
     """Find the matching closing bracket for a given opening bracket."""
     opr = code[ind]
@@ -95,7 +123,12 @@ def find(code: str, ind: int) -> int:
 type _State = tuple[int, int, bool, tuple[int, ...], bool]
 
 
-def _advance(state: _State, code: str, value: int | None = None) -> _State:
+def _advance(
+    state: _State,
+    code: str,
+    partners: dict[int, int],
+    value: int | None = None,
+) -> _State:
     """Return the state after executing the command under the cursor.
 
     Pure: it reads ``state`` and returns a new one.  The four I/O commands
@@ -113,7 +146,7 @@ def _advance(state: _State, code: str, value: int | None = None) -> _State:
 
     if (c := code[ind]) == "[":
         if skp:
-            ind = find(code, ind)
+            ind = partners[ind]
             if not stk:
                 skp = False
         else:
@@ -131,15 +164,15 @@ def _advance(state: _State, code: str, value: int | None = None) -> _State:
         if value is not None:
             acc = value
     elif c == "{":
-        ind = find(code, ind)
+        ind = partners[ind]
     elif c == "&":
         return (acc, ind, skp, stk, True)
     else:
         val = code[ind:]
         if m := re.match(r"@\$(\d+){", val):
-            ind = _branch(code, ind, m.end() - 1, taken=acc == int(m[1]))
+            ind = _branch(code, partners, ind, m.end() - 1, taken=acc == int(m[1]))
         elif m := re.match(r"@\$?(.){", val):
-            ind = _branch(code, ind, m.end() - 1, taken=acc == ord(m[1]))
+            ind = _branch(code, partners, ind, m.end() - 1, taken=acc == ord(m[1]))
         elif m := re.match(r"#\$(\d+)", val):
             acc = int(m[1])
             ind += m.end() - 1
@@ -150,7 +183,9 @@ def _advance(state: _State, code: str, value: int | None = None) -> _State:
     return (acc, ind + 1, skp, stk, halted)
 
 
-def _branch(code: str, ind: int, width: int, *, taken: bool) -> int:
+def _branch(
+    code: str, partners: dict[int, int], ind: int, width: int, *, taken: bool
+) -> int:
     """Return the cursor for a conditional, entered or skipped.
 
     A taken branch steps over the ``@c`` header onto its block.  A failed
@@ -159,7 +194,7 @@ def _branch(code: str, ind: int, width: int, *, taken: bool) -> int:
     """
     if taken:
         return ind + width
-    end = find(code, ind + width)
+    end = partners[ind + width]
     if end + 1 < len(code) and code[end + 1] == "{":
         return end + 1
     return end
@@ -175,6 +210,9 @@ class _Machine:
         any command runs.
         """
         matches(code)
+        # Where each bracket's partner is, matched once rather than
+        # rescanned from the bracket on every loop skip and block entry.
+        self._partners = _partners(code)
         self.io = io
         self.code = code
         self.acc = self.ind = 0
@@ -257,7 +295,7 @@ class _Machine:
             if val:
                 value = ord(val[0])
 
-        self._restore(_advance(self._state, self.code, value))
+        self._restore(_advance(self._state, self.code, self._partners, value))
 
 
 def run(code: str, io: IO) -> None:

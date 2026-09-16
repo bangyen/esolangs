@@ -147,7 +147,8 @@ characters for a constant fraction of them.  Its replacement stores the reversed
 table as one decimal 0/1 literal and repeatedly divides it by ten in a fixed
 two-bank network.  The input weights sum to `T-1`, so source and construction
 are O(T); execution time is intentionally not bounded by that source-size result
-and is enormous for dense wide tables.
+and is enormous for dense wide tables -- measured under "Execution time" below,
+where the division is what makes a fourteen-command program cost Theta(T).
 
 Three retired or current grid layouts spend one depth-width strip per table row.
 Clockwise's retired flat form used Theta(T) columns across Theta(log T) active
@@ -876,6 +877,67 @@ least one of its recorded negatives -- that reordering minterms into Gray
 order could not pay -- was superseded two days later, when ROTFuck moved
 to a single binary-reflected Gray pass.  A sweep's negatives age against
 the constructions they were measured on.
+
+### Execution time
+
+Everything above prices a generator's *source*.  Execution time is a
+separate axis, measured here for all 65 by stepping each generated program
+over every row of its table and keeping the worst row, out to eleven inputs
+where that is affordable.  It is the product of two quantities, and they
+have to be measured apart because neither predicts the other: the commands
+a program executes, which stepping counts exactly, and the cost of a
+command, which is not constant.  Program *loading* is excluded throughout --
+real time, but not the program running, and for two languages it is the
+entire cost.  The figures are worst-row and were taken on parity tables;
+random tables cost the same or less, so they bound rather than flatter.
+
+Three are quadratic, and for one reason each: BIO, Jaune and Flowchart
+execute Theta(T) commands and pay Theta(T) for each.  RAM0, B-tapemark,
+LaserFuck, BrainIf, Bitdeque and Eval sit between, around T^1.4 to T^1.75.
+About fifteen are linear -- Minifuck, COD, Forth, Back, ROTfuck, S*bleq,
+Qoibl, Container and the rest -- which is what a program that walks its
+table once costs.
+
+Twenty-two never look at most of the table, and their command counts are
+polynomial in the input count rather than in its size.  brainfuck is the
+clean case: its worst row is 113, 179, 251, ... 803 commands for one
+through eleven inputs, an arithmetic progression, so it answers a
+2048-row table in about eight hundred steps.  Factor, Polynomial, Circuit
+Diagram, EGL and Fargo are the same shape.  A generator can therefore emit
+a Theta(T) source whose execution never reads it, and the two axes have to
+be quoted separately.
+
+Container is the case this section used to leave open.  Its execution time
+is not bounded by its O(T) source, as said above, and the reason is the
+second factor rather than the first: the program runs a handful of
+commands -- fourteen at six inputs -- but each divides a T-digit integer,
+so the work is linear in the table while the command count is not.
+
+Loading is where the largest costs turned out to sit, and they are not the
+same languages.  A Factor program *is* an integer and loading it means
+factoring that integer, so the cost is the language rather than the
+implementation; the sieve is chunked and tests each chunk with one gcd
+rather than a full-width remainder per prime, which leaves it quadratic in
+the digit count but no worse.  Qoibl's loader searched for the shortest
+parsing prefix at every cut point and re-sliced its tokens for each trial,
+which was cubic and spent a minute on an 18 KB program; spans are now
+indices with a memo, and the remaining quadratic is the cost of proving
+that a position inside a statement starts nothing.  Circuit Diagram's grid
+is superlinear in area by construction -- one band per minterm -- and its
+parse is linear in that area.  Streetcode's load is linear with a large
+constant.
+
+What was fixed on the execution side was a single mistake repeated:
+an interpreter that searched the program for a jump target on every jump,
+rather than reading an index built once at load.  BIO matched its braces
+once, Jaune indexed its labels, BrainIf kept its parsed lines.  What
+remains is a different one, and it is shared by Jaune, BrainIf, RAM0 and
+Flowchart: each rebuilds an immutable tape or association list on every
+write, O(size) a write, so Theta(T) writes cost Theta(T^2).  Minifuck
+already answers this with an integer bit-vector, and the reason the others
+have not followed is that the structure sits inside the state the cycle
+detector hashes, so replacing it is a change to the state type rather than
+to a function.
 
 
 ## Curation
