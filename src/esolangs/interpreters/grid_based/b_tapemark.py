@@ -17,7 +17,65 @@ from dataclasses import dataclass
 from esolangs.interpreters.io import IO
 
 type _Point = tuple[int, int]
-type _Grid = frozenset[tuple[int, int, str]]
+
+
+class _Grid:
+    """The marks on one grid, keyed by the point each sits on.
+
+    A grid is a *map* from point to symbol, and it used to be spelled as a
+    set of ``(x, y, char)`` triples.  Every read then scanned the whole set
+    looking for one point -- and a B-tapemark program's data grid runs to
+    hundreds of thousands of marks, so reading a single cell walked all of
+    them.  Keying by point makes that a lookup.
+
+    Immutable, like the set it replaces: a write returns a new grid rather
+    than editing this one, which is what lets a state be compared with an
+    earlier one and a hang be proved.  The copy is a ``dict`` copy, done in
+    C, where the old rebuild was a comprehension in Python.
+    """
+
+    __slots__ = ("_cells", "_digest")
+
+    def __init__(self, cells: dict[tuple[int, int], str]) -> None:
+        """Take ownership of ``cells``; callers must not keep a reference."""
+        self._cells = cells
+        self._digest: int | None = None
+
+    def at(self, point: tuple[int, int]) -> str:
+        """Return the symbol at ``point``, or a blank where there is none."""
+        return self._cells.get(point, " ")
+
+    def marked(self, point: tuple[int, int], char: str) -> _Grid:
+        """Return this grid with ``char`` at ``point``.
+
+        A blank erases, which is what keeps a grid's size the count of its
+        marks rather than of every cell ever written.
+        """
+        cells = dict(self._cells)
+        if char == " ":
+            cells.pop(point, None)
+        else:
+            cells[point] = char
+        return _Grid(cells)
+
+    def __eq__(self, other: object) -> bool:
+        """Grids are equal when they carry the same marks."""
+        if not isinstance(other, _Grid):
+            return NotImplemented
+        return self._cells == other._cells
+
+    def __hash__(self) -> int:
+        """Hash the marks, computed once.
+
+        The cycle detector compares snapshots rather than hashing them, so
+        this is for callers that want a grid in a set; it is memoized
+        because a grid never changes after it is built.
+        """
+        if self._digest is None:
+            self._digest = hash(frozenset(self._cells.items()))
+        return self._digest
+
+
 type _Grids = tuple[_Grid, _Grid]
 
 _DIRECTIONS = ((1, 0), (0, 1), (-1, 0), (0, -1))
@@ -42,15 +100,12 @@ class _State:
 
 def _read(grid: _Grid, point: _Point) -> str:
     """Return ``grid``'s symbol at ``point``, or blank."""
-    x, y = point
-    return next((char for gx, gy, char in grid if (gx, gy) == (x, y)), " ")
+    return grid.at(point)
 
 
 def _write(grid: _Grid, point: _Point, char: str) -> _Grid:
     """Return ``grid`` with ``char`` at ``point`` without mutating it."""
-    x, y = point
-    remaining = frozenset(cell for cell in grid if cell[:2] != point)
-    return remaining if char == " " else remaining | {(x, y, char)}
+    return grid.marked(point, char)
 
 
 def _move(point: _Point, direction: int) -> _Point:
@@ -61,7 +116,7 @@ def _move(point: _Point, direction: int) -> _Point:
 
 def _load(source: str) -> _State:
     """Validate and load ``source`` into an initial immutable state."""
-    cells: set[tuple[int, int, str]] = set()
+    cells: dict[tuple[int, int], str] = {}
     starts: list[tuple[_Point, int]] = []
     quoted = False
     for y, line in enumerate(source.splitlines()):
@@ -74,7 +129,7 @@ def _load(source: str) -> _State:
                 starts.append(((x, y), _STARTS.index(char)))
             elif char in _COMMANDS or "0" <= char <= "9" or "A" <= char <= "Z":
                 if char != " ":
-                    cells.add((x, y, char))
+                    cells[x, y] = char
             else:
                 raise ValueError(f"invalid B-tapemark symbol: {char!r}")
     if quoted:
@@ -82,7 +137,7 @@ def _load(source: str) -> _State:
     if len(starts) != 1:
         raise ValueError("B-tapemark program needs exactly one start marker")
     point, direction = starts[0]
-    return _State(0, (point, point), direction, (frozenset(cells), frozenset()))
+    return _State(0, (point, point), direction, (_Grid(cells), _Grid({})))
 
 
 def _advance(
