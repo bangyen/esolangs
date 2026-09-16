@@ -899,16 +899,27 @@ which is what walking a table once costs.
 
 Where it does not, run time grows faster than the commands do.  Measured at
 nine inputs as the worst row's run time and its growth per added input,
-with loading excluded: Flowchart 415 ms at x3.6, BrainIf 82 ms at x2.9,
-LaserFuck 47 ms at x2.9, RAM0 17 ms at x3.0, Jaune 18 ms at x2.9, Eval
+with loading excluded: BrainIf 82 ms at x2.9, Flowchart 63 ms at x2.5,
+LaserFuck 47 ms at x2.9, Jaune 18 ms at x2.9, RAM0 17 ms at x3.0, Eval
 1.6 ms at x2.1 and Bitdeque 1.2 ms at x2.5, against the x2.0 a linear
 program would show.
 
-The magnitudes are quoted because the exponents alone are misleading here.
-Only Flowchart costs enough to notice; Bitdeque's x2.5 is a millisecond,
-which is a ratio between two timings too small to mean much, and chasing it
-would buy nothing.  A growth figure on a run this short is noise wearing an
-exponent.  Those share a
+The magnitudes are quoted because the exponents alone mislead.  Bitdeque's
+x2.5 is a millisecond -- a ratio between two timings too small to mean
+much -- and chasing it would buy nothing.  A growth figure on a run that
+short is noise wearing an exponent.
+
+What remains is the structure being copied: each of these rebuilds an
+immutable tape or association list on every write, so a write costs its
+size.  Flowchart no longer heads the list because its pointer memory is
+keyed by cell now rather than scanned as a tuple of pairs, which took it
+from 415 ms to 63 ms.  The pairs were there, its docstring said, to keep
+the pointer hashable -- but nothing hashes a pointer: ``state`` builds the
+hashable view the cycle detector compares, and always did.  A value type
+holding a dict keeps every property that reading actually relied on.
+
+The same shape is available to the rest and has not been spent there: at
+82 ms and below the copy is not what anyone is waiting for.  Those share a
 mechanism: each rebuilds an immutable tape, association list or pointer
 memory on every write, so a write costs the structure's size and Theta(T)
 writes cost Theta(T^2).  Minifuck answers the same problem with an integer
