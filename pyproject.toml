@@ -179,18 +179,19 @@ markers = [
     # 142.6s of the slow band's ~182s at four workers, and the other 347 are
     # ~40s between them.  Measured with `--durations=0`, not estimated.
     #
-    # Both are high-arity probes of a claim documented elsewhere -- every
-    # generator raising only `EsolangError` at twelve inputs, and `%^2^-1`
-    # reaching a generic thirteen-input table -- so they are evidence for
+    # Each is a high-arity probe of a claim documented elsewhere -- every
+    # generator raising only `EsolangError` at twelve inputs, `%^2^-1`
+    # reaching a generic thirteen-input table, Factor's thirteen-input
+    # program decoding past its retired digit budget -- so they are evidence for
     # `walls.md` and `limitations.md` and are not deletable.  What they are
-    # not is *per-run* evidence: neither has ever failed on a change that
-    # the rest of the band passed, and both probe an arity nothing else in
+    # not is *per-run* evidence: none has ever failed on a change that
+    # the rest of the band passed, and each probes an arity nothing else in
     # the suite reaches, so a week is the right sampling interval.
     #
     # `just test-full` and per-PR CI deselect this; `.github/workflows/
     # weekly.yml` runs bare `pytest -n auto` and so picks it up by
     # deselecting nothing.  Run one by hand with `-m weekly`.
-    "weekly: the two high-arity probes, left to the weekly workflow",
+    "weekly: the high-arity probes, left to the weekly workflow",
     # The middle tier.  The rule is behavioural, not a stopwatch reading: a
     # test is `medium` if it runs a generated program through an interpreter
     # or drives the CLI (or git) as a subprocess.  That is what costs whole
