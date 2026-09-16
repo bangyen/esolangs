@@ -20,14 +20,25 @@ entry at n=8..12 (9,397 at dense n=10 against the retired per-row
 spelling's 36,829); the parity table is one hyperplane and collapses from
 52,821 characters to 259.
 
-A cube's guard needs one part per constraint.  Constraints come out of
-Gaussian elimination in reduced form, so each is a parity of at most
-``dim + 1`` inputs; single-input constraints test the input name directly
-and wider ones live in strict register bindings (``A ~> a?``,
-``A ~> A? != b?``) that later clauses morph one toggle at a time instead
-of respelling.  Register upkeep is the one piece with no O(T) proof --
-its worst case is O(T log log T) from the ``dim + 1`` width bound -- and
-the measured upkeep share stays under half of the emitted text.
+A cube's guard needs one part per constraint, and any basis of the cube's
+dual space will do.  :func:`_constraints` builds one from short relations:
+all but at most ``1 + 2**((dim + 1) / 2)`` constraints are parities of at
+most four inputs, the rest come from reduced elimination at most ``dim +
+1`` wide, so a clause's constraints weigh at most ``4 * n + (dim + 1) * (1
++ 2**((dim + 1) / 2))`` inputs in total.  Single-input constraints test
+the input name directly and wider ones live in strict register bindings
+(``A ~> a?``, ``A ~> A? != b?``) that later clauses morph one toggle at a
+time instead of respelling; a fresh register costs one line per input of
+its parity and a morph strictly fewer, so upkeep never exceeds the total
+constraint weight.  Summed over the peel, ``4 * n`` per clause is ``4 * n
++ 36 * 2**n`` by the clause bound, and the second term is at most ``4 *
+2**dim`` per clause, hence ``4 * 2**n`` over the disjoint cubes.  Register
+upkeep is therefore O(T) -- under ``40 * 2**n + 4 * n`` lines -- and its
+measured share stays under half of the emitted text.  The reduced-echelon
+basis alone would not give this: on a cube whose columns spread over
+``2**dim`` values it weighs ``n * dim / 2`` however the pivots are
+chosen, which is ``Theta(T log log T)`` at the ``log2(n)`` dimensions the
+peel produces.
 """
 
 from esolangs.tools.helpers import _validate_truth_table
@@ -154,11 +165,12 @@ def _cube(rest: int, n: int, pool: list[int]) -> tuple[int, list[int]]:
     return base, dirs
 
 
-def _constraints(base: int, dirs: list[int], n: int) -> list[tuple[int, int]]:
-    """Dual constraints pinning ``base + span(dirs)``: ``(parity, value)``.
+def _echelon(dirs: list[int], n: int) -> list[int]:
+    """Reduced-echelon basis of the constraint space of ``span(dirs)``.
 
     Reduced elimination keeps each dual to one free coordinate plus bits on
-    the ``len(dirs)`` pivots, so no constraint is wider than ``dim + 1``.
+    the ``len(dirs)`` pivots, so no vector is wider than ``dim + 1``.  Only
+    the completion step of :func:`_constraints` needs it.
     """
     pivots: dict[int, int] = {}
     for row in dirs:
@@ -182,6 +194,62 @@ def _constraints(base: int, dirs: list[int], n: int) -> list[tuple[int, int]]:
             if prow >> free & 1:
                 w ^= 1 << bit
         duals.append(w)
+    return duals
+
+
+def _constraints(base: int, dirs: list[int], n: int) -> list[tuple[int, int]]:
+    """Dual constraints pinning ``base + span(dirs)``: ``(parity, value)``.
+
+    A constraint is a set of inputs whose ``dirs``-columns (the vector of
+    the set's bits across the directions) sum to zero, and any basis of
+    those sets pins the cube.  This one is built from short relations:
+    inputs are scanned in order and kept in a *core* while no one-to-four
+    of the core's columns sum to zero; every other input's column is, by
+    maximality, a sum of at most three core columns, giving it a relation
+    of weight at most four that no other relation shares its bit with.
+    The core's pairwise column sums are distinct and nonzero in
+    ``2**dim - 1`` values, so it holds at most ``1 + 2**((dim + 1) / 2)``
+    inputs, and the ``|core| - dim`` relations still missing come from
+    the reduced-echelon basis, each at most ``dim + 1`` wide.
+
+    A cube's constraints therefore weigh at most
+    ``4 * n + (dim + 1) * (1 + 2**((dim + 1) / 2))`` in total, against
+    ``(n - dim) * (dim + 1)`` for the echelon basis alone, which is what
+    the module docstring's O(T) upkeep bound sums.
+    """
+    dim = len(dirs)
+    cols = [sum((v >> j & 1) << i for i, v in enumerate(dirs)) for j in range(n)]
+    # Sums of one to three core columns, mapped to the set of inputs summed.
+    sums: dict[int, int] = {}
+    core: list[int] = []
+    duals: list[int] = []
+    for j, col in enumerate(cols):
+        if col == 0:
+            duals.append(1 << j)
+        elif col in sums:
+            duals.append(sums[col] | 1 << j)
+        else:
+            singles = [(cols[c], 1 << c) for c in core]
+            pairs = [(a ^ b, x | y) for a, x in singles for b, y in singles if x < y]
+            for value, inputs in [(col, 1 << j)] + [
+                (col ^ a, 1 << j | x) for a, x in singles + pairs
+            ]:
+                sums.setdefault(value, inputs)
+            core.append(j)
+    # A short relation's leading bit is its own input -- the core inputs it
+    # sums are all earlier -- so the relations are independent as they
+    # stand.  Complete to a basis from the echelon duals, keeping each only
+    # when it is independent of what came before.
+    reduced = {w.bit_length() - 1: w for w in duals}
+    for w in _echelon(dirs, n):
+        cur = w
+        while cur and (cur.bit_length() - 1) in reduced:
+            cur ^= reduced[cur.bit_length() - 1]
+        if cur:
+            reduced[cur.bit_length() - 1] = cur
+            duals.append(w)
+    if len(duals) != n - dim:  # pragma: no cover - a basis has n - dim rows
+        raise AssertionError("constraint basis has the wrong rank")
     return [(w, (w & base).bit_count() % 2) for w in duals]
 
 
