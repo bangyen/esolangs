@@ -70,19 +70,25 @@ _TREE_BRANCH_1 = ["*  ", "** ", "   "]  # reflects the down-route back to the ri
 # number of characters as the zero block it stands against -- without them the
 # emitted program's length counts the one bits, breaking the equal-width rule.
 # A wall is only inert where the IP cannot reach it, which is why the first
-# block's row 0 is left exactly as it was.  See
+# block's row 0 carries none.  See
 # ``the relevant generator tests`` for the leak that forced this and why one
 # wall per row suffices.
-_FIRST_ONE = ["   *", "   ~*", "  *", "  *", "  *"]
+# Every cell a block spells is a glyph: ``.`` is a no-op to the interpreter
+# (any character but ``*``, ``~`` and ``+`` is), so the corridor the IP
+# walks and the cells it never reaches are written rather than left blank,
+# and a bit is never spelled as nothing.  Rows are still stripped of their
+# trailing blanks, so a corridor cell past a row's last glyph stays implicit
+# and the two blocks' character counts stay equal (fourteen each).
+_FIRST_ONE = ["...*", "...~*", "..*", "..*", "..*"]
 
 
-_FIRST_ZERO = ["   *", "*~* ", "*  *", "*  *", "* * "]
+_FIRST_ZERO = ["...*", "*~* ", "*..*", "*..*", "*.* "]
 
 
-_NEXT_ONE = ["   ~*", "  *", "  *", "  *"]
+_NEXT_ONE = ["...~*", "..*", "..*", "..*"]
 
 
-_NEXT_ZERO = ["*~* ", "*  *", "*  *", "* * "]
+_NEXT_ZERO = ["*~* ", "*..*", "*..*", "*.* "]
 
 
 # The loop-component section: entered heading down at column 3 from the last
@@ -263,7 +269,7 @@ def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
         marker_rows: list[str] = []
         for i, bit in enumerate(bits):
             weight = 1 << (n - 1 - i)
-            marker_rows.extend([" ~" if bit else "  "] * weight)
+            marker_rows.extend([".~" if bit else ".."] * weight)
         # Enter column 1, append the marker run, turn around, append a right
         # sentinel, then use the established middle block to queue R,D,L,U.
         header = [" *", *marker_rows, "* ~   *"]
