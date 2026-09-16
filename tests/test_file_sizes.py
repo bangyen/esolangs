@@ -24,8 +24,19 @@ MAX_LINES = 1500
 #: landed.  Each may only shrink, and must be deleted from this table once it
 #: is under the cap.  Nothing may be added: a new entry means a file grew past
 #: the cap instead of being split.
+#:
+#: The two source files here are not waiting to be split.  ``streetcode.py``
+#: would split along the line its own docstring draws -- the pure movement
+#: rules against the mutable run -- but the rules are written in terms of
+#: ``_State``, and ``test_interpreter_conventions`` requires an interpreter to
+#: *declare* ``_State`` in its own file, read from the source rather than
+#: imported.  Honouring both would need a cycle or a third module that leaves
+#: neither file declaring it, so the convention wins.  ``__init__.py`` is the
+#: public API: the one seam in it is the round trip, and moving that out means
+#: a module importing the package that imports it, which is an import-order
+#: trap in the package root in exchange for a line count.
 _RATCHET = {
-    "src/esolangs/__init__.py": 1598,
+    "src/esolangs/__init__.py": 1584,
     "src/esolangs/interpreters/grid_based/streetcode.py": 1855,
     "tests/interpreters/test_forbin.py": 1721,
     "tests/interpreters/test_streetcode.py": 2249,
