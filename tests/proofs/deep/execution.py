@@ -20,11 +20,10 @@ its table once and below every construction that reads it per row.
 
 Where the bound sits, measured on both sides:
 
-* the held cohort runs from x1.00 (Nopstacle, whose halting row is four
-  commands) through x1.11 (Alight, Fargo -- programs that never look at
-  most of the table, brainfuck's count being an arithmetic progression in
-  the input count rather than the table's; Crement's ``5 n + 2`` tree walk
-  measures x1.15 for the same reason) up to x2.06
+* the held cohort runs from x1.11 (Alight, Fargo -- programs that never
+  look at most of the table, brainfuck's count being an arithmetic
+  progression in the input count rather than the table's; Crement's
+  ``5 n + 2`` tree walk measures x1.15 for the same reason) up to x2.06
   (AddSubJump), with 123, S*bleq, Bitdeque, Collatz Multiverse and COD all
   within a percent of x2.00 -- a single pass over the table;
 * it has caught one construction for real.  Minsky Swap measured x2.29,

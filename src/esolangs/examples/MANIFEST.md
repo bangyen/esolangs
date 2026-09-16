@@ -97,7 +97,7 @@ that row is actually spelled for the language.
 - **inject** -- send terminates each line, so the answer ends in a newline
 - **laserfuck** -- the initial heading is random by spec, so the example pins the source it is drawn from: seed 0 draws heading 3
 - **minsky-swap** -- Minsky Swap has no output instruction and dumps its registers at halt; the answer is the second one
-- **nopstacle** -- Nopstacle answers by termination: a local repeated state halts for 0 and crossing repeated copies forever is 1
+- **nopstacle** -- Nopstacle answers by termination: the IP falls through a decision tree of corridors, a blank bit cell passing it and a # deflecting it; a 0 leaf is a box it circles into a repeated local state, a 1 leaf drops it onto a blank row it runs along across copies forever
 - **ram0** -- RAM0 has no output instruction and dumps its whole state at halt; the answer is the 'z' register
 - **taglate** -- Taglate takes a line per bit like most languages, but an odd input count above 1 is padded with a leading zero it reads like any other digit: an n=3 program wants four lines. Feeding three exhausts its input; padding at the end instead answers every row whose top bit is set wrongly
 - **vandevelo** -- Vandevelo answers by terminating: nil halts and not nil loops

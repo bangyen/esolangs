@@ -96,10 +96,9 @@ for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
 and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  Alight, Nopstacle and
+the tree at any arity.  Alight and
 SLOW ACV MAMMALIAN keep no tree route at all: Alight indexes a string literal,
-the Nopstacle prototype embeds the table verbatim beside its
-input slots, and SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf
+and SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf
 slot per row whatever the table says.  Container's sub-crossover route is a
 tree but a deliberately unfolded one, so it does not shrink on a degenerate
 table.
@@ -155,7 +154,7 @@ after ignoring the performance/resource ceiling as specified above.
 | Minsky Swap | parameterized tree | — |
 | Modulous | tree | — |
 | NoComment | finite lookup | from 4 inputs the index is a run of byte-sized skips on the stack and the rows are code: a chain of uniform groups lands on the row, and the rows after it telescope to `table[index]` on six tape cells |
-| Nopstacle | finite lookup | prototype instantiation |
+| Nopstacle | parameterized tree | a full tree of corridors, unfolded: level `i` reads its `{Xi}` run at `2**i` node columns and the leaves are halting boxes or a drop onto the blank bottom row |
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry |
 | Packlang | tree | — |
 | Painfuck | tree | Brainfuck tree transliteration |
