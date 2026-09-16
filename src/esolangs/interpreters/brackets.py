@@ -21,6 +21,23 @@ Two kinds of interpreter deliberately do *not* come through here:
   unbalanced source is legal as long as it never runs, and Unsquare raises
   its ``HaltError`` mid-run.  Rejecting those statically would change which
   programs are valid, which is a language change and not a message one.
+
+A third kind matches over *tokens* rather than characters, and there is
+deliberately no ``match_tokens`` here for them.  BIO pairs a triple ending
+in ``{`` with the two-character ``};`` and wants a tuple it can index in the
+step loop; CVNC has two distinct openers sharing one closer and raises its
+own "loop end with no matching start"; Taglate must *not* raise, because an
+unmatched ``gy`` is reported later, by token index, where it is used.  What
+those three share is six lines of stack loop; what they differ in is the
+opener test, the closer test, the return shape and the error behaviour --
+every parameter such a helper would take.  Spelling the loop out in each is
+shorter than the signature that would unify them, and it keeps each
+language's rejection in the language's own words.
+
+What they must not differ in is the *shape of the answer*: a table built
+once at load, never a scan from the bracket on every jump.  Five
+interpreters were doing the latter (BIO, Sophie, BF-PDA, Polynomial and
+123), which cost the length of a loop body every time the loop was tested.
 """
 
 from __future__ import annotations
