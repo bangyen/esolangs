@@ -17,23 +17,56 @@ The candidate list is empty.
   choosing an input order and writing the result.  Finish with a registry-wide
   scaling contract.
 
-  Twenty-five generators were queued and Interprogck8 was added by the
-  registry-wide contract (`tests/proofs/deep/linearity.py`, per-entry cost
-  to n=12 across all 65); WII2D joined by hand, measured past its `cap`
-  exemption; all but three have closed, by construction or by a
-  language-level lower bound.  An
-  n=8 -> 9 ratio near 2 is not evidence of O(T), so the contract's verdicts
-  read in one direction only.  The live audit is:
+  All 65 generators are audited on four axes.  Totality is the `proofs.md`
+  ledger's own label (`Cap`: refuses some tables on cost; `Exception`: no
+  totality argument).  Output size is the registry-wide contract
+  (`tests/proofs/deep/linearity.py`, per-entry cost to n=12).  Generation
+  time and execution time were measured by hand (Sep 2026): the fitted
+  growth per added input over the top five arities, best of three,
+  execution on the worst sampled parity row with loading excluded, and a
+  figure on a run under ten milliseconds is not read as an exponent.  A row
+  is present while any axis is open and leaves when all four close; an
+  n=8 -> 9 ratio near 2 is not evidence of O(T), so every verdict reads in
+  one direction only.  The live audit is:
 
-  | Language | Generation time | Output size |
-  | --- | --- | --- |
-  | Factor | Language lower bound | Language lower bound |
-  | Polynomial | Open | Open |
-  | WII2D | Open | Open |
+  | Language | Totality | Generation time | Output size | Execution time |
+  | --- | --- | --- | --- | --- |
+  | %^2^-1 | Exception | Open | Linear | Linear |
+  | 6-5 | Cap | Linear | Linear | Linear |
+  | BFStack | Total | Linear | Linear | Open |
+  | BrainIf | Total | Linear | Linear | Open |
+  | Circlefuck | Total | Open | Linear | Linear |
+  | CV(N)(C) | Cap | Linear | Linear | Linear |
+  | Factor | Cap | Language lower bound | Language lower bound | Linear |
+  | Interprogck8 | Total | Open | Linear | Linear |
+  | Jaune | Total | Linear | Linear | Open |
+  | LaserFuck | Total | Linear | Linear | Open |
+  | NoComment | Cap | Linear | Linear | Linear |
+  | Polynomial | Cap | Open | Open | Linear |
+  | RAM0 | Total | Linear | Linear | Open |
+  | Unsquare | Total | Open | Linear | Linear |
+  | Vandevelo | Total | Open | Linear | Linear |
+  | WII2D | Cap | Open | Open | Linear |
+  | ZTOALC L | Cap | Linear | Linear | Linear |
+
+  Generation time, growth per added input at the top arity: Interprogck8
+  x3.3 (2.8 s at n=12), Vandevelo x3.6 on dense tables (1.3 s at n=12,
+  parity x2.2), %^2^-1 x4.2 dense (0.9 s at n=10, parity x2.6), Polynomial
+  x3.4 dense (1.1 s at n=9), WII2D x4.8 dense (1.1 s at n=9), Factor x2.7
+  (1.2 s at n=11), Circlefuck x2.5 (0.15 s at n=12), Unsquare x2.4 (0.24 s
+  at n=12).  B-tapemark, Streetcode, 6-5, Forth and Circuit Diagram past
+  its n=8 route change all read x2.2, between the size contract's x2.15
+  and what these arities separate from noise; they are held linear until a
+  wider measurement says otherwise.  Execution time, worst sampled row at
+  n=9: BFStack x2.8 (24 ms), BrainIf x2.5 (84 ms), LaserFuck x2.6 (64 ms),
+  RAM0 x2.5 (18 ms), Jaune x2.5 (18 ms); the mechanism and the fix are in
+  [limitations](limitations.md).
 
   Closure requires a lower bound over every program in the language under
   the generator contract.  Super-linear output implies super-linear
-  generation time; the time column is not an independent verdict.
+  generation time; the time column is not an independent verdict there,
+  but a linear output can still be built super-linearly, which is what the
+  eight open generation-time cells record.
 
   Polynomial's remaining question is a left-half-plane multiple of the
   mandatory root product with more terms than the Descartes minimum:
