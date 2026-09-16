@@ -72,11 +72,11 @@ from dataclasses import dataclass, replace
 
 from esolangs.registry import Generator, canonical_id
 from esolangs.tools.a_painter_ant import _instantiate_apa
+from esolangs.tools.arrowqueue import _instantiate_arrowqueue
 from esolangs.tools.cod import _instantiate_cod
 from esolangs.tools.crement import instantiate_crement
 from esolangs.tools.helpers import instantiate
 from esolangs.tools.nopstacle import instantiate_nopstacle
-from esolangs.tools.parameterized import _instantiate_arrowqueue
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
 # The committed programs all witness the same two-input function and row:
