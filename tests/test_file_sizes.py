@@ -36,7 +36,7 @@ MAX_LINES = 1500
 #: a module importing the package that imports it, which is an import-order
 #: trap in the package root in exchange for a line count.
 _RATCHET = {
-    "src/esolangs/__init__.py": 1584,
+    "src/esolangs/__init__.py": 1550,
     "src/esolangs/interpreters/grid_based/streetcode.py": 1855,
 }
 
