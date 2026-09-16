@@ -216,13 +216,12 @@ The candidate list is empty.
   of one input differ, and a blank left after deleting each single blank
   between two non-blank characters is the violation.  Measured Sep 2026 on dense and
   parity tables at n=2..6, every instantiation: single embed, constant
-  width and slot order hold for all eighteen, no spaces for sixteen.  `Open` means a command spelling is not ruled out; `Language`
+  width and slot order hold for all eighteen, no spaces for seventeen.  `Open` means a command spelling is not ruled out; `Language`
   means the alphabet leaves none.  A row is present while any cell is open
   and leaves when all four close.
 
   | Language | Single embed | Constant width | Slot order | No spaces |
   | --- | --- | --- | --- | --- |
-  | ArrowQueue | Holds | Holds | Holds | Open |
   | Nopstacle | Holds | Holds | Holds | Language |
 
   Bitdeque left: above the arity the equal-width test covers (n=1..2)
@@ -234,11 +233,14 @@ The candidate list is empty.
   (fourteen) for every `k >= 16`, and the four smaller weights take fixed
   pairs of the same three no-ops; every row through n=7 executes at one
   length per template, 578 characters at dense n=5 against 444..506.
-  ArrowQueue's
-  one-bit block is `~` amid blanks where the zero block is a dense `*` box
-  (the walls that equalized the *count* left the cells blank); the trace
-  that placed those walls -- an all-ones header travels column 3 only,
-  except on the entry row -- says where more may go.  COD left: its fill
+  ArrowQueue left: its
+  one-bit block was `~` amid blanks where the zero block is a dense `*`
+  box, and every cell a block spells is a glyph now -- `.`, which the
+  language defines as a no-op along with every character but `*`, `~`
+  and `+` -- so the corridor the pointer walks and the cells it never
+  reaches are written; the rows still drop their trailing blanks, which
+  keeps the two blocks at fourteen characters each, and every program
+  through n=6 is byte-for-byte the size it was.  COD left: its fill
   wrote a one bit as water along the swim and the return, and those cells
   are `_` now, which reacts only to a cod moving north where the route
   runs east and west; every row through n=6 executes at the same sizes.
@@ -271,11 +273,10 @@ The candidate list is empty.
   the interpreter ignores where an executed no-op is hard to find (BIO
   `'    ' * w` and Eval `'0 '` both ran clean over 2120 cases and were
   rejected for it, since an ignored pad is what a later cleanup strips)
-  and a bit spelled as a blank cell on a grid, which is the three open
-  cells above.  Add the width toggle only where a measured build is
-  smaller; add the space toggle only if the grid cells are to stay as
-  they are, in which case the three rows close by convention rather than
-  by construction.
+  and a bit spelled as a blank cell on a grid, which after ArrowQueue and
+  COD closed is Nopstacle's cell alone, and that one the language forces.
+  Add the width toggle only where a measured build is smaller; the space
+  toggle has nothing left to relax and is not worth its plumbing.
 
 - **ArrowQueue reusable drain.**  Ship the verified deep-fold drain only if
   a proof makes folding meaningfully testable at `n >= 5`; current coverage
