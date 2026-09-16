@@ -9,7 +9,6 @@ bits leaking through program length.
 # Re-exported so this module stays the import site for the whole
 # parameterized family; each of these owns a file because its
 # construction (a search or a grid layout) dwarfs the others.
-from esolangs.interpreters.tape_based.nocomment import _TAPE as _TAPE
 from esolangs.tools.a_painter_ant import a_painter_ant
 
 # The strategies live in their own modules, but this one is the
@@ -98,9 +97,6 @@ from esolangs.tools.nocomment import (
 )
 from esolangs.tools.nocomment import (
     _NOCOMMENT_SKIP_MAX as _NOCOMMENT_SKIP_MAX,
-)
-from esolangs.tools.nocomment import (
-    _nocomment_wide as _nocomment_wide,
 )
 from esolangs.tools.nocomment import nocomment as nocomment
 from esolangs.tools.one_two_three import one_two_three

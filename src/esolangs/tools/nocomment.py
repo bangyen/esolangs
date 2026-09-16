@@ -1,7 +1,5 @@
 """Boolean-function generator for NoComment."""
 
-from esolangs.exceptions import GeneratorCapError
-from esolangs.interpreters.tape_based.nocomment import _TAPE
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -16,113 +14,86 @@ _NOCOMMENT_SKIP_MAX = 255
 
 
 # Past this arity the *index* no longer fits one byte, so the single-skip
-# decode below stops working and :func:`_nocomment_wide` takes over.  It is
-# the largest ``n`` with ``2**n - 1 <= _NOCOMMENT_SKIP_MAX``.
+# decode below stops working.  It is the largest ``n`` with
+# ``2**n - 1 <= _NOCOMMENT_SKIP_MAX``; the chain takes over well before it.
 _NOCOMMENT_NARROW_MAX = (_NOCOMMENT_SKIP_MAX + 1).bit_length() - 1
 
+# The arity from which :func:`_nocomment_chain` is the smaller program.  The
+# narrow decode pays a NOT gate and a guarded weight per input plus one
+# preloaded cell per row; the chain pays six commands per row and a stage
+# per 32 rows.  Measured over every table: the narrow decode is smaller on
+# 218 of the 256 tables at three inputs and the chain is never larger at four.
+_NOCOMMENT_CHAIN_MIN = 4
 
-def _nocomment_summand_plan(n: int, room: int) -> list[list[tuple[int, int]]]:
-    """Split the index's bit weights into cells that cannot overflow a byte.
 
-    The index is ``sum(2**(n-1-i) for i where bit i is one)``, which exceeds
-    a byte past ``n == 8``.  Splitting it into *summands* rather than digits
-    keeps every part byte-sized and keeps each part a plain sum of per-bit
-    contributions, so each contribution stays a guarded increment.
+#: A chain group is six commands, ``f s f X X s``: the pop-and-skip a stage
+#: lands on, the pop the final skip lands on, the row's two-command delta,
+#: and the skip that carries the fall-through to the next group's delta.
+_NOCOMMENT_GROUP = 6
 
-    Returns one list of ``(bit, amount)`` pairs per summand cell.  A cell's
-    amounts total at most ``_NOCOMMENT_SKIP_MAX``, so no input can push it
-    past a byte, and each single contribution is at most ``room`` so the
-    guarded block that adds it stays within one skip.
+#: Groups one full stage advances.  A stage skips ``6 * a + 4`` commands, so
+#: ``a`` is at most 41; a power of two keeps every bit's weight a whole
+#: number of full stages until the weight itself drops below it.
+_NOCOMMENT_STAGE = 32
+
+
+def _nocomment_chain(truth_table: str, n: int) -> str:
+    """Build a NoComment template that needs six tape cells at any arity.
+
+    The narrow generator lands the pointer on ``table[index]`` with one
+    ``s`` whose skip amount *is* the index, which caps it at ``n == 8``, and
+    the wide generator it used to hand off to put the ``2**n`` output cells
+    on the tape, which the static 4096-cell tape capped at ``n == 12``.
+    This puts nothing per row on the tape.  The rows live in the *code*, the
+    index lives on the *stack*, and the tape holds six cells for any ``n``.
+
+    As in the narrow decode, a table that ignores some inputs is evaluated
+    over the essential ones: every input keeps its ``{Xi}`` setter, and an
+    ignored one pushes no stage, so the rows and stages are those of the
+    smaller table.
+
+    *The stack is the index.*  The index is a sum of stage amounts, each at
+    most a byte, pushed one per stage: bit ``i`` of weight ``W`` pushes
+    ``W / 32`` full stages (or one stage of ``W`` when ``W < 32``), each
+    holding ``6 * a + 4`` when the bit is one and ``4`` when it is zero.
+    The bit's cells are dead once its stages are pushed, so every bit reuses
+    the same six -- the tape never grows with ``n``.
+
+    *The code is the table.*  After the prologue the program is a run of
+    uniform six-command groups, ``f s f X X s``.  A stage lands on a group's
+    first command with the pointer on ``G``: ``f`` pops the spent amount
+    into ``G`` (nonzero, so the skip fires) and ``s`` skips the next amount
+    -- ``6 * a + 4`` commands from the second position is exactly ``a + 1``
+    groups.  The stack's last amount is the constant ``6``, which lands two
+    commands *into* a group instead: that ``f`` pops the ``6`` into ``G``,
+    the group's ``X X`` runs, and its final ``s`` skips the constant ``3``
+    left on the stack -- which from the sixth position is the *next* group's
+    ``X X``.  So the fall-through executes every later group's delta and
+    nothing else: it pops nothing and lands nowhere a stage could.
+
+    *The delta telescopes.*  Group ``m + 1 + j`` is row ``j`` and its
+    ``X X`` is ``+2``, ``-2`` or ``0`` (``ii``, ``dd``, ``id``) for
+    ``table[j] - table[j + 1]``, the row past the last counting as zero.
+    Landing on row ``A`` therefore runs the deltas of rows ``A`` and after,
+    which sum to ``table[A] - 0``: ``G`` reads ``6 + 2 * table[A]`` whatever
+    fell through, and the epilogue maps ``{6, 8}`` to ``{48, 49}`` with one
+    skip-guarded ``+1`` and prints it.  The first ``m + 1`` groups are pads
+    a stage may land on, with zero deltas.
+
+    Size is ``6`` commands per row plus ``T / 32`` stage pushes plus a
+    fixed prologue per bit -- linear, and below the narrow decode from
+    ``n == 4`` up.  Execution is one skip per stage, then three commands
+    per group fallen through: ``O(T)`` commands.  The stack holds
+    ``T / 32 + n + 3`` values at its deepest.
     """
-    parts: list[list[tuple[int, int]]] = []
-    current: list[tuple[int, int]] = []
-    total = 0
-    for i in range(n):
-        remaining = 2 ** (n - 1 - i)
-        while remaining:
-            if total == _NOCOMMENT_SKIP_MAX:
-                parts.append(current)
-                current, total = [], 0
-            take = min(remaining, _NOCOMMENT_SKIP_MAX - total, room)
-            current.append((i, take))
-            total += take
-            remaining -= take
-    # Each pass appends to ``current`` before it can be flushed, so the only
-    # way to arrive here empty is a table with no inputs -- which
-    # ``_validate_truth_table`` rejects before any caller gets this far.
-    if current:  # pragma: no branch - n == 0 never reaches the planner
-        parts.append(current)
-    return parts
-
-
-def _nocomment_wide(truth_table: str, n: int, tape: int) -> str:
-    """Build a NoComment template for a table too wide for one byte-sized skip.
-
-    The narrow generator lands the pointer on ``table[index]`` with a single
-    ``s`` whose skip amount *is* the index, which caps it at ``n == 8``.
-    Nothing about the language caps it there, because **skips compose**.  Two
-    compositions do the work:
-
-    *Chained guards.*  ``s`` peeks the stack rather than popping it and does
-    not move the pointer, so after a skip fires the guard cell is still under
-    the pointer and still nonzero.  A guarded region of any length is then a
-    run of chunks, each at most ``_NOCOMMENT_SKIP_MAX`` commands and each
-    preceded by glue that rebuilds the chunk's length and re-tests the same
-    guard.  Every chunk ends with the pointer back on the guard, so the glue
-    -- which runs on both paths -- is emitted from one known position.
-
-    *Additive staircases.*  Entering a staircase of ``L`` copies of ``l`` by
-    skipping ``c`` runs ``L - c`` of them, so pre-walking ``L`` right and
-    then skipping ``c`` is a net move of ``+c``.  Displacements add across
-    consecutive staircases, so a displacement far past 255 is reached by
-    ``q`` stages whose skip amounts sum to it, each stage's amount held in
-    its own byte-sized summand cell.
-
-    Between stages the stack top must advance, and ``f`` is the only way to
-    pop -- it writes the popped value into the cell under the pointer.  That
-    clobber is harmless because it always lands mid-corridor: a **constant**
-    trailing summand of ``1`` is appended so the final landing is strictly
-    right of every clobbered cell, which is what makes the all-zero input
-    (every input-driven summand zero) come out right.
-
-    What binds instead is the tape.  The layout needs the ``2**n`` output
-    cells plus an apron of nonzero cells for the stages' guards to test, and
-    the wiki requires the memory space to be static, so the generator refuses
-    when the top cell it needs does not fit in ``tape``.  The wiki does not
-    specify a *size*, though, so that bound is the interpreter's configuration
-    rather than a property of the language: pass a larger ``tape`` here and run
-    the program on an interpreter given the same size.
-    """
-    cap = _NOCOMMENT_SKIP_MAX
-    k = 2**n
-    comp_base = n  # comp_i = 1 - bit_i
-    sbase = 2 * n  # the summand cells
-
-    # The furthest summand cell sets how long a guarded contribution's
-    # move-add-return block is, which sets how much of one contribution fits
-    # in a single skip.  Planning with the worst-case distance keeps every
-    # emitted skip within a byte without a second pass.
-    plan = _nocomment_summand_plan(n, 1)
-    span = len(plan) + 1
-    room = cap - 2 * (sbase + span - 1 - comp_base)
-    if room > 0:
-        plan = _nocomment_summand_plan(n, room)
-    q = len(plan) + 1  # the input-driven summands plus the constant one
-    scratch = sbase + q
-    base = scratch + 1
-    apron = base + k
-    # Each stage pre-walks a full staircase right of its landing cell before
-    # testing, so the guard apron must cover one staircase past the table,
-    # and the walk itself reaches one staircase past that.
-    top = apron + 2 * cap + 1
-    if top >= tape:
-        raise GeneratorCapError(
-            f"the NoComment boolean generator needs cell {top} for n == {n}, "
-            f"past the interpreter's {tape}-cell tape"
-        )
-
+    used = essential_inputs(truth_table, n) or [0]
+    table = truth_table if len(used) == n else read_at(truth_table, used, n)
+    width = len(used)
+    weights = {i: 1 << (width - 1 - slot) for slot, i in enumerate(used)}
+    rows = 1 << width
     out: list[str] = []
     ptr = [0]
+    bit, comp, stage, scratch, guard, const = range(6)
 
     def move(dst: int) -> None:
         while ptr[0] < dst:
@@ -132,109 +103,87 @@ def _nocomment_wide(truth_table: str, n: int, tape: int) -> str:
             out.append("l")
             ptr[0] -= 1
 
-    def guarded(guard: int, chunks: list[list[str]]) -> None:
-        """Emit a region that runs iff ``guard`` is zero, chunked to fit skips.
+    def guarded(cell: int, block: list[str]) -> None:
+        """Run ``block`` iff ``cell`` is zero, ending on ``cell``.
 
-        Each chunk must start and end with the pointer on ``guard``.  The
-        glue rebuilds the chunk's length in ``scratch``, pushes it, returns
-        to the guard, and skips -- so the skip path never leaves the guard
-        and the fall-through path is returned there by the chunk itself.
+        The skip amount is pushed from ``scratch`` first and popped back into
+        it after, on both paths, so the guard leaves the stack as it found it
+        -- the stack below is the index under construction.
         """
-        for chunk in chunks:
-            move(scratch)
-            out.append("c")
-            out.extend(["i"] * len(chunk))
-            out.append("n")
-            move(guard)
-            out.append("s")
-            out.extend(chunk)
-            ptr[0] = guard
-
-    for i in range(n):
-        out.append("{X" + str(i) + "}")
-        out.append("r")
-    ptr[0] = n
-
-    # comp_i = 1 - bit_i: the block runs exactly when bit i is zero.
-    for i in range(n):
-        dist = comp_base + i - i
-        guarded(i, [["r"] * dist + ["i"] + ["l"] * dist])
-
-    for j in range(q):
-        move(sbase + j)
+        move(scratch)
         out.append("c")
-
-    # The output table, then an apron of nonzero cells so every stage's
-    # pre-walk lands on a truthy guard.  Both are constants, so they go
-    # through one sorted diff chain: sorting by value makes each step a
-    # single push/pop plus the difference from the previous value.
-    cells: list[tuple[int, int]] = [
-        (base + j, _ASCII_ZERO + int(truth_table[j])) for j in range(k)
-    ]
-    cells += [(apron + t, _ASCII_ZERO) for t in range(2 * cap + 1)]
-    cells.sort(key=lambda cv: cv[1])
-    first_addr, first_value = cells[0]
-    move(first_addr)
-    out.extend(["i"] * first_value)
-    prev_value = first_value
-    for addr, value in cells[1:]:
+        out.extend(["i"] * len(block))
         out.append("n")
-        move(addr)
-        out.append("f")
-        diff = value - prev_value
-        out.extend(["i"] * diff if diff > 0 else ["d"] * -diff)
-        prev_value = value
-
-    # Bit i adds its share to each summand cell it feeds.  The guard is the
-    # complement, so the block runs exactly when the bit is one.
-    for j, part in enumerate(plan):
-        cell = sbase + j
-        for i, amount in part:
-            guard = comp_base + i
-            dist = cell - guard
-            chunks = []
-            remaining = amount
-            while remaining:
-                take = min(remaining, cap - 2 * dist)
-                chunks.append(["r"] * dist + ["i"] * take + ["l"] * dist)
-                remaining -= take
-            guarded(guard, chunks)
-
-    move(sbase + q - 1)
-    out.append("c")
-    out.append("i")  # the constant trailing summand
-
-    # Push the summands so the first stage sees the first one on top.
-    for j in reversed(range(q)):
-        move(sbase + j)
-        out.append("n")
-
-    # The trailing summand contributes the final ``+1``, so the walk starts
-    # one cell left of the table and ends on ``base + index``.
-    move(base - 1)
-    for j in range(q):
-        if j:
-            # Advance the stack top.  ``f`` writes the popped summand into
-            # the cell under the pointer, which is always a corridor cell at
-            # least one staircase left of any cell a later stage tests.
-            out.append("f")
-        out.extend(["r"] * cap)
+        move(cell)
         out.append("s")
-        out.extend(["l"] * cap)
+        out.extend(block)
+        move(scratch)
+        out.append("f")
+        move(cell)
+
+    # The two constants under everything: the fall-through's skip of three
+    # (deepest, so it is what remains) and the final stage's landing six.
+    move(const)
+    out.append("c")
+    out.extend(["i"] * 3)
+    out.append("n")
+    out.extend(["i"] * 3)
+    out.append("n")
+
+    stages = 0
+    for i in range(n):
+        move(bit)
+        out.append("c")
+        out.append("{X" + str(i) + "}")
+        if i not in weights:
+            continue
+        weight = weights[i]
+        advance = min(weight, _NOCOMMENT_STAGE)
+        count = weight // advance
+        move(comp)
+        out.append("c")
+        # comp = 1 - bit: the increment runs exactly when the bit is zero.
+        guarded(bit, ["r", "i", "l"])
+        move(stage)
+        out.append("c")
+        out.extend(["i"] * 4)
+        # stage = 4 + 6 * advance exactly when the bit is one.
+        guarded(comp, ["r", *(["i"] * (_NOCOMMENT_GROUP * advance)), "l"])
+        move(stage)
+        out.extend(["n"] * count)
+        stages += count
+
+    # The first group pops before it skips, so a nonzero dummy goes on top.
+    move(const)
+    out.append("c")
+    out.extend(["i"] * 4)
+    out.append("n")
+    move(guard)
+
+    def group(delta: int) -> str:
+        return "fsf" + {1: "ii", -1: "dd", 0: "id"}[delta] + "s"
+
+    out.extend(group(0) for _ in range(stages + 1))
+    for j in range(rows):
+        after = int(table[j + 1]) if j + 1 < rows else 0
+        out.append(group(int(table[j]) - after))
+
+    # The last group's skip of three lands past it, on three dead commands.
+    out.append("sss")
+    # G is 6 or 8: down to {0, 2}, then +1 only when zero -> {1, 2}, then +47.
+    out.extend(["d"] * _NOCOMMENT_GROUP)
+    out.append("s")
+    out.append("iid")
+    out.extend(["i"] * (_ASCII_ZERO - 1))
     out.append("o")
     return "".join(out)
 
 
-def nocomment(truth_table: str, tape: int = _TAPE) -> str:
+def nocomment(truth_table: str) -> str:
     """Build a NoComment template for the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.
-
-    ``tape`` is the cell count the emitted program is allowed to use; it
-    defaults to the interpreter's own default, so a program built here runs
-    on a default interpreter.  Raising it lifts the arity bound (``n == 12``
-    needs 4650 cells), but the runner must then be given the same size.
 
     NoComment has no input command, so this is a parameterized generator: the
     template's ``{Xi}`` placeholders become a constant-length setter for each
@@ -258,14 +207,15 @@ def nocomment(truth_table: str, tape: int = _TAPE) -> str:
 
     This is a straight-line program: no leaf chains, no interleaved stations,
     no placement.  A single ``s`` skip is byte-sized, so this narrow form
-    needs the whole index to fit a byte and works through ``n == 8`` -- a
-    property of the *one-skip* decode, not of the language: past eight inputs
-    :func:`_nocomment_wide` composes several byte-sized skips instead, and
-    the binding constraint becomes the tape size.
+    needs the whole index to fit a byte -- a property of the *one-skip*
+    decode, not of the language.  It is used only below
+    ``_NOCOMMENT_CHAIN_MIN``, where it is the smaller program: from four
+    inputs :func:`_nocomment_chain` pushes the index as a run of byte-sized
+    skips and keeps the rows in the code, on six tape cells at any arity.
     """
     n = _validate_truth_table(truth_table)
-    if n > _NOCOMMENT_NARROW_MAX:
-        return _nocomment_wide(truth_table, n, tape)
+    if n >= _NOCOMMENT_CHAIN_MIN:
+        return _nocomment_chain(truth_table, n)
 
     # A table that ignores some of its inputs is a smaller table, and almost
     # everything here is sized by the *index range*: the staircase is one

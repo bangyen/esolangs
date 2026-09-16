@@ -662,6 +662,10 @@ class TestRunSaysWhenStdinLooksWrong:
             assert esolangs.run("Suffolk", program, stdin, 20) == "1"
         assert not caught
 
+    # The same one-program-per-language sweep as the documented-path test
+    # above, and the same band: 0.37s alone, 1.1-1.2s under the gate's
+    # overlapped steps, which is where it tripped the fast ceiling.
+    @pytest.mark.medium
     def test_no_language_warns_on_its_own_encoding(self) -> None:
         """The sweep that decides whether any of this is worth having."""
         import warnings
