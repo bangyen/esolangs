@@ -51,9 +51,14 @@ The candidate list is empty.
   with their builds byte-identical -- printer flights laid once per shared
   channel (x3.3 -> x2.03, 2.8 s -> 0.2 s at n=12), and an incremental tree
   price that re-tests only the levels a sink moves (x2.4 -> x2.02).
-  Circlefuck x2.28 (44 ms at n=12, from x2.5): its greedy order scores
-  every candidate in one pass per level, so what is left is the n passes,
-  Theta(T log T) by construction.  Vandevelo x2.9 dense (0.27 s at n=12,
+  Circlefuck x2.19 (30 ms at n=12, from x2.5): its greedy order scores
+  every candidate in one pass per level and now carries the subtree keys
+  between levels rather than rekeying every row from the whole prefix, so
+  what is left is the n passes themselves, Theta(T log T) by
+  construction; the measured slope is that log factor's own 2 * 12/11.
+  A linear order needs a level's scores derived from the level above
+  without touching the rows, and a subtree's split-by-any-input masks do
+  not come from its parent's.  Vandevelo x2.9 dense (0.27 s at n=12,
   from x3.6 and 1.3 s, parity x1.9): the peel scores ~50 candidate
   directions per round on a 2**n-bit mask over Theta(T) rounds, the
   integer bit-vector class, Theta(T^2 / word) with a small constant; a

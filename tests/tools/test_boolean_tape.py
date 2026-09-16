@@ -1089,5 +1089,8 @@ def test_circlefuck_scores_every_candidate_as_the_one_prefix_count(seed: int) ->
     n = rng.randint(1, 7)
     table = [rng.choice((48, 49, 7)) if rng.random() < 0.7 else 48 for _ in range(2**n)]
     prefix = rng.sample(range(n), rng.randint(0, n))
-    scores = _constant_subtree_scores(table, n, prefix)
+    keys = [0] * 2**n
+    for i in prefix:
+        keys = [(key << 1) | ((row >> (n - 1 - i)) & 1) for row, key in enumerate(keys)]
+    scores = _constant_subtree_scores(table, n, keys)
     assert scores == [_constant_subtree_count(table, n, [*prefix, i]) for i in range(n)]

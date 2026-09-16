@@ -104,14 +104,21 @@ def _circlefuck_greedy(truth_table: Sequence[int], n: int) -> str:
     costs ``n`` passes; scoring each candidate with its own pass, keyed
     from scratch, was ``O(n**2)`` passes of ``O(n)`` work per row and made
     this build grow x2.5 per added input.
+
+    The subtree keys are carried from level to level -- the chosen input's
+    bit is shifted onto each row's key -- so a level is one pass over the
+    rows and not one per input already in the order.
     """
     remaining = list(range(n))
     order: list[int] = []
+    keys = [0] * len(truth_table)
     while remaining:
-        scores = _constant_subtree_scores(truth_table, n, order)
+        scores = _constant_subtree_scores(truth_table, n, keys)
         best_input = max(remaining, key=lambda i: scores[i])
         order.append(best_input)
         remaining.remove(best_input)
+        shift = n - 1 - best_input
+        keys = [(key << 1) | ((row >> shift) & 1) for row, key in enumerate(keys)]
     # ``_circlefuck_ordered`` descends its permuted row bits from least to
     # most significant, so its tuple is the reverse of this root-first score.
     perm = tuple(reversed(order))
@@ -119,14 +126,15 @@ def _circlefuck_greedy(truth_table: Sequence[int], n: int) -> str:
 
 
 def _constant_subtree_scores(
-    truth_table: Sequence[int], n: int, prefix: list[int]
+    truth_table: Sequence[int], n: int, keys: list[int]
 ) -> list[int]:
-    """Count the constant subtrees splitting on ``[*prefix, i]`` leaves, per ``i``.
+    """Count the constant subtrees splitting each subtree on ``i``, per ``i``.
 
-    A subtree is the set of rows agreeing on every input in the prefix; it
-    is constant when the table takes one value across all of them, which is
-    exactly when the build folds it to a leaf.  The tests keep the
-    one-prefix definition this is checked against.
+    ``keys[row]`` names the row's subtree: rows agreeing on every input in
+    the prefix chosen so far share a key.  A subtree is constant when the
+    table takes one value across all of its rows, which is exactly when the
+    build folds it to a leaf.  The tests keep the one-prefix definition
+    this is checked against.
 
     One pass over the rows.  A row's index *is* the vector of its input
     bits, so which half of its subtree the row falls into for every
@@ -137,11 +145,6 @@ def _constant_subtree_scores(
     """
     width = len(truth_table)
     full = (1 << n) - 1
-    keys = [0] * width
-    for i in prefix:
-        shift = n - 1 - i
-        for row in range(width):
-            keys[row] = (keys[row] << 1) | ((row >> shift) & 1)
     # Per subtree, per table value: the OR of the row indices carrying it
     # (which candidates' 1-halves it reaches) and of their complements
     # (which 0-halves).  Row indices count input 0 as the most significant
