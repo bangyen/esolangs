@@ -193,13 +193,12 @@ class _Template(str):
     Syntax cannot catch that; the mismatched program was well-formed. So the
     template carries its language and :func:`instantiate` compares.
 
-    The tag is an attribute on a ``str`` subclass rather than a wrapper type
-    so that a template stays a string everywhere else -- it is written to
-    files, printed, and sliced by callers who should not have to know this
-    exists.  Which also means the tag does not survive a round trip through
-    disk, and a plain ``str`` is therefore accepted unchecked: the check
-    catches the mistake where it is made, in one process, and does not
-    pretend to cover the file the CLI wrote an hour ago.
+    The tag is an attribute on a ``str`` subclass rather than a wrapper type,
+    so a template stays a string everywhere else -- written to files,
+    printed, sliced.  Which means it does not survive a round trip through
+    disk, so a plain ``str`` is accepted unchecked: the check catches the
+    mistake where it is made and does not pretend to cover the file the CLI
+    wrote an hour ago.
     """
 
     language: str
@@ -235,16 +234,12 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
     ``describe(language)["parameterized"]`` says which you have, and a
     template handed to :func:`run` is refused rather than executed.
 
-    ``width`` is a *request*, not a bound.  What it does depends on the
-    language -- see ``describe(language)["width_effect"]`` -- and for the
-    22 whose newlines are semantic, or that reject one outright, it does
-    nothing at all.  A single token longer than the width still overruns
-    it.
-
-    The count is not a constant.  It said 38 while the answer was 22,
-    because a round of teaching generators to lay themselves out moved
-    sixteen languages out of that group without moving the sentence.
-    ``describe`` is derived and cannot drift; prefer it to this number.
+    ``width`` is a *request*, not a bound: what it does depends on the
+    language (see ``describe(language)["width_effect"]``), it does nothing
+    at all where newlines are semantic, and a single token longer than the
+    width still overruns it.  How many languages are in that group is not
+    written down here -- the sentence said 38 while the answer was 22, and
+    ``describe`` is derived and cannot drift.
     """
     resolved = resolve(language)
     lang = LANGUAGES[resolved]
@@ -549,9 +544,8 @@ def run(
 
     **A Path and its text are not quite the same argument**: reading a file
     strips one trailing newline and passing a string does not, so the two
-    disagree wherever a newline is not a legal character.  Both are
-    deliberate -- a trailing newline in a file is the editor's, one in a
-    string you built is yours.
+    disagree wherever a newline is not legal.  Both are deliberate -- a
+    trailing newline in a file is the editor's, one in a string is yours.
 
     ``stdin`` is fed to the program line by line.  A program that asks for
     more than it is given usually raises
@@ -565,18 +559,16 @@ def run(
     ``check_stdin`` with the table catches it.
 
     Two languages are neither outcome and the flag cannot say so.  **Alight**
-    is marked ``eof_is_a_value`` but does not carry on -- the sentinel
-    reaches its arithmetic and it halts with ``cannot apply '+' to 2.0 and
-    'eof'``.  **Suffolk** is marked ``False`` but does not raise: an
-    exhausted read *ends* the program, so a run comes back halted with no
-    output and no warning (the same fact ``self_halts`` records).  Swept
-    rather than sampled: the other fifty of the fifty-two stdin-reading
-    languages do exactly what the flag says.
+    is marked ``eof_is_a_value`` but does not carry on, halting with
+    ``cannot apply '+' to 2.0 and 'eof'``; **Suffolk** is marked ``False``
+    but does not raise, since an exhausted read *ends* the program (the same
+    fact ``self_halts`` records).  Swept rather than sampled: the other
+    fifty of the fifty-two stdin-reading languages match the flag.
 
     How a language spells its bits is not universal -- Grapheme reads
     ``%``/``A``, Fargo one number whose bits are the inputs -- so take the
-    alphabet from ``describe(language)["input_encoding"]``; feeding the
-    wrong one is answered with a wrong result, not an error.
+    alphabet from ``describe(language)["input_encoding"]``; the wrong one is
+    answered with a wrong result, not an error.
 
     ``timeout`` bounds the run in wall-clock seconds and raises
     :class:`~esolangs.exceptions.ExecutionTimeoutError`, which is a
@@ -947,17 +939,16 @@ def describe(language: str) -> LanguageInfo:
     read them rather than assuming.
 
     Answer: ``answer_mode`` is ``"output"`` (printed; read the last
-    non-whitespace character), ``"dump"`` (the whole final state is
-    printed and the answer sits at a fixed place in it) or
-    ``"termination"`` (it halts for one value and runs forever for the
-    other, so a timeout *is* an answer).  ``answer_pattern`` is the regex
-    whose first group holds the answer, empty when the last character is
-    it; ``answer_encoding`` is the ``(zero, one)`` that position is
-    spelled with, or the polarity ``("halts", "diverges")`` for a
-    termination language; ``answer_convention`` is prose naming where to
-    look.  These describe the *raw output*: :func:`read_answer` always
-    hands back ``"0"`` or ``"1"``, so A Painter Ant's ``("o", "@")`` is a
-    mark in its grid, not a value you will see.
+    non-whitespace character), ``"dump"`` (the final state is printed and
+    the answer sits at a fixed place in it) or ``"termination"`` (it halts
+    for one value and runs forever for the other, so a timeout *is* an
+    answer).  ``answer_pattern`` is the regex whose first group holds the
+    answer, empty when the last character is it; ``answer_encoding`` is the
+    ``(zero, one)`` that position is spelled with, or the polarity
+    ``("halts", "diverges")``; ``answer_convention`` is prose naming where
+    to look.  These describe the *raw output*, so A Painter Ant's
+    ``("o", "@")`` is a mark in its grid rather than a value a caller sees
+    -- :func:`read_answer` always hands back ``"0"`` or ``"1"``.
 
     Machine traits: ``self_halts``, ``dumps_on_the_post_halt_step``,
     ``steppable_to_answer`` and ``eof_is_a_value``, documented on
@@ -1160,19 +1151,14 @@ def check_stdin(language: str, stdin: str, truth_table: str | None = None) -> No
     reader of this package has found: a ``0``/``1`` line fed to Grapheme,
     several lines fed to Clockwise, anything but a number fed to Fargo.
 
-    Raises :class:`~esolangs.exceptions.ArgumentError`.  A *raise* rather
-    than a warning because a caller reaching for this function has asked
-    to be told; :func:`run` itself still executes whatever it is given,
-    since it runs arbitrary programs of a language and not only the
-    generated truth-table ones, and a shape this rejects may be exactly
-    what a hand-written program wants.
+    Raises :class:`~esolangs.exceptions.ArgumentError` rather than warning,
+    because a caller reaching for this function has asked to be told.
+    :func:`run` still executes whatever it is given: it runs arbitrary
+    programs, and a shape this rejects may be what a hand-written one wants.
 
-    ``truth_table`` is optional and adds the count: with it, stdin must
-    hold as many bits as the program reads, which catches the *surplus*
-    case too.  Six lines fed to a three-input program answered the first
-    three and ignored the rest, at exit 0 -- and the count was available
-    all along, since the too-few case has always reported "2 lines
-    supplied, read 3".
+    ``truth_table`` is optional and adds the count, which catches the
+    *surplus* case: six lines fed to a three-input program answered the
+    first three and ignored the rest, at exit 0.
 
     Every check reads a :func:`describe` field, so a language with a new
     shape is covered by declaring it.
