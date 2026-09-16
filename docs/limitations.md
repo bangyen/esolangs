@@ -458,6 +458,43 @@ LLL sweep below never
 searched that region for cancellation, so the sparse-multiple question is
 now exactly a left-half-plane question.
 
+Its sparsest case is now a theorem on the whole plane, for every cofactor
+and every operand sign.  Let a multiple `F` of a program with `L` real
+roots `x_1 > ... > x_L >= 2` carry exactly `L + 1` terms, the Descartes
+minimum, at exponents `0 = c_0 < ... < c_L`.  Its coefficients are then
+forced up to one integer: `f_j = ±D_j / g` with `D_j` the maximal minor
+of the root Vandermonde on the other `L` exponents, positive by total
+positivity, and `g` a common divisor of all of them -- so `g <= min D`
+and `mass(F) >= sum_j log(D_j / min D)` with no gcd control needed.
+Deleting the `j`-th exponent instead of the `(j+1)`-th adds
+`c_{j+1} - c_j` boxes to one row of the minor's Schur shape, and the box
+gain is bounded below sharply: `s_{mu + d e_rho}(x) * h_d(1/x_1, ...,
+1/x_rho) >= s_mu(x)` for the `rho` largest roots, `h_d` the complete
+homogeneous polynomial in the reciprocals (branch on one variable; the
+interlacing shapes that fail the tightened condition inject into those
+that pass it by moving the new boxes up a row; induct on the row).
+Equality holds at the column shape, and the plain Pieri form
+`s_{mu + e_rho} >= r_rho s_mu` is false -- `s_(1^L) = prod x <
+s_(1^(L-1))` as soon as the reciprocal-root sum passes 1, which the first
+five primes do -- so the reciprocal sum is the right constant, not a
+loss.  A row whose reciprocal-root sum is at most 1/2 gains at least
+`ln 2` per box, and a row loses at most twice its reciprocal-root sum
+however many boxes it takes (its box losses are bounded by the Mertens
+product `prod (1 - 1/x)^-1`).  The roots are powers of distinct primes,
+so the reciprocal sum of the top `rho` roots passes 1/2 only on the
+lowest `L^0.61` rows and never exceeds `ln ln L + 1`: the losses total
+`o(L)` against `ln 2` per remaining row, and
+`mass(F) >= (ln 2 / 2 - o(1)) L^2` nats.  With the routing floor's
+`L = Omega(T/log T)` brackets, **every `(L+1)`-term multiple of every
+dense-table program is `Omega(T^2 / log^2 T)`**, left half-plane
+included.  Checked in exact integers on every support to degree 12..20
+for root sets of two to six prime powers: the bound never exceeds the
+true mass, is tight in every box step, and is minimised at the dense
+support `P` itself, where it reads 0.75..0.83 of `sum_i i log r_(i)`.
+What it does not cover is a multiple with more terms than the
+Descartes minimum, where the kernel has rank two or more and no single
+minor pins a coefficient; that is where the open question now lives.
+
 The one routine route to an *unrestricted* bound -- forcing compensation
 partners from the semantics -- is closed, negatively
 (executed).  The op selector is the
