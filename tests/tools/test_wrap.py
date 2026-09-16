@@ -106,6 +106,7 @@ UNWRAPPABLE = {
     "cvnc": "the source must syllabify and a newline is in no syllable",
     "fargo": "each physical line is one command; expressions have no continuation",
     "minsky_swap": "only line 1 is code; line 2 gives its numeric jump distances",
+    "nopstacle": "the corridor tree and its bit runs occupy fixed grid coordinates",
     "alight": "a command is a word walked cell by cell; a row end cuts it",
     "super_snusp": "a row is a grid row; a break moves code, it does not reflow",
     "algebraic_programming_language": "a line with '=' defines, one without runs",
@@ -138,6 +139,7 @@ WIDTH_EXCEPTIONS = {
         "interprogck8",
         "minsky_swap",
         "nocomment",
+        "nopstacle",
     )
 }
 
@@ -640,7 +642,7 @@ def test_width_honouring_layout_meets_any_width_it_can(name: str) -> None:
     "name",
     [
         pytest.param(name, marks=pytest.mark.slow)
-        if name in {"nopstacle", "streetcode", "vandevelo"}
+        if name in {"streetcode", "vandevelo"}
         else name
         for name in WIDTH_HONOURING
     ],

@@ -34,6 +34,7 @@ The candidate list is empty.
   | %^2^-1 | Exception | Linear | Linear | Linear |
   | COD | Total | Open | Open | Open |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
+  | Nopstacle | Total | Linear | Open | Linear |
   | Polynomial | Cap | Open | Open | Linear |
   | Vandevelo | Total | Open | Linear | Linear |
   | WII2D | Cap | Open | Open | Linear |
@@ -119,6 +120,18 @@ The candidate list is empty.
   losing the lane identity, and carrying that identity as the cod's value
   returns to the super-linear numeric decoder.  That is the row's open
   question on all three axes.
+
+  Nopstacle joins it on the size axis (Sep 2026), with its prototype
+  replaced by a generator: a full decision tree of corridors, level `i`
+  reading `{Xi}` at `2**i` node columns of one row, and a padded
+  rectangle `4 * 2**n` wide by `3n + 7` high.  Size is `Theta(n 2**n)`
+  by construction -- 31,774 characters at n=8, x2.21 there and x2.13 at
+  n=12 on the contract's two-step mean of the template, per-entry cost
+  44.5 rising by twelve per input -- and build time and the halting
+  row's step count (at most three widths, x1.93 at n=9) track the table.  The same H-tree question as
+  COD's: a linear-area layout puts level `i`'s cells on `2**(i/2)`
+  rows, and one placeholder fills one line; every layout with a line
+  per input is a `2**n`-wide row per input.
 
   Polynomial's remaining question is a left-half-plane multiple of the
   mandatory root product with more terms than the Descartes minimum:
@@ -270,20 +283,18 @@ The candidate list is empty.
   1495 -> 1529 at n=3 -- so it is a size decision, not a language wall.
   (The retired strip spelled its route cells `_`; that closure left with
   it.)  Nopstacle's
-  alphabet is the blank and `#`, so a zero bit *is* a blank and the trailing
-  pad on its bit row is what keeps a zero row the width of a one row; there
-  is no command to spell it with.
+  alphabet is the blank and `#`, so a zero bit *is* a blank: its `{Xi}`
+  run is a bit cell at each of level `i`'s `2**i` node columns with
+  blanks between, the same width either way, and there is no command to
+  spell it with.
 
-  The fill itself is standard for seventeen of the eighteen: the example's
-  `fill` calls `helpers.instantiate` with a per-bit setter, and nothing
-  else.  ArrowQueue's slots are rows of their own so its blocks substitute
+  The fill itself is standard for all eighteen: the example's `fill`
+  calls `helpers.instantiate` with a per-bit setter, and nothing else.  ArrowQueue's slots are rows of their own so its blocks substitute
   in place (byte-identical to the header rebuild it replaced, n=1..6), A
-  Painter Ant's linear route is a setter, and %^2^-1's setter is read
-  off the template's own header, and COD's restored fork generator is a
-  one-cell setter, and Crement's setter is the jump line whose data is
-  the bit.  One is not a substitution: Nopstacle is a prototype that
-  evaluates the table in the host and records the bits as a comment; it
-  needs a generator before it can have a fill.
+  Painter Ant's linear route is a setter, %^2^-1's setter is read
+  off the template's own header, COD's restored fork generator is a
+  one-cell setter, Crement's setter is the jump line whose data is the
+  bit, and Nopstacle's setter is the level's run of cells.
 
   Two candidate conventions are not adopted.  *Rectangular*: every row of a
   grid the same width.  COD and Nopstacle hold it; the other four grids are

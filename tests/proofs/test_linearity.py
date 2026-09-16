@@ -157,10 +157,11 @@ def test_the_contract_covers_generators_the_original_queue_missed() -> None:
     an exception to it: the contract measured it super-linear, and it had been
     outside the queue the whole time.  WII2D is the twenty-seventh, measured
     by hand past the ``cap`` exemption that hid it here, and ZTOALC L the
-    twenty-eighth, the same way (x49 per input at n=10).  Growing this number
-    is the contract doing its job, so the assertion is on the *original*
-    twenty-five.
+    twenty-eighth, the same way (x49 per input at n=10), and Nopstacle the
+    twenty-ninth, entered with its generator (``Theta(n 2**n)`` by
+    construction).  Growing this number is the contract doing its job, so
+    the assertion is on the *original* twenty-five.
     """
     queue = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
-    assert len(queue - {"interprogck8", "wii2d", "ztoalc_l"}) == 25
-    assert len(BY_BOOLEAN) - len(queue) == 37
+    assert len(queue - {"interprogck8", "wii2d", "ztoalc_l", "nopstacle"}) == 25
+    assert len(BY_BOOLEAN) - len(queue) == 36

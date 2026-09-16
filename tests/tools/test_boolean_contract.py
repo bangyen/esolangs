@@ -561,10 +561,8 @@ _REDUCING = {
     "super_snusp",
 }
 
-# ``nopstacle`` is likewise a branch-free lookup: its prototype specializes
-# the selected row while filling the input slots, then emits one
-# halt/diverge gadget, so every table of one arity has the same template
-# length.
+# ``nopstacle`` is a full tree of corridors that never folds: the table only
+# chooses which leaf gadget each column ends in, and both are the same size.
 #
 # ``alight`` is a branch-free lookup of the same class as
 # ``ztoalc_l``: the inputs are folded into a row index by Horner's
@@ -1103,8 +1101,11 @@ _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 # ``ztoalc_l`` sits here for its placement, not its lookup: the commands
 # occupy values of one Collatz trajectory, so the last line grows
 # exponentially in the command count (x8.1 then x49 per input at n=9, 10).
+# ``nopstacle`` is Theta(n 2**n) by construction: one input per line, each
+# line as wide as the table, and one placeholder cannot fill an H-tree.
 _OPEN_SCALING = {
     "cod",
+    "nopstacle",
     "polynomial",
     "wii2d",
     "ztoalc_l",
@@ -1126,6 +1127,7 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
         "minifuck",
         "factor",
         "interprogck8",
+        "nopstacle",
         "polynomial",
         "addsubjump",
         "arrowqueue",

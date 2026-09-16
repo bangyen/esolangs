@@ -640,7 +640,7 @@ def _fill_arrowqueue(template: str, bits: list[int]) -> str:
 
 
 def _fill_nopstacle(template: str, bits: list[int]) -> str:
-    """Specialize the prototype's table for one embedded input row."""
+    """Fill each level's ``{Xi}`` with its run of bit cells."""
     return instantiate_nopstacle(template, bits)
 
 
@@ -940,8 +940,11 @@ def _register() -> None:
             expected="",
             split=True,
             note=(
-                "Nopstacle answers by termination: a local repeated state "
-                "halts for 0 and crossing repeated copies forever is 1"
+                "Nopstacle answers by termination: the IP falls through a "
+                "decision tree of corridors, a blank bit cell passing it and "
+                "a # deflecting it; a 0 leaf is a box it circles into a "
+                "repeated local state, a 1 leaf drops it onto a blank row "
+                "it runs along across copies forever"
             ),
         ),
         "crement": _embedded(
