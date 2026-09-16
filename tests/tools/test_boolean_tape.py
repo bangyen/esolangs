@@ -872,8 +872,8 @@ class TestCirclefuck:
 
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
-        module = importlib.import_module("esolangs.tools.tape")
-        from esolangs.tools.tape import _circlefuck_ordered
+        module = importlib.import_module("esolangs.tools.circlefuck")
+        from esolangs.tools.circlefuck import _circlefuck_ordered
 
         table = "01" * 64  # alternating: the greedy pick is not the identity
         built = 0
