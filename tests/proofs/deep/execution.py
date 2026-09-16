@@ -95,6 +95,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from esolangs import describe, encode_inputs, generate, instantiate, make_vm
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import load as load_ledger
+from tests.proofs._roadmap import load as load_audit
 from tests.tools.test_boolean_contract import _parity
 
 #: Cost band; see ``__main__.py``.  It steps every generator's program at
@@ -168,17 +169,22 @@ EXEMPT = {
 def exempt_generators() -> dict[str, str]:
     """Every generator this contract does not hold to the bound.
 
-    :data:`EXEMPT` plus the resource-ceiling rows of ``proofs.md``, read from
-    the ledger the way ``linearity.py`` reads them: a generator that cannot
+    :data:`EXEMPT` plus the resource-ceiling rows of ``proofs.md`` and the
+    roadmap audit rows whose execution-time cell is open, read from the
+    documents the way ``linearity.py`` reads them: a generator that cannot
     be built past a low arity cannot produce the rungs a slope needs, and
-    ZTOALC L is the one that lands there.  Reading it means closing the cap
-    row arms this contract against that generator with no edit here.
+    ZTOALC L is the one that lands there; COD's restored fork generator is
+    the one the audit holds open.  Reading them means closing a cap row or
+    an execution cell arms this contract against that generator with no
+    edit here.
     """
     reasons = dict(EXEMPT)
     for row in load_ledger().rows:
         for label in ("cap", "exception"):
             if label in row.labels:
                 reasons.setdefault(row.generator, f"proofs.md {label} row")
+    for name in sorted(load_audit().execution_unsettled):
+        reasons.setdefault(name, "roadmap scaling audit: execution open")
     return reasons
 
 

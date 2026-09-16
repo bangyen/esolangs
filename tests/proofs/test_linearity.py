@@ -21,6 +21,8 @@ import pytest
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import load as load_ledger
 from tests.proofs._roadmap import SETTLED, TOTAL, Audit, load
+from tests.proofs.deep.execution import EXEMPT as _EXECUTION_EXEMPT
+from tests.proofs.deep.execution import exempt_generators as execution_exempt
 from tests.proofs.deep.linearity import exempt_generators
 from tests.tools.test_boolean_contract import (
     _LANGUAGE_SUPERLINEAR_SCALING,
@@ -122,6 +124,25 @@ def test_the_exempt_set_is_read_from_both_documents(audit: Audit) -> None:
     assert set(exempt) == audit.unsettled | qualified
     assert set(exempt) <= {lang.name for lang in BY_BOOLEAN.values()}
     # Every exemption carries a reason naming which document granted it.
+    assert all(why for why in exempt.values())
+
+
+def test_the_execution_exempt_set_is_read_from_both_documents(audit: Audit) -> None:
+    """The command-count bound's exemptions come from the same two documents.
+
+    Its own hand-kept set is the one generator that answers by never
+    halting; everything else is a ``proofs.md`` cap row or an audit row
+    whose execution cell is open, so a row closing there arms the band.
+    """
+    exempt = execution_exempt()
+    ledger = load_ledger()
+    qualified = {
+        row.generator
+        for row in ledger.rows
+        if "cap" in row.labels or "exception" in row.labels
+    }
+    assert set(exempt) == set(_EXECUTION_EXEMPT) | audit.execution_unsettled | qualified
+    assert audit.execution_unsettled <= {row.generator for row in audit.rows}
     assert all(why for why in exempt.values())
 
 
