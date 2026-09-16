@@ -645,7 +645,7 @@ def _fill_nopstacle(template: str, bits: list[int]) -> str:
 
 
 def _fill_crement(template: str, bits: list[int]) -> str:
-    """Specialize the prototype's table for one embedded input row."""
+    """Fill each tester's jump with the data that spells its bit."""
     return instantiate_crement(template, bits)
 
 
@@ -952,8 +952,9 @@ def _register() -> None:
             answer_values=("halts", "diverges"),
             expected="",
             note=(
-                "Crement answers by termination: a false jump halts for 0 "
-                "and a positive self-jump diverges for 1"
+                "Crement answers by termination: the tree's nodes patch a "
+                "per-input tester's jump targets, and the row lands past the "
+                "end (halts, 0) or on a self-jump (diverges, 1)"
             ),
         ),
     }

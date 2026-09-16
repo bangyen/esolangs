@@ -114,6 +114,7 @@ UNWRAPPABLE = {
     "brainif": "each line is one instruction and goto targets are line numbers",
     "collatz_multiverse": "each line is one complete register assignment",
     "container": "each line declares a container or one of its rules",
+    "crement": "each line is one instruction; jumps and patches name line numbers",
     "inject": "blocks and executable commands are delimited by source lines",
     "interprogck8": "each line is an instruction and relative jumps count lines",
     "ztoalc_l": "line numbers are the program's Collatz trajectory slots",
@@ -130,6 +131,7 @@ WIDTH_EXCEPTIONS = {
         "back",
         "collatz_multiverse",
         "container",
+        "crement",
         "cvnc",
         "grapheme",
         "inject",
@@ -638,7 +640,7 @@ def test_width_honouring_layout_meets_any_width_it_can(name: str) -> None:
     "name",
     [
         pytest.param(name, marks=pytest.mark.slow)
-        if name in {"crement", "nopstacle", "streetcode", "vandevelo"}
+        if name in {"nopstacle", "streetcode", "vandevelo"}
         else name
         for name in WIDTH_HONOURING
     ],

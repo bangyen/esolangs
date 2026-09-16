@@ -145,15 +145,15 @@ interpreter and is recorded here.
 
 ## Curation
 
-The collection has 65 languages. The floor is 34: the languages that own a
+The collection has 65 languages. The floor is 35: the languages that own a
 generator construction, Polynomial and Modulous for their walls, and
 brainfuck for Factor's decoder. The 69→65 cut removed DINAC, MyScript,
 Basicfuck, and Nevermind: ordinary imperative languages with shared-shim
 generators and no downstream consumer. The second band removed Suptiftam,
 Lamfunc, `function x(y)`, Between, and Point Break on the same criterion,
 leaving 60. Crement, Nopstacle, Vandevelo, B-tapemark, and EGL were added
-afterwards; Crement and Nopstacle specialize their lookup in the host, so they
-are prototypes and only the other three raise the floor.
+afterwards; Nopstacle specializes its lookup in the host, so it is a
+prototype and only the other four raise the floor.
 
 The 2D candidate pool is screened out; the screen is recorded because
 re-running it is expensive.  `Category:Two-dimensional` x

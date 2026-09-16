@@ -274,15 +274,16 @@ The candidate list is empty.
   pad on its bit row is what keeps a zero row the width of a one row; there
   is no command to spell it with.
 
-  The fill itself is standard for sixteen of the eighteen: the example's
+  The fill itself is standard for seventeen of the eighteen: the example's
   `fill` calls `helpers.instantiate` with a per-bit setter, and nothing
   else.  ArrowQueue's slots are rows of their own so its blocks substitute
   in place (byte-identical to the header rebuild it replaced, n=1..6), A
   Painter Ant's linear route is a setter, and %^2^-1's setter is read
   off the template's own header, and COD's restored fork generator is a
-  one-cell setter.  Two are not substitutions: Nopstacle and Crement are
-  prototypes that evaluate the table in the host and record the bits as a
-  comment; they need a generator before they can have a fill.
+  one-cell setter, and Crement's setter is the jump line whose data is
+  the bit.  One is not a substitution: Nopstacle is a prototype that
+  evaluates the table in the host and records the bits as a comment; it
+  needs a generator before it can have a fill.
 
   Two candidate conventions are not adopted.  *Rectangular*: every row of a
   grid the same width.  COD and Nopstacle hold it; the other four grids are
