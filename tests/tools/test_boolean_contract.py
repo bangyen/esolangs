@@ -505,11 +505,12 @@ _MINTERM_SHAPED = {
 # at all: ``jaune_multiply`` takes no argument (it multiplies two decimal
 # numbers, a fixed program), and ``circlefuck_byte`` takes a *byte* table.
 #
-# ``slow_acv_mammalian`` and ``b_tapemark`` are trees, but deliberately
-# *unfolded* ones, so the folding discriminator does not apply.  Their nodes
-# read the input, so collapsing a constant subtree would drop that subtree's
-# reads and break the read-count contract above.  Both trees therefore stay
-# at uniform depth ``n`` and track ``2**n`` whatever the table says.
+# ``b_tapemark`` is a tree, but a deliberately *unfolded* one, so the
+# folding discriminator does not apply: its nodes read the input, and
+# collapsing a constant subtree would drop that subtree's reads and break
+# the read-count contract above.  ``slow_acv_mammalian`` is a branch-free
+# chain into a flat leaf table -- every table of one arity renders to the
+# same length, so a 0% fold is its construction working.
 #
 # ``minifuck`` is a search too, and of the same kind as ``wii2d``: it emits
 # whatever code it can *see* produce the table's column, so the program has
@@ -552,7 +553,6 @@ _MINTERM_SHAPED = {
 # collapsed structure.  Reordering does not become applicable to them the way
 # it would if they had grown a tree, which is why they are neither list.
 _REDUCING = {
-    "cod",
     "home_row",
     "nocomment",
     "rotfuck",
@@ -575,6 +575,7 @@ _REDUCING = {
 _UNSHAPED = {
     "alight",
     "b_tapemark",
+    "cod",
     "crement",
     "nopstacle",
     "wii2d",
@@ -1057,12 +1058,12 @@ def test_the_exec_tables_really_need_every_input(make: Callable[[int], str]) -> 
 #: is busy -- which, on a suite that runs four workers, is always.
 _DOCUMENTED_SIZES: dict[str, tuple[int, int, float]] = {
     "Circuit Diagram": (7_910_330, 11_394_987, 1.4),
-    "COD": (942_692, 3_668_705, 3.9),
+    "COD": (294, 554, 1.9),
     "ROTfuck": (15_240, 29_472, 1.9),
     "Polynomial": (3_383_048, 10_896_883, 3.2),
-    "SLOW ACV MAMMALIAN": (1_672_368, 3_380_418, 2.0),
+    "SLOW ACV MAMMALIAN": (456_394, 798_829, 1.8),
     "bit~": (28_210, 56_676, 2.0),
-    "123": (94_589, 230_002, 2.4),
+    "123": (22_988, 45_755, 2.0),
     "Factor": (17_613, 36_339, 2.1),
 }
 
@@ -1078,30 +1079,36 @@ _LINEAR_SCALING = {
     "brainif",
     "circuit_diagram",
     "clockwise",
+    "cod",
     "container",
     "dig",
-    "forbin",
+    "forth",
     "flowchart",
     "inject",
+    "interprogck8",
     "jaune",
     "laserfuck",
     "minifuck",
     "one_two_three",
     "ram0",
     "sbleq",
+    "slow_acv_mammalian",
     "streetcode",
+    "vandevelo",
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
 _OPEN_SCALING = {
-    "cod",
     "polynomial",
-    "slow_acv_mammalian",
-    "vandevelo",
 }
 
 
 def test_remaining_scaling_audit_is_exhaustive() -> None:
-    """Every generator in the requested queue remains classified."""
+    """Every generator in the scaling audit remains classified.
+
+    The roadmap's original queue plus whatever the registry-wide contract has
+    since added to the audit -- Interprogck8 is the first, measured
+    super-linear while sitting outside the queue entirely.
+    """
     expected = {
         "a_painter_ant",
         "one_two_three",
@@ -1109,6 +1116,7 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
         "cod",
         "minifuck",
         "factor",
+        "interprogck8",
         "polynomial",
         "addsubjump",
         "arrowqueue",
@@ -1119,7 +1127,7 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
         "container",
         "dig",
         "flowchart",
-        "forbin",
+        "forth",
         "inject",
         "jaune",
         "laserfuck",
@@ -1190,4 +1198,4 @@ def test_nothing_else_is_anywhere_near_that_big() -> None:
         if name not in _DOCUMENTED_SIZES
     )
     assert biggest[0] < 600_000, biggest
-    assert biggest[1] == "BrainIf"
+    assert biggest[1] == "Streetcode"

@@ -27,6 +27,7 @@ machine, so it is step-capable: ``step()`` executes one decoded command and
 detector and the VM expose this object.
 """
 
+import math
 import re
 import sys
 
@@ -45,6 +46,13 @@ type _State = _BFMachine
 #: while the residue is still composite, so this is a batch size and not a
 #: ceiling on the primes it will find.
 _SIEVE_CHUNK = 20000
+
+#: How wide the residue must be before a chunk is tested by one gcd rather
+#: than by a remainder per prime.  The batch trades a chunk-sized product
+#: for a full-width division per prime, which only pays once the number
+#: dwarfs the product; the committed examples sit below this and take the
+#: direct path unchanged.
+_BATCH_BITS = 8192
 
 
 def _parse(digits: str) -> int:
@@ -125,7 +133,35 @@ def _factorint(number: int) -> dict[int, int]:
     while number > 1:
         stop = start + _SIEVE_CHUNK
         divided = False
-        for prime in sympy.sieve.primerange(start, stop):
+        primes = list(sympy.sieve.primerange(start, stop))
+        # One gcd for the whole chunk, not a remainder per prime.
+        #
+        # ``number % prime`` is priced by the width of ``number``, not of
+        # ``prime``, so asking it once per prime was the quadratic: a
+        # boolean program's integer grows Theta(T) digits *and* needs
+        # Theta(T) primes, and the product of those two was the load cost.
+        # A prime divides ``number`` exactly when it divides the gcd of
+        # ``number`` with the chunk's product, and that gcd is small -- so
+        # the primes that actually divide are found by dividing *it*.
+        #
+        # Sound as the chunk proceeds: the only values divided out below are
+        # *other* primes, and removing them cannot change whether ``p``
+        # divides what is left.
+        #
+        # Only worth it on a wide residue.  The chunk's product is itself
+        # thousands of digits, so building it costs more than the divisions
+        # it saves whenever ``number`` is small -- which is every committed
+        # example.  Below the threshold the primes are tested directly, the
+        # way they always were.
+        batched = bool(primes) and number.bit_length() >= _BATCH_BITS
+        common = math.gcd(number, math.prod(primes)) if batched else 0
+        # A barren chunk still walks its primes, and deliberately so: the
+        # gcd is then 1, every ``common % prime`` below is 1, and each prime
+        # falls straight through to the next -- but the root exit in the
+        # loop still gets asked, which is the one thing skipping the chunk
+        # would have quietly dropped.  What is saved is the division, not
+        # the comparison.
+        for prime in primes:
             if number == 1:
                 # The chunk finished the number off; nothing is left to
                 # test, and the root check below would read 1 as a factor.
@@ -135,6 +171,8 @@ def _factorint(number: int) -> dict[int, int]:
                 # prime -- the one case worth taking without ``isprime``.
                 factors[number] = factors.get(number, 0) + 1
                 return factors
+            if batched and common % prime:
+                continue
             while not number % prime:
                 factors[prime] = factors.get(prime, 0) + 1
                 number //= prime

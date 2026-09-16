@@ -48,7 +48,7 @@ explicit stack; here the language defines the statement as the step.
 import functools
 import re
 import sys
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
@@ -147,6 +147,79 @@ def _scan(line: str, accept: Callable[[list[str]], bool]) -> list[str]:
     return []
 
 
+class _Reading:
+    """One token run, asked about by index rather than by slice.
+
+    The grammar below is the same one :func:`_wellformed` always used; what
+    changed is what a question costs.  Asking it of a *list* meant every
+    candidate prefix copied its tokens and rescanned them for markers, and
+    the split search asks about a prefix per cut point -- so the two loops
+    multiplied, and loading a program was cubic in its length.
+
+    A span is a pair of indices into one immutable tuple.  ``_after`` is a
+    precomputed next-occurrence table, so finding a marker is a lookup
+    rather than a scan, and ``_memo`` settles a span once however many
+    prefixes reach it.
+    """
+
+    __slots__ = ("_after", "_memo", "_tokens")
+
+    #: The tokens whose position the grammar asks after.  ``we`` and ``rr``
+    #: close their own block; ``yr`` and ``ry`` bracket an operator.
+    _MARKERS = ("we", "rr", "yr", "ry")
+
+    def __init__(self, tokens: Sequence[str]) -> None:
+        self._tokens = tuple(tokens)
+        size = len(self._tokens)
+        self._after: dict[str, list[int]] = {}
+        for marker in self._MARKERS:
+            # ``found[i]`` is the first index at or after ``i`` holding
+            # ``marker``, or ``size`` when there is none.
+            found = [size] * (size + 1)
+            for i in range(size - 1, -1, -1):
+                found[i] = i if self._tokens[i] == marker else found[i + 1]
+            self._after[marker] = found
+        self._memo: dict[tuple[int, int], bool] = {}
+
+    def at(self, lo: int, hi: int) -> bool:
+        """Whether ``tokens[lo:hi]`` parses, by the rules :func:`_eval` runs."""
+        key = (lo, hi)
+        settled = self._memo.get(key)
+        if settled is None:
+            settled = self._memo[key] = self._decide(lo, hi)
+        return settled
+
+    def _decide(self, lo: int, hi: int) -> bool:
+        """``at`` without the memo: the grammar itself, on one span."""
+        if hi <= lo:
+            return False
+        tokens = self._tokens
+        op = tokens[lo]
+        if op == "tt":
+            return self.at(lo + 1, hi - 1)
+        if op in ("we", "rr"):
+            # The block's own closer, which has to fall inside this span.
+            ind = self._after[op][lo + 1]
+            if ind >= hi:
+                return False
+            return self.at(lo + 1, ind) and self.at(ind + 1, hi - 1)
+        for marker in ("yr", "ry"):
+            beg = self._after[marker][lo]
+            if beg < hi:
+                # Found before the ``qe`` arm is reached, which is what keeps
+                # an arithmetic value out of a ``qe`` key -- as before.
+                if beg + 1 >= hi or tokens[beg + 1] not in OPERATORS:
+                    return False
+                if beg + 2 >= hi or tokens[beg + 2] != marker:
+                    return False
+                return self.at(lo, beg) and self.at(beg + 3, hi)
+        if op == "qe":
+            return self.at(lo + 1, hi - 1)
+        if op == "et":
+            return hi - lo == 1
+        return bool(re.fullmatch("[ey]+", op)) and hi - lo == 1
+
+
 def _wellformed(expr: list[str]) -> bool:
     """Whether ``expr`` parses, mirroring :func:`_eval` without effects.
 
@@ -156,37 +229,11 @@ def _wellformed(expr: list[str]) -> bool:
     the order of the arms: a ``ry``/``yr`` marker is found before the ``qe``
     arm is reached, so an arithmetic value inside a ``qe`` key is rejected
     here and unreachable there.
+
+    One expression, asked once: :class:`_Reading` is what the split search
+    uses, and this is the same question put the standalone way.
     """
-    if not expr:
-        return False
-    op = expr[0]
-    if op == "tt":
-        return _wellformed(expr[1:-1])
-    if op == "we":
-        try:
-            ind = expr.index("we", 1)
-        except ValueError:
-            return False
-        return _wellformed(expr[1:ind]) and _wellformed(expr[ind + 1 : -1])
-    if op == "rr":
-        try:
-            ind = expr.index("rr", 1)
-        except ValueError:
-            return False
-        return _wellformed(expr[1:ind]) and _wellformed(expr[ind + 1 : -1])
-    for marker in ("yr", "ry"):
-        if marker in expr:
-            beg = expr.index(marker)
-            if beg + 1 >= len(expr) or expr[beg + 1] not in OPERATORS:
-                return False
-            if expr[beg + 2 : beg + 3] != [marker]:
-                return False
-            return _wellformed(expr[:beg]) and _wellformed(expr[beg + 3 :])
-    if op == "qe":
-        return _wellformed(expr[1:-1])
-    if op == "et":
-        return len(expr) == 1
-    return bool(re.fullmatch("[ey]+", op)) and len(expr) == 1
+    return _Reading(expr).at(0, len(expr))
 
 
 @functools.lru_cache(maxsize=32)
@@ -241,17 +288,41 @@ def tokenize(source: str) -> list[list[str]]:
 
 
 def _split(tokens: list[str], out: list[list[str]]) -> bool:
-    """Cut ``tokens`` into the shortest prefixes that each parse."""
-    if not tokens:
-        return True
-    for end in range(1, len(tokens) + 1):
-        head = tokens[:end]
-        if _wellformed(head):
-            out.append(head)
-            if _split(tokens[end:], out):
-                return True
-            out.pop()
-    return False
+    """Cut ``tokens`` into the shortest prefixes that each parse.
+
+    Settled from the right.  ``cut[i]`` is the shortest statement starting at
+    ``i`` whose *remainder* also splits, so by the time a position is asked,
+    every position after it has already answered.  That is the cut the old
+    recursive search returned too -- it also took the first prefix that
+    parses and whose tail splits -- but it re-explored a failed tail once per
+    earlier cut, and each trial re-sliced and rescanned its tokens.
+
+    Still quadratic in the token count: a position in the middle of a
+    statement can start nothing, and proving that means trying its ends.
+    The scan itself is a list index, though, and the parse behind it is
+    settled once per span, so the constant is small.
+    """
+    size = len(tokens)
+    reading = _Reading(tokens)
+    #: ``size + 1`` marks a position that cannot start a run of statements.
+    cut = [size + 1] * (size + 2)
+    cut[size] = size
+    for lo in range(size - 1, -1, -1):
+        for end in range(lo + 1, size + 1):
+            # The tail test is a lookup and the prefix test is not, so it
+            # goes first: only a cut the remainder can live with is worth
+            # parsing a prefix for.
+            if cut[end] <= size and reading.at(lo, end):
+                cut[lo] = end
+                break
+    if cut[0] > size:
+        return False
+    lo = 0
+    while lo < size:
+        end = cut[lo]
+        out.append(tokens[lo:end])
+        lo = end
+    return True
 
 
 #: The part of a run the pure layer owns: the variable list, as a mapping

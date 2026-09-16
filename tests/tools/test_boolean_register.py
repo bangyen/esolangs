@@ -764,7 +764,8 @@ class TestCollatzMultiverse:
             got = run_collatz_multiverse(program, [str(b) for b in bits])
             assert got == str(int(table[combo])), f"inputs {bits}"
 
-    @pytest.mark.parametrize("n", [1, 2, 3])
+    # 256 tables at eight rows each, all of it in the interpreter.
+    @pytest.mark.parametrize("n", [1, 2, pytest.param(3, marks=pytest.mark.medium)])
     def test_every_small_table(self, n: int) -> None:
         """Execute every table and row through three inputs."""
         for value in range(2 ** (2**n)):

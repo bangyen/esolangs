@@ -707,6 +707,10 @@ class TestNttRecovery:
             seen.add(modulus)
         assert len(seen) == len(_NTT_FIELDS), "the cross-check needs a second field"
 
+    # The four tests below reach `_roots_mod`, whose ~0.4s of NTT butterflies
+    # is a fixed cost of the field, not of the planted roots.  That is cost,
+    # not behaviour, so it buys no marker: they decode coefficient lists and
+    # never run a program.  See `duration_policy.CI_SCALE` for the ceiling.
     def test_roots_mod_is_the_exact_root_set(self) -> None:
         """Planted roots come back exactly -- no more, no fewer.
 

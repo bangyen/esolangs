@@ -95,6 +95,34 @@ def prime(number: int) -> bool:
     return all(number % val for val in range(2, math.isqrt(number) + 1))
 
 
+def _bracket_pairs(string: list[list[int]]) -> dict[int, int]:
+    """Pair every control-flow bracket with its partner, in one pass.
+
+    :func:`brackets` scans for the partner from the bracket itself, and
+    ``_advance`` reached for it up to twice in a single step, so a loop paid
+    the length of its body on every test.  A single-element instruction
+    whose code is 2 or 6 closes; any other single-element instruction opens.
+
+    Pairs only what pairs.  An unmatched bracket is left out rather than
+    reported here, because :func:`brackets` raises when the bracket is
+    *reached* -- a program that never runs one still loads today, and
+    rejecting it at load would be a different language.
+    """
+    pairs: dict[int, int] = {}
+    open_at: list[int] = []
+    for i, instruction in enumerate(string):
+        if len(instruction) != 1:
+            continue
+        if instruction[0] in (2, 6):
+            if open_at:
+                beg = open_at.pop()
+                pairs[beg] = i
+                pairs[i] = beg
+        else:
+            open_at.append(i)
+    return pairs
+
+
 def brackets(string: list[list[int]], pointer: int) -> int:
     """Find matching bracket for control flow statements.
 
@@ -857,10 +885,25 @@ _COND: dict[int, Callable[[int], bool]] = {
 type _State = tuple[int, int]
 
 
+def _partner(
+    instructions: list[list[int]], ind: int, pairs: dict[int, int] | None
+) -> int:
+    """Return ``ind``'s matching bracket, from the table where there is one.
+
+    Falling back to the scan keeps a caller that has no table working, and
+    keeps the raise where it was: an unmatched bracket is absent from the
+    table, so the scan runs and reports it exactly as before.
+    """
+    if pairs is not None and ind in pairs:
+        return pairs[ind]
+    return brackets(instructions, ind)
+
+
 def _advance(
     state: _State,
     instructions: list[list[int]],
     byte: int | None = None,
+    pairs: dict[int, int] | None = None,
 ) -> tuple[_State, str | None]:
     """Return the state after one instruction, and anything it prints.
 
@@ -890,11 +933,14 @@ def _advance(
             # them, and clamping is this interpreter's documented reading.
             output = chr(max(0, reg))
     elif one in [2, 6]:
-        beg = instructions[brackets(instructions, ind)][0]
+        # One lookup, not two: the partner was being found twice over to
+        # read its code and then to jump to it.
+        partner = _partner(instructions, ind, pairs)
+        beg = instructions[partner][0]
         if beg > 4 and _COND[(beg - 1) % 4](reg):
-            ind = brackets(instructions, ind)
+            ind = partner
     elif not _COND[(one - 1) % 4](reg):
-        ind = brackets(instructions, ind)
+        ind = _partner(instructions, ind, pairs)
 
     return (reg, ind + 1), output
 
@@ -912,6 +958,8 @@ class _Machine:
         """Recover ``code``'s instructions and start with a zero register."""
         self.io = io
         self.instructions = [list(instr) for instr in _parse_program(code)]
+        # Bracket partners, paired once instead of scanned for per jump.
+        self._pairs = _bracket_pairs(self.instructions)
         self.ind = 0
         self.reg = 0
 
@@ -965,7 +1013,7 @@ class _Machine:
             byte = ord(val[0])
 
         (self.reg, self.ind), output = _advance(
-            (self.reg, self.ind), self.instructions, byte
+            (self.reg, self.ind), self.instructions, byte, self._pairs
         )
         if output is not None:
             self.io.print_char(output)

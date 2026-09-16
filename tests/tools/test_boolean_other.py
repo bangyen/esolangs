@@ -401,7 +401,8 @@ class TestCvnc:
         # The one surviving node fetches rather than reads.
         assert program.count("cuŋ") + program.count("cuɲ") == 1
 
-    @pytest.mark.parametrize("n", [1, 2, 3])
+    # 256 tables at eight rows each, all of it in the interpreter.
+    @pytest.mark.parametrize("n", [1, 2, pytest.param(3, marks=pytest.mark.medium)])
     def test_every_table_computes_its_function(self, n: int) -> None:
         """Exhaustive over the stream and reordered paths."""
         for value in range(2 ** (2**n)):
@@ -1478,6 +1479,7 @@ class TestTaglate:
                 got = run_taglate(boolean.taglate(tt), [str(b) for b in bits])
                 assert got == tt[combo], f"{tt} inputs {bits}"
 
+    @pytest.mark.medium
     def test_all_three_input_tables(self) -> None:
         """Every three-input truth table produces the right result."""
         failures = 0
@@ -2448,6 +2450,7 @@ class TestAlgebraicProgrammingLanguage:
                     got = self._run(program, n, combo)
                     assert got == table[combo] + "\n", f"{table} combo {combo}"
 
+    @pytest.mark.medium
     def test_every_three_input_table(self) -> None:
         """All 256 three-input tables build and compute their function."""
         for table in ("".join(t) for t in itertools.product("01", repeat=8)):

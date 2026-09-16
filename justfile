@@ -17,7 +17,8 @@ help:
     @echo "  test-anchor  - ztoalc anchor table check (~3.2s)"
     @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
     @echo "  mutate-gen MOD - mutation-test one generator (e.g. just mutate-gen boolean/streetcode)"
-    @echo "  apa-proof    - re-check the A Painter Ant uniform-in-n proof (5m40s)"
+    @echo "  proofs       - every executable proof: ledger obligations + all 65 deep proofs"
+    @echo "  apa-proof    - re-check the A Painter Ant uniform-in-n proof (1m20s)"
     @echo "  install-dev  - Install development dependencies"
     @echo "  clean        - Clean up generated files"
     @echo ""
@@ -126,11 +127,25 @@ mutate language *args:
 mutate-gen module *args:
     {{PYTHON}} scripts/mutate.py generator {{module}} {{args}}
 
-# re-check the A Painter Ant uniform-in-n proof (5m40s, single-threaded)
-# Not in `just test` or CI: it is longer than the whole suite, and what it
-# guards only APA's head, body, or routing. Run it when those move.
+# The ledger obligations under tests/proofs are collected by pytest and gate
+# every push. The proofs under deep/ are not, and the runner selects them by
+# the band each one declares rather than by a list kept here: `verify` is what
+# scripts/verify.py runs, `ci` what the workflow runs, `all` everything. ~2m20s,
+# dominated by A Painter Ant at 1m20s, then linearity at 30s and Container at
+# 16s. The runner keeps going after a failure and reports at the end, so
+# linearity's standing Forþ finding does not hide the proofs after it.
+# Use `python -m tests.proofs.deep --list` to see the bands.
+# run every executable proof: the ledger obligations and all six deep proofs
+proofs:
+    {{PYTHON}} -m pytest tests/proofs -q
+    {{PYTHON}} -m tests.proofs.deep all
+
+# Not in `just test` or CI: what it guards moves only when APA's head, body,
+# or routing does, so run it then. L2's foreign-leaf sweep at n=9 is 57s of
+# the cost; the table enumeration is cheap.
+# re-check the A Painter Ant uniform-in-n proof (1m20s, single-threaded)
 apa-proof:
-    {{PYTHON}} tests/tools/apa_uniform_proof_check.py
+    {{PYTHON}} tests/proofs/deep/a_painter_ant.py
 
 # clean generated
 clean:

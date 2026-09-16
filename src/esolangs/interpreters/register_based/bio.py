@@ -74,21 +74,26 @@ def _bumped(reg: tuple[int, int, int], index: int, delta: int) -> tuple[int, int
     return (values[0], values[1], values[2])
 
 
-def _skip(commands: list[str], ind: int) -> int:
-    """Return the index of the ``};`` closing the loop opened at ``ind``.
+def _closers(commands: list[str]) -> tuple[int, ...]:
+    """Return, per command, the ``};`` that closes a loop opened there.
+
+    ``-1`` where the command opens nothing.  One pass with a stack, run once
+    when the program is loaded: a loop whose register is zero has to reach
+    past its own body, and searching for that closer each time it happened
+    made a program with Theta(T) skips cost Theta(T) per skip.
 
     Braces are counted rather than ``0i`` triples: the opener is the triple
-    *with* its ``{``, and ``parse`` has already matched them, so the closer
-    exists and this cannot run off the end.
+    *with* its ``{``, and ``parse`` has already matched them, so every
+    opener here has a closer and the stack cannot underflow.
     """
-    mat = 1
-    while mat:
-        ind += 1
-        if commands[ind].endswith("{"):
-            mat += 1
-        elif commands[ind] == "};":
-            mat -= 1
-    return ind
+    closes = [-1] * len(commands)
+    open_at: list[int] = []
+    for ind, command in enumerate(commands):
+        if command.endswith("{"):
+            open_at.append(ind)
+        elif command == "};":
+            closes[open_at.pop()] = ind
+    return tuple(closes)
 
 
 # A BIO command: an increment/decrement/output triple ended by its ``;``, a
@@ -152,6 +157,9 @@ class _Machine:
         """Parse ``code`` into commands and reset the registers."""
         self.io = io
         self.commands = parse(code)
+        # Where each loop ends, matched once here rather than searched for
+        # on every zero-register exit.
+        self.closes = _closers(self.commands)
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.commands)
@@ -219,11 +227,14 @@ class _Machine:
         if command[:2] == "1i":
             # Handle negative values by converting to unsigned 8-bit
             self.io.print_char(chr(reg["xyz".find(command[2])] % 256))
-        self.state = _advance(self.state, self.commands)
+        self.state = _advance(self.state, self.commands, self.closes)
 
 
-def _advance(state: _State, commands: list[str]) -> _State:
+def _advance(state: _State, commands: list[str], closes: tuple[int, ...]) -> _State:
     """Return the state after executing one command.
+
+    ``closes`` is :func:`_closers` for ``commands`` -- the loop exits, read
+    rather than searched for.
 
     Pure, and total: ``parse`` has already matched every brace, so a ``};``
     always has a loop to return to and a skip always finds its closer.  It
@@ -251,7 +262,7 @@ def _advance(state: _State, commands: list[str]) -> _State:
     elif reg[r]:
         stk = (*stk, ind)
     else:
-        ind = _skip(commands, ind)
+        ind = closes[ind]
     return (ind + 1, reg, stk)
 
 

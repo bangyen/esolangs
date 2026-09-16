@@ -476,12 +476,17 @@ class _Grid:
         a phantom wall; :meth:`open_at` is the one read that treats off
         the grid as closed instead.
         """
-        if isinstance(where, int):
-            return self._rows[where]
-        row, col = where
-        if not (0 <= row < self.height and 0 <= col < self.width):
-            return _VOID
-        return self._rows[row][col]
+        # The coordinate read is the common one by a wide margin -- it is the
+        # hottest call in loading a drawing -- so it is tested first, and with
+        # ``type`` rather than ``isinstance``.  The bounds are the grid's own
+        # ``height``/``width``, not the row's length: a short row still reads
+        # as blank to its right rather than raising.
+        if type(where) is tuple:
+            row, col = where
+            if not (0 <= row < self.height and 0 <= col < self.width):
+                return _VOID
+            return self._rows[row][col]
+        return self._rows[cast("int", where)]
 
     def __setitem__(self, row: int, value: str) -> None:
         """Redraw one row, for the fixtures that build geometry by hand.
@@ -654,10 +659,14 @@ def _geometric[Answer](rule: Callable[..., Answer]) -> Callable[..., Answer]:
     drops it without every rule needing to know.  The key includes the
     rule's name, so two rules with the same argument tuple do not collide.
     """
+    # The rule's name is fixed when it is decorated; reading it off the
+    # function on every call was an attribute lookup per memo probe, and
+    # these rules are probed hundreds of thousands of times per load.
+    name = rule.__name__
 
     @functools.wraps(rule)
     def cached(grid: _Grid, *args: object) -> Answer:
-        key = (rule.__name__, args)
+        key = (name, args)
         memo = grid.geometry
         try:
             return cast("Answer", memo[key])

@@ -53,6 +53,16 @@ leaf rings the ant rests in, and the interpreter's raster drew painted cells
 only, so the ant was invisible and the rings identical; ``render`` now marks
 the ant's own cell, with ``o`` on black and ``@`` on white.
 
+**The ``_fill_*`` functions here are the only place a setter is spelled.**
+A caller that wants one -- a test, a harness, a script -- imports it rather
+than writing the same substitution again.  This is not style: a generator
+lays its template out by counting the positions a filled setter will take,
+so a second spelling that drifts in width moves every jump target after it.
+When that happened the instantiated program did not fail, it addressed
+commands that were no longer there and looped, and the suite hung instead of
+reporting anything.  Minsky Swap's copy is the worked example; NoComment's
+and RAM0's had not drifted yet and were retired for the same reason.
+
 Every boolean generator whose answer a program can report therefore has a
 committed example.
 """
@@ -62,6 +72,7 @@ from dataclasses import dataclass, replace
 
 from esolangs.registry import Generator, canonical_id
 from esolangs.tools.a_painter_ant import _instantiate_apa
+from esolangs.tools.cod import _instantiate_cod
 from esolangs.tools.crement import instantiate_crement
 from esolangs.tools.helpers import instantiate
 from esolangs.tools.nopstacle import instantiate_nopstacle
@@ -387,13 +398,24 @@ def _fill_back(template: str, bits: list[int]) -> str:
 
 
 def _fill_minsky_swap(template: str, bits: list[int]) -> str:
-    """Set each input register by counting ``+`` against a ``*`` pad.
+    """Set each input register with a run as long as the bit's own weight.
 
-    Minsky Swap has no input instruction, so a bit is embedded as a run of
-    ``+`` adding its binary weight to ``reg[0]``, padded with ``*`` to a
-    length the template counted on when it computed its jump targets.  Both
-    runs are even because ``*`` swaps the register pointer: an odd pad would
-    leave every later command addressing the wrong register.
+    Minsky Swap has no input instruction, so a one is embedded as a run of
+    ``+`` adding its binary weight to ``reg[0]``, and a zero as a run of
+    ``*`` of the same length doing nothing.  The length is the weight
+    itself, which is what the template counted on when it computed its jump
+    targets -- the two must move together.
+
+    Both runs are even, because ``*`` swaps the register pointer and an odd
+    run would leave every later command addressing the wrong register.  A
+    one does no swapping at all and a zero an even number, so either way the
+    pointer comes back.
+
+    Equal width is the invariant here, and it is per input rather than
+    across them: ``set_bit(i, 0)`` and ``set_bit(i, 1)`` must match, or the
+    program's length leaks the bit, but block ``i`` need not match block
+    ``j``.  Reading it as across-them and padding every block to ``2**n``
+    cost a factor of ``n`` in commands executed for no invariant at all.
 
     The LSB is the exception, and not merely a shorter one.  Its block is
     ``+*+*``, which adds its weight of one to ``reg[0]`` and then, across
@@ -404,15 +426,23 @@ def _fill_minsky_swap(template: str, bits: list[int]) -> str:
     the same four commands doing nothing.
     """
     n = len(bits)
-    size: int = 2**n
 
     def set_bit(i: int, bit: int) -> str:
         if i == n - 1:  # LSB: length-4 block, no "~"
             return "+*+*" if bit else "****"
         weight: int = 2 ** (n - 1 - i)
-        if bit:
-            return "+" * weight + "*" * (size - weight)
-        return "*" * size
+        # As long as the weight, not as long as the table.  Both spellings
+        # are the same width for a 0 as for a 1, which is the rule that
+        # matters -- a program's length must not depend on the bits it is
+        # evaluating -- and that rule is per input, not across them, so a
+        # block need only match its own counterpart.  Padding every block to
+        # 2**n instead made the load run (n-1) * 2**n commands, which was
+        # the whole of this construction's Theta(T log T) execution.
+        #
+        # The pad stays even because ``*`` swaps the register pointer: a
+        # one is ``+`` * weight with no swap at all, a zero ``*`` * weight
+        # with an even number, so both leave the pointer where they found it.
+        return ("+" if bit else "*") * weight
 
     return instantiate(template, bits, set_bit)
 
@@ -457,25 +487,8 @@ def _fill_home_row(template: str, bits: list[int]) -> str:
 
 
 def _fill_cod(template: str, bits: list[int]) -> str:
-    """Set the cod's value to the bit at that input's ``+`` fork.
-
-    ``)`` increments, so a one is ``)`` and a zero is a space -- which is
-    water, an open grid cell the cod passes through, not the inert filler a
-    space is in a language that ignores unknown characters.  Both bits are
-    one cell, so the programs are already all the same size and differ in
-    exactly one character per input, at a fixed column: 89 characters at
-    ``n == 1``, 350 at ``n == 2``, 1495 at ``n == 3``, whatever the inputs.
-
-    Spelling the zero as a command instead (``)(`` against ``)<``) works --
-    it needs the fork box widened by a column and one more of the cascade's
-    leading blanks -- but it buys nothing here and costs size: 350 goes to
-    359 and 1495 to 1529.  The blank is the grid's own zero, not padding.
-    """
-    return instantiate(
-        template,
-        bits,
-        lambda _i, b: ")" if b else " ",
-    )
+    """Expand weighted input slots into the COD answer-strip route."""
+    return _instantiate_cod(template, bits)
 
 
 def _fill_eval(template: str, bits: list[int]) -> str:
