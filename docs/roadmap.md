@@ -31,8 +31,8 @@ The candidate list is empty.
 
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
-  | %^2^-1 | Exception | Open | Linear | Linear |
-  | Factor | Cap | Language lower bound | Language lower bound | Linear |
+  | %^2^-1 | Exception | Linear | Linear | Linear |
+  | Factor | Total | Language lower bound | Language lower bound | Linear |
   | Polynomial | Cap | Open | Open | Linear |
   | Vandevelo | Total | Open | Linear | Linear |
   | WII2D | Cap | Open | Open | Linear |
