@@ -25,13 +25,11 @@ MAX_LINES = 1500
 #: is under the cap.  Nothing may be added: a new entry means a file grew past
 #: the cap instead of being split.
 _RATCHET = {
-    "src/esolangs/__init__.py": 1615,
+    "src/esolangs/__init__.py": 1598,
     "src/esolangs/cli.py": 2100,
     "src/esolangs/interpreters/grid_based/streetcode.py": 1855,
-    "src/esolangs/tools/minifuck.py": 3236,
     "src/esolangs/tools/other.py": 1605,
-    "src/esolangs/tools/parameterized.py": 1885,
-    "src/esolangs/tools/pct_squared_minus_one.py": 3590,
+    "src/esolangs/tools/parameterized.py": 1873,
     "src/esolangs/tools/register.py": 1649,
     "src/esolangs/tools/tape.py": 1555,
     "tests/interpreters/test_forbin.py": 1721,
@@ -40,7 +38,7 @@ _RATCHET = {
     "tests/test_cli_conventions.py": 3403,
     "tests/test_vm.py": 2671,
     "tests/tools/test_boolean_grid.py": 2305,
-    "tests/tools/test_boolean_minifuck.py": 3195,
+    "tests/tools/test_boolean_minifuck.py": 3192,
     "tests/tools/test_boolean_other.py": 2633,
     "tests/tools/test_boolean_parameterized.py": 3563,
     "tests/tools/test_boolean_pct.py": 2443,

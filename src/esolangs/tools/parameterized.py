@@ -451,22 +451,16 @@ def back(truth_table: str) -> str:
     turns: the beam starts heading right, the ``/`` sends it up and off the
     top edge onto the bottom row, it runs the load upward back to the origin,
     and the ``/`` -- now taking a beam heading up -- turns it right into the
-    tree.  The load is therefore written bottom-to-top, and the tree is free
-    to begin one column in.
+    tree.  The load is written bottom-to-top, and the drawing is reflected
+    for output, so the tree grows left and its triangular padding lands at
+    line ends where it is stripped.  A two-row outer route converts Back's
+    fixed eastward start into the westward entry the reflected root needs.
 
-    That logical drawing is reflected for output.  The tree then grows left,
-    putting its triangular padding at line ends where it is stripped.  A
-    two-row outer route converts Back's fixed eastward start into the westward
-    entry the reflected root needs.
-
-    The answer is therefore the *value* of cell ``n``, which the halt dump
-    prints, rather than the head's position, which it does not.  An earlier
-    layout kept a 0-cell and a 1-cell and parked the head on whichever
-    matched; that made the result unreadable from the program's own output,
-    so Back could have no committed example and its generator tests had to
-    reimplement the language to find the head.  One answer cell costs nothing
-    -- a leaf spends one ``-`` instead of one extra pointer move -- and makes
-    the dump self-describing.
+    The answer is the *value* of cell ``n``, which the halt dump prints,
+    rather than the head's position, which it does not.  An earlier layout
+    parked the head on whichever of a 0-cell and a 1-cell matched, which made
+    the result unreadable from the program's own output.  One answer cell
+    costs a leaf one ``-`` instead of one extra pointer move.
     """
     n = _validate_truth_table(truth_table)
     return _back_ordered(truth_table, tuple(range(n)))
@@ -494,19 +488,13 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     **This is not the cheapest build, and the trade is deliberate.**
     Filling in *cell* order -- cell ``c`` taking ``{X perm[c]}`` -- emits no
-    walk at all, since the pointer only ever steps one cell forward, and it
-    delivered the full 12.0% screen against the 9.15% here.  That build is
-    not kept: it puts the template's placeholders out of name order, and
-    every other generator in this module emits ``{X0}``..``{Xn-1}`` in
-    sequence.  Both forms are correct -- ``instantiate`` substitutes by
-    *name*, so a placeholder is filled wherever it sits -- so this is a
-    consistency choice rather than a correctness one, and it costs 2.85
-    points.
-
-    The walk is cheap in absolute terms (two characters a move: the
-    character, plus the newline its own load row carries) and shows up as
-    2.85 points only because Back's programs are small -- 82 characters on
-    average at n=3, against LaserFuck's 326.
+    walk at all and delivers the full 12.0% screen against the 9.15% here,
+    but it puts the placeholders out of name order where every other
+    generator in this module emits ``{X0}``..``{Xn-1}`` in sequence.  Both
+    are correct, since ``instantiate`` substitutes by *name*, so this is a
+    consistency choice costing 2.85 points.  The walk is cheap in absolute
+    terms and shows up at all only because Back's programs are small -- 82
+    characters on average at n=3, against LaserFuck's 326.
 
     Keeping the ``-``/``{Xi}`` pairs intact preserves the equal-width
     embedding: the primer and the placeholder are one unit and are never
