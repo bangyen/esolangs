@@ -26,7 +26,6 @@ MAX_LINES = 1500
 #: the cap instead of being split.
 _RATCHET = {
     "src/esolangs/__init__.py": 1598,
-    "src/esolangs/cli.py": 2100,
     "src/esolangs/interpreters/grid_based/streetcode.py": 1855,
     "src/esolangs/tools/other.py": 1605,
     "src/esolangs/tools/parameterized.py": 1873,
