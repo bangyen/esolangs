@@ -41,12 +41,10 @@ _RATCHET = {
     "tests/interpreters/test_forbin.py": 1721,
     "tests/interpreters/test_streetcode.py": 2249,
     "tests/test_answer_plumbing.py": 1977,
-    "tests/test_cli_conventions.py": 3403,
     "tests/test_vm.py": 2671,
     "tests/tools/test_boolean_grid.py": 2305,
     "tests/tools/test_boolean_minifuck.py": 3192,
     "tests/tools/test_boolean_other.py": 2633,
-    "tests/tools/test_boolean_parameterized.py": 3563,
     "tests/tools/test_boolean_pct.py": 2443,
     "tests/tools/test_boolean_tape.py": 2070,
 }
