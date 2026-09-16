@@ -891,12 +891,30 @@ real time, but not the program running, and for two languages it is the
 entire cost.  The figures are worst-row and were taken on parity tables;
 random tables cost the same or less, so they bound rather than flatter.
 
-Three are quadratic, and for one reason each: BIO, Jaune and Flowchart
-execute Theta(T) commands and pay Theta(T) for each.  RAM0, B-tapemark,
-LaserFuck, BrainIf, Bitdeque and Eval sit between, around T^1.4 to T^1.75.
-About fifteen are linear -- Minifuck, COD, Forth, Back, ROTfuck, S*bleq,
-Qoibl, Container and the rest -- which is what a program that walks its
-table once costs.
+Every generator's *command count* is now linear or better, which the
+execution contract measures and holds.  What separates them is the second
+factor.  Where a command costs a constant, the program is linear -- Minifuck,
+COD, Forth, Back, ROTfuck, S*bleq, Qoibl, Container and about a dozen more,
+which is what walking a table once costs.
+
+Where it does not, run time grows faster than the commands do.  Measured as
+the per-added-input growth of the worst row's run time at nine inputs, with
+loading excluded: B-tapemark x3.8 and Flowchart x3.6 are the two still
+approaching quadratic, then RAM0 x3.0, LaserFuck x3.0, BrainIf x2.9, Jaune
+x2.8, Bitdeque x2.5 and Eval x2.2 against the x2.0 a linear program would
+show.  One mechanism accounts for all of them: each rebuilds an immutable
+tape, association list or pointer memory on every write, so a write costs
+the structure's size and Theta(T) writes cost Theta(T^2).  Minifuck answers
+the same problem with an integer bit-vector and pays O(1); the others have
+not followed because the structure sits inside the state the cycle detector
+hashes, so replacing it is a change to the state type rather than to a
+function.
+
+BIO used to head this list at x3.9.  It is x2.3 now, and the difference was
+not its data structure: it searched the program for the closing brace of
+every loop it skipped.  Matching the braces once at load is the whole of it,
+which is worth stating because the same mistake was in six interpreters and
+none of them looked like a data-structure problem.
 
 Minsky Swap was the one whose *command count* was super-linear rather than
 its per-command cost, and it was Theta(T log T) on the nose: commands per
@@ -936,17 +954,16 @@ is superlinear in area by construction -- one band per minterm -- and its
 parse is linear in that area.  Streetcode's load is linear with a large
 constant.
 
-What was fixed on the execution side was a single mistake repeated:
-an interpreter that searched the program for a jump target on every jump,
-rather than reading an index built once at load.  BIO matched its braces
-once, Jaune indexed its labels, BrainIf kept its parsed lines.  What
-remains is a different one, and it is shared by Jaune, BrainIf, RAM0 and
-Flowchart: each rebuilds an immutable tape or association list on every
-write, O(size) a write, so Theta(T) writes cost Theta(T^2).  Minifuck
-already answers this with an integer bit-vector, and the reason the others
-have not followed is that the structure sits inside the state the cycle
-detector hashes, so replacing it is a change to the state type rather than
-to a function.
+That mistake -- searching the program for a jump target on every jump, with
+no index built at load -- was in six interpreters, and two of them already
+walked the whole program at load to check their brackets and threw the
+pairing away.  BIO matched its braces once, Jaune indexed its labels, Sophie
+and BF-PDA kept the pairing their load pass was computing anyway, Polynomial
+stopped finding the same partner twice in one step, and 123, whose jump is a
+nearest-neighbour search rather than a nesting one, got two prefix arrays.
+Only BIO and Jaune had programs long-running enough for it to show on this
+corpus; the rest were latent, and none of them announced itself -- a scan
+inside a step function reads like a lookup until its length is measured.
 
 
 ## Curation
