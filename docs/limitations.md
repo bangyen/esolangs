@@ -899,16 +899,24 @@ which is what walking a table once costs.
 
 Where it does not, run time grows faster than the commands do.  Measured as
 the per-added-input growth of the worst row's run time at nine inputs, with
-loading excluded: B-tapemark x3.8 and Flowchart x3.6 are the two still
-approaching quadratic, then RAM0 x3.0, LaserFuck x3.0, BrainIf x2.9, Jaune
-x2.8, Bitdeque x2.5 and Eval x2.2 against the x2.0 a linear program would
-show.  One mechanism accounts for all of them: each rebuilds an immutable
-tape, association list or pointer memory on every write, so a write costs
-the structure's size and Theta(T) writes cost Theta(T^2).  Minifuck answers
-the same problem with an integer bit-vector and pays O(1); the others have
-not followed because the structure sits inside the state the cycle detector
-hashes, so replacing it is a change to the state type rather than to a
-function.
+loading excluded: Flowchart x3.6 is the one still approaching quadratic,
+then RAM0 x3.0, LaserFuck x3.0, BrainIf x2.9, Jaune x2.8, Bitdeque x2.5 and
+Eval x2.2, against the x2.0 a linear program would show.  Those share a
+mechanism: each rebuilds an immutable tape, association list or pointer
+memory on every write, so a write costs the structure's size and Theta(T)
+writes cost Theta(T^2).  Minifuck answers the same problem with an integer
+bit-vector and pays O(1); the others have not followed because the
+structure sits inside the state the cycle detector hashes, so replacing it
+is a change to the state type rather than to a function -- and for
+Flowchart the pointer is passed between forked pointers as a value, which
+is what its tuple of pairs is buying.
+
+B-tapemark used to head that list at x3.8, and it did not belong on it.  Its
+grid was a set of ``(x, y, char)`` triples used as a map from point to
+symbol, so reading one cell scanned every mark -- a scan, not a rebuild.
+Keyed by point it is x1.9, and the run at nine inputs went from 3.8 seconds
+to 3.0 milliseconds.  The two mechanisms look alike from a profile and are
+not: one is the structure being copied, the other is it being searched.
 
 BIO used to head this list at x3.9.  It is x2.3 now, and the difference was
 not its data structure: it searched the program for the closing brace of
