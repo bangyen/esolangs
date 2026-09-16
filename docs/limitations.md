@@ -897,11 +897,18 @@ factor.  Where a command costs a constant, the program is linear -- Minifuck,
 COD, Forth, Back, ROTfuck, S*bleq, Qoibl, Container and about a dozen more,
 which is what walking a table once costs.
 
-Where it does not, run time grows faster than the commands do.  Measured as
-the per-added-input growth of the worst row's run time at nine inputs, with
-loading excluded: Flowchart x3.6 is the one still approaching quadratic,
-then RAM0 x3.0, LaserFuck x3.0, BrainIf x2.9, Jaune x2.8, Bitdeque x2.5 and
-Eval x2.2, against the x2.0 a linear program would show.  Those share a
+Where it does not, run time grows faster than the commands do.  Measured at
+nine inputs as the worst row's run time and its growth per added input,
+with loading excluded: Flowchart 415 ms at x3.6, BrainIf 82 ms at x2.9,
+LaserFuck 47 ms at x2.9, RAM0 17 ms at x3.0, Jaune 18 ms at x2.9, Eval
+1.6 ms at x2.1 and Bitdeque 1.2 ms at x2.5, against the x2.0 a linear
+program would show.
+
+The magnitudes are quoted because the exponents alone are misleading here.
+Only Flowchart costs enough to notice; Bitdeque's x2.5 is a millisecond,
+which is a ratio between two timings too small to mean much, and chasing it
+would buy nothing.  A growth figure on a run this short is noise wearing an
+exponent.  Those share a
 mechanism: each rebuilds an immutable tape, association list or pointer
 memory on every write, so a write costs the structure's size and Theta(T)
 writes cost Theta(T^2).  Minifuck answers the same problem with an integer
