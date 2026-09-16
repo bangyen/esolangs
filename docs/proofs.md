@@ -175,7 +175,7 @@ after ignoring the performance/resource ceiling as specified above.
 | 3x | tree | — |
 | Unsquare | tree | stack arrangement affects size only |
 | Vandevelo | minterms | constant-one subtrees drop their suffix literals |
-| WII2D | exception | Horner makes the input chain total, but the deterministic final fold is not proved to decode every finite domain |
+| WII2D | parameterized construction, cap | Horner's chain is total; the decode folds the extremal same-colour pair, whose midpoint is unique, so every fold is legal |
 | ZTOALC L | finite lookup, cap | `2**k` supplies `k` ordered trajectory slots for every finite `k` |
 
 ## Exceptions and walls
@@ -185,10 +185,6 @@ incapable.
 
 - `%^2^-1` can refuse when none of its cascade, affine, ladder, band, or fold
   planners succeeds.
-- WII2D can refuse when its deterministic decode hits the magnitude/width
-  guards or has no legal fold.  The exactly-once embedding convention has a
-  measured wall; re-embedding inputs at tree nodes escapes it, so it is not a
-  language wall.
 
 ### Attempts on the open cases
 
@@ -212,20 +208,6 @@ affine operations, squaring, the asymmetric reset, and rewind-to-zero.  The
 existing folds solve many such finite maps, but no argument shows that every
 two-colouring admits the required collision sequence.  That missing finite-map
 lemma is the whole open case.
-
-**WII2D.**  There is no language cap: repeating placeholders at the nodes of a
-plain grid decision tree computes every finite table.  It is disallowed only
-by the repository's exactly-once parameterized contract.  Under that contract,
-an absolute-heading fill makes both arms rejoin at the same position and
-heading; only the unbounded accumulator can distinguish their histories.  Its
-unboundedness and `s` squaring defeat a finite-state counting wall, while the
-measured doubling traps refute only the shipped greedy fold.  The matching
-totality attempt uses Horner junctions to assign every input row a distinct
-integer, then seeks a unary op composition taking those integers to their
-table bits.  Totality reduces to the same unproved statement the decoder needs:
-every finite two-coloured integer set admits a sequence of legal square/shift
-folds with no cross-colour collision.  Search success on bounded domains is
-not that proof.
 
 ### Resource-ceiling audit
 
@@ -261,6 +243,26 @@ The remaining `cap` rows do have a uniform lift argument.
   in visit order before line 1 halts.  The emitted source may have `2**k`
   lines, but existence is unconditional and uses no Collatz conjecture.  The
   committed anchors merely find much smaller programs under `_MAX_LINES`.
+- WII2D's chain is total already (Horner's children `2v` and `2v+1` differ in
+  parity, so that junction is legal at every level).  The decode is total too,
+  and the argument is a choice of fold rather than a wider search.  Squaring
+  is the only merging op, so after a shift by `c` it identifies `x` and `y`
+  exactly when `x + y = -2c`: one fold merges precisely the pairs sharing a
+  midpoint, and it is legal exactly when every pair with that midpoint is
+  monochromatic.  The two largest values have strictly the largest sum, since
+  any other pair swaps one of them for something smaller, so *no* other pair
+  shares their midpoint and folding them is legal whatever the rest of the
+  colouring does.  One `*` first makes every value even, hence every midpoint
+  an integer.  Some colour class has two members whenever three values are
+  live, and when neither extremal pair is monochromatic, repeated squaring on
+  a positive set makes all pair sums distinct — for distinct positive integers
+  `a**M + b**M = c**M + d**M` forces `{a,b} = {c,d}` once `M` is large enough
+  — after which every same-colour pair is foldable.  The live count therefore
+  falls to one per colour, and `_wii2d_threshold` reads out any two distinct
+  values.  What the shipped decode does instead is rank folds by magnitude and
+  take the cheapest, which is what ratchets; the extremal fold costs unary
+  offsets and always works.  Every WII2D magnitude guard is repository policy,
+  the interpreter bounding only the *printed* value, which is 48 or 49.
 
 Grapheme's lift is already applied, so it is a `tree` row rather than a
 `cap` row.  Its folded tree needs one variable per essential input, but
@@ -274,7 +276,13 @@ since `F` delimits integer mode and cannot occur inside its literal.
 The shipped 6-5 function still refuses past its optimized construction.  Its
 classification is theoretical in this section's stated sense: removing the
 resource policy requires restoring a known construction, not merely changing
-one numeric constant.
+one numeric constant.  WII2D reads the same way: the shipped decode keeps
+ranking folds by magnitude, so it still refuses about four in ten dense
+tables at the widest admitted domain, and reaching the extremal-fold
+construction means choosing a different fold rather than relaxing a constant.
+Prompt refusal is the better behaviour there — the extremal fold spells its
+centres in unary, and a refused table costs seconds where the total
+construction costs minutes and a megabyte.
 
 There is one proved language wall, but it does not classify the shipped
 generator.  In the ordinary reading model, every `%^2^-1` program satisfying
