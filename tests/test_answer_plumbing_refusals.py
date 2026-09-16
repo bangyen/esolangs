@@ -42,17 +42,18 @@ class TestTheNewChecksRefuseTheirOwnBadInput:
 
 
 class TestADeliberateRefusalIsAnEsolangError:
-    """The package promises it, and the five refusals broke the promise.
+    """The package promises it, and the refusals that broke the promise.
 
     Every generator cap raised a plain ``ValueError`` -- Interprogck8 a
     *private* ``_StuckError`` nothing exported -- so ``except EsolangError``
     around a registry sweep, the idiom the docs advertise, crashed on the
-    first of them.
+    first of them.  Interprogck8 has since become total and is no longer one
+    of them; the others still cap, and still have to cap catchably.
     """
 
-    #: The five that stop rather than build, and the arity that trips each.
-    #: Only these are built here: the other sixty-four succeed at n=11 and
-    #: several take minutes to do it.
+    #: The ones that stop rather than build, and the arity that trips each.
+    #: Only these are built here: the rest succeed at n=11 and several take
+    #: minutes to do it.
     #:
     #: Factor's is 13 rather than 11 because its cap is on the *encoded
     #: integer's* digit count and not on ``n`` -- shrinking the decision
@@ -60,9 +61,16 @@ class TestADeliberateRefusalIsAnEsolangError:
     #: n=12 table in under three seconds.  Carried per language rather than
     #: as one table, because a shared n=11 quietly stopped testing Factor at
     #: all: the ``pytest.raises`` simply saw the program get built.
+    #:
+    #: **Interprogck8 was here and is not a refuser any more.**  Linearizing
+    #: it retired the repair loop its cap existed for, so the cap and its
+    #: private ``_StuckError`` went with it and nothing raises at any arity
+    #: -- a dense n=13 table builds in about twelve seconds.  Which is the
+    #: failure Factor's note warns about, in the other direction: the entry
+    #: stayed behind and the ``pytest.raises`` saw the program get built.
+    #: Re-add it only against a raise, not against a hope.
     _REFUSERS: ClassVar[dict[str, int]] = {
         "Factor": 13,
-        "Interprogck8": 11,
         "Polynomial": 11,
         "WII2D": 11,
         "ZTOALC L": 11,
