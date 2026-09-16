@@ -196,6 +196,73 @@ class TestATemplateKnowsWhoseItIs:
         assert "{X0}" in template
 
 
+class TestAProgramKnowsWhoseItIs:
+    """A generated program run under another language is refused at the door.
+
+    Most interpreters are permissive enough to run foreign text as no-ops and
+    answer, so the mistake is not a syntax error.  The tag is the same
+    device the template carries, and as permissive: a plain string is
+    accepted unchecked.
+    """
+
+    def test_a_foreign_program_is_refused_by_run(self) -> None:
+        program = esolangs.generate("brainfuck", "0110")
+        with pytest.raises(esolangs.ProgramError, match="generated for brainfuck"):
+            esolangs.run("Minsky Swap", program)
+
+    def test_a_foreign_program_is_refused_by_make_vm(self) -> None:
+        program = esolangs.generate("brainfuck", "0110")
+        with pytest.raises(esolangs.ProgramError, match="generated for brainfuck"):
+            esolangs.make_vm("Minsky Swap", program, "")
+
+    def test_a_filled_template_carries_its_language(self) -> None:
+        template = esolangs.generate("Minifuck", "0110")
+        program = esolangs.instantiate("Minifuck", template, [0, 1])
+        assert getattr(program, "language", None) == "Minifuck"
+        with pytest.raises(esolangs.ProgramError, match="generated for Minifuck"):
+            esolangs.run("brainfuck", program)
+
+    def test_its_own_language_still_runs_it(self) -> None:
+        program = esolangs.generate("brainfuck", "0110")
+        out = esolangs.run(
+            "brainfuck", program, esolangs.encode_inputs("brainfuck", [0, 1])
+        )
+        assert esolangs.read_answer("brainfuck", out) == "1"
+
+    def test_the_name_is_resolved_before_it_is_compared(self) -> None:
+        program = esolangs.generate("BRAINFUCK", "0110")
+        assert esolangs.run(
+            "brainfuck", program, esolangs.encode_inputs("brainfuck", [0, 1])
+        )
+
+    def test_a_plain_string_is_accepted_unchecked(self) -> None:
+        program = str(esolangs.generate("brainfuck", "0110"))
+        assert getattr(program, "language", None) is None
+        assert esolangs.run(
+            "brainfuck", program, esolangs.encode_inputs("brainfuck", [0, 1])
+        )
+
+    def test_a_program_is_still_a_string_everywhere_else(self) -> None:
+        import json
+        import pickle
+
+        program = esolangs.generate("brainfuck", "0110")
+        assert isinstance(program, str)
+        assert program == str(program)
+        assert json.dumps(program) == json.dumps(str(program))
+        copied = pickle.loads(pickle.dumps(program))
+        assert copied == program
+        assert getattr(copied, "language", None) == "brainfuck"
+        template = pickle.loads(pickle.dumps(esolangs.generate("Minifuck", "0110", 20)))
+        assert getattr(template, "unwrapped", None) == esolangs.generate(
+            "Minifuck", "0110"
+        )
+
+    def test_a_width_keeps_the_tag(self) -> None:
+        program = esolangs.generate("brainfuck", "0110", 20)
+        assert getattr(program, "language", None) == "brainfuck"
+
+
 class TestExamplePathsWorkFromAnywhere:
     """The recipe this package advertises worked from one directory."""
 
