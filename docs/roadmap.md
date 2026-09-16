@@ -201,68 +201,57 @@ The candidate list is empty.
 
 - **Parameterized generator conventions.**  The eighteen generators that
   embed their inputs in the program text (`BOOLEAN_EXAMPLES` entries with a
-  `fill`) hold to four conventions.  *Single embed*: each `{Xi}` appears
-  exactly once and no `{Ci}` at all.  *Constant width*: every instantiation
-  of one template has the same length, so `len(program)` reveals nothing,
-  and the pad is a character the interpreter executes rather than one it
-  ignores.  *Slot order*: `{X0}`..`{Xn-1}` are emitted in name order.  *No
-  spaces*: the emitted program carries no whitespace the interpreter
-  discards.  The first three are enforced
-  (`tests/tools/test_boolean_parameterized.py`); the fourth is not, and is
-  what this item is for.  Measured Sep 2026 on dense and parity tables at
-  n=2..4, every instantiation: single embed, constant width and slot order
-  hold for all eighteen; no spaces holds for eight (123, A Painter Ant,
-  BF-PDA, Eval, Home Row, Minifuck, NoComment, `%^2^-1`) and the rest are
-  the live audit.  `Open` means the interpreter ignores the spaces and a
-  program with them deleted runs to the same answer on every row;
-  `Language` means the interpreter reads them, as a token delimiter or a
-  grid cell, so deleting one changes the program.  A row is present while
-  any cell is open and leaves when all four close.
+  `fill`) hold to four conventions, all of them about the *embed* -- the
+  text a fill substitutes for `{Xi}` -- not the program around it.
+  *Single embed*: each `{Xi}` appears exactly once and no `{Ci}` at all.
+  *Constant width*: every instantiation of one template has the same
+  length, so `len(program)` reveals nothing.  *Slot order*:
+  `{X0}`..`{Xn-1}` are emitted in name order.  *No spaces*: a bit is
+  spelled in commands, never as a blank or padded with blanks; a single
+  blank between two tokens of the embed is a delimiter and is fine
+  (Bitdeque's `INVERT PUSH`, RAM0's `Z A`).  The first three are enforced
+  (`tests/tools/test_boolean_parameterized.py`), the fourth was not, and
+  `tests/proofs/test_conventions.py` now reads this table and measures
+  every cell: the embed is the span on which the two fills of one input
+  differ, and a blank left after deleting each single blank between two
+  non-blank characters is the violation.  Measured Sep 2026 on dense and
+  parity tables at n=2..6, every instantiation: single embed and slot
+  order hold for all eighteen, constant width for seventeen, no spaces for
+  fifteen.  `Open` means a command spelling is not ruled out; `Language`
+  means the alphabet leaves none.  A row is present while any cell is open
+  and leaves when all four close.
 
   | Language | Single embed | Constant width | Slot order | No spaces |
   | --- | --- | --- | --- | --- |
-  | ArrowQueue | Holds | Holds | Holds | Language |
-  | Back | Holds | Holds | Holds | Language |
-  | BIO | Holds | Holds | Holds | Open |
-  | Bitdeque | Holds | Holds | Holds | Open |
-  | COD | Holds | Holds | Holds | Language |
-  | Crement | Holds | Holds | Holds | Language |
-  | Minsky Swap | Holds | Holds | Holds | Open |
-  | Nopstacle | Holds | Holds | Holds | Open |
-  | RAM0 | Holds | Holds | Holds | Open |
-  | WII2D | Holds | Holds | Holds | Language |
+  | ArrowQueue | Holds | Holds | Holds | Open |
+  | Bitdeque | Holds | Open | Holds | Holds |
+  | COD | Holds | Holds | Holds | Open |
+  | Nopstacle | Holds | Holds | Holds | Language |
 
-  The open cells are separators nothing reads, all verified by execution
-  on every row of four tables: BIO's are the blanks between its setters
-  (one per input, under one percent of the text); Bitdeque's ``GOTO``
-  takes its number after zero or more spaces and its tokenizer is a
-  ``findall``, so every space goes (22%, 1560 of 7132) -- the wrapper's
-  note that the jump is "spelled with spaces" describes a split it must
-  not make, not one the interpreter needs; RAM0's tokenizer is
-  `[ZANCLS]|[1-9]\d*`, so a space is needed only between two numbers and
-  the rest are 47% of the text (1236 of 2620 characters over 24 programs);
-  Minsky Swap's first line is filtered to `+~*` before it is read, so its
-  spaces go (28%, 764 of 2752), while its second line is a list of numbers
-  that must stay delimited; Nopstacle pads every row to the
-  rectangle with trailing blanks that `rstrip` removes without changing
-  halts or diverges (40 of 40).  The `Language` cells are the five grids,
-  whose blank is an empty cell the pointer crosses (COD's is water); with
-  every space deleted Back, COD and WII2D each change an answer or run
-  past twice the original's step count on some row.  Whether every grid
-  blank could be a written no-op cell instead is a size question, not
-  attempted; COD's water spelled as a command needed the fork box a column
-  wider.  `tests/proofs/test_conventions.py` reads this table: a `Holds`
-  cell is measured, an `Open` cell's strip is executed on every row, and
-  the runnable `Language` cells are the positive control.
+  Bitdeque's width leak is above the arity the equal-width test covers
+  (n=1..2): its tree route is fixed-width, but the linear route from n=5
+  fills `EJECT ` against `POP ` per unit of weight, so the 32 instantiations
+  of a five-input table have 32 distinct lengths (444..506) and the length
+  is the input.  A zero needs a six-character executed spelling.  ArrowQueue's
+  one-bit block is `~` amid blanks where the zero block is a dense `*` box
+  (the walls that equalized the *count* left the cells blank); the trace
+  that placed those walls -- an all-ones header travels column 3 only,
+  except on the entry row -- says where more may go.  COD's fill writes
+  water for one polarity; water spelled as a command (`)(` / `)<`) runs but
+  needs the fork box a column wider, a size cost, not a wall.  Nopstacle's
+  alphabet is the blank and `#`, so a zero bit *is* a blank and the trailing
+  pad on its bit row is what keeps a zero row the width of a one row; there
+  is no command to spell it with.
 
   Two candidate conventions are not adopted.  *Rectangular*: every row of a
-  grid the same width.  Only COD holds it; the other five are ragged, and
-  padding them costs exactly the spaces the fourth convention removes, so
-  the two cannot both be on.  *Executed pad*: the constant-width filler is
-  a command the interpreter runs, not a character it skips.  The `instantiate`
-  docstring asks for it and BIO (`0oz;`), BF-PDA (`<[@]`, minimal by
-  exhaustive search) and Back (prime then finish) are the worked cases, but
-  no test reads the filler, so it is documented, not enforced.
+  grid the same width.  COD and Nopstacle hold it; the other four grids are
+  ragged, and padding them writes blanks into the drawing rather than the
+  embed, so it is orthogonal to the fourth convention but costs size.
+  *Executed pad*: the constant-width filler is a command the interpreter
+  runs, not a character it skips.  The `instantiate` docstring asks for it
+  and BIO (`0oz;`), BF-PDA (`<[@]`, minimal by exhaustive search) and Back
+  (prime then finish) are the worked cases, but no test reads the filler,
+  so it is documented, not enforced.
 
   Toggles are an open decision.  The proposed shape: a keyword per relaxed
   convention on the generator, off by default and carried through the
@@ -272,15 +261,17 @@ The candidate list is empty.
   capability off the signature.  *Differing widths* buys size where the
   zero pad is long: BIO's zero would embed as nothing instead of `0oz;`
   per unit of weight, BF-PDA's pair would return to `<` against `<@` from
-  four characters each, and the earlier BIO fill ran 236/240/244/248 at n=2 against 248 flat -- and it
-  buys the leak back.  *Allow spaces* buys nothing on the line languages
-  (the spaces above are dead weight) and on a grid is not a toggle at all,
-  the cells being read; its one use is rectangular padding, or a filler the
-  interpreter ignores where an executed no-op is hard to find (BIO
+  four characters each, and the earlier BIO fill ran 236/240/244/248 at
+  n=2 against 248 flat -- and it buys the leak back, which is what
+  Bitdeque's linear route has today.  *Allow spaces* would admit a filler
+  the interpreter ignores where an executed no-op is hard to find (BIO
   `'    ' * w` and Eval `'0 '` both ran clean over 2120 cases and were
-  rejected for it, since an ignored pad is what a later cleanup strips).
-  Add the width toggle only where a measured build is smaller; add the
-  space toggle only with the rectangular convention, or not at all.
+  rejected for it, since an ignored pad is what a later cleanup strips)
+  and a bit spelled as a blank cell on a grid, which is the three open
+  cells above.  Add the width toggle only where a measured build is
+  smaller; add the space toggle only if the grid cells are to stay as
+  they are, in which case the three rows close by convention rather than
+  by construction.
 
 - **ArrowQueue reusable drain.**  Ship the verified deep-fold drain only if
   a proof makes folding meaningfully testable at `n >= 5`; current coverage

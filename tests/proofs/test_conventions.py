@@ -1,28 +1,40 @@
 """``docs/roadmap.md``'s conventions audit must agree with the generators.
 
 The cheap half parses the table and checks its names and vocabulary.  The
-measured half builds every embedding generator at n=2 and n=3 on dense and
-parity tables, fills every row, and reads the four conventions off the
-programs: an absent generator must hold all four, a ``Holds`` cell must
-hold, and an open "No spaces" cell must have spaces to remove.  An ``Open``
-cell is then executed: the spaces the row names are deleted and the program
-must answer every row the same -- the document's claim, run.
+measured half builds every embedding generator, fills every row, and reads
+the four conventions off the programs: an absent generator must hold all
+four, a ``Holds`` cell must hold, and an open cell must fail -- so a fix
+that lands without its row leaving is caught as well as a regression.
+
+Every convention is about the *embed*, the text a fill substitutes for one
+``{Xi}``.  It is read off the programs rather than off the fill, since four
+fills are not plain substitutions: for one input, the two fills that differ
+only in that bit are compared and the span on which they differ is the
+embed pair.  A blank in it is a delimiter when it stands alone between two
+non-blank characters (Bitdeque's ``INVERT PUSH``) and content otherwise --
+a bit spelled as a blank cell, or a blank pad.
 """
 
 from __future__ import annotations
 
 import itertools
 import re
-from collections.abc import Callable
 
 import pytest
 
-import esolangs
 from esolangs.registry import BY_BOOLEAN
 from esolangs.tools.examples import BOOLEAN_EXAMPLES, BooleanExample
 from tests.proofs._conventions import HOLDS, LANGUAGE, OPEN, Conventions, load
 
 _VERDICTS = {HOLDS, OPEN, LANGUAGE}
+
+#: The arities every convention is read at.  Five is in the list because it
+#: is where Bitdeque switches to its linear route, which the suite's own
+#: equal-width test (n=1..2) never reaches.
+_ARITIES = (2, 3, 5)
+
+#: A single blank between two non-blank characters: the delimiter shape.
+_DELIMITER = re.compile(r"(?<=\S) (?=\S)")
 
 
 @pytest.fixture(scope="module")
@@ -47,22 +59,43 @@ def _tables(n: int) -> tuple[str, str]:
     return parity, dense
 
 
+def _span(a: str, b: str) -> tuple[str, str]:
+    """The stretch on which two equal-length programs differ, as a pair."""
+    if a == b:
+        return "", ""
+    lo = next(i for i in range(len(a)) if a[i] != b[i])
+    hi = next(i for i in range(len(a) - 1, -1, -1) if a[i] != b[i])
+    return a[lo : hi + 1], b[lo : hi + 1]
+
+
+def _content_blank(embed: str) -> bool:
+    """Whether a blank in ``embed`` is more than a delimiter."""
+    return " " in _DELIMITER.sub("", embed)
+
+
 def _measure(example: BooleanExample) -> dict[str, bool]:
-    """Whether each convention holds over n=2..3, both shapes, every fill."""
+    """Whether each convention holds at every arity, both shapes, every fill."""
     assert example.fill is not None
     single = width = order = spaces = True
-    for n in (2, 3):
+    for n in _ARITIES:
         for table in _tables(n):
             template = example.generator(table, **dict(example.kwargs))
             slots = [int(s) for s in re.findall(r"\{X(\d+)\}", template)]
             single &= sorted(slots) == list(range(n)) and "{C" not in template
             order &= slots == sorted(slots)
-            programs = [
-                example.fill(template, list(bits))
+            programs = {
+                bits: example.fill(template, list(bits))
                 for bits in itertools.product((0, 1), repeat=n)
-            ]
-            width &= len({len(p) for p in programs}) == 1
-            spaces &= not any(" " in p or "\t" in p for p in programs)
+            }
+            width &= len({len(p) for p in programs.values()}) == 1
+            if not width:
+                continue  # the spans below need equal lengths
+            for bits, program in programs.items():
+                for i in range(n):
+                    if bits[i]:
+                        continue
+                    other = programs[(*bits[:i], 1, *bits[i + 1 :])]
+                    spaces &= not any(map(_content_blank, _span(program, other)))
     return {
         "Single embed": single,
         "Constant width": width,
@@ -85,7 +118,7 @@ def test_the_audit_holds_only_open_rows(audit: Conventions) -> None:
     assert not closed, f"rows that hold every convention should leave: {closed}"
 
 
-@pytest.mark.slow  # ~5s: builds and fills every embedding generator at n=2..3
+@pytest.mark.slow  # builds and fills every embedding generator at n=2, 3 and 5
 def test_the_audit_matches_the_programs(audit: Conventions) -> None:
     rows = audit.by_name()
     for name, example in _embedding().items():
@@ -102,113 +135,37 @@ def test_the_audit_matches_the_programs(audit: Conventions) -> None:
                 assert not measured[column], f"{name}: {column} is {verdict} but holds"
 
 
-# How each ``Open`` row's ignored spaces are deleted.  Bitdeque's ``GOTO``
-# takes its number after zero or more spaces and its tokenizer is a
-# ``findall``, so every space goes; RAM0 tokenizes on
-# ``[ZANCLS]|[1-9]\d*``, so only a space between two numbers is read;
-# Minsky Swap filters its first line to ``+~*`` but reads its second as
-# delimited numbers; Nopstacle's pad is the trailing blank on each row.
-_STRIP: dict[str, Callable[[str], str]] = {
-    "BIO": lambda p: p.replace(" ", ""),
-    "Bitdeque": lambda p: p.replace(" ", ""),
-    "RAM0": lambda p: re.sub(r"(?<=[^\d ]) | (?=[^\d ])", "", p),
-    "Minsky Swap": lambda p: (
-        p.split("\n", 1)[0].replace(" ", "") + "\n" + p.split("\n", 1)[1]
-    ),
-    "Nopstacle": lambda p: "\n".join(line.rstrip() for line in p.splitlines()),
-}
+def test_the_language_cell_has_no_other_symbol(audit: Conventions) -> None:
+    """Nopstacle's ``Language`` verdict: the alphabet is the blank and ``#``.
 
-
-def _answer(name: str, example: BooleanExample, program: str) -> object:
-    if example.answer_mode == "termination":
-        from esolangs.interpreters.grid_based.nopstacle import _Machine
-        from esolangs.vm import run_until_halt_or_cycle
-
-        assert name == "Nopstacle"
-        return run_until_halt_or_cycle(_Machine(program.splitlines()))
-    return esolangs.run(name, program)
-
-
-def test_the_strip_rules_are_exactly_the_open_rows(audit: Conventions) -> None:
-    open_rows = {row.generator for row in audit.rows if row.no_spaces == OPEN}
-    assert set(_STRIP) == open_rows
-
-
-@pytest.mark.slow  # runs every fill of the Open rows twice
-@pytest.mark.parametrize("name", sorted(_STRIP))
-def test_an_open_row_runs_the_same_without_its_spaces(name: str) -> None:
-    example = _embedding()[name]
-    assert example.fill is not None
-    checked = 0
-    for n in (2, 3):
-        for table in _tables(n):
-            template = example.generator(table, **dict(example.kwargs))
-            for bits in itertools.product((0, 1), repeat=n):
-                program = example.fill(template, list(bits))
-                stripped = _STRIP[name](program)
-                assert len(stripped) < len(program), (name, bits)
-                assert _answer(name, example, stripped) == _answer(
-                    name, example, program
-                ), (name, table, bits)
-                checked += 1
-    assert checked == 24
-
-
-#: The ``Language`` rows the harness above can run.  ArrowQueue and Crement
-#: answer by termination through their own machines and are not driven here.
-_RUNNABLE_LANGUAGE_ROWS = ("Back", "COD", "WII2D")
-
-
-@pytest.mark.slow  # the positive control for the test above
-@pytest.mark.parametrize("name", _RUNNABLE_LANGUAGE_ROWS)
-def test_a_language_row_reads_its_spaces(name: str, audit: Conventions) -> None:
-    """Deleting every space from a ``Language`` row changes some answer.
-
-    Without this the test above proves nothing: a stripping rule that
-    deletes read spaces would pass wherever no program happens to exercise
-    them.  Here the same harness must *notice* a deleted space -- a
-    different dump or output, or a program that no longer loads.
+    A ``Language`` cell claims no command can spell the bit.  For Nopstacle
+    that is the loader's own rule -- any character but those two is
+    refused -- and the two fills of one bit differ only in blanks against
+    ``#``, so there is nothing else to spell it with.
     """
-    assert audit.by_name()[name].no_spaces == LANGUAGE
-    example = _embedding()[name]
+    from esolangs.interpreters.grid_based.nopstacle import _Machine
+
+    language = [row.generator for row in audit.rows if row.no_spaces == LANGUAGE]
+    assert language == ["Nopstacle"]
+    with pytest.raises(ValueError, match="spaces or '#'"):
+        _Machine([" x"])
+    example = _embedding()["Nopstacle"]
     assert example.fill is not None
-    for n in (2, 3):
-        for table in _tables(n):
-            template = example.generator(table, **dict(example.kwargs))
-            for bits in itertools.product((0, 1), repeat=n):
-                program = example.fill(template, list(bits))
-                steps, output = _run_within(name, program, 10**6)
-                assert steps is not None, (name, bits)
-                # A deleted cell can send a grid's pointer into a loop, so
-                # the mutant runs under a budget the original's own count
-                # sets, rather than a clock or a cycle prover that a
-                # growing tape defeats.  Running past it is the change.
-                halted, got = _run_within(
-                    name, program.replace(" ", ""), 2 * steps + 1000
-                )
-                if halted is None or got != output:
-                    return
-    pytest.fail(f"{name} answers the same with every space deleted")
+    template = example.generator("0110")
+    zero, one = _span(example.fill(template, [0, 0]), example.fill(template, [0, 1]))
+    assert set(zero + one) <= {" ", "#", "\n"}
+    assert " " in zero + one
 
 
-def _run_within(name: str, program: str, budget: int) -> tuple[int | None, str]:
-    """Step ``program`` to its halt: ``(steps, output)``, or ``(None, "")``.
-
-    ``None`` covers a program that does not load, and one that is still
-    running at ``budget`` steps.
-    """
-    from esolangs.vm import make_vm
-
-    try:
-        vm = make_vm(name, program)
-        steps = 0
-        while not vm.halted:
-            if steps == budget:
-                return None, ""
-            vm.step()
-            steps += 1
-        # The dumping languages write on the step after their halt.
-        vm.step()
-        return steps, vm.output
-    except Exception:
-        return None, ""
+def test_bitdeque_width_leak_is_the_linear_route(audit: Conventions) -> None:
+    """The open width cell is exactly the route the equal-width test misses."""
+    assert audit.by_name()["Bitdeque"].constant_width == OPEN
+    example = _embedding()["Bitdeque"]
+    assert example.fill is not None
+    for n, distinct in ((4, 1), (5, 32)):
+        template = example.generator(_tables(n)[0])
+        lengths = {
+            len(example.fill(template, list(bits)))
+            for bits in itertools.product((0, 1), repeat=n)
+        }
+        assert len(lengths) == distinct, (n, sorted(lengths))
