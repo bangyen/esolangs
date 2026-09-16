@@ -2514,6 +2514,38 @@ class TestEveryLanguageIsSteppable:
         assert FirstDraw(1).randbelow(1) == 0
 
 
+def _view_cases() -> list[tuple[str, object]]:
+    """Return every ``(language, example)`` pair the view sweep can drive.
+
+    An example is keyed by the language's slug, its stem, or the slug of its
+    display name, so all three are tried -- matching on only one silently
+    skips a third of the registry.
+    """
+    from esolangs.registry import LANGUAGES, canonical_id
+    from esolangs.tools.examples import BOOLEAN_EXAMPLES
+
+    known = set(esolangs.list_languages())
+    by_id: dict[str, str] = {}
+    for name, lang in LANGUAGES.items():
+        for key in (lang.id, name, canonical_id(name), name.lower()):
+            by_id.setdefault(key, name)
+    cases: list[tuple[str, object]] = []
+    for eid, example in BOOLEAN_EXAMPLES.items():
+        name = (
+            by_id.get(eid)
+            or by_id.get(example.stem)
+            or by_id.get(canonical_id(eid.replace("-", " ")))
+        )
+        if name is None or name not in known:
+            continue
+        cases.append((name, example))
+    return cases
+
+
+_VIEW_CASES = _view_cases()
+_VIEW_IDS = [name for name, _ in _VIEW_CASES]
+
+
 class TestViews:
     """The machine's own named state, found rather than listed."""
 
@@ -2604,46 +2636,36 @@ class TestViews:
         object.__setattr__(vm, "_machine", _Machine())
         assert _DelegatingVM.views.fget(vm) == (("fine", "7"),)
 
-    def test_every_language_can_be_asked_on_a_real_program(self) -> None:
+    @pytest.mark.parametrize(("name", "example"), _VIEW_CASES, ids=_VIEW_IDS)
+    def test_a_language_can_be_asked_on_a_real_program(self, name, example) -> None:
         """No interpreter's properties raise when read as views.
 
         Driven from the committed examples rather than an empty program,
         because several languages reject one -- and an empty program would
         not reach the state the views describe anyway.
+
+        One case per language rather than one loop over all of them: the
+        loop did the same work but landed on a single xdist worker, where it
+        measured ~1.2s against the 1s fast band while taking 0.38s alone.
+        Any change to the suite's test count could tip it either way, so it
+        was a band failure waiting on an unrelated commit.  Split, each case
+        is a few milliseconds and the failing language is named by the test
+        id instead of by an assertion message.
         """
-        import contextlib
+        stdin = "".join(line + "\n" for line in example.inputs)
+        vm = esolangs.make_vm(name, example.build(), stdin)
+        assert all(isinstance(part, str) for view in vm.views for part in view), name
+        # Again once the machine has moved, since a view reads state
+        # that the initial one may not have reached.
+        with contextlib.suppress(Exception):
+            vm.step()
+        assert all(isinstance(part, str) for view in vm.views for part in view), name
 
-        from esolangs.registry import LANGUAGES, canonical_id
-        from esolangs.tools.examples import BOOLEAN_EXAMPLES
+    def test_the_view_sweep_reaches_most_of_the_registry(self) -> None:
+        """The split above is only meaningful if it still covers the registry.
 
-        # An example is keyed by the language's slug, its stem, or the slug
-        # of its display name, so all three are tried -- matching on only
-        # one silently skips a third of the registry.
-        known = set(esolangs.list_languages())
-        by_id: dict[str, str] = {}
-        for name, lang in LANGUAGES.items():
-            for key in (lang.id, name, canonical_id(name), name.lower()):
-                by_id.setdefault(key, name)
-        checked = 0
-        for eid, example in BOOLEAN_EXAMPLES.items():
-            name = (
-                by_id.get(eid)
-                or by_id.get(example.stem)
-                or by_id.get(canonical_id(eid.replace("-", " ")))
-            )
-            if name is None or name not in known:
-                continue
-            stdin = "".join(line + "\n" for line in example.inputs)
-            vm = esolangs.make_vm(name, example.build(), stdin)
-            assert all(isinstance(part, str) for view in vm.views for part in view), (
-                name
-            )
-            # Again once the machine has moved, since a view reads state
-            # that the initial one may not have reached.
-            with contextlib.suppress(Exception):
-                vm.step()
-            assert all(isinstance(part, str) for view in vm.views for part in view), (
-                name
-            )
-            checked += 1
-        assert checked > 50, f"only reached {checked} languages"
+        Kept as its own assertion because a parametrized sweep that silently
+        resolved zero languages would otherwise pass by vacuously collecting
+        no cases at all.
+        """
+        assert len(_VIEW_CASES) > 50, f"only reached {len(_VIEW_CASES)} languages"
