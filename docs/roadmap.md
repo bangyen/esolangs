@@ -33,34 +33,38 @@ The candidate list is empty.
   | --- | --- | --- | --- | --- |
   | %^2^-1 | Exception | Open | Linear | Linear |
   | 6-5 | Cap | Linear | Linear | Linear |
-  | BFStack | Total | Linear | Linear | Open |
-  | BrainIf | Total | Linear | Linear | Open |
   | Circlefuck | Total | Open | Linear | Linear |
   | CV(N)(C) | Cap | Linear | Linear | Linear |
   | Factor | Cap | Language lower bound | Language lower bound | Linear |
-  | Interprogck8 | Total | Open | Linear | Linear |
-  | Jaune | Total | Linear | Linear | Open |
-  | LaserFuck | Total | Linear | Linear | Open |
   | NoComment | Cap | Linear | Linear | Linear |
   | Polynomial | Cap | Open | Open | Linear |
-  | RAM0 | Total | Linear | Linear | Open |
-  | Unsquare | Total | Open | Linear | Linear |
   | Vandevelo | Total | Open | Linear | Linear |
   | WII2D | Cap | Open | Open | Linear |
   | ZTOALC L | Cap | Linear | Linear | Linear |
 
-  Generation time, growth per added input at the top arity: Interprogck8
-  x3.3 (2.8 s at n=12), Vandevelo x3.6 on dense tables (1.3 s at n=12,
-  parity x2.2), %^2^-1 x4.2 dense (0.9 s at n=10, parity x2.6), Polynomial
-  x3.4 dense (1.1 s at n=9), WII2D x4.8 dense (1.1 s at n=9), Factor x2.7
-  (1.2 s at n=11), Circlefuck x2.5 (0.15 s at n=12), Unsquare x2.4 (0.24 s
-  at n=12).  B-tapemark, Streetcode, 6-5, Forth and Circuit Diagram past
-  its n=8 route change all read x2.2, between the size contract's x2.15
-  and what these arities separate from noise; they are held linear until a
-  wider measurement says otherwise.  Execution time, worst sampled row at
-  n=9: BFStack x2.8 (24 ms), BrainIf x2.5 (84 ms), LaserFuck x2.6 (64 ms),
-  RAM0 x2.5 (18 ms), Jaune x2.5 (18 ms); the mechanism and the fix are in
-  [limitations](limitations.md).
+  Generation time, growth per added input at the top arity: %^2^-1 x4.2
+  dense (0.9 s at n=10, parity x2.6), Polynomial x3.4 dense (1.1 s at
+  n=9), WII2D x4.8 dense (1.1 s at n=9), Factor x2.7 (1.2 s at n=11).
+  B-tapemark, Streetcode, 6-5, Forth and Circuit Diagram past its n=8
+  route change all read x2.2, between the size contract's x2.15 and what
+  these arities separate from noise; they are held linear until a wider
+  measurement says otherwise.  Interprogck8 and Unsquare left this table
+  with their builds byte-identical -- printer flights laid once per shared
+  channel (x3.3 -> x2.03, 2.8 s -> 0.2 s at n=12), and an incremental tree
+  price that re-tests only the levels a sink moves (x2.4 -> x2.02).
+  Circlefuck x2.28 (44 ms at n=12, from x2.5): its greedy order scores
+  every candidate in one pass per level, so what is left is the n passes,
+  Theta(T log T) by construction.  Vandevelo x2.9 dense (0.27 s at n=12,
+  from x3.6 and 1.3 s, parity x1.9): the peel scores ~50 candidate
+  directions per round on a 2**n-bit mask over Theta(T) rounds, the
+  integer bit-vector class, Theta(T^2 / word) with a small constant; a
+  linear build needs a different popularity count, not a faster shift.
+  BFStack, BrainIf, LaserFuck, RAM0
+  and Jaune left the execution column the same way: BFStack's ``[`` scanned
+  for its ``]`` on every skip, and the other four rebuilt a whole immutable
+  tape per write, now a chunked persistent tape
+  (`esolangs.interpreters.persistent`); they read x1.5-x2.0
+  with every output and step count unchanged.
 
   Closure requires a lower bound over every program in the language under
   the generator contract.  Super-linear output implies super-linear

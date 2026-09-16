@@ -24,6 +24,16 @@ import sys
 from typing import cast
 
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.persistent import (
+    Chunked,
+    append,
+    chunked,
+    flatten,
+    get,
+    length,
+    prepend,
+    put,
+)
 from esolangs.interpreters.randomness import Randomness, draw
 
 #: One instant of a run: ``(tape, ptr, lsrs, ind, jmp, pos)`` -- the cells
@@ -38,7 +48,7 @@ from esolangs.interpreters.randomness import Randomness, draw
 #: The grid is not here -- LaserFuck never writes to its own text -- so a
 #: step is handed it rather than carrying it.
 type _Beams = tuple[tuple[int, int, int], ...]
-type _Tape = tuple[tuple[int, int], ...]
+type _Tape = Chunked[tuple[int, int]]
 type _State = tuple[_Tape, int, _Beams, int, bool, tuple[int, int, int]]
 
 #: One instant as the all-outcomes search sees it: ``_State`` without the
@@ -58,8 +68,12 @@ def _strip_pos(state: _State) -> _BranchState:
 
 
 def _write(tape: _Tape, ptr: int, value: int, touched: int) -> _Tape:
-    """Return ``tape`` with the cell at ``ptr`` set and marked."""
-    return (*tape[:ptr], (value, touched), *tape[ptr + 1 :])
+    """Return ``tape`` with the cell at ``ptr`` set and marked.
+
+    The tape is chunked (:mod:`esolangs.interpreters.persistent`), so this
+    rebuilds one chunk rather than the whole tape.
+    """
+    return put(tape, ptr, (value, touched))
 
 
 def _move(row: int, col: int, d: int, rows: int) -> tuple[int, int]:
@@ -107,13 +121,13 @@ def _advance(
 
     if op == ">":
         ptr += 1
-        if ptr == len(tape):
-            tape = (*tape, (0, 0))
+        if ptr == length(tape):
+            tape = append(tape, (0, 0))
     elif op == "<":
         if ptr > 0:
             ptr -= 1
         else:
-            tape = ((0, 0), *tape)
+            tape = prepend(tape, (0, 0))
     elif op == ",":
         tape = _write(tape, ptr, byte if byte is not None else 0, 1)
     elif op == "x":
@@ -124,10 +138,10 @@ def _advance(
     elif op == "*":
         lsrs = (*lsrs, (row, col, 2 * (1 - d // 2) + split))
     elif op in "_(":
-        if d < 2 and (tape[ptr][0] != 0 or op == "_"):
+        if d < 2 and (get(tape, ptr)[0] != 0 or op == "_"):
             d = 1 - d
     elif op in "|)":
-        if d > 1 and (tape[ptr][0] != 0 or op == "|"):
+        if d > 1 and (get(tape, ptr)[0] != 0 or op == "|"):
             d = 5 - d
     elif op == "/":
         d = 3 - d
@@ -136,9 +150,9 @@ def _advance(
     elif op == "\\":
         d = (d + 2) % 4
     elif op == "+":
-        tape = _write(tape, ptr, tape[ptr][0] + 1, 1)
+        tape = _write(tape, ptr, get(tape, ptr)[0] + 1, 1)
     elif op == "-":
-        tape = _write(tape, ptr, tape[ptr][0] - 1, 1)
+        tape = _write(tape, ptr, get(tape, ptr)[0] - 1, 1)
     elif op == "#":
         jmp = True
 
@@ -193,7 +207,7 @@ class _Machine:
         self.rows = len(text)
 
         self.ptr = 0
-        self.tape: _Tape = ((0, 0),)  # value, touched
+        self.tape: _Tape = chunked(((0, 0),))  # value, touched
         self.jmp = False
         self.ind = 0
         self.pos = (0, 0, 0)
@@ -247,7 +261,7 @@ class _Machine:
     @property
     def memory(self) -> list[int]:
         """The tape's cell values, without their paint flags."""
-        return [v for v, _ in self.tape]
+        return [v for v, _ in flatten(self.tape)]
 
     @property
     def stack(self) -> list[object]:
@@ -442,7 +456,7 @@ class _Machine:
         """
         first_row = self.text[0] if self.text else []
         byte_mode = bool(first_row) and first_row[0] == "\u00ff"
-        shown = [val for val, touched in self.tape if touched and val >= 0]
+        shown = [val for val, touched in flatten(self.tape) if touched and val >= 0]
         for index, val in enumerate(shown):
             if byte_mode:
                 self.io.print_char(chr(val))

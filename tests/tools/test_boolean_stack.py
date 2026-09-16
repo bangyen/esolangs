@@ -4,6 +4,8 @@ Covers the generators in :mod:`esolangs.tools.stack`: Grapheme,
 Forþ, Modulous, BFStack, and Unsquare.
 """
 
+import random
+
 import pytest
 
 import esolangs
@@ -423,7 +425,6 @@ class TestUnsquare:
         """The heuristic never grows n=3 and matches 248/256 oracle minima."""
         from esolangs.tools.stack import (
             _UNSQUARE_READ,
-            _unsquare_cost,
             _unsquare_stack_programs,
             _unsquare_tree,
         )
@@ -436,7 +437,9 @@ class TestUnsquare:
             current = len(boolean.unsquare(table))
             natural = len(_UNSQUARE_READ * 3 + _unsquare_tree(table, 3))
             oracle = min(
-                _unsquare_cost(permute_truth_table(table, arrangement), 3, prefix)
+                len(prefix)
+                + _unsquare_cost(permute_truth_table(table, arrangement), 3)
+                + 1
                 for arrangement, prefix in _unsquare_stack_programs(3).items()
             )
             assert current <= natural
@@ -582,3 +585,41 @@ class TestGraphemeKeys:
         )
         table = self._one_minterm(9)
         assert esolangs.evaluate("Grapheme", table, timeout=60) != table
+
+
+def _unsquare_cost(truth_table: str, n: int) -> int:
+    """The tree-size model spelled recursively: the pricer's oracle."""
+
+    def cost(rows: list[int], bit: int) -> int:
+        if len({truth_table[row] for row in rows}) == 1:
+            return 29
+        ones = [row for row in rows if (row >> bit) & 1]
+        zeros = [row for row in rows if not (row >> bit) & 1]
+        return 17 + cost(ones, bit + 1) + cost(zeros, bit + 1)
+
+    return cost(list(range(2**n)), 0)
+
+
+@pytest.mark.parametrize("seed", range(40))
+def test_unsquare_prices_every_sink_as_the_permuted_tree(seed: int) -> None:
+    """The incremental pricer agrees with pricing each candidate from scratch."""
+    from esolangs.tools.stack import _UNSQUARE_SINKS, _sink_top, _UnsquarePricer
+
+    rng = random.Random(seed)
+    n = rng.randint(1, 7)
+    table = "".join(
+        rng.choice("01") if rng.random() < 0.6 else "0" for _ in range(2**n)
+    )
+    pricer = _UnsquarePricer(table, n)
+    arranged: tuple[int, ...] = ()
+    for k in range(n):
+        pushed = (*arranged, k)
+        options = [places for places, _ in _UNSQUARE_SINKS if places < len(pushed)]
+        for places in options:
+            final = (*_sink_top(pushed, places), *range(k + 1, n))
+            assert pricer.price(k, places) == _unsquare_cost(
+                permute_truth_table(table, final), n
+            )
+        places = rng.choice(options)
+        pricer.commit(k, places)
+        arranged = _sink_top(pushed, places)
