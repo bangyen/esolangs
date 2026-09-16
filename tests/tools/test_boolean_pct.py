@@ -12,6 +12,56 @@ import pytest
 from esolangs import tools as boolean
 
 
+def _cross_class_diffs(truth_table: str, n: int) -> list[tuple[int, ...]]:
+    """Difference vectors of the row pairs a weighting must keep apart.
+
+    The oracle for the deep band's legality test.  Two rows collide when
+    their weighted sums tie, and a tie is a vanishing signed combination of
+    the weights: writing ``d`` for the coordinatewise difference of the two
+    rows' bits, the pair collides under ``units`` and ``mask`` exactly when
+    ``sum(u_k * (-1)**mask_k * d_k) == 0``.  Only pairs of *different* class
+    matter, and a vector and its negation forbid the same weightings, so
+    each is kept once.  This walks every row pair; the shipped test reads
+    class purity off the weighted values instead, and the test below holds
+    the two to the same verdict.
+    """
+    seen: set[int] = set()
+    size = 2**n
+    for row in range(size):
+        for other in range(row + 1, size):
+            if truth_table[row] == truth_table[other]:
+                continue
+            # ``other > row``, so the highest bit the two differ on is
+            # always other's: ``other & ~row`` therefore always exceeds
+            # ``row & ~other``, and the canonical order is the swap every
+            # time rather than a comparison.
+            plus, minus = other & ~row, row & ~other
+            seen.add((plus << n) | minus)
+    diffs = []
+    for key in seen:
+        plus, minus = key >> n, key & (size - 1)
+        diffs.append(
+            tuple(
+                ((plus >> (n - 1 - k)) & 1) - ((minus >> (n - 1 - k)) & 1)
+                for k in range(n)
+            )
+        )
+    return sorted(diffs)
+
+
+def _weighting_is_legal(
+    units: tuple[int, ...], mask: int, diffs: list[tuple[int, ...]]
+) -> bool:
+    """Whether no cross-class pair collides under this weighting."""
+    for diff in diffs:
+        total = 0
+        for k, unit in enumerate(units):
+            total += -unit * diff[k] if (mask >> k) & 1 else unit * diff[k]
+        if total == 0:
+            return False
+    return True
+
+
 class TestParameterizedPctSquaredMinusOne:
     """Input-by-substitution boolean generator for %^2^-1.
 
@@ -677,11 +727,9 @@ class TestParameterizedPctSquaredMinusOne:
         which is why :func:`_deep_weightings` drops those.
         """
         from esolangs.tools.pct_squared_minus_one import (
-            _cross_class_diffs,
             _deep_plan,
             _deep_values,
             _deep_weightings,
-            _weighting_is_legal,
         )
 
         checked = 0
@@ -740,6 +788,44 @@ class TestParameterizedPctSquaredMinusOne:
         asymmetric = list(parity)
         asymmetric[7] = "0" if asymmetric[7] == "1" else "1"
         assert _deep_band("".join(asymmetric), 5) is None
+
+    def test_deep_band_zeroes_the_unit_of_an_ignored_input(self) -> None:
+        """Below the screen a weighting may drop an input the table ignores.
+
+        Three-input parity padded with an ignored first input has no
+        class-boundary flip on that input, so it is not a singleton and the
+        walk keeps weightings with a zero unit there -- and takes one: the
+        served setter for input 0 holds on both branches.  Every weighting
+        with a zero unit on an *essential* input is skipped before any mask
+        is tested.  Executed on all sixteen rows.
+        """
+        from esolangs.interpreters.io import IO
+        from esolangs.interpreters.register_based.pct_squared_minus_one import run
+        from esolangs.tools.pct_squared_minus_one import (
+            _deep_band,
+            fill,
+            pct_squared_minus_one,
+        )
+
+        table = "0110100101101001"
+        template = _deep_band(table, 4)
+        assert template is not None
+        assert template.startswith("0=|;")
+        assert pct_squared_minus_one(table) == template
+
+        class Capture(IO):
+            def __init__(self) -> None:
+                super().__init__()
+                self.out: list[str] = []
+
+            def print_char(self, char: str) -> None:
+                self.out.append(char)
+
+        for row in range(16):
+            bits = [(row >> (3 - i)) & 1 for i in range(4)]
+            io = Capture()
+            run(fill(template, bits), io)
+            assert "".join(io.out) == table[row], (row, io.out)
 
     @pytest.mark.slow  # 8.3s: the ladder build plus eight interpreter runs
     def test_ladder_builds_majority_three(self) -> None:

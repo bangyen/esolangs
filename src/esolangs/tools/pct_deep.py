@@ -252,62 +252,8 @@ def _deep_setters(
     return tuple(setters)
 
 
-def _cross_class_diffs(truth_table: str, n: int) -> list[tuple[int, ...]]:
-    """Difference vectors of the row pairs a weighting must keep apart.
-
-    Two rows collide when their weighted sums tie, and a tie is a vanishing
-    signed combination of the weights: writing ``d`` for the coordinatewise
-    difference of the two rows' bits, the pair collides under ``units`` and
-    ``mask`` exactly when ``sum(u_k * (-1)**mask_k * d_k) == 0``.  Only pairs
-    of *different* class matter -- a collision inside a class is harmless,
-    which is the whole reason the deep band reaches past the band -- and a
-    vector and its negation forbid the same weightings, so each is kept once.
-    Sixteen rows give 120 pairs but only about 32 distinct vectors, and the
-    dedup is what makes the legality test cheap enough to replace planning.
-    """
-    # A diff is the disjoint bit pair ``(plus, minus)`` -- where the first
-    # row has a 1 the second lacks, and vice versa -- so pairs dedup as one
-    # packed int each and only the distinct survivors spell out as tuples.
-    # ``lead > 0`` says the top differing bit is a plus, i.e. ``plus > minus``.
-    seen: set[int] = set()
-    size = 2**n
-    for row in range(size):
-        for other in range(row + 1, size):
-            if truth_table[row] == truth_table[other]:
-                continue
-            # ``other > row``, so the highest bit the two differ on is
-            # always other's: ``other & ~row`` therefore always exceeds
-            # ``row & ~other``, and the canonical order is the swap every
-            # time rather than a comparison.
-            plus, minus = other & ~row, row & ~other
-            seen.add((plus << n) | minus)
-    diffs = []
-    for key in seen:
-        plus, minus = key >> n, key & (size - 1)
-        diffs.append(
-            tuple(
-                ((plus >> (n - 1 - k)) & 1) - ((minus >> (n - 1 - k)) & 1)
-                for k in range(n)
-            )
-        )
-    return sorted(diffs)
-
-
-def _weighting_is_legal(
-    units: tuple[int, ...], mask: int, diffs: list[tuple[int, ...]]
-) -> bool:
-    """Whether no cross-class pair collides under this weighting."""
-    for diff in diffs:
-        total = 0
-        for k, unit in enumerate(units):
-            total += -unit * diff[k] if (mask >> k) & 1 else unit * diff[k]
-        if total == 0:
-            return False
-    return True
-
-
 @cache
-def _deep_weightings(n: int) -> tuple[tuple[int, ...], ...]:
+def _deep_weightings(n: int, *, positive: bool = False) -> tuple[tuple[int, ...], ...]:
     """Return the unit vectors worth trying, cheapest span first.
 
     Ordered by the span they cost, then flattest, which is the order the
@@ -322,13 +268,20 @@ def _deep_weightings(n: int) -> tuple[tuple[int, ...], ...]:
     filtering ``(cap + 1) ** n`` products -- 282M walked tuples at ten
     inputs against the 343K that survive -- and the sort key is a total
     order, so generation order cannot show through: same set, same tuple.
+
+    ``positive`` drops every vector with a zero unit *before* it is walked.
+    The band's full screen skips those anyway, so the tested sequence is
+    the same; what changes is the walk, 621K tuples at eleven inputs
+    against the one all-ones vector the screened regime ever reaches.
     """
     budget = _LIMIT // _BAND_UNIT
     units = [0] * n
     by_sum: list[list[tuple[int, ...]]] = [[] for _ in range(budget + 1)]
+    floor = 1 if positive else 0
 
     def fill(index: int, left: int) -> None:
-        for unit in range(min(_DEEP_CAP, left) + 1):
+        # Every later input still needs its floor, so the unit stops short.
+        for unit in range(floor, min(_DEEP_CAP, left - floor * (n - 1 - index)) + 1):
             units[index] = unit
             if index + 1 == n:
                 by_sum[budget - left + unit].append(tuple(units))
@@ -402,23 +355,29 @@ def _deep_band(truth_table: str, n: int) -> str | None:
         for pop in range(n + 1)
     ):
         return None
-    diffs = _cross_class_diffs(truth_table, n)
-    # A singleton diff -- rows apart in one coordinate -- totals
-    # ``±units[k]`` under every mask, so a weighting with a zero unit
-    # there is illegal at all masks and can be skipped without testing
-    # any.  Every non-constant symmetric table has all ``n`` singletons
-    # (any coordinate can carry a class-boundary bit flip), and that is
-    # everything past the screen above, so past four inputs the skip is
-    # the C-speed ``0 in units``.  Parity is the extreme case again: all
-    # 24219 weightings ordered before the popcount ladder at nine inputs
-    # have a zero unit, so the ladder is the first weighting *tested*.
-    singles = {diff.index(1) for diff in diffs if sum(map(abs, diff)) == 1}
+    # A coordinate some row flips across a class boundary -- a singleton
+    # difference vector -- totals ``±units[k]`` under every mask, so a
+    # weighting with a zero unit there is illegal at all masks and can be
+    # skipped without testing any.  Every non-constant symmetric table has
+    # all ``n`` singletons (any coordinate can carry a class-boundary bit
+    # flip), and that is everything past the screen above, so past four
+    # inputs the catalogue is walked without the zero-unit vectors at all.
+    # Parity is the extreme case again: all 24219 weightings ordered before
+    # the popcount ladder at nine inputs have a zero unit, so the ladder is
+    # the first weighting *tested*.
+    size = 2**n
+    singles = {
+        k
+        for k in range(n)
+        if any(
+            truth_table[r] != truth_table[r | 1 << (n - 1 - k)]
+            for r in range(size)
+            if not r & 1 << (n - 1 - k)
+        )
+    }
     full_screen = len(singles) == n
-    for units in _deep_weightings(n):
-        if full_screen:
-            if 0 in units:
-                continue
-        elif any(not units[k] for k in singles):
+    for units in _deep_weightings(n, positive=full_screen):
+        if not full_screen and any(not units[k] for k in singles):
             continue
         for mask in range(2**n):
             # Legality decides the weighting; the schedule then follows.  A
@@ -426,10 +385,18 @@ def _deep_band(truth_table: str, n: int) -> str | None:
             # been observed to fail here -- 63274 legal weightings inside the
             # span budget were scheduled without one refusal -- so this test
             # replaces planning as the thing being searched for, and the plan
-            # below runs once rather than once per candidate.
-            if not _weighting_is_legal(units, mask, diffs):
-                continue
+            # below runs once rather than once per candidate.  Legal means
+            # every weighted value is class-pure, read off the values
+            # directly in ``T * n`` steps; the same predicate over the
+            # cross-class difference vectors, whose enumeration walks
+            # ``T ** 2`` row pairs, is the test suite's oracle for it.
             values = _deep_values(n, units, mask)
+            classes: dict[int, str] = {}
+            if any(
+                classes.setdefault(value, cls) != cls
+                for value, cls in zip(values, truth_table, strict=True)
+            ):
+                continue
             body = _deep_plan(truth_table, n, values)
             if body is None:  # pragma: no cover - legality implies a schedule
                 continue

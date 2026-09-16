@@ -39,9 +39,6 @@ from esolangs.tools.pct_deep import (
     _BAND_UNIT as _BAND_UNIT,
 )
 from esolangs.tools.pct_deep import (
-    _cross_class_diffs as _cross_class_diffs,
-)
-from esolangs.tools.pct_deep import (
     _deep_band,
 )
 from esolangs.tools.pct_deep import (
@@ -53,14 +50,8 @@ from esolangs.tools.pct_deep import (
 from esolangs.tools.pct_deep import (
     _deep_weightings as _deep_weightings,
 )
-from esolangs.tools.pct_deep import (
-    _weighting_is_legal as _weighting_is_legal,
-)
 from esolangs.tools.pct_fold import (
     _centred_setter as _centred_setter,
-)
-from esolangs.tools.pct_fold import (
-    _cofactor_done as _cofactor_done,
 )
 from esolangs.tools.pct_fold import (
     _fold,
@@ -101,6 +92,9 @@ from esolangs.tools.pct_fold_plan import (
 )
 from esolangs.tools.pct_fold_plan import (
     _FOLD_STEP as _FOLD_STEP,
+)
+from esolangs.tools.pct_fold_plan import (
+    _cofactor_done as _cofactor_done,
 )
 from esolangs.tools.pct_fold_plan import (
     _fold_clean_amount as _fold_clean_amount,

@@ -29,7 +29,11 @@ unaccounted pixels rather than returning a different program.
 ## Boolean generators
 
 Parameterized generators embed inputs in the program, each exactly once.
-`%^2^-1` cannot compute a two-input function from runtime input. Its screened
+`%^2^-1` cannot compute a two-input function from runtime input, and as a
+template it cannot compute every table either: between two placeholders its
+accumulator has 6263 distinguishable classes, and the suite's dense
+seventeen-input fixture needs more at every thirteen-input cut
+([proofs](proofs.md)). Its screened
 reorder requires a permuted template or fill mapping; with both fixed,
 interleaving only lengthens the identity template. Input reordering has no
 useful effect on Alight, Container, Grapheme, Home Row, or Packlang; do not
@@ -70,9 +74,8 @@ bit~ 27.5/55.3 KB, Factor 17.2/35.5 KB, ROTfuck 14.9/28.8 KB, COD
 Every generator's source is O(T) in the table length except two walls, and
 the registry-wide contract is `tests/proofs/deep/linearity.py`; its verdicts
 read in one direction, since an n=8 -> 9 ratio near 2 is not evidence of
-O(T).  Build *time* is a separate axis: %^2^-1 is measured super-linear on
-it (x4.2 per added input on dense tables) while its output is linear, and
-Factor, Polynomial and WII2D are super-linear on both; the roadmap's audit
+O(T).  Build *time* is a separate axis: Factor, Polynomial and WII2D are
+super-linear on both; the roadmap's audit
 table carries the figures, with Vandevelo (candidate scoring on 2**n-bit
 masks) still open on build time.  Interprogck8 and Unsquare read
 super-linear in September 2026 (x3.3 and x2.4); each was one re-walk of

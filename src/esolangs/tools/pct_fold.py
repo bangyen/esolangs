@@ -6,6 +6,8 @@ so a plan from :mod:`esolangs.tools.pct_fold_plan` becomes a template only if
 it really computes the table.
 """
 
+from bisect import bisect_left, insort
+
 from esolangs.tools.pct_codes import (
     _BYTE_ONE,
     _BYTE_ZERO,
@@ -24,6 +26,7 @@ from esolangs.tools.pct_fold_plan import (
     _FOLD_STEP_SLACK,
     _FOLD_STEP_SLOPE,
     _FOLD_SUBSET_LADDER,
+    _cofactor_done,
     _fold_norm,
     _fold_plan,
     _fold_reduce,
@@ -40,6 +43,16 @@ class _FoldEmitter:
     rows, asserting after every step that the interpreter would agree --
     which points get wiped, that nothing leaves the workspace, and finally
     that every row's value is congruent to its answer byte.
+
+    The mirror is kept as a sorted list of positions under one lazy offset,
+    so a uniform shift is one addition and the checks read the two ends;
+    only the doubling rewrites every position.  A key is a row id: a raw
+    row is its own key, and a landing that merges groups keeps the key of
+    the largest, re-pointing the others' rows through ``self.group`` (a
+    union-find, so a row's key costs a short chain).  ``self.chunks`` holds
+    a group's rows as a list of frozensets, flattened only where a caller
+    needs the set, so a landing onto a large group costs the victims and
+    not the group.
     """
 
     def __init__(
@@ -50,9 +63,68 @@ class _FoldEmitter:
         if weights is None:
             weights = _fold_uniform(n, _FOLD_STEP)
         start = _fold_positions(n, weights)
-        self.pos: dict[_FoldKey, int] = {r: start[r] for r in range(self.rows)}
-        self.cls: dict[_FoldKey, str] = {r: truth_table[r] for r in range(self.rows)}
         self.body: list[str] = []
+        self.load({r: (start[r], truth_table[r]) for r in range(self.rows)})
+
+    def load(self, groups: "dict[_FoldKey, tuple[int, str]]") -> None:
+        """Reset the mirror to ``groups``: key -> (position, class).
+
+        A key is a row id or a frozenset of row ids; the group's key becomes
+        its lowest row.  Positions are distinct -- two groups at one value
+        are one group -- and that is asserted rather than assumed.
+        """
+        self.off = 0
+        #: Stored position (actual minus ``off``), ascending.
+        self.order: list[int] = []
+        #: Stored position -> key, and its inverse.
+        self.at: dict[int, int] = {}
+        self.where: dict[int, int] = {}
+        self.cls: dict[int, str] = {}
+        self.chunks: dict[int, list[frozenset[int]]] = {}
+        self.size: dict[int, int] = {}
+        #: Row -> key, as a union-find parent map.
+        self.group: dict[int, int] = {}
+        for key, (value, c) in groups.items():
+            members = key if isinstance(key, frozenset) else frozenset([key])
+            root = min(members)
+            if value in self.at:
+                raise AssertionError(value)
+            self.at[value] = root
+            self.where[root] = value
+            self.cls[root] = c
+            self.chunks[root] = [members]
+            self.size[root] = len(members)
+            for row in members:
+                self.group[row] = root
+        self.order = sorted(self.at)
+
+    # The tests and the staged routes read the mirror as key -> value.
+
+    @property
+    def pos(self) -> dict[int, int]:
+        return {key: stored + self.off for stored, key in self.at.items()}
+
+    def value(self, key: int) -> int:
+        return self.where[key] + self.off
+
+    def members(self, key: int) -> frozenset[int]:
+        """Return the rows a key stands for, flattened."""
+        return frozenset().union(*self.chunks[key])
+
+    def find(self, row: int) -> int:
+        """Return the key of ``row``'s current group, compressing the path."""
+        root = row
+        while self.group[root] != root:
+            root = self.group[root]
+        while self.group[row] != root:
+            self.group[row], row = root, self.group[row]
+        return root
+
+    def lo(self) -> int:
+        return self.order[0] + self.off
+
+    def hi(self) -> int:
+        return self.order[-1] + self.off
 
     def _sub(self, k: int) -> str:
         code = _sub_code(k)
@@ -69,11 +141,10 @@ class _FoldEmitter:
             return
         if k < 2:
             raise AssertionError("k >= 2")
-        if not all(v <= _LIMIT for v in self.pos.values()):
+        if not self.hi() <= _LIMIT:
             raise AssertionError("all(v <= _LIMIT for v in self.pos.values())")
         self.body.append(self._sub(k))
-        for p in self.pos:
-            self.pos[p] -= k
+        self.off -= k
 
     def plain_rise(self, k: int) -> None:
         if k == 0:
@@ -84,15 +155,14 @@ class _FoldEmitter:
             return
         if k < 2:
             raise AssertionError("k >= 2")
-        if not all(-_LIMIT <= v <= _LIMIT for v in self.pos.values()):
+        if not (self.lo() >= -_LIMIT and self.hi() <= _LIMIT):
             raise AssertionError(
                 "all(-_LIMIT <= v <= _LIMIT for v in self.pos.values())"
             )
-        if not all(v + k <= _LIMIT for v in self.pos.values()):
+        if not self.hi() + k <= _LIMIT:
             raise AssertionError("all(v + k <= _LIMIT for v in self.pos.values())")
         self.body.append("p" + self._sub(k) + "p")
-        for p in self.pos:
-            self.pos[p] += k
+        self.off += k
 
     def preshift(self, delta: int) -> None:
         if delta < 0:
@@ -101,8 +171,8 @@ class _FoldEmitter:
             self.plain_rise(delta)
 
     def double(self, *, next_is_rise: bool) -> None:
-        top = max(self.pos.values())
-        bot = min(self.pos.values())
+        top = self.hi()
+        bot = self.lo()
         spread = top - bot
         if 2 * spread > 2 * _LIMIT:
             raise AssertionError("2 * spread <= 2 * _LIMIT")
@@ -114,100 +184,140 @@ class _FoldEmitter:
             if want_top > 1501:
                 raise AssertionError(spread)
         self.preshift(want_top - top)
-        if not all(2 * v <= _LIMIT for v in self.pos.values()):
+        if not 2 * self.hi() <= _LIMIT:
             raise AssertionError("all(2 * v <= _LIMIT for v in self.pos.values())")
         self.body.append("m")
-        for p in self.pos:
-            self.pos[p] *= 2
+        # Actual values double: stored ``s + off`` becomes ``2s + 2off``.
+        self.at = {stored * 2: key for stored, key in self.at.items()}
+        self.where = {key: stored * 2 for key, stored in self.where.items()}
+        self.order = [stored * 2 for stored in self.order]
+        self.off *= 2
 
-    def _vic(self, vids: frozenset[int]) -> set[_FoldKey]:
-        vic: set[_FoldKey] = {
-            p for p in self.pos if (set(p) if isinstance(p, frozenset) else {p}) <= vids
-        }
-        got: set[int] = set()
-        for p in vic:
-            got |= set(p) if isinstance(p, frozenset) else {p}
-        if not vic:
+    def _vic(self, vids: frozenset[int]) -> set[int]:
+        """Return the keys whose rows are exactly ``vids``, or raise.
+
+        Every row of ``vids`` belongs to some found key, so the keys' rows
+        cover ``vids``; keys are disjoint, so covering it with the same
+        total size is equality.  Costs the victims' rows, not the state.
+        """
+        if not vids:
             raise AssertionError(vids)
-        if got != vids:
+        vic = {self.find(row) for row in vids}
+        if sum(self.size[key] for key in vic) != len(vids):
             raise AssertionError(vids)
         return vic
+
+    def _survivor_lo(self, vic: set[int]) -> int | None:
+        """Return the lowest value held by a key outside ``vic``."""
+        skip = {self.where[key] for key in vic}
+        for stored in self.order:
+            if stored not in skip:
+                return stored + self.off
+        return None
+
+    def _survivor_hi(self, vic: set[int]) -> int | None:
+        skip = {self.where[key] for key in vic}
+        for stored in reversed(self.order):
+            if stored not in skip:
+                return stored + self.off
+        return None
+
+    def _move(self, key: int, value: int) -> None:
+        """Put ``key`` at ``value``, merging with whatever already sits there."""
+        stored = self.where[key]
+        del self.at[stored]
+        del self.order[bisect_left(self.order, stored)]
+        target = value - self.off
+        self.where[key] = target
+        if target in self.at:
+            self._merge(self.at[target], key)
+            return
+        self.at[target] = key
+        insort(self.order, target)
+
+    def _merge(self, keep: int, other: int) -> None:
+        """Absorb ``other`` into ``keep``, which stays at its position."""
+        if self.cls[other] != self.cls[keep]:
+            raise AssertionError("cross-class landing")
+        if self.size[other] > self.size[keep]:
+            # The larger group's key survives so the union-find stays short;
+            # swap the *labels* so ``keep`` is the one at the position.
+            stored = self.where[keep]
+            self.at[stored] = other
+            self.where[other] = stored
+            keep, other = other, keep
+        self.group[other] = keep
+        self.chunks[keep].extend(self.chunks.pop(other))
+        self.size[keep] += self.size.pop(other)
+        del self.cls[other]
+        del self.where[other]
 
     def dive(self, c: int, vids: frozenset[int]) -> None:
         vic = self._vic(vids)
         if len({self.cls[v] for v in vic}) != 1:
             raise AssertionError("len({self.cls[v] for v in vic}) == 1")
-        vt = max(self.pos[v] for v in vic)
-        surv = [p for p in self.pos if p not in vic]
-        q1 = (min(self.pos[p] for p in surv) - vt) if surv else 40
+        vt = max(self.value(v) for v in vic)
+        surv_lo = self._survivor_lo(vic)
+        q1 = (surv_lo - vt) if surv_lo is not None else 40
         if not (_LIMIT + 1 <= c <= _LIMIT + q1):
             raise AssertionError((c, q1))
         d = c + vt
         if d < 2:
             self.preshift(2 - d)
-            d = c + max(self.pos[v] for v in vic)
+            d = c + max(self.value(v) for v in vic)
         self.descend(d)
-        below = {p for p, v in self.pos.items() if v < -_LIMIT}
+        below = set()
+        for stored in self.order:
+            if stored + self.off >= -_LIMIT:
+                break
+            below.add(self.at[stored])
         if below != vic:
             raise AssertionError((below, vic))
         self.body.append("pp")
-        for p in vic:
-            self.pos[p] = 0
-        for p in self.pos:
-            if not (-_LIMIT <= self.pos[p] <= _LIMIT):
-                raise AssertionError("-_LIMIT <= self.pos[p] <= _LIMIT")
-        self._land(vic)
+        self._land(vic, 0)
+        if not (self.lo() >= -_LIMIT and self.hi() <= _LIMIT):
+            raise AssertionError("-_LIMIT <= self.pos[p] <= _LIMIT")
 
     def rise(self, c: int, vids: frozenset[int]) -> None:
         vic = self._vic(vids)
         if len({self.cls[v] for v in vic}) != 1:
             raise AssertionError("len({self.cls[v] for v in vic}) == 1")
-        vb = min(self.pos[v] for v in vic)
-        surv = [p for p in self.pos if p not in vic]
-        q1 = (vb - max(self.pos[p] for p in surv)) if surv else 40
+        vb = min(self.value(v) for v in vic)
+        surv_hi = self._survivor_hi(vic)
+        q1 = (vb - surv_hi) if surv_hi is not None else 40
         if not (_LIMIT + 1 <= c <= _LIMIT + q1):
             raise AssertionError((c, q1))
         u = c - vb
         if u < 2:
             self.preshift(-(2 - u))
-            u = c - min(self.pos[v] for v in vic)
-        if min(self.pos.values()) < -_LIMIT:
+            u = c - min(self.value(v) for v in vic)
+        if self.lo() < -_LIMIT:
             raise AssertionError("min(self.pos.values()) >= -_LIMIT")
-        if not all(self.pos[p] + u <= _LIMIT for p in surv):
+        top = self._survivor_hi(vic)
+        if top is not None and top + u > _LIMIT:
             raise AssertionError("all(self.pos[p] + u <= _LIMIT for p in surv)")
         self.body.append("p" + self._sub(u) + "p")
-        for p in self.pos:
-            self.pos[p] += u
-        over = {p for p, v in self.pos.items() if v > _LIMIT}
+        self.off += u
+        over = set()
+        for stored in reversed(self.order):
+            if stored + self.off <= _LIMIT:
+                break
+            over.add(self.at[stored])
         if over != vic:
             raise AssertionError((over, vic))
         # Any next command's pre-check resets the victims; one ``s`` makes
         # that flush explicit and costs a uniform -2 everyone absorbs.
         self.body.append("s")
-        for p in vic:
-            self.pos[p] = 0
-        for p in self.pos:
-            self.pos[p] -= 2
-        self._land(vic)
+        self._land(vic, 0)
+        self.off -= 2
 
-    def _land(self, vic: set[_FoldKey]) -> None:
-        val = self.pos[next(iter(vic))]
-        new = frozenset(
-            x for v in vic for x in (v if isinstance(v, frozenset) else [v])
-        )
-        c = self.cls[next(iter(vic))]
-        absorbed = [p for p in self.pos if p not in vic and self.pos[p] == val]
-        for o in absorbed:
-            if self.cls[o] != c:
-                raise AssertionError("cross-class landing")
-            new = new | (o if isinstance(o, frozenset) else frozenset([o]))
-        for v in set(vic) | set(absorbed):
-            del self.pos[v], self.cls[v]
-        self.pos[new] = val
-        self.cls[new] = c
+    def _land(self, vic: set[int], val: int) -> None:
+        """Put the victims at ``val``, merging them and anything already there."""
+        for v in vic:
+            self._move(v, val)
 
-    def byte(self, p: _FoldKey) -> int:
-        return _BYTE_ONE if self.cls[p] == "1" else _BYTE_ZERO
+    def byte(self, key: int) -> int:
+        return _BYTE_ONE if self.cls[key] == "1" else _BYTE_ZERO
 
     def finish(self) -> None:
         """Set the one residue that matters and align the print.
@@ -219,39 +329,35 @@ class _FoldEmitter:
         once the gap exceeds 257, so exactly one amount in it qualifies.
         A uniform tail shift then puts the pair onto the bytes themselves.
         """
-        if len(self.pos) == 1:
-            p = next(iter(self.pos))
-            t = (self.byte(p) - self.pos[p]) % 256
-            room = _LIMIT - self.pos[p]
+        if len(self.at) == 1:
+            p = self.at[self.order[0]]
+            t = (self.byte(p) - self.value(p)) % 256
+            room = _LIMIT - self.value(p)
             while t > room:
                 t -= 256
             self.preshift(t)
         else:
-            pts = sorted(self.pos, key=lambda q: self.pos[q])
-            lo, hi = pts
-            if self.pos[hi] - self.pos[lo] < 258:
-                self.preshift(-(self.pos[lo] + 2600))
-                u1 = max(_LIMIT + 1 - self.pos[hi], 2)
-                if self.pos[lo] + u1 > _LIMIT:
+            lo, hi = (self.at[stored] for stored in self.order)
+            if self.value(hi) - self.value(lo) < 258:
+                self.preshift(-(self.value(lo) + 2600))
+                u1 = max(_LIMIT + 1 - self.value(hi), 2)
+                if self.value(lo) + u1 > _LIMIT:
                     raise AssertionError("self.pos[lo] + u1 <= _LIMIT")
                 self.body.append("p" + self._sub(u1) + "ps")
-                for p in self.pos:
-                    self.pos[p] += u1
-                if self.pos[hi] <= _LIMIT:
+                self.off += u1
+                if self.value(hi) <= _LIMIT:
                     raise AssertionError("self.pos[hi] > _LIMIT")
-                if self.pos[lo] > _LIMIT:
+                if self.value(lo) > _LIMIT:
                     raise AssertionError("self.pos[lo] <= _LIMIT")
-                self.pos[hi] = 0
-                for p in self.pos:
-                    self.pos[p] -= 2
-                pts = sorted(self.pos, key=lambda q: self.pos[q])
-                lo, hi = pts
-            gap = self.pos[hi] - self.pos[lo]
+                self._move(hi, 0)
+                self.off -= 2
+                lo, hi = (self.at[stored] for stored in self.order)
+            gap = self.value(hi) - self.value(lo)
             if gap < 258:
                 raise AssertionError(gap)
-            need = (-(self.byte(hi) - self.byte(lo)) - self.pos[lo]) % 256
-            umin = max(_LIMIT + 1 - self.pos[hi], 2)
-            umax = _LIMIT - self.pos[lo]
+            need = (-(self.byte(hi) - self.byte(lo)) - self.value(lo)) % 256
+            umin = max(_LIMIT + 1 - self.value(hi), 2)
+            umax = _LIMIT - self.value(lo)
             u = next(
                 (c0 for c0 in range(umin, umax + 1) if c0 % 256 == need),
                 None,
@@ -259,19 +365,16 @@ class _FoldEmitter:
             if u is None:
                 raise AssertionError((umin, umax, need))
             self.body.append("p" + self._sub(u) + "ps")
-            for p in self.pos:
-                self.pos[p] += u
-            if self.pos[hi] <= _LIMIT:
+            self.off += u
+            if self.value(hi) <= _LIMIT:
                 raise AssertionError("self.pos[hi] > _LIMIT")
-            if self.pos[lo] > _LIMIT:
+            if self.value(lo) > _LIMIT:
                 raise AssertionError("self.pos[lo] <= _LIMIT")
-            self.pos[hi] = 0
-            for p in self.pos:
-                self.pos[p] -= 2
-            pts = sorted(self.pos, key=lambda q: self.pos[q])
-            lo, hi = pts
-            t = (self.byte(hi) - self.pos[hi]) % 256
-            room = _LIMIT - self.pos[hi]
+            self._move(hi, 0)
+            self.off -= 2
+            lo, hi = (self.at[stored] for stored in self.order)
+            t = (self.byte(hi) - self.value(hi)) % 256
+            room = _LIMIT - self.value(hi)
             # Unreachable here, unlike in the one-point branch above: the
             # block just put ``hi`` at 0 and then shifted everything down
             # by 2, so ``room`` is exactly ``_LIMIT + 2`` while ``t`` is a
@@ -281,15 +384,15 @@ class _FoldEmitter:
             while t > room:  # pragma: no cover - room is _LIMIT + 2 > 255
                 t -= 256
             self.preshift(t)
-        for p in self.pos:
-            if self.pos[p] % 256 != self.byte(p) % 256:
+        for stored, p in self.at.items():
+            if (stored + self.off) % 256 != self.byte(p) % 256:
                 raise AssertionError(
                     (
-                        self.pos[p],
+                        stored + self.off,
                         self.cls[p],
                     )
                 )
-            if self.pos[p] > _LIMIT:
+            if stored + self.off > _LIMIT:
                 raise AssertionError("self.pos[p] <= _LIMIT")
         self.body.append("e")
 
@@ -490,13 +593,6 @@ def _cofactor_class(truth_table: str, n: int, row: int, laid: int) -> str:
     return truth_table[prefix * width : (prefix + 1) * width]
 
 
-def _cofactor_done(state: _FoldState) -> bool:
-    """Whether one wiped point remains for every live suffix cofactor."""
-    return all(span == 0 for _, span, _, _ in state) and len(
-        {cls for _, _, cls, _ in state}
-    ) == len(state)
-
-
 def _fold_to_cofactors(state: _FoldState) -> list[_FoldOp] | None:
     """Merge equal suffix cofactors, leaving distinct ones separate.
 
@@ -585,19 +681,20 @@ def _interleaved_final_pair(truth_table: str, n: int) -> str | None:
     emitter.table = truth_table
     emitter.rows = 2**n
     block = 2 ** (n - prefix)
-    emitter.pos = {
-        frozenset(range(row * block, (row + 1) * block)): positions[row]
-        for row in range(2**prefix)
-    }
-    emitter.cls = {
-        key: truth_table[row * block : (row + 1) * block]
-        for row, key in enumerate(emitter.pos)
-    }
+    emitter.load(
+        {
+            frozenset(range(row * block, (row + 1) * block)): (
+                positions[row],
+                truth_table[row * block : (row + 1) * block],
+            )
+            for row in range(2**prefix)
+        }
+    )
     emitter.body = ["{X" + str(index) + "}" for index in range(prefix)]
 
     def lay(index: int, *, cofactor: bool) -> tuple[str, str] | None:
-        lo = min(emitter.pos.values())
-        hi = max(emitter.pos.values())
+        lo = emitter.lo()
+        hi = emitter.hi()
         span = hi - lo
         if weights is narrow:
             got = _centred_setter(span)
@@ -609,12 +706,8 @@ def _interleaved_final_pair(truth_table: str, n: int) -> str | None:
             # even total that is no pair's distance splits collision-free,
             # the same computed value the wipe rules land on.  Odd totals
             # never spell: the identity has no odd-width hold.
-            dists = {
-                b - a
-                for a in emitter.pos.values()
-                for b in emitter.pos.values()
-                if b > a
-            }
+            values = list(emitter.pos.values())
+            dists = {b - a for a in values for b in values if b > a}
             got = None
             # The range holds more even totals than there are distances,
             # so a free one always exists and the loop always breaks --
@@ -632,11 +725,10 @@ def _interleaved_final_pair(truth_table: str, n: int) -> str | None:
         if shift > _LIMIT - hi - up:
             return None
         emitter.preshift(shift)
-        next_pos: dict[_FoldKey, int] = {}
-        next_cls: dict[_FoldKey, str] = {}
+        laid: dict[_FoldKey, tuple[int, str]] = {}
         occupied: dict[int, str] = {}
         for key, value in emitter.pos.items():
-            rows = set(key) if isinstance(key, frozenset) else {key}
+            rows = emitter.members(key)
             for bit, code in ((0, zero), (1, one)):
                 picked = {row for row in rows if (row >> (n - 1 - index)) & 1 == bit}
                 # No known table reaches this: a merged key would have to
@@ -661,21 +753,15 @@ def _interleaved_final_pair(truth_table: str, n: int) -> str | None:
                 key2: _FoldKey = (
                     next(iter(picked)) if len(picked) == 1 else frozenset(picked)
                 )
-                next_pos[key2] = value2
-                next_cls[key2] = cls
-        emitter.pos, emitter.cls = next_pos, next_cls
+                laid[key2] = (value2, cls)
+        emitter.load(laid)
         emitter.body.append("{X" + str(index) + "}")
         return zero, one
 
     def state() -> _FoldState:
         return _fold_norm(
             [
-                (
-                    value,
-                    0,
-                    emitter.cls[key],
-                    key if isinstance(key, frozenset) else frozenset({key}),
-                )
+                (value, 0, emitter.cls[key], emitter.members(key))
                 for key, value in emitter.pos.items()
             ]
         )
@@ -760,8 +846,7 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
     emitter = _FoldEmitter.__new__(_FoldEmitter)
     emitter.table = truth_table
     emitter.rows = 2**n
-    emitter.pos = {rows: 0}
-    emitter.cls = {rows: truth_table}
+    emitter.load({rows: (0, truth_table)})
     emitter.body = []
 
     for index in range(n):
@@ -773,25 +858,24 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
         # binary weight for inputs already folded away.
         splits = False
         for group_key in emitter.pos:
-            raw = set(group_key) if isinstance(group_key, frozenset) else {group_key}
+            raw = emitter.members(group_key)
             children = {_cofactor_class(truth_table, n, row, index + 1) for row in raw}
             if len(children) > 1:
                 splits = True
                 break
         if splits:
-            span = max(emitter.pos.values()) - min(emitter.pos.values())
+            span = emitter.hi() - emitter.lo()
             zero, one = _fold_setters(1, (span + 2,))[0]
         else:
             zero = one = "pp"
         setters.append((zero, one))
-        next_pos: dict[_FoldKey, int] = {}
-        next_cls: dict[_FoldKey, str] = {}
+        laid: dict[_FoldKey, tuple[int, str]] = {}
         # A previously merged cofactor splits only on this input.  Rows taking
         # the same branch retain one identical suffix cofactor, which is the
         # inductive fact the merge below asserts rather than assumes.
         by_value: dict[tuple[int, str], set[int]] = {}
         for group_key, value in emitter.pos.items():
-            raw = set(group_key) if isinstance(group_key, frozenset) else {group_key}
+            raw = emitter.members(group_key)
             for bit in (0, 1):
                 picked = {row for row in raw if (row >> (n - 1 - index)) & 1 == bit}
                 if not picked:  # pragma: no cover - both branches always populated
@@ -823,22 +907,20 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
         # A position collision across unequal cofactors would erase a future
         # distinction before the planner can see it.
         occupied: dict[int, str] = {}
-        for (value, cls), raw in by_value.items():
+        for (value, cls), members in by_value.items():
             if value in occupied and occupied[value] != cls:
                 return None
             occupied[value] = cls
             coalesced_key: _FoldKey = (
-                next(iter(raw)) if len(raw) == 1 else frozenset(raw)
+                next(iter(members)) if len(members) == 1 else frozenset(members)
             )
-            next_pos[coalesced_key] = value
-            next_cls[coalesced_key] = cls
-        emitter.pos, emitter.cls = next_pos, next_cls
+            laid[coalesced_key] = (value, cls)
+        emitter.load(laid)
         emitter.body.append("{X" + str(index) + "}")
 
         items = [
-            (value, 0, cls, key if isinstance(key, frozenset) else frozenset({key}))
+            (value, 0, emitter.cls[key], emitter.members(key))
             for key, value in emitter.pos.items()
-            for cls in [emitter.cls[key]]
         ]
         partial = _fold_to_cofactors(_fold_norm(items))
         if partial is None:
@@ -852,9 +934,8 @@ def _interleaved_fold(truth_table: str, n: int) -> str | None:
                 emitter.rise(amount, row_ids)
 
     final_items = [
-        (value, 0, cls, key if isinstance(key, frozenset) else frozenset({key}))
+        (value, 0, emitter.cls[key], emitter.members(key))
         for key, value in emitter.pos.items()
-        for cls in [emitter.cls[key]]
     ]
     # After the last placeholder a suffix is one answer bit, so the existing
     # two-class plan and residue endgame apply unchanged.
