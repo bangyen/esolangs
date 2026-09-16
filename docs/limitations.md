@@ -909,9 +909,14 @@ x2.5 is a millisecond -- a ratio between two timings too small to mean
 much -- and chasing it would buy nothing.  A growth figure on a run that
 short is noise wearing an exponent.
 
-What remains is the structure being copied: each of these rebuilds an
-immutable tape or association list on every write, so a write costs its
-size.  Flowchart no longer heads the list because its pointer memory is
+What remains is mostly the structure being *copied* rather than searched,
+and that is the harder half.  A search can be removed outright -- key the
+structure and a read is a lookup -- but a copy cannot be, while the value
+has to stay immutable for a state to be compared with an earlier one; it
+can only be made cheaper per element, which is a constant.  BrainIf, Jaune
+and LaserFuck are pure copies: their tapes are indexed, so reads were
+already O(1) and only the rebuild is left.  RAM0 is both, its store being
+scanned for an address and then rebuilt around it.  Flowchart no longer heads the list because its pointer memory is
 keyed by cell now rather than scanned as a tuple of pairs, which took it
 from 415 ms to 63 ms.  The pairs were there, its docstring said, to keep
 the pointer hashable -- but nothing hashes a pointer: ``state`` builds the
