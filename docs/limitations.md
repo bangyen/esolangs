@@ -73,11 +73,17 @@ read in one direction, since an n=8 -> 9 ratio near 2 is not evidence of
 O(T).  Build *time* is a separate axis: %^2^-1 is measured super-linear on
 it (x4.2 per added input on dense tables) while its output is linear, and
 Factor, Polynomial and WII2D are super-linear on both; the roadmap's audit
-table carries the figures, with Circlefuck (n scoring passes, Theta(T log
-T)) and Vandevelo (candidate scoring on 2**n-bit masks) still open on build
-time.  Interprogck8 and Unsquare read super-linear in September 2026 (x3.3
-and x2.4); each was one re-walk of the table and both emit byte-identical
-programs at x2.0 now.
+table carries the figures, with Vandevelo (candidate scoring on 2**n-bit
+masks) still open on build time.  Interprogck8 and Unsquare read
+super-linear in September 2026 (x3.3 and x2.4); each was one re-walk of
+the table and both emit byte-identical programs at x2.0 now.  Circlefuck
+was Theta(T log T) three ways -- a permuted table copy, one greedy scoring
+pass per input, and every node scanning its rows for the fold -- and is
+now one bottom-up fold pass, per-node table indexing, and a greedy that
+puts the essential inputs first and scores at most eight levels, x1.92;
+the essential-input scan compares sibling blocks of the packed table,
+`n * T / 2` bytes in all, which at word width `w` is `n * T / (2 w)` word
+operations with `n <= w` for any table that fits in memory.
 
 **Factor is Theta(T log T) on parity and super-linear for some table under
 every encoding.**  The folded Brainfuck tree has Theta(T) maximal command
