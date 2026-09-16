@@ -5,7 +5,6 @@ test_boolean_slow_acv_mammalian and test_boolean_streetcode_gen.
 """
 
 import contextlib
-import hashlib
 import random
 import sys
 from itertools import pairwise
@@ -1094,3 +1093,135 @@ def test_circlefuck_scores_every_candidate_as_the_one_prefix_count(seed: int) ->
         keys = [(key << 1) | ((row >> (n - 1 - i)) & 1) for row, key in enumerate(keys)]
     scores = _constant_subtree_scores(table, n, keys)
     assert scores == [_constant_subtree_count(table, n, [*prefix, i]) for i in range(n)]
+
+
+@pytest.mark.parametrize("seed", range(40))
+def test_circlefuck_essential_inputs_are_the_ones_flipping_changes(seed: int) -> None:
+    """The sibling-block scan finds exactly the inputs the table depends on."""
+    from esolangs.tools.circlefuck import _essential_byte_inputs
+
+    rng = random.Random(seed)
+    n = rng.randint(1, 8)
+    # A function of a random subset of the inputs, so most are inessential.
+    subset = sorted(rng.sample(range(n), rng.randint(0, n)))
+    values = [rng.choice((48, 49, 7)) for _ in range(2 ** len(subset))]
+    table = []
+    for row in range(2**n):
+        index = 0
+        for i in subset:
+            index = (index << 1) | ((row >> (n - 1 - i)) & 1)
+        table.append(values[index])
+    expected = [
+        i
+        for i in range(n)
+        if any(table[row] != table[row ^ (1 << (n - 1 - i))] for row in range(2**n))
+    ]
+    assert _essential_byte_inputs(table, n) == expected
+
+
+def test_circlefuck_emits_the_permuted_tree_without_a_permuted_table() -> None:
+    """Indexing the stream-order table per node equals building the permuted copy.
+
+    The fold is settled bottom-up before emission, so this also pins that a
+    node folds exactly when every row it reaches agrees.
+    """
+    from esolangs.tools.circlefuck import _circlefuck_ordered
+
+    def permuted(table: list[int], perm: tuple[int, ...]) -> list[int]:
+        n = len(perm)
+        out = [0] * len(table)
+        for row in range(len(table)):
+            source = 0
+            for i in range(n):
+                source |= ((row >> (n - 1 - i)) & 1) << (n - 1 - perm[i])
+            out[row] = table[source]
+        return out
+
+    def reference(table: list[int], perm: tuple[int, ...]) -> str:
+        # The emitter as it was: a permuted copy, and each node scanning its
+        # rows for agreement.
+        n = len(perm)
+        frame = permuted(table, perm)
+        prog: list[str] = []
+        for _ in range(n):
+            prog.append(",")
+            prog.extend("-" * 48)
+            prog.append(">")
+        prog.pop()
+
+        def build(k: int, row: int, cell: int) -> None:
+            if k < 0:
+                if frame[row]:
+                    prog.extend("+" * frame[row])
+                prog.append(".")
+                prog.append("@")
+                return
+            if len({frame[r] for r in range(row, len(frame), 2 ** (n - 1 - k))}) == 1:
+                prog.append("[-]")
+                build(-1, row, cell)
+                return
+            target = perm[k]
+            step = ">" if target > cell else "<"
+            prog.extend(step * abs(target - cell))
+            prog.append("[")
+            prog.append("[-]")
+            build(k - 1, row + 2 ** (n - 1 - k), target)
+            prog.append("]")
+            build(k - 1, row, target)
+
+        build(n - 1, 0, n - 1)
+        return "".join(prog)
+
+    rng = random.Random(7)
+    for n in range(1, 8):
+        for _ in range(6):
+            table = [
+                rng.choice((48, 49)) if rng.random() < 0.8 else 48 for _ in range(2**n)
+            ]
+            perm = list(range(n))
+            rng.shuffle(perm)
+            order = tuple(perm)
+            assert _circlefuck_ordered(table, order) == reference(table, order)
+
+
+def test_circlefuck_greedy_spends_a_fixed_number_of_passes() -> None:
+    """The order is settled in at most ``_CIRCLEFUCK_PASSES + 1`` scoring passes.
+
+    One pass is one walk over the rows, so this is the bound that makes the
+    order O(T): the essential inputs past the last pass follow its scores,
+    and every table with that many essential inputs or fewer gets the full
+    greedy.
+    """
+    import importlib
+
+    from esolangs.tools.circlefuck import (
+        _CIRCLEFUCK_PASSES,
+        _circlefuck_greedy,
+        _constant_subtree_scores,
+    )
+
+    module = importlib.import_module("esolangs.tools.circlefuck")
+    scorer = _constant_subtree_scores
+    passes = 0
+
+    def counted(table: list[int], n: int, keys: list[int]) -> list[int]:
+        nonlocal passes
+        passes += 1
+        return scorer(table, n, keys)
+
+    rng = random.Random(3)
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(module, "_constant_subtree_scores", counted)
+        for n in (4, 8, 10, 12):
+            table = [rng.choice((48, 49)) for _ in range(2**n)]
+            passes = 0
+            _circlefuck_greedy(table, n)
+            assert passes == min(n, _CIRCLEFUCK_PASSES) + (n > _CIRCLEFUCK_PASSES)
+    # and an inessential input never costs a pass
+    table = [48 + ((row >> 9) & 1) for row in range(2**12)]  # depends on one input
+    passes = 0
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(module, "_constant_subtree_scores", counted)
+        program = _circlefuck_greedy(table, 12)
+    assert passes == 1
+    assert program.count("[") - program.count("[-]") == 1  # a single branch
