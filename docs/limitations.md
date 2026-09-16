@@ -898,6 +898,12 @@ About fifteen are linear -- Minifuck, COD, Forth, Back, ROTfuck, S*bleq,
 Qoibl, Container and the rest -- which is what a program that walks its
 table once costs.
 
+Minsky Swap is the one whose *command count* is super-linear rather than
+its per-command cost, and it is Theta(T log T) on the nose: commands per
+table entry are 4.5, 4.0, 3.9, 4.5, 5.2, 6.1, 7.1, 8.0, 9.0 and 10.0 at one
+through ten inputs -- the input count, not a constant.  Every other
+construction's per-entry count settles.
+
 Twenty-two never look at most of the table, and their command counts are
 polynomial in the input count rather than in its size.  brainfuck is the
 clean case: its worst row is 113, 179, 251, ... 803 commands for one
