@@ -5,6 +5,7 @@ AddSubJump, Collatz Multiverse, Sophie, Dig, Qoibl, Polynomial, and Point
 Break.
 """
 
+import importlib
 import random
 from itertools import pairwise
 
@@ -606,9 +607,9 @@ class TestDig:
         check has to refuse it -- a silent pass here would mean it was
         licensing nothing at all.
         """
-        from esolangs.tools import register
+        dig_module = importlib.import_module("esolangs.tools.dig")
 
-        monkeypatch.setattr(register, "_DIG_BAND", _DIG_STRIDE)
+        monkeypatch.setattr(dig_module, "_DIG_BAND", _DIG_STRIDE)
         for table in ("0110", "10010110", "0110100110010110"):
             with pytest.raises(AssertionError):
                 boolean.dig(table, 1)
