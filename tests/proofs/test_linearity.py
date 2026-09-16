@@ -20,7 +20,7 @@ import pytest
 
 from esolangs.registry import BY_BOOLEAN
 from tests.proofs._ledger import load as load_ledger
-from tests.proofs._roadmap import SETTLED, Audit, load
+from tests.proofs._roadmap import SETTLED, TOTAL, Audit, load
 from tests.proofs.deep.linearity import exempt_generators
 from tests.tools.test_boolean_contract import (
     _LANGUAGE_SUPERLINEAR_SCALING,
@@ -28,10 +28,12 @@ from tests.tools.test_boolean_contract import (
     _OPEN_SCALING,
 )
 
-#: Every verdict the audit's two columns are allowed to carry.  Listed so a
-#: typo cannot quietly reclassify a row: anything unrecognized reads as "not
-#: settled", which would silently *exempt* a generator from the bound.
+#: Every verdict the audit's three scaling columns are allowed to carry.
+#: Listed so a typo cannot quietly reclassify a row: anything unrecognized
+#: reads as "not settled", which would silently *exempt* a generator from the
+#: bound.  The totality column carries the ledger's own labels instead.
 _VERDICTS = SETTLED | {"Open", "Language lower bound"}
+_TOTALITY_VERDICTS = {TOTAL, "Cap", "Exception"}
 
 
 @pytest.fixture(scope="module")
@@ -54,17 +56,41 @@ def test_the_audit_names_real_generators(audit: Audit) -> None:
 def test_every_audit_verdict_is_a_known_one(audit: Audit) -> None:
     """An unrecognized verdict would silently exempt a row from the bound."""
     for row in audit.rows:
+        assert row.totality in _TOTALITY_VERDICTS, row
         assert row.generation_time in _VERDICTS, row
         assert row.output_size in _VERDICTS, row
+        assert row.execution_time in _VERDICTS, row
 
 
 def test_the_audit_holds_only_unresolved_rows(audit: Audit) -> None:
     """Rows leave the table when they close, so every row left is open.
 
     This is what lets the contract treat "absent from the table" as "held to
-    the bound" rather than needing a second list of closed generators.
+    the bound" rather than needing a second list of closed generators.  Open
+    means open on *some* axis; the size contract's own exemption set is the
+    narrower ``unsettled``.
     """
-    assert audit.unsettled == {row.generator for row in audit.rows}
+    assert all(row.is_open for row in audit.rows)
+    assert audit.unsettled <= {row.generator for row in audit.rows}
+
+
+def test_the_totality_column_is_the_ledger(audit: Audit) -> None:
+    """A ``Cap`` or ``Exception`` cell is ``proofs.md``'s label, spelled twice.
+
+    Every ledger row carrying one of those labels must appear here with the
+    same verdict, and no row here may claim one the ledger does not.
+    """
+    ledger = {
+        row.generator: next(lab for lab in ("cap", "exception") if lab in row.labels)
+        for row in load_ledger().rows
+        if "cap" in row.labels or "exception" in row.labels
+    }
+    audited = {
+        row.generator: row.totality.lower()
+        for row in audit.rows
+        if row.totality != TOTAL
+    }
+    assert audited == ledger
 
 
 def test_the_suites_hand_kept_sets_match_the_audit(audit: Audit) -> None:

@@ -67,10 +67,14 @@ bit~ 27.5/55.3 KB, Factor 17.2/35.5 KB, ROTfuck 14.9/28.8 KB, COD
 
 ### Scaling
 
-Every generator's source and construction are O(T) in the table length,
-except two walls.  The registry-wide contract is
-`tests/proofs/deep/linearity.py`, and its verdicts read in one direction: an
-n=8 -> 9 ratio near 2 is not evidence of O(T).
+Every generator's source is O(T) in the table length except two walls, and
+the registry-wide contract is `tests/proofs/deep/linearity.py`; its verdicts
+read in one direction, since an n=8 -> 9 ratio near 2 is not evidence of
+O(T).  Build *time* is a separate axis and eight constructions are measured
+super-linear on it while their output is linear -- Interprogck8 x3.3 per
+added input, Vandevelo x3.6 on dense tables, %^2^-1 x4.2, Circlefuck x2.5,
+Unsquare x2.4, with Factor, Polynomial and WII2D super-linear on both; the
+roadmap's audit table carries the figures.
 
 **Factor is Theta(T log T) on parity and super-linear for some table under
 every encoding.**  The folded Brainfuck tree has Theta(T) maximal command
@@ -101,14 +105,16 @@ interpreter and is recorded here.
 
 - **Constant per command, linear program:** Minifuck, COD, Forth, Back,
   ROTfuck, S*bleq, Qoibl, Container's command count, and about a dozen more.
-- **Super-linear per command** at nine inputs, worst row, growth per added
-  input against a linear x2.0: BrainIf 82 ms x2.9, Flowchart 63 ms x2.5,
-  LaserFuck 47 ms x2.9, Jaune 18 ms x2.9, RAM0 17 ms x3.0, Eval 1.6 ms x2.1,
-  Bitdeque 1.2 ms x2.5.  The mechanism is an immutable tape, association
-  list or pointer memory rebuilt on every write, so Theta(T) writes cost
-  Theta(T^2); the structure sits inside the state the cycle detector hashes,
-  so the fix is to the state type (Minifuck uses an integer bit-vector).  A
-  growth figure on a millisecond run is noise wearing an exponent.
+- **Super-linear per command** at nine inputs, worst sampled row, best of
+  five, fitted over five arities against a linear x2.0: BFStack 24 ms x2.8,
+  BrainIf 84 ms x2.5, LaserFuck 64 ms x2.6, RAM0 18 ms x2.5, Jaune 18 ms
+  x2.5.  The mechanism is an immutable tape, association list or pointer
+  memory rebuilt on every write, so Theta(T) writes cost Theta(T^2); the
+  structure sits inside the state the cycle detector hashes, so the fix is
+  to the state type (Minifuck uses an integer bit-vector).  Flowchart's
+  pointer memory became a map and now reads x2.1 at 25 ms; Eval, Bitdeque,
+  Collatz Multiverse and Container read x1.9-x2.35 on runs of a few
+  milliseconds, which is noise, not an exponent.
 - **Sublinear:** twenty-two never read most of the table.  brainfuck's worst
   row is 113, 179, 251, ... 803 commands at one through eleven inputs;
   Factor, Polynomial, Circuit Diagram, EGL and Fargo are the same shape.
