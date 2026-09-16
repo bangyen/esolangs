@@ -172,8 +172,8 @@ bits than it is given therefore runs to completion on zeros.  No
 :class:`HaltError` is raised; execution ends when the grid settles.
 """
 
+import re
 import sys
-from collections.abc import Iterator
 from typing import Final, Literal
 
 from esolangs.interpreters.io import IO
@@ -206,6 +206,14 @@ _WIRE_DIRECTIONS = {
     ".": _ALL_DIRECTIONS,
 }
 
+#: A ``-n-`` label: opens on a digit, then digits and the ``+`` of the sum
+#: spelling.  The same run the cell-by-cell scan it replaced walked.
+_LABEL_RUN = re.compile(r"[0-9][0-9+]*")
+
+#: The wire cells ``_build_wirings`` hunts for, so that it need not visit the
+#: blanks -- which are most of a diagram.
+_WIRE_CELL = re.compile(r"[-|/\\.]")
+
 _WIRES = frozenset(_WIRE_DIRECTIONS)
 _CROSSOVER = "="
 
@@ -234,6 +242,19 @@ _GateKind = _LogicGate | Literal["<", ">", ":"]
 # The gate-like trio as a typed set: comparing against the three Final
 # constants above cannot narrow a str, but membership here does.
 _MOVERS: frozenset[Literal["<", ">", ":"]] = frozenset(("<", ">", ":"))
+
+#: The gate-like cells ``_build_gates`` hunts for, the counterpart of
+#: ``_WIRE_CELL``.  Built from the alphabets rather than spelled again, so a
+#: new gate character cannot be added without this finding it.
+_GATE_CELL = re.compile(f"[{re.escape(''.join(sorted(_GATES | _MOVERS)))}]")
+
+#: Every character a program may hold: the wires and their crossover, the
+#: gates and movers, a label's digits and ``+``, and the blank.
+#: ``_check_characters`` asks a row what it holds that this does not, which
+#: is one set operation rather than a step per cell.
+_LEGAL: frozenset[str] = (
+    _WIRES | frozenset(_CROSSOVER) | _GATES | _MOVERS | frozenset("0123456789+ ")
+)
 
 # Specified by the page but exercised by none of its examples; see the
 # module docstring's scope section.
@@ -269,12 +290,6 @@ class _Grid:
         if 0 <= row < self.height and 0 <= col < self.width:
             return self.rows[row][col]
         return " "
-
-    def cells(self) -> Iterator[tuple[int, int, str]]:
-        """Yield ``(row, col, char)`` for every cell, in reading order."""
-        for row, line in enumerate(self.rows):
-            for col, char in enumerate(line):
-                yield row, col, char
 
 
 class _Wiring:
@@ -344,10 +359,24 @@ class _Connections:
         wire be "connected both ways", which is what makes ``-|`` and
         ``.|`` non-connections.
         """
+        # The cell's own directions, read once.  Asking ``reaches`` per
+        # direction fetched and classified the *same* character eight times
+        # over, and then skipped six of them: a ``-`` reaches in two.
+        #
+        # Iterating them rather than ``_ALL_DIRECTIONS`` reorders the result.
+        # That is safe precisely here: the one caller is the flood fill in
+        # ``_build_wirings``, which pushes them on a stack and collects a
+        # set, so the group it ends with does not depend on the order it
+        # walked.  A caller that cared would have to filter _ALL_DIRECTIONS.
+        directions = _WIRE_DIRECTIONS.get(self.grid.at(row, col))
+        if directions is None:  # pragma: no cover - callers pass wire cells
+            # Unreachable from ``_build_wirings``, which seeds from the wire
+            # pattern and extends only to cells that reached back.  Kept
+            # because a non-wire cell is a sensible question with a sensible
+            # answer, and the alternative is a KeyError from a lookup.
+            return []
         found = []
-        for direction in _ALL_DIRECTIONS:
-            if not self.reaches(row, col, direction):
-                continue
+        for direction in directions:
             target = self.through(row, col, direction)
             if target is None:
                 continue
@@ -388,21 +417,31 @@ class _Parser:
         self.links = _Connections(grid)
         self._check_characters()
         self.wirings = self._build_wirings()
+        # Which wiring owns each cell.  Built with the wirings because both
+        # the labels and every gate port ask the question by cell.
+        self._by_cell = {
+            cell: wiring for wiring in self.wirings for cell in wiring.cells
+        }
         self._label_widths()
         self.gates = self._build_gates()
         self._check_widths()
 
     def _check_characters(self) -> None:
         """Reject characters that are unknown or out of scope."""
-        for row, col, char in self.grid.cells():
-            # ``+`` only ever joins the parts of a summed wire label
-            # (``-1+2-``), which ``_label_widths`` reads as a whole.
-            if char == " " or char.isdigit() or char == "+":
+        # A row at a time, by set difference.  Every character is legal or
+        # the program is rejected, so the common case is "this row holds
+        # nothing new", which a set answers at C speed; only a row that
+        # fails is walked cell by cell to name the offender.  Walking all of
+        # them in Python cost a step per cell of an 8 MB grid.
+        for row, line in enumerate(self.grid.rows):
+            unknown = set(line) - _LEGAL
+            if not unknown:
                 continue
-            if char in _WIRES or char == _CROSSOVER:
-                continue
-            if char in _GATES or char in (_SPLIT, _COMBINE, _OUTPUT):
-                continue
+            # The leftmost offender, which is the one the cell-by-cell walk
+            # would have reached first.  Asked for directly because every
+            # path below raises: a loop looking for it could never finish.
+            col = min(line.index(char) for char in unknown)
+            char = line[col]
             if char in _OUT_OF_SCOPE:
                 raise ValueError(
                     f"{_OUT_OF_SCOPE[char]} is out of scope: {char!r} at ({col}, {row})"
@@ -418,27 +457,32 @@ class _Parser:
         """Group every wire cell into maximal connected components."""
         seen: set[tuple[int, int]] = set()
         wirings = []
-        for row, col, char in self.grid.cells():
-            if char not in _WIRES or (row, col) in seen:
-                continue
-            stack = [(row, col)]
-            group: set[tuple[int, int]] = set()
-            while stack:
-                cell = stack.pop()
-                if cell in group:
+        for row, line in enumerate(self.grid.rows):
+            for match in _WIRE_CELL.finditer(line):
+                col = match.start()
+                if (row, col) in seen:
                     continue
-                group.add(cell)
-                stack.extend(self.links.neighbours(*cell))
-            seen |= group
-            wirings.append(_Wiring(frozenset(group)))
+                stack = [(row, col)]
+                group: set[tuple[int, int]] = set()
+                while stack:
+                    cell = stack.pop()
+                    if cell in group:
+                        continue
+                    group.add(cell)
+                    stack.extend(self.links.neighbours(*cell))
+                seen |= group
+                wirings.append(_Wiring(frozenset(group)))
         return wirings
 
     def _wiring_at(self, cell: tuple[int, int]) -> _Wiring | None:
-        """Return the wiring covering ``cell``, if any."""
-        for wiring in self.wirings:
-            if cell in wiring.cells:
-                return wiring
-        return None
+        """Return the wiring covering ``cell``, if any.
+
+        Off a cell-keyed index built with the wirings.  This used to scan
+        every wiring and test membership in each, which the gates ask for
+        three times a side: O(gates * wirings), and a real quadratic on a
+        wider circuit than this registry builds.
+        """
+        return self._by_cell.get(cell)
 
     def _label_widths(self) -> None:
         """Apply every ``-n-`` digit run to the wiring it annotates.
@@ -448,18 +492,15 @@ class _Parser:
         joins them and fixes the width for the whole group.  The spec allows
         a sum spelling (``-1+2-``), which totals to the same width.
         """
-        for row in range(self.grid.height):
-            col = 0
-            while col < self.grid.width:
-                if not self.grid.at(row, col).isdigit():
-                    col += 1
-                    continue
-                start = col
-                while col < self.grid.width and (
-                    self.grid.at(row, col).isdigit() or self.grid.at(row, col) == "+"
-                ):
-                    col += 1
-                text = "".join(self.grid.at(row, i) for i in range(start, col))
+        # Over the row's own string.  The rows are already padded to the
+        # grid's width, so indexing one is what ``at`` does with two bounds
+        # checks and a call; walking every cell that way, three times per
+        # cell and once more per label character, was the largest single
+        # cost in loading a program.
+        for row, line in enumerate(self.grid.rows):
+            for match in _LABEL_RUN.finditer(line):
+                text = match.group()
+                start, col = match.start(), match.end()
                 width = self._label_width(text, row, start)
                 self._apply_label(start, col, row, width)
 
@@ -499,6 +540,12 @@ class _Parser:
                 )
             self.wirings.remove(wiring)
         self.wirings.append(merged)
+        # The cell index follows the merge.  Every cell of a wiring that just
+        # went is a cell of ``merged``, so re-pointing ``merged``'s own cells
+        # covers all of them -- and missing this left ``_wiring_at`` handing
+        # back wirings that were no longer in the list at all.
+        for cell in merged.cells:
+            self._by_cell[cell] = merged
 
     def _ports(
         self,
@@ -560,33 +607,39 @@ class _Parser:
         splitter's input and the run continuing past it.
         """
         gates = []
-        for row, col, char in self.grid.cells():
-            if char in _GATES:
-                kind: _GateKind = char
-            elif char in _MOVERS:
-                kind = char
-            else:
-                continue
-            gate = _Gate(kind, row, col)
-            if char == _OUTPUT:
-                outputs: list[_Wiring] = []
-            elif char == _SPLIT:
-                outputs = self._ports(row, col, 1, offsets=(-1, 1))
-            else:
-                outputs = self._ports(row, col, 1)
-            incoming = self._ports(row, col, -1)
-            if char == "~" and len(incoming) > 1:
-                # NOT takes exactly one input, drawn level with it (the
-                # spec's sample is ``.~.``), so a diagonal neighbour is
-                # some other wiring routed past the gate, not an input.
-                level = self._ports(row, col, -1, offsets=(0,))
-                if len(level) == 1:
-                    incoming = level
-            inputs = [w for w in incoming if w not in outputs]
-            gate.inputs = inputs
-            gate.outputs = [w for w in outputs if w not in inputs]
-            self._check_arity(gate)
-            gates.append(gate)
+        for row, line in enumerate(self.grid.rows):
+            for match in _GATE_CELL.finditer(line):
+                col, char = match.start(), match.group()
+                # ``_GATE_CELL`` is built from these two alphabets, so one of
+                # the arms always takes; they are spelled out because
+                # membership is what narrows the character to ``_GateKind``,
+                # which a regex match cannot do.
+                if char in _GATES:
+                    kind: _GateKind = char
+                elif char in _MOVERS:
+                    kind = char
+                else:  # pragma: no cover - the pattern admits nothing else
+                    continue
+                gate = _Gate(kind, row, col)
+                if char == _OUTPUT:
+                    outputs: list[_Wiring] = []
+                elif char == _SPLIT:
+                    outputs = self._ports(row, col, 1, offsets=(-1, 1))
+                else:
+                    outputs = self._ports(row, col, 1)
+                incoming = self._ports(row, col, -1)
+                if char == "~" and len(incoming) > 1:
+                    # NOT takes exactly one input, drawn level with it (the
+                    # spec's sample is ``.~.``), so a diagonal neighbour is
+                    # some other wiring routed past the gate, not an input.
+                    level = self._ports(row, col, -1, offsets=(0,))
+                    if len(level) == 1:
+                        incoming = level
+                inputs = [w for w in incoming if w not in outputs]
+                gate.inputs = inputs
+                gate.outputs = [w for w in outputs if w not in inputs]
+                self._check_arity(gate)
+                gates.append(gate)
         return gates
 
     def _check_arity(self, gate: _Gate) -> None:
@@ -849,6 +902,9 @@ class _Machine:
         # are fixed once parsed, so a position is a stable name and the
         # whole state is two tuples.
         self.index = {id(w): i for i, w in enumerate(self.wirings)}
+        self._by_cell = {
+            cell: wiring for wiring in self.wirings for cell in wiring.cells
+        }
         self.values: tuple[tuple[int, ...] | None, ...] = (None,) * len(self.wirings)
         self.latches: tuple[tuple[tuple[int, ...] | None, ...], ...] = tuple(
             (None,) * len(gate.inputs) for gate in self.gates
@@ -887,13 +943,14 @@ class _Machine:
             )
 
     def _wiring_at(self, cell: tuple[int, int]) -> _Wiring | None:
-        """Return the wiring covering ``cell``, if any."""
-        for wiring in self.wirings:
-            if cell in wiring.cells:
-                return wiring
-        # The machine only looks up cells it took from a wiring in the first
-        # place, so the miss is a guard rather than a path.
-        return None  # pragma: no cover - every cell asked for is covered
+        """Return the wiring covering ``cell``, if any.
+
+        The same cell-keyed index the parser builds, rather than a second
+        scan over the wirings beside the ``id`` index this class already
+        keeps.  The machine only looks up cells it took from a wiring in
+        the first place, so a miss is a guard rather than a path.
+        """
+        return self._by_cell.get(cell)
 
     def _read_bit(self) -> int:
         """Read one bit of input, taking exhausted input as a zero bit."""
