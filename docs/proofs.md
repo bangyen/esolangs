@@ -153,7 +153,7 @@ after ignoring the performance/resource ceiling as specified above.
 | Minifuck | parameterized construction | `_mux` is the total fallback; its six failure sites close uniformly in `n` |
 | Minsky Swap | parameterized tree | — |
 | Modulous | tree | — |
-| NoComment | finite lookup, cap | fixed interpreter tape is the ceiling |
+| NoComment | finite lookup | from 4 inputs the index is a run of byte-sized skips on the stack and the rows are code: a chain of uniform groups lands on the row, and the rows after it telescope to `table[index]` on six tape cells |
 | Nopstacle | finite lookup | prototype instantiation |
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry |
 | Packlang | tree | — |
@@ -254,10 +254,6 @@ The remaining `cap` rows do have a uniform lift argument.
   assigns each command run the next prime in one of the nonzero residue
   classes 1 through 8 modulo 11.  Dirichlet guarantees such a prime above
   every bound, and an arbitrary-precision integer holds their finite product.
-- NoComment's wide construction needs a finite number of cells for every
-  finite table and already accepts the tape size as a parameter.  The language
-  specifies static memory but no fixed size; choosing that finite size removes
-  the interpreter's default ceiling.
 - Polynomial's `k == n` candidate is the finite decision tree.  Each of its
   finitely many instructions receives a distinct prime root, and removing the
   interpreter-cost screen does not change that encoding.
@@ -298,6 +294,11 @@ same finite tree proof to every arity.  Decimal digit 6 is split into `1 + 5`,
 since `F` delimits integer mode and cannot occur inside its literal.
 
 6-5 left this section when its walk stopped spending a label per input.
+NoComment left when its rows stopped living on the tape: the index is pushed
+as byte-sized stage amounts, a chain of uniform six-command groups pops and
+skips its way to the row's group, and every group after it adds the
+difference between its row and the next, so the landing cell telescopes to
+`table[index]` on six cells at any arity.
 `8n` names the n-th `4` of the program and the operand characters stop at
 35, so a walk that branches every bit with its own jump ends at 35 inputs;
 the looped walk (`_six_five_looped`) marks each row with its 2-adic

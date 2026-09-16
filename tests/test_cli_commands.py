@@ -815,9 +815,9 @@ class TestTheRoundTripsFailurePaths:
     ) -> None:
         """Nothing ran, so it is the usage class rather than a wrong answer."""
         with pytest.raises(SystemExit) as exc:
-            call_main(["verify", "NoComment", "01" * (1 << 11)], capsys)
+            call_main(["verify", "ZTOALC L", "01" * (1 << 10)], capsys)
         assert exc.value.code == 2
-        assert "cell" in capsys.readouterr().err
+        assert "command lines" in capsys.readouterr().err
 
     def test_a_mismatch_names_the_rows_that_disagree(
         self, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch

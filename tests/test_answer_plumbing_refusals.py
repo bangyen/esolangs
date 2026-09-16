@@ -68,7 +68,8 @@ class TestADeliberateRefusalIsAnEsolangError:
     #: -- a dense n=13 table builds in about twelve seconds.  Which is the
     #: failure Factor's note warns about, in the other direction: the entry
     #: stayed behind and the ``pytest.raises`` saw the program get built.
-    #: Re-add it only against a raise, not against a hope.
+    #: Re-add it only against a raise, not against a hope.  NoComment never
+    #: joined the list: its chain builds at any arity.
     _REFUSERS: ClassVar[dict[str, int]] = {
         "Factor": 13,
         "Polynomial": 11,
@@ -118,22 +119,34 @@ class TestADeliberateRefusalIsAnEsolangError:
 class TestEveryAuditedCapIsCatchable:
     """The n=11 probe that found the first five was bounded by n=11.
 
-    NoComment first refuses at n=12, so it escaped that sweep and still
+    NoComment first refused at n=12, so it escaped that sweep and still
     raised a bare ``ValueError`` -- and a reader following the try/except
     the previous round *added to the docstring* was met with an uncaught
     exception.  The fix for a class of bug cannot be found by widening the
     sweep that missed it, so the remaining sites were audited by reading.
+
+    NoComment no longer refuses at any arity -- its chain runs on six tape
+    cells -- so the fast checks here drive the cheapest refusal that
+    remains, ZTOALC L's, and NoComment is checked to *build* where it
+    escaped.
     """
 
-    def test_nocomment_is_catchable_at_the_size_it_refuses(self) -> None:
-        """The confirmed escape, at the first arity that triggers it."""
-        with pytest.raises(esolangs.GeneratorCapError, match="cell"):
-            esolangs.generate("NoComment", "01" * (1 << 11))
+    def test_the_refusal_is_catchable_at_the_size_it_refuses(self) -> None:
+        """A refusal past the sweep's bound, at the first arity that triggers it."""
+        with pytest.raises(esolangs.GeneratorCapError, match="command lines"):
+            esolangs.generate("ZTOALC L", "01" * (1 << 10))
 
     def test_it_is_catchable_through_evaluate_too(self) -> None:
-        """It leaked through ``evaluate`` identically."""
+        """NoComment's leaked through ``evaluate`` identically."""
         with pytest.raises(esolangs.GeneratorCapError):
-            esolangs.evaluate("NoComment", "01" * (1 << 11))
+            esolangs.evaluate("ZTOALC L", "01" * (1 << 10))
+
+    def test_nocomment_builds_at_the_arity_that_escaped(self) -> None:
+        """The escape's subject is gone: n=12 is a template, not a refusal."""
+        n = 12
+        table = "".join(str(bin(r).count("1") % 2) for r in range(2**n))
+        template = esolangs.generate("NoComment", table)
+        assert "{X11}" in template
 
     @pytest.mark.slow
     @pytest.mark.weekly

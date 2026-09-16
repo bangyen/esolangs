@@ -1,8 +1,11 @@
 """Covers :mod:`esolangs.tools.nocomment`."""
 
+import importlib
 import io
+import re
 from collections.abc import Iterable
 from contextlib import redirect_stdout
+from itertools import pairwise
 
 import pytest
 
@@ -100,32 +103,18 @@ class TestParameterizedNoComment:
             got = self.run_nocomment(self.instantiate(template, bits))
             assert got == str(int("1010101010101010"[combo])), f"inputs {bits}"
 
-    # The decode is exponential in the arity, so the swept cases cost
-    # seconds: measured 9.3s at n=9 and 29.0s at n=10 (n=11 swept was 99.4s,
-    # now sampled below).  n=9 used to stay in the fast run as the case
-    # exercising the composed skip past a byte-sized index, but it is four
-    # times the one-second budget every other case is held to.  The
-    # mechanism is still proved on every push, just not at push time: CI's
-    # `test` matrix job runs pytest unfiltered, so a slow-marked case runs
-    # there like any other.  (The separate `-m slow` job is scoped to the
-    # differential fuzzer's file and never selects these.)
-    #
-    # These are ~2x the figures first recorded here (4.1/13.0/43.5s), which
-    # were measured before NoComment's tape became immutable.  The write
-    # buffer that made that change affordable collapses *runs* of writes,
-    # and this decode has none -- it writes a cell and moves -- so it pays a
-    # tape rebuild on ~66% of steps.  Storing the tape as `bytes` rather
-    # than a tuple of ints took the rebuild back to a memcpy and these cases
-    # from 45.7/139.7/561.6s to what they are now; the residue over the
-    # original is the immutable state the purity refactor bought.
-    # n=11 is sampled rather than swept: the summand plan introduces no new
-    # stage shape above n=10.  Measured plan sizes are q=2/4/6/10 at
-    # n=8/9/10/11; n=9 first splits one bit's weight across stages, n=10
-    # first carries both a repeated full stage and a mixed-cell stage, and
-    # n=11 only repeats those same two shapes more often.  The emitter is a
-    # uniform loop over plan entries with no branch keyed on stage index or
-    # cell, so every shape is already swept exhaustively at the smallest
-    # arity where it appears.  Sweeping n=11 cost 99.4s to re-prove that.
+    # The chain falls through six commands per row past the landing, so a
+    # full sweep is Theta(4**n) commands: up to 2.4s at n=9 and 6.9s at n=10 (the
+    # tape-resident decode this replaced took 9.3s and 29.0s).  n=9 still
+    # exceeds the one-second budget every other case is held to, so both
+    # are slow-marked: CI's `test` matrix job runs pytest unfiltered, so a
+    # slow-marked case runs there like any other.  (The separate `-m slow`
+    # job is scoped to the differential fuzzer's file and never selects
+    # these.)  n=11 is sampled rather than swept: a bit's stages are a
+    # uniform loop keyed on nothing but its weight, and n=10 already has a
+    # bit pushing a full stage 16, 8, 4, 2 times and once, and a bit at
+    # every partial stage from 16 rows down to one; n=11 only pushes the
+    # full stage more often.
     @pytest.mark.parametrize(
         "n",
         [
@@ -134,32 +123,111 @@ class TestParameterizedNoComment:
         ],
     )
     def test_wide_arity_is_exact(self, n: int) -> None:
-        """Past a byte-sized index the composed-skip decode still computes the table.
+        """Past a byte-sized index the stack-chain decode still computes the table.
 
         A single ``s`` cannot carry an index past 255, which is what caps
-        the narrow path at eight inputs.  Composing skips lifts that, so
-        these arities must be exactly right on *every* input, not merely
-        renderable -- each table below is run through the interpreter for
-        all ``2**n`` combinations.
+        the narrow path at eight inputs.  Chaining skips off the stack lifts
+        that, so these arities must be exactly right on *every* input, not
+        merely renderable -- each table below is run through the
+        interpreter for all ``2**n`` combinations.
         """
         self._check_wide_arity(n, range(2**n))
 
-    @pytest.mark.slow  # ~3s: the same decode at n=11, sampled
+    @pytest.mark.slow  # ~1s: the same decode at n=11, sampled
     def test_the_widest_arity_is_exact_on_sampled_rows(self) -> None:
         """The n=11 decode is checked where a stage boundary can go wrong.
 
         The rows are chosen rather than swept: every single-bit index, the
-        all-zero and all-one rows, and both sides of each byte boundary --
-        which is where a composed skip hands off between stages -- plus a
-        stride through the rest so no region goes unvisited.
+        all-zero and all-one rows, and both sides of each full-stage
+        boundary -- where one bit's last stage hands off to the next bit's
+        first -- plus a stride through the rest so no region goes unvisited.
         """
         n = 11
         rows = {0, 2**n - 1}
         rows.update(1 << i for i in range(n))
-        for edge in (255, 511, 1023, 2047):
-            rows.update({edge - 1, edge, edge + 1} & set(range(2**n)))
+        for edge in (32, 64, 256, 1024):
+            rows.update({edge - 1, edge, edge + 1})
         rows.update(range(0, 2**n, 41))
         self._check_wide_arity(n, sorted(rows))
+
+    def test_the_chain_needs_six_cells_at_any_arity(self) -> None:
+        """The chain's tape is six cells at any arity, and it runs on one that size.
+
+        This is what removed the cap: the rows are in the code and the
+        index is on the stack, so nothing on the tape grows with ``n``.
+        The n=13 table is one the tape-resident decode refused on the
+        default tape, and it is executed here on a *six*-cell one.
+        """
+        from esolangs.tools import parameterized
+
+        n = 13
+        table = "".join(str((r * r + r // 3) % 2) for r in range(2**n))
+        template = parameterized.nocomment(table)
+        assert re.fullmatch(r"[idclrnfsbo{}X0-9]*", template)
+        for combo in (0, 1, 2**n - 1, 2**n - 2, 1234, 2731, 4096, 6000):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_nocomment(self.instantiate(template, bits), 6)
+            assert got == table[combo], f"n={n} inputs {bits}"
+
+    def test_the_chain_takes_over_where_it_is_smaller(self) -> None:
+        """The dispatch is the measured crossover: the chain from four inputs.
+
+        Over every table the chain is never the larger program at four
+        inputs and the narrow decode is the smaller one on 218 of 256 at
+        three; the two dense tables here are the boundary's two sides, and
+        the dispatch is checked to follow the constant rather than restate
+        it.
+        """
+        from esolangs.tools import parameterized
+        from esolangs.tools.nocomment import _NOCOMMENT_CHAIN_MIN, _nocomment_chain
+
+        assert _NOCOMMENT_CHAIN_MIN == 4
+        three, four = "01101001", "0110100110010110"
+        narrow = parameterized.nocomment(three)
+        chained = _nocomment_chain(three, 3)
+        assert narrow != chained
+        assert len(narrow) < len(chained)
+        chain = parameterized.nocomment(four)
+        assert chain == _nocomment_chain(four, 4)
+        module = importlib.import_module("esolangs.tools.nocomment")
+        module._NOCOMMENT_CHAIN_MIN = 99  # noqa: SLF001
+        try:
+            assert len(parameterized.nocomment(four)) > len(chain)
+        finally:
+            module._NOCOMMENT_CHAIN_MIN = 4  # noqa: SLF001
+
+    def test_the_chain_drops_ignored_inputs(self) -> None:
+        """A table that ignores inputs is the smaller table's chain, and still right.
+
+        Every input keeps its setter, so the instantiated width is the same,
+        but an ignored input pushes no stage and the rows are the reduced
+        table's -- which is what keeps NoComment in the reducing class past
+        the narrow decode.
+        """
+        from esolangs.tools import parameterized
+
+        n = 6
+        table = "".join(str((r >> 4) & 1 ^ (r & 1)) for r in range(2**n))
+        template = parameterized.nocomment(table)
+        assert template.count("{X") == n
+        parity = "".join(str(bin(r).count("1") % 2) for r in range(2**n))
+        assert len(template) < len(parameterized.nocomment(parity))
+        assert template.count("fsf") == 4 + 2 + 1  # four rows, two stages, a pad
+        for combo in range(2**n):
+            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+            got = self.run_nocomment(self.instantiate(template, bits), 6)
+            assert got == table[combo], f"inputs {bits}"
+
+    def test_the_chain_is_linear_in_the_table(self) -> None:
+        """Six commands per row and a stage per 32: the size doubles with the table."""
+        from esolangs.tools import parameterized
+
+        sizes = [
+            len(parameterized.nocomment("01" * 2 ** (n - 1))) for n in (9, 10, 11, 12)
+        ]
+        for small, big in pairwise(sizes):
+            assert big < 2 * small, sizes
+        assert sizes[-1] < 8 * 2**12, sizes
 
     def _check_wide_arity(self, n: int, rows: Iterable[int]) -> None:
         """Run the four probe tables at arity ``n`` over ``rows``."""
@@ -193,71 +261,3 @@ class TestParameterizedNoComment:
 
         assert 2**_NOCOMMENT_NARROW_MAX - 1 <= _NOCOMMENT_SKIP_MAX
         assert 2 ** (_NOCOMMENT_NARROW_MAX + 1) - 1 > _NOCOMMENT_SKIP_MAX
-
-    def test_cap_is_the_tape_not_the_skip(self) -> None:
-        """The remaining cap is the interpreter's tape, and it is derived.
-
-        The refusal must name the tape, and the boundary must be wherever
-        the layout stops fitting -- so the largest arity that builds is
-        found by asking, not asserted as a literal, and the next one up
-        must raise.
-        """
-        from esolangs.interpreters.tape_based.nocomment import _TAPE
-        from esolangs.tools import parameterized
-        from esolangs.tools.parameterized import _NOCOMMENT_NARROW_MAX
-
-        widest = 0
-        for n in range(1, 16):
-            try:
-                parameterized.nocomment("0" * (2**n))
-            except ValueError:
-                break
-            widest = n
-
-        # The cap is past the byte-sized-index bound the narrow path has,
-        # which is the whole point of the composed-skip decode.
-        assert widest > _NOCOMMENT_NARROW_MAX
-        with pytest.raises(ValueError, match=str(_TAPE)) as caught:
-            parameterized.nocomment("0" * (2 ** (widest + 1)))
-        assert "tape" in str(caught.value)
-
-    def test_a_bigger_tape_lifts_the_cap(self) -> None:
-        """The cap is the tape size, so a bigger tape moves it -- and still computes.
-
-        The arity the default refuses is built against a larger tape and run
-        on an interpreter given that same size, which is what makes this a
-        lifted bound rather than a longer program that nothing can execute.
-        A spot-check of inputs, not the sweep: :meth:`test_wide_arity_is_exact`
-        already runs every combination at the arities the default reaches, and
-        ``2**12`` runs of a 51k-command program is far too slow for the suite.
-        """
-        from esolangs.interpreters.tape_based.nocomment import _TAPE
-        from esolangs.tools import parameterized
-
-        n, tape = 12, 16384
-        table = "".join(str((r * r + r // 3) % 2) for r in range(2**n))
-
-        with pytest.raises(ValueError, match=str(_TAPE)):
-            parameterized.nocomment(table)
-
-        template = parameterized.nocomment(table, tape=tape)
-        for combo in (0, 1, 2**n - 1, 2**n - 2, 1234, 2731):
-            bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-            got = self.run_nocomment(self.instantiate(template, bits), tape)
-            assert got == table[combo], f"n={n} inputs {bits}"
-
-
-def test_nocomment_wide_declines_when_the_plan_outgrows_the_skip() -> None:
-    """Past fifteen inputs the summand plan leaves no room to widen.
-
-    ``room`` is what is left of a byte-sized skip once the guarded
-    contribution's move-add-return block is paid for, and it goes negative at
-    ``n == 15`` -- the plan stays at its one-cell form rather than being
-    re-planned wider.  The build then stops on the tape limit, which is the
-    reachable end of this path: the cell it would need is past 4096.
-    """
-    from esolangs.tools import parameterized
-
-    table = "0" * (2**15 - 1) + "1"
-    with pytest.raises(ValueError, match="past the interpreter's 4096-cell tape"):
-        parameterized._nocomment_wide(table, 15, parameterized._TAPE)  # noqa: SLF001
