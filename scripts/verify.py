@@ -149,7 +149,7 @@ STEP_SCOPE: dict[str, tuple[str, ...]] = {
         "scripts/generate.py",
         "src/esolangs/tools/ztoalc_starts.py",
     ),
-    "duplicate-code check (pylint)": ("src/esolangs/", "scripts/", "tests/"),
+    "duplicate-code check (pylint)": ("src/esolangs/", "scripts/"),
     # The union of what the two proofs in this band read: ArrowQueue's lemmas
     # import the generator and nothing else, and BIO's also parse the emitted
     # program and instantiate it through the shipped fill.  The runner is in
@@ -210,7 +210,11 @@ STEPS = [
         # pylint's R0801 reports similar blocks across files, catching
         # copy-pasted helpers like the bracket matcher or the OISC memory
         # tokenizer.  --ignore-imports keeps shared import blocks from
-        # counting as duplication.
+        # counting as duplication.  tests/ is left out: it doubled the line
+        # count and quadrupled the file pairs the O(files^2) comparison
+        # walks (53s -> 10s), and shared test scaffolding is not what the
+        # check is for.  No -j: this runs in pytest's shadow, and the 2s
+        # that workers save here they take back from its four.
         "duplicate-code check (pylint)",
         [
             *PY,
@@ -222,7 +226,6 @@ STEPS = [
             "--ignore-imports=yes",
             "src/esolangs",
             "scripts",
-            "tests",
         ],
     ),
     # The deep proofs cheap enough to gate locally: ArrowQueue's twelve named
