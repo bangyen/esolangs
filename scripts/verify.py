@@ -48,11 +48,13 @@ Usage:
 """
 
 import argparse
+import atexit
 import functools
 import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from fnmatch import fnmatch
 from pathlib import Path
@@ -175,13 +177,18 @@ STEPS = [
     # `--cov-report=` writes no report: the run is here for the data file,
     # which the touched-file gate reads afterwards.
     #
-    # `--cov-branch` is free on 3.14 (17.89s vs 17.81s without) but costs
-    # 3.3x before it, where sys.monitoring cannot measure branches and
-    # coverage falls back to the old tracer.  An older interpreter pays that
-    # silently rather than breaking, so if this ever feels slow again check
-    # the interpreter before the tests: coverage says so on stderr with a
-    # `no-sysmon` CoverageWarning.  Both timing tables are in
-    # ``the verification history``.
+    # Whole-package measurement is what a full run pays for: 13s over the
+    # 27s the fast selection takes bare, measured 2026-09-16 on 3.14 at
+    # 9861 tests (it read as free at half that suite).  A scoped run does
+    # not pay it -- `_scoped_coverage` narrows the measurement to the
+    # touched files, which is all the gate reads.
+    #
+    # `--cov-branch` costs 3.3x before 3.14, where sys.monitoring cannot
+    # measure branches and coverage falls back to the old tracer.  An older
+    # interpreter pays that silently rather than breaking, so if this ever
+    # feels slow again check the interpreter before the tests: coverage says
+    # so on stderr with a `no-sysmon` CoverageWarning.  Both timing tables
+    # are in ``the verification history``.
     ("pytest", [*PY, "-m", "pytest", "-q", "--cov", "--cov-branch", "--cov-report="]),
     ("bandit", ["uv", "run", "--with", "bandit", "bandit", "-r", "src", "-q"]),
     (
@@ -358,12 +365,46 @@ def _scoped_cmd(name: str, cmd: list[str], changed: list[str]) -> list[str] | No
         return [c for c in cmd if c != "--all-files"] + ["--files", *files]
     if name == "pytest":
         paths = _pytest_scope(changed)
-        if paths == WHOLE_SUITE:
-            return cmd  # not localisable: run every test
         if not paths:
             return None  # nothing the Python tests cover moved
+        cmd = _scoped_coverage(cmd, changed)
+        if paths == WHOLE_SUITE:
+            return cmd  # not localisable: run every test
         return [*cmd, *paths]
     return cmd
+
+
+def _scoped_coverage(cmd: list[str], changed: list[str]) -> list[str]:
+    """Measure coverage over the touched source files only.
+
+    The gate that reads the data judges just the ``src/esolangs`` files the
+    branch touched, so measuring the whole package is overhead spent on files
+    nothing will look at.  Whole-package ``--cov --cov-branch`` costs 13s on
+    top of a 27s run; an ``include`` of the touched files costs nothing
+    measurable, because sys.monitoring never instruments the rest.  A branch
+    that touched no source file measures nothing at all -- the gate skips on
+    its own, having no targets.
+
+    coverage refuses ``include`` beside ``source`` (it warns and ignores the
+    include), so this cannot be a pyproject default; the rc is written for
+    the run and replaces the pyproject one for *measurement* only.  Reporting
+    is untouched: the gate reads the data through ``coverage json``, which
+    consults pyproject and so keeps ``exclude_lines``.
+    """
+    if "--cov" not in cmd:
+        return cmd
+    touched = [
+        f for f in changed if f.startswith("src/esolangs/") and f.endswith(".py")
+    ]
+    without = [c for c in cmd if c not in ("--cov", "--cov-branch", "--cov-report=")]
+    if not touched:
+        return without
+    fd, rc = tempfile.mkstemp(prefix="verify-coverage-", suffix=".rc")
+    with os.fdopen(fd, "w") as f:
+        f.write("[run]\ncore = sysmon\nbranch = True\ninclude =\n")
+        f.writelines(f"    {path}\n" for path in touched)
+    atexit.register(os.unlink, rc)
+    return [*without, "--cov", f"--cov-config={rc}", "--cov-report="]
 
 
 def _parse_only_skip() -> tuple[set[str] | None, set[str] | None, bool, bool, bool]:
