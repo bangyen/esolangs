@@ -416,7 +416,20 @@ force enough to defeat every compensation matching: negative complex
 operands (legal, and measured near-empty for sign flips of real builds
 above) or left-half-plane cofactor roots (the executed legal multiple
 `x^2 + x + 1` is mildly one; its mass still sits above the
-right-half-plane floor, measured not proved).  The LLL sweep below never
+right-half-plane floor, measured not proved).  The one cofactor family
+with *exact* magnitude matches -- the counterexample's own move, one
+negated partner `x + p**v` per real instruction root, legal because
+`convert` reads real roots only as positive prime powers, and executed
+(decode and output identical on a five-instruction printer) -- is priced,
+and it is mass-negative: it zeroes every odd coefficient of the realified
+part while each survivor roughly squares, total digit mass x1.51..1.58 on
+the dense n=3..6 builds and strictly monotone in the partners added,
+24/24 at n=4 (`notes/poly_mirror_multiple.py`).  The toy above saves only
+against `(x-2)^2(x-3)^2`, a multiple nothing forces; against the program
+`(x-2)(x-3)` itself the mirror is strictly more text.  So exact
+magnitude matching cancels coefficients without moving mass, and a
+working left-half-plane cofactor needs inexact magnitude relations.  The
+LLL sweep below never
 searched that region for cancellation, so the sparse-multiple question is
 now exactly a left-half-plane question.
 

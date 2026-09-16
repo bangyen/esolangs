@@ -207,7 +207,13 @@ The candidate list is empty.
   4% with `mass/m^2` rising throughout, so deep-LHP *operands* alone do
   not bend the growth and what remains is the left-half-plane
   *multiple*.  Bounded like every search here: b = 1, operand range
-  twice the prime, greedy descent.  Shipping the
+  twice the prime, greedy descent.  Within that multiple lane the one
+  exact-magnitude family -- a negated mirror partner `x + p**v` per real
+  instruction root, the theorem counterexample's own move, legal and
+  executed -- is priced mass-negative: x1.51..1.58 total digits on dense
+  n=3..6, strictly monotone per partner
+  (`notes/poly_mirror_multiple.py`), so the lane is pinned to inexact
+  magnitude relations.  Shipping the
   factored form instead is not
   available: the parser reads only summed monomials and misreads a product
   silently (`notes/poly_factored_probe.py`).
