@@ -31,17 +31,17 @@ that to 50, two squarings to 6,250,000, and ``ɹ`` jumps to that character
 offset; any offset past the end halts.  ``ɹ``'s own syllable needs a vowel,
 and the jump makes that vowel dead code.
 
-The squaring count is what *bounds the generator's arity*, so it is chosen
-against that rather than minimised.  One squaring already reaches 2500 and
-suffices through ``n == 4`` (1801 characters), but it caps the generator
-there: ``n == 5`` is 3673 characters and would have to be refused.  A second
-squaring costs two characters per leaf and carries the reach to 6,250,000,
-past ``n == 8``.  Zero squarings genuinely fails -- the gadget reaches only
-50 and lands back inside the program -- which is what makes this a measured
-floor and not a guess.  The margin is checked against the emitted program
-rather than assumed (see :data:`_HALT_REACH` and the guard in
-:func:`cvnc`), so an arity that outgrew it raises instead of emitting a
-program that silently re-enters itself.
+The squaring count is what *bounds the program the gadget can escape*, so
+it is chosen against the emitted program rather than fixed.  One squaring
+reaches 2500 and suffices through ``n == 4`` (1801 characters); ``n == 5``
+is 3673 characters and needs the second, which costs two characters per
+leaf and reaches 6,250,000, past ``n == 15``.  Zero squarings genuinely
+fails -- the gadget reaches only 50 and lands back inside the program --
+which is what makes this a measured floor and not a guess.  Two is the
+floor every program starts from, and :func:`cvnc` adds a squaring whenever
+the program is not shorter than the reach: each one squares the reach and
+lengthens the program by two characters per leaf, so the loop stops for
+every finite table, and the program never outgrows its own halt.
 
 Because the then-arm always halts, the ``ʋ`` is never executed at all: it
 exists only so the ``ɰ̊`` has something to match against, which the language
@@ -97,7 +97,6 @@ Measured over every table at ``n <= 3`` and 300 sampled at ``n == 4``, that
 is 13.8% and 17.9% shorter respectively, and no table grows.
 """
 
-from esolangs.exceptions import GeneratorCapError
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
     _validate_truth_table,
@@ -146,22 +145,31 @@ _FETCH_BACK = "cuɲ"
 # from the smaller (48) is what the reach must be computed against.
 _HALT_ENTRY = _ASCII_ZERO
 
-# Squarings in the gadget.  One is the measured floor (with none the gadget
-# reaches only 50 and lands back inside the program), but the count bounds
-# the generator's arity rather than just its correctness: one reaches 2500
-# and caps it at n == 4, two reach 6.25M and carry it past n == 8 for two
-# characters per leaf.  See the module docstring.
+# Squarings every gadget starts with.  One is the measured floor (with none
+# the gadget reaches only 50 and lands back inside the program); two reach
+# 6.25M, past every arity worth asking for, and :func:`cvnc` adds more only
+# when the program says so.  See the module docstring.
 _HALT_SQUARINGS = 2
 
-# Jump past the end of the program, which halts.  Two increments take the
-# digit to 50 and two squarings take that to 6,250,000; ``ɹ`` then jumps to
-# that character offset.  The ``i`` after ``ɹ`` is the vowel its syllable needs
-# and is unreachable, since the jump has already left.
-_HALT = _INCREMENT * 2 + "cæ" * _HALT_SQUARINGS + "ɹi"
 
-# The offset _HALT reaches, and so the longest program it can escape from.
-# Checked against the emitted program rather than assumed.
-_HALT_REACH = (_HALT_ENTRY + 2) ** (2**_HALT_SQUARINGS)
+def _halt(squarings: int) -> str:
+    """Return the gadget that jumps past the end of the program, which halts.
+
+    Two increments take the digit to 50 and each ``cæ`` squares it; ``ɹ``
+    then jumps to that character offset.  The ``i`` after ``ɹ`` is the vowel
+    its syllable needs and is unreachable, since the jump has already left.
+    """
+    return _INCREMENT * 2 + "cæ" * squarings + "ɹi"
+
+
+def _reach(squarings: int) -> int:
+    """Return the offset the gadget lands on: the longest program it escapes."""
+    return (_HALT_ENTRY + 2) ** (2**squarings)
+
+
+# The gadget every candidate is measured with; ``ɹ`` occurs nowhere else in
+# an emitted program, so replacing the gadget string replaces every gadget.
+_HALT = _halt(_HALT_SQUARINGS)
 
 
 def _leaf(answer: str, accumulator: int) -> str:
@@ -351,11 +359,19 @@ def cvnc(truth_table: str) -> str:
     The input order selects the read strategy. Stream order reads at its
     nodes; a reordered tree reads every input into the deque first. Every
     order is measured and the shortest emitted program wins.
+
+    The halt gadget must land past the end of the program it is in, so a
+    program that is not shorter than the gadget's reach gets one more
+    squaring in every gadget, and again until it fits.  The contest is run
+    once, with the starting gadget: a squaring adds the same two characters
+    to every leaf, and the reach it buys dwarfs the length it adds.
     """
     # Called for the refusal: a one-entry table has no input to read or
     # branch on, and the arity itself is not needed below.
     _validate_truth_table(truth_table)
     program = best_input_order(truth_table, _ordered_candidate)
-    if len(program) >= _HALT_REACH:
-        raise GeneratorCapError("program outgrew the halting goto's reach")
+    squarings = _HALT_SQUARINGS
+    while len(program) >= _reach(squarings):
+        squarings += 1
+        program = program.replace(_halt(squarings - 1), _halt(squarings))
     return program

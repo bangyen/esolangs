@@ -34,7 +34,6 @@ The candidate list is empty.
   | %^2^-1 | Exception | Open | Linear | Linear |
   | 6-5 | Cap | Linear | Linear | Linear |
   | Circlefuck | Total | Open | Linear | Linear |
-  | CV(N)(C) | Cap | Linear | Linear | Linear |
   | Factor | Cap | Language lower bound | Language lower bound | Linear |
   | NoComment | Cap | Linear | Linear | Linear |
   | Polynomial | Cap | Open | Open | Linear |
