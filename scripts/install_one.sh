@@ -28,6 +28,17 @@ if ! command -v python3 >/dev/null 2>&1; then
     exit 1
 fi
 
+# And a python3 new enough to run what this installs.  The interpreters use
+# PEP 695 type aliases, so an older one gets a SyntaxError out of a file it
+# just downloaded, pointing at a line it did not write.  Checked here, where
+# the message can name the version, rather than left to the bundle.
+if ! python3 -c 'import sys; sys.exit(sys.version_info < (3, 12))'; then
+    have="$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
+    echo "install_one: python3 3.12 or newer is required, found $have" >&2
+    echo "  the interpreters use syntax $have cannot parse" >&2
+    exit 1
+fi
+
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
