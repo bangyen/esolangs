@@ -61,8 +61,22 @@ The candidate list is empty.
   not come from its parent's.  Vandevelo x2.9 dense (0.27 s at n=12,
   from x3.6 and 1.3 s, parity x1.9): the peel scores ~50 candidate
   directions per round on a 2**n-bit mask over Theta(T) rounds, the
-  integer bit-vector class, Theta(T^2 / word) with a small constant; a
-  linear build needs a different popularity count, not a faster shift.
+  integer bit-vector class, Theta(T^2 / word) with a small constant.  A
+  faster shift does not help, and neither does carrying first-round
+  popularities across peels: a cube's first round scores the whole
+  remainder, and in the dense regime its second round's set
+  `B & (B ^ v)` is still a constant fraction of it.  A linear peel needs
+  sampled popularity, which changes the cover and so the program -- a
+  size contest against the shipped output, not a refactor.  `%^2^-1`
+  x4.2 is bookkeeping rather than search: the dense n=10 plan takes 1360
+  fold steps for 1346 merges with no backtracking, but every step
+  re-sorts the whole T-point state in the planner, rescans every
+  mirrored position in the emitter, and copies the merged point's row
+  ids, while a step only shifts every survivor by one constant, doubles
+  everything, or merges k victims into one point.  A lazy-offset sorted
+  state with shared row-id sets makes it O(T log T) byte-identically;
+  that touches the ten planner consumers of `_FoldState` and the
+  emitter mirror.
   BFStack, BrainIf, LaserFuck, RAM0
   and Jaune left the execution column the same way: BFStack's ``[`` scanned
   for its ``]`` on every skip, and the other four rebuilt a whole immutable
@@ -94,7 +108,23 @@ The candidate list is empty.
   cross terms, a dot product by multiplication) leaves other entries or
   monomials above it.  Refuted by an op-string family of length O(T) that
   computes an arbitrary column from the index, or from `2 ** (K +- q)`,
-  which the chain can emit in O(n) characters.
+  which the chain can emit in O(n) characters.  A readout that tolerates
+  junk above the answer is refuted too: every op but `s` is monotone on
+  non-negative values and `~` needs the exact 48 or 49, so after the last
+  squaring the readout is a monotone map onto two values -- a threshold
+  in value order -- and anything else needs another `s`, which is a fold
+  with a unary centre.
+
+  The four remaining `Cap` rows each have a lift the ledger records, and
+  none of the lifts is linear on the default interpreter: 6-5 refuses
+  only at n=36, a 2**36-entry table; ZTOALC L's unconditional start
+  `2**k` is a `2**k`-line program; NoComment's bits need one cell each
+  under the embed-once rule, so a code-resident tree that walks every
+  arm with per-level alive cells (O(1) per node, no skip over an arm)
+  moves the cap from n=12 to about n=800 on the 4096-cell tape but does
+  not remove it; Polynomial's cap is priced in [polynomial](polynomial.md).
+  CV(N)(C) left: its halt gadget squares once more whenever the program
+  is not shorter than its reach, two characters per leaf.
 
   Treat every emitted character as build work.  Input reordering is optional
   around the construction, but its work still counts toward end-to-end
