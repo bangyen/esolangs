@@ -63,6 +63,7 @@ from esolangs.registry import (
     resolve,
     wiki_url,
 )
+from esolangs.tagged import _Tagged, _Template
 
 # Imported private: it takes a *generator function*, not a language name, so
 # a caller reaching for ``esolangs.takes_width("LaserFuck")`` got False for
@@ -177,50 +178,6 @@ _STATE_MODELS = {
 }
 
 
-class _Template(str):
-    """A parameterized generator's template, tagged with the language.
-
-    A template is otherwise an ordinary string of source with ``{Xi}`` slots
-    in it, and that is the whole problem: :func:`instantiate` had no way to
-    tell whose it was, so it accepted any name and substituted *that*
-    language's setter code into another language's program.  The result was
-    not an error and not obviously wrong -- it ran, and answered::
-
-        mf = generate("Minifuck", "0110")     # XOR
-        instantiate("RAM0", mf, [0, 1])       # wrong language, no complaint
-        # ... and the program answers 0, where XOR of 0 and 1 is 1.
-
-    Syntax cannot catch that; the mismatched program was well-formed. So the
-    template carries its language and :func:`instantiate` compares.
-
-    The tag is an attribute on a ``str`` subclass rather than a wrapper type,
-    so a template stays a string everywhere else -- written to files,
-    printed, sliced.  Which means it does not survive a round trip through
-    disk, so a plain ``str`` is accepted unchecked: the check catches the
-    mistake where it is made and does not pretend to cover the file the CLI
-    wrote an hour ago.
-    """
-
-    language: str
-    unwrapped: str
-
-    def __new__(cls, text: str, language: str, unwrapped: str = "") -> "_Template":
-        """Return ``text`` tagged as ``language``'s template.
-
-        ``unwrapped`` is the same template before a width was applied, kept
-        because :func:`instantiate` cannot recover it: a reflow wrapper
-        leaves ordinary newlines behind and there is no way to tell the ones
-        it inserted from ones the generator meant.  Without it a width on
-        ``instantiate`` was a no-op for every parameterized language --
-        ``wrap_program`` declines to reflow a program that already has
-        newlines, which after ``generate(table, width)`` it always does.
-        """
-        template = super().__new__(cls, text)
-        template.language = language
-        template.unwrapped = unwrapped or text
-        return template
-
-
 def generate(language: str, truth_table: str, width: int | None = None) -> str:
     """Return a program in ``language`` computing ``truth_table``.
 
@@ -253,7 +210,7 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
         )
     check_width(width)
     if width is not None and _takes_width(fn):
-        return str(fn(truth_table, width))
+        return _Tagged(str(fn(truth_table, width)), resolved)
     if lang.id in parameterized_ids():
         # A template wraps like anything else.  It did not use to: a narrow
         # width broke a slot in half -- ``{X`` ending one line and ``1}``
@@ -266,7 +223,7 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
         # parameterized languages with a ``width`` that quietly did nothing.
         plain = str(fn(truth_table))
         return _Template(wrap_program(plain, lang.id, width), resolved, plain)
-    return wrap_program(str(fn(truth_table)), lang.id, width)
+    return _Tagged(wrap_program(str(fn(truth_table)), lang.id, width), resolved)
 
 
 def _is_template_for(template: str, name: str, truth_table: str) -> bool:
@@ -387,7 +344,7 @@ def instantiate(
     source: str = template
     if width is not None and LANGUAGES[name].id in WRAPPERS:
         source = getattr(template, "unwrapped", template)
-    return wrap_program(fill(source, bits), LANGUAGES[name].id, width)
+    return _Tagged(wrap_program(fill(source, bits), LANGUAGES[name].id, width), name)
 
 
 #: Characters a filename is made of, and a program mostly is not.
@@ -511,6 +468,15 @@ def check_program(
         raise ProgramError(
             f"program must be a string of source or a Path, got "
             f"{type(program).__name__}"
+        )
+    origin = getattr(program, "language", None)
+    if origin is not None and origin != name:
+        # The program says where it came from; a plain string does not and
+        # is taken at its word (see :class:`_Tagged`).
+        raise ProgramError(
+            f"this program was generated for {origin}, so running it as "
+            f"{name} would read it as {name} source -- which may well run, "
+            f"and answer nonsense"
         )
     if not isinstance(stdin, str):
         # ArgumentError, not ProgramError: the stdin is not the program, and
