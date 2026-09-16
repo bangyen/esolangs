@@ -1,9 +1,10 @@
 # Screening residue: what three spent audits are still worth
 
-Three `notes/` audits were mostly consumed by the work they prompted.  This
-keeps the part that outlived them and drops the working material.  Each
-section names its source and its date, and records what has shipped since,
-so nobody re-runs a screen whose candidates already landed.
+Three scratch audits were mostly consumed by the work they prompted, and
+were never tracked.  This keeps the part that outlived them and drops the
+working material.  Each section names its source and its date, and records
+what has shipped since, so nobody re-runs a screen whose candidates
+already landed.
 
 ---
 

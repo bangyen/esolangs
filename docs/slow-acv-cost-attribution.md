@@ -4,11 +4,12 @@ Replaces sixteen probe scripts (`acv_padding`, `acv_gaps`, `acv_tokens`,
 `acv_where`, `acv_pad`, `acv_seed_runs`, `acv_ccells`, `acv_reach_law`,
 `acv_yield`, `acv_pinned`, `acv_arrays`, `acv_routable`, `acv_scaling`,
 `acv_corpus`, `acv_drive`, `acv_cost_audit`) with their executed results.
-The prototype they all import, `notes/acv_swap.py`, is kept -- it is the
-only executable record of the retired pump-loop construction.
+Those scripts and the pump-loop prototype they drove were scratch and are
+not tracked; this document plus the reconstruction detail below is what
+the repository keeps of that lane.
 
-**All numbers below were re-executed 2026-09-15** against
-`notes/acv_swap.py` at commit `f90a2447`, not copied from the scripts'
+**All numbers below were re-executed 2026-09-15**, against the prototype
+as it stood at commit `f90a2447`, not copied from the scripts'
 docstrings.  Where a docstring disagreed with the run, the run wins and
 the disagreement is recorded.
 
@@ -214,30 +215,31 @@ artifact reads (span, token census, gap census) saw it.
 cited.**
 
 **A stale warning is worse than no warning.**  `acv_scaling.py`'s
-docstring says the `notes/acv_swap.py` in the primary checkout "is the
-older prototype that fails at n=2" and that real numbers require a copy
-from `.claude/worktrees/linearize-three/`.  That worktree no longer
-exists, and the warning is false: the current `notes/acv_swap.py` builds
-n=1 (160,307 tokens) and n=2 (338,619 tokens) without error.  It was
-fixed in place and the warning was never updated.
+docstring said the prototype in the primary checkout "is the older
+prototype that fails at n=2", and that real numbers required a copy from
+`.claude/worktrees/linearize-three/`.  That worktree no longer exists, so
+the pointer was dead -- and the warning was false anyway: the prototype
+built n=1 (160,307 tokens) and n=2 (338,619 tokens) without error.  It
+had been fixed in place and the warning was never updated.  Chasing the
+dead pointer cost most of an afternoon before the two-line check that
+settled it.
 
 ## Reproducing
 
-`notes/acv_swap.py` is importable (its `__main__` guard is inert on
-import).  Each measurement above is a short driver over it:
+The prototype these numbers were measured against is **not tracked** --
+it was a scratch file, and tracking research scratch only lets it drift
+out of step with the write-up that cites it.  Rebuild it from the
+reconstruction detail above; it is a builder that lays tokens at
+addresses and renders with the `" ".join(...)` shown at the top.
 
-```python
-import sys
-
-sys.path[:0] = ["notes", "src", "."]
-import acv_swap
-
-p = acv_swap.generate("0110")  # 338,619 tokens
-toks = p.split()
-```
-
-Span is `len(toks)`; written cells and gaps come from the builder's
-`text` dict; the token census is `collections.Counter(toks)`.
+Given such a builder exposing `generate(table)`, every measurement here is
+a few lines over the emitted string: span is `len(program.split())`,
+written cells and gaps come from the builder's `text` dict, and the token
+census is `collections.Counter(program.split())`.  The three cross-checks
+that make the headline safe are that written cells and span must grow at
+*different* rates, that the gaps must account for the difference, and that
+the span ratio must reproduce from a cold build (338,619 / 160,307 =
+2.112).
 
 ## Not verified
 

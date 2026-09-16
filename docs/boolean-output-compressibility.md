@@ -2,7 +2,7 @@
 
 Measured 2026-09-11 on `main` (92e42799).  Every boolean generator's output
 recorded and measured; this is about **program size**, not generator runtime
-(that is `notes/boolean-generator-optimization-audit.md`, a different axis).
+-- a different axis, measured separately and not recorded here.
 
 **Nothing here is a verified win.**  A size win needs the shortened program
 executed and the change priced against the standing compute budget.  These are
@@ -17,11 +17,11 @@ timeouts and no refusals -- every generator builds n=8 on both shapes.
 Two are not truth-table generators and were recorded in their own form:
 `jaune_multiply()` takes no table, `circlefuck_byte` takes a byte-valued one.
 
-Artifacts:
-
-- `notes/boolean_compressibility.csv` -- one row per (generator, n, shape):
-  raw bytes, zlib-9 bytes, ratio, growth, alphabet, run share, top repeat.
-- `notes/boolean_outputs.tar.gz` -- the 287 programs themselves (2MB packed).
+The run's artifacts -- a per-`(generator, n, shape)` table of raw bytes,
+zlib-9 bytes, ratio, growth, alphabet, run share and top repeat, and the
+287 programs themselves -- were scratch and are not tracked.  Everything
+load-bearing is in the tables below; regenerating the rest is a sweep over
+`generate()` and `zlib.compress(..., 9)`.
 
 **Reading the growth column.**  Normalized against 32x, the table's own growth
 from n=3 to n=8.  A generator linear in `table x n` lands near 2.7, so 1-3 is
