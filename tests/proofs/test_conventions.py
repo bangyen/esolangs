@@ -60,12 +60,25 @@ def _tables(n: int) -> tuple[str, str]:
 
 
 def _span(a: str, b: str) -> tuple[str, str]:
-    """The stretch on which two equal-length programs differ, as a pair."""
-    if a == b:
-        return "", ""
-    lo = next(i for i in range(len(a)) if a[i] != b[i])
-    hi = next(i for i in range(len(a) - 1, -1, -1) if a[i] != b[i])
-    return a[lo : hi + 1], b[lo : hi + 1]
+    """The stretches on which two equal-length programs differ, as a pair.
+
+    Taken row by row and joined with newlines, so a grid fill that writes
+    one input's cells on two rows (COD's swim and its return) yields those
+    cells and not the untouched rows between them.
+    """
+    zero, one = [], []
+    for x, y in zip(a.split("\n"), b.split("\n"), strict=True):
+        if x == y:
+            continue
+        if len(x) != len(y):  # a ragged grid moved a row's end: whole row
+            zero.append(x)
+            one.append(y)
+            continue
+        lo = next(i for i in range(len(x)) if x[i] != y[i])
+        hi = next(i for i in range(len(x) - 1, -1, -1) if x[i] != y[i])
+        zero.append(x[lo : hi + 1])
+        one.append(y[lo : hi + 1])
+    return "\n".join(zero), "\n".join(one)
 
 
 def _content_blank(embed: str) -> bool:

@@ -212,18 +212,17 @@ The candidate list is empty.
   (Bitdeque's `INVERT PUSH`, RAM0's `Z A`).  The first three are enforced
   (`tests/tools/test_boolean_parameterized.py`), the fourth was not, and
   `tests/proofs/test_conventions.py` now reads this table and measures
-  every cell: the embed is the span on which the two fills of one input
-  differ, and a blank left after deleting each single blank between two
-  non-blank characters is the violation.  Measured Sep 2026 on dense and
+  every cell: the embed is the span, row by row, on which the two fills
+  of one input differ, and a blank left after deleting each single blank
+  between two non-blank characters is the violation.  Measured Sep 2026 on dense and
   parity tables at n=2..6, every instantiation: single embed, constant
-  width and slot order hold for all eighteen, no spaces for fifteen.  `Open` means a command spelling is not ruled out; `Language`
+  width and slot order hold for all eighteen, no spaces for sixteen.  `Open` means a command spelling is not ruled out; `Language`
   means the alphabet leaves none.  A row is present while any cell is open
   and leaves when all four close.
 
   | Language | Single embed | Constant width | Slot order | No spaces |
   | --- | --- | --- | --- | --- |
   | ArrowQueue | Holds | Holds | Holds | Open |
-  | COD | Holds | Holds | Holds | Open |
   | Nopstacle | Holds | Holds | Holds | Language |
 
   Bitdeque left: above the arity the equal-width test covers (n=1..2)
@@ -239,9 +238,11 @@ The candidate list is empty.
   one-bit block is `~` amid blanks where the zero block is a dense `*` box
   (the walls that equalized the *count* left the cells blank); the trace
   that placed those walls -- an all-ones header travels column 3 only,
-  except on the entry row -- says where more may go.  COD's fill writes
-  water for one polarity; water spelled as a command (`)(` / `)<`) runs but
-  needs the fork box a column wider, a size cost, not a wall.  Nopstacle's
+  except on the entry row -- says where more may go.  COD left: its fill
+  wrote a one bit as water along the swim and the return, and those cells
+  are `_` now, which reacts only to a cod moving north where the route
+  runs east and west; every row through n=6 executes at the same sizes.
+  Nopstacle's
   alphabet is the blank and `#`, so a zero bit *is* a blank and the trailing
   pad on its bit row is what keeps a zero row the width of a one row; there
   is no command to spell it with.
