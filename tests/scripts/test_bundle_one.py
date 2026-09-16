@@ -85,6 +85,8 @@ def _outcome(fn: object) -> tuple[str, str | None]:
 
 
 class TestBundleCompiles:
+    # Bundles and imports all 65 generated files.
+    @pytest.mark.medium
     def test_every_bundle_exposes_run(self, tmp_path: Path) -> None:
         """Every bundled file is importable and defines ``run``."""
         bundle_one = load_script()

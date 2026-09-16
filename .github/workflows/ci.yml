@@ -54,12 +54,13 @@ jobs:
         --enable=duplicate-code --min-similarity-lines=10
         --ignore-imports=yes src/esolangs scripts tests
 
-    # Twelve finite ArrowQueue lemmas, whose proof
-    # is total over every arity -- so nothing here enumerates tables to
-    # establish the claim.  0.8s, which is why this one gates while the A
-    # Painter Ant equivalent (5m40s) stays a by-hand `just apa-proof`.
-    - name: Check the ArrowQueue lemmas
-      run: uv run python tests/tools/arrowqueue_lemmas.py
+    # Every deep proof in the `ci` band and cheaper: the ArrowQueue and BIO
+    # lemmas, and the registry-wide battery. ~14s. Which proofs those are is
+    # not spelled out here -- each declares its own band, and
+    # tests/proofs/test_bands.py holds the bands to their cost budgets, so
+    # this step cannot quietly shrink.
+    - name: Check the deep proofs that gate
+      run: uv run python -m tests.proofs.deep ci
 
     # --all, not the touched-language default the local gate uses: this is
     # the run that holds exceptions.py's contract across all 69.  68s.

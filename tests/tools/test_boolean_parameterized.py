@@ -568,13 +568,18 @@ class TestParameterizedNoComment:
         return buffer.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools import parameterized
+        """Fill through the shipped filler, not a copy of it.
 
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda _i, b: "c" if b == 0 else "i",
-        )
+        The setter here is one character and the same at every position, so
+        a copy of it looks harmless -- but the generator counts instantiated
+        positions when it lays out the template, so a copy that drifted in
+        *width* would move every offset after it.  Minsky Swap's copy did
+        exactly that and the suite hung rather than failing, which is a
+        worse outcome than any this duplication was buying.
+        """
+        from esolangs.tools.examples import _fill_nocomment
+
+        return _fill_nocomment(tpl, bits)
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -917,15 +922,18 @@ class TestParameterizedRam0:
         return m.group(1)
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools import parameterized
+        """Fill through the shipped filler, not a copy of it.
 
-        # Z resets absolutely, so the setter is the same at every position:
-        # "Z A" for a one, "Z Z" for a zero, each exactly two commands.
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda _i, b: "Z A" if b else "Z Z",
-        )
+        ``Z`` resets absolutely, so the setter is the same at every
+        position -- ``Z A`` for a one, ``Z Z`` for a zero, two commands
+        either way -- which is what made a local copy look safe.  It is
+        still a second spelling of a construction the generator counts
+        positions against, and that is the shape that hung the suite when
+        Minsky Swap's copy drifted.
+        """
+        from esolangs.tools.examples import _fill_ram0
+
+        return _fill_ram0(tpl, bits)
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -1029,23 +1037,23 @@ class TestParameterizedMinskySwap:
         return io.getvalue().split()[1]
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools import parameterized
+        """Fill the template the way a caller does, not the way this file did.
 
-        n = len(bits)
+        This used to carry its own copy of the setter -- the same blocks,
+        padded to ``2**n``.  A copy of a construction is free to drift from
+        it, and this one did: when the generator shortened each block to its
+        own bit's weight, the copy went on emitting full-length ones, so the
+        template's jump targets addressed commands that were no longer
+        there.  The program did not fail, it ran off into a loop, and the
+        suite hung rather than reporting anything.
 
-        def set_bit(i: int, b: int) -> str:
-            if i == n - 1:  # LSB: length-4 block, no "~"
-                return "+*+*" if b else "****"
-            w = 2 ** (n - 1 - i)  # this bit's weight
-            if b:
-                return "+" * w + "*" * (2**n - w)
-            return "*" * 2**n
+        The shipped filler is the thing under test here anyway: what this
+        class pins is the truth table the instantiated program computes, and
+        that is checked below either way.
+        """
+        from esolangs.tools.examples import _fill_minsky_swap
 
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            set_bit,
-        )
+        return _fill_minsky_swap(tpl, bits)
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -1113,17 +1121,26 @@ class TestParameterizedMinskySwap:
         assert self.run_minsky_swap(program) == AND2[(bits[0] << 1) | bits[1]]
 
     def test_examples_fill_weights_the_non_lsb(self) -> None:
-        """A set non-LSB is its weight in ``+`` then a pad to the block size.
+        """A non-LSB block is its own weight long, in ``+`` or in ``*``.
 
-        The pad keeps every block the same even length, which is what stops
-        the register pointer drifting; ``"+*+*"`` is the LSB's exception.
+        Not padded to the table's length: equal width is required of a bit
+        against *itself*, so that the program's length cannot report the bit,
+        and block ``i`` owes block ``j`` nothing.  Padding them all to
+        ``2**n`` ran ``(n-1) * 2**n`` commands to load ``n`` bits.
+
+        The length stays even either way, which is what stops the register
+        pointer drifting -- a one does no swapping at all and a zero an even
+        number of swaps.  ``"+*+*"`` is the LSB's exception.
         """
         from esolangs.tools import minsky_swap
         from esolangs.tools.examples import AND2, _fill_minsky_swap
 
         template = minsky_swap(AND2)
-        assert "++**" in _fill_minsky_swap(template, [1, 1])
-        assert "++**" not in _fill_minsky_swap(template, [0, 1])
+        # Weight 2 at the MSB of a two-input table, so two commands, and the
+        # LSB's four -- six, where padding to the table gave eight.
+        assert _fill_minsky_swap(template, [1, 1]).startswith("++ +*+*")
+        assert _fill_minsky_swap(template, [0, 1]).startswith("** +*+*")
+        assert "++**" not in _fill_minsky_swap(template, [1, 1])
 
 
 class TestParameterizedArrowQueue:
@@ -1633,15 +1650,9 @@ class TestParameterizedCOD:
         return io_.getvalue()
 
     def instantiate(self, tpl: str, bits: list[int]) -> str:
-        from esolangs.tools import parameterized
+        from esolangs.tools.cod import _instantiate_cod
 
-        # each {Xi} sets the cod's value to the bit: ')' for one, space
-        # for zero, read at the start of that input's '+' fork
-        return parameterized.instantiate(
-            tpl,
-            bits,
-            lambda _i, b: ")" if b else " ",
-        )
+        return _instantiate_cod(tpl, bits)
 
     @pytest.mark.parametrize(
         "table",
@@ -1764,11 +1775,11 @@ class TestParameterizedCOD:
     @pytest.mark.parametrize(
         ("table", "rows", "columns"),
         [
-            ("01", 5, 20),
-            ("0110", 9, 44),
-            ("0001", 9, 44),
-            ("11110000", 8, 20),
-            ("01101001", 17, 96),
+            ("01", 2, 7),
+            ("0110", 2, 9),
+            ("0001", 2, 9),
+            ("11110000", 2, 13),
+            ("01101001", 2, 13),
         ],
     )
     def test_the_template_has_exact_dimensions(
@@ -1793,22 +1804,6 @@ class TestParameterizedCOD:
         grid = parameterized.cod(table).split("\n")
         assert len(grid) == rows
         assert max(len(row) for row in grid) == columns
-
-    def test_a_dead_box_wall_frames_its_contents(self) -> None:
-        """The wall is two wider than the names it encloses.
-
-        One name gives ``~~~`` and two give ``~~~~``: a wall that grew or
-        shrank by one would still draw a box, and the cod would still be
-        trapped in it, since what stops the cod is meeting a wall at all
-        rather than the wall's length.
-        """
-        from esolangs.tools.cod import _cod_dead_box
-
-        one = _cod_dead_box((0,)).split("\n")
-        assert one == ["~~~", "~{X0}~", "~~~"]
-
-        two = _cod_dead_box((0, 1)).split("\n")
-        assert two == ["~~~~", "~{X0}{X1}~", "~~~~"]
 
     def test_the_grid_uses_only_cod_characters(self) -> None:
         """Nothing but the language's glyphs, the slots, and layout space."""
@@ -1838,9 +1833,28 @@ class TestParameterizedCOD:
         """
         from esolangs.tools import parameterized
 
-        for table in ("11110000", "00001111", "10101010"):
-            assert len(parameterized.cod(table)) == 113, table
-        assert len(parameterized.cod("01101001")) == 1504
+        for table in ("11110000", "00001111", "10101010", "01101001"):
+            assert len(parameterized.cod(table)) == 26, table
+
+    def test_template_and_program_are_linear(self) -> None:
+        """The complete table strip costs one cell per truth-table entry."""
+        from esolangs.tools import parameterized
+
+        for n in range(1, 9):
+            size = 1 << n
+            template = parameterized.cod("01" * (size // 2))
+            assert len(template) == size + 4 * n + 6
+            for bits in ([0] * n, [1] * n):
+                assert len(self.instantiate(template, bits)) == 4 * size + 23
+
+    def test_fill_rejects_a_mismatched_template(self) -> None:
+        """The fill cannot silently use the wrong arity or answer count."""
+        from esolangs.tools.cod import _instantiate_cod
+
+        with pytest.raises(ValueError, match="bits do not match"):
+            _instantiate_cod("{X1}\n~~~~  ~", [0])
+        with pytest.raises(ValueError, match="bits do not match"):
+            _instantiate_cod("{X0}\n~~~~ ~", [0])
 
     def test_constant_table_rejected(self) -> None:
         """n == 0 (a single-entry table, no inputs) is not supported."""
@@ -1872,7 +1886,7 @@ class TestParameterizedCOD:
             got = self.run_cod(self.instantiate(template, [x0]))
             assert got == f"{table[x0]}", f"table {table} input {x0}"
 
-    def test_a_width_turns_the_drawing_a_quarter_turn(self) -> None:
+    def test_every_input_has_the_same_linear_width(self) -> None:
         """Turning beats banding, because the blocks are joined left to right.
 
         Banding trades width for height one block at a time; turning trades
@@ -1887,29 +1901,16 @@ class TestParameterizedCOD:
             zeros = [0] * n
             flat = self.instantiate(cod_module(table), zeros)
             wide = max(len(row) for row in flat.splitlines())
-            turned = self.instantiate(cod_module(table, 1), zeros)
-            floor = max(len(row) for row in turned.splitlines())
-            assert floor == 2 ** (n + 1) + 1, (table, floor)
-            assert floor < wide, table
-            for width in (1, 20, 40, 80, wide):
-                template = cod_module(table, width)
-                columns = max(
-                    len(row) for row in self.instantiate(template, zeros).splitlines()
-                )
-                assert columns <= max(width, floor), (table, width, columns)
-                for combo in range(2**n):
-                    bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                    got = self.run_cod(self.instantiate(template, bits))
-                    assert got.strip() == table[combo], (table, width, bits)
+            assert wide == 2**n + 5
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                program = self.instantiate(cod_module(table), bits)
+                assert max(map(len, program.splitlines())) == wide
 
     def test_the_turn_re_attaches_every_print(self) -> None:
         """``---`` prints only as a *horizontal* run touching an edge.
 
-        Turned, each of the cascade's ``2 ** n`` prints would be three
-        vertical dashes -- three ``-`` removals -- and the cod would die
-        with nothing printed, which is the worst way for this to be wrong.
-        So each gets a corridor to a ``---`` at the left edge, and there
-        must still be one per table row.
+        Every selected answer now reaches one shared print at the left edge.
 
         The run has to be *exactly* three: the interpreter only counts a
         run of three, so a fourth dash would turn a print into four
@@ -1920,10 +1921,10 @@ class TestParameterizedCOD:
         from esolangs.tools import cod as cod_module
 
         table = "01101001"
-        turned = self.instantiate(cod_module(table, 1), [0, 0, 0])
+        turned = self.instantiate(cod_module(table), [0, 0, 0])
         rows = turned.splitlines()
         prints = [row for row in rows if row.startswith("-")]
-        assert len(prints) == len(table), (len(prints), len(table))
+        assert len(prints) == 1
         for row in prints:
             assert row.startswith("---"), row
             assert not row.startswith("----"), row

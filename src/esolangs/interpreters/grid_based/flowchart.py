@@ -134,7 +134,7 @@ and simply stops emitting.  No :class:`HaltError` is raised at EOF.
 """
 
 import sys
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import Literal, assert_never
 
 from esolangs.interpreters.io import IO
@@ -220,6 +220,58 @@ def _turn_right(d: tuple[int, int]) -> tuple[int, int]:
     return (d_col, -d_row)
 
 
+class _Memory:
+    """Where a pointer last left each cell it has been through.
+
+    A map, and it was spelled as a tuple of pairs: reading one cell scanned
+    it and recording one rebuilt it, both in Python, so a pointer that had
+    been through Theta(T) cells paid Theta(T) per step.
+
+    Still a value.  Nothing here mutates after construction, so a fork may
+    share one freely; a record returns a new memory, which is what lets two
+    generations be compared and a loop be proved.  The copy is a ``dict``
+    copy done in C, where the rebuild was a comprehension.
+
+    The pointer's own hashability is not what the pairs were buying -- it is
+    never hashed; :meth:`_Pointer.state` builds the hashable view the cycle
+    detector compares, and did so already.  This is hashable anyway, since
+    that is cheap to keep and a value ought to be.
+    """
+
+    __slots__ = ("_digest", "_exits")
+
+    def __init__(self, exits: dict[tuple[int, int], tuple[int, int]]) -> None:
+        """Take ownership of ``exits``; callers must not keep a reference."""
+        self._exits = exits
+        self._digest: int | None = None
+
+    def exit_from(self, cell: tuple[int, int]) -> tuple[int, int] | None:
+        """Return the heading this pointer last left ``cell`` on."""
+        return self._exits.get(cell)
+
+    def leaving(self, cell: tuple[int, int], d: tuple[int, int]) -> "_Memory":
+        """Return this memory with ``cell``'s exit heading recorded."""
+        exits = dict(self._exits)
+        exits[cell] = d
+        return _Memory(exits)
+
+    def sorted_items(self) -> tuple[tuple[object, ...], ...]:
+        """Return the exits in a fixed order, for the snapshot."""
+        return tuple(sorted(self._exits.items()))
+
+    def __eq__(self, other: object) -> bool:
+        """Memories are equal when they record the same exits."""
+        if not isinstance(other, _Memory):
+            return NotImplemented
+        return self._exits == other._exits
+
+    def __hash__(self) -> int:
+        """Hash the exits, computed once -- a memory never changes."""
+        if self._digest is None:
+            self._digest = hash(frozenset(self._exits.items()))
+        return self._digest
+
+
 @dataclass(frozen=True)
 class _Pointer:
     """One program pointer: a position, a heading, a register, a cursor.
@@ -231,8 +283,8 @@ class _Pointer:
 
     Frozen: a step returns the pointers that follow rather than editing the
     ones it was handed, so a pointer is a value.  ``replace`` builds the
-    changed copy, and ``memory`` is a tuple of pairs so the whole pointer
-    stays hashable -- which is what :meth:`state` already wanted it to be.
+    changed copy, and ``memory`` is a :class:`_Memory` -- itself a value, so
+    a fork shares one rather than copying it.
     """
 
     row: int
@@ -248,19 +300,15 @@ class _Pointer:
     # re-entry a property of the pointer ("a node or path *it's* been
     # through"), so each carries its own; a node's entry is keyed by its
     # anchor cell, not by whichever column the pointer stood on.
-    memory: tuple[tuple[tuple[int, int], tuple[int, int]], ...] = ()
+    memory: _Memory = field(default_factory=lambda: _Memory({}))
 
     def remembered(self, cell: tuple[int, int]) -> tuple[int, int] | None:
         """Return the heading this pointer last left ``cell`` on."""
-        for key, value in self.memory:
-            if key == cell:
-                return value
-        return None
+        return self.memory.exit_from(cell)
 
     def remembering(self, cell: tuple[int, int], d: tuple[int, int]) -> "_Pointer":
         """Return this pointer with ``cell``'s exit heading recorded."""
-        kept = tuple((k, v) for k, v in self.memory if k != cell)
-        return replace(self, memory=(*kept, (cell, d)))
+        return replace(self, memory=self.memory.leaving(cell, d))
 
     def state(self) -> tuple[object, ...]:
         """Return this pointer's state, hashable for cycle detection."""
@@ -272,7 +320,7 @@ class _Pointer:
             self.deque,
             self.done,
             self.prev,
-            tuple(sorted(self.memory)),
+            self.memory.sorted_items(),
         )
 
 
