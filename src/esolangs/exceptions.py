@@ -198,12 +198,14 @@ class InputExhaustedError(EsolangError, EOFError):
 class GeneratorCapError(EsolangError, ValueError):
     """A boolean generator refusing a table that is too big for it.
 
-    Deliberate, and that is the whole point of the class.  Five generators
-    stop rather than build: Factor's encoded integer outgrows its digit
-    budget, Polynomial emits one instruction per prime and runs out of them,
-    WII2D's decode spans more points than its cost guard allows, ZTOALC L
-    needs more command lines than its committed anchors offer, and
-    Interprogck8 cannot find a rung slot for a jump.
+    Deliberate, and that is the whole point of the class.  Three generators
+    stop rather than build: Polynomial emits one instruction per prime and
+    runs out of them, WII2D's decode spans more points than its cost guard
+    allows, and ZTOALC L needs more command lines than its committed
+    anchors offer.  Two more used to -- Interprogck8 could fail to find a
+    rung slot for a jump, and Factor refused past a digit budget that was a
+    size policy rather than the language's -- and both build every table
+    now.
 
     All five used to raise a plain :class:`ValueError` -- Interprogck8 a
     *private* ``_StuckError`` nothing exported, so a caller could not name
@@ -219,8 +221,8 @@ class GeneratorCapError(EsolangError, ValueError):
     This is also the answer to "what is this generator's maximum arity?",
     which ``describe`` deliberately does not carry.  The caps are not
     arity-bounded: Polynomial refuses on how many minterms a table needs and
-    Factor on how many digits it encodes to, so a sparse table can build at
-    a size where a dense one is refused.  A per-language number would be
+    WII2D on how many index points its decode spans, so a sparse table can
+    build at a size where a dense one is refused.  A per-language number would be
     wrong for half the tables it was consulted about; catching this is
     right for all of them.
     """

@@ -53,14 +53,10 @@ class TestADeliberateRefusalIsAnEsolangError:
 
     #: The ones that stop rather than build, and the arity that trips each.
     #: Only these are built here: the rest succeed at n=11 and several take
-    #: minutes to do it.
-    #:
-    #: Factor's is 13 rather than 11 because its cap is on the *encoded
-    #: integer's* digit count and not on ``n`` -- shrinking the decision
-    #: tree moved the trip point two arities up, and it now builds a dense
-    #: n=12 table in under three seconds.  Carried per language rather than
-    #: as one table, because a shared n=11 quietly stopped testing Factor at
-    #: all: the ``pytest.raises`` simply saw the program get built.
+    #: minutes to do it.  Carried per language rather than as one table:
+    #: Factor's cap was on the encoded integer's digits, not on ``n``, and
+    #: a shared n=11 quietly stopped testing it at all -- the
+    #: ``pytest.raises`` simply saw the program get built.
     #:
     #: **Interprogck8 was here and is not a refuser any more.**  Linearizing
     #: it retired the repair loop its cap existed for, so the cap and its
@@ -68,10 +64,10 @@ class TestADeliberateRefusalIsAnEsolangError:
     #: -- a dense n=13 table builds in about twelve seconds.  Which is the
     #: failure Factor's note warns about, in the other direction: the entry
     #: stayed behind and the ``pytest.raises`` saw the program get built.
-    #: Re-add it only against a raise, not against a hope.  NoComment never
-    #: joined the list: its chain builds at any arity.
+    #: Re-add it only against a raise, not against a hope.  Factor left when
+    #: its digit budget was retired (a size policy, never the language's),
+    #: and NoComment never joined: its chain builds at any arity.
     _REFUSERS: ClassVar[dict[str, int]] = {
-        "Factor": 13,
         "Polynomial": 11,
         "WII2D": 11,
         "ZTOALC L": 11,
@@ -173,25 +169,23 @@ class TestEveryAuditedCapIsCatchable:
         assert "Five do" not in esolangs.generate.__doc__
 
 
-class TestCapMessagesNameOnlyReachableRemedies:
-    """Factor's told you to pass a parameter the public API has not got."""
+class TestFactorHasNoDigitBudget:
+    """Its refusal named ``max_digits``, a knob the public API never had.
+
+    The knob and the budget are gone together: the integer is arbitrary
+    precision on both sides, so the public API builds every table.
+    """
 
     @pytest.mark.slow
-    def test_factor_does_not_name_a_private_knob(self) -> None:
-        """`generate(language, truth_table, width)` has no `max_digits`.
-
-        n=13, not the n=11 this used to use: Factor's cap counts digits in
-        the encoded integer rather than inputs, and the decision tree got
-        small enough that n=11 and n=12 now build.  At n=11 this passed by
-        never reaching the message it is about.
-        """
+    def test_the_arity_that_used_to_refuse_builds(self) -> None:
+        """Dense n=13 was the 500000-digit refusal; it is 705048 digits now."""
         import random
 
         rng = random.Random(7)
         table = "".join(rng.choice("01") for _ in range(2**13))
-        with pytest.raises(esolangs.GeneratorCapError) as exc:
-            esolangs.generate("Factor", table)
-        assert "max_digits" not in str(exc.value)
+        program = esolangs.generate("Factor", table)
+        assert program.isdigit()
+        assert len(program) > 500_000
 
 
 class TestErrorsSurviveAProcessBoundary:

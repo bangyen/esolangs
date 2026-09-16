@@ -402,20 +402,43 @@ class TestFactor:
         )
         assert sys.get_int_max_str_digits() == before
 
-    def test_max_digits_bounds_one_call(self) -> None:
-        """``max_digits`` is the cap, and it names the size it refused.
+    def test_the_render_works_under_an_unlimited_global(self) -> None:
+        """``sys.set_int_max_str_digits(0)`` means unlimited, not zero.
 
-        The count is a bit-length estimate, not a conversion: sizing it
-        exactly means doing the very thing the check exists to avoid.  It is
-        asserted as the "about" it reports -- it lands one over XOR4's real
-        1702 digits, which is the point: it is a bound, not a count.  The
-        limit has to stay restored on the refusing path too.
+        Read as a ceiling, 0 sent every render over it and then asked for
+        a limit below CPython's 640 floor, a ``ValueError`` on every table.
         """
         before = sys.get_int_max_str_digits()
-        xor4 = "".join("1" if bin(i).count("1") % 2 else "0" for i in range(16))
-        with pytest.raises(ValueError, match="about 1703 digits"):
-            boolean.factor(xor4, max_digits=1000)
-        assert sys.get_int_max_str_digits() == before
+        sys.set_int_max_str_digits(0)
+        try:
+            assert boolean.factor("0110").isdigit()
+        finally:
+            sys.set_int_max_str_digits(before)
+
+    @pytest.mark.slow
+    @pytest.mark.weekly
+    def test_total_past_the_retired_digit_budget(self) -> None:
+        """No digit budget: the 500000-digit refusal is gone (dense n=13).
+
+        705048 digits, and the interpreter decodes it to the tree the
+        generator encoded.  That decode is the whole load cost, quadratic
+        in the digits (n=12 parity's 460824 took 43s), so the rows run on
+        the decoded machine -- the object ``_Machine.step`` drives --
+        rather than through 8192 re-factorizations; ``weekly`` like the
+        other high-arity probes.
+        """
+        from esolangs.interpreters.tape_based.factor import _parse, decode
+        from tests.tools.test_boolean_contract import _dense
+
+        n = 13
+        table = _dense(n)
+        program = boolean.factor(table)
+        assert len(program) > 500_000
+        code = decode(_parse(program))
+        assert code == boolean.brainfuck(table)
+        for row in (0, 1, 2**12, 2**13 - 2, 2**13 - 1):
+            bits = [str((row >> (n - 1 - i)) & 1) for i in range(n)]
+            assert run_bf(code, bits) == table[row], row
 
 
 class TestSuffolk:
