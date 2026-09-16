@@ -207,8 +207,7 @@ The candidate list is empty.
   exact-magnitude family -- a negated mirror partner `x + p**v` per real
   instruction root, the theorem counterexample's own move, legal and
   executed -- is priced mass-negative: x1.51..1.58 total digits on dense
-  n=3..6, strictly monotone per partner
-  (`notes/poly_mirror_multiple.py`), so the lane is pinned to inexact
+  n=3..6, strictly monotone per partner, so the lane is pinned to inexact
   magnitude relations.  Shipping the
   factored form instead is not
   available: the parser reads only summed monomials and misreads a product
