@@ -84,10 +84,6 @@ multiple is `Omega(T^2/log^2 T)` on the whole plane.  What remains is a
 left-half-plane multiple with more terms than Descartes requires, see
 [polynomial](polynomial.md).
 
-**Vandevelo's register upkeep** is `O(T log log T)` worst case and unproven
-O(T); guard parts are O(T) by Cohen--Shinkar.  Measured flat at 8.1--8.9
-characters per entry, n=8..12.
-
 ### Execution time
 
 Source size and execution time are separate axes.  Execution is measured for
