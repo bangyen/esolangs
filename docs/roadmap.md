@@ -249,6 +249,19 @@ The candidate list is empty.
   pad on its bit row is what keeps a zero row the width of a one row; there
   is no command to spell it with.
 
+  The fill itself is standard for fifteen of the eighteen: the example's
+  `fill` calls `helpers.instantiate` with a per-bit setter, and nothing
+  else.  ArrowQueue's slots are rows of their own so its blocks substitute
+  in place (byte-identical to the header rebuild it replaced, n=1..6), A
+  Painter Ant's linear route is a setter, and %^2^-1's setter is read
+  off the template's own header.  Three are not substitutions.  COD's
+  bit has to appear twice -- the swim east and the return west both end
+  at the selected column, and without the wall there the drop is a random
+  junction -- so a single-embed COD is a new construction (carry the row
+  in the cod's value), not a fill.  Nopstacle and Crement are prototypes
+  that evaluate the table in the host and record the bits as a comment;
+  they need a generator before they can have a fill.
+
   Two candidate conventions are not adopted.  *Rectangular*: every row of a
   grid the same width.  COD and Nopstacle hold it; the other four grids are
   ragged, and padding them writes blanks into the drawing rather than the
