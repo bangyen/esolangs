@@ -185,5 +185,22 @@ unbalanced profiles, norm bounds -- is closed above.  Conjectured
 NP-completeness would not forbid a bespoke family, so the row stays open
 rather than closing as a wall.
 
+What such a multiple must look like, each a line and none a search.  Term
+killing does not reach it: the Rolle operator `x d/dx - c` behind Descartes
+deletes one term and loses at most one positive root, so the kernel rank
+`t - L` is invariant and the `(L+1)`-term theorem does not extend by
+reduction.  With `0` in the support (divide out `x^e_1`) every prime divides
+`f_0`, so `f_0` is at least the primorial and an O(T)-digit multiple has O(1)
+coefficients that large; `F(2) = 0` then puts the degree at or above
+`log2 f_0 - log2(sum of the other coefficients)`, so either the other
+coefficients sum to the primorial's square root or the degree is at least
+`0.72 L log L`.  A gap `g` between consecutive exponents has `2^g` at most
+the sum of the coefficients below it whenever the part above is nonzero at
+some prime; otherwise both parts are multiples with fewer terms and the mass
+adds, so the degree is at most `t log2(t H)`.  The `p`-adic Newton polygons
+add nothing past the primorial: a slope `-1` segment at every `p_i` is met by
+`p_i || f_0` and a term at `x^1`, as in `P` itself.  Checked on 48
+constructed multiples to `L = 7` with a split control.
+
 [sparse-multiples]: https://arxiv.org/abs/1009.3214
 [sparse-survey]: https://arxiv.org/abs/1807.08289
