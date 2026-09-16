@@ -157,15 +157,20 @@ def test_the_language_cell_has_no_other_symbol(audit: Conventions) -> None:
     assert " " in zero + one
 
 
-def test_bitdeque_width_leak_is_the_linear_route(audit: Conventions) -> None:
-    """The open width cell is exactly the route the equal-width test misses."""
-    assert audit.by_name()["Bitdeque"].constant_width == OPEN
+def test_bitdeque_linear_route_is_one_width(audit: Conventions) -> None:
+    """The route the equal-width test misses stays at one length.
+
+    Its ``EJECT ``/``POP `` units once left 32 lengths for 32 five-input
+    rows; the block pads in :func:`esolangs.tools.examples._fill_bitdeque`
+    closed that, and this pins the arity where the route begins.
+    """
+    assert "Bitdeque" not in audit.by_name()
     example = _embedding()["Bitdeque"]
     assert example.fill is not None
-    for n, distinct in ((4, 1), (5, 32)):
+    for n in (4, 5):
         template = example.generator(_tables(n)[0])
         lengths = {
             len(example.fill(template, list(bits)))
             for bits in itertools.product((0, 1), repeat=n)
         }
-        assert len(lengths) == distinct, (n, sorted(lengths))
+        assert len(lengths) == 1, (n, sorted(lengths))

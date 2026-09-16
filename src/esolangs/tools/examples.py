@@ -322,13 +322,54 @@ def _fill_nocomment(template: str, bits: list[int]) -> str:
     )
 
 
+# The executed no-op pairs the linear Bitdeque setter pads with, by the width
+# each takes with its trailing space: ``PUSH POP`` (push the register, pop it
+# back), ``INJECT EJECT`` (the same at the head) and ``INVERT INVERT``.
+_BITDEQUE_NOOPS = {9: "PUSH POP ", 13: "INJECT EJECT ", 14: "INVERT INVERT "}
+
+# Pads for the four weights the rule below does not reach: zero-side width,
+# one-side width, each a sum of the widths above, differing by ``2 * k``.
+_BITDEQUE_SMALL_PADS = {
+    1: ((14, 14), (13, 13)),
+    2: ((13,), (9,)),
+    4: ((9, 13), (14,)),
+    8: ((13, 13, 13), (9, 14)),
+}
+
+
+def _bitdeque_linear_setter(k: int, bit: int) -> str:
+    """Discard ``k`` entries from the end the bit names, at one width.
+
+    A one keeps the upper half of the window, so it ejects ``k`` from the
+    head; a zero pops ``k`` from the tail.  ``EJECT `` is six characters and
+    ``POP `` four, so the zero side is short by ``2 * k`` and both sides are
+    padded with executed no-ops until they match.  Padding a *unit* cannot
+    work -- no no-op is two characters -- but a block can: for ``k >= 16``
+    the deficit ``2 * k`` is exactly ``k / 8`` pairs of ``PUSH POP`` (nine
+    characters) and ``k / 16`` of ``INVERT INVERT`` (fourteen), since
+    ``9 * k / 8 + 14 * k / 16 = 2 * k``.  The four smaller weights take the
+    smallest pair of sums of nine, thirteen and fourteen that differ by
+    ``2 * k``, listed in :data:`_BITDEQUE_SMALL_PADS`.
+    """
+    if k in _BITDEQUE_SMALL_PADS:
+        zero, one = _BITDEQUE_SMALL_PADS[k]
+        pad = "".join(_BITDEQUE_NOOPS[w] for w in (one if bit else zero))
+    else:
+        pad = (
+            ""
+            if bit
+            else _BITDEQUE_NOOPS[9] * (k // 8) + _BITDEQUE_NOOPS[14] * (k // 16)
+        )
+    return ("EJECT " if bit else "POP ") * k + pad
+
+
 def _fill_bitdeque(template: str, bits: list[int]) -> str:
     if not template.startswith("GOTO 3"):
         n = len(bits)
         return instantiate(
             template,
             bits,
-            lambda i, b: ("EJECT " if b else "POP ") * (2 ** (n - 1 - i)),
+            lambda i, b: _bitdeque_linear_setter(2 ** (n - 1 - i), b),
         )
     # The register flips after every load block, and the load pushes the
     # inputs in name order, so bit i is pushed at load position i with the
