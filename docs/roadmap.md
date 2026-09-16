@@ -208,7 +208,14 @@ The candidate list is empty.
   instruction root, the theorem counterexample's own move, legal and
   executed -- is priced mass-negative: x1.51..1.58 total digits on dense
   n=3..6, strictly monotone per partner, so the lane is pinned to inexact
-  magnitude relations.  Shipping the
+  magnitude relations.  The Descartes-minimal class of that lane is now
+  closed on the whole plane: a multiple with exactly `L + 1` terms for
+  `L` real roots has coefficients pinned to Vandermonde minors, and a
+  sharp reciprocal-sum Pieri inequality on the minors' Schur shapes
+  forces `(ln 2 / 2 - o(1)) L^2` nats of mass -- `Omega(T^2/log^2 T)`
+  for every cofactor and operand sign -- so the open question is
+  exactly the multiples with more terms than Descartes requires
+  ([limitations](limitations.md) has the proof).  Shipping the
   factored form instead is not
   available: the parser reads only summed monomials and misreads a product
   silently.
