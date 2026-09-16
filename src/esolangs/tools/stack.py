@@ -502,12 +502,19 @@ def unsquare(truth_table: str) -> str:
     zero, one, or two places.  It prices those three reachable continuations
     with the exact tree-size model, so it builds one final program rather than
     enumerating ``2 * 3**(n-2)`` complete arrangements.
+
+    The pricing is incremental (:class:`_UnsquarePricer`): the tree tests
+    the still-natural inputs above the arranged ones, and sinking the new
+    input ``s`` places re-tests only the top ``s + 1`` levels of each
+    cofactor tree, so a read costs ``O(T / 2**k)`` and the order ``O(T)``
+    in all.  Pricing every candidate from scratch was ``O(nT)`` each.
     """
     n = _validate_truth_table(truth_table)
     # A zero-place sink is always a candidate, so each greedy choice is no
     # larger under the exact model than leaving that input in natural order.
     stack: tuple[int, ...] = ()
     prefix = ""
+    pricer = _UnsquarePricer(truth_table, n)
     for input_index in range(n):
         pushed = (*stack, input_index)
         choices: list[tuple[int, int, tuple[int, ...], str]] = []
@@ -515,14 +522,12 @@ def unsquare(truth_table: str) -> str:
             if places >= len(pushed):
                 continue
             arranged = _sink_top(pushed, places)
-            final = (*arranged, *range(input_index + 1, n))
             candidate_prefix = prefix + _UNSQUARE_READ + ops
             future_prefix = candidate_prefix + _UNSQUARE_READ * (n - input_index - 1)
-            table = permute_truth_table(truth_table, final)
-            choices.append(
-                (_unsquare_cost(table, n, future_prefix), places, arranged, ops)
-            )
-        _, _, stack, ops = min(choices)
+            cost = len(future_prefix) + pricer.price(input_index, places) + 1
+            choices.append((cost, places, arranged, ops))
+        _, places, stack, ops = min(choices)
+        pricer.commit(input_index, places)
         prefix += _UNSQUARE_READ + ops
     table = permute_truth_table(truth_table, stack)
     return prefix + _unsquare_tree(table, n)
@@ -569,18 +574,77 @@ def _unsquare_stack_programs(n: int) -> dict[tuple[int, ...], str]:
     return stack_programs(n, _UNSQUARE_SINKS, _UNSQUARE_READ)
 
 
-def _unsquare_cost(truth_table: str, n: int, prefix: str) -> int:
-    """Return one Unsquare candidate's exact rendered length without emitting it."""
-    _validate_truth_table(truth_table)
+class _UnsquarePricer:
+    """Exact tree sizes for the greedy's candidates, one read at a time.
 
-    def cost(rows: list[int], bit: int) -> int:
-        if len({truth_table[row] for row in rows}) == 1:
-            return 29
-        ones = [row for row in rows if (row >> bit) & 1]
-        zeros = [row for row in rows if not (row >> bit) & 1]
-        return 17 + cost(ones, bit + 1) + cost(zeros, bit + 1)
+    The tree tests the natural (not yet read) inputs first, top-down from
+    input ``n - 1`` to the one just read, and the arranged inputs below
+    them, the stack's top first.  A node is a row index with the inputs
+    still free below it zeroed; ``levels[d]`` holds, for every node at
+    depth ``d`` of the arranged part, its constant value (``-1`` when
+    mixed) and its cost -- 29 for a constant subtree, 17 plus the halves
+    otherwise; the tests keep that model spelled recursively as the oracle.
 
-    return len(prefix) + cost(list(range(2**n)), 0) + 1
+    Sinking the new input ``s`` places puts it under ``s`` of the old top
+    inputs, so the new tree's levels from ``s + 1`` down are the old
+    levels from ``s`` down, node for node; only the top ``s + 1`` levels
+    are re-merged, ``O(T / 2**k)`` at read ``k``, and the natural part
+    above is re-merged from the new top, ``O(T / 2**k)`` again.
+    """
+
+    def __init__(self, truth_table: str, n: int) -> None:
+        self.n = n
+        self.levels: list[tuple[dict[int, int], dict[int, int]]] = [
+            (
+                {row: int(entry) for row, entry in enumerate(truth_table)},
+                dict.fromkeys(range(len(truth_table)), 29),
+            )
+        ]
+        self.stack: tuple[int, ...] = ()
+
+    def _merge(
+        self, level: tuple[dict[int, int], dict[int, int]], test: int
+    ) -> tuple[dict[int, int], dict[int, int]]:
+        """Return the level above ``level`` when ``test`` is the input tested there."""
+        bit = 1 << (self.n - 1 - test)
+        values, costs = level
+        merged_values: dict[int, int] = {}
+        merged_costs: dict[int, int] = {}
+        for node, low in values.items():
+            if node & bit:
+                continue
+            high = values[node | bit]
+            if low == high and low != -1:
+                merged_values[node] = low
+                merged_costs[node] = 29
+            else:
+                merged_values[node] = -1
+                merged_costs[node] = 17 + costs[node] + costs[node | bit]
+        return merged_values, merged_costs
+
+    def _rebuilt(
+        self, input_index: int, places: int
+    ) -> list[tuple[dict[int, int], dict[int, int]]]:
+        """Return the arranged levels after sinking ``input_index`` by ``places``."""
+        arranged = _sink_top((*self.stack, input_index), places)
+        levels = self.levels[places:]  # old depth ``places`` is new ``places + 1``
+        for depth in range(places, -1, -1):
+            # Depth ``d`` tests the arranged input ``places`` from the top...
+            tested = arranged[len(arranged) - 1 - depth]
+            levels = [self._merge(levels[0], tested), *levels]
+        return levels
+
+    def price(self, input_index: int, places: int) -> int:
+        """Return the tree's cost with ``input_index`` sunk ``places`` deep."""
+        level = self._rebuilt(input_index, places)[0]
+        for natural in range(input_index + 1, self.n):
+            level = self._merge(level, natural)
+        return level[1][0]
+
+    def commit(self, input_index: int, places: int) -> None:
+        """Adopt the chosen sink for the next read."""
+        self.levels = self._rebuilt(input_index, places)
+        self.stack = _sink_top((*self.stack, input_index), places)
 
 
 def _unsquare_tree(truth_table: str, n: int) -> str:

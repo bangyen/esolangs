@@ -99,15 +99,17 @@ def _circlefuck_greedy(truth_table: Sequence[int], n: int) -> str:
     """Pick an order level by level.
 
     Each remaining input is scored by how many constant subtrees choosing
-    it next would create, using ``O(n**2)`` scorings.
+    it next would create.  One pass over the rows scores every candidate
+    for a level (:func:`_constant_subtree_scores`), so the whole order
+    costs ``n`` passes; scoring each candidate with its own pass, keyed
+    from scratch, was ``O(n**2)`` passes of ``O(n)`` work per row and made
+    this build grow x2.5 per added input.
     """
     remaining = list(range(n))
     order: list[int] = []
     while remaining:
-        best_input = max(
-            remaining,
-            key=lambda i: _constant_subtree_count(truth_table, n, [*order, i]),
-        )
+        scores = _constant_subtree_scores(truth_table, n, order)
+        best_input = max(remaining, key=lambda i: scores[i])
         order.append(best_input)
         remaining.remove(best_input)
     # ``_circlefuck_ordered`` descends its permuted row bits from least to
@@ -116,22 +118,58 @@ def _circlefuck_greedy(truth_table: Sequence[int], n: int) -> str:
     return _circlefuck_ordered(_permute_byte_table(truth_table, perm), perm)
 
 
-def _constant_subtree_count(
+def _constant_subtree_scores(
     truth_table: Sequence[int], n: int, prefix: list[int]
-) -> int:
-    """Count the subtrees that come out constant after splitting on ``prefix``.
+) -> list[int]:
+    """Count the constant subtrees splitting on ``[*prefix, i]`` leaves, per ``i``.
 
-    A subtree is the set of rows agreeing on every input in ``prefix``; it
+    A subtree is the set of rows agreeing on every input in the prefix; it
     is constant when the table takes one value across all of them, which is
-    exactly when the build folds it to a leaf.
+    exactly when the build folds it to a leaf.  The tests keep the
+    one-prefix definition this is checked against.
+
+    One pass over the rows.  A row's index *is* the vector of its input
+    bits, so which half of its subtree the row falls into for every
+    candidate at once is the index itself (candidates reading 1) and its
+    complement (candidates reading 0).  Each subtree keeps, per table
+    value, the OR of those two vectors, and a half is then constant where
+    exactly one value's mask reaches it -- for every candidate in one word.
     """
-    buckets: dict[int, set[int]] = {}
-    for row in range(len(truth_table)):
-        key = 0
-        for i in prefix:
-            key = (key << 1) | ((row >> (n - 1 - i)) & 1)
-        buckets.setdefault(key, set()).add(truth_table[row])
-    return sum(1 for values in buckets.values() if len(values) == 1)
+    width = len(truth_table)
+    full = (1 << n) - 1
+    keys = [0] * width
+    for i in prefix:
+        shift = n - 1 - i
+        for row in range(width):
+            keys[row] = (keys[row] << 1) | ((row >> shift) & 1)
+    # Per subtree, per table value: the OR of the row indices carrying it
+    # (which candidates' 1-halves it reaches) and of their complements
+    # (which 0-halves).  Row indices count input 0 as the most significant
+    # bit, so the masks are read back with the same reversal below.
+    masks: dict[int, dict[int, list[int]]] = {}
+    for row in range(width):
+        subtree = masks.get(keys[row])
+        if subtree is None:
+            subtree = masks[keys[row]] = {}
+        entry = subtree.get(truth_table[row])
+        if entry is None:
+            entry = subtree[truth_table[row]] = [0, 0]
+        entry[0] |= row
+        entry[1] |= full ^ row
+    scores = [0] * n
+    for subtree in masks.values():
+        for half in (0, 1):
+            # A half is constant where exactly one value reaches it.
+            once = twice = 0
+            for entry in subtree.values():
+                twice |= once & entry[half]
+                once |= entry[half]
+            constant = once & ~twice
+            while constant:
+                low = constant & -constant
+                scores[n - low.bit_length()] += 1
+                constant ^= low
+    return scores
 
 
 def _circlefuck_ordered(truth_table: list[int], perm: tuple[int, ...]) -> str:

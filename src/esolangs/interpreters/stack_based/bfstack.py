@@ -15,8 +15,8 @@ Keeping the transition *total* takes one extra piece here, because six of
 BFStack's commands can fail on an empty stack.  :func:`_needs_operand` says
 which commands require one, so the shell can reject an invalid step before
 calling the transition -- rather than the transition having a raise in six
-branches.  The scan for a matching ``]`` can likewise fail, so
-:func:`_forward` returns ``None`` for an unmatched ``[`` and the shell
+branches.  The match for a ``[`` can likewise be missing, so
+:func:`_forward_table` maps an unmatched ``[`` to ``None`` and the shell
 turns that into the error.
 
 :class:`_Machine` is the mutable shell the interpreter protocol requires.
@@ -66,26 +66,34 @@ def _needs_operand(char: str) -> bool:
     return char in _NEEDS_OPERAND
 
 
-def _forward(code: str, ind: int) -> int | None:
-    """Return the position of the ``]`` matching the ``[`` at ``ind``.
+def _forward_table(code: str) -> dict[int, int | None]:
+    """Map every ``[`` to its ``]``, or to ``None`` when it has none.
 
-    ``None`` when the bracket is unmatched, which the caller turns into a
-    :class:`ValueError` -- returning it rather than raising is what keeps
-    the transition below free of error cases.
+    Built once at load with one stack pass instead of a scan from the
+    bracket every time a zero top skips its loop.  That scan was the whole
+    run cost of a generated boolean program -- 502 skips over a
+    2,080-character program were 95% of the worst row at nine inputs, x2.8
+    per added input against a linear x2.0 -- for a table this small.
+
+    Unmatched brackets are *not* rejected here: an unmatched ``[`` is a
+    run-time error in BFStack, raised only if a zero top reaches it, and
+    an unmatched ``]`` only if it is reached with no loop open.  Both stay
+    the shell's business, so this never raises.
     """
-    match = 1
-    while match:
-        ind += 1
-        if ind == len(code):
-            return None
-        if (char := code[ind]) == "[":
-            match += 1
-        elif char == "]":
-            match -= 1
-    return ind
+    table: dict[int, int | None] = {}
+    stack: list[int] = []
+    for ind, char in enumerate(code):
+        if char == "[":
+            stack.append(ind)
+            table[ind] = None
+        elif char == "]" and stack:
+            table[stack.pop()] = ind
+    return table
 
 
-def _advance(state: _State, code: str, byte: int | None = None) -> _State:
+def _advance(
+    state: _State, code: str, jumps: dict[int, int | None], byte: int | None = None
+) -> _State:
     """Return the state after executing the command at the cursor.
 
     Pure, and total: every command it can be handed has a defined successor
@@ -98,6 +106,8 @@ def _advance(state: _State, code: str, byte: int | None = None) -> _State:
     the shared increment below lands back *on* the ``[`` and re-tests it.
     Anything that is not a command is a comment and falls through to that
     same increment.
+
+    ``jumps`` is :func:`_forward_table` for ``code``.
     """
     ind, stk, lst = state
     char = code[ind]
@@ -116,9 +126,8 @@ def _advance(state: _State, code: str, byte: int | None = None) -> _State:
             lst = (*lst, ind)
         else:
             # Skipping the loop: the shell resolved the match, so this
-            # cannot fail here.  ``_forward`` is called again rather than
-            # threaded through, which keeps the signature to one value.
-            target = _forward(code, ind)
+            # cannot fail here.
+            target = jumps[ind]
             ind = target if target is not None else ind
     elif char == "]":
         ind, lst = lst[-1] - 1, lst[:-1]
@@ -142,6 +151,7 @@ class _Machine:
         # ``halted`` is read twice per command -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(code)
+        self._jumps = _forward_table(code)
         self.state: _State = (0, (), ())
 
     # The language's own names.  They are views on the current state rather
@@ -210,7 +220,7 @@ class _Machine:
             )
         if char == "]" and not lst:
             raise HaltError(f"']' at position {ind} closes a loop that never opened")
-        if char == "[" and not stk[-1] and _forward(self.code, ind) is None:
+        if char == "[" and not stk[-1] and self._jumps[ind] is None:
             # The original scanned the cursor to the end before it noticed
             # the bracket was unmatched, leaving the machine halted.  A
             # caller that catches the error still sees that, so the cursor
@@ -222,7 +232,7 @@ class _Machine:
             self.io.print_char(chr(stk[-1]))
         elif char == ",":
             byte = self.io.input_char()
-        self.state = _advance(self.state, self.code, byte)
+        self.state = _advance(self.state, self.code, self._jumps, byte)
 
 
 def run(code: str, io: IO) -> None:

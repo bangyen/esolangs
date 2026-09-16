@@ -70,11 +70,14 @@ bit~ 27.5/55.3 KB, Factor 17.2/35.5 KB, ROTfuck 14.9/28.8 KB, COD
 Every generator's source is O(T) in the table length except two walls, and
 the registry-wide contract is `tests/proofs/deep/linearity.py`; its verdicts
 read in one direction, since an n=8 -> 9 ratio near 2 is not evidence of
-O(T).  Build *time* is a separate axis and eight constructions are measured
-super-linear on it while their output is linear -- Interprogck8 x3.3 per
-added input, Vandevelo x3.6 on dense tables, %^2^-1 x4.2, Circlefuck x2.5,
-Unsquare x2.4, with Factor, Polynomial and WII2D super-linear on both; the
-roadmap's audit table carries the figures.
+O(T).  Build *time* is a separate axis: %^2^-1 is measured super-linear on
+it (x4.2 per added input on dense tables) while its output is linear, and
+Factor, Polynomial and WII2D are super-linear on both; the roadmap's audit
+table carries the figures, with Circlefuck (n scoring passes, Theta(T log
+T)) and Vandevelo (candidate scoring on 2**n-bit masks) still open on build
+time.  Interprogck8 and Unsquare read super-linear in September 2026 (x3.3
+and x2.4); each was one re-walk of the table and both emit byte-identical
+programs at x2.0 now.
 
 **Factor is Theta(T log T) on parity and super-linear for some table under
 every encoding.**  The folded Brainfuck tree has Theta(T) maximal command
@@ -105,16 +108,22 @@ interpreter and is recorded here.
 
 - **Constant per command, linear program:** Minifuck, COD, Forth, Back,
   ROTfuck, S*bleq, Qoibl, Container's command count, and about a dozen more.
-- **Super-linear per command** at nine inputs, worst sampled row, best of
-  five, fitted over five arities against a linear x2.0: BFStack 24 ms x2.8,
-  BrainIf 84 ms x2.5, LaserFuck 64 ms x2.6, RAM0 18 ms x2.5, Jaune 18 ms
-  x2.5.  The mechanism is an immutable tape, association list or pointer
-  memory rebuilt on every write, so Theta(T) writes cost Theta(T^2); the
-  structure sits inside the state the cycle detector hashes, so the fix is
-  to the state type (Minifuck uses an integer bit-vector).  Flowchart's
-  pointer memory became a map and now reads x2.1 at 25 ms; Eval, Bitdeque,
-  Collatz Multiverse and Container read x1.9-x2.35 on runs of a few
-  milliseconds, which is noise, not an exponent.
+- **Per-command cost is now constant everywhere it was measured.**  Five
+  interpreters read super-linear in September 2026 -- BFStack x2.8 per
+  added input at nine inputs, BrainIf x2.5, LaserFuck x2.6, RAM0 x2.5,
+  Jaune x2.5 -- for two reasons.  BFStack's ``[`` scanned forward for its
+  ``]`` on every skip; it reads a table built at load, like the nine
+  interpreters before it.  The other four rebuilt an immutable tape,
+  association list or pointer store on every write, so Theta(T) writes
+  cost Theta(T^2); their tapes are now a chunked persistent tuple
+  (`esolangs.interpreters.persistent`: a write rebuilds one 32-cell chunk
+  and the outer tuple, untouched chunks are shared, and the value stays
+  hashable for the cycle detector), and RAM0's store also carries a
+  machine-level address index so a load is a lookup rather than a scan.
+  They read x1.5-x2.0 now, with every output and step
+  count over the corpus unchanged.  Flowchart's pointer memory is a map at
+  x2.1; Eval, Bitdeque, Collatz Multiverse and Container read x1.9-x2.35
+  on runs of a few milliseconds, which is noise, not an exponent.
 - **Sublinear:** twenty-two never read most of the table.  brainfuck's worst
   row is 113, 179, 251, ... 803 commands at one through eleven inputs;
   Factor, Polynomial, Circuit Diagram, EGL and Fargo are the same shape.

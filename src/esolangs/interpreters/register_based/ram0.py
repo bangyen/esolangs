@@ -35,6 +35,14 @@ import re
 import sys
 
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.persistent import (
+    Chunked,
+    append,
+    flatten,
+    get,
+    length,
+    put,
+)
 
 #: The RAM as an immutable sequence of ``(address, value)`` pairs, held in
 #: *insertion* order -- first write first, a rewrite updating in place.
@@ -47,7 +55,13 @@ from esolangs.interpreters.io import IO
 #: Ordering does not leak into cycle detection: ``snapshot`` converts to a
 #: ``frozenset``, so two states with the same cells compare equal whatever
 #: order they were written in.
-type _Ram = tuple[tuple[int, int], ...]
+type _Ram = Chunked[tuple[int, int]]
+
+#: Where each address sits in the store: the machine's memo of a fact about
+#: its own run.  A pair, once appended, never moves -- a rewrite updates it
+#: in place -- so the position recorded at the first ``S`` to an address
+#: stays right for every later state of the same run.
+type _Index = dict[int, int]
 
 #: One instant of a run: ``(ind, z, n, ram, dumped)`` -- the token cursor,
 #: the two registers, the RAM, and whether the final dump has been printed.
@@ -65,45 +79,36 @@ type _Ram = tuple[tuple[int, int], ...]
 type _State = tuple[int, int, int, _Ram, bool]
 
 
-def _stored(ram: _Ram, addr: int, value: int) -> _Ram:
+def _stored(ram: _Ram, addr: int, value: int, index: _Index) -> _Ram:
     """Return ``ram`` with ``addr`` set to ``value``, in insertion order.
 
     A rewrite updates the existing pair where it sits; a new address is
     appended.  That is what a dict does, and the dump reads the order back
     out, so it has to be what happens here too.
 
-    Rebuilding the whole sequence is what an immutable store costs, and
-    finding an existing address is a scan rather than a hash lookup.  Both
-    are O(cells).
-
-    **The boolean corpus is past the size where that is free.**  This used
-    to say the store never exceeds one cell; the generator now initializes
-    one cell per table row, so it holds 6 cells at three inputs, 74 at six
-    and 268 at eight -- Theta(T), and past the 200 where the same note
-    measured the scan 3.7x slower than a dict.  Theta(T) writes of O(T) each
-    is why a RAM0 program's execution grows faster than its command count.
-
-    Left as it is deliberately: ``_Ram`` sits inside ``_State``, which the
-    cycle detector hashes, so the fix is a persistent ordered map rather
-    than a dict, and that is a change to the state type rather than to this
-    function.  Recorded here so the next reader sees a measured cost rather
-    than the old "a handful of cells".
+    The store is a chunked tape (:mod:`esolangs.interpreters.persistent`),
+    so the rebuild an immutable store costs is one chunk rather than every
+    pair, and ``index`` -- the machine's address-to-position memo -- finds
+    an existing pair in one lookup where this used to scan.  The boolean
+    corpus initializes one cell per table row, 268 at eight inputs, and
+    Theta(T) writes of O(T) each were why a RAM0 program's execution grew
+    faster than its command count.
     """
-    for i, (key, _value) in enumerate(ram):
-        if key == addr:
-            return (*ram[:i], (addr, value), *ram[i + 1 :])
-    return (*ram, (addr, value))
+    position = index.get(addr)
+    if position is not None:
+        return put(ram, position, (addr, value))
+    return append(ram, (addr, value))
 
 
-def _loaded(ram: _Ram, addr: int) -> int:
+def _loaded(ram: _Ram, addr: int, index: _Index) -> int:
     """Return the value at ``addr``, or zero for a cell never written."""
-    for key, value in ram:
-        if key == addr:
-            return value
-    return 0
+    position = index.get(addr)
+    return get(ram, position)[1] if position is not None else 0
 
 
-def change(z: int, n: int, ram: _Ram, op: str) -> tuple[int, int, _Ram, bool]:
+def change(
+    z: int, n: int, ram: _Ram, op: str, index: _Index
+) -> tuple[int, int, _Ram, bool]:
     """Execute a single RAM0 command and return the updated registers.
 
     Now returns the RAM alongside the registers instead of writing into a
@@ -120,13 +125,13 @@ def change(z: int, n: int, ram: _Ram, op: str) -> tuple[int, int, _Ram, bool]:
     elif op == "N":
         n = z
     elif op == "L":
-        z = _loaded(ram, z)
+        z = _loaded(ram, z, index)
     elif op == "S":
-        ram = _stored(ram, n, z)
+        ram = _stored(ram, n, z, index)
     return z, n, ram, not z
 
 
-def _advance(state: _State, op: str) -> _State:
+def _advance(state: _State, op: str, index: _Index) -> _State:
     """Return the state after executing one token.
 
     Pure: it reads ``state`` and returns a new one.  It takes no ``io``
@@ -139,7 +144,7 @@ def _advance(state: _State, op: str) -> _State:
     token falls through to that same increment.
     """
     ind, z, n, ram, dumped = state
-    z, n, ram, skip = change(z, n, ram, op)
+    z, n, ram, skip = change(z, n, ram, op, index)
     if op == "C" and skip:
         ind += 1
     elif op.isdigit():
@@ -172,6 +177,7 @@ class _Machine:
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.tokens)
         self.state: _State = (0, 0, 0, (), False)
+        self._index: _Index = {}
 
     # The language's own names.  They are views on the current state rather
     # than fields of their own, so there is one place a step can change.
@@ -191,7 +197,7 @@ class _Machine:
     @property
     def ram(self) -> dict[int, int]:
         """The RAM as a dict, which is how callers and the dump read it."""
-        return dict(self.state[3])
+        return dict(flatten(self.state[3]))
 
     @property
     def dumped(self) -> bool:
@@ -223,7 +229,7 @@ class _Machine:
         _ind, z, n, ram, _dumped = self.state
         # The store is in insertion order, so sort here -- this view is
         # documented as address-ordered and is read by the VM, not printed.
-        return [z, n, *(value for _addr, value in sorted(ram))]
+        return [z, n, *(value for _addr, value in sorted(flatten(ram)))]
 
     @property
     def stack(self) -> list[object]:
@@ -233,15 +239,17 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection."""
         # The four fields this returned before ``dumped`` joined the state.
-        # The RAM goes in as a frozenset, as it always did, so the hash does
-        # not depend on the order pairs happen to sit in.
+        # The RAM goes in as it stands, insertion order included: that order
+        # is observable (the dump prints it), so two stores differing only
+        # in it are different states, and the value is already hashable.
+        # It used to be re-packed into a frozenset here, O(cells) per step.
         ind, z, n, ram, _dumped = self.state
-        return (ind, z, n, frozenset(ram))
+        return (ind, z, n, ram)
 
     def _dump(self, z: int, n: int, ram: _Ram) -> None:
         """Print the final registers and RAM in their insertion order."""
         rendered = f"z: {z}\nn: {n}\nram: {{"
-        for addr, value in ram:
+        for addr, value in flatten(ram):
             rendered += f"\n    {addr}: {value},"
         if ram:
             rendered = rendered[:-1] + "\n"
@@ -261,7 +269,11 @@ class _Machine:
                 self._dump(z, n, ram)
                 self.state = (ind, z, n, ram, True)
             return
-        self.state = _advance(self.state, self.tokens[ind])
+        op = self.tokens[ind]
+        self.state = _advance(self.state, op, self._index)
+        if op == "S" and n not in self._index:
+            # A first store to ``n`` was appended at the old length.
+            self._index[n] = length(ram)
 
 
 def run(code: str, io: IO) -> None:
