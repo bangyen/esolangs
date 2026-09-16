@@ -1,6 +1,8 @@
 """Covers :mod:`esolangs.tools.six_five`."""
 
 import hashlib
+import importlib
+import random
 from itertools import permutations
 
 import pytest
@@ -10,6 +12,7 @@ from esolangs.tools.helpers import permute_truth_table
 from esolangs.tools.six_five import (
     _six_five_dag_cost,
     _six_five_hoisted,
+    _six_five_looped,
     _six_five_markers,
     _six_five_stream_ordered,
     _six_five_walk,
@@ -440,3 +443,52 @@ class TestSixFive:
         assert not hasattr(module, "_SixFiveAsm")  # the assembler went too
         assert not hasattr(module, "_six_five_nav")
         assert not hasattr(module, "_six_five_node_read")
+
+    @pytest.mark.parametrize("n", range(1, 6))
+    def test_the_looped_walk_executes_every_row(self, n: int) -> None:
+        """The sixteen-label walk answers every row of every table shape.
+
+        Dense, constant, and random tables: the constant ones are where a
+        walk that never advances (all zeros) or advances at every bit (a
+        one-row at the far end) has to land exactly.
+        """
+        rng = random.Random(n)
+        tables = [self._dense(n), "0" * 2**n, "1" * 2**n]
+        tables += ["".join(rng.choice("01") for _ in range(2**n)) for _ in range(2)]
+        for table in tables:
+            program = _six_five_looped(table)
+            assert _markers(program) == 16
+            for combo in range(2**n):
+                bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
+                got = run_six_five(program, [str(b) for b in bits])
+                assert got == table[combo], f"{table} inputs {bits}"
+
+    def test_the_looped_walk_is_linear_at_a_fixed_label_bill(self) -> None:
+        """Sixteen markers at any width, and the text at most doubles per input.
+
+        The marks are the only part that is not a constant per row -- the
+        2-adic valuations sum to ``2**n - n - 1`` -- so the per-row cost
+        settles rather than grows.
+        """
+        sizes = [len(_six_five_looped(self._dense(n))) for n in (8, 9, 10)]
+        assert all(_markers(_six_five_looped(self._dense(n))) == 16 for n in (1, 10))
+        assert sizes[1] <= 2 * sizes[0]
+        assert sizes[2] <= 2 * sizes[1]
+        assert sizes[2] < 8 * 2**10
+
+    def test_past_the_label_bound_the_walk_loops(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Only a 2**36-entry table reaches the bound, so it is lowered here.
+
+        Sixteen is the lowest bound the looped walk's own labels admit;
+        under it a seventeen-input table is "too wide" for the per-input
+        walk, and the dispatch hands it to the looped one rather than
+        refusing.
+        """
+        module = importlib.import_module("esolangs.tools.six_five")
+        monkeypatch.setattr(module, "_SIX_FIVE_MAX_LABEL", 16)
+        dense17 = self._dense(17)
+        assert _six_five_walk(dense17) == _six_five_looped(dense17)
+        monkeypatch.setattr(module, "_SIX_FIVE_MAX_LABEL", 35)
+        assert _six_five_walk(dense17) != _six_five_looped(dense17)

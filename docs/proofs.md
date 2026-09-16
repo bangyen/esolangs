@@ -164,7 +164,7 @@ after ignoring the performance/resource ceiling as specified above.
 | RAM0 | parameterized lookup | a straight-line RAM initializer plus a unary-weight lookup |
 | ROTfuck | tree | movement search stops after at most eight offsets |
 | S*bleq | finite lookup | packed chunks decoded after the hoisted read block |
-| 6-5 | finite lookup, cap | constant-label arithmetic evaluates `(T >> index) & 1` |
+| 6-5 | finite lookup | past 35 inputs the positional walk loops on sixteen labels: each bit advances the pointer to the first row whose 2-adic valuation mark reads zero, and one pass per bit shifts the marks |
 | SLOW ACV MAMMALIAN | linear lookup | a read chain banks each bit as a 256-multiple weight on array 16; one trampoline lands the indexed 256-token leaf |
 | Sophie | tree | — |
 | Streetcode | tree | — |
@@ -261,15 +261,6 @@ The remaining `cap` rows do have a uniform lift argument.
 - Polynomial's `k == n` candidate is the finite decision tree.  Each of its
   finitely many instructions receives a distinct prime root, and removing the
   interpreter-cost screen does not change that encoding.
-- 6-5 has a cap-free arithmetic construction using a constant number of its 35
-  labels.  Read the bits into `x`, encode the finite table as
-  `T = sum(table[i] * 2**i)`, halve `T` exactly `x` times, and print its parity:
-  `(T >> x) & 1 = table[x]`.  The cell operations construct every finite `T`
-  with a finite run of `+5`/`+6`; the retired implementation refused only
-  when that run exceeded about 2 MB.  Its source is recoverable immediately
-  before commit `87478ea8`, which removed it because no table inside the
-  practical size bound escaped the newer tree/walk paths.  Thus 35 limits the
-  shipped positional walk, not theoretical 6-5 coverage.
 - ZTOALC L's command list is finite.  For any list of `k` commands, choose
   start value `2**k`: its Collatz trajectory is
   `2**k, 2**(k-1), ..., 2, 1`, giving exactly `k` distinct executable lines
@@ -306,10 +297,20 @@ Reserving a disjoint key for the normalization constant therefore extends the
 same finite tree proof to every arity.  Decimal digit 6 is split into `1 + 5`,
 since `F` delimits integer mode and cannot occur inside its literal.
 
-The shipped 6-5 function still refuses past its optimized construction.  Its
-classification is theoretical in this section's stated sense: removing the
-resource policy requires restoring a known construction, not merely changing
-one numeric constant.  WII2D reads the same way: the shipped decode keeps
+6-5 left this section when its walk stopped spending a label per input.
+`8n` names the n-th `4` of the program and the operand characters stop at
+35, so a walk that branches every bit with its own jump ends at 35 inputs;
+the looped walk (`_six_five_looped`) marks each row with its 2-adic
+valuation in sixes, and a bit's advance is a loop to the first row past
+the pointer whose mark reads zero — the first row whose valuation is
+exactly `n-1-i`, which is the row `2**(n-1-i)` ahead, because the pointer
+stands on an even multiple of that stride.  The marks are kept at
+`6 * (v - (n-1-i))` by `n-1` decrement passes before the first bit and one
+increment pass after each, so every loop tests a sentinel or a zero and
+the label bill is the loop count, sixteen.  The marks sum to `2**n - n - 1`,
+so the program is linear; every row of every table at seven inputs and
+under has been executed, and the dispatch reaches the loop only past 35.
+WII2D reads the other way: the shipped decode keeps
 ranking folds by magnitude, so it still refuses about four in ten dense
 tables at the widest admitted domain, and reaching the extremal-fold
 construction means choosing a different fold rather than relaxing a constant.
