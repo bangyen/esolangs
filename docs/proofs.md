@@ -96,9 +96,9 @@ for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
 and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  Alight, Crement, Nopstacle and
+the tree at any arity.  Alight, Nopstacle and
 SLOW ACV MAMMALIAN keep no tree route at all: Alight indexes a string literal,
-the two prototypes embed the table verbatim beside their
+the Nopstacle prototype embeds the table verbatim beside its
 input slots, and SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf
 slot per row whatever the table says.  Container's sub-crossover route is a
 tree but a deliberately unfolded one, so it does not shrink on a degenerate
@@ -133,7 +133,7 @@ after ignoring the performance/resource ceiling as specified above.
 | COD | parameterized tree | each `{Xi}` sets the cod's value at its own fork box, once; the leaf cascade prints the entry |
 | Collatz Multiverse | tree | finite cell placement |
 | Container | finite lookup | the reversed table is one decimal literal divided by ten in a fixed two-bank network |
-| Crement | finite lookup | prototype instantiation |
+| Crement | parameterized tree | each input is the data of one jump in a two-line tester; a node patches the tester's two targets to its children and jumps in, and a folded subtree targets the shared self-jump or the line past the end |
 | CV(N)(C) | tree | the halting goto squares once more whenever the program is not shorter than its reach, so every finite tree halts |
 | Decleq | tree | — |
 | Dig | tree | finite cell placement |
