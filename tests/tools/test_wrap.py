@@ -806,7 +806,9 @@ def test_polynomial_carries_a_term_over_without_inventing_a_sign() -> None:
     This is what keeps the two kinds of row apart for a reader, now that a
     line is not always a whole term.
     """
-    program = generate("Polynomial", TABLE, DEFAULT_WIDTH)
+    # Four-input parity: XOR's coefficients no longer reach the width now
+    # that the generator spells itself on the cheap opcodes.
+    program = generate("Polynomial", "0110100110010110", DEFAULT_WIDTH)
     carried = [
         line for line in program.split("\n")[1:] if not line.startswith(("+ ", "- "))
     ]

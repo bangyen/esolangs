@@ -44,15 +44,16 @@ def _polynomial_tree(truth_table: str) -> list[list[int]]:
     """
     n = _validate_truth_table(truth_table)
     instrs: list[list[int]] = []
+    # Every arm leaves the register at or below this, so the ``+= 1; if > 0``
+    # that guards the zero-bit arm never fires after a taken one-bit arm:
+    # each level out adds one and there are at most ``n`` of them.
+    park = n + 2
 
     def emit_delta(delta: int) -> None:
-        if delta > 0:
+        # Subtraction is spelled ``+=`` with a negative operand: ``-=`` is
+        # ``p**4`` where ``+=`` is ``p**2``.
+        if delta:
             instrs.append([delta, 1])
-        # The tree walks the accumulator up from zero and every answer is 0
-        # or 1, so the deltas the builder emits are never negative; the
-        # subtract instruction is here for a builder that needs one.
-        elif delta < 0:  # pragma: no cover - the tree only ever steps upward
-            instrs.append([-delta, 2])
 
     def build(rows: list[int], bit: int, last: int) -> None:
         vals = {truth_table[r] for r in rows}
@@ -64,19 +65,21 @@ def _polynomial_tree(truth_table: str) -> list[list[int]]:
             # printing so they cannot disturb the value being output: an
             # input-capable language reads each of its n inputs exactly once
             # per run whatever the table says, or the caller's remaining bits
-            # are left on the input stream.
+            # are left on the input stream.  A bare read suffices; the park
+            # below overwrites whatever it left.
             for _ in range(bit, n):
-                instrs.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48
-            emit_delta(1)  # reg back to nonzero so the enclosing else skips
+                instrs.append([0, 2])
+            emit_delta(-(_ASCII_ZERO + 1 + park))
             return
-        instrs.extend([[0, 2], [_ASCII_ZERO, 2]])  # input; -= 48
+        instrs.extend([[0, 2], [-_ASCII_ZERO, 1]])  # input; += -48
         g1 = [r for r in rows if ((r >> (n - 1 - bit)) & 1) == 1]
         g0 = [r for r in rows if ((r >> (n - 1 - bit)) & 1) == 0]
         instrs.append([1])  # if reg > 0 -> the one-bit subtree
         build(g1, bit + 1, 1)
         instrs.append([2])
-        instrs.append([4])  # if reg == 0 -> the zero-bit subtree
-        build(g0, bit + 1, 0)
+        instrs.append([1, 1])  # += 1: a zero bit reads 1, a taken arm <= -1
+        instrs.append([1])  # if reg > 0 -> the zero-bit subtree
+        build(g0, bit + 1, 1)
         instrs.append([2])
 
     build(list(range(2**n)), 0, 0)
