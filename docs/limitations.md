@@ -242,6 +242,30 @@ address-sensitive -- a variant build once passed every builder-side check
 and failed one row with empty output -- so a build only counts once its
 rows have executed.
 
+What made that lane's cost legible is that a SLOW ACV program's emitted
+size is its **address space, not its laid text**: `generate` renders
+`" ".join(b.text.get(i, "SEED") for i in range(max(b.text) + 1))`, so every
+address the construction never writes still ships a literal `SEED`.  From
+n=1 to n=2 the written cells grow x1.939 -- slower than linear -- while the
+unwritten gaps grow x3.410 and carry the span to x2.112 and the emitted
+characters to x2.142.  The gaps, not the text, are the super-linear term,
+and they are paid per tree node: every one sits immediately below a
+`subtree` node, and the count tracks the node count.  `SEED` is what a
+padded address renders as, which is why it reaches 91.5% of the program at
+n=3 while growing x6.87.  The counter compounds it, because `generate`
+doubles `CCELLS` on reach exhaustion: 60 at n<=2 but 240 at n=3, so the
+march is `Theta(T * CCELLS)` rather than one constant per node.  That
+doubling is also a trap for short sweeps -- per-entry cost moves x1.993
+from n=1 to n=2, which reads as linear, then x5.342 to n=3.
+
+Attribute that cost from the **artifact, not the call graph**.  Three
+attempts to instrument the builder all misreported it: first by id reuse,
+then by an undercount that charged 131 tokens against a ~400k-token
+program, and finally by an instance-keyed pass that showed laid tokens flat
+between arities while the program more than doubled.  The reads that worked
+-- span, token census, gap census -- take the emitted string and count.
+The growth is in how many gadgets run, not how large one is.
+
 Polynomial's current expanded-root encoding is super-linear, and its
 instruction count is language-forced even though its text is not.  The input
 instruction *overwrites* the register, so between reads every bit about
@@ -819,6 +843,40 @@ placement slack, the corridor is linear in the layout, and per-entry
 cost is flat where the router's climbed: the log's mechanism -- the span
 sum over private waypoints -- has no term left to bill.
 
+### What is compressible in the emitted programs
+
+Measured 2026-09-11 at `92e42799`: every generator's output at n=3 and
+n=8, on both suite shapes, 287 programs.
+
+**The compressible part is unary tape travel, and the discriminator is how
+wide an address space the construction allocates.**  Pointer walks emitted
+one character at a time dominate every oversized brainfuck-family program.
+Brainfuck's tree reaches cell 16 and stays small; Suffolk reaches 30,018
+and is 98% travel.  The generators that were fixable were fixable for one
+reason -- they allocated a cell per (input, row) rather than reusing a
+bounded window -- and those have since shipped, bit~ among them.
+
+The rest is not an encoding problem, and the classification is what keeps
+it from being re-proposed:
+
+- **Forced by semantics.**  `slow_acv_mammalian` is `SEED` repeated
+  because that is the language's only primitive; `circlefuck_byte` spells
+  unary byte literals; `one_two_three`'s runs *are* its numeric encoding;
+  `dig`'s 81% spaces sit on a proved floor.  The ratio measures the
+  alphabet, not a missed opportunity.
+- **Priced in by a wall or a shipped optimization.**  `polynomial` is
+  3.4 MB at a compression ratio of only 2.1x, digits uniform across 0-9 --
+  there is no redundancy to remove, the size *is* information.  That is
+  the reason a ratio must always be read beside a raw size, and the
+  opposite of an opportunity.
+
+A caution on reading this section against the generators: its ranked
+candidate list has largely been consumed by the work it prompted, and at
+least one of its recorded negatives -- that reordering minterms into Gray
+order could not pay -- was superseded two days later, when ROTFuck moved
+to a single binary-reflected Gray pass.  A sweep's negatives age against
+the constructions they were measured on.
+
 
 ## Curation
 
@@ -831,6 +889,23 @@ Lamfunc, `function x(y)`, Between, and Point Break on the same criterion,
 leaving 60. Crement, Nopstacle, Vandevelo, B-tapemark, and EGL were added
 afterwards; Crement and Nopstacle specialize their lookup in the host, so they
 are prototypes and only the other three raise the floor.
+
+The 2D candidate pool is screened out, and the screen is recorded because
+re-running it is expensive.  An earlier pass was attributed to
+`Category:Two-dimensional` x `Category:Unimplemented`, which cannot have
+produced it: that category does not exist on the wiki, and a query against a
+non-existent category returns no members.  The real intersection is
+`Category:Unimplemented` (1543 pages) against `Category:Two-dimensional
+languages` (567), reduced to 36 survivors by subtracting languages already
+carrying a verdict here, rejecting on co-category (no IO, stubs,
+works-in-progress, joke, nondeterministic, output-only, non-textual,
+uncomputable), and rejecting pages that lack input, output or branch
+vocabulary or run under 1500 characters.  Spec reads then tiered the 36, and
+the top tier is fully resolved: Super SNUSP and Alight were admitted, as was
+B-tapemark from the second tier, and Pinyin was rejected -- its own selection
+rule reroutes 8 of 23 `Hello, world!` characters and its truth machine on
+input 1 is unreachable under all 384 readings of the page.  ABCDirection is
+not a candidate either; it was implemented here and then removed.
 
 ## Specification decisions
 

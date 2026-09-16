@@ -239,6 +239,19 @@ The candidate list is empty.
   programs against the current template; abandon it if the routing spends
   the apparent gain.
 
+- **Replace the generators that still search at build time.**  "Uses a
+  simulator" means the module drives an interpreter or an execution model
+  while generating, and only one of the three ways that happens is a
+  defect: driving a *search* over candidate codes.  Simulation used as
+  bookkeeping for what is already being emitted is fine, and size contests
+  run no simulator at all.  Minifuck's `_find_pool` closed this way -- by
+  rule rather than by trying five codes -- and the order for the rest is
+  `_try_print` first (smallest answer space, same evidence base), then
+  `_find_pool` at the canonical probe state, then `_find_pool` in general,
+  which is the real wall.  WII2D may not close; report the key rather than
+  force it.  A longer emitted program is an acceptable price for a rule,
+  and the replaced search stays in the tests as the oracle.
+
 - **`%^2^-1` fourteen inputs.**  The staged fold's endgame strands its last
   duplicated cofactor pairs.  Rank order is steerable (pulsed doubling), but
   a merge needs the pair's value gap `d` inside a wipe window, and diving
