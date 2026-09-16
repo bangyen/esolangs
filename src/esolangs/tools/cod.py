@@ -28,12 +28,19 @@ def _instantiate_cod(template: str, bits: list[int]) -> str:
     if len(table) != 1 << n:
         raise ValueError("bits do not match COD template")
 
+    # Each one bit lengthens the swim by its weight.  The cells it adds are
+    # spelled ``_`` rather than left as water: ``_`` reacts only to a cod
+    # moving north, and the route only ever runs east along the top row
+    # and west along the output row, so it is a passable no-op there -- a
+    # command, where a blank would be a bit spelled as nothing.  The two
+    # water cells beside the start and beside the print are the template's
+    # own and do not vary with the input.
     route = "".join(
-        " " * (1 << (n - 1 - i)) if bit else "" for i, bit in enumerate(bits)
+        "_" * (1 << (n - 1 - i)) if bit else "" for i, bit in enumerate(bits)
     )
     selected = len(route)
     width = len(table) + 5
-    top = "~~~>" + " " * (selected + 1) + "~" * (len(table) - selected)
+    top = "~~~> " + route + "~" * (len(table) - selected)
     middle = answer_row.ljust(width, "~")
-    output = "---" + " " * (selected + 2) + "~" * (len(table) - selected)
+    output = "---  " + route + "~" * (len(table) - selected)
     return "\n".join((top, middle, output, "~" * width))
