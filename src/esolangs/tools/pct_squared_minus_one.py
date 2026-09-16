@@ -9,7 +9,7 @@ instantiated rows.
 from functools import cache
 
 from esolangs.exceptions import GeneratorCapError
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import _validate_truth_table, instantiate
 from esolangs.tools.pct_codes import (
     _DECL_RE,
     _HEADER_END,
@@ -969,7 +969,4 @@ def fill(template: str, bits: list[int]) -> str:
     branches = {
         int(m.group(1)): (m.group(2), m.group(3)) for m in _DECL_RE.finditer(header)
     }
-    for index, bit in enumerate(bits):
-        zero, one = branches[index]
-        body = body.replace("{X" + str(index) + "}", one if bit else zero)
-    return body
+    return instantiate(body, bits, lambda index, bit: branches[index][bit])

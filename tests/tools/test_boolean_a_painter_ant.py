@@ -312,6 +312,28 @@ def _render_after_passes(program: str, passes: int) -> str:
     return machine.render()
 
 
+class TestLinearFill:
+    """The wide-table fill is a setter: one step per unit of weight."""
+
+    def test_each_slot_is_its_weight_in_steps(self) -> None:
+        n = 5
+        template = a_painter_ant("01" * 16)
+        assert template.endswith("sS")
+        zeros = _instantiate_apa(template, [0] * n)
+        for i in range(n):
+            bits = [0] * n
+            bits[i] = 1
+            ones = _instantiate_apa(template, bits)
+            assert len(ones) == len(zeros)
+            weight = 1 << (n - 1 - i)
+            differing = [
+                k for k, (a, b) in enumerate(zip(zeros, ones, strict=True)) if a != b
+            ]
+            assert len(differing) == weight
+            assert {ones[k] for k in differing} == {"E"}
+            assert {zeros[k] for k in differing} == {"e"}
+
+
 class TestAPainterAntTrace:
     """The A Painter Ant step tracer and cycle-stability checker.
 
