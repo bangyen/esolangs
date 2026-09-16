@@ -468,38 +468,28 @@ def check_program(
     parses: ``check_program("brainfuck", "[")`` returns the program, and
     :func:`make_vm` on the same string raises ``ProgramError: unmatched
     '['``.  Over half the languages have some program this accepts and the
-    interpreter then rejects.  (The exact count was measured at a larger
-    registry and is not re-derived here -- what the caller needs is that
-    this is the common case, not the rare one.)
+    interpreter then rejects.
 
-    That is structural rather than an oversight waiting to be fixed here.
-    :func:`make_vm` *calls* this function, so validating by building a
-    machine would recurse; the load check belongs to the interpreter and
-    happens when one is built.  Use this as a pre-flight for the mistakes
-    above, and :func:`make_vm` or :func:`run` inside ``except
-    EsolangError`` when the question is "will this program load".
+    That is structural: :func:`make_vm` *calls* this function, so validating
+    by building a machine would recurse, and the load check belongs to the
+    interpreter.  Use this as a pre-flight for the mistakes above, and
+    :func:`make_vm` or :func:`run` inside ``except EsolangError`` when the
+    question is "will this program load".
 
-    ``stdin`` is checked for its type only, not its content.
-    :func:`check_stdin` is the one that reads it against the shape and
-    alphabet a language declares, and it needs the truth table to do the
-    whole job.
+    ``stdin`` is checked for its type only.  :func:`check_stdin` reads it
+    against the shape and alphabet a language declares, and needs the truth
+    table to do the whole job.
 
-    The whole load-time contract in one place, because there are two ways
-    to execute a program and only :func:`run` used to apply it:
+    The whole load-time contract is here because there are two ways to
+    execute a program and only :func:`run` used to apply it:
     ``make_debugger("brainfuck", None)`` raised ``'NoneType' is not a
-    container or iterable`` from inside an interpreter, where ``run`` had
-    long said ``program must be a string of source or a Path``.
+    container or iterable`` from inside an interpreter.
 
-    A :class:`~pathlib.Path` is read here.  Its trailing newline is the
-    file's rather than the program's, and three interpreters (CV(N)(C),
-    Grapheme, NoComment) reject one as an unknown command, which made
-    reading a committed example fail on the very files this package ships.
-
-    That is fixed, but the one-liner this used to show as proof was not a
-    working example: two of those three read stdin, so
-    ``run(lang, Path(describe(lang)["examples"][0]))`` raises
-    :class:`~esolangs.exceptions.InputExhaustedError` for them -- for want
-    of input, not for the newline.  The whole call is::
+    A :class:`~pathlib.Path` is read here, and its trailing newline is the
+    file's rather than the program's -- CV(N)(C), Grapheme and NoComment
+    reject one as an unknown command, which made reading a committed
+    example fail on the files this package ships.  Two of those three read
+    stdin, so the whole call is::
 
         path = pathlib.Path(describe(lang)["examples"][0])
         run(lang, path, encode_inputs(lang, [0, 1]))
@@ -567,28 +557,21 @@ def run(
     more than it is given usually raises
     :class:`~esolangs.exceptions.InputExhaustedError`, but not always:
     ``describe(language)["eof_is_a_value"]`` marks the languages that take
-    an exhausted read as a value and carry on, which answers a *different
-    row* of the table.  Those cases warn with an
-    :class:`~esolangs.exceptions.InputMismatchWarning` where there is a
-    read past the end to notice; Clockwise and Fargo take their input as a
-    single line, so an underfed program is undetectable here and only
+    an exhausted read as a value and carry on, answering a *different row*
+    of the table.  Those warn with an
+    :class:`~esolangs.exceptions.InputMismatchWarning` where there is a read
+    past the end to notice; Clockwise and Fargo take their input as a single
+    line, so an underfed program is undetectable here and only
     ``check_stdin`` with the table catches it.
 
-    Two languages do neither, and the flag does not separate them out:
-
-    * **Alight** is marked ``eof_is_a_value`` and does not carry on -- the
-      sentinel reaches its arithmetic and it halts with ``cannot apply '+'
-      to 2.0 and 'eof'``.  So it refuses, loudly, which is the safe half
-      of the flag's two outcomes but not the one it names.
-    * **Suffolk** is marked ``False`` and does not raise.  An exhausted
-      read *ends* the program, so a run comes back ``halted`` with no
-      output and no warning at all.  That is written down under
-      ``self_halts``, which says Suffolk "ends when a read runs out of
-      input" -- the two traits describe the same fact and only one of them
-      is where a reader looks for it.
-
-    Swept rather than sampled: the other fifty of the fifty-two
-    stdin-reading languages do exactly what the flag says.
+    Two languages are neither outcome and the flag cannot say so.  **Alight**
+    is marked ``eof_is_a_value`` but does not carry on -- the sentinel
+    reaches its arithmetic and it halts with ``cannot apply '+' to 2.0 and
+    'eof'``.  **Suffolk** is marked ``False`` but does not raise: an
+    exhausted read *ends* the program, so a run comes back halted with no
+    output and no warning (the same fact ``self_halts`` records).  Swept
+    rather than sampled: the other fifty of the fifty-two stdin-reading
+    languages do exactly what the flag says.
 
     How a language spells its bits is not universal -- Grapheme reads
     ``%``/``A``, Fargo one number whose bits are the inputs -- so take the

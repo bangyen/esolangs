@@ -265,7 +265,7 @@ def test_the_fused_column_walk_matches_the_one_at_a_time_derivation() -> None:
     # statements and only this call is guaranteed to do the derivation --
     # which is what the assertion below is for.
     _derived_plans.cache_clear()
-    with patch("esolangs.tools.minifuck._column_sweep", spy):
+    with patch("esolangs.tools.minifuck_staged._column_sweep", spy):
         _derived_plans(2, ("0110",))
 
     assert captured, "the build derived no columns, so nothing was compared"
@@ -736,20 +736,15 @@ class TestParameterizedMinifuck:
         arity's derivation to do it.
 
         The unstaged arity is read off :data:`_STAGED_ARITIES` rather than
-        written down, so raising the staged arity again moves this test with
-        it instead of breaking it.  What is asserted is the *gate* -- that an
-        unstaged arity declines immediately -- which is what keeps the miss
-        cheap: without it the table would grind through the whole enumeration
-        before giving up.
+        written down, so raising the staged arity moves this test with it.
+        What is asserted is the *gate* -- that an unstaged arity declines
+        immediately -- which is what keeps the miss cheap.
 
-        **What is probed is ``_derive_staging``, not ``_staged``.**  This used
-        to assert that ``_staged`` itself returned None at the unstaged arity,
-        which was only true while :func:`_mux` carried an arity gate of its
-        own; with that gate gone the fall-through *succeeds*, and asserting
-        None would be asserting the generator is partial.  Six inputs does
-        build here -- 1822 characters in about 35 seconds for the all-ones
-        table -- so the cheap half of the claim is kept by probing the
-        staging derivation directly, which still declines in 0.000s.
+        **What is probed is ``_derive_staging``, not ``_staged``.**  With
+        :func:`_mux`'s own arity gate gone the fall-through *succeeds*, so
+        asserting None on ``_staged`` would be asserting the generator is
+        partial: six inputs does build, 1822 characters in about 35 seconds
+        for the all-ones table.
         """
         from esolangs.tools import parameterized
         from esolangs.tools.minifuck import (
@@ -881,7 +876,8 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck_mux")
+        pool = importlib.import_module("esolangs.tools.minifuck_pool")
 
         seen: list[object] = []
         real = module._mux_probe  # noqa: SLF001
@@ -915,8 +911,8 @@ class TestParameterizedMinifuck:
                 scanned = next(
                     (
                         code
-                        for code in module._POOL_CODES  # noqa: SLF001
-                        if module._pool_reaches(  # noqa: SLF001
+                        for code in pool._POOL_CODES  # noqa: SLF001
+                        if pool._pool_reaches(  # noqa: SLF001
                             probe,
                             code,
                             cell7,
@@ -1048,7 +1044,7 @@ class TestParameterizedMinifuck:
         finite general budget.  Patch both values to make the dispatch, not
         their current equal ``None`` spelling, observable.
         """
-        module = importlib.import_module("esolangs.tools.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck_staged")
 
         with pytest.MonkeyPatch.context() as patch:
             patch.setattr(module, "_STAGING_BUDGET", None)
@@ -1075,7 +1071,8 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck_staged")
+        mux = importlib.import_module("esolangs.tools.minifuck_mux")
 
         table = "0110100110010110"  # XOR4, which the staged route places
         original = module._STAGING_BUDGET  # noqa: SLF001
@@ -1083,7 +1080,7 @@ class TestParameterizedMinifuck:
             module._STAGING_BUDGET = 1  # noqa: SLF001
             module._derived_plans.cache_clear()  # noqa: SLF001
             assert module._derive_staging(table, 4) is None  # noqa: SLF001
-            template = module._mux(table, 4)  # noqa: SLF001
+            template = mux._mux(table, 4)  # noqa: SLF001
             assert template is not None
         finally:
             module._STAGING_BUDGET = original  # noqa: SLF001
@@ -1155,7 +1152,7 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck_staged")
 
         original = module._STAGING_BUDGET  # noqa: SLF001
         try:
@@ -1359,9 +1356,12 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck_staged")
+        mf = importlib.import_module("esolangs.tools.minifuck")
+        mux = importlib.import_module("esolangs.tools.minifuck_mux")
+        pool = importlib.import_module("esolangs.tools.minifuck_pool")
 
-        codes = module._POOL_CODES  # noqa: SLF001
+        codes = pool._POOL_CODES  # noqa: SLF001
         assert codes, "the pool list should not be empty"
         # Shortest first, so the emitted program is no longer than it must be.
         assert list(codes) == sorted(codes, key=len), codes
@@ -1372,15 +1372,15 @@ class TestParameterizedMinifuck:
         # No code answers ``cell7 == 1``: the list really is one orientation.
         # The fixed construction no longer calls the generic lookup, so replay
         # its canonical post-clamp state directly as the oracle.
-        joint = module._mux_separate(2)  # noqa: SLF001
+        joint = mux._mux_separate(2)  # noqa: SLF001
         joint.emit("x")
         module._clamp(joint)  # noqa: SLF001
-        walk_out = min(module._mux_separate(2).ptrs()) - 3  # noqa: SLF001
+        walk_out = min(mux._mux_separate(2).ptrs()) - 3  # noqa: SLF001
         answered = {
             cell7
             for cell7 in (0, 1)
             for code in codes
-            if module._pool_reaches(joint, code, cell7, walk_out)  # noqa: SLF001
+            if pool._pool_reaches(joint, code, cell7, walk_out)  # noqa: SLF001
         }
         assert answered == {0}, f"expected only cell7==0 to be served, got {answered}"
 
@@ -1407,7 +1407,7 @@ class TestParameterizedMinifuck:
 
         with patch.object(module, "_find_pool", record_all):
             module._derived_plans.cache_clear()  # noqa: SLF001
-            module.minifuck.cache_clear()
+            mf.minifuck.cache_clear()
             # Harvested from the oracle's enumeration rather than a build: a
             # build now derives its columns in closed form and asks
             # ``_find_pool`` only twice per slice, where the emit-and-walk
@@ -1415,7 +1415,7 @@ class TestParameterizedMinifuck:
             # inputs, because the sample has to be wide: a two-input walk
             # visits 77 sites where this one fills the 400-site cap.
             module._derived_plans(3, ("01101001",))  # noqa: SLF001
-        module.minifuck.cache_clear()
+        mf.minifuck.cache_clear()
         assert len(wide) > 100, f"expected a cold build's lookups, got {len(wide)}"
 
         other = ("[<[<[[[<[<[[<<", "[<[<[[[<[[[[<<", "[<[<[[[[[<[[<<")
@@ -1423,7 +1423,7 @@ class TestParameterizedMinifuck:
             cell7
             for joint, cell7, walk_out in wide
             for code in other
-            if module._pool_reaches(joint, code, cell7, walk_out)  # noqa: SLF001
+            if pool._pool_reaches(joint, code, cell7, walk_out)  # noqa: SLF001
         }
         assert other_answered == {1}, (
             f"expected the family's other orientation, got {other_answered}"
@@ -1442,7 +1442,9 @@ class TestParameterizedMinifuck:
         """
         import importlib
 
-        module = importlib.import_module("esolangs.tools.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck_staged")
+        mf = importlib.import_module("esolangs.tools.minifuck")
+        pool = importlib.import_module("esolangs.tools.minifuck_pool")
 
         seen: list[tuple[object, int, int]] = []
         real = module._find_pool  # noqa: SLF001
@@ -1454,25 +1456,25 @@ class TestParameterizedMinifuck:
 
         with patch.object(module, "_find_pool", record):
             module._derived_plans.cache_clear()  # noqa: SLF001
-            module.minifuck.cache_clear()
+            mf.minifuck.cache_clear()
             # The oracle's walk, for the width of the sample; see the note
             # above -- a build's closed-form derivation visits too few sites.
             module._derived_plans(3, ("01101001",))  # noqa: SLF001
-        module.minifuck.cache_clear()
+        mf.minifuck.cache_clear()
         assert len(seen) > 100, f"expected a cold walk's lookups, got {len(seen)}"
 
         # The two witnesses from the other orientation, spelled by the same
         # step law the shipped codes are.
         other = (
-            module._step(4, 3, odd=False),  # noqa: SLF001
-            module._step() + module._step(5, 2, odd=False),  # noqa: SLF001
+            pool._step(4, 3, odd=False),  # noqa: SLF001
+            pool._step() + pool._step(5, 2, odd=False),  # noqa: SLF001
         )
         assert other == ("[[[[[[[[<<<", "[<[[[[[[[[[[<<"), other
 
-        for code in (*module._POOL_CODES, *other):  # noqa: SLF001
+        for code in (*pool._POOL_CODES, *other):  # noqa: SLF001
             for joint, _cell7, walk_out in seen:
                 both = all(
-                    module._pool_reaches(joint, code, orientation, walk_out)  # noqa: SLF001
+                    pool._pool_reaches(joint, code, orientation, walk_out)  # noqa: SLF001
                     for orientation in (0, 1)
                 )
                 assert not both, f"{code!r} answered both orientations at one site"
@@ -1993,24 +1995,19 @@ class TestParameterizedMinifuck:
         tuple for tuple, because the order -- not a stored answer -- is what
         decides which program a truth table gets.
 
-        This is the regression net for one specific mistake, and what makes
-        it hard to catch: an index that walks the order wrongly still
-        produces columns that are all reachable and all valid.
-        A draft of the index interleaved the two enumeration passes per
-        slice instead of running every pure bracket run before any insert
-        suffix, and the only symptom was five-input XOR being assigned
-        ``None`` where the enumeration assigns ``(2, 0, 0, 33)``.  Every
-        program it did emit still printed its table.  So the assertion here
-        is on the staging *tuple*, never on whether the build works.
+        The regression net for one mistake that is hard to catch: an index
+        walking the order wrongly still produces columns that are reachable
+        and valid.  A draft interleaved the two enumeration passes per slice
+        instead of running every pure bracket run before any insert suffix,
+        and the only symptom was five-input XOR assigned ``None`` where the
+        enumeration assigns ``(2, 0, 0, 33)`` -- every program it emitted
+        still printed its table.  So the assertion is on the staging
+        *tuple*, never on whether the build works.
 
         ``_derived_plans`` takes a *tuple* of targets and answers them in one
-        walk of the order, so every table is asked at once rather than one
-        call per table.  That is the whole cost: 256 separate three-input
-        walks were 7.4s, and the single walk answering all of them is 0.12s.
-        The comparison is unchanged -- still every table at arity 2 and 3,
-        still against the staging tuple -- and the complement is dropped from
-        the targets only because at these arities the complement of every
-        table is already in the set.
+        walk, so 256 separate three-input walks (7.4s) become one (0.12s).
+        The complement is dropped from the targets because at these arities
+        it is already in the set.
         """
         import importlib
 
@@ -2787,7 +2784,7 @@ class TestParameterizedMinifuck:
 
         # The package re-exports the generator under the submodule's own
         # name, so import the module explicitly rather than by attribute.
-        module = importlib.import_module("esolangs.tools.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck_pool")
         from esolangs.tools.minifuck import _clamp, _embed, _endgame
 
         joint = _embed(2)

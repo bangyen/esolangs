@@ -46,7 +46,7 @@ class TestStagingIndexBudget:
         counts must grow with the budget, and each smaller index must be a
         sub-map of the larger -- a prefix, not a different walk.
         """
-        module = importlib.import_module("esolangs.tools.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck_staged")
         indexes = []
         for budget in (200, 7600, 20_000):
             module._staging_index.cache_clear()  # noqa: SLF001
@@ -110,7 +110,7 @@ class TestScoutPricesNothing:
         separation puts them -- so the disagreement is injected: the scout
         must come back untrusted, sending ``_mux`` to the sweep.
         """
-        module = importlib.import_module("esolangs.tools.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck_mux")
         base, accs = _scout_setup(module, 2)
         assert module._mux_scout(base, "0110", 2, accs)[1]  # noqa: SLF001
 
@@ -136,7 +136,7 @@ class TestMuxUsesOneRule:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Retired candidate contests cannot affect the fixed construction."""
-        module = importlib.import_module("esolangs.tools.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck_mux")
         expected = module._mux("0110", 2)  # noqa: SLF001
         assert expected is not None
 
@@ -220,7 +220,7 @@ class TestProbeFrameAndColumns:
         the second is broken here, since the first refusing is the separate
         guard above.
         """
-        module = importlib.import_module("esolangs.tools.minifuck")
+        module = importlib.import_module("esolangs.tools.minifuck_mux")
         base, accs = _scout_setup(module, 2)
         real = module._probe_frame  # noqa: SLF001
         seen: list[str] = []

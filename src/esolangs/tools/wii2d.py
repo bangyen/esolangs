@@ -530,23 +530,18 @@ def _wii2d_decode(pattern: list[int]) -> str | None:
 # the arithmetic offsets, then the digit and square merges, then the halving
 # ones, with Horner last.
 #
-# The order is *semantic*, not by cost, and the difference is measurable: it
-# holds 42 total-character inversions, the plainest being ``('', '0')`` at
-# one character sitting behind six two-character entries.  No sort key
-# reproduces it -- a sweep of 1.9M candidates over 63 features (field
-# lengths, per-character counts, weighted op costs, and their 1-to-3-deep
-# lexicographic compositions, both directions) found none monotone along the
+# The order is *semantic*, not by cost, and no sort key reproduces it: a
+# sweep of 1.9M candidates over 63 features found none monotone along the
 # shipped sequence, against a positive control that recovers 172 keys for a
-# deliberately sorted list.  Two adjacent pairs make that a proof rather
-# than a failed search: index 10 to 11 and index 17 to 18 both *descend* in
+# deliberately sorted list.  Two adjacent pairs make that a proof rather than
+# a failed search -- index 10 to 11 and index 17 to 18 both *descend* in
 # length, so no key monotone in total length can order this table.
 #
-# What the order buys is size, and it was tuned rather than derived:
-# permuting the merge entries (Horner pinned last) changes 360 of 392
-# emitted programs with zero errors, and the shipped order beats 7 of 8
-# random permutations on total size (57708 against up to 59557).  So it is a
-# measured preference over a structure that is already total -- reordering
-# costs characters, never correctness.
+# What the order buys is size, tuned rather than derived: permuting the merge
+# entries (Horner pinned last) changes 360 of 392 emitted programs with zero
+# errors, and the shipped order beats 7 of 8 random permutations on total
+# size (57708 against up to 59557).  Reordering costs characters, never
+# correctness.
 #
 # A chain junction is a pair ``(A, B)``: ``A`` transforms the accumulator
 # when the input is 0, ``B`` when it is 1.  The pair is shared by every path
@@ -567,16 +562,6 @@ def _wii2d_decode(pattern: list[int]) -> str | None:
 # set small and handing the final decode a narrower domain.  They are tried
 # in a fixed order and the first legal one is taken, so the chain is a single
 # pass with no backtracking and the program depends only on the table.
-#
-# That order is semantic, not by cost: ``('', '0')`` is one character and
-# still sits after three two-character entries, and sorting by total
-# characters -- with or without reset/star tiering, or a weighted op cost --
-# reproduces none of it.  It is a tuned preference over a set every member of
-# which is correct, so permuting it is a size regression rather than a bug:
-# permuting the twenty merge entries (Horner pinned last) changes 360 of 392
-# emitted programs with zero errors, and the shipped order beats 7 of 8
-# random permutations on total size.  Reordering therefore means re-running
-# that tuning, not just re-checking the tests.
 _WII2D_JUNCTIONS: tuple[tuple[str, str], ...] = (
     ("", ""),
     ("", "+"),
@@ -1023,14 +1008,12 @@ def wii2d(truth_table: str, width: int | None = None) -> str:
 
     ``width`` lays the program out to fit that many columns rather than
     reflowing it afterwards, which a grid cannot be.  What folds is the
-    48-cell run that shifts the answer to an ASCII digit -- a straight run
-    of one commutative op, so the fold needs nothing re-derived; see
-    :func:`_wii2d_fold_decode`.  What does not fold is the junction chain,
-    since each junction is where one input is embedded and each detour row
-    hangs beneath its own junction, so the chain's length plus one column is
-    the floor.  A width under it returns the narrowest program rather than
-    refusing, and a width at or above the unfolded form returns exactly what
-    no width returns.  At three inputs that is 71 columns down to 22.
+    48-cell run that shifts the answer to an ASCII digit (see
+    :func:`_wii2d_fold_decode`); what does not is the junction chain, since
+    each junction embeds one input and each detour row hangs beneath its own
+    junction, so the chain's length plus one column is the floor.  A width
+    under it returns the narrowest program rather than refusing.  At three
+    inputs that is 71 columns down to 22.
 
     WII2D has no input command, so this is a parameterized generator: the
     template's ``{Xi}`` placeholders are junction cells that the harness
@@ -1054,20 +1037,18 @@ def wii2d(truth_table: str, width: int | None = None) -> str:
     ``2 ** (n - 1)``; that keeps majority-of-n and friends cheap at arities
     well past where the general path stops.
 
-    Two **cost guards** bound the general path, neither a claim about what
-    the construction can represent.  :data:`_WII2D_MAX_INDEX_DOMAIN` charges
+    Three **cost guards** bound the general path, none a claim about what the
+    construction can represent.  :data:`_WII2D_MAX_INDEX_DOMAIN` charges
     :func:`_wii2d_cost`, the smaller of ``2 ** (n - 1)`` and the domain the
     chain actually leaves, so dense tables run out at ``n == 9`` while
-    *structured* ones keep going at any arity: an ``n == 8`` xor-of-a-subset
-    collapses to a 4-point decode and builds in 217 characters.  Inside the
-    admitted domains a rare pattern still ratchets into the doubling trap;
-    :data:`_WII2D_MAX_MAGNITUDE` refuses those in seconds instead of
-    diverging.
-    :data:`_WII2D_MAX_REAL_DOMAIN` then refuses the rare table admitted on
-    its arity whose chain found no merge at all, leaving a decode too wide to
-    be worth emitting.  A refusal raises :class:`ValueError` naming which
-    bound it hit; see the two constants for the measured curves and
-    ``the limitations ledger`` for the argument.
+    *structured* ones keep going at any arity -- an ``n == 8``
+    xor-of-a-subset collapses to a 4-point decode and builds in 217
+    characters.  :data:`_WII2D_MAX_MAGNITUDE` refuses the rare admitted
+    pattern that ratchets into the doubling trap, and
+    :data:`_WII2D_MAX_REAL_DOMAIN` the rare table whose chain found no merge
+    at all.  A refusal raises :class:`ValueError` naming which bound it hit;
+    see the constants for the measured curves and ``the limitations ledger``
+    for the argument.
     """
     n = _validate_truth_table(truth_table)
     result = _wii2d_routes(n, truth_table)

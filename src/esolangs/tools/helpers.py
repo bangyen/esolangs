@@ -381,52 +381,35 @@ def best_input_order(
     because per-language address and routing costs can outweigh its folds.
 
     The identity order is tried first and ties keep it, so a table no
-    reorder improves emits exactly what it emitted before -- reordering can
-    only shrink a program, never grow or churn one.  The greedy path takes
-    the identity too whenever its own pick does not measure shorter.
+    reorder improves emits exactly what it emitted before: reordering can
+    only shrink a program, never grow or churn one.
 
     **The read order does not move.**  Only the order the tree *tests* the
     inputs in changes; the reads (or the load block, or the ``{Xi}``
     placeholders) stay in input order, so the program consumes its input
-    stream exactly as it did.  That is what rules out Polynomial, whose node
-    reads its own bit and which has *no addressable storage* -- one register,
-    no tape and no variables -- so a bit can only be branched on before the
-    next read overwrites it, and the test order is forced to be the stream
-    order.
+    stream exactly as it did.
 
-    6-5 and Jaune were once excluded here for the same phrase, wrongly: both
-    have a tape and a pointer (``B``/``v`` read into the *current* cell,
-    ``1``/``3`` and ``>``/``<`` move it), so their reads *could* be hoisted
-    and their nodes could test any cell.  Only their old generators read at
-    the node.  Both now hoist and reorder, which is what the phrase never
-    ruled out -- what it rules out is a language with nowhere to put a bit,
-    and 6-5's case is the one where hoisting also has a *price*: it spends a
-    pointer move per node and a normalization per stored input, so
-    :func:`~esolangs.tools.six_five.six_five` keeps its node-read
-    build as one more candidate rather than replacing it, and measures.
+    That is what rules Polynomial out: its node reads its own bit and it has
+    *no addressable storage* -- one register, no tape, no variables -- so a
+    bit can only be branched on before the next read overwrites it.  Whether
+    a generator can be reordered is a property of the language rather than of
+    what its generator emits today, so read the interpreter's op set before
+    concluding a tree is stuck with its load order.  6-5 and Jaune were once
+    excluded by that phrase wrongly (both have a tape and a pointer), and so
+    was Bitdeque, whose ``INJECT``/``EJECT`` work the head where
+    ``PUSH``/``POP`` work the tail, making it a deque.  6-5 is the case where
+    hoisting has a *price* -- a pointer move per node and a normalization per
+    stored input -- so it keeps its node-read build as one more candidate and
+    measures.
 
-    **Whether a generator can be reordered is a property of the language,
-    not of what its generator happens to emit.**  Bitdeque looked excluded
-    for pushing and popping in order, and is not: ``INJECT``/``EJECT`` work
-    the head where ``PUSH``/``POP`` work the tail, so it is a deque and any
-    bit can be rotated to an end.  Read the interpreter's op set before
-    concluding a tree is stuck with its load order.
-
-    **Modulous is the case where that check comes back negative, and the
-    reason is worth keeping.**  Its stack reaches only the top two cells
-    (``SWP`` swaps them; there is no rotate), so the obvious escape is to
-    park the bits in its ``VAR1``-``VAR4`` variables and read them back in
-    any order.  There is no reading them back: ``[PSH VAR1]`` *stores* the
-    stack top into a variable, and the only op that reads one is
-    ``[PRT VAR1 INT]``, which prints it.  Every conditional (``JMP ... IF``)
-    inspects the stack top alone, so a bit in a variable can never be
-    branched on -- the round trip has no return leg.
-
-    Arithmetic does not open one either.  ``[VAR1+k]`` works, but ``k`` is a
-    literal parsed at execution time, and ``ADD``/``SUB`` and ``JMP ... IF``
-    all reject a variable operand: a variable can be *computed on* and never
-    read back.  Verified against both this repo's interpreter and the wiki,
-    which calls the variables settable and printable with no load.
+    **Modulous is where that check comes back negative.**  Its stack reaches
+    only the top two cells, so the escape would be to park the bits in its
+    ``VAR1``-``VAR4`` variables; but ``[PSH VAR1]`` *stores* into a variable
+    and the only op reading one is ``[PRT VAR1 INT]``, which prints it.
+    Every conditional inspects the stack top alone, and ``ADD``/``SUB`` and
+    ``JMP ... IF`` all reject a variable operand, so a variable can be
+    computed on and never read back -- the round trip has no return leg.
+    Verified against both this repo's interpreter and the wiki.
     """
     n = _validate_truth_table(truth_table)
     identity = tuple(range(n))
@@ -550,40 +533,28 @@ def decision_tree_tokens[Token](
     * A node acts only *after* both children, never between them.  6-5,
       Jaune and Interprogck8 allocate a branch label between the two
       recursive calls, and Polynomial appends to a shared buffer while
-      threading the running cell value, so all need a hook this does not
-      offer; giving them one turns the walker back into the recursion with
-      more moving parts.
-    * Nothing is threaded *down* the walk.  ``leaf`` and ``node`` see the
-      level and the index, not the path that reached them, so CV(N)(C)'s
-      accumulator, Jaune's held bit and entry cell, and Circlefuck's pointer
-      position -- each a function of the branch taken above -- have nowhere
-      to live.
+      threading the running cell value.
+    * Nothing is threaded *down* the walk, so CV(N)(C)'s accumulator,
+      Jaune's held bit and entry cell, and Circlefuck's pointer position --
+      each a function of the branch taken above -- have nowhere to live.
     * The zero subtree is laid down first.  Between, CV(N)(C), Unsquare and
       Interprogck8 emit their *one* subtree first, so the indices threaded
-      here would reach their children swapped and every branch line would
-      name the wrong target -- on any table whose two subtrees differ in
-      size.  Which side goes first is a language's own business, so those
-      keep their own arithmetic.
+      here would reach their children swapped on any table whose subtrees
+      differ in size.
     * Rows split most-significant-first, keeping each subtree contiguous.
-      Modulous and Unsquare walk their bits the other way, so their halves
-      are not runs.
+      Modulous and Unsquare walk their bits the other way.
     * The tree is a token *sequence*, laid out by nesting.  Eval and Forth
-      store theirs in a positional heap instead -- children pinned at
-      ``2i+1``/``2i+2``, a node's own width a function of its index -- so a
-      folded subtree has to be blanked in place rather than deleted, or
-      every later index shifts.  Concatenating variable-length subtrees is
+      store theirs in a positional heap -- children pinned at
+      ``2i+1``/``2i+2`` -- so a folded subtree has to be blanked in place
+      rather than deleted, and concatenating variable-length subtrees is
       exactly what breaks that.
-    * Both children are always built.  A generator that *skips* a subtree
-      cannot say so: AddSubJump and Jaune drop an input no node tests and
-      descend into one half alone, and a ``node`` that discards the other
-      half still pays for the tokens the walk already built -- measured on
-      AddSubJump, 24 of 256 tables came out longer at ``n == 3``, which the
-      suite catches as a reordering regression rather than a wrong answer.
-      Skipping has to happen instead of the recursion, not after it.
-    * Lamfunc returns one plain string with no index to thread, so it would
-      spend a one-element list at every use to gain four lines.
-    * The grid generators' tree is a placement on a plane, not a token
-      sequence, and none of this applies to them.
+    * Both children are always built.  AddSubJump and Jaune drop an input no
+      node tests and descend into one half alone, and a ``node`` discarding
+      the other half still pays for the tokens the walk built: measured on
+      AddSubJump, 24 of 256 tables came out longer at ``n == 3``.
+    * Lamfunc returns one plain string with no index to thread.
+    * The grid generators' tree is a placement on a plane rather than a
+      token sequence.
 
     Contrast :func:`decision_tree_program`, which shares an entire finished
     construction between two dialects of one language family; this shares
