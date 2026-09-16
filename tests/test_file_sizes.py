@@ -27,7 +27,6 @@ MAX_LINES = 1500
 _RATCHET = {
     "src/esolangs/__init__.py": 1598,
     "src/esolangs/interpreters/grid_based/streetcode.py": 1855,
-    "src/esolangs/tools/parameterized.py": 1873,
     "tests/interpreters/test_forbin.py": 1721,
     "tests/interpreters/test_streetcode.py": 2249,
     "tests/test_answer_plumbing.py": 1977,
