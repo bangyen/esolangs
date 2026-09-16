@@ -10,10 +10,15 @@ so nobody re-runs a screen whose candidates already landed.
 ## Boolean generator novelty axes
 
 *From `unimplemented-boolean-novelty.md`, 2026-09-01.  Its six-language
-ranking is spent: Inject, Algebraic Programming Language, Packlang and
-Interprogck8 all have working generators now; DINAC and `function x(y)`
-were its own lowest-rated picks and are not in the registry.  The axes are
-what survived.*
+ranking is entirely spent -- every candidate was pursued.  Inject,
+Algebraic Programming Language, Packlang and Interprogck8 shipped and are
+still here.  DINAC and `function x(y)`, its two lowest-rated picks, also
+shipped and were then deliberately **pruned** -- DINAC in `c967e6e4`
+(2026-09-12) as one of four "ordinary languages in costume",
+`function x(y)` in `07885839` (2026-09-13) as a shared-shim language.
+Their absence from the registry is a curation verdict, not an unbuilt
+candidate; the criterion is in `docs/limitations.md`'s Curation section.
+The axes below are what survived.*
 
 A candidate is *novel* only if it forces a point the existing set does not
 occupy:
