@@ -59,7 +59,7 @@ def test_the_chunk_invariant_holds(seed: int) -> None:
 
 
 def test_reads_past_the_end_raise() -> None:
-    """The end is an error, as it is for a tuple, at either shape of tape."""
+    """The end is an error, as it is for a tuple, and so is a negative index."""
     tape = chunked(range(CHUNK + 3))
     with pytest.raises(IndexError):
         get(tape, CHUNK + 3)
@@ -69,6 +69,10 @@ def test_reads_past_the_end_raise() -> None:
         get(prepend((), 1), 1)
     with pytest.raises(IndexError):
         get((), 0)
+    # A tuple would read a negative index from the end; a tape has no end
+    # to count from, since its last chunk is partial.
+    with pytest.raises(IndexError):
+        get(tape, -1)
 
 
 def test_a_write_shares_every_untouched_chunk() -> None:

@@ -164,7 +164,10 @@ def _halt(squarings: int) -> str:
 
 def _reach(squarings: int) -> int:
     """Return the offset the gadget lands on: the longest program it escapes."""
-    return (_HALT_ENTRY + 2) ** (2**squarings)
+    reach = _HALT_ENTRY + 2
+    for _ in range(squarings):
+        reach *= reach
+    return reach
 
 
 # The gadget every candidate is measured with; ``ɹ`` occurs nowhere else in
