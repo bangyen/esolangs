@@ -388,13 +388,24 @@ def _fill_back(template: str, bits: list[int]) -> str:
 
 
 def _fill_minsky_swap(template: str, bits: list[int]) -> str:
-    """Set each input register by counting ``+`` against a ``*`` pad.
+    """Set each input register with a run as long as the bit's own weight.
 
-    Minsky Swap has no input instruction, so a bit is embedded as a run of
-    ``+`` adding its binary weight to ``reg[0]``, padded with ``*`` to a
-    length the template counted on when it computed its jump targets.  Both
-    runs are even because ``*`` swaps the register pointer: an odd pad would
-    leave every later command addressing the wrong register.
+    Minsky Swap has no input instruction, so a one is embedded as a run of
+    ``+`` adding its binary weight to ``reg[0]``, and a zero as a run of
+    ``*`` of the same length doing nothing.  The length is the weight
+    itself, which is what the template counted on when it computed its jump
+    targets -- the two must move together.
+
+    Both runs are even, because ``*`` swaps the register pointer and an odd
+    run would leave every later command addressing the wrong register.  A
+    one does no swapping at all and a zero an even number, so either way the
+    pointer comes back.
+
+    Equal width is the invariant here, and it is per input rather than
+    across them: ``set_bit(i, 0)`` and ``set_bit(i, 1)`` must match, or the
+    program's length leaks the bit, but block ``i`` need not match block
+    ``j``.  Reading it as across-them and padding every block to ``2**n``
+    cost a factor of ``n`` in commands executed for no invariant at all.
 
     The LSB is the exception, and not merely a shorter one.  Its block is
     ``+*+*``, which adds its weight of one to ``reg[0]`` and then, across
@@ -405,15 +416,23 @@ def _fill_minsky_swap(template: str, bits: list[int]) -> str:
     the same four commands doing nothing.
     """
     n = len(bits)
-    size: int = 2**n
 
     def set_bit(i: int, bit: int) -> str:
         if i == n - 1:  # LSB: length-4 block, no "~"
             return "+*+*" if bit else "****"
         weight: int = 2 ** (n - 1 - i)
-        if bit:
-            return "+" * weight + "*" * (size - weight)
-        return "*" * size
+        # As long as the weight, not as long as the table.  Both spellings
+        # are the same width for a 0 as for a 1, which is the rule that
+        # matters -- a program's length must not depend on the bits it is
+        # evaluating -- and that rule is per input, not across them, so a
+        # block need only match its own counterpart.  Padding every block to
+        # 2**n instead made the load run (n-1) * 2**n commands, which was
+        # the whole of this construction's Theta(T log T) execution.
+        #
+        # The pad stays even because ``*`` swaps the register pointer: a
+        # one is ``+`` * weight with no swap at all, a zero ``*`` * weight
+        # with an even number, so both leave the pointer where they found it.
+        return ("+" if bit else "*") * weight
 
     return instantiate(template, bits, set_bit)
 

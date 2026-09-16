@@ -26,12 +26,17 @@ Where the bound sits, measured on both sides:
   progression in the input count rather than the table's) up to x2.06
   (AddSubJump), with 123, S*bleq, Bitdeque, Collatz Multiverse and COD all
   within a percent of x2.00 -- a single pass over the table;
-* Minsky Swap measures x2.29 and is the only construction on the registry
-  whose commands *per table entry* grow rather than settle, so it is the
-  one this bound catches.
+* it has caught one construction for real.  Minsky Swap measured x2.29,
+  with commands per table entry of 4.5, 4.0, 3.9, 4.5, 5.2, 6.1, 7.1, 8.0,
+  9.0, 10.0 at n=1..10 -- the input count rather than a constant, so
+  Theta(T log T).  It padded every input's setter block to the table's
+  length when only that bit's weight was needed; sized to the weight, the
+  blocks sum to ``2**n + 2``, per-entry commands settle at 2.01, and it now
+  measures x1.98 and is held to the bound like everything else.
 
-The gap between x2.06 and x2.29 is narrow, which is the honest reading: the
-statistic separates a single pass from a pass-per-entry, and nothing finer.
+The gap between x2.06 and the x2.29 that was caught is narrow, which is the
+honest reading: the statistic separates a single pass over the table from a
+pass per entry, and nothing finer.
 
 Steps, not seconds
 ------------------
@@ -157,11 +162,6 @@ EXEMPT = {
         "halts on no row -- an unconditional loop whose answer is a proven "
         "cycle, so there is no command count to grow"
     ),
-    "Minsky Swap": (
-        "measured Theta(T log T): commands per table entry are 4.5, 4.0, "
-        "3.9, 4.5, 5.2, 6.1, 7.1, 8.0, 9.0, 10.0 at n=1..10 -- the input "
-        "count, not a constant"
-    ),
 }
 
 
@@ -251,7 +251,7 @@ def _series(name: str, top: int) -> list[tuple[int, int]]:
     for n in range(1, top + 1):
         try:
             count = _commands(name, _parity(n))
-        except Exception:  # noqa: BLE001 - a refusal is a ceiling, not a failure
+        except Exception:
             break
         if count is None or count == 0:
             continue
@@ -275,7 +275,7 @@ def _growth(window: list[tuple[int, int]]) -> float:
     mx = sum(xs) / len(xs)
     my = sum(ys) / len(ys)
     spread = sum((x - mx) ** 2 for x in xs)
-    slope = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / spread
+    slope = sum((x - mx) * (y - my) for x, y in zip(xs, ys, strict=True)) / spread
     return 2.0**slope
 
 

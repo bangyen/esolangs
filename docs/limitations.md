@@ -898,11 +898,14 @@ About fifteen are linear -- Minifuck, COD, Forth, Back, ROTfuck, S*bleq,
 Qoibl, Container and the rest -- which is what a program that walks its
 table once costs.
 
-Minsky Swap is the one whose *command count* is super-linear rather than
-its per-command cost, and it is Theta(T log T) on the nose: commands per
-table entry are 4.5, 4.0, 3.9, 4.5, 5.2, 6.1, 7.1, 8.0, 9.0 and 10.0 at one
-through ten inputs -- the input count, not a constant.  Every other
-construction's per-entry count settles.
+Minsky Swap was the one whose *command count* was super-linear rather than
+its per-command cost, and it was Theta(T log T) on the nose: commands per
+table entry ran 4.5, 4.0, 3.9, 4.5, 5.2, 6.1, 7.1, 8.0, 9.0 and 10.0 at one
+through ten inputs -- the input count, not a constant.  It padded each
+input's setter block to the whole table's length, when equal width is only
+required of a bit against *itself*; sized to its own weight, the blocks sum
+to `T+2`, and per-entry commands settle at 2.01.  Every construction's
+per-entry count now settles.
 
 Twenty-two never look at most of the table, and their command counts are
 polynomial in the input count rather than in its size.  brainfuck is the

@@ -1459,11 +1459,20 @@ def minsky_swap(truth_table: str) -> str:
     the template's ``{Xi}`` placeholders become *fixed-length* setters that
     assemble the input's numeric index into ``reg[0]`` — one block per bit,
     so the inputs are embedded exactly ``n`` times.  Each non-LSB bit's block
-    is ``2**n`` commands long: ``+`` repeated for its weight followed by
-    ``*``-padding to length (both runs are even, so the pointer is restored),
-    or ``*``-padding alone for a zero.  The LSB block is the length-4
+    is as long as that bit's own weight ``2**(n-1-i)``: ``+`` repeated for
+    the weight when the bit is one, ``*`` repeated for it when the bit is
+    zero.  Both spellings are the same length, which is the rule -- a
+    program's length must not depend on the bits it evaluates -- and both
+    leave the register pointer where they found it, since a one does no
+    swapping and a zero does an even number.  The LSB block is the length-4
     ``+*+*`` (adds one, and leaves ``reg[1]`` polluted with a one) or
     ``****`` (a no-op), so the setter length is fixed without an odd pad.
+
+    The blocks therefore sum to ``2**n + 2`` commands rather than the
+    ``(n-1) * 2**n`` they came to when every block was padded to the table's
+    length.  That padding was this construction's whole super-linearity:
+    its commands per table entry used to be the input count, 4.5 through
+    10.0 at one through ten inputs, and now settle at 2.01.
 
     A cascade of ``2**n`` ``~``s then routes the assembled value *v* to leaf
     *v* — each ``~`` decrements a nonzero register and jumps on zero, so the
@@ -1478,11 +1487,12 @@ def minsky_swap(truth_table: str) -> str:
     targets: list[int] = []
     pos = 0  # instantiated command index of the next command
 
-    # load: bits MSB first; every non-LSB setter is a length-2^n block, the
-    # LSB a length-4 block
+    # load: bits MSB first; a non-LSB setter is as long as its own bit's
+    # weight, the LSB a length-4 block.  These must stay in step with
+    # ``_fill_minsky_swap``, which emits the text these offsets count.
     for i in range(n - 1):
         tokens.append("{X" + str(i) + "}")
-        pos += 2**n
+        pos += 2 ** (n - 1 - i)
     tokens.append("{X" + str(n - 1) + "}")
     pos += 4
 
