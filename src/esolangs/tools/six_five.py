@@ -2,8 +2,9 @@
 
 :func:`six_five` routes a decision tree that folds its constant subtrees,
 shares its duplicates past the label budget, and falls back to a positional
-walk (:func:`_six_five_walk`) when even the distinct subtrees overflow --
-which makes the generator total through n == 35.
+walk (:func:`_six_five_walk`) when even the distinct subtrees overflow;
+past 35 inputs the walk loops (:func:`_six_five_looped`) instead of
+spending a label per input, so the generator is total.
 
 There used to be a second construction, ``six_five_arithmetic``, which
 packed the inputs and the table into single cells and decoded the entry
@@ -112,8 +113,9 @@ def six_five(truth_table: str) -> str:
 
     **Past even the distinct subtrees the table goes on the tape**
     (:func:`_six_five_walk`), which spends one label per *input* rather
-    than per subtree and so is total through n == 35: the reads steer the
-    pointer to the row the inputs index instead of steering the cursor.
+    than per subtree, and past 35 inputs sixteen labels for any width
+    (:func:`_six_five_looped`): the reads steer the pointer to the row the
+    inputs index instead of steering the cursor.
     The trees stay preferred while one fits -- they are what every
     committed size measurement was taken against, and far shorter when a
     table folds or shares well.
@@ -177,20 +179,16 @@ def _six_five_walk(truth_table: str) -> str:
     since one cell is printed and the program halts.
 
     Dense n == 10 spends 10 labels and 5319 chars, and all 1024 rows run
-    in 12s; size doubles per input, so the label bound ``n <= 35`` is the
-    only other gate.
+    in 12s; size doubles per input, and past the label bound ``n <= 35``
+    the table goes to :func:`_six_five_looped`, which spends sixteen
+    labels at any width.
     """
     n = _validate_truth_table(truth_table)
     if n > _SIX_FIVE_MAX_LABEL:
-        # Unreachable in practice: it takes a table of 2**36 entries, which
-        # is more characters than the machine has memory for.  Kept because
-        # the walk's arithmetic genuinely depends on the bound, and
-        # converted to the cap class with its siblings so the class is not
-        # half-applied.
-        raise GeneratorCapError(  # pragma: no cover - needs a 2**36 table
-            f"the 6-5 walk spends one branch label per input and there are "
-            f"only 35, so n == {n} does not fit"
-        )
+        # A table of 2**36 entries in practice, but the walk's arithmetic
+        # genuinely depends on the bound, so the wider table goes to the
+        # walk that loops instead of spending a label per input.
+        return _six_five_looped(truth_table)
     ones = [j for j, value in enumerate(truth_table) if value == "1"]
     out = ""
     if ones:
@@ -207,6 +205,114 @@ def _six_five_walk(truth_table: str) -> str:
         out += "B" + "2" * 8 + "79" + "8" + _six_five_label(i + 1)
         out += "1" * 2 ** (n - 1 - i) + "4" + "1"
     return out + "6" * 8 + "A0"
+
+
+#: The looped walk's markers in program order.  ``8n`` names the n-th ``4``
+#: of the whole program, so a label is a position, and the list is the
+#: allocation: sixteen for any table.
+_SIX_FIVE_LOOP_MARKERS = (
+    "back",
+    "passes",
+    "go",
+    "dec",
+    "left",
+    "exit",
+    "bit",
+    "go2",
+    "here",
+    "advance",
+    "zero",
+    "join",
+    "inc",
+    "left2",
+    "done",
+    "here2",
+)
+
+
+def _six_five_looped(truth_table: str) -> str:
+    """Emit the positional walk that spends sixteen labels at any width.
+
+    :func:`_six_five_walk` branches every bit with its own ``8n``, one of
+    the 35 labels per input.  This walk has one bit loop instead, and what
+    a bit does -- advance the pointer by ``2**(n-1-i)`` rows on a 1 -- is
+    read off the tape rather than off the program text.
+
+    Rows sit four cells apart, from cell 4: the row value, a *mark*, a
+    *flag*, and a scratch cell.  Cells 0..2 hold the bits-remaining and
+    passes-remaining counters (in sixes) and the start sentinel (5); one
+    row past the table an end sentinel (6) sits in the flag track, and the
+    row the pointer stands on has 1 in its flag.
+
+    The mark of row ``q`` is its 2-adic valuation ``v(q)`` in sixes.  After
+    the first ``i`` bits the pointer is at a multiple ``q`` of
+    ``S = 2**(n-1-i)`` with ``q / S`` even, so the row ``q + S`` a 1 must
+    reach is the *first* row past ``q`` whose valuation is exactly
+    ``n-1-i``: everything between has a smaller one.  The bit's advance
+    loop therefore walks the marks until one reads zero, and the marks are
+    kept at ``6 * (v(q) - (n-1-i))`` by shifting them: ``n-1`` decrement
+    passes before the first bit, then one increment pass after each.  A
+    pass walks right from the pointer to the end sentinel and back left to
+    the start, where the counters live; every loop tests a sentinel or a
+    zero with ``7n`` and jumps back with the same label, so the label bill
+    is the loop count.
+
+    Size is linear: five moves per row, a ``62`` per 1-row, and the marks
+    sum to ``2**n - n - 1`` sixes.  Execution is ``O(n * 2**n)``: each
+    of the ``2n - 1`` passes and the walk to the pointer is one sweep of
+    the tape.  Every row of every table at n <= 7 has been executed; the
+    dispatch reaches it only past 35 inputs.
+    """
+    n = _validate_truth_table(truth_table)
+    label = {
+        name: _six_five_label(index)
+        for index, name in enumerate(_SIX_FIVE_LOOP_MARKERS, start=1)
+    }
+
+    def jump(name: str) -> str:
+        return "8" + label[name]
+
+    out = [
+        # Cells 0..3: both counters pre-decrement before they test, so each
+        # holds one more than the loops it allows; the start sentinel is 5.
+        "6" * (n + 1),
+        "13" + "6" * n,
+        "13" + "5",
+        "13" + "13",
+    ]
+    for row in range(1 << n):
+        valuation = (row & -row).bit_length() - 1 if row else 0
+        out.append("62" if truth_table[row] == "1" else "")
+        out.append("13" + "6" * valuation)
+        out.append("13" + ("62" if row == 0 else ""))
+        out.append("1")
+    out.append("13" + "13" + "6")  # the end sentinel
+    # Back to the start sentinel.
+    out.append("4" + "3333" + "75" + jump("back"))
+    # n-1 decrement passes: count down, sweep right subtracting six from
+    # each mark, sweep left.
+    out.append("4" + "3" + "9" + "70" + jump("go") + jump("exit") + "4" + "13")
+    out.append("4" + "11" + "3" + "9" + "13" + "76" + jump("dec"))
+    out.append("4" + "3333" + "75" + jump("left") + jump("passes"))
+    out.append("4" + "13")
+    # The bit loop: count down, walk to the pointer's row, read the bit.
+    out.append("4" + "33" + "9" + "70" + jump("go2") + jump("done") + "4" + "1")
+    out.append("4" + "11" + "71" + jump("here"))
+    out.append("13" + "B" + "2" * 8 + "79" + jump("zero"))
+    # A 1: clear the flag, walk the marks to the first zero, plant the flag.
+    out.append("3" + "59" + "3")
+    out.append("4" + "11" + "70" + jump("advance"))
+    out.append("13" + "62" + jump("join"))
+    out.append("4" + "3")
+    out.append("4")
+    # The increment pass, then back to the counters.
+    out.append("4" + "11" + "3" + "6" + "13" + "76" + jump("inc"))
+    out.append("4" + "3333" + "75" + jump("left2") + jump("bit"))
+    # Every bit read: walk to the pointer's row and print it.
+    out.append("4" + "1")
+    out.append("4" + "11" + "71" + jump("here2"))
+    out.append("33" + "6" * 8 + "A0")
+    return "".join(out)
 
 
 def _six_five_dag_cost(truth_table: str) -> int:

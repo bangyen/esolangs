@@ -91,23 +91,34 @@ def _written(tape: tuple[int, ...], cell: int, value: int) -> tuple[int, ...]:
     return (*tape[:cell], value, *tape[cell + 1 :])
 
 
-def _marker(toks: list[str], nth: int) -> int | None:
+def _markers(toks: list[str]) -> tuple[int, ...]:
+    """Return the index of every ``4`` marker, in program order.
+
+    The markers never move, so this is taken once per program: scanning the
+    token list on every ``8n`` made a looping program pay its own length
+    per jump.
+    """
+    return tuple(j for j, tok in enumerate(toks) if tok == "4")
+
+
+def _marker(markers: tuple[int, ...], nth: int) -> int | None:
     """Return the index of the ``nth`` ``4`` marker, or None if absent.
 
     ``8n`` naming a marker the program does not have leaves the cursor
     where it is, so the miss is returned rather than raised -- which keeps
     the transition free of error cases.
     """
-    count = 0
-    for j, tok in enumerate(toks):
-        if tok == "4":
-            count += 1
-            if count == nth:
-                return j
+    if 1 <= nth <= len(markers):
+        return markers[nth - 1]
     return None
 
 
-def _advance(state: _State, toks: list[str], byte: int | None = None) -> _State:
+def _advance(
+    state: _State,
+    toks: list[str],
+    byte: int | None = None,
+    markers: tuple[int, ...] | None = None,
+) -> _State:
     """Return the state after executing one token.
 
     Pure: it reads ``state`` and returns a new one.  It takes no ``io``
@@ -123,6 +134,9 @@ def _advance(state: _State, toks: list[str], byte: int | None = None) -> _State:
 
     ``0`` halts by putting the cursor past the last token, and returns
     early so the shared increment does not carry it further.
+
+    ``markers`` is :func:`_markers` of ``toks``; a caller stepping one
+    program many times passes it, and one without it pays the scan here.
     """
     ind, cell, tape = state
     tok = toks[ind]
@@ -137,7 +151,9 @@ def _advance(state: _State, toks: list[str], byte: int | None = None) -> _State:
     elif tok in ("2", "9"):
         tape = _written(tape, cell, tape[cell] - (int(tok) % 6 + 3))
     elif tok[0] == "8":
-        target = _marker(toks, num(tok[1]) if len(tok) > 1 else 0)
+        if markers is None:
+            markers = _markers(toks)
+        target = _marker(markers, num(tok[1]) if len(tok) > 1 else 0)
         if target is not None:
             ind = target
     elif tok[0] == "7":
@@ -166,6 +182,7 @@ class _Machine:
         # ``halted`` is read twice per token -- once by ``run``'s loop and
         # once by ``step``'s guard -- so the length is taken once here.
         self.size = len(self.toks)
+        self.markers = _markers(self.toks)
         self.state: _State = (0, 0, (0,))
 
     # The language's own names.  They are views on the current state rather
@@ -255,7 +272,7 @@ class _Machine:
             self.io.print_char(chr(tape[cell]))
         elif tok == "B":
             byte = self.io.input_char()
-        self.state = _advance(self.state, self.toks, byte)
+        self.state = _advance(self.state, self.toks, byte, self.markers)
 
 
 def run(code: str, io: IO) -> None:
