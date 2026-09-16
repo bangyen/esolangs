@@ -240,7 +240,11 @@ _KINDS = {
         skip_tests=frozenset(
             {
                 "test_interpreter_conventions.py",
+                "test_cli_commands.py",
                 "test_cli_conventions.py",
+                "test_cli_io.py",
+                "test_cli_messages.py",
+                "test_cli_timeouts.py",
                 "test_documented_commands.py",
                 "test_answer_plumbing.py",
             }
