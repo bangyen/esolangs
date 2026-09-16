@@ -51,6 +51,15 @@ from typing import Literal
 
 from esolangs.exceptions import HaltError
 from esolangs.interpreters.io import IO
+from esolangs.interpreters.persistent import (
+    Chunked,
+    append,
+    chunked,
+    flatten,
+    get,
+    length,
+    put,
+)
 
 # The two command shapes, kept apart by their operators.  Because no
 # operator appears in both, comparing ``cmd.op`` discriminates the union:
@@ -180,12 +189,16 @@ def _parse(code: str) -> list[_Command]:
 #: The commands and the label and subroutine tables stay out: Jaune parses
 #: its program once and never rewrites it, so a step is handed them rather
 #: than carrying them.
-type _State = tuple[tuple[int, ...], int, int, int, tuple[int, ...]]
+type _State = tuple[Chunked[int], int, int, int, tuple[int, ...]]
 
 
-def _set(cells: tuple[int, ...], ptr: int, value: int) -> tuple[int, ...]:
-    """Return ``cells`` with the cell at ``ptr`` set to ``value``."""
-    return (*cells[:ptr], value, *cells[ptr + 1 :])
+def _set(cells: Chunked[int], ptr: int, value: int) -> Chunked[int]:
+    """Return ``cells`` with the cell at ``ptr`` set to ``value``.
+
+    The tape is chunked (:mod:`esolangs.interpreters.persistent`), so this
+    rebuilds one chunk rather than the whole tape.
+    """
+    return put(cells, ptr, value)
 
 
 def _markers(commands: Sequence[_Command]) -> dict[tuple[str, int | None], int]:
@@ -235,11 +248,11 @@ def _advance(
         cells = _set(cells, ptr, value if value is not None else 0)
     elif c in ("v+", "v-"):
         val = value if value is not None else 0
-        cells = _set(cells, ptr, cells[ptr] + (val if c == "v+" else -val))
+        cells = _set(cells, ptr, get(cells, ptr) + (val if c == "v+" else -val))
     elif c == ">":
         ptr += 1
-        if ptr == len(cells):
-            cells = (*cells, 0)
+        if ptr == length(cells):
+            cells = append(cells, 0)
     elif c == "<":
         # Clamped at cell 0, as brainfuck clamps its own ``<``.  This used
         # to insert a fresh cell and leave the pointer where it was, which
@@ -248,26 +261,26 @@ def _advance(
         # gap, and clamping is the one the rest of this package uses.
         ptr = max(0, ptr - 1)
     elif c == "#":
-        hold = cells[ptr]
+        hold = get(cells, ptr)
     elif c == "&":
-        cells = _set(cells, ptr, cells[ptr] + hold)
+        cells = _set(cells, ptr, get(cells, ptr) + hold)
     elif c == "%":
         cells = _set(cells, ptr, 0)
     elif c == "+":
-        cells = _set(cells, ptr, cells[ptr] + (cmd.arg or 1))
+        cells = _set(cells, ptr, get(cells, ptr) + (cmd.arg or 1))
     elif c == "-":
-        cells = _set(cells, ptr, cells[ptr] - (cmd.arg or 1))
+        cells = _set(cells, ptr, get(cells, ptr) - (cmd.arg or 1))
     elif c == "?":
         target = marks.get((":", cmd.arg))
         if target is None:
             raise HaltError(f"jump to undefined label {cmd.arg}")
-        if cells[ptr] != 0:
+        if get(cells, ptr) != 0:
             return (cells, ptr, hold, target, calls)
     elif c == "!":
         target = marks.get((":", cmd.arg))
         if target is None:
             raise HaltError(f"jump to undefined label {cmd.arg}")
-        if cells[ptr] == 0:
+        if get(cells, ptr) == 0:
             return (cells, ptr, hold, target, calls)
     elif c == "@":
         target = marks.get(("$", cmd.arg))
@@ -283,7 +296,8 @@ def _advance(
         target = marks.get((":", num))
         if target is None:
             raise HaltError(f"jump to undefined label {num}")
-        taken = cells[ptr] != 0 if c == "v?" else cells[ptr] == 0
+        cell = get(cells, ptr)
+        taken = cell != 0 if c == "v?" else cell == 0
         if taken:
             return (cells, ptr, hold, target, calls)
     elif c == "v@":
@@ -314,7 +328,7 @@ class _Machine:
         # and never rewritten, so every jump can read its target instead of
         # searching the command list for it.
         self.marks = _markers(self.commands)
-        self.cells: tuple[int, ...] = (0,)
+        self.cells: Chunked[int] = chunked((0,))
         self.ptr = 0
         self.hold = 0
         self.pos = 0
@@ -334,7 +348,7 @@ class _Machine:
     @property
     def memory(self) -> list[int]:
         """The addressable cells."""
-        return list(self.cells)
+        return list(flatten(self.cells))
 
     @property
     def stack(self) -> list[object]:
@@ -412,7 +426,7 @@ class _Machine:
 
         value = None
         if cmd.op == "^":
-            self.io.print_num(self.cells[self.ptr])
+            self.io.print_num(get(self.cells, self.ptr))
         elif cmd.op in ("v", "v+", "v-", "v?", "v!", "v@"):
             ch = self.io.input_str()
             value = ord(ch[0]) - 48 if ch else 0

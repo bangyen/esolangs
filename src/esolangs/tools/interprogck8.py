@@ -154,6 +154,34 @@ class _Layout:
 
     def lay(self, launch: int, stride: int, stop: int) -> None:
         """Lay one flight's rungs from ``launch`` up to (not on) ``stop``."""
+        self._walk(launch, stride, stop)
+        self.flights.append((launch, stride, stop))
+
+    def lay_shared(self, flights: list[tuple[int, int, int]]) -> None:
+        """Lay flights that share stops, walking each channel once.
+
+        Every printer flight flies from its leaf to a stop at the end of
+        the program, so laid one by one they walked the whole text once
+        per leaf: 8.6 million rung visits for a 395 thousand line program
+        at twelve inputs, Theta(T^2) for a linear output, x3.3 per added
+        input.  Flights on one channel -- same stride, same residue, same
+        stop -- lay the same rungs, and the earliest launch's walk covers
+        every later one's range, so the channel is walked from its
+        earliest launch exactly once.  The lines touched, the order they
+        are touched in, and the collision checks are the same as the
+        one-by-one walks made; only the repeats are gone.  Each flight
+        is still recorded for :func:`_validate`.
+        """
+        earliest: dict[tuple[int, int, int], int] = {}
+        for launch, stride, stop in flights:
+            key = (stride, launch % stride, stop)
+            earliest[key] = min(earliest.get(key, launch), launch)
+        for (stride, _residue, stop), launch in earliest.items():
+            self._walk(launch, stride, stop)
+        self.flights.extend(flights)
+
+    def _walk(self, launch: int, stride: int, stop: int) -> None:
+        """Put a rung on every line of the flight, checking each."""
         position = launch
         while position != stop:
             if position > stop:
@@ -162,7 +190,6 @@ class _Layout:
                 )
             self.put_rung(position)
             position += stride
-        self.flights.append((launch, stride, stop))
 
 
 def _assemble(table: str, n: int) -> tuple[list[str], list[_Flight]]:
@@ -293,11 +320,13 @@ def _assemble(table: str, n: int) -> tuple[list[str], list[_Flight]]:
         layout.put(escape + offset, "x")
     layout.put(escape + escape_slack - 1, _RUNG)
 
+    shared = []
     for launch, value in printer_flights:
         landing = launch % _PRINT_STRIDE
         stops = one_stops if value else zero_stops
         stop = next(s for s in stops if s % _PRINT_STRIDE == landing)
-        layout.lay(launch, _PRINT_STRIDE, stop)
+        shared.append((launch, _PRINT_STRIDE, stop))
+    layout.lay_shared(shared)
 
     lines = [layout.ops.get(i, _RUNG if i % 2 else "x") for i in range(length)]
     return lines, layout.flights
@@ -310,20 +339,34 @@ def _validate(lines: list[str], flights: list[_Flight]) -> None:
     open channel, which would dismount a chain mid-flight and compute
     the wrong row -- so a program is emitted only after every flight
     has been walked to its intended stop on the emitted text.
+
+    A walk is shared where flights share a channel and a stop.  A flight
+    whose launch is a rung lying on the path an already-walked flight
+    took to the same stop flies that walk's suffix, so it dismounts where
+    that walk did; the walk it would make is the tail of one already
+    made on this text.  Each channel is therefore walked from its
+    earliest launch once rather than once per leaf, which is what kept
+    this linear once the printer flights were laid the same way.
     """
+    reached: dict[tuple[int, int, int], int] = {}
     for launch, stride, stop in flights:
         if lines[launch] != _RUNG:
             raise AssertionError(f"launch {launch} is {lines[launch]!r}")
+        key = (stride, launch % stride, stop)
+        known = reached.get(key)
+        if known is not None and known <= launch < stop:
+            continue  # on a walked path to this stop: its suffix
         position = launch + stride
-        while lines[position] == _RUNG:
+        while lines[position] == _RUNG and position != known:
             position += stride
             if position >= len(lines):
                 raise AssertionError(f"flight from {launch} overshot the end")
-        if position != stop:
+        if position != stop and position != known:
             raise AssertionError(
                 f"flight from {launch} at stride {stride} dismounts on "
                 f"{lines[position]!r} at {position}, not its stop {stop}"
             )
+        reached[key] = launch
 
 
 def interprogck8(truth_table: str) -> str:

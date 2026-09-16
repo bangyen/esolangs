@@ -5,6 +5,8 @@ test_boolean_slow_acv_mammalian and test_boolean_streetcode_gen.
 """
 
 import contextlib
+import hashlib
+import random
 import sys
 from itertools import pairwise
 
@@ -1061,3 +1063,31 @@ class TestRotfuck:
         Gray walk, 299 characters against ``01101001``'s 660.
         """
         assert len(boolean.rotfuck(table)) == length
+
+
+def _constant_subtree_count(truth_table: list[int], n: int, prefix: list[int]) -> int:
+    """The one-prefix scorer the greedy used to call once per candidate."""
+    buckets: dict[int, set[int]] = {}
+    for row in range(len(truth_table)):
+        key = 0
+        for i in prefix:
+            key = (key << 1) | ((row >> (n - 1 - i)) & 1)
+        buckets.setdefault(key, set()).add(truth_table[row])
+    return sum(1 for values in buckets.values() if len(values) == 1)
+
+
+@pytest.mark.parametrize("seed", range(40))
+def test_circlefuck_scores_every_candidate_as_the_one_prefix_count(seed: int) -> None:
+    """One pass scores all inputs exactly as scoring each prefix did.
+
+    Byte tables, since ``circlefuck_byte`` is what scores: the masks are
+    kept per distinct value, not per bit.
+    """
+    from esolangs.tools.circlefuck import _constant_subtree_scores
+
+    rng = random.Random(seed)
+    n = rng.randint(1, 7)
+    table = [rng.choice((48, 49, 7)) if rng.random() < 0.7 else 48 for _ in range(2**n)]
+    prefix = rng.sample(range(n), rng.randint(0, n))
+    scores = _constant_subtree_scores(table, n, prefix)
+    assert scores == [_constant_subtree_count(table, n, [*prefix, i]) for i in range(n)]
