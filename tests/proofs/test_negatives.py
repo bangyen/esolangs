@@ -14,8 +14,9 @@ is not a regression but an opening: the bound it supports is back in play.
 So a failure here means "go read the paragraph this supports", not "revert
 the change".  Each test names the paragraph.
 
-Lifted from ``notes/poly_factored_probe.py``, ``notes/ick8_transparent.py``
-and ``notes/poly_multiple_runs.py``, which measured them first.
+Each was measured first by a scratch probe.  The probes were not tracked;
+these checks are what the repository keeps of them, which is the point --
+a claim worth relying on belongs somewhere that runs.
 """
 
 from __future__ import annotations
