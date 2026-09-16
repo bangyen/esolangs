@@ -86,12 +86,24 @@ _BASELINE_TIMEOUT = 120.0
 _MIN_KILL_RATE = 0.1
 
 
-def _test_file(module: str) -> Path:
-    """Return the test file for ``category.module``, or raise if absent."""
-    path = ROOT / "tests" / "interpreters" / f"test_{module.rsplit('.', 1)[-1]}.py"
-    if not path.exists():
-        raise SystemExit(f"no test file for {module}: expected {path}")
-    return path
+def _test_files(module: str) -> list[Path]:
+    """Return every test file for ``category.module``, or raise if there are none.
+
+    A language whose suite outgrew one file has siblings named for what each
+    one covers -- ``test_streetcode_movement`` beside ``test_streetcode`` --
+    and all of them have to reach the bundle, or the score is computed against
+    a fraction of the suite and read as a weak one.
+    """
+    name = module.rsplit(".", 1)[-1]
+    directory = ROOT / "tests" / "interpreters"
+    paths = [directory / f"test_{name}.py"]
+    paths += sorted(
+        path for path in directory.glob(f"test_{name}_*.py") if path not in paths
+    )
+    found = [path for path in paths if path.exists()]
+    if not found:
+        raise SystemExit(f"no test file for {module}: expected {paths[0]}")
+    return found
 
 
 def _reaches_unbundled(node: ast.AST) -> bool:
@@ -505,11 +517,16 @@ def _prepare(language: str, work: Path) -> tuple[Path, str, int, set[str]]:
     if moved:
         print(f"[note] moved {moved} inlined lines out of the mutation target")
 
-    tests, dropped = _drop_unbundled_tests(_test_file(module).read_text())
-    tests = _copy_test_helpers(tests, proj / "tests", stem)
-    (proj / "tests" / "test_bundled.py").write_text(
-        _rewrite_imports(tests, stem, module)
-    )
+    dropped = 0
+    for index, path in enumerate(_test_files(module)):
+        tests, cut = _drop_unbundled_tests(path.read_text())
+        dropped += cut
+        tests = _copy_test_helpers(tests, proj / "tests", stem)
+        # The first keeps the name the conftest and the runner expect; the
+        # rest sit beside it under their own, so a split suite is collected
+        # whole rather than only as far as its facade.
+        out_name = "test_bundled.py" if index == 0 else f"test_bundled_{index}.py"
+        (proj / "tests" / out_name).write_text(_rewrite_imports(tests, stem, module))
     (proj / "tests" / "conftest.py").write_text(_CONFTEST.replace("{stem}", stem))
     (work / "sitecustomize.py").write_text(_SITECUSTOMIZE)
     # Several suites read a shipped example through ``Path(__file__)

@@ -247,6 +247,7 @@ _KINDS = {
                 "test_cli_timeouts.py",
                 "test_documented_commands.py",
                 "test_answer_plumbing.py",
+                "test_answer_plumbing_refusals.py",
             }
         ),
     ),
