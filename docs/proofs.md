@@ -218,19 +218,33 @@ program repeated, i.e. the output *length*, which a one-byte answer cannot
 carry.  So a separating program may be taken to be `t`-free, which is what
 every shipped one already is.
 
-That leaves a purely order-theoretic question.  The reset collapses the
-half-line above 3003 onto the single point 0 and everything else is affine, so
-the only merge available is: choose `a = 2**j` and `b`, and everything mapping
-past 3003 lands together on 0.  Collapsing a monochromatic top block is
-unconditional, and so is swapping the top two values; a general reordering
-needs a power of two in `(3003/(e - s_i), 3003/(s_max - s_{i+1}))`, i.e. that
-window's ratio above 2.  Reordering is load-bearing rather than convenient:
-with block collapses and end swaps alone the alternating colouring `0101`
-generates only `<(1 2), (3 4)>`, whose whole orbit has no monochromatic end
-pair.  And the obvious way to widen the window fails — the best ratio a
-collapse can leave is `(e - s_max)/(s_max - s_min)`, an affine invariant of
-the set it started from, so it never grows.  Whether that window can always be
-opened is the finite-map lemma, and it is the whole open case.
+That leaves a purely order-theoretic question, and it turns on a move that is
+not the obvious one.  The reset fires before *every* command, hence between a
+scaling and an offset: `m**j` then an offset spells `x -> R(2**j x) + b`, not
+`R(2**j x + b)`, so a block driven past the limit lands on `b` — freely
+chosen — rather than on 0.  Spelling a single `R(a x + b)` needs either
+`a | b`, offset first, or `b > 0` with no premature clamp, scale first, and
+that divisibility binds: over every state reached from a row-index start at
+three inputs, the window for swapping the top two values is non-empty 254
+times out of 254 and spellable 0 times out of 254, always because `a` does not
+divide `b`.  The one move such a state does admit is the rotation parking the
+survivors against 3003 and leaving the ex-top at 0, which opens one interior
+slot per turn.
+
+So the honest primitive is a *cut*: `sub(c)`, then `m**j`, then an offset,
+merging everything above `c + 3003/2**j` onto that offset.  Since `c` may sit
+just under the top survivor the power-of-two condition is trivially met, and
+the ratio question dissolves into a span budget — each cut scales the
+surviving span by about `3003/gap`, and the span may only grow from 15 to
+6006.  One barrier is proved: a value below `-3003` can only decrease or be
+destroyed, every increasing route passing through a `p` that overflows, so
+there is no mirrored bottom cut and the last cut must land in window, `e`
+needing a final gap congruent to ±1 modulo 256 that a scaled gap never is.
+Cuts do separate the alternating four-row table that block collapses and end
+swaps provably cannot, and reach `01101001` in twelve, while the eight- and
+sixteen-row alternating tables were not found by a beam search — a search
+failure, not an impossibility.  Whether the span budget always suffices is the
+finite-map lemma, and it is the whole open case.
 
 ### Resource-ceiling audit
 
