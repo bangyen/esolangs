@@ -2,8 +2,6 @@
 
 import sys
 
-from esolangs.exceptions import GeneratorCapError
-
 # Every language whose construction reads on its own owns a file; what is
 # left here is brainfuck and the four dialects built directly on it.  The
 # rest are re-exported so this module stays the import site the package and
@@ -92,30 +90,6 @@ def brainfuck(truth_table: str) -> str:
     return bf_tree(truth_table)
 
 
-#: Digits :func:`factor` renders without being asked twice.  Sized from the
-#: measured worst case at ten inputs, which the tree's two size changes --
-#: printing once below itself, and dropping the complement construction --
-#: cut by 4.3x together: n=10 parity encodes to 104659 digits (was 454832),
-#: n=10 dense to 77278 (was 328772).  So this clears the whole reach of the
-#: construction with room and still names a ceiling rather than removing one.
-#: Past it the caller passes ``max_digits`` and says how big is fine.
-#:
-#: The budget is deliberately left at 500000 rather than tightened to the new
-#: worst case: n=11 parity now encodes to 219455 digits where it used to need
-#: 952366 and was refused outright, so the headroom this constant already had
-#: is what an arity lift would spend.  Whether n=11 is *supported* is a
-#: question for the contract sweep, not for this constant.
-#:
-#: Sized to the construction's reach rather than to whatever arity the
-#: boolean suite currently sweeps, deliberately: the old 16000 was pinned to
-#: a five-input suite and became the *only* thing stopping this generator at
-#: n=6, so the budget had to be re-argued the moment the sweep moved.  This
-#: one does not.  Raising it costs 2.8s and 78MB at the ten-input worst
-#: case, and an n=6 program built past the old ceiling executes correctly on
-#: all 64 rows.
-_DEFAULT_MAX_DIGITS = 500_000
-
-
 _BF_RESIDUE = {">": 1, "<": 2, "+": 3, "-": 4, ".": 5, ",": 6, "[": 7, "]": 8}
 
 
@@ -127,10 +101,15 @@ def _factor_encode(code: str) -> int:
     residue modulo 11 (Dirichlet's theorem guarantees one always exists).  A
     run of identical instructions is folded into one prime's exponent, which
     keeps the integer small while decoding to the same run.
+
+    The prime powers are multiplied as a balanced tree rather than folded
+    into one growing accumulator: the accumulator is priced by its own
+    width at every step, which was 12.5s of a 14.4s build at thirteen
+    inputs (120860 runs) against 0.7s for the tree.
     """
     from sympy import isprime
 
-    number = 1
+    powers: list[int] = []
     candidate = 2
     i = 0
     while i < len(code):
@@ -141,13 +120,16 @@ def _factor_encode(code: str) -> int:
         prime = candidate
         while not (prime % 11 == residue and isprime(prime)):
             prime += 1
-        number *= prime ** (j - i)
+        powers.append(prime ** (j - i))
         candidate = prime + 1
         i = j
-    return number
+    while len(powers) > 1:
+        pairs = [a * b for a, b in zip(powers[::2], powers[1::2], strict=False)]
+        powers = pairs + powers[-1:] if len(powers) % 2 else pairs
+    return powers[0] if powers else 1
 
 
-def factor(truth_table: str, *, max_digits: int = _DEFAULT_MAX_DIGITS) -> str:
+def factor(truth_table: str) -> str:
     """Build a Factor program computing the given truth table.
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
@@ -155,48 +137,27 @@ def factor(truth_table: str, *, max_digits: int = _DEFAULT_MAX_DIGITS) -> str:
 
     A Factor program is a single integer whose prime factorization decodes
     to brainfuck, so the generator reuses :func:`brainfuck`'s truth-table
-    program unchanged and encodes it with :func:`_factor_encode` (walk primes
-    upward, handing each instruction the next one with the right residue
-    mod 11; Dirichlet's theorem guarantees one always exists).
+    program unchanged and encodes it with :func:`_factor_encode`.  Total:
+    the tree is finite, every run gets a prime, and the integer is
+    arbitrary-precision on both sides -- this renders it and
+    :func:`esolangs.interpreters.tape_based.factor._parse` reads it back,
+    neither with a ceiling of its own.  It used to refuse past a digit
+    budget (4300, then 16000, then 500000), each a size policy pinned to the
+    arity the suite swept at the time rather than anything Factor says;
+    n=13 parity is 966568 digits, built in 3s and decoded by the interpreter
+    to the same brainfuck.
 
-    Folding the constant subtrees of that program is what turns some
-    otherwise unrenderable tables into runnable ones, since the cap below is
-    on the encoded integer's size.
-
-    ``max_digits`` bounds how long the rendered integer may be, defaulting
-    to :data:`_DEFAULT_MAX_DIGITS`.  This is a program-size cap, not an
-    ``n`` cap: sparse tables (e.g. an all-zero or all-one table) stay small
-    at any ``n``, while dense tables grow the underlying brainfuck program
-    (and so the encoded integer) quickly.
-
-    The bound used to be CPython's own ``sys.get_int_max_str_digits()``,
-    which is a DoS guard against quadratic conversions rather than anything
-    Factor says -- and at its 4300-digit default it stopped this generator
-    at n=3, since n=4 parity needs 6390 digits.  A Factor program *is* one
-    integer, so that guard is not a property of the language to be reported
-    but a limit to be lifted: the render raises it to fit and puts it back,
-    and :func:`esolangs.interpreters.tape_based.factor._parse` does the same
-    on the way in, so what is generated here is what the interpreter runs.
-
-    The check estimates the digit count from the integer's bit length
-    (``log10(2) ~= 0.30103``) to avoid paying for the same oversized
-    conversion just to reject it.
+    The one limit in the way is CPython's ``sys.get_int_max_str_digits()``,
+    a DoS guard against quadratic conversions.  It is process-global, so it
+    is raised to what this render needs and put back.  The need is estimated
+    from the bit length (``log10(2) < 0.30103``, so it never under-counts)
+    rather than paid for with the conversion it is sizing.
     """
     number = _factor_encode(brainfuck(truth_table))
-    # Estimated from the bit length (``log10(2) ~= 0.30103``) and rounded
-    # up, so it never *under*-counts: the point is to reject an oversized
-    # integer without paying for the conversion that would size it exactly.
     digits = int(number.bit_length() * 0.30103) + 1
-    if digits > max_digits:
-        raise GeneratorCapError(
-            f"the Factor boolean generator's encoded integer needs about "
-            f"{digits} digits, over the {max_digits}-digit limit this call "
-            "allows -- try a sparser table, or fewer inputs",
-        )
     limit = sys.get_int_max_str_digits()
-    if digits <= limit:
+    if limit == 0 or digits <= limit:  # 0 is CPython's "unlimited"
         return str(number)
-    # Process-global, so it is borrowed for the render and handed back.
     sys.set_int_max_str_digits(digits + 1)
     try:
         return str(number)

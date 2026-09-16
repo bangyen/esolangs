@@ -139,7 +139,7 @@ after ignoring the performance/resource ceiling as specified above.
 | Dimensional | tree | `decision_tree_program` with dimensional moves |
 | EGL | tree | — |
 | Eval | linear lookup | fixed reversed stack order selects the indexed row |
-| Factor | tree, cap | Brainfuck tree followed by a total prime encoding; Dirichlet supplies the next prime in each residue class mod 11 |
+| Factor | tree | Brainfuck tree followed by a total prime encoding: Dirichlet supplies the next prime in each residue class mod 11, and the integer is arbitrary precision on both sides |
 | Fargo | tree | finite folded layout |
 | Flowchart | finite lookup | a five-row deque preloads `2**n` answers and discards opposite halves |
 | Forbin | tree | — |
@@ -250,10 +250,6 @@ finite-map lemma, and it is the whole open case.
 
 The remaining `cap` rows do have a uniform lift argument.
 
-- Factor first builds the total Brainfuck tree.  Its finite encoding loop
-  assigns each command run the next prime in one of the nonzero residue
-  classes 1 through 8 modulo 11.  Dirichlet guarantees such a prime above
-  every bound, and an arbitrary-precision integer holds their finite product.
 - Polynomial's `k == n` candidate is the finite decision tree.  Each of its
   finitely many instructions receives a distinct prime root, and removing the
   interpreter-cost screen does not change that encoding.
@@ -311,6 +307,14 @@ increment pass after each, so every loop tests a sentinel or a zero and
 the label bill is the loop count, sixteen.  The marks sum to `2**n - n - 1`,
 so the program is linear; every row of every table at seven inputs and
 under has been executed, and the dispatch reaches the loop only past 35.
+Factor left when its digit budget was retired: the budget (4300, then
+16000, then 500000 digits) was a size policy pinned to the arity the
+suite swept, never a ceiling of the language's -- the generator renders
+the integer and the interpreter parses it with CPython's conversion
+guard lifted on both sides -- so the lift argument above *is* the
+construction.  Parity at thirteen inputs is 966568 digits, built in
+three seconds with the prime powers multiplied as a balanced tree, and
+the interpreter decodes it to the tree the generator encoded.
 WII2D reads the other way: the shipped decode keeps
 ranking folds by magnitude, so it still refuses about four in ten dense
 tables at the widest admitted domain, and reaching the extremal-fold

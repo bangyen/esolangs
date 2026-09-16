@@ -825,8 +825,8 @@ _ARITY_CAPPED: dict[tuple[str, str], tuple[int, str]] = {
 
 # The two table shapes every generator is built against.  A dense
 # pseudo-random table and parity fail *differently*: WII2D reaches n=10 on
-# parity but stops at n=9 dense, factor's digit budget runs out a rung
-# earlier on parity than on dense, and Polynomial's 1934-instruction cap
+# parity but stops at n=9 dense, factor's retired digit budget ran out a
+# rung earlier on parity than on dense, and Polynomial's 1934-instruction cap
 # refuses dense n=11 (2910) while parity fits far past it.  A single-shape
 # sweep reports the wrong ceiling for all three, which is why both shapes
 # are built at every arity and why the cap table is keyed by shape.
