@@ -74,10 +74,20 @@ def _stored(ram: _Ram, addr: int, value: int) -> _Ram:
 
     Rebuilding the whole sequence is what an immutable store costs, and
     finding an existing address is a scan rather than a hash lookup.  Both
-    stay affordable because RAM0 programs address a handful of cells: over
-    the generated corpus the store never exceeds one.  The scan only starts
-    to tell at a size nothing here reaches -- measured 3.7x slower than the
-    dict at 200 cells, and level with it at the sizes real programs use.
+    are O(cells).
+
+    **The boolean corpus is past the size where that is free.**  This used
+    to say the store never exceeds one cell; the generator now initializes
+    one cell per table row, so it holds 6 cells at three inputs, 74 at six
+    and 268 at eight -- Theta(T), and past the 200 where the same note
+    measured the scan 3.7x slower than a dict.  Theta(T) writes of O(T) each
+    is why a RAM0 program's execution grows faster than its command count.
+
+    Left as it is deliberately: ``_Ram`` sits inside ``_State``, which the
+    cycle detector hashes, so the fix is a persistent ordered map rather
+    than a dict, and that is a change to the state type rather than to this
+    function.  Recorded here so the next reader sees a measured cost rather
+    than the old "a handful of cells".
     """
     for i, (key, _value) in enumerate(ram):
         if key == addr:
