@@ -180,8 +180,8 @@ after ignoring the performance/resource ceiling as specified above.
 
 ## Exceptions and walls
 
-The two `exception` rows are proof gaps, not permission to call the languages
-incapable.
+The one remaining `exception` row is a proof gap, not permission to call the
+language incapable.
 
 - `%^2^-1` can refuse when none of its cascade, affine, ladder, band, or fold
   planners succeeds.
@@ -203,11 +203,34 @@ are unbounded and repeated `m` stores arbitrarily many bits without resetting.
 That defeats the obvious counting proof of a cap.  A totality attempt can
 encode the input index by doubling a negative accumulator and applying one of
 two fixed offsets per placeholder.  It then needs one uniform tail mapping the
-`2**n` resulting integers to the table's two output bytes using only unary
-affine operations, squaring, the asymmetric reset, and rewind-to-zero.  The
-existing folds solve many such finite maps, but no argument shows that every
-two-colouring admits the required collision sequence.  That missing finite-map
-lemma is the whole open case.
+`2**n` resulting integers to the table's two output bytes.
+
+Two things that tail cannot use.  There is no squaring: `m` doubles the
+accumulator, and the “squaring” in the language's own description is of the
+represented value `10**x`, so absent the reset the reachable maps are exactly
+`x -> ±2**j x + c` — an affine monoid, with the reset the only non-affine
+primitive and hence the only way to merge two values.  And `t` cannot
+separate: it rewinds to position 0 with the state `(0, acc)`, deterministic in
+`acc`, so a run either diverges or leaves that `t` with `acc == 0`, after
+which every surviving input agrees and all later behaviour is
+input-independent.  The only input-dependent signal is how many times the
+program repeated, i.e. the output *length*, which a one-byte answer cannot
+carry.  So a separating program may be taken to be `t`-free, which is what
+every shipped one already is.
+
+That leaves a purely order-theoretic question.  The reset collapses the
+half-line above 3003 onto the single point 0 and everything else is affine, so
+the only merge available is: choose `a = 2**j` and `b`, and everything mapping
+past 3003 lands together on 0.  Collapsing a monochromatic top block is
+unconditional, and so is swapping the top two values; a general reordering
+needs a power of two in `(3003/(e - s_i), 3003/(s_max - s_{i+1}))`, i.e. that
+window's ratio above 2.  Reordering is load-bearing rather than convenient:
+with block collapses and end swaps alone the alternating colouring `0101`
+generates only `<(1 2), (3 4)>`, whose whole orbit has no monochromatic end
+pair.  And the obvious way to widen the window fails — the best ratio a
+collapse can leave is `(e - s_max)/(s_max - s_min)`, an affine invariant of
+the set it started from, so it never grows.  Whether that window can always be
+opened is the finite-map lemma, and it is the whole open case.
 
 ### Resource-ceiling audit
 
@@ -293,8 +316,8 @@ therefore impossible at every program length.  The exported generator is
 parameterized and contains no `n`; substituting `{Xi}` changes the program
 before execution and voids the theorem's hypothesis.
 
-Accordingly, this ledger records 63 theoretical totality arguments and two
-open exceptions.  It records no structural impossibility for an exported
+Accordingly, this ledger records 64 theoretical totality arguments and one
+open exception.  It records no structural impossibility for an exported
 generator's actual parameterized contract.  Turning any exception into
 “incapable” requires an unbounded-program proof; a failed search or a live cap
 is not one.
