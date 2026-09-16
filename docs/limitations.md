@@ -53,7 +53,12 @@ promptly. Its magnitude guard is load-bearing. A per-node re-embed tree can
 build dense n=13, but is outside the generator contract. `proofs.md` carries
 a total decode inside the contract, folding the extremal same-colour pair; it
 is refused here on cost, not reach -- the four refusing dense n=9 tables cost
-0.8–1.6 MB each and the decode reaches domain 512.
+0.8–1.6 MB each and the decode reaches domain 512. Under the shipped centre
+and magnitude caps that rule refuses from n=7 (2 of 20 seeded tables) and is
+3x the size at n=6, so it is not a drop-in decoder. The scaling is open: the
+decode spells each fold centre in unary and the dense per-entry size climbs
+58 -> 153 characters from n=8 to n=9; the roadmap's audit row states what a
+linear construction has to get past.
 
 Uncapped dense-program sizes at n=8/n=9: Circuit Diagram 1.78/2.51 MB,
 Polynomial 1.59/5.02 MB, SLOW ACV MAMMALIAN 456/799 KB, 123 22.4/44.7 KB,
