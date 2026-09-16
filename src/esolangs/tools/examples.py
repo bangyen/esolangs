@@ -73,7 +73,6 @@ from dataclasses import dataclass, replace
 from esolangs.registry import Generator, canonical_id
 from esolangs.tools.a_painter_ant import _instantiate_apa
 from esolangs.tools.arrowqueue import _instantiate_arrowqueue
-from esolangs.tools.cod import _instantiate_cod
 from esolangs.tools.crement import instantiate_crement
 from esolangs.tools.helpers import instantiate
 from esolangs.tools.nopstacle import instantiate_nopstacle
@@ -528,8 +527,18 @@ def _fill_home_row(template: str, bits: list[int]) -> str:
 
 
 def _fill_cod(template: str, bits: list[int]) -> str:
-    """Expand weighted input slots into the COD answer-strip route."""
-    return _instantiate_cod(template, bits)
+    """Set the cod's value to the bit at that input's ``+`` fork.
+
+    ``)`` increments, so a one is ``)`` and a zero is a space -- which is
+    water, an open grid cell the cod passes through, not the inert filler a
+    space is in a language that ignores unknown characters.  Both bits are
+    one cell, so the programs are already all the same size and differ in
+    exactly one character per input, at a fixed column.  A blank is still
+    a bit spelled as nothing, which the conventions audit records: the
+    command spelling (``)(`` against ``)<``) needs the fork box one column
+    wider and costs 350 -> 359 at n=2 and 1495 -> 1529 at n=3.
+    """
+    return instantiate(template, bits, lambda _i, b: ")" if b else " ")
 
 
 def _fill_eval(template: str, bits: list[int]) -> str:

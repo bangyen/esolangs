@@ -32,6 +32,7 @@ The candidate list is empty.
   | Language | Totality | Generation time | Output size | Execution time |
   | --- | --- | --- | --- | --- |
   | %^2^-1 | Exception | Linear | Linear | Linear |
+  | COD | Total | Open | Open | Open |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
   | Polynomial | Cap | Open | Open | Linear |
   | Vandevelo | Total | Open | Linear | Linear |
@@ -97,6 +98,27 @@ The candidate list is empty.
   generation time; the time column is not an independent verdict there,
   but a linear output can still be built super-linearly, which is what
   Vandevelo's open generation-time cell records.
+
+  COD is back in the table.  Its four-row strip (Sep 2026) was linear on
+  every axis but wrote each input twice -- the swim east and the return
+  west both end at the selected column, and without the wall there the
+  drop is a random junction -- against the once-only embed the
+  parameterized contract asks for, so the fork/cascade generator it
+  replaced is restored: each `{Xi}` sets the cod's value at its own `+`
+  fork, once.  Measured on restoration: size x3.5 -> x3.9 per added input
+  over n=5..9 (942,668 characters at n=8, 3.67 MB at n=9; the cascade's T
+  leaf rows each carry a Theta(T) prefix and gate tail), build time
+  tracking the size (0.10 s at n=9), and the worst row's command count
+  x2.32 per added input at n=9 (40,464 commands) against the execution
+  contract's x2.15, which now reads this cell as its exemption the way
+  the size contract reads the size cell.  The
+  constant-size two-polarity test exists once a bit reaches a node (`<`
+  keeps only one, `(<` keeps only zero, `(`/`)` normalize the survivor),
+  so a linear-area H-tree needs `{Xi}` at every node of level `i`; a shared
+  placeholder cannot distribute the bit to separate node lanes without
+  losing the lane identity, and carrying that identity as the cod's value
+  returns to the super-linear numeric decoder.  That is the row's open
+  question on all three axes.
 
   Polynomial's remaining question is a left-half-plane multiple of the
   mandatory root product with more terms than the Descartes minimum:
@@ -222,6 +244,7 @@ The candidate list is empty.
 
   | Language | Single embed | Constant width | Slot order | No spaces |
   | --- | --- | --- | --- | --- |
+  | COD | Holds | Holds | Holds | Open |
   | Nopstacle | Holds | Holds | Holds | Language |
 
   Bitdeque left: above the arity the equal-width test covers (n=1..2)
@@ -240,27 +263,26 @@ The candidate list is empty.
   and `+` -- so the corridor the pointer walks and the cells it never
   reaches are written; the rows still drop their trailing blanks, which
   keeps the two blocks at fourteen characters each, and every program
-  through n=6 is byte-for-byte the size it was.  COD left: its fill
-  wrote a one bit as water along the swim and the return, and those cells
-  are `_` now, which reacts only to a cod moving north where the route
-  runs east and west; every row through n=6 executes at the same sizes.
-  Nopstacle's
+  through n=6 is byte-for-byte the size it was.  COD's row is open on
+  spaces: its restored fork generator spells a one as `)` and a zero as
+  water, one cell each at a fixed column, and the command spelling (`)(`
+  against `)<`) needs the fork box a column wider -- 350 -> 359 at n=2,
+  1495 -> 1529 at n=3 -- so it is a size decision, not a language wall.
+  (The retired strip spelled its route cells `_`; that closure left with
+  it.)  Nopstacle's
   alphabet is the blank and `#`, so a zero bit *is* a blank and the trailing
   pad on its bit row is what keeps a zero row the width of a one row; there
   is no command to spell it with.
 
-  The fill itself is standard for fifteen of the eighteen: the example's
+  The fill itself is standard for sixteen of the eighteen: the example's
   `fill` calls `helpers.instantiate` with a per-bit setter, and nothing
   else.  ArrowQueue's slots are rows of their own so its blocks substitute
   in place (byte-identical to the header rebuild it replaced, n=1..6), A
   Painter Ant's linear route is a setter, and %^2^-1's setter is read
-  off the template's own header.  Three are not substitutions.  COD's
-  bit has to appear twice -- the swim east and the return west both end
-  at the selected column, and without the wall there the drop is a random
-  junction -- so a single-embed COD is a new construction (carry the row
-  in the cod's value), not a fill.  Nopstacle and Crement are prototypes
-  that evaluate the table in the host and record the bits as a comment;
-  they need a generator before they can have a fill.
+  off the template's own header, and COD's restored fork generator is a
+  one-cell setter.  Two are not substitutions: Nopstacle and Crement are
+  prototypes that evaluate the table in the host and record the bits as a
+  comment; they need a generator before they can have a fill.
 
   Two candidate conventions are not adopted.  *Rectangular*: every row of a
   grid the same width.  COD and Nopstacle hold it; the other four grids are
@@ -286,8 +308,9 @@ The candidate list is empty.
   the interpreter ignores where an executed no-op is hard to find (BIO
   `'    ' * w` and Eval `'0 '` both ran clean over 2120 cases and were
   rejected for it, since an ignored pad is what a later cleanup strips)
-  and a bit spelled as a blank cell on a grid, which after ArrowQueue and
-  COD closed is Nopstacle's cell alone, and that one the language forces.
+  and a bit spelled as a blank cell on a grid, which after ArrowQueue
+  closed is COD's cell (priced above) and Nopstacle's, which the language
+  forces.
   Add the width toggle only where a measured build is smaller; the space
   toggle has nothing left to relax and is not worth its plumbing.
 
