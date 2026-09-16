@@ -33,7 +33,6 @@ The candidate list is empty.
   | --- | --- | --- | --- | --- |
   | %^2^-1 | Exception | Open | Linear | Linear |
   | Factor | Cap | Language lower bound | Language lower bound | Linear |
-  | NoComment | Cap | Linear | Linear | Linear |
   | Polynomial | Cap | Open | Open | Linear |
   | Vandevelo | Total | Open | Linear | Linear |
   | WII2D | Cap | Open | Open | Linear |
@@ -111,19 +110,18 @@ The candidate list is empty.
   in value order -- and anything else needs another `s`, which is a fold
   with a unary centre.
 
-  The three remaining `Cap` rows each have a lift the ledger records, and
-  none of the lifts is linear on the default interpreter: ZTOALC L's
-  unconditional start `2**k` is a `2**k`-line program; NoComment's bits
-  need one cell each
-  under the embed-once rule, so a code-resident tree that walks every
-  arm with per-level alive cells (O(1) per node, no skip over an arm)
-  moves the cap from n=12 to about n=800 on the 4096-cell tape but does
-  not remove it; Polynomial's cap is priced in [polynomial](polynomial.md).
+  The two remaining `Cap` rows each have a lift the ledger records, and
+  neither lift is linear on the default interpreter: ZTOALC L's
+  unconditional start `2**k` is a `2**k`-line program; Polynomial's cap is
+  priced in [polynomial](polynomial.md).
   CV(N)(C) left: its halt gadget squares once more whenever the program
   is not shorter than its reach, two characters per leaf.  6-5 left: past
   35 inputs its walk loops on sixteen labels, reading each bit's stride
   off 2-adic valuation marks that one pass per bit shifts, linear in size
-  and executed on every row through n=7.
+  and executed on every row through n=7.  NoComment left: its rows are
+  code and its index is the stack, so the tape is six cells at any arity;
+  the chain is the smaller program from four inputs (never larger on any
+  four-input table) and executed on every row through n=10.
 
   Treat every emitted character as build work.  Input reordering is optional
   around the construction, but its work still counts toward end-to-end
