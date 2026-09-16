@@ -10,8 +10,6 @@ Wide tables use one white corridor with the answers in the adjacent row.
 Building it, returning to its origin, and routing along it each cost O(T).
 """
 
-import re
-
 from esolangs.tools.helpers import _validate_truth_table, instantiate
 
 __all__ = ["a_painter_ant"]
@@ -287,22 +285,11 @@ def _instantiate_apa(template: str, bits: list[int]) -> str:
     """
     n = len(bits)
 
-    if template.endswith("sS"):
-
-        def linear(match: re.Match[str]) -> str:
-            i = int(match.group(1))
-            weight = 1 << (n - 1 - i)
-            return ("E" if bits[i] else "e") * weight
-
-        return re.sub(r"\{X(\d+)\}", linear, template)
-
     def replace(i: int, bit: int) -> str:
-        if i == len(bits) - 1:
+        if template.endswith("sS"):  # the linear route: one step per weight
+            return ("E" if bit else "e") * (1 << (n - 1 - i))
+        if i == n - 1:
             return _XF[bit]
         return _bit_move(n, i, bit)
 
-    return instantiate(
-        template,
-        bits,
-        replace,
-    )
+    return instantiate(template, bits, replace)

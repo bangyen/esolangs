@@ -21,6 +21,7 @@ import random
 import sys
 
 from esolangs.interpreters.grid_based.arrowqueue import _advance, _Machine
+from esolangs.tools.arrowqueue import _compact
 from esolangs.tools.parameterized import (
     _FIRST_ONE,
     _FIRST_ZERO,
@@ -352,10 +353,12 @@ def check_c1_compaction(*, deep: bool) -> None:
         )
         for table in tables:
             template = arrowqueue(table)
-            rows = template.split("\n")
+            body = _MIDDLE + _tree(list(table))
+            if _compact(body) != template.split("\n")[n:]:
+                mismatch += 1  # the template's body is not the compacted body
             for combo in range(2**n):
                 bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
-                raw = "\n".join(_header_rows(bits) + rows[4 * n + 1 :])
+                raw = "\n".join(_header_rows(bits) + body)
                 small = _instantiate_arrowqueue(template, bits)
                 pairs += 1
                 raw_v = _verdict_from(raw.split("\n"), (0, 0, 0, ()))

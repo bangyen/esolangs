@@ -1,6 +1,6 @@
 """Boolean-function generator for ArrowQueue, and the tree it draws."""
 
-from esolangs.tools.helpers import _validate_truth_table
+from esolangs.tools.helpers import _validate_truth_table, instantiate
 
 # --- ArrowQueue (no-input grid language; parameterized + termination convention) ---
 #
@@ -227,21 +227,26 @@ def arrowqueue(truth_table: str) -> str:
     124 to 128 bytes that way -- it is 109 now).
     """
     n = _validate_truth_table(truth_table)
+    slots = ["{X" + str(i) + "}" for i in range(n)]
     if len(truth_table) > 16:
-        return _arrowqueue_linear(truth_table, n)
-    header = ["{X0}"]
-    header.extend(["    "] * 4)
-    for i in range(1, n):
-        header.append("{X" + str(i) + "}")
-        header.extend(["    "] * 3)
-    rows = header + _MIDDLE + _tree(list(truth_table))
-    return "\n".join(row.rstrip() for row in rows)
+        return "\n".join([" *", *slots, *_linear_body(truth_table)])
+    return "\n".join([*slots, *_compact(_MIDDLE + _tree(list(truth_table)))])
 
 
-def _arrowqueue_linear(truth_table: str, n: int) -> str:
-    """Return the marker header and linear marker-count cascade."""
-    marker = "".join(f"{{X{i}}}" for i in range(n))
-    rows: list[str] = []
+def _linear_body(truth_table: str) -> list[str]:
+    """Build the rows below the marker slots: sentinel, ring headings, cascade.
+
+    The marker slots are entered at column 1 heading down; the sentinel row
+    turns the pointer around, appends a right heading, and the established
+    middle block then queues R, D, L, U before the cascade pops one marker
+    per table row.
+    """
+    first = list(" " * 7)
+    first[0] = first[1] = "*"
+    for c, char in enumerate(_MIDDLE[0]):
+        first[3 + c] = char
+    rows = ["* ~   *", "".join(first)]
+    rows.extend("   " + row for row in _MIDDLE[1:])
     for bit in truth_table:
         stage = [[" "] * 9 for _ in range(3)]
         stage[0][4] = "+"
@@ -250,45 +255,37 @@ def _arrowqueue_linear(truth_table: str, n: int) -> str:
                 for c, char in enumerate(line):
                     stage[r][6 + c] = char
         rows.extend("".join(row).rstrip() for row in stage)
-    return marker + "\n" + "\n".join(rows)
+    return rows
 
 
 def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
     """Fill an ArrowQueue template's ``{Xi}`` placeholders with the bits.
 
     ``bits`` is listed most-significant first and must match the template
-    built by :func:`arrowqueue`.  Each ``{Xi}`` placeholder is replaced by
-    the embedding block that pushes input ``i`` as a direction: a ``1``
-    bit's block pushes down and a ``0`` bit's block pushes right, exactly
-    once each (the header is a fixed ``4n + 1`` rows, so the middle and tree
-    rows below it stay aligned).
+    built by :func:`arrowqueue`.  Every slot sits on a row of its own, so
+    the per-bit embedding is a multi-row block substituted like any other
+    setter: under the tree, a ``1`` bit's block pushes down and a ``0``
+    bit's block pushes right, exactly once each; under the linear cascade,
+    a ``1`` bit appends its weight in down markers and a ``0`` bit the same
+    number of no-op rows.  Both spellings are one width per slot.
     """
     n = len(bits)
-    rows = template.split("\n")
-    if n >= 5 and rows[0] == "".join(f"{{X{i}}}" for i in range(n)):
-        marker_rows: list[str] = []
-        for i, bit in enumerate(bits):
-            weight = 1 << (n - 1 - i)
-            marker_rows.extend([".~" if bit else ".."] * weight)
-        # Enter column 1, append the marker run, turn around, append a right
-        # sentinel, then use the established middle block to queue R,D,L,U.
-        header = [" *", *marker_rows, "* ~   *"]
-        first = list(" " * 7)
-        first[0] = first[1] = "*"
-        for c, char in enumerate(_MIDDLE[0]):
-            first[3 + c] = char
-        header.append("".join(first))
-        header.extend("   " + row for row in _MIDDLE[1:])
-        return "\n".join([*header, *rows[1:]])
-    # The header rows are built to a fixed width, but the pointer never
-    # travels past the last glyph on a row, so trailing blanks are inert;
-    # trim them so the emitted program carries no whitespace it cannot use.
-    joined = _header_rows(bits) + rows[4 * n + 1 :]
-    return _compact(joined)
+    linear = template.startswith(" *\n")
+
+    def block(i: int, bit: int) -> str:
+        if linear:
+            return "\n".join([".~" if bit else ".."] * (1 << (n - 1 - i)))
+        if i == 0:
+            rows = _FIRST_ONE if bit else _FIRST_ZERO
+        else:
+            rows = _NEXT_ONE if bit else _NEXT_ZERO
+        return "\n".join(row.rstrip() for row in rows)
+
+    return instantiate(template, bits, block)
 
 
-def _compact(rows: list[str]) -> str:
-    """Drop the wholly blank rows and columns from an instantiated program.
+def _compact(rows: list[str]) -> list[str]:
+    """Drop the wholly blank rows and columns from the template's body.
 
     The blocks are laid out on fixed pitches -- a ``1`` bit's embedding is
     one glyph plus three blank rows, and a tree block pads to 3x3 -- so the
@@ -300,15 +297,18 @@ def _compact(rows: list[str]) -> str:
     there.  Deleting rows and columns together keeps every glyph's row and
     column ordering, which is all the routing depends on.
 
-    This runs on the instantiated program rather than in :func:`arrowqueue`
-    because the template's blank header rows are reserved slots, not
-    padding: :func:`_instantiate_arrowqueue` finds the body by slicing past
-    a fixed ``4n + 1`` rows, so compacting them away would misalign it.
+    This runs on the body alone, so the filled blocks above it are not
+    consulted.  That is the same result: a block spells every cell it
+    reaches, so the header adds no blank row, and its glyphs sit in columns
+    0..4 -- the middle block covers 0..3 on every row, and column 4 is a
+    subtree's column 1, which every branch marks (``_TREE_BRANCH_1``) and
+    only a lone ``0`` leaf leaves blank, where nothing lies to its right
+    for the deletion to move.
     """
     width = max((len(row) for row in rows), default=0)
     padded = [row.ljust(width) for row in rows]
     kept = [row for row in padded if row.strip()]
     if not kept:
-        return ""  # pragma: no cover - every table lays a cell
+        return []  # pragma: no cover - every table lays a cell
     columns = [x for x in range(width) if any(row[x] != " " for row in kept)]
-    return "\n".join("".join(row[x] for x in columns).rstrip() for row in kept)
+    return ["".join(row[x] for x in columns).rstrip() for row in kept]
