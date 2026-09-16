@@ -199,6 +199,82 @@ The candidate list is empty.
   No generator construction may use BFS or DFS; test-only oracle searches and
   prose about retired searches may remain.
 
+- **Parameterized generator conventions.**  The eighteen generators that
+  embed their inputs in the program text (`BOOLEAN_EXAMPLES` entries with a
+  `fill`) hold to four conventions.  *Single embed*: each `{Xi}` appears
+  exactly once and no `{Ci}` at all.  *Constant width*: every instantiation
+  of one template has the same length, so `len(program)` reveals nothing,
+  and the pad is a character the interpreter executes rather than one it
+  ignores.  *Slot order*: `{X0}`..`{Xn-1}` are emitted in name order.  *No
+  spaces*: the emitted program carries no whitespace the interpreter
+  discards.  The first three are enforced
+  (`tests/tools/test_boolean_parameterized.py`); the fourth is not, and is
+  what this item is for.  Measured Sep 2026 on dense and parity tables at
+  n=2..4, every instantiation: single embed, constant width and slot order
+  hold for all eighteen; no spaces holds for eight (123, A Painter Ant,
+  BF-PDA, Eval, Home Row, Minifuck, NoComment, `%^2^-1`) and the rest are
+  the live audit.  `Open` means the interpreter ignores the spaces and a
+  program with them deleted runs to the same answer on every row;
+  `Language` means the interpreter reads them, as a token delimiter or a
+  grid cell, so deleting one changes the program.  A row is present while
+  any cell is open and leaves when all four close.
+
+  | Language | Single embed | Constant width | Slot order | No spaces |
+  | --- | --- | --- | --- | --- |
+  | ArrowQueue | Holds | Holds | Holds | Language |
+  | Back | Holds | Holds | Holds | Language |
+  | BIO | Holds | Holds | Holds | Open |
+  | Bitdeque | Holds | Holds | Holds | Language |
+  | COD | Holds | Holds | Holds | Language |
+  | Crement | Holds | Holds | Holds | Language |
+  | Minsky Swap | Holds | Holds | Holds | Open |
+  | Nopstacle | Holds | Holds | Holds | Open |
+  | RAM0 | Holds | Holds | Holds | Open |
+  | WII2D | Holds | Holds | Holds | Language |
+
+  The open cells are separators nothing reads, all verified by execution
+  on every row of four tables: BIO's are the blanks between its setters
+  (one per input, under one percent of the text); RAM0's tokenizer is
+  `[ZANCLS]|[1-9]\d*`, so a space is needed only between two numbers and
+  the rest are 47% of the text (1236 of 2620 characters over 24 programs);
+  Minsky Swap's first line is filtered to `+~*` before it is read, so its
+  spaces go (28%, 764 of 2752), while its second line is a list of numbers
+  that must stay delimited; Nopstacle pads every row to the
+  rectangle with trailing blanks that `rstrip` removes without changing
+  halts or diverges (40 of 40).  The `Language` cells are the five grids,
+  whose blank is an empty cell the pointer crosses (COD's is water), and
+  Bitdeque, whose `GOTO *(\d+)` spells the jump with spaces.  Whether every
+  grid blank could be a written no-op cell instead is a size question, not
+  attempted; COD's water spelled as a command needed the fork box a column
+  wider.
+
+  Two candidate conventions are not adopted.  *Rectangular*: every row of a
+  grid the same width.  Only COD holds it; the other five are ragged, and
+  padding them costs exactly the spaces the fourth convention removes, so
+  the two cannot both be on.  *Executed pad*: the constant-width filler is
+  a command the interpreter runs, not a character it skips.  The `instantiate`
+  docstring asks for it and BIO (`0oz;`), BF-PDA (`<[@]`, minimal by
+  exhaustive search) and Back (prime then finish) are the worked cases, but
+  no test reads the filler, so it is documented, not enforced.
+
+  Toggles are an open decision.  The proposed shape: a keyword per relaxed
+  convention on the generator, off by default and carried through the
+  example's `kwargs` so the suite builds and executes the relaxed program
+  through the same harness (`replace(example, kwargs=...)`); the contract
+  sweeps the defaults, and `takes_width` is the precedent for reading a
+  capability off the signature.  *Differing widths* buys size where the
+  zero pad is long: BIO's zero would embed as nothing instead of `0oz;`
+  per unit of weight, BF-PDA's pair would return to `<` against `<@` from
+  four characters each, and the earlier BIO fill ran 236/240/244/248 at n=2 against 248 flat -- and it
+  buys the leak back.  *Allow spaces* buys nothing on the line languages
+  (the spaces above are dead weight) and on a grid is not a toggle at all,
+  the cells being read; its one use is rectangular padding, or a filler the
+  interpreter ignores where an executed no-op is hard to find (BIO
+  `'    ' * w` and Eval `'0 '` both ran clean over 2120 cases and were
+  rejected for it, since an ignored pad is what a later cleanup strips).
+  Add the width toggle only where a measured build is smaller; add the
+  space toggle only with the rectangular convention, or not at all.
+
 - **ArrowQueue reusable drain.**  Ship the verified deep-fold drain only if
   a proof makes folding meaningfully testable at `n >= 5`; current coverage
   does not reach its crossover.
