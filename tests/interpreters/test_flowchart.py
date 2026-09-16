@@ -565,3 +565,47 @@ class TestAmbiguousExits:
             io = ScriptedIO("")
             run(grid, io)
             assert io.getvalue() == expected, setter
+
+
+class TestThePointerMemoryIsAValue:
+    """The memory is a map keyed by cell, and still a value.
+
+    It was a tuple of pairs, which made reading one cell a scan and
+    recording one a rebuild.  These pin what the new spelling has to keep:
+    a record leaves the original alone, so two generations can be compared
+    and a loop proved.
+    """
+
+    def test_recording_leaves_the_original_alone(self) -> None:
+        """A fork shares a memory, so recording must not edit it."""
+        from esolangs.interpreters.grid_based.flowchart import _Memory
+
+        before = _Memory({(0, 0): (1, 0)})
+        after = before.leaving((1, 1), (0, 1))
+        assert before.exit_from((1, 1)) is None
+        assert after.exit_from((1, 1)) == (0, 1)
+        assert after.exit_from((0, 0)) == (1, 0)
+
+    def test_a_later_exit_replaces_an_earlier_one(self) -> None:
+        """A cell is remembered by its *last* exit, not its first."""
+        from esolangs.interpreters.grid_based.flowchart import _Memory
+
+        twice = _Memory({}).leaving((0, 0), (1, 0)).leaving((0, 0), (0, 1))
+        assert twice.exit_from((0, 0)) == (0, 1)
+        assert twice.sorted_items() == (((0, 0), (0, 1)),)
+
+    def test_equal_memories_compare_and_hash_together(self) -> None:
+        """Equality is the exits recorded; the hash follows it."""
+        from esolangs.interpreters.grid_based.flowchart import _Memory
+
+        one = _Memory({(0, 0): (1, 0)})
+        two = _Memory({}).leaving((0, 0), (1, 0))
+        assert one == two
+        assert len({one, two}) == 1
+        assert hash(one) == hash(one)
+
+    def test_a_memory_is_unequal_to_other_things(self) -> None:
+        """Comparing against a non-memory answers False rather than raising."""
+        from esolangs.interpreters.grid_based.flowchart import _Memory
+
+        assert _Memory({}) != ()
