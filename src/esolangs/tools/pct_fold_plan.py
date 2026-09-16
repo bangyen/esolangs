@@ -5,8 +5,9 @@ merges or wipes some of them, and a plan is the sequence that lands every row
 on its answer.  :mod:`esolangs.tools.pct_fold` is what emits one.
 """
 
-from collections.abc import Callable, Iterator
-from itertools import pairwise
+from bisect import bisect_left, bisect_right, insort
+from collections.abc import Callable, Iterable, Iterator
+from itertools import chain, pairwise
 
 from esolangs.tools.pct_codes import (
     _LIMIT,
@@ -263,196 +264,366 @@ def _fold_done(state: _FoldState) -> bool:
     return len(state) <= 2 and all(t[1] == 0 for t in state)
 
 
-def _fold_wipe_frame(
-    state: _FoldState, kind: str, k: int
-) -> tuple[int, list[tuple[int, int, str]]] | None:
-    """Return ``(q1, survivor tops)`` for a wipe, or ``None`` if it is illegal.
+def _cofactor_done(state: _FoldState) -> bool:
+    """Whether one wiped point remains for every live suffix cofactor."""
+    return all(span == 0 for _, span, _, _ in state) and len(
+        {cls for _, _, cls, _ in state}
+    ) == len(state)
 
-    The same window arithmetic :func:`_fold_moves` uses -- ``q1`` is the gap
-    from the victims to the nearest survivor, and each survivor's top is
-    given as its distance from the victims' reference edge -- computed
-    directly so a single named move can be checked without enumerating every
-    move the state offers.
+
+class _FoldLedger:
+    """The plan state kept sorted, so a step costs its victims, not the state.
+
+    A :data:`_FoldState` is rebuilt, re-sorted and rebased on every step by
+    the tuple functions below, which is what made the dense build quadratic
+    (x4.2 per added input, 1360 steps over a 530-point state at ten inputs).
+    Nothing a rule reads needs the whole state: the ends, the gap to the
+    nearest survivor, the first free amount in a window, the nearest
+    same-class wiped point.  So the points live here in *absolute* position
+    -- rebasing is cosmetic, every rule is a difference -- as a sorted list
+    of tops with dicts keyed by top, and a wipe removes its ``k`` victims
+    from one end and inserts one landing.  Only the doubling touches every
+    point, and a plan has a dozen of those.
+
+    Row ids are *chunks*: a point's ``ids`` is a list of frozensets that a
+    landing extends by one, and it is flattened only when the point becomes
+    a victim and the op has to name its rows.  The conveyor merges hundreds
+    of victims onto one point, so copying that point's rows per landing was
+    the other quadratic term.
+
+    ``to_state`` and ``from_state`` are the bridge to the tuple form the
+    tests and the small-state skeleton use; the ops it emits are the same
+    ``_FoldOp`` tuples, and :func:`_fold_step`, :func:`_fold_rule_move` and
+    :func:`_fold_clean_amount` are now one-step views of this class.
     """
-    ordered = sorted(state, key=lambda t: t[0] if kind == "d" else -t[0])
-    vic, surv = ordered[:k], ordered[k:]
-    if not surv or len({c for _, _, c, _ in vic}) != 1:
+
+    __slots__ = ("bots", "by_cls", "cls", "count", "ids", "nspan", "span", "tops")
+
+    def __init__(self) -> None:
+        self.tops: list[int] = []
+        self.bots: list[int] = []
+        self.span: dict[int, int] = {}
+        self.cls: dict[int, str] = {}
+        self.ids: dict[int, list[frozenset[int]]] = {}
+        #: Class -> sorted tops of its wiped (span 0) points: case 2's target.
+        self.by_cls: dict[str, list[int]] = {}
+        self.count: dict[str, int] = {}
+        self.nspan = 0
+
+    @classmethod
+    def from_state(cls, state: "Iterable[_FoldPoint]") -> "_FoldLedger":
+        self = cls()
+        for top, span, c, ids in state:
+            self._insert(top, span, c, [ids])
+        return self
+
+    def to_state(self) -> _FoldState:
+        """Return the tuple form: top descending, rebased so the highest is 0."""
+        base = self.tops[-1]
+        return tuple(
+            (t - base, self.span[t], self.cls[t], frozenset().union(*self.ids[t]))
+            for t in reversed(self.tops)
+        )
+
+    @property
+    def size(self) -> int:
+        return len(self.tops)
+
+    def _insert(self, top: int, span: int, c: str, ids: list[frozenset[int]]) -> None:
+        # Tops are distinct: the start state lays every run at its own
+        # position and a landing that coincides with a survivor merges.
+        if top in self.span:
+            raise AssertionError(top)
+        insort(self.tops, top)
+        insort(self.bots, top - span)
+        self.span[top] = span
+        self.cls[top] = c
+        self.ids[top] = ids
+        self.count[c] = self.count.get(c, 0) + 1
+        if span:
+            self.nspan += 1
+        else:
+            insort(self.by_cls.setdefault(c, []), top)
+
+    def _remove(self, top: int) -> None:
+        span = self.span.pop(top)
+        c = self.cls.pop(top)
+        del self.ids[top]
+        del self.tops[bisect_left(self.tops, top)]
+        del self.bots[bisect_left(self.bots, top - span)]
+        if self.count[c] == 1:
+            del self.count[c]
+        else:
+            self.count[c] -= 1
+        if span:
+            self.nspan -= 1
+        else:
+            lst = self.by_cls[c]
+            del lst[bisect_left(lst, top)]
+
+    def is_done(self) -> bool:
+        """Two wiped points at most: one value per class, nothing unmerged."""
+        return len(self.tops) <= 2 and self.nspan == 0
+
+    def is_cofactor_done(self) -> bool:
+        """One wiped point per live class."""
+        return self.nspan == 0 and len(self.count) == len(self.tops)
+
+    def spread(self) -> int:
+        return self.tops[-1] - self.bots[0]
+
+    def can_double(self) -> bool:
+        # Doubling needs the whole state inside [-3003, 3003] afterwards,
+        # and an odd spread of 3003 has no integer placement, hence the -2.
+        return 0 < self.spread() * 2 <= 2 * _LIMIT - 2
+
+    def _victims(self, kind: str, k: int) -> list[int]:
+        return self.tops[:k] if kind == "d" else self.tops[-k:]
+
+    def wipe_frame(self, kind: str, k: int) -> tuple[int, int, int] | None:
+        """Return ``(q1, ref, survivors' lowest bottom)`` or ``None``.
+
+        ``ref`` is the victims' reference edge -- their top for a dive,
+        their lowest bottom for a rise -- and ``q1`` the gap from it to the
+        nearest survivor, which is the relocation window's width.  A
+        survivor's *bottom* counts: one whose extent reaches past the
+        victims leaves no window at all.
+        """
+        m = len(self.tops)
+        if k >= m or k < 1:
+            return None
+        vic = self._victims(kind, k)
+        vcls = self.cls[vic[0]]
+        if any(self.cls[t] != vcls for t in vic):
+            return None
+        # The survivors' lowest bottom: walk the bottom multiset past the
+        # victims' own bottoms, which is O(k) since it stops at the first
+        # value no victim owns.
+        skip: dict[int, int] = {}
+        for t in vic:
+            b = t - self.span[t]
+            skip[b] = skip.get(b, 0) + 1
+        i = 0
+        while skip.get(self.bots[i], 0):
+            skip[self.bots[i]] -= 1
+            i += 1
+        minbot = self.bots[i]
+        if kind == "d":
+            ref = vic[-1]
+            q1 = minbot - ref
+        else:
+            ref = min(t - self.span[t] for t in vic)
+            q1 = ref - self.tops[-k - 1]
+        if q1 < 1:
+            return None
+        return q1, ref, minbot
+
+    def clean_amount(self, kind: str, k: int) -> int | None:
+        """Smallest window amount whose landing coincides with no survivor.
+
+        The window is a full interval, so the first free value in it is a
+        computed amount, not a searched one: the survivor tops are walked
+        upward (downward for a rise) from the window's edge and the walk
+        stops at the first gap, which costs the occupied run, not the state.
+        No victim can sit in the window -- a dive's victims are below its
+        reference edge and a rise's above -- so the whole top list serves.
+        """
+        frame = self.wipe_frame(kind, k)
+        if frame is None:
+            return None
+        q1, ref, _minbot = frame
+        amount = _LIMIT + 1
+        tops = self.tops
+        if kind == "d":
+            i = bisect_left(tops, ref + amount)
+            while i < len(tops) and tops[i] == ref + amount:
+                amount += 1
+                i += 1
+        else:
+            i = bisect_right(tops, ref - amount) - 1
+            while i >= 0 and tops[i] == ref - amount:
+                amount += 1
+                i -= 1
+        # The window cannot be exhausted: it has ``q1`` slots and the
+        # occupied set is the survivor tops, which are distinct positions,
+        # so filling it needs ``q1`` survivors -- while ``q1`` is itself the
+        # gap to the *nearest* survivor, and packing that many in collapses
+        # it to 1.  Measured over 47.2M legal wipe frames (sizes 2-4, both
+        # directions, every k, mixed spans and classes): no window ever ran
+        # out.  The return stays as the total function's last arm.
+        if amount > _LIMIT + q1:
+            return None  # pragma: no cover
+        return amount
+
+    def op(self, kind: str, k: int, amount: int) -> _FoldOp:
+        """Name a wipe, flattening its victims' row chunks into the op."""
+        vic = self._victims(kind, k)
+        return (
+            kind,
+            k,
+            amount,
+            frozenset().union(*chain.from_iterable(self.ids[t] for t in vic)),
+        )
+
+    def rule_move(self) -> _FoldOp | None:
+        """Name the one move the closed-form rules choose from this state.
+
+        A fixed case analysis, not a ranking: each case either applies --
+        and then fully determines its move -- or falls through to the next.
+
+        1. One class left: the everything-wipe finishes.
+        2. An end group whose landing window holds a same-class wiped point:
+           wipe it onto the nearest such point, which is a merge.  This is
+           the workhorse -- on a grown ladder it runs as a conveyor, merging
+           one group per op until the windows empty.
+        3. A same-class run of groups at an end: wipe them together at the
+           first collision-free amount, which merges the run onto one point.
+        4. Spread at most 3002: double.  Growth is what pushes same-class
+           gaps past the 3003 line so case 2's windows fill; it is also the
+           only reorder the language has (see :func:`_fold_moves`).
+        5. Otherwise hop an end group by the first collision-free amount.
+           On a state wider than 3004 the hop lands inside the pack,
+           compressing the spread back under the doubling bound.
+
+        Cases 2 and 5 try the dive side first; ties inside a case take the
+        nearest target.  Both choices are conventions -- the r <= 5 mining
+        recorded on :func:`_fold_skeleton` found rank ties to be confluent,
+        and the acceptance sweeps re-measure that end to end.
+        """
+        tops = self.tops
+        m = len(tops)
+        if len(self.count) == 1:
+            return self.op("d", m, _LIMIT + 1)
+        for kind in ("d", "u"):
+            frame = self.wipe_frame(kind, 1)
+            if frame is None:
+                continue
+            q1, ref, _minbot = frame
+            vcls = self.cls[tops[0] if kind == "d" else tops[-1]]
+            lst = self.by_cls.get(vcls, ())
+            # The nearest same-class wiped point in the window, by bisect:
+            # the victim itself is span 0 of that class but sits at distance
+            # 0, outside every window.
+            if kind == "d":
+                i = bisect_left(lst, ref + _LIMIT + 1)
+                if i < len(lst) and lst[i] <= ref + _LIMIT + q1:
+                    return self.op(kind, 1, lst[i] - ref)
+            else:
+                i = bisect_right(lst, ref - _LIMIT - 1) - 1
+                if i >= 0 and lst[i] >= ref - _LIMIT - q1:
+                    return self.op(kind, 1, ref - lst[i])
+        k = 1
+        while k < m and self.cls[tops[-1 - k]] == self.cls[tops[-1]]:
+            k += 1
+        if 1 < k < m:
+            amount = self.clean_amount("u", k)
+            # ``1 < k < m`` is the clean amount's own precondition.
+            if amount is not None:  # pragma: no branch
+                return self.op("u", k, amount)
+        k = 1
+        while k < m and self.cls[tops[k]] == self.cls[tops[0]]:
+            k += 1
+        if 1 < k < m:
+            amount = self.clean_amount("d", k)
+            # ``1 < k < m`` is the clean amount's own precondition.
+            if amount is not None:  # pragma: no branch
+                return self.op("d", k, amount)
+        if self.can_double():
+            return ("m", 0, 0, frozenset())
+        for kind in ("d", "u"):
+            amount = self.clean_amount(kind, 1)
+            if amount is not None:
+                return self.op(kind, 1, amount)
         return None
-    if kind == "d":
-        ref = vic[-1][0]
-        q1 = min(p - s for p, s, _, _ in surv) - ref
-        tops = [(p - ref, s, c) for p, s, c, _ in surv]
-    else:
-        ref = min(p - s for p, s, _, _ in vic)
-        q1 = ref - max(p for p, _, _, _ in surv)
-        tops = [(ref - p, s, c) for p, s, c, _ in surv]
-    if q1 < 1:
-        return None
-    return q1, tops
+
+    def double(self) -> None:
+        self.tops = [t * 2 for t in self.tops]
+        self.bots = [b * 2 for b in self.bots]
+        self.span = {t * 2: s * 2 for t, s in self.span.items()}
+        self.cls = {t * 2: c for t, c in self.cls.items()}
+        self.ids = {t * 2: i for t, i in self.ids.items()}
+        self.by_cls = {c: [t * 2 for t in lst] for c, lst in self.by_cls.items()}
+
+    def step(self, op: _FoldOp) -> bool:
+        """Apply one concrete op, or ``False`` where the move algebra refuses it.
+
+        A wipe relocates its victims by ``amount`` and merges them onto one
+        wiped point -- in absolute terms the survivors stay and the landing
+        is inserted at ``ref + amount`` (dive) or ``ref - amount`` (rise) --
+        the doubling scales everything, and the same span guard applies.
+        Divergence from the interpreter is caught downstream either way:
+        the emitter mirrors every row and asserts at each step, so a plan
+        built on wrong arithmetic cannot emit.
+        """
+        kind, k, amount, _vids = op
+        tops = self.tops
+        if kind == "m":
+            if not self.can_double():
+                return False
+            self.double()
+            return True
+        if k == len(tops):
+            # The everything-wipe: legal only once a single class remains.
+            if len(self.count) != 1:
+                return False
+            c = self.cls[tops[0]]
+            ids = list(chain.from_iterable(self.ids[t] for t in tops))
+            for t in list(tops):
+                self._remove(t)
+            self._insert(0, 0, c, ids)
+            return True
+        frame = self.wipe_frame(kind, k)
+        if frame is None:
+            return False
+        q1, ref, minbot = frame
+        if not _LIMIT + 1 <= amount <= _LIMIT + q1:
+            return False
+        vic = self._victims(kind, k)
+        if kind == "d":
+            landing = ref + amount
+            hi = max(tops[-1], landing)
+        else:
+            landing = ref - amount
+            hi = max(tops[-k - 1], landing)
+        lo = min(minbot, landing)
+        if hi - lo > 2 * _LIMIT:
+            return False
+        # Two points at one value are indistinguishable forever after, so a
+        # collision is a merge -- legal only within a class, and only onto
+        # an already-wiped point (a group with extent has rows at *several*
+        # values, so an "equal top" is not an equal anything).
+        c = self.cls[vic[0]]
+        if landing in self.span and (self.cls[landing] != c or self.span[landing]):
+            return False
+        ids = list(chain.from_iterable(self.ids[t] for t in vic))
+        for t in vic:
+            self._remove(t)
+        if landing in self.span:
+            self.ids[landing].extend(ids)
+        else:
+            self._insert(landing, 0, c, ids)
+        return True
 
 
 def _fold_step(state: _FoldState, op: _FoldOp) -> _FoldState | None:
-    """Apply one concrete op, or ``None`` where the move algebra refuses it.
-
-    The arithmetic mirrors :func:`_fold_moves` -- a wipe relocates its
-    victims by ``amount`` and merges them onto one wiped point, the doubling
-    scales everything, and the same span guard applies.  Divergence from the
-    interpreter is caught downstream either way: the emitter mirrors every
-    raw row and asserts at each step, so a plan built on wrong arithmetic
-    cannot emit.
-    """
-    kind, k, amount, _vids = op
-    if kind == "m":
-        top = max(p for p, _, _, _ in state)
-        bot = min(p - s for p, s, _, _ in state)
-        if not 0 < (top - bot) * 2 <= 2 * _LIMIT - 2:
-            return None
-        return _fold_norm([(p * 2, s * 2, c, i) for p, s, c, i in state])
-    if k == len(state):
-        # The everything-wipe: legal only once a single class remains.
-        if len({c for _, _, c, _ in state}) != 1:
-            return None
-        allids = frozenset(x for _, _, _, i in state for x in i)
-        return ((0, 0, state[0][2], allids),)
-    frame = _fold_wipe_frame(state, kind, k)
-    if frame is None:
-        return None
-    q1, _tops = frame
-    if not _LIMIT + 1 <= amount <= _LIMIT + q1:
-        return None
-    ordered = sorted(state, key=lambda t: t[0] if kind == "d" else -t[0])
-    vic, surv = ordered[:k], ordered[k:]
-    merged_vic = (0, 0, vic[0][2], frozenset(x for _, _, _, i in vic for x in i))
-    if kind == "d":
-        vt = vic[-1][0]
-        items = [(p - vt - amount, s, cc, ii) for p, s, cc, ii in surv]
-    else:
-        vb = min(p - s for p, s, _, _ in vic)
-        items = [(amount - (vb - p), s, cc, ii) for p, s, cc, ii in surv]
-    items.append(merged_vic)
-    hi = max(p for p, _, _, _ in items)
-    lo = min(p - s for p, s, _, _ in items)
-    if hi - lo > 2 * _LIMIT:
-        return None
-    return _fold_merge(items)
+    """Apply one concrete op to a tuple state, or ``None`` where it is refused."""
+    ledger = _FoldLedger.from_state(state)
+    return ledger.to_state() if ledger.step(op) else None
 
 
 def _fold_clean_amount(state: _FoldState, kind: str, k: int) -> int | None:
-    """Smallest window amount whose landing coincides with no survivor.
-
-    A wipe at exactly ``cmin`` can drop its victims onto a survivor the
-    move algebra then refuses to merge -- an opposite class, or a group
-    still carrying extent -- which is what used to make a fixed relocation
-    amount fail on the packed ladder's irregular gaps.  The window is a full
-    interval, so the first free value in it is a computed amount, not a
-    searched one.
-    """
-    frame = _fold_wipe_frame(state, kind, k)
-    if frame is None:
-        return None
-    q1, tops = frame
-    occupied = {qt for qt, _s, _c in tops}
-    for amount in range(_LIMIT + 1, _LIMIT + q1 + 1):
-        if amount not in occupied:
-            return amount
-    # The window cannot be exhausted: it has ``q1`` slots and the occupied
-    # set is the survivor tops, which are distinct positions, so filling it
-    # needs ``q1`` survivors -- while ``q1`` is itself the gap to the
-    # *nearest* survivor, and packing that many in collapses it to 1.
-    # Measured over 47.2M legal wipe frames (sizes 2-4, both directions,
-    # every k, mixed spans and classes): no window ever ran out.  The return
-    # stays as the total function's last arm.
-    return None  # pragma: no cover
-
-
-def _fold_op(state: _FoldState, kind: str, k: int, amount: int) -> _FoldOp:
-    ordered = sorted(state, key=lambda t: t[0] if kind == "d" else -t[0])
-    vids = frozenset(x for _, _, _, i in ordered[:k] for x in i)
-    return (kind, k, amount, vids)
+    """:meth:`_FoldLedger.clean_amount` on a tuple state."""
+    return _FoldLedger.from_state(state).clean_amount(kind, k)
 
 
 def _fold_rule_move(state: _FoldState) -> _FoldOp | None:
-    """Name the one move the closed-form rules choose from ``state``.
-
-    A fixed case analysis, not a ranking: each case either applies -- and
-    then fully determines its move -- or falls through to the next.
-
-    1. One class left: the everything-wipe finishes.
-    2. An end group whose landing window holds a same-class wiped point:
-       wipe it onto the nearest such point, which is a merge.  This is the
-       workhorse -- on a grown ladder it runs as a conveyor, merging one
-       group per op until the windows empty.
-    3. A same-class run of groups at an end: wipe them together at the
-       first collision-free amount, which merges the run onto one point.
-    4. Spread at most 3002: double.  Growth is what pushes same-class gaps
-       past the 3003 line so case 2's windows fill; it is also the only
-       reorder the language has (see :func:`_fold_moves`).
-    5. Otherwise hop an end group by the first collision-free amount.  On a
-       state wider than 3004 the hop lands inside the pack, compressing the
-       spread back under the doubling bound.
-
-    Cases 2 and 5 try the dive side first; ties inside a case take the
-    nearest target.  Both choices are conventions -- the r <= 5 mining
-    recorded on :func:`_fold_skeleton` found rank ties to be confluent,
-    and the acceptance sweeps below re-measure that end to end.
-    """
-    m = len(state)
-    if len({c for _, _, c, _ in state}) == 1:
-        return _fold_op(state, "d", m, _LIMIT + 1)
-    for kind in ("d", "u"):
-        frame = _fold_wipe_frame(state, kind, 1)
-        if frame is None:
-            continue
-        q1, tops = frame
-        vcls = (
-            min(state, key=lambda t: t[0])[2]
-            if kind == "d"
-            else max(state, key=lambda t: t[0])[2]
-        )
-        best = None
-        for qt, qspan, qcls in tops:
-            in_window = _LIMIT + 1 <= qt <= _LIMIT + q1
-            if (
-                qspan == 0
-                and qcls == vcls
-                and in_window
-                and (best is None or qt < best)
-            ):
-                best = qt
-        if best is not None:
-            return _fold_op(state, kind, 1, best)
-    desc = sorted(state, key=lambda t: -t[0])
-    k = 1
-    while k < m and desc[k][2] == desc[0][2]:
-        k += 1
-    if 1 < k < m:
-        amount = _fold_clean_amount(state, "u", k)
-        # ``1 < k < m`` is the clean amount's own precondition.
-        if amount is not None:  # pragma: no branch
-            return _fold_op(state, "u", k, amount)
-    asc = sorted(state, key=lambda t: t[0])
-    k = 1
-    while k < m and asc[k][2] == asc[0][2]:
-        k += 1
-    if 1 < k < m:
-        amount = _fold_clean_amount(state, "d", k)
-        # ``1 < k < m`` is the clean amount's own precondition.
-        if amount is not None:  # pragma: no branch
-            return _fold_op(state, "d", k, amount)
-    top = max(p for p, _, _, _ in state)
-    bot = min(p - s for p, s, _, _ in state)
-    if 0 < (top - bot) * 2 <= 2 * _LIMIT - 2:
-        return ("m", 0, 0, frozenset())
-    for kind in ("d", "u"):
-        amount = _fold_clean_amount(state, kind, 1)
-        if amount is not None:
-            return _fold_op(state, kind, 1, amount)
-    return None
+    """:meth:`_FoldLedger.rule_move` on a tuple state."""
+    return _FoldLedger.from_state(state).rule_move()
 
 
 def _fold_reduce(
     state: _FoldState,
-    done: Callable[[_FoldState], bool],
+    done: "Callable[[_FoldState], bool]",
     budget: int | None = None,
 ) -> list[_FoldOp] | None:
     """Run the rules to a ``done`` state, or ``None`` where they dead-end.
@@ -464,37 +635,43 @@ def _fold_reduce(
     the derived latency guard recorded on :data:`_FOLD_STEP_SLOPE`; the
     corpus never reaches it, and a rules dead-end returns ``None`` through
     the same refusal path the search used.
+
+    The two shipped ``done`` predicates are read off the ledger's counters;
+    any other callable is given the tuple state it expects, at the cost of
+    materialising it per step.
     """
-    st = _fold_norm(list(state))
+    ledger = _FoldLedger.from_state(state)
+    if done is _fold_done:
+        finished: Callable[[], bool] = ledger.is_done
+    elif done is _cofactor_done:
+        finished = ledger.is_cofactor_done
+    else:  # pragma: no cover - no shipped caller
+        finished = lambda: done(ledger.to_state())  # noqa: E731
     ops: list[_FoldOp] = []
     guard = 0
-    while any(s > 0 for _, s, _, _ in st) and len(st) > 1:
+    while ledger.nspan and ledger.size > 1:
         guard += 1
         if guard > 2 * len(state) + 4:  # pragma: no cover - linear in groups
             break
-        amount = _fold_clean_amount(st, "d", 1)
+        amount = ledger.clean_amount("d", 1)
         if amount is None:
             break
-        wipe = _fold_op(st, "d", 1, amount)
-        nb = _fold_step(st, wipe)
-        if nb is None:  # pragma: no cover - a clean amount always applies
+        wipe = ledger.op("d", 1, amount)
+        if not ledger.step(wipe):  # pragma: no cover - a clean amount always applies
             break
         ops.append(wipe)
-        st = nb
     if budget is None:
-        budget = _FOLD_STEP_SLOPE * len(st) + _FOLD_STEP_SLACK
+        budget = _FOLD_STEP_SLOPE * ledger.size + _FOLD_STEP_SLACK
     for _ in range(budget):
-        if done(st):
+        if finished():
             return ops
-        op = _fold_rule_move(st)
+        op = ledger.rule_move()
         if op is None:
             return None
-        nb = _fold_step(st, op)
-        if nb is None:
+        if not ledger.step(op):
             return None
         ops.append(op)
-        st = nb
-    return ops if done(st) else None
+    return ops if finished() else None
 
 
 #: The rule construction's step budget, as ``slope * points + slack``

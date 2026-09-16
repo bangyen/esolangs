@@ -191,8 +191,7 @@ class TestPctFoldEmitter:
         for start, expected in ((0, 48), (2900, 2864)):
             em = self.emitter("0", 0)
             key = next(iter(em.pos))
-            em.pos = {key: start}
-            em.cls = {key: "0"}
+            em.load({key: (start, "0")})
             em.finish()
             assert em.pos[key] == expected
             assert em.pos[key] % 256 == em.byte(key) % 256
@@ -213,8 +212,7 @@ class TestPctFoldEmitter:
         def rise_from(victim_top: int) -> list[str]:
             em = self.emitter()
             keys = list(em.pos)
-            em.pos = {keys[0]: victim_top, keys[1]: -10}
-            em.cls = {keys[0]: "0", keys[1]: "1"}
+            em.load({keys[0]: (victim_top, "0"), keys[1]: (-10, "1")})
             em.rise(limit + 1, frozenset({keys[0]}))
             return em.body
 
@@ -222,6 +220,20 @@ class TestPctFoldEmitter:
         assert rise_from(limit) == ["i", "psp", "psp", "s"]
         # u == 2: exactly the floor, so the rise is spelled on its own.
         assert rise_from(limit - 1) == ["psp", "s"]
+
+    def test_a_rise_with_no_survivors_takes_the_fallback_window(self) -> None:
+        """Wiping every point leaves no gap to measure, so the window is 40.
+
+        The everything-wipe the planner emits is a dive, so this is the one
+        place the rise's fallback is exercised: the point goes over the
+        limit, is flushed by the ``s``, and lands at -2.
+        """
+        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
+        em = self.emitter("0", 0)
+        key = next(iter(em.pos))
+        em.rise(module._LIMIT + 1, frozenset({key}))  # noqa: SLF001
+        assert em.body == ["p" + module._sub_code(module._LIMIT + 1) + "p", "s"]  # noqa: SLF001
+        assert em.pos == {key: -2}
 
 
 class TestPctFoldMoves:
@@ -375,6 +387,21 @@ class TestPctFoldPlanners:
         assert module._fold_step(self.STATE, mixed) is None  # noqa: SLF001
         everything = ("d", 4, 3004, frozenset({0, 1, 2, 3}))
         assert module._fold_step(self.STATE, everything) is None  # noqa: SLF001
+
+    def test_a_landing_on_the_other_class_is_refused(self) -> None:
+        """A wipe whose landing coincides with an opposite-class point is no move.
+
+        Two points at one value are one point forever, so the algebra refuses
+        the collision; the same amount onto a same-class point is the merge.
+        """
+        module = self.module()
+        onto = ("d", 1, 3004, frozenset({1}))
+        cross = ((0, 0, "0", frozenset({0})), (-3004, 0, "1", frozenset({1})))
+        assert module._fold_step(cross, onto) is None  # noqa: SLF001
+        same = ((0, 0, "1", frozenset({0})), (-3004, 0, "1", frozenset({1})))
+        assert module._fold_step(same, onto) == (  # noqa: SLF001
+            (0, 0, "1", frozenset({0, 1})),
+        )
 
     def test_a_clean_amount_skips_an_occupied_landing(self) -> None:
         """The first collision-free amount is computed, not the minimum.

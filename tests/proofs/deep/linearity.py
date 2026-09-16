@@ -117,7 +117,6 @@ ARITY_OVERRIDE = {
     "b_tapemark": 11,
     "circuit_diagram": 10,
     "factor": 11,
-    "pct_squared_minus_one": 10,
     "polynomial": 9,
     "slow_acv_mammalian": 10,
     "streetcode": 10,
