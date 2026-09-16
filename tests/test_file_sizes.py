@@ -41,10 +41,6 @@ _RATCHET = {
     "tests/interpreters/test_forbin.py": 1721,
     "tests/interpreters/test_streetcode.py": 2249,
     "tests/test_answer_plumbing.py": 1977,
-    "tests/test_vm.py": 2671,
-    "tests/tools/test_boolean_grid.py": 2305,
-    "tests/tools/test_boolean_pct.py": 2443,
-    "tests/tools/test_boolean_tape.py": 2070,
 }
 
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
