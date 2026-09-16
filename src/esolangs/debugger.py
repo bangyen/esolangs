@@ -200,36 +200,24 @@ class Debugger:
         whose ``ip`` is an index, and ``break_at(10)`` on Alight, whose
         ``ip`` is a coordinate, were both stored and both could never fire.
 
-        Only the kind, not the arity.  A tuple ``ip``'s length is the
-        language's own -- three for ArrowQueue and Clockwise, four for
-        Alight and COD, six for 3D Brainfuck, which is a tape machine
-        rather than one of the grid languages above -- and it is not even
-        constant within a run: eight languages change shape as they go,
-        four to ``None``, ``function x(y)`` to an empty tuple, and COD
-        through 8, 12 and 16 before it empties.  So an arity check would
-        refuse breakpoints that are perfectly legitimate later in the same
-        run.  :attr:`~esolangs.vm.VM.ip` has the full list; it is not
-        repeated here, because two copies of a count are how the last one
-        came to be wrong.
-        A machine whose ``ip`` is already ``None`` or empty has no shape to
-        compare against, and anything is accepted.
+        Only the kind, not the arity: a tuple ``ip``'s length is the
+        language's own and is not constant within a run (see
+        :attr:`~esolangs.vm.VM.ip`), so an arity check would refuse
+        breakpoints legitimate later in the same run.  A machine whose
+        ``ip`` is already ``None`` or empty has no shape to compare
+        against, and anything is accepted.
 
-        ``None`` is refused too, and that one is a gap rather than a guard.
-        :attr:`~esolangs.vm.VM.ip` reports ``None`` as a real position --
-        five languages reach it, and Circuit Diagram *starts* there -- so
-        the documented idiom of breaking on the initial position cannot be
-        written for it.  ``break_when(lambda vm: vm.ip is None)`` says the
-        same thing and works; this method stays typed to a position because
-        the kind check above is what makes a mistyped breakpoint an error
-        instead of one that silently never fires.
+        ``None`` is refused too, which is a gap rather than a guard:
+        :attr:`~esolangs.vm.VM.ip` reports it as a real position -- five
+        languages reach it, and Circuit Diagram *starts* there -- so
+        ``break_when(lambda vm: vm.ip is None)`` is how to say it.  This
+        method stays typed to a position, because the kind check is what
+        makes a mistyped breakpoint an error rather than a dead one.
 
-        An in-kind position that the program never *reaches* -- ``break_at``
-        on index a million, in a program a hundred long -- is accepted and
-        will not fire.  That is the same silently-dead breakpoint this
-        method refuses elsewhere, and it stays accepted because deciding it
-        needs to know how long the program is, which is not part of the VM
-        protocol: ``ip`` is language-shaped and there is no ``len``.  Said
-        here rather than guessed at.
+        An in-kind position the program never *reaches* is accepted and will
+        not fire.  Deciding that needs the program's length, which is not
+        part of the VM protocol -- ``ip`` is language-shaped and there is no
+        ``len``.
         """
         if isinstance(ip, int) and not isinstance(ip, bool):
             check_whole(ip, "ip")
@@ -418,72 +406,51 @@ class Debugger:
         """Execute until the machine halts, a breakpoint fires, or a bound ends it.
 
         Returns *why* it stopped -- ``"halted"``, ``"breakpoint"``,
-        ``"max_steps"`` or ``"timeout"``.  It used to return ``None``, on the
-        argument that the contract was to stop rather than to report why; but ``halted``
-        only separates the first case from the other two, so a caller could
-        not tell a breakpoint from an exhausted budget at all, and the CLI
-        one layer up was already reporting exactly this.
+        ``"max_steps"`` or ``"timeout"`` -- since ``halted`` alone cannot
+        tell a breakpoint from an exhausted budget.
 
         A breakpoint is checked before each step, so the run stops with the
-        watched condition still true.  **A breakpoint that stopped the last
-        run does not fire again until its condition goes false**, which is
-        what lets a resumed run advance; see the note on re-firing below.  A
-        breakpoint that has not fired yet is checked as it always was, so
-        ``break_at(ip)`` on the initial position still stops before the
-        first step executes.
+        watched condition still true.  **One that stopped the last run does
+        not fire again until its condition goes false**, which is what lets
+        a resumed run advance; one that has not fired yet is checked as
+        always, so ``break_at(ip)`` on the initial position still stops
+        before the first step.
 
-        It is checked again after the machine halts, because otherwise a
-        condition the *last* step made true is never looked at and the run
-        reports ``"halted"`` over a watch that fired.  The run after that
-        one returns ``"halted"``, since the hit is then suppressed.
+        It is checked again after the machine halts, or a condition the
+        *last* step made true is never looked at and the run reports
+        ``"halted"`` over a watch that fired.  On the seven languages where
+        the output arrives a step past the halt
+        (``dumps_on_the_post_halt_step``) that is two more checks, before
+        and after the dump, since the dump changes ``output``.
 
-        On the seven languages where the output arrives one step past the
-        halt (``dumps_on_the_post_halt_step``) that is two more checks, not
-        one: once before this method takes the dump step and once after,
-        since the dump changes ``output`` and either state can be the one
-        a caller is watching for.
-
-        **So a ``"breakpoint"`` can now be returned with ``halted`` true
-        and ``output`` still empty**, on those seven, which was not
-        reachable before.  It is not a stuck state -- ``step()``, or
-        another ``run()``, takes the dump and writes the answer -- but a
-        caller whose loop reads ``if dbg.halted: return dbg.output`` on a
-        stop it did not check the reason of will read ``""``.
+        **So ``"breakpoint"`` can be returned with ``halted`` true and
+        ``output`` still empty** on those seven.  It is not a stuck state --
+        another ``step()`` or ``run()`` takes the dump -- but a caller whose
+        loop reads ``if dbg.halted: return dbg.output`` without checking the
+        reason will read ``""``.
 
         ``max_steps`` bounds the run in steps and ``timeout`` in wall-clock
-        seconds; the default of ``None`` for both is unbounded, which is
-        right for a machine known to halt and a hang for one that is not.
+        seconds, ``None`` for both meaning unbounded.  The post-halt dump
+        step is outside the budget, so ``max_steps=N`` can advance those
+        seven ``N + 1`` times and return a watch history one longer than the
+        bound: the step exists so the answer is readable, and spending the
+        last unit of budget on it would let a bound equal to the program's
+        length hide the output.
 
-        The post-halt dump step is outside the budget, so on those seven
-        languages ``max_steps=N`` can advance the machine ``N + 1`` times
-        and a watch history comes back one longer than the bound.  That is
-        deliberate -- the step exists so the answer is readable, and
-        spending the caller's last unit of budget on it would mean a bound
-        that happens to equal the program's length hides the output -- but
-        it was not written down.
-
-        Either bound *returns* -- ``"max_steps"`` or ``"timeout"`` -- rather
-        than raising, so one ``reason ==`` covers every way a run can *stop*
-        and a caller bounding both ways needs no ``except`` for the bounds.
-
-        It does still need one for the program.  A run that faults raises
-        out of here rather than returning a fifth reason: an
+        Either bound *returns* rather than raising, so one ``reason ==``
+        covers every way a run can stop.  A run that *faults* still raises
+        out of here rather than returning a fifth reason -- an
         :class:`~esolangs.exceptions.InputExhaustedError` from an underfed
         ``,`` is the common one, and it is not recoverable in place, since
-        there is no way to hand more stdin to a live debugger -- every later
-        ``run()`` raises it again.  This paragraph used to say "needs no
-        ``except`` beside it" without that qualification, which is the
-        advice that breaks on the most ordinary mistake a session makes.
-        The CLI's ``debug`` catches it and prints
-        ``stopped: raised``; see :data:`STOP_REASONS`.  The
-        timeout is checked in the same place as a breakpoint rather than
-        through a signal, so it needs no main thread and leaves the machine
-        inspectable where it stopped.
+        there is no way to hand more stdin to a live debugger.  The CLI's
+        ``debug`` catches it and prints ``stopped: raised``; see
+        :data:`STOP_REASONS`.  The timeout is checked where a breakpoint is
+        rather than through a signal, so it needs no main thread and leaves
+        the machine inspectable where it stopped.
 
-        The drive itself is :func:`~esolangs.vm.run_until_halt`, and what is
-        stepped is ``self`` rather than ``self.vm`` -- :meth:`step` already
-        records the watches, so recording stays part of a step instead of
-        becoming a hook the shared loop would have to grow.
+        The drive is :func:`~esolangs.vm.run_until_halt`, stepping ``self``
+        rather than ``self.vm`` so that recording the watches stays part of
+        a step instead of becoming a hook the shared loop would grow.
         """
         if max_steps is not None:
             check_whole(max_steps, "max_steps")

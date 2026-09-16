@@ -1,120 +1,65 @@
 r"""Wrap generated programs to a readable width, on token boundaries.
 
-The generators emit one long line for most languages: a Polynomial program
-for a dense three-input table is 2471 characters, which no diff or review
-pane shows usefully.  Since most languages treat a newline as whitespace
-(or as a comment character), such a program can be broken across lines
-without changing what it does.
+The generators emit one long line for most languages -- a Polynomial program
+for a dense three-input table is 2471 characters -- and most languages treat
+a newline as whitespace or as a comment character, so such a program can be
+broken across lines without changing what it does.
 
-The wrapping is *token-aware*, which is the whole point of this module.
-Slicing a program every ``width`` characters is wrong for any language
-whose tokens are longer than one character: it can split ``-6`` into ``-``
-and ``6`` (a load error in the numeric languages, which is at least loud),
-or split BIO's fixed-width ``0ox`` triples so the program still runs and
-prints garbage (which is not).  Each wrapper here knows what a token is in
-its family and only ever breaks between two of them.
+The wrapping is *token-aware*, which is the point of this module.  Slicing
+every ``width`` characters can split ``-6`` into ``-`` and ``6`` (a load
+error in the numeric languages, which is at least loud) or split BIO's
+fixed-width ``0ox`` triples so the program still runs and prints garbage
+(which is not).  Each wrapper knows what a token is in its family and only
+breaks between two of them.
 
-Not every language can take newlines, so wrapping is opt-in per language
-rather than a blanket post-processing pass:
+Not every language can take newlines, so wrapping is opt-in per language:
 
-- The 2D languages (Dig, WII2D, and the other grid interpreters) read
-  newlines as row separators, so a newline moves code to another row.
-- NoComment has no comment syntax at all -- an unrecognized character is a
-  load error, and that includes ``\n``.
-- Forbin and Packlang tolerate reflow -- their interpreters read whitespace,
-  not lines -- but their statements sit on indented lines inside braces.
-  Their wrapper preserves those lines and only folds one that exceeds the
-  requested width.
+- The 2D languages read newlines as row separators.
+- NoComment has no comment syntax at all, so ``\n`` is a load error.
+- Forbin and Packlang tolerate reflow but keep their statements on indented
+  lines inside braces, so their wrapper folds only a line over the width.
 
-ROTfuck used to belong on that list: its interpreter rotated the program on
-*every* character the pointer passed, comments included, so an inserted
-newline shifted every later command along the cycle.  That was a deviation
-from the wiki ("every time an instruction is executed"), since a comment is
-not an instruction; with it fixed, comments are transparent and ROTfuck
-wraps like any other single-character-command language.
+Being unwrappable is not being unbounded.  Twelve generators lay out their
+own *shape*, so they honour a width by building a different one rather than
+by reflowing: Streetcode, WII2D and LaserFuck fold their runs into a
+boustrophedon, COD turns its drawing a quarter turn so the width becomes its
+tallest block, Clockwise and Flowchart stack their decision trees a column
+to a node, Dig turns its tree round once, Alight steers with ``turn`` and
+Super SNUSP with mirrors, function x(y) and the Algebraic Programming
+Language *name* their subexpressions so a statement becomes a line each, and
+Circuit Diagram bands -- carrying every live signal back to a column near
+the left so the ones behind it are freed.  :func:`takes_width` is how a
+caller tells; those twelve never reach :func:`wrap_program`.
 
-Being unwrappable is not the same as being unbounded, though.  A generator
-that lays out its own *shape* can honour a width by building a different
-shape, which no after-the-fact reflow can do: Streetcode folds its
-instruction line into a boustrophedon, LaserFuck steers the beam down and
-back so a straight run of tape commands costs rows instead of columns,
-WII2D folds the run that shifts its answer to an ASCII digit the same way,
-COD turns its whole drawing a quarter turn -- its blocks are joined left to
-right, so the width becomes the *tallest* block rather than the widest, and
-what was the width becomes height, which costs nothing -- Clockwise stacks
-the shallow levels of its
-decision tree so a branch costs one column instead of the ``2 ** (n -
-bit)`` it displaces, Dig turns its tree round once so the deep levels run
-back west over the columns the shallow ones used, and function x(y) and the
-Algebraic Programming Language both *name* their subexpressions -- the one
-binding subtrees to ``var``s, the other minterms to nullary functions -- so
-what was a single statement becomes one statement a line.  Flowchart stacks
-its drawn tree the way Clockwise stacks its ring, putting every node on one
-column, Alight steers its walk into a boustrophedon with ``turn``, and
-Super SNUSP does the same with mirrors -- ``\`` and ``/`` stacked in pairs,
-which turn a row round in one row and one column, the cheapest fold here.
-Circuit Diagram *bands*: every signal still live is carried back to a column
-near the left and the columns behind it are freed, which is the only way a
-drawing whose gates must each sit right of their inputs can stop growing.
-Those twelve generators take the width themselves -- :func:`takes_width` is
-how the callers tell -- and never reach :func:`wrap_program`.
+Ten of the twelve are grids, which :func:`wrap_program` skips for being
+already multi-line.  The two naming ones are line-structured source and so
+are also in the tests' unwrappable table; the two facts are independent.
 
-Ten of the twelve are grids, which :func:`wrap_program` would skip anyway
-for being already multi-line.  The two naming ones are not: they are
-line-structured source, so they are *also* in the tests' unwrappable table.
-The two facts are independent -- a finished line of either still must not
-be broken, and the generator narrows by emitting different lines rather
-than by folding the ones it has.
+Only Clockwise folds to an arbitrary width, and what it trades is rows,
+since a stacked level writes the subtree below it twice.  In the others
+something cannot move, and a width under that floor returns the narrowest
+program rather than refusing: WII2D's junction chain carries one input per
+junction, COD's floor is ``2 ** (n + 1) + 1``, Dig's tree can turn round
+exactly once, function x(y) floors at one node's line, APL at the prefix
+reading its inputs, Flowchart at ``n + 5``, Alight at its ``2 ** n``
+table literal, Super SNUSP at four columns, and Circuit Diagram at the rails
+and complements every minterm reads, about ``10 * n`` columns.
 
-Only Clockwise folds to an arbitrary width; in the others something cannot
-move.  WII2D's junction chain carries one input per junction with a detour
-row beneath it, so only the decode's tail folds; COD's floor is its tallest
-block once the drawing is turned a quarter turn, ``2 ** (n + 1) + 1``; and
-Dig's tree can
-turn round exactly once, since two bands running the same way would share
-the column offsets the turn exists to keep apart; function x(y) floors at
-one node's own line, ``var tN: (bK == "1")<tA, tB>``; APL floors at the
-prefix that reads its inputs, which cannot be split and grows with ``n``;
-Flowchart floors at ``n + 5``, one column of corridor per level beside the
-spine; Alight floors at its table literal, ``2 ** n`` characters that are
-one token of one command; Super SNUSP floors at four columns, since every
-one of its tokens is a single cell but the ``48`` its decode leans on; and
-Circuit Diagram floors at what a band cannot reclaim -- the rails and the
-complements, read by every minterm and so live for the whole drawing, about
-``10 * n`` columns.  A width under the floor returns the narrowest program
-rather than refusing.
+Wrapping otherwise assumes a single-line program, since a newline already
+means layout.  Taglate is the exception -- its first line seeds the queue --
+and :data:`MULTILINE` names the languages whose wrappers handle their own
+newlines that way.
 
-What Clockwise trades is rows: a stacked level writes the subtree below it
-twice over, so each one doubles the program's height.  Its own fold --
-collapsing a subtree whose rows all agree -- narrows with the *table*
-instead, and the two are independent.
-
-Wrapping otherwise assumes a single-line program, since a newline in one
-already means layout.  Taglate is the exception: its first line seeds the
-queue and the rest are commands, so its wrapper keeps that seed on its own
-row and folds only what follows.  :data:`MULTILINE` names the languages
-whose wrappers handle their own newlines that way.
-
-Most wrappers only decide *where* the newlines go.  Two layouts also decide where
-the tokens sit within a line, each following the shape its language's
-programs actually have.  :func:`_bio` indents a nested BIO program two
-spaces per loop level, since the boolean generator nests one loop per
-truth-table row and that telescoping chain is invisible packed flat; a
-program under two levels deep is packed as before, since indenting a flat
-run shows nothing.  :func:`wrap_grid`
-right-aligns into columns instead: the subleq-family OISCs (AddSubJump,
-Decleq, S*bleq) have uniform-width numeric tokens, so padding each into a
-cell and right-aligning it lines the columns up between rows, which makes a
-diff of one readable.  It is opt-in for the same reason wrapping is --
-Polynomial is space-delimited too, but its tokens run from 1 to 98
-characters, and padding those to a common width would be nonsense.
-Polynomial gets its own wrapper for a related reason: its one-character
-tokens are the ``+`` and ``-`` between terms, and :func:`_polynomial` glues
-each to the term it signs so no line is just a sign.  That wrapper then puts
-one term to a line rather than packing them to the width, for the reason its
-docstring gives.  SLOW ACV MAMMALIAN uses the same grid layout with a fixed
-four-character cell: its long ``SEED`` runs form the visible structure, while
-the other command words span whole cells.
+Most wrappers only decide *where* the newlines go.  Two also place tokens
+within a line: :func:`_bio` indents two spaces per loop level, since the
+boolean generator nests one loop per row and that telescoping chain is
+invisible packed flat, and :func:`wrap_grid` right-aligns into fixed cells,
+which lines the columns up between rows of the subleq-family OISCs and makes
+a diff of one readable.  Grid layout is opt-in for the same reason wrapping
+is: Polynomial is space-delimited too, but its tokens run from 1 to 98
+characters.  It gets its own wrapper, which glues each ``+`` or ``-`` to the
+term it signs so no line is just a sign.  SLOW ACV MAMMALIAN uses the grid
+layout with a fixed four-character cell.
 
 :data:`WRAPPERS` maps a language id to the wrapper it needs; a language
 absent from it is not wrapped.  :func:`wrap_program` is the entry point the
