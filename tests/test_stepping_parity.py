@@ -77,6 +77,34 @@ class TestTheTraitsAreReportedBeforeAMachineExists:
         assert d.steppable_to_answer is True
 
 
+def _steppable_languages() -> list[str]:
+    """Return the languages this file's parity sweeps compare, by the same rule.
+
+    A language is out when stepping cannot reach its answer at all, or when
+    the answer *is* whether it terminates -- there is nothing for the two
+    paths to agree about when neither produces output.
+
+    Derived rather than counted.  Both sweeps below assert they checked every
+    admitted language on every row, which is what keeps a filter that quietly
+    excluded everything from leaving them vacuous; a literal in that
+    assertion is a second copy of the registry, and it drifted.  It read 57
+    against an actual 59, beside a comment saying "less A Painter Ant and the
+    three that answer by diverging" when there were five of those -- three
+    numbers, no two of which agreed.
+    """
+    return [
+        name
+        for name in esolangs.list_languages()
+        if esolangs.describe(name)["steppable_to_answer"]
+        and esolangs.describe(name)["answer_mode"] != "termination"
+    ]
+
+
+#: The floor the derived count has to clear.  Without it a filter that
+#: admitted nothing would make ``checked == 0 == expected`` and pass.
+_MIN_STEPPABLE = 50
+
+
 class TestSteppingReachesTheSameAnswer:
     """The sweep that would have caught all seven at once."""
 
@@ -88,15 +116,9 @@ class TestSteppingReachesTheSameAnswer:
         # Counted, because a filter that quietly excluded everything would
         # leave this passing on nothing at all.
         checked = 0
-        for name in esolangs.list_languages():
-            facts = esolangs.describe(name)
-            # The three that answer by diverging have no output either way,
-            # so there is nothing for the two paths to agree *about*; both
-            # run forever on half the rows, which is the correct answer.
-            if not facts["steppable_to_answer"]:
-                continue
-            if facts["answer_mode"] == "termination":
-                continue
+        languages = _steppable_languages()
+        assert len(languages) >= _MIN_STEPPABLE, languages
+        for name in languages:
             for row, bits in enumerate(([0, 0], [0, 1], [1, 0], [1, 1])):
                 program, stdin = _row(name, table, bits)
                 want = esolangs.run(name, program, stdin, timeout=30)
@@ -109,9 +131,9 @@ class TestSteppingReachesTheSameAnswer:
                 if got != want:
                     disagreed.append(f"{name} row {row}: stepped {got!r} ran {want!r}")
         assert not disagreed, "\n".join(disagreed)
-        # 65 languages, less A Painter Ant and the three that answer by
-        # diverging, times four rows.
-        assert checked == 57 * 4, checked
+        # Every admitted language on every row: anything that raised took
+        # the ``except`` above and is missing from the count.
+        assert checked == len(languages) * 4, checked
 
     def test_suffolk_no_longer_disagrees_with_itself(self) -> None:
         """``run`` answered and the debugger raised, for the same call."""
@@ -245,18 +267,18 @@ def test_stepping_agrees_at_a_wider_arity_and_shape(
     same kind of claim -- the two paths *can* disagree, which is why this
     file exists -- and it was checked at one arity on one table.
 
-    260 comparisons in 3.7s, so the blind spot cost less to close than to
-    argue about.
+    A comparison per admitted language per row, in a few seconds, so the
+    blind spot cost less to close than to argue about.  No count here: the
+    assertion at the end derives one, and the last number written down in
+    this file went stale (see :func:`_steppable_languages`).
     """
     table = make(_WIDER_ARITY)
     disagreed = []
     checked = 0
-    for name in esolangs.list_languages():
+    languages = _steppable_languages()
+    assert len(languages) >= _MIN_STEPPABLE, languages
+    for name in languages:
         facts = esolangs.describe(name)
-        if not facts["steppable_to_answer"]:
-            continue
-        if facts["answer_mode"] == "termination":
-            continue
         program = esolangs.generate(name, table)
         for row in _WIDER_ROWS:
             bits = [(row >> (_WIDER_ARITY - 1 - i)) & 1 for i in range(_WIDER_ARITY)]
@@ -275,4 +297,4 @@ def test_stepping_agrees_at_a_wider_arity_and_shape(
                 disagreed.append(f"{name} row {row}: stepped {got!r} ran {want!r}")
     assert not disagreed, "\n".join(disagreed)
     # A filter that quietly excluded everything would leave this vacuous.
-    assert checked == 57 * len(_WIDER_ROWS), checked
+    assert checked == len(languages) * len(_WIDER_ROWS), checked
