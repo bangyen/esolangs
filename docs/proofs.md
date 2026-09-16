@@ -133,7 +133,7 @@ after ignoring the performance/resource ceiling as specified above.
 | Collatz Multiverse | tree | finite cell placement |
 | Container | finite lookup | the reversed table is one decimal literal divided by ten in a fixed two-bank network |
 | Crement | finite lookup | prototype instantiation |
-| CV(N)(C) | tree, cap | the halting-goto reach is a renderer ceiling |
+| CV(N)(C) | tree | the halting goto squares once more whenever the program is not shorter than its reach, so every finite tree halts |
 | Decleq | tree | — |
 | Dig | tree | finite cell placement |
 | Dimensional | tree | `decision_tree_program` with dimensional moves |
@@ -250,10 +250,6 @@ finite-map lemma, and it is the whole open case.
 
 The remaining `cap` rows do have a uniform lift argument.
 
-- CV(N)(C)'s tree is finite.  Its halt gadget squares a positive accumulator
-  before jumping by it; adding squarings makes the reach grow by repeated
-  squaring and eventually exceeds any fixed finite tree, including the extra
-  gadget characters.
 - Factor first builds the total Brainfuck tree.  Its finite encoding loop
   assigns each command run the next prime in one of the nonzero residue
   classes 1 through 8 modulo 11.  Dirichlet guarantees such a prime above

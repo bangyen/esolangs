@@ -2,6 +2,7 @@
 
 import importlib
 import itertools
+import random
 
 import pytest
 
@@ -68,36 +69,63 @@ class TestCvnc:
     def test_folding_shortens_the_program(self) -> None:
         assert len(boolean.cvnc("00000000")) < len(boolean.cvnc("01101001"))
 
-    def test_the_halting_goto_covers_every_arity_the_generator_emits(self) -> None:
-        """The gadget's reach is the generator's arity bound, and is checked.
+    def test_the_halting_goto_clears_every_program_without_escalating(self) -> None:
+        """The starting gadget's reach covers every arity worth asking for.
 
         The goto lands at a fixed offset, so a program longer than that
-        offset would jump back *into itself* instead of halting.  The
-        generator raises rather than emit one, and the reach is chosen so
-        that no arity it can practically be asked for trips the guard.
+        offset would jump back *into itself* instead of halting.  Two
+        squarings reach 6.25M characters, and nothing the suite builds gets
+        near it, so the escalation below is never paid in practice.
         """
         module = importlib.import_module("esolangs.tools.cvnc")
-        reach = module._HALT_REACH  # noqa: SLF001
+        reach = module._reach(module._HALT_SQUARINGS)  # noqa: SLF001
 
         # parity is the table that folds nothing, so it is the worst case
         for n in range(1, 9):
             table = "01" * (2**n // 2)
-            assert len(boolean.cvnc(table)) < reach, f"n={n}"
+            program = boolean.cvnc(table)
+            assert len(program) < reach, f"n={n}"
+            assert module._halt(module._HALT_SQUARINGS + 1) not in program  # noqa: SLF001
 
-    def test_a_program_outgrowing_the_goto_is_refused(
+    def test_a_program_outgrowing_the_goto_gets_another_squaring(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """The guard raises rather than emitting a self-re-entering program.
+        """Past the reach every gadget squares once more, until it fits.
 
-        The reach is far past any table worth generating, so the guard is
-        reached by shrinking it rather than by building a vast table.
+        The reach is far past any table worth generating, so the escalation
+        is reached by starting from fewer squarings rather than by building
+        a vast table: from zero, a gadget reaches 50 characters, then 2500,
+        then 6.25M.  The programs still run, which is what proves the wider
+        gadget halts rather than re-entering.
         """
         # ``esolangs.tools.cvnc`` resolves to the re-exported
         # *function*, so the module has to be fetched by name.
         module = importlib.import_module("esolangs.tools.cvnc")
-        monkeypatch.setattr(module, "_HALT_REACH", 10)
-        with pytest.raises(ValueError, match="outgrew"):
-            module.cvnc("01")
+        monkeypatch.setattr(module, "_HALT_SQUARINGS", 0)
+        monkeypatch.setattr(module, "_HALT", module._halt(0))  # noqa: SLF001
+        rng = random.Random(7)
+        dense = "".join(rng.choice("01") for _ in range(128))
+        for table, squarings in (("01", 1), ("0110", 1), (dense, 2)):
+            program = module.cvnc(table)
+            assert module._halt(squarings) in program  # noqa: SLF001
+            assert module._halt(squarings + 1) not in program  # noqa: SLF001
+            assert len(program) < module._reach(squarings)  # noqa: SLF001
+            n = len(table).bit_length() - 1
+            for combo in range(len(table)):
+                bits = bin(combo)[2:].zfill(n)
+                assert run_cvnc(program, bits) == table[combo], (table, bits)
+
+    def test_three_squarings_still_halt(self) -> None:
+        """The gadget past the shipped floor runs, so escalation is sound."""
+        module = importlib.import_module("esolangs.tools.cvnc")
+        table = "01101001"
+        program = boolean.cvnc(table).replace(
+            module._HALT,  # noqa: SLF001
+            module._halt(module._HALT_SQUARINGS + 1),  # noqa: SLF001
+        )
+        for combo in range(8):
+            bits = bin(combo)[2:].zfill(3)
+            assert run_cvnc(program, bits) == table[combo], bits
 
     def test_every_leaf_ends_by_halting(self) -> None:
         """Without the halting goto a then-arm falls into its own loop end."""
