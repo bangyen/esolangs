@@ -66,11 +66,20 @@ Code, Train, Wirefunge, `(...) IS 2D!!`, B-tapemark, BackTurn, Egnufeb.
 **Tier C needs a deeper read (9)**.  **Tier D rejected on a named ground
 (17)**.
 
-**Shipped since**: Super SNUSP and Alight (both Tier A) and B-tapemark
-(Tier B) all have generators in `src/esolangs/tools/`.  **Pinyin is the
-one Tier A candidate still open** -- caveat recorded at the time: tone 0
-picks a *random* direction and `en` pushes a random 0/1, so a generator
-must avoid those glyphs; the deterministic subset looked sufficient.
+**Tier A is fully resolved, so the roadmap's empty candidate list is
+correct.**  Super SNUSP and Alight shipped, and so did B-tapemark from
+Tier B; all three have generators in `src/esolangs/tools/`.  Pinyin was
+audited and **rejected** in `cf59038f` (2026-09-08): routing pinned and a
+two-input program prices at 4 characters, but the page's own selection
+rule reroutes 8 of 23 `Hello, world!` characters, and its truth machine
+on input 1 is unreachable under all 384 readings.  The randomness caveat
+recorded during this screen -- tone 0 picks a random direction, `en`
+pushes a random 0/1 -- was not what sank it.
+
+*(Do not read a missing generator as an open candidate.  Pinyin has no
+generator because it was rejected, not because it is pending; the
+distinction lives in `docs/roadmap.md`'s history, not in the tools
+directory.)*
 
 ABCDirection is **not** a candidate -- it was implemented here and then
 removed; the rationale is in git history, not on the wiki.
