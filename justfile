@@ -147,7 +147,14 @@ proofs:
 apa-proof:
     {{PYTHON}} tests/proofs/deep/a_painter_ant.py
 
-# clean generated
+# clean generated: bytecode, build metadata, verifier reports, and any source
+# directory that only bytecode kept alive (the deleted compilers/ and
+# transpilers/ husks).  `find -delete` refuses a non-empty directory, so
+# directories go through `rm -rf`.
 clean:
     #!/usr/bin/env bash
-    find . \( -name "*.pyc" -o -name "__pycache__" -o -name "*.egg-info" \) -delete 2>/dev/null || true
+    find . -path ./.venv -prune -o \( -name "__pycache__" -o -name "*.egg-info" \) -type d -print0 \
+        | xargs -0 rm -rf
+    find . -path ./.venv -prune -o -name "*.pyc" -type f -delete
+    rm -rf build dist .coverage coverage.xml bandit-report.json .mypy_cache .ruff_cache .pytest_cache
+    find src -mindepth 1 -type d -empty -delete
