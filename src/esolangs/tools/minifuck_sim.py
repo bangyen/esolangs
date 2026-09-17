@@ -404,8 +404,8 @@ class _Sim:
 #: How each input is set, at ``ptr+1``: ``[<`` steps right, flips the cell
 #: and steps back for a one; ``xx`` is two executed no-ops for a zero.  The
 #: template spells each input as a run of :data:`TEMPLATE_CHAR` this wide.
-MINIFUCK_ZERO, MINIFUCK_ONE = "xx", "[<"
-_MINIFUCK_INPUT = TEMPLATE_CHAR * len(MINIFUCK_ZERO)
+PAIR = ("xx", "[<")
+_MINIFUCK_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 
 
 def _set_bit(bit: int) -> str:
@@ -414,7 +414,7 @@ def _set_bit(bit: int) -> str:
     Both spellings are two characters and leave the pointer, so the length
     does not leak the inputs.
     """
-    return MINIFUCK_ONE if bit else MINIFUCK_ZERO
+    return PAIR[bit]
 
 
 class _Joint:

@@ -11,10 +11,10 @@ import pytest
 from esolangs import tools as boolean
 from esolangs.interpreters.io import IO
 from esolangs.tools.helpers import TEMPLATE_CHAR
-from esolangs.tools.wii2d import WII2D_ZERO
+from esolangs.tools.wii2d import PAIR
 
 #: One junction's run, as the template spells it.
-_X = TEMPLATE_CHAR * len(WII2D_ZERO)
+_X = TEMPLATE_CHAR * len(PAIR[0])
 
 
 class TestWII2D:
@@ -86,13 +86,12 @@ class TestWII2D:
 
     def test_chain_embeds_each_input_once(self) -> None:
         """The n-embedding chain has one junction run per input, exactly."""
-        from esolangs.tools.examples import _setters_wii2d
         from esolangs.tools.helpers import runs
 
         for n in (1, 2, 3):
             template = boolean.wii2d(format(0, f"0{2**n}b"))
             assert "{X" not in template
-            spans = runs(template, TEMPLATE_CHAR, _setters_wii2d(template, n))
+            spans = runs(template, TEMPLATE_CHAR, (PAIR,) * n)
             assert len(spans) == n, (n, spans)
             assert all(end - start == len(_X) for start, end in spans), spans
 

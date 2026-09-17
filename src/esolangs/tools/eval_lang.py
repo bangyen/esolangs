@@ -23,8 +23,8 @@ _EVAL_TREE_STACK, _EVAL_READ_STACK = 0, 1
 #: How each input is set: stage the bit on the tree stack (``0`` pushes a
 #: zero, the backtick a one), then ``=`` moves it to the input stack.  The
 #: template spells each input as a run of :data:`TEMPLATE_CHAR` this wide.
-EVAL_ZERO, EVAL_ONE = "0=", "`="
-_EVAL_INPUT = TEMPLATE_CHAR * len(EVAL_ZERO)
+PAIR = ("0=", "`=")
+_EVAL_INPUT = TEMPLATE_CHAR * len(PAIR[0])
 
 
 # Longest op string worth building.  Costs run to roughly 3 characters per

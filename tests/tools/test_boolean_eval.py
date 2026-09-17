@@ -3,11 +3,11 @@
 import pytest
 
 from esolangs import tools as boolean
-from esolangs.tools.eval_lang import EVAL_ZERO
+from esolangs.tools.eval_lang import PAIR
 from esolangs.tools.helpers import TEMPLATE_CHAR
 
 #: One input's run, as the template spells it.
-_X = TEMPLATE_CHAR * len(EVAL_ZERO)
+_X = TEMPLATE_CHAR * len(PAIR[0])
 
 
 class TestEvalBoolean:
@@ -118,7 +118,7 @@ class TestEvalBoolean:
 
         template = parameterized.eval("0110")
         assert "{X" not in template
-        assert template.count(TEMPLATE_CHAR) == 2 * len(EVAL_ZERO)
+        assert template.count(TEMPLATE_CHAR) == 2 * len(PAIR[0])
 
     def test_linear_lookup_structure(self) -> None:
         """Each level shares one half-stack discard between both branches."""
