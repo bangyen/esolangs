@@ -26,9 +26,10 @@ it.  Both halves are falsifiable per generator:
               per-step doubling bound breaks on legitimate regime changes: 123
               jumps x5.80 at n=4 when its geometry switches, then settles at
               x1.96.  Monotonicity breaks at every dispatch crossover, where
-              the wide route is *smaller* than the tree it replaces -- A
-              Painter Ant drops 405 chars to 244 at n=5, Container 5674 to
-              1200 at n=7.  Neither is a defect, and no ledger scheme claims a
+              the wide route is *smaller* than the tree it replaces --
+              Container drops 5674 chars to 1200 at n=7, and A Painter Ant
+              dropped 405 to 244 at n=5 until its strip took every arity.
+              Neither is a defect, and no ledger scheme claims a
               character count: the schemes bound nodes and entries, and size
               claims live in `docs/limitations.md`.  The crossover is reported
               as a note instead of asserted.

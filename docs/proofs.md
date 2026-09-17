@@ -96,8 +96,9 @@ for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
 and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  Alight, BIO and
-SLOW ACV MAMMALIAN keep no tree route at all: Alight indexes a string literal,
+the tree at any arity.  A Painter Ant, Alight, BIO and
+SLOW ACV MAMMALIAN keep no tree route at all: A Painter Ant's answer strip
+is smaller than a tree at every arity, Alight indexes a string literal,
 BIO's telescope is one nested level per row whatever the table says (a
 degenerate table only spares it the flat edges' adjustments, under the fold
 threshold once the doubling between the input runs is in the text), and SLOW
@@ -115,7 +116,7 @@ after ignoring the performance/resource ceiling as specified above.
 
 | Generator | Proof | Qualification |
 | --- | --- | --- |
-| A Painter Ant | parameterized lookup | the embedded bits advance the ant along a self-painting corridor by their own weights, leaving it over the indexed answer cell |
+| A Painter Ant | parameterized lookup | each embedded bit keeps the ant on a self-painting corridor or lifts it off, and the template walk after it advances the ant by that bit's weight, leaving it over the indexed answer cell |
 | AddSubJump | finite lookup | packed `n`-bit cells selected by a self-modified operand |
 | Algebraic Programming Language | minterms | base-26 names are unbounded |
 | Alight | finite lookup | inputs folded into a row index by Horner's rule; the table is a string literal read with `at`, so the program has no branches |

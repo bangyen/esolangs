@@ -2,14 +2,10 @@
 
 Run:  just apa-proof   (or python tests/proofs/deep/a_painter_ant.py)
 
-Each check corresponds to a lemma in the relevant generator tests.
-
-**Run it by hand when A Painter Ant's head, body, or routing changes** --
-that is what invalidates the motif table, and re-running this is how it is
-caught.  Nothing runs it for you: it is 1m20s single-threaded, against 2.5
-minutes for the whole suite under ``-n auto``, so neither pytest (no
-``test_`` prefix, so it is not collected) nor CI pays that on every push for
-inputs that move this rarely.
+**Run it by hand when A Painter Ant's head or routing changes** -- that is
+what invalidates the motif table, and re-running this is how it is caught.
+It is a few seconds now; it was 1m20s when the generator had a tree route
+whose head lemmas needed a foreign-leaf sweep at n=9.
 
 It sits beside ``arrowqueue.py``, its opposite number for ArrowQueue,
 under ``tests/proofs/deep/``: both are hand-derived uniform-in-n arguments
@@ -21,28 +17,45 @@ not ``tests``.
 
 What it buys over the suite is the *uniform-in-n* half.  The checked-in
 tests cover the shipped behaviour at the arities they can enumerate; this
-reduces "all tables at every arity" to a finite computation, in the style of
-the relevant tests: the arity-dependent part is arithmetic over signed sums of
-distinct powers of two (L1, L2), and the behavioural part is confined to a
-bounded window whose vocabulary does not grow with n (L3, L4).
+reduces "all tables at every arity" to a finite computation: the
+arity-dependent part is arithmetic over sums of distinct powers of two (L1),
+and the behavioural part is confined to a three-row window whose vocabulary
+does not grow with n (L2, L3, L4).
 
-L4 and L4b are stated over the head's *shared prefix* states.  ``_head``
-paints every white leaf in one depth-first walk, sharing common prefixes and
-pruning all-zero subtrees, so a leaf owns neither a standalone block nor the
-``rev`` edges that unwind the prefix it shares with its siblings.  The units
-here are that emission order, the rest point is checked at each leaf's paint,
-and a motif is keyed on the state its unit is entered in -- never on the leaf,
-and never on the span, which is what lets a table learned at n=5 replay at
-arities whose edges are exponentially longer.
+The construction (see the generator's module comment): row ``-1`` is the
+*lane*, never painted; row ``0`` is the corridor, ``2**n`` white cells from
+``x = 0``; row ``+1`` holds the answers, cell ``x`` white iff
+``table[x] == "1"``.  The head paints that on pass 1 and walks back to the
+origin.  Each input is one character, ``n`` (zero: step into the lane) or
+``N`` (one: blocked, stay), followed by the template's ``E * 2**(n-1-i)``
+walk and ``SN`` return.
 
-Note the programs are built by :func:`tree_program`, not by
-``a_painter_ant``: the shipped generator dispatches to the linear answer strip
-above ``2**n > 16``, which has no head at all, and these are head lemmas.
+L1  *Arithmetic.*  The ant's column after input ``i`` is the partial index
+    ``sum(bit_k * 2**(n-1-k), k <= i)``, which never exceeds ``2**n - 1``,
+    the corridor's last cell -- so no walk runs off the corridor's end and
+    the final column is the table index.  Checked as an identity to n=64.
+
+L2  *The head is what it says.*  After pass 1's head (up to the first run)
+    the white cells are exactly the corridor and the one-answers, and the
+    ant is at the origin.  Traced for every table at n=3 and on a ladder of
+    shaped and random tables to n=10.
+
+L3  *Magnitude collapse.*  A zero's walk is blocked at every step because
+    the lane is black at every cell, so the walk's length is irrelevant: the
+    gadget with ``E * w`` and the gadget with ``E * 1`` leave the ant on the
+    same cell for a zero, and a one's walk moves exactly ``w``.  Checked by
+    tracing each gadget in isolation on the built grid, every ``w`` to 2**9.
+
+L4  *Motif table.*  Every step of pass 1 and pass 2 is one of a fixed set
+    of ``(phase, command, colour ahead, action)`` motifs.  The set is learned
+    at n=5 and replayed at n=6..10: a step whose motif is not in the table is
+    a vocabulary growth the finite check would have missed.  The same pass
+    also asserts the fixed point (pass 2's grid and rest cell equal pass
+    1's) and the answer.
 """
 
 from __future__ import annotations
 
-import itertools
 import random
 import sys
 from pathlib import Path
@@ -50,28 +63,13 @@ from pathlib import Path
 # Run as a script (not under pytest), the repo root is not on the path.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from esolangs.tools.a_painter_ant import (
-    _bit_is_horizontal,
-    _bit_move,
-    _body,
-    _head,
-    _instantiate_apa,
-    _leaf_positions,
-    _reverse_moves,
-    _route_setters,
-)
+from esolangs.tools.a_painter_ant import _instantiate_apa, a_painter_ant
 from esolangs.tools.helpers import TEMPLATE_CHAR
 from tests.tools.a_painter_ant_trace import run
 
-#: Cost band; see ``__main__.py``. L2's foreign-leaf sweep at n=9 is 57s of the cost.
-#: `just apa-proof` runs it alone when the head, body or routing moves.
+#: Cost band; see ``__main__.py``.  L4's ladder to n=10 is most of it.
 BAND = "by-hand"
-COST = 80.0
-
-_D = {"n": (0, -1), "s": (0, 1), "e": (1, 0), "w": (-1, 0)}
-
-#: One unit of the shared head: (kind, horizontal, bit, non-space length).
-Unit = tuple[str, bool | None, int | None, int]
+COST = 15.0
 
 
 def bits_of(idx: int, n: int) -> list[int]:
@@ -79,358 +77,186 @@ def bits_of(idx: int, n: int) -> list[int]:
     return [(idx >> (n - 1 - k)) & 1 for k in range(n)]
 
 
-def _move_targets(n: int, bits: list[int]) -> list[tuple[int, int]]:
-    """Every cell the head's outbound walk to a leaf moves onto."""
-    x = y = 0
-    out = []
-    for k, b in enumerate(bits):
-        for c in _bit_move(n, k, b):
-            dx, dy = _D[c]
-            x += dx
-            y += dy
-            out.append((x, y))
+def expected_grid(table: str) -> dict[tuple[int, int], int]:
+    """The white cells the head is meant to paint: corridor and one-answers."""
+    grid = {(x, 0): 1 for x in range(len(table))}
+    grid.update({(x, 1): 1 for x, bit in enumerate(table) if bit == "1"})
+    return grid
+
+
+def ladder(n: int, rng: random.Random, extra: int = 6) -> list[str]:
+    """Shaped tables at arity ``n`` plus ``extra`` random ones."""
+    size = 1 << n
+    tables = [
+        "0" * size,
+        "1" * size,
+        "1" + "0" * (size - 1),
+        "0" * (size - 1) + "1",
+        "".join(str(bin(i).count("1") % 2) for i in range(size)),
+        "01" * (size // 2),
+        "10" * (size // 2),
+    ]
+    tables.extend("".join(rng.choice("01") for _ in range(size)) for _ in range(extra))
+    return tables
+
+
+def check_l1(max_n: int = 64) -> list[str]:
+    """Partial indices are bounded by the corridor at every arity."""
+    for n in range(1, max_n + 1):
+        top = (1 << n) - 1
+        # The largest partial index at every prefix length is the all-ones
+        # prefix, and its last (full) value is the corridor's end.
+        partial = 0
+        for i in range(n):
+            partial += 1 << (n - 1 - i)
+            assert 0 <= partial <= top, (n, i)
+        assert partial == top, n
+    return [f"  n=1..{max_n}: every partial index stays on the corridor"]
+
+
+def check_l2(max_n: int = 10) -> list[str]:
+    """The head paints exactly the corridor and the answers, then rests at 0."""
+    rng = random.Random(7)
+    lines = []
+    for n in range(1, max_n + 1):
+        tables = (
+            [format(v, f"0{1 << n}b") for v in range(1 << (1 << n))]
+            if n <= 3
+            else ladder(n, rng)
+        )
+        for table in tables:
+            template = a_painter_ant(table)
+            head = template[: template.index(TEMPLATE_CHAR)]
+            outcome = run(head, 1)
+            white = {cell for cell, colour in outcome.grid.items() if colour == 1}
+            assert white == set(expected_grid(table)), (n, table)
+            assert outcome.position == (0, 0), (n, table)
+        lines.append(f"  n={n}: {len(tables)} tables, head exact")
+    return lines
+
+
+def check_l3(max_w: int = 10) -> list[str]:
+    """A zero's walk collapses to nothing at any length; a one's is its length."""
+    size = 1 << max_w
+    build = a_painter_ant("1" * size)
+    head = build[: build.index(TEMPLATE_CHAR)]
+    for w in [1 << k for k in range(max_w)]:
+        for bit, spelled in ((0, "n"), (1, "N")):
+            outcome = run(head + spelled + "E" * w + "SN", 1)
+            assert outcome.position == (w if bit else 0, 0), (w, bit)
+            # And the short gadget agrees with the long one for a zero.
+            if bit == 0:
+                assert run(head + "nESN", 1).position == outcome.position
+    return [f"  w=1..{size // 2}: zero walks collapse, one walks measure exactly"]
+
+
+def phases(template: str) -> list[str]:
+    """Name each template position: ``head``, ``run``, ``walk``, ``ret``, ``read``."""
+    out: list[str] = []
+    first = template.index(TEMPLATE_CHAR)
+    out.extend(["head"] * first)
+    rest = template[first:]
+    i = 0
+    while i < len(rest):
+        if rest[i] == TEMPLATE_CHAR:
+            out.append("run")
+            i += 1
+        elif rest[i] == "E":
+            out.append("walk")
+            i += 1
+        elif rest[i : i + 2] == "SN":
+            out.extend(["ret", "ret"])
+            i += 2
+        else:
+            assert rest[i:] == "sS", rest[i:]
+            out.extend(["read", "read"])
+            i += 2
+    assert len(out) == len(template)
     return out
 
 
-def tree_program(table: str, idx: int, n: int) -> str:
-    """Instantiate the *tree* route for ``table`` at any arity.
-
-    :func:`a_painter_ant` dispatches to the linear answer strip above
-    ``2**n > 16``, so calling it would hand back a program with no head at
-    exactly the arities these head lemmas are about.  This mirrors the
-    ``<= 16`` branch instead, which is the route the ledger's `Size dispatch`
-    paragraph promises is available at every arity.  ``_instantiate_apa``
-    picks its branch off the template's ``sS`` suffix, so a tree template
-    routes through the weighted embedding on its own.
-    """
-    head = _head(table, [0] * n)
-    runs = [TEMPLATE_CHAR * len(zero) for zero, _one in _route_setters(n, linear=False)]
-    template = head + "".join(runs[:-1]) + _body() + runs[-1]
-    return _instantiate_apa(template, bits_of(idx, n))
+Motif = tuple[int, str, str, int | None, str]
 
 
-def head_units(table: str, n: int) -> list[Unit]:
-    """Split the shared head into units, in emission order.
-
-    This mirrors :func:`_head`'s depth-first ``walk`` rather than enumerating
-    one independent block per leaf.  The head shares every common prefix and
-    omits all-zero subtrees, so a leaf's route is no longer a standalone
-    ``outbound + P + reverse`` block: an ``out`` edge is entered from whatever
-    state its parent left, and one ``rev`` edge is shared by every leaf under
-    it.  The units are that emission order, and they tile the head exactly --
-    :func:`check_units_tile` is the assertion that they do.
-
-    ``kind`` is one of ``N``/``lead``/``out``/``P``/``rev``/``revlead``/
-    ``end``; ``horizontal`` and ``bit`` are the axis and branch of an
-    ``out``/``rev`` edge and ``None`` elsewhere.
-    """
-    units: list[Unit] = [("N", None, None, 1)]
-    lead = "WS" if n >= 3 and n % 2 == 1 else ""
-    if lead:
-        units.append(("lead", None, None, len(lead)))
-
-    def walk(start: int, stop: int, depth: int) -> None:
-        if "1" not in table[start:stop]:
-            return
-        if depth == n:
-            units.append(("P", None, None, 1))
-            return
-        middle = (start + stop) // 2
-        for bit, lo, hi in ((0, start, middle), (1, middle, stop)):
-            if "1" not in table[lo:hi]:
-                continue
-            horizontal = _bit_is_horizontal(n, depth)
-            edge = ""
-            if n >= 2:
-                edge = "NE" if horizontal else "WS"
-            edge += _bit_move(n, depth, bit)
-            units.append(("out", horizontal, bit, len(edge)))
-            walk(lo, hi, depth + 1)
-            units.append(("rev", horizontal, bit, len(_reverse_moves(edge))))
-
-    walk(0, len(table), 0)
-    if lead:
-        units.append(("revlead", None, None, len(lead)))
-    units.append(("end", None, None, 3))
-    return units
-
-
-def check_units_tile(table: str, n: int) -> None:
-    """Assert the unit stream accounts for every head character."""
-    total = sum(span for _kind, _h, _b, span in head_units(table, n))
-    head = len(_head(table, [0] * n))
-    assert total == head, f"units cover {total} of {head} head chars at n={n}"
-
-
-def check_l1(max_n: int = 12) -> list[str]:
-    """L1: leaves are distinct and pairwise >= 4 apart (Chebyshev)."""
-    lines = []
-    for n in range(1, max_n + 1):
-        pts = [(x, y) for x, y, _ in _leaf_positions(n)]
-        assert len(set(pts)) == len(pts), f"leaf collision at n={n}"
-        sep = min(
-            max(abs(a[0] - b[0]), abs(a[1] - b[1]))
-            for a, b in itertools.combinations(pts, 2)
+def motifs_of(table: str, idx: int, n: int) -> tuple[set[Motif], bool, bool]:
+    """Every motif of passes 1 and 2, the fixed-point verdict, and the answer."""
+    template = a_painter_ant(table)
+    names = phases(template)
+    program = _instantiate_apa(template, bits_of(idx, n))
+    first = run(program, 1)
+    second = run(program, 2)
+    grid: dict[tuple[int, int], int] = {}
+    seen: set[Motif] = set()
+    span = len(program)
+    for step in second.steps:
+        ahead = grid.get(step.target, 0) if step.target is not None else None
+        seen.add(
+            (
+                step.index // span + 1,
+                names[step.index % span],
+                step.command,
+                ahead,
+                step.action,
+            )
         )
-        assert sep >= 4, f"separation {sep} < 4 at n={n}"
-        lines.append(f"  n={n:2d}: {len(pts):5d} leaves, min separation {sep}")
-    return lines
-
-
-def check_l2(max_n: int = 9) -> list[str]:
-    """L2: no head move target is a foreign leaf, so paint cannot block it."""
-    lines = []
-    for n in range(1, max_n + 1):
-        leafset = {(x, y) for x, y, _ in _leaf_positions(n)}
-        on_leaf = 0
-        mind = 10**9
-        for x, y, bits in _leaf_positions(n):
-            own = (x, y)
-            for c in _move_targets(n, list(bits))[:-1]:
-                if c in leafset and c != own:
-                    on_leaf += 1
-                mind = min(
-                    mind,
-                    min(
-                        max(abs(c[0] - lx), abs(c[1] - ly))
-                        for (lx, ly) in leafset
-                        if (lx, ly) != own
-                    ),
-                )
-        assert on_leaf == 0, f"head walks onto a foreign leaf at n={n}"
-        lines.append(
-            f"  n={n}: targets on a foreign leaf {on_leaf}, min distance {mind}"
-        )
-    return lines
-
-
-def check_l3() -> list[str]:
-    """L3: a run blocked on its first character is a no-op at any length."""
-    lines = []
-    for ch in "NSEW":
-        base = None
-        for length in (1, 2, 4, 8, 16, 64, 256, 1024):
-            outcome = run("P" + ch * length, 1)
-            fired = sum(1 for s in outcome.steps if s.action == "moved")
-            assert fired == 0, f"{ch}x{length} fired {fired}"
-            if base is None:
-                base = outcome.position
-            assert outcome.position == base, f"{ch}x{length} drifted"
-        lines.append(f"  {ch}: blocked at every length up to 1024, position fixed")
-    return lines
-
-
-def check_l4(table: str, idx: int, n: int) -> tuple[bool, bool, bool, bool, int]:
-    """L4 invariants for one program.
-
-    Returns (I2 rest point, I3 zero paint, I4 fixed point, correctness,
-    cycle-2 radius).
-
-    I2 is stated at the leaf paints rather than at block ends.  Under the
-    shared head a leaf has no block of its own to end, but every ``P`` is
-    still reached with the ant parked one cell north of its cycle-1 landing,
-    and the paint re-whitens an already-white cell.  That is the property the
-    old per-leaf rest point was a special case of.
-    """
-    prog = tree_program(table, idx, n)
-    length = len([c for c in prog if not c.isspace()])
-    first = run(prog, 1)
-    second = run(prog, 2)
-    lx, ly = first.position
-    steps2 = second.steps[length:]
-
-    pos = 0
-    rest_ok = True
-    paints = 0
-    for kind, _horizontal, _bit, span in head_units(table, n):
-        seg = steps2[pos : pos + span]
-        pos += span
-        if kind != "P":
-            continue
-        paints += 1
-        step = seg[0]
-        parked = (step.position[0] - lx, step.position[1] - ly) == (0, -1)
-        if not parked or first.grid.get(step.position) != 1:
-            rest_ok = False
-    if paints != table.count("1"):
-        rest_ok = False
-
-    zero_paint = first.grid == second.grid
-    fixed = second.position == first.position
-    correct = first.landing_colour() == int(table[idx])
-    radius = max(max(abs(s.position[0] - lx), abs(s.position[1] - ly)) for s in steps2)
-    return rest_ok, zero_paint, fixed, correct, radius
-
-
-def motif_pass(
-    table: str, idx: int, n: int, motifs: dict, errors: list, *, learn: bool
-) -> int:
-    """Learn or replay the per-unit motif table for one program's cycle 2.
-
-    A motif is keyed on the state the unit is *entered* in, not on the leaf it
-    belongs to: ``(kind, horizontal, bit, leaf_white, entry)``.  That is what
-    makes the decomposition survive prefix sharing -- a shared ``out`` edge is
-    entered once but left toward several subtrees, and a ``rev`` edge unwinds
-    a prefix many leaves used, so neither can be attributed to one leaf.
-
-    The span is deliberately *not* part of the key.  Cycle 2 fires only a
-    unit's two uppercase anchor characters and blocks its whole lowercase run
-    (L3), so the exit state is fixed by the entry state and the axis however
-    long the edge is -- that is the magnitude collapse, and it is why a table
-    learned at one arity replays at arities whose edges are exponentially
-    longer.  Returns the number of units checked.
-    """
-    prog = tree_program(table, idx, n)
-    length = len([c for c in prog if not c.isspace()])
-    first = run(prog, 1)
-    second = run(prog, 2)
-    lx, ly = first.position
-    steps2 = second.steps[length:]
-    leaf_white = first.grid.get((lx, ly), 0) == 1
-
-    pos = 0
-    cur: tuple[int, int] | None = None
-    checked = 0
-    for kind, horizontal, bit, span in head_units(table, n):
-        seg = steps2[pos : pos + span]
-        pos += span
-        entry = (seg[0].position[0] - lx, seg[0].position[1] - ly)
-        exit_ = (seg[-1].position[0] - lx, seg[-1].position[1] - ly)
-        fired_low = sum(1 for s in seg if s.command.islower() and s.action == "moved")
-        if cur is None:
-            cur = entry
-        key = (kind, horizontal, bit, leaf_white, cur)
-        checked += 1
-        if learn:
-            if key in motifs and motifs[key] != (exit_, fired_low):
-                errors.append(("conflict", key, n))
-            motifs[key] = (exit_, fired_low)
-        else:
-            got = motifs.get(key)
-            if got is None:
-                errors.append(("missing", key, n))
-            elif got != (exit_, fired_low):
-                errors.append(("wrong", key, got, (exit_, fired_low), n))
-                return checked
-        cur = exit_
-    return checked
+        if step.action == "paint_white":
+            grid[step.position] = 1
+        elif step.action == "paint_black":
+            grid[step.position] = 0
+    stable = second.grid == first.grid and second.position == first.position
+    correct = second.landing_colour() == int(table[idx])
+    return seen, stable, correct
 
 
 def main() -> int:
-    random.seed(41)
-    print("L1  leaf separation >= 4 (arithmetic, all n)")
+    rng = random.Random(41)
+    print("L1  partial index bounded by the corridor (arithmetic, all n)")
     print("\n".join(check_l1()))
-    print("\nL2  head walks never target a foreign leaf (arithmetic, all n)")
+    print("\nL2  head paints exactly the corridor and the answers")
     print("\n".join(check_l2()))
-    print("\nL3  magnitude collapse: a blocked run is a no-op at any length")
+    print("\nL3  magnitude collapse: a blocked walk is a no-op at any length")
     print("\n".join(check_l3()))
 
-    print("\nL4  cycle-2 invariants (I2 rest point, I3 zero paint, I4 fixed point)")
-    fails = [0] * 4
-    for v in range(256):
-        table = format(v, "08b")
-        for idx in range(8):
-            rest, zero, fixed, correct, radius = check_l4(table, idx, 3)
-            for j, ok in enumerate((rest, zero, fixed, correct)):
-                fails[j] += not ok
-            assert radius <= 2
-    print(f"  n=3 exhaustive (256 tables x 8 inputs): failures {fails}")
-    assert fails == [0, 0, 0, 0]
-
-    for n in range(4, 9):
-        size = 1 << n
-        tables = [
-            "0" * size,
-            "1" * size,
-            "1" + "0" * (size - 1),
-            "0" * (size - 1) + "1",
-            "".join(str(bin(i).count("1") % 2) for i in range(size)),
-            "01" * (size // 2),
-            "10" * (size // 2),
-        ]
-        for _ in range(6):
-            tables.append("".join(random.choice("01") for _ in range(size)))
-        fails = [0] * 4
-        worst = 0
-        total = 0
-        step = max(1, size // 16)
+    print("\nL4  motif table learned at n<=5, replayed at n=6..10; fixed point; answer")
+    learned: set[Motif] = set()
+    for n in range(1, 6):
+        tables = (
+            [format(v, f"0{1 << n}b") for v in range(1 << (1 << n))]
+            if n <= 3
+            else ladder(n, rng)
+        )
         for table in tables:
-            for idx in range(0, size, step):
+            for idx in range(1 << n):
+                seen, stable, correct = motifs_of(table, idx, n)
+                assert stable, (n, table, idx)
+                assert correct, (n, table, idx)
+                learned |= seen
+        print(
+            f"  n={n}: {len(tables)} tables x {1 << n} rows, "
+            f"motifs so far {len(learned)}"
+        )
+
+    for n in range(6, 11):
+        size = 1 << n
+        tables = ladder(n, rng)
+        step = max(1, size // 16)
+        unseen: set[Motif] = set()
+        total = 0
+        for table in tables:
+            for idx in [*range(0, size, step), size - 1]:
                 total += 1
-                rest, zero, fixed, correct, radius = check_l4(table, idx, n)
-                for j, ok in enumerate((rest, zero, fixed, correct)):
-                    fails[j] += not ok
-                worst = max(worst, radius)
+                seen, stable, correct = motifs_of(table, idx, n)
+                assert stable, (n, table, idx)
+                assert correct, (n, table, idx)
+                unseen |= seen - learned
         print(
             f"  n={n}: {total} programs over {len(tables)} tables, "
-            f"failures {fails}, max radius {worst}"
+            f"unseen motifs {len(unseen)}"
         )
-        assert fails == [0, 0, 0, 0]
-
-    print("\nL4b motif table: learned at n=5, replayed at unseen arities")
-    motifs: dict = {}
-    errors: list = []
-    size = 32
-    tables = [
-        "1" * size,
-        "0" * size,
-        "".join(str(bin(i).count("1") % 2) for i in range(size)),
-    ]
-    for _ in range(4):
-        tables.append("".join(random.choice("01") for _ in range(size)))
-    learned_units = 0
-    for table in tables:
-        check_units_tile(table, 5)
-        for idx in range(size):
-            learned_units += motif_pass(table, idx, 5, motifs, errors, learn=True)
-    # Magnitude collapse is a claim about the units whose span grows with n:
-    # the edges.  The fixed "N" prefix and "Ssn" tail are constant-length
-    # framing that does fire (that is the cycle-2 dance landing), so they are
-    # reported separately rather than folded into the claim.
-    grown = {"out", "rev"}
-    fired = {v[1] for k, v in motifs.items() if k[0] in grown}
-    fired_tail = {v[1] for k, v in motifs.items() if k[0] not in grown}
-    entries = {k[4] for k in motifs}
-    print(f"  learned {len(motifs)} entries from n=5, conflicts {len(errors)}")
-    print(f"  units decomposed: {learned_units}")
-    print(f"  lowercase steps fired inside an edge unit: {sorted(fired)}")
-    print(f"  lowercase steps fired inside the fixed framing: {sorted(fired_tail)}")
-    print(f"  entry offsets: {sorted(entries)}")
-    assert not errors
-    assert fired == {0}, f"an arity-dependent edge fired a lowercase move: {fired}"
-    assert learned_units > 0
-    assert grown <= {k[0] for k in motifs}, "no edge motifs learned"
-
-    for n in range(6, 10):
-        size = 1 << n
-        tables = [
-            "1" * size,
-            "0" * size,
-            "".join(str(bin(i).count("1") % 2) for i in range(size)),
-            "1" + "0" * (size - 1),
-            "0" * (size - 1) + "1",
-        ]
-        for _ in range(3):
-            tables.append("".join(random.choice("01") for _ in range(size)))
-        before = len(errors)
-        checked = 0
-        units = 0
-        step = max(1, size // 8)
-        for table in tables:
-            check_units_tile(table, n)
-            for idx in range(0, size, step):
-                checked += 1
-                units += motif_pass(table, idx, n, motifs, errors, learn=False)
-        print(
-            f"  n={n}: {checked} programs replayed, {units} units, "
-            f"prediction errors {len(errors) - before}"
-        )
-        assert len(errors) == before
-        assert units > checked, f"no shared-head units replayed at n={n}"
-
-    print("\nall lemma checks passed")
+        assert not unseen, sorted(unseen)
+    print("\nOK")
     return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())
