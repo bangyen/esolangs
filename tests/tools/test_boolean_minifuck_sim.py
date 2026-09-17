@@ -1,6 +1,5 @@
 """Covers :mod:`esolangs.tools.minifuck_sim` against the interpreter."""
 
-import importlib
 from unittest.mock import patch
 
 from tests.tools.minifuck_support import _MinifuckCase
@@ -173,103 +172,6 @@ class TestMinifuckSim(_MinifuckCase):
         assert skips, "no state carried a pending skip"
         assert clamped, "no clamp started away from cell 0"
         assert walks_cascaded, "no walk touched the tape"
-
-    def test_the_laws_agree_with_the_interpreters_step(self) -> None:
-        """Every law matches ``_step``, from arbitrary states, over the
-        construction's own vocabulary.
-
-        The laws are the module's own statement of the language -- the build
-        path no longer delegates to the interpreter -- so this differential
-        is what now pins them to ``_step``, which stays Minifuck's single
-        definition.  The reference is the retired delegating stepper,
-        rebuilt here from ``_step`` itself; the states are arbitrary rather
-        than fresh (fresh ones are where a wrong model still looks right);
-        and the codes are the strings the generator actually emits --
-        separators, setters, reads, pool codes, weight gadgets, resets --
-        plus bare runs and random mixed streams, so no law is exercised
-        only on the shapes it was derived from.
-        """
-        import random
-
-        from esolangs.interpreters.tape_based.minifuck import _step
-        from esolangs.tools.minifuck_sim import _runs, _Sim
-
-        # The package re-exports the generator function under the
-        # submodule's name, so the module comes through importlib.
-        m = importlib.import_module("esolangs.tools.minifuck")
-
-        def reference(row: _Sim, code: str) -> None:
-            """The retired stepper: one ``_step`` call per character."""
-            for ins in code:
-                if row.dead:
-                    return
-                if row.skip:
-                    row.skip = False
-                    continue
-                if ins == "<":
-                    if row.ptr:
-                        row.ptr -= 1
-                    continue
-                if ins not in ".[":
-                    continue
-                tape, length, ptr, skipped, char, reads = _step(
-                    ins, row.tape, row.length, row.ptr
-                )
-                if reads:
-                    row.dead = True
-                    return
-                if char is not None:
-                    row.out.append(char)
-                row.tape, row.length, row.ptr, row.skip = tape, length, ptr, skipped
-
-        gadgets = [
-            *m._SEPS,  # noqa: SLF001
-            *m._POOL_CODES,  # noqa: SLF001
-            *m._READS,  # noqa: SLF001
-            m._FLIP,  # noqa: SLF001
-            "[<",
-            "xx",
-            "[x",
-            "[x.",
-            m._reset_code(2),  # noqa: SLF001
-            m._mux_weight(4),  # noqa: SLF001
-            m._mux_weight(8),  # noqa: SLF001
-        ]
-
-        rng = random.Random(20260906)
-        deaths = printed = skips = 0
-        for _ in range(4000):
-            tape = rng.getrandbits(48)
-            ptr = rng.randrange(0, 40)
-            skip = rng.random() < 0.3
-            pick = rng.random()
-            if pick < 0.4:
-                code = rng.choice(gadgets)
-            elif pick < 0.55:
-                code = "[" * rng.randrange(1, 30)
-            elif pick < 0.7:
-                code = "[x" * rng.randrange(1, 20)
-            else:
-                code = "".join(rng.choice("[<x.") for _ in range(rng.randrange(1, 25)))
-
-            lawful = _Sim(48)
-            lawful.tape, lawful.ptr, lawful.skip = tape, ptr, skip
-            stepped = lawful.copy()
-            lawful.apply(_runs(code))
-            reference(stepped, code)
-            assert lawful.key() == stepped.key(), (
-                f"laws diverged from _step on {code!r} at tape={tape:#x} "
-                f"ptr={ptr} skip={skip}"
-            )
-            deaths += stepped.dead
-            printed += len(stepped.out)
-            skips += stepped.skip
-
-        # The comparison is worthless if the interesting transitions never
-        # fire, so assert the sample reached all three.
-        assert deaths, "no state hit the zero-pool read"
-        assert printed, "no state printed"
-        assert skips, "no state ended on a pending skip"
 
     def test_the_parsed_emission_matches_stepping_every_row(self) -> None:
         """``_Joint.emit`` parses a code once and advances rows by whole runs.

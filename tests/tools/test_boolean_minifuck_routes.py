@@ -10,7 +10,7 @@ from tests.tools.minifuck_support import _MinifuckCase, run_count
 
 
 class TestParameterizedMinifuck(_MinifuckCase):
-    """The generator end to end, and the routes before the staged one."""
+    """The generator end to end, and the routes before the lookup."""
 
     @pytest.mark.parametrize(
         ("table", "n"),
@@ -68,87 +68,6 @@ class TestParameterizedMinifuck(_MinifuckCase):
                 got = self.run_minifuck(self.instantiate(template, bits))
                 assert got == table[combo], f"{table} inputs {bits}"
 
-    def test_generator_never_enumerates_candidates(self) -> None:
-        """No public build reaches any retired candidate enumeration.
-
-        Stubbing every old selector catches a regression that returns the
-        right table by silently restoring a contest.  The exhaustive
-        two-input set plus unary, wider projection, full-arity, and
-        out-of-order cases cover every branch in ``_solve``.
-        """
-
-        from esolangs.tools import parameterized
-
-        module = importlib.import_module("esolangs.tools.minifuck")
-
-        def forbidden(*_args: object, **_kwargs: object) -> None:
-            raise AssertionError("the generator enumerated candidates")
-
-        with patch.multiple(
-            module,
-            _derive_staging=forbidden,
-            _find_pool=forbidden,
-            _first_staging=forbidden,
-            _mux_scout=forbidden,
-            _mux_sculpt=forbidden,
-            _mux_sweep=forbidden,
-            _reconverged=forbidden,
-            _staged=forbidden,
-            _try_print=forbidden,
-        ):
-            for table_int in range(16):
-                table = format(table_int, "04b")
-                # ``minifuck`` is cached, so go through the wrapped function
-                # to be sure the build actually runs under the patch.
-                template = module.minifuck.__wrapped__(table)
-                assert "{X" not in template, table
-                assert run_count(template, 2) == 2, table
-            for table in (
-                "01",
-                "01010101",
-                "0110100110010110",
-                "0" * 32 + "1" * 32,
-                format(0xD6B4_A791_8E35_C20F, "064b"),
-            ):
-                template = module.minifuck.__wrapped__(table)
-                n = len(table).bit_length() - 1
-                assert run_count(template, n) == n
-        # And the public entry point still agrees with what it built.
-        assert run_count(parameterized.minifuck("0110"), 2) == 2
-
-    @pytest.mark.slow  # derives a staging for all sixteen
-    def test_the_derivation_reaches_every_two_input_table(self) -> None:
-        """Every two-input table gets a staging from the enumeration alone.
-
-        There is no stored two-input plan to check against, so what this pins
-        is the property that plan used to guarantee: the enumeration reaches
-        all sixteen, and reaches them within its own caps rather than by
-        running off the end.
-
-        A table and its complement share a staging -- the endgame tries both
-        read polarities, and the printed digit is ``NOT(v XOR cell7)`` -- so
-        the pair costs one derivation between them, which is why the sweep
-        finds the second member of each pair as readily as the first.
-        """
-
-        from esolangs.tools.minifuck import (
-            _MAX_ACC,
-            _MAX_BRACKETS,
-            _SEPS,
-            _derive_staging,
-        )
-
-        for table_int in range(16):
-            table = format(table_int, "04b")
-            plan = _derive_staging(table, 2)
-            assert plan is not None, table
-            sep_index, settle, brackets, acc = plan
-            assert 0 <= sep_index < len(_SEPS), (table, plan)
-            assert settle in (0, 1), (table, plan)
-            assert isinstance(brackets, int), (table, plan)
-            assert 0 <= brackets <= _MAX_BRACKETS, (table, plan)
-            assert 9 <= acc <= _MAX_ACC, (table, plan)
-
     @pytest.mark.slow  # builds all 38 degenerate three-input tables
     def test_degenerate_three_input_tables_never_search(self) -> None:
         """Every table with at most two essential inputs is search-free.
@@ -194,9 +113,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
         pointer positions -- each input still embedded exactly once, the
         rule every generator here holds to -- and the printed column is then
         fixed one row at a time from the highest position down.  XOR4 is
-        used because it is this file's historically pointed table; the route
-        itself never consults the stagings, so this exercises it directly
-        without paying the four-input whole-arity derivation.
+        used because it is this file's historically pointed table.
 
         The separation claim is asserted structurally too: sixteen rows at
         sixteen distinct pointers, with each input's run appearing once,
@@ -319,14 +236,9 @@ class TestParameterizedMinifuck(_MinifuckCase):
     def test_every_three_input_table_is_search_free(self) -> None:
         """All 256 three-input tables build without searching.
 
-        With ``_find_column`` and ``_find_parked`` stubbed to raise, every
-        table still builds -- and every row is run, because a staging that
-        emits without computing would otherwise pass silently.
-
-        The searches are kept anyway.  They are the fallback for an arity
-        with no plan, and this assertion is what would notice if a staging
-        stopped working: the table would fall through and raise here rather
-        than quietly costing two minutes.
+        The searches this once stubbed are gone; every table builds by rule
+        -- and every row is run, because a build that emits without
+        computing would otherwise pass silently.
         """
 
         module = importlib.import_module("esolangs.tools.minifuck")
@@ -394,14 +306,12 @@ class TestParameterizedMinifuck(_MinifuckCase):
     def test_the_search_tiers_still_build_when_the_cheap_routes_miss(
         self, table: str, tier: str
     ) -> None:
-        """With the derived routes stubbed off, the searches build the table.
+        """With the degenerate route stubbed off, ``_mux`` builds the table.
 
-        Every supported table is served by the staged, degenerate, or
-        reconverged route, so these tiers are dead weight on the measured
-        path -- but they are the fallback the module keeps for tables a
-        future enumeration does not reach.  Stubbing the cheap routes is the
-        only way to run them, and they answer in well under a second at two
-        inputs, so this stays off the slow marker.
+        Two-input tables are served by the degenerate route, so the mux is
+        dead weight on the measured path there -- but it is the one total
+        construction, and stubbing the cheap route is the only way to run it
+        at this arity; well under a second, so this stays off the slow marker.
 
         The program is executed against every input row rather than merely
         being returned: a tier that builds the wrong thing is the failure
@@ -410,11 +320,7 @@ class TestParameterizedMinifuck(_MinifuckCase):
 
         module = importlib.import_module("esolangs.tools.minifuck")
 
-        with (
-            patch.object(module, "_staged", lambda *_a, **_k: None),
-            patch.object(module, "_reconverged", lambda *_a, **_k: None),
-            patch.object(module, "_degenerate", lambda *_a, **_k: None),
-        ):
+        with patch.object(module, "_degenerate", lambda *_a, **_k: None):
             module.minifuck.cache_clear()
             try:
                 template = module.minifuck.__wrapped__(table)
@@ -426,91 +332,6 @@ class TestParameterizedMinifuck(_MinifuckCase):
             bits = [(combo >> 1) & 1, combo & 1]
             got = self.run_minifuck(self.instantiate(template, bits))
             assert got == table[combo], (tier, bits)
-
-    def test_reconverged_declines_what_it_cannot_replay(self) -> None:
-        """``_reconverged`` bails rather than replaying a staging it lacks.
-
-        Neither refusal fires on real data -- every two-input inner table has
-        a staging, and every one of those stagings is a plain bracket run, so
-        the two-essential-input route always has something to replay.  They
-        are the guards that keep a *future* enumeration, one with a gap or
-        one carrying the literal-suffix form, from being replayed by a route
-        that makes no walk.  Forcing them is the only way to reach them, so
-        the enumeration is stubbed the way the search-route tests stub theirs.
-        """
-
-        module = importlib.import_module("esolangs.tools.minifuck")
-
-        # Two essential inputs with the ignored one leading, so the route
-        # takes its projection branch -- the one that replays an inner
-        # staging -- rather than the single-input branch that stands at a
-        # known cell.  Unstubbed this table builds, so a None below is the
-        # guard firing and not the route failing for its own reasons.
-        table, n = "00010001", 3
-        pair = essential_inputs(table, n)
-        assert pair == [1, 2], pair
-        assert module._reconverged(table, pair, n) is not None  # noqa: SLF001
-
-        with patch.object(module, "_derive_staging", lambda *_a, **_k: None):
-            assert module._reconverged(table, list(pair), n) is None  # noqa: SLF001
-
-        # The same call, but the staging carries the literal-suffix form:
-        # `brackets` is a string rather than a count, which this route cannot
-        # replay because it makes no walk.
-        real = module._derive_staging  # noqa: SLF001
-
-        def literal_suffix(inner: str, arity: int) -> object:
-            plan = real(inner, arity)
-            if plan is None:
-                return None
-            sep_index, settle, _brackets, acc = plan
-            return (sep_index, settle, "[x", acc)
-
-        with patch.object(module, "_derive_staging", literal_suffix):
-            assert module._reconverged(table, list(pair), n) is None  # noqa: SLF001
-
-    def test_reconverged_declines_a_reset_that_splits_the_rows(self) -> None:
-        """A reset leaving the rows in different states is not built on.
-
-        The route's whole premise is that the ignored inputs are gone, which
-        a split state has not achieved.  The reset is constructed now rather
-        than searched, so there is one of them and the guard *declines*
-        instead of trying the next candidate -- which is safe because
-        ``_solve`` falls through to a route that does not need the reset.
-        """
-
-        module = importlib.import_module("esolangs.tools.minifuck")
-
-        table, n = "0101", 2  # input 1 alone decides it; input 0 is ignored
-        essential = essential_inputs(table, n)
-        # The route builds this table from the constructed reset.
-        assert module._reconverged(table, essential, n) is not None  # noqa: SLF001
-
-        # ``[`` alone reads a row-dependent cell, so the rows stop agreeing.
-        def diverging(_ignored: int) -> str:
-            return "["
-
-        with patch.object(module, "_reset_code", diverging):
-            assert module._reconverged(table, essential, n) is None  # noqa: SLF001
-
-    def test_the_constructed_reset_converges_every_arity(self) -> None:
-        """``_reset_code`` drives all ``2**k`` rows to one identical state.
-
-        This is what the breadth-first search used to look for, and it found
-        the answer only up to three ignored inputs -- its depth cap bit at
-        four.  The construction has no cap, so the property is asserted well
-        past where the search stopped.
-        """
-
-        module = importlib.import_module("esolangs.tools.minifuck")
-
-        for ignored in range(1, 7):
-            joint = module._Joint(ignored)  # noqa: SLF001
-            for slot in range(ignored):
-                joint.emit_setter(slot)
-            joint.emit(module._reset_code(ignored))  # noqa: SLF001
-            assert not any(m.dead for m in joint.ms), ignored
-            assert len({m.key() for m in joint.ms}) == 1, ignored
 
     def test_the_mux_uses_the_preloaded_strip_rule(self) -> None:
         """``_mux`` is exactly the named linear lookup construction."""
