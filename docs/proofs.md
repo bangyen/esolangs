@@ -163,7 +163,7 @@ after ignoring the performance/resource ceiling as specified above.
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry |
 | Packlang | tree | — |
 | Painfuck | tree | Brainfuck tree transliteration |
-| %^2^-1 | exception | parameterized planners cover all tables through four inputs and tested tables above that, but no all-arity proof is known |
+| %^2^-1 | exception | one setter pair, the weight as doublings in the template; the fold's planners cover all tables through four inputs and tested tables above that, but no all-arity proof is known |
 | Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding |
 | Qoibl | tree | — |
 | RAM0 | parameterized lookup | a straight-line RAM initializer plus a unary-weight lookup |
@@ -189,10 +189,11 @@ The one remaining `exception` row is two-sided: the language provably
 cannot compute every table under the parameterized contract, and below that
 wall the generator's reach is not characterized.
 
-- `%^2^-1` can refuse when none of its cascade, affine, ladder, band, or fold
-  planners succeeds; every table tried through thirteen inputs builds, and
-  from fourteen only tables whose suffix cofactors compact (parity among
-  them) do.  No construction can be total: the suite's dense fixture at
+- `%^2^-1` can refuse when neither of its fold planners succeeds -- the
+  all-row fold on a popcount or distinct ladder, or the staged fold past
+  eleven inputs; every table tried through thirteen inputs builds, any
+  table symmetric under a complementation of its inputs builds at any
+  arity, and from fourteen only tables whose suffix cofactors compact do.  No construction can be total: the suite's dense fixture at
   seventeen inputs is computed by no template at any program length
   (proof below), so the totality question is the finite one of which tables
   below the wall a construction misses.
