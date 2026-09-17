@@ -46,7 +46,6 @@ from esolangs.tools.helpers import (
 from esolangs.tools.laserfuck import laserfuck as laserfuck
 from esolangs.tools.streetcode import streetcode as streetcode
 from esolangs.tools.taglate import taglate as taglate
-from esolangs.tools.ztoalc_l import ztoalc_l as ztoalc_l
 
 __all__ = [
     "bit_tilde",
@@ -57,7 +56,6 @@ __all__ = [
     "streetcode",
     "taglate",
     "three_x",
-    "ztoalc_l",
 ]
 
 

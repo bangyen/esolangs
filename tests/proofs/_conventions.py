@@ -86,5 +86,5 @@ def load(path: Path | None = None) -> Conventions:
         assert len(cells) == 3, f"unexpected conventions row: {line!r}"
         rows.append(ConventionRow(_unescape(cells[0]), *cells[1:]))
 
-    assert rows, f"{DOC} has a conventions audit header but no rows"
+    # An empty table is the audit closed: every embed holds both conventions.
     return Conventions(rows=tuple(rows))

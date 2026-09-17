@@ -37,7 +37,7 @@ class TestExamplesShipWithThePackage:
             for name in esolangs.list_languages()
             if esolangs.describe(name)["examples"]
         ]
-        assert len(populated) == 65
+        assert len(populated) == 63
 
     def test_every_reported_path_exists(self) -> None:
         """A path reported and absent is worse than none reported."""
@@ -254,9 +254,9 @@ class TestPrintedCommandsCanBePasted:
     def test_every_spaced_name_is_quoted_in_its_describe(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """All twelve, since one unquoted survivor is the whole bug again."""
+        """All nine, since one unquoted survivor is the whole bug again."""
         spaced = [n for n in esolangs.list_languages() if " " in n]
-        assert len(spaced) == 10
+        assert len(spaced) == 9
         for name in spaced:
             out, _err = call_both(["describe", name], capsys)
             assert f'--spec "{name}"' in out, name

@@ -18,7 +18,7 @@ esolangs.evaluate("A Painter Ant", "0110")  # -> '0110'
 esolangs.verify("Fargo", "10010110")  # -> True
 ```
 
-Both work for all 65 -- the four odd input shapes, the seventeen template
+Both work for all 63 -- the four odd input shapes, the seventeen template
 languages and the three that answer by diverging included. If you need the
 steps rather than the result, they are `generate`, `encode_inputs`, `run`,
 `read_answer`, below.
@@ -67,8 +67,8 @@ esolangs.encode_inputs("Taglate", [1, 0, 1])  # -> '0\n1\n0\n1\n'
 | Grapheme | `line_per_bit` | `%`/`A` | `'A\n%\nA\n'` |
 | Taglate | `line_per_bit_padded` | `0`/`1` | `'0\n1\n0\n1\n'` |
 
-The other 43 that read stdin take one `0`/`1` line per bit -- `'1\n0\n1\n'`.
-The remaining 18 read no stdin at all: their inputs are
+The other 42 that read stdin take one `0`/`1` line per bit -- `'1\n0\n1\n'`.
+The remaining 17 read no stdin at all: their inputs are
 embedded by `instantiate`.  Call `encode_inputs` rather than reading a row off
 this table; it is generated from `describe`, and so is the table.
 

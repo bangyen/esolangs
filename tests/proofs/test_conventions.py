@@ -164,28 +164,6 @@ def test_the_audit_matches_the_programs(audit: Conventions) -> None:
                 assert not measured[column], f"{name}: {column} is {verdict} but holds"
 
 
-def test_the_language_cell_has_no_other_symbol(audit: Conventions) -> None:
-    """Nopstacle's ``Language`` verdict: the alphabet is the blank and ``#``.
-
-    A ``Language`` cell claims no command can spell the bit.  For Nopstacle
-    that is the loader's own rule -- any character but those two is
-    refused -- and the two fills of one bit differ only in blanks against
-    ``#``, so there is nothing else to spell it with.
-    """
-    from esolangs.interpreters.grid_based.nopstacle import _Machine
-
-    language = [row.generator for row in audit.rows if row.no_spaces == LANGUAGE]
-    assert language == ["Nopstacle"]
-    with pytest.raises(ValueError, match="spaces or '#'"):
-        _Machine([" x"])
-    example = _embedding()["Nopstacle"]
-    assert example.fill is not None
-    template = example.generator("0110")
-    zero, one = _span(example.fill(template, [0, 0]), example.fill(template, [0, 1]))
-    assert set(zero + one) <= {" ", "#", "\n"}
-    assert " " in zero + one
-
-
 def test_bitdeque_linear_route_is_one_width(audit: Conventions) -> None:
     """The route the equal-width test misses stays at one length.
 

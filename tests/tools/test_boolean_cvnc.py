@@ -16,7 +16,7 @@ from tests.tools.boolean_runners import (
 def _stored_candidate(truth_table: str, perm: tuple[int, ...]) -> str:
     """Adapt :func:`_stored` to :func:`best_input_order`'s contract.
 
-    An unservable order returns ``""`` (skipped, as ZTOALC L's are).
+    An unservable order returns ``""`` (skipped).
     Substituting another program would compute a different function, since
     ``truth_table`` is already permuted.
     """
