@@ -33,28 +33,18 @@ def _streetcode_combine(arrs: list[list[str]]) -> list[str]:
     return ["".join(arr[row] for arr in padded) for row in range(top)]
 
 
-# The counting-loop ring, mirrored from the hand-written program in
-# ``tests/interpreters/test_streetcode.py`` (``TestStreetcodeCountingLoop``).
-# That one walks an accumulator held *above* its counter; this one is the
-# mirror -- counter above the value -- because the generator's tree forks on
-# the value and needs CP left on it, exactly where the old hallway left it.
-#
-# Block coordinates::
+# The counting-loop ring from ``TestStreetcodeCountingLoop``, mirrored
+# (counter above the value) so the tree forks with CP left on the value.
 #
 #      01234567
 #     0+  ++  +
-#     1|      |
-#     2|   ~ _|
-#     3| =++_ |
-#     4|^~++~U|
-#     5|^~~~~_|
+#     1|      |   Drive order: the entry ``^`` descend column 1 and run
+#     2|   ~ _|   East along row 6 counting up; ``U`` turns onto the
+#     3| =++_ |   island, and each lap runs North up the eastern lane,
+#     4|^~++~U|   West along row 5 walking the value, then climbs the
+#     5|^~~~~_|   western lane to the top and back around to the corner.
 #     6|^^^^^ |
 #     7+------+
-#
-# Drive order: the entry ``^`` descend column 1 and run East along row 6,
-# counting the counter up; the ``U`` turns onto the island and each lap runs
-# North up the eastern lane and West along row 5 walking the value, then
-# climbs the western lane to the top and back around to the corner.
 _RING_ROWS = (
     "+  ++  +",
     "|      |",

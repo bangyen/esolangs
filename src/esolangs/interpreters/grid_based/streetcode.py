@@ -275,19 +275,13 @@ def _rotations(form: str) -> list[tuple[_Pattern, ...]]:
     return out
 
 
-# The legal wall structure around a drivable cell, as three-by-three forms
-# matched up to rotation; see ``_Machine._validate_walls``.  ``W`` is any
-# wall character, ``.`` is open ground, and ``?`` is anything at all.
+# Legal 3x3 wall forms around a drivable cell, up to rotation
+# (``_Machine._validate_walls``); ``W`` any wall, ``.`` open, ``?`` anything.
 #
-#     corner: ?W?      wall: ?W?      intersection: W..
-#             W..            ...                    ...
-#             ?..            ...                    ...
-#
-# The corner's cells are ``W`` rather than ``+``, ``-`` and ``|`` so that a
-# rotation does not have to swap the two wall glyphs, and so that one form
-# covers the outside of a corner, the inside of one (where the arms belong
-# to the outer wall and the corner to an island), and the corners of two
-# boxes packed flush against each other.
+#     corner: ?W?      wall: ?W?      intersection: W..   The corner is ``W``,
+#             W..            ...                    ...   not ``+-|``, so one
+#             ?..            ...                    ...   form covers outer,
+#                                                        inner and flush corners.
 _WALL_FORMS = [
     *_rotations("?W?W..?.."),
     *_rotations("?W?......"),
