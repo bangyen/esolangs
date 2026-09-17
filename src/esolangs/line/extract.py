@@ -35,9 +35,8 @@ from . import mask as mask_module
 from .lattice import _DIRS, _ink
 from .mask import Mask
 
-# This module runs on the standard library alone.  Pillow, numpy, scipy and
-# scikit-image were each removed, and PNG-only is a deliberate narrowing --
-# see ``the Line tests`` for the measurements behind all five decisions.
+# Standard library only: Pillow, numpy, scipy and scikit-image were each
+# removed, and PNG-only is deliberate -- see the Line tests.
 
 
 def load_binary(path: str) -> Mask:
@@ -97,10 +96,8 @@ def crop_to_content(mask: Mask, margin: int = 2) -> Mask:
     return mask.crop(top, left, bottom - top, right - left)
 
 
-# No Line drawing this reads is scaled past a handful of pixels per stroke
-# (the wiki's own reference images are 1x, and the fixtures here go to 3x), and
-# every candidate scale costs a full pass over the mask, so the search stops
-# well short of anything a real drawing would use.
+# Wiki images are 1x, fixtures go to 3x, and every candidate scale is a
+# full pass over the mask.
 _MAX_SCALE = 16
 
 
@@ -126,9 +123,7 @@ def detect_scale(mask: Mask) -> int:
     bounds = mask.bounds()
     if bounds is None:
         return 1
-    # Anchor to the ink itself: crop_to_content leaves an arbitrary blank
-    # margin, so the array's own origin is not aligned to the upscale grid,
-    # but the drawing's first ink pixel is.
+    # Anchor to the first ink pixel: crop_to_content's margin is arbitrary.
     top, left, _, _ = bounds
     rows = [row >> left for row in mask.rows[top:]]
     best = 1
@@ -154,8 +149,7 @@ def _blocks_uniform(rows: list[int], k: int) -> bool:
             any_set |= row
             all_set &= row
         if len(group) < k:
-            # A partial group at the bottom edge cannot be a full block, so
-            # nothing in it may be ink.
+            # A partial bottom group cannot be a block, so it must be blank.
             if any_set:
                 return False
             continue
@@ -194,13 +188,8 @@ def normalize_scale(mask: Mask) -> Mask:
     scale = detect_scale(mask)
     if scale <= 1:
         return mask
-    # Sample one pixel per block of the upscale grid.  That grid is anchored to
-    # the drawing's own first ink pixel, not to the array's corner: the blank
-    # border crop_to_content leaves is arbitrary (see detect_scale), so
-    # subsampling from index 0 can cut across blocks rather than through them.
-    # Every block is uniform -- detect_scale returned this scale precisely
-    # because they all are -- so which pixel within the block is taken does not
-    # matter, only that the sample lands inside one.
+    # One pixel per block, anchored to the first ink pixel (see
+    # detect_scale); every block is uniform, so which pixel does not matter.
     bounds = mask.bounds()
     if bounds is None:
         raise AssertionError("detect_scale found an inked mask without bounds")
@@ -271,23 +260,15 @@ class Cursor:
     blob: Mask  # boolean mask, same shape as the source image
 
 
-# A pixel is "blob-like" (part of the arrowhead's body, not a 1px-wide path
-# stroke) if it has this many ink neighbors in its 3x3 neighborhood -- a
-# stroke's interior pixels have exactly 2 (the one before, the one after);
-# the triangle's outline and tips have 3+.
+# Ink neighbours in the 3x3 that make a pixel arrowhead body rather than
+# path: a stroke interior has exactly 2, the triangle's outline 3+.
 _BLOB_NEIGHBOR_MIN = 3
 
-# Fraction of its own bounding box a real arrowhead blob fills.  Measured by
-# rendering render.py's own arrowhead at all 8 possible headings: 0.46-0.61
-# depending on rotation (a diagonal heading's axis-aligned bbox is larger
-# relative to the triangle it bounds, so those sit at the low end).  Was
-# 0.41-0.55 when the triangle came from Pillow's polygon fill; render.py now
-# rasterizes it itself, which paints a few more edge pixels.  The bracket is
-# unchanged, and was already deliberately
-# wide of that measured range -- it exists to catch a blob that is not
-# triangular at all (a solid square rejects at 1.0; two crossing strokes at
-# a shallow angle either erode away entirely or produce a long thin sliver
-# well under 0.25). Multiple blobs inside it are explicitly ambiguous.
+# Fraction of its bbox a real arrowhead fills: 0.46-0.61 over all 8
+# headings of render.py's own arrowhead (diagonal headings sit low; was
+# 0.41-0.55 under Pillow's polygon fill).  Deliberately wide, to reject
+# non-triangles: a solid square is 1.0, a crossing-stroke sliver well under
+# 0.25.  Multiple blobs inside it are ambiguous.
 _FILL_RATIO_RANGE = (0.25, 0.75)
 
 
@@ -383,19 +364,11 @@ def find_cursor(mask: Mask) -> Cursor:
     )
 
 
-# Stroke/Vertex and the star-probe walker itself now live in lattice.py (see
-# its module docstring): the region-adjacency approach previously here --
-# flood-filling the background and walking pixel-by-pixel to a junction
-# found via 4-connected-region borders -- had one confirmed structural gap,
-# a merge where one stroke's last leg runs straight into a *different*,
-# already-drawn stroke's ink with no separating background pixel, which a
-# pixel-adjacency walk cannot tell apart from an ordinary continuation.
-# Three attempts at a local pixel-geometry fix on that walker were tried and
-# reverted (see lattice.py's module docstring for the surviving lesson);
-# lattice.py resolves it from scratch with an 8-direction
-# vertex-star probe instead, verified against both wiki fixtures with a
-# cleaner coverage-gap result than the region-adjacency walker ever achieved
-# (see coverage_gap's docstring below).
+# The walker lives in lattice.py.  The region-adjacency walker it replaced
+# could not tell a merge into a *different* stroke's ink (no background
+# pixel between) from a continuation; three local pixel-geometry fixes were
+# tried and reverted (see lattice.py's docstring).  The 8-direction
+# vertex-star probe resolves it with a cleaner coverage gap on both fixtures.
 Stroke = lattice.Stroke
 Vertex = lattice.Vertex
 
@@ -447,57 +420,36 @@ def _direction_runs(vertices: list[Vertex]) -> list[tuple[int, int]]:
     return runs
 
 
-# Every opcode's kink, as the sequence of (relative_turn, unit_length) pairs
-# it presents between its bounding straight runs -- see module docstring's
-# heading convention (+1/-1 a 45-degree diagonal jog right/left of the
-# heading in effect where the kink starts, +2/-2 a pure sideways step, both
-# relative to that heading) -- measured pixel-by-pixel against the wiki's own
-# Lineanim4/5/6/7/8/10/11.png (see render.py's ``_OPS`` comment, which this
-# mirrors exactly since both sides were checked against the same reference
-# images) *and* against the wiki's own worked addition/multiplication example
-# programs (``fixtures/addition.png``/``multiplication.png``), which is what
-# caught two leg-order mistakes an isolated per-opcode measurement alone
-# didn't surface (``>``/``<`` and ``o`` were originally encoded with their
-# diagonal and sideways legs in the wrong order).
-#
-# The unit length matters here, not just the turn sign: ``i``'s middle
-# sideways run is 2 units, not 1, which is what actually distinguishes it
-# from ``>`` immediately followed by another ``>`` with no separating
-# straight run at all -- confirmed to happen in the wiki's own
-# ``addition.png`` (two ``>`` back to back render with zero-length gap
-# between them) -- both start with the same ``(+1, -2)`` turn/sign prefix, so
-# matching on sign alone is ambiguous exactly where this matters.  ``+``/``-``
-# are the only entries whose single leg's length is *not* fixed -- it is
-# instead the run's repeat count (see :data:`DEFAULT_UNIT`'s docstring
-# reference and ``_op_segments`` in render.py).
+# Each opcode's kink as (relative_turn, unit_length) pairs (+1/-1 diagonal
+# jog, +2/-2 sideways; see the module docstring).  Mirrors render.py's
+# `_OPS` exactly -- both measured against Lineanim4/5/6/7/8/10/11.png --
+# and additionally checked against `fixtures/addition.png` and
+# `multiplication.png`, which caught `>`/`<` and `o` with their diagonal
+# and sideways legs in the wrong order.
+# Unit length matters, not just sign: `i`'s middle run is 2 units, which is
+# what separates it from `>` `>` back to back with no gap (this happens in
+# `addition.png`); both start `(+1, -2)`.  `+`/`-` are the only entries
+# whose leg length is not fixed -- it is the repeat count (see
+# :data:`DEFAULT_UNIT` and render.py's `_op_segments`).
 _FIXED_SIGNATURES: dict[tuple[tuple[int, int], ...], str] = {
     ((1, 1), (-2, 1)): ">",
     ((-1, 1), (2, 1)): "<",
     ((1, 1), (-2, 2), (1, 1)): "i",
     ((-2, 1), (1, 2), (-2, 1)): "o",
 }
-# Longest signature first, so a caller scanning greedily always tries to
-# match the most specific (longest) template before falling back to a
-# shorter one that happens to share the same leading legs.
+# Longest first, so a greedy scan tries the most specific template.
 _FIXED_BY_LENGTH: list[tuple[tuple[tuple[int, int], ...], str]] = sorted(
     _FIXED_SIGNATURES.items(), key=lambda kv: -len(kv[0])
 )
 
-# Diagonal-run unit length (in the *renderer's* `_UNIT` grid) that also
-# doubles as `+`/`-`'s repeat count, since a merged run of N same-sign
-# increments/decrements is drawn as one diagonal N units long (see
-# `_FIXED_SIGNATURES`).  `extract.py` has no direct access to whatever scale
-# a given image was rendered at -- `normalize_scale` only recovers *stroke
-# width*, not grid unit size -- so `classify_ops` takes it as a parameter
-# rather than assuming render.py's own `_UNIT=20`.
+# Diagonal-run unit length in the renderer's `_UNIT` grid, doubling as
+# `+`/`-`'s repeat count.  `normalize_scale` recovers stroke width, not
+# grid unit, so `classify_ops` takes it as a parameter.
 DEFAULT_UNIT = 20
 
-# How close a run's pixel length must round to a whole number of units to be
-# accepted rather than raising -- wide enough to tolerate the +-1px rounding
-# a hand-drawn or anti-aliased stroke measured off real wiki images shows
-# (confirmed: addition.png's kinks measure 19px/39px against a 20px unit, a
-# consistent 1px short), without accepting a run so far off-grid that it's
-# probably a real structural difference rather than measurement noise.
+# Rounding slack for a run's unit count: wide enough for the +-1px a real
+# wiki image shows (addition.png's kinks measure 19px/39px against 20px),
+# narrow enough that an off-grid run is a structural difference.
 _UNIT_TOLERANCE = 0.15
 
 
@@ -599,28 +551,11 @@ def classify_ops(vertices: list[Vertex], unit: int = DEFAULT_UNIT) -> list[OpCal
     if not runs:
         return []
 
-    # ``heading`` is *not* fixed for the whole path: an ordinary corner --
-    # the path just changing direction outside of any opcode kink, e.g. a
-    # branch arm continuing along the T-junction's bar before its first real
-    # opcode -- updates it going forward, exactly like render.py's own
-    # cursor heading does between opcodes (see ``_Cursor.emit_op``, which
-    # always restores ``entry_heading`` after a kink but has no such
-    # guarantee *between* independently-drawn corners).  Confirmed necessary
-    # against ``fixtures/multiplication.png``'s branch arm, which turns E
-    # then immediately turns again onto N before its first real opcode (`>`)
-    # -- treating the whole path as relative to the initial E heading left
-    # that arm's `>`/`>`/`o` kinks unrecognizable, since they are drawn
-    # relative to N, not E.
-    #
-    # A straight run's (or unmatched turn's) length is never unit-checked --
-    # only a run actually being tested as a kink leg is, since a straight
-    # stretch's length is arbitrary (e.g. the path's leading run, from the
-    # cursor to its first kink, has no reason to land on a whole unit at
-    # all).  A run updates heading (rather than being tested as a kink leg)
-    # when it rounds to 0 units (noise -- see below) or when no kink
-    # template matches starting there; the *first* run in a kink template
-    # match is never itself a heading update, since a kink's own first leg is
-    # necessarily relative to the heading already in effect.
+    # ``heading`` updates at ordinary corners, as render.py's cursor does
+    # between opcodes: `multiplication.png`'s branch arm turns E then N
+    # before its first `>`, and relative to E its `>`/`>`/`o` are
+    # unrecognizable.  Only a run tested as a kink leg is unit-checked; a
+    # run that rounds to 0 (noise) or matches no template updates heading.
     heading = runs[0][0]
     calls: list[OpCall] = []
     ends_at_last_run = False
@@ -633,16 +568,12 @@ def classify_ops(vertices: list[Vertex], unit: int = DEFAULT_UNIT) -> list[OpCal
             continue
         units = _round_units(r_len, unit)
         if units == 0:
-            # Stray noise pixel(s) (confirmed against fixtures/addition.png:
-            # a real 1-unit diagonal leg there is interrupted by exactly one
-            # such pixel) -- not a real leg, and too short to mean a genuine
-            # heading change either.
+            # Noise (addition.png has one such pixel inside a diagonal leg).
             i += 1
             continue
         if units is None:
-            # Not a whole unit count, but also not a straight run: heading
-            # update, not an error -- a genuinely malformed kink shape looks
-            # the same as an ordinary corner from here (see docstring).
+            # Off-unit turn: an ordinary corner, indistinguishable from a
+            # malformed kink from here.
             heading = r_idx
             i += 1
             continue
@@ -653,12 +584,8 @@ def classify_ops(vertices: list[Vertex], unit: int = DEFAULT_UNIT) -> list[OpCal
             candidate = []
             ok = True
             j = i  # read position, distinct from the template leg count k:
-            # a stray noise run (see the ``units == 0`` branch above) can
-            # sit *between* two of a kink's real legs, not just before the
-            # kink starts, so consuming n template legs can require reading
-            # more than n runs (confirmed against fixtures/addition.png,
-            # whose ``i`` kinks each have exactly one such noise run wedged
-            # between their two diagonal legs).
+            # A noise run can sit between two legs (addition.png's `i`
+            # kinks each have one), so n legs may take more than n runs.
             for _ in range(n):
                 while j < len(runs) and _round_units(runs[j][1], unit) == 0:
                     j += 1
@@ -691,24 +618,14 @@ def classify_ops(vertices: list[Vertex], unit: int = DEFAULT_UNIT) -> list[OpCal
             i += 1
             continue
 
-        # Not a recognized kink leg (or a straight run, turn == 0): an
-        # ordinary corner or continuation, not an opcode -- adopt its
-        # direction as the heading everything after it is measured against.
+        # Ordinary corner or continuation: adopt its direction as heading.
         heading = r_idx
         i += 1
 
-    # A real opcode always completes with a trailing straight run back to
-    # its entry heading -- that return is part of the kink's own shape (see
-    # render.py's ``_op_segments``/``_OPS``), not incidental -- so a
-    # candidate whose final leg is the walked path's literal last run, with
-    # nothing after it at all, was never a complete opcode: it's a turn
-    # taken right where the path was cut off entering a merge into another
-    # stroke (confirmed against two different arms of
-    # ``fixtures/multiplication.png``, each independently confirmed by hand
-    # to end in a merge rather than a halt at exactly this shape -- one
-    # spurious ``-`` each).  Only the last call can ever have this problem,
-    # since every earlier call is by definition followed by more of the
-    # path.
+    # A real opcode ends with a straight run back to its entry heading, so
+    # a candidate whose last leg is the path's literal last run was a turn
+    # cut off entering a merge (two arms of `multiplication.png`, one
+    # spurious `-` each).  Only the last call can hit this.
     if calls and ends_at_last_run:
         calls.pop()
     return calls
@@ -761,15 +678,10 @@ def _redraw(vertex_lists: list[list[Vertex]], mask: Mask) -> Mask:
     return canvas
 
 
-# The deliberate, non-bug gap between a stroke tree's walked pixels and the
-# source image's ink: 2 arrowhead-tip corners the cursor-blob growth
-# threshold falls a pixel short of (see find_cursor's docstring), independent
-# of the program's size or branch count.  Unlike the previous region-
-# adjacency walker, no per-pivot term is needed here: lattice.py's vertices
-# mark the true pivot pixel itself rather than spending it as a stem tip one
-# step short of the branch (see coverage_gap's docstring) -- measured exactly
-# 2 on both wiki reference images regardless of pivot count (1 for addition,
-# 3 for multiplication).
+# Deliberate gap between walked pixels and source ink: 2 arrowhead-tip
+# corners the blob threshold falls a pixel short of (see find_cursor).
+# Exactly 2 on both wiki images regardless of pivot count (1 and 3), since
+# lattice.py's vertices mark the true pivot pixel.
 _ARROWHEAD_TIP_GAP = 2
 
 
