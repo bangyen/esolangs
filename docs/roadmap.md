@@ -321,10 +321,14 @@ The candidate list is empty.
   `setters(template, n)` returning one `(zero, one)` pair per input, the
   generator's own output marks each input `{Xi}` and `generate` renders
   each mark as its run, and filling walks the runs by the pairs' widths
-  and nothing else.  A template is never wrapped -- it is the shape of
-  its programs, and a width applies when it is filled -- and a template
-  read back from a file has its pairs recovered from the language's
-  setters, which the runs' total length determines.  %^2^-1 alone
+  and nothing else.  A width wraps the template with every run kept
+  whole (each input is spelled as its own private-use mark while the
+  wrapper runs, so two adjacent runs are two tokens), and since a run is
+  exactly its setter's length the wrapped template is the wrapped form of
+  every program it fills to -- every row breaks in the same places, which
+  filling first and wrapping after could not promise.  A template read
+  back from a file has its pairs recovered from the language's setters,
+  which the runs' total length determines.  %^2^-1 alone
   carries a header naming its solved setters, which filling strips.
   ArrowQueue's slots are rows of their own so its blocks substitute
   in place (byte-identical to the header rebuild it replaced, n=1..6), A

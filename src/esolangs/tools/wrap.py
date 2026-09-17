@@ -70,6 +70,8 @@ import inspect
 import re
 from collections.abc import Callable
 
+from esolangs.tools.helpers import MARK, MOST_INPUTS, mark
+
 # The default width for a wrapped program.  80 is the conventional review
 # and diff width, and matches the repo's own 88-column limit for Python
 # closely enough that a wrapped program never looks out of place beside it.
@@ -225,6 +227,14 @@ def _span(length: int, cell: int) -> int:
     return max(1, -(-(length + 1) // (cell + 1)))
 
 
+#: A run of one input's mark (:func:`~esolangs.tools.helpers.mark`), what
+#: :func:`~esolangs.generate` spells each input as while a template is
+#: wrapped.  One token: a break inside it would land inside the setter
+#: that replaces it -- mid-word, for a word language -- and each input is
+#: its own character, so two adjacent runs are two tokens.
+_RUN = "|".join(f"{re.escape(mark(i))}+" for i in range(MOST_INPUTS))
+
+
 def wrap_tokens(program: str, width: int, pattern: str) -> str:
     """Wrap a program whose tokens are the matches of ``pattern``.
 
@@ -233,8 +243,11 @@ def wrap_tokens(program: str, width: int, pattern: str) -> str:
     pattern must tile the program exactly -- every character belongs to some
     token -- so that rejoining the tokens reproduces the input; a program
     that does not tile is returned unwrapped rather than corrupted.
+
+    A :data:`_RUN` is tried ahead of ``pattern``, so no caller has to
+    remember a template's runs.
     """
-    tokens = re.findall(pattern, program)
+    tokens = re.findall(f"{_RUN}|{pattern}", program)
     if "".join(tokens) != program:
         return program
     return _join_tokens(tokens, width, separator="")
@@ -244,9 +257,12 @@ def wrap_chars(program: str, width: int) -> str:
     """Wrap a program whose every character is its own token.
 
     The single-character-command families (Brainfuck and its relatives),
-    where any position is a legal break.
+    where any position is a legal break -- except inside a template's
+    :data:`_RUN`, which is why a template takes the token path.
     """
-    return "\n".join(program[i : i + width] for i in range(0, len(program), width))
+    if not any(MARK <= ord(c) < MARK + MOST_INPUTS for c in program):
+        return "\n".join(program[i : i + width] for i in range(0, len(program), width))
+    return _join_tokens(re.findall(f"{_RUN}|[\\s\\S]", program), width, separator="")
 
 
 def _join_tokens(tokens: list[str], width: int, separator: str) -> str:
@@ -363,7 +379,7 @@ def _bio(program: str, width: int) -> str:
     break lands inside one -- so an indented program means exactly what the
     packed one did.
     """
-    tokens = re.findall(_BIO_COMMAND, program)
+    tokens = re.findall(f"{_RUN}|{_BIO_COMMAND}", program)
     if "".join(tokens) != program:
         return program
     merged: list[str] = []
@@ -674,14 +690,30 @@ _PCT_COMMAND = r"."
 # What divides a %^2^-1 template's setter header from its body: a blank line,
 # so that a single newline inside either part is that part's own fold.
 #
-def _pct_squared_minus_one(program: str, width: int) -> str:
-    """Wrap %^2^-1, whose commands are single characters.
+# What divides a %^2^-1 template's setter header from its body: a blank
+# line.  Spelled here rather than imported, because importing it would pull
+# the whole ``esolangs.tools`` package into a module that otherwise needs
+# nothing but the standard library; a test asserts the two copies agree.
+_PCT_HEADER_END = "\n\n"
 
-    Only filled programs arrive here: a template is never wrapped (it is
-    the shape of its programs, and a width applies when it is filled), so
-    the setter-declaration header a template carries is never folded.
+
+def _pct_squared_minus_one(program: str, width: int) -> str:
+    """Wrap %^2^-1: the setter-declaration header as well as the body.
+
+    A %^2^-1 *template* is a header of ``0=zero|one;1=...`` declarations, a
+    blank line, and the body; ``fill`` reads the declarations out of the
+    header, discarding its newlines first, and never shows the interpreter
+    any of it.  So the header folds by character -- a declaration is 175
+    characters and does not shrink with ``n``, so folding only between two
+    would leave a 175-column floor -- and the body wraps by command.  A
+    filled program has no header and folds entirely.
     """
-    return wrap_tokens(program, width, _PCT_COMMAND)
+    header, blank, body = program.partition(_PCT_HEADER_END)
+    if not blank:
+        return wrap_tokens(program, width, _PCT_COMMAND)
+    flat = header.replace("\n", "")
+    folded = "\n".join(flat[i : i + width] for i in range(0, len(flat), width))
+    return folded + blank + wrap_tokens(body.replace("\n", ""), width, _PCT_COMMAND)
 
 
 def _qoibl(program: str, width: int) -> str:
@@ -787,12 +819,16 @@ WRAPPERS = {
 # The languages whose wrapper handles an already-multi-line program itself,
 # rather than being skipped by :func:`wrap_program` for having a newline in
 # it.  Taglate's first line seeds its queue and is structural, so its
-# wrapper keeps that row whole and folds only the commands below it.
-# Qoibl is multi-line for a third reason: none of its lines is structural,
+# wrapper keeps that row whole and folds only the commands below it;
+# %^2^-1's template opens with a setter header, which its wrapper folds
+# by character.  Qoibl is multi-line for a third reason: none of its lines
+# is structural,
 # but every one is a statement, so its wrapper folds each separately rather
 # than reflowing the program as one stream.  The language would not notice
 # the difference -- a newline is whitespace to it -- but the reader would.
-MULTILINE = frozenset({"taglate", "qoibl", "forbin", "packlang"})
+MULTILINE = frozenset(
+    {"taglate", "pct_squared_minus_one", "qoibl", "forbin", "packlang"}
+)
 
 
 def takes_width(fn: Callable[..., str]) -> bool:

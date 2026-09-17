@@ -198,9 +198,9 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
     ``width`` is a *request*, not a bound: what it does depends on the
     language (see ``describe(language)["width_effect"]``), it does nothing
     at all where newlines are semantic, and a single token longer than the
-    width still overruns it.  A template is not wrapped at all -- it is the
-    shape of its programs, and the width applies when :func:`instantiate`
-    fills it -- unless the generator lays itself out to a width.
+    width still overruns it.  A template wraps with each input's run kept
+    whole, so it is the wrapped shape of every program it fills to and
+    every row breaks in the same places.
     """
     resolved = resolve(language)
     lang = LANGUAGES[resolved]
@@ -218,19 +218,24 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
     if lang.id not in parameterized_ids():
         program = slots if laid_out else wrap_program(slots, lang.id, width)
         return _Tagged(program, resolved)
-    # The generator marks each input ``{Xi}``; the public template renders
-    # each as a run of the language's character.  A template is never
-    # wrapped -- it is the shape of its programs, and the width applies
-    # when it is filled -- unless the generator lays itself out to one.
-    text, char, pairs = render_template(
-        lang.id, slots, len(truth_table).bit_length() - 1
-    )
+    # The generator marks each input ``{Xi}``; the public template is each
+    # rendered as a run, wrapped with every run whole (see render_template).
+    inputs = len(truth_table).bit_length() - 1
+    wrap_to = None if laid_out else width
+    text, char, pairs = render_template(lang.id, slots, inputs, wrap_to)
     return _Template(text, resolved, char, pairs)
 
 
 def _is_template_for(template: str, name: str, truth_table: str) -> bool:
-    """Return whether ``template`` is what ``name`` generates for the table."""
-    return template == generate(name, truth_table)
+    """Return whether ``template`` is what ``name`` generates for the table.
+
+    A wrapped template passes where the plain one is a single line (for
+    the rest a newline is layout, and dropping it compares two programs).
+    """
+    plain = generate(name, truth_table)
+    return template == plain or (
+        "\n" not in plain and template.replace("\n", "") == plain
+    )
 
 
 def instantiate(
@@ -253,8 +258,8 @@ def instantiate(
     template from a *different* language -- which would otherwise run and
     answer the wrong row.
 
-    ``width`` is taken here because this is where it applies: a template
-    is never wrapped, and the filled program is.
+    ``width`` is taken here as well: a wrapped template fills to a program
+    with the same breaks, and an unwrapped one is wrapped after filling.
 
     A template :func:`generate` returned carries its setters; a plain
     string -- read back from a file -- has them recovered from the
@@ -294,9 +299,8 @@ def instantiate(
     tagged = template if isinstance(template, _Template) else None
     if tagged is None:
         if char not in template:
-            # Both ways of getting here -- an ordinary program, and a
-            # template instantiate() has already filled -- look the same
-            # from here, so the message names both rather than guessing.
+            # An ordinary program and an already-filled template look the
+            # same from here, so the message names both.
             raise TemplateError(
                 f"this {name} text has no run of {char!r} to fill: it is either "
                 f"an ordinary program or a template instantiate() has already "
@@ -338,16 +342,12 @@ def _looks_like_a_path(program: str) -> bool:
     since the ``.`` is brainfuck's print.
 
     The rule keys on shape: one line, only the characters a path is made
-    of, and either rooted (``/``, ``./``, ``../``, ``~``) or ending in a
-    short extension.  It checked for a literal ``.txt`` before, which
-    caught ``prog.txt`` and let ``prog.bf`` -- the natural extension for
-    this package's flagship language -- and ``/etc/hosts`` straight
-    through.
-
-    ``.`` and ``..`` are accepted, and so is a bare ``~``: they are legal
-    programs -- ``~~`` is two ArrowQueue commands -- and a rule that
-    refuses a real program is worse than the bug it prevents.  Only
-    ``~/`` counts as rooted for that reason.
+    of, and either rooted (``/``, ``./``, ``../``, ``~/``) or ending in a
+    short extension -- a literal ``.txt`` check caught ``prog.txt`` and
+    let ``prog.bf`` and ``/etc/hosts`` through.  ``.``, ``..`` and a bare
+    ``~`` are accepted: they are legal programs (``~~`` is two ArrowQueue
+    commands), and a rule that refuses a real program is worse than the
+    bug it prevents.
     """
     if "\n" in program or not _PATH_CHARS.match(program):
         return False

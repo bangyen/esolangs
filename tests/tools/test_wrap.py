@@ -23,10 +23,11 @@ import pytest
 
 import esolangs
 from esolangs import generate, run
-from esolangs.registry import LANGUAGES, canonical_id
+from esolangs.registry import LANGUAGES, canonical_id, template_body
 from esolangs.tools.examples import BOOLEAN_EXAMPLES as BOOLEAN_GENERATED
 from esolangs.tools.examples import BooleanExample
 from esolangs.tools.wrap import (
+    _PCT_HEADER_END,
     DEFAULT_WIDTH,
     MULTILINE,
     WRAPPERS,
@@ -428,7 +429,7 @@ def test_every_wrapper_actually_fires(name: str) -> None:
         # the whole program instead stops the search at the first arity whose
         # *header* pushes it past the width, which for %^2^-1 is an arity
         # whose body is still thirteen characters.
-        foldable = grown.split("\n", 1)[1] if structural else grown
+        foldable = grown.split("\n", 1)[1] if structural and "\n" in grown else grown
         if ("\n" in grown and not structural) or len(foldable) <= 40:
             continue
         narrowed = _grown(name, _table(arity), 40)
@@ -446,21 +447,38 @@ def _grown(name: str, table: str, width: int | None) -> str:
 
 
 @pytest.mark.parametrize("name", WRAPPED)
-def test_a_template_is_never_wrapped(name: str) -> None:
-    """A width leaves a parameterized language's *template* alone.
+def test_a_template_wraps_as_every_program_it_fills_to(name: str) -> None:
+    """A width on a template gives every row the same breaks.
 
-    A template is the shape of its programs -- each input a run as long as
-    its setter -- and a break inside a run would land mid-setter once it is
-    filled (mid-word, for a word language, and at a position the zero and
-    one setters do not share).  So the width applies when the template is
-    filled, and :func:`~esolangs.generate` returns the template unwrapped.
+    Each input's run is exactly its setter's length and the wrapper keeps
+    it whole, so the wrapped template *is* the wrapped form of every
+    program it fills to: filled in place, no line changes length and no
+    break lands inside a setter -- and every row of the table has the same
+    shape under the width, which filling first and wrapping after could
+    not promise.
     """
     example = _example(name)
     if example.fill is None:
         pytest.skip(f"{name} is not parameterized; its template is its program")
     for arity in range(1, 5):
-        template = generate(name, _table(arity))
-        assert generate(name, _table(arity), 40) == template
+        wrapped = generate(name, _table(arity), 40)
+        shapes = set()
+        for combo in range(2**arity):
+            bits = [(combo >> (arity - 1 - i)) & 1 for i in range(arity)]
+            program = esolangs.instantiate(name, wrapped, bits, 40)
+            shapes.add(tuple(len(line) for line in program.split("\n")))
+        assert len(shapes) == 1, f"{name} at {arity}: rows wrap differently"
+        # %^2^-1's template carries a header that filling strips.
+        body = template_body(LANGUAGES[name].id, wrapped)
+        assert shapes.pop() == tuple(len(line) for line in body.split("\n"))
+
+
+def _grown(name: str, table: str, width: int | None) -> str:
+    """A runnable program for ``table``: the template filled with zeros."""
+    if _example(name).fill is None:
+        return generate(name, table, width)
+    arity = len(table).bit_length() - 1
+    return esolangs.instantiate(name, generate(name, table), [0] * arity, width)
 
 
 @pytest.mark.parametrize(
@@ -888,13 +906,31 @@ def test_polynomial_keeps_a_sign_with_no_term_to_attach_to() -> None:
     assert _polynomial("f(x) = x + - 7", 80) == "f(x) = x\n+\n- 7"
 
 
-def test_pct_fill_is_unchanged_by_where_the_header_folded() -> None:
-    """However the header is folded by hand, the filled program is byte-identical.
+def test_pct_header_terminator_matches_the_generator() -> None:
+    """:mod:`wrap` spells %^2^-1's header terminator; the generator owns it."""
+    from esolangs.tools.pct_squared_minus_one import _HEADER_END
 
-    ``fill`` discards the header's newlines before reading it, so a header
-    a reader has folded -- even mid-declaration or mid-branch -- reads the
-    same, and the two branches of a setter stay equal width in text as well
-    as in commands.
+    assert _PCT_HEADER_END == _HEADER_END
+
+
+def test_pct_folds_its_header_to_the_width() -> None:
+    """The header meets the width at every arity; the body's runs are 86 wide."""
+    for arity in (2, 4, 6):
+        for width in (40, 80):
+            wrapped = generate("%^2^-1", _table(arity), width)
+            header, blank, body = wrapped.partition(_PCT_HEADER_END)
+            assert blank, "the header and body ran together"
+            assert all(len(line) <= width for line in header.split("\n"))
+            widest = max(len(zero) for zero, _one in wrapped.setters)
+            assert all(len(line) <= max(width, widest) for line in body.split("\n"))
+
+
+def test_pct_fill_is_unchanged_by_where_the_header_folded() -> None:
+    """However the header is folded, the filled program is byte-identical.
+
+    ``fill`` discards the header's newlines before reading it, which is what
+    lets the wrapper break *inside* a declaration -- and what keeps the two
+    branches of a setter equal width in text as well as in commands.
     """
     from esolangs.tools.pct_squared_minus_one import _HEADER_END, fill
 

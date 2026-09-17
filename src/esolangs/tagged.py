@@ -77,8 +77,8 @@ class _Template(_Tagged):
     language's own setters (:func:`esolangs.registry.recover_setters`),
     which the runs' total length determines.
 
-    A template is never wrapped: it is the shape of its programs, and a
-    width applies when it is filled.
+    A width wraps a template with every run kept whole, so the wrapped
+    template is the wrapped form of every program it fills to.
     """
 
     char: str
