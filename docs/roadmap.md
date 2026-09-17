@@ -56,15 +56,17 @@ The candidate list is empty.
 
   - Vandevelo, generation time: a peel that does not restart per cube.
   - COD, all three: an H-tree that distributes input `i` to every node of
-    level `i` without a shared run losing lane identity.
+    level `i` without a shared run losing lane identity (a tree that reads
+    it at `2**i` cells is `Theta(n T)` and outside the conventions).
   - Nopstacle, size: a linear-area layout when one run fills one line.
   - Polynomial: a left-half-plane multiple with more terms than the
     Descartes minimum ([polynomial](polynomial.md)).
-  - WII2D, three cells: a decode that reads the answer as the
-    accumulator's top bit in O(T) characters.
+  - WII2D, three cells: a rule emitting readouts within a constant of the
+    exact optima (1.4--2.4 characters per entry to domain 14); no one-step
+    or bounded-beam rule over small centres is one.
   - Factor: stays for its two language lower bounds; `%^2^-1`'s
     `Exception` cannot close, and which tables through sixteen inputs the
-    planners refuse is finite.
+    planners refuse is finite (every table tried through fourteen builds).
   - ZTOALC L: a rule, not a search, for a dense simple path in
     `p -> p/2 | 3p+1 | p+1`.
 
@@ -133,10 +135,19 @@ The candidate list is empty.
   on executed programs; a longer emitted program is an acceptable price,
   and the replaced ranking stays in the tests as the oracle.
 
-- **`%^2^-1` fourteen inputs.**  The staged fold's endgame strands its last
-  duplicated cofactor pairs.  Rank order is steerable (pulsed doubling), but
-  a merge needs the pair's value gap `d` inside a wipe window, and diving
-  the partner maps `d -> amount - d` with the amount free in the window --
-  a derived, unbuilt alignment controller.  Build it only if a ~20x
-  thirteen-input build cost (~430k plan ops, ~8MB templates, ~226 ops per
-  merge) is acceptable.
+- **`%^2^-1` fifteen inputs.**  Fourteen builds by laying the next input
+  when the lay fits (a collision-free even split with `span + total <=
+  6006`) and the rules merge 25 more points on the laid state (a
+  one-move probe lays too early and jams), carrying the stranded
+  duplicate pairs into the next stage where the conveyor merges them at
+  sixteen classes: dense n=14 in 9.8 s and 1.84 MB, about 5x the size
+  and 12x the plan ops of thirteen, 40 sampled rows executed, n<=13
+  byte-identical.  At
+  fifteen the 11-cut has 2,017 distinct sixteen-row cofactors among
+  2,048 rows, so nothing compacts below 2,017 points before the lay; the
+  rules stall (20k ops, no merge), the spread state refuses the lay
+  (span 4,638 + total 4,640), an immediate lay has no rule move at op 0,
+  and a forced band gap jams the conveyor at 4,088--4,091 points.  A
+  fifteen needs a mechanism that lays an input onto ~2,000 unit-spaced
+  points while merging its 256 child classes; nothing in the move set
+  does so cheaply.

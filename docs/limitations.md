@@ -127,7 +127,29 @@ window of a level's lowest 512 rows is linear in count and no faster; a
 sampled score with growth through the lowest row is linear and 0.07 s
 but +13--20% of cover.  Every non-restarting peel also trades
 Cohen--Shinkar's O(T) clause bound for a measurement, since the popular
-direction is no longer exact over the remainder.
+direction is no longer exact over the remainder.  No time bound is
+provable (the cover is in P and reads the mask once); what is known
+is a trade: harvesting every coset of a fixed direction set of
+dimension `log2 n - c` (each lies in a density-1/2 set with probability
+`2**(-n / 2**c)`) costs `T**(1 + 2**-c)`, chaining `d - 2` popular
+directions and matching cosets into cubes in the quotient costs
+`T**(1 + 1/(8C))` at `C` clauses per `T/n` (+14% clauses, 4.2x faster
+at n=12, unexecuted as programs), and O(1)-dimension cubes cost O(T)
+time at `Theta(T log T)` characters.  Cube-finding itself is not the
+obstruction: restricted to a coset of dimension `2**d / (d + 1)` a cube
+of dimension `d` is found in `T**(1 / (2**c log2 n))` queries on a
+random set.  The shipped peel's cubes measure dimension 3.8 -> 1 over
+the density bands at n=12, two above Cohen--Shinkar's guarantee,
+which is vacuous below density 1/8.  A linear-time peel exists: score
+round 0 from an incrementally maintained popularity table over the
+weight-<= 2 directions (loses nothing: 467 cubes against 460 at n=13)
+and grow the cube inside an aligned `2**w`-bit window, x2.05--2.14 per
+input and 5x faster at n=14 for w=11, 7x for w=9 -- at 1.01, 1.03,
+1.05, 1.09, 1.13 of the shipped size over n=10..14 (w=11; 1.29 at n=14
+for w=9), climbing four points per input because a cube grown in a
+region of dimension `w` is `log2(n / w)` bits smaller, so a constant
+ratio needs `w = Theta(n)`, a window of `T**c` bits, and the peel's
+cost returns.
 
 COD's fork/cascade generator embeds each input once, at its own `+`
 fork, and is super-linear on all three axes: size x3.9 per added input
@@ -143,14 +165,202 @@ separate node lanes without losing the lane identity, and carrying that
 identity as the cod's value returns to the super-linear numeric decoder.
 That is the row's open question on all three axes.
 
+The position-identity decision tree is not inside the contract: lanes
+carry value 0, level `i` is a fork row and a test row (blank keeps, `<`
+kills), and it is `(3n + 12) T` characters, 8,132 at n=8 -- but its run
+for input `i` is the whole test row, `2**i` cells wide, so the audit
+measures it as non-uniform and blank-spelled, the shared-run problem
+avoided rather than solved.  Its bounds still stand for any tree: a
+level's span shrinks to `O(2**i)` only by fanning the next level across
+the old boundary with `~2**i` arms on distinct rows, `Theta(4**i)` per
+level; a numeric decoder built on `<` kills one value per trajectory
+and is external path length, `Omega(T log T)`; `_` is a residue gate (a
+U with `k` shifts releases one class mod `2k`, executed at k=1), so
+isolating one value from `[0, T)` needs `Theta(T)` shifts, and a nonzero
+cod reflected into a corridor `+` spawns copies up and down it
+(executed, never halts).  A fork-free keeper of one value out of `K`
+costs `>= K/2` shift cells by the residue argument; a keeper *with* `+`
+inside, or a classifier mapping the index to the answer without
+isolating it, is bounded only by counting at `Omega(T)`.
+
 Nopstacle is open on size alone: a full decision tree of corridors,
 level `i` reading its input at `2**i` node columns of one row, in a
 padded rectangle `4 * 2**n` wide by `3n + 7` high, `Theta(n 2**n)` by
 construction (31,774 characters at n=8, x2.21 there and x2.13 at n=12
 on the contract's two-step mean, per-entry cost 44.5 rising by twelve
 per input).  The same H-tree question as COD's: a linear-area layout
-puts level `i`'s cells on `2**(i/2)` rows, and one run fills one line;
-every layout with a line per input is a `2**n`-wide row per input.
+puts level `i`'s cells on `2**(i/2)` rows, and one run fills one line.
+A tree reading input `i` at every depth-`i` node costs `Omega(n 2**n)`
+under *any* layout, crossings allowed -- Brent--Kung's leaves-on-a-line
+argument (IPL 11, 1980) by column moments: with `m_i` the level's mean
+column deviation, `m_{i+1} <= m_i + wire_i / 2**(i+1)`, the level's row
+is at least `m_i` wide, and `m_{n-1} >= 2**n / 2048` because a cell
+holds sixteen states (four headings in four boundary classes: the edge
+wall is absolute, so copy 0 of the repeating grid turns where a later
+copy moves); lifting `m` early puts `2**n / 2048` columns on every row
+and lifting it at depth `j` spends `2**(j+1) 2**n / 3072` on wire, so
+the size is at least `2**n (n - log2 n - 1) / 6144`.  Over every
+program the bound is counting alone, `0.43 * 2**n` (five effective
+symbols per position, run boundaries `2n log2(size)` bits).  Two
+escapes are measured.  Merged nodes: the dense fixture's level widths
+are `min(2**i, 2**(2**(n-i)))` (n=12: 1, 2, ..., 256, 216, 16, 4, 2),
+so the leaves-on-a-line premise fails and the moment argument on the
+distinct prefix gives `Theta(2**n)`; the fan-in bus of each merged class
+must touch members spread along the wide row, summed circular span
+224 -> 13,916 node positions at n=8..12, an envelope of 0.17--0.39 of
+the shipped size and `Theta(n 2**n / log n)` at best (unbuilt).
+Path-dependent read order (the first `log2 n` bits pick a cyclic shift
+of the rest): rows balance at `1.5 * 2**n / n` nodes, but greedy
+strip placement measures wire `2.4 -> 30.7` times `2**n` at n=6..12,
+about `n**2 2**n`, and side-by-side siblings reproduce the levelled
+cost.  The open target is a depth-`n` tree with row = variable in `n`
+rows by `O(2**n / n)` columns.
+
+Polynomial's remaining question is a left-half-plane multiple of the
+mandatory root product with more terms than the Descartes minimum:
+instruction count, monomial count, right-half-plane coefficient mass, and
+the Descartes-minimal class are all language-forced, every searched
+escape is closed, and the Rolle reduction behind Descartes cannot lower
+the kernel's rank; the open class carries O(1) primorial-sized
+coefficients and has degree `0.72 L log L` or more unless a second
+coefficient reaches the primorial's square root.
+[polynomial](polynomial.md) has the proofs, the measured negatives, and
+the literature match.  The class is mixed, not Hurwitz: the mandatory
+real roots are positive prime powers and only the cofactor sits left,
+so coefficient positivity (which proves the right-half-plane bound)
+is exactly what the class removes.  In lattice form the coefficients
+are a vector of the integer kernel of `[r_i ** c_j]`, rank `t - L`,
+determinant `e**Theta(L**2 log L)`, and every coefficient is fixed
+mod `prod p_i ** (c_{j+1} - c_j)` by the ones below it, so a member
+is one where `Theta(L)` CRT residues are all `poly(L)` small.
+Support-restricted LLL over the kernel finds nothing below `P` from
+L=4 on (`(x+1) P` wins at L=3 by 6%); constructed cofactors execute
+at 1.002--1.055 of the shipped size for `(x+1)`, 1.35 for `(x+1)**L`,
+1.44--1.48 for every mirror, exact or offset, and ~2 for cube
+mirrors; the rank-2 kernel class is exhausted to L=4, D=12.  Any
+legal multiple leaves a root unmatched, and `convert` then scans every
+integer to `max|root| + 1`, so multiples load only to n=3 (a root of
+`101**4` at n=4 does not load in a minute).
+
+WII2D's remaining question is the decode: the last junction's two
+branches turn the Horner index into the table's columns by folding
+(`'-' * c + 's'`, one character per unit of the centre) and halving, and
+the emitted size per table entry climbs 10 -> 15 -> 17 -> 53 -> 111 from
+n=5 to n=9 on the suite's dense fixture.  The language's shape is
+pinned from the interpreter: the accumulator is an unbounded integer
+under digit, `+`, `-`, `*` (double), `/` (floor-halve, `-1` a fixed
+point) and `s` (square); no cell reads it for control (`@` is
+positional, `?` random), a junction exits the same way from every
+heading, so a halting run reads each input once and every program is a
+read-once branching program with one node per input, two edges each,
+edge labels straight-line strings, final value 48 or 49.  After the
+last `s` the readout is monotone, so the 0-points sit strictly below
+the 1-points there; pulling back through a fold halves the alternation
+count at most, `>= log2 A` squarings for `A` alternations, and a
+monotone segment with `p` unary ops and `b` halvings folds about a
+centre at most `p 2**b + 1` (enumerated over all 349,524 strings of
+length nine), so a far centre is unary at the current spacing.  None of
+that is a wall: the *exact* shortest readout over all op strings from
+the index (BFS under a magnitude cap, exhaustive, replayed on the
+interpreter) averages 1.42, 1.73, 2.04, 2.37, 2.34 characters per
+entry over sampled patterns at domain 6, 8, 10, 12, 14 (caps 2**12,
+2**12, 2**12, 2**10, 2**10; every pattern solved) and at most 2.76 at
+domain 16 under 2**10, where a cap still shortens (one pattern 45 ->
+37 under 2**12) and 2**14 overflows a 2**27-state table at depth 31.
+Three to five squarings each behind a centre of one to seven units;
+one-hot, sparse, Gray and signed index encodings never win, and moving
+the decode up a junction has zero legal folds on seven of eight dense
+columns.  The shipped rule spends 6.0 per entry on the same random
+domain-16 columns and 7.6, 15, 41, 100 on the dense fixture at domain
+16, 64, 128, 256: the cost is the extremal-fold rule's,
+and a size proof would have to beat the optima above.  What the optima
+do that the rule cannot: 15 of 52 folds in sixteen domain-10 optima
+merge nothing (a fractional centre, `**+s`, that only reorders the
+points before halving merges them), and the shipped enumeration only
+lists centres with a same-colour pair; from the same post-`s` state the
+shipped compressor lands on the optimum's live count and magnitude 21
+of 52 times at 11% more characters, so the halving side is close and
+the fold choice is the gap.  That gap is global: over the small-centre
+family (`|c| <= 8`, scale 1/2/4, relayouts included) one-step greedy
+under any of four keys ratchets past the magnitude bound on 6--17 of 20
+domain-16 columns, and a beam of width 4, 16, 64 builds 16, 18, 20 of
+20 at 5.6, 5.5, 6.0 per entry -- the shipped size, against an optimum
+of at most 2.8.  Counting alone gives `0.21 T`; an accounting bound
+(every `s` doubles the bit length of the far points, only `/` removes
+bits, a cheap fold sits at the bottom of the window and merges the
+short side only) would give `Omega(D log D)` if every fold merged
+O(1) points, and the optima's relayouts are exactly folds that do not.
+WII2D's lift is the extremal-fold rule, total but at megabyte sizes,
+and its three open cells are one question: a rule emitting readouts
+within a constant of the optimum, which no one-step or bounded-beam
+rule over small centres is.
+
+Factor's row stays for its two language lower bounds (the language
+floor is `Omega(T log T / log log T)`: exponents are unary-priced and
+primes distinct and ascending, so D-digit texts decode to `2**o(D)`
+programs; the folded tree's `Theta(T log T)` is the generator's).
+`%^2^-1`'s `Exception` cannot close ([limitations](limitations.md));
+what is left is finite -- which tables through sixteen inputs the
+language admits and the planners refuse: every table tried through
+fourteen builds, from fifteen the dense fixture refuses while parity
+and other tables whose suffix cofactors compact still build, and no
+cut below seventeen carries a counting witness for any table: the
+dense fixture sits within 2--4% of the language-independent ceiling
+`min(2**k, 2**(2**(n-k)))` at every cut through sixteen (1007--1022
+of 1024 at the 10-cut of fourteen, 3932--4009 of 4096 at the 12-cut of
+sixteen).  The ladder-span bound and the wipe alignment are the
+planner's facts, not the language's: the language also resets by `m`
+on `(1501, 3003]`, a move the planner lacks, and between placeholders
+it is a transformation monoid on the 6,263 classes generated by `s`,
+`i`, `m`, `p`, `'`, so a wall at fifteen is a finite question on that
+monoid, unreachable by counting.
+
+ZTOALC L's cap and its size are one fact: every command sits on a value
+of one Collatz trajectory, and a trajectory crosses each scale band a
+few times, so the L-th smallest value grows exponentially in L.  The
+best start under `2**22` supplies 395 lines (a sieve of every start);
+dense n=10 is 311 commands on 1,477,714 lines, 14.5 -> 58.7 -> 1446
+characters per entry over n=8..10 (x8.1, x49 per input), and n=11 needs
+545-587 commands.  The ledger's lift, start `2**k`, is the same
+placement at `2**k` lines.  Neither is language-forced: `jump if` moves
+the pointer to the next line instead (the condition is read, the first
+operand ignored; lines past the file are blank, so values above `M` are
+free connectors; a static program that revisits a line loops forever,
+so its run is a simple path in `p -> p/2 | 3p+1 | p+1`, and a dynamic
+condition buys a revisit only at the price of a line).  The exact
+longest such path over every start and jump set has density 0.63,
+0.75, 0.69, 0.70, 0.67, 0.68, 0.78, 0.78, 0.75, 0.68, 0.73, 0.71,
+0.73, 0.72, 0.70 at M = 8, 12, ..., 64 -- flat; the nodes grow x2.5
+per four lines and M=72 passes a minute.  Simulated annealing over
+(start, jump set) executes 288 commands on 500 lines and 978 on 2,000
+and its lower bound falls 0.70 -> 0.49 from M=64 to 2,000 while still
+rising with budget (0.38, 0.43, 0.49 at 2, 8, 60 s at M=2,000), so the
+decline is the searcher's.  What is missing is a rule.  The run's
+values are `x3+1`, `/2`, `+1`, so no explicit family `v_{i+1} - v_i`
+independent of `v_i` exists but all-jumps.  A fixed local rule visits
+O(log L) lines; a choice function of the line alone has path length
+the depth of line 1 in its in-tree, about `sqrt(pi M / 2)` for a random
+mapping (Flajolet--Odlyzko 1989), and all 4,096 residue rules mod 12
+at M=3000 top out at 138 commands, the plain trajectory's figure -- a
+designed static jump set is such a function too, so the bound is the
+random model's, not the class's.  Two facts bound any rule: 19% of
+the lines below M have no Collatz predecessor from any value (the
+multiples of 3 in `(M/2, M]` and 2.3% of those `1 mod 3`), so density
+is at most 0.81; and a top band spliced over a used range is at most
+half dense, since its even lines can only jump.  Chain-level rules
+(visit each halving chain once, hop by `3m+1`) are the trajectory
+again, 6-16 lines; a bottoms-to-tops permutation by rule matches 0.69
+of the chains and leaves 0.155 M fragments whose splice relation is a
+functional graph.  A greedy with a bounded exit probe (take the
+Collatz exit if it lands in `[M/4, M]`, else the jump if it does, else
+the larger; an exit whose k-step continuation holds no free line
+loses) measures density 0.23, 0.17, 0.10, 0.015 at M = 500, 2,000,
+1e4, 1e5 for k=0, 0.32, 0.23, 0.22, 0.19 for k=4 and 0.31, 0.27, 0.29,
+0.27 for k=12 with 0.19 at 1e6 -- executed to dense n=14 (1,024 lines
+at n=10) but not shipped: the probe is a depth-k DFS, which the
+rule above bars from a construction, and the
+density is decaying, not converging.  Dense paths are found only by
+search.
 
 Nopstacle's two `Language` cells (the roadmap's conventions table) are one fact
 about its walker: the alphabet is the blank and `#`, so a zero bit *is*
@@ -171,53 +381,6 @@ weight as doublings between the runs and the table as the fold's
 relocations -- and past them the staged route lays its last two inputs
 with pairs of its own, above the arities the audit measures.)
 
-Polynomial's remaining question is a left-half-plane multiple of the
-mandatory root product with more terms than the Descartes minimum:
-instruction count, monomial count, right-half-plane coefficient mass, and
-the Descartes-minimal class are all language-forced, every searched
-escape is closed, and the Rolle reduction behind Descartes cannot lower
-the kernel's rank; the open class carries O(1) primorial-sized
-coefficients and has degree `0.72 L log L` or more unless a second
-coefficient reaches the primorial's square root.
-[polynomial](polynomial.md) has the proofs, the measured negatives, and
-the literature match.
-
-WII2D's remaining question is the decode: the last junction's two
-branches turn the Horner index into the table's columns by folding
-(`'-' * c + 's'`, one character per unit of the centre) and halving, and
-the emitted size per table entry climbs 11 -> 16 -> 15 -> 58 -> 153 from
-n=5 to n=9 on the suite's dense fixture.  A linear construction needs the
-answer readable as the accumulator's *top* bit -- floor-halving discards
-low bits and a digit discards everything, so nothing discards the bits
-above -- and every cheap placement found (shifts by `2 ** q`, squaring's
-cross terms, a dot product by multiplication) leaves other entries or
-monomials above it.  Refuted by an op-string family of length O(T) that
-computes an arbitrary column from the index, or from `2 ** (K +- q)`,
-which the chain can emit in O(n) characters.  A readout that tolerates
-junk above the answer is refuted too: every op but `s` is monotone on
-non-negative values and `~` needs the exact 48 or 49, so after the last
-squaring the readout is a monotone map onto two values -- a threshold
-in value order -- and anything else needs another `s`, which is a fold
-with a unary centre.  "Nothing discards the bits above" holds only over
-a low field wider than one bit: `-` then `K - 1` halvings carry a one-bit
-low field up as a borrow, leaving `2a + b - 1`, and integer-centre folds
-then read `b` under any top field `a` at the price of `a`'s *value
-count* (a two-bit `a` at `K = 30` executes in 72 characters).  So the
-last junction is cheap given its two-bit class: `3x - 2y` on top yields
-`x` by a threshold and `x ^ y` by one fold, both O(K), executed on all
-four classes.  What that costs is the class, two functions of `n - 1`
-inputs -- the same problem.  Recursing instead (store the table, let
-each junction keep one half) needs the branch keeping the *lower* half
-to forget the upper one above a multi-bit field: the borrow carries one
-bit, halving further destroys the field, and a fold's centre there is
-spelled at that field's weight, `2 ** m` characters for an `m`-bit
-half.  The layout adds nothing: for a dense table every run reads every
-input, a second read order would put a cycle some assignment follows,
-and a junction cell can be entered from at most four headings, so any
-fill yields a fixed chain read at most four times, never a tree.
-WII2D's lift is the extremal-fold rule, total but at megabyte sizes,
-and its three open cells are one question.
-
 WII2D's decode still enumerates the legal folds and takes the head of a
 ranked shortlist, but the ranking no longer runs the compressor per
 candidate: `_wii2d_depth` reads the deepest legal halving level off the
@@ -237,59 +400,6 @@ state (best `log2(mag / gap) + scale + live / 3`) refuses 3-16 of the
 18 inputs with domain 128 or more that the contest builds: the arc
 union is what carries the rank, the arc sum (rho 0.83) refuses five,
 and a per-step guard cannot recover a bad state entered folds earlier.
-
-Factor's row stays for its two language lower bounds.  `%^2^-1`'s
-`Exception` cannot close ([limitations](limitations.md)); what is left
-is finite -- which tables through sixteen inputs the language admits
-and the planners refuse: every table tried through thirteen builds,
-from fourteen the dense fixture refuses while parity and other tables
-whose suffix cofactors compact still build, and no cut below seventeen
-can exceed 4096 classes, so a construction there is not ruled out by
-counting.
-
-ZTOALC L's cap and its size are one fact: every command sits on a value
-of one Collatz trajectory, and a trajectory crosses each scale band a
-few times, so the L-th smallest value grows exponentially in L.  The
-best start under `2**22` supplies 395 lines (a sieve of every start);
-dense n=10 is 311 commands on 1,477,714 lines, 14.5 -> 58.7 -> 1446
-characters per entry over n=8..10 (x8.1, x49 per input), and n=11 needs
-545-587 commands.  The ledger's lift, start `2**k`, is the same
-placement at `2**k` lines.  Neither is language-forced: `jump if` moves
-the pointer to the next line instead, and with it a program can execute
-about 0.7 of its lines in one straight run -- an exact search over every
-start and jump set is 28 of 36 lines at L=36 and 0.68-0.83 at every
-fourth L from 8 to 44, executed on the interpreter as 28 commands on 36
-lines where the trajectory placement needs 106, and a backtracking
-search (20 s, most-constrained line first) reaches 205 commands on 500
-lines, 379 on 1,000 and 748 on 2,000, so dense n=10's 311 commands fit
-in about 850 lines against 1,477,714.  What is missing is a rule.  The
-run must be a simple path in `p -> p/2 | 3p+1 | p+1`; a fixed local
-rule drifts by a power of 3/2 per round and visits O(log L) lines, and
-a boundary-reflected greedy (take the Collatz edge unless its landing
-is used, else jump) stops when both exits are used, about L^(2/3):
-2,387 commands from 100,000 lines.  No choice function of the line
-alone does better: its path is the depth of line 1 in the function's
-in-tree, about `sqrt(pi M / 2)` for a random mapping
-(Flajolet--Odlyzko 1989), and all 4,096 residue rules mod 12 at
-M=3000 top out at 138 commands, the plain trajectory's figure.  Two
-facts bound any rule.  19% of the lines below M have no Collatz
-predecessor (all in `(M/2, M]`), so a path spends at least that many
-jumps and density is at most 0.81.  A command on line `a` forbids a
-jump onto `collatz(a)`, so line `collatz(a) - 1` is another command or
-an unused line; the M=200 search path chains 52 of its 88 commands
-that way and wastes a line on the other 34.  A choice function that
-enters every line at most once is simple by construction, but its
-orbit at every root tried through M=100,000 is under 40 lines: the
-mass sits in cycles.  Splicing those cycles into one path is bounded
-too: a perfect path cover of the lines (every line matched, so every
-cycle can be cut in) holds at most 0.18 M Collatz edges at M=500 and
-0.053 M at M=5000 by exact assignment, and a cover that keeps 0.81 M
-of them leaves a fifth of the lines as separate fragments that
-head-absorption joins 2-79 times before it stops (best 0.276 at M=500,
-under 0.13 above).  The search's density comes from choosing *which*
-fifth of the Collatz edges to give up so the jumps thread the fragments
-into one path, a global condition no assignment sees.  Dense paths are
-found only by search.
 
 ### Execution time
 
