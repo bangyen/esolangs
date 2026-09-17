@@ -471,7 +471,7 @@ class TestTuiFlag:
         # The key loop owns the terminal, so what is pinned here is the
         # handoff: the flag is recognised, stripped from the positionals,
         # and the right three arguments reach the screen.
-        with patch("esolangs.cli.run_tui") as screen:
+        with patch("esolangs.cli_debug.run_tui") as screen:
             call_main(
                 [
                     "debug",
@@ -491,7 +491,7 @@ class TestTuiFlag:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """The same flags the batch debugger takes drive the continue key."""
-        with patch("esolangs.cli.run_tui") as screen:
+        with patch("esolangs.cli_debug.run_tui") as screen:
             call_main(
                 [
                     "debug",
@@ -524,7 +524,7 @@ class TestTuiFlag:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """``--break-at`` is the one breakpoint that has somewhere to be drawn."""
-        with patch("esolangs.cli.run_tui") as screen:
+        with patch("esolangs.cli_debug.run_tui") as screen:
             call_main(
                 [
                     "debug",
@@ -545,7 +545,7 @@ class TestTuiFlag:
     def test_a_cell_breakpoint_has_nothing_to_draw(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        with patch("esolangs.cli.run_tui") as screen:
+        with patch("esolangs.cli_debug.run_tui") as screen:
             call_main(
                 [
                     "debug",
@@ -566,7 +566,7 @@ class TestTuiFlag:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """``--watch-cell`` means the same on both sides, shown as a row."""
-        with patch("esolangs.cli.run_tui") as screen:
+        with patch("esolangs.cli_debug.run_tui") as screen:
             call_main(
                 [
                     "debug",
@@ -585,7 +585,7 @@ class TestTuiFlag:
     def test_no_watch_flag_means_no_row(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        with patch("esolangs.cli.run_tui") as screen:
+        with patch("esolangs.cli_debug.run_tui") as screen:
             call_main(
                 ["debug", "--tui", "--stdin", "", "brainfuck", _program(tmp_path, "+")],
                 capsys,
@@ -595,7 +595,7 @@ class TestTuiFlag:
     def test_no_breakpoint_flags_means_no_predicate(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        with patch("esolangs.cli.run_tui") as screen:
+        with patch("esolangs.cli_debug.run_tui") as screen:
             call_main(
                 ["debug", "--tui", "--stdin", "", "brainfuck", _program(tmp_path, "+")],
                 capsys,
