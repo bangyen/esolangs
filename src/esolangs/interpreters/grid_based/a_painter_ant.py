@@ -24,8 +24,9 @@ White space is ignored, any other instruction is a malformed program
 The glyphs are ink, not colour names: every cell starts black, and ``P`` is
 what paints one white, so white is the mark the ant has *made* and gets the
 dense character.  A painted structure therefore shows up as ink on a blank
-field -- the boolean generator's two leaves read as solid diamonds -- rather
-than as scattered gaps in a field of ``#``.
+field -- the boolean generator's corridor reads as a solid bar with its
+one-answers hanging below it -- rather than as scattered gaps in a field of
+``#``.
 
 Two details of that output are deliberate.
 
@@ -47,8 +48,8 @@ early or a stable one off before its repeat is found.
 The ant is drawn because otherwise it is invisible.  The raster used to
 show painted cells only, which is enough to see *what* the ant drew but not
 *where it stopped* -- and for the boolean generator, where it stopped is
-the answer (its two leaves are painted rings that look identical, and the
-result is which one the ant is resting in).
+the answer (its answer cells all sit in one row under the corridor, and
+the result is which one the ant is resting on).
 """
 
 import sys

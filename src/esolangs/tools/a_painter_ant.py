@@ -6,8 +6,11 @@ parameterized convention described in
 filled with movement per input combination, and the ant's final cell
 colour encodes the table entry.
 
-Wide tables use one white corridor with the answers in the adjacent row.
-Building it, returning to its origin, and routing along it each cost O(T).
+The construction is one white corridor with the answers in the adjacent
+row.  Building it, returning to its origin, and routing along it each cost
+O(T), and the routing is *uniform*: every input of every table is spelled by
+the same one-character pair, ``n`` for a zero and ``N`` for a one, and the
+template carries the input's weight as the walk that follows its run.
 """
 
 from esolangs.tools.helpers import (
@@ -22,8 +25,6 @@ __all__ = ["a_painter_ant"]
 
 # --- A Painter Ant (no-input grid language; parameterized convention) ---
 #
-# Boolean generators for A Painter Ant.
-#
 # A Painter Ant is a single ant on an infinite grid of black or white cells
 # (all black to start).  Lowercase ``n``/``e``/``s``/``w`` move one cell in
 # that direction only if the destination is black; uppercase ``N``/``E``/``S``/
@@ -33,193 +34,39 @@ __all__ = ["a_painter_ant"]
 #
 # The wiki defines no I/O, so the generator follows the parameterized
 # convention (like ``bio``/``back``/``nocomment``/``bfpda``): the template
-# carries one run per input bit, which :func:`_instantiate_apa` fills
-# with the per-bit routing code.  The answer is the
-# **colour of the cell the ant lands on** at the end of a cycle (white is one,
-# black is zero), read by a semantic grid model (the interpreter's own output
-# is the visited-cell bounding box, which carries no coordinates).
+# carries one run per input bit, which :func:`_instantiate_apa` fills.  The
+# answer is the **colour of the cell the ant lands on** at the end of a
+# cycle (white is one, black is zero), read by a semantic grid model (the
+# interpreter's own output is the visited-cell bounding box, which carries
+# no coordinates).
 #
-# The construction paints the decision-tree leaves and routes the ant to the
-# leaf for its inputs.  :func:`_head` shares the routes to white leaves in a
-# depth-first walk and returns to the origin; zero subtrees are omitted.  Only
-# ``P`` is ever used -- the generator never paints a cell black --
-# so the white cells are monotone increasing: cycle 1 establishes them and
-# every later cycle only re-confirms a subset, which makes the programs
-# cycle-stable.  The ``body`` then funnels the ant (from whichever corner it
-# ends cycle 2 at) to a canonical routing point, and the final input's
-# embedding does the last east/west route onto the output leaf.
+# Geometry, rows named by ``y`` (north is ``-1``):
 #
-# The head is built generically: for one and two inputs the leaves sit on
-# the axes (the final input on ``x = +-2``, the first on ``y = +-2`` or
-# ``0``) and the cycle-2 ant dances on the pre-painted stars (see
-# ``the relevant generator tests`` for the ring rule).  For three inputs
-# the leaves sit on one row ``y = -2`` at ``x = +-2 +-4 +-8``, four cells
-# apart so adjacent stars share their axis cells and symmetric across the
-# y-axis.  The row generalises: this one ``_head`` serves every arity, not
-# just the three above.  A depth-first traversal shares each prefix, so a
-# dense head has O(n * 2**n) characters rather than O(4**n).
+#   row -1   never painted: the *lane*, black for ever;
+#   row  0   the corridor, ``2**n`` white cells from ``x = 0`` east;
+#   row +1   the answers, cell ``x`` white iff ``truth_table[x] == "1"``.
 #
-# The template routes the first ``n-1`` inputs by their weight (west/north
-# for a one bit, east/south for a zero) before the body and the final input
-# east/west after it (``WWwWWEEe`` for a one bit and ``NENEESWw`` for a
-# zero, an 8-character complement pair that lands on the opposite-coloured
-# leaf).  Every table of any input count is supported and every instantiated
-# program is a cycle-stable fixed point (the bounding box is identical for
-# any whole number of cycles).
+# The head paints the corridor and the answers on the first pass and walks
+# back to ``x = 0``.  Then each input is one character: ``n`` steps the ant
+# north into the black lane, ``N`` is blocked by it, so a zero bit leaves
+# the corridor and a one bit stays.  The template follows the run with
+# ``E`` repeated ``2**(n-1-i)`` times -- a walk along the white corridor
+# that the lane, being black, refuses entirely -- and ``SN``, which brings
+# a lane ant back down onto the corridor (``S`` onto white, then ``N``
+# blocked by the black lane) and leaves a corridor ant where it was (``S``
+# steps onto a white answer cell, ``N`` steps straight back; on a black
+# answer cell both are blocked).  So after ``n`` inputs the ant stands at
+# ``x = sum(bit_i * 2**(n-1-i))``, the table index, and the closing ``sS``
+# steps it onto the answer cell whichever colour that is.
+#
+# Only ``P`` is ever used -- the generator never paints a cell black -- so
+# the white cells are monotone increasing: pass 1 establishes them and
+# every later pass only re-confirms them, which makes every program a
+# pass-stable fixed point.  The pair is the same for every input at every
+# arity, and the weight lives in the template.
 
-# The final (least-significant) input routes east/west.
-_XF = {1: "WWwWWEEe", 0: "NENEESWw"}
-# The inverse of each move direction, for retracing a path.
-_OPP = {
-    "n": "s",
-    "s": "n",
-    "e": "w",
-    "w": "e",
-    "N": "S",
-    "S": "N",
-    "E": "W",
-    "W": "E",
-}
-
-
-def _bit_is_horizontal(n: int, k: int) -> bool:
-    """Return whether bit ``k`` (of ``n``, most-significant first) moves.
-
-    Moves on the x axis rather than y -- the same index-parity rule the
-    head, the leaf coordinates, and the routing all agree on.
-    """
-    return k % 2 != n % 2
-
-
-def _bit_move(n: int, k: int, bit: int) -> str:
-    """Return the moves that input bit ``k`` contributes.
-
-    ``bits`` are most-significant first, so bit ``k`` carries weight
-    ``2 ** (n - k)`` and moves on the axis chosen by index parity
-    (:func:`_bit_is_horizontal`); a set bit moves west/north, a cleared bit
-    east/south.  The head walks these moves out to each leaf and the
-    routing walks them to read it, so the two always agree.
-    """
-    mag: int = 2 ** (n - k)
-    if _bit_is_horizontal(n, k):
-        return ("w" if bit else "e") * mag
-    return ("n" if bit else "s") * mag
-
-
-def _reverse_moves(moves: str) -> str:
-    """Return ``moves`` reversed with every direction inverted."""
-    return "".join(_OPP[c] for c in reversed(moves))
-
-
-def _leaf_color(truth_table: str, bits: list[int]) -> bool:
-    """Return whether to paint the leaf for the input ``bits``.
-
-    ``bits`` is listed most-significant first, so the table index is the
-    packed binary value ``sum(bit << (n-1-i))``.
-    """
-    index = 0
-    for n, b in enumerate(bits):
-        index += b << (len(bits) - n - 1)
-    return truth_table[index] == "1"
-
-
-def _leaf_positions(n: int) -> list[tuple[int, int, tuple[int, ...]]]:
-    """Return ``(x, y, bits)`` for every leaf in head-visit order.
-
-    The coordinates come from the same weighted rule the head walks and the
-    routing reads: each bit ``k`` contributes ``+-2 ** (n-k)`` on the axis
-    chosen by index parity, with a cleared bit negative.  The head uses only
-    the ``bits``, reaching each leaf by walking those weights, so ``(x, y)``
-    is the mirror position the routing reads.
-    """
-    out: list[tuple[int, int, tuple[int, ...]]] = []
-
-    for i in range(2**n):
-        bits = [(i >> (n - 1 - k)) & 1 for k in range(n)]
-        x = 0
-        y = 0
-
-        for k, b in enumerate(bits):
-            mag = 2 ** (n - k) if b else -(2 ** (n - k))
-            if _bit_is_horizontal(n, k):
-                x += mag
-            else:
-                y += mag
-
-        out.append((x, y, tuple(bits)))
-
-    return out
-
-
-def _head(truth_table: str, bits: list[int]) -> str:
-    """Build the A Painter Ant head for an ``n``-input table.
-
-    The head paints every white leaf in one depth-first walk and returns to
-    the origin.  Sharing prefixes makes each tree level cost O(2**n), hence
-    O(n * 2**n) source rather than walking the whole O(2**n)-long route for
-    every leaf.  Zero subtrees are omitted.  Intermediate cells are never
-    leaves, so previously painted leaves cannot block the walk.
-
-    The ``N`` prefix and ``Ssn`` ending are no-ops on the empty first cycle;
-    from cycle 2 on the ``WS``/``NE`` anchors launch the ant off the leaf
-    onto the painted ring, making the whole program a cycle-stable fixed
-    point.
-    """
-    n = len(bits)
-    out = ["N"]
-    lead = "WS" if n >= 3 and n % 2 == 1 else ""
-    out.append(lead)
-
-    def walk(start: int, stop: int, depth: int) -> None:
-        if "1" not in truth_table[start:stop]:
-            return
-        if depth == n:
-            out.append("P")
-            return
-        middle = (start + stop) // 2
-        for bit, lo, hi in ((0, start, middle), (1, middle, stop)):
-            if "1" not in truth_table[lo:hi]:
-                continue
-            edge = ""
-            if n >= 2:
-                edge = "NE" if _bit_is_horizontal(n, depth) else "WS"
-            edge += _bit_move(n, depth, bit)
-            out.append(edge)
-            walk(lo, hi, depth + 1)
-            out.append(_reverse_moves(edge))
-
-    walk(0, len(truth_table), 0)
-    out.append(_reverse_moves(lead))
-
-    out.append("Ssn")
-    return "".join(out)
-
-
-def _body() -> str:
-    """Generate the routing body.
-
-    The body paints two two-layer stars -- one around the output leaf and one
-    around its y-mirror -- so the final input never has to be re-embedded: it
-    only routes to whichever star is already painted.  Each star is walked as
-    a clockwise spiral of ``P`` paints (the ring cells at distance 1 and the
-    axis cells at distance 2), and the two stars are connected by the black
-    gap between their rings: the centres are four cells apart and each ring
-    reaches one cell toward the other, so the gap is ``4 - 2`` east moves on
-    the row above.  The body starts and ends on the shared cell at
-    ``(0, +-2)`` -- the canonical point the final input's east/west routing
-    leaves from -- and its blocked-uppercase returns are the anchors of the
-    cycle-2 dance.
-    """
-    # West star, entered from the shared cell: east ring cell, then the
-    # clockwise spiral (single ring steps, L-shaped detours out to the axis
-    # cells, and blocked-uppercase returns from the axis cells), ending on
-    # the south-east diagonal.
-    west = ("wP", "nP", "wnP", "EsP", "wP", "swP", "WWeP", "sP", "esP", "SSnP", "eP")
-    # East (mirror) star, entered after the gap on the south-west diagonal
-    # and walked clockwise to the shared west axis cell.
-    east = ("NNseP", "SSnP", "eP", "neP", "EEwP", "nP", "wnP", "NNsP", "wP", "sP", "wP")
-    gap = 4 - 2  # star centres 4 apart; each ring reaches 1 cell inward
-    return "N" + "".join(west) + "e" * gap + "P" + "".join(east) + "S"
+#: The one ``(zero, one)`` pair every input is spelled with.
+_PAIR = ("n", "N")
 
 
 def a_painter_ant(truth_table: str) -> str:
@@ -227,34 +74,21 @@ def a_painter_ant(truth_table: str) -> str:
 
     ``truth_table`` is a binary string of length ``2**n`` indexed by the
     inputs (most significant first); the table length implies ``n``.  The
-    returned template contains one run per input that
-    :func:`_instantiate_apa` fills with the per-bit routing.  The answer is
-    the colour of the cell the ant lands on after a cycle (white is one,
+    returned template contains one one-character run per input that
+    :func:`_instantiate_apa` fills with ``n`` or ``N``; the weight of each
+    input is the ``E`` walk the template spells after its run.  The answer
+    is the colour of the cell the ant lands on after a cycle (white is one,
     black is zero).
 
     Every table is supported for any ``n``, and every instantiated program
-    is a cycle-stable fixed point.  The first ``n-1`` inputs route by their
-    weight (west/north for a one bit, east/south for a zero) before the
-    body; the final (least-significant) input routes east/west onto its
-    leaf after it.
+    is a cycle-stable fixed point.
     """
     n = _validate_truth_table(truth_table)
-
-    if len(truth_table) > 16:
-        return _a_painter_ant_linear(truth_table, n)
-
-    # The head paints every leaf, the body paints the two stars, the first
-    # n-1 inputs route by weight before the body, and the final
-    # (least-significant) input routes east/west onto its leaf after it.
-    head = _head(truth_table, [0] * n)
-    runs = [TEMPLATE_CHAR * len(zero) for zero, _one in _route_setters(n, linear=False)]
-
-    return head + "".join(runs[:-1]) + _body() + runs[-1]
-
-
-def _a_painter_ant_linear(truth_table: str, n: int) -> str:
-    """Paint a linear lookup strip and route to its indexed side cell."""
     size = len(truth_table)
+    # Pass 1: ``N`` and the ``W`` walk are blocked by black and paint the
+    # origin.  Later passes: ``N`` lifts the ant off its answer cell onto
+    # the corridor and ``W`` walks it back to the origin, stopping there
+    # because the cell beyond is black.
     out = ["N", "W" * size, "P"]
     if truth_table[0] == "1":
         out.append("sPN")
@@ -270,8 +104,11 @@ def _a_painter_ant_linear(truth_table: str, n: int) -> str:
             # that answer, so both paints are harmless and ``N`` is blocked.
             out.append("sPN")
     out.append("W" * (size - 1))
-    setters = _route_setters(n, linear=True)
-    out.extend(TEMPLATE_CHAR * len(zero) for zero, _one in setters)
+    for i in range(n):
+        out.append(TEMPLATE_CHAR)
+        # The weight: a walk the corridor allows and the lane refuses, then
+        # the return that puts a lane ant back on the corridor.
+        out.append("E" * (1 << (n - 1 - i)) + "SN")
     # White answer: ``s`` is blocked and ``S`` enters it.  Black answer:
     # ``s`` enters it and ``S`` is blocked by the black cell beyond.
     out.append("sS")
@@ -281,29 +118,17 @@ def _a_painter_ant_linear(truth_table: str, n: int) -> str:
 def _instantiate_apa(template: str, bits: list[int]) -> str:
     """Fill an A Painter Ant template's input runs.
 
-    Every input except the final one routes piecewise by its weight
-    (``2 ** (n - i)`` cells along the index-parity axis, west/north for a
-    one bit, east/south for a zero -- :func:`_bit_move`), and the final
-    (least-significant) input routes east/west with the ``WWwWWEEe`` /
-    ``NENEESWw`` landing dance onto its leaf.  ``bits`` must match the
-    template built by :func:`a_painter_ant`.
+    Every input is one character, ``n`` for a zero and ``N`` for a one;
+    ``bits`` must match the template built by :func:`a_painter_ant`.
     """
     return fill_runs(template, TEMPLATE_CHAR, apa_setters(template, len(bits)), bits)
 
 
 def apa_setters(template: str, n: int) -> Setters:
-    """Return the ``(zero, one)`` route text for every input of ``template``."""
-    return _route_setters(n, linear=template.endswith("sS"))
+    """Return the ``(zero, one)`` route text for every input of ``template``.
 
-
-def _route_setters(n: int, *, linear: bool) -> Setters:
-    """Return the setters of the tree route, or of the linear one."""
-
-    def spell(i: int, bit: int) -> str:
-        if linear:  # one step per weight
-            return ("E" if bit else "e") * (1 << (n - 1 - i))
-        if i == n - 1:
-            return _XF[bit]
-        return _bit_move(n, i, bit)
-
-    return tuple((spell(i, 0), spell(i, 1)) for i in range(n))
+    The same pair for every input: the template, not the embed, carries
+    the weight, so ``template`` has nothing to say about the spelling.
+    """
+    del template
+    return tuple(_PAIR for _ in range(n))

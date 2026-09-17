@@ -190,19 +190,16 @@ The candidate list is empty.
   | Language | No spaces | Uniform |
   | --- | --- | --- |
   | %^2^-1 | Holds | Open |
-  | A Painter Ant | Holds | Open |
   | Minsky Swap | Holds | Open |
   | Nopstacle | Language | Open |
 
-  The four uniform cells open for one reason, the input's *weight*: a
-  linear route spells input `i` once at `2**(n-1-i)` units -- A Painter
-  Ant `E` per unit, Minsky Swap `+` or `*` per unit, Nopstacle `2**i`
-  cells across level `i`'s row -- and %^2^-1 solves its setters per table, so different text
+  The three uniform cells open for one reason, the input's *weight*: a
+  linear route spells input `i` once at `2**(n-1-i)` units -- Minsky
+  Swap `+` or `*` per unit, Nopstacle `2**i` cells across level `i`'s
+  row -- and %^2^-1 solves its setters per table, so different text
   per input is its design.  Closing one means the template carries the
-  weight and every input is one unit.  A Painter Ant *tiles*: the embed
-  at weight k is the unit embed repeated k times.  The other three do
-  not: Nopstacle's cells have template between them, and a uniform
-  %^2^-1 is a different generator.  Nopstacle's alphabet is the blank and
+  weight and every input is one unit.  Nopstacle's cells have template
+  between them, and a uniform %^2^-1 is a different generator.  Nopstacle's alphabet is the blank and
   `#`, so a zero bit *is* a blank: its input run is a bit cell at each of
   level `i`'s `2**i` node columns with blanks between, the same width
   either way, and there is no command to spell it with.
