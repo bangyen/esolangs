@@ -90,7 +90,7 @@ List the supported languages, one per line.
 options:
   --details   add a marker column per language:
                 gen    has a boolean generator
-                tmpl   that generator returns a {Xi} template rather than a
+                tmpl   that generator returns a template rather than a
                        runnable program -- see `esolangs generate --help`
                 ex     a committed program in examples/
   --json      print a JSON array instead: names alone, or with --details
@@ -107,10 +107,11 @@ significant first, so its length sets the input count: 0110 is two-input
 XOR, 10010110 is three-input.  The program reads one input per line and
 prints the result.
 
-Seventeen languages instead return a *template*: their generators embed the
-inputs in the code rather than reading them, leaving a {{Xi}} slot per input.
-Running one unfilled is refused.  `esolangs list --details` marks them
-`tmpl`; pass --bits to get a runnable program instead of the template.
+Eighteen languages instead return a *template*: their generators embed the
+inputs in the code rather than reading them, leaving a run of `$` per input
+as long as the code that will replace it.  Running one unfilled is refused.
+`esolangs list --details` marks them `tmpl`; pass --bits to get a runnable
+program instead of the template.
 
 options:
   --bits BITS  fill a template's input slots with these bits, one character
@@ -126,10 +127,9 @@ options:
                gives 18, asked for 200 gives 56, because it folds runs
                rather than breaking lines), and `none` ignores it, because
                the language's newlines are semantic or it rejects them.  A
-               template is wrapped too -- {{Xi}} is one token, so no width
-               breaks a slot -- and with --bits the width is applied again
-               to the filled program, which the setter code makes wider
-               than the slot it replaced.  A bare --width takes the
+               template is never wrapped (it is the shape of its programs;
+               a layout language lays it out); with --bits the width is
+               applied to the filled program.  A bare --width takes the
                default, so the next word is read as the language, not as a
                width.
 

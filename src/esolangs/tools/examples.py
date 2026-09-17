@@ -74,7 +74,7 @@ from esolangs.registry import Generator, canonical_id
 from esolangs.tools.a_painter_ant import apa_setters
 from esolangs.tools.arrowqueue import arrowqueue_setters
 from esolangs.tools.crement import crement_setters
-from esolangs.tools.helpers import Setters, instantiate, slot_count
+from esolangs.tools.helpers import TEMPLATE_CHAR, Setters, instantiate, slot_count
 from esolangs.tools.nopstacle import nopstacle_setters
 from esolangs.tools.wrap import DEFAULT_WIDTH, takes_width, wrap_program
 
@@ -180,7 +180,13 @@ class BooleanExample:
     fill: Callable[[str, list[int]], str] | None = None
     #: The ``(zero, one)`` text per input, read off a template; ``fill`` is
     #: :func:`instantiate` with these and nothing else.
-    setters: Callable[[str], Setters] | None = None
+    setters: Callable[[str, int], Setters] | None = None
+    #: The character the public template spells its inputs with, one run
+    #: per input; outside the language's alphabet.
+    char: str = TEMPLATE_CHAR
+    #: Strips a header the template carries for its setters' sake (%^2^-1
+    #: alone) -- the part of the template that is not program.
+    body: Callable[[str], str] | None = None
     split: bool = False
     kwargs: tuple[tuple[str, int], ...] = ()
     note: str = ""
@@ -255,8 +261,9 @@ def _reader(
 def _embedded(
     generator: Callable[[str], str],
     interpreter: str,
-    setters: Callable[[str], Setters],
+    setters: Callable[[str, int], Setters],
     *,
+    char: str = TEMPLATE_CHAR,
     body: Callable[[str], str] | None = None,
     table: str = AND2,
     bits: tuple[int, ...] = (0, 1),
@@ -271,7 +278,7 @@ def _embedded(
 ) -> BooleanExample:
     """Build a parameterized example, whose bits are embedded in the text.
 
-    ``setters(template)`` names the ``(zero, one)`` text for every input in
+    ``setters(template, n)`` names the ``(zero, one)`` text for every input in
     order; the example's ``fill`` is then :func:`instantiate` with those
     pairs and nothing else.  ``body`` strips a header the template carries
     for the setters' sake (%^2^-1 alone) before the substitution.
@@ -288,6 +295,8 @@ def _embedded(
         bits=bits,
         fill=_fill_from(setters, body),
         setters=setters,
+        char=char,
+        body=body,
         split=split,
         kwargs=kwargs,
         note=note,
@@ -295,13 +304,13 @@ def _embedded(
 
 
 def _fill_from(
-    setters: Callable[[str], Setters], body: Callable[[str], str] | None = None
+    setters: Callable[[str, int], Setters], body: Callable[[str], str] | None = None
 ) -> Callable[[str, list[int]], str]:
     """Return the substitution a ``setters`` function defines."""
 
     def fill(template: str, bits: list[int]) -> str:
         source = template if body is None else body(template)
-        return instantiate(source, bits, setters(template))
+        return instantiate(source, bits, setters(template, slot_count(template)))
 
     return fill
 
@@ -312,7 +321,7 @@ def _fill_from(
 # example's ``fill`` is :func:`instantiate` with those pairs.
 
 
-def _setters_bio(template: str) -> Setters:
+def _setters_bio(_template: str, n: int) -> Setters:
     """Pack each input into ``x`` by its binary weight, in a constant width.
 
     A one adds the input's weight to ``x``; a zero writes the same number of
@@ -329,14 +338,13 @@ def _setters_bio(template: str) -> Setters:
     bf-pda separators were.  ``y`` is not available for the padding: it
     carries the running result.
     """
-    n = slot_count(template)
     return tuple(
         ("0oz;" * 2 ** (n - 1 - i), "0ox;" * 2 ** (n - 1 - i)) for i in range(n)
     )
 
 
-def _setters_nocomment(template: str) -> Setters:
-    return (("c", "i"),) * slot_count(template)
+def _setters_nocomment(_template: str, n: int) -> Setters:
+    return (("c", "i"),) * n
 
 
 # The executed no-op pairs the linear Bitdeque setter pads with, by the width
@@ -380,8 +388,7 @@ def _bitdeque_linear_setter(k: int, bit: int) -> str:
     return ("EJECT " if bit else "POP ") * k + pad
 
 
-def _setters_bitdeque(template: str) -> Setters:
-    n = slot_count(template)
+def _setters_bitdeque(template: str, n: int) -> Setters:
     if not template.startswith("GOTO 3"):
         return tuple(
             (
@@ -400,7 +407,7 @@ def _setters_bitdeque(template: str) -> Setters:
     return tuple((spell(i, 0), spell(i, 1)) for i in range(n))
 
 
-def _setters_bfpda(template: str) -> Setters:
+def _setters_bfpda(_template: str, n: int) -> Setters:
     """Push the bit, in a constant width.
 
     ``<`` pushes a zero and ``@`` flips the top, so a one is a flip more
@@ -417,10 +424,10 @@ def _setters_bfpda(template: str) -> Setters:
     outside ``@.<>[]`` is a comment here, so that is the padding the
     separators removed from this generator already were.
     """
-    return (("<[@]", "<@@@"),) * slot_count(template)
+    return (("<[@]", "<@@@"),) * n
 
 
-def _setters_back(template: str) -> Setters:
+def _setters_back(_template: str, n: int) -> Setters:
     """Finish each input cell: ``+`` leaves the one, ``-`` flips it to zero.
 
     The beam reads one cell per row as it runs up column 0, so setting a
@@ -446,10 +453,10 @@ def _setters_back(template: str) -> Setters:
     over nine.  Contrast :func:`_setters_cod`, whose blank is a grid cell that
     cannot be stripped and so leaks nothing.
     """
-    return (("-", "+"),) * slot_count(template)
+    return (("-", "+"),) * n
 
 
-def _setters_minsky_swap(template: str) -> Setters:
+def _setters_minsky_swap(_template: str, n: int) -> Setters:
     """Set each input register with a run as long as the bit's own weight.
 
     Minsky Swap has no input instruction, so a one is embedded as a run of
@@ -477,7 +484,6 @@ def _setters_minsky_swap(template: str) -> Setters:
     the ``reg[1]`` copy and strands the pointer.  A zero LSB is ``****``,
     the same four commands doing nothing.
     """
-    n = slot_count(template)
 
     def set_bit(i: int, bit: int) -> str:
         if i == n - 1:  # LSB: length-4 block, no "~"
@@ -499,16 +505,16 @@ def _setters_minsky_swap(template: str) -> Setters:
     return tuple((set_bit(i, 0), set_bit(i, 1)) for i in range(n))
 
 
-def _setters_ram0(template: str) -> Setters:
+def _setters_ram0(_template: str, n: int) -> Setters:
     """Set each input cell with ``Z A`` for a one and ``Z Z`` for a zero.
 
     ``Z`` resets absolutely rather than relative to the incoming register,
     so the same two-command setter works at every position.
     """
-    return (("Z Z", "Z A"),) * slot_count(template)
+    return (("Z Z", "Z A"),) * n
 
 
-def _setters_home_row(template: str) -> Setters:
+def _setters_home_row(_template: str, n: int) -> Setters:
     """Set the bit cell, in a constant width.
 
     The cell is zero when a ``{Xi}`` is reached, so ``a`` raises it to one
@@ -527,10 +533,10 @@ def _setters_home_row(template: str) -> Setters:
     two blanks) works, since the interpreter ignores whitespace, but it
     pads with characters the language does not read.
     """
-    return (("as", "aj"),) * slot_count(template)
+    return (("as", "aj"),) * n
 
 
-def _setters_cod(template: str) -> Setters:
+def _setters_cod(_template: str, n: int) -> Setters:
     """Set the cod's value to the bit at that input's ``+`` fork.
 
     ``)`` increments, so a one is ``)`` and a zero is a space -- which is
@@ -542,10 +548,10 @@ def _setters_cod(template: str) -> Setters:
     command spelling (``)(`` against ``)<``) needs the fork box one column
     wider and costs 350 -> 359 at n=2 and 1495 -> 1529 at n=3.
     """
-    return ((" ", ")"),) * slot_count(template)
+    return ((" ", ")"),) * n
 
 
-def _setters_eval(template: str) -> Setters:
+def _setters_eval(_template: str, n: int) -> Setters:
     """Stage the bit on the tree stack, then move it to the input stack.
 
     The backtick pushes ``1 - ptr``, so on stack 0 it pushes a one where
@@ -562,10 +568,10 @@ def _setters_eval(template: str) -> Setters:
     pad is not available: every ``{Xi}`` must push exactly one value, and a
     spare ``0`` leaves a residue that a later node reads as a bit.
     """
-    return (("0=", "`="),) * slot_count(template)
+    return (("0=", "`="),) * n
 
 
-def _setters_wii2d(template: str) -> Setters:
+def _setters_wii2d(_template: str, n: int) -> Setters:
     """Set each junction: ``v`` takes the 1-branch, ``>`` continues east.
 
     A junction is a single cell, so the embed is one character with no
@@ -577,10 +583,10 @@ def _setters_wii2d(template: str) -> Setters:
     The 1-branch's ops do start one column past the junction, but that is
     on the detour row below, so row 0 never needed the room.
     """
-    return ((">", "v"),) * slot_count(template)
+    return ((">", "v"),) * n
 
 
-def _setters_minifuck(template: str) -> Setters:
+def _setters_minifuck(_template: str, n: int) -> Setters:
     """Write each bit at ``ptr+1``: ``[<`` for a one, ``xx`` for a zero.
 
     ``[`` steps right and flips the cell it lands on, and ``<`` steps back,
@@ -594,10 +600,10 @@ def _setters_minifuck(template: str) -> Setters:
     executes rather than one it merely ignores, so a cleanup pass that
     stripped dead characters could not reintroduce the leak.
     """
-    return (("xx", "[<"),) * slot_count(template)
+    return (("xx", "[<"),) * n
 
 
-def _setters_one_two_three(template: str) -> Setters:
+def _setters_one_two_three(_template: str, n: int) -> Setters:
     """Embed each bit as the generator's own ``ONE``/``ZERO`` command.
 
     123 names the two spellings itself rather than leaving them to a
@@ -608,10 +614,10 @@ def _setters_one_two_three(template: str) -> Setters:
     """
     from esolangs.tools.one_two_three import ONE, ZERO
 
-    return ((ZERO, ONE),) * slot_count(template)
+    return ((ZERO, ONE),) * n
 
 
-def _setters_pct_squared_minus_one(template: str) -> Setters:
+def _setters_pct_squared_minus_one(template: str, n: int) -> Setters:
     """Each bit's setter, named by the template's own header.
 
     %^2^-1 solves its setters per truth table rather than fixing them by the
@@ -622,7 +628,7 @@ def _setters_pct_squared_minus_one(template: str) -> Setters:
     """
     from esolangs.tools.pct_squared_minus_one import setters
 
-    return setters(template)
+    return setters(template, n)
 
 
 def _body_pct_squared_minus_one(template: str) -> str:
@@ -631,19 +637,19 @@ def _body_pct_squared_minus_one(template: str) -> str:
     return body(template)
 
 
-def _setters_arrowqueue(template: str) -> Setters:
+def _setters_arrowqueue(template: str, n: int) -> Setters:
     # Each slot is a row of its own, so the multi-row block substitutes in place
-    return arrowqueue_setters(template)
+    return arrowqueue_setters(template, n)
 
 
-def _setters_nopstacle(template: str) -> Setters:
+def _setters_nopstacle(template: str, n: int) -> Setters:
     """Return each level's run of bit cells."""
-    return nopstacle_setters(template)
+    return nopstacle_setters(template, n)
 
 
-def _setters_crement(template: str) -> Setters:
+def _setters_crement(template: str, n: int) -> Setters:
     """Return the jump line whose data spells each bit."""
-    return crement_setters(template)
+    return crement_setters(template, n)
 
 
 # Example file stem -> how that example is built and run.  Stems match the

@@ -235,43 +235,44 @@ The candidate list is empty.
   prose about retired searches may remain.
 
 - **Parameterized generator conventions.**  The eighteen generators that
-  embed their inputs in the program text (`BOOLEAN_EXAMPLES` entries with a
-  `fill`) hold to five conventions, all of them about the *embed* -- the
-  text a fill substitutes for `{Xi}` -- not the program around it.
-  *Single embed*: each `{Xi}` appears exactly once and no `{Ci}` at all.
-  *Constant width*: every instantiation of one template has the same
-  length, so `len(program)` reveals nothing.  *Slot order*:
-  `{X0}`..`{Xn-1}` are emitted in name order.  *No spaces*: a bit is
-  spelled in commands, never as a blank or padded with blanks; a single
-  blank between two tokens of the embed is a delimiter and is fine
-  (Bitdeque's `INVERT PUSH`, RAM0's `Z A`).  *Uniform*: the pair of
-  texts a fill writes for a zero and a one is the same pair for every
-  input, so a template is one placeholder character plus one pair of
-  equal-width strings, and the three conventions before it become
-  structural -- the k-th run of the character is input k, and there is
-  one width to check.  The first three are enforced
-  (`tests/tools/test_boolean_parameterized.py`), the last two were not,
-  and `tests/proofs/test_conventions.py` reads this table and measures
-  every cell: the embed is the span, row by row, on which the two fills
-  of one input differ; a blank left after deleting each single blank
-  between two non-blank characters is a spaces violation, and two inputs
-  whose spans differ are a uniformity one.  Measured Sep 2026 on dense and
-  parity tables at n=2..6, every instantiation: single embed, constant
-  width and slot order hold for all eighteen, no spaces for seventeen,
-  uniform for eleven.  `Open` means a spelling is not ruled out;
-  `Language` means the alphabet leaves none.  A row is present while any
-  cell is open and leaves when all five close.
+  embed their inputs in the program text (`BOOLEAN_EXAMPLES` entries with
+  `setters`) hold to five conventions, all of them about the *embed* --
+  the text that stands for one input -- not the program around it.  A
+  template is the program with each input spelled as a run of one
+  character outside the language (`$`), one run per input in order and
+  exactly as long as the code that replaces it, plus one `(zero, one)`
+  pair per input; three of the five are therefore the template's own
+  shape.  *Single embed*: each input is one run (the constructor refuses
+  a run of the wrong length, a run left over, or the character in the
+  program proper).  *Constant width*: every instantiation of one template
+  has the template's length, so `len(program)` reveals nothing (the
+  constructor refuses a pair of unequal width).  *Slot order*: the k-th
+  run is input k, by definition.  *No spaces*: a bit is spelled in
+  commands, never as a blank or padded with blanks; a single blank
+  between two tokens of the embed is a delimiter and is fine (Bitdeque's
+  `INVERT PUSH`, RAM0's `Z A`).  *Uniform*: the pair is the same pair
+  for every input, so the template would be one character and one pair.
+  The last two are measured, not structural: `tests/proofs/test_conventions.py`
+  reads this table and measures every cell off the programs -- the embed
+  is the span, row by row, on which the two fills of one input differ; a
+  blank left after deleting each single blank between two non-blank
+  characters is a spaces violation, and two inputs whose spans differ are
+  a uniformity one.  Measured Sep 2026 on dense and parity tables at
+  n=2..6, every instantiation: no spaces holds for seventeen, uniform for
+  eleven.  `Open` means a spelling is not ruled out; `Language` means the
+  alphabet leaves none.  A row is present while any cell is open and
+  leaves when both close.
 
-  | Language | Single embed | Constant width | Slot order | No spaces | Uniform |
-  | --- | --- | --- | --- | --- | --- |
-  | %^2^-1 | Holds | Holds | Holds | Holds | Open |
-  | A Painter Ant | Holds | Holds | Holds | Holds | Open |
-  | ArrowQueue | Holds | Holds | Holds | Holds | Open |
-  | BIO | Holds | Holds | Holds | Holds | Open |
-  | Bitdeque | Holds | Holds | Holds | Holds | Open |
-  | COD | Holds | Holds | Holds | Open | Holds |
-  | Minsky Swap | Holds | Holds | Holds | Holds | Open |
-  | Nopstacle | Holds | Holds | Holds | Language | Open |
+  | Language | No spaces | Uniform |
+  | --- | --- | --- |
+  | %^2^-1 | Holds | Open |
+  | A Painter Ant | Holds | Open |
+  | ArrowQueue | Holds | Open |
+  | BIO | Holds | Open |
+  | Bitdeque | Holds | Open |
+  | COD | Open | Holds |
+  | Minsky Swap | Holds | Open |
+  | Nopstacle | Language | Open |
 
   The seven uniform cells open for one reason, the input's *weight*: a
   linear route spells input `i` once at `2**(n-1-i)` units -- A Painter
@@ -317,14 +318,15 @@ The candidate list is empty.
   spell it with.
 
   The fill itself is standard for all eighteen: each example names a
-  `setters(template)` returning one `(zero, one)` pair per input, and its
-  `fill` is `helpers.instantiate` with those pairs and nothing else (the
-  pair is per input because of the uniform column above).  `generate`
-  hands the pairs to the template object, whose constructor refuses a
-  pair of unequal width or slots that are not `{X0}`..`{Xn-1}` once each
-  in order -- so single embed, constant width and slot order hold where
-  the template is made, and the audit above measures them a second time
-  off the programs.  ArrowQueue's slots are rows of their own so its blocks substitute
+  `setters(template, n)` returning one `(zero, one)` pair per input, the
+  generator's own output marks each input `{Xi}` and `generate` renders
+  each mark as its run, and filling walks the runs by the pairs' widths
+  and nothing else.  A template is never wrapped -- it is the shape of
+  its programs, and a width applies when it is filled -- and a template
+  read back from a file has its pairs recovered from the language's
+  setters, which the runs' total length determines.  %^2^-1 alone
+  carries a header naming its solved setters, which filling strips.
+  ArrowQueue's slots are rows of their own so its blocks substitute
   in place (byte-identical to the header rebuild it replaced, n=1..6), A
   Painter Ant's linear route is a setter, %^2^-1's setter is read
   off the template's own header, COD's restored fork generator is a

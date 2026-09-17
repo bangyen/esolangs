@@ -142,7 +142,7 @@ class TestEveryAuditedCapIsCatchable:
         n = 12
         table = "".join(str(bin(r).count("1") % 2) for r in range(2**n))
         template = esolangs.generate("NoComment", table)
-        assert "{X11}" in template
+        assert template.inputs == 12
 
     @pytest.mark.slow
     @pytest.mark.weekly

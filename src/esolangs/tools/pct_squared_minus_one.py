@@ -972,7 +972,7 @@ def body(template: str) -> str:
     return template.partition(_HEADER_END)[2]
 
 
-def setters(template: str) -> Setters:
+def setters(template: str, _n: int = 0) -> Setters:
     """Return the ``(zero, one)`` branch per input, read off the header."""
     header = template.partition(_HEADER_END)[0].replace("\n", "")
     branches = {

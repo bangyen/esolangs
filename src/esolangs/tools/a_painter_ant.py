@@ -288,12 +288,11 @@ def _instantiate_apa(template: str, bits: list[int]) -> str:
     ``NENEESWw`` landing dance onto its leaf.  ``bits`` must match the
     template built by :func:`a_painter_ant`.
     """
-    return instantiate(template, bits, apa_setters(template))
+    return instantiate(template, bits, apa_setters(template, slot_count(template)))
 
 
-def apa_setters(template: str) -> Setters:
+def apa_setters(template: str, n: int) -> Setters:
     """Return the ``(zero, one)`` route text for every input of ``template``."""
-    n = slot_count(template)
 
     def spell(i: int, bit: int) -> str:
         if template.endswith("sS"):  # the linear route: one step per weight
