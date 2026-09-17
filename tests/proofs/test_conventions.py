@@ -2,8 +2,8 @@
 
 The cheap half parses the table and checks its names and vocabulary.  The
 measured half builds every embedding generator, fills every row, and reads
-the four conventions off the programs: an absent generator must hold all
-four, a ``Holds`` cell must hold, and an open cell must fail -- so a fix
+the five conventions off the programs: an absent generator must hold all
+five, a ``Holds`` cell must hold, and an open cell must fail -- so a fix
 that lands without its row leaving is caught as well as a regression.
 
 Every convention is about the *embed*, the text a fill substitutes for one
@@ -12,7 +12,8 @@ fills are not plain substitutions: for one input, the two fills that differ
 only in that bit are compared and the span on which they differ is the
 embed pair.  A blank in it is a delimiter when it stands alone between two
 non-blank characters (Bitdeque's ``INVERT PUSH``) and content otherwise --
-a bit spelled as a blank cell, or a blank pad.
+a bit spelled as a blank cell, or a blank pad.  The embed is *uniform* when
+that pair is the same pair for every input of every table.
 """
 
 from __future__ import annotations
@@ -90,6 +91,7 @@ def _measure(example: BooleanExample) -> dict[str, bool]:
     """Whether each convention holds at every arity, both shapes, every fill."""
     assert example.fill is not None
     single = width = order = spaces = True
+    pairs: set[tuple[str, str]] = set()
     for n in _ARITIES:
         for table in _tables(n):
             template = example.generator(table, **dict(example.kwargs))
@@ -108,12 +110,15 @@ def _measure(example: BooleanExample) -> dict[str, bool]:
                     if bits[i]:
                         continue
                     other = programs[(*bits[:i], 1, *bits[i + 1 :])]
-                    spaces &= not any(map(_content_blank, _span(program, other)))
+                    pair = _span(program, other)
+                    pairs.add(pair)
+                    spaces &= not any(map(_content_blank, pair))
     return {
         "Single embed": single,
         "Constant width": width,
         "Slot order": order,
         "No spaces": spaces,
+        "Uniform": len(pairs) == 1,
     }
 
 
@@ -177,7 +182,7 @@ def test_bitdeque_linear_route_is_one_width(audit: Conventions) -> None:
     rows; the block pads in :func:`esolangs.tools.examples._fill_bitdeque`
     closed that, and this pins the arity where the route begins.
     """
-    assert "Bitdeque" not in audit.by_name()
+    assert audit.by_name()["Bitdeque"].constant_width == HOLDS
     example = _embedding()["Bitdeque"]
     assert example.fill is not None
     for n in (4, 5):
