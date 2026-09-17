@@ -1,46 +1,17 @@
 """Interpreter for Suffolk.
 
-> moves right, < sums the current cell into the accumulator and rewinds the
-pointer, ! writes the current cell a value computed from the accumulator and
-clamped at zero, , reads a byte of input, and . prints the accumulator minus
-one.  Execution loops over the code until the run decides itself; see
-:func:`run`.
-
-The wiki describes ``,`` as reading one character, with EOF setting the
-accumulator to zero; this interpreter reads a whole line (using only its
-first byte) and raises :class:`EOFError` on exhausted input instead.  An
-empty program is malformed and rejected with :class:`ValueError`.
-
-The wiki's rerun is infinite, so there is no halt to run to.  :func:`run`
-used to count whole passes and stop after one, which answered the question
-without deciding it: one pass was chosen because the programs were believed
-to be finished by then, not shown to be.  It now stops on a *proof* instead
--- a repeated state, or the ``EOFError`` from reading past the end of the
-input, whichever the program reaches.  Both are properties of the run, so
-nothing is left to choose.  A program that does neither -- cells growing
-without bound, and no input to run out of -- runs forever, which is what
-``esolangs.run``'s ``timeout`` is for; the interpreter carries no cap of
-its own.
-
-The interpreter runs on a :class:`_Machine` (the code, tape, and
-accumulator), so it is step-capable: ``step()`` executes one command.  The
-language never halts, so ``halted`` is always ``False`` and the budget lives
-in :func:`run`'s driver; a repeated :meth:`_Machine.snapshot` is what proves
-a program loops, via ``esolangs.vm.run_until_halt_or_cycle``.
-
-The execution model is a pure function over an immutable ``_State``:
-:func:`_advance` maps a state and the code to the next state, and never
-mutates what it is given.  It takes no ``io`` argument at all, so it is
-total and side-effect free by construction rather than by inspection.  The
-tape is a tuple, so a state is a value that can be stored, compared, and
-hashed as it stands -- which matters more here than anywhere else, because
-``run`` puts these values straight into a set to prove a repeat.
-
-:class:`_Machine` is the mutable shell the interpreter protocol requires.
-It holds one ``_State`` and rebinds it each step, so the mutation lives in
-exactly one assignment and every rule about what Suffolk *does* stays in
-the pure layer.  ``,``'s read and ``.``'s print are done by ``step`` before
-it calls the pure transition.
+``>`` moves right, ``<`` sums the cell into the accumulator and rewinds,
+``!`` writes the cell a value from the accumulator clamped at zero, ``,``
+reads a byte, ``.`` prints the accumulator minus one; the code reruns
+forever.  The wiki has ``,`` read one character with EOF zeroing the
+accumulator; this reads a line (first byte) and raises :class:`EOFError`
+on exhausted input.  An empty program raises :class:`ValueError`.
+:func:`run` stops on a proof -- a repeated state or that ``EOFError`` --
+never a pass count; growth with no input to run out of is left to
+``esolangs.run``'s ``timeout``.  ``halted`` is ``False`` until a read
+exhausts input; a repeated :meth:`_Machine.snapshot` proves a loop.
+The transition :func:`_advance` is pure over an immutable ``_State``
+(a tuple tape, so ``run`` can put states straight into a set).
 """
 
 from __future__ import annotations
@@ -58,17 +29,9 @@ type _State = tuple[int, int, int, tuple[int, ...]]
 def _advance(state: _State, code: str, byte: int | None = None) -> _State:
     """Return the state after executing one command.
 
-    Pure: it reads ``state`` and returns a new one.  It takes no ``io``
-    argument, so ``,``'s read and ``.``'s print are the caller's business --
-    the print changes no state at all, and the read's value arrives as
-    ``byte`` already summed onto the accumulator or zeroed.
-
-    ``<`` sums the current cell into the accumulator and rewinds the pointer
-    to zero; ``!`` writes a cell computed from the accumulator, clamped at
-    zero, and then clears both the pointer and the accumulator.
-
-    The cursor wraps to the start at the end of the code, which is the
-    wiki's infinite rerun -- there is no end to reach.
+    ``,``'s read and ``.``'s print are the caller's: the read arrives as
+    ``byte`` already summed or zeroed.  ``<`` sums and rewinds; ``!`` writes
+    the clamped value and clears pointer and accumulator; the cursor wraps.
     """
     ind, ptr, acc, tape = state
     sym = code[ind]
@@ -98,7 +61,7 @@ class _Machine:
     def __init__(self, code: str, io: IO) -> None:
         """Store ``code`` and start the tape and accumulator at zero.
 
-        ``code`` must be non-empty; an empty program is malformed.
+        ``code`` must be non-empty.
         """
         if not code:
             raise ValueError("Suffolk program cannot be empty")
@@ -130,26 +93,12 @@ class _Machine:
     def halted(self) -> bool:
         """True once a read has run past the end of the input.
 
-        The wiki's rerun never halts on its own, so for a long while this
-        was a constant ``False`` and the exhausted read was left to escape
-        as :class:`EOFError` -- :func:`run` caught it as the run's ordinary
-        ending, and the argument was that a step-level caller should see the
-        exception unchanged.
-
-        That argument was wrong, and the way it was wrong is the point:
-        ``run`` and the step path then disagreed about the same program.
-        ``run("Suffolk", p, s)`` returned ``'1'``, and
-        ``make_debugger("Suffolk", p, s).run(max_steps=100000)`` raised
-        :class:`~esolangs.exceptions.InputExhaustedError` -- from a call
-        documented to *return* its stop reason rather than raise.  One of
-        the two had to be the language's semantics, and it is ``run``'s:
-        the output is already complete when the read fires, which is
-        exactly what that docstring argues below.
-
-        So exhaustion is a halt, and both paths now end the same way.
-        ``self_halts`` stays ``False`` because it still is: a program that
-        never reads has no input to run out of, and ends only by repeating
-        a state, which is a proof no stepping loop performs.
+        For a while this was constant ``False`` with the exhausted read escaping
+        as :class:`EOFError`, so ``run("Suffolk", p, s)`` returned ``'1'`` while
+        ``make_debugger(...).run()`` raised on the same program.  The output is
+        complete when the read fires, so exhaustion is a halt on both paths.
+        ``self_halts`` stays ``False``: a program that never reads ends only by
+        repeating a state.
         """
         return self._exhausted
 
@@ -173,9 +122,7 @@ class _Machine:
     def clamp_slack(self) -> int | None:
         """``!``'s clamped quantity before it is clamped, else ``None``.
 
-        ``!`` writes ``max(0, tape[ptr] + 1 - acc)``, so that sum is the
-        one place a value steers the machine rather than only feeding
-        arithmetic.  Every other command clamps nothing.
+        ``max(0, tape[ptr] + 1 - acc)``: the one place a value steers the machine.
         """
         ind, ptr, acc, tape = self.state
         if self.code[ind] != "!":
@@ -206,19 +153,9 @@ class _Machine:
     def snapshot(self) -> tuple[object, ...]:
         """Return the complete internal state, hashable for cycle detection.
 
-        The pass count is deliberately absent: it never steers ``step()``, so
-        two states that differ only in how many passes preceded them run
-        identically from here on.  Counting it would make every state unique
-        by construction and reduce the cycle detector to a step budget --
-        Suffolk's programs are periodic, and this is what lets that be proved.
-
-        The input cursor, by contrast, is *not* optional, and leaving it out
-        was a soundness bug.  ``,`` reads a byte, so two states with the same
-        tape but different input remaining do not run identically -- one has
-        a byte left to consume and the other raises.  Without the cursor the
-        detector called two boolean-generator programs periodic when they in
-        fact read once more and hit EOF, which is a hang reported where none
-        exists.
+        No pass count (it never steers, and would reduce the detector to a step
+        budget).  The input cursor is required: without it two generated
+        programs that read once more and hit EOF were called periodic.
         """
         ind, ptr, acc, tape = self.state
         return (ind, ptr, acc, tape, self.io.position())
@@ -226,17 +163,9 @@ class _Machine:
     def step(self) -> None:
         """Execute one command, wrapping to the start at the end of the code.
 
-        The two I/O commands are here rather than in the transition: this
-        is the shell, so it is where an effect belongs.  ``,`` reads a line
-        and hands the transition what the accumulator should become -- the
-        sum when there was a character, and zero on a blank line.
-
-        Suffolk is the one language whose page names this value at all:
-        "At EOF, instead set the internal state integer to 0".  But that
-        is *EOF*, which here still raises, and the page carries no
-        implementation spelling a blank-line rule.  So the zero above is
-        the package convention landing on the same number, not the spec's
-        rule applied.
+        ``,`` hands the transition the new accumulator: the sum on a character,
+        zero on a blank line (the package convention; the wiki's "at EOF set the
+        integer to 0" is about EOF, which still raises).
         """
         if self._exhausted:
             return
@@ -262,43 +191,13 @@ class _Machine:
 def run(code: str, io: IO) -> None:
     """Run a Suffolk program until it repeats a state or runs out of input.
 
-    The wiki's rerun is infinite, so a program is stopped from outside --
-    but not by *counting*.  Both of the things a generated program does are
-    decidable stops in their own right:
-
-    * a program that reads runs out of input, and ``,`` raises
-      :class:`EOFError` on the read past the end.  That fires part-way
-      through the second pass, before the ``.`` that would print a second
-      answer, so the output is the one the program computed from its real
-      input.
-    * a program that reads nothing ends where it began -- the text
-      generator appends a tail that puts every cell back -- so its state
-      repeats, and the repeat proves the loop at the end of the first pass,
-      with the output written once.
-
-    A program that does neither -- cells growing without bound, and no input
-    to run out of -- runs forever, and that is left to the caller: it is
-    what :func:`esolangs.run`'s ``timeout`` is for.  A step cap here would
-    be a second bound at the wrong layer, and no other interpreter carries
-    one except the OISCs, whose self-modifying memory rules out proving a
-    loop from a repeated state at all.
-
-    Both stops *return*.  The exhausted read is this run's ordinary ending,
-    not a failure: the docstring above is the argument that the output is
-    already complete when it fires, so re-raising it would report a
-    successful run as an error.  It did, and the cost was the whole
-    language -- every Suffolk program the boolean generator produces reads,
-    so ``esolangs.run("Suffolk", ...)`` raised :class:`EOFError` for all of
-    them, including the committed example, and the README's own
-    ``generate``/``run`` pair could not be completed.
-
-    That ending now lives in :meth:`_Machine.step` as a halt, rather than
-    here as a caught exception.  The difference is who agrees with whom:
-    while the ``except`` was here, this function returned the answer and the
-    step-level callers -- the VM, the debugger -- got the raise instead, for
-    the same program and the same input.  One of those was the language's
-    semantics and it was this one, so the machine says so and every driver
-    inherits it.
+    Both stops are decidable: a reading program hits :class:`EOFError`
+    part-way through its second pass, before a second ``.``; a non-reading
+    one ends where it began (the generator's tail restores every cell) and
+    the repeat proves the loop.  Both *return*: re-raising the exhausted read
+    once made ``esolangs.run("Suffolk", ...)`` fail on every generated
+    program, the committed example included.  The halt now lives in
+    :meth:`_Machine.step`, so every driver agrees.
     """
     machine = _Machine(code, io)
     seen: set[tuple[object, ...]] = set()

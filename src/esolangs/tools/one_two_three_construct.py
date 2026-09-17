@@ -1,83 +1,33 @@
 r"""Constructed 123 templates for four and more inputs.
 
-The small-arity route in :mod:`esolangs.tools.one_two_three`
-covers one, two and three inputs from a cheaper bare-fill seed; this
-module builds a template for *any* wider table, under the same contract:
-each input's run appears once in name order, ``1`` embeds a one and ``2`` a
-zero (equal width), and the instantiated program halts for a 0 entry and
-loops by a proven state revisit for a 1.
+Same contract as :mod:`esolangs.tools.one_two_three`: each run once in
+name order, ``1`` a one and ``2`` a zero, halt for a 0 entry and a proven
+loop for a 1.  The ledger's objection ("the pointer phase *is* the value")
+binds the phase-decode shape, not the language: after each embed the two
+fill branches re-merge to position 0 by ``"1"*(P+1) + "212112"``
+(``2`` maps -1 and -2 to 0; the junk byte is snapshot-invisible), leaving
+the bit as a tape mark, so embeds are storage and the rest is decode.
 
-Why this is possible at all
----------------------------
+1. **Embed** (:func:`_phase_a`): walk to ``P_i``, run, merge, scrub the
+   merge's blanket flip; all rows end at 0 with one mark per set bit.
+2. **Separate** (:func:`_separate`): a planned decode tree; level ``i``
+   walks each group onto ``marks[i]`` and ``"33"`` splits it by the bit.
+   Geometry from :func:`_geometry`: a tight linear layout proved per
+   arity by a reference run (2.2-64x smaller), else the doubling base
+   whose halving escapes survive all ``n`` levels at any arity.
+3. **Verdict** (:func:`_verdict`): rows sit at distinct odd positions
+   with nothing marked above; the kill ``"1"*a + "2" + "2"*(a-1) + "12"``
+   loops every row below ``a`` by a proven revisit, and each 0-row is
+   shielded first by a paint (:func:`_paint_all`).
+4. **Endgame** (:func:`_endgame`): a descent parks every survivor on a
+   negative ring cell, so it halts.
 
-``the limitations ledger`` recorded the wider arities as open because "the pointer
-phase *is* the computed value, so a trailing inert embed shifts the very
-quantity the plan decodes."  That objection binds the phase-decode shape
-the searched plans use, not the language: after each embed the two fill
-branches can be *re-merged* to a common pointer position, since ``2`` maps
-both -1 and -2 to 0 (the -2 route prints a junk byte, which is
-snapshot-invisible — ``ScriptedIO.position()`` counts reads, not writes).
-The common string ``"1"*(P+1) + "212112"`` merges the branches of a fill
-executed at position ``P`` back to position 0 for every ``P``, leaving the
-bit as a tape difference at the fixed cells ``{P, P+1}``.  With every row
-position-synchronized after every embed, the embeds stop computing anything
-and become pure storage — and the rest is decode.
-
-The pipeline
-------------
-
-1. **Embed** (`_phase_a`): walk to ``P_i``, emit input ``i``'s run, merge, and
-   *scrub* — the merge's blanket flip of ``[0, P_i + 1]`` is re-flipped
-   by one more synchronized walk-descend-pop, so phase A ends with all
-   ``2**n`` rows at position 0 and the tape carrying exactly one mark at
-   ``marks[i]`` per set bit, nothing else.
-2. **Separate** (`_separate`): a *planned* decode tree, not a search.
-   Level ``i`` walks each same-position group exactly onto mark cell
-   ``marks[i]``; the closing ``"33"`` splits it by bit ``i`` (set-bit
-   rows re-run the last segment and escape one walk higher).  The mark
-   geometry comes from :func:`_geometry`: a tight linear layout with
-   fixed even escapes where a per-arity reference run proves it out
-   (every probed arity, and 2.2-64x smaller templates), else the doubling
-   base whose halving escapes provably survive all ``n`` levels at any
-   arity — the fallback that keeps this stage total by argument.  Pure
-   right-walk segments never flip a cell, never enter the ring, never
-   read stdin.
-3. **Verdict** (`_verdict`): a *planned* shield-and-sweep, not a
-   search.  Separation leaves every row at a distinct odd position with
-   nothing marked above its own cell, and on that state the kill
-   ``"1"*a + "2" + "2"*(a-1) + "12"`` (``a`` odd) is a closed form:
-   rows at or above ``a`` walk back to exactly where they started and
-   test their own unmarked cell, while every row below ``a`` dips
-   through the ring and tests a cell in its virgin zone that the
-   segment itself just marked — TRUE, and a proven periodic revisit.
-   The one escape is a pre-existing mark on the tested cell, which the
-   segment then *clears* — so each 0-row below the kill is shielded
-   beforehand by one paint, a pair of walk-descend blocks whose flips
-   cancel everywhere except the 0-row's tested cell (:func:`_paint_all`
-   emits the whole campaign and applies it in one XOR per row).  One
-   kill two above the highest 1-row then loops every 1-row at once.
-4. **Endgame** (`_endgame`): survivors need ``pos < 0`` at end of code.
-   A deep descent drops everyone into the ring, where same-residue rows
-   fuse; once some residue class mod 4 is free the final ``"1"*k`` parks
-   every survivor on a negative ring cell and the program halts.
-
-:func:`construct` runs the whole pipeline and validates every stage on an
-exact tracked model of all rows while emitting; a violated stage invariant
-raises rather than handing back a template the rule does not license.
-
-It does not replay the finished template, and there is no flag to make it:
-a check that costs 81-95% of a call does not belong on the caller, and a
-switch nothing turns on is worse than no switch.  The execution gate lives
-in the suite, which runs emitted programs on the real shipped interpreter
-— exhaustively at ``n <= 3`` and row by row above it.  All 65536
-four-input tables were swept once, by a script since retired.
-
-:func:`_replay_verdict` remains for those tests.  It is a 123 interpreter
-written here against the language's rules — *not*
-``esolangs.interpreters.tape_based.one_two_three``, which nothing in this
-module imports — and the suite checks it against that real interpreter on
-random programs, a stronger test than running it on the well-behaved
-shapes this builder emits.
+:func:`construct` validates every stage on an exact model while
+emitting and raises rather than ship an unproven template.  It does not
+replay the result (81-95% of a call); the suite runs emitted programs on
+the real interpreter, exhaustively at ``n <= 3``.  :func:`_replay_verdict`
+is a separate 123 interpreter for those tests, checked against the real
+one on random programs.
 """
 
 from __future__ import annotations
@@ -126,17 +76,14 @@ type _Token = str | tuple[str, int]
 class ConstructError(Exception):
     """A stage of the construction found no valid move.
 
-    Raised instead of emitting a template that was not proven correct;
-    :func:`construct` turns it into :class:`ValueError` for callers.
+    :func:`construct` turns it into :class:`ValueError`.
     """
 
 
 class _WorkExhaustedError(Exception):
     """The deterministic work budget ran out mid-build.
 
-    Deliberately not a :class:`ConstructError`: stage validators catch
-    those where a refusal has a defined meaning, and a drained budget
-    must abort the whole build instead of being caught on the way.
+    Not a :class:`ConstructError`: a drained budget aborts the whole build.
     """
 
 
@@ -167,8 +114,7 @@ _work = [0]
 def _exec_char(row: _Row, ch: str) -> None:
     """Apply one ``1``/``2`` command to a row, mirroring the interpreter.
 
-    ``2`` at -3 would read stdin — fatal under the harness's empty script —
-    so it raises here, which rejects whatever candidate move reached it.
+    ``2`` at -3 would read stdin, so it raises.
     """
     _work[0] -= 1
     if _work[0] < 0:
@@ -192,26 +138,11 @@ def _exec_char(row: _Row, ch: str) -> None:
 def _exec_run(row: _Row, ch: str, w: int) -> None:
     """Apply ``ch`` repeated ``w`` times to one row.
 
-    Straight runs are nearly everything the build simulates, and each
-    case below collapses one into O(1) work instead of ``w`` trips
-    through :func:`_exec_char`:
-
-    * ``2`` from ``pos >= 0`` never touches the tape and cannot reach
-      the ring, so it is ``pos += w``.
-    * ``1`` from ``pos >= 0`` toggles exactly the contiguous cells it
-      steps off, so a descent stopping at -1 or above is one XOR.
-    * a deeper descent splits at the ring boundary and then *laps*: the
-      ring cycle ``0 -> -1 -> -2 -> -3`` has period 4 and touches each
-      of its four cells once per lap, so whole laps reduce to a parity.
-    * ``2`` from inside the ring is decided by its first step (-1 and
-      -2 land on 0; -3 reads stdin and raises), after which the rest is
-      a plain right-walk.
-
-    Only a short remainder is ever walked per character.  The work
-    counter is decremented by the full ``w`` on every path, since the
-    budget counts *simulated commands* and must not depend on which
-    path ran them -- a batched path that counted less would silently
-    change which borderline tables build.
+    Each straight run collapses to O(1): ``2`` from ``pos >= 0`` is
+    ``pos += w``; ``1`` from ``pos >= 0`` toggles the cells stepped off (one
+    XOR), and a deeper descent laps the period-4 ring by parity; ``2``
+    inside the ring is decided by its first step.  The work counter is
+    decremented by the full ``w`` on every path.
     """
     if w and row.pos >= 0:
         if ch == _ZERO:
@@ -277,11 +208,7 @@ def _exec_run(row: _Row, ch: str, w: int) -> None:
 def _row_runs(row: _Row, toks: list[_Token]) -> list[tuple[str, int]]:
     """Resolve ``toks`` for one row and coalesce it into runs.
 
-    A fill's character is fixed once the row is known, so a segment that
-    a fixpoint re-runs up to 64 times can be resolved and coalesced
-    *once* -- which also lets the long right-walks inside it take the
-    batched path in :func:`_exec_run`.  The tokens are already runs, so
-    the loop is over a few dozen of them, not over every command.
+    A segment a fixpoint re-runs up to 64 times is resolved once.
     """
     out: list[tuple[str, int]] = []
     for tok in toks:
@@ -299,10 +226,8 @@ def _row_runs(row: _Row, toks: list[_Token]) -> list[tuple[str, int]]:
 def _run_parts(s: str) -> list[str]:
     """``"2211"`` -> ``["22", "11"]``, the maximal runs as substrings.
 
-    Found with :meth:`str.find` -- one C-level scan per *run* -- rather
-    than a Python loop per character: the ten-input build emits 15.9M
-    commands in about 2000 runs, and splitting them per character cost
-    1.8s of a 7.3s build.
+    :meth:`str.find` per run: splitting the ten-input build's 15.9M commands
+    per character cost 1.8s of 7.3s.
     """
     out: list[str] = []
     size = len(s)
@@ -326,8 +251,7 @@ def _run_parts(s: str) -> list[str]:
 class _Builder:
     """Emits template chunks while tracking every row's exact state.
 
-    ``seg`` holds the tokens since the last ``"33"`` — the segment a
-    TRUE row re-runs — so tests can replay it faithfully, fills included.
+    ``seg`` holds the tokens since the last ``"33"``, which a TRUE row re-runs.
     """
 
     __slots__ = ("chunks", "n", "rows", "seg")
@@ -370,10 +294,7 @@ class _Builder:
     def fixpoint(self, row: _Row, extra: str = "") -> str:
         """Re-run the pending segment (+ ``extra``) until the row escapes.
 
-        Returns ``"skip"`` when the row lands on a FALSE cell or below 0,
-        and ``"loop"`` on a proven state revisit.  A 3 whose test stays
-        TRUE re-runs its whole segment, so this is the machine's actual
-        behaviour, not an approximation.
+        ``"skip"`` on a FALSE cell or below 0, ``"loop"`` on a proven revisit.
         """
         tail: list[_Token] = list(_run_parts(extra))
         runs = _row_runs(row, list(self.seg) + tail)
@@ -392,11 +313,8 @@ class _Builder:
     def test(self, *, kills: frozenset[tuple[int, ...]] | None = None) -> None:
         """Close the current segment with ``"33"``.
 
-        Rows below 0 ride the NOPs; rows on FALSE skip; rows on TRUE
-        re-run the segment to a fixpoint.  With ``kills`` every named
-        row must provably loop (it is marked dead) — every other TRUE
-        row must still escape.  Without ``kills`` every TRUE row must
-        escape, or the emission is invalid and raises.
+        With ``kills`` every named row must provably loop and every other TRUE
+        row escape; without, every TRUE row must escape, or this raises.
         """
         kills = kills or frozenset()
         true_rows = [r for r in self.live() if _on_mark(r)]
@@ -438,9 +356,7 @@ def _table_val(table: str, bits: tuple[int, ...]) -> str:
 def _normalize(b: _Builder) -> None:
     """Bring every live row to ``pos >= 0``.
 
-    ``1`` when a row sits at -3 (its wrap frees the cell the next ``2``
-    would read from), ``2`` otherwise.  All four ring cells occupied is an
-    absorbing dead state, so the loop raises rather than spinning.
+    ``1`` at -3, ``2`` otherwise; all four ring cells occupied raises.
     """
     # Which character comes next depends only on where the rows *are* --
     # ``1`` when some row sits at -3, ``2`` otherwise -- never on what they
@@ -483,11 +399,7 @@ def _normalize(b: _Builder) -> None:
 
 
 def _close(b: _Builder) -> None:
-    """Walk right until every live row sits on a FALSE cell, then test.
-
-    Closes the pending segment harmlessly: nobody is TRUE, everybody
-    skips, and the next segment starts clean.
-    """
+    """Walk right until every live row sits on a FALSE cell, then test."""
     _normalize(b)
     probe = b.clone()
     for w in range(100001):
@@ -504,17 +416,9 @@ def _close(b: _Builder) -> None:
 def _phase_a(b: _Builder, marks: list[int]) -> None:
     """Embed every input, merge back to position 0, and scrub the blob.
 
-    ``marks[i] = P_i + 1`` is where bit ``i``'s tape difference lands;
-    the merge choreography works for every fill position ``P``.
-
-    The fill+merge flips the whole interval ``[0, P+1]`` for a 0 row and
-    ``[0, P]`` for a 1 row — hundreds of contiguous junk marks per embed,
-    which used to push every later closing walk (and so every position) far
-    above the cells that still distinguish the rows.  Since all rows are
-    position-synchronized after the merge, one more walk-descend-pop over
-    ``[0, P+1]`` re-flips the junk identically for every row and cancels it,
-    leaving exactly one mark at ``P+1`` per *set* bit: after phase A row
-    ``r``'s tape is ``{marks[i] : r.bits[i] == 1}``.
+    ``marks[i] = P_i + 1``.  The fill+merge flips ``[0, P+1]`` (0 row) or
+    ``[0, P]`` (1 row); one more synchronized walk-descend-pop re-flips the
+    junk identically, leaving one mark at ``P+1`` per set bit.
     """
     for i, m in enumerate(marks):
         p = m - 1
@@ -529,38 +433,15 @@ def _phase_a(b: _Builder, marks: list[int]) -> None:
 def _separate(b: _Builder, marks: list[int], ws: tuple[int, ...] | None = None) -> None:
     """Give every row a unique position by a planned decode tree.
 
-    Phase A leaves all rows at position 0 with tape ``{marks[i] : bit_i}``
-    (see :func:`_phase_a`), so separation is a schedule, not a search:
-    level ``i`` walks each same-position group — highest first — exactly
-    onto mark cell ``marks[i]``, where the ``33`` splits it by bit ``i``
-    (set-bit rows re-run the last segment and escape one walk higher).
-
-    Each visit is a shift ``"2"*s + "33"`` followed by a test
-    ``"2"*w + "33"``: the escape re-runs only the *last* segment, so the
-    escape offset ``w`` is decoupled from the walk-to-the-mark distance
-    ``d = s + w``.  Two escape policies serve the two geometries
-    :func:`_geometry` chooses between:
-
-    * ``ws is None`` — the doubling base's ``w = d // 2``: the escaped
-      rows land strictly inside the gap above their group, which never
-      merges two separated groups and at worst halves the minimum
-      inter-group gap per level, so a base mark spacing of ``2**(n+1)``
-      guarantees every gap is still ``>= 2`` after all ``n`` levels —
-      what makes that geometry total at *every* arity.  Positions after
-      level ``i`` stay below ``2 * marks[i] < marks[i+1]``, so no
-      landing ever chains onto a later level's mark.
-    * fixed ``ws[i]`` — the tight linear geometry's even offsets: level
-      ``i`` adds ``ws[i]`` to the bit-i rows and leaves every other
-      relative offset alone, so a row's offset above the current mark is
-      at most the whole budget ``sum ws == 2**(n + 1) - 2``, under the
-      spacing :func:`_geometry` picks — no escapee reaches the next
-      mark, and positions close to ``base + 2*r``.  That argument is not
-      what admits the geometry, though: the per-arity reference run in
-      :func:`_geometry` is, and a walk shorter than the escape rejects
-      it outright.
-
-    Pure right-walk segments never flip a cell, never enter the ring and
-    never read stdin.  Every fate is still validated by ``test()``.
+    Level ``i`` walks each same-position group, highest first, onto
+    ``marks[i]``, where ``33`` splits it by bit ``i``.  Each visit is a shift
+    ``"2"*s + "33"`` then a test ``"2"*w + "33"``, so the escape offset ``w``
+    is decoupled from the distance.  Doubling base (``ws is None``):
+    ``w = d // 2`` halves the minimum gap per level, so spacing ``2**(n+1)``
+    keeps every gap ``>= 2`` after ``n`` levels at any arity.  Tight
+    geometry: fixed even ``ws[i]``, the budget ``sum ws == 2**(n + 1) - 2``
+    under the spacing, positions closing to ``base + 2*r``; admitted by the
+    reference run, not this argument.
     """
     for i, mk in enumerate(marks):
         for _visit in range(2**b.n + 1):
@@ -589,43 +470,16 @@ def _separate(b: _Builder, marks: list[int], ws: tuple[int, ...] | None = None) 
 def _geometry(n: int) -> tuple[tuple[int, ...], tuple[int, ...] | None]:
     """Pick arity ``n``'s mark geometry: tight when it proves out.
 
-    The tight layout — marks ``(i + 1) * 2**(n + 1) + 1`` with fixed even
-    escape offsets ``2**(n - i)`` — spaces the marks linearly where the
-    proven base doubles them, off the same ``2**(n + 1)`` base, which
-    measured 2.2x smaller templates at four inputs and 64x at nine
-    (where the doubling base is 48.2M characters against 752K).
-
-    The spacing is that base and not the escapes' own ``2**n`` because
-    ``2**n`` *is* the level-0 escape: a level-0 escapee landed exactly on
-    mark 1 and cascaded on.  Level ``i`` adds ``2**(n - i)`` to the bit-i
-    rows and preserves every other relative offset, so the escapes are a
-    binary encoding and the largest offset a row can carry above a mark
-    is the whole budget ``sum_i 2**(n - i) == 2**(n + 1) - 2``.  A
-    spacing above that keeps every landing inside one gap, and the least
-    even one is ``2**(n + 1)`` — even, so every position stays odd for
-    the verdict.  With no cascade the law closes to ``pos(r) = base +
-    2*r``: the ``2**n`` rows land on consecutive odd cells, the smallest
-    spread they can have, which is what collapses the shield campaign
-    (the paints cost ``sum(a - pos)``).  Measured floor is ``2**(n + 1)
-    - 4``, two under the derivation and worth <=0.2%; ``2**(n + 1) - 6``
-    is refused at every ``n >= 3``.  Shipping the derived value, not the
-    swept one.
-
-    Whether it *works* at an arity is decidable cheaply, because
-    separation never consults the table: one reference run per arity
-    fixes where every row lands, and if it leaves each row at a distinct
-    odd position, parked off its own marks, with nothing marked above
-    its own cell, then the planned verdict's closed forms hold for every
-    table at this arity.  Any failure — a raise anywhere, or a violated
-    invariant — falls back to the doubling base with the halving
-    escapes, whose totality is proven outright, so :func:`construct`
-    stays total by argument either way.  The reference run costs about a
-    millisecond even at seven inputs, and the result is cached per
-    process.
-
-    The tight geometry passes at every probed arity (one through ten);
-    the fallback is totality insurance for the arities nobody has
-    probed, not a path any known arity takes.
+    Tight: marks ``(i + 1) * 2**(n + 1) + 1`` with escapes ``2**(n - i)``,
+    linear where the base doubles -- 2.2x smaller at four inputs, 64x at
+    nine (48.2M vs 752K chars).  The spacing is ``2**(n + 1)`` because
+    ``2**n`` *is* the level-0 escape (an escapee cascaded onto mark 1); the
+    escapes are a binary encoding with budget ``2**(n + 1) - 2``, and the
+    least even spacing above it keeps every position odd.  Measured floor is
+    ``2**(n + 1) - 4`` (<=0.2%); ``- 6`` refuses at every ``n >= 3``.  One
+    reference run per arity (~1ms at seven inputs, cached) decides it: each
+    row at a distinct odd position with nothing marked above, else the
+    doubling base.  Passes at every probed arity (one through ten).
     """
     marks = tuple((i + 1) * 2 ** (n + 1) + 1 for i in range(n))
     ws = tuple(2 ** (n - i) for i in range(n))
@@ -655,12 +509,8 @@ def _geometry(n: int) -> tuple[tuple[int, ...], tuple[int, ...] | None]:
 def _paint(b: _Builder, k: int) -> None:
     """Flip exactly cell ``pos + k`` for every live row, positions kept.
 
-    Two nested blocks cancel: ``"2"*k + "1"*k`` walks up ``k`` and descends
-    back, flipping the stripe ``[pos+1, pos+k]``, and the ``k - 1`` block
-    re-flips ``[pos+1, pos+k-1]`` — the XOR leaves one mark at ``pos + k``
-    and every position where it started.  The walk never descends past its
-    own start, so no row can enter the ring or read, whatever the tape
-    holds.
+    ``"2"*k + "1"*k`` and the ``k - 1`` block XOR to one mark; the walk
+    never descends past its start.
     """
     if k < 1:  # pragma: no cover - the verdict computes k >= 1
         raise ConstructError(f"paint offset {k} is not above the row")
@@ -672,16 +522,9 @@ def _paint(b: _Builder, k: int) -> None:
 def _paint_all(b: _Builder, offsets: list[int]) -> None:
     """Paint every offset in one outward-and-back sweep.
 
-    Walk to the highest target once, then descend.  The mandatory ``1``
-    toggles each visited cell; an unselected cell gets an immediate
-    ``21`` excursion, toggling it a second time.  Thus selected cells flip
-    once, every other cell flips twice, and the pointer returns to its
-    start in at most four commands per cell.  The tracked rows receive the
-    equivalent mask in one XOR each rather than replaying the sweep.
-
-    Distinct offsets are required because two shields on one cell would
-    cancel.  The verdict's collision-freedom argument already gives that,
-    so a clash is a broken precondition rather than a case to handle.
+    Walk to the highest target, descend; an unselected cell gets a ``21``
+    excursion so it flips twice.  At most four commands per cell, one XOR
+    per tracked row.  Offsets must be distinct (a clash is a broken precondition).
     """
     if any(k < 1 for k in offsets):  # pragma: no cover - the verdict computes k >= 1
         raise ConstructError("a paint offset is not above the row")
@@ -717,41 +560,17 @@ def _paint_all(b: _Builder, offsets: list[int]) -> None:
 def _verdict(b: _Builder, table: str) -> None:
     """Shield every 0-row, then loop every 1-row with one planned kill.
 
-    Separation leaves row ``r`` at a distinct odd position ``P(r)`` with
-    tape exactly its set-bit marks, all at or below ``P(0)`` — nothing
-    above any row's own cell is marked (its *virgin zone*).  On that
-    state the kill ``"1"*a + "2" + "2"*(a-1) + "12"`` with ``a`` odd is
-    a closed form, not a candidate:
-
-    * A row at ``p >= a`` descends to ``p - a``, pops, and walks back
-      to exactly ``p``, testing its own (unmarked) cell — FALSE, so the
-      rows above the kill are untouched, positions included.
-    * A row at ``p < a`` dips into the ring — ``a`` and ``p`` both odd
-      means the descent lands at -1 or -2, never the fatal read at -3 —
-      pops to 0 or 1, and tests cell ``a-1`` or ``a``.  Both cells are
-      in its virgin zone, and the segment's trailing ``1`` has just
-      marked the tested cell, so it tests TRUE; each re-run flips the
-      cells below the tested one and restores the tested one, so the
-      second or fourth pass is an exact state revisit — a proven loop.
-    * The one escape is a pre-existing mark on the tested cell: the
-      trailing ``1`` then *clears* it, the row tests FALSE, and it
-      skips out unharmed.  That is the shield, and it is plantable per
-      row because positions are distinct: a paint at offset ``k``
-      marks ``pos + k`` for every row, and with all positions
-      odd, distinct, and below the two tested cells, a shield aimed at
-      one 0-row's tested cell can never land on another row's (the
-      collision cases all force two rows one cell apart — impossible
-      when every position is odd).
-
-    So the whole verdict is: :func:`_paint_all` plants one shield per
-    live 0-row below the kill (in ascending position order, the order
-    the offsets are collected in), close the paints (every row still
-    sits on its own unmarked cell,
-    so the test is vacuously FALSE), and emit one kill with ``a`` two above
-    the highest 1-row.  Every fate is still validated on the exact model by
-    ``test(kills=...)``, and the closing replay re-runs every row on the
-    interpreter's own rules — the preconditions above make the construction
-    *total*, they are not what proves any single emission.
+    With rows at distinct odd ``P(r)`` and nothing marked above, the kill
+    ``"1"*a + "2" + "2"*(a-1) + "12"`` (``a`` odd) is a closed form: a row at
+    ``p >= a`` walks back to ``p`` and tests its own unmarked cell (FALSE);
+    a row at ``p < a`` dips into the ring (odd ``a`` and ``p`` land at -1 or
+    -2, never the read at -3), pops, and tests ``a-1`` or ``a`` in its virgin
+    zone, just marked by the trailing ``1`` -- TRUE, and the second or
+    fourth pass is an exact revisit.  A pre-existing mark there is cleared
+    instead, the row tests FALSE and skips: the shield, plantable per row
+    because positions are odd and distinct.  :func:`_paint_all` plants one
+    per live 0-row, the paints are closed, and one kill sits two above the
+    highest 1-row.  Every fate is still validated by ``test(kills=...)``.
     """
     ones = [r for r in b.live() if _table_val(table, r.bits) == "1"]
     if not ones:
@@ -782,10 +601,8 @@ def _verdict(b: _Builder, table: str) -> None:
 def _endgame(b: _Builder) -> None:
     """Park every survivor below 0 at the end of the code, so it halts.
 
-    A deep descent drops everyone into the ring, where rows of equal
-    residue mod 4 land on the same cell and fuse; when all four classes
-    are occupied a ring round first gives the lowest entity +1 mod 4
-    (every other row lands at -2 or higher, so its ``2`` cannot read).
+    A deep descent fuses rows of equal residue mod 4 in the ring; a round
+    frees a class (every other row lands at -2 or higher, so no read).
     """
     live = b.live()
     if not live:
@@ -856,18 +673,11 @@ def _linear_endgame(positions: set[int]) -> str:
 def _construct_linear(truth_table: str, n: int) -> str:
     """Build the repeated-mark 123 construction in O(T) time and source.
 
-    Input ``i`` first occupies reusable cell 2.  Everyone paints the cells
-    two below that input's separator marks; a set-bit row replays the segment
-    from cell 2 and paints the marks themselves.  The merge identity maps the
-    resulting positions 2/4 back to zero and clears cell 2 only on the latter
-    path, ready for the next input.
-
-    Separator weight ``4*2**i`` gives level ``i`` one mark for each earlier
-    prefix.  Marks occupy one residue class modulo four and their unconditional
-    shadows another, so they never collide.  Their spans and the separator
-    walks sum geometrically.  After the last level, row ``r`` is at
-    ``base + 4*(T-1 + bit_reverse(r))``; deriving those positions directly
-    avoids the old exact model's T rows by T-bit tape integers.
+    Input ``i`` occupies reusable cell 2; everyone paints two below its
+    separator marks, a set-bit row replays the segment and paints the marks;
+    the merge identity maps positions 2/4 to zero.  Separator weight
+    ``4*2**i``; marks and their shadows occupy different residues mod four.
+    Row ``r`` ends at ``base + 4*(T-1 + bit_reverse(r))``, derived directly.
     """
     base = 9
     out: list[str] = []
@@ -933,10 +743,7 @@ def _construct_linear(truth_table: str, n: int) -> str:
 def _jump_tables(code: str) -> tuple[list[int], list[int]]:
     """Per ``3`` position, where a backward and a forward jump land.
 
-    The interpreter rescans for the partner ``3`` on every jump, which on a
-    template whose segments are hundreds of commands long is a linear scan
-    per executed jump.  The landing sites depend only on the code, so they
-    are computed once for the whole replay.
+    Computed once; the interpreter rescans per jump.
     """
     threes = [i for i, c in enumerate(code) if c == "3"]
     back = [0] * len(code)
@@ -955,8 +762,7 @@ def _jump_tables(code: str) -> tuple[list[int], list[int]]:
 def _code_runs(code: str) -> tuple[list[int], list[str], list[int]]:
     """Index ``code`` into maximal ``1``/``2`` runs.
 
-    Returns ``(run_id_at, char_of_run, end_of_run)``, so the executor can
-    take the whole rest of a run in one step from any cursor inside it.
+    ``(run_id_at, char_of_run, end_of_run)``, so a run is one step.
     """
     run_at = [-1] * len(code)
     chars: list[str] = []
@@ -981,12 +787,8 @@ def _code_runs(code: str) -> tuple[list[int], list[str], list[int]]:
 def _replay_ones(pos: int, tape: int, w: int) -> tuple[int, int]:
     """Apply ``"1"*w``, per the interpreter's rule for ``1``.
 
-    Derived from the language, not from the builder's model: ``1`` flips
-    the current cell and steps left, wrapping -4 back to 0.  Above the
-    ring a walk flips exactly the contiguous cells it steps off, which is
-    one XOR; inside it the pointer cycles ``0, -1, -2, -3`` with period
-    4, touching each of the four cells once per lap, so whole laps are a
-    parity and only ``w % 4`` steps remain.
+    Above the ring one XOR; inside, laps of period 4 are a parity and
+    ``w % 4`` steps remain.
     """
     while w > 0:
         if pos >= 0:
@@ -1017,10 +819,8 @@ def _replay_ones(pos: int, tape: int, w: int) -> tuple[int, int]:
 def _replay_twos(pos: int, tape: int, w: int) -> tuple[int, int]:
     """Apply ``"2"*w``; the first step decides whether the ring is left.
 
-    ``2`` at -3 reads stdin, which the harness cannot serve, so it raises
-    exactly where the real interpreter would raise :class:`EOFError`.
-    At -1 or -2 it lands on 0 (the -2 route prints a junk byte, which no
-    snapshot can observe), and from ``pos >= 0`` it is a plain walk.
+    ``2`` at -3 raises where the interpreter raises :class:`EOFError`; -1
+    and -2 land on 0.
     """
     if w <= 0:
         return pos, tape
@@ -1035,23 +835,11 @@ def _replay_twos(pos: int, tape: int, w: int) -> tuple[int, int]:
 def _replay_verdict(code: str) -> str:
     """Execute one instantiated program: ``"0"`` halts, ``"1"`` loops.
 
-    This is the closing execution gate, so it is written against the
-    interpreter's own rules rather than against anything the builder
-    believes -- a shared closed form would let one bug pass both.  What
-    it does share is the *shape* of the cost: a template is a few
-    hundred maximal ``1``/``2`` runs, each hundreds of commands long, and
-    each run's effect on ``(pos, tape)`` is closed-form.  Stepping them
-    one command at a time cost 95s per five-input table and hours at six,
-    which made the gate, not the construction, the arity wall.
-
-    Cycle detection stays exact under that batching.  ``ip`` strictly
-    increases within a run and across a forward jump, so an infinite run
-    must pass a *backward* jump or the end-of-code loopback infinitely
-    often.  Sampling ``(ip, pos, tape)`` at only those two events
-    therefore witnesses every loop a per-command detector witnesses, and
-    Brent's method finds the revisit without storing a state per step.
-    The input cursor is not part of the key: a program that reads has
-    already raised above.
+    Written against the interpreter's rules, not the builder's model.
+    Per-command stepping cost 95s per five-input table; runs are closed
+    form.  Cycle detection stays exact: ``ip`` strictly increases within a
+    run and across a forward jump, so sampling at backward jumps and the
+    loopback witnesses every loop, with Brent's method.
     """
     if not any(c in "123" for c in code):
         return "0"  # a command-less program halts with no output
@@ -1114,24 +902,11 @@ _WORK_BUDGET = 2_000_000_000
 def construct(truth_table: str) -> str:
     """Build a 123 template for ``truth_table`` at any arity.
 
-    Deterministic; the construction is a stated rule, and every stage
-    asserts its own invariants as it runs.  Raises :class:`ValueError`
-    when a stage invariant is violated or the build exhausts its work
-    budget.
-
-    Nothing is replayed here.  A closing replay of all ``2**n`` rows is a
-    *check*, not part of the construction -- it re-derives nothing the
-    build needs, and its cost grows with the row count (81% of a
-    four-input call, 90% at five, 95% at six), so it belongs in the
-    suite rather than on every caller.
-
-    The execution gate is stronger there than it ever was here:
-    ``test_all_small_tables`` sweeps *every* table at ``n <= 3`` and the
-    wider tests replay their templates row by row -- all through the real
-    shipped interpreter
-    (``interpreters.tape_based.one_two_three``) rather than the
-    in-module :func:`_replay_verdict`, which the suite checks separately
-    against that interpreter on random programs.
+    Deterministic; every stage asserts its invariants.  Raises
+    :class:`ValueError` on a violated invariant or exhausted budget.  No
+    closing replay here (81% of a four-input call, 95% at six): the suite
+    sweeps every table at ``n <= 3`` and replays wider ones row by row on the
+    real interpreter.
     """
     n = max(1, (len(truth_table) - 1).bit_length())
     if n >= 4:
