@@ -236,7 +236,7 @@ The candidate list is empty.
 
 - **Parameterized generator conventions.**  The eighteen generators that
   embed their inputs in the program text (`BOOLEAN_EXAMPLES` entries with a
-  `fill`) hold to four conventions, all of them about the *embed* -- the
+  `fill`) hold to five conventions, all of them about the *embed* -- the
   text a fill substitutes for `{Xi}` -- not the program around it.
   *Single embed*: each `{Xi}` appears exactly once and no `{Ci}` at all.
   *Constant width*: every instantiation of one template has the same
@@ -244,21 +244,49 @@ The candidate list is empty.
   `{X0}`..`{Xn-1}` are emitted in name order.  *No spaces*: a bit is
   spelled in commands, never as a blank or padded with blanks; a single
   blank between two tokens of the embed is a delimiter and is fine
-  (Bitdeque's `INVERT PUSH`, RAM0's `Z A`).  The first three are enforced
-  (`tests/tools/test_boolean_parameterized.py`), the fourth was not, and
-  `tests/proofs/test_conventions.py` now reads this table and measures
+  (Bitdeque's `INVERT PUSH`, RAM0's `Z A`).  *Uniform*: the pair of
+  texts a fill writes for a zero and a one is the same pair for every
+  input, so a template is one placeholder character plus one pair of
+  equal-width strings, and the three conventions before it become
+  structural -- the k-th run of the character is input k, and there is
+  one width to check.  The first three are enforced
+  (`tests/tools/test_boolean_parameterized.py`), the last two were not,
+  and `tests/proofs/test_conventions.py` reads this table and measures
   every cell: the embed is the span, row by row, on which the two fills
-  of one input differ, and a blank left after deleting each single blank
-  between two non-blank characters is the violation.  Measured Sep 2026 on dense and
+  of one input differ; a blank left after deleting each single blank
+  between two non-blank characters is a spaces violation, and two inputs
+  whose spans differ are a uniformity one.  Measured Sep 2026 on dense and
   parity tables at n=2..6, every instantiation: single embed, constant
-  width and slot order hold for all eighteen, no spaces for seventeen.  `Open` means a command spelling is not ruled out; `Language`
-  means the alphabet leaves none.  A row is present while any cell is open
-  and leaves when all four close.
+  width and slot order hold for all eighteen, no spaces for seventeen,
+  uniform for eleven.  `Open` means a spelling is not ruled out;
+  `Language` means the alphabet leaves none.  A row is present while any
+  cell is open and leaves when all five close.
 
-  | Language | Single embed | Constant width | Slot order | No spaces |
-  | --- | --- | --- | --- | --- |
-  | COD | Holds | Holds | Holds | Open |
-  | Nopstacle | Holds | Holds | Holds | Language |
+  | Language | Single embed | Constant width | Slot order | No spaces | Uniform |
+  | --- | --- | --- | --- | --- | --- |
+  | %^2^-1 | Holds | Holds | Holds | Holds | Open |
+  | A Painter Ant | Holds | Holds | Holds | Holds | Open |
+  | ArrowQueue | Holds | Holds | Holds | Holds | Open |
+  | BIO | Holds | Holds | Holds | Holds | Open |
+  | Bitdeque | Holds | Holds | Holds | Holds | Open |
+  | COD | Holds | Holds | Holds | Open | Holds |
+  | Minsky Swap | Holds | Holds | Holds | Holds | Open |
+  | Nopstacle | Holds | Holds | Holds | Language | Open |
+
+  The seven uniform cells open for one reason, the input's *weight*: a
+  linear route spells input `i` once at `2**(n-1-i)` units -- A Painter
+  Ant `E` per unit, ArrowQueue a marker row per unit from n=5, Bitdeque
+  `POP`/`EJECT` per unit with its block pads, BIO 4k-3 characters at
+  weight k, Minsky Swap likewise, Nopstacle `2**i` cells across level
+  `i`'s row -- and %^2^-1 solves its setters per table, so different text
+  per input is its design.  A Painter Ant and ArrowQueue *tile*: the
+  embed at weight k is the unit embed repeated k times, so a rule that
+  reads the placeholder run's length as the repeat count closes those two
+  at no cost.  The other five do not: Bitdeque's units are 4 and 6 wide
+  with no 2-character no-op (its pads are per block), BIO's connective
+  breaks the tiling, Nopstacle's cells have template between them, and a
+  uniform %^2^-1 is a different generator.  Those are priced, not
+  scheduled.
 
   Bitdeque left: above the arity the equal-width test covers (n=1..2)
   its linear route filled `EJECT ` against `POP ` per unit of weight, so
@@ -289,7 +317,8 @@ The candidate list is empty.
   spell it with.
 
   The fill itself is standard for all eighteen: the example's `fill`
-  calls `helpers.instantiate` with a per-bit setter, and nothing else.  ArrowQueue's slots are rows of their own so its blocks substitute
+  calls `helpers.instantiate` with a per-bit setter, and nothing else;
+  the setter takes the input index because of the uniform column above.  ArrowQueue's slots are rows of their own so its blocks substitute
   in place (byte-identical to the header rebuild it replaced, n=1..6), A
   Painter Ant's linear route is a setter, %^2^-1's setter is read
   off the template's own header, COD's restored fork generator is a
