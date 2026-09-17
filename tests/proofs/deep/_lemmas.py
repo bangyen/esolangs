@@ -208,27 +208,46 @@ def check_ladder(fn: Builder, max_n: int, shapes: object) -> str:
     return note
 
 
+def _language_of(fn: Builder) -> str | None:
+    """The registry name of the generator ``fn`` is, if it is one."""
+    import esolangs.tools as boolean
+    from esolangs.registry import BY_BOOLEAN
+
+    for key, lang in BY_BOOLEAN.items():
+        if getattr(boolean, key, None) is fn:
+            return lang.name
+    return None
+
+
 def check_embedding(fn: Builder, max_n: int = 4) -> str:
     """Each input embeds exactly once, at a width independent of the bit.
 
     Only meaningful for the parameterized generators: an input-reading language
-    has no ``{Xi}`` to count.
+    has no runs to count.  The public template spells each input as one run
+    of the language's character, as wide as its setter, and :func:`runs`
+    accounts for every occurrence of the character, so a template with
+    ``n`` spans embeds each of its ``n`` inputs exactly once.
     """
+    import esolangs
+    from esolangs.registry import parameterized_ids, resolve
+    from esolangs.tools.helpers import runs
+
+    name = _language_of(fn)
+    if name is None or resolve(name) not in parameterized_ids():
+        raise UnprovenError("not a parameterized generator: no runs to count")
     checked = 0
     for n in range(2, max_n + 1):
         # _dense, not the alternating table: that one depends on a single
         # input, so a folding generator returns a near-trivial template -- the
         # weakest possible witness for an exactly-once claim.  The same
         # degenerate shape corrupted the arity ladder before it was caught.
-        program = build(fn, _dense(n))
-        if program is None:
+        if build(fn, _dense(n)) is None:
             continue
-        if "{X0}" not in program:
-            raise UnprovenError("not a parameterized generator: no {Xi} placeholders")
-        for i in range(n):
-            placeholder = "{X" + str(i) + "}"
-            count = program.count(placeholder)
-            assert count == 1, f"n={n}: {placeholder} appears {count} times"
+        template = esolangs.generate(name, _dense(n))
+        assert "{X" not in template, f"n={n}: marks left in the public template"
+        setters = template.setters  # type: ignore[attr-defined]
+        spans = runs(str(template), template.char, setters)  # type: ignore[attr-defined]
+        assert len(spans) == n, f"n={n}: {len(spans)} runs for {n} inputs"
         checked += 1
     if not checked:
         raise UnprovenError("nothing built to inspect")

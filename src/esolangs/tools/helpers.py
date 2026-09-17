@@ -173,11 +173,6 @@ Setters = tuple[tuple[str, str], ...]
 _SLOT = re.compile(r"\{X(\d+)\}")
 
 
-def slot_count(template: str) -> int:
-    """How many inputs a template's ``{Xi}`` slots name."""
-    return len({int(index) for index in _SLOT.findall(template)})
-
-
 def check_setters(setters: Sequence[tuple[str, str]]) -> Setters:
     """Return ``setters`` as a tuple, refusing a pair of unequal width."""
     checked = tuple((zero, one) for zero, one in setters)
@@ -258,12 +253,17 @@ def runs(text: str, char: str, setters: Setters) -> list[tuple[int, int]]:
     widths, and every occurrence of ``char`` must belong to one: a run of
     the wrong length, a run left over, or a ``char`` in the program text
     proper all refuse, since each means the template is not the shape its
-    setters describe.
+    setters describe.  A setter of width zero (%^2^-1 spells an input the
+    table ignores as nothing on both branches) has an empty run, placed
+    where the previous run ended.
     """
     widths = [len(zero) for zero, _one in setters]
     spans: list[tuple[int, int]] = []
     position = 0
     for i, width in enumerate(widths):
+        if width == 0:
+            spans.append((position, position))
+            continue
         start = text.find(char, position)
         if start < 0:
             raise ValueError(

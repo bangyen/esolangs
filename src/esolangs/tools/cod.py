@@ -1,8 +1,8 @@
 """Boolean-function generator for COD (parameterized convention).
 
 This follows the parameterized convention described in
-:mod:`esolangs.tools.parameterized`: the template's ``{Xi}``
-placeholders are filled by the harness, one program per input combination.
+:mod:`esolangs.tools.parameterized`: the template's input runs are
+filled by the harness, one program per input combination.
 The generator routes a fork/cascade decision tree whose leaves print the
 truth-table entry.
 
@@ -17,10 +17,11 @@ the column reads three times for one command, and one that dead-ends there
 re-reads until EOF.
 """
 
-import re
 from itertools import zip_longest
 
 from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
+    Setters,
     _validate_truth_table,
     essential_inputs,
     read_at,
@@ -195,15 +196,30 @@ def _cod_combine(blocks: list[str]) -> str:
     )
 
 
-# A ``{Xi}`` placeholder is written as four characters but *is* one cell:
-# the fill replaces it with ``)`` or a space.  Every measurement below is in
-# cells, so a template row is read through this rather than by ``len``.
-_COD_CELL = re.compile(r"\{X\d+\}|.")
+def cod_setters(_template: str, n: int) -> Setters:
+    """Set the cod's value to the bit at that input's ``+`` fork.
+
+    ``)`` increments, so a one is ``)``; a zero is ``_``, the command that
+    only acts on a cod moving *up* (it turns a nonzero one back down) and
+    is a no-op crossed sideways, which is how the fork meets this cell.
+    Both bits are one cell, so the programs are all the same size and
+    differ in exactly one character per input, at a fixed column, and
+    neither is a blank.  (Water would do for the zero, and did, but a
+    blank is a bit spelled as nothing; ``_`` costs no width where the
+    ``)(``-against-``)<`` spelling needs the fork box a column wider.)
+    """
+    return (("_", ")"),) * n
+
+
+def _cod_run(n: int, k: int) -> str:
+    """Spell input ``k``'s run: one cell, the width of its setter."""
+    zero, _one = cod_setters("", n)[k]
+    return TEMPLATE_CHAR * len(zero)
 
 
 def _cod_cells(block: str) -> list[list[str]]:
-    """Split ``block`` into rows of cells, a ``{Xi}`` counting as one."""
-    return [_COD_CELL.findall(row) for row in block.split("\n")]
+    """Split ``block`` into rows of cells: one character each, a run's too."""
+    return [list(row) for row in block.split("\n")]
 
 
 # Five columns for a rotated box plus one for the riser that climbs back.
@@ -226,9 +242,8 @@ def _cod_rotate_cw(block: str) -> list[str]:
     fork box contains neither.  Contrast LaserFuck's ``_laserfuck_rotate``,
     which must substitute its mirrors.
 
-    Rotate the box with its ``?`` entry marker still a single character: a
-    ``{Xi}`` is four characters and one cell, so turning the spelled-out
-    placeholder scatters it down a column.
+    The box is rotated with its ``?`` entry marker in place; the marker
+    becomes the input's run once the boxes are joined.
     """
     rows = block.split("\n")
     height = len(rows)
@@ -253,8 +268,8 @@ def _cod_rotated(n: int, truth_table: str) -> str:
     -- the failure that blocked the shared-cell merge described in
     :func:`cod`.
 
-    One box per column also puts every ``{Xi}`` on the same grid row, in
-    left-to-right order, so the slots come out in name order by
+    One box per column also puts every input's run on the same grid row,
+    in left-to-right order, so the runs come out in name order by
     construction.
     """
     boxes = [_cod_rotate_cw(_cod_fork_box(n, k + 1)) for k in range(n - 1)]
@@ -285,14 +300,14 @@ def _cod_rotated(n: int, truth_table: str) -> str:
     grid[0][0] = ">"
 
     cascade = _cod_cascade(n, truth_table).split("\n")
-    cascade[1] = "{X" + str(n - 1) + "}" + cascade[1][1:]
-    # Pad in *cells* and with wall.  In characters, a row holding a ``{Xi}``
-    # shrinks by three when the template is filled, and a leaf's ``---`` then
-    # stops touching the right edge -- which disables every print silently,
-    # since ``_edge_dash_cells`` simply finds nothing.  Blanks rather than
-    # wall would open water the cascade is built assuming is solid, and the
-    # cod escapes its shaft; the interpreter itself pads short rows with wall.
-    cells = [len(_COD_CELL.findall(row)) for row in cascade]
+    cascade[1] = _cod_run(n, n - 1) + cascade[1][1:]
+    # Pad with wall to one width, so a leaf's ``---`` touches the right edge
+    # on every row -- a short row's print would otherwise be disabled
+    # silently, since ``_edge_dash_cells`` simply finds nothing.  Blanks
+    # rather than wall would open water the cascade is built assuming is
+    # solid, and the cod escapes its shaft; the interpreter itself pads
+    # short rows with wall.
+    cells = [len(row) for row in cascade]
     cwidth = max(cells)
     cascade = [
         row + "~" * (cwidth - got) for row, got in zip(cascade, cells, strict=True)
@@ -304,20 +319,17 @@ def _cod_rotated(n: int, truth_table: str) -> str:
     ]
     program = "\n".join(rows)
     for k in range(n - 1):
-        program = program.replace("?", "{X" + str(k) + "}", 1)
+        program = program.replace("?", _cod_run(n, k), 1)
     return program
 
 
 def _cod_width(program: str) -> int:
-    """Measure the program as *text*, which is what a caller is handed.
+    """Measure the program's widest row.
 
-    A ``{Xi}`` is one cell and four characters, so a template is three
-    characters per placeholder wider than the program it fills to.  The
-    count that matters is the text one: :func:`~esolangs.generate` returns
-    the template, and a caller who asked for 40 columns and got 44 was told
-    the wrong thing whatever the filled width turns out to be.  Erring this
-    way folds a little sooner than strictly needed, which is the safe
-    direction -- WII2D erred the other way and declined folds it could do.
+    A template is the exact shape of every program it fills to -- an
+    input's run is one cell, as its setter is -- so this is the width the
+    caller of :func:`~esolangs.generate` is handed and the width every
+    filled program has.
     """
     return max(len(row) for row in program.split("\n"))
 
@@ -347,8 +359,8 @@ def _cod_turned(program: str) -> str:
     those descents come down, so each cod turns on a row of its own.  Rows
     are free here, which is the whole point of turning.
 
-    A ``{Xi}`` is one cell and four characters, so the turn is taken on
-    *cells* -- transposing the text would cut a placeholder in half.
+    The turn is taken on cells, and an input's run is one cell like any
+    other.
     """
     rows = _cod_cells(program)
     height = len(rows)
@@ -377,11 +389,11 @@ def _cod_turned(program: str) -> str:
     return "\n".join("".join(row).rstrip() for row in turned)
 
 
-def _cod_dead_box(names: list[int]) -> str:
+def _cod_dead_box(n: int, names: list[int]) -> str:
     """Build a sealed block of ignored inputs' setters, which the cod never enters.
 
-    Every input keeps its ``{Xi}`` -- the harness has a bit for each one --
-    but an input the table ignores must not reach the value the cascade
+    Every input keeps its run -- the harness has a bit for each one -- but
+    an input the table ignores must not reach the value the cascade
     reads.  COD is a *grid*, so unlike a one-dimensional tape it has cells
     that are genuinely unreachable: a ``~`` wall on every side is water the
     cod cannot cross, and a ``)`` inside it increments nothing because no
@@ -395,8 +407,8 @@ def _cod_dead_box(names: list[int]) -> str:
     -- padding the reduced program out to a common width lets the cod swim
     out of it, and the program then prints nothing at all.
     """
-    inner = "".join("{X" + str(i) + "}" for i in names)
-    wall = "~" * (len(names) + 2)
+    inner = "".join(_cod_run(n, i) for i in names)
+    wall = "~" * (len(inner) + 2)
     return "\n".join([wall, "~" + inner + "~", wall])
 
 
@@ -422,10 +434,9 @@ def cod(truth_table: str, width: int | None = None) -> str:
     tall.  Measured over all 576 tables through four inputs, banding never
     once came out narrower, so it is not kept as an alternative.
 
-    The template's ``{X0}``..``{X(n-1)}`` placeholders become the input bits
-    (``)`` for a one bit, a space for a zero); the harness's
-    :func:`instantiate` fills them, matching every other no-input
-    generator's convention.
+    The template's input runs, one cell each, become the input bits (``)``
+    for a one bit, a space for a zero -- :func:`cod_setters`); the harness
+    fills them, matching every other no-input generator's convention.
 
     The construction has two phases, each built from private, self-
     contained grid blocks joined by plain horizontal concatenation
@@ -475,13 +486,13 @@ def cod(truth_table: str, width: int | None = None) -> str:
     # A table that ignores some of its inputs is a smaller table, and COD's
     # cost is the leaf cascade -- ``2**n - 1`` blocks whatever the table says
     # -- so dropping an input roughly halves the program.  Build the reduced
-    # table's program, rename its slots to the inputs that survived, and park
+    # table's program, whose runs are the inputs that survived, and park
     # the rest in sealed boxes (:func:`_cod_dead_box`) placed either side of
-    # it so every ``{Xi}`` still appears exactly once, in ascending order.
+    # it so every input's run still appears exactly once, in name order.
     used = essential_inputs(truth_table, n) or [0]
     # A *gapped* dependency set (inputs 0 and 2 but not 1) would emit the
-    # core's slots around the ignored one, leaving ``{X2}`` before ``{X1}``
-    # and breaking name order, so the set is widened to its span.  Taglate
+    # core's runs around the ignored one, leaving input 2's run before
+    # input 1's and breaking name order, so the set is widened to its span.  Taglate
     # declines a gapped set outright instead, because there the widened
     # table would ghost-pad itself.
     #
@@ -497,26 +508,21 @@ def cod(truth_table: str, width: int | None = None) -> str:
     reduced = None
     if len(used) < n:
         core = cod(read_at(truth_table, used, n))
-        # Rename through a private marker: rewriting ``{X0}`` to ``{X2}`` in
-        # place could collide with a ``{X2}`` this loop has not reached yet.
-        for slot in reversed(range(len(used))):
-            core = core.replace("{X" + str(slot) + "}", f"\x01{used[slot]}\x02")
-        core = re.sub(r"\x01(\d+)\x02", lambda m: "{X" + m.group(1) + "}", core)
         ignored = [i for i in range(n) if i not in used]
         before = [i for i in ignored if i < used[0]]
         after = [i for i in ignored if i > used[-1]]
-        parts = [_cod_dead_box(before)] if before else []
+        parts = [_cod_dead_box(n, before)] if before else []
         parts.append(core)
         if after:
-            parts.append(_cod_dead_box(after))
+            parts.append(_cod_dead_box(n, after))
         reduced = "\n".join(parts)
 
     blocks = ["~~~\n~> \n~~~"]
     for k in range(n - 1):
-        blocks.append(_cod_fork_box(n, k + 1).replace("?", "{X" + str(k) + "}", 1))
+        blocks.append(_cod_fork_box(n, k + 1).replace("?", _cod_run(n, k), 1))
 
     box_rows = _cod_cascade(n, truth_table).split("\n")
-    box_rows[1] = "{X" + str(n - 1) + "}" + box_rows[1][1:]
+    box_rows[1] = _cod_run(n, n - 1) + box_rows[1][1:]
     blocks.append("\n".join(box_rows))
 
     full = _cod_combine(blocks)
