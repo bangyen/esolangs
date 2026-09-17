@@ -66,6 +66,18 @@ steps and the stored lookup has at most `2**n` entries.  This proves every
 finite table when the language's addresses or program integers are unbounded;
 where this repository imposes a finite ceiling, the row is marked `cap`.
 
+A generator carries a ceiling exactly when some table inside the contract's
+arity range cannot finish under the suite's budget on an audited axis --
+output size, build time or execution time -- by the shipped construction,
+and a uniform lift (below) proves the program exists without it.  The
+ceiling is one named constant; reaching it refuses, never truncates.  A
+construction that is polynomial in the table and inside the budget gets no
+ceiling: super-linear growth there is an open roadmap cell for the linearity
+contract to hold, and a ceiling would hide it.  A refusal with no lift
+argument is `exception`, not `cap`.  Audited across all 65 on 2026-09-17:
+every other arity threshold is a route switch to a total construction or an
+unreachable invariant guard.
+
 **Parameterized tree.**  A no-input language receives each bit through an
 equal-width replacement of its run.  Embedding the runs at the internal
 nodes of a full decision tree gives the same induction as `tree`; equal width
