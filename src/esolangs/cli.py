@@ -270,15 +270,10 @@ def _debug(rest: list[str]) -> None:
     # be the program's input: the two would race for the same descriptor.
     # ``--stdin`` is how a TUI run feeds its program instead.
     if tui and not sys.stdin.isatty():
-        # Not exempted by ``--stdin``.  The exemption was the bug: this
-        # guard's own message told you to pass ``--stdin``, and doing so
-        # turned the clean refusal into curses failing with ``(19,
-        # 'Operation not supported by device')`` through the catch-all, at
-        # exit 70.  Following the advice was the way to reach the crash.
-        #
-        # ``--stdin`` settles where the *program's* input comes from; it
-        # cannot conjure a terminal to read keys from, which is what the
-        # TUI needs and what a pipe or a CI job does not have.
+        # Not exempted by ``--stdin``: following that advice turned the
+        # refusal into curses failing with ``(19, 'Operation not supported
+        # by device')`` at exit 70.  ``--stdin`` is the program's input,
+        # not a terminal for the TUI.
         _fail(
             "--tui reads keys from a terminal, and this stdin is not one. "
             "--stdin says where the program's input comes from and does not "
@@ -359,12 +354,8 @@ def _debug(rest: list[str]) -> None:
         # never reached it, and the report said nothing either way.
         sys.stderr.write("note: no breakpoint matched during this run\n")
     print(f"halted: {'yes' if dbg.halted else 'no'}")
-    # Exit codes below, after the report is printed: a script that cannot
-    # tell a clean halt from a crash has to parse prose, and `run` has had
-    # this taxonomy for several rounds.  The state up to the fault is still
-    # printed either way, which is the whole point of the command.
-    # Always printed, so a script reading fixed field positions does not
-    # break on the one case it most wants to parse.
+    # Exit codes after the report, so a script need not parse prose; the
+    # state up to the fault is always printed, in fixed field positions.
     print(f"stopped: {reason if reason is not None else 'raised'}")
     print(f"ip: {dbg.ip}")
     print(f"output: {dbg.output!r}")
@@ -471,12 +462,9 @@ def _describe(rest: list[str]) -> None:
         # it is empty is the thing that makes a schema unusable.
         print(json.dumps(facts, indent=2))
         return
-    # A template language reads no stdin, so its input shape and alphabet
-    # are noise -- and ``input_shape`` is the field the README tells you to
-    # trust.  Hidden here rather than dropped from ``describe()``, whose
-    # keys stay uniform across all 65: a caller that iterates them without
-    # branching is the pattern this package spent four rounds proving, and
-    # a per-language schema would break it.
+    # A template language reads no stdin, so its shape and alphabet are
+    # noise.  Hidden here, not dropped from ``describe()``, whose keys stay
+    # uniform across all 65.
     hidden = set()
     if not facts["reads_input"] and facts["parameterized"]:
         hidden = {"input_shape", "input_encoding"}
@@ -728,32 +716,16 @@ def _run(rest: list[str]) -> None:
     table = options.get("--table")
     warning = _shape_warning(facts, stdin, table)
     if warning and judge:
-        # ``--judge`` is the caller saying "this is a truth-table program and
-        # I want its answer bit", so a stdin the language cannot read the way
-        # they meant is a usage error rather than advice: the whole output of
-        # this command would be one wrong digit.  Plain ``run`` only warns,
-        # because it executes arbitrary programs of the language and the
-        # shape this calls wrong may be exactly what one of them wants.
-        #
-        # That split is the answer to "warn or refuse?" -- the flag says
-        # which of the two situations you are in.
+        # ``--judge`` wants one answer bit, so a bad stdin is a usage error
+        # (the output would be one wrong digit); plain ``run`` only warns,
+        # since an arbitrary program may want that shape.
         _fail(f"{warning}\n(refused because --judge asks for an answer bit)")
     if judge and table is None and facts["input_shape"] in _UNCOUNTABLE_SHAPES:
-        # Last, after the specific diagnoses above.  Put first, this swallowed
-        # them: `abc` fed to Fargo was answered with "pass --table" instead of
-        # "reads one decimal row index", which is the more useful of the two
-        # by a wide margin.  So this only speaks when nothing else has -- when
-        # the stdin is a perfectly good single line and the only thing that
-        # cannot be checked is how many bits it should hold.
-        #
-        # A refusal rather than advice, and only for these two shapes.  The
-        # first draft printed a note on every `--judge` call without a table,
-        # including the ones where nothing was wrong, and a warning that fires
-        # on correct input is worth less than no warning at all.  The other
-        # sixty-seven read a line at a time, so `run` counts what the program
-        # took against what it was given and catches a mismatch after the
-        # fact; these two read a single line and never run off an end to
-        # count.
+        # Last: put first it swallowed the specific diagnoses (``abc`` to
+        # Fargo said "pass --table" instead of "reads one decimal row
+        # index").  A refusal, only for these two single-line shapes, which
+        # never run off an end for ``run`` to count; a note on every
+        # table-less ``--judge`` fired on correct input.
         reads = (
             "one line of bits"
             if facts["input_shape"] == "one_line"
@@ -787,15 +759,10 @@ def _run(rest: list[str]) -> None:
             _fail(f"{surplus}\n(refused because --judge asks for an answer bit)")
         for entry in caught:
             _note(str(entry.message))
-        # The count and range checks `--table` buys.  ``run`` warns through
-        # the library, which is not given the table and so can only judge
-        # shape and alphabet -- so `run --table` computed this and used it
-        # for nothing, while `check-stdin --table` and `run --judge --table`
-        # both refused the same stdin.  Three routes, two answers.
-        #
-        # Only when the library did not already say it: a shape complaint
-        # comes back from both, and saying it twice is what the note-vs-
-        # warning split was cleaned up to stop.
+        # The count and range checks ``--table`` buys; the library judges
+        # only shape and alphabet, so ``run --table`` used the table for
+        # nothing while the other two routes refused.  Skipped when the
+        # library already said it.
         said = {str(entry.message) for entry in caught}
         if (
             warning
@@ -889,13 +856,9 @@ def main() -> None:
         os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
         sys.exit(120)
     except Exception as exc:
-        # Every *deliberate* failure is an ``EsolangError`` and is handled
-        # where it happens; anything reaching here is a bug in this
-        # package.  That used to mean the reader got a traceback -- an
-        # out-of-range address in three interpreters raised ``OverflowError``
-        # straight through ``main``.  A traceback is the right signal that
-        # something is broken and the wrong thing to hand a user, so it
-        # becomes a one-line report and an exit code nothing else uses.
+        # Anything reaching here is a package bug (three interpreters once
+        # raised ``OverflowError`` through ``main``): one line and an exit
+        # code nothing else uses, not a traceback.
         sys.stderr.write(
             f"internal error: {type(exc).__name__}: {exc}\n"
             f"This is a bug in esolangs, not in your program; please report "
