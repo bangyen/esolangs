@@ -1,56 +1,21 @@
 """Extract a Line program's path tree by probing 8-pointed stars at each vertex.
 
-Alternative to :mod:`extract`'s greedy pixel-by-pixel walker plus region-
-adjacency junction detection.  That walker's one known structural gap (see
-``WIP.md``) is a merge: the wiki's own drawings let one stroke's last leg
-run straight into a *different*, already-drawn stroke's ink with no
-separating background pixel, which a pixel-adjacency walk cannot tell apart
-from an ordinary continuation -- three attempts at a local pixel-geometry
-fix each broke on some new bend not covered by the fixture used to derive
-it.
+Replaces :mod:`extract`'s pixel walker, whose one structural gap was a
+merge -- one stroke's last leg running into another's ink with no
+background pixel between, which three local fixes each broke on a new
+bend.  At every vertex, probe all 8 compass directions and count the lit
+ones: 2 is a bend (continue), 3 is a fork or an incidental merge (both
+stop the stroke), 4 is a crossing (pass straight through).  A real fork's
+two other directions are the pair perpendicular to arrival (the wiki's
+T-branch); a merge's are not.  ``multiplication.png``'s hand-decoded
+``(194, 228)`` merge reads exactly 3.
 
-This module instead asks, at every vertex, a single question: probe all 8
-compass directions for a real line segment leaving that point, and count how
-many are lit.
-
-* 2 lit directions (the one arrived from, plus one more): an ordinary bend
-  -- continue the stroke through it.
-* 3 lit directions: either a real conditional-turn fork or an incidental
-  merge with an unrelated stroke -- both stop the current stroke here (see
-  below for how the two are told apart).
-* 4 lit directions: a crossing -- two unrelated strokes overlapping, with
-  the cursor passing straight through untouched.
-
-Merge detection falls out of this almost for free: a merge point, hand-
-decoded in ``WIP.md`` for ``fixtures/multiplication.png``'s confirmed
-``(194, 228)`` junction, has exactly 3 lit directions at the exact pixel the
-merging stroke touches the unrelated one it runs into, the same reading a
-real conditional-turn's stem tip has -- so the walker naturally stops there,
-rather than needing a dedicated signal to detect the merge as a special
-case.  What still separates a real fork from an incidental merge is the
-same geometric fact :func:`extract._walk_tree` already uses: a real
-conditional turn's *other* two lit directions (besides the one arrived
-from) are the pair perpendicular to the arrival heading, matching the
-wiki's T-branch shape (see ``render.py``'s ``_Cursor.branch``) -- an
-incidental merge's extra direction essentially never lands exactly there.
-
-The probe itself checks a 3-pixel-wide band (the exact ray, plus one pixel
-to each side, perpendicular to that ray's own direction), not a single
-1px-wide ray.  A single-ray probe was tried first and broke twice on real
-fixtures: hand-drawn curves don't sit at one exact pixel width, so an exact-
-length single ray can miss a real segment that is a pixel short of the
-nominal grid unit, and a walked path's own recorded stopping pixel can be
-one row/column off the true geometric vertex (confirmed on
-``fixtures/addition.png``'s real T-junction, whose bar sits one row above
-where the incoming stem's own path data ends).  The band absorbs both: the
-true segment shows up on one of its three parallel rays even when the probe
-is anchored a pixel off-center, and its *length* is read directly off where
-all three rays lose ink at once, rather than needing a separately guessed or
-tolerance-padded unit length.  Verified against every direction-change
-vertex in both wiki reference fixtures (~90 total): every ordinary bend
-reads exactly 2, every real fork or merge point reads exactly 3 (including
-the confirmed ``(194, 228)`` merge and the real T-junctions in both
-fixtures), and the only other reading (1) is a genuine stroke dead end.
+The probe is a 3-pixel band (the ray plus one each side): a single ray
+missed segments a pixel short of the unit and vertices a pixel off the
+true corner (``addition.png``'s T-bar sits one row above where the stem's
+path data ends).  Length is read where all three rays lose ink at once.
+Over ~90 direction-change vertices in both fixtures every bend reads 2,
+every fork or merge 3, and the only 1 is a genuine dead end.
 """
 
 from __future__ import annotations
@@ -59,12 +24,8 @@ from dataclasses import dataclass
 
 from .mask import Mask
 
-# 8 directions in (dy, dx) form, indexed 0..7 as N, NE, E, SE, S, SW, W, NW --
-# the same indexing render.py's headings would map onto, so a direction index
-# here and a (dy, dx) heading there describe the same geometry.  Owned by
-# this module (rather than extract.py, which also uses it) since extract.py
-# already depends on this module's walker -- extract.py imports it back from
-# here instead of the two modules importing from each other.
+# (dy, dx) for N, NE, E, SE, S, SW, W, NW, matching render.py's headings.
+# Owned here so extract.py imports it rather than the two importing each other.
 _DIRS: list[tuple[int, int]] = [
     (-1, 0),
     (-1, 1),
@@ -82,12 +43,8 @@ def _ink(mask: Mask, y: int, x: int) -> bool:
     return 0 <= y < h and 0 <= x < w and bool(mask[y, x])
 
 
-# Matches render.py's _UNIT: the nominal grid spacing (in source pixels)
-# between corners in a Line drawing.  Only used as an upper bound on how far
-# a single segment is walked before giving up -- see _walk_segment -- since
-# the band probe (see module docstring) already reads a segment's actual
-# length directly rather than assuming this exactly, and real fixtures
-# measure a pixel or two off it in practice.
+# render.py's _UNIT.  Only an upper bound for _walk_segment; the band
+# probe reads real lengths, which run a pixel or two off it.
 UNIT = 20
 
 # Stay one quarter-unit inside the nominal corner spacing.  At UNIT=20 this
@@ -95,26 +52,13 @@ UNIT = 20
 # a smaller lattice unit is introduced.
 _PROBE_LENGTH = max(1, UNIT * 3 // 4)
 
-# Upper bound on how long a single walked segment is allowed to be before
-# _walk_segment gives up rather than looping indefinitely on a corrupted or
-# unexpected image.  Not a small multiple of UNIT: a merged run of several
-# consecutive `+`/`-` opcodes draws as a single, proportionally longer
-# straight/diagonal run with no intermediate corner at all (see
-# render.py's module docstring), and fixtures/multiplication.png's own
-# longest run measures ~60px (three units) with no wiki-documented ceiling
-# on the repeat count -- so this is generous headroom above what either
-# fixture needs, not a tight bound.
+# Where _walk_segment gives up on a corrupted image.  Generous: a merged
+# `+`/`-` run has no ceiling, and multiplication.png's longest is ~60px.
 _MAX_SEGMENT = UNIT * 20
 
 
 def _band_lit(mask: Mask, y: int, x: int, direction: int) -> bool:
-    """Whether any of the 3 parallel rays (center + 1px either side) is ink.
-
-    The 3 rays run parallel to ``direction`` but are offset from ``(y, x)``
-    along the *perpendicular* axis -- see module docstring for why a single
-    center ray is not enough (a real segment can be a pixel off the exact
-    probe center, at a hand-drawn corner's true vertex).
-    """
+    """Whether any of the 3 parallel rays (center + 1px either side) is ink."""
     pdy, pdx = _DIRS[(direction + 2) % 8]
     return any(_ink(mask, y + pdy * k, x + pdx * k) for k in (-1, 0, 1))
 
@@ -122,13 +66,8 @@ def _band_lit(mask: Mask, y: int, x: int, direction: int) -> bool:
 def star(mask: Mask, y: int, x: int, length: int = _PROBE_LENGTH) -> set[int]:
     """Which of the 8 directions have a real band segment from this vertex.
 
-    ``length`` only needs to be shorter than the shortest real segment
-    anywhere in the drawing (see module docstring's band-probe rationale --
-    the exact length is no longer required as it was in an earlier,
-    discarded exact-match design); the default comfortably clears every
-    real segment length measured on both wiki fixtures (all >= 19px)
-    without risking running past a short real segment into whatever
-    happens to follow it. The default is three quarters of :data:`UNIT`.
+    ``length`` need only be shorter than the shortest real segment (all
+    >= 19px on both fixtures); the default is three quarters of :data:`UNIT`.
     """
     lit = set()
     for idx, (dy, dx) in enumerate(_DIRS):
@@ -139,36 +78,19 @@ def star(mask: Mask, y: int, x: int, length: int = _PROBE_LENGTH) -> set[int]:
     return lit
 
 
-# How many pixels of real, unbroken ink _snap requires before trusting a
-# perpendicular-offset candidate as the true centerline for a chosen
-# direction -- long enough to tell a genuine leg (segments on both wiki
-# fixtures all measure >= 19px, see star's own default) apart from a
-# neighboring, unrelated leg's ink brushing past for a pixel or two (e.g.
-# a diagonal leg's own body passing near a perpendicular bar one row over,
-# confirmed to falsely satisfy a 1-pixel-deep check at fixtures/addition.png's
-# V-notch corner).
+# Ink depth _snap requires before trusting an offset: a neighbouring leg
+# brushing past satisfied a 1-pixel check at addition.png's V-notch.
 _SNAP_CONFIRM = 6
 
 
 def _snap(mask: Mask, y: int, x: int, direction: int) -> tuple[int, int]:
     """Find which of ``(y, x)``'s band offsets is the true centerline for ``direction``.
 
-    A vertex's own recorded position can be a pixel off the true corner of
-    the leg leaving in ``direction`` -- confirmed on both fixtures, e.g. a
-    diagonal leg touching down one row below the horizontal bar it turns
-    into, rather than exactly on the bar's own row (the same geometry
-    :func:`_classify`'s band-tolerant :func:`star` already looks past to
-    classify the vertex correctly).  :func:`_walk_segment` cannot use that
-    same leniency for every step without risking the overshoot-onto-foreign-
-    ink problem the band was built to avoid, so instead this snaps *once*,
-    right before walking a specific chosen direction: of ``(y, x)`` and its
-    two perpendicular-offset neighbors, return whichever one has a real,
-    several-pixel-deep run in ``direction`` -- the true centerline for that
-    specific leg, whatever pixel the previous leg's own walk happened to
-    land on. Requiring several pixels, not just one, is required: a
-    single step is not enough to tell a genuine leg apart from a
-    *different*, nearby leg's own ink brushing past for a pixel (confirmed
-    to happen one row off the true corner in exactly this situation).
+    A recorded vertex can be a pixel off the true corner of the leg leaving
+    it (a diagonal touching down one row below the bar it turns into).
+    Snapping once, before walking a chosen direction, avoids the overshoot
+    the band would cause per step; several pixels of ink are required, since
+    a nearby leg can brush past for one.
     """
     dy, dx = _DIRS[direction]
     pdy, pdx = _DIRS[(direction + 2) % 8]
@@ -184,16 +106,8 @@ def _snap(mask: Mask, y: int, x: int, direction: int) -> tuple[int, int]:
 def _walk_segment(mask: Mask, y: int, x: int, direction: int) -> tuple[int, int]:
     """Follow a stroke's own center pixels to this segment's true endpoint.
 
-    Advances pixel by pixel while the exact next pixel (not the wider band
-    -- see below) is ink, and returns the last position where it was.  The
-    band probe (:func:`_band_lit`, :func:`star`) is deliberately *not* used
-    for this per-step advance: it is lenient by design (any of 3 parallel
-    rays counts), which is exactly right for asking "is there a segment
-    roughly this way" from a possibly slightly-off-center vertex, but wrong
-    for walking forward along a stroke's own centerline -- confirmed to
-    overshoot the true endpoint by a pixel in practice, continuing onto a
-    *different* leg's ink that happens to sit within the band's lateral
-    reach of the true corner rather than stopping there.
+    Advances while the exact next pixel is ink -- not the band, which
+    overshoots onto a neighbouring leg within its lateral reach.
     """
     dy, dx = _DIRS[direction]
     py, px = y, x
@@ -210,16 +124,8 @@ def find_start(
 ) -> tuple[int, int]:
     """Return the path-start vertex for a caller already holding one.
 
-    :func:`extract.find_cursor`'s centroid-derived nearest-ink-pixel search
-    (the same search :func:`extract.extract_tree` already does) lands
-    directly on the arrowhead's own true tip in practice -- confirmed on
-    both fixtures, where the located pixel sits exactly at one end of the
-    first opcode's own straight run, with nothing between it and the blob
-    boundary.  This function is a thin passthrough, kept as the one named
-    entry point a caller plugs that search's result into (mirroring
-    :func:`extract.extract_tree`'s own start-pixel step); ``mask``/
-    ``heading`` are accepted for interface symmetry with the rest of the
-    module's direction- and mask-aware functions rather than being used.
+    :func:`extract.find_cursor` lands on the arrowhead's tip on both fixtures;
+    this is a named passthrough, ``mask``/``heading`` for interface symmetry.
     """
     del mask, heading
     return approx_y, approx_x
@@ -229,9 +135,8 @@ def find_start(
 class Vertex:
     """One lattice point the walk passes through, plus the heading taken.
 
-    ``heading`` is the direction (a :data:`extract._DIRS` index) travelled
-    *away* from this vertex toward the next one -- ``None`` for a stroke's
-    final vertex, which has no further direction.
+    ``heading`` is the :data:`extract._DIRS` index travelled *away*; ``None``
+    at a stroke's final vertex.
     """
 
     y: int
@@ -243,10 +148,8 @@ class Vertex:
 class Stroke:
     """One matched straight-through run of lattice vertices, tree-shaped.
 
-    Mirrors :class:`extract.Stroke`'s shape (``zero``/``nonzero`` branches),
-    but the path is a list of on-lattice :class:`Vertex` objects rather than
-    a dense pixel-by-pixel path -- the walk only ever visits real vertices,
-    not the pixels between them.
+    Mirrors :class:`extract.Stroke` with on-lattice :class:`Vertex` objects
+    rather than a dense pixel path.
     """
 
     vertices: list[Vertex]
@@ -267,43 +170,20 @@ def _opposite(idx: int) -> int:
 def _classify(lit: set[int], back: int) -> tuple[str, list[int]]:
     """Decide what kind of vertex this is, given its lit directions.
 
-    ``lit`` is this vertex's full :func:`star` result, including ``back``
-    (the direction already walked in from).  Returns a ``(kind, options)``
-    pair:
-
-    * ``"end"``: ``lit`` is just ``{back}`` -- a genuine dead end, nothing
-      more to walk.
-    * ``"straight"``: exactly one direction besides ``back`` is lit --
-      an ordinary bend; continue the stroke through it.
-    * ``"crossing"``: exactly 4 directions lit, including ``back`` and the
-      direction straight ahead (opposite ``back``) -- two unrelated strokes
-      overlapping; matches :func:`extract._walk_tree`'s own crossing rule
-      (see its docstring) by passing straight through rather than treating
-      it as a decision point.
-    * ``"fork"``: exactly 3 directions lit, and the two besides ``back``
-      are the pair perpendicular to it (``back +/- 2``) -- a real
-      conditional turn, matching the wiki's T-branch shape.  ``options``
-      has those two directions, right (zero) first.
-    * ``"merge"``: exactly 3 directions lit, but the extra two aren't the
-      perpendicular pair -- an incidental merge into an unrelated stroke
-      (see module docstring), not a real decision point.  Stops the
-      current stroke the same way ``"end"`` does, just for a different
-      reason (kept as a separate kind purely so a caller can tell the two
-      apart if useful, e.g. for diagnostics).
+    ``lit`` includes ``back``.  ``"end"``: only ``back``.  ``"straight"``:
+    one more.  ``"crossing"``: 4 lit including straight ahead; pass through.
+    ``"fork"``: 3 lit, the other two ``back +/- 2``; ``options`` is those,
+    right (zero) first.  ``"merge"``: 3 lit otherwise; stops like ``"end"``,
+    kept distinct for diagnostics.
     """
     rest = lit - {back}
     if not rest:
         return "end", []
     if len(rest) == 1:
         return "straight", list(rest)
-    # Rotate relative to the *heading* (the direction arrived in), not
-    # `back` (the direction arrived from).  These differ by 180 degrees, so
-    # rotating off `back` -- as this did originally -- names each physical
-    # arm as its opposite, and every consumer then has to swap the labels
-    # back.  `render.py`'s `_turn_right`/`_turn_left` rotate off the heading,
-    # and the wiki's rule ("turn right if the current cell is 0") is written
-    # from the cursor's own travelling frame, so the heading is the frame
-    # that makes `right`/`zero` mean what they say.
+    # Rotate off the *heading*, not `back` (180 degrees out, which once
+    # named every arm as its opposite): the wiki's rule and render.py's
+    # turns are in the cursor's own frame.
     heading = _opposite(back)
     right, left = (heading + 2) % 8, (heading - 2) % 8
     straight = heading
@@ -317,28 +197,13 @@ def _classify(lit: set[int], back: int) -> tuple[str, list[int]]:
 def _resnap_dead_end(mask: Mask, y: int, x: int, heading: int) -> tuple[int, int]:
     """Recover a vertex :func:`_walk_segment` stopped a column short of.
 
-    ``_walk_segment`` advances in exactly one direction, so if the true
-    corner it is walking toward sits one pixel over on the perpendicular
-    axis (the same off-by-one geometry :func:`_snap` corrects for when
-    *continuing* a stroke -- see its docstring), the segment can run out of
-    ink one step early and land on a pixel whose only lit direction is
-    ``back`` -- reading as a genuine dead end when a real bend sits right
-    next to it.  Confirmed on ``fixtures/multiplication.png``: a walked S
-    segment stops at ``(72, 267)`` (``star`` reads only ``{N}`` there) one
-    column short of the true NE-turning corner at ``(72, 268)`` (``star``
-    reads ``{N, NE}``), silently truncating an entire ~460px downstream
-    branch with no error -- caught by comparing this walker's coverage
-    against :mod:`extract`'s pixel-adjacency walker on the same fixture.
-
-    Only called when ``star`` at ``(y, x)`` itself already looks like a
-    dead end (see :func:`walk_tree`) -- a vertex that classifies as
-    anything else is trusted as-is, so this cannot turn a real fork or
-    merge into something else.  Tries both perpendicular-to-``heading``
-    neighbors (mirroring the ``k in (-1, 1)`` offsets :func:`_snap` already
-    uses) and returns the first whose own ``star`` reads as more than just
-    ``back`` -- i.e. a real bend was found one pixel over; returns
-    ``(y, x)`` unchanged if neither does, which is what a genuine dead end
-    looks like.
+    The walk advances in one direction, so a corner one pixel over on the
+    perpendicular axis can read as a dead end: ``multiplication.png``'s S
+    segment stopped at ``(72, 267)`` (``{N}``) one column short of the
+    NE-turning ``(72, 268)`` (``{N, NE}``), silently dropping a ~460px branch
+    (caught by comparing coverage against :mod:`extract`'s walker).  Only
+    called when ``star`` already reads a dead end; tries both perpendicular
+    neighbours and returns the first whose star is more than ``back``.
     """
     back = _opposite(heading)
     pdy, pdx = _DIRS[(heading + 2) % 8]
@@ -357,21 +222,10 @@ def walk_tree(
 ) -> Stroke:
     """Walk a Line image's full path tree via star-probing from ``start``.
 
-    ``start``/``heading`` must be a real vertex and the direction leaving it
-    (see :func:`find_start` for the initial call).  At each vertex, probes
-    all 8 directions (:func:`star`) and follows :func:`_classify`'s verdict:
-    continues through ``"straight"``/``"crossing"`` points, stops the
-    stroke at ``"end"``/``"merge"``, and recurses into both arms at a
-    ``"fork"`` -- matching :func:`extract._walk_tree`'s own branch
-    recursion, but deciding each step from one star probe instead of a
-    pixel-by-pixel walk plus region-adjacency junction detection.
-
-    ``visited`` tracks vertices already claimed by this call tree, the same
-    role :func:`extract._walk`'s ``visited`` set plays -- needed so a branch
-    arm can never wander back onto a vertex an earlier arm already walked
-    through (confirmed necessary: two arms of the same fork can legitimately
-    both approach the same far-away vertex from different directions on a
-    looping program).
+    Continues through ``"straight"``/``"crossing"``, stops at
+    ``"end"``/``"merge"``, recurses into both arms of a ``"fork"``.
+    ``visited`` keeps an arm off vertices an earlier arm walked (two arms of
+    one fork can reach the same far vertex on a looping program).
     """
     if visited is None:
         visited = set()

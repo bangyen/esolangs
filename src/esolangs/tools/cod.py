@@ -1,20 +1,10 @@
 """Boolean-function generator for COD (parameterized convention).
 
-This follows the parameterized convention described in
-:mod:`esolangs.tools.parameterized`: the template's input runs are
-filled by the harness, one program per input combination.
-The generator routes a fork/cascade decision tree whose leaves print the
-truth-table entry.
-
-COD *does* have an input command, contrary to what this docstring used to
-say: ``...`` (three periods, touching the top or bottom edge) sets the cod's
-value from stdin, per the wiki spec and
-:func:`esolangs.interpreters.grid_based.cod._edge_dot_cells`.  The
-parameterized convention is kept here anyway because a reading generator
-would have to route every input crossing *horizontally* -- this interpreter
-treats each of the three dot cells as its own read, so a cod that turns into
-the column reads three times for one command, and one that dead-ends there
-re-reads until EOF.
+The harness fills the template's input runs, one program per combination;
+the generator routes a fork/cascade decision tree.  COD does have an
+input command (``...`` touching a top or bottom edge), but a reading
+generator would have to route every input horizontally: this interpreter
+treats each of the three dot cells as its own read.
 """
 
 from itertools import zip_longest
@@ -33,12 +23,9 @@ __all__ = ["cod"]
 def _cod_reachable(n: int, k: int) -> tuple[set[int], set[int], set[int]]:
     """Combo-index contributions reachable after fork ``k`` (0 if ``k == 0``).
 
-    Returns ``(flat, plus_one, plus_weight)``: the values reachable *before*
-    fork ``k`` (``flat``), after taking its "continue" branch (``+1``, an
-    artifact of the gauntlet's own bookkeeping consumed by :func:`_cod_fork_box`
-    ), and after taking its "peel off" branch (``+ 2**(n-k)``, the bit's
-    weight).  Recursive in ``k``: fork ``k``'s reachable set is fork
-    ``k - 1``'s two branch sets combined.
+    ``(flat, plus_one, plus_weight)``: before fork ``k``, after its "continue"
+    branch (``+1``, bookkeeping :func:`_cod_fork_box` consumes), and after
+    "peel off" (``+ 2**(n-k)``).  Recursive in ``k``.
     """
     if not k:
         return {0}, {0}, {0}
@@ -55,11 +42,8 @@ def _cod_reachable(n: int, k: int) -> tuple[set[int], set[int], set[int]]:
 def _cod_gauntlet(vals: set[int]) -> str:
     """Build a gauntlet of ``(``/``<`` steps that survives only ``vals``.
 
-    ``vals`` sorted with a leading 0 gives consecutive gaps; each gap becomes
-    a run of ``(`` (decrement) of that length followed by a ``<`` gate, so
-    only a cod whose value already matches one of ``vals`` survives to the
-    next gate.  A trailing run of ``)`` (up to the maximum value) restores
-    the surviving cod to that value for whatever comes next.
+    Each gap between sorted ``vals`` is a run of ``(`` then a ``<`` gate; a
+    trailing ``)`` run restores the survivor to the maximum.
     """
     arr = [0, *sorted(vals)]
     res = ""
@@ -73,21 +57,12 @@ def _cod_gauntlet(vals: set[int]) -> str:
 def _cod_fork_box(n: int, k: int) -> str:
     """Build a private, self-contained 5-row box that forks on bit ``k - 1``.
 
-    Bit ``k`` (1-indexed, weight ``2**(n - k)``) gets its own ``+`` fork:
-    one branch continues forward (a net-zero gauntlet -- the value entering
-    and leaving is unchanged), the other peels off to a private side row
-    (a gauntlet that nets the branch's full weight), and both rejoin at a
-    second ``+`` on the main row.  Unlike nesting fork-and-gauntlet routing
-    directly (the ``n <= 3`` construction this replaces), every box below
-    uses *its own* private cells for both branches -- no box's gauntlet
-    cells are reused by another box's routing -- so boxes compose by plain
-    horizontal concatenation (see :func:`_cod_combine`) with no risk of one
-    box's cod re-entering another box's cells from an unexpected direction
-    (the failure mode that blocked a general-``n`` construction before;
-    see :func:`cod` for why the shared-cell merge it replaces could not be
-    proven safe past ``n == 3``).
-    The leading ``?`` marks the box's own entry cell, replaced by the
-    previous box's exit (or ``>`` for the first box) when boxes are joined.
+    A ``+`` fork: one branch continues through a net-zero gauntlet, the other
+    peels off to a side row netting the bit's weight ``2**(n - k)``, both
+    rejoining at a second ``+``.  Every box owns its cells, so boxes compose
+    by concatenation (:func:`_cod_combine`) and no cod re-enters another
+    box's cells from an unexpected direction (what blocked general ``n``; see
+    :func:`cod`).  The leading ``?`` is the entry cell, replaced on joining.
     """
     vals = _cod_reachable(n, k)
     forward_gate = _cod_gauntlet(vals[1])
@@ -159,24 +134,16 @@ def _cod_tree(n: int, table: str) -> str:
 def _cod_cascade(n: int, table: str) -> str:
     """Build the leaf cascade (Phase 2): stairstep gates down to each answer.
 
-    Reached with the combo index ``V = sum(bit_i * 2**(n-1-i))`` as the
-    cod's value, the cascade's chain of ``+<(`` blocks (:func:`_cod_cascade_row`)
-    peels off one copy per step, decrementing the rest; each leaf's own
-    gate chain only lets the copy carrying exactly the right number of
-    decrements through, so leaf ``k`` fires iff ``V == k``.  Column 1 is a
-    pre-built vertical shaft from the entry row straight down to the
-    cascade row, used to feed in the combo index from :func:`_cod_fork_box`
-    boxes stacked above (see :func:`_cod_combine`).
+    With the combo index ``V`` as the cod's value, a chain of ``+<(`` blocks
+    (:func:`_cod_cascade_row`) peels off one copy per step, and leaf ``k``'s
+    gate chain fires iff ``V == k``.  Column 1 is a shaft feeding the index
+    in from the boxes above (:func:`_cod_combine`).
     """
     tree_rows = _cod_tree(n, table).split("\n")
 
-    # Wrap the tree in a west wall column.  The top and bottom wall rows
-    # need only the one column; every leaf-tree row in between needs two,
-    # since the tree's own left edge already steps in by one column per
-    # row (each leaf sits one column deeper than the last).  The first
-    # leaf row's own new left cell is open water instead of wall -- it is
-    # the shaft down from Phase 1's last exit -- so it alone gets "  "
-    # rather than "~ ".
+    # West wall: one column on the top and bottom rows, two on each leaf
+    # row (the tree steps in a column per row); the first leaf row's new
+    # cell is the shaft down from Phase 1, so it is water.
     first, *middle, last = tree_rows
     wrapped_middle = [("  " if i == 0 else "~ ") + row for i, row in enumerate(middle)]
     return "\n".join(["~" + first, *wrapped_middle, "~" + last])
@@ -199,14 +166,9 @@ def _cod_combine(blocks: list[str]) -> str:
 def cod_setters(_template: str, n: int) -> Setters:
     """Set the cod's value to the bit at that input's ``+`` fork.
 
-    ``)`` increments, so a one is ``)``; a zero is ``_``, the command that
-    only acts on a cod moving *up* (it turns a nonzero one back down) and
-    is a no-op crossed sideways, which is how the fork meets this cell.
-    Both bits are one cell, so the programs are all the same size and
-    differ in exactly one character per input, at a fixed column, and
-    neither is a blank.  (Water would do for the zero, and did, but a
-    blank is a bit spelled as nothing; ``_`` costs no width where the
-    ``)(``-against-``)<`` spelling needs the fork box a column wider.)
+    ``)`` increments; ``_`` acts only on a cod moving *up* and is a no-op
+    crossed sideways.  Both one cell, neither blank (water would do, but a
+    blank spells a bit as nothing).
     """
     return (("_", ")"),) * n
 
@@ -229,21 +191,12 @@ _COD_STRIDE = 6
 def _cod_rotate_cw(block: str) -> list[str]:
     """Stand a block on end: ``new[c][H - 1 - r] = old[r][c]``.
 
-    A fork box is five rows by up to twelve hundred columns, and it is laid
-    beside the cascade, which is ``2 ** (n + 1) + 1`` rows -- so the flat
-    chain leaves every row below the fifth blank, 89% of the grid at eight
-    inputs.  Rotated, a box is a *vertical pipe* and the waste goes.
-
-    Nothing in a box needs rewriting to survive the turn, which is what
-    makes this cheap: COD's commands are ``+-)(<_`` and **none of them is
-    directional** -- a cod is steered by walls, not by its instructions.
-    Only ``---`` prints (horizontal, touching a side edge) and ``...`` reads
-    (vertical, touching a top or bottom edge) are orientation-bound, and a
-    fork box contains neither.  Contrast LaserFuck's ``_laserfuck_rotate``,
-    which must substitute its mirrors.
-
-    The box is rotated with its ``?`` entry marker in place; the marker
-    becomes the input's run once the boxes are joined.
+    A fork box is five rows by up to 1200 columns beside a cascade of
+    ``2 ** (n + 1) + 1`` rows, leaving 89% of the grid blank at eight
+    inputs; rotated, a box is a vertical pipe.  Nothing needs rewriting:
+    COD's ``+-)(<_`` are not directional (a cod is steered by walls), and
+    only ``---`` prints and ``...`` reads are orientation-bound, which a
+    box has neither of (contrast LaserFuck's mirrors).
     """
     rows = block.split("\n")
     height = len(rows)
@@ -257,20 +210,10 @@ def _cod_rotate_cw(block: str) -> list[str]:
 def _cod_rotated(n: int, truth_table: str) -> str:
     """Build the program with phase 1 as rotated columns rather than one row.
 
-    Each box becomes a pipe entered at the top of its column 3 and left at
-    the bottom of the same column (the flat entry ``(1, 0)`` maps to
-    ``(0, 3)``, and column 4 is wall, so a cod arriving from the north is
-    forced south into the fork).  Boxes are joined by a corridor that is
-    private to it and to them: down the exit column to a bottom row, east to
-    a riser, north to a top row, then east to the next box's entry, where a
-    wall forces it south.  Because every box owns its columns and every
-    corridor its own cells, no cell is ever re-entered from two directions
-    -- the failure that blocked the shared-cell merge described in
-    :func:`cod`.
-
-    One box per column also puts every input's run on the same grid row,
-    in left-to-right order, so the runs come out in name order by
-    construction.
+    Each box is a pipe entered at the top of its column 3 and left at the
+    bottom; a private corridor (down, east to a riser, north, east) joins
+    it to the next.  No cell is re-entered from two directions, and every
+    input's run lands on the same row in name order.
     """
     boxes = [_cod_rotate_cw(_cod_fork_box(n, k + 1)) for k in range(n - 1)]
     height = max(len(box) for box in boxes) + 2  # a top and a bottom corridor
@@ -301,12 +244,9 @@ def _cod_rotated(n: int, truth_table: str) -> str:
 
     cascade = _cod_cascade(n, truth_table).split("\n")
     cascade[1] = _cod_run(n, n - 1) + cascade[1][1:]
-    # Pad with wall to one width, so a leaf's ``---`` touches the right edge
-    # on every row -- a short row's print would otherwise be disabled
-    # silently, since ``_edge_dash_cells`` simply finds nothing.  Blanks
-    # rather than wall would open water the cascade is built assuming is
-    # solid, and the cod escapes its shaft; the interpreter itself pads
-    # short rows with wall.
+    # Pad with wall (as the interpreter does) so every ``---`` touches the
+    # right edge; a short row's print would silently find nothing, and
+    # blank padding would be water the cod escapes into.
     cells = [len(row) for row in cascade]
     cwidth = max(cells)
     cascade = [
@@ -326,10 +266,7 @@ def _cod_rotated(n: int, truth_table: str) -> str:
 def _cod_width(program: str) -> int:
     """Measure the program's widest row.
 
-    A template is the exact shape of every program it fills to -- an
-    input's run is one cell, as its setter is -- so this is the width the
-    caller of :func:`~esolangs.generate` is handed and the width every
-    filled program has.
+    A run is one cell, as its setter is, so this is every filled program's width.
     """
     return max(len(row) for row in program.split("\n"))
 
@@ -337,30 +274,13 @@ def _cod_width(program: str) -> int:
 def _cod_turned(program: str) -> str:
     """Turn the program a quarter turn clockwise, re-attaching its prints.
 
-    The blocks are joined left to right, so the drawing is wide and short --
-    1218 columns by 129 rows at six inputs.  Turned, those swap, and what
-    was the width becomes the *height*, which costs nothing.  The width
-    becomes the tallest block instead of the widest, and the tallest block
-    is the cascade: ``2 ** (n + 1) + 1`` rows.
-
-    Everything the generator emits is orientation-neutral but one thing.
-    ``---`` prints only as a *horizontal* run touching the left or right
-    edge -- :func:`~esolangs.interpreters.grid_based.cod._edge_dash_cells`
-    scans rows -- so turned, each of the cascade's ``2 ** n`` prints would
-    be three vertical dashes, which are three ``-`` removals.  The cod would
-    die silently with nothing printed, the worst way for this to be wrong.
-
-    So each print gets a corridor.  The cod keeps descending its own
-    column, meets a wall, and is forced west to a ``---`` at the left edge.
-    The corridors are laid in **descending column order**, which is what
-    keeps them from crossing: a corridor serving a column further right
-    spans every column left of it, so an earlier descent passes straight
-    through, while a corridor serving a column further left is wall where
-    those descents come down, so each cod turns on a row of its own.  Rows
-    are free here, which is the whole point of turning.
-
-    The turn is taken on cells, and an input's run is one cell like any
-    other.
+    The join is wide and short (1218 x 129 at six inputs); turned, the width
+    becomes the tallest block, the cascade at ``2 ** (n + 1) + 1``.  Only
+    ``---`` is orientation-bound (it prints as a horizontal edge run, and
+    turned it would be three ``-`` removals and a silent death), so each
+    print gets a corridor: descend, meet a wall, west to a ``---`` at the
+    left edge.  Corridors are laid in descending column order so they never
+    cross.  A run is one cell like any other.
     """
     rows = _cod_cells(program)
     height = len(rows)
@@ -392,20 +312,9 @@ def _cod_turned(program: str) -> str:
 def _cod_dead_box(n: int, names: list[int]) -> str:
     """Build a sealed block of ignored inputs' setters, which the cod never enters.
 
-    Every input keeps its run -- the harness has a bit for each one -- but
-    an input the table ignores must not reach the value the cascade
-    reads.  COD is a *grid*, so unlike a one-dimensional tape it has cells
-    that are genuinely unreachable: a ``~`` wall on every side is water the
-    cod cannot cross, and a ``)`` inside it increments nothing because no
-    cod is ever there.  That makes an ignored setter free rather than merely
-    cheap -- there is nothing to discard (taglate), erase (minifuck), or
-    weigh zero (home_row).
-
-    The box is stacked above or below the reduced program rather than
-    concatenated beside it, because :func:`_cod_combine` pads shorter blocks
-    with *spaces*, and a space in COD is open water rather than inert filler
-    -- padding the reduced program out to a common width lets the cod swim
-    out of it, and the program then prints nothing at all.
+    A ``~`` wall on every side; a ``)`` inside increments nothing, so an
+    ignored setter is free.  Stacked above or below rather than beside:
+    :func:`_cod_combine` pads with spaces, which are open water.
     """
     inner = "".join(_cod_run(n, i) for i in names)
     wall = "~" * (len(inner) + 2)
@@ -415,95 +324,39 @@ def _cod_dead_box(n: int, names: list[int]) -> str:
 def cod(truth_table: str, width: int | None = None) -> str:
     """Build a COD template for an ``n``-input Boolean function, any ``n >= 1``.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
+    ``truth_table`` is a binary string of length ``2**n``, MSB first.
+    ``width`` turns the drawing a quarter turn (:func:`_cod_turned`), so the
+    width becomes the tallest block, the cascade at ``2 ** (n + 1) + 1``;
+    under that the narrowest program is returned (four inputs 220 -> 33, six
+    1236 -> 129).  Banding was tried and is strictly worse over all 576
+    tables through four inputs (a fork box grows faster than the cascade).
 
-    ``width`` lays the program out to fit that many columns, by turning the
-    whole drawing a quarter turn (:func:`_cod_turned`).  The blocks are
-    joined left to right, so the drawing is wide and short and the turn
-    costs nothing: what was the width becomes the height, and the width
-    becomes the *tallest* block rather than the widest -- the cascade, at
-    ``2 ** (n + 1) + 1``.  A width under that gets the narrowest program
-    rather than a refusal.  Four inputs: 220 columns down to 33, and six
-    inputs 1236 down to 129.
+    Two phases of private, self-contained blocks joined by concatenation.
+    The ``n <= 3`` design this replaces fused the row and reused gauntlet
+    cells for merges via a backwards "sacrificial retrace"; a merge cell
+    could then be entered from west, south and east across steps, and the
+    wiki's ``+`` rule excludes a different direction per entry, so a clean
+    2-way fork becomes a 3-way one and cods accumulate.  ``n == 3`` never
+    triggers it; nothing guaranteed ``n >= 4``.  A ``_``-gate tree was
+    rejected for needing a seeded-randomness convention.
 
-    Banding the blocks instead -- stopping the left-to-right join early and
-    carrying the cod back down and west -- was tried and is *strictly
-    worse*: it makes the width the widest block plus a corridor, and COD's
-    widest block is a fork box, which grows faster than the cascade is
-    tall.  Measured over all 576 tables through four inputs, banding never
-    once came out narrower, so it is not kept as an alternative.
-
-    The template's input runs, one cell each, become the input bits (``)``
-    for a one bit, a space for a zero -- :func:`cod_setters`); the harness
-    fills them, matching every other no-input generator's convention.
-
-    The construction has two phases, each built from private, self-
-    contained grid blocks joined by plain horizontal concatenation
-    (:func:`_cod_combine`) -- no block's cells are reused by another
-    block's routing, which is what makes this generalize past the
-    hand-built ``n <= 3`` construction it replaces:
-
-    The design this supersedes built ``n == 3`` as a single fused row whose
-    forks' merge cells reused the *same physical cells* as the forward
-    gauntlets, walked backwards (a "sacrificial retrace") to unwind a
-    rejoining cod's value to 0.  It could not be proven safe past
-    ``n == 3``: a merge cell could be re-entered from more than one
-    direction across different steps -- from the west via the forward path,
-    from the south via the side path's shaft, and, once a west-bound
-    retrace from a *later* merge passed back through an *earlier* merge's
-    own cell, from the east too.  The wiki's ``+`` rule excludes a
-    different "came from" direction per entry, so a cell acting as a clean
-    2-way fork from one entry direction acts as a 3-way fork from another,
-    and cods accumulate instead of being consumed -- an exploding
-    population rather than a clean halt.  ``n == 3`` never triggers it (its
-    one two-stage retrace never passes through another merge cell), but
-    nothing guaranteed that for ``n >= 4``.  The private-cell construction
-    below sidesteps the problem rather than solving it.
-
-    A ``_``-gate decision tree was also considered and rejected: it needs a
-    seeded-randomness convention for ``_``'s junctions, where the
-    ``+``-fork-and-gauntlet idiom uses no ``_`` gate and no random
-    junctions at all.
-
-    Phase 1 assembles the input combo's numeric index ``V = sum(bit_i *
-    2**(n-1-i))``: bits ``0..n-2`` each get their own fork-and-gauntlet box
-    (:func:`_cod_fork_box`) that adds the bit's weight to the running value,
-    and the last bit (weight ``2**0 == 1``) is a bare placeholder cell
-    needing no fork of its own.
-
-    Phase 2 (:func:`_cod_cascade`) is a leaf cascade: reached with the cod's
-    value equal to ``V``, a chain of ``2**n - 1`` ``+<(`` blocks peels off
-    one copy per step, and each leaf's own gate chain only lets through the
-    copy carrying exactly the right number of decrements -- so leaf ``k``
-    fires iff ``V == k``, prints the table's answer for that leaf (baked in
-    directly, ``)`` for a one entry, nothing for a zero), and halts.  Every
-    entry is therefore a compile-time constant and the program always
-    prints exactly one line.
+    Phase 1 assembles ``V = sum(bit_i * 2**(n-1-i))``: bits ``0..n-2`` each
+    get a fork box (:func:`_cod_fork_box`); the last is a bare cell.  Phase
+    2 (:func:`_cod_cascade`) peels copies down ``2**n - 1`` ``+<(`` blocks
+    so leaf ``k`` fires iff ``V == k`` and prints its baked entry (``)`` for
+    a one, nothing for a zero).  Exactly one line prints.
     """
     n = _validate_truth_table(truth_table)
 
-    # A table that ignores some of its inputs is a smaller table, and COD's
-    # cost is the leaf cascade -- ``2**n - 1`` blocks whatever the table says
-    # -- so dropping an input roughly halves the program.  Build the reduced
-    # table's program, whose runs are the inputs that survived, and park
-    # the rest in sealed boxes (:func:`_cod_dead_box`) placed either side of
-    # it so every input's run still appears exactly once, in name order.
+    # The cascade is ``2**n - 1`` blocks whatever the table says, so
+    # dropping an ignored input halves the program: build the reduced
+    # table and park the rest in sealed boxes (:func:`_cod_dead_box`)
+    # either side, keeping every run once in name order.
     used = essential_inputs(truth_table, n) or [0]
-    # A *gapped* dependency set (inputs 0 and 2 but not 1) would emit the
-    # core's runs around the ignored one, leaving input 2's run before
-    # input 1's and breaking name order, so the set is widened to its span.  Taglate
-    # declines a gapped set outright instead, because there the widened
-    # table would ghost-pad itself.
-    #
-    # Widening is not guaranteed to pay: the span's cascade grows as
-    # ``2**len(used)`` while the dead boxes it buys back save only one cell
-    # per ignored input, so a span that is wide but sparse recovers little.
-    # No table measured here comes out longer, but nothing in the
-    # construction forbids it, and the check is two comparisons -- so the
-    # reduced build is measured against the full one and the shorter kept,
-    # the ``shortest``-of-N precedent.  A future change that makes the dead
-    # box cost more per input is exactly what this guard is for.
+    # A gapped set (0 and 2, not 1) would break name order, so it is
+    # widened to its span (Taglate declines instead).  Widening need not
+    # pay -- the cascade grows as ``2**len(used)`` and a dead box saves one
+    # cell -- so the reduced build is measured against the full one.
     used = list(range(used[0], used[-1] + 1))
     reduced = None
     if len(used) < n:

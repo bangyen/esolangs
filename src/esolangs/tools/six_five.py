@@ -1,22 +1,12 @@
 """Boolean-function generator for 6:5.
 
-:func:`six_five` routes a decision tree that folds its constant subtrees,
-shares its duplicates past the label budget, and falls back to a positional
-walk (:func:`_six_five_walk`) when even the distinct subtrees overflow;
-past 35 inputs the walk loops (:func:`_six_five_looped`) instead of
-spending a label per input, so the generator is total.
-
-There used to be a second construction, ``six_five_arithmetic``, which
-packed the inputs and the table into single cells and decoded the entry
-with ``f(x) = (T >> x) & 1``.  It existed because the unfolded tree spent
-one of 6-5's 35 branch labels per internal node and so capped at n == 5.
-Once the tree folded, the cap became a property of the *table* rather than
-of ``n``, and the arithmetic path was left unreachable: it needs ``T`` (or
-its complement) small enough to build, which confines the ones to low
-indices, which leaves the rest of the table constant -- exactly the shape
-that folds well inside the label budget.  No table was found that overflows
-the budget and still builds arithmetically, so the construction and its
-assembler were retired.
+:func:`six_five` routes a decision tree that folds constant subtrees,
+shares duplicates past the label budget, falls back to a positional walk
+(:func:`_six_five_walk`) when the distinct subtrees overflow, and past 35
+inputs loops (:func:`_six_five_looped`), so it is total.  A
+``six_five_arithmetic`` construction (``(T >> x) & 1`` over packed cells)
+was retired: once the tree folded, any table small enough to pack was
+one that folds inside the budget.
 """
 
 import string
@@ -32,12 +22,8 @@ from esolangs.tools.helpers import (
 
 __all__ = ["six_five"]
 
-# The 6-5 spec denotes operands "beyond 9 ... using letters (A=10, B=11
-# etc.)", so ``0..9A..Z`` names 0..35 and there is no character for 36.
-# This interpreter would decode past ``Z`` through an unguarded
-# fallthrough, which is undefined behaviour rather than a language feature
-# (see the conformance note in ``docs/limitations.md``), so nothing may
-# emit into that region.
+# ``0..9A..Z`` names 0..35 per the spec; the interpreter's fallthrough
+# past ``Z`` is undefined behaviour (``docs/limitations.md``), not a feature.
 _SIX_FIVE_MAX_LABEL = 10 + len(string.ascii_uppercase) - 1
 
 
@@ -51,17 +37,9 @@ def _six_five_label(value: int) -> str:
 def _six_five_markers(table: str) -> int:
     """How many branch labels the folded decision tree spends on ``table``.
 
-    One per internal node the fold leaves standing.  This counts exactly
-    what either construction allocates rather than re-deriving it: both
-    split most-significant-first over a contiguous row range, so a node's
-    two children are always the two halves of its table slice, and a slice
-    whose characters agree is the constant subtree that folds to a leaf and
-    takes no label.
-
-    ``table`` is whatever table the caller is about to build, so passing a
-    *permuted* one gives that input order's count.  The counts differ per
-    order -- that is what makes the 35-label budget a per-order gate rather
-    than a property of the function.
+    One per internal node the fold leaves; a slice whose characters agree
+    folds to a leaf.  Pass a permuted table for that order's count -- the
+    35-label budget is a per-order gate.
     """
     if len(set(table)) == 1:
         return 0
@@ -72,58 +50,24 @@ def _six_five_markers(table: str) -> int:
 def six_five(truth_table: str) -> str:
     """Build a 6-5 program computing the given truth table.
 
-    ``truth_table`` is a binary string of length ``2**n`` indexed by the
-    inputs (most significant first); the table length implies ``n``.
+    ``truth_table`` is a binary string of length ``2**n``, MSB first.  A
+    node is ``78``: ``7`` compares the cell to 8, a zero bit skips the
+    ``8n`` jump into the left subtree, a one bit jumps to the n-th ``4``.  A
+    leaf adds ``48 + value - base`` (8 left, 9 right) with sixes and ``62``
+    pairs, prints with ``A``, halts with ``0``.  Constant subtrees fold.
 
-    The construction is a decision tree over ``78``: the ``7`` compares the
-    cell to 8, so a zero bit skips the following ``8n`` jump and falls into
-    the left subtree, while a one bit takes the jump to the n-th ``4`` marker
-    holding the right subtree.  A leaf adds ``48 + value - base`` (8 for a
-    left path, 9 for a right path) with a run of sixes plus ``62`` pairs
-    (each ``6`` then ``2`` nets ``+6 - 5 = +1``), prints with ``A``, and
-    halts with ``0``.  A subtree whose rows all hold the same value folds to
-    a single leaf rather than the branches that would all reach it.
-
-    The identity order reads and tests in place. A reordered tree stores its
-    inputs first, then tests any cell. 6-5 has a tape and pointer (``B``,
-    ``1``/``3``), so one ordered builder covers both cases.
-
-    The branch labels are the digits 0..9 then A..Z (values 1..35, consumed
-    as ``8n`` operands), one per internal node the fold leaves standing.
-    An unfolded tree would therefore cap at n == 5 (31 internal nodes), but
-    since folding is what spends the labels, the choice is made by counting
-    them (:func:`_six_five_markers`) rather than by ``n``: any table whose
-    folded tree fits in 35 labels uses the tree, at any ``n``.
-
-    **The budget is spent per input order**, so a table whose identity tree
-    overflows may fold inside it under some other order.  An alternating
-    table folds nothing in stream order but is only NOT of the last input,
-    so one reorder collapses it to a single label: a table that merely
-    looks scattered is not a hard one.
-
-    **Past the budget the tree is shared** (:func:`_six_five_shared`), which
-    is what carries this generator past n == 5 and inverts which table is
-    hard.  Parity used to be the witness that fixed the cap -- no renaming
-    folds any of its 63 nodes at n == 6, since any permutation of parity is
-    parity -- and it is now the *cheapest* wide table there is, because
-    those nodes are duplicates of one another: two distinct subtrees per
-    level, 20 markers at n == 10 against 1023 unshared.  What binds a tree
-    is a table with many *different* subtrees, which is the dense one:
-    n == 7 dense needs 47.
-
-    **Past even the distinct subtrees the table goes on the tape**
-    (:func:`_six_five_walk`), which spends one label per *input* rather
-    than per subtree, and past 35 inputs sixteen labels for any width
-    (:func:`_six_five_looped`): the reads steer the pointer to the row the
-    inputs index instead of steering the cursor.
-    The trees stay preferred while one fits -- they are what every
-    committed size measurement was taken against, and far shorter when a
-    table folds or shares well.
-
-    Four named orders compete: identity, fold-greedy, reverse, and first input
-    followed by the others reversed.  The last two recover the cheap pointer
-    walks that fold-only scoring cannot see on symmetric tables.  Searching
-    AND-8's 40320 orders took about 17 seconds against milliseconds here.
+    Labels are 0..9 then A..Z (35), one per surviving internal node, so the
+    choice is by count (:func:`_six_five_markers`), not ``n``, and per input
+    order: an alternating table folds nothing in stream order but is NOT of
+    the last input under a reorder.  Past the budget the tree is shared
+    (:func:`_six_five_shared`): parity, once the cap's witness, is now the
+    cheapest wide table (two distinct subtrees per level, 20 markers at
+    n == 10 vs 1023), and dense n == 7 needs 47.  Past that the table goes
+    on the tape (:func:`_six_five_walk`, one label per input) and past 35
+    inputs :func:`_six_five_looped` (sixteen at any width).  Trees stay
+    preferred while one fits.  Four orders compete: identity, fold-greedy,
+    reverse, first-then-reversed (the last two find cheap pointer walks on
+    symmetric tables; AND-8's 40320 orders took 17s vs milliseconds).
     """
     n = _validate_truth_table(truth_table)
     best = ""
@@ -157,31 +101,14 @@ def six_five(truth_table: str) -> str:
 def _six_five_walk(truth_table: str) -> str:
     """Emit the positional-walk 6-5 program: the whole table on the tape.
 
-    The tree constructions spend a label per subtree, so a table with more
-    than 35 *distinct* subtrees (dense n == 7 has 47) overflows under every
-    input order.  This one spends exactly ``n`` labels however scattered
-    the table is: the branching moves the *pointer* instead of the cursor.
-
-    Layout: table row ``j`` is preloaded at stride ``n + j`` (``1`` moves
-    two cells, so a stride is one ``1`` and row ``j`` sits at cell
-    ``2 * (n + j)``), ones as ``62`` pairs and zeros left as the tape's
-    own 0.  The pointer returns to cell 0 and each input bit is then read
-    where the pointer stands and decoded in place: bit 1 (cell 9 after the
-    ``2``s) skips the ``8n`` and falls into a run of ``2**(n-1-i)`` strides,
-    bit 0 takes the jump to the ``4`` just past the run.  Both paths then
-    share one more stride, so after ``n`` bits the pointer is at stride
-    ``n + x`` -- the row the inputs index -- and the leaf adds 48 to the
-    0/1 there and prints.  The one ``4`` per bit is the whole label bill.
-
-    The shared stride per bit keeps every read strictly behind the final
-    cell (at bit ``i`` the walk still has ``n - i`` strides to go), so the
-    ``B``s only ever clobber rows this run has already passed -- harmless,
-    since one cell is printed and the program halts.
-
-    Dense n == 10 spends 10 labels and 5319 chars, and all 1024 rows run
-    in 12s; size doubles per input, and past the label bound ``n <= 35``
-    the table goes to :func:`_six_five_looped`, which spends sixteen
-    labels at any width.
+    Spends exactly ``n`` labels: the branching moves the pointer, not the
+    cursor.  Row ``j`` is preloaded at stride ``n + j`` (cell ``2 * (n + j)``;
+    ``1`` moves two cells), ones as ``62``.  Each bit is read where the
+    pointer stands: bit 1 skips the ``8n`` into ``2**(n-1-i)`` strides, bit 0
+    jumps past them; both share one more stride, so after ``n`` bits the
+    pointer is at the indexed row and the leaf adds 48 and prints.  The
+    shared stride keeps every ``B`` behind the final cell.  Dense n == 10:
+    10 labels, 5319 chars, 1024 rows in 12s.
     """
     n = _validate_truth_table(truth_table)
     if n > _SIX_FIVE_MAX_LABEL:
@@ -233,35 +160,18 @@ _SIX_FIVE_LOOP_MARKERS = (
 def _six_five_looped(truth_table: str) -> str:
     """Emit the positional walk that spends sixteen labels at any width.
 
-    :func:`_six_five_walk` branches every bit with its own ``8n``, one of
-    the 35 labels per input.  This walk has one bit loop instead, and what
-    a bit does -- advance the pointer by ``2**(n-1-i)`` rows on a 1 -- is
-    read off the tape rather than off the program text.
-
-    Rows sit four cells apart, from cell 4: the row value, a *mark*, a
-    *flag*, and a scratch cell.  Cells 0..2 hold the bits-remaining and
-    passes-remaining counters (in sixes) and the start sentinel (5); one
-    row past the table an end sentinel (6) sits in the flag track, and the
-    row the pointer stands on has 1 in its flag.
-
-    The mark of row ``q`` is its 2-adic valuation ``v(q)`` in sixes.  After
-    the first ``i`` bits the pointer is at a multiple ``q`` of
-    ``S = 2**(n-1-i)`` with ``q / S`` even, so the row ``q + S`` a 1 must
-    reach is the *first* row past ``q`` whose valuation is exactly
-    ``n-1-i``: everything between has a smaller one.  The bit's advance
-    loop therefore walks the marks until one reads zero, and the marks are
-    kept at ``6 * (v(q) - (n-1-i))`` by shifting them: ``n-1`` decrement
-    passes before the first bit, then one increment pass after each.  A
-    pass walks right from the pointer to the end sentinel and back left to
-    the start, where the counters live; every loop tests a sentinel or a
-    zero with ``7n`` and jumps back with the same label, so the label bill
-    is the loop count.
-
-    Size is linear: five moves per row, a ``62`` per 1-row, and the marks
-    sum to ``2**n - n - 1`` sixes.  Execution is ``O(n * 2**n)``: each
-    of the ``2n - 1`` passes and the walk to the pointer is one sweep of
-    the tape.  Every row of every table at n <= 7 has been executed; the
-    dispatch reaches it only past 35 inputs.
+    One bit loop, with a bit's advance (``2**(n-1-i)`` rows on a 1) read off
+    the tape.  Rows sit four cells apart from cell 4: value, *mark*, *flag*,
+    scratch; cells 0..2 hold the bits- and passes-remaining counters (in
+    sixes) and the start sentinel (5); an end sentinel (6) sits one row past
+    the table, and the current row's flag is 1.  Row ``q``'s mark is its
+    2-adic valuation ``v(q)``: after ``i`` bits the pointer is at a multiple
+    of ``S = 2**(n-1-i)`` with ``q / S`` even, so ``q + S`` is the first row
+    past ``q`` with valuation exactly ``n-1-i``; the advance loop walks marks
+    until one reads zero, and the marks are kept at ``6 * (v(q) - (n-1-i))``
+    by ``n-1`` decrement passes then one increment pass per bit.  Every loop
+    tests with ``7n`` and jumps back with the same label.  Size is linear;
+    execution ``O(n * 2**n)``.  Every row at n <= 7 executed; reached only past 35.
     """
     n = _validate_truth_table(truth_table)
     label = {
@@ -318,11 +228,8 @@ def _six_five_looped(truth_table: str) -> str:
 def _six_five_dag_cost(truth_table: str) -> int:
     """Markers the shared build spends on ``truth_table``.
 
-    One per distinct internal node, less the root's -- whose block is
-    entered by falling into it rather than by a jump -- plus one per
-    distinct *right* leaf.  See :func:`_six_five_shared` for why the right
-    leaves are shared globally and the left ones are not, and why two equal
-    slices are always the same node.
+    One per distinct internal node less the root, plus one per distinct
+    *right* leaf (:func:`_six_five_shared`).
     """
     internal: set[str] = set()
     right_leaves: set[str] = set()
@@ -352,26 +259,13 @@ def _six_five_shared(
 ) -> str:
     """Emit the tree as a DAG, each distinct subtree laid down once.
 
-    The tree spends a marker per internal node it leaves standing, and most
-    of those nodes are duplicates: parity at n == 6 has 63 of them and only
-    11 distinct ones.  ``8n`` names the *n-th* ``4`` in the program rather
-    than a scope, so two branches may name the same one -- which makes the
-    duplicates shareable and turns the label budget from a bound on the
-    tree's size into one on the function's distinct subfunctions.
-
-    **Two equal slices are always the same node.**  A slice's length fixes
-    its level, and :func:`_six_five_hoisted` guarantees the pointer's
-    position on entry is a function of the level alone, so every parent of
-    a merged node enters it identically.  Nothing else in a node's code
-    depends on the path: ``held`` reaches only the leaves.
-
-    **Left leaves stay inline; right leaves are shared.**  A leaf's
-    arithmetic counts from the value its parent's test left in the cell --
-    8 falling through, 9 on the jump -- so leaves do not merge across the
-    two.  A left leaf is the fall-through and costs no marker where it
-    sits.  A right leaf needs one, but there are only ever two distinct
-    ones in a whole program (print 0 from 9, print 1 from 9), so they are
-    emitted once at the end and every right branch names one of the two.
+    Parity at n == 6 has 63 internal nodes, 11 distinct.  ``8n`` names the
+    n-th ``4`` in the program, not a scope, so branches may share a target.
+    Two equal slices are always the same node: a slice's length fixes its
+    level and :func:`_six_five_hoisted` makes the pointer's entry position a
+    function of level alone.  Left leaves stay inline (the fall-through
+    costs no marker); right leaves count from 9 and there are only two
+    distinct ones, emitted once at the end.
     """
     # Distinct blocks, in the order their code is laid down: the root's
     # subtree first, then the rest reachable from it.  A block's label is
@@ -386,10 +280,7 @@ def _six_five_shared(
     def test_cell(window: str) -> tuple[str, int]:
         """Return the slice this block really tests, and the cell it uses.
 
-        A clobbered input has no cell, so its two halves are the same
-        function -- descend the zero half, as the tree build does.  Every
-        walk over the DAG has to skip in exactly this way, or the blocks
-        that get laid down are not the ones the jumps name.
+        A clobbered input has no cell; descend the zero half, as the tree does.
         """
         level = level_of(window)
         while perm[level] not in cell_of:
@@ -435,9 +326,7 @@ def _six_five_shared(
     def right_branch(window: str) -> str:
         """Return the jump taken when the test succeeds.
 
-        Always a jump, never inline code: the ``7`` skips exactly one
-        token, so the taken branch has one token to spend.  That is why a
-        right leaf needs a marker where a left one does not.
+        Always a jump: ``7`` skips exactly one token.
         """
         if len(set(window)) == 1:
             return "8" + _six_five_label(leaf_label[window[0]])
@@ -446,10 +335,7 @@ def _six_five_shared(
     def block(window: str, arrive: int) -> str:
         """One node's code: test, jump right, then fall into the left arm.
 
-        ``arrive`` is the cell the pointer is on when this block is entered.
-        Every parent of a shared block tests the same cell -- they are all
-        at its level, since a slice's length fixes that -- so the walk to
-        this block's own cell is the same whichever parent jumped.
+        ``arrive`` is the pointer's cell on entry, the same whichever parent jumped.
         """
         _, cell = test_cell(window)
         left, right = children(window)
@@ -480,33 +366,14 @@ def _six_five_shared(
 def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
     """Emit the read-up-front 6-5 program for one input order.
 
-    ``truth_table`` is already permuted, so every row index here is in the
-    permuted frame and self-consistent; ``perm`` surfaces only where a node
-    names the *stream* input it tests.  Returns ``""`` when this order's
-    folded tree overflows the 35-label budget, which is a signal to try
-    another order rather than a refusal of the table.
-
-    **Only the inputs the tree branches on get a cell.**  The read contract
-    asks that every input be *consumed*, not that every value be *kept*, so
-    an input no node tests is read into a shared scratch cell the next such
-    read overwrites.  The kept bits then occupy a contiguous block from cell
-    0, so the tree navigates a span as wide as the function's real
-    dependencies rather than one as wide as ``n``.
-
-    **A stored read is normalized where it lands**, with the same eight
-    ``2``s the node-read build spends: ``7n`` decodes its operand through a
-    single character capped at 35, so a cell still holding 48/49 can never be
-    tested directly, and normalizing at read time is what lets every node
-    emit a plain ``78`` and every leaf inherit the 8/9 base arithmetic.
-
-    **A leaf prints from the cell it is standing on.**  It was reached by its
-    parent's test, so the pointer is on that parent's cell and the value
-    there is known -- 9 on the jump branch, 8 on the fall-through -- which
-    makes the leaf a run of cell ops with no navigation.  Mutating a bit cell
-    is safe because exactly one leaf runs per execution and every leaf halts.
-    The pointer's position on entry to a node is a function of its *level*
-    alone, never of the path taken: both branches leave the pointer on the
-    parent's cell.
+    ``truth_table`` is already permuted; ``perm`` names the stream input a
+    node tests.  Returns ``""`` when this order overflows the 35 labels.
+    Only inputs the tree branches on get a cell (others read into a shared
+    scratch), so the kept bits are a contiguous block from cell 0.  A stored
+    read is normalized where it lands with eight ``2``s (``7n``'s operand is
+    capped at 35, so 48/49 cannot be tested).  A leaf prints from the cell
+    it stands on (9 on the jump, 8 on the fall-through); the pointer's entry
+    position is a function of level alone.
     """
     n = _validate_truth_table(truth_table)
     # The tree is preferred while it fits: it is what every committed size
@@ -583,11 +450,8 @@ def _six_five_hoisted(truth_table: str, perm: tuple[int, ...]) -> str:
 def _six_five_move(frm: int, to: int) -> str:
     """Pointer ops walking from cell ``frm`` to cell ``to``.
 
-    The moves are asymmetric: ``1`` steps *two* cells right and ``3`` steps
-    one left (and is a silent no-op at cell 0, so a leftward walk must be
-    known to stay in range).  Rightward by ``d`` is therefore ``ceil(d / 2)``
-    ones plus a ``3`` when ``d`` is odd, which is why an odd rightward hop
-    costs the same as the even one above it.
+    ``1`` steps two right, ``3`` one left (a no-op at cell 0), so rightward
+    by ``d`` is ``ceil(d / 2)`` ones plus a ``3`` when ``d`` is odd.
     """
     if to > frm:
         distance = to - frm
@@ -598,27 +462,11 @@ def _six_five_move(frm: int, to: int) -> str:
 def _six_five_stream_ordered(truth_table: str) -> str:
     """Emit the read-at-the-node 6-5 program; see :func:`six_five`.
 
-    Each input is read with ``B`` at the node that tests it and normalized in
-    place to 8/9 (subtracting 40 with eight ``2``s), so this construction
-    spends no pointer moves at all -- which is what keeps it competitive with
-    the hoisted build on shallow tables, and why :func:`six_five` measures
-    both rather than replacing this one.
-
-    Testing at the read forces the tree to split in stream order, so this
-    build has no input-order freedom: it is one candidate, not ``n!`` of
-    them.
-
-    A constant subtree folds to a single leaf -- 17 characters against 226 at
-    n == 3, and 19 against 946 at n == 5.  The fold still spends the reads it
-    skipped, so a caller feeding several programs from one input stream stays
-    in sync.  Those reads are why a folded leaf cannot use the 8/9 base:
-    ``B`` overwrites the cell, so after the skipped reads it holds the last
-    input character (48 or 49, differing per input) and no fixed run of cell
-    ops maps both to one value.  The leaf steps to cell 1 instead --
-    untouched, since every tree path works in cell 0 and every leaf halts --
-    and builds the digit from zero there.
-
-    Raises :class:`ValueError` when the folded tree overflows the 35 labels.
+    Reads with ``B`` at the node and normalizes in place, so no pointer moves
+    (competitive on shallow tables).  Splits in stream order: one candidate.
+    A constant subtree folds (17 chars vs 226 at n == 3, 19 vs 946 at n == 5)
+    but still spends its reads, so a folded leaf cannot use the 8/9 base and
+    builds its digit from cell 1 instead.  Raises :class:`ValueError` past 35 labels.
     """
     n = _validate_truth_table(truth_table)
     labels = _six_five_markers(truth_table)
@@ -638,15 +486,8 @@ def _six_five_stream_ordered(truth_table: str) -> str:
             return "6" * q + tail + "A0"
         values = {truth_table[r] for r in rows}
         if len(values) == 1:
-            # A constant subtree emits its value directly instead of the
-            # branches that would all reach it.  The skipped reads still
-            # happen (a caller feeding several programs from one stream
-            # would otherwise desync), but their ``B``s leave the cell
-            # holding the last input character -- 48 or 49, which differs
-            # per input -- and every cell op adds an unconditional
-            # constant, so no fixed suffix could bring both to one value.
-            # The leaf therefore steps to cell 1, which no tree path ever
-            # writes, and builds the digit from zero.
+            # Folded leaf: the skipped reads still run (stream sync) and
+            # leave 48 or 49 in the cell, so build the digit from cell 1.
             reads = "B" * (n - bit + 1)
             value = _ASCII_ZERO + int(values.pop())
             return reads + "13" + _six_five_const(value) + "A0"
@@ -664,9 +505,7 @@ def _six_five_stream_ordered(truth_table: str) -> str:
 def _six_five_const(value: int) -> str:
     """Instructions adding ``value`` to the current cell.
 
-    The ``+5/+6/-5/-6`` cell ops add at most 6 per instruction, so the
-    shortest run is mostly ``6`` (one per unit) with a small tail: the old
-    ``62`` pair encoding cost ``2 * value`` characters, this is ~``value / 6``.
+    Mostly ``6`` (~``value / 6`` chars; the ``62`` pairs cost ``2 * value``).
     """
     q, r = divmod(value, 6)
     if r == 5:
