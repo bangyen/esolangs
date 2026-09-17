@@ -127,9 +127,9 @@ def load(path: Path | None = None) -> Ledger:
     )
     assert count, f"{DOC} no longer states its own totals"
 
-    # "Alight, COD, Crement and Nopstacle keep no tree route at all" -- the
+    # "A Painter Ant, Alight, BIO, ... keep no tree route at all" -- the
     # Size dispatch paragraph's exemption list, read rather than duplicated
-    # here so naming a fifth generator in the prose also arms the test.
+    # here so naming another generator in the prose also arms the test.
     # Matched against whitespace-collapsed prose: the sentence is wrapped to
     # 80 columns, so the names and the verb routinely straddle a line break.
     exempt = re.search(

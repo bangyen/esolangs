@@ -847,17 +847,6 @@ class TestSlowAcvMammalian:
         assert vm.output == "\x03"
 
 
-class TestZtoalcL:
-    def test_pointer_and_variables(self) -> None:
-        vm = esolangs.make_vm("ZTOALC L", "\n".join(["10", "print 65"]))
-        assert vm.ip == 10
-        assert vm.memory == []
-        assert vm.stack == []
-        while not vm.halted:
-            vm.step()
-        assert vm.output == "A"
-
-
 class TestForbin:
     def test_locals_and_cursor(self) -> None:
         vm = esolangs.make_vm("Forbin", "main { x = 1; }")

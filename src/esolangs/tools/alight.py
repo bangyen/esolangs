@@ -5,7 +5,7 @@ Derived, not transliterated (the page is unimplemented).  Alight's
 string literal and the input bits fold into its row by Horner's rule,
 ``row = ((b0 * 2 + b1) * 2 + b2)...``, minus their ASCII offset: O(n)
 commands over an O(2**n) literal, no branching.  That is why ``alight``
-sits in the contract test's ``_UNSHAPED`` list with ``ztoalc_l``: a 0%
+sits in the contract test's ``_UNSHAPED`` list: a 0%
 fold is the construction working.  The reads are unconditional and first.
 """
 

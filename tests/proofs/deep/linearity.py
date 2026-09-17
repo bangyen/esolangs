@@ -58,8 +58,7 @@ and the measurement restarts after it.  The band is a rule rather than a fit:
 a table doubles, so no construction that is even remotely linear can quadruple
 or halve across one added input.  The failure mode is safe -- a generator
 whose every step breaks the band never accumulates the three rungs a
-measurement needs and is reported UNPROVEN, never passed.  ZTOALC L is the one
-that lands there, and its ceiling is why it is a ``cap`` row.
+measurement needs and is reported UNPROVEN, never passed.
 
 Two arities of the same parity are compared (a two-step geometric mean)
 because the alternating-axis layouts only grow on every other input: Taglate
@@ -121,7 +120,6 @@ ARITY_OVERRIDE = {
     "slow_acv_mammalian": 10,
     "streetcode": 10,
     "wii2d": 9,
-    "ztoalc_l": 10,
 }
 
 

@@ -219,14 +219,13 @@ class TestATemplateCarriesItsSetters:
         assert getattr(esolangs.generate("brainfuck", "0110"), "setters", None) is None
 
     def test_a_uniform_example_derives_its_setters_from_its_pair(self) -> None:
-        """Sixteen examples carry one pair; the other two read the template."""
+        """Sixteen examples carry one pair; the other one reads the template."""
         from esolangs.tools.examples import BOOLEAN_EXAMPLES, _embedded, uniform
 
         embedded = [e for e in BOOLEAN_EXAMPLES.values() if e.setters is not None]
         uniform_ones = [e for e in embedded if e.pair is not None]
         assert len(uniform_ones) == 16
         assert {e.stem for e in embedded if e.pair is None} == {
-            "nopstacle",
             "pct-squared-minus-one",
         }
         for example in uniform_ones:
@@ -296,7 +295,7 @@ class TestATemplateCarriesItsSetters:
         """
         from esolangs.registry import template_body
 
-        for name in ("Minifuck", "Bitdeque", "%^2^-1", "Nopstacle"):
+        for name in ("Minifuck", "Bitdeque", "%^2^-1", "Crement"):
             template = esolangs.generate(name, "0110")
             shape = len(template_body(esolangs.describe(name)["id"], template))
             for bits in ([0, 0], [0, 1], [1, 0], [1, 1]):

@@ -2,7 +2,7 @@
 
 three_x, Container and Forbin from the facade itself, plus Packlang, Inject,
 Fargo and the Algebraic Programming Language.  The languages with a generator
-file of their own have a test file to match: test_boolean_laserfuck, _ztoalc,
+file of their own have a test file to match: test_boolean_laserfuck,
 _cvnc, _flowchart, _clockwise and _taglate.
 """
 

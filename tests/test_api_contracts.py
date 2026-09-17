@@ -865,7 +865,6 @@ class TestAnAddressIsNotAllocatedOnTrust:
         ("S*bleq", "100000000000000000000 0 0"),
         ("S*bleq", "1000000000000000000 0 0"),
         ("Decleq", "1 100000000000000000000"),
-        ("ZTOALC L", "2\nu = [99999999999999999999]"),
     ]
 
     @pytest.mark.parametrize(("language", "program"), HUGE)
@@ -879,7 +878,6 @@ class TestAnAddressIsNotAllocatedOnTrust:
         assert esolangs.run("S*bleq", "20 0 0", "", 5) == ""
         assert esolangs.evaluate("Decleq", "0110", timeout=30) == "0110"
         assert esolangs.evaluate("S*bleq", "0110", timeout=30) == "0110"
-        assert esolangs.evaluate("ZTOALC L", "0110", timeout=30) == "0110"
 
 
 class TestDecleqNegativeAddressing:

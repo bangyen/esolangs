@@ -16,7 +16,21 @@ The candidate list is empty.
   output and continue with the next generator.  Generation time includes
   choosing an input order and writing the result.
 
-  All 65 generators are audited on four axes.  Totality is the `proofs.md`
+  The bar for membership: a language stays while its generator is O(T)
+  on all four axes under the conventions, or its row carries a proved
+  language lower bound.  A lookup table in a language's syntax is not a
+  generator -- any language can be brute-forced -- so a row that is only
+  open carries a clock: one more executed round, and if neither a
+  construction nor a bound comes of it the language leaves with its row.
+  Nopstacle (a full decision tree of corridors, `Theta(n 2**n)` under
+  Brent--Kung's bound on every levelled layout) and ZTOALC L (a chunked
+  array lookup on Collatz slots, no line-local rule and dense paths only
+  by search) left under it on 2026-09-17.  Every open cell below is on
+  that clock: COD's three, Polynomial's two, Vandevelo's time and WII2D's
+  three, the last the one whose exact optima say the language may be
+  linear.
+
+  All 63 generators are audited on four axes.  Totality is the `proofs.md`
   ledger's own label (`Cap`: refuses some tables on cost; `Exception`: no
   totality argument).  Output size is the registry-wide contract
   (`tests/proofs/deep/linearity.py`, per-entry cost to n=12).  Generation
@@ -37,11 +51,9 @@ The candidate list is empty.
   | %^2^-1 | Exception | Linear | Linear | Linear |
   | COD | Total | Open | Open | Open |
   | Factor | Total | Language lower bound | Language lower bound | Linear |
-  | Nopstacle | Total | Linear | Open | Linear |
   | Polynomial | Cap | Open | Open | Linear |
   | Vandevelo | Total | Open | Linear | Linear |
   | WII2D | Cap | Open | Open | Linear |
-  | ZTOALC L | Cap | Open | Open | Linear |
 
   Generation time, growth per added input at the top arity: Polynomial
   x3.4 dense (1.1 s at n=9), WII2D x4.8 dense (1.1 s at n=9), Factor x2.7
@@ -58,7 +70,6 @@ The candidate list is empty.
   - COD, all three: an H-tree that distributes input `i` to every node of
     level `i` without a shared run losing lane identity (a tree that reads
     it at `2**i` cells is `Theta(n T)` and outside the conventions).
-  - Nopstacle, size: a linear-area layout when one run fills one line.
   - Polynomial: a left-half-plane multiple with more terms than the
     Descartes minimum ([polynomial](polynomial.md)).
   - WII2D, three cells: a rule emitting readouts within a constant of the
@@ -67,8 +78,6 @@ The candidate list is empty.
   - Factor: stays for its two language lower bounds; `%^2^-1`'s
     `Exception` cannot close, and which tables through sixteen inputs the
     planners refuse is finite (every table tried through fourteen builds).
-  - ZTOALC L: a rule, not a search, for a dense simple path in
-    `p -> p/2 | 3p+1 | p+1`.
 
 - **Boolean generator conventions.**  Five conventions govern the *embed*,
   the text that stands for one input -- not the program around it.  A
@@ -86,9 +95,9 @@ The candidate list is empty.
   between two tokens of the embed is a delimiter and is fine (Bitdeque's
   `INVERT PUSH`, RAM0's `Z A`).  *Uniform*: the pair is the same pair
   for every input, so the template would be one character and one pair
-  (16 of 18 spell it so: one `PAIR` constant the generator module owns,
-  which the example's `pair` field reads; Nopstacle and %^2^-1 pass a
-  `setters` function instead).
+  (16 of 17 spell it so: one `PAIR` constant the generator module owns,
+  which the example's `pair` field reads; %^2^-1 passes a `setters`
+  function instead).
   The last two are measured, not structural: `tests/proofs/test_conventions.py`
   reads this table and measures every cell off the programs -- the embed
   is the span, row by row, on which the two fills of one input differ; a
@@ -97,11 +106,11 @@ The candidate list is empty.
   a uniformity one -- on dense and parity tables at n=2..6, every
   instantiation.  `Open` means a spelling is not ruled out; `Language`
   means the alphabet leaves none.  A row is present while any cell is
-  open and leaves when both close.
+  open and leaves when both close; the table is empty since Nopstacle,
+  whose alphabet was the blank and `#`, left the collection.
 
   | Language | No spaces | Uniform |
   | --- | --- | --- |
-  | Nopstacle | Language | Language |
 
   Toggles are an open decision.  The proposed shape: a keyword per relaxed
   convention on the generator, off by default and carried through the

@@ -63,12 +63,12 @@ _SEARCHING_GENERATORS: frozenset[str] = frozenset()
 # the ``_*_ordered`` builder once per input order for every table up to three
 # inputs, so a generator that *searches* pays that cost repeatedly.
 #
-# ``ztoalc_l`` was this set's only member, at 3.0s in
+# ZTOALC L was this set's only member, at 3.0s in
 # test_reordering_never_grows_a_program against 0.02s in the read-count sweep
-# above.  It no longer reorders at all -- it constructs one branch-free
-# lookup whose length is permutation-invariant -- so it left both the sweep
-# and this set.  The next entry down was streetcode at 0.06s, comfortably
-# under budget, which is why the set is now empty rather than re-pointed.
+# above; it left the set when it stopped reordering and the language has
+# since been dropped.  The next entry down was streetcode at 0.06s,
+# comfortably under budget, which is why the set is empty rather than
+# re-pointed.
 #
 # A generator can be cheap in one sweep and expensive in the other, so this
 # set is maintained independently of the one above.
@@ -299,9 +299,9 @@ def test_reordering_never_grows_a_program(
         for value in range(2 ** (2**n)):
             table = bin(value)[2:].zfill(2**n)
             baseline = ordered(table, tuple(range(n)))
-            # A searching generator returns "" for an order it cannot place
-            # (ZTOALC L); there is no baseline to be no worse than, and any
-            # order that *did* place is an improvement on not building.
+            # A searching generator returns "" for an order it cannot place;
+            # there is no baseline to be no worse than, and any order that
+            # *did* place is an improvement on not building.
             if not baseline:
                 continue
             assert len(fn(table)) <= len(baseline), f"{name} grew on {table}"
@@ -516,18 +516,6 @@ _MINTERM_SHAPED = {
 # no per-row structure to fold and its size tracks the search rather than the
 # table's shape.
 #
-# ``ztoalc_l`` emits no tree either, and for a reason the folding
-# discriminator cannot see.  It builds one branch-free chunked lookup: the
-# inputs are folded into a chunk index and a bit index, the table's
-# four-row chunks are stored as codes, and a shared decode array turns the
-# selected code's bit into the answer.  There are no subtrees to collapse,
-# and the program's size tracks the nonzero-chunk and distinct-code counts,
-# not the table's shape.  (It is not minterm-shaped either: a minterm sum's
-# cost is one term per selected row, where a chunk set carries four rows
-# and the emitted length is a Collatz placement -- the L-th smallest value
-# of a committed anchor's trajectory -- rather than a function of the row
-# count.)
-#
 # ``pct_squared_minus_one`` emits no tree at all.  %^2^-1's only branch is
 # ``t``, which jumps to position 0 and nowhere else, so the generator
 # computes the answer *arithmetically* -- every input the one pair ``s``/
@@ -561,9 +549,6 @@ _REDUCING = {
     "super_snusp",
 }
 
-# ``nopstacle`` is a full tree of corridors that never folds: the table only
-# chooses which leaf gadget each column ends in, and both are the same size.
-#
 # ``minsky_swap`` is a branch-free lookup of the same class as
 # ``slow_acv_mammalian``: a stage per input adds its weight to the index
 # register, and a ``~`` cascade routes the index to its row, whose leaf is
@@ -573,13 +558,11 @@ _REDUCING = {
 # by whether the row's LSB matched its answer, which read as a fold on the
 # one-dependency table that *is* the LSB and on nothing else.)
 #
-# ``alight`` is a branch-free lookup of the same class as
-# ``ztoalc_l``: the inputs are folded into a row index by Horner's
-# rule and the table is a string literal read with ``at{table, i+0.5}``, so
-# there are no subtrees to collapse and every table of a given arity renders
-# to exactly the same length.  A 0% fold is the construction working.
-# (ZTOALC L's chunked variant of the same fold keeps it in this list for
-# the same reason: lookup size does not track table shape.)
+# ``alight`` is a branch-free lookup: the inputs are folded into a row
+# index by Horner's rule and the table is a string literal read with
+# ``at{table, i+0.5}``, so there are no subtrees to collapse and every
+# table of a given arity renders to exactly the same length.  A 0% fold is
+# the construction working.
 #
 # ``a_painter_ant`` is a branch-free lookup of the same class: one white
 # corridor cell per row, one answer paint per one-row, and the inputs walk
@@ -595,11 +578,9 @@ _UNSHAPED = {
     "alight",
     "minsky_swap",
     "b_tapemark",
-    "nopstacle",
     "wii2d",
     "minifuck",
     "one_two_three",
-    "ztoalc_l",
     "pct_squared_minus_one",
     "circlefuck_byte",
     "slow_acv_mammalian",
@@ -1118,17 +1099,10 @@ _LINEAR_SCALING = {
     "vandevelo",
 }
 _LANGUAGE_SUPERLINEAR_SCALING = {"factor"}
-# ``ztoalc_l`` sits here for its placement, not its lookup: the commands
-# occupy values of one Collatz trajectory, so the last line grows
-# exponentially in the command count (x8.1 then x49 per input at n=9, 10).
-# ``nopstacle`` is Theta(n 2**n) by construction: one input per line, each
-# line as wide as the table, and one placeholder cannot fill an H-tree.
 _OPEN_SCALING = {
     "cod",
-    "nopstacle",
     "polynomial",
     "wii2d",
-    "ztoalc_l",
 }
 
 
@@ -1147,7 +1121,6 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
         "minifuck",
         "factor",
         "interprogck8",
-        "nopstacle",
         "polynomial",
         "addsubjump",
         "arrowqueue",
@@ -1168,7 +1141,6 @@ def test_remaining_scaling_audit_is_exhaustive() -> None:
         "streetcode",
         "vandevelo",
         "wii2d",
-        "ztoalc_l",
     }
     classified = _LINEAR_SCALING | _LANGUAGE_SUPERLINEAR_SCALING | _OPEN_SCALING
     assert classified == expected

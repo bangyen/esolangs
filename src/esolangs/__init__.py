@@ -481,7 +481,7 @@ def _warn_about_stdin(name: str, stdin: str) -> None:
     judgement :func:`check_stdin` raises, rendered as advice.
     """
     if not stdin:
-        # Empty stdin is legitimate (the protocol tests run 65 programs
+        # Empty stdin is legitimate (the protocol tests run 63 programs
         # that way); a program that reads anyway is caught by the counts below.
         return
     if not describe(name)["reads_input"]:

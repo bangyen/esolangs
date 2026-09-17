@@ -14,7 +14,6 @@ help:
     @echo "  test-mid     - Tier 2: pytest, fast + medium (execution and subprocess) (~25s)"
     @echo "  test-py      - pytest only (-n auto; every tier, weekly included)"
     @echo "  test-line    - tests/interpreters suites with pytest only (~3s)"
-    @echo "  test-anchor  - ztoalc anchor table check (~3.2s)"
     @echo "  mutate LANG  - mutation-test one interpreter (e.g. just mutate Qoibl)"
     @echo "  mutate-gen MOD - mutation-test one generator (e.g. just mutate-gen boolean/streetcode)"
     @echo "  proofs       - every executable proof: ledger obligations + all 65 deep proofs"
@@ -94,9 +93,6 @@ test-py *args:
 
 test-line *args:
     {{PYTHON}} scripts/verify.py --only "Line interpreter suites" {{args}}
-
-test-anchor *args:
-    {{PYTHON}} scripts/verify.py --only "ztoalc anchor table is reproducible" {{args}}
 
 test-lint *args:
     {{PYTHON}} scripts/verify.py --only pre-commit,"duplicate-code check (pylint)",bandit,"dead definitions" {{args}}

@@ -41,6 +41,14 @@ class TestTheNewChecksRefuseTheirOwnBadInput:
             machine_traits("Nonexistent")
 
 
+def _big_table(arity: int = 11) -> str:
+    """Return a dense table at ``arity``, past the cap it is used for."""
+    import random
+
+    rng = random.Random(7)
+    return "".join(rng.choice("01") for _ in range(2**arity))
+
+
 class TestADeliberateRefusalIsAnEsolangError:
     """The package promises it, and the refusals that broke the promise.
 
@@ -70,30 +78,21 @@ class TestADeliberateRefusalIsAnEsolangError:
     _REFUSERS: ClassVar[dict[str, int]] = {
         "Polynomial": 11,
         "WII2D": 11,
-        "ZTOALC L": 11,
     }
-
-    @staticmethod
-    def _big_table(arity: int = 11) -> str:
-        """Return a dense table at ``arity``, past the cap it is used for."""
-        import random
-
-        rng = random.Random(7)
-        return "".join(rng.choice("01") for _ in range(2**arity))
 
     @pytest.mark.slow
     @pytest.mark.parametrize("name", _REFUSERS)
     def test_the_refusal_is_catchable(self, name: str) -> None:
         """And by the documented base class, not only the specific one."""
         with pytest.raises(esolangs.GeneratorCapError):
-            esolangs.generate(name, self._big_table(self._REFUSERS[name]))
+            esolangs.generate(name, _big_table(self._REFUSERS[name]))
 
     @pytest.mark.slow
     @pytest.mark.parametrize("name", _REFUSERS)
     def test_the_documented_idiom_catches_it(self, name: str) -> None:
         """``except EsolangError`` is what the package docstring promises."""
         with pytest.raises(esolangs.EsolangError):
-            esolangs.generate(name, self._big_table(self._REFUSERS[name]))
+            esolangs.generate(name, _big_table(self._REFUSERS[name]))
 
     def test_it_is_still_a_value_error(self) -> None:
         """Callers catching ValueError must not be broken by the new class."""
@@ -108,7 +107,7 @@ class TestADeliberateRefusalIsAnEsolangError:
     def test_no_private_name_leaks_into_a_message(self) -> None:
         """WII2D's named its own module-private constant at the reader."""
         with pytest.raises(esolangs.GeneratorCapError) as exc:
-            esolangs.generate("WII2D", self._big_table())
+            esolangs.generate("WII2D", _big_table())
         assert "_WII2D" not in str(exc.value)
 
 
@@ -123,19 +122,19 @@ class TestEveryAuditedCapIsCatchable:
 
     NoComment no longer refuses at any arity -- its chain runs on six tape
     cells -- so the fast checks here drive the cheapest refusal that
-    remains, ZTOALC L's, and NoComment is checked to *build* where it
-    escaped.
+    remains, WII2D's cost guard on a dense ten-input table, and NoComment
+    is checked to *build* where it escaped.
     """
 
     def test_the_refusal_is_catchable_at_the_size_it_refuses(self) -> None:
         """A refusal past the sweep's bound, at the first arity that triggers it."""
-        with pytest.raises(esolangs.GeneratorCapError, match="command lines"):
-            esolangs.generate("ZTOALC L", "01" * (1 << 10))
+        with pytest.raises(esolangs.GeneratorCapError, match="cost"):
+            esolangs.generate("WII2D", _big_table(10))
 
     def test_it_is_catchable_through_evaluate_too(self) -> None:
         """NoComment's leaked through ``evaluate`` identically."""
         with pytest.raises(esolangs.GeneratorCapError):
-            esolangs.evaluate("ZTOALC L", "01" * (1 << 10))
+            esolangs.evaluate("WII2D", _big_table(10))
 
     def test_nocomment_builds_at_the_arity_that_escaped(self) -> None:
         """The escape's subject is gone: n=12 is a template, not a refusal."""

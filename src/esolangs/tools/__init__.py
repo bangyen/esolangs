@@ -10,7 +10,6 @@ from esolangs.tools.egl import egl
 from esolangs.tools.fargo import fargo
 from esolangs.tools.inject import inject
 from esolangs.tools.interprogck8 import interprogck8
-from esolangs.tools.nopstacle import nopstacle
 from esolangs.tools.other import (
     bit_tilde,
     clockwise,
@@ -21,7 +20,6 @@ from esolangs.tools.other import (
     streetcode,
     taglate,
     three_x,
-    ztoalc_l,
 )
 from esolangs.tools.packlang import packlang
 from esolangs.tools.parameterized import (
@@ -121,7 +119,6 @@ __all__ = [
     "minsky_swap",
     "modulous",
     "nocomment",
-    "nopstacle",
     "one_two_three",
     "packlang",
     "painfuck",
@@ -143,7 +140,6 @@ __all__ = [
     "unsquare",
     "vandevelo",
     "wii2d",
-    "ztoalc_l",
 ]
 
 

@@ -21,9 +21,9 @@ everything (see ``scripts/_scope.py``).  ``--full`` forces that too, and CI
 still runs the complete suite on every push regardless.
 
 A default run also leaves work to CI where CI already covers it: the steps in
-``FULL_ONLY`` (the ZTOALC anchor table, which CI's lint job re-derives) and
-the ``slow`` marker in both test suites -- pytest's (the fuzzers' divergence-detection
-tests, which CI runs by that same marker and errors on if they skip) and
+``FULL_ONLY`` and the ``slow`` marker in both test suites -- pytest's (the
+fuzzers' divergence-detection tests, which CI runs by that same marker and
+errors on if they skip) and
 tests/interpreters's (its two 5.2s render round trips, which CI's ``line`` job runs
 unfiltered).  ``--full``, ``just test-full``, and an explicit ``--only`` all
 still run them.
@@ -93,13 +93,7 @@ PY = python_cmd()
 # Steps a default run leaves to CI.  These guard real bugs but cost more than
 # they save at push time, and CI already runs them on every push.  They
 # still run under --full, under an explicit --only, and via `just test-full`.
-FULL_ONLY = frozenset(
-    {
-        # Re-deriving the table costs ~3.2s and only guards two files that
-        # rarely move; CI's lint job runs it on every push instead.
-        "ztoalc anchor table is reproducible",
-    }
-)
+FULL_ONLY: frozenset[str] = frozenset()
 
 # Named once: the step table, STEP_SCOPE and the slow-marker filter all refer
 # to this step, and a typo in any of them would silently stop matching.
@@ -142,15 +136,6 @@ def _line_addopts(env: dict[str, str]) -> str:
 STEP_SCOPE: dict[str, tuple[str, ...]] = {
     "bandit": ("src/",),
     LINE_STEP: ("tests/interpreters/",),
-    # The check re-derives the anchor table and diffs it against the committed
-    # file, importing nothing from the interpreters -- so the only things that
-    # can break it are the generator script and the table itself.  Scoping to
-    # `interpreters/` instead both ran it for every unrelated interpreter edit
-    # and missed a hand-edit of the table, the one case it exists to catch.
-    "ztoalc anchor table is reproducible": (
-        "scripts/generate.py",
-        "src/esolangs/tools/ztoalc_starts.py",
-    ),
     "duplicate-code check (pylint)": ("src/esolangs/", "scripts/"),
     "dead definitions": ("src/", "scripts/"),
     # The union of what the two proofs in this band read: ArrowQueue's lemmas
@@ -212,10 +197,6 @@ STEPS = [
             "tests/line/test_simulate.py",
             "-q",
         ],
-    ),
-    (
-        "ztoalc anchor table is reproducible",
-        [*PY, "scripts/generate.py", "ztoalc", "--check"],
     ),
     (
         # pylint's R0801 reports similar blocks across files, catching
