@@ -762,7 +762,7 @@ class TestTheLastResortPaths:
             raise ValueError("no room to draw")
 
         with (
-            patch("esolangs.cli.run_tui", boom),
+            patch("esolangs.cli_debug.run_tui", boom),
             patch.object(_FakeStdin, "isatty", lambda _self: True),
             pytest.raises(SystemExit) as exc,
         ):
@@ -828,7 +828,7 @@ class TestTheLastResortPathsContinued:
             raise ValueError("not a position")
 
         with (
-            patch("esolangs.cli.make_debugger", boom),
+            patch("esolangs.cli_debug.make_debugger", boom),
             pytest.raises(SystemExit) as exc,
         ):
             call_main(["debug", "brainfuck", _program(tmp_path, "+")], capsys)

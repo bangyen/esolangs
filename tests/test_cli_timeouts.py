@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 import esolangs
-from esolangs import cli
+from esolangs import cli, cli_io
 from esolangs.cli import HELP
 from tests.cli_support import _LOOPS, call_both
 from tests.test_cli import _program, call_main
@@ -244,7 +244,7 @@ class TestAnUnboundedRunSaysSo:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Shortened rather than waited out, so the test costs nothing."""
-        monkeypatch.setattr(cli, "_UNBOUNDED_NOTICE_AFTER", 0.01)
+        monkeypatch.setattr(cli_io, "_UNBOUNDED_NOTICE_AFTER", 0.01)
         path = tmp_path / "p.txt"
         path.write_text(esolangs.generate("brainfuck", "0110"))
         call_main(["run", "brainfuck", str(path)], capsys, stdin="1\n0\n")
@@ -259,7 +259,7 @@ class TestAnUnboundedRunSaysSo:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """With --timeout there is nothing to warn about."""
-        monkeypatch.setattr(cli, "_UNBOUNDED_NOTICE_AFTER", 0.01)
+        monkeypatch.setattr(cli_io, "_UNBOUNDED_NOTICE_AFTER", 0.01)
         path = tmp_path / "p.txt"
         path.write_text(esolangs.generate("brainfuck", "0110"))
         _out, err = call_both(
