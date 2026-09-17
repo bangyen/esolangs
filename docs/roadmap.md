@@ -153,13 +153,28 @@ The candidate list is empty.
   about 0.7 of its lines in one straight run -- an exact search over every
   start and jump set is 28 of 36 lines at L=36 and 0.68-0.83 at every
   fourth L from 8 to 44, executed on the interpreter as 28 commands on 36
-  lines where the trajectory placement needs 106.  What is missing is a
-  rule.  The run must be a simple path in `p -> p/2 | 3p+1 | p+1`; a
-  fixed local rule drifts by a power of 3/2 per round and visits O(log L)
-  lines, and a boundary-reflected greedy (take the Collatz edge unless its
-  landing is used, else jump) stops when both exits are used, about
-  L^(2/3): 2,387 commands from 100,000 lines.  Dense paths are found only
-  by search.
+  lines where the trajectory placement needs 106, and a backtracking
+  search (20 s, most-constrained line first) reaches 205 commands on 500
+  lines, 379 on 1,000 and 748 on 2,000, so dense n=10's 311 commands fit
+  in about 850 lines against 1,477,714.  What is missing is a rule.  The
+  run must be a simple path in `p -> p/2 | 3p+1 | p+1`; a fixed local
+  rule drifts by a power of 3/2 per round and visits O(log L) lines, and
+  a boundary-reflected greedy (take the Collatz edge unless its landing
+  is used, else jump) stops when both exits are used, about L^(2/3):
+  2,387 commands from 100,000 lines.  No choice function of the line
+  alone does better: its path is the depth of line 1 in the function's
+  in-tree, about `sqrt(pi M / 2)` for a random mapping
+  (Flajolet--Odlyzko 1989), and all 4,096 residue rules mod 12 at
+  M=3000 top out at 138 commands, the plain trajectory's figure.  Two
+  facts bound any rule.  19% of the lines below M have no Collatz
+  predecessor (all in `(M/2, M]`), so a path spends at least that many
+  jumps and density is at most 0.81.  A command on line `a` forbids a
+  jump onto `collatz(a)`, so line `collatz(a) - 1` is another command or
+  an unused line; the M=200 search path chains 52 of its 88 commands
+  that way and wastes a line on the other 34.  A choice function that
+  enters every line at most once is simple by construction, but its
+  orbit at every root tried through M=100,000 is under 40 lines: the
+  mass sits in cycles.  Dense paths are found only by search.
 
 - **Boolean generator conventions.**  Five conventions govern the *embed*,
   the text that stands for one input -- not the program around it.  A
