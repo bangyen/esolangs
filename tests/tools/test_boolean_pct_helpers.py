@@ -3,6 +3,8 @@
 import importlib
 import itertools
 
+from tests.tools.pct_support import _fold_clean_amount, _fold_rule_move, _fold_step
+
 
 class TestPctSquaredHelpers:
     """The %^2^-1 fold's move algebra, at the states its guards exist for.
@@ -27,7 +29,6 @@ class TestPctSquaredHelpers:
         would fail here rather than silently widening the algebra.
         """
         module = self.module()
-        fold_step = module._fold_step  # noqa: SLF001
         limit = module._LIMIT  # noqa: SLF001
         double = ("m", 0, 0, frozenset())
 
@@ -36,17 +37,17 @@ class TestPctSquaredHelpers:
             (limit, 0, "a", frozenset({0})),
             (-limit, 0, "a", frozenset({1})),
         )
-        assert fold_step(too_wide, double) is None
+        assert _fold_step(too_wide, double) is None
 
         # A single point at the origin has a zero span, which is refused by
         # the same guard's lower bound -- there is nothing to scale.
         flat = ((0, 0, "a", frozenset({0})),)
-        assert fold_step(flat, double) is None
+        assert _fold_step(flat, double) is None
 
         # A state that does fit doubles: the normalization re-anchors the
         # top at 0, so what the scaling shows up as is the doubled gap.
         fits = ((10, 0, "a", frozenset({0})), (0, 0, "a", frozenset({1})))
-        doubled = fold_step(fits, double)
+        doubled = _fold_step(fits, double)
         assert doubled is not None
         positions = sorted(p for p, _, _, _ in doubled)
         assert positions[-1] - positions[0] == 20
@@ -58,13 +59,13 @@ class TestPctSquaredHelpers:
             (10, 0, "a", frozenset({0})),
             (0, 0, "b", frozenset({1})),
         )
-        assert fold_step(two_classes, all_wipe) is None
+        assert _fold_step(two_classes, all_wipe) is None
 
         one_class = (
             (10, 0, "a", frozenset({0})),
             (0, 0, "a", frozenset({1})),
         )
-        assert fold_step(one_class, all_wipe) == ((0, 0, "a", frozenset({0, 1})),)
+        assert _fold_step(one_class, all_wipe) == ((0, 0, "a", frozenset({0, 1})),)
 
     def test_a_rise_relocates_survivors_above_the_victims(self) -> None:
         """``u`` mirrors ``d``: the survivors move relative to the victim bottom.
@@ -74,19 +75,15 @@ class TestPctSquaredHelpers:
         Both must land every group inside the window and keep one merged
         victim point, which is what makes the resulting state legal.
         """
-        module = self.module()
-        fold_step = module._fold_step  # noqa: SLF001
-        clean_amount = module._fold_clean_amount  # noqa: SLF001
-
         state = (
             (0, 0, "a", frozenset({0})),
             (100, 0, "a", frozenset({1})),
             (300, 0, "a", frozenset({2})),
         )
         for kind in ("u", "d"):
-            amount = clean_amount(state, kind, 1)
+            amount = _fold_clean_amount(state, kind, 1)
             assert amount is not None, kind
-            moved = fold_step(state, (kind, 1, amount, frozenset()))
+            moved = _fold_step(state, (kind, 1, amount, frozenset()))
             assert moved is not None, kind
             # One group is wiped onto the origin; the other two survive.
             assert len(moved) == 3, kind
@@ -105,23 +102,20 @@ class TestPctSquaredHelpers:
         earlier can: the same wipe on the same positions is accepted once
         the extent is small.
         """
-        module = self.module()
-        fold_step = module._fold_step  # noqa: SLF001
-
         positions = ((0, 10, 20), ("a", "a", "a"))
         wide = (
             (0, 6000, "a", frozenset({0})),
             (10, 0, "a", frozenset({1})),
             (20, 0, "a", frozenset({2})),
         )
-        assert fold_step(wide, ("u", 1, 3004, frozenset())) is None
+        assert _fold_step(wide, ("u", 1, 3004, frozenset())) is None
 
         # Same geometry, ordinary extent: the wipe goes through.
         narrow = tuple(
             (p, 0, c, frozenset({i}))
             for i, (p, c) in enumerate(zip(*positions, strict=True))
         )
-        assert fold_step(narrow, ("u", 1, 3004, frozenset())) is not None
+        assert _fold_step(narrow, ("u", 1, 3004, frozenset())) is not None
 
     def test_a_clean_amount_needs_a_frame_to_land_in(self) -> None:
         """With no room to relocate into, there is no amount to return.
@@ -132,14 +126,13 @@ class TestPctSquaredHelpers:
         first free landing instead.
         """
         module = self.module()
-        clean_amount = module._fold_clean_amount  # noqa: SLF001
         limit = module._LIMIT  # noqa: SLF001
 
-        assert clean_amount(((0, 0, "a", frozenset({0})),), "d", 1) is None
+        assert _fold_clean_amount(((0, 0, "a", frozenset({0})),), "d", 1) is None
 
         spread = ((10, 0, "a", frozenset({0})), (0, 0, "b", frozenset({1})))
         for kind in ("d", "u"):
-            assert clean_amount(spread, kind, 1) == limit + 1
+            assert _fold_clean_amount(spread, kind, 1) == limit + 1
 
     def test_a_reduction_gives_up_when_its_own_move_is_refused(self) -> None:
         """The rules can name a move the algebra then rejects, and that ends it.
@@ -153,8 +146,6 @@ class TestPctSquaredHelpers:
         """
         module = self.module()
         fold_reduce = module._fold_reduce  # noqa: SLF001
-        fold_rule_move = module._fold_rule_move  # noqa: SLF001
-        fold_step = module._fold_step  # noqa: SLF001
         fold_done = module._fold_done  # noqa: SLF001
 
         state = (
@@ -164,10 +155,10 @@ class TestPctSquaredHelpers:
         )
         # The state is unfinished and the rules do offer a move for it ...
         assert fold_done(state) is False
-        move = fold_rule_move(state)
+        move = _fold_rule_move(state)
         assert move is not None
         # ... but that very move is one the algebra will not take.
-        assert fold_step(state, move) is None
+        assert _fold_step(state, move) is None
         assert fold_reduce(state, fold_done, budget=5) is None
 
     def test_a_reduction_gives_up_when_no_move_applies(self) -> None:

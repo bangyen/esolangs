@@ -1,82 +1,19 @@
 """Covers the pool half of :mod:`esolangs.tools.minifuck_pool`."""
 
 import importlib
-from unittest.mock import patch
 
 import pytest
 
-from tests.tools.minifuck_support import _MinifuckCase
+from tests.tools.minifuck_support import (
+    _MinifuckCase,
+    _mux_separate,
+    _pool_reaches,
+    _try_print,
+)
 
 
 class TestMinifuckPool(_MinifuckCase):
     """The pool codes, the rule that picks one, and the endgame printing through it."""
-
-    def test_sculpt_pool_code_matches_scan(self) -> None:
-        """The named sculpt code is what the replaced scan would have found.
-
-        ``_mux_probe`` used to scan ``_POOL_CODES`` through ``_pool_reaches``
-        -- a real interpreter probe, and the module's hot spot at five
-        inputs.  It is now :data:`_SCULPT_POOL_CODE`, a constant, because the
-        probe state is canonical: the ``x`` and the clamp put every row at
-        pointer 0 with the same pool region, a sculpting round cannot write
-        into that region under the rewind guard, and no pool code's own
-        execution reaches past cell 6.
-
-        This replays the scan on the states a sculpt actually reaches and
-        asserts the constant answers exactly what it returned -- the same
-        specification-oracle shape the other closed searches keep.  Both
-        orientations are scanned at every recorded state from the retired
-        emitted-loop oracle, always at ``cell7 == 0`` -- so
-        "``cell7 == 1`` is answered by none" stays pinned as a measured
-        fact rather than an assumption baked into the constant.
-        """
-
-        module = importlib.import_module("esolangs.tools.minifuck_mux")
-        pool = importlib.import_module("esolangs.tools.minifuck_pool")
-
-        seen: list[object] = []
-        real = module._mux_probe  # noqa: SLF001
-
-        def record(joint: object, acc: int, cell7: int, hint: object = None) -> object:
-            if len(seen) < 60:
-                probe = joint.fork()  # type: ignore[attr-defined]
-                probe.emit("x")
-                module._clamp(probe)  # noqa: SLF001
-                seen.append(probe)
-            return real(joint, acc, cell7, hint)
-
-        base = module._mux_separate(4)  # noqa: SLF001
-        acc = min(base.ptrs()) - 2
-        with patch.object(module, "_mux_probe", record):
-            assert (
-                module._mux_sculpt(  # noqa: SLF001
-                    base,
-                    "0110100110010110",
-                    4,
-                    acc,
-                    0,
-                    direct=True,
-                )
-                is not None
-            )
-        assert seen, "no sculpting probes were observed"
-
-        for probe in seen:
-            for cell7 in (0, 1):
-                scanned = next(
-                    (
-                        code
-                        for code in pool._POOL_CODES  # noqa: SLF001
-                        if pool._pool_reaches(  # noqa: SLF001
-                            probe,
-                            code,
-                            cell7,
-                            module._PROBE_WALK_OUT,  # noqa: SLF001
-                        )
-                    ),
-                    None,
-                )
-                assert scanned == module._sculpt_pool_code(cell7), cell7  # noqa: SLF001
 
     def test_the_pool_codes_cover_every_route(self) -> None:
         """The fixed codes must serve every route that reaches the endgame.
@@ -250,7 +187,7 @@ class TestMinifuckPool(_MinifuckCase):
         def scan(joint: object, cell7: int, walk_out: int) -> str | None:
             """The replaced search, kept as the oracle."""
             for code in codes:
-                if module._pool_reaches(joint, code, cell7, walk_out):  # noqa: SLF001
+                if _pool_reaches(joint, code, cell7, walk_out):
                     return code
             return None
 
@@ -361,7 +298,7 @@ class TestMinifuckPool(_MinifuckCase):
         served = [
             code
             for code in module._POOL_CODES  # noqa: SLF001
-            if module._pool_reaches(joint, code, 1, 12)  # noqa: SLF001
+            if _pool_reaches(joint, code, 1, 12)
         ]
         assert served, "expected the scan to still answer outside the domain"
 
@@ -378,29 +315,29 @@ class TestMinifuckPool(_MinifuckCase):
 
         module = importlib.import_module("esolangs.tools.minifuck")
 
-        joint = module._mux_separate(2)  # noqa: SLF001
+        joint = _mux_separate(2)
         joint.emit("x")
         module._clamp(joint)  # noqa: SLF001
         cell7 = 0
-        walk_out = min(module._mux_separate(2).ptrs()) - 3  # noqa: SLF001
+        walk_out = min(_mux_separate(2).ptrs()) - 3
         # ``[[`` leaves a row dead or mid-skip, so the code is refused before
         # the walk out is priced -- a dead row cannot be walked at all.
-        assert not module._pool_reaches(joint, "[[", cell7, walk_out)  # noqa: SLF001
+        assert not _pool_reaches(joint, "[[", cell7, walk_out)
         # ``x`` writes under the pointer and is refused as well.
-        assert not module._pool_reaches(joint, "x", cell7, walk_out)  # noqa: SLF001
+        assert not _pool_reaches(joint, "x", cell7, walk_out)
         # A code that ends past the walk-out target is refused rather than
         # walked backwards: the walk out only ever moves right, so a pointer
         # already beyond it can never arrive.
-        assert not module._pool_reaches(joint, "[x", cell7, 0)  # noqa: SLF001
+        assert not _pool_reaches(joint, "[x", cell7, 0)
         # Bare navigation is refused too: reaching the state is not enough,
         # the code has to leave the answer where the read will find it.
-        assert not module._pool_reaches(joint, "", cell7, walk_out)  # noqa: SLF001
+        assert not _pool_reaches(joint, "", cell7, walk_out)
         # Exactly one of the pool's own codes serves this joint -- the guards
         # are a filter over the list, not a formality that passes everything.
         served = [
             code
             for code in module._POOL_CODES  # noqa: SLF001
-            if module._pool_reaches(joint, code, cell7, walk_out)  # noqa: SLF001
+            if _pool_reaches(joint, code, cell7, walk_out)
         ]
         assert len(served) == 1, served
 
@@ -470,7 +407,7 @@ class TestMinifuckPool(_MinifuckCase):
                         return probe
             return None
 
-        real = module._try_print  # noqa: SLF001
+        real = _try_print
         sites: list[tuple[object, str, int]] = []
         base = module._BASE  # noqa: SLF001
         for n, table, acc in (

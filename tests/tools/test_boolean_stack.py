@@ -12,12 +12,23 @@ import esolangs
 from esolangs import tools as boolean
 from esolangs.tools import stack
 from esolangs.tools.helpers import permute_truth_table
+from esolangs.tools.stack import _UNSQUARE_READ, _UNSQUARE_SINKS, stack_programs
 from tests.tools.boolean_runners import (
     run_bfstack,
     run_forth,
     run_grapheme,
     run_modulous,
 )
+
+
+def _unsquare_stack_programs(n: int) -> dict[tuple[int, ...], str]:
+    """Read-and-sink program for each reachable stack arrangement.
+
+    ``2 * 3**(n - 2)`` arrangements, as Forþ.  Unlike Forþ, a BFS finds the
+    same set with the same shortest strings through n == 7: these sinks do
+    not compose across reads, so the enumeration is also optimal.
+    """
+    return stack_programs(n, _UNSQUARE_SINKS, _UNSQUARE_READ)
 
 
 def _forth_scope_keys(table: str) -> set[int]:
@@ -423,11 +434,7 @@ class TestUnsquare:
 
     def test_greedy_sinks_recover_most_small_oracle_winners(self) -> None:
         """The heuristic never grows n=3 and matches 248/256 oracle minima."""
-        from esolangs.tools.stack import (
-            _UNSQUARE_READ,
-            _unsquare_stack_programs,
-            _unsquare_tree,
-        )
+        from esolangs.tools.stack import _unsquare_tree
 
         improved = 0
         exact = 0
@@ -461,7 +468,6 @@ class TestUnsquare:
         choice per read past the first.  Forþ's stack has the same count for
         the same reason, reached through different ops.
         """
-        from esolangs.tools.stack import _unsquare_stack_programs
 
         for n in range(2, 7):
             assert len(_unsquare_stack_programs(n)) == 2 * 3 ** (n - 2)

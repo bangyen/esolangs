@@ -220,14 +220,6 @@ def _polynomial_labels(levels: list[list[str]], n: int) -> list[dict[str, int]]:
     return index
 
 
-def _polynomial_dag_cost(truth_table: str) -> int:
-    """Return :func:`_polynomial_dag`'s instruction count.
-
-    Counted by building; a separate mirror would drift on the labelling.
-    """
-    return len(_polynomial_dag(truth_table))
-
-
 def _polynomial_dag(truth_table: str, park: int | None = None) -> list[list[int]]:
     """Emit the state-machine instructions; see :func:`polynomial`.
 

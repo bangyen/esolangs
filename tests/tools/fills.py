@@ -7,9 +7,12 @@ that exercise a single language's substitution reach it here by name
 rather than through the example table.
 """
 
+from esolangs.tools.a_painter_ant import PAIR as APA_PAIR
+from esolangs.tools.arrowqueue import PAIR as ARROWQUEUE_PAIR
 from esolangs.tools.back import PAIR as BACK_PAIR
 from esolangs.tools.eval_lang import PAIR as EVAL_PAIR
 from esolangs.tools.examples import _fill_from, uniform
+from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs
 from esolangs.tools.minifuck_sim import PAIR as MINIFUCK_PAIR
 from esolangs.tools.nocomment import PAIR as NOCOMMENT_PAIR
 from esolangs.tools.parameterized import (
@@ -51,3 +54,13 @@ _fill_eval = _fill_from(uniform(EVAL_PAIR))
 _fill_wii2d = _fill_from(uniform(WII2D_PAIR))
 _fill_minifuck = _fill_from(uniform(MINIFUCK_PAIR))
 _fill_pct_squared_minus_one = _fill_from(pct_setters, pct_body)
+
+
+def _instantiate_apa(template: str, bits: list[int]) -> str:
+    """Fill an A Painter Ant template's input runs (``n`` zero, ``N`` one)."""
+    return fill_runs(template, TEMPLATE_CHAR, (APA_PAIR,) * len(bits), bits)
+
+
+def _instantiate_arrowqueue(template: str, bits: list[int]) -> str:
+    """Fill an ArrowQueue template's input runs (``.`` zero, ``~`` one)."""
+    return fill_runs(template, TEMPLATE_CHAR, (ARROWQUEUE_PAIR,) * len(bits), bits)

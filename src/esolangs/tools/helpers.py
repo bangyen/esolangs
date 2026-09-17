@@ -84,39 +84,6 @@ def _validate_shape(truth_table: str) -> int:
     return n
 
 
-def _complement(truth_table: str) -> str:
-    """Return the bitwise complement of ``truth_table``."""
-    return "".join("1" if c == "0" else "0" for c in truth_table)
-
-
-def _maybe_complement(truth_table: str) -> tuple[str, bool]:
-    """Return the table (or its complement) and whether it was flipped.
-
-    A sum of minterms costs one term per selected row, so more ones than
-    zeros is cheaper complemented and inverted once.  Every caller reads
-    the *returned* table; how the flag is spent is per-language, often free
-    (Collatz Multiverse's OR, Point Break's ``1 - f`` guard).  A constant
-    table is the caller's to exclude: all-ones complements to no minterms,
-    the all-zeros shape, which is wrong where the empty case is special
-    (Circuit Diagram's self-fed gate).
-    """
-    if truth_table.count("1") > len(truth_table) // 2:
-        return _complement(truth_table), True
-    return truth_table, False
-
-
-def minterm_literals(row: int, n: int) -> list[tuple[int, bool]]:
-    """Return the literals whose product is 1 exactly on ``row``.
-
-    One ``(input, negated)`` pair per input in input order; MSB-first
-    indexing makes input ``i`` bit ``n - 1 - i``.  Every sum-of-minterms
-    generator re-derived ``(k >> (n - 1 - i)) & 1``; what it does with a
-    literal stays per-language.  Which rows to enumerate is the caller's
-    (:func:`grapheme` takes the shorter of the one- and zero-rows).
-    """
-    return [(i, not (row >> (n - 1 - i)) & 1) for i in range(n)]
-
-
 #: One ``(zero, one)`` pair per input, in name order: what a template's
 #: runs are filled with.  Each pair is equal width, checked by
 #: :func:`check_setters`, so the constant-width convention is a property
@@ -299,40 +266,6 @@ def stored_inputs(truth_table: str, perm: tuple[int, ...]) -> set[int]:
         )
     }
     return {perm[k] for k in branching}
-
-
-def minterm_sum[Factor](
-    truth_table: str,
-    literal: Callable[[int, bool], Factor],
-    product: Callable[[list[Factor]], Factor],
-    accumulate: Callable[[Factor], None],
-) -> tuple[list[int], int, bool]:
-    """Fold each 1-row's literal product into a running sum.
-
-    Returns ``(used, width, inverted)``; the seed and final flip are
-    per-language.  Reduces to essential inputs, complements when cheaper,
-    skips 0-rows, and per survivor folds ``literal(input, negated)``
-    factors (named by original index) into a product then the sum.
-    Callbacks run in the hand-written loops' order -- every literal, the
-    product, the accumulate -- so a ``literal`` that allocates (Collatz
-    Multiverse) does not drift.  Not for ROTfuck (three passes over all
-    rows), Grapheme (builds both sides) or Circuit Diagram (routes a bus
-    pair per literal).
-    """
-    n = _validate_truth_table(truth_table)
-    used = essential_inputs(truth_table, n) or [0]
-    reduced = truth_table if len(used) == n else read_at(truth_table, used, n)
-    width = len(used)
-    table, inverted = _maybe_complement(reduced)
-    for row in range(2**width):
-        if table[row] == "0":
-            continue
-        factors = [
-            literal(used[slot], negated)
-            for slot, negated in minterm_literals(row, width)
-        ]
-        accumulate(product(factors))
-    return used, width, inverted
 
 
 _GREEDY_ORDER_MAX_ARITY = 10

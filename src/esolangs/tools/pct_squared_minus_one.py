@@ -69,9 +69,6 @@ from esolangs.tools.pct_fold import (
     _fold_setters as _fold_setters,
 )
 from esolangs.tools.pct_fold import (
-    _fold_span as _fold_span,
-)
-from esolangs.tools.pct_fold import (
     _fold_subset_weights as _fold_subset_weights,
 )
 from esolangs.tools.pct_fold import (
@@ -111,9 +108,6 @@ from esolangs.tools.pct_fold_plan import (
     _cofactor_done as _cofactor_done,
 )
 from esolangs.tools.pct_fold_plan import (
-    _fold_clean_amount as _fold_clean_amount,
-)
-from esolangs.tools.pct_fold_plan import (
     _fold_construct as _fold_construct,
 )
 from esolangs.tools.pct_fold_plan import (
@@ -141,16 +135,10 @@ from esolangs.tools.pct_fold_plan import (
     _fold_resolve as _fold_resolve,
 )
 from esolangs.tools.pct_fold_plan import (
-    _fold_rule_move as _fold_rule_move,
-)
-from esolangs.tools.pct_fold_plan import (
     _fold_served as _fold_served,
 )
 from esolangs.tools.pct_fold_plan import (
     _fold_skeleton as _fold_skeleton,
-)
-from esolangs.tools.pct_fold_plan import (
-    _fold_step as _fold_step,
 )
 from esolangs.tools.pct_ladder import (
     _header,

@@ -1,12 +1,23 @@
 """Covers :mod:`esolangs.tools.one_two_three_construct`."""
 
 import random
+from collections.abc import Iterable
 
 import pytest
 
 from esolangs.tools.helpers import TEMPLATE_CHAR, fill_runs, runs
 from esolangs.tools.one_two_three import ONE, ZERO
+from esolangs.tools.one_two_three_construct import _RING
 from tests.tools.boolean_runners import one_two_three_result
+
+
+def _mask(cells: Iterable[int]) -> int:
+    """Build a tape mask from cell numbers (bit ``c + _RING`` per cell)."""
+    m = 0
+    for c in cells:
+        m |= 1 << (c + _RING)
+    return m
+
 
 #: One input's run, as the template spells it.
 _X = TEMPLATE_CHAR * len(ZERO)
@@ -124,7 +135,7 @@ class TestParameterizedOneTwoThree:
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.one_two_three import _Machine
         from esolangs.tools import parameterized
-        from esolangs.tools.one_two_three_construct import _replay_verdict
+        from tests.tools.one_two_three_support import _replay_verdict
 
         for n in (1, 2, 3):
             for table_int in range(2 ** (2**n)):
@@ -173,7 +184,7 @@ class TestParameterizedOneTwoThree:
 
         from esolangs.interpreters.io import ScriptedIO
         from esolangs.interpreters.tape_based.one_two_three import _Machine
-        from esolangs.tools.one_two_three_construct import _replay_verdict
+        from tests.tools.one_two_three_support import _replay_verdict
 
         def stepwise(code: str) -> str | None:
             """The interpreter's own verdict, or None if it is not comparable."""
@@ -750,7 +761,6 @@ class TestParameterizedOneTwoThree:
             ConstructError,
             _Builder,
             _close,
-            _mask,
             _Row,
             _work,
         )
@@ -778,7 +788,6 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.one_two_three_construct import (
             ConstructError,
             _Builder,
-            _mask,
             _Row,
             _work,
         )
@@ -800,7 +809,6 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.one_two_three_construct import (
             ConstructError,
             _Builder,
-            _mask,
             _Row,
             _work,
         )
@@ -849,7 +857,6 @@ class TestParameterizedOneTwoThree:
         from esolangs.tools.one_two_three_construct import (
             ConstructError,
             _Builder,
-            _mask,
             _Row,
             _work,
         )
@@ -1015,9 +1022,9 @@ class TestParameterizedOneTwoThree:
         elsewhere.  They must agree, and the 1-row must be the looping one.
         """
         from esolangs.tools.one_two_three_construct import (
-            _replay_verdict,
             construct,
         )
+        from tests.tools.one_two_three_support import _replay_verdict
 
         template = construct("01")
         for bit in (0, 1):
@@ -1146,10 +1153,8 @@ class TestParameterizedOneTwoThree:
         does -- reached here by starting a real run on the cell rather than
         by walking onto it.
         """
-        from esolangs.tools.one_two_three_construct import (
-            ConstructError,
-            _replay_twos,
-        )
+        from esolangs.tools.one_two_three_construct import ConstructError
+        from tests.tools.one_two_three_support import _replay_twos
 
         # Nothing to walk: the state is handed straight back.
         assert _replay_twos(5, 0b1011, 0) == (5, 0b1011)
@@ -1168,7 +1173,7 @@ class TestParameterizedOneTwoThree:
         commands with other characters has to step over them rather than
         treating them as a run -- so the two spellings agree.
         """
-        from esolangs.tools.one_two_three_construct import _replay_verdict
+        from tests.tools.one_two_three_support import _replay_verdict
 
         assert _replay_verdict("") == "0"
         assert _replay_verdict("xyz") == "0"  # no command: nothing to run
