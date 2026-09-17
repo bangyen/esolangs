@@ -6,6 +6,7 @@ import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cache
+from typing import Any
 from urllib.parse import quote
 
 from esolangs import tools as _boolean
@@ -593,27 +594,89 @@ def _fills() -> dict[str, Callable[[str, list[int]], str]]:
     }
 
 
-def _setters() -> dict[str, Callable[[str], Setters]]:
-    """Return canonical id -> the function reading a template's setters.
-
-    The same examples as :func:`_fills`, exposed one level down: the
-    ``(zero, one)`` pairs a template's slots are filled with, which
-    :func:`esolangs.generate` hands to the template object so the width and
-    slot conventions are checked where the template is made.
-    """
+def _examples_by_id() -> dict[str, Any]:
     from esolangs.tools import examples as _examples
 
     return {
-        canonical_id(stem.replace("-", " ")): example.setters
+        canonical_id(stem.replace("-", " ")): example
         for stem, example in _examples.BOOLEAN_EXAMPLES.items()
         if example.setters is not None
     }
 
 
-def template_setters(language_id: str, template: str) -> Setters | None:
-    """Return the ``(zero, one)`` pairs of ``template``, or None for a reader."""
-    setters = _setters().get(language_id)
-    return None if setters is None else setters(template)
+def template_char(language_id: str) -> str | None:
+    """Return the character ``language_id``'s templates spell inputs with."""
+    example = _examples_by_id().get(language_id)
+    return None if example is None else example.char
+
+
+def template_body(language_id: str, text: str) -> str:
+    """Return ``text`` without the header a template carries for its setters.
+
+    %^2^-1's template names each input's two branches in a header the
+    interpreter never sees; every other language's template is all program.
+    """
+    body = _examples_by_id()[language_id].body
+    return text if body is None else body(text)
+
+
+def template_setters(language_id: str, template: str, n: int) -> Setters:
+    """Return the ``(zero, one)`` pairs ``template`` fills its ``n`` inputs with.
+
+    ``template`` is the generator's own output (slots, before rendering)
+    or the rendered run form -- the setters read what they need from it,
+    which for %^2^-1 is its header and for the two-route generators the
+    route's prefix.
+    """
+    example = _examples_by_id()[language_id]
+    return example.setters(template, n)
+
+
+def render_template(language_id: str, slots: str, n: int) -> tuple[str, str, Setters]:
+    """Return the public template for a generator's slot-marked output.
+
+    ``(text, char, setters)``: the text with each ``{Xi}`` rendered as a run
+    of the language's character as long as input ``i``'s setter, the
+    character, and the pairs.
+    """
+    from esolangs.tools.helpers import render
+
+    char = template_char(language_id)
+    assert char is not None, f"{language_id} reads its inputs"
+    setters = template_setters(language_id, slots, n)
+    return render(slots, char, setters), char, setters
+
+
+#: The most inputs :func:`recover_setters` searches for; past this every
+#: generator is capped by its own table size.
+_MOST_INPUTS = 64
+
+
+def recover_setters(language_id: str, template: str) -> Setters:
+    """Return the pairs a plain run-form ``template`` was rendered from.
+
+    A template read back from a file carries no pairs, but the language's
+    setters are a function of the input count alone (plus the text, for the
+    header and route cases), and the runs' total length grows with the
+    count -- every generator spells more with more inputs -- so the count
+    is the one value at which the widths sum to what the text holds.  The
+    runs are then checked against it like any other template.
+    """
+    from esolangs.tools.helpers import runs
+
+    char = template_char(language_id)
+    assert char is not None
+    total = template.count(char)
+    for n in range(1, _MOST_INPUTS + 1):
+        setters = template_setters(language_id, template, n)
+        if sum(len(zero) for zero, _one in setters) != total:
+            continue
+        runs(template, char, setters)  # refuses a shape the widths do not fit
+        return setters
+    raise ValueError(
+        f"no input count makes this text a {language_id} template: it has "
+        f"{total} of {char!r}"
+    )
 
 
 def parameterized_ids() -> frozenset[str]:

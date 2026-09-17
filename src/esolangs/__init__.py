@@ -60,8 +60,11 @@ from esolangs.registry import (
     _fills,
     example_stems,
     parameterized_ids,
+    recover_setters,
+    render_template,
     resolve,
-    template_setters,
+    template_body,
+    template_char,
     wiki_url,
 )
 from esolangs.tagged import _Tagged, _Template
@@ -165,8 +168,6 @@ _EXAMPLES = pathlib.Path(__file__).resolve().parent / "examples"
 # An unfilled input slot in a parameterized generator's template.  Matched
 # only for the languages whose generator emits one: ``{`` is a live command
 # in several of the others, so a blanket search would refuse real programs.
-_SLOT = re.compile(r"\{X\d+\}")
-_SLOT_INDEX = re.compile(r"\{X(\d+)\}")
 
 # Interpreter module family -> state model name.
 _STATE_MODELS = {
@@ -186,18 +187,20 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
     inputs, most significant first, so its length implies the input count
     and the generators take no ``n``.
 
-    Seventeen languages embed their inputs in the program text rather than
-    reading them.  For those this returns a *template* with one ``{Xi}``
-    slot per input, which :func:`instantiate` fills;
+    Eighteen languages embed their inputs in the program text rather than
+    reading them.  For those this returns a *template*: the program with
+    each input spelled as a run of one character (``$`` unless the language
+    declares another), one run per input in order and exactly as long as
+    the code that replaces it, which :func:`instantiate` fills;
     ``describe(language)["parameterized"]`` says which you have, and a
     template handed to :func:`run` is refused rather than executed.
 
     ``width`` is a *request*, not a bound: what it does depends on the
     language (see ``describe(language)["width_effect"]``), it does nothing
     at all where newlines are semantic, and a single token longer than the
-    width still overruns it.  How many languages are in that group is not
-    written down here -- the sentence said 38 while the answer was 22, and
-    ``describe`` is derived and cannot drift.
+    width still overruns it.  A template is not wrapped at all -- it is the
+    shape of its programs, and the width applies when :func:`instantiate`
+    fills it -- unless the generator lays itself out to a width.
     """
     resolved = resolve(language)
     lang = LANGUAGES[resolved]
@@ -210,39 +213,24 @@ def generate(language: str, truth_table: str, width: int | None = None) -> str:
             f"{type(truth_table).__name__}"
         )
     check_width(width)
-    if width is not None and _takes_width(fn):
-        return _Tagged(str(fn(truth_table, width)), resolved)
-    if lang.id in parameterized_ids():
-        # A template wraps like anything else: ``{Xi}`` is one token in every
-        # wrapper (:data:`~esolangs.tools.wrap._PLACEHOLDER`), so no width
-        # can split a slot -- a narrow width once left ``{X`` on one line and
-        # ``1}`` on the next, and ``generate --width 10 "Home Row" 0110``
-        # reported one slot where the table has two.  Skipping the wrap
-        # instead would leave the parameterized languages a width that
-        # quietly did nothing.
-        plain = str(fn(truth_table))
-        wrapped = wrap_program(plain, lang.id, width)
-        return _Template(wrapped, resolved, plain, template_setters(lang.id, plain))
-    return _Tagged(wrap_program(str(fn(truth_table)), lang.id, width), resolved)
+    laid_out = width is not None and _takes_width(fn)
+    slots = str(fn(truth_table, width) if laid_out else fn(truth_table))
+    if lang.id not in parameterized_ids():
+        program = slots if laid_out else wrap_program(slots, lang.id, width)
+        return _Tagged(program, resolved)
+    # The generator marks each input ``{Xi}``; the public template renders
+    # each as a run of the language's character.  A template is never
+    # wrapped -- it is the shape of its programs, and the width applies
+    # when it is filled -- unless the generator lays itself out to one.
+    text, char, pairs = render_template(
+        lang.id, slots, len(truth_table).bit_length() - 1
+    )
+    return _Template(text, resolved, char, pairs)
 
 
 def _is_template_for(template: str, name: str, truth_table: str) -> bool:
-    """Return whether ``template`` is what ``name`` generates for the table.
-
-    Compared against the *unwrapped* template, then again with the newlines
-    taken out of both.  The second pass is what lets a wrapped template
-    through: ``generate(name, table, 40)`` is the same program with line
-    breaks added between tokens, and refusing it would make the width and
-    the provenance check mutually exclusive.
-
-    Only for a language whose unwrapped template is a single line, since
-    for the rest a newline is layout and dropping it compares two different
-    programs.
-    """
-    plain = generate(name, truth_table)
-    if template == plain:
-        return True
-    return "\n" not in plain and template.replace("\n", "") == plain
+    """Return whether ``template`` is what ``name`` generates for the table."""
+    return template == generate(name, truth_table)
 
 
 def instantiate(
@@ -252,12 +240,12 @@ def instantiate(
     width: int | None = None,
     truth_table: str | None = None,
 ) -> str:
-    """Fill a parameterized generator's ``{Xi}`` slots with ``bits``.
+    """Fill a parameterized generator's template with ``bits``.
 
-    The seventeen parameterized generators embed their inputs in the
+    The eighteen parameterized generators embed their inputs in the
     program text, so :func:`generate` returns a template and this makes it
-    runnable.  Substituting the slots by hand does not work: each language
-    spells a set-input its own way, and a bare ``0`` or ``1`` in the slot
+    runnable.  Substituting the runs by hand does not work: each language
+    spells a set-input its own way, and a bare ``0`` or ``1`` in the run
     is a different program.
 
     A language whose generator reads its inputs instead has nothing to
@@ -265,27 +253,27 @@ def instantiate(
     template from a *different* language -- which would otherwise run and
     answer the wrong row.
 
-    ``width`` is taken here as well as on :func:`generate`, and this is the
-    one that a caller filling a template wants: a slot is four columns and
-    the setter code that replaces it is not, so a template wrapped to a
-    width no longer meets it once the slots are gone.
+    ``width`` is taken here because this is where it applies: a template
+    is never wrapped, and the filled program is.
+
+    A template :func:`generate` returned carries its setters; a plain
+    string -- read back from a file -- has them recovered from the
+    language's own setters, which its runs' total length determines.
     """
     check_width(width)
     name = resolve(language)
     if truth_table is not None and not _is_template_for(template, name, truth_table):
-        # The provenance check a tag cannot make.  A template carries its
-        # language, so filling one language's as another is refused -- but a
-        # *hand-written* string is untagged by design (a tag cannot survive
-        # a file), and `instantiate("Minifuck", "hello {X0}", [1])` happily
-        # substituted into it and returned something that ran to nothing.
+        # The provenance check a tag cannot make: a hand-written string is
+        # untagged by design (a tag cannot survive a file), and
+        # `instantiate("Minifuck", "hello $$", [1])` filled it happily.
         # Given the table it should have come from, that is decidable.
         raise TemplateError(
             f"this is not the template generate({name!r}, {truth_table!r}) "
             f"returns, so filling it would produce a program that does not "
             f"compute that table"
         )
-    fill = _fills().get(LANGUAGES[name].id)
-    if fill is None:
+    char = template_char(LANGUAGES[name].id)
+    if char is None:
         raise TemplateError(
             f"{name} reads its inputs rather than embedding them, so there "
             f"is nothing to instantiate; pass them in as stdin instead"
@@ -303,48 +291,35 @@ def instantiate(
             f"{origin} program -- which runs, and answers the wrong row"
         )
     bits = check_bits(bits, "bits")
-    wanted = len({int(slot) for slot in _SLOT_INDEX.findall(template)})
-    if len(bits) != wanted:
-        if wanted == 0:
-            # The count is true and answers a question nobody asked.  Both
-            # ways of getting here -- an ordinary program, and a template
-            # instantiate() has already filled -- look the same from here,
-            # so the message names both rather than guessing.
+    tagged = template if isinstance(template, _Template) else None
+    if tagged is None:
+        if char not in template:
+            # Both ways of getting here -- an ordinary program, and a
+            # template instantiate() has already filled -- look the same
+            # from here, so the message names both rather than guessing.
             raise TemplateError(
-                f"this {name} text has no {{Xi}} slots to fill: it is either "
+                f"this {name} text has no run of {char!r} to fill: it is either "
                 f"an ordinary program or a template instantiate() has already "
                 f"been applied to, and generate({name!r}, table) returns the "
                 f"template to fill"
             )
+        try:
+            pairs = recover_setters(LANGUAGES[name].id, template)
+        except ValueError as exc:
+            raise TemplateError(f"not a {name} template: {exc}") from exc
+        tagged = _Template(template, name, char, pairs)
+    if len(bits) != tagged.inputs:
         given = (
             f"{len(bits)} bit was given"
             if len(bits) == 1
             else f"{len(bits)} bits were given"
         )
         raise TemplateError(
-            f"this {name} template has {wanted} input slot"
-            f"{'' if wanted == 1 else 's'}, but {given}"
+            f"this {name} template has {tagged.inputs} input"
+            f"{'' if tagged.inputs == 1 else 's'}, but {given}"
         )
-    # Reflowed from the template *before* its width, when there is one.
-    #
-    # ``wrap_program`` declines to reflow a program that already has
-    # newlines, since for most languages a newline is layout rather than
-    # something it put there.  After ``generate(table, width)`` a template
-    # always has them, so re-wrapping the filled program did nothing at all
-    # -- a width here was inert for all seventeen parameterized languages,
-    # which is exactly the call this function's docstring recommends.
-    # Filling the unwrapped source instead gives the wrapper the single-line
-    # program it needs, and the answer is the same either way because the
-    # slots are in the same places.
-    #
-    # Only for the languages a wrapper actually reflows.  A layout language
-    # -- COD, WII2D -- lays its *template* out to the width in the generator
-    # and has no wrapper here, so for those the width-laid-out template is
-    # the one to fill and unwrapping it would throw the layout away.
-    source: str = template
-    if width is not None and LANGUAGES[name].id in WRAPPERS:
-        source = getattr(template, "unwrapped", template)
-    return _Tagged(wrap_program(fill(source, bits), LANGUAGES[name].id, width), name)
+    program = template_body(LANGUAGES[name].id, tagged.fill(bits))
+    return _Tagged(wrap_program(program, LANGUAGES[name].id, width), name)
 
 
 #: Characters a filename is made of, and a program mostly is not.
@@ -385,8 +360,8 @@ def check_runnable(language: str, program: str) -> None:
 
     Both are mistakes a running interpreter cannot report, because both are
     *valid* input to it: a filename is a string of characters the language
-    mostly ignores, and a ``{Xi}`` slot is either a fault far from its cause
-    or -- Minifuck's case -- silently nothing.  Each produced a confident
+    mostly ignores, and a template's run of ``$`` is either a fault far from
+    its cause or -- Minifuck's case -- silently nothing.  Each produced a confident
     wrong answer, which is the one outcome worth spending a check to avoid.
 
     Public because :func:`run` is not the only way to execute a program:
@@ -399,12 +374,12 @@ def check_runnable(language: str, program: str) -> None:
             f"program looks like a path, not source: {program!r}. "
             f"Read the file first, or pass pathlib.Path({program!r})"
         )
-    if LANGUAGES[name].id in parameterized_ids() and _SLOT.search(program):
-        slots = sorted(set(_SLOT.findall(program)))
+    char = template_char(LANGUAGES[name].id)
+    if char is not None and char in program:
         raise TemplateError(
             f"{name}'s generator returns a template, and this one still has "
-            f"unfilled slots ({', '.join(slots)}); fill them with "
-            f"esolangs.instantiate({name!r}, program, bits)"
+            f"unfilled runs of {char!r} ({program.count(char)} characters); "
+            f"fill them with esolangs.instantiate({name!r}, program, bits)"
         )
 
 
@@ -991,8 +966,6 @@ def _width_effect(lang: Any) -> str:
       are semantic or it rejects them outright.  This is the one worth
       knowing: it was a silent no-op.
     """
-    from esolangs.tools.wrap import WRAPPERS
-
     # One expression rather than an early return for the generator-less
     # case: every registered language has a generator, so that return was a
     # line no input could reach.

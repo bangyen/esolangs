@@ -2,9 +2,13 @@
 
 The cheap half parses the table and checks its names and vocabulary.  The
 measured half builds every embedding generator, fills every row, and reads
-the five conventions off the programs: an absent generator must hold all
-five, a ``Holds`` cell must hold, and an open cell must fail -- so a fix
-that lands without its row leaving is caught as well as a regression.
+the two measured conventions off the programs: an absent generator must
+hold both, a ``Holds`` cell must hold, and an open cell must fail -- so a
+fix that lands without its row leaving is caught as well as a regression.
+The other three conventions -- single embed, constant width, slot order --
+are the template object's shape and are checked by its constructor, which
+``generate`` runs for every template; a test here pins that they hold for
+every embedding generator at every arity measured.
 
 Every convention is about the *embed*, the text a fill substitutes for one
 ``{Xi}``.  It is read off the programs rather than off the fill, since four
@@ -90,21 +94,16 @@ def _content_blank(embed: str) -> bool:
 def _measure(example: BooleanExample) -> dict[str, bool]:
     """Whether each convention holds at every arity, both shapes, every fill."""
     assert example.fill is not None
-    single = width = order = spaces = True
+    spaces = True
     pairs: set[tuple[str, str]] = set()
     for n in _ARITIES:
         for table in _tables(n):
             template = example.generator(table, **dict(example.kwargs))
-            slots = [int(s) for s in re.findall(r"\{X(\d+)\}", template)]
-            single &= sorted(slots) == list(range(n)) and "{C" not in template
-            order &= slots == sorted(slots)
             programs = {
                 bits: example.fill(template, list(bits))
                 for bits in itertools.product((0, 1), repeat=n)
             }
-            width &= len({len(p) for p in programs.values()}) == 1
-            if not width:
-                continue  # the spans below need equal lengths
+            assert len({len(p) for p in programs.values()}) == 1  # the constructor's
             for bits, program in programs.items():
                 for i in range(n):
                     if bits[i]:
@@ -113,13 +112,25 @@ def _measure(example: BooleanExample) -> dict[str, bool]:
                     pair = _span(program, other)
                     pairs.add(pair)
                     spaces &= not any(map(_content_blank, pair))
-    return {
-        "Single embed": single,
-        "Constant width": width,
-        "Slot order": order,
-        "No spaces": spaces,
-        "Uniform": len(pairs) == 1,
-    }
+    return {"No spaces": spaces, "Uniform": len(pairs) == 1}
+
+
+def test_the_structural_conventions_hold_where_the_template_is_made() -> None:
+    """Single embed, constant width and slot order are the template's shape.
+
+    ``generate`` builds the template object for every embedding generator,
+    and its constructor refuses a pair of unequal width or runs that do not
+    fit the pairs; so building every template at every measured arity is
+    the check, and the audit table has no column for these three.
+    """
+    import esolangs
+
+    for name in _embedding():
+        for n in _ARITIES:
+            for table in _tables(n):
+                template = esolangs.generate(name, table)
+                assert template.inputs == n
+                assert all(len(zero) == len(one) for zero, one in template.setters)
 
 
 def test_the_audit_names_real_embedding_generators(audit: Conventions) -> None:
@@ -182,7 +193,9 @@ def test_bitdeque_linear_route_is_one_width(audit: Conventions) -> None:
     rows; the block pads in :func:`esolangs.tools.examples._setters_bitdeque`
     closed that, and this pins the arity where the route begins.
     """
-    assert audit.by_name()["Bitdeque"].constant_width == HOLDS
+    assert (
+        audit.by_name()["Bitdeque"].no_spaces == HOLDS
+    )  # the width cell has no column now
     example = _embedding()["Bitdeque"]
     assert example.fill is not None
     for n in (4, 5):

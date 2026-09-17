@@ -101,9 +101,9 @@ def crement(truth_table: str) -> str:
 
 def instantiate_crement(template: str, bits: list[int]) -> str:
     """Fill each ``{Xi}`` with the jump line that spells its bit."""
-    return instantiate(template, bits, crement_setters(template))
+    return instantiate(template, bits, crement_setters(template, slot_count(template)))
 
 
-def crement_setters(template: str) -> Setters:
+def crement_setters(_template: str, n: int) -> Setters:
     """Return the tester's first line for a zero and a one, per input."""
-    return ((_set_bit(0, 0), _set_bit(0, 1)),) * slot_count(template)
+    return ((_set_bit(0, 0), _set_bit(0, 1)),) * n
