@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from difflib import get_close_matches
 
-from esolangs import LanguageInfo, _terminates, check_stdin
+from esolangs import LanguageInfo, check_stdin
+from esolangs._evaluate import _terminates
 from esolangs.exceptions import EsolangError, ExecutionTimeoutError, TemplateError
 from esolangs.registry import SUGGESTION_CUTOFF
 
