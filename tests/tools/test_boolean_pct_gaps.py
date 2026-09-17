@@ -7,7 +7,6 @@ produces, so each helper is asked the question it answers in the plan.
 """
 
 import importlib
-from typing import ClassVar
 
 import pytest
 
@@ -21,7 +20,6 @@ from esolangs.tools.pct_squared_minus_one import (
     _FoldEmitter,
     _interleaved_final_pair,
     _interleaved_fold,
-    _solution,
     _split_setter,
     pct_squared_minus_one,
 )
@@ -29,29 +27,6 @@ from esolangs.tools.pct_squared_minus_one import (
 
 def _state(*items: tuple[int, int, str, frozenset[int]]) -> tuple[object, ...]:
     return _fold_norm(list(items))
-
-
-class TestSolution:
-    """A candidate parameter set is rejected when no tail can print it."""
-
-    ROWS: ClassVar[dict[tuple[int, int], int]] = {
-        (0, 0): 0,
-        (1, 0): 0,
-        (0, 1): 1,
-        (1, 1): 1,
-    }
-
-    def test_classes_too_far_apart_have_no_tail(self) -> None:
-        """``l`` moves both classes at once, so they must differ by one."""
-        assert _solution(self.ROWS, ("p", "p"), (0, 0), [1, 1], (0, 5)) is None
-
-    def test_adjacent_classes_are_rejected_earlier(self) -> None:
-        """The positive control: a different arm refuses this one.
-
-        Classes one apart *do* have a tail, so reaching None here means
-        the padding rejected the pair -- not the tail check above.
-        """
-        assert _solution(self.ROWS, ("p", "p"), (0, 0), [1, 1], (0, 1)) is None
 
 
 class TestPreshift:

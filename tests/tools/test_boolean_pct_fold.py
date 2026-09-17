@@ -1,6 +1,7 @@
 """Covers :mod:`esolangs.tools.pct_fold` and :mod:`esolangs.tools.pct_fold_plan`."""
 
 import importlib
+import itertools
 from types import ModuleType
 
 import pytest
@@ -183,26 +184,21 @@ class TestPctFoldEmitter:
         assert em.body == ["pip", "s"]
         assert all(em.pos[r] - before[r] == 1 for r in before)
 
-    def test_the_final_alignment_wraps_when_it_would_overshoot(self) -> None:
-        """The last shift is a residue, and only one lift of it fits.
+    def test_a_single_class_finishes_on_its_digit_from_anywhere(self) -> None:
+        """One class: ``finish`` erases the point and shifts to the byte.
 
-        ``finish`` moves the surviving point onto its answer byte, which
-        pins it only modulo 256.  Taken as a positive residue that shift
-        can exceed the headroom to the limit, so it is lowered by 256 until
-        it fits -- the same residue, reached from below.  A point near the
-        ceiling therefore ends up *under* where it started while still
-        landing on the byte.
+        A constant table's rows may sit anywhere in the window when the
+        endgame runs; ``'`` puts them all on zero, and one shift of 48 or
+        49 lands the digit, so the mirror reads the digit itself whatever
+        the start.
         """
-        module = importlib.import_module("esolangs.tools.pct_squared_minus_one")
-
-        for start, expected in ((0, 48), (2900, 2864)):
+        for start in (0, 2900, -2900):
             em = self.emitter("0", 0)
             key = next(iter(em.pos))
             em.load({key: (start, "0")})
             em.finish()
-            assert em.pos[key] == expected
-            assert em.pos[key] % 256 == em.byte(key) % 256
-            assert abs(em.pos[key]) <= module._LIMIT  # noqa: SLF001
+            assert em.pos[key] == 48
+            assert em.body == ["'p" + "s" * 24 + "p", "e"]
 
     def test_a_rise_with_no_headroom_preshifts_first(self) -> None:
         """``p`` needs two to work with, so a shorter rise makes room.
@@ -361,7 +357,13 @@ class TestPctFoldPlanners:
         for op in ops:
             state = module._fold_step(state, op)  # noqa: SLF001
             assert state is not None
-        assert module._fold_done(state)  # noqa: SLF001
+        # The reduction stops at a threshold state -- one class wholly below
+        # the other, which is what the endgame prints from -- rather than
+        # going on to one point per class.
+        classes = [cls for _, span, cls, _ in state if span == 0]
+        assert len(classes) == len(state)
+        assert sum(a != b for a, b in itertools.pairwise(classes)) <= 1
+        assert not module._fold_done(state)  # noqa: SLF001
 
     def test_no_rule_applies_to_a_walled_state(self) -> None:
         """Spans that fill the workspace leave the case analysis empty.
@@ -486,34 +488,36 @@ class TestPctFoldPlan:
         assert self.module()._fold_plan(state) is None  # noqa: SLF001
 
     def test_a_table_too_wide_for_the_workspace_is_refused(self) -> None:
-        """The ladder must fit the workspace, and the packed one fits longest.
+        """The ladder must fit the workspace, and the unit one fits longest.
 
         The emitter lays the rows from a zero accumulator, so a ladder has to
-        fit ``[-_LIMIT, _LIMIT]`` -- not the ``2 * _LIMIT`` span a *relative*
+        fit ``[-_LIMIT, 0]`` -- not the ``2 * _LIMIT`` span a *relative*
         plan state may occupy.  Checking only the latter lets the planner spend
         thousands of moves on a geometry the emitter refuses on its first op.
 
-        Which ladder is offered sets the reach.  The uniform ones spend
-        ``step * (2**n - 1)`` and give out at nine and ten inputs; the packed
-        ladder spends only ``2**n + 1`` and carries eleven.  Twelve exceeds
-        even that, so no ladder is offered and the fold refuses.
+        Which ladder is offered sets the reach.  The distinct ladders spend
+        ``step * (2**n - 1)`` and give out at ten, eleven and twelve inputs
+        for steps 4, 2 and 1.  Twelve exceeds even the unit step, so no
+        distinct ladder is offered and the fold refuses a table that is not
+        symmetric under any mask.
         """
-        pct = importlib.import_module("esolangs.tools.pct_squared_minus_one")
         module = self.module()
         limit = module._LIMIT  # noqa: SLF001
 
-        # Each ladder in turn gives out one or two arities later than the last.
+        # Each ladder in turn gives out one arity later than the last.
         assert limit < module._FOLD_STEP * (2**10 - 1)  # noqa: SLF001
         assert limit < module._FOLD_NARROW_STEP * (2**11 - 1)  # noqa: SLF001
-        assert sum(module._fold_subset_weights(11)) <= limit  # noqa: SLF001
-        assert module._fold_subset_weights(12) is None  # noqa: SLF001
+        assert 2**11 - 1 <= limit < 2**12 - 1
 
-        # Nothing serves twelve inputs, so the fold declines.  The table has
-        # to be one the fold would otherwise plan: ``"01" * 2048`` alternates
-        # every row, which is 4096 runs and a subcube the *cascade* builds,
-        # so it never reaches the fold at all.  A low-run table does.
+        # Nothing lays twelve inputs apart, so the fold declines a table no
+        # mask collapses: ``x0 xor x1`` has both classes at every Hamming
+        # weight past the first under any of the four masks tried there.
         wide = "".join(str(((r >> 11) & 1) ^ ((r >> 10) & 1)) for r in range(2**12))
-        assert pct._cascade(wide, 12) is None  # noqa: SLF001
+        assert all(
+            not module._ladder_legal(wide, 12, weights, mask)  # noqa: SLF001
+            for weights, mask in module._fold_ladders(wide, 12)  # noqa: SLF001
+            if weights == (1,) * 12
+        )
         assert module._fold(wide, 12) is None  # noqa: SLF001
         # A table inside the bound still builds, so the ``None`` above is
         # the workspace and not the arity itself.

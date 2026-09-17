@@ -189,12 +189,9 @@ The candidate list is empty.
 
   | Language | No spaces | Uniform |
   | --- | --- | --- |
-  | %^2^-1 | Holds | Open |
   | Nopstacle | Language | Language |
 
-  %^2^-1's uniform cell is open because it solves its setters per table:
-  different text per input is its design, and a uniform %^2^-1 is a
-  different generator.  Nopstacle's two `Language` cells are one fact
+  Nopstacle's two `Language` cells are one fact
   about its walker: the alphabet is the blank and `#`, so a zero bit *is*
   a blank and there is no command to spell it with; and a cell acts on
   the walk only as the target of a neighbour heading into it
@@ -207,7 +204,11 @@ The candidate list is empty.
   finds a program for every table tried at n<=5, each a per-table search
   with re-reads, which is not a construction.  To refute: a bit-dependent
   mechanism in `_advance` other than a port read, or a total rule drawing
-  at most four ports per input.
+  at most four ports per input.  (%^2^-1 is uniform through eleven
+  inputs -- every input is the one pair `s`/`i`, the template carries the
+  weight as doublings between the runs and the table as the fold's
+  relocations -- and past them the staged route lays its last two inputs
+  with pairs of its own, above the arities the audit measures.)
 
   Toggles are an open decision.  The proposed shape: a keyword per relaxed
   convention on the generator, off by default and carried through the
