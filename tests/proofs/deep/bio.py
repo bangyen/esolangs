@@ -45,6 +45,17 @@ COST = 0.2
 _RISE, _FALL = "0oy;", "1oy;"
 
 
+def lookup(program: str) -> str:
+    """The telescope: everything after the last input run.
+
+    The pack before it is the runs and the doublings between them, which
+    are loops of their own (``0ix{ 1ox; 0oy; 0oy; };`` is a level-shaped
+    text that adjusts nothing) and would be read as levels if the walk
+    started at the top.  Every lemma about the nesting reads from here.
+    """
+    return program[program.rfind("$") + 1 :]
+
+
 def levels(program: str) -> list[str]:
     """Recover the adjustment at each nesting level, outermost first.
 
@@ -54,6 +65,7 @@ def levels(program: str) -> list[str]:
     -- which is what puts the adjustments in increasing ``j`` order at runtime.
     """
     out: list[str] = []
+    program = lookup(program)
     i = program.find("0ix{")
     while i != -1:
         i += len("0ix{")
@@ -95,7 +107,7 @@ def check_l1(max_n: int = 7) -> list[str]:
             assert len(adjust) == size - 1, (
                 f"n={n}: recovered {len(adjust)} levels, expected {size - 1}"
             )
-            start = 1 if program.split(" ", n)[-1].startswith(_RISE) else 0
+            start = 1 if lookup(program).startswith(_RISE) else 0
             assert start == int(table[0]), (
                 f"n={n}: y starts at {start} but table[0] is {table[0]}"
             )
@@ -131,10 +143,11 @@ def check_l2(max_n: int = 9) -> list[str]:
     for n in range(1, max_n + 1):
         size = 1 << n
         table = "".join(rng.choice("01") for _ in range(size))
-        # The inputs are runs of ``$``, no braces among them, so the brace
-        # profile reads straight off the template.
-        program = bio(table)
-        assert "{X" not in program, f"n={n}: template still carries {{Xi}} marks"
+        # The pack (runs and the doublings between them) is cut off, so the
+        # brace profile reads straight off the telescope.
+        template = bio(table)
+        assert "{X" not in template, f"n={n}: template still carries {{Xi}} marks"
+        program = lookup(template)
         depth = 0
         returns_to_zero = 0
         for char in program:

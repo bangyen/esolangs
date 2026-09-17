@@ -143,12 +143,17 @@ def bio(truth_table: str) -> str:
 
     BIO has three registers (``x``, ``y``, ``z``) and no absolute jumps —
     its ``{``/``}`` loops are structurally matched — so the setter's length
-    is unconstrained.  Each input is embedded once by packing it into ``x``:
-    input ``i``'s run becomes ``0ox`` repeated by its binary weight (``2**w``)
-    for a one bit, so ``x = sum 2**w_i * bit_i`` is the input's numeric
-    index.  A zero writes the same count to ``z`` instead, which nothing
-    reads, so the two bits embed at equal width rather than a zero
-    embedding as nothing.
+    is unconstrained.  Each input is embedded once as the same four-character
+    unit whichever input it is: a one is ``0ox;`` (``x += 1``), a zero
+    ``0oz;`` (a write to ``z``, which nothing reads), so the two bits embed
+    at equal width rather than a zero embedding as nothing.  The template
+    carries the input's weight by Horner's rule: before every run but the
+    first it doubles ``x`` through ``y`` (:data:`_BIO_DOUBLE`), so after the
+    last run ``x = sum 2**(n-1-i) * bit_i`` is the input's numeric index and
+    ``y`` is back at zero.  The weight used to be spelled into the embed as
+    ``2**(n-1-i)`` copies of the unit, which made every input a different
+    pair; carrying it here makes the embed one pair for every input at every
+    arity, for a constant eight commands per input.
 
     ``y`` is initialized to the table's first entry (``table[0]``), then
     ``2**n - 1`` *nested* loops each decrement ``x`` once (``0ix{ 1ox; ... };``)
@@ -167,13 +172,21 @@ def bio(truth_table: str) -> str:
             return ""
         return "0oy;" if a == "0" else "1oy;"
 
-    pack = " ".join(_runs(_setters_bio(truth_table, n)))
+    pack = _BIO_DOUBLE.join(_runs(_setters_bio(truth_table, n)))
     inner = ""
     for j in range(2**n - 1, 0, -1):
         body = "1ox;" + yop(truth_table[j - 1], truth_table[j]) + inner
         inner = "0ix{" + body + "};"
     init = "0oy;" if truth_table[0] == "1" else ""
-    return pack + " " + init + inner + "0oy;" * _ASCII_ZERO + "1iy;"
+    return pack + init + inner + "0oy;" * _ASCII_ZERO + "1iy;"
+
+
+#: ``x = 2 * x`` through ``y``: the first loop moves each unit of ``x`` into
+#: ``y`` twice, the second moves ``y`` back.  Both registers are non-negative
+#: throughout, so each loop runs its register down to zero and stops, and
+#: ``y`` ends where it started, at zero, so the result's accumulator is
+#: untouched.
+_BIO_DOUBLE = "0ix{1ox;0oy;0oy;};0iy{1oy;0ox;};"
 
 
 def bfpda(truth_table: str) -> str:

@@ -96,9 +96,12 @@ for tables through a fixed crossover — `n <= 4`, or `n <= 6` for Container —
 and the lookup above it.  Each route is total on its own domain and the lookup
 carries the universal claim, so the tree below the crossover is a size
 optimization rather than part of the proof.  A width-constrained build may take
-the tree at any arity.  Alight and
+the tree at any arity.  Alight, BIO and
 SLOW ACV MAMMALIAN keep no tree route at all: Alight indexes a string literal,
-and SLOW ACV MAMMALIAN's read chain emits one fixed-width leaf
+BIO's telescope is one nested level per row whatever the table says (a
+degenerate table only spares it the flat edges' adjustments, under the fold
+threshold once the doubling between the input runs is in the text), and SLOW
+ACV MAMMALIAN's read chain emits one fixed-width leaf
 slot per row whatever the table says.  Container's sub-crossover route is a
 tree but a deliberately unfolded one, so it does not shrink on a degenerate
 table.
