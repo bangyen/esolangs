@@ -25,14 +25,9 @@ MAX_LINES = 1500
 #: is under the cap.  Nothing may be added: a new entry means a file grew past
 #: the cap instead of being split.
 #:
-#: ``streetcode.py`` is not waiting to be split: the seam its docstring
-#: draws (pure movement rules vs the mutable run) is written in terms of
-#: ``_State``, which ``test_interpreter_conventions`` requires an interpreter
-#: to declare in its own file, so the convention wins.  (``__init__.py`` sat
-#: here at 1523 until its comments were trimmed under the cap.)
-_RATCHET = {
-    "src/esolangs/interpreters/grid_based/streetcode.py": 1800,
-}
+#: Empty since the prose sweep of September 2026 took ``__init__.py`` (1523)
+#: and ``streetcode.py`` (1855) under the cap.
+_RATCHET: dict[str, int] = {}
 
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
 _TREES = ("src", "tests", "scripts")

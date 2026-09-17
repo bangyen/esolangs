@@ -639,8 +639,8 @@ class VM(Protocol):
     def self_halts(self) -> bool:
         """Whether the program can reach a halt of its own.
 
-        ``False`` where the *language* has no halt: bound the run.  Not a
-        promise of running forever -- Suffolk ends when a read runs out of
+        ``False`` where the *language* has no halt: bound the run.  It
+        does not promise a program runs forever -- Suffolk ends when a read runs out of
         input (757 steps on a generated table program), A Painter Ant does
         run forever.  No tally of carriers here; ``[n for n in
         list_languages() if describe(n)["self_halts"]]`` cannot drift.
