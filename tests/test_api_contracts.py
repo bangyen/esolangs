@@ -98,10 +98,28 @@ class TestParameterizedTemplates:
         The same set taken from ``parameterized.__all__`` omits Home Row,
         and three documents each named a different subset.
         """
+        from esolangs.registry import template_char, template_setters
+        from esolangs.tools.helpers import runs
+
+        def embeds(lang: object) -> bool:
+            # A generator embeds its inputs either as ``{Xi}`` marks or, once
+            # migrated, as one run of the language's character per input,
+            # each as wide as its setter.  ``$`` alone is not the signature:
+            # three readers have it in their alphabet, so the run form is
+            # checked against the setters, which a reader's program does
+            # not fit.
+            out = str(lang.boolean(XOR))
+            if "{X0}" in out:
+                return True
+            char = template_char(lang.id)
+            if char is None or char not in out:
+                return False
+            return len(runs(out, char, template_setters(lang.id, out, 2))) == 2
+
         emits = {
             lang.id
             for lang in LANGUAGES.values()
-            if lang.boolean is not None and "{X0}" in str(lang.boolean(XOR))
+            if lang.boolean is not None and embeds(lang)
         }
         assert emits == set(parameterized_ids())
 
