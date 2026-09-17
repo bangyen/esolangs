@@ -258,8 +258,8 @@ The candidate list is empty.
   blank left after deleting each single blank between two non-blank
   characters is a spaces violation, and two inputs whose spans differ are
   a uniformity one.  Measured Sep 2026 on dense and parity tables at
-  n=2..6, every instantiation: no spaces holds for seventeen, uniform for
-  eleven.  `Open` means a spelling is not ruled out; `Language` means the
+  n=2..6, every instantiation: no spaces holds for all eighteen, uniform
+  for eleven.  `Open` means a spelling is not ruled out; `Language` means the
   alphabet leaves none.  A row is present while any cell is open and
   leaves when both close.
 
@@ -270,7 +270,6 @@ The candidate list is empty.
   | ArrowQueue | Holds | Open |
   | BIO | Holds | Open |
   | Bitdeque | Holds | Open |
-  | COD | Open | Holds |
   | Minsky Swap | Holds | Open |
   | Nopstacle | Language | Open |
 
@@ -305,13 +304,12 @@ The candidate list is empty.
   and `+` -- so the corridor the pointer walks and the cells it never
   reaches are written; the rows still drop their trailing blanks, which
   keeps the two blocks at fourteen characters each, and every program
-  through n=6 is byte-for-byte the size it was.  COD's row is open on
-  spaces: its restored fork generator spells a one as `)` and a zero as
-  water, one cell each at a fixed column, and the command spelling (`)(`
-  against `)<`) needs the fork box a column wider -- 350 -> 359 at n=2,
-  1495 -> 1529 at n=3 -- so it is a size decision, not a language wall.
-  (The retired strip spelled its route cells `_`; that closure left with
-  it.)  Nopstacle's
+  through n=6 is byte-for-byte the size it was.  COD left: its fork
+  generator spelled a zero as water, one cell at a fixed column, and the
+  command spelling (`)(` against `)<`) would have widened the fork box;
+  `_` -- a no-op except to a cod moving up, and the fork crosses the
+  cell sideways -- is the zero now, one cell, every program the size it
+  was and every row through n=5 executing to its table.  Nopstacle's
   alphabet is the blank and `#`, so a zero bit *is* a blank: its `{Xi}`
   run is a bit cell at each of level `i`'s `2**i` node columns with
   blanks between, the same width either way, and there is no command to
