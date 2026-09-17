@@ -248,6 +248,16 @@ in the bits read so far), not a residue class of the full index -- so a
 fate map is not a union of residue classes of the decoded index, and a
 bound by that family alone is not a bound on the language.
 
+A value-encoded funnel (lanes carry their prefix in the value, one
+input cell, then a ladder of `_` rungs back to lanes) was executed on
+its smallest ladder, two rungs (`+` with `_` above, `(`, `+` with `_`
+above) on a block of start values: value 0 prints once but its east copy
+reflects at the second rung and the run passes 5,000 cods by tick 95;
+value 2 prints 29 times by tick 105; nothing halts.  A `_` met by a
+block of two or more values reflects the rest as a block, which
+re-enters the `+` and copies both ways, so no block may meet a `_` and
+routing a block to lanes is left to `<`, one prefix zero-set per visit.
+
 Polynomial's remaining question is a left-half-plane multiple of the
 mandatory root product with more terms than the Descartes minimum:
 instruction count, monomial count, right-half-plane coefficient mass, and
