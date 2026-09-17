@@ -1,4 +1,35 @@
-"""Boolean-function generator for ArrowQueue, and the tree it draws."""
+"""Boolean-function generator for ArrowQueue, and the tree it draws.
+
+``*`` turns clockwise, ``~`` pushes the direction, ``+`` pops and points
+(halting on an empty pop).  No I/O, so: parameterized convention (one run
+per input bit, filled by :func:`_instantiate_arrowqueue`) plus the
+termination convention (halt = 0, loop forever = 1; see the limitations
+ledger's halt-vs-hang ring).
+
+Grid layout: the first rows embed each input once (queue holds bits as
+directions, right 0 / down 1); the next rows queue the R/D/L/U loop
+components; the decision tree pops each bit at a ``+``, right for 0 and
+down for 1.  A ``0`` leaf is empty (runs off the grid); a ``1`` leaf is a
+ring that pushes on every edge and pops on every corner.
+
+Every input is one cell, crossed heading down: ``~`` (a one) pushes a
+down heading, ``.`` (a zero, a no-op glyph) pushes nothing.
+
+- Tree (``n <= 4``): each cell is followed by a right push, so a bit is
+  ``D, R`` or ``R``; a ``+`` branch pops the front, right for ``R``, down
+  for ``D``, and the down-route pops the trailing ``R`` to turn right.
+- Cascade (``n >= 5``): each stage doubles the queued down markers (pop
+  one, re-push, push a second) then crosses the cell, so the queue holds
+  ``2 * previous + bit`` -- Horner, the table index after the last.  The
+  stage's tail pushes the right heading that stops the next loop; the
+  last one is the sentinel the vertical cascade turns right on, one ``+``
+  per table row.
+
+The tree is 3x3 blocks: 0-branch and 1-branch both ``" + "``, leaves
+3x3.  Joining two subtrees: 0-branch top-left, first subtree at its right
+exit, 1-branch bottom-left one row below the first, second subtree at the
+1-branch's right exit.  The pointer enters by descending column 1.
+"""
 
 from esolangs.tools.helpers import (
     TEMPLATE_CHAR,
@@ -6,58 +37,6 @@ from esolangs.tools.helpers import (
     _validate_truth_table,
     fill_runs,
 )
-
-# --- ArrowQueue (no-input grid language; parameterized + termination convention) ---
-#
-# ``*`` turns clockwise, ``~`` pushes the direction, ``+`` pops and points
-# (halting on an empty pop).  No I/O, so: parameterized convention (one run
-# per input bit, filled by :func:`_instantiate_arrowqueue`) plus the
-# termination convention (halt = 0, loop forever = 1; see the limitations
-# ledger's halt-vs-hang ring).
-#
-# Grid layout: the first rows embed each input once (queue holds bits as
-# directions, right 0 / down 1); the next rows queue the R/D/L/U loop
-# components; the decision tree pops each bit at a ``+``, right for 0 and
-# down for 1.  A ``0`` leaf is empty (runs off the grid); a ``1`` leaf is a
-# ring that pushes on every edge and pops on every corner.
-#
-# Every input is one cell, the same cell for every input, every table and
-# every arity: ``~`` for a one and ``.`` for a zero.  The pointer crosses
-# that cell heading down, so a one pushes a down heading and a zero pushes
-# nothing -- ``.`` is a no-op to the interpreter, as every character but
-# ``*``, ``~`` and ``+`` is.  What the language does with that one heading
-# is the template's business, and the two routes differ there:
-#
-# - the tree (``n <= 4``) follows each cell with a right push, so a bit is
-#   ``D, R`` or ``R`` on the queue; the decision tree pops the front at a
-#   ``+`` branch, goes right for ``R`` (a zero) and down for ``D`` (a one),
-#   and the down-route pops the trailing ``R`` to turn right again.  A
-#   ``0`` leaf is empty, so the pointer runs off the grid and halts; a
-#   ``1`` leaf is a ring that pushes on every edge and pops on every corner,
-#   sustaining forever on the ``R, D, L, U`` the middle block queues;
-#
-# - the cascade (``n >= 5``) carries the input's *weight* in the template.
-#   Each input sits in a stage that first doubles the down markers already
-#   queued -- a loop that pops one marker, re-pushes it and pushes a second
-#   -- and then crosses the cell, so after input ``i`` the queue holds
-#   ``2 * previous + bit`` markers: Horner's rule, and after the last
-#   input exactly the table index.  The stage's tail pushes the right
-#   heading that stops the next stage's loop, and the last stage's is the
-#   sentinel the vertical cascade below turns right on: one ``+`` per table
-#   row pops one marker, the sentinel turns the pointer right at the
-#   indexed row, and a zero row runs out of the grid while a one row enters
-#   the same sustaining ring as above.
-#
-# The tree is a full binary tree built from 3x3 blocks: a 0-branch
-# (``" + "``) pops the next bit, sending the pointer right for 0 and down
-# for 1; a 1-branch (also ``" + "``) pops the one's trailing ``R`` to turn
-# the down-route back to the right; and each leaf is a 3x3 output block.
-# Connecting two subtrees places a 0-branch at the top-left, the first
-# subtree at its right exit, the second at the 1-branch's right exit, and
-# the 1-branch at the bottom left (one row below the first subtree),
-# filling the rest with spaces.  The pointer enters the whole tree by
-# descending column 1 from the loop section, which pops the top-left
-# 0-branch's ``+`` directly.
 
 _TREE_1 = ["+~+", "~ ~", "+~+"]  # the ``1`` leaf: a self-sustaining ring
 
@@ -71,27 +50,21 @@ _TREE_BRANCH_0 = [" + ", "   ", "   "]  # pops a bit; 0 goes right, 1 goes down
 _TREE_BRANCH_1 = [" + ", "   ", "   "]  # pops a one's trailing R: down-route goes right
 
 
-# The loop-component section: entered heading down at column 3 from the
-# header (or the last cascade stage), it queues right, down, left, and up
-# (in that order, so the queue holds ``[bits..., R, D, L, U]`` at the tree)
-# and routes the pointer down column 1 into the tree.
+# Loop components: entered heading down at column 3, queues R, D, L, U
+# (so the tree sees ``[bits..., R, D, L, U]``) and routes down column 1.
 _MIDDLE = ["*~* ", "*  *", "*  *", "~ ~ ", "*~* ", "**  ", "*  *"]
 
 
-# One cascade stage, entered heading down onto its ``+`` at column 3.  A
-# popped down marker walks the loop below: two ``~`` heading down re-push
-# it and double it, three ``*`` bring the pointer back onto the ``+`` from
-# the left.  The popped right heading -- the previous stage's tail, or the
-# first row's -- leaves to the right, turns down through the input cell
-# (the ``$`` on the second row, filled with ``~`` or ``.``), and the tail
-# hooks left, up, and right past a ``~`` that pushes the right heading the
-# next stage's loop stops on, then down onto that stage's ``+``.
+# One cascade stage, entered heading down onto its ``+``.  A popped down
+# marker walks the loop (two ``~`` re-push and double it, three ``*``
+# return to the ``+``); the popped right heading exits right, down through
+# the input cell (the ``$``), and the tail hooks past a ``~`` that pushes
+# the next stage's stop heading, then down onto its ``+``.
 _STAGE = ["  *+*", "   ~" + TEMPLATE_CHAR, "   ~", "  **", " *~*", " *  *"]
 
 
-# One cascade row: the ``+`` at column 1 pops a marker and drops three rows
-# to the next, or pops the sentinel and goes right -- into the ring for a
-# one, off the grid for a zero.
+# One cascade row: ``+`` pops a marker and drops to the next, or pops the
+# sentinel and goes right (ring for a one, off the grid for a zero).
 _CASCADE_1 = [" + +~+", "   ~ ~", "   +~+"]
 _CASCADE_0 = [" +", "", ""]
 
