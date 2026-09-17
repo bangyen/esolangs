@@ -311,3 +311,83 @@ class TestParameterizedCOD:
         for row in prints:
             assert row.startswith("---"), row
             assert not row.startswith("----"), row
+
+
+def _grid(picture: str) -> str:
+    """A COD grid drawn with ``.`` for water, so no editor strips it."""
+    return picture.strip("\n").replace(".", " ")
+
+
+def _run_counting(program: str, steps: int = 60) -> tuple[bool, str, int]:
+    """Run ``program`` for at most ``steps`` ticks: halted, output, peak cods."""
+    from esolangs.interpreters.grid_based.cod import _Machine
+    from esolangs.interpreters.io import ScriptedIO
+
+    machine = _Machine(program, ScriptedIO(""))
+    peak = 0
+    for _ in range(steps):
+        if machine.halted:
+            break
+        machine.step()
+        peak = max(peak, len(machine.cods))
+    return machine.halted, machine.io.getvalue(), peak
+
+
+class TestCODModelFacts:
+    """The interpreter facts ``docs/limitations.md``'s COD paragraph rests on.
+
+    Each pins one sentence: a four-way plain cell is a crossing, a join
+    at ``+`` leaks a backward copy, a ``_`` reflection retraces, and the
+    one-lane N-bound node halts and prints once on both bits.
+    """
+
+    def test_a_plain_four_way_cell_is_a_crossing(self) -> None:
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        machine = _Machine(_grid("~~~.~~~\n>......\n~~~.~~~\n~~~.~~~"), ScriptedIO(""))
+        for _ in range(4):
+            machine.step()
+        assert [(c.r, c.c, c.d) for c in machine.cods] == [(1, 4, "E")]
+
+    def test_a_join_at_plus_copies_backward(self) -> None:
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        machine = _Machine(_grid("~~~~~~~\n~..+..~\n~~~.~~~\n~~~>~~~"), ScriptedIO(""))
+        machine.step()
+        machine.step()
+        assert sorted(c.d for c in machine.cods) == ["E", "W"]
+
+    def test_a_reflection_retraces_the_arrival_path(self) -> None:
+        from esolangs.interpreters.grid_based.cod import _Machine
+        from esolangs.interpreters.io import ScriptedIO
+
+        machine = _Machine(_grid("~_~\n~.~\n~)~\n~.~\n~>~"), ScriptedIO(""))
+        seen = []
+        for _ in range(6):
+            machine.step()
+            seen.extend((c.r, c.d) for c in machine.cods)
+        assert seen == [(3, "N"), (2, "N"), (1, "N"), (0, "S"), (1, "S"), (2, "S")]
+
+    @pytest.mark.parametrize("fill", ["_", ")"])
+    def test_the_one_lane_node_halts_and_prints_once(self, fill: str) -> None:
+        """Eight commands: ``))<((`` valve, ``+``, ``<`` sibling, ``)`` trunk.
+
+        The lane's value is known (0), so the valve kills the backward
+        copy (value 2) and the sibling ``<`` the unconditional one (0);
+        both bits leave exactly one cod, on different prints.
+        """
+        node = _grid(
+            "~~~~~~~~~~~~~\n"
+            "~~~~~~~~~.---\n"
+            "~~~~~~~~~X~~~\n"
+            "~~~~~~~~~)~~~\n"
+            "~>))<((..+<.~\n"
+            "~~~~~~~~~~~.~\n"
+            "~~~~~~~~~~~.~\n"
+            "~~~~~~~~~~~.~\n"
+            "---.........."
+        ).replace("X", fill)
+        halted, output, peak = _run_counting(node)
+        assert (halted, output, peak) == (True, "2", 2)
