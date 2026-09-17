@@ -243,10 +243,20 @@ The candidate list is empty.
   build nothing past n=6), and the extremal same-colour fold -- always
   legal, the argument that made the decode total -- refuses from n=7 under
   the shipped centre and magnitude caps and needs them lifted to build
-  dense n=9 at a megabyte.  A closing rule must keep the prompt refusal or
-  beat the contest on executed programs; a longer emitted program is an
-  acceptable price, and the replaced search stays in the tests as the
-  oracle.
+  dense n=9 at a megabyte.  Size is not the obstruction: a closed-form
+  fold key (`log2(mag / gap) + scale + live / 3`, `gap` the closest
+  different-colour folded gap) emits 1.13-1.24x the contest's size over
+  92 decode inputs at n=5..9, but refuses 3 of the 18 with a domain of
+  128 or more that the contest builds, as does every other key tried
+  (the contest's own screen key alone refuses 5).  The contest ranks on
+  the *compressed* magnitude, and the compressor's depth is the arc union
+  of every different-colour pair, which no local statistic predicts on a
+  packed state; a per-step magnitude guard does not recover it because
+  the bad state is entered several folds earlier, and a closed-form
+  compressor that makes the key exact costs 2.6-3.7x and fails more.  A
+  closing rule must keep the prompt refusal or beat the contest on
+  executed programs; a longer emitted program is an acceptable price,
+  and the replaced search stays in the tests as the oracle.
 
 - **`%^2^-1` fourteen inputs.**  The staged fold's endgame strands its last
   duplicated cofactor pairs.  Rank order is steerable (pulsed doubling), but
