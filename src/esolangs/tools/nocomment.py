@@ -2,10 +2,17 @@
 
 from esolangs.tools.helpers import (
     _ASCII_ZERO,
+    TEMPLATE_CHAR,
     _validate_truth_table,
     essential_inputs,
     read_at,
 )
+
+#: How each input is set: ``c`` clears the cell for a zero, ``i`` increments
+#: it to one.  The template spells each input as a run of
+#: :data:`TEMPLATE_CHAR` this wide.
+NOCOMMENT_ZERO, NOCOMMENT_ONE = "c", "i"
+_NOCOMMENT_INPUT = TEMPLATE_CHAR * len(NOCOMMENT_ZERO)
 
 # The largest value a NoComment cell can hold, hence the largest distance a
 # single ``s``/``b`` jump can cover: the skip amount is peeked off the stack,
@@ -48,7 +55,7 @@ def _nocomment_chain(truth_table: str, n: int) -> str:
     index lives on the *stack*, and the tape holds six cells for any ``n``.
 
     As in the narrow decode, a table that ignores some inputs is evaluated
-    over the essential ones: every input keeps its ``{Xi}`` setter, and an
+    over the essential ones: every input keeps its setter, and an
     ignored one pushes no stage, so the rows and stages are those of the
     smaller table.
 
@@ -134,7 +141,7 @@ def _nocomment_chain(truth_table: str, n: int) -> str:
     for i in range(n):
         move(bit)
         out.append("c")
-        out.append("{X" + str(i) + "}")
+        out.append(_NOCOMMENT_INPUT)
         if i not in weights:
             continue
         weight = weights[i]
@@ -186,7 +193,7 @@ def nocomment(truth_table: str) -> str:
     inputs (most significant first); the table length implies ``n``.
 
     NoComment has no input command, so this is a parameterized generator: the
-    template's ``{Xi}`` placeholders become a constant-length setter for each
+    template's input runs become a constant-length setter for each
     input bit, and the harness instantiates one program per input
     combination.  Unlike an earlier version of this generator, the complement
     is *not* embedded: NoComment's ``s`` (skip the next block iff the tested
@@ -194,7 +201,7 @@ def nocomment(truth_table: str) -> str:
     when the cell is zero.  A short runtime prologue pushes a fixed skip
     length, tests each raw bit cell, and increments a fresh complement cell
     in the skipped block -- so ``comp_i = 1 - bit_i`` is computed once per
-    input from the embedded bit, with no ``{Ci}`` placeholder and no second
+    input from the embedded bit, with no complement run and no second
     embed.
 
     Rather than routing a decision tree, the program **computes the input's
@@ -223,7 +230,7 @@ def nocomment(truth_table: str) -> str:
     # through in the setup's sorted climb.  Evaluating over the essential
     # inputs alone shrinks the dominant term from ``2**n`` to ``2**width``.
     #
-    # Every input keeps its ``{Xi}`` setter and its NOT-gate prologue -- the
+    # Every input keeps its setter and its NOT-gate prologue -- the
     # harness has a bit for each one -- and an ignored input costs only its
     # guarded increment's *run length*, which goes to zero: the weight is
     # ``["i"] * (2**w)``, a run this generator chooses, so a dropped input
@@ -280,7 +287,7 @@ def nocomment(truth_table: str) -> str:
 
     # Setup: bits, complements, index, skip cells, output cells, sentinel,
     # scratch.  The complement cells (n..2n-1) start at zero and are filled
-    # by the NOT-gate prologue below, not by a {Ci} placeholder.
+    # by the NOT-gate prologue below, not by a second embedded run.
     setup: list[str] = []
     setup_ptr = [0]
 
@@ -292,8 +299,8 @@ def nocomment(truth_table: str) -> str:
             setup.append("l")
             setup_ptr[0] -= 1
 
-    for i in range(n):
-        setup.append("{X" + str(i) + "}")
+    for _i in range(n):
+        setup.append(_NOCOMMENT_INPUT)
         setup.append("r")
     setup_ptr[0] = n
 

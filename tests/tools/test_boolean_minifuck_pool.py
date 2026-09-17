@@ -1,12 +1,11 @@
 """Covers the pool half of :mod:`esolangs.tools.minifuck_pool`."""
 
 import importlib
-import re
 from unittest.mock import patch
 
 import pytest
 
-from tests.tools.minifuck_support import _MinifuckCase
+from tests.tools.minifuck_support import _MinifuckCase, run_count
 
 
 class TestMinifuckPool(_MinifuckCase):
@@ -372,12 +371,18 @@ class TestMinifuckPool(_MinifuckCase):
         codes = module._POOL_CODES  # noqa: SLF001
 
         def out_of_order() -> int:
+            # A template whose runs are not three whole ones: the shape a
+            # lift that appended a misnamed input would have had, which
+            # ``_lift`` now refuses outright (a ``ValueError``).
             count = 0
             for table_int in range(256):
                 table = format(table_int, "08b")
-                template = module.minifuck.__wrapped__(table)
-                names = [int(m) for m in re.findall(r"\{X(\d+)\}", template)]
-                count += names != sorted(names)
+                try:
+                    template = module.minifuck.__wrapped__(table)
+                except ValueError:
+                    count += 1
+                    continue
+                count += run_count(template, 3) != 3
             return count
 
         def reset(new_codes: tuple[str, ...]) -> None:
@@ -392,8 +397,8 @@ class TestMinifuckPool(_MinifuckCase):
             baseline = out_of_order()
             # Zero, and it used to be ten.  The ten were the tables whose
             # ignored input is the *middle* one, which no projection could
-            # sort; ``_mux`` solves them at full arity, where the slots are
-            # ascending by construction.
+            # sort; ``_mux`` solves them at full arity, where the runs are
+            # in name order by construction.
             assert baseline == 0, baseline
 
             stranding = {}

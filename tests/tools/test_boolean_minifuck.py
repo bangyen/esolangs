@@ -2,18 +2,19 @@
 
 The suites that drive the generator are siblings: test_boolean_minifuck_pool,
 _staged, _sim and _routes.  What is here is the module-level evidence the
-construction rests on -- that the slots run in name order, that the fused
+construction rests on -- that each input is one run and no more, that the fused
 column walk matches deriving one at a time, and that the coverage population
 is the one the source says it is.
 """
 
 import importlib
-import re
 from unittest.mock import patch
 
 import pytest
 
-from esolangs.tools.helpers import essential_inputs
+from esolangs.tools.helpers import TEMPLATE_CHAR, essential_inputs, runs
+from esolangs.tools.minifuck_sim import MINIFUCK_ONE, MINIFUCK_ZERO
+from tests.tools.minifuck_support import run_count
 
 
 def _unreachable(*_args: object, **_kwargs: object) -> None:
@@ -22,18 +23,26 @@ def _unreachable(*_args: object, **_kwargs: object) -> None:
 
 
 def _slot_order(gen: object, table: str) -> list[int] | None:
-    """The ``{Xi}`` indices in the order ``gen`` emits them, or None."""
+    """The run starts in the order ``gen`` emits them, or None.
+
+    The k-th run *is* input k, so what the text can still show is that
+    the run count is the arity and every run is whole: a route that
+    appended the ignored inputs where they do not belong now refuses in
+    ``_lift`` rather than emitting a misnamed template.
+    """
 
     try:
         template = gen(table)
     except ValueError:
         return None  # a generator need not cover every arity
-    return [int(s[2:-1]) for s in re.findall(r"\{X\d+\}", template)]
+    n = len(table).bit_length() - 1
+    spans = runs(template, TEMPLATE_CHAR, ((MINIFUCK_ZERO, MINIFUCK_ONE),) * n)
+    return [start for start, _end in spans]
 
 
 @pytest.mark.slow  # the degenerate tables are the fast closed-form path
 def test_minifuck_slots_run_in_name_order() -> None:
-    """Minifuck emits in name order, including the tables that once did not.
+    """Minifuck embeds each input once, including the tables that once did not.
 
     This was a strict ``xfail``.  The tables listed here are the ones that
     used to leave sequence, kept as the regression: ``11001100`` is closed by
@@ -52,7 +61,7 @@ def test_minifuck_slots_run_in_name_order() -> None:
         slots = _slot_order(parameterized.minifuck, table)
         if slots is None:
             continue
-        assert slots == sorted(slots), (table, slots)
+        assert len(slots) == 3, (table, slots)
 
     # ``00010001`` and ``11101110`` project onto AND and NAND, and the
     # enumeration derives both at ``settle == 1``.  A version of
@@ -63,23 +72,27 @@ def test_minifuck_slots_run_in_name_order() -> None:
     for table in ("00010001", "11101110"):
         slots = _slot_order(parameterized.minifuck, table)
         assert slots is not None, table
-        assert slots == sorted(slots), (table, slots)
+        assert len(slots) == 3, (table, slots)
 
-    # **The whole arity, not a list.**  Ten tables used to emit
-    # ``{X0}{X2}{X1}`` -- every one of them with the ignored input in the
+    # **The whole arity, not a list.**  Ten tables used to emit input 2's
+    # run before input 1's -- every one of them with the ignored input in the
     # *middle* -- and they survived precisely because this test named
     # specific tables and none of them had that shape.  A hand-picked list
     # cannot fail on the case nobody thought of, so the sweep is the
     # assertion that matters and the tables above are the regressions it
     # grew from.  They are sorted now because ``_solve`` hands exactly that
     # residue to ``_mux``, which embeds at full arity in ascending order.
-    unsorted_tables = []
+    malformed_tables = []
     for value in range(256):
         table = format(value, "08b")
-        slots = _slot_order(parameterized.minifuck, table)
-        if slots is not None and slots != sorted(slots):
-            unsorted_tables.append((table, slots))
-    assert not unsorted_tables, unsorted_tables
+        try:
+            slots = _slot_order(parameterized.minifuck, table)
+        except ValueError as exc:
+            malformed_tables.append((table, str(exc)))
+            continue
+        if slots is not None and len(slots) != 3:
+            malformed_tables.append((table, slots))
+    assert not malformed_tables, malformed_tables
 
 
 @pytest.mark.slow  # two closed-form builds plus eight interpreter runs each
@@ -292,15 +305,18 @@ def test_a_flipped_embed_complements_in_place_and_keeps_slot_order() -> None:
 
     for n in (2, 3):
         plain = _embed(n).template()
-        slots = [int(s[2:-1]) for s in re.findall(r"\{X\d+\}", plain)]
-        assert slots == sorted(slots), slots
+        assert run_count(plain, n) == n
         assert _embed(n, flips=0).template() == plain  # the default is no-op
 
         for mask in range(1, 2**n):
             flipped = _embed(n, flips=mask).template()
             assert len(flipped) == len(plain) + len(_FLIP) * mask.bit_count(), mask
-            order = [int(s[2:-1]) for s in re.findall(r"\{X\d+\}", flipped)]
-            assert order == slots, (mask, order)
+            # The gadget goes right after the setter it complements, and
+            # after no other.
+            pairs = ((MINIFUCK_ZERO, MINIFUCK_ONE),) * n
+            for i, (_start, end) in enumerate(runs(flipped, TEMPLATE_CHAR, pairs)):
+                follows = flipped[end : end + len(_FLIP)] == _FLIP
+                assert follows == bool((mask >> i) & 1), (mask, i)
 
 
 def test_the_coverage_population_is_its_stated_definition() -> None:

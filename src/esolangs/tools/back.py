@@ -1,19 +1,27 @@
 """Boolean-function generator for Back."""
 
-import re
+from esolangs.tools.helpers import (
+    TEMPLATE_CHAR,
+    _validate_truth_table,
+    constant_span_test,
+)
 
-from esolangs.tools.helpers import _validate_truth_table, constant_span_test
+#: How each input is finished against a cell the load has primed to 1:
+#: ``-`` flips it back to zero, ``+`` is inert and leaves the one.  The
+#: template spells each input as a run of :data:`TEMPLATE_CHAR` this wide
+#: -- one grid cell, so the template is the exact shape of its programs.
+BACK_ZERO, BACK_ONE = "-", "+"
+_BACK_INPUT = TEMPLATE_CHAR * len(BACK_ZERO)
 
 
 def _reflect_back(source: str) -> str:
     r"""Reflect a Back template and route the fixed eastward start into it.
 
-    A placeholder is one grid cell despite occupying several source
-    characters, so reflection reverses parsed cells rather than characters.
-    Only the beam mirrors swap; ``<`` and ``>`` move the tape head and keep
-    their meanings.
+    An input's run is one grid cell like every other character, so
+    reflection reverses characters.  Only the beam mirrors swap; ``<`` and
+    ``>`` move the tape head and keep their meanings.
     """
-    rows = [re.findall(r"\{X\d+\}|.", row) for row in source.splitlines()]
+    rows = [list(row) for row in source.splitlines()]
     width = max(map(len, rows))
     mirrors = str.maketrans({"/": "\\", "\\": "/"})
     reflected: list[list[str]] = []
@@ -22,10 +30,7 @@ def _reflect_back(source: str) -> str:
         reflected.append(
             [
                 " ",
-                *(
-                    cell.translate(mirrors) if len(cell) == 1 else cell
-                    for cell in cells
-                ),
+                *(cell.translate(mirrors) for cell in cells),
                 " ",
             ]
         )
@@ -50,7 +55,7 @@ def back(truth_table: str) -> str:
     is 0, ``<``/``>`` move the tape pointer, ``\`` reflects the beam down,
     and ``*`` halts printing the tape.  Each input is embedded once by
     filling its tape cell over two load rows: a constant ``-`` primes the
-    cell to 1 for either bit, then ``{Xi}`` finishes it -- ``+`` (inert on
+    cell to 1 for either bit, then the input's run finishes it -- ``+`` (inert on
     a set cell) for a one, ``-`` (flipping it back) for a zero.  So cells
     ``0..n-1`` hold the inputs and cell ``n`` is the answer cell.  Both
     bits cost the same two rows and, because no ``+`` ever meets a zero
@@ -90,7 +95,7 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     ``truth_table`` is already permuted, so every row index here is in the
     permuted frame.  ``perm`` is spent in exactly one place: the cell each
-    ``{Xi}`` unit loads into.
+    input's unit loads into.
 
     A node is ``+\>`` -- test the current cell, *then* advance -- so level
     ``k`` tests cell ``k``, and input ``perm[k]`` is the one that has to be
@@ -99,24 +104,24 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     test cell ``k + 1``), and getting it wrong computes a different
     function rather than failing to draw.
 
-    **The load runs the placeholders in name order and walks the pointer to
+    **The load runs the inputs in name order and walks the pointer to
     each one's cell.**  Input ``i`` belongs at cell ``perm.index(i)``, the
     inverse of the permutation, and a walk of ``>``/``<`` carries the
     pointer there.  Reading the permutation forward instead puts the right
     bits in the wrong cells and computes a different function.
 
     **This is not the cheapest build, and the trade is deliberate.**
-    Filling in *cell* order -- cell ``c`` taking ``{X perm[c]}`` -- emits no
+    Filling in *cell* order -- cell ``c`` taking input ``perm[c]`` -- emits no
     walk at all and delivers the full 12.0% screen against the 9.15% here,
-    but it puts the placeholders out of name order where every other
-    generator in this module emits ``{X0}``..``{Xn-1}`` in sequence.  Both
-    are correct, since ``instantiate`` substitutes by *name*, so this is a
-    consistency choice costing 2.85 points.  The walk is cheap in absolute
+    but it puts the inputs out of name order, and the k-th run of the
+    template *is* input k: the harness fills the runs in order, so a
+    cell-order load would have to carry its permutation some other way.
+    The choice costs 2.85 points.  The walk is cheap in absolute
     terms and shows up at all only because Back's programs are small -- 82
     characters on average at n=3, against LaserFuck's 326.
 
-    Keeping the ``-``/``{Xi}`` pairs intact preserves the equal-width
-    embedding: the primer and the placeholder are one unit and are never
+    Keeping the ``-``/run pairs intact preserves the equal-width
+    embedding: the primer and the run are one unit and are never
     separated, so both bits still cost the same two rows and the template's
     height cannot leak an input.
     """
@@ -124,19 +129,19 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     # The load: fill the input cells, then '>' to open the answer cell at n
     # and walk the pointer back to cell 0 for the tree's first test.  Held as
-    # units because a '{Xi}' is one grid cell but four template characters.
+    # units, one grid cell each.
     #
-    # The load runs the ``{Xi}`` in *name* order and walks the pointer to the
+    # The load runs the inputs in *name* order and walks the pointer to the
     # cell each one belongs in.  Cell ``c`` is tested by level ``c``, which
     # has to test input ``perm[c]``, so input ``i`` belongs at cell
     # ``perm.index(i)`` -- the inverse of the permutation.
     #
-    # Filling in cell order instead (cell ``c`` taking ``{X perm[c]}``) emits
+    # Filling in cell order instead (cell ``c`` taking input ``perm[c]``) emits
     # no walk at all and is what this generator did briefly: it costs nothing
     # and delivers the full 12.0% screen against the 9.15% here.  It is not
-    # kept, because it puts the template's placeholders out of name order,
-    # and every other generator in this module emits ``{X0}``..``{Xn-1}`` in
-    # sequence.  The saving is real but the exception is not worth it; see
+    # kept, because it puts the template's inputs out of name order, and
+    # the k-th run of a template is input k.  The saving is real but the
+    # exception is not affordable; see
     # the docstring for the trade.
     cells = [0] * n
     for level, i in enumerate(perm):
@@ -148,7 +153,7 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
 
     # Emitted in *reverse* name order, because the load is drawn bottom-to-top
     # into column 0 (the beam runs up it), so the template's text reads the
-    # units backwards.  Loading input ``n-1`` first therefore puts ``{X0}``
+    # units backwards.  Loading input ``n-1`` first therefore puts input 0
     # first in the emitted template, which is the order every other generator
     # in this module reads in.  The walk costs whatever it costs; the search
     # over input orders prices it either way.
@@ -161,19 +166,19 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
         # Where the tree is the taller of the two these rows already exist.
         #
         # The first row is a constant '-' that primes the cell to 1 for both
-        # bits alike, and the *second* carries the placeholder that finishes
+        # bits alike, and the *second* carries the input's run that finishes
         # it: '-' again to flip a zero back down, '+' to leave a one standing.
         # Putting the bit on the trailing row rather than the leading one is
         # what makes every load row execute -- see the fill for why the older
-        # '{Xi}' + '+' order skipped a row instead.
+        # run + '+' order skipped a row instead.
         #
         # The walk that puts this input in its cell goes *before* the pair,
         # never between the two halves of it: splitting them would break the
-        # equal-width embedding, since the primer and the placeholder have to
+        # equal-width embedding, since the primer and the run have to
         # stay two rows for either bit.
         units.extend(walk(at, cells[cell]))
         units.append("-")
-        units.append("{X" + str(cell) + "}")
+        units.append(_BACK_INPUT)
         at = cells[cell]
     # Open the answer cell at n, then home to cell 0 for the tree's first
     # test.  Under the identity order the last input sits at cell n-1 and
@@ -230,12 +235,10 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # The grid is as tall as whichever of the two needs more rows: the tree
     # wants 2**n and the load wants one row per unit below the '/'.  Past
     # n = 3 the tree is the taller, so the load's rows start sharing with tree
-    # rows -- safe for the same reason the whole template is: a '{Xi}' is the
-    # only thing on its row that instantiation resizes, it always shrinks by
-    # exactly three (every embedding is one character, for either bit value),
-    # and it sits left of the tree, so the tree glyphs on that row slide back
-    # to the columns they were drawn for.  An embedding whose width depended
-    # on the bit would break that silently.
+    # rows -- safe for the same reason the whole template is: an input's run
+    # is exactly as wide as either embedding (one character), so the tree
+    # glyphs on that row keep the columns they were drawn for.  An embedding
+    # whose width depended on the bit would break that silently.
     height = max(max(r for r, _ in grid) + 1, 1 + len(units))
     width = max(c for _, c in grid) + 1
     rows = [[" "] * width for _ in range(height)]
@@ -247,6 +250,6 @@ def _back_ordered(truth_table: str, perm: tuple[int, ...]) -> str:
     # Every row is built at the full grid width, so the rstrip trims the pad
     # each one carries past its last glyph.  It no longer has a bit to hide:
     # both bits embed as a single command ('-' or '+'), never as the blank a
-    # zero once used, so no placeholder row instantiates to whitespace and
+    # zero once used, so no input row instantiates to whitespace and
     # the strip cannot change a filled row's length.
     return _reflect_back("\n".join("".join(row).rstrip() for row in rows))

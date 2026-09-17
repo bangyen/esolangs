@@ -2,7 +2,6 @@
 
 import importlib
 import io
-import re
 from collections.abc import Iterable
 from contextlib import redirect_stdout
 from itertools import pairwise
@@ -10,6 +9,8 @@ from itertools import pairwise
 import pytest
 
 from esolangs.interpreters.io import IO
+from esolangs.tools.helpers import TEMPLATE_CHAR
+from esolangs.tools.nocomment import NOCOMMENT_ZERO
 
 
 class TestParameterizedNoComment:
@@ -75,20 +76,21 @@ class TestParameterizedNoComment:
                 assert got == str(int(table[combo])), f"{table} inputs {bits}"
 
     def test_template_is_input_independent(self) -> None:
-        """The template has {Xi} placeholders, not hardcoded bits."""
+        """The template has one run per input, not hardcoded bits."""
         from esolangs.tools import parameterized
 
         template = parameterized.nocomment("0110")
-        assert "{X0}" in template
-        assert "{X1}" in template
+        assert "{X" not in template
+        assert template.count(TEMPLATE_CHAR) == 2 * len(NOCOMMENT_ZERO)
 
     def test_program_structure(self) -> None:
         """A one-bit template computes the index then skips to the output."""
         from esolangs.tools import parameterized
 
         template = parameterized.nocomment("10")
-        assert template.startswith("{X0}")
-        assert "{C0}" not in template  # the complement is computed at runtime
+        assert template.startswith(TEMPLATE_CHAR * len(NOCOMMENT_ZERO))
+        # The complement is computed at runtime: one run per input, no second.
+        assert template.count(TEMPLATE_CHAR) == len(NOCOMMENT_ZERO)
         assert template.endswith("o")  # a single final output
         assert template.count("s") == 3  # NOT gate + guarded increment + index skip
         assert template.count("o") == 1
@@ -163,7 +165,7 @@ class TestParameterizedNoComment:
         n = 13
         table = "".join(str((r * r + r // 3) % 2) for r in range(2**n))
         template = parameterized.nocomment(table)
-        assert re.fullmatch(r"[idclrnfsbo{}X0-9]*", template)
+        assert set(template) <= set("idclrnfsbo") | {TEMPLATE_CHAR}
         for combo in (0, 1, 2**n - 1, 2**n - 2, 1234, 2731, 4096, 6000):
             bits = [(combo >> (n - 1 - i)) & 1 for i in range(n)]
             got = self.run_nocomment(self.instantiate(template, bits), 6)
@@ -209,7 +211,7 @@ class TestParameterizedNoComment:
         n = 6
         table = "".join(str((r >> 4) & 1 ^ (r & 1)) for r in range(2**n))
         template = parameterized.nocomment(table)
-        assert template.count("{X") == n
+        assert template.count(TEMPLATE_CHAR) == n * len(NOCOMMENT_ZERO)
         parity = "".join(str(bin(r).count("1") % 2) for r in range(2**n))
         assert len(template) < len(parameterized.nocomment(parity))
         assert template.count("fsf") == 4 + 2 + 1  # four rows, two stages, a pad
