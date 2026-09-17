@@ -1,8 +1,6 @@
-"""The whole round trip: :func:`evaluate` and :func:`verify`.
+"""The round trip: :func:`evaluate` and :func:`verify`.
 
-Generates, runs every row through :func:`esolangs.run`, and reads the
-answers back.  The run layer is reached through the package (``esolangs.run``,
-``esolangs._run``) at call time, so a test can substitute it there.
+``esolangs.run`` is reached through the package at call time (patchable).
 """
 
 import esolangs

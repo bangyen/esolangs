@@ -31,7 +31,7 @@ def test_every_hashed_source_exists() -> None:
 
     sweep = load_script()
     for name, (module, _) in RUNNERS.items():
-        for path in sweep._sources(module):  # type: ignore[attr-defined]
+        for path in sweep._sources(module):  # type: ignore[attr-defined]  # noqa: SLF001
             assert path.is_file(), (name, path)
 
 
@@ -40,7 +40,7 @@ def test_the_key_reads_the_interpreter_and_the_examples() -> None:
     from esolangs.registry import RUNNERS
 
     sweep = load_script()
-    fingerprint = sweep._fingerprint  # type: ignore[attr-defined]
+    fingerprint = sweep._fingerprint  # type: ignore[attr-defined]  # noqa: SLF001
     bf, brainif = RUNNERS["brainfuck"][0], RUNNERS["BrainIf"][0]
     assert fingerprint(bf, ["+"]) != fingerprint(brainif, ["+"])
     assert fingerprint(bf, ["+"]) != fingerprint(bf, ["-"])

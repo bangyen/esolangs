@@ -1,8 +1,4 @@
-"""Registry facts as data: :func:`describe`, :func:`spec`, :func:`list_languages`.
-
-Nothing here runs a program; the run layer (:mod:`esolangs`) and the answer
-layer (:mod:`esolangs._answers`) both read these facts.
-"""
+"""Registry facts as data: :func:`describe`, :func:`spec`, :func:`list_languages`."""
 
 import importlib
 import pathlib
@@ -21,13 +17,8 @@ from esolangs.tools.wrap import WRAPPERS
 from esolangs.tools.wrap import takes_width as _takes_width
 from esolangs.vm import machine_traits
 
-#: The committed examples, inside the package so the wheel ships them
-#: (at the repo root, ``parents[2]`` from an install was above ``site-packages``).
+#: The committed examples, inside the package so the wheel ships them.
 _EXAMPLES = pathlib.Path(__file__).resolve().parent / "examples"
-
-# An unfilled input slot in a parameterized generator's template.  Matched
-# only for the languages whose generator emits one: ``{`` is a live command
-# in several of the others, so a blanket search would refuse real programs.
 
 # Interpreter module family -> state model name.
 _STATE_MODELS = {
@@ -141,13 +132,7 @@ def describe(language: str) -> LanguageInfo:
 
 
 def _width_effect(lang: Any) -> str:
-    """Return what ``width`` actually does to this language's program.
-
-    ``width_aware`` was ``False`` for both Sophie (reflowed afterwards) and
-    Clockwise (ignores it).  ``"layout"``: a shape built to fit, a hint
-    (LaserFuck asked for 10 gives 18, for 200 gives 56); ``"wrap"``:
-    reflowed between tokens; ``"none"``: ignored, newlines semantic.
-    """
+    """Return ``"layout"`` (a shape built to fit), ``"wrap"`` or ``"none"``."""
     # One expression rather than an early return for the generator-less
     # case: every registered language has a generator, so that return was a
     # line no input could reach.
