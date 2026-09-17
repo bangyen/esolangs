@@ -175,7 +175,7 @@ after ignoring the performance/resource ceiling as specified above.
 | 123 | parameterized construction | table-independent separation plus verdict; failed tight geometry falls back to doubling geometry |
 | Packlang | tree | — |
 | Painfuck | tree | Brainfuck tree transliteration |
-| %^2^-1 | exception | one setter pair, the weight as doublings in the template; the fold's planners cover all tables through four inputs and tested tables above that, but no all-arity proof is known |
+| %^2^-1 | exception | one setter pair, the weight as doublings in the template; the fold's planners cover all tables through four inputs and tested tables through fourteen, but no all-arity proof is known |
 | Polynomial | tree, cap | each finite instruction list has a finite prime-product encoding |
 | Qoibl | tree | — |
 | RAM0 | parameterized lookup | a straight-line RAM initializer plus a unary-weight lookup |
@@ -203,9 +203,11 @@ wall the generator's reach is not characterized.
 
 - `%^2^-1` can refuse when neither of its fold planners succeeds -- the
   all-row fold on a popcount or distinct ladder, or the staged fold past
-  eleven inputs; every table tried through thirteen inputs builds, any
+  eleven inputs; every table tried through fourteen inputs builds, any
   table symmetric under a complementation of its inputs builds at any
-  arity, and from fourteen only tables whose suffix cofactors compact do.  No construction can be total: the suite's dense fixture at
+  arity, and from fifteen only tables whose eleven-input cut compacts far
+  enough for the next lay to fit do (the dense fixture's has 2017 distinct
+  cofactors among 2048 rows, and the lay jams).  No construction can be total: the suite's dense fixture at
   seventeen inputs is computed by no template at any program length
   (proof below), so the totality question is the finite one of which tables
   below the wall a construction misses.
@@ -266,8 +268,11 @@ fixture with ignored inputs gives a witness at every wider arity.  The bound
 is tight enough to place the wall: sixteen inputs never exceed `2**12 = 4096`
 distinct cofactors at any cut and the fixture's worst twelve-input cut has
 3932, so the counting cannot bite below seventeen; the dense fixture's build
-ends at thirteen for a different reason, the `2**n + 1` distinct ladder
-positions that must fit under 3003.  Reading only the output's last character
+ends at fourteen for a different reason: the staged fold lays an input only
+onto a state the conveyor can still merge, and at fifteen the eleven-input
+cut has 2017 distinct cofactors among 2048 rows -- nothing to compact before
+the lay, and 4096 laid points at unit gaps jam the one-slot window within
+1.9k hops.  Reading only the output's last character
 would admit `l` on deep values and raise the deep classes to 1280 and the
 bound to 7287; the same witness still exceeds it.
 

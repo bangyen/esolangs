@@ -293,3 +293,156 @@ class TestCofactorDone:
             (0, 0, "1", frozenset({2})),
         )
         assert _cofactor_done(state) is False
+
+
+class TestStagedFold:
+    """The fourteen-input route, driven at small arities through ``prefix``.
+
+    ``_staged_fold`` lays one input per stage as soon as a collision-free
+    split fits the window and the rules run on the laid state; nothing in
+    it depends on the arity except the packed ladder's width, so the
+    stages are exercised on four- to six-input tables and the fourteen-
+    input build is the slow witness in ``test_boolean_pct_fold``.
+    """
+
+    @staticmethod
+    def module():
+        return importlib.import_module("esolangs.tools.pct_fold")
+
+    @staticmethod
+    def dense(n: int) -> str:
+        from tests.tools.test_boolean_contract import _dense
+
+        return _dense(n)
+
+    @pytest.mark.parametrize(("n", "prefix"), [(3, 11), (4, 11), (5, 11), (5, 3)])
+    def test_every_row_prints_through_the_stages(self, n: int, prefix: int) -> None:
+        """A dense table laid one input per stage executes on every row.
+
+        The prefix clamps to ``n - 1``, one lay; ``(5, 3)`` is two stages,
+        the first probed by the rules and the second by the planner.
+        """
+        from tests.tools.test_boolean_pct import _executes
+
+        table = self.dense(n)
+        template = self.module()._staged_fold(table, n, prefix)  # noqa: SLF001
+        assert template is not None
+        _executes(template, table, n)
+
+    def test_the_lay_waits_for_a_checkpoint_where_it_fits(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Checked every merge, a stage lays as soon as the split fits.
+
+        Small ladders fit at once, so the first fit test is refused by hand
+        and the stage has to run the rules to its next checkpoint.
+        """
+        from tests.tools.test_boolean_pct import _executes
+
+        module = self.module()
+        real = module._staged_lay_total  # noqa: SLF001
+        asked: list[int] = []
+
+        def first_refused(tops: list[int]) -> int | None:
+            asked.append(len(tops))
+            return None if len(asked) == 1 else real(tops)
+
+        monkeypatch.setattr(module, "_STAGED_CHECK", 1)
+        monkeypatch.setattr(module, "_staged_lay_total", first_refused)
+        table = self.dense(5)
+        template = module._staged_fold(table, 5, prefix=4)  # noqa: SLF001
+        assert template is not None
+        assert asked[1] < asked[0]  # laid at the checkpoint after a merge
+        _executes(template, table, 5)
+
+    def test_past_thirteen_the_interleaved_fold_dispatches_to_the_stages(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Fourteen inputs never reach the all-row path below the pair."""
+        module = self.module()
+        monkeypatch.setattr(module, "_staged_fold", lambda *_a, **_k: "staged")
+        assert _interleaved_fold("0" * 2**14, 14) == "staged"
+
+    def test_a_compact_state_the_lay_never_fits_refuses(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Compacted to one point per class and still no split: refused."""
+        module = self.module()
+        monkeypatch.setattr(module, "_staged_lay_total", lambda *_a: None)
+        assert module._staged_fold(self.dense(4), 4) is None  # noqa: SLF001
+
+    def test_a_dead_conveyor_refuses(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """No rule move before the lay fits: refused, not guessed."""
+        module = self.module()
+        monkeypatch.setattr(module, "_staged_lay_total", lambda *_a: None)
+        monkeypatch.setattr(module._FoldLedger, "rule_move", lambda _s: None)  # noqa: SLF001
+        assert module._staged_fold(self.dense(4), 4) is None  # noqa: SLF001
+
+    def test_a_stalled_conveyor_refuses(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Moves without a merge past the stall bound are the fifteen-input
+        obstruction in miniature: the stage is abandoned."""
+        module = self.module()
+        monkeypatch.setattr(module, "_STAGED_STALL", 0)
+        monkeypatch.setattr(module, "_staged_lay_total", lambda *_a: None)
+        assert module._staged_fold(self.dense(5), 5) is None  # noqa: SLF001
+
+    def test_a_last_lay_without_a_plan_is_not_taken(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The final lay is probed with the endgame planner before it is spelled."""
+        module = self.module()
+        monkeypatch.setattr(module, "_fold_plan", lambda *_a: None)
+        assert module._staged_fold(self.dense(4), 4) is None  # noqa: SLF001
+
+    def test_a_lay_the_rules_cannot_run_is_not_taken(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A split that fits but jams the conveyor waits for the next checkpoint."""
+        module = self.module()
+        monkeypatch.setattr(module, "_staged_runs", lambda _l: False)
+        assert module._staged_fold(self.dense(5), 5, prefix=3) is None  # noqa: SLF001
+
+    def test_the_probe_reports_a_dead_or_stalled_laid_state(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        module = self.module()
+        ledger = module._FoldLedger.from_state(  # noqa: SLF001
+            _state(
+                (0, 0, "a", frozenset({0})),
+                (-3, 0, "b", frozenset({1})),
+                (-6, 0, "a", frozenset({2})),
+            )
+        )
+        with monkeypatch.context() as patch:
+            patch.setattr(module._FoldLedger, "rule_move", lambda _s: None)  # noqa: SLF001
+            assert module._staged_runs(ledger) is False  # noqa: SLF001
+        with monkeypatch.context() as patch:
+            patch.setattr(module, "_STAGED_STALL", 0)
+            patch.setattr(
+                module._FoldLedger,  # noqa: SLF001
+                "rule_move",
+                lambda _s: ("m", 0, 0, frozenset()),
+            )
+            assert module._staged_runs(ledger) is False  # noqa: SLF001
+
+    def test_the_probe_accepts_a_state_that_is_already_compact(self) -> None:
+        module = self.module()
+        ledger = module._FoldLedger.from_state(  # noqa: SLF001
+            _state((0, 0, "a", frozenset({0})), (-4, 0, "b", frozenset({1})))
+        )
+        assert module._staged_runs(ledger) is True  # noqa: SLF001
+
+    @pytest.mark.parametrize(
+        ("tops", "total"),
+        [
+            ([0, 6003], None),  # no room under the window for any split
+            ([0, 3], 4),  # the first even total, three is not a distance
+            ([0, 4], 6),  # four is a distance, so the next even total
+            ([0, 1, 5000], 4),  # the distance walk stops past the room left
+            ([*range(0, 18, 2), 5990], None),  # room 16: every total collides
+        ],
+    )
+    def test_the_split_total_skips_every_distance(
+        self, tops: list[int], total: int | None
+    ) -> None:
+        assert self.module()._staged_lay_total(tops) == total  # noqa: SLF001
