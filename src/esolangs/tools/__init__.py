@@ -34,7 +34,6 @@ from esolangs.tools.parameterized import (
     cod,
     eval,  # noqa: A004 - the language is named "Eval"
     home_row,
-    instantiate,
     minifuck,
     minsky_swap,
     nocomment,
@@ -116,7 +115,6 @@ __all__ = [
     "grapheme",
     "home_row",
     "inject",
-    "instantiate",
     "interprogck8",
     "jaune",
     "jaune_multiply",

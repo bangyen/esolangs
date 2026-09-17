@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import pytest
 
-import esolangs
 import esolangs.tools as boolean
 from esolangs.registry import BY_BOOLEAN
 from esolangs.tools.helpers import runs
@@ -106,7 +105,7 @@ def test_parameterized_rows_embed_each_input_exactly_once() -> None:
 
     Driving this from the ledger rather than from
     ``esolangs.tools.parameterized.__all__`` is deliberate.  Home Row is a
-    parameterized generator -- its docstring says so and it emits ``{X0}`` --
+    parameterized generator -- its docstring says so and it emits the runs --
     but it is absent from that module's roster, so the suite's existing
     exactly-once sweep has never run on it.  The ledger knows it is
     ``parameterized tree``, so reading the obligation from the ledger closes
@@ -115,7 +114,6 @@ def test_parameterized_rows_embed_each_input_exactly_once() -> None:
     rows = _parameterized_rows(load())
     assert rows, "the ledger lists no parameterized rows"
     from esolangs.registry import canonical_id, recover_setters
-    from esolangs.tools.helpers import runs
 
     for row in rows:
         # The generator spells its inputs as runs of ``$`` itself; the runs

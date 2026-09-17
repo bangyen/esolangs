@@ -9,7 +9,6 @@ A truth table's length determines its input count: a valid table has
 generators take no ``n`` parameter.
 """
 
-import re
 from collections.abc import Callable, Iterable, Sequence
 
 from esolangs.exceptions import TruthTableError
@@ -162,15 +161,11 @@ def minterm_literals(row: int, n: int) -> list[tuple[int, bool]]:
     return [(i, not (row >> (n - 1 - i)) & 1) for i in range(n)]
 
 
-SetBit = Callable[[int, int], str]
-
 #: One ``(zero, one)`` pair per input, in name order: what a template's
-#: slots are filled with.  Each pair is equal width, checked by
+#: runs are filled with.  Each pair is equal width, checked by
 #: :func:`check_setters`, so the constant-width convention is a property
 #: of the object rather than of every caller.
 Setters = tuple[tuple[str, str], ...]
-
-_SLOT = re.compile(r"\{X(\d+)\}")
 
 
 def check_setters(setters: Sequence[tuple[str, str]]) -> Setters:
@@ -183,16 +178,6 @@ def check_setters(setters: Sequence[tuple[str, str]]) -> Setters:
                 f"{len(one)}), so the program's length would carry the bit"
             )
     return checked
-
-
-def check_slots(template: str, n: int) -> None:
-    """Refuse a template whose slots are not ``{X0}``..``{Xn-1}``, once, in order."""
-    slots = [int(index) for index in _SLOT.findall(template)]
-    if slots != list(range(n)):
-        raise ValueError(
-            f"template slots must be {{X0}}..{{X{n - 1}}} once each in order, "
-            f"found {slots}"
-        )
 
 
 #: The character a public template spells its inputs with, unless a
@@ -216,29 +201,22 @@ def mark(i: int) -> str:
 
 
 def render(template: str, char: str | None, setters: Setters) -> str:
-    """Return the public template: each ``{Xi}`` as a run of ``char``.
+    """Return the template as a wrapper is handed it.
 
-    The run is as long as input ``i``'s setters, so the template is the
-    exact shape of every program it fills to, and consecutive inputs need
-    no separator between their runs -- the widths say where one ends.
-    With ``char`` of None each input is its own :func:`mark`, the form a
-    wrapper is handed.  A generator that already emits runs of ``char``
-    (no ``{Xi}`` in its output) is passed through, its runs re-spelled as
-    marks when those are asked for.
+    A generator emits its inputs as runs of :data:`TEMPLATE_CHAR`, each as
+    long as input ``i``'s setters, so the template is the exact shape of
+    every program it fills to, and consecutive inputs need no separator
+    between their runs -- the widths say where one ends.  With ``char`` of
+    None each run is re-spelled as its own :func:`mark`, the form a wrapper
+    keeps whole; otherwise the template is returned as it came.
     """
-    if "{X" not in template:
-        if char is None:
-            out, position = [], 0
-            for i, (start, end) in enumerate(runs(template, TEMPLATE_CHAR, setters)):
-                out.append(template[position:start] + mark(i) * (end - start))
-                position = end
-            return "".join(out) + template[position:]
+    if char is not None:
         return template
-    check_slots(template, len(setters))
-    for i, (zero, _one) in enumerate(setters):
-        run = (mark(i) if char is None else char) * len(zero)
-        template = template.replace("{X" + str(i) + "}", run)
-    return template
+    out, position = [], 0
+    for i, (start, end) in enumerate(runs(template, TEMPLATE_CHAR, setters)):
+        out.append(template[position:start] + mark(i) * (end - start))
+        position = end
+    return "".join(out) + template[position:]
 
 
 def unmark(text: str, char: str, inputs: int) -> str:
@@ -300,46 +278,6 @@ def fill_runs(text: str, char: str, setters: Setters, bits: Sequence[int]) -> st
         position = end
     out.append(text[position:])
     return "".join(out)
-
-
-def instantiate(template: str, bits: list[int], set_bit: SetBit | Setters) -> str:
-    """Substitute each ``{Xi}`` placeholder.
-
-    ``{Xi}`` becomes ``set_bit(i, bit)``, the language's code for setting
-    input ``i`` to the bit; ``set_bit`` may also be the :data:`Setters`
-    pairs themselves, indexed the same way.
-
-    **A ``set_bit`` must return the same width for a 0 and a 1.**  This is the
-    one place the generators deliberately give up shortness.  Spelling a zero
-    as nothing at all (or as a shorter run than a one) is always tempting and
-    always wrong: it makes the emitted program's *length* a function of its
-    inputs, so the program leaks the very bits it is supposed to be evaluating.
-    At ``n == 2`` an earlier Bio embedding ran to 236, 240, 244, and 248
-    characters for the four instantiations -- the input recoverable from
-    ``len(program)`` without reading a line of it.
-
-    So pad the shorter side to equal width, and prefer padding with characters
-    the language *executes* to a no-op over characters it merely ignores: the
-    ignored kind is what a later cleanup pass strips, reintroducing the leak.
-    :func:`~esolangs.tools.bio` (``0oz;``) and
-    ``bfstack`` (a four-character run proved minimal by exhaustive search over
-    ``<>@[]``) are the worked examples.
-
-    There used to be a ``{Ci}`` companion, filled by a ``set_comp`` argument,
-    for a generator that wanted the complement embedded beside the bit.  No
-    generator does: ``bfpda``'s node marker is a constant that never depends
-    on the bit, and ``nocomment`` computes each complement at runtime from
-    ``{Xi}`` with its ``s``-as-NOT-gate, so the placeholder never appeared in
-    a template and every caller passed a ``set_comp`` nothing consumed.
-    """
-    if not callable(set_bit):
-        # A bit past the last pair fills nothing, as a bit past the last
-        # slot always has: the suites fill a lone ``{Xi}`` with n bits.
-        pairs = set_bit
-        set_bit = lambda i, bit: pairs[i][bit] if i < len(pairs) else ""  # noqa: E731
-    for i, bit in enumerate(bits):
-        template = template.replace("{X" + str(i) + "}", set_bit(i, bit))
-    return template
 
 
 def permute_truth_table(truth_table: str, perm: tuple[int, ...]) -> str:
@@ -529,8 +467,8 @@ def best_input_order(
     only shrink a program, never grow or churn one.
 
     **The read order does not move.**  Only the order the tree *tests* the
-    inputs in changes; the reads (or the load block, or the ``{Xi}``
-    placeholders) stay in input order, so the program consumes its input
+    inputs in changes; the reads (or the load block, or the input
+    runs) stay in input order, so the program consumes its input
     stream exactly as it did.
 
     That is what rules Polynomial out: its node reads its own bit and it has

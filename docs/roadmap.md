@@ -105,8 +105,8 @@ The candidate list is empty.
   west both end at the selected column, and without the wall there the
   drop is a random junction -- against the once-only embed the
   parameterized contract asks for, so the fork/cascade generator it
-  replaced is restored: each `{Xi}` sets the cod's value at its own `+`
-  fork, once.  Measured on restoration: size x3.5 -> x3.9 per added input
+  replaced is restored: each input's run sets the cod's value at its own
+  `+` fork, once.  Measured on restoration: size x3.5 -> x3.9 per added input
   over n=5..9 (942,668 characters at n=8, 3.67 MB at n=9; the cascade's T
   leaf rows each carry a Theta(T) prefix and gate tail), build time
   tracking the size (0.10 s at n=9), and the worst row's command count
@@ -115,15 +115,15 @@ The candidate list is empty.
   the size contract reads the size cell.  The
   constant-size two-polarity test exists once a bit reaches a node (`<`
   keeps only one, `(<` keeps only zero, `(`/`)` normalize the survivor),
-  so a linear-area H-tree needs `{Xi}` at every node of level `i`; a shared
-  placeholder cannot distribute the bit to separate node lanes without
+  so a linear-area H-tree needs input `i` at every node of level `i`; a
+  shared run cannot distribute the bit to separate node lanes without
   losing the lane identity, and carrying that identity as the cod's value
   returns to the super-linear numeric decoder.  That is the row's open
   question on all three axes.
 
   Nopstacle joins it on the size axis (Sep 2026), with its prototype
   replaced by a generator: a full decision tree of corridors, level `i`
-  reading `{Xi}` at `2**i` node columns of one row, and a padded
+  reading its input at `2**i` node columns of one row, and a padded
   rectangle `4 * 2**n` wide by `3n + 7` high.  Size is `Theta(n 2**n)`
   by construction -- 31,774 characters at n=8, x2.21 there and x2.13 at
   n=12 on the contract's two-step mean of the template, per-entry cost
@@ -310,16 +310,15 @@ The candidate list is empty.
   `_` -- a no-op except to a cod moving up, and the fork crosses the
   cell sideways -- is the zero now, one cell, every program the size it
   was and every row through n=5 executing to its table.  Nopstacle's
-  alphabet is the blank and `#`, so a zero bit *is* a blank: its `{Xi}`
+  alphabet is the blank and `#`, so a zero bit *is* a blank: its input
   run is a bit cell at each of level `i`'s `2**i` node columns with
   blanks between, the same width either way, and there is no command to
   spell it with.
 
   The fill itself is standard for all eighteen: each example names a
   `setters(template, n)` returning one `(zero, one)` pair per input, the
-  generator's own output marks each input `{Xi}` and `generate` renders
-  each mark as its run, and filling walks the runs by the pairs' widths
-  and nothing else.  A width wraps the template with every run kept
+  generator's own output spells each input as its run of `$`, and
+  filling walks the runs by the pairs' widths and nothing else.  A width wraps the template with every run kept
   whole (each input is spelled as its own private-use mark while the
   wrapper runs, so two adjacent runs are two tokens), and since a run is
   exactly its setter's length the wrapped template is the wrapped form of

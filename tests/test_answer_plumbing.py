@@ -222,7 +222,7 @@ class TestATemplateCarriesItsSetters:
         from esolangs.tagged import _Template
 
         with pytest.raises(ValueError, match="differ in width"):
-            _Template("{X0}", "Minifuck", setters=[("x", "xx")])
+            _Template("$", "Minifuck", setters=[("x", "xx")])
 
     def test_runs_that_do_not_fit_the_setters_are_refused(self) -> None:
         from esolangs.tagged import _Template
@@ -234,16 +234,14 @@ class TestATemplateCarriesItsSetters:
         with pytest.raises(ValueError, match="1 run"):
             _Template("a$$b", "Minifuck", setters=[("aa", "bb"), ("c", "d")])
 
-    def test_a_generator_marking_its_slots_out_of_order_is_refused(self) -> None:
-        from esolangs.tools.helpers import fill_runs, render
+    def test_a_fill_with_the_wrong_number_of_bits_is_refused(self) -> None:
+        from esolangs.tools.helpers import fill_runs
 
-        with pytest.raises(ValueError, match="once each in order"):
-            render("{X1}{X0}", "$", (("a", "b"), ("c", "d")))
         with pytest.raises(ValueError, match="expected 2 bits"):
             fill_runs("$$", "$", (("a", "b"), ("c", "d")), [1])
 
-    def test_a_generator_may_emit_the_runs_itself(self) -> None:
-        """A run-form generator output passes through render and fills the same."""
+    def test_the_runs_pass_through_render_and_fill_by_width(self) -> None:
+        """Run-form output is the template; marks are asked for by a wrapper."""
         from esolangs.tools.examples import _fill_from
         from esolangs.tools.helpers import mark, render
 
@@ -251,7 +249,7 @@ class TestATemplateCarriesItsSetters:
         assert render("a$$$b", "$", pairs) == "a$$$b"
         assert render("a$$$b", None, pairs) == "a" + mark(0) * 2 + mark(1) + "b"
         fill = _fill_from(lambda _template, n: pairs[:n])
-        assert fill("a$$$b", [1, 0]) == fill("a{X0}{X1}b", [1, 0]) == "ayypb"
+        assert fill("a$$$b", [1, 0]) == "ayypb"
 
     def test_a_zero_width_setter_has_an_empty_run(self) -> None:
         """An input spelled as nothing on both branches (%^2^-1) fills to nothing."""
@@ -261,16 +259,6 @@ class TestATemplateCarriesItsSetters:
         assert runs("a$$b", "$", pairs) == [(0, 0), (1, 3), (3, 3)]
         assert fill_runs("a$$b", "$", pairs, [1, 0, 1]) == "axxb"
         assert fill_runs("a$$b", "$", pairs, [0, 1, 0]) == "ayyb"
-
-    def test_marks_fill_through_a_callable_or_pairs_alike(self) -> None:
-        """The mark form fills by a setter function or by the pairs themselves."""
-        from esolangs.tools.helpers import instantiate
-
-        pairs = (("xx", "yy"), ("p", "q"))
-        assert instantiate("a{X0}{X1}b", [1, 0], pairs) == "ayypb"
-        assert instantiate("a{X0}{X1}b", [1, 0], lambda i, bit: pairs[i][bit]) == (
-            "ayypb"
-        )
 
     def test_adjacent_inputs_need_no_separator(self) -> None:
         from esolangs.tagged import _Template
@@ -871,9 +859,9 @@ class TestInstantiateCanCheckProvenance:
     """A tag cannot survive a file, but a table can be compared against."""
 
     def test_a_hand_written_template_is_refused_given_the_table(self) -> None:
-        """`"hello {X0}"` filled to `'hello [<'` and ran to nothing."""
+        """`"hello $$"` filled to `'hello [<'` and ran to nothing."""
         with pytest.raises(esolangs.TemplateError, match="is not the template"):
-            esolangs.instantiate("Minifuck", "hello {X0}", [1], truth_table="01")
+            esolangs.instantiate("Minifuck", "hello $$", [1], truth_table="01")
 
     def test_the_real_template_passes(self) -> None:
         """And still fills, and still answers its row."""
@@ -1231,13 +1219,12 @@ class TestEvaluateTakesAWidth:
         assert esolangs.evaluate(name, "0110", timeout=30, width=25) == "0110"
 
     def test_a_template_language_gets_the_width_too(self) -> None:
-        """The width has to land after the bits are in, on ``instantiate``.
+        """``evaluate`` applies the width once, and the rows still answer.
 
-        A slot is four columns and the setter code that replaces it is
-        not, so a template wrapped to a width stops meeting it once it is
-        filled -- which is a place a caller writing the loop by hand would
-        plausibly get wrong.  (The template itself does wrap: ``{Xi}`` is
-        one token in every rule, so no break lands inside one.)
+        A template wrapped to a width fills to a program with the same
+        breaks (each run is its setter's width), and a caller writing the
+        loop by hand can still wrap after filling; either way the width
+        must not be applied twice.
         """
         assert esolangs.describe("Minifuck")["parameterized"] is True
         assert esolangs.evaluate("Minifuck", "0110", timeout=30, width=40) == "0110"
